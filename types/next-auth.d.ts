@@ -1,9 +1,8 @@
 import "next-auth/jwt";
 
 declare module "next-auth/jwt" {
-  /** returned by the `jwt` callback and `gettoken`, when using jwt sessions */
+  /** returned by the `jwt` callback and `getToken`, when using jwt sessions */
   interface jwt {
-    /** openid id token */
     twitter?: {
       provider: string;
       type: string;
