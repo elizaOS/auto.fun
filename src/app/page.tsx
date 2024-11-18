@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import bs58 from "bs58";
+import { signIn, signOut, useSession } from "next-auth/react";
 
 export default function Home() {
   const [isPhantomInstalled, setIsPhantomInstalled] = useState(false);
   const [publicKey, setPublicKey] = useState("");
+  const { status } = useSession();
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.solana?.isPhantom) {
@@ -45,6 +47,11 @@ export default function Home() {
     return (
       <div>
         <button onClick={connectWallet}>Connect wallet</button>
+        {status === "authenticated" ? (
+          <button onClick={() => signOut()}>Clear Session</button>
+        ) : (
+          <button onClick={() => signIn()}>Authenticate</button>
+        )}
       </div>
     );
   }
