@@ -22,12 +22,18 @@ interface PhantomProvider {
   disconnect: () => Promise<void>;
   on: <T extends keyof PhantomEvent>(
     event: T,
-    handler: PhantomEvent[T]
+    handler: PhantomEvent[T],
   ) => void;
-  request: (method: string, params: any) => Promise<any>;
+  request: ({
+    method,
+    params,
+  }: {
+    method: string;
+    params: any;
+  }) => Promise<any>;
   signMessage: (
     message: Uint8Array,
-    display?: "hex" | "utf8"
+    display?: "hex" | "utf8",
   ) => Promise<{ signature: Uint8Array }>;
   signTransaction: (transaction: Transaction) => Promise<Transaction>;
 }

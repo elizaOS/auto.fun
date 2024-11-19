@@ -37,7 +37,7 @@ export default function TransactionSignPage() {
   } = useForm<TokenMetadataForm>();
 
   const convertFormData = async (
-    tokenMetadata: TokenMetadataForm
+    tokenMetadata: TokenMetadataForm,
   ): Promise<TokenMetadata> => {
     return {
       ...tokenMetadata,
@@ -65,13 +65,12 @@ export default function TransactionSignPage() {
 
         // Deserialize the transaction
         const transaction = Transaction.from(
-          Buffer.from(serializedTransaction, "base64")
+          Buffer.from(serializedTransaction, "base64"),
         );
 
         // Sign the transaction using Phantom
-        const signedTransaction = await window.solana.signTransaction(
-          transaction
-        );
+        const signedTransaction =
+          await window.solana.signTransaction(transaction);
 
         // Serialize the signed transaction
         const signedSerializedTransaction = signedTransaction
@@ -104,55 +103,57 @@ export default function TransactionSignPage() {
   };
 
   return (
-    <div className="p-4 h-full">
-      <form
-        onSubmit={handleSubmit(createCoin)}
-        className="flex flex-col w-96 m-auto gap-4 justify-center h-full"
-      >
-        <input
-          type="text"
-          placeholder="Name"
-          {...register("name", { required: true })}
-          className="border border-white rounded px-4 py-2 text-black"
-        />
-
-        <input
-          type="text"
-          placeholder="Symbol"
-          {...register("symbol", { required: true })}
-          className="border border-white rounded px-4 py-2 text-black"
-        />
-
-        <input
-          type="number"
-          step="any"
-          placeholder="Initial SOL"
-          {...register("initialSol", { required: true })}
-          className="border border-white rounded px-4 py-2 text-black"
-        />
-
-        <input
-          type="text"
-          placeholder="Description"
-          {...register("description")}
-          className="border border-white rounded px-4 py-2 text-black"
-        />
-
-        <input
-          type="file"
-          placeholder="Image URL"
-          {...register("image_base64", { required: true })}
-          className="border border-white rounded px-4 py-2"
-        />
-
-        <button
-          type="submit"
-          className="border border-white rounded px-4 py-2 mt-4"
-          disabled={isSubmitting}
+    <div className="p-4 h-full flex">
+      <div className="m-auto max-h-[40%] bg-white p-6 rounded-[20px] overflow-scroll">
+        <form
+          onSubmit={handleSubmit(createCoin)}
+          className="flex flex-col w-96 m-auto gap-7 justify-center"
         >
-          Create coin
-        </button>
-      </form>
+          <input
+            type="text"
+            placeholder="Name"
+            {...register("name", { required: true })}
+            className="border border-white rounded px-4 py-2 text-black"
+          />
+
+          <input
+            type="text"
+            placeholder="Symbol"
+            {...register("symbol", { required: true })}
+            className="border border-white rounded px-4 py-2 text-black"
+          />
+
+          <input
+            type="number"
+            step="any"
+            placeholder="Initial SOL"
+            {...register("initialSol", { required: true })}
+            className="border border-white rounded px-4 py-2 text-black"
+          />
+
+          <input
+            type="text"
+            placeholder="Description"
+            {...register("description")}
+            className="border border-white rounded px-4 py-2 text-black"
+          />
+
+          <input
+            type="file"
+            placeholder="Image URL"
+            {...register("image_base64", { required: true })}
+            className="border border-white rounded px-4 py-2"
+          />
+
+          <button
+            type="submit"
+            className="border border-white rounded px-4 py-2 mt-4"
+            disabled={isSubmitting}
+          >
+            Create coin
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
