@@ -1,5 +1,7 @@
+import { ReactNode } from "react";
+
 export type LabelledInputProps = {
   label: string;
-  leftIndicator?: string;
-  rightIndicator?: string;
+  leftIndicator?: ReactNode;
+  rightIndicator?: ReactNode;
 };
