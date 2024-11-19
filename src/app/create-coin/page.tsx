@@ -5,6 +5,7 @@ import { createCoin } from "@/utils/wallet";
 import { FormInput } from "@/components/common/input/FormInput";
 import { useWallet, WalletButton } from "./WalletButton";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
+import { Nav } from "@/components/nav";
 
 export type TokenMetadata = {
   name: string;
@@ -62,67 +63,69 @@ export default function TransactionSignPage() {
   };
 
   return (
-    <div className="p-4 h-full flex flex-col items-center justify-center">
-      <WalletButton />
-      <div className="max-h-[80%] w-5/6 bg-white p-6 rounded-[20px] overflow-scroll mb-6">
-        <form
-          onSubmit={handleSubmit(submitForm)}
-          className="flex flex-col w-full m-auto gap-7 justify-center"
-        >
-          <FormInput
-            type="text"
-            {...register("name", { required: true })}
-            label="Name your AI Agent"
-          />
+    <div className="flex flex-col justify-center h-full pt-12">
+      <Nav />
+      <div className="p-4 h-full flex flex-col items-center justify-center">
+        <div className="max-h-[80%] w-5/6 bg-white p-6 rounded-[20px] overflow-scroll mb-6">
+          <form
+            onSubmit={handleSubmit(submitForm)}
+            className="flex flex-col w-full m-auto gap-7 justify-center"
+          >
+            <FormInput
+              type="text"
+              {...register("name", { required: true })}
+              label="Name your AI Agent"
+            />
 
-          <FormInput
-            type="text"
-            {...register("symbol", { required: true })}
-            label="Ticker"
-            leftIndicator="$"
-            maxLength={8}
-            rightIndicator={`${symbol?.length ?? 0}/8`}
-          />
+            <FormInput
+              type="text"
+              {...register("symbol", { required: true })}
+              label="Ticker"
+              leftIndicator="$"
+              maxLength={8}
+              rightIndicator={`${symbol?.length ?? 0}/8`}
+            />
 
-          <FormInput
-            type="text"
-            {...register("description")}
-            label="Description"
-            rightIndicator={`${description?.length ?? 0}/200`}
-          />
+            <FormInput
+              type="text"
+              {...register("description")}
+              label="Description"
+              rightIndicator={`${description?.length ?? 0}/200`}
+            />
 
-          <FormInput
-            type="text"
-            {...register("agent_behavior")}
-            label="Agent Behavior"
-          />
+            <FormInput
+              type="text"
+              {...register("agent_behavior")}
+              label="Agent Behavior"
+            />
 
-          <FormInput
-            type="number"
-            step="any"
-            {...register("initial_sol", { required: false })}
-            label="Buy Your Coin (optional)"
-            rightIndicator="SOL"
-          />
+            <FormInput
+              type="number"
+              step="any"
+              {...register("initial_sol", { required: false })}
+              label="Buy Your Coin (optional)"
+              rightIndicator="SOL"
+            />
 
-          <input
-            type="file"
-            placeholder="Image URL"
-            {...register("image_base64", { required: true })}
-            className="border border-white rounded px-4 py-2"
-          />
-        </form>
-      </div>
-
-      {publicKey ? (
-        <div>
-          <RoundedButton className="px-6 py-3" disabled={!formState.isValid}>
-            Launch token
-          </RoundedButton>
+            <input
+              type="file"
+              placeholder="Image URL"
+              {...register("image_base64", { required: true })}
+              className="border border-white rounded px-4 py-2"
+            />
+          </form>
         </div>
-      ) : (
-        <WalletButton />
-      )}
+
+        {publicKey ? (
+          <div>
+            <RoundedButton className="px-6 py-3" disabled={!formState.isValid}>
+              Launch token
+            </RoundedButton>
+          </div>
+        ) : (
+          <WalletButton />
+        )}
+      </div>
     </div>
   );
 }

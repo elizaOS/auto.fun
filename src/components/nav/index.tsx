@@ -1,4 +1,4 @@
-import { RoundedButton } from "../common/button/RoundedButton";
+import { WalletButton } from "@/app/create-coin/WalletButton";
 import { HowItWorks } from "./HowItWorks";
 
 export const Nav = () => {
@@ -11,7 +11,7 @@ export const Nav = () => {
       </div>
       <div className="flex gap-6 items-center">
         <HowItWorks />
-        <RoundedButton>Connect Wallet</RoundedButton>
+        <WalletButton />
       </div>
     </nav>
   );

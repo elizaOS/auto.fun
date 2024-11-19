@@ -54,6 +54,8 @@ export const WalletButton = () => {
     }
   };
   return (
-    <RoundedButton onClick={toggleWalletConnection}>{buttonText}</RoundedButton>
+    <RoundedButton onClick={toggleWalletConnection} className="p-3">
+      {buttonText}
+    </RoundedButton>
   );
 };
