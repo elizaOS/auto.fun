@@ -2,6 +2,7 @@
 
 import { Transaction } from "@solana/web3.js";
 import { useForm } from "react-hook-form";
+import { WalletButton } from "./WalletButton";
 
 type TokenMetadata = {
   name: string;
@@ -103,7 +104,8 @@ export default function TransactionSignPage() {
   };
 
   return (
-    <div className="p-4 h-full flex">
+    <div className="p-4 h-full flex flex-col">
+      <WalletButton />
       <div className="m-auto max-h-[40%] bg-white p-6 rounded-[20px] overflow-scroll">
         <form
           onSubmit={handleSubmit(createCoin)}
