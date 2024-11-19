@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import bs58 from "bs58";
 import { signIn, signOut, useSession } from "next-auth/react";
+import { FormInput } from "@/components/common/input/FormInput";
+import { InputError } from "@/components/common/input/InputError";
 
 export default function Home() {
   const [isPhantomInstalled, setIsPhantomInstalled] = useState(false);
@@ -52,6 +54,10 @@ export default function Home() {
         ) : (
           <button onClick={() => signIn()}>Authenticate</button>
         )}
+        <div className="w-[200px]">
+          <FormInput variant={"error"} label={"uh oh"} leftIndicator={"$"} />
+          <InputError message="an error occured" />
+        </div>
       </div>
     );
   }

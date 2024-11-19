@@ -30,7 +30,7 @@ export const FormInput = ({
     Exclude<FormInputProps["variant"], undefined>,
     string
   > = {
-    error: "bg-gradient-to-b from-transparent to-[#FFD9D9] rounded-t-xl",
+    error: "bg-[#FFD9D9] rounded-t-xl",
     default: "",
   };
 
