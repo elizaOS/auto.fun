@@ -1,18 +1,12 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import SessionProvider from "@/components/providers/SessionProvider";
 import { getSession } from "@/utils/auth";
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -28,9 +22,7 @@ export default async function RootLayout({
   const session = await getSession();
   return (
     <html lang="en" className="h-full">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased h-full`}
-      >
+      <body className={`${inter.className} antialiased h-full`}>
         <SessionProvider session={session}>{children}</SessionProvider>
       </body>
     </html>
