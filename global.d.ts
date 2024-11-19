@@ -1,4 +1,4 @@
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, Transaction } from "@solana/web3.js";
 
 declare global {
   interface Window {
@@ -29,5 +29,5 @@ interface PhantomProvider {
     message: Uint8Array,
     display?: "hex" | "utf8"
   ) => Promise<{ signature: Uint8Array }>;
-  // Add other methods if needed
+  signTransaction: (transaction: Transaction) => Promise<Transaction>;
 }

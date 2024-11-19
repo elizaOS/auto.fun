@@ -12,8 +12,10 @@
     "@solana/web3.js": "^1.95.4",
     "bs58": "^6.0.0",
     "next": "15.0.3",
-    "react": "19.0.0-rc-66855b96-20241106",
-    "react-dom": "19.0.0-rc-66855b96-20241106"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hook-form": "^7.53.2",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20",
