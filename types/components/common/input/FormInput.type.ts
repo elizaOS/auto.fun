@@ -6,5 +6,5 @@ export type FormInputProps = LabelledInputProps & {
    * Whether to pad the input on the left, right, or both sides.
    */
   inputPad?: "left" | "right" | "both";
-  border?: "red" | "none";
+  variant?: "error" | "default";
 } & Omit<InputHTMLAttributes<HTMLInputElement>, "className">;

@@ -5,7 +5,7 @@ export const FormInput = ({
   leftIndicator,
   rightIndicator,
   inputPad,
-  border,
+  variant,
   ...props
 }: FormInputProps) => {
   const indicatorStyles = "text-black opacity-30";
@@ -19,29 +19,39 @@ export const FormInput = ({
   };
 
   const borderStyles: Record<
-    Exclude<FormInputProps["border"], undefined>,
+    Exclude<FormInputProps["variant"], undefined>,
     string
   > = {
-    red: "border-red-500 border-solid border-[1px]",
-    none: "",
+    error: "border-red-500 border-solid border-[1px]",
+    default: "",
+  };
+
+  const backgroundColor: Record<
+    Exclude<FormInputProps["variant"], undefined>,
+    string
+  > = {
+    error: "bg-gradient-to-b from-transparent to-[#FFD9D9] rounded-t-xl",
+    default: "",
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 ">
       <label className="text-[#666666] text-[16px]">{label}</label>
-      <div
-        className={`flex items-center bg-[#F1F1F1] rounded-xl overflow-hidden ${borderStyles[border || "none"]}`}
-      >
-        {leftIndicator && (
-          <div className={`${indicatorStyles} pl-3`}>{leftIndicator}</div>
-        )}
-        <input
-          className={`w-full text-black bg-inherit h-11 ${inputPaddingStyles[inputPad || "both"]} py-4`}
-          {...props}
-        />
-        {rightIndicator && (
-          <div className={`${indicatorStyles} pr-3`}>{rightIndicator}</div>
-        )}
+      <div className={backgroundColor[variant || "default"]}>
+        <div
+          className={`flex items-center bg-[#F1F1F1] rounded-xl overflow-hidden ${borderStyles[variant || "default"]}`}
+        >
+          {leftIndicator && (
+            <div className={`${indicatorStyles} pl-3`}>{leftIndicator}</div>
+          )}
+          <input
+            className={`w-full text-black bg-inherit h-11 ${inputPaddingStyles[inputPad || "both"]} py-4`}
+            {...props}
+          />
+          {rightIndicator && (
+            <div className={`${indicatorStyles} pr-3`}>{rightIndicator}</div>
+          )}
+        </div>
       </div>
     </div>
   );
