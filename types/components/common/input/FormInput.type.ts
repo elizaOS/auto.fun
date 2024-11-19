@@ -1,5 +1,5 @@
 import { InputHTMLAttributes } from "react";
+import { LabelledInputProps } from "./index.type";
 
-export type FormInputProps = {
-  label: string;
-} & Omit<InputHTMLAttributes<HTMLInputElement>, "className">;
+export type FormInputProps = LabelledInputProps &
+  Omit<InputHTMLAttributes<HTMLInputElement>, "className">;
