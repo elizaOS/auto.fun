@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { DM_Mono } from "next/font/google";
 import "./globals.css";
 import SessionProvider from "@/components/providers/SessionProvider";
 import { getSession } from "@/utils/auth";
 
-const inter = Inter({
+const dmMono = DM_Mono({
+  weight: ["300", "400", "500"],
   subsets: ["latin"],
   display: "swap",
 });
@@ -22,7 +23,7 @@ export default async function RootLayout({
   const session = await getSession();
   return (
     <html lang="en">
-      <body className={`${inter.className} antialiased`}>
+      <body className={`${dmMono.className} antialiased`}>
         <SessionProvider session={session}>{children}</SessionProvider>
       </body>
     </html>
