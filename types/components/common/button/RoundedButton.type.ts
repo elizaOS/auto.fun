@@ -5,4 +5,4 @@ export type RoundedButtonProps = {
   color?: "red" | "green";
   disabled?: boolean;
 } & PropsWithChildren &
-  Omit<HTMLAttributes<HTMLButtonElement>, "className">;
+  HTMLAttributes<HTMLButtonElement>;
