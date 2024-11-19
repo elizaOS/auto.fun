@@ -1,16 +1,28 @@
 import { RoundedButton } from "@/components/common/button/RoundedButton";
-import { useState } from "react";
+import { getSolanaBalance } from "@/utils/wallet";
+import { useEffect, useState } from "react";
 
 export const WalletButton = () => {
-  const [isConnected, setIsConnected] = useState(
-    window.localStorage.getItem("publicKey") ? true : false,
-  );
-  const buttonText = isConnected ? "Disconnect Wallet" : "Connect Wallet";
+  const [publicKey, setPublicKey] = useState<string | null>(null);
+  const buttonText = publicKey ? "Disconnect Wallet" : "Connect Wallet";
+
+  useEffect(() => {
+    const publicKey = window.localStorage.getItem("publicKey");
+    if (publicKey) {
+      setPublicKey(publicKey);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (publicKey) {
+      getSolanaBalance(publicKey).then(console.log);
+    }
+  });
 
   const toggleWalletConnection = async () => {
     if (window.localStorage.getItem("publicKey")) {
       window.localStorage.removeItem("publicKey");
-      setIsConnected(false);
+      setPublicKey(null);
       return;
     }
 
@@ -20,7 +32,7 @@ export const WalletButton = () => {
       const publicKey = resp.publicKey.toString();
 
       window.localStorage.setItem("publicKey", publicKey);
-      setIsConnected(true);
+      setPublicKey(publicKey);
     }
   };
   return (

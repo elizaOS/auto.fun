@@ -1,11 +1,82 @@
-import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { TokenMetadata } from "@/app/create-coin/page";
+import {
+  clusterApiUrl,
+  Connection,
+  Keypair,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  VersionedTransaction,
+} from "@solana/web3.js";
 
 export const getSolanaBalance = async (publicKey: string) => {
-  const balance = await window.solana.request({
-    method: "getBalance",
-    params: [publicKey],
-  });
+  const connection = new Connection(clusterApiUrl("mainnet-beta"), "confirmed");
+  const key = new PublicKey(publicKey);
+  const balance = await connection.getBalance(key);
 
   const solBalance = balance / LAMPORTS_PER_SOL;
   return solBalance;
 };
+
+export async function createCoin(formData: TokenMetadata) {
+  console.log(formData.image_base64);
+
+  if (window.solana && window.solana.isPhantom) {
+    const provider = window.solana;
+
+    try {
+      await provider.connect();
+      const userPublicKey = provider.publicKey;
+
+      if (!userPublicKey) {
+        throw new Error("User public key not found");
+      }
+
+      // Generate a random keypair for the token mint
+      const mintKeypair = Keypair.generate();
+
+      // call API
+      const response = await fetch(
+        "https://9e78-47-157-77-100.ngrok-free.app/api/create-token",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            token_metadata: formData,
+            public_key: userPublicKey.toBase58(),
+            mint_keypair_public: mintKeypair.publicKey.toBase58(),
+          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      // successfully generated transaction
+      const { transaction } = await response.json();
+      console.log("got transaction");
+      const tx = VersionedTransaction.deserialize(
+        new Uint8Array(Buffer.from(transaction, "base64")),
+      );
+      console.log("deserialized transaction");
+
+      // Sign the transaction with the mint keypair
+      tx.sign([mintKeypair]);
+      console.log("signed with mint keypair");
+
+      // Request the user's signature via Phantom
+      const signedTx = await provider.signTransaction(tx);
+      console.log("signed with phantom wallet");
+
+      // TODO: move to private RPC on server side
+      const RPC_ENDPOINT = "https://api.mainnet-beta.solana.com";
+      const web3Connection = new Connection(RPC_ENDPOINT, "confirmed");
+      const signature = await web3Connection.sendRawTransaction(
+        signedTx.serialize(),
+      );
+      console.log("Transaction: https://solscan.io/tx/" + signature);
+    } catch (err) {
+      console.error("An error occurred:", err);
+    }
+  } else {
+    alert("Phantom wallet not found. Please install Phantom to proceed.");
+  }
+}
