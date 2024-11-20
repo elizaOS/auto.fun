@@ -22,6 +22,12 @@ export type TokenMetadata = {
   agent_behavior: string;
 };
 
+export type TwitterCredentials = {
+  username: string;
+  email: string;
+  password: string;
+};
+
 type TokenMetadataForm = {
   name: string;
   symbol: string;
@@ -58,23 +64,37 @@ export default function TransactionSignPage() {
 
   const convertFormData = async (
     tokenMetadata: TokenMetadataForm,
-  ): Promise<TokenMetadata> => {
+  ): Promise<{
+    tokenMeta: TokenMetadata;
+    twitterCreds: TwitterCredentials;
+  }> => {
     const media_base64 = tokenMetadata.media_base64;
     console.log(media_base64);
 
     return {
-      ...tokenMetadata,
-      initial_sol: tokenMetadata.initial_sol
-        ? parseFloat(tokenMetadata.initial_sol)
-        : 0,
-      image_base64: await toBase64(media_base64),
+      tokenMeta: {
+        ...tokenMetadata,
+        initial_sol: tokenMetadata.initial_sol
+          ? parseFloat(tokenMetadata.initial_sol)
+          : 0,
+        image_base64: await toBase64(media_base64),
+      },
+      twitterCreds: {
+        username: tokenMetadata.twitter_username,
+        email: tokenMetadata.twitter_email,
+        password: tokenMetadata.twitter_password,
+      },
     };
   };
 
   const submitForm = async (tokenMetadataForm: TokenMetadataForm) => {
     try {
-      const tokenMetadata = await convertFormData(tokenMetadataForm);
-      await createCoin(tokenMetadata);
+      const { tokenMeta, twitterCreds } =
+        await convertFormData(tokenMetadataForm);
+      await createCoin({
+        token_metadata: tokenMeta,
+        twitter_credentials: twitterCreds,
+      });
       router.push("/success");
     } catch {
       toast.error("Oops! Something went wrong. Please try again.");
