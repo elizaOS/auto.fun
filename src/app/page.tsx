@@ -5,12 +5,13 @@ import { createCoin } from "@/utils/wallet";
 import { FormInput } from "@/components/common/input/FormInput";
 import { WalletButton } from "../components/common/button/WalletButton";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
-import { Nav } from "@/components/nav";
 import FormImageInput from "@/components/common/input/FormImageInput";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { FormTextArea } from "@/components/common/input/FormTextArea";
+import { useState } from "react";
+import { LuEye, LuEyeOff } from "react-icons/lu";
 
 export type TokenMetadata = {
   name: string;
@@ -28,6 +29,9 @@ type TokenMetadataForm = {
   media_base64: File;
   description: string;
   agent_behavior: string;
+  twitter_email: string;
+  twitter_username: string;
+  twitter_password: string;
 };
 
 function toBase64(file: File) {
@@ -43,6 +47,7 @@ function toBase64(file: File) {
 }
 
 export default function TransactionSignPage() {
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const { register, handleSubmit, watch, formState, control } =
     useForm<TokenMetadataForm>();
@@ -151,6 +156,43 @@ export default function TransactionSignPage() {
                     "Only JPEG, PNG, GIF, and MP4 files are accepted",
                 },
               }}
+            />
+
+            <div className="flex gap-3 w-full items-center justify-center">
+              <div className="bg-[#002605] h-[2px] flex-1" />
+              <p>X/Twitter Integration</p>
+              <div className="bg-[#002605] h-[2px] flex-1" />
+            </div>
+
+            <FormInput
+              {...register("twitter_email", { required: true })}
+              type="text"
+              label="Email"
+            />
+            <FormInput
+              {...register("twitter_username", { required: true })}
+              type="text"
+              label="Username"
+            />
+            <FormInput
+              {...register("twitter_password", { required: true })}
+              type={showPassword ? "text" : "password"}
+              label="Password"
+              rightIndicatorOpacity="full"
+              rightIndicator={
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPassword((show) => !show);
+                  }}
+                >
+                  {showPassword ? (
+                    <LuEyeOff color="#03FF24" />
+                  ) : (
+                    <LuEye color="#03FF24" />
+                  )}
+                </button>
+              }
             />
           </div>
 

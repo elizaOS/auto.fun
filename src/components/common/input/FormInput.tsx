@@ -49,14 +49,16 @@ export const FormInput = ({
           className={`flex items-center bg-[#002605] rounded-xl overflow-hidden ${borderStyles[variant || "default"]}`}
         >
           {leftIndicator && (
-            <div className={`${leftIndicatorStyle} pl-3`}>{leftIndicator}</div>
+            <div className={`${leftIndicatorStyle} pl-3 flex justify-center`}>
+              {leftIndicator}
+            </div>
           )}
           <input
             className={`w-full bg-inherit h-11 ${inputPaddingStyles[inputPad || "both"]} py-4`}
             {...props}
           />
           {rightIndicator && (
-            <div className={`${rightIndicatorStyle} pr-3`}>
+            <div className={`${rightIndicatorStyle} pr-3 flex justify-center`}>
               {rightIndicator}
             </div>
           )}
