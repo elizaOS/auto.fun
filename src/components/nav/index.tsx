@@ -42,14 +42,14 @@ export const Nav = () => {
               height="42"
               rx="11"
               stroke="#03FF24"
-              stroke-width="2"
+              strokeWidth="2"
             />
             <path
               d="M15.3333 28.6666L20.9733 23.0266M23.0233 20.9766L28.6666 15.3333M15.3333 15.3333L25.1108 28.6666H28.6666L18.8891 15.3333H15.3333Z"
               stroke="#03FF24"
-              stroke-width="1.66667"
-              stroke-linecap="round"
-              stroke-linejoin="round"
+              strokeWidth="1.66667"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             />
           </svg>
         </button>
