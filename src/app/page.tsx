@@ -97,6 +97,7 @@ export default function TransactionSignPage() {
               leftIndicator="$"
               maxLength={8}
               rightIndicator={`${symbol?.length ?? 0}/8`}
+              rightIndicatorOpacity={symbol?.length >= 8 ? "full" : "low"}
             />
 
             <FormTextArea
@@ -105,6 +106,9 @@ export default function TransactionSignPage() {
               rightIndicator={`${description?.length ?? 0}/200`}
               minRows={2}
               maxLength={200}
+              rightIndicatorOpacity={
+                description?.length >= 200 ? "full" : "low"
+              }
             />
 
             <FormTextArea
@@ -113,6 +117,9 @@ export default function TransactionSignPage() {
               rightIndicator={`${agentBehavior?.length ?? 0}/500`}
               minRows={2}
               maxLength={500}
+              rightIndicatorOpacity={
+                agentBehavior?.length >= 500 ? "full" : "low"
+              }
             />
 
             <FormInput
