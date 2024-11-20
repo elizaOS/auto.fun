@@ -4,4 +4,6 @@ export type LabelledInputProps = {
   label: string;
   leftIndicator?: ReactNode;
   rightIndicator?: ReactNode;
+  leftIndicatorOpacity?: "full" | "low";
+  rightIndicatorOpacity?: "full" | "low";
 };
