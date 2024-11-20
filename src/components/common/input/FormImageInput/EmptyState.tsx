@@ -25,7 +25,7 @@ export const EmptyState: React.FC = () => (
     </div>
 
     <div className="text-[#03FF2466] text-[13px] font-medium leading-none">
-      JPG, PNG, or MP4. Max file size: 4MB
+      JPG, PNG, GIF, or MP4. Max file size: 4MB
     </div>
   </div>
 );
