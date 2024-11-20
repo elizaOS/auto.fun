@@ -10,6 +10,7 @@ import FormImageInput from "@/components/common/input/FormImageInput";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { FormTextArea } from "@/components/common/input/FormTextArea";
 
 export type TokenMetadata = {
   name: string;
@@ -48,6 +49,7 @@ export default function TransactionSignPage() {
   const { publicKey } = useWallet();
   const symbol = watch("symbol");
   const description = watch("description");
+  const agentBehavior = watch("agent_behavior");
 
   const convertFormData = async (
     tokenMetadata: TokenMetadataForm,
@@ -81,7 +83,7 @@ export default function TransactionSignPage() {
         className="flex flex-col w-full m-auto gap-7 justify-center"
       >
         <div className="h-full flex flex-col items-center justify-center max-w-4xl mx-auto w-full">
-          <div className="max-h-[80%] w-5/6 p-6 rounded-[20px] overflow-scroll mb-6 border-[#03ff24] border gap-[30px] flex flex-col">
+          <div className="max-h-[calc(100vh-300px)] w-5/6 p-6 rounded-[20px] overflow-scroll mb-6 border-[#03ff24] border gap-[30px] flex flex-col">
             <FormInput
               type="text"
               {...register("name", { required: true })}
@@ -95,19 +97,29 @@ export default function TransactionSignPage() {
               leftIndicator="$"
               maxLength={8}
               rightIndicator={`${symbol?.length ?? 0}/8`}
+              rightIndicatorOpacity={symbol?.length >= 8 ? "full" : "low"}
             />
 
-            <FormInput
-              type="text"
+            <FormTextArea
               {...register("description")}
               label="Description"
               rightIndicator={`${description?.length ?? 0}/200`}
+              minRows={2}
+              maxLength={200}
+              rightIndicatorOpacity={
+                description?.length >= 200 ? "full" : "low"
+              }
             />
 
-            <FormInput
-              type="text"
+            <FormTextArea
               {...register("agent_behavior")}
               label="Agent Behavior"
+              rightIndicator={`${agentBehavior?.length ?? 0}/500`}
+              minRows={2}
+              maxLength={500}
+              rightIndicatorOpacity={
+                agentBehavior?.length >= 500 ? "full" : "low"
+              }
             />
 
             <FormInput
