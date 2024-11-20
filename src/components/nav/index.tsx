@@ -26,7 +26,7 @@ export const Nav = () => {
         <HowItWorks />
         <WalletButton />
 
-        <button>
+        <a href="https://x.com/autodotfun" target="_blank">
           <svg
             width="44"
             height="44"
@@ -52,7 +52,7 @@ export const Nav = () => {
               strokeLinejoin="round"
             />
           </svg>
-        </button>
+        </a>
       </div>
     </nav>
   );
