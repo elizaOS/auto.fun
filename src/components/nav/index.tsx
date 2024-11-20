@@ -1,4 +1,6 @@
-import { RoundedButton } from "../common/button/RoundedButton";
+"use client";
+
+import { WalletButton } from "@/components/common/button/WalletButton";
 import { HowItWorks } from "./HowItWorks";
 
 export const Nav = () => {
@@ -11,7 +13,7 @@ export const Nav = () => {
       </div>
       <div className="flex gap-6 items-center">
         <HowItWorks />
-        <RoundedButton>Connect Wallet</RoundedButton>
+        <WalletButton />
       </div>
     </nav>
   );

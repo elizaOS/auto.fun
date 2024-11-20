@@ -1,23 +1,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@import "react-toastify/dist/ReactToastify.css";
 
 :root {
   --background: black;
-  --foreground: #03FF24;
+  --foreground: #03ff24;
 }
-
-/* @media (prefers-color-scheme: dark) { */
-/*   :root { */
-/*     --background: #0a0a0a; */
-/*     --foreground: #ededed; */
-/*   } */
-/* } */
 
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
+  overflow: hidden;
+}
+
+@layer base {
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
 }
 
 html {
@@ -77,12 +80,12 @@ input[type="submit"],
 input[type="reset"] {
   background: none;
   color: inherit;
-  border: none;
   padding: 0;
   font: inherit;
   cursor: pointer;
   outline: inherit;
 }
+
 input,
 input:focus,
 textarea:focus,
@@ -90,4 +93,27 @@ select:focus {
   outline: none;
   border: none;
   font: inherit;
+}
+
+/* Global Scrollbar Styling */
+
+/* WebKit-based browsers (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 8px; /* Width of the scrollbar */
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #002605; /* Scrollbar color */
+  border-radius: 4px; /* Rounded corners */
+}
+
+::-webkit-scrollbar-track {
+  background: transparent; /* Track color */
+  margin-right: 4px; /* Adds padding between the track and container edge */
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin; /* Thin scrollbar */
+  scrollbar-color: #002605 transparent; /* Scrollbar color and track color */
 }

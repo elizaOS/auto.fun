@@ -1,64 +1,159 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import bs58 from "bs58";
-import { signIn, signOut, useSession } from "next-auth/react";
+import { useForm } from "react-hook-form";
+import { createCoin } from "@/utils/wallet";
+import { FormInput } from "@/components/common/input/FormInput";
+import { WalletButton } from "../components/common/button/WalletButton";
+import { RoundedButton } from "@/components/common/button/RoundedButton";
+import { Nav } from "@/components/nav";
+import FormImageInput from "@/components/common/input/FormImageInput";
+import { toast } from "react-toastify";
+import { useRouter } from "next/navigation";
+import { useWallet } from "@solana/wallet-adapter-react";
 
-export default function Home() {
-  const [isPhantomInstalled, setIsPhantomInstalled] = useState(false);
-  const [publicKey, setPublicKey] = useState("");
-  const { status } = useSession();
+export type TokenMetadata = {
+  name: string;
+  symbol: string;
+  initial_sol: number;
+  image_base64: string;
+  description: string;
+  agent_behavior: string;
+};
 
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.solana?.isPhantom) {
-      setIsPhantomInstalled(true);
-    }
-  }, []);
+type TokenMetadataForm = {
+  name: string;
+  symbol: string;
+  initial_sol: string;
+  image_base64: File;
+  description: string;
+  agent_behavior: string;
+};
 
-  const connectWallet = async () => {
-    const phantomResponse = await window.solana.connect();
-    setPublicKey(phantomResponse.publicKey.toString());
+function toBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      if (typeof reader.result !== "string") return reject();
+      resolve(reader.result.split(",")[1]);
+    }; // Remove the Data URL prefix
+    reader.onerror = (error) => reject(error);
+  });
+}
+
+export default function TransactionSignPage() {
+  const router = useRouter();
+  const { register, handleSubmit, watch, formState, control } =
+    useForm<TokenMetadataForm>();
+  const { publicKey } = useWallet();
+  const symbol = watch("symbol");
+  const description = watch("description");
+
+  const convertFormData = async (
+    tokenMetadata: TokenMetadataForm,
+  ): Promise<TokenMetadata> => {
+    const image_base64 = tokenMetadata.image_base64;
+    console.log(image_base64);
+
+    return {
+      ...tokenMetadata,
+      initial_sol: tokenMetadata.initial_sol
+        ? parseFloat(tokenMetadata.initial_sol)
+        : 0,
+      image_base64: `data:image/jpeg;base64,${await toBase64(image_base64)}`,
+    };
   };
 
-  const signMessage = async () => {
+  const submitForm = async (tokenMetadataForm: TokenMetadataForm) => {
     try {
-      const message = "Sign this message to authenticate with our app.";
-      const encodedMessage = new TextEncoder().encode(message);
-      const signedMessage = await window.solana.signMessage(encodedMessage);
-      const signature = bs58.encode(signedMessage.signature);
-
-      // Send signature, publicKey, and message to your backend for verification
-      console.log(publicKey, message, signature);
-    } catch (err) {
-      console.error("Failed to sign message", err);
+      const tokenMetadata = await convertFormData(tokenMetadataForm);
+      await createCoin(tokenMetadata);
+      router.push("/success");
+    } catch {
+      toast.error("Oops! Something went wrong. Please try again.");
     }
   };
-
-  if (!isPhantomInstalled) {
-    return (
-      <div>
-        <h1>Phantom Wallet not installed</h1>
-        <a href="https://phantom.app/download">Install Phantom Wallet</a>
-      </div>
-    );
-  }
-
-  if (!publicKey) {
-    return (
-      <div>
-        <button onClick={connectWallet}>Connect wallet</button>
-        {status === "authenticated" ? (
-          <button onClick={() => signOut()}>Clear Session</button>
-        ) : (
-          <button onClick={() => signIn()}>Authenticate</button>
-        )}
-      </div>
-    );
-  }
 
   return (
-    <div>
-      <button onClick={signMessage}>Sign message</button>
+    <div className="flex flex-col justify-center h-full">
+      <form
+        onSubmit={handleSubmit(submitForm)}
+        className="flex flex-col w-full m-auto gap-7 justify-center"
+      >
+        <div className="h-full flex flex-col items-center justify-center max-w-4xl mx-auto w-full">
+          <div className="max-h-[80%] w-5/6 p-6 rounded-[20px] overflow-scroll mb-6 border-[#03ff24] border gap-[30px] flex flex-col">
+            <FormInput
+              type="text"
+              {...register("name", { required: true })}
+              label="Name your AI Agent"
+            />
+
+            <FormInput
+              type="text"
+              {...register("symbol", { required: true })}
+              label="Ticker"
+              leftIndicator="$"
+              maxLength={8}
+              rightIndicator={`${symbol?.length ?? 0}/8`}
+            />
+
+            <FormInput
+              type="text"
+              {...register("description")}
+              label="Description"
+              rightIndicator={`${description?.length ?? 0}/200`}
+            />
+
+            <FormInput
+              type="text"
+              {...register("agent_behavior")}
+              label="Agent Behavior"
+            />
+
+            <FormInput
+              type="number"
+              step="any"
+              {...register("initial_sol", { required: false })}
+              label="Buy Your Coin (optional)"
+              rightIndicator="SOL"
+            />
+
+            <FormImageInput
+              label="Agent Image / Video"
+              name="image_base64"
+              // @ts-ignore
+              control={control}
+              rules={{
+                required: "Please upload an image",
+                validate: {
+                  lessThan2MB: (file) =>
+                    (file && file.size < 2000000) || "Max file size is 2MB",
+                  acceptedFormats: (file) =>
+                    (file &&
+                      ["image/jpeg", "image/png", "image/gif"].includes(
+                        file.type,
+                      )) ||
+                    "Only JPEG, PNG, and GIF files are accepted",
+                },
+              }}
+            />
+          </div>
+
+          {publicKey ? (
+            <div>
+              <RoundedButton
+                className="px-6 py-3"
+                disabled={!formState.isValid}
+                type="submit"
+              >
+                Launch token
+              </RoundedButton>
+            </div>
+          ) : (
+            <WalletButton />
+          )}
+        </div>
+      </form>
     </div>
   );
 }
