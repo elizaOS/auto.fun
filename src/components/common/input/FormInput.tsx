@@ -3,19 +3,26 @@ import { FormInputProps } from "../../../../types/components/common/input/FormIn
 export const FormInput = ({
   label,
   leftIndicator,
+  leftIndicatorOpacity,
   rightIndicator,
+  rightIndicatorOpacity,
   inputPad,
   variant,
   ...props
 }: FormInputProps) => {
-  const indicatorStyles = "opacity-30";
+  const leftIndicatorStyle =
+    leftIndicatorOpacity === "full" ? "opacity-100" : "opacity-30";
+
+  const rightIndicatorStyle =
+    rightIndicatorOpacity === "full" ? "opacity-100" : "opacity-30";
+
   const inputPaddingStyles: Record<
     Exclude<FormInputProps["inputPad"], undefined>,
     string
   > = {
-    left: "pl-3",
-    right: "pr-3",
-    both: "px-3",
+    left: "pl-4",
+    right: "pr-4",
+    both: "px-4",
   };
 
   const borderStyles: Record<
@@ -42,14 +49,16 @@ export const FormInput = ({
           className={`flex items-center bg-[#002605] rounded-xl overflow-hidden ${borderStyles[variant || "default"]}`}
         >
           {leftIndicator && (
-            <div className={`${indicatorStyles} pl-3`}>{leftIndicator}</div>
+            <div className={`${leftIndicatorStyle} pl-3`}>{leftIndicator}</div>
           )}
           <input
             className={`w-full bg-inherit h-11 ${inputPaddingStyles[inputPad || "both"]} py-4`}
             {...props}
           />
           {rightIndicator && (
-            <div className={`${indicatorStyles} pr-3`}>{rightIndicator}</div>
+            <div className={`${rightIndicatorStyle} pr-3`}>
+              {rightIndicator}
+            </div>
           )}
         </div>
       </div>

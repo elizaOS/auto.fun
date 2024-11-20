@@ -1,0 +1,33 @@
+import { FormTextAreaProps } from "../../../../types/components/common/input/FormTextArea.type";
+import TextareaAutosize from "react-textarea-autosize";
+
+export const FormTextArea = ({
+  label,
+  rightIndicator,
+  rightIndicatorOpacity,
+  ...props
+}: FormTextAreaProps) => {
+  const indicatorStyles =
+    rightIndicatorOpacity === "full" ? "opacity-100" : "opacity-30";
+
+  return (
+    <div className="font-medium flex flex-col gap-3 ">
+      <label className="text-[16px]">{label}</label>
+      <div
+        className={`flex flex-col items-center rounded-xl bg-[#002605] overflow-hidden`}
+      >
+        <TextareaAutosize
+          className={`w-full bg-inherit h-11 py-3 px-4 resize-none`}
+          {...props}
+        />
+        {rightIndicator && (
+          <div
+            className={`${indicatorStyles} pr-3 rounded-b-xl w-full flex justify-end pb-3`}
+          >
+            {rightIndicator}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
