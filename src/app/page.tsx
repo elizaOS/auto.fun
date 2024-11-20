@@ -3,15 +3,13 @@
 import { useForm } from "react-hook-form";
 import { createCoin } from "@/utils/wallet";
 import { FormInput } from "@/components/common/input/FormInput";
-import {
-  useWallet,
-  WalletButton,
-} from "../components/common/button/WalletButton";
+import { WalletButton } from "../components/common/button/WalletButton";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { Nav } from "@/components/nav";
 import FormImageInput from "@/components/common/input/FormImageInput";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 export type TokenMetadata = {
   name: string;
