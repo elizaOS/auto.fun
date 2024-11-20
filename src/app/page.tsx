@@ -126,8 +126,8 @@ export default function TransactionSignPage() {
               rules={{
                 required: "Please upload an image",
                 validate: {
-                  lessThan2MB: (file) =>
-                    (file && file.size < 2000000) || "Max file size is 2MB",
+                  lessThan4MB: (file) =>
+                    (file && file.size < 4000000) || "Max file size is 4MB",
                   acceptedFormats: (file) =>
                     (file &&
                       ["image/jpeg", "image/png", "image/gif"].includes(

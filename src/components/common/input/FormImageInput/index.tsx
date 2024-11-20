@@ -5,7 +5,7 @@ import {
   useController,
 } from "react-hook-form";
 import { DragOverlay } from "./DragOverlay";
-import { ImagePreview } from "./ImagePreview";
+import { MediaPreview } from "./MediaPreview";
 import { EmptyState } from "./EmptyState";
 
 type InputPropsWithoutConflicts = Omit<
@@ -38,7 +38,7 @@ const ImageUploadInput = ({
   });
 
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [mediaSrc, setMediaSrc] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [file, setFile] = useState<File | null>(null);
 
@@ -46,11 +46,11 @@ const ImageUploadInput = ({
     if (value instanceof File) {
       const reader = new FileReader();
       reader.onload = () => {
-        setImageSrc(reader.result as string);
+        setMediaSrc(reader.result as string);
       };
       reader.readAsDataURL(value);
     } else {
-      setImageSrc(null);
+      setMediaSrc(null);
       if (inputRef.current) {
         inputRef.current.value = "";
       }
@@ -112,8 +112,7 @@ const ImageUploadInput = ({
       >
         <input
           type="file"
-          // TODO: support for mp4
-          accept="image/jpeg, image/png"
+          accept="image/jpeg, image/png, video/mp4"
           {...props}
           {...inputProps}
           ref={(e) => {
@@ -124,11 +123,12 @@ const ImageUploadInput = ({
           className="hidden"
         />
         {/* Render the appropriate component based on the state */}
-        {imageSrc && file ? (
-          <ImagePreview
-            imageSrc={imageSrc}
+        {mediaSrc && file ? (
+          <MediaPreview
+            mediaSrc={mediaSrc}
             onDelete={handleDeleteImage}
             name={file.name}
+            type={file.type}
           />
         ) : (
           <EmptyState />
