@@ -28,8 +28,6 @@ export const RoundedButton = ({
     }
   }, [variant, color]);
 
-  console.log(className);
-
   return (
     <button
       className={`${_className} rounded-xl font-bold ${disabled && "opacity-15"} active:brightness-75 ${className}`}

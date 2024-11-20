@@ -11,6 +11,7 @@ body {
   color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
+  overflow: hidden;
 }
 
 @layer base {
@@ -92,4 +93,27 @@ select:focus {
   outline: none;
   border: none;
   font: inherit;
+}
+
+/* Global Scrollbar Styling */
+
+/* WebKit-based browsers (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 8px; /* Width of the scrollbar */
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #002605; /* Scrollbar color */
+  border-radius: 4px; /* Rounded corners */
+}
+
+::-webkit-scrollbar-track {
+  background: transparent; /* Track color */
+  margin-right: 4px; /* Adds padding between the track and container edge */
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin; /* Thin scrollbar */
+  scrollbar-color: #002605 transparent; /* Scrollbar color and track color */
 }

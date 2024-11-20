@@ -36,7 +36,7 @@ export async function createCoin(formData: TokenMetadata) {
 
       // call API
       const response = await fetch(
-        "https://9e78-47-157-77-100.ngrok-free.app/api/create-token",
+        "https://mint-coin.auto.fun/api/create-token",
         {
           method: "POST",
           body: JSON.stringify({
@@ -66,13 +66,15 @@ export async function createCoin(formData: TokenMetadata) {
       const signedTx = await provider.signTransaction(tx);
       console.log("signed with phantom wallet");
 
-      // TODO: move to private RPC on server side
-      const RPC_ENDPOINT = "https://api.mainnet-beta.solana.com";
-      const web3Connection = new Connection(RPC_ENDPOINT, "confirmed");
-      const signature = await web3Connection.sendRawTransaction(
-        signedTx.serialize(),
-      );
-      console.log("Transaction: https://solscan.io/tx/" + signature);
+      await fetch("https://mint-coin.auto.fun/api/submit-token-transaction", {
+        method: "POST",
+        body: JSON.stringify({
+          signed_transaction: `[${signedTx.serialize().toString()}]`,
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
     } catch (err) {
       console.error("An error occurred:", err);
     }

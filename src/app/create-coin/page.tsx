@@ -6,6 +6,7 @@ import { FormInput } from "@/components/common/input/FormInput";
 import { useWallet, WalletButton } from "./WalletButton";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { Nav } from "@/components/nav";
+import FormImageInput from "@/components/common/input/FormImageInput";
 
 export type TokenMetadata = {
   name: string;
@@ -20,7 +21,7 @@ type TokenMetadataForm = {
   name: string;
   symbol: string;
   initial_sol: string;
-  image_base64: FileList;
+  image_base64: File;
   description: string;
   agent_behavior: string;
 };
@@ -38,7 +39,7 @@ function toBase64(file: File) {
 }
 
 export default function TransactionSignPage() {
-  const { register, handleSubmit, watch, formState } =
+  const { register, handleSubmit, watch, formState, control } =
     useForm<TokenMetadataForm>();
   const { publicKey } = useWallet();
   const symbol = watch("symbol");
@@ -47,30 +48,33 @@ export default function TransactionSignPage() {
   const convertFormData = async (
     tokenMetadata: TokenMetadataForm,
   ): Promise<TokenMetadata> => {
-    const image_base64 = tokenMetadata.image_base64[0];
+    const image_base64 = tokenMetadata.image_base64;
     console.log(image_base64);
 
     return {
       ...tokenMetadata,
-      initial_sol: parseFloat(tokenMetadata.initial_sol),
+      initial_sol: tokenMetadata.initial_sol
+        ? parseFloat(tokenMetadata.initial_sol)
+        : 0,
       image_base64: `data:image/jpeg;base64,${await toBase64(image_base64)}`,
     };
   };
 
   const submitForm = async (tokenMetadataForm: TokenMetadataForm) => {
-    console.log(tokenMetadataForm);
-    await createCoin(await convertFormData(tokenMetadataForm));
+    const tokenMetadata = await convertFormData(tokenMetadataForm);
+    await createCoin(tokenMetadata);
   };
 
   return (
     <div className="flex flex-col justify-center h-full pt-12">
       <Nav />
-      <div className="p-4 h-full flex flex-col items-center justify-center">
-        <div className="max-h-[80%] w-5/6 bg-white p-6 rounded-[20px] overflow-scroll mb-6">
-          <form
-            onSubmit={handleSubmit(submitForm)}
-            className="flex flex-col w-full m-auto gap-7 justify-center"
-          >
+
+      <form
+        onSubmit={handleSubmit(submitForm)}
+        className="flex flex-col w-full m-auto gap-7 justify-center"
+      >
+        <div className="h-full flex flex-col items-center justify-center max-w-4xl mx-auto w-full">
+          <div className="max-h-[80%] w-5/6 p-6 rounded-[20px] overflow-scroll mb-6 border-[#03ff24] border gap-[30px] flex flex-col">
             <FormInput
               type="text"
               {...register("name", { required: true })}
@@ -107,25 +111,42 @@ export default function TransactionSignPage() {
               rightIndicator="SOL"
             />
 
-            <input
-              type="file"
-              placeholder="Image URL"
-              {...register("image_base64", { required: true })}
-              className="border border-white rounded px-4 py-2"
+            <FormImageInput
+              label="Agent Image / Video"
+              name="image_base64"
+              // @ts-ignore
+              control={control}
+              rules={{
+                required: "Please upload an image",
+                validate: {
+                  lessThan2MB: (file) =>
+                    (file && file.size < 2000000) || "Max file size is 2MB",
+                  acceptedFormats: (file) =>
+                    (file &&
+                      ["image/jpeg", "image/png", "image/gif"].includes(
+                        file.type,
+                      )) ||
+                    "Only JPEG, PNG, and GIF files are accepted",
+                },
+              }}
             />
-          </form>
-        </div>
-
-        {publicKey ? (
-          <div>
-            <RoundedButton className="px-6 py-3" disabled={!formState.isValid}>
-              Launch token
-            </RoundedButton>
           </div>
-        ) : (
-          <WalletButton />
-        )}
-      </div>
+
+          {publicKey ? (
+            <div>
+              <RoundedButton
+                className="px-6 py-3"
+                disabled={!formState.isValid}
+                type="submit"
+              >
+                Launch token
+              </RoundedButton>
+            </div>
+          ) : (
+            <WalletButton />
+          )}
+        </div>
+      </form>
     </div>
   );
 }
