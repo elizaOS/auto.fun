@@ -112,7 +112,8 @@ const ImageUploadInput = ({
       >
         <input
           type="file"
-          accept="image/*"
+          // TODO: support for mp4
+          accept="image/jpeg, image/png"
           {...props}
           {...inputProps}
           ref={(e) => {
