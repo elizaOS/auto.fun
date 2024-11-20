@@ -2,9 +2,15 @@
 
 import { WalletButton } from "@/components/common/button/WalletButton";
 import { HowItWorks } from "./HowItWorks";
+import { usePathname } from "next/navigation";
 
 export const Nav = () => {
-  // TODO: add twitter link once we have one
+  const pathname = usePathname();
+
+  if (pathname === "/landing") {
+    return null;
+  }
+
   return (
     <nav className="px-[5%] flex justify-between items-center">
       <div className="flex gap-6 items-center">
