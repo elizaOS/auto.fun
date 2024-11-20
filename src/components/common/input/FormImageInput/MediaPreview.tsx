@@ -18,7 +18,13 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({
     <div className="flex items-end justify-between">
       <div className="flex gap-3">
         {type === "video/mp4" ? (
-          <video width="88" height="88" autoPlay={false} controls={false}>
+          <video
+            width="100"
+            height="100"
+            autoPlay={false}
+            controls={false}
+            className="rounded-[10px]"
+          >
             <source src={mediaSrc} />
           </video>
         ) : (
