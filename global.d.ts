@@ -1,4 +1,4 @@
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
 
 declare global {
   interface Window {
@@ -22,12 +22,20 @@ interface PhantomProvider {
   disconnect: () => Promise<void>;
   on: <T extends keyof PhantomEvent>(
     event: T,
-    handler: PhantomEvent[T]
+    handler: PhantomEvent[T],
   ) => void;
-  request: (method: string, params: any) => Promise<any>;
+  request: ({
+    method,
+    params,
+  }: {
+    method: string;
+    params: any;
+  }) => Promise<any>;
   signMessage: (
     message: Uint8Array,
-    display?: "hex" | "utf8"
+    display?: "hex" | "utf8",
   ) => Promise<{ signature: Uint8Array }>;
-  // Add other methods if needed
+  signTransaction: (
+    transaction: VersionedTransaction,
+  ) => Promise<VersionedTransaction>;
 }

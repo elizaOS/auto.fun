@@ -6,9 +6,10 @@ export const RoundedButton = ({
   variant,
   color,
   disabled,
+  className,
   ...props
 }: RoundedButtonProps) => {
-  const className = useMemo(() => {
+  const _className = useMemo(() => {
     if (variant == "outlined") {
       const border = "border-solid border-[2px]";
       switch (color) {
@@ -29,7 +30,7 @@ export const RoundedButton = ({
 
   return (
     <button
-      className={`${className} rounded-xl p-3 font-medium ${disabled && "opacity-15"} active:brightness-75`}
+      className={`${_className} rounded-xl font-bold ${disabled && "opacity-15"} active:brightness-75 ${className}`}
       {...props}
     >
       {children}
