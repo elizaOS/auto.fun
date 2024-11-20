@@ -11,6 +11,7 @@ import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { FormTextArea } from "@/components/common/input/FormTextArea";
+import { useEffect } from "react";
 
 export type TokenMetadata = {
   name: string;
@@ -21,7 +22,7 @@ export type TokenMetadata = {
   agent_behavior: string;
 };
 
-type TokenMetadataForm = {
+export type TokenMetadataForm = {
   name: string;
   symbol: string;
   initial_sol: string;
@@ -44,12 +45,19 @@ function toBase64(file: File) {
 
 export default function TransactionSignPage() {
   const router = useRouter();
-  const { register, handleSubmit, watch, formState, control } =
+  const { register, handleSubmit, watch, formState, control, trigger } =
     useForm<TokenMetadataForm>();
   const { publicKey } = useWallet();
   const symbol = watch("symbol");
   const description = watch("description");
   const agentBehavior = watch("agent_behavior");
+  const file = watch("media_base64");
+
+  useEffect(() => {
+    // NOTE: for some reason when file changes initially, the validation
+    // is not triggered so trigger here
+    trigger("media_base64");
+  }, [file, trigger]);
 
   const convertFormData = async (
     tokenMetadata: TokenMetadataForm,
@@ -132,7 +140,7 @@ export default function TransactionSignPage() {
 
             <FormImageInput
               label="Agent Image / Video"
-              name="image_base64"
+              name="media_base64"
               // @ts-ignore
               control={control}
               rules={{
