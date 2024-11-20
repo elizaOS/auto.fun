@@ -5,6 +5,7 @@ import { FormEventHandler, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ParallaxVideo } from "@/app/landing/ParallaxVideo";
 import { FormInput } from "@/components/common/input/FormInput";
+import { toast } from "react-toastify";
 
 export default function LandingPage() {
   const [password, setPassword] = useState("");
@@ -13,16 +14,23 @@ export default function LandingPage() {
 
   const handleSubmit: FormEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault();
-    const res = await fetch("/api/landingAuth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
-    });
 
-    if (res.ok) {
-      router.push("/");
-    } else {
-      setError(true);
+    try {
+      const res = await fetch("/api/landingAuth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+
+      if (res.ok) {
+        router.push("/");
+      } else if (res.status >= 500) {
+        toast.error("Server error. Please try again later.");
+      } else {
+        setError(true);
+      }
+    } catch {
+      toast.error("Server error. Please try again later.");
     }
   };
 
