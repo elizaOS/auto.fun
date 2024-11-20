@@ -15,7 +15,7 @@ export type TokenMetadata = {
   name: string;
   symbol: string;
   initial_sol: number;
-  media_base64: string;
+  image_base64: string;
   description: string;
   agent_behavior: string;
 };
@@ -34,11 +34,9 @@ function toBase64(file: File) {
     const reader = new FileReader();
     reader.readAsDataURL(file);
 
-    // TODO: why?
     reader.onload = () => {
-      if (typeof reader.result !== "string") return reject();
-      resolve(reader.result.split(",")[1]);
-    }; // Remove the Data URL prefix
+      resolve(reader.result as string);
+    };
     reader.onerror = (error) => reject(error);
   });
 }
@@ -62,7 +60,7 @@ export default function TransactionSignPage() {
       initial_sol: tokenMetadata.initial_sol
         ? parseFloat(tokenMetadata.initial_sol)
         : 0,
-      media_base64: `data:image/jpeg;base64,${await toBase64(media_base64)}`,
+      image_base64: await toBase64(media_base64),
     };
   };
 
