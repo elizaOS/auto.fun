@@ -5,4 +5,4 @@ export type FormTextAreaProps = Omit<
   LabelledInputProps,
   "leftIndicator" | "leftIndicatorOpacity"
 > &
-  TextareaAutosizeProps;
+  Omit<TextareaAutosizeProps, "className">;
