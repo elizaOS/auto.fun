@@ -33,7 +33,7 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({
             height="200"
             src={mediaSrc}
             alt="Preview"
-            className="max-w-full h-auto rounded-[10px]"
+            className="rounded-[10px]"
           />
         )}
         <div>{name}</div>
