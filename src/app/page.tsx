@@ -5,12 +5,13 @@ import { createCoin } from "@/utils/wallet";
 import { FormInput } from "@/components/common/input/FormInput";
 import { WalletButton } from "../components/common/button/WalletButton";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
-import { Nav } from "@/components/nav";
 import FormImageInput from "@/components/common/input/FormImageInput";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { FormTextArea } from "@/components/common/input/FormTextArea";
+import { useState } from "react";
+import { LuEye, LuEyeOff } from "react-icons/lu";
 import { useEffect } from "react";
 
 export type TokenMetadata = {
@@ -22,6 +23,12 @@ export type TokenMetadata = {
   agent_behavior: string;
 };
 
+export type TwitterCredentials = {
+  username: string;
+  email: string;
+  password: string;
+};
+
 type TokenMetadataForm = {
   name: string;
   symbol: string;
@@ -29,6 +36,9 @@ type TokenMetadataForm = {
   media_base64: File;
   description: string;
   agent_behavior: string;
+  twitter_email: string;
+  twitter_username: string;
+  twitter_password: string;
 };
 
 function toBase64(file: File) {
@@ -44,6 +54,7 @@ function toBase64(file: File) {
 }
 
 export default function TransactionSignPage() {
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const { register, handleSubmit, watch, formState, control, trigger } =
     useForm<TokenMetadataForm>();
@@ -61,23 +72,37 @@ export default function TransactionSignPage() {
 
   const convertFormData = async (
     tokenMetadata: TokenMetadataForm,
-  ): Promise<TokenMetadata> => {
+  ): Promise<{
+    tokenMeta: TokenMetadata;
+    twitterCreds: TwitterCredentials;
+  }> => {
     const media_base64 = tokenMetadata.media_base64;
     console.log(media_base64);
 
     return {
-      ...tokenMetadata,
-      initial_sol: tokenMetadata.initial_sol
-        ? parseFloat(tokenMetadata.initial_sol)
-        : 0,
-      image_base64: await toBase64(media_base64),
+      tokenMeta: {
+        ...tokenMetadata,
+        initial_sol: tokenMetadata.initial_sol
+          ? parseFloat(tokenMetadata.initial_sol)
+          : 0,
+        image_base64: await toBase64(media_base64),
+      },
+      twitterCreds: {
+        username: tokenMetadata.twitter_username,
+        email: tokenMetadata.twitter_email,
+        password: tokenMetadata.twitter_password,
+      },
     };
   };
 
   const submitForm = async (tokenMetadataForm: TokenMetadataForm) => {
     try {
-      const tokenMetadata = await convertFormData(tokenMetadataForm);
-      await createCoin(tokenMetadata);
+      const { tokenMeta, twitterCreds } =
+        await convertFormData(tokenMetadataForm);
+      await createCoin({
+        token_metadata: tokenMeta,
+        twitter_credentials: twitterCreds,
+      });
       router.push("/success");
     } catch {
       toast.error("Oops! Something went wrong. Please try again.");
@@ -159,6 +184,43 @@ export default function TransactionSignPage() {
                     "Only JPEG, PNG, GIF, and MP4 files are accepted",
                 },
               }}
+            />
+
+            <div className="flex gap-3 w-full items-center justify-center">
+              <div className="bg-[#002605] h-[2px] flex-1" />
+              <p>X/Twitter Integration</p>
+              <div className="bg-[#002605] h-[2px] flex-1" />
+            </div>
+
+            <FormInput
+              {...register("twitter_email", { required: true })}
+              type="text"
+              label="Email"
+            />
+            <FormInput
+              {...register("twitter_username", { required: true })}
+              type="text"
+              label="Username"
+            />
+            <FormInput
+              {...register("twitter_password", { required: true })}
+              type={showPassword ? "text" : "password"}
+              label="Password"
+              rightIndicatorOpacity="full"
+              rightIndicator={
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPassword((show) => !show);
+                  }}
+                >
+                  {showPassword ? (
+                    <LuEyeOff color="#03FF24" />
+                  ) : (
+                    <LuEye color="#03FF24" />
+                  )}
+                </button>
+              }
             />
           </div>
 

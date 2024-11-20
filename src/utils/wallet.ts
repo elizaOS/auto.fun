@@ -1,4 +1,4 @@
-import { TokenMetadata } from "@/app/page";
+import { TokenMetadata, TwitterCredentials } from "@/app/page";
 import {
   clusterApiUrl,
   Connection,
@@ -17,7 +17,10 @@ export const getSolanaBalance = async (publicKey: string) => {
   return solBalance;
 };
 
-export async function createCoin(formData: TokenMetadata) {
+export async function createCoin(formData: {
+  token_metadata: TokenMetadata;
+  twitter_credentials: TwitterCredentials;
+}) {
   return;
 
   if (window.solana && window.solana.isPhantom) {
