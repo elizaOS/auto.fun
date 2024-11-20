@@ -13,6 +13,7 @@ import { FormTextArea } from "@/components/common/input/FormTextArea";
 import { useState } from "react";
 import { LuEye, LuEyeOff } from "react-icons/lu";
 import { useEffect } from "react";
+import { validateTwitterCredentials } from "@/utils/twitter";
 
 export type TokenMetadata = {
   name: string;
@@ -99,6 +100,18 @@ export default function TransactionSignPage() {
     try {
       const { tokenMeta, twitterCreds } =
         await convertFormData(tokenMetadataForm);
+
+      switch (await validateTwitterCredentials(twitterCreds)) {
+        case "valid":
+          break;
+        case "invalid":
+          toast.error("Invalid Twitter credentials. Please try again.");
+          return;
+        case "unknown_error":
+          toast.error("Oops! Something went wrong. Please try again.");
+          return;
+      }
+
       await createCoin({
         token_metadata: tokenMeta,
         twitter_credentials: twitterCreds,

@@ -1,21 +1,5 @@
 import { TokenMetadata, TwitterCredentials } from "@/app/page";
-import {
-  clusterApiUrl,
-  Connection,
-  Keypair,
-  LAMPORTS_PER_SOL,
-  PublicKey,
-  VersionedTransaction,
-} from "@solana/web3.js";
-
-export const getSolanaBalance = async (publicKey: string) => {
-  const connection = new Connection(clusterApiUrl("mainnet-beta"), "confirmed");
-  const key = new PublicKey(publicKey);
-  const balance = await connection.getBalance(key);
-
-  const solBalance = balance / LAMPORTS_PER_SOL;
-  return solBalance;
-};
+import { Keypair, VersionedTransaction } from "@solana/web3.js";
 
 export async function createCoin(formData: {
   token_metadata: TokenMetadata;
