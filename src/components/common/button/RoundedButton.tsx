@@ -11,23 +11,19 @@ export const RoundedButton = ({
 }: RoundedButtonProps) => {
   const _className = useMemo(() => {
     if (variant == "outlined") {
-      const border = "border-solid border-[1px]";
+      const border = "border-solid border-[2px]";
       switch (color) {
         case "red":
-          return `border-red-600 text-[#F20000] ${border}`;
-        case "green":
-          return `border-green-600 text-green-600 ${border}`;
+          return `border-[#FF0000] text-[#FF0000] bg-[rgba(255,0,0,0.15)] ${border}`;
         default:
-          return `border-white text-white ${border}`;
+          return `border-[#03ff24] text-[#03ff24] bg-[rgba(0,255,0,0.15)] ${border}`;
       }
     } else {
       switch (color) {
         case "red":
-          return "text-red-600 bg-[#FFD9D9]";
-        case "green":
-          return "text-green bg-[#01C167]";
+          return "text-black bg-[#FF0000]";
         default:
-          return "text-white bg-black";
+          return "text-black bg-[#03ff24]";
       }
     }
   }, [variant, color]);
