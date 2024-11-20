@@ -1,4 +1,4 @@
-import { TokenMetadata } from "@/app/create-coin/page";
+import { TokenMetadata } from "@/app/page";
 import {
   clusterApiUrl,
   Connection,
@@ -18,6 +18,8 @@ export const getSolanaBalance = async (publicKey: string) => {
 };
 
 export async function createCoin(formData: TokenMetadata) {
+  return;
+
   if (window.solana && window.solana.isPhantom) {
     const provider = window.solana;
 
@@ -73,6 +75,7 @@ export async function createCoin(formData: TokenMetadata) {
       },
     });
   } else {
+    // TODO: open phantom extension page in new tab
     alert("Phantom wallet not found. Please install Phantom to proceed.");
   }
 }

@@ -4,6 +4,7 @@ import "./globals.css";
 import SessionProvider from "@/components/providers/SessionProvider";
 import { getSession } from "@/utils/auth";
 import { ToastContainer } from "react-toastify";
+import { Nav } from "@/components/nav";
 
 const dmMono = DM_Mono({
   weight: ["300", "400", "500"],
@@ -24,8 +25,13 @@ export default async function RootLayout({
   const session = await getSession();
   return (
     <html lang="en" className="h-full">
-      <body className={`${dmMono.className} antialiased h-full`}>
-        <SessionProvider session={session}>{children}</SessionProvider>
+      <body
+        className={`${dmMono.className} antialiased h-full pt-12 flex flex-col`}
+      >
+        <Nav />
+        <SessionProvider session={session}>
+          <div className="flex flex-col flex-1">{children}</div>
+        </SessionProvider>
         <ToastContainer autoClose={5000} theme="dark" />
       </body>
     </html>

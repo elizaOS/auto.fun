@@ -1,4 +1,6 @@
-import { WalletButton } from "@/app/create-coin/WalletButton";
+"use client";
+
+import { WalletButton } from "@/components/common/button/WalletButton";
 import { HowItWorks } from "./HowItWorks";
 
 export const Nav = () => {
