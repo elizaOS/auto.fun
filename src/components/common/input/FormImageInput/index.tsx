@@ -112,7 +112,7 @@ const ImageUploadInput = ({
       >
         <input
           type="file"
-          accept="image/jpeg, image/png, video/mp4"
+          accept="image/jpeg, image/png, image/gif, video/mp4"
           {...props}
           {...inputProps}
           ref={(e) => {

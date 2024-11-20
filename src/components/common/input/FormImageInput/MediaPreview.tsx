@@ -19,16 +19,18 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({
       <div className="flex gap-3">
         {type === "video/mp4" ? (
           <video
-            width="100"
-            height="100"
-            autoPlay={false}
-            controls={false}
+            width="200"
+            height="200"
+            autoPlay={true}
+            controls={true}
             className="rounded-[10px]"
           >
             <source src={mediaSrc} />
           </video>
         ) : (
           <img
+            width="200"
+            height="200"
             src={mediaSrc}
             alt="Preview"
             className="max-w-full h-auto rounded-[10px]"
