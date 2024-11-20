@@ -22,7 +22,7 @@ export type TokenMetadata = {
   agent_behavior: string;
 };
 
-export type TokenMetadataForm = {
+type TokenMetadataForm = {
   name: string;
   symbol: string;
   initial_sol: string;
