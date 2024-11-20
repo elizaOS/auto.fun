@@ -3,6 +3,7 @@ import { DM_Mono } from "next/font/google";
 import "./globals.css";
 import SessionProvider from "@/components/providers/SessionProvider";
 import { getSession } from "@/utils/auth";
+import { ToastContainer } from "react-toastify";
 
 const dmMono = DM_Mono({
   weight: ["300", "400", "500"],
@@ -25,6 +26,7 @@ export default async function RootLayout({
     <html lang="en" className="h-full">
       <body className={`${dmMono.className} antialiased h-full`}>
         <SessionProvider session={session}>{children}</SessionProvider>
+        <ToastContainer autoClose={5000} theme="dark" />
       </body>
     </html>
   );

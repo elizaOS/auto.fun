@@ -7,6 +7,7 @@ import { useWallet, WalletButton } from "./WalletButton";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { Nav } from "@/components/nav";
 import FormImageInput from "@/components/common/input/FormImageInput";
+import { toast } from "react-toastify";
 
 export type TokenMetadata = {
   name: string;
@@ -61,8 +62,12 @@ export default function TransactionSignPage() {
   };
 
   const submitForm = async (tokenMetadataForm: TokenMetadataForm) => {
-    const tokenMetadata = await convertFormData(tokenMetadataForm);
-    await createCoin(tokenMetadata);
+    try {
+      const tokenMetadata = await convertFormData(tokenMetadataForm);
+      await createCoin(tokenMetadata);
+    } catch {
+      toast.error("Oops! Something went wrong. Please try again.");
+    }
   };
 
   return (
