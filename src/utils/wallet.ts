@@ -1,5 +1,6 @@
 import { TokenMetadata, TwitterCredentials } from "@/app/page";
 import { Keypair, VersionedTransaction } from "@solana/web3.js";
+import { API_URL } from "./env";
 
 export async function createCoin(formData: {
   token_metadata: TokenMetadata;
@@ -21,7 +22,7 @@ export async function createCoin(formData: {
   const mintKeypair = Keypair.generate();
 
   // call API
-  const response = await fetch("https://mint-coin.auto.fun/api/create-token", {
+  const createResponse = await fetch(`${API_URL}/api/create-token`, {
     method: "POST",
     body: JSON.stringify({
       token_metadata: formData.token_metadata,
@@ -34,8 +35,12 @@ export async function createCoin(formData: {
     },
   });
 
+  if (!createResponse.ok) {
+    throw new Error("Failed to create token");
+  }
+
   // successfully generated transaction
-  const { transaction } = await response.json();
+  const { transaction } = await createResponse.json();
   const tx = VersionedTransaction.deserialize(
     new Uint8Array(Buffer.from(transaction, "base64")),
   );
@@ -46,19 +51,26 @@ export async function createCoin(formData: {
   // Request the user's signature via Phantom
   const signedTx = await provider.signTransaction(tx);
 
-  await fetch("https://mint-coin.auto.fun/api/submit-token-transaction", {
-    method: "POST",
-    body: JSON.stringify({
-      signed_transaction: `[${signedTx.serialize().toString()}]`,
-      token_metadata: formData.token_metadata,
-      public_key: userPublicKey.toBase58(),
-      mint_keypair_public: mintKeypair.publicKey.toBase58(),
-      twitter_credentials: formData.twitter_credentials,
-    }),
-    headers: {
-      "Content-Type": "application/json",
+  const submitResponse = await fetch(
+    `${API_URL}/api/submit-token-transaction`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        signed_transaction: `[${signedTx.serialize().toString()}]`,
+        token_metadata: formData.token_metadata,
+        public_key: userPublicKey.toBase58(),
+        mint_keypair_public: mintKeypair.publicKey.toBase58(),
+        twitter_credentials: formData.twitter_credentials,
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
     },
-  });
+  );
+
+  if (!submitResponse.ok) {
+    throw new Error("Failed to submit token transaction");
+  }
 
   return { mintPublicKey: mintKeypair.publicKey, userPublicKey };
 }
