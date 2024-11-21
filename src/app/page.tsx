@@ -14,6 +14,8 @@ import { useState } from "react";
 import { LuEye, LuEyeOff } from "react-icons/lu";
 import { useEffect } from "react";
 import { validateTwitterCredentials } from "@/utils/twitter";
+import { useModalStore } from "@/zustand/stores/modalStore";
+import { ModalType } from "../../types/zustand/stores/modalStore.type";
 
 export type TokenMetadata = {
   name: string;
@@ -64,6 +66,8 @@ export default function TransactionSignPage() {
   const description = watch("description");
   const agentBehavior = watch("agent_behavior");
   const file = watch("media_base64");
+  const changeModal = useModalStore((state) => state.changeModal);
+  const setModalOpen = useModalStore((state) => state.setOpen);
 
   useEffect(() => {
     // NOTE: for some reason when file changes initially, the validation
@@ -97,6 +101,8 @@ export default function TransactionSignPage() {
   };
 
   const submitForm = async (tokenMetadataForm: TokenMetadataForm) => {
+    changeModal(true, ModalType.LAUNCHING_TOKEN, {});
+
     try {
       const { tokenMeta, twitterCreds } =
         await convertFormData(tokenMetadataForm);
@@ -116,11 +122,14 @@ export default function TransactionSignPage() {
         token_metadata: tokenMeta,
         twitter_credentials: twitterCreds,
       });
+
       router.push(
         `/success?twitterHandle=${twitterCreds.username}&mintPublicKey=${mintPublicKey}`,
       );
     } catch {
       toast.error("Oops! Something went wrong. Please try again.");
+    } finally {
+      setModalOpen(false);
     }
   };
 
