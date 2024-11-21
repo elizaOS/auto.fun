@@ -9,7 +9,7 @@ export function middleware(request: NextRequest) {
   if (
     url.pathname.startsWith("/_next") ||
     url.pathname.startsWith("/api") ||
-    url.pathname === "/favicon.ico"
+    url.pathname === "/icon.png"
   ) {
     return NextResponse.next();
   }
