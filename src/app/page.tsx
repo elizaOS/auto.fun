@@ -173,9 +173,18 @@ export default function TransactionSignPage() {
             <FormInput
               type="number"
               step="any"
-              {...register("initial_sol", { required: false })}
+              {...register("initial_sol", {
+                required: false,
+                validate: (value) => value === "" || parseInt(value, 10) >= 0,
+              })}
               label="Buy Your Coin (optional)"
               rightIndicator="SOL"
+              onKeyDown={(e) => {
+                if (e.key === "-") {
+                  e.preventDefault();
+                }
+              }}
+              min={0}
             />
 
             <FormImageInput
