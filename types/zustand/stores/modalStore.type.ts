@@ -17,11 +17,13 @@ export type Props<
 export type ExtractState<T> = T extends { state: infer S } ? S : never;
 export type ExtractProps<T> = T extends { props: infer P } ? P : never;
 
+// use union type to define props, this can be updated to include
+// different props for each modal
 export type ModalProps<Modal extends ModalType = ModalType> =
   Modal extends ModalType.LAUNCHING_TOKEN
     ? {
         state: ModalType.LAUNCHING_TOKEN;
-        props: { symbol: string };
+        props: Record<never, never>; // separated to show use of union type
       }
     : { state: Modal; props: Record<never, never> }; // default props is empty
 

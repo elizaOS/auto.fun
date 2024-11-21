@@ -9,7 +9,14 @@ const Modal = () => {
     return null;
   }
 
-  return Modal;
+  return (
+    <>
+      <div className="fixed backdrop-blur-md w-full h-full"></div>
+      <div className="fixed w-full h-full flex justify-center items-center">
+        {Modal}
+      </div>
+    </>
+  );
 };
 
 export const ModalProvider = ({ children }: PropsWithChildren) => {

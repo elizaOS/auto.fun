@@ -1,3 +1,4 @@
+import { LaunchingToken } from "@/components/modals/LaunchingToken";
 import {
   ModalState,
   ModalType,
@@ -9,7 +10,7 @@ import { create } from "zustand";
 
 const modals: ModalsDict = {
   [ModalType.NONE]: () => <></>,
-  [ModalType.LAUNCHING_TOKEN]: (props) => <div>{props.symbol}</div>,
+  [ModalType.LAUNCHING_TOKEN]: LaunchingToken,
 };
 
 export const useModalStore = create<ModalState>((set) => ({
