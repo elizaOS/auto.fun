@@ -14,6 +14,9 @@ const dmMono = DM_Mono({
 
 export const metadata: Metadata = {
   title: "auto.fun",
+  icons: {
+    icon: "/logo_rounded_25percent.png",
+  },
 };
 
 export default async function RootLayout({

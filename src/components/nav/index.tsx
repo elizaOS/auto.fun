@@ -15,7 +15,12 @@ export const Nav = () => {
   return (
     <nav className="px-[5%] flex justify-between items-center">
       <div className="flex gap-6 items-center">
-        <button onClick={() => router.push("/")}>
+        <button
+          onClick={() => router.push("/")}
+          className="flex gap-4 items-center"
+        >
+          <img src="/logo_rounded_25percent.png" className="h-10" alt="logo" />
+
           <svg
             width="78"
             height="44"
