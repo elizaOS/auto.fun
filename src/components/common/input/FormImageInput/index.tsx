@@ -57,10 +57,14 @@ const ImageUploadInput = ({
     }
   }, [value]);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] || null;
+  const changeFile = (file: File | null) => {
     onChange(file);
     setFile(file);
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    changeFile(file);
   };
 
   const handleDeleteImage = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -86,7 +90,7 @@ const ImageUploadInput = ({
     setIsDragging(false);
 
     const file = event.dataTransfer.files?.[0] || null;
-    onChange(file);
+    changeFile(file);
   };
 
   const handleContainerClick = () => {
