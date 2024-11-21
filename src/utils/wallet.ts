@@ -24,9 +24,10 @@ export async function createCoin(formData: {
   const response = await fetch("https://mint-coin.auto.fun/api/create-token", {
     method: "POST",
     body: JSON.stringify({
-      token_metadata: formData,
+      token_metadata: formData.token_metadata,
       public_key: userPublicKey.toBase58(),
       mint_keypair_public: mintKeypair.publicKey.toBase58(),
+      twitter_credentials: formData.twitter_credentials,
     }),
     headers: {
       "Content-Type": "application/json",
@@ -49,9 +50,15 @@ export async function createCoin(formData: {
     method: "POST",
     body: JSON.stringify({
       signed_transaction: `[${signedTx.serialize().toString()}]`,
+      token_metadata: formData.token_metadata,
+      public_key: userPublicKey.toBase58(),
+      mint_keypair_public: mintKeypair.publicKey.toBase58(),
+      twitter_credentials: formData.twitter_credentials,
     }),
     headers: {
       "Content-Type": "application/json",
     },
   });
+
+  return { mintPublicKey: mintKeypair.publicKey, userPublicKey };
 }

@@ -112,11 +112,13 @@ export default function TransactionSignPage() {
           return;
       }
 
-      await createCoin({
+      const { mintPublicKey } = await createCoin({
         token_metadata: tokenMeta,
         twitter_credentials: twitterCreds,
       });
-      router.push("/success");
+      router.push(
+        `/success?twitterHandle=${twitterCreds.username}&mintPublicKey=${mintPublicKey}`,
+      );
     } catch {
       toast.error("Oops! Something went wrong. Please try again.");
     }

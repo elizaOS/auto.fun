@@ -1,4 +1,18 @@
+"use client";
+
+import { useSearchParams } from "next/navigation";
+
 export default function SuccessPage() {
+  const searchParams = useSearchParams();
+  const twitterHandle = searchParams.get("twitterHandle");
+  const mintPublicKey = searchParams.get("mintPublicKey");
+
+  if (!twitterHandle || !mintPublicKey) {
+    throw new Error(
+      'Missing "twitterHandle" or "mintPublicKey" in query params',
+    );
+  }
+
   return (
     <div className="flex flex-1 justify-center items-center">
       <div className="h-[244px] p-6 rounded-[20px] border border-[#03ff24] flex-col justify-start items-center gap-6 inline-flex">
@@ -21,16 +35,24 @@ export default function SuccessPage() {
           </div>
         </div>
         <div className="flex-col justify-start items-start gap-3 flex">
-          <button className="self-stretch p-3 bg-[#03ff24] rounded-xl justify-center items-center gap-2 inline-flex">
+          <a
+            href={`https://pump.fun/coin/${mintPublicKey}`}
+            target="_blank"
+            className="self-stretch p-3 bg-[#03ff24] rounded-xl justify-center items-center gap-2 inline-flex"
+          >
             <div className="text-black text-base font-bold underline leading-tight">
               View token on pump.fun
             </div>
-          </button>
-          <button className="self-stretch p-3 bg-[#002605] rounded-xl border border-[#01c167] justify-center items-center gap-2 inline-flex">
+          </a>
+          <a
+            href={`https://x.com/${twitterHandle}`}
+            target="_blank"
+            className="self-stretch p-3 bg-[#002605] rounded-xl border border-[#01c167] justify-center items-center gap-2 inline-flex"
+          >
             <div className="text-white text-base font-bold underline leading-tight">
               View AI Agent on Twitter
             </div>
-          </button>
+          </a>
         </div>
       </div>
     </div>
