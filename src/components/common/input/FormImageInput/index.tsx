@@ -29,7 +29,7 @@ const ImageUploadInput = ({
 }: ImageUploadInputProps) => {
   const {
     field: { ref, value, onChange, ...inputProps },
-    fieldState: { error },
+    fieldState: { error, isDirty },
   } = useController({
     name,
     control,
@@ -136,7 +136,9 @@ const ImageUploadInput = ({
         {/* Overlay for drag state */}
         <DragOverlay isDragging={isDragging} />
       </div>
-      {error && <p className="mt-2 text-sm text-red-600">{error.message}</p>}
+      {isDirty && error && (
+        <p className="mt-2 text-sm text-red-600">{error.message}</p>
+      )}
     </div>
   );
 };
