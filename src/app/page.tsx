@@ -190,7 +190,7 @@ export default function TransactionSignPage() {
             <FormImageInput
               label="Agent Image / Video"
               name="media_base64"
-              // @ts-ignore
+              // @ts-expect-error ignoring ts types for speed, will fix later
               control={control}
               rules={{
                 required: "Please upload an image",
