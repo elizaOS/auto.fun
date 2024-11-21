@@ -151,11 +151,11 @@ export default function TransactionSignPage() {
             <FormTextArea
               {...register("description")}
               label="Description"
-              rightIndicator={`${description?.length ?? 0}/200`}
+              rightIndicator={`${description?.length ?? 0}/2000`}
               minRows={2}
-              maxLength={200}
+              maxLength={2000}
               rightIndicatorOpacity={
-                description?.length >= 200 ? "full" : "low"
+                description?.length >= 2000 ? "full" : "low"
               }
             />
 
@@ -188,7 +188,7 @@ export default function TransactionSignPage() {
             />
 
             <FormImageInput
-              label="Agent Image / Video"
+              label="Token Image / Video"
               name="media_base64"
               // @ts-expect-error ignoring ts types for speed, will fix later
               control={control}
@@ -215,6 +215,10 @@ export default function TransactionSignPage() {
               <p>X/Twitter Integration</p>
               <div className="bg-[#002605] h-[2px] flex-1" />
             </div>
+
+            <p className="text-center text-xs">
+              Use your Agent’s new X / Twitter Account
+            </p>
 
             <FormInput
               {...register("twitter_email", { required: true })}
