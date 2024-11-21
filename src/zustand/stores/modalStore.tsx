@@ -8,15 +8,15 @@ import {
 } from "../../../types/zustand/stores/modalStore.type";
 import { create } from "zustand";
 
-const modals: ModalsDict = {
+const modals: ModalsDict = Object.freeze({
   [ModalType.NONE]: () => <></>,
   [ModalType.LAUNCHING_TOKEN]: LaunchingToken,
-};
+});
 
 export const useModalStore = create<ModalState>((set) => ({
   Modal: null,
   open: false,
-  changeModal: <T extends ModalType>(
+  changeModal: <T extends keyof ModalsDict>(
     open: boolean,
     modalState: T,
     props: ExtractProps<Extract<ModalProps, { state: T }>>,
