@@ -159,7 +159,7 @@ export default function TransactionSignPage() {
 
             <FormTextArea
               {...register("description")}
-              label="Description"
+              label="Token Description"
               rightIndicator={`${description?.length ?? 0}/2000`}
               minRows={2}
               maxLength={2000}
