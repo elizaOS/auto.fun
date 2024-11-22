@@ -24,7 +24,9 @@ export default async function RootLayout({
   const session = await getSession();
   return (
     <html lang="en" className="h-full">
-      <body className={`${dmMono.className} antialiased h-full flex flex-col`}>
+      <body
+        className={`${dmMono.className} antialiased h-full flex flex-col sm:gap-16`}
+      >
         <Providers session={session}>
           <Nav />
           <div className="flex flex-col flex-1">{children}</div>

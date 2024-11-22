@@ -24,9 +24,7 @@ export const HowItWorks = () => {
       >
         How it works?
       </button>
-      <div className="absolute bottom-[-32px] left-[-190px]">
-        <Description ref={descriptionRef} />
-      </div>
+      <Description ref={descriptionRef} />
     </div>
   );
 };

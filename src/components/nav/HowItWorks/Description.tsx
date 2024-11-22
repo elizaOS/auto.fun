@@ -4,9 +4,9 @@ export const Description = forwardRef<HTMLDialogElement>((_, ref) => {
   return (
     <dialog
       ref={ref}
-      className="rounded-2xl bg-black z-10 text-[#03ff24] border-[#03ff24] border"
+      className="rounded-2xl bg-black text-[#03ff24] border-[#03ff24] border w-[475px] sm:w-screen absolute z-10 top-[64px] left-[-120px] sm:top-[190px] sm:fixed sm:left-1/2 sm:-translate-x-1/2"
     >
-      <div className="p-4 flex flex-col gap-6 w-[474px]">
+      <div className="p-6 flex flex-col gap-6">
         <div className="flex flex-col gap-3">
           <p className="font-bold">
             Launch AI Agents in 5 mins. No VC overlords. Just pure memetics.
