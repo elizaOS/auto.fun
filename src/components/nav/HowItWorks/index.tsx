@@ -24,7 +24,7 @@ export const HowItWorks = () => {
       >
         How it works?
       </button>
-      <div className="w-[475px] h-[330px] sm:w-screen absolute z-10 top-[64px] left-[-80%] sm:top-[120px] sm:fixed sm:left-1/2 sm:-translate-x-1/2">
+      <div className="w-[475px] h-[330px] sm:w-screen absolute z-10 top-[64px] left-[-190px] sm:top-[120px] sm:fixed sm:left-1/2 sm:-translate-x-1/2">
         <Description ref={descriptionRef} />
       </div>
     </div>

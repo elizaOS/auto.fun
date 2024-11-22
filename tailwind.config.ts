@@ -7,6 +7,7 @@ export default {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
+    // not mobile first designs
     screens: {
       "2xl": { max: "1535px" },
       // => @media (max-width: 1535px) { ... }
