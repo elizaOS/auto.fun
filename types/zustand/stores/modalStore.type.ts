@@ -27,8 +27,12 @@ export type ModalProps<Modal extends ModalType = ModalType> =
       }
     : { state: Modal; props: Record<never, never> }; // default props is empty
 
-// zustand state for modals
 export type ModalState = {
+  open: boolean;
+  Modal: ReactNode | null;
+};
+
+export type ModalActions = {
   changeModal: <T extends ModalType>(
     open: boolean,
     modalState: T,
@@ -36,9 +40,9 @@ export type ModalState = {
   ) => void;
   resetModal: () => void;
   setOpen: (open: boolean) => void;
-  open: boolean;
-  Modal: ReactNode | null;
 };
+
+export type ModalStore = ModalState & ModalActions;
 
 // Type for a object of modal types and their corresponding props types
 export type ModalsDict = {

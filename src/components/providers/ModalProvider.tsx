@@ -1,5 +1,41 @@
-import { useModalStore } from "@/zustand/stores/modalStore";
+"use client";
+
 import { PropsWithChildren } from "react";
+import { createContext, useRef, useContext } from "react";
+import { useStore } from "zustand";
+import { createModalStore } from "@/zustand/stores/modalStore";
+import { ModalStore } from "../../../types/zustand/stores/modalStore.type";
+
+type ModalStoreApi = ReturnType<typeof createModalStore>;
+
+// create context to avoid a global state which can cause issues with SSR
+export const ModalStoreContext = createContext<ModalStoreApi | undefined>(
+  undefined,
+);
+
+export const useModalStore = <T,>(selector: (store: ModalStore) => T): T => {
+  const modalStoreContext = useContext(ModalStoreContext);
+
+  if (!modalStoreContext) {
+    throw new Error(`useModalStore must be used within ModalStoreProvider`);
+  }
+
+  return useStore(modalStoreContext, selector);
+};
+
+export const ModalProvider = ({ children }: PropsWithChildren) => {
+  const storeRef = useRef<ModalStoreApi>();
+  if (!storeRef.current) {
+    storeRef.current = createModalStore();
+  }
+
+  return (
+    <ModalStoreContext.Provider value={storeRef.current}>
+      {children}
+      <Modal />
+    </ModalStoreContext.Provider>
+  );
+};
 
 const Modal = () => {
   const open = useModalStore((state) => state.open);
@@ -15,15 +51,6 @@ const Modal = () => {
       <div className="fixed w-full h-full flex justify-center items-center">
         {ModalComponent}
       </div>
-    </>
-  );
-};
-
-export const ModalProvider = ({ children }: PropsWithChildren) => {
-  return (
-    <>
-      {children}
-      <Modal />
     </>
   );
 };

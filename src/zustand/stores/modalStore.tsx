@@ -5,30 +5,35 @@ import {
   ModalProps,
   ExtractProps,
   ModalsDict,
+  ModalStore,
 } from "../../../types/zustand/stores/modalStore.type";
-import { create } from "zustand";
+import { createStore } from "zustand";
+
+const defaultInitState: ModalState = Object.freeze({
+  open: false,
+  Modal: null,
+});
 
 const modals: ModalsDict = Object.freeze({
   [ModalType.NONE]: () => <></>,
   [ModalType.LAUNCHING_TOKEN]: LaunchingToken,
 });
 
-export const useModalStore = create<ModalState>((set) => ({
-  Modal: null,
-  open: false,
-  changeModal: <T extends keyof ModalsDict>(
-    open: boolean,
-    modalState: T,
-    props: ExtractProps<Extract<ModalProps, { state: T }>>,
-  ) => {
-    set({ open, Modal: modals[modalState](props) });
-  },
-  setOpen: (open: boolean) => {
-    set({ open });
-  },
-  resetModal: () =>
-    set({
-      open: false,
-      Modal: null,
-    }),
-}));
+export const createModalStore = (
+  initialState: ModalState = defaultInitState,
+) => {
+  return createStore<ModalStore>()((set) => ({
+    ...initialState,
+    changeModal: <T extends keyof ModalsDict>(
+      open: boolean,
+      modalState: T,
+      props: ExtractProps<Extract<ModalProps, { state: T }>>,
+    ) => {
+      set({ open, Modal: modals[modalState](props) });
+    },
+    setOpen: (open: boolean) => {
+      set({ open });
+    },
+    resetModal: () => set(initialState),
+  }));
+};

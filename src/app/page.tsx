@@ -14,8 +14,8 @@ import { useState } from "react";
 import { LuEye, LuEyeOff } from "react-icons/lu";
 import { useEffect } from "react";
 import { validateTwitterCredentials } from "@/utils/twitter";
-import { useModalStore } from "@/zustand/stores/modalStore";
 import { ModalType } from "../../types/zustand/stores/modalStore.type";
+import { useModalStore } from "@/components/providers/ModalProvider";
 
 export type TokenMetadata = {
   name: string;
