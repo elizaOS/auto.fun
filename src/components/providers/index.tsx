@@ -4,6 +4,7 @@ import { createContext, PropsWithChildren, useEffect, useState } from "react";
 import { SessionProvider } from "next-auth/react";
 import { WalletProvider } from "./WalletProvider";
 import { Session } from "next-auth";
+import { ModalProvider } from "./ModalProvider";
 
 // Create a context to share autoConnect state and setter
 interface AutoConnectContextType {
@@ -31,7 +32,9 @@ export function Providers({
   return (
     <SessionProvider session={session}>
       <AutoConnectContext.Provider value={{ autoConnect, setAutoConnect }}>
-        <WalletProvider autoConnect={autoConnect}>{children}</WalletProvider>
+        <WalletProvider autoConnect={autoConnect}>
+          <ModalProvider>{children}</ModalProvider>
+        </WalletProvider>
       </AutoConnectContext.Provider>
     </SessionProvider>
   );

@@ -13,7 +13,7 @@ export const Nav = () => {
   }
 
   return (
-    <nav className="px-[5%] flex justify-between items-center">
+    <nav className="px-[5%] flex justify-between items-center pt-12">
       <div className="flex gap-6 items-center">
         <button
           onClick={() => router.push("/")}
