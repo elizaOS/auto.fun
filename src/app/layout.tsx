@@ -27,7 +27,7 @@ export default async function RootLayout({
       <body className={`${dmMono.className} antialiased h-full flex flex-col`}>
         <Providers session={session}>
           <Nav />
-          <div className="flex flex-col flex-1 pt-16">{children}</div>
+          <div className="flex flex-col flex-1 sm:pt-16">{children}</div>
         </Providers>
         <ToastContainer autoClose={5000} theme="dark" />
       </body>
