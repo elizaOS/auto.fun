@@ -36,9 +36,14 @@ export const Nav = () => {
             <circle cx="35.5" cy="22.1001" r="6" fill="#03FF24" />
           </svg>
         </button>
+        <div className="sm:block hidden">
+          <HowItWorks />
+        </div>
       </div>
       <div className="flex gap-6 items-center">
-        <HowItWorks />
+        <div className="sm:hidden">
+          <HowItWorks />
+        </div>
         <WalletButton />
 
         <a href="https://x.com/autodotfun" target="_blank">
