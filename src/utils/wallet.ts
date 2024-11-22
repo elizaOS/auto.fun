@@ -22,7 +22,7 @@ export async function createCoin(formData: {
   const mintKeypair = Keypair.generate();
 
   // call API
-  const createResponse = await fetch(`${API_URL}/api/create-token`, {
+  const createResponse = await fetch(`${API_URL}/create-token`, {
     method: "POST",
     body: JSON.stringify({
       token_metadata: formData.token_metadata,
@@ -51,22 +51,19 @@ export async function createCoin(formData: {
   // Request the user's signature via Phantom
   const signedTx = await provider.signTransaction(tx);
 
-  const submitResponse = await fetch(
-    `${API_URL}/api/submit-token-transaction`,
-    {
-      method: "POST",
-      body: JSON.stringify({
-        signed_transaction: `[${signedTx.serialize().toString()}]`,
-        token_metadata: formData.token_metadata,
-        public_key: userPublicKey.toBase58(),
-        mint_keypair_public: mintKeypair.publicKey.toBase58(),
-        twitter_credentials: formData.twitter_credentials,
-      }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+  const submitResponse = await fetch(`${API_URL}/submit-token-transaction`, {
+    method: "POST",
+    body: JSON.stringify({
+      signed_transaction: `[${signedTx.serialize().toString()}]`,
+      token_metadata: formData.token_metadata,
+      public_key: userPublicKey.toBase58(),
+      mint_keypair_public: mintKeypair.publicKey.toBase58(),
+      twitter_credentials: formData.twitter_credentials,
+    }),
+    headers: {
+      "Content-Type": "application/json",
     },
-  );
+  });
 
   if (!submitResponse.ok) {
     throw new Error("Failed to submit token transaction");

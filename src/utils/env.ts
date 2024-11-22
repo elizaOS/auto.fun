@@ -1,1 +1,1 @@
-export const API_URL = "https://mint.api.auto.fun";
+export const API_URL = "https://agent.api.auto.fun";
