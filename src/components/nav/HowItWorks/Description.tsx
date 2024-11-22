@@ -4,7 +4,7 @@ export const Description = forwardRef<HTMLDialogElement>((_, ref) => {
   return (
     <dialog
       ref={ref}
-      className="rounded-2xl bg-black text-[#03ff24] border-[#03ff24] border"
+      className="rounded-2xl bg-black text-[#03ff24] border-[#03ff24] border w-[475px] h-[330px] sm:w-screen absolute z-10 top-[64px] left-[-190px] sm:top-[190px] sm:fixed sm:left-1/2 sm:-translate-x-1/2"
     >
       <div className="p-4 flex flex-col gap-6">
         <div className="flex flex-col gap-3">
