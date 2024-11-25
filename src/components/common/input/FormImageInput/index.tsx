@@ -49,8 +49,10 @@ const ImageUploadInput = ({
         setMediaSrc(reader.result as string);
       };
       reader.readAsDataURL(value);
+      setFile(value);
     } else {
       setMediaSrc(null);
+      setFile(null);
       if (inputRef.current) {
         inputRef.current.value = "";
       }
@@ -96,6 +98,8 @@ const ImageUploadInput = ({
   const handleContainerClick = () => {
     inputRef.current?.click();
   };
+
+  console.log("mediaSrc && file", mediaSrc && file);
 
   return (
     <div className="mb-4">

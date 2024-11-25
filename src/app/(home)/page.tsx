@@ -1,0 +1,173 @@
+"use client";
+
+import { createCoin } from "@/utils/wallet";
+import { toast } from "react-toastify";
+import { useRouter } from "next/navigation";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useCallback, useMemo } from "react";
+import { validateTwitterCredentials } from "@/utils/twitter";
+import { ModalType } from "../../../types/zustand/stores/modalStore.type";
+import { useModalStore } from "@/components/providers/ModalProvider";
+import { RoundedButton } from "@/components/common/button/RoundedButton";
+import { WalletButton } from "@/components/common/button/WalletButton";
+import { AgentDetails, TokenMetadata, TwitterCredentials } from "./form.types";
+import { useForm } from "./useForm";
+
+export type FormStep = "token" | "agent" | "twitter";
+
+function toBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+
+    reader.onload = () => {
+      resolve(reader.result as string);
+    };
+    reader.onerror = (error) => reject(error);
+  });
+}
+
+export default function TransactionSignPage() {
+  const router = useRouter();
+
+  const {
+    currentStep,
+    back,
+    next,
+    FormBody,
+    getFormValues,
+    canGoNext,
+    canGoBack,
+  } = useForm();
+
+  const { publicKey } = useWallet();
+
+  const changeModal = useModalStore((state) => state.changeModal);
+  const setModalOpen = useModalStore((state) => state.setOpen);
+
+  const convertFormData = useCallback(async (): Promise<{
+    tokenMeta: TokenMetadata;
+    twitterCreds: TwitterCredentials;
+    agentDetails: AgentDetails;
+  }> => {
+    const { agentDetails, tokenMetadata, twitterCredentials } = getFormValues();
+
+    const media_base64 = tokenMetadata.media_base64;
+
+    return {
+      tokenMeta: {
+        ...tokenMetadata,
+        initial_sol: tokenMetadata.initial_sol
+          ? parseFloat(tokenMetadata.initial_sol)
+          : 0,
+        image_base64: await toBase64(media_base64),
+      },
+      twitterCreds: {
+        username: twitterCredentials.twitter_username,
+        email: twitterCredentials.twitter_email,
+        password: twitterCredentials.twitter_password,
+      },
+      agentDetails,
+    };
+  }, [getFormValues]);
+
+  const submitForm = useCallback(async () => {
+    changeModal(true, ModalType.LAUNCHING_TOKEN, {});
+
+    try {
+      const { tokenMeta, twitterCreds, agentDetails } = await convertFormData();
+
+      switch (await validateTwitterCredentials(twitterCreds)) {
+        case "valid":
+          break;
+        case "invalid":
+          toast.error("Invalid Twitter credentials. Please try again.");
+          return;
+        case "unknown_error":
+          toast.error("Oops! Something went wrong. Please try again.");
+          return;
+      }
+
+      const { mintPublicKey } = await createCoin({
+        token_metadata: tokenMeta,
+        twitter_credentials: twitterCreds,
+        agentDetails,
+      });
+
+      router.push(
+        `/success?twitterHandle=${twitterCreds.username}&mintPublicKey=${mintPublicKey}`,
+      );
+    } catch {
+      toast.error("Oops! Something went wrong. Please try again.");
+    } finally {
+      setModalOpen(false);
+    }
+  }, [changeModal, convertFormData, router, setModalOpen]);
+
+  const FormButton = useMemo(() => {
+    switch (currentStep) {
+      case "token":
+      case "agent":
+        return (
+          <RoundedButton
+            className="px-6 py-3"
+            onClick={next}
+            disabled={!canGoNext}
+          >
+            Next
+          </RoundedButton>
+        );
+      case "twitter":
+        return (
+          <RoundedButton
+            className="px-6 py-3"
+            disabled={!canGoNext}
+            onClick={submitForm}
+          >
+            Launch token
+          </RoundedButton>
+        );
+    }
+  }, [canGoNext, currentStep, next, submitForm]);
+
+  return (
+    <div className="flex flex-col justify-center h-full relative">
+      {canGoBack && (
+        <button className="absolute top-4 left-[5%]" onClick={back}>
+          <svg
+            width="44"
+            height="44"
+            viewBox="0 0 44 44"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect
+              x="0.5"
+              y="0.5"
+              width="43"
+              height="43"
+              rx="11.5"
+              stroke="#03FF24"
+            />
+            <path
+              d="M16.1665 21.9993H27.8332M16.1665 21.9993L19.4998 25.3327M16.1665 21.9993L19.4998 18.666"
+              stroke="#03FF24"
+              strokeWidth="1.66667"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      )}
+      <div className="flex flex-col w-full m-auto gap-7 justify-center">
+        <div className="h-full flex flex-col items-center justify-center max-w-4xl mx-auto w-full">
+          <div className="max-h-[calc(100vh-300px)] w-5/6 p-6 rounded-[20px] overflow-scroll mb-6 border-[#03ff24] border gap-[30px] flex flex-col">
+            {FormBody}
+          </div>
+
+          {publicKey ? <div>{FormButton}</div> : <WalletButton />}
+        </div>
+      </div>
+    </div>
+  );
+}
