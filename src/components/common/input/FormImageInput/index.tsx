@@ -99,8 +99,6 @@ const ImageUploadInput = ({
     inputRef.current?.click();
   };
 
-  console.log("mediaSrc && file", mediaSrc && file);
-
   return (
     <div className="mb-4">
       {label && (
