@@ -1,5 +1,5 @@
 import { UseFormReturn } from "react-hook-form";
-import { AgentDetails } from "./form.types";
+import { AgentDetails } from "../../../types/form.type";
 
 export const AgentCreationForm = ({
   form: { register },

@@ -2,7 +2,7 @@ import {
   AgentDetails,
   TokenMetadata,
   TwitterCredentials,
-} from "@/app/(home)/form.types";
+} from "../../types/form.type";
 import { Keypair, VersionedTransaction } from "@solana/web3.js";
 import { womboApi } from "./fetch";
 import { z } from "zod";

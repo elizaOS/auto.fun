@@ -10,7 +10,11 @@ import { ModalType } from "../../../types/zustand/stores/modalStore.type";
 import { useModalStore } from "@/components/providers/ModalProvider";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { WalletButton } from "@/components/common/button/WalletButton";
-import { AgentDetails, TokenMetadata, TwitterCredentials } from "./form.types";
+import {
+  AgentDetails,
+  TokenMetadata,
+  TwitterCredentials,
+} from "../../../types/form.type";
 import { useForm } from "./useForm";
 
 export type FormStep = "token" | "agent" | "twitter";

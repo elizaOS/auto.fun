@@ -2,7 +2,7 @@ import {
   AgentDetails,
   AgentDetailsInput,
   AgentDetailsSchema,
-} from "@/app/(home)/form.types";
+} from "../../types/form.type";
 import { womboApi } from "./fetch";
 import { z } from "zod";
 

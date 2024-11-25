@@ -2,7 +2,7 @@ import FormImageInput from "@/components/common/input/FormImageInput";
 import { FormInput } from "@/components/common/input/FormInput";
 import { FormTextArea } from "@/components/common/input/FormTextArea";
 import { UseFormReturn } from "react-hook-form";
-import { TokenMetadataForm } from "./form.types";
+import { TokenMetadataForm } from "../../../types/form.type";
 
 // TODO: put form tag in here, will split into 3 separate forms
 // that way we can easily check form validity for each form step

@@ -1,4 +1,4 @@
-import { TwitterCredentials } from "@/app/(home)/form.types";
+import { TwitterCredentials } from "../../types/form.type";
 import { womboApi } from "./fetch";
 import { z } from "zod";
 

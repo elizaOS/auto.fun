@@ -1,6 +1,6 @@
 import { FormInput } from "@/components/common/input/FormInput";
 import { useState } from "react";
-import { TwitterDetailsForm } from "./form.types";
+import { TwitterDetailsForm } from "../../../types/form.type";
 import { UseFormReturn } from "react-hook-form";
 import { LuEye, LuEyeOff } from "react-icons/lu";
 

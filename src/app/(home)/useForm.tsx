@@ -3,7 +3,7 @@ import {
   AgentDetails,
   TokenMetadataForm,
   TwitterDetailsForm,
-} from "./form.types";
+} from "../../../types/form.type";
 import { TokenCreationForm } from "./TokenCreationForm";
 import { AgentCreationForm } from "./AgentCreationForm";
 import { TwitterLoginForm } from "./TwitterLoginForm";
