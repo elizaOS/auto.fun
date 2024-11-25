@@ -1,6 +1,9 @@
 import { FormInput } from "@/components/common/input/FormInput";
 import { FormTextArea } from "@/components/common/input/FormTextArea";
-import { AgentDetailsProps } from "../../../../types/components/forms/AgentDetails/index.type";
+import {
+  AgentDetailsProps,
+  Personality,
+} from "../../../../types/components/forms/AgentDetails/index.type";
 import { Personalities } from "./Personalities";
 import { useController } from "react-hook-form";
 import { useState } from "react";
@@ -8,11 +11,20 @@ import { AdvancedCreation } from "./AdvancedCreation";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 
 export const AgentDetails = ({
-  personalities,
   register,
   watch,
   control,
 }: AgentDetailsProps) => {
+  // TODO: replace with proper data
+  const personalities: Personality[] = [
+    { id: "1", description: "personality 1" },
+    { id: "2", description: "personality 2" },
+    { id: "3", description: "personality 3" },
+    { id: "4", description: "personality 4" },
+    { id: "5", description: "personality 5" },
+    { id: "6", description: "personality 6" },
+  ];
+
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const description = watch("description");
