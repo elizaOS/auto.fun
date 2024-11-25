@@ -54,7 +54,7 @@ export const FormInput = ({
             </div>
           )}
           <input
-            className={`w-full bg-inherit h-11 ${inputPaddingStyles[inputPad || "both"]} py-4`}
+            className={`w-full bg-inherit h-11 ${inputPaddingStyles[inputPad || "both"]} py-4 placeholder-[#017d11]`}
             {...props}
           />
           {rightIndicator && (

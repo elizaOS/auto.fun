@@ -49,8 +49,10 @@ const ImageUploadInput = ({
         setMediaSrc(reader.result as string);
       };
       reader.readAsDataURL(value);
+      setFile(value);
     } else {
       setMediaSrc(null);
+      setFile(null);
       if (inputRef.current) {
         inputRef.current.value = "";
       }

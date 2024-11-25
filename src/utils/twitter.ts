@@ -1,31 +1,24 @@
-import { TwitterCredentials } from "@/app/page";
-import { API_URL } from "./env";
+import { TwitterCredentials } from "../../types/form.type";
+import { womboApi } from "./fetch";
+import { z } from "zod";
 
 export const validateTwitterCredentials = async (
   credentials: TwitterCredentials,
 ) => {
   try {
-    const response = await fetch(`${API_URL}/verify`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    const response = await womboApi.post({
+      endpoint: "/verify",
+      body: {
         twitterUsername: credentials.username,
         twitterEmail: credentials.email,
         twitterPassword: credentials.password,
+      },
+      schema: z.object({
+        verified: z.boolean(),
       }),
     });
 
-    if (response.ok) {
-      const json = await response.json();
-      if (json.verified) {
-        return "valid";
-      }
-      return "invalid";
-    } else {
-      return "invalid";
-    }
+    return response.verified ? "valid" : "invalid";
   } catch {
     return "unknown_error";
   }
