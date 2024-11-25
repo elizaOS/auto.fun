@@ -35,7 +35,6 @@ export const Personalities = ({
       newSelected[id] = false;
     } else {
       if (totalSelected == 3) {
-        // TODO: do something when 3 are already selected?
         return;
       }
       newSelected[id] = true;

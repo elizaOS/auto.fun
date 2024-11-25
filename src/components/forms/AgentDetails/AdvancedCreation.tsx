@@ -1,12 +1,5 @@
-import { ReactNode } from "react";
+import { OutputAreaProps } from "../../../../types/components/forms/AgentDetails/AdvancedCreation.type";
 import "./index.css";
-
-// TODO: move to types dir
-export type OutputAreaProps = {
-  label: ReactNode;
-  content: string;
-  onRefresh: () => void;
-};
 
 const OutputArea = ({ label, content, onRefresh }: OutputAreaProps) => {
   return (
