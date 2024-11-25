@@ -30,12 +30,12 @@ export async function createCoin(formData: {
   // call API
   const createResponse = await womboApi.post({
     endpoint: "/create-token",
-    body: JSON.stringify({
+    body: {
       token_metadata: formData.token_metadata,
       public_key: userPublicKey.toBase58(),
       mint_keypair_public: mintKeypair.publicKey.toBase58(),
       twitter_credentials: formData.twitter_credentials,
-    }),
+    },
     schema: z.object({
       transaction: z.string(),
     }),
@@ -55,14 +55,14 @@ export async function createCoin(formData: {
 
   await womboApi.post({
     endpoint: "/submit-token-transaction",
-    body: JSON.stringify({
+    body: {
       signed_transaction: `[${signedTx.serialize().toString()}]`,
       token_metadata: formData.token_metadata,
       public_key: userPublicKey.toBase58(),
       mint_keypair_public: mintKeypair.publicKey.toBase58(),
       twitter_credentials: formData.twitter_credentials,
       agent_metadata: formData.agentDetails,
-    }),
+    },
   });
 
   return { mintPublicKey: mintKeypair.publicKey, userPublicKey };
