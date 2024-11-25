@@ -34,7 +34,7 @@ export const Personalities = ({
     if (selected[id]) {
       newSelected[id] = false;
     } else {
-      if (totalSelected == 3) {
+      if (totalSelected === 3) {
         return;
       }
       newSelected[id] = true;

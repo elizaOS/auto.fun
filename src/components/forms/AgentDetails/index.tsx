@@ -120,7 +120,7 @@ export const AgentDetails = ({
           </RoundedButton>
         )}
       </div>
-      {showAdvanced && <AdvancedCreation />}
+      {showAdvanced && <AdvancedCreation register={register} />}
     </form>
   );
 };

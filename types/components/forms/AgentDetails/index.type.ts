@@ -12,4 +12,11 @@ export type AgentDetailsForm = {
   name: string;
   description: string;
   selectedPersonalities: string[];
+  systemPrompt: string;
+  bio: string;
+  lore: string;
+  postExamples: string;
+  topics: string;
+  style: string;
+  adjectives: string;
 };

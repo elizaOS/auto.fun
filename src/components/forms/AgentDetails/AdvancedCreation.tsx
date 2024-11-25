@@ -1,13 +1,23 @@
-import { OutputAreaProps } from "../../../../types/components/forms/AgentDetails/AdvancedCreation.type";
-import "./index.css";
+import { FormTextArea } from "@/components/common/input/FormTextArea";
+import {
+  AdvancedCreationProps,
+  OutputAreaProps,
+} from "../../../../types/components/forms/AgentDetails/AdvancedCreation.type";
 
-const OutputArea = ({ label, content, onRefresh }: OutputAreaProps) => {
+const OutputArea = ({
+  label,
+  content,
+  onRefresh,
+  ...props
+}: OutputAreaProps) => {
   return (
     <div className="flex flex-col gap-3 h-full relative">
-      {label}
-      <p className="overflow-y-auto break-words bg-[#002605] flex-1 rounded-xl py-3 px-4 advanced-output">
-        {content}
-      </p>
+      <FormTextArea
+        label={label}
+        defaultValue={content}
+        minRows={8}
+        {...props}
+      />
       <button
         type="button"
         className="absolute bottom-3 right-3"
@@ -30,39 +40,51 @@ const OutputArea = ({ label, content, onRefresh }: OutputAreaProps) => {
   );
 };
 
-export const AdvancedCreation = () => {
+export const AdvancedCreation = ({ register }: AdvancedCreationProps) => {
   return (
     <div className="flex flex-col gap-6">
-      <div className="h-[190px]">
-        <OutputArea
-          label="System Prompt"
-          content="foo bar"
-          onRefresh={() => {}}
-        />
-      </div>
-      <div className="h-[300px]">
-        <OutputArea label="Bio" content="foo bar" onRefresh={() => {}} />
-      </div>
-      <div className="h-[250px]">
-        <OutputArea
-          label="Message Examples"
-          content="foo bar"
-          onRefresh={() => {}}
-        />
-      </div>
-      <div className="h-[250px]">
-        <OutputArea
-          label="Post Examples"
-          content="foo bar"
-          onRefresh={() => {}}
-        />
-      </div>
-      <div className="h-[150px]">
-        <OutputArea label="Adjectives" content="foo bar" onRefresh={() => {}} />
-      </div>
-      <div className="h-[200px]">
-        <OutputArea label="Style" content="foo bar" onRefresh={() => {}} />
-      </div>
+      <OutputArea
+        {...register("systemPrompt")}
+        label="System Prompt"
+        content="foo bar"
+        onRefresh={() => {}}
+      />
+      <OutputArea
+        {...register("bio")}
+        label="Bio"
+        content="foo bar"
+        onRefresh={() => {}}
+      />
+      <OutputArea
+        {...register("lore")}
+        label="Lore"
+        content="foo bar"
+        onRefresh={() => {}}
+      />
+      <OutputArea
+        {...register("postExamples")}
+        label="Post Examples"
+        content="foo bar"
+        onRefresh={() => {}}
+      />
+      <OutputArea
+        {...register("topics")}
+        label="Topics"
+        content="foo bar"
+        onRefresh={() => {}}
+      />
+      <OutputArea
+        {...register("style")}
+        label="Style"
+        content="foo bar"
+        onRefresh={() => {}}
+      />
+      <OutputArea
+        {...register("adjectives")}
+        label="Adjectives"
+        content="foo bar"
+        onRefresh={() => {}}
+      />
     </div>
   );
 };
