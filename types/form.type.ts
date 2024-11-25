@@ -32,7 +32,7 @@ export type AgentFields =
   | "postExamples"
   | "adjectives"
   | "style"
-  | "topic";
+  | "topics";
 
 export type TwitterDetailsForm = {
   twitter_email: string;
@@ -50,7 +50,7 @@ export const AgentDetailsSchema = z.object({
   postExamples: z.string().optional(),
   adjectives: z.string().optional(),
   style: z.string().optional(),
-  topic: z.string().optional(),
+  topics: z.string().optional(),
 });
 
 export type AgentDetailsForm = z.infer<typeof AgentDetailsSchema>;

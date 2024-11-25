@@ -1,5 +1,6 @@
 import { UseFormRegister } from "react-hook-form";
-import { AgentDetailsForm } from "./index.type";
+import { AgentDetailsForm } from "../../../form.type";
+
 import { FormTextAreaProps } from "../../common/input/FormTextArea.type";
 
 export type OutputAreaProps = {
