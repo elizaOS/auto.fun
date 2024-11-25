@@ -1,10 +1,16 @@
-import { TokenMetadata, TwitterCredentials } from "@/app/page";
+import {
+  AgentDetails,
+  TokenMetadata,
+  TwitterCredentials,
+} from "../../types/form.type";
 import { Keypair, VersionedTransaction } from "@solana/web3.js";
-import { API_URL } from "./env";
+import { womboApi } from "./fetch";
+import { z } from "zod";
 
 export async function createCoin(formData: {
   token_metadata: TokenMetadata;
   twitter_credentials: TwitterCredentials;
+  agentDetails: AgentDetails;
 }) {
   if (!window.solana?.isPhantom) {
     throw new Error("Phantom wallet not found");
@@ -22,25 +28,21 @@ export async function createCoin(formData: {
   const mintKeypair = Keypair.generate();
 
   // call API
-  const createResponse = await fetch(`${API_URL}/create-token`, {
-    method: "POST",
-    body: JSON.stringify({
+  const createResponse = await womboApi.post({
+    endpoint: "/create-token",
+    body: {
       token_metadata: formData.token_metadata,
       public_key: userPublicKey.toBase58(),
       mint_keypair_public: mintKeypair.publicKey.toBase58(),
       twitter_credentials: formData.twitter_credentials,
-    }),
-    headers: {
-      "Content-Type": "application/json",
     },
+    schema: z.object({
+      transaction: z.string(),
+    }),
   });
 
-  if (!createResponse.ok) {
-    throw new Error("Failed to create token");
-  }
-
   // successfully generated transaction
-  const { transaction } = await createResponse.json();
+  const { transaction } = createResponse;
   const tx = VersionedTransaction.deserialize(
     new Uint8Array(Buffer.from(transaction, "base64")),
   );
@@ -51,23 +53,17 @@ export async function createCoin(formData: {
   // Request the user's signature via Phantom
   const signedTx = await provider.signTransaction(tx);
 
-  const submitResponse = await fetch(`${API_URL}/submit-token-transaction`, {
-    method: "POST",
-    body: JSON.stringify({
+  await womboApi.post({
+    endpoint: "/submit-token-transaction",
+    body: {
       signed_transaction: `[${signedTx.serialize().toString()}]`,
       token_metadata: formData.token_metadata,
       public_key: userPublicKey.toBase58(),
       mint_keypair_public: mintKeypair.publicKey.toBase58(),
       twitter_credentials: formData.twitter_credentials,
-    }),
-    headers: {
-      "Content-Type": "application/json",
+      agent_metadata: formData.agentDetails,
     },
   });
-
-  if (!submitResponse.ok) {
-    throw new Error("Failed to submit token transaction");
-  }
 
   return { mintPublicKey: mintKeypair.publicKey, userPublicKey };
 }

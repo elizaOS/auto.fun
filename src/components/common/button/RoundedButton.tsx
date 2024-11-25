@@ -2,7 +2,7 @@ import { forwardRef, useMemo } from "react";
 import { RoundedButtonProps } from "../../../../types/components/common/button/RoundedButton.type";
 
 export const RoundedButton = forwardRef<HTMLButtonElement, RoundedButtonProps>(
-  ({ children, variant, color, disabled, className, ...props }, ref) => {
+  ({ children, variant, color, className, ...props }, ref) => {
     const _className = useMemo(() => {
       if (variant == "outlined") {
         const border = "border-solid border-[2px]";
@@ -24,7 +24,7 @@ export const RoundedButton = forwardRef<HTMLButtonElement, RoundedButtonProps>(
 
     return (
       <button
-        className={`${_className} rounded-xl font-bold ${disabled && "opacity-15"} active:brightness-75 ${className}`}
+        className={`${_className} rounded-xl font-bold ${props.disabled && "opacity-15"} ${!props.disabled && "active:brightness-75"} ${className}`}
         {...props}
         ref={ref}
       >
