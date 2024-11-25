@@ -1,18 +1,18 @@
 import { useCallback, useMemo, useState } from "react";
 import {
-  AgentDetails,
+  AgentDetailsForm,
   TokenMetadataForm,
   TwitterDetailsForm,
 } from "../../../types/form.type";
 import { TokenCreationForm } from "./TokenCreationForm";
-import { AgentCreationForm } from "./AgentCreationForm";
 import { TwitterLoginForm } from "./TwitterLoginForm";
 import { useForm as useFormRhf } from "react-hook-form";
 import { FormStep } from "./page";
+import { AgentDetails } from "@/components/forms/AgentDetails";
 
 export const useForm = () => {
   const tokenForm = useFormRhf<TokenMetadataForm>();
-  const agentForm = useFormRhf<AgentDetails>();
+  const agentForm = useFormRhf<AgentDetailsForm>();
   const twitterForm = useFormRhf<TwitterDetailsForm>();
   const [currentStep, setCurrentStep] = useState<FormStep>("token");
 
@@ -63,7 +63,7 @@ export const useForm = () => {
       case "token":
         return <TokenCreationForm form={tokenForm} />;
       case "agent":
-        return <AgentCreationForm form={agentForm} />;
+        return <AgentDetails form={agentForm} />;
       case "twitter":
         return <TwitterLoginForm form={twitterForm} />;
     }
