@@ -1,5 +1,5 @@
 import {
-  AgentDetails,
+  AgentDetailsForm,
   TokenMetadata,
   TwitterCredentials,
 } from "../../types/form.type";
@@ -10,7 +10,7 @@ import { z } from "zod";
 export async function createCoin(formData: {
   token_metadata: TokenMetadata;
   twitter_credentials: TwitterCredentials;
-  agentDetails: AgentDetails;
+  agentDetails: AgentDetailsForm;
 }) {
   if (!window.solana?.isPhantom) {
     throw new Error("Phantom wallet not found");

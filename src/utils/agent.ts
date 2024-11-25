@@ -1,5 +1,5 @@
 import {
-  AgentDetails,
+  AgentDetailsForm,
   AgentDetailsInput,
   AgentDetailsSchema,
 } from "../../types/form.type";
@@ -7,7 +7,7 @@ import { womboApi } from "./fetch";
 import { z } from "zod";
 
 export const generateAllAdvancedAgentDetails = async (
-  inputs: Pick<AgentDetails, "name" | "description" | "personality">,
+  inputs: Pick<AgentDetailsForm, "name" | "description" | "personality">,
 ) => {
   const outputs: AgentDetailsInput[] = [
     "systemPrompt",
@@ -34,7 +34,7 @@ export const generateSingleAgentDetail = async <T extends AgentDetailsInput>({
   inputs,
   output,
 }: {
-  inputs: AgentDetails;
+  inputs: AgentDetailsForm;
   output: T;
 }) => {
   const result = (await womboApi.post({

@@ -31,7 +31,8 @@ export type AgentFields =
   | "lore"
   | "postExamples"
   | "adjectives"
-  | "style";
+  | "style"
+  | "topic";
 
 export type TwitterDetailsForm = {
   twitter_email: string;
@@ -49,8 +50,9 @@ export const AgentDetailsSchema = z.object({
   postExamples: z.string().optional(),
   adjectives: z.string().optional(),
   style: z.string().optional(),
+  topic: z.string().optional(),
 });
 
-export type AgentDetails = z.infer<typeof AgentDetailsSchema>;
+export type AgentDetailsForm = z.infer<typeof AgentDetailsSchema>;
 
-export type AgentDetailsInput = keyof AgentDetails;
+export type AgentDetailsInput = keyof AgentDetailsForm;

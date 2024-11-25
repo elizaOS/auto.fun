@@ -1,10 +1,10 @@
 import { UseFormReturn } from "react-hook-form";
-import { AgentDetails } from "../../../types/form.type";
+import { AgentDetailsForm } from "../../../types/form.type";
 
 export const AgentCreationForm = ({
   form: { register },
 }: {
-  form: UseFormReturn<AgentDetails>;
+  form: UseFormReturn<AgentDetailsForm>;
 }) => {
   return (
     <form>

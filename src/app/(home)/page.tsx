@@ -11,7 +11,7 @@ import { useModalStore } from "@/components/providers/ModalProvider";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { WalletButton } from "@/components/common/button/WalletButton";
 import {
-  AgentDetails,
+  AgentDetailsForm,
   TokenMetadata,
   TwitterCredentials,
 } from "../../../types/form.type";
@@ -52,7 +52,7 @@ export default function TransactionSignPage() {
   const convertFormData = useCallback(async (): Promise<{
     tokenMeta: TokenMetadata;
     twitterCreds: TwitterCredentials;
-    agentDetails: AgentDetails;
+    agentDetails: AgentDetailsForm;
   }> => {
     const { agentDetails, tokenMetadata, twitterCredentials } = getFormValues();
 

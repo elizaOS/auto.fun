@@ -11,9 +11,7 @@ import { AdvancedCreation } from "./AdvancedCreation";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 
 export const AgentDetails = ({
-  register,
-  watch,
-  control,
+  form: { register, watch, control },
 }: AgentDetailsProps) => {
   // TODO: replace with proper data
   const personalities: Personality[] = [
@@ -30,10 +28,12 @@ export const AgentDetails = ({
   const description = watch("description");
   const name = watch("name");
 
+  console.log(description);
+
   const {
     field: { onChange },
   } = useController({
-    name: "selectedPersonalities",
+    name: "personality",
     control,
   });
 
@@ -57,7 +57,7 @@ export const AgentDetails = ({
       />
       <Personalities
         personalities={personalities}
-        onChange={(selectedPersonalities) => onChange(selectedPersonalities)}
+        onChange={(personality) => onChange(personality)}
       />
       <div className="flex justify-between">
         <button
