@@ -5,13 +5,13 @@ import {
   Personality,
 } from "../../../../types/components/forms/AgentDetails/index.type";
 import { Personalities } from "./Personalities";
-import { useController } from "react-hook-form";
+import { useController, useWatch } from "react-hook-form";
 import { useState } from "react";
 import { AdvancedCreation } from "./AdvancedCreation";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 
 export const AgentDetails = ({
-  form: { register, watch, control },
+  form: { register, control },
 }: AgentDetailsProps) => {
   // TODO: replace with proper data
   const personalities: Personality[] = [
@@ -25,8 +25,8 @@ export const AgentDetails = ({
 
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  const description = watch("description");
-  const name = watch("name");
+  const description = useWatch({ control, name: "description" });
+  const name = useWatch({ control, name: "name" });
 
   console.log(description);
 

@@ -1,19 +1,19 @@
 import FormImageInput from "@/components/common/input/FormImageInput";
 import { FormInput } from "@/components/common/input/FormInput";
 import { FormTextArea } from "@/components/common/input/FormTextArea";
-import { UseFormReturn } from "react-hook-form";
+import { UseFormReturn, useWatch } from "react-hook-form";
 import { TokenMetadataForm } from "../../../types/form.type";
 
 // TODO: put form tag in here, will split into 3 separate forms
 // that way we can easily check form validity for each form step
 export const TokenCreationForm = ({
-  form: { watch, register, control },
+  form: { register, control },
 }: {
   form: UseFormReturn<TokenMetadataForm>;
 }) => {
-  const symbol = watch("symbol");
-  const description = watch("description");
-  const name = watch("name");
+  const symbol = useWatch({ control, name: "symbol" });
+  const description = useWatch({ control, name: "description" });
+  const name = useWatch({ control, name: "name" });
 
   return (
     <form className="flex flex-col w-full m-auto gap-7 justify-center">
