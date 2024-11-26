@@ -5,11 +5,11 @@ import {
   TwitterDetailsForm,
 } from "../../../types/form.type";
 import { TokenCreationForm } from "./TokenCreationForm";
-import { TwitterLoginForm } from "./TwitterLoginForm";
 import { useForm as useFormRhf } from "react-hook-form";
 import { FormStep } from "./page";
 import { AgentDetails } from "@/components/forms/AgentDetails";
 import { useGenerateAllAdvancedAgentDetails } from "@/utils/agent";
+import { TwitterLoginForm } from "@/components/forms/TwitterLoginForm";
 
 export const useForm = () => {
   const tokenForm = useFormRhf<TokenMetadataForm>();
