@@ -1,4 +1,4 @@
-import { HTMLAttributes, useState } from "react";
+import { HTMLAttributes } from "react";
 import { PersonalitiesProps } from "../../../../types/components/forms/AgentDetails/Personalities.type";
 
 const PersonalitySelection = ({
@@ -10,7 +10,7 @@ const PersonalitySelection = ({
 >) => {
   return (
     <button
-      className={`p-3 rounded-lg min-h-[64px] ${selected ? "bg-[#03FF24] text-black" : "bg-[#002605]"}`}
+      className={`text-left p-3 rounded-lg min-h-[64px] ${selected ? "bg-[#03FF24] text-black" : "bg-[#002605]"}`}
       type="button"
       {...props}
     />
@@ -18,34 +18,26 @@ const PersonalitySelection = ({
 };
 
 export const Personalities = ({
-  personalities,
+  allPersonalities,
   onChange,
+  selectedPersonalities,
 }: PersonalitiesProps) => {
-  const [selected, setSelected] = useState<Record<string, boolean | undefined>>(
-    {},
-  );
-
   const selectPersonality = (id: string) => {
-    const totalSelected = Object.values(selected).filter(
-      (isSelected) => isSelected,
-    ).length;
+    let newPersonality: string[] = [];
+    const idIndex = selectedPersonalities.indexOf(id);
 
-    const newSelected = { ...selected };
-    if (selected[id]) {
-      newSelected[id] = false;
+    if (idIndex > -1) {
+      newPersonality = [...selectedPersonalities];
+      newPersonality.splice(idIndex, 1);
     } else {
-      if (totalSelected === 3) {
+      if (selectedPersonalities.length === 3) {
         return;
       }
-      newSelected[id] = true;
+
+      newPersonality = [...selectedPersonalities, id];
     }
 
-    setSelected(newSelected);
-    onChange(
-      Object.entries(newSelected)
-        .filter(([, value]) => value === true)
-        .map(([key]) => key),
-    );
+    onChange(newPersonality);
   };
 
   return (
@@ -55,9 +47,9 @@ export const Personalities = ({
         <p className="opacity-40">select up to 3</p>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        {personalities.map(({ id, description }) => (
+        {allPersonalities.map(({ id, description }) => (
           <PersonalitySelection
-            selected={!!selected[id]}
+            selected={selectedPersonalities.indexOf(id) > -1}
             key={id}
             onClick={() => selectPersonality(id)}
           >

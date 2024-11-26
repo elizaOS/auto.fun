@@ -43,7 +43,7 @@ export type TwitterDetailsForm = {
 export const AgentDetailsSchema = z.object({
   name: z.string(),
   description: z.string(),
-  personality: z.number().array(),
+  personality: z.string().array(),
   systemPrompt: z.string().optional(),
   bio: z.string().optional(),
   lore: z.string().optional(),

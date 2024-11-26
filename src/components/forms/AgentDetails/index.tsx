@@ -80,10 +80,11 @@ export const AgentDetails = ({
   const name = useWatch({ control, name: "name" });
 
   const {
-    field: { onChange },
+    field: { onChange, value: selectedPersonalities },
   } = useController({
     name: "personality",
     control,
+    defaultValue: [],
   });
 
   return (
@@ -105,7 +106,8 @@ export const AgentDetails = ({
         rightIndicator={`${description?.length ?? 0}/2000`}
       />
       <Personalities
-        personalities={personalities}
+        selectedPersonalities={selectedPersonalities}
+        allPersonalities={personalities}
         onChange={(personality) => onChange(personality)}
       />
       <div className="flex justify-between">

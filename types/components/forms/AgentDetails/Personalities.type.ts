@@ -1,6 +1,7 @@
 import { Personality } from "./index.type";
 
 export type PersonalitiesProps = {
-  personalities: Personality[];
+  allPersonalities: Personality[];
   onChange: (selectedPersonalities: string[]) => void;
+  selectedPersonalities: string[];
 };
