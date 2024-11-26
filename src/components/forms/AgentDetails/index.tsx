@@ -6,50 +6,21 @@ import { useController, useWatch } from "react-hook-form";
 import { useState } from "react";
 import { AdvancedCreation } from "./AdvancedCreation";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
-import {
-  useGenerateAllAdvancedAgentDetails,
-  useGenerateSingleAgentDetail,
-} from "@/utils/agent";
+import { useGenerateSingleAgentDetail } from "@/utils/agent";
 import {
   AgentDetailsForm,
   AgentDetailsInput,
 } from "../../../../types/form.type";
-import { useRateLimiter } from "@/hooks/useRateLimiter";
 import { usePersonalities } from "@/utils/personality";
 
 export const AgentDetails = ({
   form: { register, control, getValues, setValue },
   onAdvancedCreationOpen,
+  onRefreshAll,
+  isRateLimited,
 }: AgentDetailsProps) => {
-  const { mutateAsync: generateAllAdvancedAgentDetails } =
-    useGenerateAllAdvancedAgentDetails();
   const { mutateAsync: generateSingleAgentDetail } =
     useGenerateSingleAgentDetail();
-  const { isRateLimited, makeApiCall } = useRateLimiter({
-    limit: 3,
-    timeWindow: 60 * 1000,
-  });
-
-  const onRefreshAll = async () => {
-    if (isRateLimited) {
-      return;
-    }
-
-    const agentFormValues = getValues();
-
-    const advancedDetails = await generateAllAdvancedAgentDetails({
-      inputs: {
-        name: agentFormValues.name,
-        description: agentFormValues.description,
-        personality: agentFormValues.personality,
-      },
-    });
-    makeApiCall();
-
-    Object.entries(advancedDetails).forEach(([field, value]) => {
-      setValue(field as keyof typeof advancedDetails, value);
-    });
-  };
 
   const refreshField = async (name: AgentDetailsInput) => {
     const { [name]: _, ...agentFormWithoutField } = getValues();

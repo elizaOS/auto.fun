@@ -3,15 +3,30 @@ import {
   AdvancedCreationProps,
   OutputAreaProps,
 } from "../../../../types/components/forms/AgentDetails/AdvancedCreation.type";
+import { toast } from "react-toastify";
+import { useState } from "react";
+import { BlurSpinnerOverlay } from "@/components/common/loading/BlurSpinnerOverlay";
 
 const OutputArea = ({ label, onRefresh, ...props }: OutputAreaProps) => {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   return (
     <div className="flex flex-col gap-3 h-full relative">
+      {isRefreshing && <BlurSpinnerOverlay />}
       <FormTextArea label={label} minRows={8} {...props} />
       <button
         type="button"
         className="absolute bottom-3 right-3"
-        onClick={onRefresh}
+        onClick={async () => {
+          try {
+            setIsRefreshing(true);
+            await onRefresh();
+          } catch {
+            toast.error("Oops! Something went wrong. Please try again.");
+          } finally {
+            setIsRefreshing(false);
+          }
+        }}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
