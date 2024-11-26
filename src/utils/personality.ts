@@ -18,7 +18,7 @@ export const usePersonalities = createQuery({
     //   { id: "6", description: "personality 6" },
     // ];
 
-    const result = await womboApi.post({
+    const result = await womboApi.get({
       endpoint: "/personality",
       schema: z.array(
         z.object({
