@@ -45,8 +45,7 @@ export const useGenerateAllAdvancedAgentDetails = createMutation({
       "postExamples",
       "adjectives",
       "style",
-      // TODO: add back once API returns the data
-      // "topics",
+      "topics",
     ] satisfies AgentDetailsInput[];
 
     const result = await womboApi.post({
@@ -62,6 +61,7 @@ export const useGenerateAllAdvancedAgentDetails = createMutation({
         postExamples: true,
         adjectives: true,
         style: true,
+        topics: true,
       } satisfies Record<
         (typeof requestedOutputs)[number],
         boolean
