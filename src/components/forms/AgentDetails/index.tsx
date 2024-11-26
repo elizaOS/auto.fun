@@ -12,6 +12,7 @@ import { RoundedButton } from "@/components/common/button/RoundedButton";
 
 export const AgentDetails = ({
   form: { register, control },
+  onAdvancedCreationOpen,
 }: AgentDetailsProps) => {
   // TODO: replace with proper data
   const personalities: Personality[] = [
@@ -27,8 +28,6 @@ export const AgentDetails = ({
 
   const description = useWatch({ control, name: "description" });
   const name = useWatch({ control, name: "name" });
-
-  console.log(description);
 
   const {
     field: { onChange },
@@ -63,7 +62,10 @@ export const AgentDetails = ({
         <button
           className="flex items-center gap-3"
           type="button"
-          onClick={() => setShowAdvanced((showAdvanced) => !showAdvanced)}
+          onClick={() => {
+            setShowAdvanced((showAdvanced) => !showAdvanced);
+            onAdvancedCreationOpen?.();
+          }}
         >
           <p>Advanced Creation</p>
           {showAdvanced ? (

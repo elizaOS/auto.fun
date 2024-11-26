@@ -9,12 +9,19 @@ import { TwitterLoginForm } from "./TwitterLoginForm";
 import { useForm as useFormRhf } from "react-hook-form";
 import { FormStep } from "./page";
 import { AgentDetails } from "@/components/forms/AgentDetails";
+import { useGenerateAllAdvancedAgentDetails } from "@/utils/agent";
 
 export const useForm = () => {
   const tokenForm = useFormRhf<TokenMetadataForm>();
   const agentForm = useFormRhf<AgentDetailsForm>();
   const twitterForm = useFormRhf<TwitterDetailsForm>();
   const [currentStep, setCurrentStep] = useState<FormStep>("token");
+  const {
+    mutateAsync: generateAllAdvancedAgentDetails,
+    isPending: advancedDetailsPending,
+  } = useGenerateAllAdvancedAgentDetails();
+  const [hasOpenedAdvancedCreation, setHasOpenedAdvancedCreation] =
+    useState(false);
 
   const back = useCallback(() => {
     switch (currentStep) {
@@ -58,16 +65,41 @@ export const useForm = () => {
     twitterForm.formState.isValid,
   ]);
 
+  const onAdvancedCreationOpen = useCallback(async () => {
+    if (hasOpenedAdvancedCreation) return;
+
+    const agentFormValues = agentForm.getValues();
+
+    const advancedDetails = await generateAllAdvancedAgentDetails({
+      inputs: {
+        name: agentFormValues.name,
+        description: agentFormValues.description,
+        personality: agentFormValues.personality,
+      },
+    });
+
+    setHasOpenedAdvancedCreation(true);
+
+    Object.entries(advancedDetails).forEach(([field, value]) => {
+      agentForm.setValue(field as keyof typeof advancedDetails, value);
+    });
+  }, [agentForm, generateAllAdvancedAgentDetails, hasOpenedAdvancedCreation]);
+
   const FormBody = useMemo(() => {
     switch (currentStep) {
       case "token":
         return <TokenCreationForm form={tokenForm} />;
       case "agent":
-        return <AgentDetails form={agentForm} />;
+        return (
+          <AgentDetails
+            form={agentForm}
+            onAdvancedCreationOpen={onAdvancedCreationOpen}
+          />
+        );
       case "twitter":
         return <TwitterLoginForm form={twitterForm} />;
     }
-  }, [agentForm, currentStep, tokenForm, twitterForm]);
+  }, [agentForm, currentStep, onAdvancedCreationOpen, tokenForm, twitterForm]);
 
   const getFormValues = useCallback(() => {
     const tokenMetadata = tokenForm.getValues();
@@ -87,5 +119,6 @@ export const useForm = () => {
     FormBody,
     getFormValues,
     canGoBack,
+    advancedDetailsPending,
   };
 };

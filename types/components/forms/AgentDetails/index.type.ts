@@ -5,4 +5,5 @@ export type Personality = { id: string; description: string };
 
 export type AgentDetailsProps = {
   form: UseFormReturn<AgentDetailsForm, unknown, undefined>;
+  onAdvancedCreationOpen?: () => void;
 };

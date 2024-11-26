@@ -4,20 +4,10 @@ import {
   OutputAreaProps,
 } from "../../../../types/components/forms/AgentDetails/AdvancedCreation.type";
 
-const OutputArea = ({
-  label,
-  content,
-  onRefresh,
-  ...props
-}: OutputAreaProps) => {
+const OutputArea = ({ label, onRefresh, ...props }: OutputAreaProps) => {
   return (
     <div className="flex flex-col gap-3 h-full relative">
-      <FormTextArea
-        label={label}
-        defaultValue={content}
-        minRows={8}
-        {...props}
-      />
+      <FormTextArea label={label} minRows={8} {...props} />
       <button
         type="button"
         className="absolute bottom-3 right-3"
@@ -46,43 +36,20 @@ export const AdvancedCreation = ({ register }: AdvancedCreationProps) => {
       <OutputArea
         {...register("systemPrompt")}
         label="System Prompt"
-        content="foo bar"
         onRefresh={() => {}}
       />
-      <OutputArea
-        {...register("bio")}
-        label="Bio"
-        content="foo bar"
-        onRefresh={() => {}}
-      />
-      <OutputArea
-        {...register("lore")}
-        label="Lore"
-        content="foo bar"
-        onRefresh={() => {}}
-      />
+      <OutputArea {...register("bio")} label="Bio" onRefresh={() => {}} />
+      <OutputArea {...register("lore")} label="Lore" onRefresh={() => {}} />
       <OutputArea
         {...register("postExamples")}
         label="Post Examples"
-        content="foo bar"
         onRefresh={() => {}}
       />
-      <OutputArea
-        {...register("topics")}
-        label="Topics"
-        content="foo bar"
-        onRefresh={() => {}}
-      />
-      <OutputArea
-        {...register("style")}
-        label="Style"
-        content="foo bar"
-        onRefresh={() => {}}
-      />
+      <OutputArea {...register("topics")} label="Topics" onRefresh={() => {}} />
+      <OutputArea {...register("style")} label="Style" onRefresh={() => {}} />
       <OutputArea
         {...register("adjectives")}
         label="Adjectives"
-        content="foo bar"
         onRefresh={() => {}}
       />
     </div>

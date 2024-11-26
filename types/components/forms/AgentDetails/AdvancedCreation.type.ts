@@ -4,7 +4,6 @@ import { AgentDetailsForm } from "../../../form.type";
 import { FormTextAreaProps } from "../../common/input/FormTextArea.type";
 
 export type OutputAreaProps = {
-  content: string;
   onRefresh: () => void;
 } & FormTextAreaProps;
 
