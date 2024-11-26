@@ -9,11 +9,31 @@ import { useController, useWatch } from "react-hook-form";
 import { useState } from "react";
 import { AdvancedCreation } from "./AdvancedCreation";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
+import { useGenerateAllAdvancedAgentDetails } from "@/utils/agent";
 
 export const AgentDetails = ({
-  form: { register, control },
+  form: { register, control, getValues, setValue },
   onAdvancedCreationOpen,
 }: AgentDetailsProps) => {
+  const { mutateAsync: generateAllAdvancedAgentDetails } =
+    useGenerateAllAdvancedAgentDetails();
+
+  const onRefreshAll = async () => {
+    const agentFormValues = getValues();
+
+    const advancedDetails = await generateAllAdvancedAgentDetails({
+      inputs: {
+        name: agentFormValues.name,
+        description: agentFormValues.description,
+        personality: agentFormValues.personality,
+      },
+    });
+
+    Object.entries(advancedDetails).forEach(([field, value]) => {
+      setValue(field as keyof typeof advancedDetails, value);
+    });
+  };
+
   // TODO: replace with proper data
   const personalities: Personality[] = [
     { id: "1", description: "personality 1" },
@@ -117,7 +137,12 @@ export const AgentDetails = ({
           )}
         </button>
         {showAdvanced && (
-          <RoundedButton className="p-3" variant="outlined" type="button">
+          <RoundedButton
+            className="p-3"
+            variant="outlined"
+            type="button"
+            onClick={onRefreshAll}
+          >
             Refresh All
           </RoundedButton>
         )}
