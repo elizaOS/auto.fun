@@ -12,17 +12,7 @@ export const TwitterLoginForm = ({
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <>
-      <div className="flex gap-3 w-full items-center justify-center">
-        <div className="bg-[#002605] h-[2px] flex-1" />
-        <p>X/Twitter Integration</p>
-        <div className="bg-[#002605] h-[2px] flex-1" />
-      </div>
-
-      <p className="text-center text-xs">
-        Use your Agent’s new X / Twitter Account
-      </p>
-
+    <form className="flex flex-col gap-6">
       <FormInput
         {...register("twitter_email", { required: true })}
         type="text"
@@ -53,6 +43,6 @@ export const TwitterLoginForm = ({
           </button>
         }
       />
-    </>
+    </form>
   );
 };

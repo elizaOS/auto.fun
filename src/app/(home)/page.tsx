@@ -109,6 +109,17 @@ export default function TransactionSignPage() {
     }
   }, [changeModal, convertFormData, router, setModalOpen]);
 
+  const FormHeader = useMemo(() => {
+    switch (currentStep) {
+      case "token":
+        return <h1>Step 1. Enter Token Details</h1>;
+      case "agent":
+        return <h1>Step 2. Enter Agent Details</h1>;
+      case "twitter":
+        return <h1>Step 3. Connect Agent&apos;s Twitter Account</h1>;
+    }
+  }, [currentStep]);
+
   const FormButton = useMemo(() => {
     switch (currentStep) {
       case "token":
@@ -124,13 +135,16 @@ export default function TransactionSignPage() {
         );
       case "twitter":
         return (
-          <RoundedButton
-            className="px-6 py-3"
-            disabled={!canGoNext}
-            onClick={submitForm}
-          >
-            Launch token
-          </RoundedButton>
+          <div className="flex flex-col items-center gap-6">
+            <p>*NOTE* this is your Agent’s login information</p>
+            <RoundedButton
+              className="px-6 py-3"
+              disabled={!canGoNext}
+              onClick={submitForm}
+            >
+              Launch token
+            </RoundedButton>
+          </div>
         );
     }
   }, [canGoNext, currentStep, next, submitForm]);
@@ -165,8 +179,9 @@ export default function TransactionSignPage() {
         </button>
       )}
       <div className="flex flex-col w-full m-auto gap-7 justify-center">
-        <div className="h-full flex flex-col items-center justify-center max-w-4xl mx-auto w-full">
-          <div className="max-h-[calc(100vh-300px)] w-5/6 rounded-[20px] mb-6 border-[#03ff24] border gap-[30px] flex flex-col relative overflow-hidden">
+        <div className="h-full flex flex-col items-center justify-center max-w-4xl mx-auto w-full gap-6">
+          <div className="text-left w-5/6 text-2xl">{FormHeader}</div>
+          <div className="max-h-[calc(100vh-300px)] w-5/6 rounded-[20px] border-[#03ff24] border gap-[30px] flex flex-col relative overflow-hidden">
             {advancedDetailsPending && (
               <div className="absolute inset-0 backdrop-blur-sm z-10 flex justify-center items-center">
                 <svg
