@@ -9,7 +9,14 @@ import { useController, useWatch } from "react-hook-form";
 import { useState } from "react";
 import { AdvancedCreation } from "./AdvancedCreation";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
-import { useGenerateAllAdvancedAgentDetails } from "@/utils/agent";
+import {
+  useGenerateAllAdvancedAgentDetails,
+  useGenerateSingleAgentDetail,
+} from "@/utils/agent";
+import {
+  AgentDetailsForm,
+  AgentDetailsInput,
+} from "../../../../types/form.type";
 
 export const AgentDetails = ({
   form: { register, control, getValues, setValue },
@@ -17,6 +24,8 @@ export const AgentDetails = ({
 }: AgentDetailsProps) => {
   const { mutateAsync: generateAllAdvancedAgentDetails } =
     useGenerateAllAdvancedAgentDetails();
+  const { mutateAsync: generateSingleAgentDetail } =
+    useGenerateSingleAgentDetail();
 
   const onRefreshAll = async () => {
     const agentFormValues = getValues();
@@ -32,6 +41,17 @@ export const AgentDetails = ({
     Object.entries(advancedDetails).forEach(([field, value]) => {
       setValue(field as keyof typeof advancedDetails, value);
     });
+  };
+
+  const refreshField = async (name: AgentDetailsInput) => {
+    const { [name]: _, ...agentFormWithoutField } = getValues();
+
+    const newField = await generateSingleAgentDetail({
+      inputs: agentFormWithoutField as AgentDetailsForm,
+      output: name,
+    });
+
+    setValue(name, newField);
   };
 
   // TODO: replace with proper data
@@ -147,7 +167,9 @@ export const AgentDetails = ({
           </RoundedButton>
         )}
       </div>
-      {showAdvanced && <AdvancedCreation register={register} />}
+      {showAdvanced && (
+        <AdvancedCreation register={register} refreshField={refreshField} />
+      )}
     </form>
   );
 };

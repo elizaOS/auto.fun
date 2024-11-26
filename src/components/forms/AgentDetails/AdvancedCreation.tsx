@@ -30,27 +30,46 @@ const OutputArea = ({ label, onRefresh, ...props }: OutputAreaProps) => {
   );
 };
 
-export const AdvancedCreation = ({ register }: AdvancedCreationProps) => {
+export const AdvancedCreation = ({
+  register,
+  refreshField,
+}: AdvancedCreationProps) => {
   return (
     <div className="flex flex-col gap-6">
       <OutputArea
         {...register("systemPrompt")}
         label="System Prompt"
-        onRefresh={() => {}}
+        onRefresh={() => refreshField("systemPrompt")}
       />
-      <OutputArea {...register("bio")} label="Bio" onRefresh={() => {}} />
-      <OutputArea {...register("lore")} label="Lore" onRefresh={() => {}} />
+      <OutputArea
+        {...register("bio")}
+        label="Bio"
+        onRefresh={() => refreshField("bio")}
+      />
+      <OutputArea
+        {...register("lore")}
+        label="Lore"
+        onRefresh={() => refreshField("lore")}
+      />
       <OutputArea
         {...register("postExamples")}
         label="Post Examples"
-        onRefresh={() => {}}
+        onRefresh={() => refreshField("postExamples")}
       />
-      <OutputArea {...register("topics")} label="Topics" onRefresh={() => {}} />
-      <OutputArea {...register("style")} label="Style" onRefresh={() => {}} />
+      <OutputArea
+        {...register("topics")}
+        label="Topics"
+        onRefresh={() => refreshField("topics")}
+      />
+      <OutputArea
+        {...register("style")}
+        label="Style"
+        onRefresh={() => refreshField("style")}
+      />
       <OutputArea
         {...register("adjectives")}
         label="Adjectives"
-        onRefresh={() => {}}
+        onRefresh={() => refreshField("adjectives")}
       />
     </div>
   );
