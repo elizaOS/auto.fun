@@ -1,9 +1,6 @@
 import { FormInput } from "@/components/common/input/FormInput";
 import { FormTextArea } from "@/components/common/input/FormTextArea";
-import {
-  AgentDetailsProps,
-  Personality,
-} from "../../../../types/components/forms/AgentDetails/index.type";
+import { AgentDetailsProps } from "../../../../types/components/forms/AgentDetails/index.type";
 import { Personalities } from "./Personalities";
 import { useController, useWatch } from "react-hook-form";
 import { useState } from "react";
@@ -18,6 +15,7 @@ import {
   AgentDetailsInput,
 } from "../../../../types/form.type";
 import { useRateLimiter } from "@/hooks/useRateLimiter";
+import { usePersonalities } from "@/utils/personality";
 
 export const AgentDetails = ({
   form: { register, control, getValues, setValue },
@@ -64,15 +62,7 @@ export const AgentDetails = ({
     setValue(name, newField);
   };
 
-  // TODO: replace with proper data
-  const personalities: Personality[] = [
-    { id: "1", description: "personality 1" },
-    { id: "2", description: "personality 2" },
-    { id: "3", description: "personality 3" },
-    { id: "4", description: "personality 4" },
-    { id: "5", description: "personality 5" },
-    { id: "6", description: "personality 6" },
-  ];
+  const { data: personalities } = usePersonalities();
 
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -109,7 +99,7 @@ export const AgentDetails = ({
       />
       <Personalities
         selectedPersonalities={selectedPersonalities}
-        allPersonalities={personalities}
+        allPersonalities={personalities || []}
         onChange={(personality) => onChange(personality)}
       />
       <div className="flex justify-between">
