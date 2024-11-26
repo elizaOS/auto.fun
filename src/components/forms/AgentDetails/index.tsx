@@ -100,12 +100,13 @@ export const AgentDetails = ({
       />
       <div className="flex justify-between">
         <button
-          className="flex items-center gap-3"
+          className="flex items-center gap-3 disabled:opacity-30"
           type="button"
           onClick={() => {
             setShowAdvanced((showAdvanced) => !showAdvanced);
             onAdvancedCreationOpen?.();
           }}
+          disabled={!name || !description}
         >
           <p>Advanced Creation</p>
           {showAdvanced ? (
