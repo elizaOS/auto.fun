@@ -5,6 +5,8 @@ export const FormTextArea = ({
   label,
   rightIndicator,
   rightIndicatorOpacity,
+  rightHeaderIndicator,
+  children,
   ...props
 }: FormTextAreaProps) => {
   const indicatorStyles =
@@ -12,14 +14,18 @@ export const FormTextArea = ({
 
   return (
     <div className="font-medium flex flex-col gap-3 ">
-      <label className="text-[16px]">{label}</label>
+      <div className="flex justify-between">
+        <label className="text-[16px]">{label}</label>
+        {rightHeaderIndicator}
+      </div>
       <div
-        className={`flex flex-col items-center rounded-xl bg-[#002605] overflow-hidden`}
+        className={`flex flex-col items-center rounded-xl bg-[#002605] overflow-hidden relative`}
       >
         <TextareaAutosize
           className={`w-full bg-inherit h-11 py-3 px-4 resize-none placeholder-[#017d11]`}
           {...props}
         />
+        {children}
         {rightIndicator && (
           <div
             className={`${indicatorStyles} pr-3 rounded-b-xl w-full flex justify-end pb-3`}

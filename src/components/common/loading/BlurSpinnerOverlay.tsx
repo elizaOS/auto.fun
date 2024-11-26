@@ -1,6 +1,8 @@
-export const BlurSpinnerOverlay = () => {
+export const BlurSpinnerOverlay = ({ className }: { className?: string }) => {
   return (
-    <div className="absolute inset-0 backdrop-blur-sm z-10 flex justify-center items-center">
+    <div
+      className={`absolute inset-0 backdrop-blur-sm z-10 flex justify-center items-center ${className}`}
+    >
       <svg
         width="40"
         height="40"
