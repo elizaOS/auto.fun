@@ -89,7 +89,7 @@ export const AgentDetails = ({
   return (
     <form className="flex flex-col gap-6">
       <FormInput
-        {...register("name")}
+        {...register("name", { required: true })}
         type="text"
         label="What's Your Name"
         maxLength={50}
@@ -97,7 +97,7 @@ export const AgentDetails = ({
         rightIndicator={`${name?.length ?? 0}/50`}
       />
       <FormTextArea
-        {...register("description")}
+        {...register("description", { required: true })}
         minRows={2}
         maxLength={2000}
         label="Who Are You?"
