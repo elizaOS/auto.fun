@@ -17,6 +17,7 @@ import {
   AgentDetailsForm,
   AgentDetailsInput,
 } from "../../../../types/form.type";
+import { useRateLimiter } from "@/hooks/useRateLimiter";
 
 export const AgentDetails = ({
   form: { register, control, getValues, setValue },
@@ -26,8 +27,16 @@ export const AgentDetails = ({
     useGenerateAllAdvancedAgentDetails();
   const { mutateAsync: generateSingleAgentDetail } =
     useGenerateSingleAgentDetail();
+  const { isRateLimited, makeApiCall } = useRateLimiter({
+    limit: 3,
+    timeWindow: 60 * 1000,
+  });
 
   const onRefreshAll = async () => {
+    if (isRateLimited) {
+      return;
+    }
+
     const agentFormValues = getValues();
 
     const advancedDetails = await generateAllAdvancedAgentDetails({
@@ -37,6 +46,7 @@ export const AgentDetails = ({
         personality: agentFormValues.personality,
       },
     });
+    makeApiCall();
 
     Object.entries(advancedDetails).forEach(([field, value]) => {
       setValue(field as keyof typeof advancedDetails, value);
@@ -163,6 +173,7 @@ export const AgentDetails = ({
             variant="outlined"
             type="button"
             onClick={onRefreshAll}
+            disabled={isRateLimited}
           >
             Refresh All
           </RoundedButton>
