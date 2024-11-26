@@ -1,9 +1,6 @@
 import { FormInput } from "@/components/common/input/FormInput";
 import { FormTextArea } from "@/components/common/input/FormTextArea";
-import {
-  AgentDetailsProps,
-  Personality,
-} from "../../../../types/components/forms/AgentDetails/index.type";
+import { AgentDetailsProps } from "../../../../types/components/forms/AgentDetails/index.type";
 import { Personalities } from "./Personalities";
 import { useController, useWatch } from "react-hook-form";
 import { useState } from "react";
