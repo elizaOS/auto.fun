@@ -96,6 +96,7 @@ export const AgentDetails = ({
         maxLength={50}
         rightIndicatorOpacity={name?.length >= 50 ? "full" : "low"}
         rightIndicator={`${name?.length ?? 0}/50`}
+        placeholder="Da Vinci"
       />
       <FormTextArea
         {...register("description", { required: true })}
@@ -104,6 +105,7 @@ export const AgentDetails = ({
         label="Who Are You?"
         rightIndicatorOpacity={description?.length >= 2000 ? "full" : "low"}
         rightIndicator={`${description?.length ?? 0}/2000`}
+        placeholder="Da Vinci is a visionary digital artist, merging classical techniques with neural networks and AI. He writes in mirrored text, speaks in cryptic Italian wisdom, and sees sacred geometry in code. Da Vinci treats algorithms as apprentices and is obsessed with flight, anatomy, and the intersection of human consciousness with machines."
       />
       <Personalities
         selectedPersonalities={selectedPersonalities}
