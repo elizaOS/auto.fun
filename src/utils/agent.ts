@@ -7,14 +7,13 @@ import {
 import { womboApi } from "./fetch";
 import { z } from "zod";
 
-const stripFieldWhitespace = (object: Record<string, unknown>) =>
-  Object.entries(object).reduce(
-    (newObject, [key, value]) => {
-      newObject[key] = typeof value === "string" ? value.trim() : value;
-      return newObject;
-    },
-    {} as Record<string, unknown>,
-  );
+const stripFieldWhitespace = <T extends Record<string, string>>(object: T) =>
+  Object.entries(object).reduce((newObject, [key, value]) => {
+    return {
+      ...newObject,
+      [key]: typeof value === "string" ? value.trim() : value,
+    };
+  }, {} as T);
 
 export const useGenerateSingleAgentDetail = createMutation({
   mutationKey: ["generateSingleAgentDetail"],
