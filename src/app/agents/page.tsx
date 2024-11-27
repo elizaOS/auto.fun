@@ -66,7 +66,7 @@ export default async function AgentsPage() {
   ];
 
   // TODO: remove once we have API route to fetch data
-  await fakeWait(500); // fake loading data
+  await fakeWait(1000); // fake loading data
 
   return (
     <AgentsContainer>
