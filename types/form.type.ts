@@ -54,5 +54,9 @@ export const AgentDetailsSchema = z.object({
 });
 
 export type AgentDetailsForm = z.infer<typeof AgentDetailsSchema>;
+export type AgentDetails = Omit<
+  AgentDetailsForm,
+  "description" | "personality"
+>;
 
 export type AgentDetailsInput = keyof AgentDetailsForm;

@@ -7,7 +7,7 @@ import {
 import { womboApi } from "./fetch";
 import { z } from "zod";
 
-const stripFieldWhitespace = <T extends Record<string, string>>(object: T) =>
+const stripFieldWhitespace = <T extends Record<string, unknown>>(object: T) =>
   Object.entries(object).reduce((newObject, [key, value]) => {
     return {
       ...newObject,
@@ -77,5 +77,47 @@ export const useGenerateAllAdvancedAgentDetails = createMutation({
     });
 
     return stripFieldWhitespace(result);
+  },
+});
+
+export const useGenerateAgentDetails = createMutation({
+  mutationKey: ["generateAgentDetails"],
+  retry: 2,
+  mutationFn: async ({ inputs }: { inputs: AgentDetailsForm }) => {
+    const allFields = [
+      "systemPrompt",
+      "bio",
+      "lore",
+      "postExamples",
+      "adjectives",
+      "style",
+      "topics",
+    ] satisfies AgentDetailsInput[];
+
+    const requestedOutputs = allFields.filter(
+      (field) => !inputs[field] || inputs[field].trim() === "",
+    ) as AgentDetailsInput[];
+
+    if (requestedOutputs.length === 0) {
+      return inputs;
+    }
+
+    const result = await womboApi.post({
+      endpoint: "/agent-details",
+      body: {
+        inputs,
+        requestedOutputs,
+      },
+      schema: AgentDetailsSchema.pick(
+        Object.fromEntries(
+          requestedOutputs.map((field) => [field, true]),
+        ) as Record<(typeof requestedOutputs)[number], true>,
+      ).required(),
+    });
+
+    return {
+      ...inputs,
+      ...stripFieldWhitespace(result),
+    };
   },
 });

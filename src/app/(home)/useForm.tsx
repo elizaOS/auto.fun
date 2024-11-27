@@ -157,5 +157,6 @@ export const useForm = () => {
     getFormValues,
     canGoBack,
     advancedDetailsPending,
+    agentForm,
   };
 };

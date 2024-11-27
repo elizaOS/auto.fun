@@ -11,11 +11,12 @@ import { useModalStore } from "@/components/providers/ModalProvider";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { WalletButton } from "@/components/common/button/WalletButton";
 import {
-  AgentDetailsForm,
+  AgentDetails,
   TokenMetadata,
   TwitterCredentials,
 } from "../../../types/form.type";
 import { useForm } from "./useForm";
+import { useGenerateAgentDetails } from "@/utils/agent";
 
 export type FormStep = "token" | "agent" | "twitter";
 
@@ -43,7 +44,10 @@ export default function TransactionSignPage() {
     canGoNext,
     canGoBack,
     advancedDetailsPending,
+    agentForm,
   } = useForm();
+
+  const { mutateAsync: generateAgentDetails } = useGenerateAgentDetails();
 
   const { publicKey } = useWallet();
 
@@ -53,9 +57,20 @@ export default function TransactionSignPage() {
   const convertFormData = useCallback(async (): Promise<{
     tokenMeta: TokenMetadata;
     twitterCreds: TwitterCredentials;
-    agentDetails: AgentDetailsForm;
+    agentDetails: AgentDetails;
   }> => {
+    const filledAgentDetails = await generateAgentDetails({
+      inputs: agentForm.getValues(),
+    });
+    agentForm.reset(filledAgentDetails);
     const { agentDetails, tokenMetadata, twitterCredentials } = getFormValues();
+
+    // description and personality fields not used directly in character file, only used to generate content
+    const {
+      description: _,
+      personality: __,
+      ...agentDetailsInCharacterFile
+    } = agentDetails;
 
     const media_base64 = tokenMetadata.media_base64;
 
@@ -72,9 +87,9 @@ export default function TransactionSignPage() {
         email: twitterCredentials.twitter_email,
         password: twitterCredentials.twitter_password,
       },
-      agentDetails,
+      agentDetails: agentDetailsInCharacterFile,
     };
-  }, [getFormValues]);
+  }, [agentForm, generateAgentDetails, getFormValues]);
 
   const submitForm = useCallback(async () => {
     changeModal(true, ModalType.LAUNCHING_TOKEN, {});
