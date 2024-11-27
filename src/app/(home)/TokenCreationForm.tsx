@@ -3,6 +3,8 @@ import { FormInput } from "@/components/common/input/FormInput";
 import { FormTextArea } from "@/components/common/input/FormTextArea";
 import { UseFormReturn, useWatch } from "react-hook-form";
 import { TokenMetadataForm } from "../../../types/form.type";
+import { DropdownButton } from "@/components/common/button/DropdownButton";
+import { useState } from "react";
 
 // TODO: put form tag in here, will split into 3 separate forms
 // that way we can easily check form validity for each form step
@@ -14,6 +16,7 @@ export const TokenCreationForm = ({
   const symbol = useWatch({ control, name: "symbol" });
   const description = useWatch({ control, name: "description" });
   const name = useWatch({ control, name: "name" });
+  const [showLinks, setShowLinks] = useState(false);
 
   return (
     <form className="flex flex-col w-full m-auto gap-7 justify-center">
@@ -83,6 +86,32 @@ export const TokenCreationForm = ({
         }}
         min={0}
       />
+
+      <DropdownButton open={showLinks} onClick={() => setShowLinks(!showLinks)}>
+        Add links
+      </DropdownButton>
+
+      {showLinks && (
+        <>
+          <FormInput
+            type="text"
+            {...register("links.twitter")}
+            label="X / Twitter Link (optional)"
+          />
+
+          <FormInput
+            type="text"
+            {...register("links.telegram")}
+            label="Telegram Link (optional)"
+          />
+
+          <FormInput
+            type="text"
+            {...register("links.website")}
+            label="Website (optional)"
+          />
+        </>
+      )}
     </form>
   );
 };

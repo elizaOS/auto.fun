@@ -6,6 +6,7 @@ export type TokenMetadata = {
   initial_sol: number;
   image_base64: string;
   description: string;
+  links: TokenLinks;
 };
 
 export type TwitterCredentials = {
@@ -14,12 +15,19 @@ export type TwitterCredentials = {
   password: string;
 };
 
+type TokenLinks = {
+  twitter: string;
+  telegram: string;
+  website: string;
+};
+
 export type TokenMetadataForm = {
   name: string;
   symbol: string;
   initial_sol: string;
   media_base64: File;
   description: string;
+  links: TokenLinks;
 };
 
 export type AgentFields =
@@ -54,5 +62,9 @@ export const AgentDetailsSchema = z.object({
 });
 
 export type AgentDetailsForm = z.infer<typeof AgentDetailsSchema>;
+export type AgentDetails = Omit<
+  AgentDetailsForm,
+  "description" | "personality"
+>;
 
 export type AgentDetailsInput = keyof AgentDetailsForm;
