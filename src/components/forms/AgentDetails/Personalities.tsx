@@ -22,8 +22,8 @@ export const Personalities = ({
   onChange,
   selectedPersonalities,
 }: PersonalitiesProps) => {
-  const selectPersonality = (id: string) => {
-    let newPersonality: string[] = [];
+  const selectPersonality = (id: number) => {
+    let newPersonality: number[] = [];
     const idIndex = selectedPersonalities.indexOf(id);
 
     if (idIndex > -1) {
@@ -47,13 +47,13 @@ export const Personalities = ({
         <p className="opacity-40">select up to 3</p>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        {allPersonalities.map(({ id, description }) => (
+        {allPersonalities.map(({ id, name }) => (
           <PersonalitySelection
             selected={selectedPersonalities.indexOf(id) > -1}
             key={id}
             onClick={() => selectPersonality(id)}
           >
-            {description}
+            {name}
           </PersonalitySelection>
         ))}
       </div>

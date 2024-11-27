@@ -7,6 +7,15 @@ import {
 import { womboApi } from "./fetch";
 import { z } from "zod";
 
+const stripFieldWhitespace = (object: Record<string, unknown>) =>
+  Object.entries(object).reduce(
+    (newObject, [key, value]) => {
+      newObject[key] = typeof value === "string" ? value.trim() : value;
+      return newObject;
+    },
+    {} as Record<string, unknown>,
+  );
+
 export const useGenerateSingleAgentDetail = createMutation({
   mutationKey: ["generateSingleAgentDetail"],
   retry: 2,
@@ -26,7 +35,7 @@ export const useGenerateSingleAgentDetail = createMutation({
       schema: z.object({ [output]: z.string() }),
     });
 
-    return result[output];
+    return stripFieldWhitespace(result)[output];
   },
 });
 
@@ -68,6 +77,6 @@ export const useGenerateAllAdvancedAgentDetails = createMutation({
       >).required(),
     });
 
-    return result;
+    return stripFieldWhitespace(result);
   },
 });
