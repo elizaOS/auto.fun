@@ -3,8 +3,8 @@ import { AgentDetails } from "../forms/AgentDetails";
 import { AgentDetailsForm } from "../../../types/form.type";
 import { CenterFormContainer } from "../common/containers/CenterFormContainer";
 import { RoundedButton } from "../common/button/RoundedButton";
-import Image from "next/image";
 import { AgentUpdateFormProps } from "../../../types/components/agents/AgentUpdateForm.type";
+import { AgentMedia } from "./AgentMedia";
 
 export const AgentUpdateForm = ({
   isActive,
@@ -47,7 +47,7 @@ export const AgentUpdateForm = ({
       <div className="flex flex-col gap-6 absolute top-24 left-[5%]">
         <div className="p-4 flex bg-[#002605] rounded-xl items-center justify-between">
           <div className="flex gap-3 items-center">
-            <Image width={45} height={45} src={mediaSrc} alt="agent media" />
+            <AgentMedia mediaSrc={mediaSrc} />
             <p>{name}</p>
           </div>
 

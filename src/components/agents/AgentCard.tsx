@@ -1,5 +1,5 @@
-import Image from "next/image";
 import { AgentCardProps } from "../../../types/components/agents/AgentCard.type";
+import { AgentMedia } from "./AgentMedia";
 
 export const AgentCard = ({
   mediaSrc,
@@ -13,7 +13,7 @@ export const AgentCard = ({
       <div className="flex flex-col bg-[#002605] p-6 rounded-2xl gap-6">
         <div className="flex justify-between items-center">
           <div className="flex gap-3 items-center">
-            <Image width={45} height={45} src={mediaSrc} alt="agent media" />
+            <AgentMedia mediaSrc={mediaSrc} />
             <p>{name}</p>
           </div>
           <div
