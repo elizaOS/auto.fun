@@ -1,4 +1,3 @@
-import { AgentCard } from "@/components/agents/AgentCard";
 import { AgentData } from "../../../types/components/agents/index.type";
 import { AgentsContainer } from "@/components/agents";
 
@@ -65,14 +64,7 @@ export default async function AgentsPage() {
     },
   ];
 
-  // TODO: remove once we have API route to fetch data
   await fakeWait(1000); // fake loading data
 
-  return (
-    <AgentsContainer>
-      {fakeAgentData.map((agentData) => {
-        return <AgentCard key={agentData.id} {...agentData} />;
-      })}
-    </AgentsContainer>
-  );
+  return <AgentsContainer agentDatas={fakeAgentData} />;
 }
