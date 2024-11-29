@@ -1,4 +1,4 @@
-import { createMutation } from "react-query-kit";
+import { createMutation, createQuery } from "react-query-kit";
 import {
   AgentDetailsForm,
   AgentDetailsInput,
@@ -6,6 +6,7 @@ import {
 } from "../../types/form.type";
 import { womboApi } from "./fetch";
 import { z } from "zod";
+import { AgentData } from "../../types/components/agents/index.type";
 
 const stripFieldWhitespace = <T extends Record<string, unknown>>(object: T) =>
   Object.entries(object).reduce((newObject, [key, value]) => {
@@ -121,3 +122,39 @@ export const useGenerateAgentDetails = createMutation({
     };
   },
 });
+
+export const useAgentDetails = createQuery<
+  AgentDetailsForm,
+  Pick<AgentData, "id">
+>({
+  queryKey: ["agentDetails"],
+  fetcher: async ({ id }) => {
+    // TODO: uncomment once route is created
+    // const result = await womboApi.get({
+    //   endpoint: `/agents/${id}`,
+    //   schema: AgentDetailsSchema,
+    // });
+    console.log(id);
+
+    // TODO: fake a wait time here
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // fake loading data
+
+    const mockResult = {
+      name: "pepe",
+      description:
+        "this is some description about pepe himself, the greatest deity to march across through the ether.",
+      personality: [1, 3, 2],
+      systemPrompt: "this is system prompt",
+      bio: "this is some bio",
+      lore: "this is lore",
+      postExamples: undefined,
+      adjectives: "adjective 1\nadjective2\nadjective3",
+      style: undefined,
+      topics: "topics topics and more topics",
+    };
+
+    return mockResult;
+  },
+});
+
+// TODO: create mutation for PUT when updating agent

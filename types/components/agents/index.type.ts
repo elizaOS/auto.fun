@@ -1,9 +1,7 @@
 export type AgentData = {
-  id: string;
+  id: number;
   mediaSrc: string;
   name: string;
   isActive: boolean;
   description: string;
 };
-
-// TODO: zod validation for API

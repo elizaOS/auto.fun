@@ -6,6 +6,7 @@ import { ToastContainer } from "react-toastify";
 import { Nav } from "@/components/nav";
 import { Providers } from "@/components/providers";
 import { SkeletonTheme } from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 
 const dmMono = DM_Mono({
   weight: ["300", "400", "500"],

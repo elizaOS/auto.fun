@@ -11,6 +11,7 @@ import {
   useGenerateSingleAgentDetail,
 } from "@/utils/agent";
 import {
+  advancedDetails,
   AgentDetailsForm,
   AgentDetailsInput,
 } from "../../../../types/form.type";
@@ -21,9 +22,6 @@ import { useRateLimiter } from "@/hooks/useRateLimiter";
 export const AgentDetails = ({
   form: { register, control, getValues, setValue },
 }: AgentDetailsProps) => {
-  const [hasOpenedAdvancedCreation, setHasOpenedAdvancedCreation] =
-    useState(false);
-
   const {
     mutateAsync: generateAllAdvancedAgentDetails,
     isPending: advancedDetailsPending,
@@ -62,8 +60,6 @@ export const AgentDetails = ({
   ]);
 
   const onAdvancedCreationOpen = useCallback(async () => {
-    if (hasOpenedAdvancedCreation) return;
-
     const agentFormValues = getValues();
 
     const advancedDetails = await generateAllAdvancedAgentDetails({
@@ -74,17 +70,10 @@ export const AgentDetails = ({
       },
     });
 
-    setHasOpenedAdvancedCreation(true);
-
     Object.entries(advancedDetails).forEach(([field, value]) => {
       setValue(field as keyof typeof advancedDetails, value);
     });
-  }, [
-    generateAllAdvancedAgentDetails,
-    getValues,
-    hasOpenedAdvancedCreation,
-    setValue,
-  ]);
+  }, [generateAllAdvancedAgentDetails, getValues, setValue]);
 
   const { mutateAsync: generateSingleAgentDetail } =
     useGenerateSingleAgentDetail();
@@ -146,7 +135,13 @@ export const AgentDetails = ({
             disabled={!name || !description}
             onClick={() => {
               setShowAdvanced((showAdvanced) => !showAdvanced);
-              onAdvancedCreationOpen?.();
+              const values = getValues();
+
+              if (
+                advancedDetails.every((field) => values[field] === undefined)
+              ) {
+                onAdvancedCreationOpen?.();
+              }
             }}
             open={showAdvanced}
           >

@@ -42,6 +42,16 @@ export type AgentFields =
   | "style"
   | "topics";
 
+export const advancedDetails: ReadonlyArray<AgentFields> = [
+  "systemPrompt",
+  "bio",
+  "lore",
+  "postExamples",
+  "adjectives",
+  "style",
+  "topics",
+];
+
 export type TwitterDetailsForm = {
   twitter_email: string;
   twitter_username: string;
