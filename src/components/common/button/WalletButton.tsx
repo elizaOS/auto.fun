@@ -239,7 +239,7 @@ export const WalletButton = () => {
       wasConnected.current = true;
     }
     // NOTE: to also account for disconnections from interactions not through the webapp
-    if ((!connected && wasConnected.current) || (!connected && authenticated)) {
+    if (!connected && wasConnected.current) {
       signOut();
       return;
     }
