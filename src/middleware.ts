@@ -26,7 +26,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (!authenticated && url.pathname !== "/") {
+  if (!authenticated && url.pathname === "/agents") {
     url.pathname = "/";
     return NextResponse.redirect(url);
   }
