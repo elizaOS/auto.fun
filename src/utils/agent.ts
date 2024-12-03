@@ -6,6 +6,13 @@ import {
 } from "../../types/form.type";
 import { womboApi } from "./fetch";
 import { z } from "zod";
+import {
+  AgentData,
+  AgentDataSchema,
+  AgentSummary,
+  AgentSummarySchema,
+} from "../../types/components/agents/index.type";
+import { createAuthenticatedQuery } from "./api/createAuthenticatedQuery";
 
 const stripFieldWhitespace = <T extends Record<string, unknown>>(object: T) =>
   Object.entries(object).reduce((newObject, [key, value]) => {
@@ -28,7 +35,11 @@ export const useGenerateSingleAgentDetail = createMutation({
     const result = await womboApi.post({
       endpoint: "/agent-details",
       body: {
-        inputs,
+        inputs: {
+          ...inputs,
+          personality: inputs.personalities,
+          personalities: undefined,
+        },
         requestedOutputs: [output],
       },
       schema: z.object({ [output]: z.string() }),
@@ -44,7 +55,7 @@ export const useGenerateAllAdvancedAgentDetails = createMutation({
   mutationFn: async ({
     inputs,
   }: {
-    inputs: Pick<AgentDetailsForm, "name" | "description" | "personality">;
+    inputs: Pick<AgentDetailsForm, "name" | "description" | "personalities">;
   }) => {
     const requestedOutputs = [
       "systemPrompt",
@@ -59,7 +70,11 @@ export const useGenerateAllAdvancedAgentDetails = createMutation({
     const result = await womboApi.post({
       endpoint: "/agent-details",
       body: {
-        inputs,
+        inputs: {
+          name: inputs.name,
+          personality: inputs.personalities,
+          description: inputs.description,
+        },
         requestedOutputs,
       },
       schema: AgentDetailsSchema.pick({
@@ -119,5 +134,32 @@ export const useGenerateAgentDetails = createMutation({
       ...inputs,
       ...stripFieldWhitespace(result),
     };
+  },
+});
+
+export const useAgentData = createAuthenticatedQuery<
+  AgentData,
+  Pick<AgentData, "id">
+>({
+  queryKey: ["agentData"],
+  fetcher: async ({ id }) => {
+    const result = await womboApi.get({
+      endpoint: `/agents/${id}`,
+      schema: AgentDataSchema,
+    });
+
+    return result;
+  },
+});
+
+export const useAgents = createAuthenticatedQuery<AgentSummary[]>({
+  queryKey: ["agents"],
+  fetcher: async () => {
+    const result = await womboApi.get({
+      endpoint: `/agents`,
+      schema: z.array(AgentSummarySchema),
+    });
+
+    return result;
   },
 });

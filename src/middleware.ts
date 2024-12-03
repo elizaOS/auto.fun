@@ -3,6 +3,7 @@ import { NextResponse, NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
   const authorized = request.cookies.get("authorized")?.value;
+  const authenticated = request.cookies.get("publicKey")?.value;
   const url = request.nextUrl.clone();
 
   // Allow access to static files and the API
@@ -22,6 +23,11 @@ export function middleware(request: NextRequest) {
   // Redirect unauthorized users to the landing page
   if (!authorized) {
     url.pathname = "/landing";
+    return NextResponse.redirect(url);
+  }
+
+  if (!authenticated && url.pathname !== "/") {
+    url.pathname = "/";
     return NextResponse.redirect(url);
   }
 

@@ -29,6 +29,9 @@ const axiosInstance = axios.create({
   responseType: "json",
 });
 
+// server cookie support
+axiosInstance.defaults.withCredentials = true;
+
 export const apiDefaults = axiosInstance.defaults;
 
 const axiosWrapper = async <TSchema, T1 extends ZodTypeDef, T2>({

@@ -1,12 +1,16 @@
 "use client";
 
-import { WalletButton } from "@/components/common/button/WalletButton";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { RoundedButton } from "../common/button/RoundedButton";
 import { HowItWorks } from "./HowItWorks";
-import { usePathname, useRouter } from "next/navigation";
+import { WalletButton } from "../common/button/WalletButton";
+import { useUserStore } from "../providers/UserProvider";
 
 export const Nav = () => {
+  const authenticated = useUserStore((state) => state.authenticated);
   const pathname = usePathname();
-  const router = useRouter();
 
   if (pathname === "/landing") {
     return null;
@@ -15,12 +19,34 @@ export const Nav = () => {
   return (
     <nav className="px-[5%] flex justify-between items-center pt-12 gap-6 sm:flex-col">
       <div className="flex gap-6 items-center">
-        <button
-          onClick={() => router.push("/")}
-          className="flex gap-4 items-center"
-        >
-          <img src="/logo_rounded_25percent.png" className="h-10" alt="logo" />
-        </button>
+        <div className="flex gap-6 items-center">
+          <Link href="/" className="flex items-center">
+            <Image
+              height={40}
+              width={40}
+              src="/logo_rounded_25percent.png"
+              alt="logo"
+            />
+          </Link>
+          <Link href="/">
+            <RoundedButton
+              className="p-3 font-medium border-none"
+              variant="outlined"
+            >
+              Create Agent
+            </RoundedButton>
+          </Link>
+          {authenticated && (
+            <Link href="/agents">
+              <RoundedButton
+                className="p-3 font-medium border-none"
+                variant="outlined"
+              >
+                My Agents
+              </RoundedButton>
+            </Link>
+          )}
+        </div>
         <div className="sm:block hidden">
           <HowItWorks />
         </div>
@@ -31,7 +57,11 @@ export const Nav = () => {
         </div>
         <WalletButton />
 
-        <a href="https://x.com/autodotfun" target="_blank">
+        <a
+          href="https://x.com/autodotfun"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           <svg
             width="44"
             height="44"

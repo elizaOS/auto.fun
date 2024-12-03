@@ -33,7 +33,7 @@ export type TokenMetadataForm = {
 export type AgentFields =
   | "name"
   | "description"
-  | "personality"
+  | "personalities"
   | "systemPrompt"
   | "bio"
   | "lore"
@@ -41,6 +41,16 @@ export type AgentFields =
   | "adjectives"
   | "style"
   | "topics";
+
+export const advancedDetails: ReadonlyArray<AgentFields> = [
+  "systemPrompt",
+  "bio",
+  "lore",
+  "postExamples",
+  "adjectives",
+  "style",
+  "topics",
+];
 
 export type TwitterDetailsForm = {
   twitter_email: string;
@@ -51,7 +61,7 @@ export type TwitterDetailsForm = {
 export const AgentDetailsSchema = z.object({
   name: z.string(),
   description: z.string(),
-  personality: z.number().array(),
+  personalities: z.number().array(),
   systemPrompt: z.string().optional(),
   bio: z.string().optional(),
   lore: z.string().optional(),
@@ -62,9 +72,6 @@ export const AgentDetailsSchema = z.object({
 });
 
 export type AgentDetailsForm = z.infer<typeof AgentDetailsSchema>;
-export type AgentDetails = Omit<
-  AgentDetailsForm,
-  "description" | "personality"
->;
+export type AgentDetails = AgentDetailsForm;
 
 export type AgentDetailsInput = keyof AgentDetailsForm;

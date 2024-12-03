@@ -5,7 +5,6 @@ export type Personality = { id: number; name: string };
 
 export type AgentDetailsProps = {
   form: UseFormReturn<AgentDetailsForm, unknown, undefined>;
-  onAdvancedCreationOpen?: () => void;
-  onRefreshAll?: () => void;
-  isRateLimited?: boolean;
+  mode: "update" | "create";
+  loading?: boolean;
 };
