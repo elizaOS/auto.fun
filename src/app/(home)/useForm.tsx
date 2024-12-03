@@ -11,7 +11,9 @@ import { AgentDetails } from "@/components/forms/AgentDetails";
 import { TwitterLoginForm } from "@/components/forms/TwitterLoginForm";
 
 export const useForm = () => {
-  const tokenForm = useFormRhf<TokenMetadataForm>();
+  const tokenForm = useFormRhf<TokenMetadataForm>({
+    defaultValues: { links: {} },
+  });
   const agentForm = useFormRhf<AgentDetailsForm>();
   const twitterForm = useFormRhf<TwitterDetailsForm>();
   const [currentStep, setCurrentStep] = useState<FormStep>("token");
@@ -63,7 +65,7 @@ export const useForm = () => {
       case "token":
         return <TokenCreationForm form={tokenForm} />;
       case "agent":
-        return <AgentDetails form={agentForm} />;
+        return <AgentDetails form={agentForm} mode="create" />;
       case "twitter":
         return <TwitterLoginForm form={twitterForm} />;
     }

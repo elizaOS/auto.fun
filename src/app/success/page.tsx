@@ -39,6 +39,7 @@ export default function SuccessPage() {
             <a
               href={`https://pump.fun/coin/${mintPublicKey}`}
               target="_blank"
+              rel="noopener noreferrer"
               className="self-stretch p-3 bg-[#03ff24] rounded-xl justify-center items-center gap-2 inline-flex"
             >
               <div className="text-black text-base leading-tight">
@@ -48,6 +49,7 @@ export default function SuccessPage() {
             <a
               href={`https://x.com/${twitterHandle}`}
               target="_blank"
+              rel="noopener noreferrer"
               className="self-stretch p-3 bg-[#002605] rounded-xl border border-[#01c167] justify-center items-center gap-2 inline-flex"
             >
               <div className="text-[#03FF24] text-base leading-tight">

@@ -6,8 +6,10 @@ import Image from "next/image";
 import { RoundedButton } from "../common/button/RoundedButton";
 import { HowItWorks } from "./HowItWorks";
 import { WalletButton } from "../common/button/WalletButton";
+import { useUserStore } from "../providers/UserProvider";
 
 export const Nav = () => {
+  const authenticated = useUserStore((state) => state.authenticated);
   const pathname = usePathname();
 
   if (pathname === "/landing") {
@@ -34,14 +36,16 @@ export const Nav = () => {
               Create Agent
             </RoundedButton>
           </Link>
-          <Link href="/agents">
-            <RoundedButton
-              className="p-3 font-medium border-none"
-              variant="outlined"
-            >
-              My Agents
-            </RoundedButton>
-          </Link>
+          {authenticated && (
+            <Link href="/agents">
+              <RoundedButton
+                className="p-3 font-medium border-none"
+                variant="outlined"
+              >
+                My Agents
+              </RoundedButton>
+            </Link>
+          )}
         </div>
         <div className="sm:block hidden">
           <HowItWorks />
@@ -53,7 +57,11 @@ export const Nav = () => {
         </div>
         <WalletButton />
 
-        <a href="https://x.com/autodotfun" target="_blank">
+        <a
+          href="https://x.com/autodotfun"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           <svg
             width="44"
             height="44"

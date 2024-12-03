@@ -2,11 +2,23 @@ import { useMemo } from "react";
 import { AgentData } from "../../../types/components/agents/index.type";
 import Image from "next/image";
 
-export const AgentMedia = ({ mediaSrc }: Pick<AgentData, "mediaSrc">) => {
+export const AgentMedia = ({ image_src }: Pick<AgentData, "image_src">) => {
   const mimeType = useMemo(() => {
-    const mimeType = mediaSrc.match(/data:(.*?);base64,/)?.[1];
+    const mimeType = image_src?.match(/data:(.*?);base64,/)?.[1];
     return mimeType;
-  }, [mediaSrc]);
+  }, [image_src]);
+
+  if (!image_src || !mimeType) {
+    return (
+      <Image
+        src={"/anonymous.png"}
+        alt="agent media"
+        width={45}
+        height={45}
+        className="rounded-lg"
+      />
+    );
+  }
 
   return mimeType === "video/mp4" ? (
     <video
@@ -14,11 +26,18 @@ export const AgentMedia = ({ mediaSrc }: Pick<AgentData, "mediaSrc">) => {
       loop
       muted
       playsInline
-      src={mediaSrc}
+      src={image_src}
       width={45}
       height={45}
+      className="rounded-lg"
     />
   ) : (
-    <Image width={45} height={45} src={mediaSrc} alt="agent media" />
+    <Image
+      className="rounded-lg"
+      width={45}
+      height={45}
+      src={image_src}
+      alt="agent media"
+    />
   );
 };

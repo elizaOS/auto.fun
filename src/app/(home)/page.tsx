@@ -65,13 +65,6 @@ export default function TransactionSignPage() {
     agentForm.reset(filledAgentDetails);
     const { agentDetails, tokenMetadata, twitterCredentials } = getFormValues();
 
-    // description and personality fields not used directly in character file, only used to generate content
-    const {
-      description: _,
-      personality: __,
-      ...agentDetailsInCharacterFile
-    } = agentDetails;
-
     const media_base64 = tokenMetadata.media_base64;
 
     return {
@@ -87,7 +80,7 @@ export default function TransactionSignPage() {
         email: twitterCredentials.twitter_email,
         password: twitterCredentials.twitter_password,
       },
-      agentDetails: agentDetailsInCharacterFile,
+      agentDetails,
     };
   }, [agentForm, generateAgentDetails, getFormValues]);
 

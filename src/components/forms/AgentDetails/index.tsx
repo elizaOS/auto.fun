@@ -3,7 +3,7 @@ import { FormTextArea } from "@/components/common/input/FormTextArea";
 import { AgentDetailsProps } from "../../../../types/components/forms/AgentDetails/index.type";
 import { Personalities } from "./Personalities";
 import { useController, useWatch } from "react-hook-form";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { AdvancedCreation } from "./AdvancedCreation";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import {
@@ -21,11 +21,19 @@ import { useRateLimiter } from "@/hooks/useRateLimiter";
 
 export const AgentDetails = ({
   form: { register, control, getValues, setValue },
+  mode,
+  loading,
 }: AgentDetailsProps) => {
   const {
     mutateAsync: generateAllAdvancedAgentDetails,
     isPending: advancedDetailsPending,
   } = useGenerateAllAdvancedAgentDetails();
+
+  const hasOpenedAdvancedDetails = useRef(false);
+  const hasAdvancedDetails = useMemo(() => {
+    const values = getValues();
+    return !advancedDetails.every((field) => values[field] === undefined);
+  }, [getValues]);
 
   const { isRateLimited, makeApiCall } = useRateLimiter({
     limit: 3,
@@ -40,11 +48,7 @@ export const AgentDetails = ({
     const agentFormValues = getValues();
 
     const advancedDetails = await generateAllAdvancedAgentDetails({
-      inputs: {
-        name: agentFormValues.name,
-        description: agentFormValues.description,
-        personality: agentFormValues.personality,
-      },
+      inputs: agentFormValues,
     });
     makeApiCall();
 
@@ -63,11 +67,7 @@ export const AgentDetails = ({
     const agentFormValues = getValues();
 
     const advancedDetails = await generateAllAdvancedAgentDetails({
-      inputs: {
-        name: agentFormValues.name,
-        description: agentFormValues.description,
-        personality: agentFormValues.personality,
-      },
+      inputs: agentFormValues,
     });
 
     Object.entries(advancedDetails).forEach(([field, value]) => {
@@ -99,7 +99,7 @@ export const AgentDetails = ({
   const {
     field: { onChange, value: selectedPersonalities },
   } = useController({
-    name: "personality",
+    name: "personalities",
     control,
     defaultValue: [],
   });
@@ -135,13 +135,16 @@ export const AgentDetails = ({
             disabled={!name || !description}
             onClick={() => {
               setShowAdvanced((showAdvanced) => !showAdvanced);
-              const values = getValues();
 
               if (
-                advancedDetails.every((field) => values[field] === undefined)
+                !hasAdvancedDetails &&
+                mode === "create" &&
+                !hasOpenedAdvancedDetails.current
               ) {
                 onAdvancedCreationOpen?.();
               }
+
+              hasOpenedAdvancedDetails.current = true;
             }}
             open={showAdvanced}
           >
@@ -163,7 +166,7 @@ export const AgentDetails = ({
           <AdvancedCreation register={register} refreshField={refreshField} />
         )}
       </form>
-      {advancedDetailsPending && (
+      {(advancedDetailsPending || loading) && (
         <div className="absolute inset-0 backdrop-blur-sm z-10 flex justify-center items-center">
           <svg
             width="40"

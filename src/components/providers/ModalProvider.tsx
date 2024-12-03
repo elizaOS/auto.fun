@@ -17,7 +17,7 @@ export const useModalStore = <T,>(selector: (store: ModalStore) => T): T => {
   const modalStoreContext = useContext(ModalStoreContext);
 
   if (!modalStoreContext) {
-    throw new Error(`useModalStore must be used within ModalStoreProvider`);
+    throw new Error(`useModalStore must be used within ModalProvider`);
   }
 
   return useStore(modalStoreContext, selector);

@@ -1,5 +1,6 @@
-import { AgentData } from "./index.type";
+import { AgentsProps, AgentSummary } from "./index.type";
 
 export type AgentUpdateFormProps = {
   onBack: () => void;
-} & AgentData;
+} & AgentSummary &
+  Pick<AgentsProps, "refetchAgents">;

@@ -1,7 +1,7 @@
 import { AgentsContainer } from "@/components/agents";
 import Skeleton from "react-loading-skeleton";
 
-export default function Loading() {
+export const AgentsGridSkeleton = () => {
   return (
     <AgentsContainer>
       {Array.from({ length: 9 }).map((_, idx) => {
@@ -29,4 +29,4 @@ export default function Loading() {
       })}
     </AgentsContainer>
   );
-}
+};

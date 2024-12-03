@@ -13,7 +13,7 @@ export const SkeletonForm = ({
         <div className="flex flex-col gap-6 absolute top-6 left-[-25%]">
           <Skeleton width={268} height={65} className="rounded-xl" />
           <div className="flex flex-col gap-4">
-            {Array.from({ length: 3 }).map((_, idx) => (
+            {Array.from({ length: 2 }).map((_, idx) => (
               <Skeleton
                 key={idx}
                 width={268}

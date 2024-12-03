@@ -6,6 +6,7 @@ import { WalletProvider } from "./WalletProvider";
 import { Session } from "next-auth";
 import { ModalProvider } from "./ModalProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { UserProvider } from "./UserProvider";
 
 // Create a context to share autoConnect state and setter
 interface AutoConnectContextType {
@@ -37,7 +38,9 @@ export function Providers({
       <AutoConnectContext.Provider value={{ autoConnect, setAutoConnect }}>
         <WalletProvider autoConnect={autoConnect}>
           <QueryClientProvider client={queryClient}>
-            <ModalProvider>{children}</ModalProvider>
+            <UserProvider>
+              <ModalProvider>{children}</ModalProvider>
+            </UserProvider>
           </QueryClientProvider>
         </WalletProvider>
       </AutoConnectContext.Provider>

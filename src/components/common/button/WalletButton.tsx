@@ -11,6 +11,8 @@ import { Header, Payload, SIWS } from "@web3auth/sign-in-with-solana";
 import bs58 from "bs58";
 import { toast } from "react-toastify";
 import { z } from "zod";
+import { useRouter, usePathname } from "next/navigation";
+import { useUserStore } from "@/components/providers/UserProvider";
 
 const ConnectedWalletButton = ({
   address,
@@ -106,10 +108,13 @@ const ConnectedWalletButton = ({
 export const WalletButton = () => {
   const { connect, disconnect, publicKey, connected, select, signMessage } =
     useWallet();
+  const router = useRouter();
+  const pathname = usePathname();
   const { setAutoConnect } = useContext(AutoConnectContext);
-  const [status, setStatus] = useState<"authenticated" | "unauthenticated">(
-    "unauthenticated",
-  );
+  const setAuthenticated = useUserStore((state) => state.setAuthenticated);
+  const authenticated = useUserStore((state) => state.authenticated);
+
+  const pendingAuthentication = useRef(false);
   const wasConnected = useRef(false);
 
   const buttonText = publicKey ? "Disconnect Wallet" : "Connect Wallet";
@@ -165,25 +170,50 @@ export const WalletButton = () => {
   }, []);
 
   const signOut = useCallback(async () => {
-    localStorage.setItem("walletAutoConnect", "false");
-    setAutoConnect(false);
-    setStatus("unauthenticated");
-    wasConnected.current = false;
-    if (connected) {
-      await disconnect();
+    try {
+      localStorage.setItem("walletAutoConnect", "false");
+      setAutoConnect(false);
+      setAuthenticated(false);
+      wasConnected.current = false;
+      if (connected) {
+        await disconnect();
+      }
+      await fetch("/api/auth/sign-out", { method: "DELETE" });
+    } catch (err) {
+      console.error(err);
     }
-  }, [connected, disconnect, setAutoConnect]);
+
+    if (pathname !== "/") {
+      router.push("/");
+    }
+  }, [
+    connected,
+    disconnect,
+    pathname,
+    router,
+    setAuthenticated,
+    setAutoConnect,
+  ]);
 
   const signIn = useCallback(async () => {
+    pendingAuthentication.current = true;
     try {
+      const response = await fetch("/api/auth/status");
+      const { authenticated } = await response.json();
+      if (authenticated) {
+        return;
+      }
+
       const { message, sign } = await createSolanaMessage();
       await authenticate(message, sign);
-      setStatus("authenticated");
+      setAuthenticated(true);
     } catch (error) {
       await signOut();
       console.error(error);
+    } finally {
+      pendingAuthentication.current = false;
     }
-  }, [authenticate, createSolanaMessage, signOut]);
+  }, [authenticate, createSolanaMessage, setAuthenticated, signOut]);
 
   const connectWallet = async () => {
     try {
@@ -209,16 +239,16 @@ export const WalletButton = () => {
       wasConnected.current = true;
     }
     // NOTE: to also account for disconnections from interactions not through the webapp
-    if (!connected && wasConnected.current) {
+    if ((!connected && wasConnected.current) || (!connected && authenticated)) {
       signOut();
       return;
     }
 
-    if (connected && status === "unauthenticated") {
+    if (connected && !authenticated && !pendingAuthentication.current) {
       // once we've connected we have access to the publicKey and can run this to sign in
       signIn();
     }
-  }, [connected, signIn, signOut, status]);
+  }, [connected, signIn, signOut, authenticated]);
 
   return publicKey ? (
     <ConnectedWalletButton

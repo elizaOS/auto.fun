@@ -1,4 +1,4 @@
-import { createMutation, createQuery } from "react-query-kit";
+import { createMutation } from "react-query-kit";
 import {
   AgentDetailsForm,
   AgentDetailsInput,
@@ -6,7 +6,13 @@ import {
 } from "../../types/form.type";
 import { womboApi } from "./fetch";
 import { z } from "zod";
-import { AgentData } from "../../types/components/agents/index.type";
+import {
+  AgentData,
+  AgentDataSchema,
+  AgentSummary,
+  AgentSummarySchema,
+} from "../../types/components/agents/index.type";
+import { createAuthenticatedQuery } from "./api/createAuthenticatedQuery";
 
 const stripFieldWhitespace = <T extends Record<string, unknown>>(object: T) =>
   Object.entries(object).reduce((newObject, [key, value]) => {
@@ -29,7 +35,11 @@ export const useGenerateSingleAgentDetail = createMutation({
     const result = await womboApi.post({
       endpoint: "/agent-details",
       body: {
-        inputs,
+        inputs: {
+          ...inputs,
+          personality: inputs.personalities,
+          personalities: undefined,
+        },
         requestedOutputs: [output],
       },
       schema: z.object({ [output]: z.string() }),
@@ -45,7 +55,7 @@ export const useGenerateAllAdvancedAgentDetails = createMutation({
   mutationFn: async ({
     inputs,
   }: {
-    inputs: Pick<AgentDetailsForm, "name" | "description" | "personality">;
+    inputs: Pick<AgentDetailsForm, "name" | "description" | "personalities">;
   }) => {
     const requestedOutputs = [
       "systemPrompt",
@@ -60,7 +70,11 @@ export const useGenerateAllAdvancedAgentDetails = createMutation({
     const result = await womboApi.post({
       endpoint: "/agent-details",
       body: {
-        inputs,
+        inputs: {
+          name: inputs.name,
+          personality: inputs.personalities,
+          description: inputs.description,
+        },
         requestedOutputs,
       },
       schema: AgentDetailsSchema.pick({
@@ -123,38 +137,29 @@ export const useGenerateAgentDetails = createMutation({
   },
 });
 
-export const useAgentDetails = createQuery<
-  AgentDetailsForm,
+export const useAgentData = createAuthenticatedQuery<
+  AgentData,
   Pick<AgentData, "id">
 >({
-  queryKey: ["agentDetails"],
+  queryKey: ["agentData"],
   fetcher: async ({ id }) => {
-    // TODO: uncomment once route is created
-    // const result = await womboApi.get({
-    //   endpoint: `/agents/${id}`,
-    //   schema: AgentDetailsSchema,
-    // });
-    console.log(id);
+    const result = await womboApi.get({
+      endpoint: `/agents/${id}`,
+      schema: AgentDataSchema,
+    });
 
-    // TODO: fake a wait time here
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // fake loading data
-
-    const mockResult = {
-      name: "pepe",
-      description:
-        "this is some description about pepe himself, the greatest deity to march across through the ether.",
-      personality: [1, 3, 2],
-      systemPrompt: "this is system prompt",
-      bio: "this is some bio",
-      lore: "this is lore",
-      postExamples: undefined,
-      adjectives: "adjective 1\nadjective2\nadjective3",
-      style: undefined,
-      topics: "topics topics and more topics",
-    };
-
-    return mockResult;
+    return result;
   },
 });
 
-// TODO: create mutation for PUT when updating agent
+export const useAgents = createAuthenticatedQuery<AgentSummary[]>({
+  queryKey: ["agents"],
+  fetcher: async () => {
+    const result = await womboApi.get({
+      endpoint: `/agents`,
+      schema: z.array(AgentSummarySchema),
+    });
+
+    return result;
+  },
+});

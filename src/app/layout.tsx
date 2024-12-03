@@ -24,6 +24,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session = await getSession();
+
   return (
     <html lang="en" className="h-full">
       <body

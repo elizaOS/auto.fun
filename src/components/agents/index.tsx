@@ -1,7 +1,8 @@
-"use client";
-
 import { PropsWithChildren, useState } from "react";
-import { AgentData } from "../../../types/components/agents/index.type";
+import {
+  AgentsProps,
+  AgentSummary,
+} from "../../../types/components/agents/index.type";
 import { AgentCard } from "./AgentCard";
 import { AgentUpdateForm } from "./AgentUpdateForm";
 import Link from "next/link";
@@ -27,21 +28,27 @@ export const AgentsContainer = ({ children }: PropsWithChildren) => {
   );
 };
 
-export const Agents = ({ agentDatas }: { agentDatas: AgentData[] }) => {
-  const [agent, setAgent] = useState<AgentData | null>(null);
+export const Agents = ({ agents, refetchAgents }: AgentsProps) => {
+  const [agent, setAgent] = useState<AgentSummary | null>(null);
 
   if (agent !== null) {
-    return <AgentUpdateForm {...agent} onBack={() => setAgent(null)} />;
+    return (
+      <AgentUpdateForm
+        {...agent}
+        onBack={() => setAgent(null)}
+        refetchAgents={refetchAgents}
+      />
+    );
   }
 
   return (
     <AgentsContainer>
-      {agentDatas.map((agentData) => {
+      {agents.map((agent) => {
         return (
           <AgentCard
-            key={agentData.id}
-            onClick={() => setAgent(agentData)}
-            {...agentData}
+            key={agent.id}
+            onClick={() => setAgent(agent)}
+            {...agent}
           />
         );
       })}

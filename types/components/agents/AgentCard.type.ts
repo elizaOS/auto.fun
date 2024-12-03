@@ -1,5 +1,5 @@
-import { AgentData } from "./index.type";
+import { AgentSummary } from "./index.type";
 
-export type AgentCardProps = AgentData & {
+export type AgentCardProps = AgentSummary & {
   onClick: () => void;
 };
