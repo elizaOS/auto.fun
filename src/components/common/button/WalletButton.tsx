@@ -200,8 +200,10 @@ export const WalletButton = () => {
   const signIn = useCallback(async () => {
     pendingAuthentication.current = true;
     try {
-      const response = await fetch("/api/auth/status");
-      const { authenticated } = await response.json();
+      const { authenticated } = await womboApi.get({
+        endpoint: "/auth-status",
+        schema: z.object({ authenticated: z.boolean() }),
+      });
       if (authenticated) {
         return;
       }

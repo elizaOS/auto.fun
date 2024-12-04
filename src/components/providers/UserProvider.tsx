@@ -6,6 +6,8 @@ import { createContext, useRef, useContext } from "react";
 import { useStore } from "zustand";
 import { UserStore } from "../../../types/zustand/stores/userStore.type";
 import { usePathname } from "next/navigation";
+import { womboApi } from "@/utils/fetch";
+import { z } from "zod";
 
 type UserStoreApi = ReturnType<typeof createUserStore>;
 
@@ -44,8 +46,10 @@ const UserStatusFetcher = () => {
   useEffect(() => {
     const fetchAuthStatus = async () => {
       try {
-        const response = await fetch("/api/auth/status");
-        const { authenticated } = await response.json();
+        const { authenticated } = await womboApi.get({
+          endpoint: "/auth-status",
+          schema: z.object({ authenticated: z.boolean() }),
+        });
         setAuthenticated(authenticated);
       } catch (error) {
         console.error("Error fetching auth status:", error);
