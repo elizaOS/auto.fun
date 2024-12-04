@@ -178,7 +178,9 @@ export const WalletButton = () => {
       if (connected) {
         await disconnect();
       }
-      await fetch("/api/auth/sign-out", { method: "DELETE" });
+      await womboApi.post({
+        endpoint: "/logout",
+      });
     } catch (err) {
       console.error(err);
     }
