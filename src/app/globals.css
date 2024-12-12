@@ -4,8 +4,8 @@
 @import "react-toastify/dist/ReactToastify.css";
 
 :root {
-  --background: black;
-  --foreground: #03ff24;
+  --background: #2b0b2c;
+  --foreground: white;
 }
 
 body {

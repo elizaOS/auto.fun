@@ -33,6 +33,10 @@ export default {
         background: "var(--background)",
         foreground: "var(--foreground)",
       },
+      fontFamily: {
+        primary: ["var(--font-inter)"],
+        secondary: ["var(--font-pp-mondwest)"],
+      },
     },
   },
   plugins: [],

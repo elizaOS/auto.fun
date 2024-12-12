@@ -3,13 +3,11 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { RoundedButton } from "../common/button/RoundedButton";
 import { HowItWorks } from "./HowItWorks";
 import { WalletButton } from "../common/button/WalletButton";
-import { useUserStore } from "../providers/UserProvider";
+import { RoundedButton } from "../common/button/RoundedButton";
 
 export const Nav = () => {
-  const authenticated = useUserStore((state) => state.authenticated);
   const pathname = usePathname();
 
   if (pathname === "/landing") {
@@ -19,33 +17,18 @@ export const Nav = () => {
   return (
     <nav className="px-[5%] flex justify-between items-center pt-12 gap-6 sm:flex-col">
       <div className="flex gap-6 items-center">
-        <div className="flex gap-6 items-center">
-          <Link href="/" className="flex items-center">
+        <div className="flex items-center">
+          <Link href="/" className="flex gap-6 items-center">
             <Image
               height={40}
               width={40}
               src="/logo_rounded_25percent.png"
               alt="logo"
             />
+            <div className="font-secondary font-bold text-xl">
+              Ser Launchalot
+            </div>
           </Link>
-          <Link href="/">
-            <RoundedButton
-              className="p-3 font-medium border-none"
-              variant="outlined"
-            >
-              Create Agent
-            </RoundedButton>
-          </Link>
-          {authenticated && (
-            <Link href="/agents">
-              <RoundedButton
-                className="p-3 font-medium border-none"
-                variant="outlined"
-              >
-                My Agents
-              </RoundedButton>
-            </Link>
-          )}
         </div>
         <div className="sm:block hidden">
           <HowItWorks />
@@ -57,37 +40,23 @@ export const Nav = () => {
         </div>
         <WalletButton />
 
-        <a
-          href="https://x.com/autodotfun"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <RoundedButton className="p-3">
           <svg
-            width="44"
-            height="44"
-            viewBox="0 0 44 44"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <rect x="1" y="1" width="42" height="42" rx="11" fill="black" />
-            <rect
-              x="1"
-              y="1"
-              width="42"
-              height="42"
-              rx="11"
-              stroke="#03FF24"
-              strokeWidth="2"
-            />
             <path
-              d="M15.3333 28.6666L20.9733 23.0266M23.0233 20.9766L28.6666 15.3333M15.3333 15.3333L25.1108 28.6666H28.6666L18.8891 15.3333H15.3333Z"
-              stroke="#03FF24"
-              strokeWidth="1.66667"
+              d="M4 20L10.768 13.232M13.228 10.772L20 4M4 4L15.733 20H20L8.267 4H4Z"
+              stroke="black"
+              strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
           </svg>
-        </a>
+        </RoundedButton>
       </div>
     </nav>
   );

@@ -17,7 +17,7 @@ export const RoundedButton = forwardRef<HTMLButtonElement, RoundedButtonProps>(
           case "red":
             return "text-black bg-[#FF0000]";
           default:
-            return "text-black bg-[#03ff24]";
+            return "text-black bg-[#f743f6] border-l border-r border-t border-b-2 border-[#2b0b2c]/60";
         }
       }
     }, [variant, color]);
