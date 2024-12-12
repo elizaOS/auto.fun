@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Mono } from "next/font/google";
 import "./globals.css";
-import { getSession } from "@/utils/auth";
 import { ToastContainer } from "react-toastify";
 import { Nav } from "@/components/nav";
 import { Providers } from "@/components/providers";
@@ -15,7 +14,7 @@ const dmMono = DM_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "auto.fun",
+  title: "serlaunchalot",
 };
 
 export default async function RootLayout({
@@ -23,15 +22,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await getSession();
-
   return (
     <html lang="en" className="h-full">
       <body
         className={`${dmMono.className} antialiased h-full flex flex-col sm:gap-16`}
       >
         <SkeletonTheme baseColor="#002605" highlightColor="#008011">
-          <Providers session={session}>
+          <Providers>
             <Nav />
             <div className="flex flex-col flex-1">{children}</div>
           </Providers>

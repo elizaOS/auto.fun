@@ -1,10 +1,7 @@
 "use client";
 
 import { createContext, PropsWithChildren, useEffect, useState } from "react";
-import { SessionProvider } from "next-auth/react";
 import { WalletProvider } from "./WalletProvider";
-import { Session } from "next-auth";
-import { ModalProvider } from "./ModalProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { UserProvider } from "./UserProvider";
 
@@ -21,10 +18,7 @@ export const AutoConnectContext = createContext<AutoConnectContextType>({
 
 const queryClient = new QueryClient();
 
-export function Providers({
-  children,
-  session,
-}: PropsWithChildren<{ session: Session | null }>) {
+export function Providers({ children }: PropsWithChildren) {
   const [autoConnect, setAutoConnect] = useState(false);
 
   useEffect(() => {
@@ -34,16 +28,12 @@ export function Providers({
   }, []);
 
   return (
-    <SessionProvider session={session}>
-      <AutoConnectContext.Provider value={{ autoConnect, setAutoConnect }}>
-        <WalletProvider autoConnect={autoConnect}>
-          <QueryClientProvider client={queryClient}>
-            <UserProvider>
-              <ModalProvider>{children}</ModalProvider>
-            </UserProvider>
-          </QueryClientProvider>
-        </WalletProvider>
-      </AutoConnectContext.Provider>
-    </SessionProvider>
+    <AutoConnectContext.Provider value={{ autoConnect, setAutoConnect }}>
+      <WalletProvider autoConnect={autoConnect}>
+        <QueryClientProvider client={queryClient}>
+          <UserProvider>{children}</UserProvider>
+        </QueryClientProvider>
+      </WalletProvider>
+    </AutoConnectContext.Provider>
   );
 }
