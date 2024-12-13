@@ -1,18 +1,9 @@
-import router from "next/router";
-
-const Tweet = () => {
-  // TODO: waiting for updated designs so we can inspect the element in figma properly
-  return (
-    <img
-      className="w-[424px] h-[168px]"
-      src="https://via.placeholder.com/424x168"
-    />
-  );
-};
+import { Tweet } from "@/components/common/Tweet";
+import Link from "next/link";
 
 export const Token = () => {
   return (
-    <a
+    <Link
       className="h-[424px] px-4 pt-4 pb-5 bg-[#401141] rounded-[20px] flex-col justify-start items-start gap-4 inline-flex"
       href={`/token-details/1`}
     >
@@ -20,6 +11,7 @@ export const Token = () => {
         <img
           className="w-[100px] h-[100px] relative rounded-xl border border-[#642064]"
           src="https://via.placeholder.com/100x100"
+          alt="placeholder"
         />
         <div className="px-2 py-1 bg-[#f743f6]/10 rounded-lg justify-start items-start gap-1 flex">
           <div className="text-[#cab7c7] text-base font-medium leading-normal">
@@ -42,6 +34,6 @@ export const Token = () => {
       <div className="self-stretch text-[#cab7c7] text-base font-medium font-['Inter'] leading-normal">
         41m ago
       </div>
-    </a>
+    </Link>
   );
 };
