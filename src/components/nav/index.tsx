@@ -1,6 +1,5 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { HowItWorks } from "./HowItWorks";
@@ -8,14 +7,8 @@ import { WalletButton } from "../common/button/WalletButton";
 import { RoundedButton } from "../common/button/RoundedButton";
 
 export const Nav = () => {
-  const pathname = usePathname();
-
-  if (pathname === "/landing") {
-    return null;
-  }
-
   return (
-    <nav className="px-[5%] flex justify-between items-center pt-12 gap-6 sm:flex-col">
+    <nav className="flex justify-between items-center gap-6 sm:flex-col fixed top-0 left-0 right-0 z-50 px-8 py-4 bg-[#2b0b2c] border-b border-b-[#f743f6]/40">
       <div className="flex gap-6 items-center">
         <div className="flex items-center">
           <Link href="/" className="flex gap-6 items-center">

@@ -2,7 +2,7 @@ import { ButtonHTMLAttributes, PropsWithChildren } from "react";
 
 export type RoundedButtonProps = {
   variant?: "filled" | "outlined";
-  color?: "red";
+  color?: "inverted";
   disabled?: boolean;
 } & PropsWithChildren &
   ButtonHTMLAttributes<HTMLButtonElement>;

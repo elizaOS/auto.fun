@@ -7,15 +7,15 @@ export const RoundedButton = forwardRef<HTMLButtonElement, RoundedButtonProps>(
       if (variant == "outlined") {
         const border = "border-solid border-[2px]";
         switch (color) {
-          case "red":
+          case "inverted":
             return `border-[#FF0000] text-[#FF0000] bg-[rgba(255,0,0,0.15)] ${border}`;
           default:
             return `border-[#03ff24] text-[#03ff24] bg-[rgba(0,255,0,0.15)] ${border}`;
         }
       } else {
         switch (color) {
-          case "red":
-            return "text-black bg-[#FF0000]";
+          case "inverted":
+            return "text-[#f743f6] bg-[#2b0b2c]/60 border-l border-r border-t border-b-2 border-[#f743f6]";
           default:
             return "text-black bg-[#f743f6] border-l border-r border-t border-b-2 border-[#2b0b2c]/60";
         }
