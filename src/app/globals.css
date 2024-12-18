@@ -104,7 +104,7 @@ select:focus {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #f743f610; /* Scrollbar color */
+  background-color: #f743f6; /* Scrollbar color */
   border-radius: 4px; /* Rounded corners */
 }
 
@@ -116,5 +116,5 @@ select:focus {
 /* Firefox */
 * {
   scrollbar-width: thin; /* Thin scrollbar */
-  scrollbar-color: #f743f610 transparent; /* Scrollbar color and track color */
+  scrollbar-color: #f743f6 transparent; /* Scrollbar color and track color */
 }

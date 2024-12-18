@@ -1,16 +1,59 @@
 import { Tweet } from "@/components/common/Tweet";
 import Link from "next/link";
+import { formatDistanceToNow, differenceInSeconds } from "date-fns";
+import { useEffect, useState } from "react";
 
-export const Token = () => {
+const formatTimeAgo = (date: Date): string => {
+  const seconds = differenceInSeconds(new Date(), date);
+
+  if (seconds < 60) {
+    return `${seconds} ${seconds === 1 ? "second" : "seconds"} ago`;
+  }
+
+  return formatDistanceToNow(date, { addSuffix: true });
+};
+
+export const Token = ({
+  className,
+  mint,
+  marketCap,
+  name,
+  ticker,
+  url,
+  tweetUrl,
+  createdAt,
+}: {
+  className?: string;
+  mint: string;
+  marketCap: string;
+  name: string;
+  ticker: string;
+  url: string;
+  tweetUrl: string;
+  createdAt: string;
+}) => {
+  const [timeAgo, setTimeAgo] = useState<string>("");
+
+  useEffect(() => {
+    const updateTime = () => {
+      setTimeAgo(formatTimeAgo(new Date(createdAt)));
+    };
+
+    updateTime(); // Initial update
+    const timer = setInterval(updateTime, 1000); // Update every second
+
+    return () => clearInterval(timer); // Cleanup on unmount
+  }, [createdAt]);
+
   return (
     <Link
-      className="h-[424px] px-4 pt-4 pb-5 bg-[#401141] rounded-[20px] flex-col justify-start items-start gap-4 inline-flex"
-      href={`/token-details/1`}
+      className={`px-4 pt-4 pb-5 bg-[#401141] rounded-[20px] flex-col justify-start items-start gap-4 inline-flex ${className}`}
+      href={`/coin/${mint}`}
     >
       <div className="self-stretch justify-between items-start inline-flex">
         <img
           className="w-[100px] h-[100px] relative rounded-xl border border-[#642064]"
-          src="https://via.placeholder.com/100x100"
+          src={url}
           alt="placeholder"
         />
         <div className="px-2 py-1 bg-[#f743f6]/10 rounded-lg justify-start items-start gap-1 flex">
@@ -18,21 +61,21 @@ export const Token = () => {
             Market cap:
           </div>
           <div className="text-[#f743f6] text-base font-medium leading-normal">
-            $35.62k
+            {marketCap}
           </div>
         </div>
       </div>
       <div className="self-stretch h-12 flex-col justify-start items-start flex">
         <div className="self-stretch text-white text-xl font-bold font-secondary leading-normal">
-          USA EAGLE
+          {name}
         </div>
         <div className="self-stretch text-[#cab7c7] text-xl font-bold font-secondary uppercase leading-normal">
-          $USA
+          {ticker}
         </div>
       </div>
-      <Tweet />
-      <div className="self-stretch text-[#cab7c7] text-base font-medium font-['Inter'] leading-normal">
-        41m ago
+      <Tweet url={tweetUrl} />
+      <div className="self-stretch text-[#cab7c7] text-base font-medium leading-normal">
+        {timeAgo}
       </div>
     </Link>
   );

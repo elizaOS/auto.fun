@@ -25,16 +25,24 @@ const CopyIcon = () => {
   );
 };
 
-export const ContractAddress = () => {
+export const ContractAddress = ({ mint }: { mint: string }) => {
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(mint);
+    } catch (error) {
+      console.error("Failed to copy:", error);
+    }
+  };
+
   return (
-    <button className="px-4 py-3 bg-[#f743f6]/10 rounded-xl flex-col justify-center items-start gap-2 inline-flex">
+    <button
+      onClick={handleCopy}
+      className="px-4 py-3 bg-[#f743f6]/10 rounded-xl flex-col justify-center items-start gap-2 inline-flex hover:bg-[#f743f6]/20 transition-colors"
+    >
       <div className="self-stretch justify-between items-center inline-flex gap-4">
         <div>
-          <span className="text-white text-base font-medium">
-            Contract Address:{" "}
-          </span>
           <span className="text-[#b3a0b3] text-base font-medium leading-normal">
-            CjowYLeme...Z1epump
+            {mint.slice(0, 12)}...{mint.slice(-21)}
           </span>
         </div>
 

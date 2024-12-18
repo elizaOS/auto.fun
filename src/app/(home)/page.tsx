@@ -2,8 +2,28 @@
 
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { Token } from "./Token";
+import { useTokens } from "@/utils/tokens";
+import { useEffect, useState } from "react";
 
 export default function HomePage() {
+  const {
+    tokens,
+    currentPage,
+    totalPages,
+    hasPreviousPage,
+    hasNextPage,
+    nextPage,
+    previousPage,
+  } = useTokens();
+  const [shakeKey, setShakeKey] = useState(0);
+
+  // Increment shake key when tokens change to force animation restart
+  useEffect(() => {
+    if (tokens?.length) {
+      setShakeKey((prev) => prev + 1);
+    }
+  }, [tokens]);
+
   return (
     <div className="mt-12 flex flex-col">
       <div className="flex justify-between items-center">
@@ -19,15 +39,46 @@ export default function HomePage() {
           </RoundedButton>
         </div>
       </div>
-      <div className="grid grid-cols-3 lg:grid-cols-2 2xl:grid-cols-3 gap-4">
-        <Token />
-        <Token />
-        <Token />
-        <Token />
-        <Token />
-        <Token />
-        <Token />
-        <Token />
+
+      {tokens && (
+        <div className="grid grid-cols-3 lg:grid-cols-2 2xl:grid-cols-3 gap-4">
+          {tokens.map((token, index) => (
+            <Token
+              key={token.mint}
+              mint={token.mint}
+              marketCap="$35.6k"
+              name={token.name}
+              ticker={token.ticker}
+              url={token.image}
+              tweetUrl={token.website}
+              createdAt={token.createdAt}
+              className={index === 0 ? "animate-shake" : ""}
+              // Add key to first element to force remount and animation restart
+              {...(index === 0 ? { "data-shake-key": shakeKey } : {})}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="mt-6 flex justify-center">
+        <div className="flex gap-4 items-center text-white">
+          <button
+            className="hover:opacity-80 disabled:opacity-30"
+            onClick={previousPage}
+            disabled={!hasPreviousPage}
+          >
+            [ &lt;&lt;
+          </button>
+          <span>{currentPage}</span>
+
+          <button
+            className="hover:opacity-80 disabled:opacity-30"
+            onClick={nextPage}
+            disabled={!hasNextPage}
+          >
+            &gt;&gt; ]
+          </button>
+        </div>
       </div>
     </div>
   );
