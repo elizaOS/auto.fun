@@ -1,17 +1,6 @@
 import { Tweet } from "@/components/common/Tweet";
 import Link from "next/link";
-import { formatDistanceToNow, differenceInSeconds } from "date-fns";
-import { useEffect, useState } from "react";
-
-const formatTimeAgo = (date: Date): string => {
-  const seconds = differenceInSeconds(new Date(), date);
-
-  if (seconds < 60) {
-    return `${seconds} ${seconds === 1 ? "second" : "seconds"} ago`;
-  }
-
-  return formatDistanceToNow(date, { addSuffix: true });
-};
+import { useTimeAgo } from "../formatTimeAgo";
 
 export const Token = ({
   className,
@@ -32,18 +21,7 @@ export const Token = ({
   tweetUrl: string;
   createdAt: string;
 }) => {
-  const [timeAgo, setTimeAgo] = useState<string>("");
-
-  useEffect(() => {
-    const updateTime = () => {
-      setTimeAgo(formatTimeAgo(new Date(createdAt)));
-    };
-
-    updateTime(); // Initial update
-    const timer = setInterval(updateTime, 1000); // Update every second
-
-    return () => clearInterval(timer); // Cleanup on unmount
-  }, [createdAt]);
+  const timeAgo = useTimeAgo(createdAt);
 
   return (
     <Link

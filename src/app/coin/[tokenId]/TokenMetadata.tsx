@@ -2,9 +2,11 @@
 
 import { useToken } from "@/utils/tokens";
 import { ContractAddress } from "./ContractAddress";
+import { useTimeAgo } from "@/app/formatTimeAgo";
 
 export const TokenMetadata = ({ mint }: { mint: string }) => {
   const { data: token } = useToken(mint);
+  const timeAgo = useTimeAgo(token?.createdAt ?? "");
 
   // TODO: add a loading state
   if (!token) return null;
@@ -34,7 +36,7 @@ export const TokenMetadata = ({ mint }: { mint: string }) => {
       </div>
 
       <div className="bg-[#532954] h-px" />
-      <div className="text-white/60 text-base font-medium">3h ago</div>
+      <div className="text-white/60 text-base font-medium">{timeAgo}</div>
     </div>
   );
 };
