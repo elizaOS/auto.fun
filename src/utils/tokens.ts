@@ -28,52 +28,58 @@ const ValidTokenSchema = TokenSchema.extend({
   website: z.string(),
 });
 
-const useTokensQuery = createQuery({
-  queryKey: ["tokens", "cursor"],
-  fetcher: async ({
-    cursor,
-    limit = 30,
-  }: {
-    cursor: string | null;
-    limit: number;
-  }) => {
-    const endpoint = cursor
-      ? `/tokens?limit=${limit}&cursor=${cursor}`
-      : `/tokens?limit=${limit}`;
+const fetchTokens = async (cursor: string | null, limit: number) => {
+  const endpoint = cursor
+    ? `/tokens?limit=${limit}&cursor=${cursor}`
+    : `/tokens?limit=${limit}`;
 
-    const response = await womboApi.contract.get({
-      endpoint,
-      schema: z.object({
-        tokens: TokenSchema.array(),
-        nextCursor: z.string().nullable(),
-      }),
-    });
+  const response = await womboApi.contract.get({
+    endpoint,
+    schema: z.object({
+      tokens: TokenSchema.array(),
+      nextCursor: z.string().nullable(),
+    }),
+  });
 
-    return {
-      tokens: response.tokens.filter(
-        (token): token is z.infer<typeof ValidTokenSchema> =>
-          ValidTokenSchema.safeParse(token).success,
-      ),
-      nextCursor: response.nextCursor,
-    };
-  },
-});
+  return {
+    tokens: response.tokens.filter(
+      (token): token is z.infer<typeof ValidTokenSchema> =>
+        ValidTokenSchema.safeParse(token).success,
+    ),
+    nextCursor: response.nextCursor,
+  };
+};
 
 const MAX_PAGES = 4;
 const ITEMS_PER_PAGE = 30;
 const MAX_ITEMS = MAX_PAGES * ITEMS_PER_PAGE;
 
-// TODO: potential race condition here. if we make fetch call, then new token is added
-// right before we subscribe to the websocket, we might miss the new token.
 export const useTokens = () => {
   const [page, setPage] = useState(1);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [hasAllData, setHasAllData] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [fetchedData, setFetchedData] = useState<{
+    tokens: z.infer<typeof ValidTokenSchema>[];
+  }>({ tokens: [] });
 
-  const { data: fetchedData, isLoading } = useTokensQuery({
-    variables: {
-      cursor: null,
-      limit: MAX_ITEMS,
-    },
-  });
+  useEffect(() => {
+    const loadInitialData = async () => {
+      setIsLoading(true);
+      try {
+        const result = await fetchTokens(null, ITEMS_PER_PAGE);
+        setFetchedData({ tokens: result.tokens });
+        setCursor(result.nextCursor);
+        setHasAllData(!result.nextCursor);
+      } catch (error) {
+        console.error("Failed to fetch initial tokens:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadInitialData();
+  }, []);
 
   const [liveTokens, dispatch] = useReducer(
     (
@@ -117,7 +123,6 @@ export const useTokens = () => {
   const allTokens = useMemo(() => {
     if (!fetchedData?.tokens) return liveTokens;
 
-    // Start with live tokens first, then add fetched tokens that don't exist in live tokens
     const combined = [...liveTokens];
     const liveMints = new Set(liveTokens.map((t) => t.mint));
 
@@ -140,9 +145,29 @@ export const useTokens = () => {
     [allTokens, page],
   );
 
-  const nextPage = useCallback(() => {
+  const nextPage = useCallback(async () => {
+    const nextPageIndex = page + 1;
+    const nextPageStart = nextPageIndex * ITEMS_PER_PAGE;
+
+    if (!hasAllData && allTokens.length < nextPageStart) {
+      setIsLoading(true);
+      try {
+        const result = await fetchTokens(cursor, ITEMS_PER_PAGE);
+        setFetchedData((prev) => ({
+          tokens: [...prev.tokens, ...result.tokens],
+        }));
+        setCursor(result.nextCursor);
+        setHasAllData(!result.nextCursor);
+      } catch (error) {
+        console.error("Failed to fetch next page:", error);
+        return;
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
     setPage((p) => (p < totalPages ? p + 1 : p));
-  }, [totalPages]);
+  }, [page, cursor, hasAllData, allTokens.length, totalPages]);
 
   const previousPage = useCallback(() => {
     setPage((p) => (p > 1 ? p - 1 : p));
@@ -151,7 +176,7 @@ export const useTokens = () => {
   return {
     tokens: currentPageTokens,
     isLoading,
-    hasNextPage: page < totalPages,
+    hasNextPage: !hasAllData || page * ITEMS_PER_PAGE < allTokens.length,
     hasPreviousPage: page > 1,
     currentPage: page,
     totalPages,
