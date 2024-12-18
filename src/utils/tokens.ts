@@ -1,7 +1,14 @@
 import { createQuery } from "react-query-kit";
 import { womboApi } from "./fetch";
 import { z } from "zod";
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useReducer,
+  useRef,
+} from "react";
 import { io } from "socket.io-client";
 import { CONTRACT_API_URL } from "./env";
 import { useQueryClient } from "@tanstack/react-query";
@@ -59,114 +66,92 @@ const MAX_ITEMS = MAX_PAGES * ITEMS_PER_PAGE;
 // TODO: potential race condition here. if we make fetch call, then new token is added
 // right before we subscribe to the websocket, we might miss the new token.
 export const useTokens = () => {
-  const queryClient = useQueryClient();
-  const [cursorMap, setCursorMap] = useState<Record<number, string | null>>({
-    1: null,
-  });
   const [page, setPage] = useState(1);
 
-  // Track total items to help manage pagination
-  const [totalItems, setTotalItems] = useState(0);
-
-  useEffect(() => {
-    const socket = io(CONTRACT_API_URL);
-    socket.emit("subscribeGlobal");
-
-    console.log("subscribed to global");
-
-    socket.on("newToken", (updatedToken: unknown) => {
-      console.log("newToken", updatedToken);
-
-      const validatedToken = ValidTokenSchema.safeParse(updatedToken);
-      if (!validatedToken.success) {
-        console.log("invalid token");
-        return;
-      }
-
-      queryClient.setQueryData(
-        useTokensQuery.getKey({
-          cursor: cursorMap[page],
-          limit: ITEMS_PER_PAGE,
-        }),
-        (oldData) => {
-          if (!oldData?.tokens) {
-            console.log("no tokens", oldData);
-            console.log(useTokensQuery.getKey());
-            return oldData;
-          }
-
-          const existingIndex = oldData.tokens.findIndex(
-            (t) => t.mint === validatedToken.data.mint,
-          );
-
-          let updatedTokens;
-          if (existingIndex !== -1) {
-            console.log("updating existing token");
-            updatedTokens = [...oldData.tokens];
-            updatedTokens[existingIndex] = validatedToken.data;
-          } else {
-            console.log("adding new token");
-            updatedTokens = [validatedToken.data, ...oldData.tokens].slice(
-              0,
-              ITEMS_PER_PAGE,
-            );
-          }
-
-          return {
-            ...oldData,
-            tokens: updatedTokens,
-            // Keep the original nextCursor from the API
-            nextCursor: oldData.nextCursor,
-          };
-        },
-      );
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [queryClient, page, cursorMap]);
-
-  // Fetch next page data when cursor changes
-  const { data, isLoading } = useTokensQuery({
+  const { data: fetchedData, isLoading } = useTokensQuery({
     variables: {
-      cursor: cursorMap[page],
-      limit: ITEMS_PER_PAGE,
+      cursor: null,
+      limit: MAX_ITEMS,
     },
   });
 
-  // Update cursors when new data is fetched
+  const [liveTokens, dispatch] = useReducer(
+    (
+      state: z.infer<typeof ValidTokenSchema>[],
+      action: {
+        type: "ADD_TOKEN";
+        token: z.infer<typeof ValidTokenSchema>;
+      },
+    ) => {
+      const exists = state.some((t) => t.mint === action.token.mint);
+      if (exists) return state;
+      return [action.token, ...state].slice(0, MAX_ITEMS);
+    },
+    [],
+  );
+
+  const socketRef = useRef<ReturnType<typeof io>>();
+
   useEffect(() => {
-    if (data?.tokens.length && data?.nextCursor) {
-      setCursorMap((prev) => ({
-        ...prev,
-        [page + 1]: data.nextCursor,
-      }));
-      setTotalItems(
-        Math.min(page * ITEMS_PER_PAGE + data.tokens.length, MAX_ITEMS),
-      );
-    }
-  }, [data, page]);
+    socketRef.current = io(CONTRACT_API_URL);
+    const socket = socketRef.current;
 
-  const nextPage = () => {
-    if (page < MAX_PAGES && data?.nextCursor) {
-      setPage(page + 1);
-    }
-  };
+    const handleNewToken = (updatedToken: unknown) => {
+      const validatedToken = ValidTokenSchema.safeParse(updatedToken);
+      if (validatedToken.success) {
+        dispatch({ type: "ADD_TOKEN", token: validatedToken.data });
+      }
+    };
 
-  const previousPage = () => {
-    if (page > 1) {
-      setPage(page - 1);
-    }
-  };
+    socket.emit("subscribeGlobal");
+    socket.on("newToken", handleNewToken);
+
+    return () => {
+      socket.off("newToken", handleNewToken);
+      socket.disconnect();
+    };
+  }, []);
+
+  const allTokens = useMemo(() => {
+    if (!fetchedData?.tokens) return liveTokens;
+
+    const combined = [...fetchedData.tokens];
+    const existingMints = new Set(combined.map((t) => t.mint));
+
+    liveTokens.forEach((token) => {
+      if (!existingMints.has(token.mint)) {
+        combined.unshift(token);
+      }
+    });
+
+    return combined.slice(0, MAX_ITEMS);
+  }, [fetchedData?.tokens, liveTokens]);
+
+  const totalPages = useMemo(
+    () => Math.min(Math.ceil(allTokens.length / ITEMS_PER_PAGE), MAX_PAGES),
+    [allTokens.length],
+  );
+
+  const currentPageTokens = useMemo(
+    () => allTokens.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE),
+    [allTokens, page],
+  );
+
+  const nextPage = useCallback(() => {
+    setPage((p) => (p < totalPages ? p + 1 : p));
+  }, [totalPages]);
+
+  const previousPage = useCallback(() => {
+    setPage((p) => (p > 1 ? p - 1 : p));
+  }, []);
 
   return {
-    tokens: data?.tokens ?? [],
+    tokens: currentPageTokens,
     isLoading,
-    hasNextPage: page < MAX_PAGES,
+    hasNextPage: page < totalPages,
     hasPreviousPage: page > 1,
     currentPage: page,
-    totalPages: Math.min(Math.ceil(totalItems / ITEMS_PER_PAGE), MAX_PAGES),
+    totalPages,
     nextPage,
     previousPage,
   };
