@@ -91,6 +91,7 @@ export const useTokens = () => {
   );
 
   const socketRef = useRef<ReturnType<typeof io>>();
+  const [isLiveUpdate, setIsLiveUpdate] = useState(false);
 
   useEffect(() => {
     socketRef.current = io(CONTRACT_API_URL);
@@ -99,6 +100,7 @@ export const useTokens = () => {
     const handleNewToken = (updatedToken: unknown) => {
       const validatedToken = ValidTokenSchema.safeParse(updatedToken);
       if (validatedToken.success) {
+        setIsLiveUpdate(true);
         dispatch({ type: "ADD_TOKEN", token: validatedToken.data });
       }
     };
@@ -115,12 +117,13 @@ export const useTokens = () => {
   const allTokens = useMemo(() => {
     if (!fetchedData?.tokens) return liveTokens;
 
-    const combined = [...fetchedData.tokens];
-    const existingMints = new Set(combined.map((t) => t.mint));
+    // Start with live tokens first, then add fetched tokens that don't exist in live tokens
+    const combined = [...liveTokens];
+    const liveMints = new Set(liveTokens.map((t) => t.mint));
 
-    liveTokens.forEach((token) => {
-      if (!existingMints.has(token.mint)) {
-        combined.unshift(token);
+    fetchedData.tokens.forEach((token) => {
+      if (!liveMints.has(token.mint)) {
+        combined.push(token);
       }
     });
 
@@ -154,6 +157,7 @@ export const useTokens = () => {
     totalPages,
     nextPage,
     previousPage,
+    isLiveUpdate,
   };
 };
 

@@ -3,7 +3,6 @@
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { Token } from "./Token";
 import { useTokens } from "@/utils/tokens";
-import { useEffect, useState } from "react";
 
 export default function HomePage() {
   const {
@@ -13,15 +12,8 @@ export default function HomePage() {
     hasNextPage,
     nextPage,
     previousPage,
+    isLiveUpdate,
   } = useTokens();
-  const [shakeKey, setShakeKey] = useState(0);
-
-  // Increment shake key when tokens change to force animation restart
-  useEffect(() => {
-    if (tokens?.length) {
-      setShakeKey((prev) => prev + 1);
-    }
-  }, [tokens]);
 
   return (
     <div className="mt-12 flex flex-col">
@@ -51,9 +43,7 @@ export default function HomePage() {
               url={token.image}
               tweetUrl={token.website}
               createdAt={token.createdAt}
-              className={index === 0 ? "animate-shake" : ""}
-              // Add key to first element to force remount and animation restart
-              {...(index === 0 ? { "data-shake-key": shakeKey } : {})}
+              className={`${index === 0 && isLiveUpdate ? "animate-shake" : ""}`}
             />
           ))}
         </div>
