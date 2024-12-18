@@ -1,4 +1,8 @@
+"use client";
+
 import { Tooltip } from "@/components/common/Tooltip";
+import { Tweet } from "@/components/common/Tweet";
+import { useToken } from "@/utils/tokens";
 import { PropsWithChildren } from "react";
 
 const Money = ({ children }: PropsWithChildren) => {
@@ -42,9 +46,13 @@ const LoadingBar = ({ progress }: { progress: number }) => {
   );
 };
 
-export const TokenMarketCap = () => {
+export const TokenMarketCap = ({ mint }: { mint: string }) => {
+  const { data: token } = useToken(mint);
+
   return (
     <div className="flex flex-col bg-[#401141] rounded-xl p-4 gap-3">
+      <Tweet url={token?.website ?? ""} />
+
       <div className="flex gap-3 w-full">
         <Container>
           <Title>Market cap</Title>

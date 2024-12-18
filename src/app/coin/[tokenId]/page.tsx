@@ -20,7 +20,7 @@ export default async function TokenDetailsPage({
         </div>
 
         <div className="flex flex-col gap-2">
-          <TokenMarketCap />
+          <TokenMarketCap mint={tokenId} />
           <TokenBuySell />
         </div>
       </div>
