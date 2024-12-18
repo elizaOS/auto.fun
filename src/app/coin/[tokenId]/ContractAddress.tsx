@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 const CopyIcon = () => {
   return (
     <svg
@@ -26,28 +28,46 @@ const CopyIcon = () => {
 };
 
 export const ContractAddress = ({ mint }: { mint: string }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(mint);
+      setShowTooltip(true);
+      setTimeout(() => setShowTooltip(false), 2000); // Hide after 2 seconds
     } catch (error) {
       console.error("Failed to copy:", error);
     }
   };
 
   return (
-    <button
-      onClick={handleCopy}
-      className="px-4 py-3 bg-[#f743f6]/10 rounded-xl flex-col justify-center items-start gap-2 inline-flex hover:bg-[#f743f6]/20 transition-colors"
-    >
-      <div className="self-stretch justify-between items-center inline-flex gap-4">
-        <div>
-          <span className="text-[#b3a0b3] text-base font-medium leading-normal">
-            {mint.slice(0, 12)}...{mint.slice(-21)}
-          </span>
-        </div>
+    <div className="relative">
+      <button
+        onClick={handleCopy}
+        className="px-4 py-3 bg-[#f743f6]/10 rounded-xl flex-col justify-center items-start gap-2 inline-flex hover:bg-[#f743f6]/20 transition-colors"
+      >
+        <div className="self-stretch justify-between items-center inline-flex gap-4">
+          <div>
+            <span className="text-[#b3a0b3] text-base font-medium leading-normal">
+              {mint.slice(0, 12)}...{mint.slice(-21)}
+            </span>
+          </div>
 
-        <CopyIcon />
+          <CopyIcon />
+        </div>
+      </button>
+
+      {/* Tooltip */}
+      <div
+        className={`
+          absolute left-1/2 -translate-x-1/2 -top-10
+          px-3 py-2 rounded-lg bg-gray-900 text-white text-sm
+          transition-all duration-300
+          ${showTooltip ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"}
+        `}
+      >
+        Copied!
       </div>
-    </button>
+    </div>
   );
 };
