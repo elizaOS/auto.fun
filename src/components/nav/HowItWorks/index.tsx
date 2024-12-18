@@ -1,5 +1,4 @@
 import { useRef } from "react";
-import { Description } from "./Description";
 import { useOutsideClickDetection } from "@/hooks/actions/useOutsideClickDetection";
 
 export const HowItWorks = () => {
@@ -10,22 +9,24 @@ export const HowItWorks = () => {
     descriptionRef.current?.close();
   });
 
-  return (
-    <div className="relative">
-      <button
-        ref={buttonRef}
-        className="text-[#f743f6] font-primary"
-        onClick={() => {
-          if (descriptionRef.current?.open) {
-            descriptionRef.current?.close();
-          } else {
-            descriptionRef.current?.show();
-          }
-        }}
-      >
-        How it works?
-      </button>
-      <Description ref={descriptionRef} />
-    </div>
-  );
+  // removed from designs for now
+  return null;
+  // return (
+  //   <div className="relative">
+  //     <button
+  //       ref={buttonRef}
+  //       className="text-[#f743f6] font-primary"
+  //       onClick={() => {
+  //         if (descriptionRef.current?.open) {
+  //           descriptionRef.current?.close();
+  //         } else {
+  //           descriptionRef.current?.show();
+  //         }
+  //       }}
+  //     >
+  //       How it works?
+  //     </button>
+  //     <Description ref={descriptionRef} />
+  //   </div>
+  // );
 };
