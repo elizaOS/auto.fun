@@ -2,7 +2,7 @@ import { TokenMetadata } from "./TokenMetadata";
 import { TokenGraph } from "./TokenGraph";
 import { TokenMarketCap } from "./TokenMarketCap";
 import { TokenBuySell } from "./TokenBuySell";
-import { TransactionTable } from "./TransactionTable";
+import { BottomTable } from "./BottomTable";
 
 export default async function TokenDetailsPage({
   params,
@@ -24,7 +24,7 @@ export default async function TokenDetailsPage({
           <TokenBuySell />
         </div>
       </div>
-      <TransactionTable />
+      <BottomTable />
     </div>
   );
 }
