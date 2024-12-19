@@ -48,6 +48,8 @@ const fetchData = async <T>(
   };
 };
 
+type LiveItemAction<T> = { type: "ADD_ITEM"; item: T } | { type: "TRIM" };
+
 export const usePaginatedLiveData = <T>({
   itemsPerPage,
   maxPages,
@@ -65,12 +67,20 @@ export const usePaginatedLiveData = <T>({
   const [isLiveUpdate, setIsLiveUpdate] = useState(false);
 
   const [liveItems, dispatch] = useReducer(
-    (state: T[], action: { type: "ADD_ITEM"; item: T }) => {
-      const exists = state.some(
-        (i) => getUniqueId(i) === getUniqueId(action.item),
-      );
-      if (exists) return state;
-      return [action.item, ...state];
+    (state: T[], action: LiveItemAction<T>) => {
+      switch (action.type) {
+        case "ADD_ITEM": {
+          const exists = state.some(
+            (i) => getUniqueId(i) === getUniqueId(action.item),
+          );
+          if (exists) return state;
+          return [action.item, ...state].slice(0, maxPages * itemsPerPage);
+        }
+        case "TRIM":
+          return state.slice(0, maxPages * itemsPerPage);
+        default:
+          return state;
+      }
     },
     [],
   );
@@ -120,6 +130,16 @@ export const usePaginatedLiveData = <T>({
     validationSchema,
   ]);
 
+  useEffect(() => {
+    const trimInterval = setInterval(() => {
+      dispatch({ type: "TRIM" });
+    }, 60000);
+
+    return () => {
+      clearInterval(trimInterval);
+    };
+  }, [maxPages, itemsPerPage]);
+
   const allItems = useMemo(() => {
     if (!fetchedData?.items) return liveItems;
 
@@ -158,9 +178,15 @@ export const usePaginatedLiveData = <T>({
           itemsPerPage,
           validationSchema,
         );
-        setFetchedData((prev) => ({
-          items: [...prev.items, ...result.items],
-        }));
+        setFetchedData((prev) => {
+          const keepItems = prev.items.slice(
+            0,
+            (nextPageIndex + 1) * itemsPerPage,
+          );
+          return {
+            items: [...keepItems, ...result.items],
+          };
+        });
         setCursor(result.nextCursor);
         setHasAllData(!result.nextCursor);
         setPage(nextPageIndex);
