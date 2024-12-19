@@ -158,7 +158,7 @@ export const usePaginatedLiveData = <T>({
           itemsPerPage,
           validationSchema,
         );
-        await setFetchedData((prev) => ({
+        setFetchedData((prev) => ({
           items: [...prev.items, ...result.items],
         }));
         setCursor(result.nextCursor);
@@ -190,7 +190,7 @@ export const usePaginatedLiveData = <T>({
   return {
     items: currentPageItems,
     isLoading,
-    hasNextPage: !hasAllData || page * itemsPerPage < allItems.length,
+    hasNextPage: !hasAllData && page < maxPages,
     hasPreviousPage: page > 1,
     currentPage: page,
     totalPages,
