@@ -7,6 +7,7 @@ import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { io } from "socket.io-client";
 import { CONTRACT_API_URL } from "@/utils/env";
+import { Paginator } from "@/components/common/Paginator";
 
 const socket = io(CONTRACT_API_URL);
 
@@ -106,8 +107,8 @@ export default function HomePage() {
                   marketCap="$35.6k"
                   name={token.name}
                   ticker={token.ticker}
-                  url={token.image}
-                  tweetUrl={token.website}
+                  url={token.image ?? ""}
+                  tweetUrl={token.website ?? ""}
                   createdAt={token.createdAt}
                   className={`${index === 0 && isLiveUpdate ? "animate-shake" : ""}`}
                 />
@@ -116,28 +117,13 @@ export default function HomePage() {
           )}
 
       <div className="mt-6 flex justify-center">
-        <div className="flex gap-4 items-center text-white">
-          <button
-            className="group disabled:opacity-30"
-            onClick={previousPage}
-            disabled={!hasPreviousPage}
-          >
-            <span className="group-enabled:hover:font-extrabold">
-              [ &lt;&lt;
-            </span>
-          </button>
-          <span>{currentPage}</span>
-
-          <button
-            className="group disabled:opacity-30"
-            onClick={nextPage}
-            disabled={!hasNextPage}
-          >
-            <span className="group-enabled:hover:font-extrabold">
-              &gt;&gt; ]
-            </span>
-          </button>
-        </div>
+        <Paginator
+          currentPage={currentPage}
+          hasPreviousPage={hasPreviousPage}
+          hasNextPage={hasNextPage}
+          previousPage={previousPage}
+          nextPage={nextPage}
+        />
       </div>
     </div>
   );
