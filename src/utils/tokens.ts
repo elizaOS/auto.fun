@@ -1,17 +1,11 @@
 import { createQuery } from "react-query-kit";
 import { womboApi } from "./fetch";
 import { z } from "zod";
-import {
-  useEffect,
-  useState,
-  useCallback,
-  useMemo,
-  useReducer,
-  useRef,
-} from "react";
-import { io } from "socket.io-client";
+import { useEffect } from "react";
+import { io, Socket } from "socket.io-client";
 import { CONTRACT_API_URL } from "./env";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePaginatedLiveData } from "./paginatedLiveData";
 
 const TokenSchema = z.object({
   name: z.string(),
@@ -23,167 +17,19 @@ const TokenSchema = z.object({
   website: z.string().optional(),
 });
 
-const ValidTokenSchema = TokenSchema.extend({
-  image: z.string(),
-  website: z.string(),
-});
-
-const fetchTokens = async (cursor: string | null, limit: number) => {
-  const endpoint = cursor
-    ? `/tokens?limit=${limit}&cursor=${cursor}`
-    : `/tokens?limit=${limit}`;
-
-  const response = await womboApi.contract.get({
-    endpoint,
-    schema: z.object({
-      tokens: TokenSchema.array(),
-      nextCursor: z.string().nullable(),
-    }),
-  });
-
-  return {
-    tokens: response.tokens.filter(
-      (token): token is z.infer<typeof ValidTokenSchema> =>
-        ValidTokenSchema.safeParse(token).success,
-    ),
-    nextCursor: response.nextCursor,
-  };
-};
-
-const MAX_PAGES = 4;
-const ITEMS_PER_PAGE = 30;
-const MAX_ITEMS = MAX_PAGES * ITEMS_PER_PAGE;
-
-export const useTokens = () => {
-  const [page, setPage] = useState(1);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [hasAllData, setHasAllData] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [fetchedData, setFetchedData] = useState<{
-    tokens: z.infer<typeof ValidTokenSchema>[];
-  }>({ tokens: [] });
-
-  useEffect(() => {
-    const loadInitialData = async () => {
-      setIsLoading(true);
-      try {
-        const result = await fetchTokens(null, ITEMS_PER_PAGE);
-        setFetchedData({ tokens: result.tokens });
-        setCursor(result.nextCursor);
-        setHasAllData(!result.nextCursor);
-      } catch (error) {
-        console.error("Failed to fetch initial tokens:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadInitialData();
-  }, []);
-
-  const [liveTokens, dispatch] = useReducer(
-    (
-      state: z.infer<typeof ValidTokenSchema>[],
-      action: {
-        type: "ADD_TOKEN";
-        token: z.infer<typeof ValidTokenSchema>;
-      },
-    ) => {
-      const exists = state.some((t) => t.mint === action.token.mint);
-      if (exists) return state;
-      return [action.token, ...state].slice(0, MAX_ITEMS);
+export const useTokens = (socket: Socket) => {
+  return usePaginatedLiveData({
+    itemsPerPage: 30,
+    maxPages: 4,
+    endpoint: "/tokens",
+    socket,
+    validationSchema: TokenSchema,
+    getUniqueId: (token) => token.mint,
+    socketConfig: {
+      subscribeEvent: "subscribeGlobal",
+      newDataEvent: "newToken",
     },
-    [],
-  );
-
-  const socketRef = useRef<ReturnType<typeof io>>();
-  const [isLiveUpdate, setIsLiveUpdate] = useState(false);
-
-  useEffect(() => {
-    socketRef.current = io(CONTRACT_API_URL);
-    const socket = socketRef.current;
-
-    const handleNewToken = (updatedToken: unknown) => {
-      const validatedToken = ValidTokenSchema.safeParse(updatedToken);
-      if (validatedToken.success) {
-        setIsLiveUpdate(true);
-        dispatch({ type: "ADD_TOKEN", token: validatedToken.data });
-      }
-    };
-
-    socket.emit("subscribeGlobal");
-    socket.on("newToken", handleNewToken);
-
-    return () => {
-      socket.off("newToken", handleNewToken);
-      socket.disconnect();
-    };
-  }, []);
-
-  const allTokens = useMemo(() => {
-    if (!fetchedData?.tokens) return liveTokens;
-
-    const combined = [...liveTokens];
-    const liveMints = new Set(liveTokens.map((t) => t.mint));
-
-    fetchedData.tokens.forEach((token) => {
-      if (!liveMints.has(token.mint)) {
-        combined.push(token);
-      }
-    });
-
-    return combined.slice(0, MAX_ITEMS);
-  }, [fetchedData?.tokens, liveTokens]);
-
-  const totalPages = useMemo(
-    () => Math.min(Math.ceil(allTokens.length / ITEMS_PER_PAGE), MAX_PAGES),
-    [allTokens.length],
-  );
-
-  const currentPageTokens = useMemo(
-    () => allTokens.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE),
-    [allTokens, page],
-  );
-
-  const nextPage = useCallback(async () => {
-    const nextPageIndex = page + 1;
-    const nextPageStart = nextPageIndex * ITEMS_PER_PAGE;
-
-    if (!hasAllData && allTokens.length < nextPageStart) {
-      setIsLoading(true);
-      try {
-        const result = await fetchTokens(cursor, ITEMS_PER_PAGE);
-        setFetchedData((prev) => ({
-          tokens: [...prev.tokens, ...result.tokens],
-        }));
-        setCursor(result.nextCursor);
-        setHasAllData(!result.nextCursor);
-      } catch (error) {
-        console.error("Failed to fetch next page:", error);
-        return;
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    setPage((p) => (p < totalPages ? p + 1 : p));
-  }, [page, cursor, hasAllData, allTokens.length, totalPages]);
-
-  const previousPage = useCallback(() => {
-    setPage((p) => (p > 1 ? p - 1 : p));
-  }, []);
-
-  return {
-    tokens: currentPageTokens,
-    isLoading,
-    hasNextPage: !hasAllData || page * ITEMS_PER_PAGE < allTokens.length,
-    hasPreviousPage: page > 1,
-    currentPage: page,
-    totalPages,
-    nextPage,
-    previousPage,
-    isLiveUpdate,
-  };
+  });
 };
 
 const useTokenQuery = createQuery({
@@ -191,7 +37,7 @@ const useTokenQuery = createQuery({
   fetcher: async (mint: string) => {
     const token = await womboApi.contract.get({
       endpoint: `/tokens/${mint}`,
-      schema: ValidTokenSchema,
+      schema: TokenSchema,
     });
 
     return token;
