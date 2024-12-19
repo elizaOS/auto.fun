@@ -93,7 +93,7 @@ const ConnectedWalletButton = ({
             onDisconnect();
             setShowDisconnect(false);
           }}
-          color="red"
+          color="inverted"
           className="absolute -bottom-[60px] p-3 z-10 right-0"
           ref={disconnectButtonRef}
           variant="outlined"

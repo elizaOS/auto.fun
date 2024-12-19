@@ -51,7 +51,7 @@ export const useToken = (mint: string) => {
     const socket = io(CONTRACT_API_URL);
     socket.emit("subscribeToken", mint);
 
-    socket.on("newCandle", (candle: unknown) => {
+    socket.on("newCandle", () => {
       queryClient.setQueryData(useTokenQuery.getKey(), (oldData) => {
         // TODO: update the token with the new candle data
         return oldData;

@@ -3,24 +3,26 @@ import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { Socket } from "socket.io-client";
 import { z } from "zod";
 
-interface PaginatedLiveDataConfig<T> {
+interface PaginatedLiveDataConfig<TInput, TOutput> {
   itemsPerPage: number;
   maxPages: number;
   endpoint: string;
   socket: Socket;
-  validationSchema: z.ZodSchema<T>;
-  getUniqueId: (item: T) => string | number;
+  validationSchema: z.ZodSchema<TOutput, z.ZodTypeDef, TInput>;
+  getUniqueId: (item: TOutput) => string | number;
   socketConfig: {
-    subscribeEvent: string;
+    subscribeEvent: string | { event: string; args: unknown[] };
     newDataEvent: string;
   };
+  itemsPropertyName?: string;
 }
 
-const fetchData = async <T>(
+const fetchData = async <TInput, TOutput>(
   endpoint: string,
   cursor: string | null,
   limit: number,
-  validationSchema: z.ZodSchema<T>,
+  validationSchema: z.ZodSchema<TOutput, z.ZodTypeDef, TInput>,
+  itemsPropertyName: string,
 ) => {
   const queryEndpoint = cursor
     ? `${endpoint}?limit=${limit}&cursor=${cursor}`
@@ -29,28 +31,24 @@ const fetchData = async <T>(
   const response = await womboApi.contract.get({
     endpoint: queryEndpoint,
     schema: z.object({
-      tokens: z.array(validationSchema),
+      [itemsPropertyName]: z.array(validationSchema),
       nextCursor: z.string().nullable(),
     }),
   });
 
-  const filteredItems = response.tokens.filter(
-    (item): item is T => validationSchema.safeParse(item).success,
-  );
-
-  console.log(
-    `items removed: ${response.tokens.length - filteredItems.length}`,
+  const filteredItems = (response[itemsPropertyName] as TOutput[]).filter(
+    (item): item is TOutput => validationSchema.safeParse(item).success,
   );
 
   return {
     items: filteredItems,
-    nextCursor: response.nextCursor,
+    nextCursor: response.nextCursor as string | null,
   };
 };
 
 type LiveItemAction<T> = { type: "ADD_ITEM"; item: T } | { type: "TRIM" };
 
-export const usePaginatedLiveData = <T>({
+export const usePaginatedLiveData = <TInput, TOutput>({
   itemsPerPage,
   maxPages,
   endpoint,
@@ -58,20 +56,25 @@ export const usePaginatedLiveData = <T>({
   validationSchema,
   getUniqueId,
   socketConfig,
-}: PaginatedLiveDataConfig<T>) => {
+  itemsPropertyName = "tokens",
+}: PaginatedLiveDataConfig<TInput, TOutput>) => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const memoizedGetUniqueId = useCallback(getUniqueId, []);
   const [page, setPage] = useState(1);
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasAllData, setHasAllData] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [fetchedData, setFetchedData] = useState<{ items: T[] }>({ items: [] });
+  const [fetchedData, setFetchedData] = useState<{ items: TOutput[] }>({
+    items: [],
+  });
   const [isLiveUpdate, setIsLiveUpdate] = useState(false);
 
   const [liveItems, dispatch] = useReducer(
-    (state: T[], action: LiveItemAction<T>) => {
+    (state: TOutput[], action: LiveItemAction<TOutput>) => {
       switch (action.type) {
         case "ADD_ITEM": {
           const exists = state.some(
-            (i) => getUniqueId(i) === getUniqueId(action.item),
+            (i) => memoizedGetUniqueId(i) === memoizedGetUniqueId(action.item),
           );
           if (exists) return state;
           return [action.item, ...state].slice(0, maxPages * itemsPerPage);
@@ -94,6 +97,7 @@ export const usePaginatedLiveData = <T>({
           null,
           itemsPerPage,
           validationSchema,
+          itemsPropertyName,
         );
         setFetchedData({ items: result.items });
         setCursor(result.nextCursor);
@@ -106,7 +110,7 @@ export const usePaginatedLiveData = <T>({
     };
 
     loadInitialData();
-  }, [endpoint, itemsPerPage, validationSchema]);
+  }, [endpoint, itemsPerPage, validationSchema, itemsPropertyName]);
 
   useEffect(() => {
     const handleNewItem = (newItem: unknown) => {
@@ -117,7 +121,15 @@ export const usePaginatedLiveData = <T>({
       }
     };
 
-    socket.emit(socketConfig.subscribeEvent);
+    if (typeof socketConfig.subscribeEvent === "string") {
+      socket.emit(socketConfig.subscribeEvent);
+    } else {
+      socket.emit(
+        socketConfig.subscribeEvent.event,
+        ...socketConfig.subscribeEvent.args,
+      );
+    }
+
     socket.on(socketConfig.newDataEvent, handleNewItem);
 
     return () => {
@@ -144,16 +156,16 @@ export const usePaginatedLiveData = <T>({
     if (!fetchedData?.items) return liveItems;
 
     const combined = [...liveItems];
-    const liveIds = new Set(liveItems.map(getUniqueId));
+    const liveIds = new Set(liveItems.map(memoizedGetUniqueId));
 
     fetchedData.items.forEach((item) => {
-      if (!liveIds.has(getUniqueId(item))) {
+      if (!liveIds.has(memoizedGetUniqueId(item))) {
         combined.push(item);
       }
     });
 
     return combined;
-  }, [fetchedData?.items, liveItems, getUniqueId]);
+  }, [fetchedData?.items, liveItems, memoizedGetUniqueId]);
 
   const totalPages = useMemo(
     () => Math.min(Math.ceil(allItems.length / itemsPerPage), maxPages),
@@ -177,6 +189,7 @@ export const usePaginatedLiveData = <T>({
           cursor,
           itemsPerPage,
           validationSchema,
+          itemsPropertyName,
         );
         setFetchedData((prev) => {
           const keepItems = prev.items.slice(
@@ -207,6 +220,7 @@ export const usePaginatedLiveData = <T>({
     endpoint,
     itemsPerPage,
     validationSchema,
+    itemsPropertyName,
   ]);
 
   const previousPage = useCallback(() => {
