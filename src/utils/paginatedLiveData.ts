@@ -62,7 +62,7 @@ export const usePaginatedLiveData = <T>({
   const [page, setPage] = useState(1);
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasAllData, setHasAllData] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [fetchedData, setFetchedData] = useState<{ items: T[] }>({ items: [] });
   const [isLiveUpdate, setIsLiveUpdate] = useState(false);
 
