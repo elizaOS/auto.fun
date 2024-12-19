@@ -60,7 +60,7 @@ export const TokenMarketCap = ({ mint }: { mint: string }) => {
         </Container>
 
         <Container>
-          <Title>Liquidity</Title>
+          <Title>Capital Raised</Title>
           <Money>$15.3k</Money>
         </Container>
       </div>
