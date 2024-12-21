@@ -73,6 +73,44 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
               />
             </svg>
           </div>
+
+          <div className="flex gap-2 mt-2">
+            <button
+              className="h-12 px-4 py-3 bg-[#521653] rounded-lg flex-col justify-center items-center gap-2 inline-flex flex-1"
+              onClick={() => setAmount(0.5)}
+            >
+              <div className="text-[#f743f6] text-base font-medium font-['Inter'] leading-normal">
+                0.5 SOL
+              </div>
+            </button>
+
+            <button
+              className="h-12 px-4 py-3 bg-[#521653] rounded-lg flex-col justify-center items-center gap-2 inline-flex flex-1"
+              onClick={() => setAmount(1)}
+            >
+              <div className="text-[#f743f6] text-base font-medium font-['Inter'] leading-normal">
+                1 SOL
+              </div>
+            </button>
+
+            <button
+              className="h-12 px-4 py-3 bg-[#521653] rounded-lg flex-col justify-center items-center gap-2 inline-flex flex-1"
+              onClick={() => setAmount(5)}
+            >
+              <div className="text-[#f743f6] text-base font-medium font-['Inter'] leading-normal">
+                5 SOL
+              </div>
+            </button>
+
+            <button
+              className="h-12 px-4 py-3 bg-[#521653] rounded-lg flex-col justify-center items-center gap-2 inline-flex flex-1"
+              onClick={() => setAmount(10)}
+            >
+              <div className="text-[#f743f6] text-base font-medium font-['Inter'] leading-normal">
+                10 SOL
+              </div>
+            </button>
+          </div>
         </div>
 
         <RoundedButton
