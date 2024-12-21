@@ -43,13 +43,17 @@ export const BottomTable = ({
       </div>
 
       {/* Component containers with visibility toggling */}
-      <div className={activeTab === "Transactions" ? "block" : "hidden"}>
+      <div
+        className={`${activeTab === "Transactions" ? "flex flex-col" : "hidden"} flex-1`}
+      >
         {token && (
           <TransactionTable socket={socket} mint={mint} ticker={token.ticker} />
         )}
       </div>
 
-      <div className={activeTab === "Holder Distribution" ? "block" : "hidden"}>
+      <div
+        className={`${activeTab === "Holder Distribution" ? "flex flex-col" : "hidden"} flex-1`}
+      >
         <HolderDistributionTable socket={socket} mint={mint} />
       </div>
     </div>

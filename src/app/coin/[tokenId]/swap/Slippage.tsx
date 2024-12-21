@@ -40,29 +40,35 @@ export function Slippage({
       </button>
 
       {isOpen && (
-        <div
-          className={`border rounded-lg relative ${
-            isFocus ? "border-[#f743f6]" : "border-[#662066]"
-          }`}
-        >
-          <input
-            className="text-[#f743f6] font-medium bg-inherit p-3 w-full"
-            type="number"
-            onKeyDown={(e) => {
-              if (e.key === "-" || e.key === "e") {
-                e.preventDefault();
+        <>
+          <div
+            className={`border rounded-lg relative ${
+              isFocus ? "border-[#f743f6]" : "border-[#662066]"
+            }`}
+          >
+            <input
+              className="text-[#f743f6] font-medium bg-inherit p-3 w-full"
+              type="number"
+              onKeyDown={(e) => {
+                if (e.key === "-" || e.key === "e") {
+                  e.preventDefault();
+                }
+              }}
+              min={0}
+              value={value}
+              onChange={(e) =>
+                onChange(e.target.value === "" ? "" : Number(e.target.value))
               }
-            }}
-            min={0}
-            value={value}
-            onChange={(e) =>
-              onChange(e.target.value === "" ? "" : Number(e.target.value))
-            }
-            onFocus={() => setIsFocus(true)}
-            onBlur={() => setIsFocus(false)}
-          />
-          <div className="absolute right-4 top-1/2 -translate-y-1/2">%</div>
-        </div>
+              onFocus={() => setIsFocus(true)}
+              onBlur={() => setIsFocus(false)}
+            />
+            <div className="absolute right-4 top-1/2 -translate-y-1/2">%</div>
+          </div>
+          <div className="text-[#cab7c7] text-xs font-medium font-['Inter'] leading-none">
+            Max amount of slippage you&apos;re willing to accept when placing
+            trades.
+          </div>
+        </>
       )}
     </div>
   );
