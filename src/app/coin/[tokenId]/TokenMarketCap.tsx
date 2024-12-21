@@ -2,7 +2,7 @@
 
 import { Tooltip } from "@/components/common/Tooltip";
 import { Tweet } from "@/components/common/Tweet";
-import { formatCurrency } from "@/utils/formatCurrency";
+import { formatNumber } from "@/utils/number";
 import { useToken } from "@/utils/tokens";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { PropsWithChildren } from "react";
@@ -63,12 +63,12 @@ export const TokenMarketCap = ({ mint }: { mint: string }) => {
         <div className="flex gap-3 w-full">
           <Container>
             <Title>Market cap</Title>
-            <Money>${formatCurrency(token.marketCapUSD)}</Money>
+            <Money>${formatNumber(token.marketCapUSD)}</Money>
           </Container>
 
           <Container>
             <Title>Capital Raised</Title>
-            <Money>${formatCurrency(token.liquidity)}</Money>
+            <Money>${formatNumber(token.liquidity)}</Money>
           </Container>
         </div>
       ) : (
@@ -104,22 +104,19 @@ export const TokenMarketCap = ({ mint }: { mint: string }) => {
               Raydium
             </a>{" "}
             at ~$
-            {formatCurrency(
-              token.curveProgress === 0 
+            {formatNumber(
+              token.curveProgress === 0
                 ? (token.marketCapUSD / 5) * 100
-                : (token.marketCapUSD / token.curveProgress) * 100
+                : (token.marketCapUSD / token.curveProgress) * 100,
             )}{" "}
-            market cap.
-            {" "}There is{" "}
-            {(
-              (token.reserveLamport) /
-              LAMPORTS_PER_SOL
-            ).toFixed(3)}{" "}
-            SOL in the bonding curve.
+            market cap. There is{" "}
+            {(token.reserveLamport / LAMPORTS_PER_SOL).toFixed(3)} SOL in the
+            bonding curve.
           </>
         ) : (
           <div className="text-center">
-            This token was migrated to Raydium.<br />
+            This token was migrated to Raydium.
+            <br />
             Trade this token on{" "}
             <a
               className="text-[#f743f6] text-xs font-medium"

@@ -2,7 +2,7 @@
 
 import { useTimeAgo } from "@/app/formatTimeAgo";
 import { Paginator } from "@/components/common/Paginator";
-import { formatCurrency } from "@/utils/formatCurrency";
+import { formatNumber } from "@/utils/number";
 import { usePaginatedLiveData } from "@/utils/paginatedLiveData";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import Link from "next/link";
@@ -26,7 +26,8 @@ const TransactionSchema = z
     type: tx.direction === 0 ? "Buy" : "Sell",
     solAmount:
       (tx.direction === 0 ? tx.amountIn : tx.amountOut) / LAMPORTS_PER_SOL,
-    tokenAmount: tx.direction === 0 ? tx.amountOut / 10 ** 6 : tx.amountIn / 10 ** 6,
+    tokenAmount:
+      tx.direction === 0 ? tx.amountOut / 10 ** 6 : tx.amountIn / 10 ** 6,
   }));
 
 export const TransactionTable = ({
@@ -86,7 +87,11 @@ export const TransactionTable = ({
           {transactions.map((tx, index) => (
             <tr key={tx.txId} className="border-t border-[#532954]">
               <td className="py-4">
-                <Link href={`https://solscan.io/account/${tx.user}?cluster=devnet`} target="_blank" className="text-[#f743f6]">
+                <Link
+                  href={`https://solscan.io/account/${tx.user}?cluster=devnet`}
+                  target="_blank"
+                  className="text-[#f743f6]"
+                >
                   {tx.user.slice(0, 4)}...{tx.user.slice(-4)}
                 </Link>
               </td>
@@ -97,8 +102,8 @@ export const TransactionTable = ({
               >
                 {tx.type}
               </td>
-              <td>{tx.solAmount}</td>
-              <td>{formatCurrency(tx.tokenAmount)}</td>
+              <td>{formatNumber(tx.solAmount, 3)}</td>
+              <td>{formatNumber(tx.tokenAmount, 2)}</td>
               <td>{timeAgo[index]}</td>
               <td>
                 <Link

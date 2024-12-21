@@ -5,12 +5,12 @@ const CURRENCY_FORMATS = [
   { divisor: 1_000, suffix: "k" },
 ] as const;
 
-export const formatCurrency = (value: number): string => {
+export const formatNumber = (value: number, decimals: number = 2): string => {
   const format = CURRENCY_FORMATS.find(({ divisor }) => value >= divisor);
 
   if (format) {
     return `${(value / format.divisor).toFixed(1)}${format.suffix}`;
   }
 
-  return value.toFixed(2);
+  return Number(value.toFixed(decimals)).toString();
 };

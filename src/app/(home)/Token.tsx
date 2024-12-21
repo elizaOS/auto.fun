@@ -37,14 +37,16 @@ export const Token = ({
           alt="placeholder"
         />
         <div className="px-2 py-1 bg-[#f743f6]/10 rounded-lg justify-start items-start gap-1 flex">
-          {status === "active" ? (<>
-          <div className="text-[#cab7c7] text-base font-medium leading-normal">
-            Market cap:
-          </div>
-          <div className="text-[#f743f6] text-base font-medium leading-normal">
-            {marketCap}
-            </div>
-          </>) : (
+          {status === "active" ? (
+            <>
+              <div className="text-[#cab7c7] text-base font-medium leading-normal">
+                Market cap:
+              </div>
+              <div className="text-[#f743f6] text-base font-medium leading-normal">
+                ${marketCap}
+              </div>
+            </>
+          ) : (
             <div className="text-[#cab7c7] text-base font-medium leading-normal">
               On Raydium
             </div>

@@ -8,7 +8,7 @@ import "react-loading-skeleton/dist/skeleton.css";
 import { io } from "socket.io-client";
 import { CONTRACT_API_URL } from "@/utils/env";
 import { Paginator } from "@/components/common/Paginator";
-import { formatCurrency } from "@/utils/formatCurrency";
+import { formatNumber } from "@/utils/number";
 
 const socket = io(CONTRACT_API_URL);
 
@@ -105,7 +105,7 @@ export default function HomePage() {
                 <Token
                   key={token.mint}
                   mint={token.mint}
-                  marketCap={formatCurrency(token.marketCapUSD)}
+                  marketCap={formatNumber(token.marketCapUSD)}
                   name={token.name}
                   status={token.status}
                   ticker={token.ticker}
