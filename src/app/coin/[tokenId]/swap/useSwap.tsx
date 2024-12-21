@@ -101,11 +101,6 @@ export const swapTx = async (
   const feePercent =
     style === 1 ? configAccount.platformSellFee : configAccount.platformBuyFee;
   const adjustedAmount = (amount * (100 - feePercent)) / 100;
-  console.log("After fee adjustment:", {
-    originalAmount: amount,
-    feePercent,
-    adjustedAmount,
-  });
 
   // Calculate expected output
   let estimatedOutput;
