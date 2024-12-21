@@ -28,7 +28,7 @@ const fetchData = async <TInput, TOutput>(
     ? `${endpoint}?limit=${limit}&cursor=${cursor}`
     : `${endpoint}?limit=${limit}`;
 
-  const response = await womboApi.contract.get({
+  const response = await womboApi.get({
     endpoint: queryEndpoint,
     schema: z.object({
       [itemsPropertyName]: z.array(validationSchema),

@@ -2,13 +2,14 @@
 
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { useState } from "react";
+import { useSwap } from "./useSwap";
 
-export const TokenBuySell = () => {
+export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
   const [activeTab, setActiveTab] = useState<"Buy" | "Sell">("Buy");
   const [amount, setAmount] = useState<number | string>("");
   const [isFocus, setIsFocus] = useState(false);
 
-  const handlePlaceTrade = () => {};
+  const { handleSwap } = useSwap();
 
   return (
     <div>
@@ -74,7 +75,18 @@ export const TokenBuySell = () => {
           </div>
         </div>
 
-        <RoundedButton className="p-3" onClick={handlePlaceTrade}>
+        <RoundedButton
+          className="p-3"
+          onClick={() =>
+            handleSwap({
+              amountSol: Number(amount),
+              // TODO: get slippage from user
+              slippagePercentage: 0,
+              style: activeTab === "Buy" ? "buy" : "sell",
+              tokenAddress: tokenId,
+            })
+          }
+        >
           Place trade
         </RoundedButton>
       </div>

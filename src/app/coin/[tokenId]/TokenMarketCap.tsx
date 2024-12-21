@@ -2,6 +2,7 @@
 
 import { Tooltip } from "@/components/common/Tooltip";
 import { Tweet } from "@/components/common/Tweet";
+import { formatCurrency } from "@/utils/formatCurrency";
 import { useToken } from "@/utils/tokens";
 import { PropsWithChildren } from "react";
 
@@ -49,14 +50,16 @@ const LoadingBar = ({ progress }: { progress: number }) => {
 export const TokenMarketCap = ({ mint }: { mint: string }) => {
   const { data: token } = useToken(mint);
 
+  if (!token) return null;
+
   return (
     <div className="flex flex-col bg-[#401141] rounded-xl p-4 gap-3">
-      <Tweet url={token?.website ?? ""} />
+      <Tweet url={token.xurl} />
 
       <div className="flex gap-3 w-full">
         <Container>
           <Title>Market cap</Title>
-          <Money>$17.6k</Money>
+          <Money>${formatCurrency(token.marketCapUSD)}</Money>
         </Container>
 
         <Container>
@@ -73,7 +76,7 @@ export const TokenMarketCap = ({ mint }: { mint: string }) => {
             position="left"
           />
         </div>
-        <LoadingBar progress={46} />
+        <LoadingBar progress={token.curveProgress} />
       </Container>
 
       <div className="text-[#cab7c7] text-xs font-medium leading-normal">

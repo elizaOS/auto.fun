@@ -13,8 +13,21 @@ const TokenSchema = z.object({
   ticker: z.string(),
   createdAt: z.string().datetime(),
   mint: z.string(),
-  image: z.string().optional(),
-  website: z.string().optional(),
+  image: z.string(),
+  xurl: z.string(),
+  marketCapUSD: z.number(),
+  currentPrice: z.number(),
+  curveProgress: z.number(),
+  status: z.enum([
+    "pending",
+    "active",
+    "withdrawn",
+    "migrating",
+    "migrated",
+    "locked",
+    "harvested",
+    "migration_failed",
+  ]),
 });
 
 export const useTokens = (socket: Socket) => {
@@ -35,7 +48,7 @@ export const useTokens = (socket: Socket) => {
 const useTokenQuery = createQuery({
   queryKey: ["tokens"],
   fetcher: async (mint: string) => {
-    const token = await womboApi.contract.get({
+    const token = await womboApi.get({
       endpoint: `/tokens/${mint}`,
       schema: TokenSchema,
     });
@@ -56,6 +69,11 @@ export const useToken = (mint: string) => {
         // TODO: update the token with the new candle data
         return oldData;
       });
+    });
+
+    socket.on("updateToken", (token) => {
+      console.log("updateToken", token);
+      queryClient.setQueryData(useTokenQuery.getKey(mint), token);
     });
   }, [mint, queryClient]);
 

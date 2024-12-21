@@ -14,7 +14,7 @@ export const WalletProvider = ({
   const wallets = [new PhantomWalletAdapter()];
 
   return (
-    <ConnectionProvider endpoint={"https://api.mainnet-beta.solana.com"}>
+    <ConnectionProvider endpoint={"https://api.devnet.solana.com"}>
       <SolanaWalletProvider wallets={wallets} autoConnect={autoConnect}>
         {children}
       </SolanaWalletProvider>

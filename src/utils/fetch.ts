@@ -1,7 +1,7 @@
 import { ZodSchema, ZodTypeDef } from "zod";
 // eslint-disable-next-line no-restricted-imports
 import axios, { AxiosResponse } from "axios";
-import { API_URL, CONTRACT_API_URL } from "./env";
+import { CONTRACT_API_URL } from "./env";
 
 type WomboApiOptionsWithoutBody<TSchema, T1 extends ZodTypeDef, T2> = {
   endpoint: string;
@@ -22,22 +22,10 @@ type AxiosWrapperOptions<TSchema, T1 extends ZodTypeDef, T2> = WomboApiOptions<
   TSchema,
   T1,
   T2
-> & { method: string; api: "wombo" | "contract" | "rawJson" };
+> & { method: string };
 
-const baseAxiosInstance = axios.create({
-  baseURL: API_URL,
-  responseType: "json",
-});
-
-// server cookie support
-baseAxiosInstance.defaults.withCredentials = true;
-
-const contractAxiosInstance = axios.create({
+const axiosInstance = axios.create({
   baseURL: CONTRACT_API_URL,
-  responseType: "json",
-});
-
-const rawJsonAxiosInstance = axios.create({
   responseType: "json",
 });
 
@@ -46,22 +34,8 @@ const axiosWrapper = async <TSchema, T1 extends ZodTypeDef, T2>({
   body,
   schema,
   method,
-  api,
 }: AxiosWrapperOptions<TSchema, T1, T2>) => {
   try {
-    const getAxiosInstance = (api: "wombo" | "contract" | "rawJson") => {
-      switch (api) {
-        case "contract":
-          return contractAxiosInstance;
-        case "rawJson":
-          return rawJsonAxiosInstance;
-        default:
-          return baseAxiosInstance;
-      }
-    };
-
-    const axiosInstance = getAxiosInstance(api);
-
     const response = await axiosInstance.request<
       unknown,
       AxiosResponse<TSchema>
@@ -120,53 +94,17 @@ const axiosWrapper = async <TSchema, T1 extends ZodTypeDef, T2>({
 export const womboApi = {
   get: <TSchema, T1 extends ZodTypeDef, T2>(
     options: WomboApiOptionsWithoutBody<TSchema, T1, T2>,
-  ) => axiosWrapper({ ...options, method: "get", api: "wombo" }),
+  ) => axiosWrapper({ ...options, method: "get" }),
   delete: <TSchema, T1 extends ZodTypeDef, T2>(
     options: WomboApiOptionsWithoutBody<TSchema, T1, T2>,
-  ) => axiosWrapper({ ...options, method: "delete", api: "wombo" }),
+  ) => axiosWrapper({ ...options, method: "delete" }),
   post: <TSchema, T1 extends ZodTypeDef, T2>(
     options: WomboApiOptions<TSchema, T1, T2>,
-  ) => axiosWrapper({ ...options, method: "post", api: "wombo" }),
+  ) => axiosWrapper({ ...options, method: "post" }),
   put: <TSchema, T1 extends ZodTypeDef, T2>(
     options: WomboApiOptions<TSchema, T1, T2>,
-  ) => axiosWrapper({ ...options, method: "put", api: "wombo" }),
+  ) => axiosWrapper({ ...options, method: "put" }),
   patch: <TSchema, T1 extends ZodTypeDef, T2>(
     options: WomboApiOptions<TSchema, T1, T2>,
-  ) => axiosWrapper({ ...options, method: "patch", api: "wombo" }),
-
-  contract: {
-    get: <TSchema, T1 extends ZodTypeDef, T2>(
-      options: WomboApiOptionsWithoutBody<TSchema, T1, T2>,
-    ) => axiosWrapper({ ...options, method: "get", api: "contract" }),
-    delete: <TSchema, T1 extends ZodTypeDef, T2>(
-      options: WomboApiOptionsWithoutBody<TSchema, T1, T2>,
-    ) => axiosWrapper({ ...options, method: "delete", api: "contract" }),
-    post: <TSchema, T1 extends ZodTypeDef, T2>(
-      options: WomboApiOptions<TSchema, T1, T2>,
-    ) => axiosWrapper({ ...options, method: "post", api: "contract" }),
-    put: <TSchema, T1 extends ZodTypeDef, T2>(
-      options: WomboApiOptions<TSchema, T1, T2>,
-    ) => axiosWrapper({ ...options, method: "put", api: "contract" }),
-    patch: <TSchema, T1 extends ZodTypeDef, T2>(
-      options: WomboApiOptions<TSchema, T1, T2>,
-    ) => axiosWrapper({ ...options, method: "patch", api: "contract" }),
-  },
-
-  raw: {
-    get: <TSchema, T1 extends ZodTypeDef, T2>(
-      options: WomboApiOptionsWithoutBody<TSchema, T1, T2>,
-    ) => axiosWrapper({ ...options, method: "get", api: "rawJson" }),
-    delete: <TSchema, T1 extends ZodTypeDef, T2>(
-      options: WomboApiOptionsWithoutBody<TSchema, T1, T2>,
-    ) => axiosWrapper({ ...options, method: "delete", api: "rawJson" }),
-    post: <TSchema, T1 extends ZodTypeDef, T2>(
-      options: WomboApiOptions<TSchema, T1, T2>,
-    ) => axiosWrapper({ ...options, method: "post", api: "rawJson" }),
-    put: <TSchema, T1 extends ZodTypeDef, T2>(
-      options: WomboApiOptions<TSchema, T1, T2>,
-    ) => axiosWrapper({ ...options, method: "put", api: "rawJson" }),
-    patch: <TSchema, T1 extends ZodTypeDef, T2>(
-      options: WomboApiOptions<TSchema, T1, T2>,
-    ) => axiosWrapper({ ...options, method: "patch", api: "rawJson" }),
-  },
+  ) => axiosWrapper({ ...options, method: "patch" }),
 };
