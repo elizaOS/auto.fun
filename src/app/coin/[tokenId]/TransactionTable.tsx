@@ -86,7 +86,9 @@ export const TransactionTable = ({
           {transactions.map((tx, index) => (
             <tr key={tx.txId} className="border-t border-[#532954]">
               <td className="py-4">
-                {tx.user.slice(0, 4)}...{tx.user.slice(-4)}
+                <Link href={`https://solscan.io/account/${tx.user}?cluster=devnet`} target="_blank" className="text-[#f743f6]">
+                  {tx.user.slice(0, 4)}...{tx.user.slice(-4)}
+                </Link>
               </td>
               <td
                 className={

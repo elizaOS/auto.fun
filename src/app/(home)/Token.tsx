@@ -7,6 +7,7 @@ export const Token = ({
   mint,
   marketCap,
   name,
+  status,
   ticker,
   url,
   tweetUrl,
@@ -16,6 +17,7 @@ export const Token = ({
   mint: string;
   marketCap: string;
   name: string;
+  status: string;
   ticker: string;
   url: string | undefined;
   tweetUrl: string;
@@ -35,12 +37,18 @@ export const Token = ({
           alt="placeholder"
         />
         <div className="px-2 py-1 bg-[#f743f6]/10 rounded-lg justify-start items-start gap-1 flex">
+          {status === "active" ? (<>
           <div className="text-[#cab7c7] text-base font-medium leading-normal">
             Market cap:
           </div>
           <div className="text-[#f743f6] text-base font-medium leading-normal">
             {marketCap}
-          </div>
+            </div>
+          </>) : (
+            <div className="text-[#cab7c7] text-base font-medium leading-normal">
+              On Raydium
+            </div>
+          )}
         </div>
       </div>
       <div className="self-stretch h-12 flex-col justify-start items-start flex">

@@ -107,6 +107,7 @@ export default function HomePage() {
                   mint={token.mint}
                   marketCap={formatCurrency(token.marketCapUSD)}
                   name={token.name}
+                  status={token.status}
                   ticker={token.ticker}
                   url={token.image || undefined}
                   tweetUrl={token.xurl}
