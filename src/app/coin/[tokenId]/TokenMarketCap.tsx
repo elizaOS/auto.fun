@@ -74,10 +74,8 @@ const BondingStatus = ({ token }: { token: Token }) => {
       );
     case "locked":
       return (
-        <div className="text-center">
-          This token was migrated to Raydium.
-          <br />
-          Trade this token on{" "}
+        <div>
+          The pool has been seeded. This coin has migrated to{" "}
           <a
             className="text-[#f743f6] text-xs font-medium"
             href={`https://raydium.io/swap/?inputCurrency=sol&outputMint=${token.mint}`}
@@ -85,6 +83,7 @@ const BondingStatus = ({ token }: { token: Token }) => {
           >
             Raydium
           </a>
+          .
         </div>
       );
     case "migration_failed":
