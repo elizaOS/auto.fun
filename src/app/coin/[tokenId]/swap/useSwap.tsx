@@ -72,7 +72,8 @@ export function calculateAmountOutSell(
   // Convert the result back to the original decimal format
   const amountOut = convertFromFloat(amountOutInFloat, 9);
 
-  return Math.floor(amountOut); // Round down for safety
+  // return Math.floor(amountOut); // Round down for safety
+  return Math.floor(amountOut);
 }
 
 export const swapTx = async (
@@ -107,9 +108,8 @@ export const swapTx = async (
   const curve = await program.account.bondingCurve.fetch(bondingCurvePda);
 
   // Apply platform fee
-  const feePercent =
-    style === 1 ? configAccount.platformSellFee : configAccount.platformBuyFee;
-  const adjustedAmount = (amount * (100 - feePercent)) / 100;
+  const feePercent = style === 1 ? configAccount.platformSellFee : configAccount.platformBuyFee;
+  const adjustedAmount = Math.floor((amount * (100 - feePercent)) / 100);
 
   // Calculate expected output
   let estimatedOutput;
@@ -126,7 +126,7 @@ export const swapTx = async (
     // Sell
     estimatedOutput = calculateAmountOutSell(
       curve.reserveToken.toNumber(),
-      adjustedAmount,
+      amount,
       6,
       curve.reserveLamport.toNumber(),
     );
