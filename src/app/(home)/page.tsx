@@ -1,6 +1,6 @@
 "use client";
 
-import { RoundedButton } from "@/components/common/button/RoundedButton";
+// import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { Token } from "./Token";
 import { useTokens } from "@/utils/tokens";
 import Skeleton from "react-loading-skeleton";
@@ -87,14 +87,14 @@ export default function HomePage() {
         <div className="text-white text-[56px] font-bold font-secondary leading-[64px] mb-6">
           Token Board
         </div>
-        <div className="flex gap-4">
+        {/* <div className="flex gap-4">
           <RoundedButton color="inverted" className="px-4 py-2 rounded-full">
             All
           </RoundedButton>
           <RoundedButton color="inverted" className="px-4 py-2 rounded-full">
             Market Cap
           </RoundedButton>
-        </div>
+        </div> */}
       </div>
 
       {isLoading
