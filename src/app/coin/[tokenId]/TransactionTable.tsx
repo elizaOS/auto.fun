@@ -26,7 +26,7 @@ const TransactionSchema = z
     type: tx.direction === 0 ? "Buy" : "Sell",
     solAmount:
       (tx.direction === 0 ? tx.amountIn : tx.amountOut) / LAMPORTS_PER_SOL,
-    tokenAmount: tx.direction === 0 ? tx.amountOut : tx.amountIn,
+    tokenAmount: tx.direction === 0 ? tx.amountOut / 10 ** 6 : tx.amountIn / 10 ** 6,
   }));
 
 export const TransactionTable = ({

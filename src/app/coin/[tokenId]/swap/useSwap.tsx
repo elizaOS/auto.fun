@@ -108,21 +108,22 @@ export const swapTx = async (
   const curve = await program.account.bondingCurve.fetch(bondingCurvePda);
 
   // Apply platform fee
-  const feePercent = style === 1 ? configAccount.platformSellFee : configAccount.platformBuyFee;
-  const adjustedAmount = Math.floor((amount * (100 - feePercent)) / 100);
+  // const feePercent = style === 1 ? configAccount.platformSellFee : configAccount.platformBuyFee;
+  // const adjustedAmount = Math.floor((amount * (100 - feePercent)) / 100);
 
   // Calculate expected output
   let estimatedOutput;
   if (style === 0) {
+    console.log("buying", amount, "SOL");
     // Buy
     estimatedOutput = calculateAmountOutBuy(
       curve.reserveLamport.toNumber(),
-      adjustedAmount,
+      amount,
       9, // SOL decimals
       curve.reserveToken.toNumber(),
     );
   } else {
-    console.log("selling", adjustedAmount, "tokens");
+    console.log("selling", amount, "tokens");
     // Sell
     estimatedOutput = calculateAmountOutSell(
       curve.reserveToken.toNumber(),
