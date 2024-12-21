@@ -7,6 +7,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { Slippage } from "./Slippage";
 import { useWalletConnection } from "@/components/common/button/WalletButton";
+import { MigrationOverlay } from "./MigrationOverlay";
 
 export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
   const [activeTab, setActiveTab] = useState<"Buy" | "Sell">("Buy");
@@ -89,7 +90,8 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
       : [25, 50, 75, 100]; // Percentages for Sell
 
   return (
-    <div>
+    <div className="relative">
+      <MigrationOverlay tokenId={tokenId} />
       <div className="flex flex-col gap-4 bg-[#401141] p-4 rounded-xl">
         <div className="flex gap-2 bg-[#521653] p-2 rounded-lg w-full">
           <button

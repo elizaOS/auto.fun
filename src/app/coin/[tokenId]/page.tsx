@@ -31,7 +31,7 @@ export default function TokenDetailsPage() {
 
         <div className="flex flex-col gap-2">
           <TokenMarketCap mint={tokenId} />
-          {token.status === "active" && <TokenBuySell tokenId={tokenId} />}
+          <TokenBuySell tokenId={tokenId} />
         </div>
       </div>
       <BottomTable socket={socket} mint={tokenId} />
