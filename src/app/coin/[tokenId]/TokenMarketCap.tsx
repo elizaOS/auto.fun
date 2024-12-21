@@ -103,10 +103,10 @@ export const TokenMarketCap = ({ mint }: { mint: string }) => {
             >
               Raydium
             </a>{" "}
-            at $
+            at ~$
             {formatCurrency(
               token.curveProgress === 0 
-                ? (token.marketCapUSD / 1) * 100
+                ? (token.marketCapUSD / 5) * 100
                 : (token.marketCapUSD / token.curveProgress) * 100
             )}{" "}
             market cap.

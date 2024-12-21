@@ -50,6 +50,13 @@ export const HolderDistributionTable = ({
     return "BoeEDSULDSF1s81XCtmsgWPZmgLjiF1PyDFub2j8Wtsz";
   };
 
+  const getRaydiumAddress = () => {
+    if (!token) return null;
+    // TODO: make these env variables for after deployment
+    // Devnet Raydium address
+    return "7rQ1QFNosMkUCuh7Z7fPbTHvh73b68sQYdirycEzJVuw";
+  };
+
   return (
     <div className="p-4">
       <div className="text-[#b3a0b3] text-sm mb-4">
@@ -60,7 +67,7 @@ export const HolderDistributionTable = ({
           {holders.map((holder, index) => {
             const bondingCurveAddress = getBondingCurveAddress();
             const devAddress = getDevAddress();
-
+            const raydiumAddress = getRaydiumAddress();
             return (
               <tr
                 key={holder.address}
@@ -84,6 +91,11 @@ export const HolderDistributionTable = ({
                     {holder.address === devAddress && (
                       <span className="text-[#b3a0b3] font-medium ml-2">
                         💻 (dev)
+                      </span>
+                    )}
+                    {holder.address === raydiumAddress && (
+                      <span className="text-[#b3a0b3] font-medium ml-2">
+                        Ⓡ (raydium)
                       </span>
                     )}
                   </div>

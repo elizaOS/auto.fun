@@ -9,6 +9,7 @@ import { CONTRACT_API_URL } from "@/utils/env";
 import { io } from "socket.io-client";
 import { useParams } from "next/navigation";
 import { useToken } from "@/utils/tokens";
+import { TradingChart } from "@/components/TVChart/TradingChart";
 
 const socket = io(CONTRACT_API_URL);
 
@@ -26,6 +27,7 @@ export default function TokenDetailsPage() {
         <div className="col-span-2 flex flex-col gap-2">
           <TokenMetadata mint={tokenId} />
           {/* <TokenGraph /> */}
+          {token.status === "active" && <TradingChart param={token} />}
           <BottomTable socket={socket} mint={tokenId} />
         </div>
 
