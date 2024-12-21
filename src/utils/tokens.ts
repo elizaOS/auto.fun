@@ -27,7 +27,6 @@ const TokenSchema = z.object({
     "migrating",
     "migrated",
     "locked",
-    "harvested",
     "migration_failed",
   ]),
   liquidity: z.number(),
@@ -36,6 +35,8 @@ const TokenSchema = z.object({
   virtualReserves: z.number(),
   solPriceUSD: z.number(),
 });
+
+export type Token = z.infer<typeof TokenSchema>;
 
 export const useTokens = (socket: Socket) => {
   return usePaginatedLiveData({

@@ -3,7 +3,7 @@
 import { Tooltip } from "@/components/common/Tooltip";
 import { Tweet } from "@/components/common/Tweet";
 import { formatNumber } from "@/utils/number";
-import { useToken } from "@/utils/tokens";
+import { Token, useToken } from "@/utils/tokens";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { PropsWithChildren } from "react";
 
@@ -48,12 +48,58 @@ const LoadingBar = ({ progress }: { progress: number }) => {
   );
 };
 
+const BondingStatus = ({ token }: { token: Token }) => {
+  switch (token.status) {
+    case "active":
+      return (
+        <>
+          Graduate this coin to{" "}
+          <a
+            className="text-[#f743f6] text-xs font-medium"
+            href="https://raydium.io"
+            target="_blank"
+          >
+            Raydium
+          </a>{" "}
+          at ~$
+          {formatNumber(
+            token.curveProgress === 0
+              ? (token.marketCapUSD / 5) * 100
+              : (token.marketCapUSD / token.curveProgress) * 100,
+          )}{" "}
+          market cap. There is{" "}
+          {(token.reserveLamport / LAMPORTS_PER_SOL).toFixed(3)} SOL in the
+          bonding curve.
+        </>
+      );
+    case "locked":
+      return (
+        <div className="text-center">
+          This token was migrated to Raydium.
+          <br />
+          Trade this token on{" "}
+          <a
+            className="text-[#f743f6] text-xs font-medium"
+            href={`https://raydium.io/swap/?inputCurrency=sol&outputMint=${token.mint}`}
+            target="_blank"
+          >
+            Raydium
+          </a>
+        </div>
+      );
+    case "migration_failed":
+      return <div>Raydium migration failed</div>;
+    case "withdrawn":
+    case "migrated":
+    case "migrating":
+      return <div>Raydium migration in progress...</div>;
+  }
+};
+
 export const TokenMarketCap = ({ mint }: { mint: string }) => {
   const { data: token } = useToken(mint);
 
   if (!token) return null;
-
-  console.log(token);
 
   return (
     <div className="flex flex-col bg-[#401141] rounded-xl p-4 gap-3">
@@ -93,40 +139,7 @@ export const TokenMarketCap = ({ mint }: { mint: string }) => {
       </Container>
 
       <div className="text-[#cab7c7] text-xs font-medium leading-normal">
-        {token.status === "active" ? (
-          <>
-            Graduate this coin to{" "}
-            <a
-              className="text-[#f743f6] text-xs font-medium"
-              href="https://raydium.io"
-              target="_blank"
-            >
-              Raydium
-            </a>{" "}
-            at ~$
-            {formatNumber(
-              token.curveProgress === 0
-                ? (token.marketCapUSD / 5) * 100
-                : (token.marketCapUSD / token.curveProgress) * 100,
-            )}{" "}
-            market cap. There is{" "}
-            {(token.reserveLamport / LAMPORTS_PER_SOL).toFixed(3)} SOL in the
-            bonding curve.
-          </>
-        ) : (
-          <div className="text-center">
-            This token was migrated to Raydium.
-            <br />
-            Trade this token on{" "}
-            <a
-              className="text-[#f743f6] text-xs font-medium"
-              href={`https://raydium.io/swap/?inputCurrency=sol&outputMint=${token.mint}`}
-              target="_blank"
-            >
-              Raydium
-            </a>
-          </div>
-        )}
+        <BondingStatus token={token} />
       </div>
     </div>
   );
