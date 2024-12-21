@@ -7,6 +7,7 @@ import { Nav } from "@/components/nav";
 import { Providers } from "@/components/providers";
 import { SkeletonTheme } from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
+import "react-toastify/dist/ReactToastify.css";
 
 const ppMondwest = localFont({
   src: "./fonts/PPMondwest-Regular.otf",
@@ -37,7 +38,14 @@ export default async function RootLayout({
             <Nav />
             <div className="flex flex-col flex-1">{children}</div>
           </Providers>
-          <ToastContainer autoClose={5000} theme="dark" />
+          <ToastContainer
+            position="bottom-right"
+            autoClose={false}
+            className="!w-[277px]"
+            toastClassName={"!bg-transparent !rounded-none !mb-4 !p-0"}
+            bodyClassName={"!p-0 !m-0"}
+            closeButton={false}
+          />
         </SkeletonTheme>
       </body>
     </html>
