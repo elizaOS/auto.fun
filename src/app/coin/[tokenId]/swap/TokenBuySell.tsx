@@ -86,6 +86,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
               tokenAddress: tokenId,
             })
           }
+          disabled={!amount}
         >
           Place trade
         </RoundedButton>

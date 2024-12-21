@@ -19,7 +19,7 @@ export const BottomTable = ({
   >("Transactions");
 
   return (
-    <div className="rounded-lg bg-[#401141] overflow-hidden">
+    <div className="rounded-lg bg-[#401141] overflow-hidden min-h-[300px] flex flex-col">
       {/* Tab Navigation */}
       <div className="flex bg-[#521653] p-4">
         <div className="flex gap-2 bg-[#401141] p-2 rounded-lg">

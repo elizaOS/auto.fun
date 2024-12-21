@@ -59,7 +59,7 @@ export const TransactionTable = ({
   });
 
   return (
-    <div className="p-4">
+    <div className="p-4 flex flex-col flex-1 justify-between">
       <table className="w-full">
         <thead>
           <tr className="text-[#b3a0b3] font-medium text-left">
@@ -90,6 +90,12 @@ export const TransactionTable = ({
           ))}
         </tbody>
       </table>
+
+      {transactions.length === 0 && (
+        <div className="flex flex-1 justify-center items-center">
+          <p className="text-[#a99ba9] font-bold">No transactions found</p>
+        </div>
+      )}
 
       <div className="flex justify-center mt-4">
         <Paginator

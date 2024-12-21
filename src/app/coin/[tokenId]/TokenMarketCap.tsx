@@ -4,6 +4,7 @@ import { Tooltip } from "@/components/common/Tooltip";
 import { Tweet } from "@/components/common/Tweet";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { useToken } from "@/utils/tokens";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { PropsWithChildren } from "react";
 
 const Money = ({ children }: PropsWithChildren) => {
@@ -41,7 +42,7 @@ const LoadingBar = ({ progress }: { progress: number }) => {
         <div className="bg-gradient-to-r from-[#F743F650] to-transparent w-20 h-full -ml-1" />
       </div>
       <div className="text-[#f743f6] text-base font-medium leading-normal">
-        {progress}%
+        {progress.toFixed(0)}%
       </div>
     </div>
   );
@@ -64,7 +65,7 @@ export const TokenMarketCap = ({ mint }: { mint: string }) => {
 
         <Container>
           <Title>Capital Raised</Title>
-          <Money>$15.3k</Money>
+          <Money>${formatCurrency(token.liquidity)}</Money>
         </Container>
       </div>
 
@@ -88,7 +89,17 @@ export const TokenMarketCap = ({ mint }: { mint: string }) => {
         >
           Raydium
         </a>{" "}
-        at $94,953 market cap. There is 1.948 SOL in the bonding curve.
+        at $
+        {formatCurrency(
+          (token.curveLimit / LAMPORTS_PER_SOL) * token.solPriceUSD,
+        )}{" "}
+        market cap. There is{" "}
+        {(
+          (token.curveLimit * token.curveProgress) /
+          100 /
+          LAMPORTS_PER_SOL
+        ).toFixed(3)}{" "}
+        SOL in the bonding curve.
       </div>
     </div>
   );

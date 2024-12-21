@@ -15,11 +15,13 @@ const TokenSchema = z.object({
   mint: z.string(),
   image: z.string(),
   xurl: z.string(),
+  xname: z.string(),
+  xtext: z.string(),
+  xusername: z.string(),
   marketCapUSD: z.number(),
   currentPrice: z.number(),
   curveProgress: z.number(),
   status: z.enum([
-    "pending",
     "active",
     "withdrawn",
     "migrating",
@@ -28,6 +30,9 @@ const TokenSchema = z.object({
     "harvested",
     "migration_failed",
   ]),
+  liquidity: z.number(),
+  curveLimit: z.number(),
+  solPriceUSD: z.number(),
 });
 
 export const useTokens = (socket: Socket) => {
