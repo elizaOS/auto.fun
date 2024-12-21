@@ -15,7 +15,7 @@ export const TokenMetadata = ({ mint }: { mint: string }) => {
     <div className="bg-[#401141] rounded-2xl p-4 flex flex-col gap-4">
       <div className="flex gap-4">
         <img
-          src={token.image}
+          src={token.image || undefined}
           className="rounded-xl aspect-square w-[132px] h-[132px]"
           alt="placeholder"
         />

@@ -17,7 +17,7 @@ export const Token = ({
   marketCap: string;
   name: string;
   ticker: string;
-  url: string;
+  url: string | undefined;
   tweetUrl: string;
   createdAt: string;
 }) => {

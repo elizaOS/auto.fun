@@ -3,13 +3,83 @@
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { useState } from "react";
 import { useSwap } from "./useSwap";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { PublicKey } from "@solana/web3.js";
+import { Slippage } from "./Slippage";
 
 export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
   const [activeTab, setActiveTab] = useState<"Buy" | "Sell">("Buy");
   const [amount, setAmount] = useState<number | string>("");
+  const [sellPercentage, setSellPercentage] = useState<number | string>("");
   const [isFocus, setIsFocus] = useState(false);
-
+  const [slippage, setSlippage] = useState<number | string>(2);
+  const { publicKey } = useWallet();
+  const { connection } = useConnection();
   const { handleSwap } = useSwap();
+
+  const getUserTokenBalance = async (): Promise<number> => {
+    if (!publicKey) return 0;
+
+    try {
+      const tokenMint = new PublicKey(tokenId);
+
+      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+        publicKey,
+        { mint: tokenMint },
+      );
+
+      if (tokenAccounts.value.length > 0) {
+        return tokenAccounts.value[0].account.data.parsed.info.tokenAmount
+          .uiAmount;
+      }
+      return 0;
+    } catch (error) {
+      console.error("Error fetching token balance:", error);
+      return 0;
+    }
+  };
+
+  const handlePresetClick = (value: number) => {
+    if (activeTab === "Sell") {
+      setSellPercentage(value);
+    } else {
+      setAmount(value);
+    }
+  };
+
+  const handleTradeClick = async () => {
+    if (activeTab === "Buy" && !amount) return;
+    if (activeTab === "Sell" && !sellPercentage) return;
+
+    if (activeTab === "Sell") {
+      const currentBalance = await getUserTokenBalance();
+      const actualAmount = (Number(sellPercentage) * currentBalance) / 100;
+
+      if (actualAmount <= 0) {
+        console.error("Invalid amount");
+        return;
+      }
+
+      handleSwap({
+        amount: actualAmount,
+        slippagePercentage: typeof slippage === "number" ? slippage : 2,
+        style: "sell",
+        tokenAddress: tokenId,
+      });
+    } else {
+      handleSwap({
+        amount: Number(amount),
+        slippagePercentage: typeof slippage === "number" ? slippage : 2,
+        style: "buy",
+        tokenAddress: tokenId,
+      });
+    }
+  };
+
+  const presetButtons =
+    activeTab === "Buy"
+      ? [0.5, 1, 5, 10] // SOL amounts for Buy
+      : [25, 50, 75, 100]; // Percentages for Sell
 
   return (
     <div>
@@ -34,7 +104,9 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
         </div>
 
         <div>
-          <div className="text-white font-medium mb-2">Amount (SOL)</div>
+          <div className="text-white font-medium mb-2">
+            {activeTab === "Buy" ? "Amount (SOL)" : "Amount (%)"}
+          </div>
           <div
             className={`border rounded-lg relative ${
               isFocus ? "border-[#f743f6]" : "border-[#662066]"
@@ -49,82 +121,65 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
                 }
               }}
               min={0}
-              value={amount}
-              onChange={(e) =>
-                setAmount(e.target.value === "" ? "" : Number(e.target.value))
-              }
+              max={activeTab === "Sell" ? 100 : undefined}
+              value={activeTab === "Sell" ? sellPercentage : amount}
+              onChange={(e) => {
+                const value =
+                  e.target.value === "" ? "" : Number(e.target.value);
+                if (activeTab === "Sell") {
+                  if (typeof value === "number" && value > 100) return;
+                  setSellPercentage(value);
+                } else {
+                  setAmount(value);
+                }
+              }}
               onFocus={() => setIsFocus(true)}
               onBlur={() => setIsFocus(false)}
             />
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="absolute right-4 top-1/2 -translate-y-1/2"
-            >
-              <path
-                d="M20 14L16 18H4L8 14M20 14H8M20 14L16 10M8 14L4 10M4 10H16M4 10L8 6H20L16 10"
-                stroke="#F743F6"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+              {activeTab === "Sell" ? (
+                "%"
+              ) : (
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M20 14L16 18H4L8 14M20 14H8M20 14L16 10M8 14L4 10M4 10H16M4 10L8 6H20L16 10"
+                    stroke="#F743F6"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </div>
           </div>
 
-          <div className="flex gap-2 mt-2">
-            <button
-              className="h-12 px-4 py-3 bg-[#521653] rounded-lg flex-col justify-center items-center gap-2 inline-flex flex-1"
-              onClick={() => setAmount(0.5)}
-            >
-              <div className="text-[#f743f6] text-base font-medium font-['Inter'] leading-normal">
-                0.5 SOL
-              </div>
-            </button>
-
-            <button
-              className="h-12 px-4 py-3 bg-[#521653] rounded-lg flex-col justify-center items-center gap-2 inline-flex flex-1"
-              onClick={() => setAmount(1)}
-            >
-              <div className="text-[#f743f6] text-base font-medium font-['Inter'] leading-normal">
-                1 SOL
-              </div>
-            </button>
-
-            <button
-              className="h-12 px-4 py-3 bg-[#521653] rounded-lg flex-col justify-center items-center gap-2 inline-flex flex-1"
-              onClick={() => setAmount(5)}
-            >
-              <div className="text-[#f743f6] text-base font-medium font-['Inter'] leading-normal">
-                5 SOL
-              </div>
-            </button>
-
-            <button
-              className="h-12 px-4 py-3 bg-[#521653] rounded-lg flex-col justify-center items-center gap-2 inline-flex flex-1"
-              onClick={() => setAmount(10)}
-            >
-              <div className="text-[#f743f6] text-base font-medium font-['Inter'] leading-normal">
-                10 SOL
-              </div>
-            </button>
+          <div className="flex gap-2 mt-2 mb-4">
+            {presetButtons.map((value) => (
+              <button
+                key={value}
+                className="h-12 px-4 py-3 bg-[#521653] rounded-lg flex-col justify-center items-center gap-2 inline-flex flex-1"
+                onClick={() => handlePresetClick(value)}
+              >
+                <div className="text-[#f743f6] text-base font-medium font-['Inter'] leading-normal">
+                  {activeTab === "Buy" ? `${value} SOL` : `${value}%`}
+                </div>
+              </button>
+            ))}
           </div>
+
+          <Slippage value={slippage} onChange={setSlippage} />
         </div>
 
         <RoundedButton
           className="p-3"
-          onClick={() =>
-            handleSwap({
-              amountSol: Number(amount),
-              // TODO: get slippage from user
-              slippagePercentage: 0,
-              style: activeTab === "Buy" ? "buy" : "sell",
-              tokenAddress: tokenId,
-            })
-          }
-          disabled={!amount}
+          onClick={handleTradeClick}
+          disabled={activeTab === "Sell" ? !sellPercentage : !amount}
         >
           Place trade
         </RoundedButton>

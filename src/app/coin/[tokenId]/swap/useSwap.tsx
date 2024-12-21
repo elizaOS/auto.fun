@@ -84,13 +84,22 @@ export const swapTx = async (
   connection: Connection,
   program: Program<Serlaunchalot>,
 ) => {
-  const [configPda] = PublicKey.findProgramAddressSync(
+  console.log(
+    JSON.stringify({
+      message: "swapTx",
+      amount,
+      style,
+      slippageBps,
+      user: user.toString(),
+      token: token.toString(),
+    }),
+  );
+
+  const [configPda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_CONFIG)],
     program.programId,
   );
-
   const configAccount = await program.account.config.fetch(configPda);
-
   const [bondingCurvePda] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_BONDING_CURVE), token.toBytes()],
     program.programId,
@@ -113,13 +122,16 @@ export const swapTx = async (
       curve.reserveToken.toNumber(),
     );
   } else {
+    console.log("selling", adjustedAmount, "tokens");
     // Sell
     estimatedOutput = calculateAmountOutSell(
       curve.reserveToken.toNumber(),
       adjustedAmount,
-      6, // SOL decimals
+      6,
       curve.reserveLamport.toNumber(),
     );
+
+    console.log("Estimated output:", estimatedOutput);
   }
 
   // Apply slippage to estimated output
@@ -129,7 +141,6 @@ export const swapTx = async (
 
   const deadline = Math.floor(Date.now() / 1000) + 120;
 
-  // Create a transaction object
   const tx = await program.methods
     .swap(new BN(amount), style, minOutput, new BN(deadline))
     .accounts({
@@ -140,6 +151,7 @@ export const swapTx = async (
     .transaction();
 
   tx.feePayer = user;
+  tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
 
   return tx;
 };
@@ -147,7 +159,7 @@ export const swapTx = async (
 interface SwapParams {
   slippagePercentage: number;
   style: "buy" | "sell";
-  amountSol: number;
+  amount: number;
   tokenAddress: string;
 }
 
@@ -158,7 +170,7 @@ export const useSwap = () => {
   const handleSwap = async ({
     slippagePercentage,
     style,
-    amountSol,
+    amount,
     tokenAddress,
   }: SwapParams) => {
     if (
@@ -173,7 +185,8 @@ export const useSwap = () => {
     const slippageBps = slippagePercentage * 100;
 
     // Convert SOL to lamports (1 SOL = 1e9 lamports)
-    const amountLamports = Math.floor(amountSol * 1e9);
+    const amountLamports = Math.floor(amount * 1e9);
+    const amountTokens = Math.floor(amount * 1e6);
 
     // Convert string style to numeric style
     const numericStyle = style === "buy" ? 0 : 1;
@@ -193,12 +206,22 @@ export const useSwap = () => {
     const tx = await swapTx(
       wallet.publicKey,
       new PublicKey(tokenAddress),
-      amountLamports,
+      style === "buy" ? amountLamports : amountTokens,
       numericStyle,
       slippageBps,
       connection,
       program,
     );
+
+    console.log("Simulating transaction...");
+    const simulation = await connection.simulateTransaction(tx);
+
+    // Print simulation logs
+    console.log("Simulation logs:", simulation.value.logs);
+    if (simulation.value.err) {
+      console.error("Simulation failed:", simulation.value.err.toString());
+      throw new Error(`Transaction simulation failed: ${simulation.value.err}`);
+    }
 
     const { blockhash, lastValidBlockHeight } =
       await connection.getLatestBlockhash();

@@ -1,9 +1,16 @@
+const CURRENCY_FORMATS = [
+  { divisor: 1_000_000_000_000, suffix: "t" },
+  { divisor: 1_000_000_000, suffix: "b" },
+  { divisor: 1_000_000, suffix: "m" },
+  { divisor: 1_000, suffix: "k" },
+] as const;
+
 export const formatCurrency = (value: number): string => {
-  if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1)}m`;
+  const format = CURRENCY_FORMATS.find(({ divisor }) => value >= divisor);
+
+  if (format) {
+    return `${(value / format.divisor).toFixed(1)}${format.suffix}`;
   }
-  if (value >= 1_000) {
-    return `${(value / 1_000).toFixed(1)}k`;
-  }
+
   return value.toFixed(2);
 };

@@ -100,7 +100,7 @@ export const TransactionTable = ({
               <td>{timeAgo[index]}</td>
               <td>
                 <Link
-                  href={`https://solscan.io/tx/${tx.txId}`}
+                  href={`https://solscan.io/tx/${tx.txId}?cluster=devnet`}
                   target="_blank"
                   className="text-[#f743f6]"
                 >

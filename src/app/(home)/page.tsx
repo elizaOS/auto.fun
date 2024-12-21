@@ -108,7 +108,7 @@ export default function HomePage() {
                   marketCap={formatCurrency(token.marketCapUSD)}
                   name={token.name}
                   ticker={token.ticker}
-                  url={token.image}
+                  url={token.image || undefined}
                   tweetUrl={token.xurl}
                   createdAt={token.createdAt}
                   className={`${index === 0 && isLiveUpdate ? "animate-shake" : ""}`}

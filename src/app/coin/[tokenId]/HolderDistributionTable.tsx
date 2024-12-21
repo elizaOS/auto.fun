@@ -46,7 +46,7 @@ export const HolderDistributionTable = ({}) => {
                 <div>
                   {index + 1}.{" "}
                   <a
-                    href={`https://solscan.io/address/${holder.contractAddress}`}
+                    href={`https://solscan.io/address/${holder.contractAddress}?cluster=devnet`}
                     target="_blank"
                     className="text-[#f743f6] font-medium"
                   >
