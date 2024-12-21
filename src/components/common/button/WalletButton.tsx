@@ -98,18 +98,19 @@ const ConnectedWalletButton = ({
   );
 };
 
-export const WalletButton = () => {
+export const useWalletConnection = () => {
   const { connect, disconnect, publicKey, select } = useWallet();
   const { setAutoConnect } = useContext(AutoConnectContext);
 
-  const buttonText = publicKey ? "Disconnect Wallet" : "Connect Wallet";
+  useEffect(() => {
+    select(PhantomWalletName);
+  }, [select]);
 
   const connectWallet = async () => {
     try {
       // do not remove the await, this is a promise and the typescript type is wrong
       // see https://github.com/anza-xyz/wallet-adapter/issues/743#issuecomment-2187296267
       await select(PhantomWalletName);
-
       await connect();
 
       localStorage.setItem("walletAutoConnect", "true");
@@ -125,9 +126,17 @@ export const WalletButton = () => {
     setAutoConnect(false);
   };
 
-  useEffect(() => {
-    select(PhantomWalletName);
-  }, [select]);
+  return {
+    connectWallet,
+    disconnectWallet,
+    publicKey,
+  };
+};
+
+export const WalletButton = () => {
+  const { connectWallet, disconnectWallet, publicKey } = useWalletConnection();
+
+  const buttonText = publicKey ? "Disconnect Wallet" : "Connect Wallet";
 
   return publicKey ? (
     <ConnectedWalletButton

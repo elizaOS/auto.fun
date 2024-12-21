@@ -1,11 +1,12 @@
 "use client";
 
 import { RoundedButton } from "@/components/common/button/RoundedButton";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useSwap } from "./useSwap";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { Slippage } from "./Slippage";
+import { useWalletConnection } from "@/components/common/button/WalletButton";
 
 export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
   const [activeTab, setActiveTab] = useState<"Buy" | "Sell">("Buy");
@@ -15,7 +16,13 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
   const [slippage, setSlippage] = useState<number | string>(2);
   const { publicKey } = useWallet();
   const { connection } = useConnection();
+  const { connectWallet } = useWalletConnection();
   const { handleSwap } = useSwap();
+  const tradeDisabled = useMemo(() => {
+    if (!publicKey) return true;
+    if (activeTab === "Sell") return !sellPercentage;
+    return !amount;
+  }, [publicKey, activeTab, sellPercentage, amount]);
 
   const getUserTokenBalance = async (): Promise<number> => {
     if (!publicKey) return 0;
@@ -179,10 +186,27 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
         <RoundedButton
           className="p-3"
           onClick={handleTradeClick}
-          disabled={activeTab === "Sell" ? !sellPercentage : !amount}
+          disabled={tradeDisabled}
         >
           Place trade
         </RoundedButton>
+
+        {!publicKey && (
+          <div>
+            <span className="text-[#cab7c7] text-base font-medium font-['Inter'] leading-normal">
+              To place trades, please{" "}
+            </span>
+            <button
+              className="text-[#f743f6] text-base font-medium font-['Inter'] leading-normal"
+              onClick={connectWallet}
+            >
+              connect your wallet
+            </button>
+            <span className="text-[#cab7c7] text-base font-medium font-['Inter'] leading-normal">
+              .
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
