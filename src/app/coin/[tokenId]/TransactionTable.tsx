@@ -1,8 +1,12 @@
 "use client";
 
+import { useTimeAgo } from "@/app/formatTimeAgo";
 import { Paginator } from "@/components/common/Paginator";
+import { formatCurrency } from "@/utils/formatCurrency";
 import { usePaginatedLiveData } from "@/utils/paginatedLiveData";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+import Link from "next/link";
+import { useMemo } from "react";
 import { Socket } from "socket.io-client";
 import { z } from "zod";
 
@@ -58,6 +62,13 @@ export const TransactionTable = ({
     itemsPropertyName: "swaps",
   });
 
+  const timestamps = useMemo(
+    () => transactions?.map((tx) => tx.timestamp),
+    [transactions],
+  );
+
+  const timeAgo = useTimeAgo(timestamps);
+
   return (
     <div className="p-4 flex flex-col flex-1 justify-between">
       <table className="w-full">
@@ -72,9 +83,11 @@ export const TransactionTable = ({
           </tr>
         </thead>
         <tbody>
-          {transactions.map((tx) => (
+          {transactions.map((tx, index) => (
             <tr key={tx.txId} className="border-t border-[#532954]">
-              <td className="py-4">{tx.user}</td>
+              <td className="py-4">
+                {tx.user.slice(0, 4)}...{tx.user.slice(-4)}
+              </td>
               <td
                 className={
                   tx.type === "Buy" ? "text-[#42b642]" : "text-[#ef4242]"
@@ -83,9 +96,17 @@ export const TransactionTable = ({
                 {tx.type}
               </td>
               <td>{tx.solAmount}</td>
-              <td>{tx.tokenAmount}</td>
-              <td>{tx.timestamp}</td>
-              <td>{tx.txId}</td>
+              <td>{formatCurrency(tx.tokenAmount)}</td>
+              <td>{timeAgo[index]}</td>
+              <td>
+                <Link
+                  href={`https://solscan.io/tx/${tx.txId}`}
+                  target="_blank"
+                  className="text-[#f743f6]"
+                >
+                  {tx.txId.slice(0, 4)}...{tx.txId.slice(-4)}
+                </Link>
+              </td>
             </tr>
           ))}
         </tbody>

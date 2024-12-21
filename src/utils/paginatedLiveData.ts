@@ -36,12 +36,8 @@ const fetchData = async <TInput, TOutput>(
     }),
   });
 
-  const filteredItems = (response[itemsPropertyName] as TOutput[]).filter(
-    (item): item is TOutput => validationSchema.safeParse(item).success,
-  );
-
   return {
-    items: filteredItems,
+    items: response[itemsPropertyName] as TOutput[],
     nextCursor: response.nextCursor as string | null,
   };
 };
@@ -60,6 +56,9 @@ export const usePaginatedLiveData = <TInput, TOutput>({
 }: PaginatedLiveDataConfig<TInput, TOutput>) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoizedGetUniqueId = useCallback(getUniqueId, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const memoizedSocketConfig = useMemo(() => socketConfig, []);
+
   const [page, setPage] = useState(1);
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasAllData, setHasAllData] = useState(false);
@@ -99,6 +98,7 @@ export const usePaginatedLiveData = <TInput, TOutput>({
           validationSchema,
           itemsPropertyName,
         );
+
         setFetchedData({ items: result.items });
         setCursor(result.nextCursor);
         setHasAllData(!result.nextCursor);
@@ -114,33 +114,28 @@ export const usePaginatedLiveData = <TInput, TOutput>({
 
   useEffect(() => {
     const handleNewItem = (newItem: unknown) => {
-      const validatedItem = validationSchema.safeParse(newItem);
-      if (validatedItem.success) {
-        setIsLiveUpdate(true);
-        dispatch({ type: "ADD_ITEM", item: validatedItem.data });
-      }
+      console.log("newItem", newItem);
+      const validatedItem = validationSchema.parse(newItem);
+      setIsLiveUpdate(true);
+      dispatch({ type: "ADD_ITEM", item: validatedItem });
     };
 
-    if (typeof socketConfig.subscribeEvent === "string") {
-      socket.emit(socketConfig.subscribeEvent);
+    if (typeof memoizedSocketConfig.subscribeEvent === "string") {
+      socket.emit(memoizedSocketConfig.subscribeEvent);
     } else {
+      console.log("subscribing to socket", memoizedSocketConfig.subscribeEvent);
       socket.emit(
-        socketConfig.subscribeEvent.event,
-        ...socketConfig.subscribeEvent.args,
+        memoizedSocketConfig.subscribeEvent.event,
+        ...memoizedSocketConfig.subscribeEvent.args,
       );
     }
 
-    socket.on(socketConfig.newDataEvent, handleNewItem);
+    socket.on(memoizedSocketConfig.newDataEvent, handleNewItem);
 
     return () => {
-      socket.off(socketConfig.newDataEvent, handleNewItem);
+      socket.off(memoizedSocketConfig.newDataEvent, handleNewItem);
     };
-  }, [
-    socket,
-    socketConfig.subscribeEvent,
-    socketConfig.newDataEvent,
-    validationSchema,
-  ]);
+  }, [socket, memoizedSocketConfig, validationSchema]);
 
   useEffect(() => {
     const trimInterval = setInterval(() => {
