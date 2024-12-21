@@ -115,15 +115,6 @@ export const TokenMarketCap = ({ mint }: { mint: string }) => {
           <Money>${formatNumber(token.liquidity)}</Money>
         </Container>
       </div>
-      {/* ) : (
-        <a
-          href={`https://raydium.io/swap/?inputCurrency=sol&outputMint=${token.mint}`}
-          target="_blank"
-          className="flex items-center justify-center w-full bg-[#f743f6] text-[#401141] font-bold py-4 rounded-xl hover:bg-[#f743f6]/90 transition-colors"
-        >
-          Trade on Raydium
-        </a>
-      )} */}
 
       <Container>
         <div className="flex justify-between mb-3">
