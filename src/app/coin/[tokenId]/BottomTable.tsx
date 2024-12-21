@@ -46,7 +46,9 @@ export const BottomTable = ({
         <TransactionTable socket={socket} mint={mint} ticker={token.ticker} />
       )}
 
-      {activeTab === "Holder Distribution" && <HolderDistributionTable />}
+      {activeTab === "Holder Distribution" && (
+        <HolderDistributionTable socket={socket} mint={mint} />
+      )}
     </div>
   );
 };

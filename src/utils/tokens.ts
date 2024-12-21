@@ -32,6 +32,8 @@ const TokenSchema = z.object({
   ]),
   liquidity: z.number(),
   curveLimit: z.number(),
+  reserveLamport: z.number(),
+  virtualReserves: z.number(),
   solPriceUSD: z.number(),
 });
 

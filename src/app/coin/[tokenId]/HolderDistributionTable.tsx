@@ -1,76 +1,105 @@
-import { useEffect, useState } from "react";
+import { usePaginatedLiveData } from "@/utils/paginatedLiveData";
+import { z } from "zod";
+import { Socket } from "socket.io-client";
+import { useToken } from "@/utils/tokens";
 
-type HolderDistribution = {
-  contractAddress: string;
-  holderPercentage: number;
-  type: "bonding_curve" | "dev" | "normal";
-};
+const HolderSchema = z.object({
+  address: z.string(),
+  mint: z.string(),
+  amount: z.number(),
+  percentage: z.number(),
+  createdAt: z.string().datetime(),
+  lastUpdated: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
 
-export const HolderDistributionTable = ({}) => {
-  const [holderDistribution, setHolderDistribution] = useState<
-    HolderDistribution[]
-  >([]);
+export const HolderDistributionTable = ({ 
+  socket,
+  mint 
+}: { 
+  socket: Socket;
+  mint: string;
+}) => {
+  const { data: token } = useToken(mint);
+  const { items: holders } = usePaginatedLiveData({
+    itemsPerPage: 100,
+    maxPages: 1,
+    endpoint: `/tokens/${mint}/holders`,
+    socket,
+    validationSchema: HolderSchema,
+    getUniqueId: (holder) => holder.address,
+    socketConfig: {
+      subscribeEvent: {
+        event: "subscribe",
+        args: [mint],
+      },
+      newDataEvent: "newHolder",
+    },
+    itemsPropertyName: "holders",
+  });
 
-  // Fetch transactions data
-  useEffect(() => {
-    // API call to fetch transactions
-    setHolderDistribution([
-      {
-        contractAddress: "0x123",
-        holderPercentage: 20.4,
-        type: "bonding_curve",
-      },
-      {
-        contractAddress: "0x124",
-        holderPercentage: 10.9,
-        type: "dev",
-      },
-      {
-        contractAddress: "0x125",
-        holderPercentage: 3,
-        type: "normal",
-      },
-    ]);
-  }, []);
+  const getBondingCurveAddress = () => {
+    if (!token) return null;
+    // TODO: make these env variables for after deployment
+    return "4FRxv5k1iCrE4kdjtywUzAakCaxfDQmpdVLx48kUXQQC";
+  };
+
+  const getDevAddress = () => {
+    if (!token) return null;
+    // TODO: make these env variables for after deployment
+    return "BoeEDSULDSF1s81XCtmsgWPZmgLjiF1PyDFub2j8Wtsz";
+  };
 
   return (
     <div className="p-4">
+      <div className="text-[#b3a0b3] text-sm mb-4">
+        * Holder Distribution Data is cached and updated daily
+      </div>
       <table className="w-full">
         <tbody>
-          {holderDistribution.map((holder, index) => (
-            <tr
-              key={holder.contractAddress}
-              className={`${index !== 0 ? "border-t border-[#532954]" : ""}`}
-            >
-              <td className="py-4 flex justify-between">
-                <div>
-                  {index + 1}.{" "}
-                  <a
-                    href={`https://solscan.io/address/${holder.contractAddress}?cluster=devnet`}
-                    target="_blank"
-                    className="text-[#f743f6] font-medium"
-                  >
-                    {holder.contractAddress}
-                  </a>
-                  {holder.type === "bonding_curve" && (
-                    <span className="text-[#b3a0b3] font-medium">
-                      {" "}
-                      🏦 (bonding curve)
-                    </span>
-                  )}
-                  {holder.type === "dev" && (
-                    <span className="text-[#b3a0b3] font-medium">
-                      {" "}
-                      💻 (dev)
-                    </span>
-                  )}
-                </div>
-                <div>{holder.holderPercentage}%</div>
-              </td>
-            </tr>
-          ))}
+          {holders.map((holder, index) => {
+            const bondingCurveAddress = getBondingCurveAddress();
+            const devAddress = getDevAddress();
+
+            return (
+              <tr
+                key={holder.address}
+                className={`${index !== 0 ? "border-t border-[#532954]" : ""}`}
+              >
+                <td className="py-4 flex justify-between">
+                  <div>
+                    {index + 1}.{" "}
+                    <a
+                      href={`https://solscan.io/address/${holder.address}?cluster=devnet`}
+                      target="_blank"
+                      className="text-[#f743f6] font-medium"
+                    >
+                      {holder.address.slice(0, 4)}...{holder.address.slice(-4)}
+                    </a>
+                    {holder.address === bondingCurveAddress && (
+                      <span className="text-[#b3a0b3] font-medium ml-2">
+                        🏦 (bonding curve)
+                      </span>
+                    )}
+                    {holder.address === devAddress && (
+                      <span className="text-[#b3a0b3] font-medium ml-2">
+                        💻 (dev)
+                      </span>
+                    )}
+                  </div>
+                  <div>{holder.percentage.toFixed(2)}%</div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
+      
+      {holders.length === 0 && (
+        <div className="flex justify-center items-center py-8">
+          <p className="text-[#b3a0b3] font-medium">No holders found</p>
+        </div>
+      )}
     </div>
   );
 };

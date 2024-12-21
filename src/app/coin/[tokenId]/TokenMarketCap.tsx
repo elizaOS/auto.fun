@@ -95,8 +95,7 @@ export const TokenMarketCap = ({ mint }: { mint: string }) => {
         )}{" "}
         market cap. There is{" "}
         {(
-          (token.curveLimit * token.curveProgress) /
-          100 /
+          (token.reserveLamport - token.virtualReserves) /
           LAMPORTS_PER_SOL
         ).toFixed(3)}{" "}
         SOL in the bonding curve.
