@@ -8,8 +8,12 @@ import { PublicKey } from "@solana/web3.js";
 import { Slippage } from "./Slippage";
 import { useWalletConnection } from "@/components/common/button/WalletButton";
 import { MigrationOverlay } from "./MigrationOverlay";
+import { useToken } from "@/utils/tokens";
+import { Toast } from "@/components/common/Toast";
+import { toast } from "react-toastify";
 
 export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
+  const { data: token } = useToken(tokenId);
   const [activeTab, setActiveTab] = useState<"Buy" | "Sell">("Buy");
   const [amount, setAmount] = useState<number | string>("");
   const [sellPercentage, setSellPercentage] = useState<number | string>("");
@@ -24,6 +28,8 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
     if (activeTab === "Sell") return !sellPercentage;
     return !amount;
   }, [publicKey, activeTab, sellPercentage, amount]);
+
+  if (!token) return null;
 
   const getUserTokenBalance = async (): Promise<number> => {
     if (!publicKey) return 0;
@@ -68,19 +74,35 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
         return;
       }
 
-      handleSwap({
-        amount: actualAmount,
-        slippagePercentage: typeof slippage === "number" ? slippage : 2,
-        style: "sell",
-        tokenAddress: tokenId,
-      });
+      try {
+        await handleSwap({
+          amount: actualAmount,
+          slippagePercentage: typeof slippage === "number" ? slippage : 2,
+          style: "sell",
+          tokenAddress: tokenId,
+        });
+        toast(
+          <Toast message={`Sale of $${token.ticker}`} status="completed" />,
+        );
+      } catch {
+        toast(<Toast message={`Sale of $${token.ticker}`} status="failed" />);
+      }
     } else {
-      handleSwap({
-        amount: Number(amount),
-        slippagePercentage: typeof slippage === "number" ? slippage : 2,
-        style: "buy",
-        tokenAddress: tokenId,
-      });
+      try {
+        await handleSwap({
+          amount: Number(amount),
+          slippagePercentage: typeof slippage === "number" ? slippage : 2,
+          style: "buy",
+          tokenAddress: tokenId,
+        });
+        toast(
+          <Toast message={`Purchase of $${token.ticker}`} status="completed" />,
+        );
+      } catch {
+        toast(
+          <Toast message={`Purchase of $${token.ticker}`} status="failed" />,
+        );
+      }
     }
   };
 

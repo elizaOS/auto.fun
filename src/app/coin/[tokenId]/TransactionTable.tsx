@@ -102,7 +102,7 @@ export const TransactionTable = ({
               >
                 {tx.type}
               </td>
-              <td>{formatNumber(tx.solAmount, 3)}</td>
+              <td>{formatNumber(tx.solAmount, 6)}</td>
               <td>{formatNumber(tx.tokenAmount, 2)}</td>
               <td>{timeAgo[index]}</td>
               <td>

@@ -10,7 +10,7 @@ type CustomToastProps = {
     }
   | {
       status: "failed";
-      tryAgain: () => void;
+      tryAgain?: () => void;
     }
 );
 
@@ -99,7 +99,10 @@ export const Toast = ({ message, closeToast, ...props }: CustomToastProps) => {
                   {props.tryAgain && (
                     <RoundedButton
                       color="inverted"
-                      onClick={props.tryAgain}
+                      onClick={() => {
+                        closeToast?.();
+                        props.tryAgain?.();
+                      }}
                       className="w-full p-2"
                     >
                       Try Again

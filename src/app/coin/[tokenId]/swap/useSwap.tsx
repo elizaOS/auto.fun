@@ -214,15 +214,15 @@ export const useSwap = () => {
       program,
     );
 
-    console.log("Simulating transaction...");
-    const simulation = await connection.simulateTransaction(tx);
+    // console.log("Simulating transaction...");
+    // const simulation = await connection.simulateTransaction(tx);
 
-    // Print simulation logs
-    console.log("Simulation logs:", simulation.value.logs);
-    if (simulation.value.err) {
-      console.error("Simulation failed:", simulation.value.err.toString());
-      throw new Error(`Transaction simulation failed: ${simulation.value.err}`);
-    }
+    // // Print simulation logs
+    // console.log("Simulation logs:", simulation.value.logs);
+    // if (simulation.value.err) {
+    //   console.error("Simulation failed:", simulation.value.err.toString());
+    //   throw new Error(`Transaction simulation failed: ${simulation.value.err}`);
+    // }
 
     const { blockhash, lastValidBlockHeight } =
       await connection.getLatestBlockhash();
