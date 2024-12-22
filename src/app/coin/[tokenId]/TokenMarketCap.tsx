@@ -87,11 +87,13 @@ const BondingStatus = ({ token }: { token: Token }) => {
         </div>
       );
     case "migration_failed":
-      return <div>Raydium migration failed</div>;
+      return <div className="text-center">Raydium migration failed</div>;
     case "withdrawn":
+      return <div className="text-center">Raydium migration in progress...</div>;
     case "migrated":
+      return <div className="text-center">Raydium migration completed!</div>;
     case "migrating":
-      return <div>Raydium migration in progress...</div>;
+      return <div className="text-center">Raydium migration in progress...</div>;
   }
 };
 
