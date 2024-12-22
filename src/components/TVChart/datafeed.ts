@@ -8,10 +8,14 @@ import type {
   ResolutionString,
 } from "@/libraries/charting_library";
 
-import { subscribeOnStream, unsubscribeFromStream } from "@/components/TVChart/streaming";
+import {
+  subscribeOnStream,
+  unsubscribeFromStream,
+} from "@/components/TVChart/streaming";
 import { getChartTable } from "@/utils/getChartTable";
-import { socket } from "@/components/TVChart/streaming";
+import { getSocket } from "@/utils/socket";
 
+const socket = getSocket();
 const lastBarsCache = new Map<string, Bar>();
 // const minPrice: Number = 0;
 // const maxPrice: Number = 0;
@@ -32,11 +36,11 @@ const configurationData: DatafeedConfiguration = {
 export function getDataFeed({
   pairIndex,
   name,
-  token
+  token,
 }: {
   name: string;
   pairIndex: number;
-  token: string
+  token: string;
 }): IBasicDataFeed {
   return {
     onReady: (callback) => {
@@ -68,7 +72,7 @@ export function getDataFeed({
         pricescale: 1000000000,
         exchange: "",
         has_intraday: true,
-        visible_plots_set: 'ohlc',
+        visible_plots_set: "ohlc",
         has_weekly_and_monthly: false,
         supported_resolutions: configurationData.supported_resolutions,
         volume_precision: 2,
@@ -89,7 +93,7 @@ export function getDataFeed({
       onErrorCallback,
     ) => {
       const { from, to, firstDataRequest } = periodParams;
-      console.log("[getBars]: Method call", symbolInfo, resolution, from, to);
+      // console.log("[getBars]: Method call", symbolInfo, resolution, from, to);
 
       try {
         const chartTable = await getChartTable({
@@ -121,12 +125,12 @@ export function getDataFeed({
             ...bars[bars.length - 1],
           });
         }
-        console.log(`[getBars]: returned ${bars.length} bar(s)`);
+        // console.log(`[getBars]: returned ${bars.length} bar(s)`);
         onHistoryCallback(bars, {
           noData: false,
         });
       } catch (error) {
-        console.log("[getBars]: Get error", error);
+        // console.log("[getBars]: Get error", error);
         onErrorCallback(error as string);
       }
     },
@@ -137,45 +141,45 @@ export function getDataFeed({
       onRealtimeCallback,
       subscriberUID,
       onResetCacheNeededCallback,
-  ) => {
+    ) => {
       console.log(
-          "[subscribeBars]: Method call with subscriberUID:",
-          subscriberUID,
+        "[subscribeBars]: Method call with subscriberUID:",
+        subscriberUID,
       );
-  
-      socket?.emit('subscribe', token);
-      
+
+      socket.emit("subscribe", token);
+
       // Ensure we have the last bar from cache
       const lastBar = lastBarsCache.get(symbolInfo.name);
       if (!lastBar) {
-          console.log("[subscribeBars]: No last bar found");
-          onResetCacheNeededCallback();
-          return;
+        console.log("[subscribeBars]: No last bar found");
+        onResetCacheNeededCallback();
+        return;
       }
-      
+
       subscribeOnStream(
-          symbolInfo,
-          resolution,
-          (bar) => {
-              // Force the chart to update with the new bar
-              onRealtimeCallback(bar);
-              // Update the cache with the latest bar
-              lastBarsCache.set(symbolInfo.name, bar);
-          },
-          subscriberUID,
-          onResetCacheNeededCallback,
-          lastBar,
-          pairIndex,
+        symbolInfo,
+        resolution,
+        (bar) => {
+          // Force the chart to update with the new bar
+          onRealtimeCallback(bar);
+          // Update the cache with the latest bar
+          lastBarsCache.set(symbolInfo.name, bar);
+        },
+        subscriberUID,
+        onResetCacheNeededCallback,
+        lastBar,
+        pairIndex,
       );
-  },
+    },
 
     unsubscribeBars: (subscriberUID) => {
       console.log(
-          "[unsubscribeBars]: Method call with subscriberUID:",
-          subscriberUID,
+        "[unsubscribeBars]: Method call with subscriberUID:",
+        subscriberUID,
       );
-      socket?.emit('unsubscribe', token);
+      socket.emit("unsubscribe", token);
       unsubscribeFromStream(subscriberUID);
-  },
+    },
   };
 }

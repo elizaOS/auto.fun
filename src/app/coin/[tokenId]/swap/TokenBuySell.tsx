@@ -13,7 +13,7 @@ import { Toast } from "@/components/common/Toast";
 import { toast } from "react-toastify";
 
 export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
-  const { data: token } = useToken(tokenId);
+  const { data: token } = useToken({ variables: tokenId });
   const [activeTab, setActiveTab] = useState<"Buy" | "Sell">("Buy");
   const [amount, setAmount] = useState<number | string>("");
   const [sellPercentage, setSellPercentage] = useState<number | string>("");

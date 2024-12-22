@@ -4,19 +4,36 @@ import { TokenMetadata } from "./TokenMetadata";
 import { TokenMarketCap } from "./TokenMarketCap";
 import { TokenBuySell } from "./swap/TokenBuySell";
 import { BottomTable } from "./BottomTable";
-import { CONTRACT_API_URL } from "@/utils/env";
-import { io } from "socket.io-client";
 import { useParams } from "next/navigation";
 import { useToken } from "@/utils/tokens";
 import { TradingChart } from "@/components/TVChart/TradingChart";
-
-const socket = io(CONTRACT_API_URL);
+import { useEffect } from "react";
+import { getSocket } from "@/utils/socket";
+import { queryClient } from "@/components/providers";
 
 export default function TokenDetailsPage() {
   const params = useParams();
   const tokenId = params.tokenId as string;
 
-  const { data: token } = useToken(tokenId);
+  const { data: token } = useToken({ variables: tokenId });
+
+  useEffect(() => {
+    if (!token) return;
+
+    const socket = getSocket();
+
+    console.log("subscribe", tokenId);
+    socket.emit("subscribe", tokenId);
+
+    socket.on("updateToken", (token) => {
+      console.log("updateToken", token);
+      queryClient.setQueryData(useToken.getKey(tokenId), token);
+    });
+
+    return () => {
+      socket.off("updateToken");
+    };
+  }, [token, tokenId]);
 
   if (!token) return null;
 
@@ -27,7 +44,7 @@ export default function TokenDetailsPage() {
           <TokenMetadata mint={tokenId} />
           {/* chart will have outdated data once token is migrated */}
           {token.status === "active" && <TradingChart param={token} />}
-          <BottomTable socket={socket} mint={tokenId} />
+          <BottomTable mint={tokenId} />
         </div>
 
         <div className="flex flex-col gap-2">

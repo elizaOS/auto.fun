@@ -1,6 +1,5 @@
 import { usePaginatedLiveData } from "@/utils/paginatedLiveData";
 import { z } from "zod";
-import { Socket } from "socket.io-client";
 import { useToken } from "@/utils/tokens";
 
 const HolderSchema = z.object({
@@ -13,19 +12,12 @@ const HolderSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
-export const HolderDistributionTable = ({ 
-  socket,
-  mint 
-}: { 
-  socket: Socket;
-  mint: string;
-}) => {
-  const { data: token } = useToken(mint);
+export const HolderDistributionTable = ({ mint }: { mint: string }) => {
+  const { data: token } = useToken({ variables: mint });
   const { items: holders } = usePaginatedLiveData({
     itemsPerPage: 100,
     maxPages: 1,
     endpoint: `/tokens/${mint}/holders`,
-    socket,
     validationSchema: HolderSchema,
     getUniqueId: (holder) => holder.address,
     socketConfig: {
@@ -106,7 +98,7 @@ export const HolderDistributionTable = ({
           })}
         </tbody>
       </table>
-      
+
       {holders.length === 0 && (
         <div className="flex justify-center items-center py-8">
           <p className="text-[#b3a0b3] font-medium">No holders found</p>

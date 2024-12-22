@@ -3,7 +3,7 @@ import { useToken } from "@/utils/tokens";
 import Link from "next/link";
 
 export const MigrationOverlay = ({ tokenId }: { tokenId: string }) => {
-  const { data: token } = useToken(tokenId);
+  const { data: token } = useToken({ variables: tokenId });
 
   if (!token) return null;
 

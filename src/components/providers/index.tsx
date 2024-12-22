@@ -15,7 +15,7 @@ export const AutoConnectContext = createContext<AutoConnectContextType>({
   setAutoConnect: () => {},
 });
 
-const queryClient = new QueryClient();
+export const queryClient = new QueryClient();
 
 export function Providers({ children }: PropsWithChildren) {
   const [autoConnect, setAutoConnect] = useState(false);

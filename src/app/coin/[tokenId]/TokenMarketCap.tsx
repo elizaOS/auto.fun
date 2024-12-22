@@ -98,7 +98,7 @@ const BondingStatus = ({ token }: { token: Token }) => {
 };
 
 export const TokenMarketCap = ({ mint }: { mint: string }) => {
-  const { data: token } = useToken(mint);
+  const { data: token } = useToken({ variables: mint });
 
   if (!token) return null;
 

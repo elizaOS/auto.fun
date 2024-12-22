@@ -7,7 +7,6 @@ import { usePaginatedLiveData } from "@/utils/paginatedLiveData";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import Link from "next/link";
 import { useMemo } from "react";
-import { Socket } from "socket.io-client";
 import { z } from "zod";
 
 const TransactionSchema = z
@@ -31,11 +30,9 @@ const TransactionSchema = z
   }));
 
 export const TransactionTable = ({
-  socket,
   mint,
   ticker,
 }: {
-  socket: Socket;
   mint: string;
   ticker: string;
 }) => {
@@ -50,7 +47,6 @@ export const TransactionTable = ({
     itemsPerPage: 100,
     maxPages: 1,
     endpoint: `/swaps/${mint}`,
-    socket,
     validationSchema: TransactionSchema,
     getUniqueId: (tx) => tx.txId,
     socketConfig: {

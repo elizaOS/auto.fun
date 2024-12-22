@@ -5,12 +5,8 @@ import { Token } from "./Token";
 import { useTokens } from "@/utils/tokens";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
-import { io } from "socket.io-client";
-import { CONTRACT_API_URL } from "@/utils/env";
 import { Paginator } from "@/components/common/Paginator";
 import { formatNumber } from "@/utils/number";
-
-const socket = io(CONTRACT_API_URL);
 
 export default function HomePage() {
   const {
@@ -22,7 +18,7 @@ export default function HomePage() {
     previousPage,
     isLiveUpdate,
     isLoading,
-  } = useTokens(socket);
+  } = useTokens();
 
   const renderSkeletons = () => (
     <div className="grid grid-cols-3 lg:grid-cols-2 2xl:grid-cols-3 gap-4">

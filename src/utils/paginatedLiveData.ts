@@ -1,13 +1,12 @@
 import { womboApi } from "@/utils/fetch";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
-import { Socket } from "socket.io-client";
 import { z } from "zod";
+import { getSocket } from "./socket";
 
 interface PaginatedLiveDataConfig<TInput, TOutput> {
   itemsPerPage: number;
   maxPages: number;
   endpoint: string;
-  socket: Socket;
   validationSchema: z.ZodSchema<TOutput, z.ZodTypeDef, TInput>;
   getUniqueId: (item: TOutput) => string | number;
   socketConfig: {
@@ -48,7 +47,6 @@ export const usePaginatedLiveData = <TInput, TOutput>({
   itemsPerPage,
   maxPages,
   endpoint,
-  socket,
   validationSchema,
   getUniqueId,
   socketConfig,
@@ -67,6 +65,7 @@ export const usePaginatedLiveData = <TInput, TOutput>({
     items: [],
   });
   const [isLiveUpdate, setIsLiveUpdate] = useState(false);
+  const socket = getSocket();
 
   const [liveItems, dispatch] = useReducer(
     (state: TOutput[], action: LiveItemAction<TOutput>) => {

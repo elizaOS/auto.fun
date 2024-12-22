@@ -5,7 +5,7 @@ import { ContractAddress } from "./ContractAddress";
 import { useTimeAgo } from "@/app/formatTimeAgo";
 
 export const TokenMetadata = ({ mint }: { mint: string }) => {
-  const { data: token } = useToken(mint);
+  const { data: token } = useToken({ variables: mint });
   const timeAgo = useTimeAgo(token?.createdAt ?? "");
 
   // TODO: add a loading state

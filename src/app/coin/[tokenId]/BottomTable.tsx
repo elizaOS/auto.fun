@@ -3,17 +3,10 @@
 import { useState } from "react";
 import { TransactionTable } from "./TransactionTable";
 import { HolderDistributionTable } from "./HolderDistributionTable";
-import { Socket } from "socket.io-client";
 import { useToken } from "@/utils/tokens";
 
-export const BottomTable = ({
-  socket,
-  mint,
-}: {
-  socket: Socket;
-  mint: string;
-}) => {
-  const { data: token } = useToken(mint);
+export const BottomTable = ({ mint }: { mint: string }) => {
+  const { data: token } = useToken({ variables: mint });
   const [activeTab, setActiveTab] = useState<
     "Transactions" | "Holder Distribution"
   >("Transactions");
@@ -46,15 +39,13 @@ export const BottomTable = ({
       <div
         className={`${activeTab === "Transactions" ? "flex flex-col" : "hidden"} flex-1`}
       >
-        {token && (
-          <TransactionTable socket={socket} mint={mint} ticker={token.ticker} />
-        )}
+        {token && <TransactionTable mint={mint} ticker={token.ticker} />}
       </div>
 
       <div
         className={`${activeTab === "Holder Distribution" ? "flex flex-col" : "hidden"} flex-1`}
       >
-        <HolderDistributionTable socket={socket} mint={mint} />
+        <HolderDistributionTable mint={mint} />
       </div>
     </div>
   );
