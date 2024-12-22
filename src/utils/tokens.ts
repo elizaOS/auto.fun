@@ -70,14 +70,14 @@ export const useToken = (mint: string) => {
 
   useEffect(() => {
     const socket = io(CONTRACT_API_URL);
-    socket.emit("subscribeToken", mint);
+    socket.emit("subscribe", mint);
 
-    socket.on("newCandle", () => {
-      queryClient.setQueryData(useTokenQuery.getKey(), (oldData) => {
-        // TODO: update the token with the new candle data
-        return oldData;
-      });
-    });
+    // socket.on("newCandle", () => {
+    //   queryClient.setQueryData(useTokenQuery.getKey(), (oldData) => {
+    //     // TODO: update the token with the new candle data
+    //     return oldData;
+    //   });
+    // });
 
     socket.on("updateToken", (token) => {
       console.log("updateToken", token);
