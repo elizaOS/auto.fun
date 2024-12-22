@@ -6,6 +6,7 @@ import {
   ConnectionProvider,
   WalletProvider as SolanaWalletProvider,
 } from "@solana/wallet-adapter-react";
+import { env } from "@/utils/env";
 
 export const WalletProvider = ({
   children,
@@ -14,7 +15,7 @@ export const WalletProvider = ({
   const wallets = [new PhantomWalletAdapter()];
 
   return (
-    <ConnectionProvider endpoint={"https://api.devnet.solana.com"}>
+    <ConnectionProvider endpoint={env.rpcUrl}>
       <SolanaWalletProvider wallets={wallets} autoConnect={autoConnect}>
         {children}
       </SolanaWalletProvider>

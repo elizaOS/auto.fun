@@ -1,7 +1,7 @@
 import { ZodSchema, ZodTypeDef } from "zod";
 // eslint-disable-next-line no-restricted-imports
 import axios, { AxiosResponse } from "axios";
-import { CONTRACT_API_URL } from "./env";
+import { env } from "./env";
 
 type WomboApiOptionsWithoutBody<TSchema, T1 extends ZodTypeDef, T2> = {
   endpoint: string;
@@ -25,7 +25,7 @@ type AxiosWrapperOptions<TSchema, T1 extends ZodTypeDef, T2> = WomboApiOptions<
 > & { method: string };
 
 const axiosInstance = axios.create({
-  baseURL: CONTRACT_API_URL,
+  baseURL: env.contractApiUrl,
   responseType: "json",
 });
 

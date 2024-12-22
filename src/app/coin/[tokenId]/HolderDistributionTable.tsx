@@ -1,6 +1,6 @@
 import { usePaginatedLiveData } from "@/utils/paginatedLiveData";
 import { z } from "zod";
-import { useToken } from "@/utils/tokens";
+import { env } from "@/utils/env";
 
 const HolderSchema = z.object({
   address: z.string(),
@@ -13,7 +13,6 @@ const HolderSchema = z.object({
 });
 
 export const HolderDistributionTable = ({ mint }: { mint: string }) => {
-  const { data: token } = useToken({ variables: mint });
   const { items: holders } = usePaginatedLiveData({
     itemsPerPage: 100,
     maxPages: 1,
@@ -30,25 +29,6 @@ export const HolderDistributionTable = ({ mint }: { mint: string }) => {
     itemsPropertyName: "holders",
   });
 
-  const getBondingCurveAddress = () => {
-    if (!token) return null;
-    // TODO: make these env variables for after deployment
-    return "4FRxv5k1iCrE4kdjtywUzAakCaxfDQmpdVLx48kUXQQC";
-  };
-
-  const getDevAddress = () => {
-    if (!token) return null;
-    // TODO: make these env variables for after deployment
-    return "BoeEDSULDSF1s81XCtmsgWPZmgLjiF1PyDFub2j8Wtsz";
-  };
-
-  const getRaydiumAddress = () => {
-    if (!token) return null;
-    // TODO: make these env variables for after deployment
-    // Devnet Raydium address
-    return "7rQ1QFNosMkUCuh7Z7fPbTHvh73b68sQYdirycEzJVuw";
-  };
-
   return (
     <div className="p-4">
       <div className="text-[#b3a0b3] text-sm mb-4">
@@ -57,9 +37,6 @@ export const HolderDistributionTable = ({ mint }: { mint: string }) => {
       <table className="w-full">
         <tbody>
           {holders.map((holder, index) => {
-            const bondingCurveAddress = getBondingCurveAddress();
-            const devAddress = getDevAddress();
-            const raydiumAddress = getRaydiumAddress();
             return (
               <tr
                 key={holder.address}
@@ -69,23 +46,23 @@ export const HolderDistributionTable = ({ mint }: { mint: string }) => {
                   <div>
                     {index + 1}.{" "}
                     <a
-                      href={`https://solscan.io/address/${holder.address}?cluster=devnet`}
+                      href={env.getWalletUrl(holder.address)}
                       target="_blank"
                       className="text-[#f743f6] font-medium"
                     >
                       {holder.address.slice(0, 4)}...{holder.address.slice(-4)}
                     </a>
-                    {holder.address === bondingCurveAddress && (
+                    {holder.address === env.bondingCurveAddress && (
                       <span className="text-[#b3a0b3] font-medium ml-2">
                         🏦 (bonding curve)
                       </span>
                     )}
-                    {holder.address === devAddress && (
+                    {holder.address === env.devAddress && (
                       <span className="text-[#b3a0b3] font-medium ml-2">
                         💻 (dev)
                       </span>
                     )}
-                    {holder.address === raydiumAddress && (
+                    {holder.address === env.raydiumAddress && (
                       <span className="text-[#b3a0b3] font-medium ml-2">
                         Ⓡ (raydium)
                       </span>

@@ -1,7 +1,7 @@
 "use client";
 
 import { ChartTable } from "@/utils/types";
-import { CONTRACT_API_URL } from "@/utils/env";
+import { env } from "./env";
 
 export async function getChartTable({
   pairIndex,
@@ -19,7 +19,7 @@ export async function getChartTable({
   try {
     // console.log("GET bars", token, from, to, range, pairIndex)
     const res = await fetch(
-      `${CONTRACT_API_URL}/chart/${pairIndex}/${from}/${to}/${range}/${token}`,
+      `${env.contractApiUrl}/chart/${pairIndex}/${from}/${to}/${range}/${token}`,
     ).then((data) => data.json());
 
     if (!res) {

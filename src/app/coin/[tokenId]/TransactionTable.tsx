@@ -2,6 +2,7 @@
 
 import { useTimeAgo } from "@/app/formatTimeAgo";
 import { Paginator } from "@/components/common/Paginator";
+import { env } from "@/utils/env";
 import { formatNumber } from "@/utils/number";
 import { usePaginatedLiveData } from "@/utils/paginatedLiveData";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
@@ -84,7 +85,7 @@ export const TransactionTable = ({
             <tr key={tx.txId} className="border-t border-[#532954]">
               <td className="py-4">
                 <Link
-                  href={`https://solscan.io/account/${tx.user}?cluster=devnet`}
+                  href={env.getWalletUrl(tx.user)}
                   target="_blank"
                   className="text-[#f743f6]"
                 >
@@ -103,7 +104,7 @@ export const TransactionTable = ({
               <td>{timeAgo[index]}</td>
               <td>
                 <Link
-                  href={`https://solscan.io/tx/${tx.txId}?cluster=devnet`}
+                  href={env.getTransactionUrl(tx.txId)}
                   target="_blank"
                   className="text-[#f743f6]"
                 >
