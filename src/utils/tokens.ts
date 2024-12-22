@@ -1,10 +1,7 @@
 import { createQuery } from "react-query-kit";
 import { womboApi } from "./fetch";
 import { z } from "zod";
-import { useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { usePaginatedLiveData } from "./paginatedLiveData";
-import { getSocket } from "./socket";
 
 const TokenSchema = z.object({
   name: z.string(),
