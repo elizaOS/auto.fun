@@ -26,7 +26,8 @@ export default function TokenDetailsPage() {
         <div className="col-span-2 flex flex-col gap-2">
           <TokenMetadata mint={tokenId} />
           {/* chart will have outdated data once token is migrated */}
-          <TradingChart param={token} />
+          {token.status === "active" && <TradingChart param={token} />}
+          <BottomTable socket={socket} mint={tokenId} />
         </div>
 
         <div className="flex flex-col gap-2">
@@ -34,7 +35,6 @@ export default function TokenDetailsPage() {
           <TokenBuySell tokenId={tokenId} />
         </div>
       </div>
-      <BottomTable socket={socket} mint={tokenId} />
     </div>
   );
 }
