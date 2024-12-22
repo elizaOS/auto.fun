@@ -19,29 +19,29 @@ export function convertFromFloat(value: number, decimals: number): number {
 export function calculateAmountOutBuy(
   reserveLamport: number,
   adjustedAmount: number,
-  tokenOneDecimals: number,
+  solDecimals: number,  // renamed for clarity
   reserveToken: number,
 ): number {
   // Calculate the denominator sum which is (y + dy)
   const denominatorSum = reserveLamport + adjustedAmount;
 
   // Convert to float for division
-  const denominatorSumFloat = convertToFloat(denominatorSum, tokenOneDecimals);
-  const adjustedAmountFloat = convertToFloat(adjustedAmount, tokenOneDecimals);
+  const denominatorSumFloat = convertToFloat(denominatorSum, solDecimals);
+  const adjustedAmountFloat = convertToFloat(adjustedAmount, solDecimals);
 
   // (y + dy) / dy
   const divAmt = denominatorSumFloat / adjustedAmountFloat;
 
-  // Convert reserveToken to float with 9 decimals
-  const reserveTokenFloat = convertToFloat(reserveToken, 9);
+  // Convert reserveToken to float with 6 decimals (token decimals)
+  const reserveTokenFloat = convertToFloat(reserveToken, 6);
 
   // Calculate dx = xdy / (y + dy)
   const amountOutInFloat = reserveTokenFloat / divAmt;
 
   // Convert the result back to the original decimal format
-  const amountOut = convertFromFloat(amountOutInFloat, 9);
+  const amountOut = convertFromFloat(amountOutInFloat, 6); 
 
-  return amountOut;
+  return Math.floor(amountOut);  // Added Math.floor for safety
 }
 
 export function calculateAmountOutSell(
@@ -50,29 +50,25 @@ export function calculateAmountOutSell(
   tokenOneDecimals: number,
   reserveToken: number,
 ): number {
-  // Calculate the denominator difference which is (x - dx)
-  const denominatorDiff = reserveToken - adjustedAmount;
+  // Calculate the denominator sum which is (x + dx)
+  const denominatorSum = reserveToken + adjustedAmount;
 
   // Convert to float for division
-  const denominatorDiffFloat = convertToFloat(
-    denominatorDiff,
-    tokenOneDecimals,
-  );
-  const reserveTokenFloat = convertToFloat(reserveToken, tokenOneDecimals);
+  const denominatorSumFloat = convertToFloat(denominatorSum, tokenOneDecimals);
+  const adjustedAmountFloat = convertToFloat(adjustedAmount, tokenOneDecimals);
 
-  // (x - dx) / x
-  const divAmt = denominatorDiffFloat / reserveTokenFloat;
+  // (x + dx) / dx
+  const divAmt = denominatorSumFloat / adjustedAmountFloat;
 
   // Convert reserveLamport to float with 9 decimals
   const reserveLamportFloat = convertToFloat(reserveLamport, 9);
 
-  // Calculate dy = y - (xy/(x - dx))
-  const amountOutInFloat = reserveLamportFloat * (1 - divAmt);
+  // Calculate dy = y / ((x + dx) / dx)
+  const amountOutInFloat = reserveLamportFloat / divAmt;
 
   // Convert the result back to the original decimal format
   const amountOut = convertFromFloat(amountOutInFloat, 9);
 
-  // return Math.floor(amountOut); // Round down for safety
   return Math.floor(amountOut);
 }
 
@@ -108,8 +104,8 @@ export const swapTx = async (
   const curve = await program.account.bondingCurve.fetch(bondingCurvePda);
 
   // Apply platform fee
-  // const feePercent = style === 1 ? configAccount.platformSellFee : configAccount.platformBuyFee;
-  // const adjustedAmount = Math.floor((amount * (100 - feePercent)) / 100);
+  const feePercent = style === 1 ? configAccount.platformSellFee : configAccount.platformBuyFee;
+  const adjustedAmount = Math.floor(amount * (100 - feePercent) / 100);
 
   // Calculate expected output
   let estimatedOutput;
@@ -118,7 +114,7 @@ export const swapTx = async (
     // Buy
     estimatedOutput = calculateAmountOutBuy(
       curve.reserveLamport.toNumber(),
-      amount,
+      adjustedAmount,
       9, // SOL decimals
       curve.reserveToken.toNumber(),
     );
@@ -126,10 +122,10 @@ export const swapTx = async (
     console.log("selling", amount, "tokens");
     // Sell
     estimatedOutput = calculateAmountOutSell(
-      curve.reserveToken.toNumber(),
-      amount,
-      6,
       curve.reserveLamport.toNumber(),
+      adjustedAmount,
+      9,
+      curve.reserveToken.toNumber(),
     );
 
     console.log("Estimated output:", estimatedOutput);
@@ -214,15 +210,15 @@ export const useSwap = () => {
       program,
     );
 
-    // console.log("Simulating transaction...");
-    // const simulation = await connection.simulateTransaction(tx);
+    console.log("Simulating transaction...");
+    const simulation = await connection.simulateTransaction(tx);
 
-    // // Print simulation logs
-    // console.log("Simulation logs:", simulation.value.logs);
-    // if (simulation.value.err) {
-    //   console.error("Simulation failed:", simulation.value.err.toString());
-    //   throw new Error(`Transaction simulation failed: ${simulation.value.err}`);
-    // }
+    // Print simulation logs
+    console.log("Simulation logs:", simulation.value.logs);
+    if (simulation.value.err) {
+      console.error("Simulation failed:", simulation.value.err.toString());
+      throw new Error(`Transaction simulation failed: ${simulation.value.err}`);
+    }
 
     const { blockhash, lastValidBlockHeight } =
       await connection.getLatestBlockhash();
