@@ -95,12 +95,13 @@ export function getDataFeed({
       const { from, to, firstDataRequest } = periodParams;
       // console.log("[getBars]: Method call", symbolInfo, resolution, from, to);
       const FIVE_DAYS = 5 * 24 * 60 * 60;
+      const adjustedFrom = firstDataRequest ? from - FIVE_DAYS : from;
 
       try {
         const chartTable = await getChartTable({
           token,
           pairIndex: pairIndex,
-          from: firstDataRequest ? from - FIVE_DAYS : from,
+          from: adjustedFrom,
           to,
           range: +resolution,
         });
@@ -116,10 +117,12 @@ export function getDataFeed({
         let bars: Bar[] = [];
 
         const nextTime =
-          chartTable.table[0]?.time <= from ? null : chartTable.table[0]?.time;
+          chartTable.table[0]?.time <= adjustedFrom
+            ? null
+            : chartTable.table[0]?.time;
 
         chartTable.table.forEach((bar: Bar) => {
-          if (bar.time >= from && bar.time < to) {
+          if (bar.time >= adjustedFrom && bar.time < to) {
             bars = [...bars, { ...bar, time: bar.time * 1000 }];
           }
         });
