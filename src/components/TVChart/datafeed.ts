@@ -94,17 +94,18 @@ export function getDataFeed({
     ) => {
       const { from, to, firstDataRequest } = periodParams;
       // console.log("[getBars]: Method call", symbolInfo, resolution, from, to);
+      const FIVE_DAYS = 5 * 24 * 60 * 60;
 
       try {
         const chartTable = await getChartTable({
           token,
           pairIndex: pairIndex,
-          from,
+          from: firstDataRequest ? from - FIVE_DAYS : from,
           to,
           range: +resolution,
         });
 
-        if (!chartTable || !chartTable.table) {
+        if (!chartTable || !chartTable.table || chartTable.table.length === 0) {
           // "noData" should be set if there is no data in the requested period
           onHistoryCallback([], {
             noData: true,
@@ -114,11 +115,19 @@ export function getDataFeed({
 
         let bars: Bar[] = [];
 
+        const nextTime =
+          chartTable.table[0]?.time <= from ? null : chartTable.table[0]?.time;
+
         chartTable.table.forEach((bar: Bar) => {
           if (bar.time >= from && bar.time < to) {
             bars = [...bars, { ...bar, time: bar.time * 1000 }];
           }
         });
+
+        if (!bars.length) {
+          onHistoryCallback([], { noData: true });
+          return;
+        }
 
         if (firstDataRequest) {
           lastBarsCache.set(symbolInfo.name, {
@@ -128,6 +137,7 @@ export function getDataFeed({
         // console.log(`[getBars]: returned ${bars.length} bar(s)`);
         onHistoryCallback(bars, {
           noData: false,
+          nextTime,
         });
       } catch (error) {
         // console.log("[getBars]: Get error", error);
