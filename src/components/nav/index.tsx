@@ -32,8 +32,8 @@ export const Nav = () => {
           <HowItWorks />
         </div>
         <WalletButton />
-
-        <RoundedButton className="p-3">
+        <Link href="https://x.com/serlaunchalot" target="_blank">
+          <RoundedButton className="p-3">
           <svg
             width="24"
             height="24"
@@ -48,8 +48,9 @@ export const Nav = () => {
               strokeLinecap="round"
               strokeLinejoin="round"
             />
-          </svg>
-        </RoundedButton>
+            </svg>
+          </RoundedButton>
+        </Link>
       </div>
     </nav>
   );
