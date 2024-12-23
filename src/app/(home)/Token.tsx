@@ -58,7 +58,7 @@ export const Token = ({
           {name}
         </div>
         <div className="self-stretch text-[#cab7c7] text-xl font-bold font-secondary uppercase leading-normal">
-          {ticker}
+          ${ticker}
         </div>
       </div>
       <Tweet url={tweetUrl} />
