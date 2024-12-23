@@ -17,6 +17,7 @@ import { getSocket } from "@/utils/socket";
 
 const socket = getSocket();
 const lastBarsCache = new Map<string, Bar>();
+const noDataFlags = new Map<string, boolean>();
 // const minPrice: Number = 0;
 // const maxPrice: Number = 0;
 // DatafeedConfiguration implementation
@@ -32,6 +33,7 @@ const configurationData: DatafeedConfiguration = {
     "1440",
   ] as ResolutionString[],
 };
+
 
 export function getDataFeed({
   pairIndex,
@@ -93,11 +95,16 @@ export function getDataFeed({
       onErrorCallback,
     ) => {
       const { from, to, firstDataRequest } = periodParams;
-      // console.log("[getBars]: Method call", symbolInfo, resolution, from, to);
       const FIVE_DAYS = 5 * 24 * 60 * 60;
       const adjustedFrom = firstDataRequest ? from - FIVE_DAYS : from;
-
+    
       try {
+        // If we already know there's no data for this symbol, return immediately
+        if (noDataFlags.get(symbolInfo.name)) {
+          onHistoryCallback([], { noData: true });
+          return;
+        }
+    
         const chartTable = await getChartTable({
           token,
           pairIndex: pairIndex,
@@ -105,45 +112,49 @@ export function getDataFeed({
           to,
           range: +resolution,
         });
-
+    
         if (!chartTable || !chartTable.table || chartTable.table.length === 0) {
-          // "noData" should be set if there is no data in the requested period
-          onHistoryCallback([], {
-            noData: true,
-          });
+          // Set the no-data flag if this is the first request
+          if (firstDataRequest) {
+            noDataFlags.set(symbolInfo.name, true);
+          }
+          onHistoryCallback([], { noData: true });
           return;
         }
-
+    
+        // Clear the no-data flag if we got data
+        noDataFlags.set(symbolInfo.name, false);
+    
         let bars: Bar[] = [];
-
         const nextTime =
           chartTable.table[0]?.time <= adjustedFrom
             ? null
             : chartTable.table[0]?.time;
-
+    
         chartTable.table.forEach((bar: Bar) => {
           if (bar.time >= adjustedFrom && bar.time < to) {
             bars = [...bars, { ...bar, time: bar.time * 1000 }];
           }
         });
-
+    
         if (!bars.length) {
+          // Don't set noDataFlags here as this might be a temporary gap in data
           onHistoryCallback([], { noData: true });
           return;
         }
-
+    
         if (firstDataRequest) {
           lastBarsCache.set(symbolInfo.name, {
             ...bars[bars.length - 1],
           });
         }
-        // console.log(`[getBars]: returned ${bars.length} bar(s)`);
+    
         onHistoryCallback(bars, {
           noData: false,
           nextTime,
         });
       } catch (error) {
-        // console.log("[getBars]: Get error", error);
+        console.log("[getBars]: Get error", error);
         onErrorCallback(error as string);
       }
     },
@@ -155,21 +166,27 @@ export function getDataFeed({
       subscriberUID,
       onResetCacheNeededCallback,
     ) => {
+      // Don't subscribe if we know there's no data
+      if (noDataFlags.get(symbolInfo.name)) {
+        return;
+      }
+    
       console.log(
         "[subscribeBars]: Method call with subscriberUID:",
         subscriberUID,
       );
-
+    
       socket.emit("subscribe", token);
-
+    
       // Ensure we have the last bar from cache
       const lastBar = lastBarsCache.get(symbolInfo.name);
       if (!lastBar) {
         console.log("[subscribeBars]: No last bar found");
-        onResetCacheNeededCallback();
+        // Instead of calling onResetCacheNeededCallback, we should mark as no data
+        noDataFlags.set(symbolInfo.name, true);
         return;
       }
-
+    
       subscribeOnStream(
         symbolInfo,
         resolution,
@@ -178,6 +195,8 @@ export function getDataFeed({
           onRealtimeCallback(bar);
           // Update the cache with the latest bar
           lastBarsCache.set(symbolInfo.name, bar);
+          // Clear the no-data flag since we're receiving data
+          noDataFlags.set(symbolInfo.name, false);
         },
         subscriberUID,
         onResetCacheNeededCallback,
