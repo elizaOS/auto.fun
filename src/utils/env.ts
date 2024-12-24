@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const unparsedEnv = {
   contractApiUrl: process.env.NEXT_PUBLIC_CONTRACT_API_URL,
-  solscanCluster: process.env.NEXT_PUBLIC_SOLANA_NETWORK,
+  solscanCluster: process.env.NEXT_PUBLIC_SOLSCAN_CLUSTER,
   bondingCurveAddress: process.env.NEXT_PUBLIC_BONDING_CURVE_ADDRESS,
   devAddress: process.env.NEXT_PUBLIC_DEV_ADDRESS,
   raydiumAddress: process.env.NEXT_PUBLIC_RAYDIUM_ADDRESS,
