@@ -49,6 +49,10 @@ const LoadingBar = ({ progress }: { progress: number }) => {
 };
 
 const BondingStatus = ({ token }: { token: Token }) => {
+  // Graduation market cap is the market cap at which the token will graduate to Raydium
+  // This is the market cap at which the token will have 100% of the bonding curve
+  // Calculated as curveLimit * solPriceUSD
+  const graduationMarketCap = (token.curveLimit / LAMPORTS_PER_SOL) * token.solPriceUSD;
   switch (token.status) {
     case "active":
       return (
@@ -62,11 +66,7 @@ const BondingStatus = ({ token }: { token: Token }) => {
             Raydium
           </a>{" "}
           at ~$
-          {formatNumber(
-            token.curveProgress === 0
-              ? (token.marketCapUSD / 5) * 100
-              : (token.marketCapUSD / token.curveProgress) * 100,
-          )}{" "}
+          {formatNumber(graduationMarketCap)}{" "}
           market cap. There is{" "}
           {(token.reserveLamport / LAMPORTS_PER_SOL).toFixed(3)} SOL in the
           bonding curve.
