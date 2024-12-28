@@ -38,8 +38,8 @@ export const TradingChart: React.FC<TradingChartProps> = ({ param }) => {
                 }}
             />
             {isScriptReady && param && <TVChartContainer
-                name={param.name}
-                pairIndex={10}
+                name = {param.name}
+                pairIndex = {10}
                 token = {param.mint}
             />}
         </>

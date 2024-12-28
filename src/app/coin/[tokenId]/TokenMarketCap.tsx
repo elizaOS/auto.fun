@@ -32,6 +32,7 @@ const Container = ({ children }: PropsWithChildren) => {
 };
 
 const LoadingBar = ({ progress }: { progress: number }) => {
+  console.log("Loading bar progress", progress);
   return (
     <div className="flex gap-2 items-center flex-1">
       <div className="w-full h-1 rounded-full bg-gray-900 flex overflow-hidden">
@@ -51,8 +52,9 @@ const LoadingBar = ({ progress }: { progress: number }) => {
 const BondingStatus = ({ token }: { token: Token }) => {
   // Graduation market cap is the market cap at which the token will graduate to Raydium
   // This is the market cap at which the token will have 100% of the bonding curve
-  // Calculated as curveLimit * solPriceUSD
-  const graduationMarketCap = (token.curveLimit / LAMPORTS_PER_SOL) * token.solPriceUSD;
+  // TODO/WIP: This is a temporary value, we need to calculate the actual graduation market cap based off
+  // the final price of the token in the bonding curve and total token supply
+  const graduationMarketCap = (token.curveLimit / LAMPORTS_PER_SOL) * token.solPriceUSD * 3.5;
   switch (token.status) {
     case "active":
       return (
@@ -68,7 +70,7 @@ const BondingStatus = ({ token }: { token: Token }) => {
           at ~$
           {formatNumber(graduationMarketCap)}{" "}
           market cap. There is{" "}
-          {(token.reserveLamport / LAMPORTS_PER_SOL).toFixed(3)} SOL in the
+          {((token.reserveLamport - token.virtualReserves) / LAMPORTS_PER_SOL).toFixed(3)} SOL in the
           bonding curve.
         </>
       );
