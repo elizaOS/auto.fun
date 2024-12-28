@@ -1,0 +1,30 @@
+import { z } from "zod";
+
+export const TokenSchema = z.object({
+  name: z.string(),
+  url: z.string(),
+  ticker: z.string(),
+  createdAt: z.string().datetime(),
+  mint: z.string(),
+  image: z.string(),
+  xurl: z.string(),
+  xname: z.string(),
+  xtext: z.string(),
+  xusername: z.string(),
+  marketCapUSD: z.number(),
+  currentPrice: z.number(),
+  curveProgress: z.number(),
+  status: z.enum([
+    "active",
+    "withdrawn",
+    "migrating",
+    "migrated",
+    "locked",
+    "migration_failed",
+  ]),
+  liquidity: z.number(),
+  curveLimit: z.number(),
+  reserveLamport: z.number(),
+  virtualReserves: z.number(),
+  solPriceUSD: z.number(),
+});
