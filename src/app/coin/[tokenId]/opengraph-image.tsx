@@ -5,9 +5,9 @@ import { ImageResponse } from "next/og";
 export const runtime = "edge";
 
 // Image metadata
-export const size = {
+const size = {
   width: 1200,
-  height: 540,
+  height: 630,
 };
 const borderRadius = 20;
 
@@ -54,7 +54,7 @@ export default async function Image({
           style={{
             paddingTop: "50px",
             paddingLeft: "20px",
-            width: "50%",
+            width: "630px",
             height: "100%",
             display: "flex",
             flexDirection: "column",
@@ -67,8 +67,17 @@ export default async function Image({
               flexDirection: "column",
             }}
           >
-            <p style={{ fontSize: 100 }}>${token.ticker}</p>
-            <p style={{ fontSize: 50 }}>{token.name}</p>
+            <p style={{ fontSize: 90 }}>${token.ticker}</p>
+            <p
+              style={{
+                fontSize: 45,
+                wordWrap: "break-word",
+                wordBreak: "break-word",
+                overflowWrap: "break-word",
+              }}
+            >
+              {token.name}
+            </p>
           </div>
           <div
             style={{
@@ -90,7 +99,7 @@ export default async function Image({
           </div>
         </div>
         <img
-          width="45%"
+          width="600px"
           height="100%"
           src={token.image}
           style={{
@@ -102,8 +111,7 @@ export default async function Image({
       </div>
     ),
     {
-      width: 1200,
-      height: 540,
+      ...size,
       fonts: [
         {
           name: "PPMondwest",
