@@ -20,6 +20,7 @@ export default async function Image({
 }: {
   params: { tokenId: string };
 }) {
+  // TODO: maybe implement fallback image if any of these requests fail
   const fontData = await fetch(
     new URL("../../fonts/PPMondwest-Regular.otf", import.meta.url),
   ).then((res) => res.arrayBuffer());
