@@ -78,7 +78,9 @@ export default async function Image({
             }}
           >
             <img
-              src={logoSrc as unknown as string}
+              // typing is weird https://nextjs.org/docs/app/api-reference/file-conventions/metadata/opengraph-image#using-edge-runtime-with-local-assets
+              // @ts-expect-error to allow array buffer as src property
+              src={logoSrc}
               width="64px"
               height="64px"
               alt="Logo"
