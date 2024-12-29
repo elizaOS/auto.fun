@@ -52,9 +52,10 @@ const LoadingBar = ({ progress }: { progress: number }) => {
 const BondingStatus = ({ token }: { token: Token }) => {
   // Graduation market cap is the market cap at which the token will graduate to Raydium
   // This is the market cap at which the token will have 100% of the bonding curve
-  // TODO/WIP: This is a temporary value, we need to calculate the actual graduation market cap based off
-  // the final price of the token in the bonding curve and total token supply
-  const graduationMarketCap = (token.curveLimit / LAMPORTS_PER_SOL) * token.solPriceUSD * 3.5;
+  const finalTokenPrice = 0.000000450; // Calculated from the bonding curve configuration (from backend)
+  const finalTokenUSDPrice = finalTokenPrice * token.solPriceUSD;
+  const graduationMarketCap = finalTokenUSDPrice * 1_000_000_000;
+  
   switch (token.status) {
     case "active":
       return (
