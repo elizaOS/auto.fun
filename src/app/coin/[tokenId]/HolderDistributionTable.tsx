@@ -40,7 +40,7 @@ export const HolderDistributionTable = ({ mint }: { mint: string }) => {
             return (
               <tr
                 key={holder.address}
-                className={`${index !== 0 ? "border-t border-[#532954]" : ""}`}
+                className={`${index !== 0 ? "border-t border-[#03ff2436]" : ""}`}
               >
                 <td className="py-4 flex justify-between">
                   <div>
@@ -48,7 +48,7 @@ export const HolderDistributionTable = ({ mint }: { mint: string }) => {
                     <a
                       href={env.getWalletUrl(holder.address)}
                       target="_blank"
-                      className="text-[#f743f6] font-medium"
+                      className="text-[#33c55e] font-medium"
                     >
                       {holder.address.slice(0, 4)}...{holder.address.slice(-4)}
                     </a>

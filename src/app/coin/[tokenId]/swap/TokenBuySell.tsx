@@ -114,20 +114,20 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
   return (
     <div className="relative">
       <MigrationOverlay tokenId={tokenId} />
-      <div className="flex flex-col gap-4 bg-[#401141] p-4 rounded-xl">
-        <div className="flex gap-2 bg-[#521653] p-2 rounded-lg w-full">
+      <div className="flex flex-col gap-4 bg-[#272727] p-4 rounded-xl">
+        <div className="flex gap-2 bg-[#00ff0036] p-2 rounded-lg w-full">
           <button
             className={`rounded-lg flex-1 px-4 py-2 ${
-              activeTab === "Buy" ? "bg-[#f743f6]" : ""
-            } ${activeTab === "Buy" ? "text-[#521653]" : "text-[#F743F6]"}`}
+              activeTab === "Buy" ? "bg-[#33c55e]" : ""
+            } ${activeTab === "Buy" ? "text-[#0e0e0e]" : "text-[#33c55e]"}`}
             onClick={() => setActiveTab("Buy")}
           >
             Buy
           </button>
           <button
             className={`rounded-lg flex-1 px-4 py-2 ${
-              activeTab === "Sell" ? "bg-[#f743f6]" : ""
-            } ${activeTab === "Sell" ? "text-[#521653]" : "text-[#F743F6]"}`}
+              activeTab === "Sell" ? "bg-[#33c55e]" : ""
+            } ${activeTab === "Sell" ? "text-[#0e0e0e]" : "text-[#33c55e]"}`}
             onClick={() => setActiveTab("Sell")}
           >
             Sell
@@ -140,11 +140,11 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
           </div>
           <div
             className={`border rounded-lg relative ${
-              isFocus ? "border-[#f743f6]" : "border-[#662066]"
+              isFocus ? "border-[#33c55e]" : "border-[#42c55e]"
             }`}
           >
             <input
-              className="text-[#f743f6] font-medium bg-inherit p-3 w-full"
+              className="text-[#33c55e] font-medium bg-inherit p-3 w-full"
               type="number"
               onKeyDown={(e) => {
                 if (e.key === "-" || e.key === "e") {
@@ -180,7 +180,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
                 >
                   <path
                     d="M20 14L16 18H4L8 14M20 14H8M20 14L16 10M8 14L4 10M4 10H16M4 10L8 6H20L16 10"
-                    stroke="#F743F6"
+                    stroke="#33c55e"
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -194,10 +194,10 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
             {presetButtons.map((value) => (
               <button
                 key={value}
-                className="h-12 px-4 py-3 bg-[#521653] rounded-lg flex-col justify-center items-center gap-2 inline-flex flex-1"
+                className="h-12 px-4 py-3 bg-[#00ff0036] rounded-lg flex-col justify-center items-center gap-2 inline-flex flex-1"
                 onClick={() => handlePresetClick(value)}
               >
-                <div className="text-[#f743f6] text-base font-medium font-['Inter'] leading-normal">
+                <div className="text-[#33c55e] text-base font-medium font-['Inter'] leading-normal">
                   {activeTab === "Buy" ? `${value} SOL` : `${value}%`}
                 </div>
               </button>
@@ -221,7 +221,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
               To place trades, please{" "}
             </span>
             <button
-              className="text-[#f743f6] text-base font-medium font-['Inter'] leading-normal"
+              className="text-[#33c55e] text-base font-medium font-['Inter'] leading-normal"
               onClick={connectWallet}
             >
               connect your wallet

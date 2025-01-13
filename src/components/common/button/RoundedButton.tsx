@@ -18,7 +18,7 @@ export const RoundedButton = forwardRef<HTMLButtonElement, RoundedButtonProps>(
           case "inverted":
             return `border-[#FF0000] text-[#FF0000] bg-[rgba(255,0,0,0.15)] ${border}`;
           default:
-            return "text-black bg-[#f743f6] border-l border-r border-t border-b-2 border-[#2b0b2c]/60";
+            return "text-black bg-[#33c55e] border-l border-r border-t border-b-2 border-[#2b0b2c]/60";
         }
       }
     }, [variant, color]);

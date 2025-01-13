@@ -82,12 +82,12 @@ export const TransactionTable = ({
         </thead>
         <tbody>
           {transactions.map((tx, index) => (
-            <tr key={tx.txId} className="border-t border-[#532954]">
+            <tr key={tx.txId} className="border-t border-[#03ff2436]">
               <td className="py-4">
                 <Link
                   href={env.getWalletUrl(tx.user)}
                   target="_blank"
-                  className="text-[#f743f6]"
+                  className="text-[#33c55e]"
                 >
                   {tx.user.slice(0, 4)}...{tx.user.slice(-4)}
                 </Link>
@@ -106,7 +106,7 @@ export const TransactionTable = ({
                 <Link
                   href={env.getTransactionUrl(tx.txId)}
                   target="_blank"
-                  className="text-[#f743f6]"
+                  className="text-[#33c55e]"
                 >
                   {tx.txId.slice(0, 4)}...{tx.txId.slice(-4)}
                 </Link>

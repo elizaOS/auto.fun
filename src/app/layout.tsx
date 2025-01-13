@@ -20,7 +20,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "serlaunchalot",
+  title: "Auto.fun",
 };
 
 export default async function RootLayout({

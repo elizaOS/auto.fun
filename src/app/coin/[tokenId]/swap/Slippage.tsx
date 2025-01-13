@@ -31,7 +31,7 @@ export function Slippage({
         >
           <path
             d="M6 9L12 15L18 9"
-            stroke="#F743F6"
+            stroke="#33c55e"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -43,11 +43,11 @@ export function Slippage({
         <>
           <div
             className={`border rounded-lg relative ${
-              isFocus ? "border-[#f743f6]" : "border-[#662066]"
+              isFocus ? "border-[#33c55e]" : "border-[#42c55e]"
             }`}
           >
             <input
-              className="text-[#f743f6] font-medium bg-inherit p-3 w-full"
+              className="text-[#33c55e] font-medium bg-inherit p-3 w-full"
               type="number"
               onKeyDown={(e) => {
                 if (e.key === "-" || e.key === "e") {

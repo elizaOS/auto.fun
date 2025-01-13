@@ -103,7 +103,7 @@ export const TVChartContainer = ({
   }, [name, pairIndex]);
 
   return (
-    <div className="relative mb-[1px] h-[500px] w-full bg-[#401141] p-4 rounded-2xl">
+    <div className="relative mb-[1px] h-[500px] w-full bg-[#272727] p-4 rounded-2xl">
       {isLoading ? (
         <div className="z-9999 absolute left-0 top-0 flex h-full w-full items-center justify-center bg-tizz-background">
           <ReactLoading

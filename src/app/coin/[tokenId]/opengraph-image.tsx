@@ -95,7 +95,7 @@ export default async function Image({
               height="64px"
               alt="Logo"
             />
-            <p style={{ fontSize: 25 }}>launchalot.fun</p>
+            <p style={{ fontSize: 25 }}>auto.fun</p>
           </div>
         </div>
         <img

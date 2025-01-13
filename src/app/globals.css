@@ -4,7 +4,7 @@
 @import "react-toastify/dist/ReactToastify.css";
 
 :root {
-  --background: #2b0b2c;
+  --background: #0a0a0a;
   --foreground: white;
 }
 
@@ -157,7 +157,7 @@ select:focus {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #f743f6; /* Scrollbar color */
+  background-color: #33c55e; /* Scrollbar color */
   border-radius: 4px; /* Rounded corners */
 }
 
@@ -169,7 +169,7 @@ select:focus {
 /* Firefox */
 * {
   scrollbar-width: thin; /* Thin scrollbar */
-  scrollbar-color: #f743f6 transparent; /* Scrollbar color and track color */
+  scrollbar-color: #33c55e transparent; /* Scrollbar color and track color */
 }
 @layer base {
   * {

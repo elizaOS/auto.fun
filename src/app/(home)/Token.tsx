@@ -27,22 +27,22 @@ export const Token = ({
 
   return (
     <Link
-      className={`px-4 pt-4 pb-5 bg-[#401141] rounded-[20px] flex-col justify-start items-start gap-4 inline-flex ${className}`}
+      className={`px-4 pt-4 pb-5 bg-[#272727] rounded-[20px] flex-col justify-start items-start gap-4 inline-flex ${className}`}
       href={`/coin/${mint}`}
     >
       <div className="self-stretch justify-between items-start inline-flex">
         <img
-          className="w-[100px] h-[100px] relative rounded-xl border border-[#642064]"
+          className="w-[100px] h-[100px] relative rounded-xl border border-[#22c55e]"
           src={url}
           alt="placeholder"
         />
-        <div className="px-2 py-1 bg-[#f743f6]/10 rounded-lg justify-start items-start gap-1 flex">
+        <div className="px-2 py-1 bg-[#33c55e]/10 rounded-lg justify-start items-start gap-1 flex">
           {status === "active" ? (
             <>
               <div className="text-[#cab7c7] text-base font-medium leading-normal">
                 Market cap:
               </div>
-              <div className="text-[#f743f6] text-base font-medium leading-normal">
+              <div className="text-[#33c55e] text-base font-medium leading-normal">
                 ${marketCap}
               </div>
             </>

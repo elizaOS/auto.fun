@@ -25,21 +25,21 @@ export default function HomePage() {
       {[...Array(30)].map((_, index) => (
         <div
           key={index}
-          className="px-4 pt-4 pb-5 bg-[#401141] rounded-[20px] flex flex-col gap-1"
+          className="px-4 pt-4 pb-5 bg-[#272727] rounded-[20px] flex flex-col gap-1"
         >
           <div className="self-stretch justify-between items-start inline-flex">
             <Skeleton
-              className="!rounded-xl border border-[#642064]"
+              className="!rounded-xl border border-[#22c55e]"
               width={100}
               height={100}
-              baseColor="#2b0b2c"
-              highlightColor="#521653"
+              baseColor="#171717"
+              highlightColor="#00ff0026"
             />
             <Skeleton
               width={120}
               height={24}
-              baseColor="#2b0b2c"
-              highlightColor="#521653"
+              baseColor="#171717"
+              highlightColor="#00ff0026"
             />
           </div>
 
@@ -47,14 +47,14 @@ export default function HomePage() {
             <Skeleton
               width={200}
               height={24}
-              baseColor="#2b0b2c"
-              highlightColor="#521653"
+              baseColor="#171717"
+              highlightColor="#00ff0026"
             />
             <Skeleton
               width={120}
               height={24}
-              baseColor="#2b0b2c"
-              highlightColor="#521653"
+              baseColor="#171717"
+              highlightColor="#00ff0026"
             />
           </div>
 
@@ -62,15 +62,15 @@ export default function HomePage() {
             className="rounded-xl mb-[9px]"
             width="100%"
             height={48}
-            baseColor="#521653"
-            highlightColor="#642064"
+            baseColor="#00ff0026"
+            highlightColor="#22c55e"
           />
 
           <Skeleton
             width={120}
             height={24}
-            baseColor="#2b0b2c"
-            highlightColor="#521653"
+            baseColor="#171717"
+            highlightColor="#00ff0026"
           />
         </div>
       ))}

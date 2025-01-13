@@ -9,7 +9,7 @@ export const Tweet = ({ url }: { url: string }) => {
         // should ideally change designs to avoid nesting buttons like this
         e.preventDefault();
       }}
-      className="p-3 bg-[#521653] rounded-xl justify-center items-center gap-2 inline-flex w-full"
+      className="p-3 bg-[#00ff0036] rounded-xl justify-center items-center gap-2 inline-flex w-full"
     >
       <svg
         width="24"
@@ -20,14 +20,14 @@ export const Tweet = ({ url }: { url: string }) => {
       >
         <path
           d="M4 20L10.768 13.232M13.228 10.772L20 4M4 4L15.733 20H20L8.267 4H4Z"
-          stroke="#F743F6"
+          stroke="#33c55e"
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
       </svg>
 
-      <div className="text-[#f743f6] text-base font-medium font-['Inter'] leading-normal">
+      <div className="text-[#33c55e] text-base font-medium font-['Inter'] leading-normal">
         Twitter
       </div>
     </button>

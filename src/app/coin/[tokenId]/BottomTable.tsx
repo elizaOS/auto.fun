@@ -12,22 +12,22 @@ export const BottomTable = ({ mint }: { mint: string }) => {
   >("Transactions");
 
   return (
-    <div className="rounded-lg bg-[#401141] overflow-hidden min-h-[300px] flex flex-col">
+    <div className="rounded-lg bg-[#272727] overflow-hidden min-h-[300px] flex flex-col">
       {/* Tab Navigation */}
-      <div className="flex bg-[#521653] p-4">
-        <div className="flex gap-2 bg-[#401141] p-2 rounded-lg">
+      <div className="flex bg-[#00ff0036] p-4">
+        <div className="flex gap-2 bg-[#272727] p-2 rounded-lg">
           <button
             className={`rounded-lg px-4 py-2 ${
-              activeTab === "Transactions" ? "bg-[#f743f6]" : ""
-            } ${activeTab === "Transactions" ? "text-[#521653]" : "text-[#F743F6]"}`}
+              activeTab === "Transactions" ? "bg-[#33c55e]" : ""
+            } ${activeTab === "Transactions" ? "text-[#0e0e0e]" : "text-[#33c55e]"}`}
             onClick={() => setActiveTab("Transactions")}
           >
             Transactions
           </button>
           <button
             className={`rounded-lg px-4 py-2 ${
-              activeTab === "Holder Distribution" ? "bg-[#f743f6]" : ""
-            } ${activeTab === "Holder Distribution" ? "text-[#521653]" : "text-[#F743F6]"}`}
+              activeTab === "Holder Distribution" ? "bg-[#33c55e]" : ""
+            } ${activeTab === "Holder Distribution" ? "text-[#0e0e0e]" : "text-[#33c55e]"}`}
             onClick={() => setActiveTab("Holder Distribution")}
           >
             Holder Distribution

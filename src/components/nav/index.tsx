@@ -8,7 +8,7 @@ import { RoundedButton } from "../common/button/RoundedButton";
 
 export const Nav = () => {
   return (
-    <nav className="flex justify-between items-center gap-6 sm:flex-col fixed top-0 left-0 right-0 z-50 px-8 py-4 bg-[#2b0b2c] border-b border-b-[#f743f6]/40">
+    <nav className="flex justify-between items-center gap-6 sm:flex-col fixed top-0 left-0 right-0 z-50 px-8 py-4 bg-[#0e0e0e] border-b border-b-[#03ff24]/40">
       <div className="flex gap-6 items-center">
         <div className="flex items-center">
           <Link href="/" className="flex gap-6 items-center">
@@ -18,9 +18,6 @@ export const Nav = () => {
               src="/logo_rounded_25percent.png"
               alt="logo"
             />
-            <div className="font-secondary font-bold text-xl">
-              Ser Launchalot
-            </div>
           </Link>
         </div>
         <div className="sm:block hidden">
@@ -32,22 +29,22 @@ export const Nav = () => {
           <HowItWorks />
         </div>
         <WalletButton />
-        <Link href="https://x.com/serlaunchalot" target="_blank">
+        <Link href="#" target="_blank">
           <RoundedButton className="p-3">
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M4 20L10.768 13.232M13.228 10.772L20 4M4 4L15.733 20H20L8.267 4H4Z"
-              stroke="black"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M4 20L10.768 13.232M13.228 10.772L20 4M4 4L15.733 20H20L8.267 4H4Z"
+                stroke="black"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </RoundedButton>
         </Link>

@@ -15,7 +15,7 @@ export const HowItWorks = () => {
   //   <div className="relative">
   //     <button
   //       ref={buttonRef}
-  //       className="text-[#f743f6] font-primary"
+  //       className="text-[#33c55e] font-primary"
   //       onClick={() => {
   //         if (descriptionRef.current?.open) {
   //           descriptionRef.current?.close();
