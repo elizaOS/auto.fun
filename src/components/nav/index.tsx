@@ -8,7 +8,7 @@ import { RoundedButton } from "../common/button/RoundedButton";
 
 export const Nav = () => {
   return (
-    <nav className="flex justify-between items-center gap-6 sm:flex-col fixed top-0 left-0 right-0 z-50 px-8 py-4 bg-[#0e0e0e] border-b border-b-[#03ff24]/40">
+    <nav className="flex justify-between items-center gap-6 fixed top-0 left-0 right-0 z-50 px-8 py-4 bg-[#0e0e0e] border-b border-b-[#03ff24]/40">
       <div className="flex gap-6 items-center">
         <div className="flex items-center">
           <Link href="/" className="flex gap-6 items-center">

@@ -38,7 +38,7 @@ export default function TokenDetailsPage() {
   if (!token) return null;
 
   return (
-    <div className="flex flex-col gap-2 mt-4">
+    <div className="flex flex-col gap-2 mt-12">
       <div className="grid grid-cols-3 gap-2">
         <div className="col-span-2 flex flex-col gap-2">
           <TokenMetadata mint={tokenId} />

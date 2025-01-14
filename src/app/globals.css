@@ -171,11 +171,3 @@ select:focus {
   scrollbar-width: thin; /* Thin scrollbar */
   scrollbar-color: #33c55e transparent; /* Scrollbar color and track color */
 }
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
