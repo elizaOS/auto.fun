@@ -25,11 +25,6 @@ Auto.fun is an application for creating and managing AI agents, handling Solana 
 
 1. **Clone the repository**
 
-   ```bash
-   git clone https://github.com/your-username/solana-web-app.git
-   cd solana-web-app
-   ```
-
 2. **Install dependencies**
 
    ```bash
@@ -46,7 +41,7 @@ Auto.fun is an application for creating and managing AI agents, handling Solana 
    npm run dev
    ```
 
-   The app will be available at [http://localhost:3300](http://localhost:3300).
+   The app will be available at [http://localhost:3000](http://localhost:3000).
 
 ## Scripts
 
@@ -80,4 +75,4 @@ Contributions are welcome! Please open an issue or submit a pull request for any
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the MIT License.
