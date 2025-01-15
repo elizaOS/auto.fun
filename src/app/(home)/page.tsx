@@ -5,10 +5,10 @@ import { Suspense } from "react";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen text-green-500 mt-12">
+    <div className="min-h-screen text-green-500 mt-8">
       <div className="min-h-screen text-green-500">
         <Suspense fallback={<LoadingScreen />}>
-          <main className="container mx-auto p-4">
+          <main className="container mx-auto">
             <AgentBrowser />
           </main>
         </Suspense>

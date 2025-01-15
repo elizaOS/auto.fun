@@ -66,58 +66,49 @@ export function AgentBrowser() {
   };
 
   const renderSkeletons = () => (
-    <div className="grid grid-cols-3 lg:grid-cols-2 2xl:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
       {[...Array(30)].map((_, index) => (
-        <div
+        <Card
           key={index}
-          className="px-4 pt-4 pb-5 bg-[#272727] rounded-[20px] flex flex-col gap-1"
+          className="bg-[#171717] border-green-500/20 hover:border-green-500/50 transition-colors h-48 flex"
         >
-          <div className="self-stretch justify-between items-start inline-flex">
+          <div className="flex flex-col p-[24px] flex-1">
+            <CardHeader className="p-0">
+              <Skeleton
+                width={120}
+                height={24}
+                baseColor="#171717"
+                highlightColor="#00ff0026"
+                className="mb-2"
+              />
+              <Skeleton
+                width={80}
+                height={16}
+                baseColor="#171717"
+                highlightColor="#00ff0026"
+              />
+            </CardHeader>
+            <CardContent className="p-0 flex flex-col flex-1">
+              <div className="mt-auto flex flex-col gap-1">
+                <Skeleton
+                  width={100}
+                  height={16}
+                  baseColor="#171717"
+                  highlightColor="#00ff0026"
+                />
+              </div>
+            </CardContent>
+          </div>
+          <div className="flex items-center justify-center flex-shrink-0 w-1/2">
             <Skeleton
-              className="!rounded-xl border border-[#22c55e]"
-              width={100}
-              height={100}
+              width="100%"
+              height="100%"
               baseColor="#171717"
               highlightColor="#00ff0026"
-            />
-            <Skeleton
-              width={120}
-              height={24}
-              baseColor="#171717"
-              highlightColor="#00ff0026"
+              className="rounded-r-lg"
             />
           </div>
-
-          <div className="self-stretch flex-col justify-start items-start flex gap-2">
-            <Skeleton
-              width={200}
-              height={24}
-              baseColor="#171717"
-              highlightColor="#00ff0026"
-            />
-            <Skeleton
-              width={120}
-              height={24}
-              baseColor="#171717"
-              highlightColor="#00ff0026"
-            />
-          </div>
-
-          <Skeleton
-            className="rounded-xl mb-[9px]"
-            width="100%"
-            height={48}
-            baseColor="#00ff0026"
-            highlightColor="#22c55e"
-          />
-
-          <Skeleton
-            width={120}
-            height={24}
-            baseColor="#171717"
-            highlightColor="#00ff0026"
-          />
-        </div>
+        </Card>
       ))}
     </div>
   );

@@ -86,10 +86,9 @@ export default function TokenDetailsPage() {
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20"></div>
         <div className="relative z-10">
           <div className="container mx-auto p-4 space-y-6">
-            <div className="flex items-center justify-between p-4 bg-black/50 border border-green-500/20 rounded-lg backdrop-blur-sm">
-              <div className="flex items-center gap-4">
+            <div className="flex flex-col md:flex-row items-center justify-between p-4 bg-black/50 border border-green-500/20 rounded-lg backdrop-blur-sm">
+              <div className="flex items-center gap-4 mb-4 md:mb-0">
                 <div className="h-16 w-16 rounded-full bg-green-500/20 flex items-center justify-center relative overflow-hidden group">
-                  {/* <Bot className="h-8 w-8 text-green-500 relative z-10" /> */}
                   <img
                     src={token.image}
                     alt={token.name}
@@ -98,7 +97,7 @@ export default function TokenDetailsPage() {
                   <div className="absolute inset-0 bg-gradient-to-r from-green-500/0 via-green-500/30 to-green-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold flex items-center gap-2 text-green-500">
+                  <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 text-green-500">
                     {token.name} ${token.ticker}
                     <span className="text-xs bg-green-500/20 px-2 py-1 rounded animate-pulse">
                       Verified
@@ -273,7 +272,10 @@ export default function TokenDetailsPage() {
                       {holders.map((holder, i) => (
                         <div key={i} className="space-y-1">
                           <div className="flex justify-between text-sm">
-                            <span>{holder.address}</span>
+                            <span>
+                              {holder.address.slice(0, 3)}...
+                              {holder.address.slice(-3)}
+                            </span>
                             <span>{holder.percentage}%</span>
                           </div>
                           <Progress

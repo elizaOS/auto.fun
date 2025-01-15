@@ -48,8 +48,8 @@ export const ContractAddress = ({ mint }: { mint: string }) => {
       >
         <div className="self-stretch justify-between items-center inline-flex gap-4">
           <div>
-            <span className="text-[#b3a0b3] text-base font-medium leading-normal">
-              {mint.slice(0, 12)}...{mint.slice(-21)}
+            <span className="text-[#b3a0b3] text-base font-medium leading-normal overflow-hidden text-ellipsis whitespace-nowrap">
+              {mint.slice(0, 3)}...{mint.slice(-3)}
             </span>
           </div>
 
