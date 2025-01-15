@@ -9,7 +9,7 @@ export function VerifiedBanner({ tokens }: { tokens: Token[] }) {
   return (
     <div className="mb-8">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 hidden md:grid">
-        {tokens.map((token) => (
+        {tokens.map((token, index) => (
           <Card
             key={token.mint}
             className="bg-black border-green-500/20 overflow-hidden"
@@ -18,8 +18,16 @@ export function VerifiedBanner({ tokens }: { tokens: Token[] }) {
               <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-transparent" />
               <div className="relative z-10 p-6 flex flex-col h-full justify-between p-[24px] flex-1">
                 <div className="flex items-center gap-2 text-green-500">
-                  <Sparkles className="h-5 w-5" />
-                  <span className="text-sm font-medium">Verified</span>
+                  {index % 2 === 0 ? (
+                    <Sparkles className="h-5 w-5" />
+                  ) : index % 2 === 1 ? (
+                    <TrendingUp className="h-5 w-5" />
+                  ) : (
+                    <Bot className="h-5 w-5" />
+                  )}
+                  <span className="text-sm font-medium">
+                    {["Verified", "Popular", "New"][index % 3]}
+                  </span>
                 </div>
                 <div>
                   <Link href={`/coin/${token.mint}`}>
