@@ -5,9 +5,9 @@ import { Tweet } from "@/components/common/Tweet";
 import { formatNumber } from "@/utils/number";
 import { Token, useToken } from "@/utils/tokens";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { PropsWithChildren } from "react";
+import { PropsWithChildren, useMemo } from "react";
 
-const Money = ({ children }: PropsWithChildren) => {
+export const Money = ({ children }: PropsWithChildren) => {
   return (
     <div className="text-[#33c55e] text-2xl font-bold leading-loose">
       {children}
@@ -49,78 +49,60 @@ const LoadingBar = ({ progress }: { progress: number }) => {
   );
 };
 
-const BondingStatus = ({ token }: { token: Token }) => {
+export const BondingStatus = ({ token }: { token: Token }) => {
   // Graduation market cap is the market cap at which the token will graduate to Raydium
   // This is the market cap at which the token will have 100% of the bonding curve
   const finalTokenPrice = 0.00000045; // Calculated from the bonding curve configuration (from backend)
   const finalTokenUSDPrice = finalTokenPrice * token.solPriceUSD;
   const graduationMarketCap = finalTokenUSDPrice * 1_000_000_000;
 
-  switch (token.status) {
-    case "active":
-      return (
-        <>
-          Graduate this coin to{" "}
-          <a
-            className="text-[#33c55e] text-xs font-medium"
-            href="https://raydium.io"
-            target="_blank"
-          >
-            Raydium
-          </a>{" "}
-          at ~$
-          {formatNumber(graduationMarketCap)} market cap. There is{" "}
-          {(
-            (token.reserveLamport - token.virtualReserves) /
-            LAMPORTS_PER_SOL
-          ).toFixed(3)}{" "}
-          SOL in the bonding curve.
-        </>
-      );
-    case "locked":
-      return (
-        <div>
-          The pool has been seeded. This coin has migrated to{" "}
-          <a
-            className="text-[#33c55e] text-xs font-medium"
-            href={`https://raydium.io/swap/?inputCurrency=sol&outputMint=${token.mint}`}
-            target="_blank"
-          >
-            Raydium
-          </a>
-          .
-        </div>
-      );
-    case "migration_failed":
-      return <div>Raydium migration failed</div>;
-    case "withdrawn":
-    case "migrated":
-    case "migrating":
-      return <div>Raydium migration in progress...</div>;
-  }
-};
-
-export const TokenMarketCap = ({ mint }: { mint: string }) => {
-  const { data: token } = useToken({ variables: mint });
-
-  if (!token) return null;
+  const status = useMemo(() => {
+    switch (token.status) {
+      case "active":
+        return (
+          <>
+            Graduate this coin to{" "}
+            <a
+              className="text-[#33c55e] text-xs font-medium"
+              href="https://raydium.io"
+              target="_blank"
+            >
+              Raydium
+            </a>{" "}
+            at ~$
+            {formatNumber(graduationMarketCap)} market cap. There is{" "}
+            {(
+              (token.reserveLamport - token.virtualReserves) /
+              LAMPORTS_PER_SOL
+            ).toFixed(3)}{" "}
+            SOL in the bonding curve.
+          </>
+        );
+      case "locked":
+        return (
+          <div>
+            The pool has been seeded. This coin has migrated to{" "}
+            <a
+              className="text-[#33c55e] text-xs font-medium"
+              href={`https://raydium.io/swap/?inputCurrency=sol&outputMint=${token.mint}`}
+              target="_blank"
+            >
+              Raydium
+            </a>
+            .
+          </div>
+        );
+      case "migration_failed":
+        return <div>Raydium migration failed</div>;
+      case "withdrawn":
+      case "migrated":
+      case "migrating":
+        return <div>Raydium migration in progress...</div>;
+    }
+  }, []);
 
   return (
-    <div className="flex flex-col bg-[#272727] rounded-xl p-4 gap-3">
-      <Tweet url={token.xurl} />
-
-      <div className="flex gap-3 w-full">
-        <Container>
-          <Title>Market cap</Title>
-          <Money>${formatNumber(token.marketCapUSD)}</Money>
-        </Container>
-
-        {/* <Container>
-          <Title>Capital Raised</Title>
-          <Money>${formatNumber(token.liquidity)}</Money>
-        </Container> */}
-      </div>
-
+    <>
       <Container>
         <div className="flex justify-between mb-3">
           <Title>Bonding progress</Title>
@@ -150,10 +132,35 @@ export const TokenMarketCap = ({ mint }: { mint: string }) => {
           <LoadingBar progress={token.curveProgress} />
         </div>
       </Container>
-
       <div className="text-[#cab7c7] text-xs font-medium leading-normal">
-        <BondingStatus token={token} />
+        {status}
       </div>
+    </>
+  );
+};
+
+export const TokenMarketCap = ({ mint }: { mint: string }) => {
+  const { data: token } = useToken({ variables: mint });
+
+  if (!token) return null;
+
+  return (
+    <div className="flex flex-col bg-[#272727] rounded-xl p-4 gap-3">
+      <Tweet url={token.xurl} />
+
+      <div className="flex gap-3 w-full">
+        <Container>
+          <Title>Market cap</Title>
+          <Money>${formatNumber(token.marketCapUSD)}</Money>
+        </Container>
+
+        {/* <Container>
+          <Title>Capital Raised</Title>
+          <Money>${formatNumber(token.liquidity)}</Money>
+        </Container> */}
+      </div>
+
+      <BondingStatus token={token} />
     </div>
   );
 };
