@@ -23,6 +23,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { useTokens } from "@/utils/tokens";
 import Skeleton from "react-loading-skeleton";
 import { Paginator } from "./common/Paginator";
+import { VerifiedBanner } from "./verified-banner";
 export type Agent = {
   id: number;
   name: string;
@@ -115,6 +116,8 @@ export function AgentBrowser() {
 
   return (
     <div className="flex flex-col gap-2">
+      <VerifiedBanner tokens={tokens.slice(-3)} />
+
       <div className="flex justify-end mb-4">
         <div className="flex items-center gap-2">
           <Grid
