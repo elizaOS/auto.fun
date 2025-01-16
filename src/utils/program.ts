@@ -1,3 +1,6 @@
+import { AnchorProvider, Program } from "@coral-xyz/anchor";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+
 export const SEED_CONFIG = "config";
 export const SEED_BONDING_CURVE = "bonding_curve";
 
@@ -2471,3 +2474,30 @@ export const IDL = {
     },
   ],
 };
+
+export const useProgram = () => {
+  const wallet = useWallet();
+  const { connection } = useConnection();
+
+  if (
+    !wallet.publicKey ||
+    !wallet.signTransaction ||
+    !wallet.signAllTransactions
+  ) {
+    return null;
+  }
+
+  const provider = new AnchorProvider(
+    connection,
+    {
+      publicKey: wallet.publicKey,
+      signTransaction: wallet.signTransaction,
+      signAllTransactions: wallet.signAllTransactions,
+    },
+    AnchorProvider.defaultOptions(),
+  );
+
+  const program = new Program(IDL as Serlaunchalot, provider);
+
+  return program;
+}

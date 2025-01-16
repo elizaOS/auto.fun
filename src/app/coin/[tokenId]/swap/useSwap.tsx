@@ -1,12 +1,12 @@
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Connection, PublicKey, VersionedTransaction } from "@solana/web3.js";
-import { AnchorProvider, BN, Program } from "@coral-xyz/anchor";
+import { BN, Program } from "@coral-xyz/anchor";
 import {
   SEED_CONFIG,
-  IDL,
   Serlaunchalot,
   SEED_BONDING_CURVE,
-} from "./programTypes";
+  useProgram,
+} from "@/utils/program";
 
 export function convertToFloat(value: number, decimals: number): number {
   return value / Math.pow(10, decimals);
@@ -19,7 +19,7 @@ export function convertFromFloat(value: number, decimals: number): number {
 export function calculateAmountOutBuy(
   reserveLamport: number,
   adjustedAmount: number,
-  solDecimals: number,  // renamed for clarity
+  solDecimals: number, // renamed for clarity
   reserveToken: number,
 ): number {
   // Calculate the denominator sum which is (y + dy)
@@ -39,9 +39,9 @@ export function calculateAmountOutBuy(
   const amountOutInFloat = reserveTokenFloat / divAmt;
 
   // Convert the result back to the original decimal format
-  const amountOut = convertFromFloat(amountOutInFloat, 6); 
+  const amountOut = convertFromFloat(amountOutInFloat, 6);
 
-  return Math.floor(amountOut);  // Added Math.floor for safety
+  return Math.floor(amountOut); // Added Math.floor for safety
 }
 
 export function calculateAmountOutSell(
@@ -104,8 +104,9 @@ export const swapTx = async (
   const curve = await program.account.bondingCurve.fetch(bondingCurvePda);
 
   // Apply platform fee
-  const feePercent = style === 1 ? configAccount.platformSellFee : configAccount.platformBuyFee;
-  const adjustedAmount = Math.floor(amount * (100 - feePercent) / 100);
+  const feePercent =
+    style === 1 ? configAccount.platformSellFee : configAccount.platformBuyFee;
+  const adjustedAmount = Math.floor((amount * (100 - feePercent)) / 100);
 
   // Calculate expected output
   let estimatedOutput;
@@ -163,6 +164,7 @@ interface SwapParams {
 export const useSwap = () => {
   const { connection } = useConnection();
   const wallet = useWallet();
+  const program = useProgram();
 
   const handleSwap = async ({
     slippagePercentage,
@@ -170,11 +172,7 @@ export const useSwap = () => {
     amount,
     tokenAddress,
   }: SwapParams) => {
-    if (
-      !wallet.publicKey ||
-      !wallet.signTransaction ||
-      !wallet.signAllTransactions
-    ) {
+    if (!program || !wallet.publicKey) {
       throw new Error("Wallet not connected or missing required methods");
     }
 
@@ -187,18 +185,6 @@ export const useSwap = () => {
 
     // Convert string style to numeric style
     const numericStyle = style === "buy" ? 0 : 1;
-
-    const provider = new AnchorProvider(
-      connection,
-      {
-        publicKey: wallet.publicKey,
-        signTransaction: wallet.signTransaction,
-        signAllTransactions: wallet.signAllTransactions,
-      },
-      AnchorProvider.defaultOptions(),
-    );
-
-    const program = new Program(IDL as Serlaunchalot, provider);
 
     const tx = await swapTx(
       wallet.publicKey,

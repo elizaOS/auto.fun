@@ -1,6 +1,6 @@
 "use client";
 
-import { createCoin } from "../../utils/wallet";
+import { useCreateAgent } from "@/utils/agent";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -48,7 +48,7 @@ export default function TransactionSignPage() {
   } = useForm();
 
   const { mutateAsync: generateAgentDetails } = useGenerateAgentDetails();
-
+  const createAgent = useCreateAgent();
   const { publicKey } = useWallet();
 
   const changeModal = useModalStore((state) => state.changeModal);
@@ -101,7 +101,7 @@ export default function TransactionSignPage() {
           return;
       }
 
-      const { mintPublicKey } = await createCoin({
+      const { mintPublicKey } = await createAgent({
         token_metadata: tokenMeta,
         twitter_credentials: twitterCreds,
         agentDetails,
@@ -115,7 +115,7 @@ export default function TransactionSignPage() {
     } finally {
       setModalOpen(false);
     }
-  }, [changeModal, convertFormData, router, setModalOpen]);
+  }, [changeModal, convertFormData, createAgent, router, setModalOpen]);
 
   const FormHeader = useMemo(() => {
     switch (currentStep) {

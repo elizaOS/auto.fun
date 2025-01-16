@@ -99,7 +99,13 @@ export const BondingStatus = ({ token }: { token: Token }) => {
       case "migrating":
         return <div>Raydium migration in progress...</div>;
     }
-  }, []);
+  }, [
+    graduationMarketCap,
+    token.mint,
+    token.reserveLamport,
+    token.status,
+    token.virtualReserves,
+  ]);
 
   return (
     <>
