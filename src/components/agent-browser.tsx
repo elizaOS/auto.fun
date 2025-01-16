@@ -118,7 +118,10 @@ export function AgentBrowser() {
     <div className="flex flex-col gap-2">
       <VerifiedBanner tokens={tokens.slice(-3)} />
 
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <p>New</p>
+        </div>
         <div className="flex items-center gap-2">
           <Grid
             className={`cursor-pointer ${view === "grid" ? "text-green-500" : "text-gray-500"}`}
@@ -128,14 +131,14 @@ export function AgentBrowser() {
             className={`cursor-pointer ${view === "table" ? "text-green-500" : "text-gray-500"}`}
             onClick={() => setView("table")}
           />
-          <Toggle
+          {/* <Toggle
             defaultPressed
             size="sm"
             className="text-gray-100 data-[state=on]:bg-gray-300/20 data-[state=on]:text-gray-50"
           >
             <Eye className="h-4 w-4 mr-2" />
             Animations
-          </Toggle>
+          </Toggle> */}
         </div>
       </div>
 
