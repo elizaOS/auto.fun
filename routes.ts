@@ -887,7 +887,7 @@ router.post('/agents', requireAuth, async (req, res) => {
       signed_transaction,
       token_metadata,
       public_key,
-      mint_keypair_public,
+      mint_keypair_public, // TODO, remove?
       twitter_credentials,
       agent_metadata,
     } = req.body;
@@ -908,13 +908,30 @@ router.post('/agents', requireAuth, async (req, res) => {
           name: token_metadata.name,
           symbol: token_metadata.symbol,
           description: token_metadata.description,
-          image: imageUrl
+          image: imageUrl,
+          showName: true,
+          createdOn: "https://x.com/autofun" // TODO, Change?
         };
         
         metadataUrl = await uploadToPinata(metadata, { isJson: true });
       }
 
-      // Get wallet keypair for token creation
+      // Get pre-generated keypair from server
+      const keypair = await VanityKeypair.findOneAndUpdate(
+        { used: false },
+        { used: true },
+        { new: true }
+      );
+
+      if (!keypair) {
+        return res.status(404).json({ error: 'No unused vanity keypairs available' });
+      }
+
+      const secretKey = Buffer.from(keypair.secretKey, 'base64');
+      const solanaKeypair = Keypair.fromSecretKey(secretKey);
+      const finalKey = Array.from(solanaKeypair.secretKey);
+      const tokenKp = Keypair.fromSecretKey(new Uint8Array(finalKey));
+
       const walletKeypair = Keypair.fromSecretKey(
         Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
         { skipValidation: true }
@@ -951,7 +968,7 @@ router.post('/agents', requireAuth, async (req, res) => {
         )
         .accounts({
           creator: creatorPubkey,
-          token: mint_keypair_public,
+          token: keypair.address,
           teamWallet: configAccount.teamWallet
         })
         .transaction();
@@ -964,27 +981,44 @@ router.post('/agents', requireAuth, async (req, res) => {
 
       tx.feePayer = creatorPubkey;
       tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+      tx.sign(tokenKp);
 
-      // Send and confirm transaction
-      const signature = await connection.sendRawTransaction(
-        signed_transaction,
-        { skipPreflight: true }
-      );
+      const signature = await execTx(tx, connection, payer);
+      const confirmation = await connection.confirmTransaction(signature, 'confirmed');
       
-      tokenResult = await connection.confirmTransaction(signature, 'confirmed');
-
-      if (tokenResult.value.err) {
+      if (confirmation.value.err) {
         throw new Error('Transaction failed');
       }
 
-      logger.log("Token created successfully", {
-        requestId: req.requestId,
-        signature: tokenResult.signature,
-      });
+      // Create token record in database
+      await Token.findOneAndUpdate(
+        { mint: keypair.address },
+        {
+          name: token_metadata.name,
+          ticker: token_metadata.symbol,
+          url: metadataUrl,
+          image: token_metadata.image,
+          mint: keypair.address,
+          creator: creatorPubkey.toBase58(),
+          status: 'pending',
+          createdAt: new Date(),
+          lastUpdated: new Date(),
+          marketCapUSD: 0,
+          solPriceUSD: await getSOLPrice(),
+          liquidity: 0,
+          reserveLamport: 0,
+          reserveToken: 0,
+          curveLimit: process.env.CURVE_LIMIT,
+          curveProgress: 0,
+          tokenPriceUSD: 0,
+          virutalReserves: process.env.VIRTUAL_RESERVES
+        },
+        { upsert: true, new: true }
+      );
+
+      tokenResult = { signature };
     } catch (error) {
-      logger.error("Token creation failed", error, {
-        requestId: req.requestId,
-      });
+      logger.error("Token creation failed", error, { requestId: req.requestId });
       return res.status(400).json({ error: "Failed to create token" });
     }
 
