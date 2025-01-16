@@ -98,7 +98,7 @@ export const Toast = ({ message, closeToast, ...props }: CustomToastProps) => {
                 <div className="mt-2 w-full">
                   {props.tryAgain && (
                     <RoundedButton
-                      color="inverted"
+                      color="red"
                       onClick={() => {
                         closeToast?.();
                         props.tryAgain?.();
