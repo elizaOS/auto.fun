@@ -1,0 +1,221 @@
+bun run server.ts
+Connected to MongoDB
+Wallet Address:  BoeEDSULDSF1s81XCtmsgWPZmgLjiF1PyDFub2j8Wtsz
+ProgramId:  3SZ6zwjTBZMVRK2vqjQo5d7zXHNZrR4VG56WaD9uoTgi
+Server running on port 3069
+Found new token: EEmufLwYNb1f4i6xCWiFeLsLmz8aLiSyozUTgVY79Uh7
+Added token EEmufLwYNb1f4i6xCWiFeLsLmz8aLiSyozUTgVY79Uh7 to monitoring
+Token EEmufLwYNb1f4i6xCWiFeLsLmz8aLiSyozUTgVY79Uh7 curve completed. Starting migration process...
+Withdrawing funds...
+{
+  context: {
+    apiVersion: "2.0.18",
+    slot: 346104538,
+  },
+  value: {
+    accounts: null,
+    err: null,
+    innerInstructions: null,
+    logs: [
+      "Program 3SZ6zwjTBZMVRK2vqjQo5d7zXHNZrR4VG56WaD9uoTgi invoke [1]", "Program log: Instruction: Withdraw",
+      "Program log: lamports balance: 6000890880", "Program log: token balance: 1233766234",
+      "Program log: withdraw lamports: 3000000000", "Program log: withdraw token: 1233766234",
+      "Program 11111111111111111111111111111111 invoke [2]", "Program 11111111111111111111111111111111 success",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]", "Program log: Instruction: Transfer",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 168476 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success", "Program 3SZ6zwjTBZMVRK2vqjQo5d7zXHNZrR4VG56WaD9uoTgi consumed 38415 of 200000 compute units",
+      "Program 3SZ6zwjTBZMVRK2vqjQo5d7zXHNZrR4VG56WaD9uoTgi success"
+    ],
+    replacementBlockhash: null,
+    returnData: null,
+    unitsConsumed: 38415,
+  },
+}
+https://solscan.io/tx/2GpxXjEofukhyvCs3ZjhpVbtyS8sbFZXKpgfJWyoDcZ9dKyKZQniQFsTaiE3cgvt2TRbpLoDHEw8vDBbJWHqU3pf?cluster=custom&customUrl=https://api.devnet.solana.com
+err  null
+Creating Raydium market...
+{
+  context: {
+    apiVersion: "2.0.18",
+    slot: 346104546,
+  },
+  value: {
+    accounts: null,
+    err: null,
+    innerInstructions: null,
+    logs: [
+      "Program ComputeBudget111111111111111111111111111111 invoke [1]", "Program ComputeBudget111111111111111111111111111111 success",
+      "Program ComputeBudget111111111111111111111111111111 invoke [1]", "Program ComputeBudget111111111111111111111111111111 success",
+      "Program 11111111111111111111111111111111 invoke [1]", "Program 11111111111111111111111111111111 success",
+      "Program 11111111111111111111111111111111 invoke [1]", "Program 11111111111111111111111111111111 success",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [1]", "Program log: Instruction: InitializeAccount",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4474 of 199400 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success", "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [1]",
+      "Program log: Instruction: InitializeAccount", "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 3444 of 194926 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success"
+    ],
+    replacementBlockhash: null,
+    returnData: null,
+    unitsConsumed: 8518,
+  },
+}
+https://solscan.io/tx/2TWnZqhLFCxcpjuLxxFLRrjqXAQ4YHEFFwiTHxShL6fo2vDpdcUVUQHEXHD79J7pXgKDthBrNMU2DcmfpUe1xHfu?cluster=custom&customUrl=https://api.devnet.solana.com
+err  null
+{
+  context: {
+    apiVersion: "2.0.18",
+    slot: 346104580,
+  },
+  value: {
+    accounts: null,
+    err: null,
+    innerInstructions: null,
+    logs: [
+      "Program ComputeBudget111111111111111111111111111111 invoke [1]", "Program ComputeBudget111111111111111111111111111111 success",
+      "Program ComputeBudget111111111111111111111111111111 invoke [1]", "Program ComputeBudget111111111111111111111111111111 success",
+      "Program 11111111111111111111111111111111 invoke [1]", "Program 11111111111111111111111111111111 success",
+      "Program 11111111111111111111111111111111 invoke [1]", "Program 11111111111111111111111111111111 success",
+      "Program 11111111111111111111111111111111 invoke [1]", "Program 11111111111111111111111111111111 success",
+      "Program 11111111111111111111111111111111 invoke [1]", "Program 11111111111111111111111111111111 success",
+      "Program 11111111111111111111111111111111 invoke [1]", "Program 11111111111111111111111111111111 success",
+      "Program EoTcMgcDRTJVZDMZWBoU6rhYHZfkNTVEAfz3uUJRcYGj invoke [1]", "Program EoTcMgcDRTJVZDMZWBoU6rhYHZfkNTVEAfz3uUJRcYGj consumed 10079 of 198950 compute units",
+      "Program EoTcMgcDRTJVZDMZWBoU6rhYHZfkNTVEAfz3uUJRcYGj success"
+    ],
+    replacementBlockhash: null,
+    returnData: null,
+    unitsConsumed: 11129,
+  },
+}
+https://solscan.io/tx/3uEZHcyJbxWeDxQy2AHB3JwGcSGp1ANAmX6nBVSemgmYwn6u1TsoYfEgU2Eu5zXsdn6WmTxJ6qoM9H23TUk8nG4Y?cluster=custom&customUrl=https://api.devnet.solana.com
+err  null
+{
+  context: {
+    apiVersion: "2.0.18",
+    slot: 346104615,
+  },
+  value: {
+    accounts: null,
+    err: null,
+    innerInstructions: null,
+    logs: [
+      "Program ComputeBudget111111111111111111111111111111 invoke [1]", "Program ComputeBudget111111111111111111111111111111 success",
+      "Program ComputeBudget111111111111111111111111111111 invoke [1]", "Program ComputeBudget111111111111111111111111111111 success",
+      "Program 11111111111111111111111111111111 invoke [1]", "Program 11111111111111111111111111111111 success",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [1]", "Program log: Instruction: InitializeMint",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 2919 of 199550 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success", "Program 11111111111111111111111111111111 invoke [1]",
+      "Program 11111111111111111111111111111111 success", "Program 11111111111111111111111111111111 invoke [1]",
+      "Program 11111111111111111111111111111111 success", "Program 11111111111111111111111111111111 invoke [1]",
+      "Program 11111111111111111111111111111111 success", "Program 11111111111111111111111111111111 invoke [1]",
+      "Program 11111111111111111111111111111111 success"
+    ],
+    replacementBlockhash: null,
+    returnData: null,
+    unitsConsumed: 3969,
+  },
+}
+https://solscan.io/tx/JHMAdH3R7N5T9MXNS3HLv93TDZu2zs3PF66NQR7H5eXYxMAv6cXJjJxMpGBoU7Rkh3armY7VXFHpa3ci4H5EDbT?cluster=custom&customUrl=https://api.devnet.solana.com
+err  null
+Initializing Raydium liquidity...
+{
+  context: {
+    apiVersion: "2.0.18",
+    slot: 346104651,
+  },
+  value: {
+    accounts: null,
+    err: null,
+    innerInstructions: null,
+    logs: [
+      "Program ComputeBudget111111111111111111111111111111 invoke [1]", "Program ComputeBudget111111111111111111111111111111 success",
+      "Program ComputeBudget111111111111111111111111111111 invoke [1]", "Program ComputeBudget111111111111111111111111111111 success",
+      "Program 11111111111111111111111111111111 invoke [1]", "Program 11111111111111111111111111111111 success",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [1]", "Program log: Instruction: InitializeAccount",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 3443 of 249550 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success", "Program HWy1jotHpo6UqeQxx49dpYYdQB8wj9Qk9MdxwjLvDHB8 invoke [1]",
+      "Program log: initialize2: InitializeInstruction2 { nonce: 252, open_time: 1733874298, init_pc_amount: 1233766234, init_coin_amount: 3766233766 }",
+      "Program 11111111111111111111111111111111 invoke [2]", "Program 11111111111111111111111111111111 success",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]", "Program log: Instruction: SyncNative",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 3045 of 224271 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success", "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success", "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success", "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success", "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success", "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success", "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success", "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+      "Program log: Instruction: InitializeMint", "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 2920 of 199581 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success", "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success", "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success", "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success", "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+      "Program log: Instruction: InitializeAccount", "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4475 of 183579 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success", "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success", "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success", "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success", "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+      "Program log: Instruction: InitializeAccount", "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 3445 of 167503 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success", "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success", "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success", "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success", "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success", "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success", "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success", "Program EoTcMgcDRTJVZDMZWBoU6rhYHZfkNTVEAfz3uUJRcYGj invoke [2]",
+      "Program EoTcMgcDRTJVZDMZWBoU6rhYHZfkNTVEAfz3uUJRcYGj consumed 2319 of 142002 compute units",
+      "Program EoTcMgcDRTJVZDMZWBoU6rhYHZfkNTVEAfz3uUJRcYGj success", "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [2]",
+      "Program log: Create", "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+      "Program log: Instruction: GetAccountDataSize", "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1595 of 125139 compute units",
+      "Program return: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA pQAAAAAAAAA=", "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+      "Program 11111111111111111111111111111111 invoke [3]", "Program 11111111111111111111111111111111 success",
+      "Program log: Initialize the associated token account", "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+      "Program log: Instruction: InitializeImmutableOwner", "Program log: Please upgrade to SPL Token 2022 for immutable owner support",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1405 of 118526 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success", "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [3]",
+      "Program log: Instruction: InitializeAccount3", "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4214 of 114644 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success", "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 21889 of 132036 compute units",
+      "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success", "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+      "Program log: Instruction: Transfer", "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 107159 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success", "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+      "Program log: Instruction: Transfer", "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 99556 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success", "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+      "Program log: Instruction: MintTo",
+      ... 9 more items
+    ],
+    replacementBlockhash: null,
+    returnData: null,
+    unitsConsumed: 185128,
+  },
+}
+https://solscan.io/tx/2puGMpvXudMbd7V5sxCTbsrryAcL7dBjHNfiGNJa5pp57wB2D5JvUHLNmaTrGAko6T6S8dJuE9ZnxCJXsjjjTqDb?cluster=custom&customUrl=https://api.devnet.solana.com
+err  null
+Added liquidity to Raydium LP:  GJ1sm7wPoDV4pcNETT2RBMoCwEeG5YFS5zG2JtyeG9DJ
+Burning LP Tokens for Raydium LP 🔥🔥🔥
+Waiting for LP mint account (attempt 1/10)...
+Waiting for LP mint account (attempt 2/10)...
+Waiting for LP mint account (attempt 3/10)...
+Found LP mint account
+Calculated LP Token ATA: 9Tyeb9Tw4bmkL55yYNmrjDuXaLzkQ81ihDuUQAY5aVf5
+LP Token Balance: 2154.609438
+{
+  context: {
+    apiVersion: "2.0.18",
+    slot: 346104687,
+  },
+  value: {
+    accounts: null,
+    err: null,
+    innerInstructions: null,
+    logs: [ "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [1]", "Program log: Instruction: Burn",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4706 of 200000 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success"
+    ],
+    replacementBlockhash: null,
+    returnData: null,
+    unitsConsumed: 4706,
+  },
+}
+https://solscan.io/tx/54VhMSX1Gxp6YUjLTtcaRvN6crYEwU95pjTS2FoCLSwomna4hWZ42zf4AFDJoJFY5vYCDw3EoK4tgmgHjTY9smp4?cluster=custom&customUrl=https://api.devnet.solana.com
+err  null
+LP tokens burned successfully
+Migration completed for token EEmufLwYNb1f4i6xCWiFeLsLmz8aLiSyozUTgVY79Uh7 on Raydium LP: GJ1sm7wPoDV4pcNETT2RBMoCwEeG5YFS5zG2JtyeG9DJ

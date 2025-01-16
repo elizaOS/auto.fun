@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Socket.io Frontend Testing</title>
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <style>
+        body {
+            background-color: #111;
+            color: #fff;
+            font-family: Tahoma, sans-serif;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Socket.IO Test</h1>
+    <button onclick="subscribe()">Subscribe</button>
+    <button onclick="unsubscribe()">Unsubscribe</button>
+    <div id="messages"></div>
+
+    <script>
+        // testing with local dev server for ws
+        const socket = io('https://ser.carsen.dev');
+        const tokenToTest = 'EVxJXMLWVYVtTQASDF1Y5H75DA9jnr1L2xN2fQZuQser'; // Replace with your token of choice
+
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            addMessage('Connected to server');
+        });
+
+        socket.on('newCandle', (data) => {
+            console.log('New candle received:', data);
+            addMessage('New candle: ' + JSON.stringify(data));
+        });
+
+        socket.on('newSwap', (data) => {
+            console.log('New swap received:', data);
+            addMessage('New swap: ' + JSON.stringify(data));
+        });
+
+        socket.on('updateToken', (data) => {
+            console.log('Token updated:', data);
+            addMessage('Token updated: ' + JSON.stringify(data));
+        });
+
+        function subscribe() {
+            socket.emit('subscribe', tokenToTest);
+            addMessage('Subscribed to ' + tokenToTest);
+
+            socket.emit('subscribeGlobal');
+            addMessage('Subscribed to global');
+        }
+
+        function unsubscribe() {
+            socket.emit('unsubscribe', tokenToTest);
+            addMessage('Unsubscribed from ' + tokenToTest);
+        }
+
+        // Listen for global events
+        socket.on('newToken', (token) => {
+            console.log('New token listed! ', token);
+            addMessage('New token! ' + JSON.stringify(token));
+        });
+
+        function addMessage(message) {
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML += `<p>${message}</p>`;
+        }
+
+        ///////////////////////////
+        // Example output:
+        ///////////////////////////
+        // Connected to server
+        // Subscribed to 9RLNZ2GceUZTUVeu5dZWnMFCpoewAVNQkZzkphccvser
+        // New candle: {"open":0.0008129745866176661,"high":0.0008129745866176661,"low":0.0008129745866176661,"close":0.0008129745866176661,"volume":0.004,"time":1734412260}
+        // New candle: {"open":0.0008166800030511165,"high":0.0008166800030511165,"low":0.0008166800030511165,"close":0.0008166800030511165,"volume":0.005,"time":1734412320}
+        ///////////////////////////
+        // Subscribed to 9RLNZ2GceUZTUVeu5dZWnMFCpoewAVNQkZzkphccvser
+        // Subscribed to global
+        // New token! {"name":"test spl token","ticker":"TEST","url":"https://ipfs.io/ipfs/QmWVzSC1ZTFiBYFiZZ6QivGUZ9awPJwqZECSFL1UD4gitC","image":"https://ipfs.io/ipfs/Qmf1g7dJZNDJHRQru7E7ENwDjcvu7swMUB6x9ZqPXr4RV2","twitter":"https://x.com/MooDengSOL","telegram":"https://t.me/+hCTQLf149JNlZjgx","website":"https://x.com/i/communities/1833493731305263473","description":"just a viral lil hippo","mint":"4TBJ4BCPTRj1Qf5QuDqYssKcA62pCwD9iF2rJ4zZGser","creator":"BoeEDSULDSF1s81XCtmsgWPZmgLjiF1PyDFub2j8Wtsz","status":"active","createdAt":"2024-12-17T05:25:03.405Z","reserveAmount":4750000000,"_id":"67610b2f24af6c6cc39836c3","__v":0}
+        // New token! {"name":"test spl token","ticker":"TEST","url":"https://ipfs.io/ipfs/QmWVzSC1ZTFiBYFiZZ6QivGUZ9awPJwqZECSFL1UD4gitC","image":"https://ipfs.io/ipfs/Qmf1g7dJZNDJHRQru7E7ENwDjcvu7swMUB6x9ZqPXr4RV2","twitter":"https://x.com/MooDengSOL","telegram":"https://t.me/+hCTQLf149JNlZjgx","website":"https://x.com/i/communities/1833493731305263473","description":"just a viral lil hippo","mint":"B39x1jrF2F78ZooZS5XX2ihhmzbDD7WvWvSSUi5cEser","creator":"BoeEDSULDSF1s81XCtmsgWPZmgLjiF1PyDFub2j8Wtsz","status":"active","createdAt":"2024-12-17T05:27:35.043Z","reserveAmount":4750000000,"_id":"67610bc724af6c6cc39836f7","__v":0}
+        ///////////////////////////
+    </script>
+</body>
+</html>
