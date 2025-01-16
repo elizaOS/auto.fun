@@ -86,9 +86,19 @@ export const FeeValidation = z.object({
 
 // Message Schema Validation
 export const MessageValidation = z.object({
+  _id: z.string().optional(), // MongoDB will handle _id
   author: z.string().min(32).max(44),
   tokenMint: z.string().min(32).max(44),
   message: z.string().min(1).max(500),
+  parentId: z.string().optional(), // Reference to parent message for replies
+  replyCount: z.number().default(0), // Track number of replies
+  likes: z.number().default(0), // Track number of likes
+  timestamp: z.date().default(() => new Date())
+});
+
+export const MessageLikeValidation = z.object({
+  messageId: z.string(),
+  userAddress: z.string().min(32).max(44),
   timestamp: z.date().default(() => new Date())
 });
 
@@ -301,7 +311,26 @@ const MessageSchema = new mongoose.Schema({
   author: String,
   tokenMint: String,
   message: String,
+  parentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Message' }, // Reference to parent message
+  replyCount: { type: Number, default: 0 },
+  likes: { type: Number, default: 0 },
   timestamp: { type: Date, default: Date.now }
+});
+
+const MessageLikeSchema = new mongoose.Schema({
+  messageId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Message',
+    required: true 
+  },
+  userAddress: { 
+    type: String, 
+    required: true 
+  },
+  timestamp: { 
+    type: Date, 
+    default: Date.now 
+  }
 });
 
 // Vanity Keypair Schema
@@ -423,6 +452,15 @@ MessageSchema.pre('save', async function(next) {
   }
 });
 
+MessageLikeSchema.pre('save', async function(next) {
+  try {
+    MessageLikeValidation.parse(this.toObject());
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
 VanityKeypairSchema.pre('save', async function(next) {
   try {
     VanityKeypairValidation.parse(this.toObject());
@@ -494,8 +532,11 @@ UserSchema.index({ address: 1 }, { unique: true });
 UserSchema.index({ createdAt: -1 });
 
 // Message Indexes
-MessageSchema.index({ tokenMint: 1 });
+MessageSchema.index({ tokenMint: 1, parentId: 1 });
+MessageSchema.index({ parentId: 1 });
 MessageSchema.index({ author: 1 });
+
+MessageLikeSchema.index({ messageId: 1, userAddress: 1 }, { unique: true });
 
 // Token Holder Indexes
 TokenHolderSchema.index({ mint: 1, amount: -1 });
@@ -517,6 +558,7 @@ export const Token = mongoose.model('Token', TokenSchema);
 export const Swap = mongoose.model('Swap', SwapSchema);
 export const Fee = mongoose.model('Fee', FeeSchema);
 export const Message = mongoose.model('Message', MessageSchema);
+export const MessageLike = mongoose.model('MessageLike', MessageLikeSchema);
 export const VanityKeypair = mongoose.model('VanityKeypair', VanityKeypairSchema);
 export const TokenHolder = mongoose.model('TokenHolder', TokenHolderSchema);
 export const Agent = mongoose.model('Agent', AgentSchema);
@@ -528,6 +570,7 @@ export type TokenType = z.infer<typeof TokenValidation>;
 export type SwapType = z.infer<typeof SwapValidation>;
 export type FeeType = z.infer<typeof FeeValidation>;
 export type MessageType = z.infer<typeof MessageValidation>;
+export type MessageLikeType = z.infer<typeof MessageLikeValidation>;
 export type TokenHolderType = z.infer<typeof TokenHolderValidation>;
 export type AgentType = z.infer<typeof AgentValidation>;
 export type PersonalityType = z.infer<typeof PersonalityValidation>;

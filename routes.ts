@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { User, Token, createTokenSchema, TokenHolder, Swap, Fee, Message, VanityKeypair, VanityKeypairValidation, VanityKeypairRequestValidation, ChartParamsSchema, Agent, Personality } from './schemas';
+import { User, Token, createTokenSchema, TokenHolder, Swap, Fee, Message, VanityKeypair, VanityKeypairValidation, VanityKeypairRequestValidation, ChartParamsSchema, Agent, Personality, MessageLikeValidation, MessageLike } from './schemas';
 import { fetchPriceChartData } from './server';
 import { z } from 'zod';
 import { 
@@ -40,6 +40,7 @@ import {
 import { createCharacterDetails } from './characterCreation';
 import { AgentDetailsRequest } from './characterCreation';
 import { submitTokenTransaction } from './tokenCreation';
+import mongoose from 'mongoose';
 
 const router = Router();
 
@@ -646,13 +647,17 @@ router.get('/messages', async (req, res) => {
   }
 });
 
-// Get token messages
+// Get all root messages (no parentId) for a token
 router.get('/messages/:mint', async (req, res) => {
   try {
     const mintValidation = z.string().min(32).max(44);
     const mint = mintValidation.parse(req.params.mint);
     
-    const messages = await Message.find({ tokenMint: mint });
+    const messages = await Message.find({ 
+      tokenMint: mint,
+      parentId: null // Only get root messages
+    }).sort({ timestamp: -1 });
+    
     res.json(messages);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -663,11 +668,33 @@ router.get('/messages/:mint', async (req, res) => {
   }
 });
 
-// POST Create a new message
+// Get replies for a specific message
+router.get('/messages/:messageId/replies', async (req, res) => {
+  try {
+    const replies = await Message.find({
+      parentId: req.params.messageId
+    }).sort({ timestamp: 1 });
+    
+    res.json(replies);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create a new message or reply
 router.post('/new-msg', requireAuth, async (req, res) => {
   try {
     const validatedData = MessageValidation.parse(req.body);
     const message = new Message(validatedData);
+
+    // If this is a reply, increment the parent's replyCount
+    if (validatedData.parentId) {
+      await Message.findByIdAndUpdate(
+        validatedData.parentId,
+        { $inc: { replyCount: 1 } }
+      );
+    }
+
     await message.save();
     res.json(message);
   } catch (error) {
@@ -676,6 +703,87 @@ router.post('/new-msg', requireAuth, async (req, res) => {
     } else {
       res.status(500).json({ error: error.message });
     }
+  }
+});
+
+// Get message thread (parent + all replies)
+router.get('/messages/:messageId/thread', async (req, res) => {
+  try {
+    const messageId = req.params.messageId;
+    
+    // Get the parent message
+    const parentMessage = await Message.findById(messageId);
+    if (!parentMessage) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    // Get all replies
+    const replies = await Message.find({
+      parentId: messageId
+    }).sort({ timestamp: 1 });
+
+    res.json({
+      parent: parentMessage,
+      replies: replies
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Message Likes
+router.post('/message-likes/:messageId', requireAuth, async (req, res) => {
+  try {
+    const messageId = req.params.messageId;
+    const userAddress = req.user.publicKey;
+
+    // Find the message
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    // Check if user already liked this message
+    const existingLike = await MessageLike.findOne({
+      messageId,
+      userAddress
+    });
+
+    if (existingLike) {
+      return res.status(400).json({ error: 'Already liked this message' });
+    }
+
+    // Create like record and increment message likes atomically
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Create like record
+      await MessageLike.create([{
+        messageId,
+        userAddress,
+        timestamp: new Date()
+      }], { session });
+
+      // Increment message likes
+      const updatedMessage = await Message.findByIdAndUpdate(
+        messageId,
+        { $inc: { likes: 1 } },
+        { new: true, session }
+      );
+
+      await session.commitTransaction();
+      res.json(updatedMessage);
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+
+  } catch (error) {
+    logger.error('Error liking message:', error);
+    res.status(500).json({ error: 'Failed to like message' });
   }
 });
 

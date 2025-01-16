@@ -235,6 +235,7 @@ Backend provides REST API endpoints:
 - `/agents/claim`: Claim an agent
 - `/agents/cleanup-stale`: Cleanup stale agents
 - `/agents/:id/force-release`: Force release an agent
+- POST `/agents`: Create a new agent
 - `/verify`: Verify a Twitter account
 
 - WIP on further endpoints needed for frontend
