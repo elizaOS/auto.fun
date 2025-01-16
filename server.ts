@@ -323,7 +323,11 @@ class TokenMonitor {
                 curveLimit: Number(process.env.CURVE_LIMIT),
                 status: 'active',
                 createdAt: new Date(),
-                lastUpdated: new Date()
+                lastUpdated: new Date(),
+                priceChange24h: 0,
+                price24hAgo: tokenPriceUSD,
+                volume24h: 0,
+                inferenceCount: 0
               },
               { 
                 upsert: true,
@@ -418,7 +422,23 @@ class TokenMonitor {
                 tokenPriceUSD: tokenPriceUSD,
                 solPriceUSD: solPrice,
                 curveProgress: ((Number(reserveLamport) - Number(process.env.VIRTUAL_RESERVES))  / (Number(process.env.CURVE_LIMIT) - Number(process.env.VIRTUAL_RESERVES))) * 100,
-                lastUpdated: new Date()
+                lastUpdated: new Date(),
+                $inc: { 
+                  // Convert amount to USD value for volume
+                  volume24h: direction === "1" 
+                    ? (Number(amount) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD)  // For sells
+                    : (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD)  // For buys
+                },
+                $set: {
+                  // Calculate price change if we have a previous price
+                  priceChange24h: async function() {
+                    const existingToken = await Token.findOne({ mint: mintAddress });
+                    if (existingToken?.price24hAgo) {
+                      return ((tokenPriceUSD - existingToken.price24hAgo) / existingToken.price24hAgo) * 100;
+                    }
+                    return 0;
+                  }
+                }
               },
               { 
                 upsert: true,
@@ -444,6 +464,35 @@ class TokenMonitor {
                 new: true 
               }
             );
+
+            const ONE_DAY = 24 * 60 * 60 * 1000;
+            const lastVolumeReset = token.lastVolumeReset || new Date(0);
+
+            if (Date.now() - lastVolumeReset.getTime() > ONE_DAY) {
+              await Token.findOneAndUpdate(
+                { mint: mintAddress },
+                { 
+                  volume24h: 0,
+                  lastVolumeReset: new Date()
+                }
+              );
+            }
+
+            const ONE_HOUR = 60 * 60 * 1000;
+            const lastPriceUpdate = token.lastPriceUpdate || new Date(0);
+
+            if (Date.now() - lastPriceUpdate.getTime() > ONE_HOUR) {
+              await Token.findOneAndUpdate(
+                { mint: mintAddress },
+                { 
+                  price24hAgo: tokenPriceUSD,
+                  lastPriceUpdate: new Date(),
+                  priceChange24h: token.price24hAgo ? 
+                    ((tokenPriceUSD - token.price24hAgo) / token.price24hAgo) * 100 : 
+                    0
+                }
+              );
+            }
 
             // Emit the new swap data
             io.to(`token-${swap.tokenMint}`).emit('newSwap', {

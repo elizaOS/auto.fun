@@ -55,6 +55,12 @@ export const TokenValidation = z.object({
   solPriceUSD: z.number().optional(),
   curveProgress: z.number().optional(),
   curveLimit: z.number().optional(),
+  priceChange24h: z.number().optional(),
+  price24hAgo: z.number().optional(),
+  volume24h: z.number().optional(),
+  inferenceCount: z.number().optional(),
+  lastVolumeReset: z.date().optional(),
+  lastPriceUpdate: z.date().optional(),
 });
 
 // Swap Schema Validation
@@ -273,6 +279,12 @@ const TokenSchema = new mongoose.Schema({
   solPriceUSD: Number,
   curveProgress: Number,
   curveLimit: Number,
+  priceChange24h: Number,
+  price24hAgo: Number,
+  volume24h: Number,
+  inferenceCount: Number,
+  lastVolumeReset: Date,
+  lastPriceUpdate: Date,
 });
 
 // Swap Schema
