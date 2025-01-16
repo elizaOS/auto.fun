@@ -39,6 +39,7 @@ import {
 } from "./lib/aws";
 import { createCharacterDetails } from './characterCreation';
 import { AgentDetailsRequest } from './characterCreation';
+import { submitTokenTransaction } from './tokenCreation';
 
 const router = Router();
 
@@ -887,140 +888,32 @@ router.post('/agents', requireAuth, async (req, res) => {
       signed_transaction,
       token_metadata,
       public_key,
-      mint_keypair_public, // TODO, remove?
+      mint_keypair_public,
       twitter_credentials,
       agent_metadata,
     } = req.body;
 
-    // First create the token
-    let tokenResult;
-    try {
-      logger.log("Creating token", { requestId: req.requestId });
-      
-      // Upload metadata to IPFS if image exists
-      let metadataUrl;
-      if (token_metadata.image) {
-        const imageUrl = await uploadToPinata(
-          Buffer.from(token_metadata.image.split(',')[1], 'base64')
-        );
-        
-        const metadata = {
-          name: token_metadata.name,
-          symbol: token_metadata.symbol,
-          description: token_metadata.description,
-          image: imageUrl,
-          showName: true,
-          createdOn: "https://x.com/autofun" // TODO, Change?
-        };
-        
-        metadataUrl = await uploadToPinata(metadata, { isJson: true });
-      }
+     // First create the token
+     let tokenResult;
+     try {
+       logger.log("Creating token", { requestId: req.requestId });
+       tokenResult = await submitTokenTransaction({
+         signed_transaction,
+         token_metadata,
+         public_key,
+         mint_keypair_public,
+       });
 
-      // Get pre-generated keypair from server
-      const keypair = await VanityKeypair.findOneAndUpdate(
-        { used: false },
-        { used: true },
-        { new: true }
-      );
-
-      if (!keypair) {
-        return res.status(404).json({ error: 'No unused vanity keypairs available' });
-      }
-
-      const secretKey = Buffer.from(keypair.secretKey, 'base64');
-      const solanaKeypair = Keypair.fromSecretKey(secretKey);
-      const finalKey = Array.from(solanaKeypair.secretKey);
-      const tokenKp = Keypair.fromSecretKey(new Uint8Array(finalKey));
-
-      const walletKeypair = Keypair.fromSecretKey(
-        Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
-        { skipValidation: true }
-      );
-      const payer = new NodeWallet(walletKeypair);
-      const creatorPubkey = new PublicKey(payer.publicKey);
-
-      // Get program config
-      const [configPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from(SEED_CONFIG)],
-        program.programId
-      );
-      
-      const configAccount = await program.account.config.fetch(configPda);
-
-      // Create compute budget instructions
-      const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({ 
-        units: 300000
-      });
-      
-      const addPriorityFee = ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: 50000
-      });
-
-      // Create launch transaction
-      const tx = await program.methods
-        .launch(
-          Number(process.env.DECIMALS),
-          new BN(Number(process.env.TOKEN_SUPPLY)),
-          new BN(Number(process.env.VIRTUAL_RESERVES)),
-          token_metadata.name,
-          token_metadata.symbol,
-          metadataUrl
-        )
-        .accounts({
-          creator: creatorPubkey,
-          token: keypair.address,
-          teamWallet: configAccount.teamWallet
-        })
-        .transaction();
-
-      tx.instructions = [
-        modifyComputeUnits,
-        addPriorityFee,
-        ...tx.instructions
-      ];
-
-      tx.feePayer = creatorPubkey;
-      tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-      tx.sign(tokenKp);
-
-      const signature = await execTx(tx, connection, payer);
-      const confirmation = await connection.confirmTransaction(signature, 'confirmed');
-      
-      if (confirmation.value.err) {
-        throw new Error('Transaction failed');
-      }
-
-      // Create token record in database
-      await Token.findOneAndUpdate(
-        { mint: keypair.address },
-        {
-          name: token_metadata.name,
-          ticker: token_metadata.symbol,
-          url: metadataUrl,
-          image: token_metadata.image,
-          mint: keypair.address,
-          creator: creatorPubkey.toBase58(),
-          status: 'pending',
-          createdAt: new Date(),
-          lastUpdated: new Date(),
-          marketCapUSD: 0,
-          solPriceUSD: await getSOLPrice(),
-          liquidity: 0,
-          reserveLamport: 0,
-          reserveToken: 0,
-          curveLimit: process.env.CURVE_LIMIT,
-          curveProgress: 0,
-          tokenPriceUSD: 0,
-          virutalReserves: process.env.VIRTUAL_RESERVES
-        },
-        { upsert: true, new: true }
-      );
-
-      tokenResult = { signature };
-    } catch (error) {
-      logger.error("Token creation failed", error, { requestId: req.requestId });
-      return res.status(400).json({ error: "Failed to create token" });
-    }
+       logger.log("Token created successfully", {
+         requestId: req.requestId,
+         signature: tokenResult.signature,
+       });
+     } catch (error) {
+       logger.error("Token creation failed", error, {
+         requestId: req.requestId,
+       });
+       return res.status(400).json({ error: "Failed to create token" });
+     }
 
     // Verify Twitter credentials if provided
     let twitterCookie;

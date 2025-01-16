@@ -31,6 +31,7 @@
     "decimal.js": "^10.4.3",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
+    "fetch-retry": "^6.0.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.8.4",
     "openai": "^4.78.1",
