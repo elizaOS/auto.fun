@@ -1229,6 +1229,65 @@ router.post("/agents/:id/force-release", async (req, res) => {
   }
 );
 
+// Get token and agent data combined
+router.get('/token-agent/:mint', async (req, res) => {
+  try {
+    const mintValidation = z.string().min(32).max(44);
+    const mint = mintValidation.parse(req.params.mint);
+    
+    // Get token data
+    const token = await Token.findOne({ mint });
+    if (!token) {
+      return res.status(404).json({ error: 'Token not found' });
+    }
+
+    // Get SOL price and calculate market data
+    const solPrice = await getSOLPrice();
+    const tokenWithMarketData = await calculateTokenMarketData(token, solPrice);
+
+    // Get associated agent data
+    const agent = await Agent.findOne({ 
+      contractAddress: mint,
+      deletedAt: null 
+    }).select([
+      'ownerAddress',
+      'contractAddress',
+      'txId',
+      'symbol',
+      'name',
+      'twitterUsername',
+      'description',
+      'systemPrompt',
+      'modelProvider',
+      'bio',
+      'lore',
+      'messageExamples',
+      'postExamples',
+      'adjectives',
+      'people',
+      'topics',
+      'styleAll',
+      'styleChat',
+      'stylePost',
+      'createdAt',
+      'updatedAt'
+    ]).lean();
+
+    res.json({
+      token: tokenWithMarketData,
+      agent: agent || null // Return null if no agent exists
+    });
+
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: error.errors });
+    } else {
+      logger.error('Error fetching token and agent data:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+});
+
 router.post('/verify', async (req, res) => {
   const { twitterUsername, twitterPassword, twitterEmail } = req.body;
 
