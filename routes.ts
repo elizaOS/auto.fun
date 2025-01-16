@@ -883,22 +883,55 @@ router.post('/vanity-keypair', requireAuth, async (req, res) => {
 //
 ////////////////////////////////////////////
 
+// Add this constant for allowed outputs
+const ALLOWED_OUTPUTS = [
+  "systemPrompt",
+  "bio",
+  "lore",
+  "postExamples",
+  "adjectives",
+  "style",
+  "topics",
+] as const;
+
+type AllowedOutput = (typeof ALLOWED_OUTPUTS)[number];
+
 // Get agent details
-router.get('/agent-details', async (req, res) => {
+router.post("/agent-details", async (req, res) => {
   try {
     const { inputs, requestedOutputs } = req.body as AgentDetailsRequest;
-    
+
+    // Validate required fields
     if (!inputs.name || !inputs.description) {
       return res.status(400).json({
         error: "Name and description are required fields",
       });
     }
 
+    // Validate requestedOutputs array
+    if (!Array.isArray(requestedOutputs) || requestedOutputs.length === 0) {
+      return res.status(400).json({
+        error: "requestedOutputs must be a non-empty array",
+      });
+    }
+
+    // Validate that all requested outputs are allowed
+    const invalidOutputs = requestedOutputs.filter(
+      (output): output is string =>
+        !ALLOWED_OUTPUTS.includes(output as AllowedOutput)
+    );
+    if (invalidOutputs.length > 0) {
+      return res.status(400).json({
+        error: `Invalid outputs requested: ${invalidOutputs.join(", ")}`,
+        allowedOutputs: ALLOWED_OUTPUTS,
+      });
+    }
+
+    // Create response with dummy values for requested outputs
     const response = await createCharacterDetails(req.body);
     res.json(response);
   } catch (error) {
-    logger.error('Failed to get agent details:', error);
-    res.status(500).json({ error: 'Failed to generate agent details' });
+    res.status(500).json({ error: "Failed to generate agent details" });
   }
 });
 
