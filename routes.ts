@@ -1026,6 +1026,48 @@ router.get('/agents/:id', requireAuth, async (req, res) => {
   }
 });
 
+router.post('/upload-pinata', requireAuth, async (req, res) => {
+  try {
+    const { image, metadata } = req.body;
+
+    if (!image || !metadata) {
+      return res.status(400).json({ error: 'Image and metadata are required' });
+    }
+
+    // Convert base64 to buffer
+    const imageBuffer = Buffer.from(image.split(',')[1], 'base64');
+    
+    // Upload image to IPFS
+    const imageUrl = await uploadToPinata(imageBuffer);
+    
+    // Create and upload metadata
+    const metadataObj = {
+      name: metadata.name,
+      symbol: metadata.symbol,
+      description: metadata.description,
+      image: imageUrl,
+      showName: true,
+      createdOn: "https://x.com/autofun", // TODO: change this
+      twitter: metadata.twitter,
+      telegram: metadata.telegram,
+      website: metadata.website
+    };
+    
+    // Upload metadata to IPFS
+    const metadataUrl = await uploadToPinata(metadataObj, { isJson: true });
+
+    res.json({
+      success: true,
+      imageUrl,
+      metadataUrl
+    });
+
+  } catch (error) {
+    logger.error('Failed to upload to Pinata:', error);
+    res.status(500).json({ error: 'Failed to upload to Pinata' });
+  }
+});
+
 // Create new agent
 router.post('/agents', requireAuth, async (req, res) => {
   try {
