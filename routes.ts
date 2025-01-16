@@ -892,8 +892,101 @@ router.post('/agents', requireAuth, async (req, res) => {
       agent_metadata,
     } = req.body;
 
-    // TODO: Add token creation code here from our backend
-    const tokenResult = await execTx(signed_transaction, public_key, mint_keypair_public);
+    // First create the token
+    let tokenResult;
+    try {
+      logger.log("Creating token", { requestId: req.requestId });
+      
+      // Upload metadata to IPFS if image exists
+      let metadataUrl;
+      if (token_metadata.image) {
+        const imageUrl = await uploadToPinata(
+          Buffer.from(token_metadata.image.split(',')[1], 'base64')
+        );
+        
+        const metadata = {
+          name: token_metadata.name,
+          symbol: token_metadata.symbol,
+          description: token_metadata.description,
+          image: imageUrl
+        };
+        
+        metadataUrl = await uploadToPinata(metadata, { isJson: true });
+      }
+
+      // Get wallet keypair for token creation
+      const walletKeypair = Keypair.fromSecretKey(
+        Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
+        { skipValidation: true }
+      );
+      const payer = new NodeWallet(walletKeypair);
+      const creatorPubkey = new PublicKey(payer.publicKey);
+
+      // Get program config
+      const [configPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from(SEED_CONFIG)],
+        program.programId
+      );
+      
+      const configAccount = await program.account.config.fetch(configPda);
+
+      // Create compute budget instructions
+      const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({ 
+        units: 300000
+      });
+      
+      const addPriorityFee = ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: 50000
+      });
+
+      // Create launch transaction
+      const tx = await program.methods
+        .launch(
+          Number(process.env.DECIMALS),
+          new BN(Number(process.env.TOKEN_SUPPLY)),
+          new BN(Number(process.env.VIRTUAL_RESERVES)),
+          token_metadata.name,
+          token_metadata.symbol,
+          metadataUrl
+        )
+        .accounts({
+          creator: creatorPubkey,
+          token: mint_keypair_public,
+          teamWallet: configAccount.teamWallet
+        })
+        .transaction();
+
+      tx.instructions = [
+        modifyComputeUnits,
+        addPriorityFee,
+        ...tx.instructions
+      ];
+
+      tx.feePayer = creatorPubkey;
+      tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+
+      // Send and confirm transaction
+      const signature = await connection.sendRawTransaction(
+        signed_transaction,
+        { skipPreflight: true }
+      );
+      
+      tokenResult = await connection.confirmTransaction(signature, 'confirmed');
+
+      if (tokenResult.value.err) {
+        throw new Error('Transaction failed');
+      }
+
+      logger.log("Token created successfully", {
+        requestId: req.requestId,
+        signature: tokenResult.signature,
+      });
+    } catch (error) {
+      logger.error("Token creation failed", error, {
+        requestId: req.requestId,
+      });
+      return res.status(400).json({ error: "Failed to create token" });
+    }
 
     // Verify Twitter credentials if provided
     let twitterCookie;
@@ -922,7 +1015,7 @@ router.post('/agents', requireAuth, async (req, res) => {
 
     const agentData = {
       ownerAddress: public_key,
-      txId: tokenResult?.signature, // TODO
+      txId: tokenResult?.signature,
       name: agent_metadata.name,
       description: agent_metadata.description,
       systemPrompt: agent_metadata.systemPrompt,
