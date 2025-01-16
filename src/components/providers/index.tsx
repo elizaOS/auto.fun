@@ -3,6 +3,7 @@
 import { createContext, PropsWithChildren, useEffect, useState } from "react";
 import { WalletProvider } from "./WalletProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ModalProvider } from "./ModalProvider";
 
 // Create a context to share autoConnect state and setter
 interface AutoConnectContextType {
@@ -30,7 +31,7 @@ export function Providers({ children }: PropsWithChildren) {
     <AutoConnectContext.Provider value={{ autoConnect, setAutoConnect }}>
       <WalletProvider autoConnect={autoConnect}>
         <QueryClientProvider client={queryClient}>
-          {children}
+          <ModalProvider>{children}</ModalProvider>
         </QueryClientProvider>
       </WalletProvider>
     </AutoConnectContext.Provider>
