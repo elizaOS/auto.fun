@@ -6,7 +6,6 @@ import { useSwap } from "./useSwap";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { Slippage } from "./Slippage";
-import { useWalletConnection } from "@/components/common/button/WalletButton";
 import { MigrationOverlay } from "./MigrationOverlay";
 import { useToken } from "@/utils/tokens";
 import { Toast } from "@/components/common/Toast";
@@ -19,9 +18,8 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
   const [sellPercentage, setSellPercentage] = useState<number | string>("");
   const [isFocus, setIsFocus] = useState(false);
   const [slippage, setSlippage] = useState<number | string>(2);
-  const { publicKey } = useWallet();
+  const { publicKey, connect } = useWallet();
   const { connection } = useConnection();
-  const { connectWallet } = useWalletConnection();
   const { handleSwap } = useSwap();
   const tradeDisabled = useMemo(() => {
     if (!publicKey) return true;
@@ -222,7 +220,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
             </span>
             <button
               className="text-[#33c55e] text-base font-medium font-['Inter'] leading-normal"
-              onClick={connectWallet}
+              onClick={connect}
             >
               connect your wallet
             </button>
