@@ -158,7 +158,7 @@ export default function TransactionSignPage() {
   }, [canGoNext, currentStep, next, submitForm]);
 
   return (
-    <div className="flex flex-col justify-center h-full relative">
+    <div className="flex flex-col justify-center h-full relative mt-12">
       {canGoBack && (
         <button className="absolute top-4 left-[5%]" onClick={back}>
           <svg

@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { useOutsideClickDetection } from "@/hooks/actions/useOutsideClickDetection";
+import { Description } from "./Description";
 
 export const HowItWorks = () => {
   const descriptionRef = useRef<HTMLDialogElement>(null);
@@ -10,23 +11,22 @@ export const HowItWorks = () => {
   });
 
   // removed from designs for now
-  return null;
-  // return (
-  //   <div className="relative">
-  //     <button
-  //       ref={buttonRef}
-  //       className="text-[#33c55e] font-primary"
-  //       onClick={() => {
-  //         if (descriptionRef.current?.open) {
-  //           descriptionRef.current?.close();
-  //         } else {
-  //           descriptionRef.current?.show();
-  //         }
-  //       }}
-  //     >
-  //       How it works?
-  //     </button>
-  //     <Description ref={descriptionRef} />
-  //   </div>
-  // );
+  return (
+    <div className="relative">
+      <button
+        ref={buttonRef}
+        className="text-[#33c55e] font-primary"
+        onClick={() => {
+          if (descriptionRef.current?.open) {
+            descriptionRef.current?.close();
+          } else {
+            descriptionRef.current?.show();
+          }
+        }}
+      >
+        How it works?
+      </button>
+      <Description ref={descriptionRef} />
+    </div>
+  );
 };

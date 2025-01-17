@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { HowItWorks } from "./HowItWorks";
 import { WalletButton } from "../common/button/WalletButton";
 import { RoundedButton } from "../common/button/RoundedButton";
 
 export const Nav = () => {
   return (
-    <nav className="flex justify-between items-center gap-6 fixed top-0 left-0 right-0 z-50 px-8 py-4 bg-[#0e0e0e] border-b border-b-[#03ff24]/40">
+    <nav className="flex justify-between items-center fixed top-0 left-0 right-0 z-50 px-2 py-3 bg-[#0e0e0e] border-b border-b-[#03ff24]/40">
       <div className="flex gap-6 items-center">
         <div className="flex items-center">
           <Link href="/" className="flex gap-6 items-center">
@@ -20,16 +19,13 @@ export const Nav = () => {
             />
           </Link>
         </div>
-        <div className="sm:block hidden">
-          <HowItWorks />
-        </div>
+        <RoundedButton variant="outlined" className="p-3 px-4 border-none">
+          <Link href="/create">Create Agent</Link>
+        </RoundedButton>
       </div>
       <div className="flex gap-6 items-center">
-        <div className="sm:hidden">
-          <HowItWorks />
-        </div>
         <WalletButton />
-        <Link href="#" target="_blank">
+        <Link href="#" target="_blank" className="sm:block hidden">
           <RoundedButton className="p-3">
             <svg
               width="24"
