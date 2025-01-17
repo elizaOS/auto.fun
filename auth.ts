@@ -18,8 +18,8 @@ export const generateNonce = async (req: Request, res: Response) => {
 
 const cookieOptions: CookieOptions = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+  secure: true,
+  sameSite: process.env.NODE_ENV === "production" ? "strict" : "none",
   maxAge: 3600000 * 24,
   domain: process.env.NODE_ENV === "production" ? "auto.fun" : undefined,
 }
