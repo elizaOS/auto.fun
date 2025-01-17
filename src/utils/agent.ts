@@ -189,10 +189,10 @@ const uploadToPinata = async (metadata: TokenMetadata) => {
       },
     },
     schema: z.object({
-      imageUrl: z.string(),
+      metadataUrl: z.string(),
     }),
   });
-  return response.imageUrl;
+  return response.metadataUrl;
 };
 
 export function useCreateAgent() {
@@ -280,7 +280,7 @@ export function useCreateAgent() {
       await womboApi.post({
         endpoint: "/agents",
         body: {
-          signed_transaction: `[${signedTx.serialize().toString()}]`,
+          signed_transaction: signedTx.serialize().toString("base64"),
           token_metadata: formData.token_metadata,
           public_key: userPublicKey.toBase58(),
           mint_keypair_public: mintKeypair.publicKey.toBase58(),
