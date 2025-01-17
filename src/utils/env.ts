@@ -7,6 +7,9 @@ const unparsedEnv = {
   devAddress: process.env.NEXT_PUBLIC_DEV_ADDRESS,
   raydiumAddress: process.env.NEXT_PUBLIC_RAYDIUM_ADDRESS,
   rpcUrl: process.env.NEXT_PUBLIC_RPC_URL,
+  virtualReserves: process.env.NEXT_PUBLIC_VIRTUAL_RESERVES,
+  tokenSupply: process.env.NEXT_PUBLIC_TOKEN_SUPPLY,
+  decimals: process.env.NEXT_PUBLIC_DECIMALS,
 } as const;
 
 const envSchema = z.object({
@@ -16,6 +19,9 @@ const envSchema = z.object({
   devAddress: z.string().min(1),
   raydiumAddress: z.string().min(1),
   rpcUrl: z.string().min(1),
+  virtualReserves: z.string().min(1),
+  tokenSupply: z.string().min(1),
+  decimals: z.string().min(1),
 });
 
 const parsedEnv = envSchema.parse(unparsedEnv);

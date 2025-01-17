@@ -23,6 +23,7 @@ import { useCallback } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { BN } from "@coral-xyz/anchor";
 import { z } from "zod";
+import { env } from "./env";
 
 const stripFieldWhitespace = <T extends Record<string, unknown>>(object: T) =>
   Object.entries(object).reduce((newObject, [key, value]) => {
@@ -250,9 +251,9 @@ export function useCreateAgent() {
 
       const tx = await program.methods
         .launch(
-          Number(6),
-          new BN(Number(1000000000000000)),
-          new BN(Number(28000000000)),
+          Number(env.decimals),
+          new BN(Number(env.tokenSupply)),
+          new BN(Number(env.virtualReserves)),
           formData.token_metadata.name,
           formData.token_metadata.symbol,
           metadataUrl,
