@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Eye, Grid, Table as TableIcon } from "lucide-react";
+import { Copy, Grid, Table as TableIcon } from "lucide-react";
 import {
   Table,
   TableHeader,
@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/card";
 import { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { Toggle } from "@/components/ui/toggle";
 import { useTokens } from "@/utils/tokens";
 import Skeleton from "react-loading-skeleton";
 import { Paginator } from "./common/Paginator";

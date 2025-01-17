@@ -31,7 +31,7 @@ export default async function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body
-        className={`${inter.className} ${ppMondwest.variable} ${inter.variable} antialiased flex flex-col sm:gap-16 px-8 pt-[83px] pb-12`}
+        className={`${inter.className} ${ppMondwest.variable} ${inter.variable} antialiased flex flex-col sm:gap-16 px-2 pt-[83px] pb-12`}
       >
         <SkeletonTheme baseColor="#002605" highlightColor="#008011">
           <Providers>
