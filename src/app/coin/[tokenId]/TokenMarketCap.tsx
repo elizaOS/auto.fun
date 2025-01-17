@@ -1,7 +1,6 @@
 "use client";
 
 import { Tooltip } from "@/components/common/Tooltip";
-import { Tweet } from "@/components/common/Tweet";
 import { formatNumber } from "@/utils/number";
 import { Token, useToken } from "@/utils/tokens";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
@@ -152,7 +151,7 @@ export const TokenMarketCap = ({ mint }: { mint: string }) => {
 
   return (
     <div className="flex flex-col bg-[#272727] rounded-xl p-4 gap-3">
-      <Tweet url={token.xurl} />
+      {/* <Tweet url={token.xurl} /> */}
 
       <div className="flex gap-3 w-full">
         <Container>
