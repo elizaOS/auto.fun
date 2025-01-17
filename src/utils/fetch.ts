@@ -27,6 +27,7 @@ type AxiosWrapperOptions<TSchema, T1 extends ZodTypeDef, T2> = WomboApiOptions<
 const axiosInstance = axios.create({
   baseURL: env.contractApiUrl,
   responseType: "json",
+  withCredentials: true,
 });
 
 const axiosWrapper = async <TSchema, T1 extends ZodTypeDef, T2>({
