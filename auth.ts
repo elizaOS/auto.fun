@@ -81,17 +81,17 @@ export const verifySignature = (
     const publicKey = req.cookies?.publicKey;
 
     if (!publicKey) {
-      console.warn("No authentication cookie found");
+      logger.log("No authentication cookie found");
       req.user = null;
     } else {
       // Attach the public key to the request object for use in subsequent handlers
       req.user = { publicKey };
-      console.log("User authenticated", req.user);
+      logger.log("User authenticated", req.user);
     }
 
     next();
   } catch (error) {
-    console.error("Error verifying user session:", error);
+    logger.error("Error verifying user session:", error);
     req.user = null;
     next();
   }
