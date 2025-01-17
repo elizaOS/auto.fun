@@ -157,108 +157,41 @@ export const submitTokenTransaction = async (tokenData: {
     mint_keypair_public: string;
   }): Promise<{ signature: string; solscan_url: string }> => {
     const HELIUS_RPC = process.env.HELIUS_RPC;
-    const SHYFT_RPC = process.env.SHYFT_RPC;
-    const QUICKNODE_RPC = process.env.QUICKNODE_RPC;
   
     if (!HELIUS_RPC) {
-      logger.error("Primary RPC not set");
-      throw new Error("Primary RPC not set");
+      logger.error("Environment variables not set");
+      throw new Error("Environment variables not set");
     }
-  
-    // Create RPC pool with available endpoints
-    const RPC_ENDPOINTS = [HELIUS_RPC];
-    if (QUICKNODE_RPC) RPC_ENDPOINTS.push(QUICKNODE_RPC);
-    if (SHYFT_RPC) RPC_ENDPOINTS.push(SHYFT_RPC);
+
+    logger.log("Received signed transaction:", {
+        type: typeof tokenData.signed_transaction,
+        length: tokenData.signed_transaction.length,
+        preview: tokenData.signed_transaction
+      });
   
     let txBytes: Buffer;
-    try {
-      if (tokenData.signed_transaction.startsWith("[")) {
-        txBytes = Buffer.from(JSON.parse(tokenData.signed_transaction));
-      } else {
-        txBytes = Buffer.from(tokenData.signed_transaction, "base64");
-      }
-    } catch (error) {
-      logger.error("Invalid transaction format:", error);
-      throw new Error("Invalid transaction format");
+    if (tokenData.signed_transaction.startsWith("[")) {
+      txBytes = Buffer.from(JSON.parse(tokenData.signed_transaction));
+    } else {
+      txBytes = Buffer.from(tokenData.signed_transaction, "base64");
     }
   
     const tx = VersionedTransaction.deserialize(txBytes);
-    let lastError: Error | null = null;
-    let maxRetries = 3;
-    let retryCount = 0;
+    const web3Connection = new Connection(HELIUS_RPC, {});
+    const txSignature = await web3Connection.sendTransaction(tx, {
+      preflightCommitment: "confirmed",
+      maxRetries: 5,
+    });
   
-    while (retryCount < maxRetries) {
-      for (const rpcUrl of RPC_ENDPOINTS) {
-        try {
-          const connection = new Connection(rpcUrl, {
-            commitment: 'confirmed',
-            confirmTransactionInitialTimeout: 60000
-          });
-  
-          // Validate transaction
-          const simulation = await connection.simulateTransaction(tx);
-          if (simulation.value.err) {
-            throw new Error(`Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`);
-          }
-  
-          // Send transaction
-          const txSignature = await connection.sendTransaction(tx, {
-            maxRetries: 5,
-            skipPreflight: false
-          });
-  
-          // Get latest blockhash for confirmation
-          const latestBlockhash = await connection.getLatestBlockhash();
-  
-          // Wait for confirmation
-          const confirmation = await connection.confirmTransaction({
-            signature: txSignature,
-            blockhash: latestBlockhash.blockhash,
-            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
-          }, 'confirmed');
-  
-          // Type-safe check for confirmation error
-          if (confirmation?.value?.err) {
-            throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
-          }
-  
-          // Verify transaction
-          const txResponse = await connection.getTransaction(txSignature, {
-            maxSupportedTransactionVersion: 0
-          });
-  
-          if (!txResponse || txResponse.meta?.err) {
-            throw new Error('Transaction verification failed');
-          }
-  
-          logger.log('Transaction confirmed successfully', {
-            signature: txSignature,
-            slot: confirmation.context.slot,
-            rpc: rpcUrl,
-            retryCount
-          });
-  
-          return {
-            signature: txSignature,
-            solscan_url: `https://solscan.io/tx/${txSignature}`
-          };
-  
-        } catch (error) {
-          lastError = error as Error;
-          logger.error(`RPC ${rpcUrl} attempt ${retryCount + 1} failed:`, error);
-          continue;
-        }
-      }
-      
-      retryCount++;
-      if (retryCount < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, 15000 * Math.pow(2, retryCount)));
-      }
+    if (!txSignature) {
+      throw new Error("No transaction signature in response");
     }
   
-    logger.error("All transaction attempts failed", lastError);
-    throw new Error(lastError?.message || "Failed to process transaction");
-};
+    return {
+      signature: txSignature,
+      solscan_url: `https://solscan.io/tx/${txSignature}`,
+    };
+  };
   
 //   export async function createTokenDirect(tokenMetadata: TokenMetadata) {
 //     logger.log("Starting direct token creation", {

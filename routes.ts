@@ -1006,22 +1006,18 @@ router.get('/agents/:id', requireAuth, async (req, res) => {
 
     if (!agent) {
       logger.log("Agent not found or unauthorized", {
-        requestId: req.requestId,
         id: req.params.id,
       });
       return res.status(404).json({ error: "Agent not found" });
     }
 
     logger.log("Agent fetched successfully", {
-      requestId: req.requestId,
       agentId: agent._id,
     });
 
     res.json(agent);
   } catch (error) {
-    logger.error("Failed to fetch agent", error, {
-      requestId: req.requestId,
-    });
+    logger.error("Failed to fetch agent", error);
     res.status(400).json({ error: "Failed to fetch agent" });
   }
 });
@@ -1083,7 +1079,7 @@ router.post('/agents', requireAuth, async (req, res) => {
      // First create the token
      let tokenResult;
      try {
-       logger.log("Creating token", { requestId: req.requestId });
+       logger.log("Creating token", { mint_keypair_public });
        tokenResult = await submitTokenTransaction({
          signed_transaction,
          token_metadata,
@@ -1092,13 +1088,10 @@ router.post('/agents', requireAuth, async (req, res) => {
        });
 
        logger.log("Token created successfully", {
-         requestId: req.requestId,
          signature: tokenResult.signature,
        });
      } catch (error) {
-       logger.error("Token creation failed", error, {
-         requestId: req.requestId,
-       });
+       logger.error("Token creation failed", error);
        return res.status(400).json({ error: "Failed to create token" });
      }
 
@@ -1106,7 +1099,7 @@ router.post('/agents', requireAuth, async (req, res) => {
     let twitterCookie;
     if (twitter_credentials) {
       try {
-        logger.log("Attempting Twitter login", { requestId: req.requestId });
+        logger.log("Attempting Twitter login", { twitterUsername: twitter_credentials.username });
         const scraper = new Scraper();
         await scraper.login(
           twitter_credentials.username,
@@ -1115,12 +1108,10 @@ router.post('/agents', requireAuth, async (req, res) => {
         );
         twitterCookie = (await scraper.getCookies()).toString();
         logger.log("Twitter authentication successful", {
-          requestId: req.requestId,
+          twitterUsername: twitter_credentials.username,
         });
       } catch (error) {
-        logger.error("Twitter authentication failed", error, {
-          requestId: req.requestId,
-        });
+        logger.error("Twitter authentication failed", error);
         return res.status(401).json({
           error: "Authentication failed - invalid Twitter credentials",
         });
@@ -1153,7 +1144,6 @@ router.post('/agents', requireAuth, async (req, res) => {
 
     logger.log("Increased ECS task count by 1 for agentId: ", {
       agentId: agent.id,
-      requestId: req.requestId,
     });
 
     res.json({ success: true });
@@ -1200,13 +1190,12 @@ router.post("/agents/claim", async (req, res) => {
     const { ecsTaskId } = req.body;
 
     if (!ecsTaskId) {
-      logger.error("Missing ECS task ID", null, { requestId: req.requestId });
+      logger.error("Missing ECS task ID", null);
       return res.status(400).json({ error: "ECS task ID is required" });
     }
 
     try {
       logger.log("Attempting to claim agent", {
-        requestId: req.requestId,
         ecsTaskId,
       });
       const claimedAgent = await Agent.findOneAndUpdate(
@@ -1227,26 +1216,20 @@ router.post("/agents/claim", async (req, res) => {
       );
 
       if (!claimedAgent) {
-        logger.log("No pending agents available", {
-          requestId: req.requestId,
-        });
+        logger.log("No pending agents available");
         // Set task count to match active agents when no pending agents are found
         // await setTaskCountToActiveAgents();
-        // logger.info('Updated ECS task count to match active agents', { requestId: req.requestId });
         return res.status(404).json({ error: "No pending agents available" });
       }
 
       logger.log("Agent claimed successfully", {
-        requestId: req.requestId,
         agentId: claimedAgent.id,
         ecsTaskId,
       });
 
       res.json(claimedAgent);
     } catch (error) {
-      logger.error("Failed to claim agent", error, {
-        requestId: req.requestId,
-      });
+      logger.error("Failed to claim agent", error);
       res.status(500).json({ error: "Failed to claim agent" });
     }
   }
@@ -1258,7 +1241,7 @@ router.post("/agents/cleanup-stale", async (req, res) => {
     const STALE_THRESHOLD_MINUTES = 5; // Configure as needed
 
     try {
-      logger.log("Cleaning up stale agents", { requestId: req.requestId });
+      logger.log("Cleaning up stale agents");
       const result = await Agent.updateMany({
         ecsTaskId: { $ne: null },
         updatedAt: { $lt: new Date(Date.now() - STALE_THRESHOLD_MINUTES * 60 * 1000) }
@@ -1266,12 +1249,10 @@ router.post("/agents/cleanup-stale", async (req, res) => {
         ecsTaskId: null,
         updatedAt: new Date()
       });
-      logger.log("Stale agents cleaned up", { requestId: req.requestId });
+      logger.log("Stale agents cleaned up");
       res.json({ clearedStaleAgents: result });
     } catch (error) {
-      logger.error("Failed to clean up stale agents", error, {
-        requestId: req.requestId,
-      });
+      logger.error("Failed to clean up stale agents", error);
       res.status(500).json({ error: "Failed to cleanup stale agents" });
     }
   }
@@ -1284,25 +1265,22 @@ router.post("/agents/:id/force-release", async (req, res) => {
 
     // Simple admin verification - you'd want something more robust in production
     if (adminKey !== process.env.ADMIN_KEY) {
-      logger.error("Unauthorized", null, { requestId: req.requestId });
+      logger.error("Unauthorized", null);
       return res.status(403).json({ error: "Unauthorized" });
     }
 
     try {
-      logger.log("Force releasing agent", { requestId: req.requestId, id });
+      logger.log("Force releasing agent");
       const agent = await Agent.findByIdAndUpdate(id, {
         ecsTaskId: null,
         updatedAt: new Date(),
       });
       logger.log("Agent force released successfully", {
-        requestId: req.requestId,
         agentId: agent.id,
       });
       res.json(agent);
     } catch (error) {
-      logger.error("Failed to force release agent", error, {
-        requestId: req.requestId,
-      });
+      logger.error("Failed to force release agent", error);
       res.status(500).json({ error: "Failed to force release agent" });
     }
   }
@@ -1371,9 +1349,7 @@ router.post('/verify', async (req, res) => {
   const { twitterUsername, twitterPassword, twitterEmail } = req.body;
 
   if (!twitterUsername || !twitterPassword || !twitterEmail) {
-    logger.error('Missing Twitter credentials', null, {
-      requestId: req.requestId,
-    });
+    logger.error('Missing Twitter credentials', null);
     return res.status(400).json({
       error: 'Twitter username, email and password are required',
     });
@@ -1381,18 +1357,14 @@ router.post('/verify', async (req, res) => {
 
   try {
     logger.log('Verifying Twitter credentials', {
-      requestId: req.requestId,
+      twitterUsername,
     });
     const scraper = new Scraper();
     await scraper.login(twitterUsername, twitterPassword, twitterEmail);
-    logger.log('Twitter credentials verified successfully', {
-      requestId: req.requestId,
-    });
+    logger.log('Twitter credentials verified successfully');
     res.json({ verified: true });
   } catch (error) {
-    logger.error('Failed to verify Twitter credentials', error, {
-      requestId: req.requestId,
-    });
+    logger.error('Failed to verify Twitter credentials', error);
     res.status(400).json({
       verified: false,
       error: 'Failed to verify Twitter credentials',
