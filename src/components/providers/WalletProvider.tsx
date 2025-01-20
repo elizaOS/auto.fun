@@ -6,9 +6,7 @@ import {
   WalletProvider as SolanaWalletProvider,
 } from "@solana/wallet-adapter-react";
 import { env } from "@/utils/env";
-import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
-import "@solana/wallet-adapter-react-ui/styles.css";
-import "./wallet-adapter-overrides.css";
+import { WalletModalProvider } from "../common/custom-wallet-multi";
 
 export const WalletProvider = ({
   children,

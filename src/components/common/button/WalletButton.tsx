@@ -14,7 +14,7 @@ import dynamic from "next/dynamic";
 
 const WalletMultiButton = dynamic(
   () =>
-    import("@solana/wallet-adapter-react-ui").then(
+    import("../../common/custom-wallet-multi/WalletMultiButton").then(
       (mod) => mod.WalletMultiButton,
     ),
   { ssr: false },
