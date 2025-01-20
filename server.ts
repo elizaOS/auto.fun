@@ -59,7 +59,7 @@ const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cors({
-  origin: ["http://localhost:3000", "http://localhost:3420", "https://auto.fun", "*"],
+  origin: ["https://autofun.vercel.app", "http://localhost:3000", "http://localhost:3420", "https://auto.fun", "*"],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 }));
@@ -410,6 +410,11 @@ class TokenMonitor {
             logger.log('tokenPriceUSD', tokenPriceUSD);
             logger.log('marketCapUSD', marketCapUSD);
 
+            const existingToken = await Token.findOne({ mint: mintAddress });
+            const priceChange = existingToken?.price24hAgo 
+              ? ((tokenPriceUSD - existingToken.price24hAgo) / existingToken.price24hAgo) * 100
+              : 0;
+
             const token = await Token.findOneAndUpdate(
               { mint: mintAddress },
               {
@@ -425,20 +430,18 @@ class TokenMonitor {
                 curveProgress: ((Number(reserveLamport) - Number(process.env.VIRTUAL_RESERVES))  / (Number(process.env.CURVE_LIMIT) - Number(process.env.VIRTUAL_RESERVES))) * 100,
                 lastUpdated: new Date(),
                 $inc: { 
-                  // Convert amount to USD value for volume
                   volume24h: direction === "1" 
-                    ? (Number(amount) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD)  // For sells
-                    : (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD)  // For buys
+                    ? (Number(amount) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD)
+                    : (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD)
                 },
                 $set: {
-                  // Calculate price change if we have a previous price
-                  priceChange24h: async function() {
-                    const existingToken = await Token.findOne({ mint: mintAddress });
-                    if (existingToken?.price24hAgo) {
-                      return ((tokenPriceUSD - existingToken.price24hAgo) / existingToken.price24hAgo) * 100;
-                    }
-                    return 0;
-                  }
+                  priceChange24h: priceChange,
+                  // Only update price24hAgo if it's been more than 24 hours or doesn't exist
+                  ...((!existingToken?.price24hAgo || 
+                     Date.now() - (existingToken?.lastPriceUpdate?.getTime() || 0) > 24 * 60 * 60 * 1000) && { // 24 hours
+                    price24hAgo: tokenPriceUSD,
+                    lastPriceUpdate: new Date()
+                  })
                 }
               },
               { 
