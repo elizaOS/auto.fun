@@ -381,7 +381,7 @@ export async function updateHoldersCache(mint: string) {
     // Execute bulk write if we have operations
     if (bulkOps.length > 0) {
       await TokenHolder.bulkWrite(bulkOps);
-      logger.log(`Updated ${bulkOps.length} holder records for token ${mint}`);
+      // logger.log(`Updated ${bulkOps.length} holder records for token ${mint}`);
     }
 
     // Return holder count for convenience
