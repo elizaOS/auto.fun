@@ -103,7 +103,7 @@ export const TVChartContainer = ({
   }, [name, pairIndex]);
 
   return (
-    <div className="relative mb-[1px] h-[500px] w-full bg-[#272727] p-4 rounded-2xl">
+    <div className="relative mb-[1px] h-[500px] w-full bg-[#171717] border border-[#262626] rounded-xl p-2">
       {isLoading ? (
         <div className="z-9999 absolute left-0 top-0 flex h-full w-full items-center justify-center bg-tizz-background">
           <ReactLoading
@@ -116,7 +116,7 @@ export const TVChartContainer = ({
       ) : null}
       <div
         ref={chartContainerRef}
-        className={twMerge("h-full w-full rounded-xl overflow-hidden")}
+        className={twMerge("h-full w-full overflow-hidden")}
       />
     </div>
   );
