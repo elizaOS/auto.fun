@@ -36,6 +36,7 @@ import {
 import cors from 'cors';
 import { Token, Swap, Fee, TokenMetadataJson } from './schemas';
 import routes from './routes';
+import { updateHoldersCache } from './routes';
 import { VanityKeypairGenerator } from './keypairgen';
 import { logger } from './logger';
 import { metadataCache } from './cache';
@@ -155,6 +156,7 @@ class TokenMonitor {
   private isMonitoring: boolean = false;
   private umi: Umi;
   private queue: PQueue;
+  private holderUpdateQueue: PQueue;
 
   constructor(
     connection: Connection, 
@@ -176,11 +178,45 @@ class TokenMonitor {
       interval: 1000,  // Time window in ms
       intervalCap: 10  // Max operations per interval
     });
+    this.holderUpdateQueue = new PQueue({ 
+      concurrency: 3,  // Process 3 tokens at a time
+      interval: 1000,  // Time window in ms
+      intervalCap: 5   // Max operations per interval
+    });
+  }
+
+  private async startHolderUpdates() {
+    setInterval(async () => {
+      try {
+        // Get all active and migrated tokens
+        const tokens = await Token.find({
+          status: { $in: ['active', 'migrated', 'locked'] },
+          lastUpdated: { 
+            $lt: new Date(Date.now() - 5 * 60 * 1000) // Older than 5 minutes
+          }
+        }).select('mint');
+
+        // Queue updates for each token
+        tokens.forEach(token => {
+          this.holderUpdateQueue.add(async () => {
+            try {
+              await updateHoldersCache(token.mint);
+            } catch (error) {
+              logger.error(`Failed to update holders for ${token.mint}:`, error);
+            }
+          });
+        });
+      } catch (error) {
+        logger.error('Error in holder update interval:', error);
+      }
+    }, 5 * 60 * 1000); // Run every 5 minutes
   }
 
   async startMonitoring() {
     if (this.isMonitoring) return;
     this.isMonitoring = true;
+
+    this.startHolderUpdates();
 
      // Subscribe to program logs
      this.connection.onLogs(
@@ -497,6 +533,15 @@ class TokenMonitor {
                 }
               );
             }
+
+            // Update holders cache on after a swap
+            this.holderUpdateQueue.add(async () => {
+              try {
+                await updateHoldersCache(mintAddress);
+              } catch (error) {
+                logger.error(`Failed to update holders after swap for ${mintAddress}:`, error);
+              }
+            });
 
             // Emit the new swap data
             io.to(`token-${swap.tokenMint}`).emit('newSwap', {

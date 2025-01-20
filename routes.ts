@@ -273,16 +273,26 @@ router.get('/tokens/:mint/holders', async (req, res) => {
   }
 });
 
-async function updateHoldersCache(mint: string) {
+export async function updateHoldersCache(mint: string) {
   const connection = new Connection(process.env.SOLANA_RPC_URL!);
   
   try {
+    // Clear existing holder data for this token
     await TokenHolder.deleteMany({ mint });
-    // Get all token accounts for this mint using getTokenLargestAccounts
+
+    // Get all token accounts for this mint
     const largestAccounts = await connection.getTokenLargestAccounts(new PublicKey(mint));
     
     if (!largestAccounts.value || largestAccounts.value.length === 0) {
       logger.error(`No accounts found for token ${mint}`);
+      // Update token with zero holders
+      await Token.findOneAndUpdate(
+        { mint },
+        { 
+          holderCount: 0,
+          lastUpdated: new Date()
+        }
+      );
       return;
     }
 
@@ -293,6 +303,7 @@ async function updateHoldersCache(mint: string) {
     // Calculate total supply from all accounts, excluding bonding curve if migrated
     const totalSupply = await largestAccounts.value.reduce(async (promisedSum, account) => {
       const sum = await promisedSum;
+      
       // Skip bonding curve account if token is migrated
       if (isMigrated) {
         const accountInfo = await connection.getParsedAccountInfo(account.address);
@@ -304,27 +315,52 @@ async function updateHoldersCache(mint: string) {
       return sum + Number(account.amount);
     }, Promise.resolve(0));
 
+    let validHolders = 0;
+    
     // Get detailed account info for each holder
     const accountPromises = largestAccounts.value
       .filter(account => Number(account.amount) > 0)
       .map(async account => {
-        const accountInfo = await connection.getParsedAccountInfo(account.address);
-        const owner = (accountInfo.value?.data as ParsedAccountData).parsed.info.owner;
-        
-        // Skip bonding curve account if token is migrated
-        if (isMigrated && owner === '4FRxv5k1iCrE4kdjtywUzAakCaxfDQmpdVLx48kUXQQC') {
+        try {
+          const accountInfo = await connection.getParsedAccountInfo(account.address);
+          const owner = (accountInfo.value?.data as ParsedAccountData).parsed.info.owner;
+          
+          // Skip bonding curve account if token is migrated
+          if (isMigrated && owner === '4FRxv5k1iCrE4kdjtywUzAakCaxfDQmpdVLx48kUXQQC') {
+            return null;
+          }
+
+          // Skip accounts with zero balance
+          if (Number(account.amount) === 0) {
+            return null;
+          }
+
+          validHolders++;
+          return {
+            address: owner,
+            amount: account.amount,
+            percentage: (Number(account.amount) / totalSupply) * 100
+          };
+        } catch (error) {
+          logger.error(`Error processing account ${account.address}:`, error);
           return null;
         }
-
-        return {
-          address: owner,
-          amount: account.amount
-        };
       });
 
-    const accountDetails = (await Promise.all(accountPromises)).filter(account => account !== null);
+    // Wait for all account processing to complete and filter out nulls
+    const accountDetails = (await Promise.all(accountPromises))
+      .filter(account => account !== null);
 
-    // Prepare bulk operation
+    // Update token holder count
+    await Token.findOneAndUpdate(
+      { mint },
+      { 
+        holderCount: validHolders,
+        lastUpdated: new Date()
+      }
+    );
+
+    // Prepare bulk operation for holder records
     const bulkOps = accountDetails.map(account => ({
       updateOne: {
         filter: { 
@@ -334,7 +370,7 @@ async function updateHoldersCache(mint: string) {
         update: {
           $set: {
             amount: account.amount,
-            percentage: (Number(account.amount) / totalSupply) * 100,
+            percentage: account.percentage,
             lastUpdated: new Date()
           }
         },
@@ -342,13 +378,27 @@ async function updateHoldersCache(mint: string) {
       }
     }));
 
+    // Execute bulk write if we have operations
     if (bulkOps.length > 0) {
       await TokenHolder.bulkWrite(bulkOps);
       logger.log(`Updated ${bulkOps.length} holder records for token ${mint}`);
     }
 
+    // Return holder count for convenience
+    return validHolders;
+
   } catch (error) {
     logger.error(`Error updating holders for token ${mint}:`, error);
+    // Update token with error status
+    await Token.findOneAndUpdate(
+      { mint },
+      { 
+        lastUpdated: new Date(),
+        $set: { 
+          holderCount: 0 // Reset to 0 on error
+        }
+      }
+    );
     throw error;
   }
 }
