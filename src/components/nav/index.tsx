@@ -4,8 +4,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { WalletButton } from "../common/button/WalletButton";
 import { RoundedButton } from "../common/button/RoundedButton";
+import { useUserStore } from "../providers/UserProvider";
 
 export const Nav = () => {
+  const authenticated = useUserStore((state) => state.authenticated);
   return (
     <nav className="flex justify-between items-center fixed top-0 left-0 right-0 z-50 px-2 py-3 bg-[#0e0e0e] border-b border-b-[#03ff24]/40">
       <div className="flex gap-6 items-center">
@@ -22,6 +24,16 @@ export const Nav = () => {
         <RoundedButton variant="outlined" className="p-3 px-4 border-none">
           <Link href="/create">Create Agent</Link>
         </RoundedButton>
+        {authenticated && (
+          <Link href={`/my-agents`}>
+            <RoundedButton
+              className="p-3 font-medium border-none"
+              variant="outlined"
+            >
+              My Agents
+            </RoundedButton>
+          </Link>
+        )}
       </div>
       <div className="flex gap-6 items-center">
         <WalletButton />
