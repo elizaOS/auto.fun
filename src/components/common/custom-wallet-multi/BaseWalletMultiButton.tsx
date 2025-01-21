@@ -67,6 +67,14 @@ export function BaseWalletMultiButton({ children, labels, ...props }: Props) {
       return labels["no-wallet"];
     }
   }, [buttonState, children, labels, publicKey]);
+
+  // automatically connect to the wallet after user selects it
+  useEffect(() => {
+    if (buttonState === "has-wallet") {
+      onConnect?.();
+    }
+  }, [buttonState, onConnect]);
+
   return (
     <div className="wallet-adapter-dropdown">
       <BaseWalletConnectionButton
