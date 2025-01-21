@@ -2,7 +2,6 @@ import React from "react";
 import { BaseWalletMultiButton } from "./BaseWalletMultiButton";
 import type { ButtonProps } from "./Button";
 import "./styles.css";
-import "./wallet-adapter-overrides.css";
 
 const LABELS = {
   "change-wallet": "Change wallet",
