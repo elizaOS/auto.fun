@@ -10,6 +10,7 @@ export interface ModalProps {
   children: React.ReactNode;
   title?: string;
   allowClose?: boolean;
+  maxWidth?: number | string;
 }
 
 export const Modal: FC<ModalProps> = ({
@@ -20,6 +21,7 @@ export const Modal: FC<ModalProps> = ({
   children,
   title,
   allowClose = true,
+  maxWidth,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [fadeIn, setFadeIn] = useState(false);
@@ -69,6 +71,8 @@ export const Modal: FC<ModalProps> = ({
   );
 
   useLayoutEffect(() => {
+    if (!isOpen) return;
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         hideModal();
@@ -98,14 +102,20 @@ export const Modal: FC<ModalProps> = ({
   return createPortal(
     <div
       aria-modal="true"
-      className={`wallet-adapter-modal ${fadeIn && "wallet-adapter-modal-fade-in"} ${className}`}
+      className={`wallet-adapter-modal ${fadeIn && "wallet-adapter-modal-fade-in"}`}
       ref={ref}
       role="dialog"
     >
       {/* wallet class names are for compatibility with the wallet modal. can change them to more
       generic names later */}
       <div className="wallet-adapter-modal-container">
-        <div className="wallet-adapter-modal-wrapper">
+        <div
+          className={`wallet-adapter-modal-wrapper ${className}`}
+          style={{
+            maxWidth: maxWidth,
+            width: "100%",
+          }}
+        >
           <div className="wallet-adapter-modal-header">
             {title && (
               <div className="wallet-adapter-modal-header-left">{title}</div>

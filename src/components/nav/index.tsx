@@ -5,9 +5,28 @@ import Image from "next/image";
 import { WalletButton } from "../common/button/WalletButton";
 import { RoundedButton } from "../common/button/RoundedButton";
 import { useUserStore } from "../providers/UserProvider";
+import { useState } from "react";
+import { Modal } from "../common/Modal";
+
+const Step = ({
+  number,
+  description,
+}: {
+  number: number;
+  description: string;
+}) => (
+  <div className="py-4">
+    <span className="text-white font-mono font-medium text-xl">
+      Step {number}:{" "}
+    </span>
+    <span className="text-[#A1A1A1] font-mono text-base">{description}</span>
+  </div>
+);
 
 export const Nav = () => {
   const authenticated = useUserStore((state) => state.authenticated);
+  const [modalOpen, setModalOpen] = useState(false);
+
   return (
     <nav className="flex justify-between items-center fixed top-0 left-0 right-0 z-50 px-2 py-3 bg-[#0e0e0e] border-b border-b-[#03ff24]/40">
       <div className="flex gap-6 items-center">
@@ -36,26 +55,85 @@ export const Nav = () => {
         )}
       </div>
       <div className="flex gap-6 items-center">
-        <WalletButton />
-        <Link href="#" target="_blank" className="sm:block hidden">
-          <RoundedButton className="p-3">
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M4 20L10.768 13.232M13.228 10.772L20 4M4 4L15.733 20H20L8.267 4H4Z"
-                stroke="black"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+        <button
+          className="text-center text-[#d1d1d1] text-base font-medium leading-normal py-3 px-4"
+          onClick={() => setModalOpen(true)}
+        >
+          How it works?
+        </button>
+        <Modal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          title="How it works"
+          maxWidth={587}
+          className="bg-[#171717]"
+        >
+          <div className="flex flex-col p-[14px]">
+            <p className="text-[#A6A6A6] text-sm font-mono leading-5 mt-1.5 mb-6">
+              auto.fun ensures that all created tokens are safe to trade through
+              a secure and battle-tested token launching system. Each coin on
+              auto.fun is a fair-launch with no presale and no team allocation.
+            </p>
+
+            <div className="flex flex-col divide-y divide-[#505050]/30 border-y border-[#505050]/30">
+              <Step number={1} description="Pick a coin that you like" />
+              <Step
+                number={2}
+                description="Buy the coin on the bonding curve"
               />
-            </svg>
-          </RoundedButton>
-        </Link>
+              <Step
+                number={3}
+                description="Sell at any time to lock in your profits or losses"
+              />
+              <Step
+                number={4}
+                description="When enough people buy on the bonding curve, it reaches a market cap of $100k"
+              />
+              <Step
+                number={5}
+                description="$17k of liquidity is then deposited in Raydium and burned"
+              />
+            </div>
+
+            <div className="flex flex-col gap-[34px] items-center">
+              <button
+                className="w-full py-2 px-5 mt-[34px] bg-[#092F0E] rounded-lg text-[#03FF24] font-mono font-medium"
+                onClick={() => setModalOpen(false)}
+              >
+                Continue
+              </button>
+
+              <p className="text-center text-[#A6A6A6] font-mono font-medium px-4">
+                By clicking this button you agree to the terms and conditions.
+              </p>
+
+              <div className="flex items-center gap-3">
+                <a
+                  href="#"
+                  className="text-[#A6A6A6] font-mono font-medium underline"
+                >
+                  Privacy Policy
+                </a>
+                <div className="h-6 w-px bg-[#505050]" />
+                <a
+                  href="#"
+                  className="text-[#A6A6A6] font-mono font-medium underline"
+                >
+                  Terms of Service
+                </a>
+                <div className="h-6 w-px bg-[#505050]" />
+                <a
+                  href="#"
+                  className="text-[#A6A6A6] font-mono font-medium underline"
+                >
+                  Fees
+                </a>
+              </div>
+            </div>
+          </div>
+        </Modal>
+
+        <WalletButton />
       </div>
     </nav>
   );
