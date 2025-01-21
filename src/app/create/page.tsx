@@ -4,10 +4,8 @@ import { useCreateAgent } from "@/utils/agent";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { validateTwitterCredentials } from "../../utils/twitter";
-import { ModalType } from "../../../types/zustand/stores/modalStore.type";
-import { useModalStore } from "@/components/providers/ModalProvider";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { WalletButton } from "@/components/common/button/WalletButton";
 import {
@@ -18,6 +16,8 @@ import {
 import { useForm } from "./useForm";
 import { useGenerateAgentDetails } from "@/utils/agent";
 import { CenterFormContainer } from "@/components/common/containers/CenterFormContainer";
+import { Modal } from "@/components/common/Modal";
+import { Spinner } from "@/components/common/Spinner";
 
 export type FormStep = "token" | "agent" | "twitter";
 
@@ -51,8 +51,7 @@ export default function TransactionSignPage() {
   const createAgent = useCreateAgent();
   const { publicKey } = useWallet();
 
-  const changeModal = useModalStore((state) => state.changeModal);
-  const setModalOpen = useModalStore((state) => state.setOpen);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const convertFormData = useCallback(async (): Promise<{
     tokenMeta: TokenMetadata;
@@ -85,7 +84,7 @@ export default function TransactionSignPage() {
   }, [agentForm, generateAgentDetails, getFormValues]);
 
   const submitForm = useCallback(async () => {
-    changeModal(true, ModalType.LAUNCHING_TOKEN, {});
+    setIsModalOpen(true);
 
     try {
       const { tokenMeta, twitterCreds, agentDetails } = await convertFormData();
@@ -113,9 +112,9 @@ export default function TransactionSignPage() {
     } catch {
       toast.error("Oops! Something went wrong. Please try again.");
     } finally {
-      setModalOpen(false);
+      setIsModalOpen(false);
     }
-  }, [changeModal, convertFormData, createAgent, router, setModalOpen]);
+  }, [convertFormData, createAgent, router]);
 
   const FormHeader = useMemo(() => {
     switch (currentStep) {
@@ -159,6 +158,21 @@ export default function TransactionSignPage() {
 
   return (
     <div className="flex flex-col justify-center h-full relative mt-12">
+      {/* TODO: update UI */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Launching token"
+        allowClose={false}
+      >
+        <div className="flex flex-col items-center p-6 gap-6">
+          <Spinner />
+          <p className="p-3 bg-[#03FF24] text-black rounded-lg font-bold">
+            Launching Token to pump.fun...
+          </p>
+        </div>
+      </Modal>
+
       {canGoBack && (
         <button className="absolute top-4 left-[5%]" onClick={back}>
           <svg
