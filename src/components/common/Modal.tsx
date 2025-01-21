@@ -102,6 +102,8 @@ export const Modal: FC<ModalProps> = ({
       ref={ref}
       role="dialog"
     >
+      {/* wallet class names are for compatibility with the wallet modal. can change them to more
+      generic names later */}
       <div className="wallet-adapter-modal-container">
         <div className="wallet-adapter-modal-wrapper">
           <div className="wallet-adapter-modal-header">
