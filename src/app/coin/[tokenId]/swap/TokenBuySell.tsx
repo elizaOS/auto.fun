@@ -12,6 +12,7 @@ import { formatNumber } from "@/utils/number";
 import { useProgram } from "@/utils/program";
 import { TradeSettingsModal } from "./TradeSettingsModal";
 import { useWalletModal } from "@/components/common/custom-wallet-multi";
+import { SolanaIcon } from "./SolanaIcon";
 
 interface TokenInputProps {
   type: "Sell" | "Buy";
@@ -22,6 +23,7 @@ interface TokenInputProps {
   disabled?: boolean;
   dollarValue: number;
   tokenBalance: number;
+  tokenImage: string;
 }
 
 const TokenInput = ({
@@ -33,6 +35,7 @@ const TokenInput = ({
   disabled = false,
   dollarValue,
   tokenBalance,
+  tokenImage,
 }: TokenInputProps) => {
   // Format only for display, not for the input value itself
   const displayValue = disabled
@@ -89,7 +92,16 @@ const TokenInput = ({
           />
           <div className="p-2 bg-neutral-900 rounded-lg border border-neutral-800 flex items-center gap-2">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-black rounded-2xl" />
+              {tokenSymbol === "SOL" ? (
+                <SolanaIcon />
+              ) : (
+                <img
+                  src={tokenImage}
+                  alt={tokenSymbol}
+                  className="w-6 h-6 rounded-2xl"
+                />
+              )}
+
               <span className="text-white text-base font-normal font-['DM Mono'] uppercase tracking-widest">
                 {tokenSymbol}
               </span>
@@ -313,6 +325,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
             disabled={false}
             dollarValue={calculatedAmounts.dollarValue}
             tokenBalance={isBuyMode ? solBalance : tokenBalance}
+            tokenImage={token.image}
           />
 
           <button
@@ -345,6 +358,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
             disabled={true}
             dollarValue={calculatedAmounts.dollarValue}
             tokenBalance={isBuyMode ? tokenBalance : solBalance}
+            tokenImage={token.image}
           />
         </div>
 
