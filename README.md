@@ -60,7 +60,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 2. Install Solana:
 
 ```bash
-sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
+sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
 ```
 
 3. Install Anchor:
@@ -71,7 +71,13 @@ avm install 0.30.1
 avm use 0.30.1
 ```
 
-4. Install repo dependencies:
+4. Install Bun:
+
+```bash
+curl -fsSL https://bun.sh/install | bash
+```
+
+5. Install repo dependencies:
 
 ```bash
 bun install
