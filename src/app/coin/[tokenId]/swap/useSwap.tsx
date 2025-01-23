@@ -7,6 +7,7 @@ import {
   SEED_BONDING_CURVE,
   useProgram,
 } from "@/utils/program";
+import { useTradeSettings } from "./useTradeSettings";
 
 export function convertToFloat(value: number, decimals: number): number {
   return value / Math.pow(10, decimals);
@@ -155,7 +156,6 @@ export const swapTx = async (
 };
 
 interface SwapParams {
-  slippagePercentage: number;
   style: "buy" | "sell";
   amount: number;
   tokenAddress: string;
@@ -165,13 +165,10 @@ export const useSwap = () => {
   const { connection } = useConnection();
   const wallet = useWallet();
   const program = useProgram();
+  // TODO: implement speed, front-running protection, and tip amount
+  const { slippage: slippagePercentage } = useTradeSettings();
 
-  const handleSwap = async ({
-    slippagePercentage,
-    style,
-    amount,
-    tokenAddress,
-  }: SwapParams) => {
+  const handleSwap = async ({ style, amount, tokenAddress }: SwapParams) => {
     if (!program || !wallet.publicKey) {
       throw new Error("Wallet not connected or missing required methods");
     }

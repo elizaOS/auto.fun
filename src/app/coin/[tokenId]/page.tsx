@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -59,13 +59,15 @@ export default function TradingInterface() {
     itemsPropertyName: "holders",
   });
 
+  const socket = useMemo(() => getSocket(), []);
+
   useEffect(() => {
-    if (!token) return;
-
-    const socket = getSocket();
-
     console.log("subscribe", tokenId);
     socket.emit("subscribe", tokenId);
+  }, [tokenId, socket]);
+
+  useEffect(() => {
+    if (!token) return;
 
     socket.on("updateToken", (token) => {
       console.log("updateToken", token);
@@ -75,7 +77,7 @@ export default function TradingInterface() {
     return () => {
       socket.off("updateToken");
     };
-  }, [token, tokenId]);
+  }, [token, tokenId, socket]);
 
   if (isLoading) {
     return renderSkeletons();
@@ -495,78 +497,8 @@ export default function TradingInterface() {
           </div>
         </div>
 
-        <div className="flex flex-col space-y-4 md:max-w-[360px] 2xl:max-w-[480px]">
-          {/* Trade Interface */}
+        <div className="flex flex-col space-y-4 md:max-w-[420px] 2xl:max-w-[480px]">
           <TokenBuySell tokenId={tokenId} />
-          {/* <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-6">
-            <h2 className="text-[#22C55E] mb-4">
-              TRADE INTERFACE //
-            </h2>
-
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm text-gray-400 mb-1 block">
-                  AMOUNT_SOL:
-                </label>
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(Number(e.target.value))}
-                  className="w-full bg-[#262626] border border-gray-700 rounded px-3 py-2 text-gray-200"
-                  placeholder="0.00"
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <Button
-                  variant="outline"
-                  className= text-[#a1a1a1]"
-                  onClick={() => setAmount(0.1)}
-                >
-                  0.1 SOL
-                </Button>
-                <Button
-                  variant="outline"
-                  className= text-[#a1a1a1]"
-                  onClick={() => setAmount(0.5)}
-                >
-                  0.5 SOL
-                </Button>
-                <Button
-                  variant="outline"
-                  className= text-[#a1a1a1]"
-                  onClick={() => setAmount(1)}
-                >
-                  1 SOL
-                </Button>
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="text-sm text-gray-400">
-                    SLIPPAGE_%: {slippage}
-                  </label>
-                  <InfoIcon className="w-4 h-4 text-gray-400" />
-                </div>
-                <Slider
-                  value={[slippage]}
-                  onValueChange={(value) => setSlippage(value[0])}
-                  max={5}
-                  step={0.1}
-                  className="my-4"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <Button className="bg-[#22C55E] hover:bg-[#45a049] text-white">
-                  EXECUTE_BUY
-                </Button>
-                <Button className="bg-[#9C27B0] hover:bg-[#7B1FA2] text-white">
-                  EXECUTE_SELL
-                </Button>
-              </div>
-            </div>
-          </div> */}
 
           <div className="flex flex-col gap-2 bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-6">
             <div className="flex justify-between items-center">
