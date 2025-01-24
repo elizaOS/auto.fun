@@ -21,6 +21,7 @@ const Replies = ({ commentId }: { commentId: string }) => {
     {
       variables: commentId,
       initialData: [],
+      refetchInterval: 5000,
     },
   );
 
@@ -122,6 +123,7 @@ export const Comments = ({ tokenId }: { tokenId: string }) => {
   const { data: comments = [], isLoading: isCommentsLoading } = useComments({
     variables: tokenId,
     initialData: [],
+    refetchInterval: 5000,
   });
   const { mutateAsync: createComment } = useCreateComment();
   const [commentText, setCommentText] = useState("");
