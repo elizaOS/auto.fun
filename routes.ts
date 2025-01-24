@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { User, Token, createTokenSchema, TokenHolder, Swap, Fee, Message, VanityKeypair, VanityKeypairValidation, VanityKeypairRequestValidation, ChartParamsSchema, Agent, Personality, MessageLikeValidation, MessageLike } from './schemas';
+import { User, Token, createTokenSchema, TokenHolder, Swap, Fee, Message, VanityKeypair, VanityKeypairValidation, VanityKeypairRequestValidation, ChartParamsSchema, Agent, Personality, MessageLikeValidation, MessageLike, NewMessageValidation } from './schemas';
 import { fetchPriceChartData } from './server';
 import { z } from 'zod';
 import { 
@@ -736,10 +736,15 @@ router.get('/messages/:messageId/replies', async (req, res) => {
 });
 
 // Create a new message or reply
-router.post('/new-msg', requireAuth, async (req, res) => {
+router.post('/messages/:mint', requireAuth, async (req, res) => {
   try {
-    const validatedData = MessageValidation.parse(req.body);
-    const message = new Message(validatedData);
+    const validatedData = NewMessageValidation.parse(req.body);
+    const message = new Message({
+      message: validatedData.message,
+      parentId: validatedData.parentId ? new mongoose.Types.ObjectId(validatedData.parentId) : undefined,
+      tokenMint: req.params.mint,
+      author: req.user.publicKey
+    });
 
     // If this is a reply, increment the parent's replyCount
     if (validatedData.parentId) {

@@ -93,14 +93,19 @@ export const FeeValidation = z.object({
 
 // Message Schema Validation
 export const MessageValidation = z.object({
-  _id: z.string().optional(), // MongoDB will handle _id
   author: z.string().min(32).max(44),
   tokenMint: z.string().min(32).max(44),
   message: z.string().min(1).max(500),
-  parentId: z.string().optional(), // Reference to parent message for replies
+  parentId: z.instanceof(mongoose.Types.ObjectId).optional(), // Reference to parent message for replies
   replyCount: z.number().default(0), // Track number of replies
   likes: z.number().default(0), // Track number of likes
   timestamp: z.date().default(() => new Date())
+});
+
+export const NewMessageValidation = MessageValidation.pick({
+  message: true,
+}).extend({
+  parentId: z.string().optional(),
 });
 
 export const MessageLikeValidation = z.object({
