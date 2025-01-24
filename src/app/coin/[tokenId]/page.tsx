@@ -3,13 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  InfoIcon,
-  SendHorizontal,
-  CheckCircle,
-  Copy,
-  ArrowDown,
-} from "lucide-react";
+import { InfoIcon, SendHorizontal, CheckCircle, Copy } from "lucide-react";
 import { useToken } from "@/utils/tokens";
 import { useParams } from "next/navigation";
 import { TradingChart } from "@/components/TVChart/TradingChart";
@@ -23,6 +17,7 @@ import Skeleton from "react-loading-skeleton";
 import { TokenBuySell } from "./swap/TokenBuySell";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { Comments } from "./Comments";
 
 const HolderSchema = z.object({
   address: z.string(),
@@ -107,35 +102,6 @@ export default function TradingInterface() {
     "Predictive modeling",
     "Real-time data analysis",
     "Multi-platform integration",
-  ];
-
-  const comments = [
-    {
-      id: "1",
-      author: "0x742...3ab",
-      content: "This agent is performing really well!",
-      timestamp: "(2 min ago)",
-      replies: [
-        {
-          id: "1",
-          author: "0x742...3ab",
-          content: "This agent is performing really well!",
-          timestamp: "(2 min ago)",
-        },
-      ],
-    },
-    {
-      id: "2",
-      author: "0x742...3ab",
-      content: "This agent is performing really well!",
-      timestamp: "(2 min ago)",
-    },
-    {
-      id: "3",
-      author: "0x742...3ab",
-      content: "This agent is performing really well!",
-      timestamp: "(2 min ago)",
-    },
   ];
 
   const trades = [
@@ -405,45 +371,7 @@ export default function TradingInterface() {
                 </div>
               </TabsContent>
 
-              <TabsContent className="mt-0" value="comments">
-                <textarea
-                  placeholder="Write your comment..."
-                  className="w-full bg-[#262626] rounded p-6 text-[#a1a1a1] min-h-[100px] mb-10"
-                />
-
-                <div className="flex flex-col gap-4">
-                  {comments.map((comment) => (
-                    <div key={comment.id} className="flex flex-col">
-                      <div className="flex items-center gap-4 mb-2">
-                        <img
-                          src="/anonymous.png"
-                          className="w-10 h-10 rounded-full"
-                        />
-                        <span className="text-[#22C55E] font-bold">
-                          {comment.author}
-                        </span>
-                        <span className="text-[#11632F] text-sm">
-                          {comment.timestamp}
-                        </span>
-                      </div>
-                      <div className="flex flex-col pl-14">
-                        <p className="text-[#a1a1a1] mb-3">{comment.content}</p>
-                        <div className="flex flex-col items-start gap-3">
-                          <button className="text-white text-sm hover:text-gray-200">
-                            Reply
-                          </button>
-                          {comment.replies && comment.replies.length > 0 && (
-                            <button className="flex items-center gap-1 text-[#22C55E] text-sm hover:text-gray-200">
-                              <ArrowDown className="w-4 h-4" />
-                              View Replies
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </TabsContent>
+              <Comments tokenId={tokenId} />
 
               <TabsContent className="mt-0" value="chat">
                 <div className="flex flex-col gap-4 h-[400px] overflow-y-scroll">
