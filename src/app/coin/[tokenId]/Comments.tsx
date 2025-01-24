@@ -1,22 +1,16 @@
 import {
+  Comment,
   useCommentReplies,
   useComments,
   useCreateComment,
+  useLikeComment,
 } from "@/utils/comments";
 import { TabsContent } from "@radix-ui/react-tabs";
 import { ArrowDown } from "lucide-react";
 import { useState } from "react";
 import { Spinner } from "@/components/common/Spinner";
 
-type CommentType = {
-  _id: string;
-  author: string;
-  timestamp: string;
-  message: string;
-  replyCount: number;
-};
-
-const Replies = ({ commentId }: { commentId: string }) => {
+const Replies = ({ commentId, mint }: { commentId: string; mint: string }) => {
   const { data: replies = [], isLoading: isRepliesLoading } = useCommentReplies(
     {
       variables: commentId,
@@ -35,7 +29,12 @@ const Replies = ({ commentId }: { commentId: string }) => {
   return (
     <div className="flex flex-col gap-4 pt-6">
       {replies.map((reply) => (
-        <CommentItem key={reply._id} comment={reply} allowReply={false} />
+        <CommentItem
+          key={reply._id}
+          comment={reply}
+          allowReply={false}
+          mint={mint}
+        />
       ))}
     </div>
   );
@@ -45,20 +44,30 @@ const CommentItem = ({
   comment,
   onReply,
   allowReply,
+  mint,
 }: {
-  comment: CommentType;
+  comment: Comment;
   onReply?: (parentId: string, message: string) => Promise<void>;
   allowReply: boolean;
+  mint: string;
 }) => {
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [showReplies, setShowReplies] = useState(false);
+
+  const { mutateAsync: likeComment } = useLikeComment();
 
   const handleSendReply = async () => {
     await onReply?.(comment._id, replyText);
     setReplyingToId(null);
     setReplyText("");
     setShowReplies(true);
+  };
+
+  const handleLike = () => {
+    if (!comment.hasLiked) {
+      likeComment({ id: comment._id, mint, parentId: comment.parentId });
+    }
   };
 
   return (
@@ -77,14 +86,38 @@ const CommentItem = ({
       <div className="flex flex-col pl-14">
         <p className="text-[#a1a1a1] mb-3">{comment.message}</p>
         <div className="flex flex-col items-start gap-3">
-          {allowReply && (
+          <div className="flex items-center gap-3">
+            {allowReply && (
+              <button
+                className="text-white text-sm hover:text-gray-200"
+                onClick={() => setReplyingToId(comment._id)}
+              >
+                Reply
+              </button>
+            )}
             <button
-              className="text-white text-sm hover:text-gray-200"
-              onClick={() => setReplyingToId(comment._id)}
+              className="flex items-center gap-1 text-xs font-medium"
+              onClick={handleLike}
             >
-              Reply
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 18 18"
+                fill={comment.hasLiked ? "white" : "none"}
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M9.465 15.6077C9.21 15.6977 8.79 15.6977 8.535 15.6077C6.36 14.8652 1.5 11.7677 1.5 6.5177C1.5 4.2002 3.3675 2.3252 5.67 2.3252C7.035 2.3252 8.2425 2.9852 9 4.0052C9.7575 2.9852 10.9725 2.3252 12.33 2.3252C14.6325 2.3252 16.5 4.2002 16.5 6.5177C16.5 11.7677 11.64 14.8652 9.465 15.6077Z"
+                  stroke="white"
+                  strokeWidth="1.125"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              {comment.likes}
             </button>
-          )}
+          </div>
+
           {replyingToId === comment._id && (
             <div>
               <input
@@ -114,7 +147,7 @@ const CommentItem = ({
             </button>
           )}
         </div>
-        {showReplies && <Replies commentId={comment._id} />}
+        {showReplies && <Replies commentId={comment._id} mint={mint} />}
       </div>
     </div>
   );
@@ -180,6 +213,7 @@ export const Comments = ({ tokenId }: { tokenId: string }) => {
             comment={comment}
             onReply={handleReply}
             allowReply
+            mint={tokenId}
           />
         ))}
       </div>
