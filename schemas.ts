@@ -109,7 +109,7 @@ export const NewMessageValidation = MessageValidation.pick({
 });
 
 export const MessageLikeValidation = z.object({
-  messageId: z.string(),
+  messageId: z.instanceof(mongoose.Types.ObjectId),
   userAddress: z.string().min(32).max(44),
   timestamp: z.date().default(() => new Date())
 });

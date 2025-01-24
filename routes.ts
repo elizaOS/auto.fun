@@ -691,28 +691,47 @@ router.get('/fees', async (req, res) => {
   }
 });
 
-// Get all messages
-router.get('/messages', async (req, res) => {
-  try {
-    const messages = await Message.find();
-    res.json(messages);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+const addHasLikedToMessages = async (messages: any[], userAddress?: string) => {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return messages;
   }
-});
+
+  if (!userAddress) {
+    return messages.map(message => ({ ...message, hasLiked: false }));
+  }
+
+  const messageLikes = await MessageLike.find({
+    messageId: { $in: messages.map(m => m._id) },
+    userAddress
+  });
+
+  const likedMessageIds = new Set(messageLikes.map(like => 
+    like.messageId.toString()
+  ));
+
+  return messages.map(message => ({
+    ...message,
+    hasLiked: likedMessageIds.has(message._id.toString())
+  }));
+};
 
 // Get all root messages (no parentId) for a token
 router.get('/messages/:mint', async (req, res) => {
   try {
     const mintValidation = z.string().min(32).max(44);
     const mint = mintValidation.parse(req.params.mint);
+    const userAddress = req.user?.publicKey;
     
     const messages = await Message.find({ 
       tokenMint: mint,
-      parentId: null // Only get root messages
-    }).sort({ timestamp: -1 });
+      parentId: null
+    })
+    .lean()
+    .sort({ timestamp: -1 });
+
+    const messagesWithLikes = await addHasLikedToMessages(messages, userAddress);
     
-    res.json(messages);
+    res.json(messagesWithLikes);
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: error.errors });
@@ -725,11 +744,48 @@ router.get('/messages/:mint', async (req, res) => {
 // Get replies for a specific message
 router.get('/messages/:messageId/replies', async (req, res) => {
   try {
+    const userAddress = req.user?.publicKey;
+    
     const replies = await Message.find({
       parentId: req.params.messageId
-    }).sort({ timestamp: 1 });
+    })
+    .lean()
+    .sort({ timestamp: -1 });
+
+    const repliesWithLikes = await addHasLikedToMessages(replies, userAddress);
     
-    res.json(replies);
+    res.json(repliesWithLikes);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// get message thread (parent and replies)
+router.get('/messages/:messageId/thread', requireAuth, async (req, res) => {
+  try {
+    const messageId = req.params.messageId;
+    const userAddress = req.user?.publicKey;
+    
+    const parentMessage = await Message.findById(messageId).lean();
+    if (!parentMessage) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    const replies = await Message.find({
+      parentId: messageId
+    })
+    .lean()
+    .sort({ timestamp: -1 });
+
+    const [parentWithLikes, repliesWithLikes] = await Promise.all([
+      addHasLikedToMessages([parentMessage], userAddress),
+      addHasLikedToMessages(replies, userAddress)
+    ]);
+
+    res.json({
+      parent: parentWithLikes[0], // Since we wrapped single message in array
+      replies: repliesWithLikes
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -755,7 +811,7 @@ router.post('/messages/:mint', requireAuth, async (req, res) => {
     }
 
     await message.save();
-    res.json(message);
+    res.json({ ...message.toJSON(), hasLiked: false });
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: error.errors });
@@ -765,35 +821,10 @@ router.post('/messages/:mint', requireAuth, async (req, res) => {
   }
 });
 
-// Get message thread (parent + all replies)
-router.get('/messages/:messageId/thread', async (req, res) => {
-  try {
-    const messageId = req.params.messageId;
-    
-    // Get the parent message
-    const parentMessage = await Message.findById(messageId);
-    if (!parentMessage) {
-      return res.status(404).json({ error: 'Message not found' });
-    }
-
-    // Get all replies
-    const replies = await Message.find({
-      parentId: messageId
-    }).sort({ timestamp: 1 });
-
-    res.json({
-      parent: parentMessage,
-      replies: replies
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Message Likes
 router.post('/message-likes/:messageId', requireAuth, async (req, res) => {
   try {
-    const messageId = req.params.messageId;
+    const messageId = req.params.messageId as string;
     const userAddress = req.user.publicKey;
 
     // Find the message
@@ -812,34 +843,20 @@ router.post('/message-likes/:messageId', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Already liked this message' });
     }
 
-    // Create like record and increment message likes atomically
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    // Create like record
+    await MessageLike.create([{
+      messageId: new mongoose.Types.ObjectId(messageId),
+      userAddress,
+      timestamp: new Date()
+    }]);
 
-    try {
-      // Create like record
-      await MessageLike.create([{
-        messageId,
-        userAddress,
-        timestamp: new Date()
-      }], { session });
+    // Increment message likes
+    const updatedMessage = await Message.findByIdAndUpdate(
+      messageId,
+      { $inc: { likes: 1 } }
+    ).lean();
 
-      // Increment message likes
-      const updatedMessage = await Message.findByIdAndUpdate(
-        messageId,
-        { $inc: { likes: 1 } },
-        { new: true, session }
-      );
-
-      await session.commitTransaction();
-      res.json(updatedMessage);
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
-    }
-
+    res.json({ ...updatedMessage, hasLiked: true });
   } catch (error) {
     logger.error('Error liking message:', error);
     res.status(500).json({ error: 'Failed to like message' });
