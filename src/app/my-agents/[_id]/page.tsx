@@ -1,7 +1,8 @@
+"use client";
+
 import { useForm } from "react-hook-form";
 
 import { useAgentData } from "@/utils/agent";
-import { AgentUpdateFormProps } from "../../../../types/components/agents/AgentUpdateForm.type";
 import { AgentDetailsForm } from "../../../../types/form.type";
 import { AgentMedia } from "../AgentMedia";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
@@ -11,19 +12,16 @@ import { womboApi } from "@/utils/fetch";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import Skeleton from "react-loading-skeleton";
+import { AgentDetailsFormSkeleton } from "@/components/forms/AgentDetails/AgentDetailsFormSkeleton";
 
-export const AgentUpdateForm = ({
-  _id,
-  name,
-  image_src,
-  onBack,
-  refetchAgents,
-  contractAddress,
-}: AgentUpdateFormProps) => {
+export default function AgentUpdateForm() {
+  const { _id } = useParams();
+
   const router = useRouter();
-  const { data: agentData } = useAgentData({
-    variables: { _id },
+  const { data: agentData, isLoading } = useAgentData({
+    variables: { _id: _id as string },
   });
 
   const [updating, setUpdating] = useState<boolean>(false);
@@ -83,7 +81,7 @@ export const AgentUpdateForm = ({
           personalities,
         },
       });
-      await refetchAgents();
+      // await refetchAgents();
       toast.success("AI Agent Updated!");
     } catch (err) {
       console.error(err);
@@ -93,13 +91,18 @@ export const AgentUpdateForm = ({
     }
   };
 
-  // if (isLoading || !agentData) {
-  //   return <SkeletonForm onBack={onBack} />;
-  // }
+  if (isLoading || !agentData) {
+    return <SkeletonForm />;
+  }
+
+  const { name, image_src, contractAddress } = agentData;
 
   return (
     <div className="flex flex-col justify-center h-full relative">
-      <button className="absolute top-4 left-[5%]" onClick={onBack}>
+      <button
+        className="absolute top-4 left-[5%]"
+        onClick={() => router.back()}
+      >
         <svg
           width="44"
           height="44"
@@ -126,8 +129,8 @@ export const AgentUpdateForm = ({
       </button>
       <div className="w-full flex justify-center">
         {" "}
-        <div className="flex items-center">
-          <div className="flex flex-col gap-6 top-6 left-[-25%]">
+        <div className="flex flex-col md:flex-row items-center">
+          <div className="flex flex-col gap-6 top-6">
             <div className="p-4 flex bg-[#002605] rounded-xl items-center justify-between">
               <div className="flex gap-3 items-center">
                 <AgentMedia image_src={image_src} />
@@ -194,31 +197,31 @@ export const AgentUpdateForm = ({
       </div>
     </div>
   );
+}
+
+const SkeletonForm = () => {
+  return (
+    <div className="flex flex-col justify-center h-full relative w-full items-center">
+      <div className="flex items-center relative w-[896px]">
+        <div className="flex flex-col gap-6 top-6">
+          <Skeleton width={268} height={65} className="rounded-xl" />
+          <div className="flex flex-col gap-4">
+            {Array.from({ length: 2 }).map((_, idx) => (
+              <Skeleton
+                key={idx}
+                width={268}
+                height={52}
+                className="rounded-xl"
+              />
+            ))}
+          </div>
+        </div>
+
+        <CenterFormContainer
+          formComponent={<AgentDetailsFormSkeleton />}
+          submitButton={<Skeleton width={140} height={48} />}
+        />
+      </div>
+    </div>
+  );
 };
-
-//  const SkeletonForm = ({
-//   onBack,
-// }: Pick<AgentUpdateFormProps, "onBack">) => {
-//   return (
-//     <div className="inline-block relative w-[896px]">
-//     <div className="flex flex-col gap-6 absolute top-6 left-[-25%]">
-//       <Skeleton width={268} height={65} className="rounded-xl" />
-//       <div className="flex flex-col gap-4">
-//         {Array.from({ length: 2 }).map((_, idx) => (
-//           <Skeleton
-//             key={idx}
-//             width={268}
-//             height={52}
-//             className="rounded-xl"
-//           />
-//         ))}
-//       </div>
-//     </div>
-
-//     <CenterFormContainer
-//       formComponent={<AgentDetailsFormSkeleton />}
-//       submitButton={<Skeleton width={140} height={48} />}
-//     />
-//   </div>
-//   );
-// };

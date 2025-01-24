@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const AgentSummarySchema = z.object({
-  id: z.string(),
+  _id: z.string(),
   ownerAddress: z.string(),
   contractAddress: z.string(),
   symbol: z.string(),
@@ -11,7 +11,7 @@ export const AgentSummarySchema = z.object({
 });
 
 export const AgentDataSchema = z.object({
-  id: z.string(),
+  _id: z.string(),
   ownerAddress: z.string(),
   contractAddress: z.string(),
   txId: z.string(),
@@ -19,13 +19,13 @@ export const AgentDataSchema = z.object({
   name: z.string(),
   twitterUsername: z.string(),
   description: z.string().nullable(),
-  personalities: z.number().array(),
+  personalities: z.number().array().optional(),
   image_src: z.string().optional().nullable(),
   systemPrompt: z.string().nullable(),
   modelProvider: z.string().nullable(),
   bio: z.array(z.string()).nullable(),
   lore: z.array(z.string()).nullable(),
-  messageExamples: z.array(z.string()).nullable(),
+  messageExamples: z.array(z.string()).nullable().optional(),
   postExamples: z.array(z.string()).nullable(),
   adjectives: z.array(z.string()).nullable(),
   people: z.array(z.string()).nullable(),

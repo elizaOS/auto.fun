@@ -1,5 +1,11 @@
 import { HTMLAttributes } from "react";
-import { PersonalitiesProps } from "../../../../types/components/forms/AgentDetails/Personalities.type";
+import { Personality } from "../../../../types/components/forms/AgentDetails/index.type";
+
+export type PersonalitiesProps = {
+  allPersonalities: Personality[];
+  onChange: (selectedPersonalities: number[]) => void;
+  selectedPersonalities: number[];
+};
 
 const PersonalitySelection = ({
   selected,
@@ -24,7 +30,7 @@ export const Personalities = ({
 }: PersonalitiesProps) => {
   const selectPersonality = (id: number) => {
     let newPersonality: number[] = [];
-    const idIndex = selectedPersonalities.indexOf(id);
+    const idIndex = selectedPersonalities?.indexOf(id) ?? -1;
 
     if (idIndex > -1) {
       newPersonality = [...selectedPersonalities];
@@ -40,6 +46,8 @@ export const Personalities = ({
     onChange(newPersonality);
   };
 
+  console.log(allPersonalities);
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-between">
@@ -49,7 +57,7 @@ export const Personalities = ({
       <div className="grid grid-cols-2 gap-3">
         {allPersonalities.map(({ id, name }) => (
           <PersonalitySelection
-            selected={selectedPersonalities.indexOf(id) > -1}
+            selected={selectedPersonalities?.indexOf(id) > -1}
             key={id}
             onClick={() => selectPersonality(id)}
           >
