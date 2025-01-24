@@ -58,6 +58,7 @@ const CommentItem = ({
     await onReply?.(comment._id, replyText);
     setReplyingToId(null);
     setReplyText("");
+    setShowReplies(true);
   };
 
   return (

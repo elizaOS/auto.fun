@@ -84,6 +84,10 @@ export const useCreateComment = createMutation({
                     : c,
                 ),
             );
+
+            queryClient.invalidateQueries({
+              queryKey: ["comments", mint],
+            });
           } else {
             // Update main comments list for top-level comments
             queryClient.setQueryData(
