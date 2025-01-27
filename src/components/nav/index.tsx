@@ -7,6 +7,12 @@ import { RoundedButton } from "../common/button/RoundedButton";
 import { useUserStore } from "../providers/UserProvider";
 import { useState } from "react";
 import { Modal } from "../common/Modal";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 const Step = ({
   number,
@@ -28,10 +34,10 @@ export const Nav = () => {
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
-    <nav className="flex justify-between items-center fixed top-0 left-0 right-0 z-50 px-2 py-3 bg-[#0e0e0e] border-b border-b-[#03ff24]/40">
+    <nav className="flex justify-between items-center fixed top-0 left-0 right-0 z-50 px-4 py-3 bg-[#0e0e0e] border-b border-b-[#03ff24]/40">
       <div className="flex gap-6 items-center">
         <div className="flex items-center">
-          <Link href="/" className="flex gap-6 items-center">
+          <Link href="/" className="flex items-center">
             <Image
               height={40}
               width={40}
@@ -40,21 +46,23 @@ export const Nav = () => {
             />
           </Link>
         </div>
-        <RoundedButton variant="outlined" className="p-3 px-4 border-none">
-          <Link href="/create">Create Agent</Link>
-        </RoundedButton>
-        {authenticated && (
-          <Link href={`/my-agents`}>
-            <RoundedButton
-              className="p-3 font-medium border-none"
-              variant="outlined"
-            >
-              My Agents
-            </RoundedButton>
-          </Link>
-        )}
+        <div className="flex hidden md:flex gap-6 items-center">
+          <RoundedButton variant="outlined" className="p-3 px-4 border-none">
+            <Link href="/create">Create Agent</Link>
+          </RoundedButton>
+          {authenticated && (
+            <Link href={`/my-agents`}>
+              <RoundedButton
+                className="p-3 font-medium border-none"
+                variant="outlined"
+              >
+                My Agents
+              </RoundedButton>
+            </Link>
+          )}
+        </div>
       </div>
-      <div className="flex gap-6 items-center">
+      <div className="hidden md:flex gap-6 items-center">
         <button
           className="text-center text-[#d1d1d1] text-base font-medium leading-normal py-3 px-4"
           onClick={() => setModalOpen(true)}
@@ -132,8 +140,54 @@ export const Nav = () => {
             </div>
           </div>
         </Modal>
-
         <WalletButton />
+      </div>
+      <div className="flex md:hidden items-center">
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <button className="text-[#d1d1d1] outline-solid">
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16m-7 6h7"
+                />
+              </svg>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="bg-[#0e0e0e] border-b border-b-[#03ff24]/40 gap-1 flex flex-col py-6 px-4 mr-4">
+            <DropdownMenuItem asChild>
+              <Link href="/create" className="text-[#d1d1d1]">
+                Create Agent
+              </Link>
+            </DropdownMenuItem>
+            {authenticated && (
+              <DropdownMenuItem asChild>
+                <Link href={`/my-agents`} className="text-[#d1d1d1]">
+                  My Agents
+                </Link>
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem asChild>
+              <button
+                className="text-center text-[#d1d1d1]"
+                onClick={() => setModalOpen(true)}
+              >
+                How it works?
+              </button>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <WalletButton />
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </nav>
   );

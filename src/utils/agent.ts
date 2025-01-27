@@ -150,12 +150,12 @@ export const useGenerateAgentDetails = createMutation({
 
 export const useAgentData = createAuthenticatedQuery<
   AgentData,
-  Pick<AgentData, "id">
+  Pick<AgentData, "_id">
 >({
   queryKey: ["agentData"],
-  fetcher: async ({ id }) => {
+  fetcher: async ({ _id }) => {
     const result = await womboApi.get({
-      endpoint: `/agents/${id}`,
+      endpoint: `/agents/${_id}`,
       schema: AgentDataSchema,
     });
 
