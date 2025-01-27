@@ -161,14 +161,39 @@ router.get('/tokens', async (req, res) => {
       ];
     }
     
-    const tokens = await Token
-      .find(query)
-      .sort({ 
-        [sortBy === 'marketCapUSD' ? 'marketCapUSD' : sortBy]: 
-        sortOrder === 'desc' ? -1 : 1 
-      })
-      .limit(limit + 1)
-      .select('-__v');
+    // Modified query to include message count using aggregation
+    const tokens = await Token.aggregate([
+      { $match: query },
+      {
+        $lookup: {
+          from: 'messages',
+          localField: 'mint',
+          foreignField: 'tokenMint',
+          pipeline: [
+            { $match: { parentId: null } } // Only count root messages
+          ],
+          as: 'messages'
+        }
+      },
+      {
+        $addFields: {
+          numComments: { $size: '$messages' }
+        }
+      },
+      {
+        $project: {
+          messages: 0, // Remove the messages array from results
+          __v: 0
+        }
+      },
+      {
+        $sort: {
+          [sortBy === 'marketCapUSD' ? 'marketCapUSD' : sortBy]: 
+          sortOrder === 'desc' ? -1 : 1
+        }
+      },
+      { $limit: limit + 1 }
+    ]);
 
     const hasMore = tokens.length > limit;
     const results = tokens.slice(0, limit);
