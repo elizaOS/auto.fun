@@ -22,7 +22,6 @@ pub struct Config {
 
     pub platform_buy_fee: f64, //  platform fee percentage
     pub platform_sell_fee: f64,
-    pub platform_migration_fee: f64,
 
     pub curve_limit: u64, //  lamports to complete the bonding curve
 

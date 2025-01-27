@@ -1611,10 +1611,6 @@
             "type": "f64"
           },
           {
-            "name": "platform_migration_fee",
-            "type": "f64"
-          },
-          {
             "name": "curve_limit",
             "type": "u64"
           },

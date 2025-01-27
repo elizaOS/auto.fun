@@ -1617,10 +1617,6 @@ export type Serlaunchalot = {
             "type": "f64"
           },
           {
-            "name": "platformMigrationFee",
-            "type": "f64"
-          },
-          {
             "name": "curveLimit",
             "type": "u64"
           },
