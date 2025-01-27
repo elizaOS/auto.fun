@@ -169,7 +169,7 @@ export default function TradingInterface() {
               <img
                 src={token.image}
                 alt="AI Agent Profile"
-                className="rounded-xl w-auto h-[150px]"
+                className="rounded-xl h-[150px] self-start"
               />
               <div className="flex-1 flex flex-col self-stretch gap-2">
                 <div className="flex flex-col gap-2">
@@ -184,7 +184,7 @@ export default function TradingInterface() {
                     />
                   </div>
                 </div>
-                <p className="text-[#a1a1a1] text-sm md:text-lg break-all">
+                <p className="text-[#a1a1a1] text-sm md:text-lg break-word">
                   This AI agent is designed to process complex data and provide
                   intelligent insights. It leverages cutting-edge machine
                   learning algorithms and natural language processing to deliver
