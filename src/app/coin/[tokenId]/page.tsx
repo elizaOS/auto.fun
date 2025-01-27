@@ -286,7 +286,7 @@ export default function TradingInterface() {
           {/* Trades/Comments/Chat */}
           <div className="bg-[#171717] border border-[#262626] text-sm md:text-lg text-gray-400 rounded-xl p-4 md:p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="gap-2 mb-10 flex justify-start overflow-x-scroll">
+              <TabsList className="gap-2 mb-10 flex justify-start overflow-x-scroll lg:overflow-hidden">
                 <TabsTrigger
                   className={cn(
                     activeTab === "trades" ? "text-white bg-[#262626]" : "",
@@ -442,7 +442,7 @@ export default function TradingInterface() {
               />
             </div>
             <p className="text-xs text-gray-400 mt-2">
-              Graduate this coin to rayDium at $87,140 market cap. There is
+              Graduate this coin to Raydium at $87,140 market cap. There is
               0.382 SOL in the bonding curve.
             </p>
           </div>
