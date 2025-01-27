@@ -1,4 +1,3 @@
-pub mod amm_instruction;
 pub mod constants;
 pub mod errors;
 pub mod events;
