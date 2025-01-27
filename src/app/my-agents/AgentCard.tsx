@@ -1,14 +1,10 @@
-import { AgentCardProps } from "../../../types/components/agents/AgentCard.type";
+import { AgentSummary } from "../../../types/components/agents/index.type";
 import { AgentMedia } from "./AgentMedia";
 
-export const AgentCard = ({
-  image_src,
-  name,
-  description,
-  onClick,
-}: AgentCardProps) => {
+type AgentCardProps = Partial<AgentSummary>;
+export const AgentCard = ({ image_src, name, description }: AgentCardProps) => {
   return (
-    <button onClick={onClick} className="h-full">
+    <button className="h-full">
       <div className="flex flex-col bg-[#002605] p-6 rounded-2xl gap-6 h-full">
         <div className="flex justify-between items-center">
           <div className="flex gap-3 items-center">
