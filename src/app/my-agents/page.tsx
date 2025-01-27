@@ -1,12 +1,12 @@
 "use client";
 
-import { useAgents } from "@/utils/agent";
-import { useWallet } from "@solana/wallet-adapter-react";
-import { AgentsGridSkeleton } from "./AgentsGridSkeleton";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useAgents } from "@/utils/agent";
+import { AgentsGridSkeleton } from "./AgentsGridSkeleton";
 
 import { AgentCard } from "./AgentCard";
-import Link from "next/link";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 
 export default function AgentsPage() {
@@ -24,24 +24,18 @@ export default function AgentsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-8 pt-10 items-center pb-10">
+    <div className="flex flex-col justify-center items-center gap-[24px] pt-[64px] items-center max-w-[1360px] w-full self-center">
       <header className="flex flex-col self-stretch gap-10">
         <h1 className="text-center text-2xl">My Agents</h1>
         <div className="flex justify-end self-end">
           <Link href="/create">
-            <RoundedButton className="p-3 font-medium">
-              Create New Agent
-            </RoundedButton>
+            <RoundedButton className="p-3">Create New Agent</RoundedButton>
           </Link>
         </div>
       </header>
-      <main className="grid xl:grid-cols-3 grid-cols-1 gap-4 lg:grid-cols-2">
+      <main className="flex gap-4 flex-wrap w-full items-center justify-center">
         {agents.map((agent) => {
-          return (
-            <Link href={`/my-agents/${agent._id}`} key={agent._id}>
-              <AgentCard {...agent} />
-            </Link>
-          );
+          return <AgentCard key={agent._id} {...agent} />;
         })}
       </main>
     </div>
