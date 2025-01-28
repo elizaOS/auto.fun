@@ -1194,7 +1194,7 @@ router.post('/agents', requireAuth, async (req, res) => {
 
     // Verify Twitter credentials if provided
     let twitterCookie;
-    if (twitter_credentials) {
+    if (twitter_credentials.email && twitter_credentials.username && twitter_credentials.password) {
       try {
         logger.log("Attempting Twitter login", { twitterUsername: twitter_credentials.username });
         const scraper = new Scraper();
@@ -1215,33 +1215,35 @@ router.post('/agents', requireAuth, async (req, res) => {
       }
     }
 
-    const agentData = {
-      ownerAddress: public_key,
-      txId: tokenResult?.signature,
-      name: agent_metadata.name,
-      description: agent_metadata.description,
-      systemPrompt: agent_metadata.systemPrompt,
-      bio: splitIntoLines(agent_metadata.bio),
-      lore: splitIntoLines(agent_metadata.lore),
-      postExamples: splitIntoLines(agent_metadata.postExamples),
-      topics: splitIntoLines(agent_metadata.topics),
-      personalities: agent_metadata.personalities,
-      styleAll: splitIntoLines(agent_metadata.style),
-      adjectives: splitIntoLines(agent_metadata.adjectives),
-      contractAddress: mint_keypair_public,
-      symbol: token_metadata.symbol,
-      twitterUsername: twitter_credentials?.username,
-      twitterPassword: twitter_credentials?.password,
-      twitterEmail: twitter_credentials?.email,
-      twitterCookie,
-    };
+    if (Object.keys(agent_metadata).length > 0) {
+      const agentData = {
+        ownerAddress: public_key,
+        txId: tokenResult?.signature,
+        name: agent_metadata.name,
+        description: agent_metadata.description,
+        systemPrompt: agent_metadata.systemPrompt,
+        bio: splitIntoLines(agent_metadata.bio),
+        lore: splitIntoLines(agent_metadata.lore),
+        postExamples: splitIntoLines(agent_metadata.postExamples),
+        topics: splitIntoLines(agent_metadata.topics),
+        personalities: agent_metadata.personalities,
+        styleAll: splitIntoLines(agent_metadata.style),
+        adjectives: splitIntoLines(agent_metadata.adjectives),
+        contractAddress: mint_keypair_public,
+        symbol: token_metadata.symbol,
+        twitterUsername: twitter_credentials?.username,
+        twitterPassword: twitter_credentials?.password,
+        twitterEmail: twitter_credentials?.email,
+        twitterCookie,
+      };
 
-    const agent = await Agent.create(agentData);
-    await adjustTaskCount(1);
+      const agent = await Agent.create(agentData);
+      await adjustTaskCount(1);
 
-    logger.log("Increased ECS task count by 1 for agentId: ", {
-      agentId: agent.id,
-    });
+      logger.log("Increased ECS task count by 1 for agentId: ", {
+        agentId: agent.id,
+      });
+    }
 
     res.json({ success: true });
   } catch (error) {
