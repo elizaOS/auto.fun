@@ -153,13 +153,7 @@ export default function AgentUpdateForm() {
         </div>
         <div className="flex flex-col gap-4">
           <div className="text-xs flex flex-col bg-[#262626] p-4 rounded-xl gap-6 max-w-[420px] w-full border-solid border-[1px] border-[#03FF24]/15">
-            <Link
-              href={`https://pump.fun/coin/${contractAddress}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              View Token on pump.fun
-            </Link>
+            <Link href={`/coin/${contractAddress}`}>View Token</Link>
           </div>
           <div className="text-xs flex flex-col bg-[#262626] p-4 rounded-xl gap-6 max-w-[420px] w-full border-solid border-[1px] border-[#03FF24]/15">
             <Link
