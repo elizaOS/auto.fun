@@ -47,9 +47,11 @@ export const Nav = () => {
           </Link>
         </div>
         <div className="flex hidden md:flex gap-6 items-center">
-          <RoundedButton variant="outlined" className="p-3 px-4 border-none">
-            <Link href="/create">Create Agent</Link>
-          </RoundedButton>
+          <Link href="/create">
+            <RoundedButton variant="outlined" className="p-3 px-4 border-none">
+              Create Agent
+            </RoundedButton>
+          </Link>
           {authenticated && (
             <Link href={`/my-agents`}>
               <RoundedButton
