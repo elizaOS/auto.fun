@@ -917,44 +917,110 @@ class TokenMonitor {
 
       logger.log("Found LP balance:", lpBalance.amount.toString());
 
+      // devnet fix? needs testing still
       if (raydium.cluster === 'devnet') {
-        logger.log("WARNING: No Raydium Lock Program on Devnet")
-        return;
+        const data = await raydium.cpmm.getPoolInfoFromRpc(poolId);
+        poolInfo = data.poolInfo;
+        poolKeys = data.poolKeys;
+      } else {
+        const data = await raydium.api.fetchPoolById({ ids: poolId });
+        if (!data || data.length === 0) {
+          logger.error('Pool info not found');
+          throw new Error('Pool info not found');
+        }
+        poolInfo = data[0] as ApiV3PoolInfoStandardItemCpmm;
       }
 
+      // Get split percentages from env vars with defaults
+      const PRIMARY_LOCK_PERCENTAGE = Number(process.env.PRIMARY_LOCK_PERCENTAGE || '90');
+      const SECONDARY_LOCK_PERCENTAGE = Number(process.env.SECONDARY_LOCK_PERCENTAGE || '10');
+
+      // Validate percentages = 100%
+      if (PRIMARY_LOCK_PERCENTAGE + SECONDARY_LOCK_PERCENTAGE !== 100) {
+        logger.error('Lock percentages must sum to 100%', {
+          primary: PRIMARY_LOCK_PERCENTAGE,
+          secondary: SECONDARY_LOCK_PERCENTAGE
+        });
+        throw new Error('Invalid lock percentages configuration');
+      }
+
+      const totalLPAmount = lpBalance.amount;
+      const primaryAmount = totalLPAmount.muln(PRIMARY_LOCK_PERCENTAGE).divn(100);
+      const secondaryAmount = totalLPAmount.muln(SECONDARY_LOCK_PERCENTAGE).divn(100);
+
+      logger.log("LP Token Split:", {
+        total: totalLPAmount.toString(),
+        primaryAmount: primaryAmount.toString(),
+        secondaryAmount: secondaryAmount.toString(),
+        primaryPercentage: PRIMARY_LOCK_PERCENTAGE,
+        secondaryPercentage: SECONDARY_LOCK_PERCENTAGE
+      });
+
       // Lock the LP tokens
-      const { execute: lockExecute, extInfo: lockExtInfo } = await raydium.cpmm.lockLp({
+      // const { execute: lockExecute, extInfo: lockExtInfo } = await raydium.cpmm.lockLp({
+      //   poolInfo,
+      //   poolKeys,
+      //   lpAmount: lpBalance.amount, // Lock Full Amount, we can do less if we want
+      //   withMetadata: true,
+      //   txVersion,
+      //   // optional fee
+      //   computeBudgetConfig: {
+      //     units: 300000,
+      //     microLamports: 50000
+      //   }
+      // });
+
+      // const { txId: lockTxId } = await lockExecute({ sendAndConfirm: true });
+      // logger.log('LP tokens locked with txId:', lockTxId);
+      // logger.log("NFT Minted for Burn & Earn Lock: ", lockExtInfo.nftMint.toString());
+      // logger.log('lp locked', { txId: `https://explorer.solana.com/tx/${lockTxId}`, lockExtInfo })
+
+      // First lock - Primary percentage
+      const { execute: lockExecutePrimary, extInfo: lockExtInfoPrimary } = await raydium.cpmm.lockLp({
         poolInfo,
         poolKeys,
-        lpAmount: lpBalance.amount, // Lock Full Amount, we can do less if we want
+        lpAmount: primaryAmount,
         withMetadata: true,
         txVersion,
-        // optional fee
         computeBudgetConfig: {
           units: 300000,
           microLamports: 50000
         }
       });
 
-      const { txId: lockTxId } = await lockExecute({ sendAndConfirm: true });
-      logger.log('LP tokens locked with txId:', lockTxId);
-      logger.log("NFT Minted for Burn & Earn Lock: ", lockExtInfo.nftMint.toString());
-      // logger.log('lp locked', { txId: `https://explorer.solana.com/tx/${lockTxId}`, lockExtInfo })
+      const { txId: lockTxIdPrimary } = await lockExecutePrimary({ sendAndConfirm: true });
+      logger.log(`${PRIMARY_LOCK_PERCENTAGE}% LP tokens locked with txId:`, lockTxIdPrimary);
+      logger.log(`NFT Minted for ${PRIMARY_LOCK_PERCENTAGE}% Lock:`, lockExtInfoPrimary.nftMint.toString());
 
-      // Store lock info in token record
+      // Second lock - Secondary percentage
+      const { execute: lockExecuteSecondary, extInfo: lockExtInfoSecondary } = await raydium.cpmm.lockLp({
+        poolInfo,
+        poolKeys,
+        lpAmount: secondaryAmount,
+        withMetadata: true,
+        txVersion,
+        computeBudgetConfig: {
+          units: 300000,
+          microLamports: 50000
+        }
+      });
+
+      const { txId: lockTxIdSecondary } = await lockExecuteSecondary({ sendAndConfirm: true });
+      logger.log(`${SECONDARY_LOCK_PERCENTAGE}% LP tokens locked with txId:`, lockTxIdSecondary);
+      logger.log(`NFT Minted for ${SECONDARY_LOCK_PERCENTAGE}% Lock:`, lockExtInfoSecondary.nftMint.toString());
+
+      // Store both lock infos in token record
       const lockedToken = await Token.findOneAndUpdate(
         { mint: token.mint },
         {
-          lockId: lockTxId.toString(),
-          nftMinted: lockExtInfo.nftMint.toString(),
-          lockedAmount: lpBalance.amount.toString(),
+          lockId: `${lockTxIdPrimary},${lockTxIdSecondary}`,
+          nftMinted: `${lockExtInfoPrimary.nftMint.toString()},${lockExtInfoSecondary.nftMint.toString()}`,
+          lockedAmount: totalLPAmount.toString(),
           lockedAt: new Date(),
           status: 'locked',
           lastUpdated: new Date()
         },
-        { 
-          new: true
-        }
+        { new: true }
       );
 
       logger.log(`Migration completed for token ${token.mint} on Raydium CP-Swap LP: ${poolAddresses.id}`);

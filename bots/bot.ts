@@ -9,6 +9,8 @@ async function createRandomToken() {
     const sym = faker.finance.currencyCode();
     const username = faker.internet.username();
     // Generate random token data
+
+    
     const tokenData = {
       name: sym + " Token", // Keep name reasonably short
       symbol: sym, // 3-4 letter symbol
@@ -22,7 +24,7 @@ async function createRandomToken() {
       xname: username,
       xurl: `https://x.com/${username}/89fsda8hf9ftweetTeST`,
       xavatarurl: `https://x.com/${username}/imgtest.png`,
-      xtext: `This is a test tweet text for ${username}`
+      xtext: `This is a test tweet text for ${username}`,
     };
 
     // Make API request

@@ -1487,6 +1487,11 @@ export type Serlaunchalot = {
       "code": 6013,
       "name": "transactionExpired",
       "msg": "Transaction expired"
+    },
+    {
+      "code": 6014,
+      "name": "decimalOverflow",
+      "msg": "Decimal overflow"
     }
   ],
   "types": [

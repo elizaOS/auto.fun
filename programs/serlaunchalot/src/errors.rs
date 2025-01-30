@@ -45,4 +45,7 @@ pub enum PumpfunError {
 
     #[msg("Transaction expired")]
     TransactionExpired,
+
+    #[msg("Decimal overflow")]
+    DecimalOverflow,
 }

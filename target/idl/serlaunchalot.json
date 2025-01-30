@@ -1481,6 +1481,11 @@
       "code": 6013,
       "name": "TransactionExpired",
       "msg": "Transaction expired"
+    },
+    {
+      "code": 6014,
+      "name": "DecimalOverflow",
+      "msg": "Decimal overflow"
     }
   ],
   "types": [

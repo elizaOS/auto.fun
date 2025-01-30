@@ -1,7 +1,7 @@
 use crate::{
     constants::{CONFIG, GLOBAL},
     errors::*,
-    state::Config,
+    state::{Config, AmountConfig}, 
     utils::sol_transfer_from_user,
 };
 use anchor_lang::{prelude::*, system_program, Discriminator};
@@ -60,7 +60,23 @@ impl<'info> Configure<'info> {
         let serialized_config_len = serialized_config.len();
         let config_cost = Rent::get()?.minimum_balance(serialized_config_len);
 
-        //  init config pda
+        // Decimal overflow check
+        match new_config.token_decimals_config {
+            AmountConfig::Range { min: _, max } => {
+                if let Some(max_val) = max {
+                    if max_val >= 20 {
+                        return err!(PumpfunError::DecimalOverflow);
+                    }
+                }
+            }
+            AmountConfig::Enum(options) => {
+                if options.iter().any(|&val| val >= 20) {
+                    return err!(PumpfunError::DecimalOverflow);
+                }
+            }
+        }
+    
+        // Init config pda if needed
         if self.config.owner != &crate::ID {
             let cpi_context = CpiContext::new(
                 self.system_program.to_account_info(),
@@ -82,12 +98,17 @@ impl<'info> Configure<'info> {
                 return err!(PumpfunError::IncorrectConfigAccount);
             }
             let config = Config::deserialize(&mut &data[8..])?;
-
+                
             if config.authority != self.payer.key() {
                 return err!(PumpfunError::IncorrectAuthority);
             }
+        
+            // Prevent changing authority through configure instruction
+            if config.authority != new_config.authority {
+                return err!(PumpfunError::IncorrectAuthority);
+            }
         }
-
+    
         let lamport_delta = (config_cost as i64) - (self.config.lamports() as i64);
         if lamport_delta > 0 {
             system_program::transfer(
@@ -100,13 +121,17 @@ impl<'info> Configure<'info> {
                 ),
                 lamport_delta as u64,
             )?;
+        }
+    
+        // Always check and realloc if needed, regardless of lamport balance
+        if serialized_config_len > self.config.data_len() {
             self.config.realloc(serialized_config_len, false)?;
         }
-
+    
         (self.config.try_borrow_mut_data()?[..serialized_config_len])
             .copy_from_slice(serialized_config.as_slice());
-
-        //  initialize global vault if needed
+    
+        // Initialize global vault if needed
         if self.global_vault.lamports() == 0 {
             sol_transfer_from_user(
                 &self.payer,
@@ -115,7 +140,7 @@ impl<'info> Configure<'info> {
                 890880,
             )?;
         }
-
+    
         Ok(())
     }
 }
