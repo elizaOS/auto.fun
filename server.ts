@@ -941,7 +941,6 @@ class TokenMonitor {
           primary: PRIMARY_LOCK_PERCENTAGE,
           secondary: SECONDARY_LOCK_PERCENTAGE
         });
-        throw new Error('Invalid lock percentages configuration');
       }
 
       const totalLPAmount = lpBalance.amount;
