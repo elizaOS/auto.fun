@@ -21,19 +21,17 @@ const AgentSearchResult = ({
   symbol,
   id,
   marketCap,
+  imageUrl,
 }: {
   name: string;
   symbol: string;
   id: string;
   marketCap: number;
+  imageUrl: string;
 }) => {
   return (
     <div className="self-stretch bg-neutral-900 flex items-center gap-6 p-2">
-      <img
-        className="w-10 h-10 rounded-lg"
-        src="https://via.placeholder.com/40x40"
-        alt={name}
-      />
+      <img className="w-10 h-10 rounded-lg" src={imageUrl} alt={name} />
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <div className="text-white text-sm font-medium font-['DM Mono'] leading-tight">
@@ -85,7 +83,7 @@ const AgentSearch = () => {
   };
 
   return (
-    <div className="relative">
+    <div className="relative flex-1 max-w-[500px]">
       <input
         type="text"
         value={searchInput}
@@ -123,6 +121,7 @@ const AgentSearch = () => {
               marketCap={token.marketCapUSD}
               name={token.name}
               symbol={token.ticker}
+              imageUrl={token.image}
             />
           ))}
         </div>
@@ -151,7 +150,7 @@ export const Nav = () => {
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
-    <nav className="flex justify-between items-center fixed top-0 left-0 right-0 z-50 px-4 py-3 bg-[#0e0e0e] border-b border-b-[#03ff24]/40">
+    <nav className="flex justify-between items-center fixed top-0 left-0 right-0 z-50 px-4 py-3 bg-[#0e0e0e] border-b border-b-[#03ff24]/40 gap-10">
       <div className="flex gap-6 items-center">
         <div className="flex items-center">
           <Link href="/" className="flex items-center">
@@ -181,7 +180,7 @@ export const Nav = () => {
           )}
         </div>
       </div>
-      <div className="hidden md:flex gap-6 items-center">
+      <div className="hidden md:flex gap-6 items-center justify-end flex-1">
         <AgentSearch />
         <button
           className="text-center text-[#d1d1d1] text-base font-medium leading-normal py-3 px-4"
