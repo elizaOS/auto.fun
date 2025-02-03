@@ -60,7 +60,7 @@ const AgentSearchResult = ({
           MC:
         </div>
         <div className="text-[#03ff24] text-xs font-normal leading-tight">
-          {formatNumber(marketCap, 0)}
+          ${formatNumber(marketCap, 0)}
         </div>
       </div>
     </Link>
