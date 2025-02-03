@@ -5,7 +5,7 @@ import Image from "next/image";
 import { WalletButton } from "../common/button/WalletButton";
 import { RoundedButton } from "../common/button/RoundedButton";
 import { useUserStore } from "../providers/UserProvider";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Modal } from "../common/Modal";
 import {
   DropdownMenu,
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSearchTokens } from "@/utils/tokens";
 import { formatNumber } from "@/utils/number";
+import { useOutsideClickDetection } from "@/hooks/actions/useOutsideClickDetection";
 
 const AgentSearchResult = ({
   name,
@@ -22,15 +23,21 @@ const AgentSearchResult = ({
   id,
   marketCap,
   imageUrl,
+  onClick,
 }: {
   name: string;
   symbol: string;
   id: string;
   marketCap: number;
   imageUrl: string;
+  onClick: () => void;
 }) => {
   return (
-    <div className="self-stretch bg-neutral-900 flex items-center gap-6 p-2">
+    <Link
+      href={`/coin/${id}`}
+      className="self-stretch bg-neutral-900 flex items-center gap-6 p-2 hover:bg-[#262626] rounded-md"
+      onClick={onClick}
+    >
       <img className="w-10 h-10 rounded-lg" src={imageUrl} alt={name} />
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
@@ -56,7 +63,7 @@ const AgentSearchResult = ({
           {formatNumber(marketCap, 0)}
         </div>
       </div>
-    </div>
+    </Link>
   );
 };
 
@@ -67,6 +74,11 @@ const AgentSearch = () => {
   const [searchResults, setSearchResults] = useState<
     Awaited<ReturnType<typeof searchTokens>>["tokens"]
   >([]);
+  const ref = useRef<HTMLDivElement>(null);
+  useOutsideClickDetection([ref], () => {
+    setShowSearchResults(false);
+    setSearchResults([]);
+  });
 
   const handleSearch = async (searchQuery: string) => {
     console.log("Searching for:", searchQuery);
@@ -110,7 +122,10 @@ const AgentSearch = () => {
       </svg>
 
       {showSearchResults && (
-        <div className="w-full p-3.5 bg-neutral-900 rounded-lg border border-neutral-800 flex flex-col gap-6 absolute mt-4">
+        <div
+          className="w-full min-w-[264px] p-3.5 bg-neutral-900 rounded-lg border border-neutral-800 flex flex-col gap-6 absolute mt-4"
+          ref={ref}
+        >
           <div className="text-[#03ff24] text-xs font-normal font-['DM Mono'] uppercase leading-none tracking-widest">
             Agents
           </div>
@@ -122,6 +137,7 @@ const AgentSearch = () => {
               name={token.name}
               symbol={token.ticker}
               imageUrl={token.image}
+              onClick={() => setShowSearchResults(false)}
             />
           ))}
         </div>
