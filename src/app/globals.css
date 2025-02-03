@@ -145,7 +145,6 @@ input:focus,
 textarea:focus,
 select:focus {
   outline: none;
-  border: none;
   font: inherit;
 }
 

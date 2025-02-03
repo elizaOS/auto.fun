@@ -9,7 +9,7 @@ export const formatNumber = (value: number, decimals: number = 2): string => {
   const format = CURRENCY_FORMATS.find(({ divisor }) => value >= divisor);
 
   if (format) {
-    return `${(value / format.divisor).toFixed(1)}${format.suffix}`;
+    return `${(value / format.divisor).toFixed(decimals)}${format.suffix}`;
   }
 
   return Number(value.toFixed(decimals)).toString();

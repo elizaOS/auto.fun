@@ -1,4 +1,4 @@
-import { createQuery } from "react-query-kit";
+import { createMutation, createQuery } from "react-query-kit";
 import { womboApi } from "./fetch";
 import { z } from "zod";
 import { usePaginatedLiveData } from "./paginatedLiveData";
@@ -19,6 +19,18 @@ export const useTokens = () => {
     },
   });
 };
+
+export const useSearchTokens = createMutation({
+  mutationKey: ["search-tokens"],
+  mutationFn: async (search: string) => {
+    const tokens = await womboApi.get({
+      endpoint: `/tokens?search=${search}`,
+      schema: z.object({ tokens: TokenSchema.array() }),
+    });
+
+    return tokens;
+  },
+});
 
 export const useToken = createQuery({
   queryKey: ["tokens"],

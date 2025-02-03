@@ -13,6 +13,123 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import { useSearchTokens } from "@/utils/tokens";
+import { formatNumber } from "@/utils/number";
+
+const AgentSearchResult = ({
+  name,
+  symbol,
+  id,
+  marketCap,
+}: {
+  name: string;
+  symbol: string;
+  id: string;
+  marketCap: number;
+}) => {
+  return (
+    <div className="self-stretch bg-neutral-900 flex items-center gap-6 p-2">
+      <img
+        className="w-10 h-10 rounded-lg"
+        src="https://via.placeholder.com/40x40"
+        alt={name}
+      />
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <div className="text-white text-sm font-medium font-['DM Mono'] leading-tight">
+            {name}
+          </div>
+          <div className="text-[#a6a6a6] text-xs font-normal font-['DM Mono'] uppercase leading-none tracking-widest">
+            ${symbol}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="text-[#a6a6a6] text-xs font-normal font-['DM Mono'] leading-tight">
+            {id.slice(0, 3)}...{id.slice(-3)}
+          </div>
+          <div className="w-4 h-4 relative overflow-hidden" />
+        </div>
+      </div>
+      <div className="flex items-center gap-1 ml-auto">
+        <div className="text-[#03ff24] text-xs font-normal font-['DM Mono'] leading-tight">
+          MC:
+        </div>
+        <div className="text-[#03ff24] text-xs font-normal font-['DM Mono'] leading-tight">
+          {formatNumber(marketCap, 0)}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AgentSearch = () => {
+  const [searchInput, setSearchInput] = useState("");
+  const { mutateAsync: searchTokens } = useSearchTokens();
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [searchResults, setSearchResults] = useState<
+    Awaited<ReturnType<typeof searchTokens>>["tokens"]
+  >([]);
+
+  const handleSearch = async (searchQuery: string) => {
+    console.log("Searching for:", searchQuery);
+    const { tokens } = await searchTokens(searchQuery);
+    setSearchResults(tokens);
+    setShowSearchResults(true);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const trimmedInput = searchInput.trim();
+    if (e.key === "Enter" && trimmedInput.length > 0) {
+      handleSearch(trimmedInput);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        value={searchInput}
+        onChange={(e) => setSearchInput(e.target.value)}
+        onKeyDown={handleKeyPress}
+        placeholder="Symbol or Address..."
+        className="w-full h-11 pl-10 pr-3 rounded-lg border border-[#d1d1d1] bg-transparent text-[#d1d1d1] text-sm placeholder:text-sm leading-tight focus:outline-none"
+      />
+      <svg
+        className="absolute left-3 top-1/2 -translate-y-1/2"
+        width="20"
+        height="20"
+        viewBox="0 0 20 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M17 17L12.3333 12.3333M13.8889 8.44444C13.8889 11.4513 11.4513 13.8889 8.44444 13.8889C5.43756 13.8889 3 11.4513 3 8.44444C3 5.43756 5.43756 3 8.44444 3C11.4513 3 13.8889 5.43756 13.8889 8.44444Z"
+          stroke="#D1D1D1"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+
+      {showSearchResults && (
+        <div className="w-full p-3.5 bg-neutral-900 rounded-lg border border-neutral-800 flex flex-col gap-6 absolute mt-4">
+          <div className="text-[#03ff24] text-xs font-normal font-['DM Mono'] uppercase leading-none tracking-widest">
+            Agents
+          </div>
+          {searchResults.map((token) => (
+            <AgentSearchResult
+              key={token.mint}
+              id={token.mint}
+              marketCap={token.marketCapUSD}
+              name={token.name}
+              symbol={token.ticker}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Step = ({
   number,
@@ -63,6 +180,7 @@ export const Nav = () => {
         </div>
       </div>
       <div className="hidden md:flex gap-6 items-center">
+        <AgentSearch />
         <button
           className="text-center text-[#d1d1d1] text-base font-medium leading-normal py-3 px-4"
           onClick={() => setModalOpen(true)}
