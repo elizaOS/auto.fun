@@ -43,8 +43,6 @@ export default function AgentUpdateForm() {
           }
         : undefined,
   });
-  const sideButtonStyles = "p-3 bg-transparent font-medium w-full";
-
   if (agentData !== undefined && "unauthenticated" in agentData) {
     router.push("/");
     return null;
@@ -98,45 +96,39 @@ export default function AgentUpdateForm() {
   const { name, image_src, contractAddress } = agentData;
 
   return (
-    <div className="flex flex-col justify-center h-full relative">
-      <button
-        className="absolute top-4 left-[5%]"
-        onClick={() => router.back()}
-      >
-        <svg
-          width="44"
-          height="44"
-          viewBox="0 0 44 44"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <rect
-            x="0.5"
-            y="0.5"
-            width="43"
-            height="43"
-            rx="11.5"
-            stroke="#03FF24"
-          />
-          <path
-            d="M16.1665 21.9993H27.8332M16.1665 21.9993L19.4998 25.3327M16.1665 21.9993L19.4998 18.666"
-            stroke="#03FF24"
-            strokeWidth="1.66667"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
-      <div className="w-full flex justify-center">
-        {" "}
-        <div className="flex flex-col md:flex-row items-center">
-          <div className="flex flex-col gap-6 top-6">
-            <div className="p-4 flex bg-[#002605] rounded-xl items-center justify-between">
-              <div className="flex gap-3 items-center">
-                <AgentMedia image_src={image_src} />
-                <p>{name}</p>
-              </div>
-
+    <div className="w-full flex justify-center items-start gap-10 flex-col lg:flex-row">
+      {" "}
+      <div className="flex flex-col gap-6 top-6 pt-7">
+        <button className="" onClick={() => router.back()}>
+          <svg
+            width="44"
+            height="44"
+            viewBox="0 0 44 44"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect
+              x="0.5"
+              y="0.5"
+              width="43"
+              height="43"
+              rx="11.5"
+              stroke="#03FF24"
+            />
+            <path
+              d="M16.1665 21.9993H27.8332M16.1665 21.9993L19.4998 25.3327M16.1665 21.9993L19.4998 18.666"
+              stroke="#03FF24"
+              strokeWidth="1.66667"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+        <div className="flex flex-col bg-[#171717] p-4 rounded-xl gap-6 max-w-[420px] w-full border-solid border-[1px] border-[#03FF24]/15">
+          <div className="flex gap-3 items-center">
+            <AgentMedia image_src={image_src} />
+            <div className="flex justify-between items-center flex-1">
+              <p className="text-[#03FF24]">{name}</p>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="20"
@@ -157,44 +149,37 @@ export default function AgentUpdateForm() {
                 </defs>
               </svg>
             </div>
-            <div className="flex flex-col gap-4">
-              <Link
-                href={`https://pump.fun/coin/${contractAddress}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <RoundedButton className={sideButtonStyles} variant="outlined">
-                  View Token on pump.fun
-                </RoundedButton>
-              </Link>
-              <Link
-                href={`https://x.com/${agentData?.twitterUsername}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <RoundedButton className={sideButtonStyles} variant="outlined">
-                  View Agent on X / Twitter
-                </RoundedButton>
-              </Link>
-            </div>
           </div>
-
-          <CenterFormContainer
-            formComponent={
-              <AgentDetails form={agentForm} mode="update" loading={updating} />
-            }
-            submitButton={
-              <RoundedButton
-                className="font-medium p-3"
-                onClick={updateAgent}
-                disabled={updating}
-              >
-                Update Agent
-              </RoundedButton>
-            }
-          />
+        </div>
+        <div className="flex flex-col gap-4">
+          <div className="text-xs flex flex-col bg-[#262626] p-4 rounded-xl gap-6 max-w-[420px] w-full border-solid border-[1px] border-[#03FF24]/15">
+            <Link href={`/coin/${contractAddress}`}>View Token</Link>
+          </div>
+          <div className="text-xs flex flex-col bg-[#262626] p-4 rounded-xl gap-6 max-w-[420px] w-full border-solid border-[1px] border-[#03FF24]/15">
+            <Link
+              href={`https://x.com/${agentData?.twitterUsername}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View Agent on X / Twitter
+            </Link>
+          </div>
         </div>
       </div>
+      <CenterFormContainer
+        formComponent={
+          <AgentDetails form={agentForm} mode="update" loading={updating} />
+        }
+        submitButton={
+          <RoundedButton
+            className="font-medium p-3 self-center"
+            onClick={updateAgent}
+            disabled={updating}
+          >
+            Update Agent
+          </RoundedButton>
+        }
+      />
     </div>
   );
 }
@@ -202,7 +187,7 @@ export default function AgentUpdateForm() {
 const SkeletonForm = () => {
   return (
     <div className="flex flex-col justify-center h-full relative w-full items-center">
-      <div className="flex items-center relative w-[896px]">
+      <div className="flex items-center relative lg:w-[896px] gap-10 flex-col lg:flex-row">
         <div className="flex flex-col gap-6 top-6">
           <Skeleton width={268} height={65} className="rounded-xl" />
           <div className="flex flex-col gap-4">

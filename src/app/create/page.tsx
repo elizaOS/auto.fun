@@ -58,11 +58,15 @@ export default function TransactionSignPage() {
     twitterCreds: TwitterCredentials;
     agentDetails: AgentDetails;
   }> => {
-    const filledAgentDetails = await generateAgentDetails({
-      inputs: agentForm.getValues(),
-    });
-    agentForm.reset(filledAgentDetails);
-    const { agentDetails, tokenMetadata, twitterCredentials } = getFormValues();
+    let { agentDetails, tokenMetadata, twitterCredentials } = getFormValues();
+
+    if (Object.keys(agentDetails).length) {
+      const filledAgentDetails = await generateAgentDetails({
+        inputs: agentForm.getValues(),
+      });
+      agentForm.reset(filledAgentDetails);
+      ({ agentDetails, tokenMetadata, twitterCredentials } = getFormValues());
+    }
 
     const media_base64 = tokenMetadata.media_base64;
 
@@ -89,15 +93,21 @@ export default function TransactionSignPage() {
     try {
       const { tokenMeta, twitterCreds, agentDetails } = await convertFormData();
 
-      switch (await validateTwitterCredentials(twitterCreds)) {
-        case "valid":
-          break;
-        case "invalid":
-          toast.error("Invalid Twitter credentials. Please try again.");
-          return;
-        case "unknown_error":
-          toast.error("Oops! Something went wrong. Please try again.");
-          return;
+      if (
+        twitterCreds.email &&
+        twitterCreds.password &&
+        twitterCreds.username
+      ) {
+        switch (await validateTwitterCredentials(twitterCreds)) {
+          case "valid":
+            break;
+          case "invalid":
+            toast.error("Invalid Twitter credentials. Please try again.");
+            return;
+          case "unknown_error":
+            toast.error("Oops! Something went wrong. Please try again.");
+            return;
+        }
       }
 
       const { mintPublicKey } = await createAgent({
@@ -130,6 +140,26 @@ export default function TransactionSignPage() {
   const FormButton = useMemo(() => {
     switch (currentStep) {
       case "token":
+        return (
+          <>
+            <div className="flex items-center gap-6">
+              <RoundedButton
+                className="px-6 py-3"
+                disabled={!canGoNext}
+                onClick={submitForm}
+              >
+                Launch token
+              </RoundedButton>
+              <RoundedButton
+                className="px-6 py-3"
+                onClick={next}
+                disabled={!canGoNext}
+              >
+                Add agent
+              </RoundedButton>
+            </div>
+          </>
+        );
       case "agent":
         return (
           <RoundedButton
@@ -168,7 +198,7 @@ export default function TransactionSignPage() {
         <div className="flex flex-col items-center p-6 gap-6">
           <Spinner />
           <p className="p-3 bg-[#03FF24] text-black rounded-lg font-bold">
-            Launching Token to pump.fun...
+            Launching Token...
           </p>
         </div>
       </Modal>

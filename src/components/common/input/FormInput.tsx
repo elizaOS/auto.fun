@@ -46,7 +46,7 @@ export const FormInput = ({
       <label className="text-[16px]">{label}</label>
       <div className={backgroundColor[variant || "default"]}>
         <div
-          className={`flex items-center bg-[#002605] rounded-xl overflow-hidden ${borderStyles[variant || "default"]}`}
+          className={`flex items-center bg-[#262626] rounded-xl overflow-hidden ${borderStyles[variant || "default"]}`}
         >
           {leftIndicator && (
             <div className={`${leftIndicatorStyle} pl-3 flex justify-center`}>

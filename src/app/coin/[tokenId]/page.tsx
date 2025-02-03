@@ -169,7 +169,7 @@ export default function TradingInterface() {
               <img
                 src={token.image}
                 alt="AI Agent Profile"
-                className="rounded-xl w-auto h-[150px]"
+                className="rounded-xl h-[150px] self-start"
               />
               <div className="flex-1 flex flex-col self-stretch gap-2">
                 <div className="flex flex-col gap-2">
@@ -184,7 +184,7 @@ export default function TradingInterface() {
                     />
                   </div>
                 </div>
-                <p className="text-[#a1a1a1] text-sm md:text-lg break-all">
+                <p className="text-[#a1a1a1] text-sm md:text-lg break-word">
                   This AI agent is designed to process complex data and provide
                   intelligent insights. It leverages cutting-edge machine
                   learning algorithms and natural language processing to deliver
@@ -286,7 +286,7 @@ export default function TradingInterface() {
           {/* Trades/Comments/Chat */}
           <div className="bg-[#171717] border border-[#262626] text-sm md:text-lg text-gray-400 rounded-xl p-4 md:p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="gap-2 mb-10 flex justify-start overflow-x-scroll">
+              <TabsList className="gap-2 mb-10 flex justify-start overflow-x-scroll lg:overflow-hidden">
                 <TabsTrigger
                   className={cn(
                     activeTab === "trades" ? "text-white bg-[#262626]" : "",
@@ -442,7 +442,7 @@ export default function TradingInterface() {
               />
             </div>
             <p className="text-xs text-gray-400 mt-2">
-              Graduate this coin to rayDium at $87,140 market cap. There is
+              Graduate this coin to Raydium at $87,140 market cap. There is
               0.382 SOL in the bonding curve.
             </p>
           </div>
