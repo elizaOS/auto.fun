@@ -13,7 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { useSearchTokens } from "@/utils/tokens";
+import { Token, useSearchTokens } from "@/utils/tokens";
 import { formatNumber } from "@/utils/number";
 import { useOutsideClickDetection } from "@/hooks/actions/useOutsideClickDetection";
 
@@ -111,9 +111,7 @@ const AgentSearch = () => {
   const [searchInput, setSearchInput] = useState("");
   const { mutateAsync: searchTokens } = useSearchTokens();
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [searchResults, setSearchResults] = useState<
-    Awaited<ReturnType<typeof searchTokens>>["tokens"]
-  >([]);
+  const [searchResults, setSearchResults] = useState<Token[]>([]);
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClickDetection([ref], () => {
     setShowSearchResults(false);
