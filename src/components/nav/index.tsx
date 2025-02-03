@@ -41,25 +41,25 @@ const AgentSearchResult = ({
       <img className="w-10 h-10 rounded-lg" src={imageUrl} alt={name} />
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
-          <div className="text-white text-sm font-medium font-['DM Mono'] leading-tight">
+          <div className="text-white text-sm font-medium leading-tight">
             {name}
           </div>
-          <div className="text-[#a6a6a6] text-xs font-normal font-['DM Mono'] uppercase leading-none tracking-widest">
+          <div className="text-[#a6a6a6] text-xs font-normal uppercase leading-none tracking-widest">
             ${symbol}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="text-[#a6a6a6] text-xs font-normal font-['DM Mono'] leading-tight">
+          <div className="text-[#a6a6a6] text-xs font-normal leading-tight">
             {id.slice(0, 3)}...{id.slice(-3)}
           </div>
           <div className="w-4 h-4 relative overflow-hidden" />
         </div>
       </div>
       <div className="flex items-center gap-1 ml-auto">
-        <div className="text-[#03ff24] text-xs font-normal font-['DM Mono'] leading-tight">
+        <div className="text-[#03ff24] text-xs font-normal leading-tight">
           MC:
         </div>
-        <div className="text-[#03ff24] text-xs font-normal font-['DM Mono'] leading-tight">
+        <div className="text-[#03ff24] text-xs font-normal leading-tight">
           {formatNumber(marketCap, 0)}
         </div>
       </div>
@@ -126,7 +126,7 @@ const AgentSearch = () => {
           className="w-full min-w-[264px] p-3.5 bg-neutral-900 rounded-lg border border-neutral-800 flex flex-col gap-6 absolute mt-4"
           ref={ref}
         >
-          <div className="text-[#03ff24] text-xs font-normal font-['DM Mono'] uppercase leading-none tracking-widest">
+          <div className="text-[#03ff24] text-xs font-normal uppercase leading-none tracking-widest">
             Agents
           </div>
           {searchResults.map((token) => (
