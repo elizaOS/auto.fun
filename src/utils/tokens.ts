@@ -5,13 +5,16 @@ import { usePaginatedLiveData } from "./paginatedLiveData";
 import { TokenSchema } from "./tokenSchema";
 
 export type Token = z.infer<typeof TokenSchema>;
+const HomepageTokenSchema = TokenSchema.and(
+  z.object({ numComments: z.number() }),
+);
 
 export const useTokens = () => {
   return usePaginatedLiveData({
     itemsPerPage: 30,
     maxPages: 4,
     endpoint: "/tokens",
-    validationSchema: TokenSchema,
+    validationSchema: HomepageTokenSchema,
     getUniqueId: (token) => token.mint,
     socketConfig: {
       subscribeEvent: "subscribeGlobal",
