@@ -28,4 +28,8 @@ export const TokenSchema = z.object({
   virtualReserves: z.number(),
   solPriceUSD: z.number(),
   holderCount: z.number().default(0),
+  description: z.string(),
+  discord: z.string().optional(),
+  twitter: z.string().optional(),
+  telegram: z.string().optional(),
 });
