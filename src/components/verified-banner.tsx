@@ -5,15 +5,18 @@ import { Token } from "@/utils/tokens";
 import { Bot, Sparkles, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import Skeleton from "react-loading-skeleton";
+import { useRouter } from "next/navigation";
 
 export function VerifiedBanner({ tokens }: { tokens: Token[] }) {
+  const router = useRouter();
   return tokens && tokens.length > 0 ? (
     <div className="mb-8">
       <div className="flex gap-4 overflow-x-auto md:overflow-hidden">
         {tokens.map((token, index) => (
           <Card
             key={token.mint}
-            className="bg-black border-green-500/20 overflow-hidden flex-shrink-0 w-80 md:w-auto md:flex-1"
+            className="bg-black border-green-500/20 hover:border-green-500/50 overflow-hidden flex-shrink-0 w-80 md:w-auto md:flex-1 cursor-pointer"
+            onClick={() => router.push(`/coin/${token.mint}`)}
           >
             <CardContent className="p-0 relative aspect-[2/1] flex">
               <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-transparent" />
