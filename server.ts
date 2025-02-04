@@ -364,7 +364,8 @@ class TokenMonitor {
                 priceChange24h: 0,
                 price24hAgo: tokenPriceUSD,
                 volume24h: 0,
-                inferenceCount: 0
+                inferenceCount: 0,
+                holderCount: 0
               },
               { 
                 upsert: true,
