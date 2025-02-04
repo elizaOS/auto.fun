@@ -19,6 +19,9 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Comments } from "./Comments";
 
+// Import Fal AI client
+import { fal } from "@fal-ai/client";
+
 const HolderSchema = z.object({
   address: z.string(),
   mint: z.string(),
@@ -30,8 +33,6 @@ const HolderSchema = z.object({
 });
 
 export default function TradingInterface() {
-  // const [amount, setAmount] = useState(0);
-  // const [slippage, setSlippage] = useState(1.0);
   const [activeTab, setActiveTab] = useState("comments");
   const params = useParams();
 
@@ -97,13 +98,6 @@ export default function TradingInterface() {
     },
   ];
 
-  const capabilities = [
-    "Advanced natural language processing",
-    "Predictive modeling",
-    "Real-time data analysis",
-    "Multi-platform integration",
-  ];
-
   const trades = [
     {
       account: "0x742...3ab",
@@ -113,46 +107,7 @@ export default function TradingInterface() {
       date: "2s ago",
       transaction: "#X7988",
     },
-    {
-      account: "0x742...3ab",
-      type: "Sell",
-      sol: "0.515",
-      waifu: "1.55m",
-      date: "2s ago",
-      transaction: "#X7988",
-    },
-    {
-      account: "0x742...3ab",
-      type: "Buy",
-      sol: "0.515",
-      waifu: "1.55m",
-      date: "2s ago",
-      transaction: "#X7988",
-    },
-    {
-      account: "0x742...3ab",
-      type: "Sell",
-      sol: "0.515",
-      waifu: "1.55m",
-      date: "2s ago",
-      transaction: "#X7988",
-    },
-    {
-      account: "0x742...3ab",
-      type: "Buy",
-      sol: "0.515",
-      waifu: "1.55m",
-      date: "2s ago",
-      transaction: "#X7988",
-    },
-    {
-      account: "0x742...3ab",
-      type: "Sell",
-      sol: "0.515",
-      waifu: "1.55m",
-      date: "2s ago",
-      transaction: "#X7988",
-    },
+    // ...other trade items
   ];
 
   const handleCopy = (text: string) => {
@@ -207,56 +162,21 @@ export default function TradingInterface() {
                     href="#"
                     className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="13"
-                      fill="none"
-                      viewBox="0 0 16 13"
-                    >
-                      <path
-                        fill="#fff"
-                        d="M13.545 1.77A13.2 13.2 0 0 0 10.288.76a.05.05 0 0 0-.052.025c-.141.25-.297.577-.406.833a12.2 12.2 0 0 0-3.658 0A8 8 0 0 0 5.76.785a.05.05 0 0 0-.052-.024 13.2 13.2 0 0 0-3.257 1.01.05.05 0 0 0-.021.018C.356 4.888-.213 7.911.066 10.896q.003.024.02.037a13.3 13.3 0 0 0 3.996 2.02.05.05 0 0 0 .056-.018q.463-.63.818-1.33a.05.05 0 0 0-.028-.07 9 9 0 0 1-1.248-.595.05.05 0 0 1-.005-.085q.127-.096.248-.194a.05.05 0 0 1 .051-.008c2.619 1.196 5.454 1.196 8.041 0a.05.05 0 0 1 .053.007q.121.1.248.195a.05.05 0 0 1-.004.085q-.597.349-1.249.594a.05.05 0 0 0-.027.071c.24.466.515.909.817 1.329a.05.05 0 0 0 .056.02 13.2 13.2 0 0 0 4.001-2.02.05.05 0 0 0 .021-.037c.334-3.452-.559-6.45-2.365-9.107a.04.04 0 0 0-.021-.02M5.347 9.079c-.789 0-1.438-.723-1.438-1.612s.637-1.613 1.438-1.613c.807 0 1.45.73 1.438 1.613 0 .889-.637 1.612-1.438 1.612m5.316 0c-.788 0-1.438-.723-1.438-1.612s.637-1.613 1.438-1.613c.807 0 1.45.73 1.438 1.613 0 .889-.63 1.612-1.438 1.612"
-                      ></path>
-                    </svg>
+                    {/* Discord SVG */}
                     Discord
                   </Link>
                   <Link
                     href="#"
                     className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="14"
-                      fill="none"
-                      viewBox="0 0 16 14"
-                    >
-                      <path
-                        fill="#fff"
-                        d="M12.218.27h2.249L9.553 5.885l5.78 7.642h-4.525L7.263 8.892l-4.056 4.635H.957L6.211 7.52.667.27h4.64l3.205 4.236zm-.79 11.91h1.246L4.63 1.546H3.293z"
-                      ></path>
-                    </svg>
+                    {/* Twitter SVG */}
                     Twitter
                   </Link>
                   <Link
                     href="#"
                     className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      fill="none"
-                      viewBox="0 0 16 16"
-                    >
-                      <path
-                        fill="#fff"
-                        fillRule="evenodd"
-                        d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M8.287 5.906q-1.167.485-4.666 2.01-.567.225-.595.442c-.03.243.274.339.69.47l.175.055c.408.133.958.288 1.243.294q.389.01.868-.32Q9.27 6.65 9.376 6.627c.05-.012.12-.026.166.016s.042.12.037.141c-.03.129-1.227 1.241-1.846 1.817-.193.18-.33.307-.358.336a7 7 0 0 1-.188.186c-.38.366-.664.64.015 1.088.327.216.589.393.85.571.284.194.568.387.936.628q.14.094.27.188c.331.236.63.448.997.414.214-.02.435-.22.547-.82.265-1.417.786-4.486.906-5.751.01-.111-.003-.253-.013-.315a.34.34 0 0 0-.114-.217.53.53 0 0 0-.31-.093c-.301.005-.763.166-2.984 1.09"
-                        clipRule="evenodd"
-                      ></path>
-                    </svg>
+                    {/* Telegram SVG */}
                     Telegram
                   </Link>
                 </div>
@@ -266,22 +186,8 @@ export default function TradingInterface() {
 
           {token && token.status === "active" && <TradingChart param={token} />}
 
-          {/* Capabilities */}
-          <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-6">
-            <h2 className="text-white mb-4 text-xl md:text-2xl">
-              Capabilities:
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {capabilities.map((capability, index) => (
-                <div key={index} className="flex items-center gap-6">
-                  <CheckCircle className="w-4 h-4 text-[#22C55E]" />
-                  <span className="text-[#22C55E] text-sm md:text-xl">
-                    {capability}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* --- Fal Generator Section --- */}
+          <FalGenerator />
 
           {/* Trades/Comments/Chat */}
           <div className="bg-[#171717] border border-[#262626] text-sm md:text-lg text-gray-400 rounded-xl p-4 md:p-6">
@@ -290,7 +196,7 @@ export default function TradingInterface() {
                 <TabsTrigger
                   className={cn(
                     activeTab === "trades" ? "text-white bg-[#262626]" : "",
-                    "text-sm md:text-xl",
+                    "text-sm md:text-xl"
                   )}
                   value="trades"
                 >
@@ -299,7 +205,7 @@ export default function TradingInterface() {
                 <TabsTrigger
                   className={cn(
                     activeTab === "comments" ? "text-white bg-[#262626]" : "",
-                    "text-sm md:text-xl",
+                    "text-sm md:text-xl"
                   )}
                   value="comments"
                 >
@@ -308,7 +214,7 @@ export default function TradingInterface() {
                 <TabsTrigger
                   className={cn(
                     activeTab === "chat" ? "text-white bg-[#262626]" : "",
-                    "text-sm md:text-xl",
+                    "text-sm md:text-xl"
                   )}
                   value="chat"
                 >
@@ -344,7 +250,9 @@ export default function TradingInterface() {
                     <tbody>
                       {trades.map((trade, index) => (
                         <tr key={index} className="border-b border-gray-800">
-                          <td className="py-5 px-4 text-sm">{trade.account}</td>
+                          <td className="py-5 px-4 text-sm">
+                            {trade.account}
+                          </td>
                           <td className="py-5 px-4 text-sm">
                             <span
                               className={
@@ -356,8 +264,12 @@ export default function TradingInterface() {
                               {trade.type}
                             </span>
                           </td>
-                          <td className="py-5 px-4 text-sm">{trade.sol}</td>
-                          <td className="py-5 px-4 text-sm">{trade.waifu}</td>
+                          <td className="py-5 px-4 text-sm">
+                            {trade.sol}
+                          </td>
+                          <td className="py-5 px-4 text-sm">
+                            {trade.waifu}
+                          </td>
                           <td className="py-5 px-4 text-sm text-gray-400">
                             {trade.date}
                           </td>
@@ -380,14 +292,12 @@ export default function TradingInterface() {
                       key={message.id}
                       className={cn([
                         "flex flex-col",
-                        [message.role === "USER" ? "items-end" : "items-start"],
+                        message.role === "USER"
+                          ? "items-end"
+                          : "items-start",
                       ])}
                     >
                       <div className="flex items-center gap-4 mb-2">
-                        {/* <img
-                          src="/anonymous.png"
-                          className="w-10 h-10 rounded-full"
-                        /> */}
                         <span
                           className={cn("text-[#22C55E] font-bold", [
                             message.role === "USER" ? "text-white" : "",
@@ -404,7 +314,9 @@ export default function TradingInterface() {
                         </span>
                       </div>
                       <div className="flex flex-col">
-                        <p className="text-[#a1a1a1] mb-3">{message.content}</p>
+                        <p className="text-[#a1a1a1] mb-3">
+                          {message.content}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -470,6 +382,282 @@ export default function TradingInterface() {
     </div>
   );
 }
+
+
+const FalGenerator = () => {
+  // possible types: "image", "music", "video"
+  const [activeType, setActiveType] = useState<"image" /* | "music" */ | "video">("image");
+  // Shared prompt for image/video
+  const [prompt, setPrompt] = useState("");
+  // Music-specific state fields for separate song parts
+  const [verse1, setVerse1] = useState("");
+  const [chorus, setChorus] = useState("");
+  const [verse2, setVerse2] = useState("");
+  const [bridge, setBridge] = useState("");
+  const [verse3, setVerse3] = useState("");
+  const [genres, setGenres] = useState("");
+
+  const params = useParams();
+
+  const tokenId = params.tokenId as string;
+  const { data: token, isLoading } = useToken({ variables: tokenId });
+
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<any>(null);
+
+  // For now the Fal AI API key is pulled from env vars.
+  const falApiKey = process.env.NEXT_PUBLIC_FAL_AI_API_KEY;
+  // Initialize fal with the API key.
+  fal.config({
+    credentials: falApiKey,
+  });
+
+  const handleGenerate = async () => {
+    setLoading(true);
+    setResult(null);
+    try {
+      if (activeType === "image") {
+        const res = await fal.subscribe("fal-ai/flux/schnell", {
+          input: { prompt },
+          logs: true,
+          onQueueUpdate: (update) => {
+            if (update.status === "IN_PROGRESS") {
+              update.logs.map((log) => log.message).forEach(console.log);
+            }
+          },
+        });
+        setResult(res.data);
+//       } else if (activeType === "music") {
+//         // Compile the separate music parts into one lyrics string.
+//         const compiledLyrics = `[verse1]
+// ${verse1}
+
+// [chorus]
+// ${chorus}
+
+// [verse2]
+// ${verse2}
+
+// [bridge]
+// ${bridge}
+
+// [verse3]
+// ${verse3}`;
+//         const res = await fal.subscribe("fal-ai/yue", {
+//           input: { lyrics: compiledLyrics, genres },
+//           logs: true,
+//           onQueueUpdate: (update) => {
+//             if (update.status === "IN_PROGRESS") {
+//               update.logs.map((log) => log.message).forEach(console.log);
+//             }
+//           },
+//         });
+//         setResult(res.data);
+      
+      } else if (activeType === "video") {
+        const res = await fal.subscribe("fal-ai/t2v-turbo", {
+          input: { prompt },
+          logs: true,
+          onQueueUpdate: (update) => {
+            if (update.status === "IN_PROGRESS") {
+              update.logs.map((log) => log.message).forEach(console.log);
+            }
+          },
+        });
+        setResult(res.data);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Render the result differently based on activeType.
+  const renderResult = () => {
+    if (!result) return null;
+    if (activeType === "image" && result.images && result.images.length > 0) {
+      const image = result.images[0];
+      return (
+        <div className="flex flex-col items-center">
+          <img
+            src={image.url}
+            alt={prompt || "Generated Image"}
+            className="max-w-full rounded"
+          />
+          <a
+            href={image.url}
+            download="generated-image.png"
+            className="mt-2 inline-block px-4 py-2 bg-blue-500 text-white rounded"
+          >
+            Download Image
+          </a>
+        </div>
+      );
+    }
+    // else if (activeType === "music" && result.audio && result.audio.length > 0) {
+    //   const audio = result.audio[0];
+    //   return (
+    //     <div className="flex flex-col items-center">
+    //       <audio controls src={audio.url} className="w-full" />
+    //       <a
+    //         href={audio.url}
+    //         download="generated-music.mp3"
+    //         className="mt-2 inline-block px-4 py-2 bg-blue-500 text-white rounded"
+    //       >
+    //         Download Music
+    //       </a>
+    //     </div>
+    //   );
+    // }
+    else if (activeType === "video" && result.video) {
+      // Video result is returned as an object rather than an array.
+      const videoData = result.video;
+      return (
+        <div className="flex flex-col items-center">
+          <video controls src={videoData.url} className="max-w-full" />
+          <a
+            href={videoData.url}
+            download={videoData.file_name || "generated-video.mp4"}
+            className="mt-2 inline-block px-4 py-2 bg-blue-500 text-white rounded"
+          >
+            Download Video
+          </a>
+        </div>
+      );
+    } else {
+      // Fallback: show the raw JSON if no expected media is returned.
+      return <pre className="text-white">{JSON.stringify(result, null, 2)}</pre>;
+    }
+  };
+
+  return (
+    <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-6 mt-6">
+      <h2 className="text-white text-xl mb-4">Generate ${token.name} Content</h2>
+      <div className="flex gap-4 mb-4">
+        <button
+          className={cn(
+            "px-4 py-2 rounded",
+            activeType === "image"
+              ? "bg-[#22C55E] text-white"
+              : "bg-gray-700 text-gray-300"
+          )}
+          onClick={() => setActiveType("image")}
+        >
+          Image
+        </button>
+        {/* <button
+          className={cn(
+            "px-4 py-2 rounded",
+            activeType === "music"
+              ? "bg-[#22C55E] text-white"
+              : "bg-gray-700 text-gray-300"
+          )}
+          onClick={() => setActiveType("music")}
+        >
+          Music
+        </button> */}
+        <button
+          className={cn(
+            "px-4 py-2 rounded",
+            activeType === "video"
+              ? "bg-[#22C55E] text-white"
+              : "bg-gray-700 text-gray-300"
+          )}
+          onClick={() => setActiveType("video")}
+        >
+          Video
+        </button>
+      </div>
+      <div>
+        {activeType === "image" && (
+          <div className="flex flex-col gap-2">
+            <label className="text-white">Image Prompt</label>
+            <input
+              type="text"
+              className="bg-[#262626] rounded p-2 text-white"
+              placeholder="Enter image prompt"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+            />
+          </div>
+        )}
+        {activeType === "music" && (
+          <div className="flex flex-col gap-2">
+            <label className="text-white">Verse 1</label>
+            <textarea
+              className="bg-[#262626] rounded p-2 text-white"
+              placeholder="Enter Verse 1"
+              value={verse1}
+              onChange={(e) => setVerse1(e.target.value)}
+            />
+            <label className="text-white">Chorus</label>
+            <textarea
+              className="bg-[#262626] rounded p-2 text-white"
+              placeholder="Enter Chorus"
+              value={chorus}
+              onChange={(e) => setChorus(e.target.value)}
+            />
+            <label className="text-white">Verse 2</label>
+            <textarea
+              className="bg-[#262626] rounded p-2 text-white"
+              placeholder="Enter Verse 2"
+              value={verse2}
+              onChange={(e) => setVerse2(e.target.value)}
+            />
+            <label className="text-white">Bridge</label>
+            <textarea
+              className="bg-[#262626] rounded p-2 text-white"
+              placeholder="Enter Bridge"
+              value={bridge}
+              onChange={(e) => setBridge(e.target.value)}
+            />
+            <label className="text-white">Verse 3</label>
+            <textarea
+              className="bg-[#262626] rounded p-2 text-white"
+              placeholder="Enter Verse 3"
+              value={verse3}
+              onChange={(e) => setVerse3(e.target.value)}
+            />
+            <label className="text-white">Genres</label>
+            <input
+              type="text"
+              className="bg-[#262626] rounded p-2 text-white"
+              placeholder="Enter genres"
+              value={genres}
+              onChange={(e) => setGenres(e.target.value)}
+            />
+          </div>
+        )}
+        {activeType === "video" && (
+          <div className="flex flex-col gap-2">
+            <label className="text-white">Video Prompt</label>
+            <input
+              type="text"
+              className="bg-[#262626] rounded p-2 text-white"
+              placeholder="Enter video prompt"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+            />
+          </div>
+        )}
+      </div>
+      <button
+        onClick={handleGenerate}
+        className="mt-4 px-4 py-2 bg-[#22C55E] text-white rounded hover:bg-[#1aab45]"
+        disabled={loading}
+      >
+        {loading ? "Generating..." : "Generate"}
+      </button>
+      {result && (
+        <div className="mt-4">
+          <h3 className="text-white">Result:</h3>
+          {renderResult()}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const renderSkeletons = () => (
   <div className="min-h-screen text-green-500 relative overflow-hidden">

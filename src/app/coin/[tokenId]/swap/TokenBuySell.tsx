@@ -290,7 +290,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
 
       <div className="px-7 pt-8 pb-6 flex justify-between items-center border-l border-r border-t border-neutral-800 rounded-t-xl">
         <h2 className="text-green-500 text-2xl font-medium font-['DM Mono']">
-          TRADE INTERFACE //
+          TRADE
         </h2>
         <button onClick={() => setSettingsModalOpen(true)}>
           <svg

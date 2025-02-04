@@ -11,13 +11,11 @@ import { useState } from "react";
 import { Spinner } from "@/components/common/Spinner";
 
 const Replies = ({ commentId, mint }: { commentId: string; mint: string }) => {
-  const { data: replies = [], isLoading: isRepliesLoading } = useCommentReplies(
-    {
-      variables: commentId,
-      initialData: [],
-      refetchInterval: 5000,
-    },
-  );
+  const { data: replies = [], isLoading: isRepliesLoading } = useCommentReplies({
+    variables: commentId,
+    initialData: [],
+    refetchInterval: 5000,
+  });
 
   if (isRepliesLoading)
     return (
@@ -172,20 +170,16 @@ export const Comments = ({ tokenId }: { tokenId: string }) => {
     });
   };
 
-  const handleNewComment = async (
-    e: React.KeyboardEvent<HTMLTextAreaElement>,
-  ) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      if (commentText.trim()) {
-        await createComment({
-          mint: tokenId,
-          comment: {
-            message: commentText,
-          },
-        });
-        setCommentText("");
-      }
+  // New function to handle sending a new comment via the Send button
+  const handleSendComment = async () => {
+    if (commentText.trim()) {
+      await createComment({
+        mint: tokenId,
+        comment: {
+          message: commentText,
+        },
+      });
+      setCommentText("");
     }
   };
 
@@ -197,16 +191,24 @@ export const Comments = ({ tokenId }: { tokenId: string }) => {
     );
 
   return (
-    <TabsContent className="mt-0" value="comments">
+    <TabsContent className="mt-0 w-full" value="comments">
       <textarea
         placeholder="Write your comment..."
-        className="w-full bg-[#262626] rounded p-6 text-[#a1a1a1] min-h-[100px] mb-10"
+        className="w-full bg-[#262626] rounded p-6 text-[#a1a1a1] min-h-[100px] mb-4"
         value={commentText}
         onChange={(e) => setCommentText(e.target.value)}
-        onKeyDown={handleNewComment}
       />
+      {/* Send button to post the comment */}
+      <div className="flex justify-end">
+      <button
+        onClick={handleSendComment}
+        className="px-4 py-2 bg-[#22C55E] text-white rounded hover:bg-[#1aab45] ml-auto"
+      >
+        Send
+      </button>
+      </div>
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 mt-4">
         {comments.map((comment) => (
           <CommentItem
             key={comment._id}

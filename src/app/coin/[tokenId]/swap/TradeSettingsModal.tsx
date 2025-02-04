@@ -49,7 +49,7 @@ export const TradeSettingsModal = ({
           {/* Slippage Section */}
           <div className="flex flex-col gap-3">
             <div className="text-[#a1a1a1] text-xl font-['DM Mono']">
-              SLIPPAGE_%: {slippage.toFixed(1)}
+              SLIPPAGE: {slippage.toFixed(1)}%
             </div>
             <div className="flex items-center gap-4">
               <div className="flex-1">
@@ -57,12 +57,9 @@ export const TradeSettingsModal = ({
                   value={slippage}
                   onChange={setSlippage}
                   minValue={0}
-                  maxValue={5}
+                  maxValue={30}
                   step={0.1}
                 />
-              </div>
-              <div className="text-green-500/80 text-xl font-['DM Mono']">
-                MAX_5%
               </div>
             </div>
             <div className="text-[#a6a6a6] text-sm font-['DM Mono']">
