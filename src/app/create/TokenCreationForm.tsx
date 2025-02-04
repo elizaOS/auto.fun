@@ -80,7 +80,7 @@ export const TokenCreationForm = ({
         label="Buy Your Coin (optional)"
         rightIndicator="SOL"
         onKeyDown={(e) => {
-          if (e.key === "-") {
+          if (!/[0-9.]/.test(e.key) && e.key !== "Backspace" && e.key !== "Delete" && e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "Tab") {
             e.preventDefault();
           }
         }}
