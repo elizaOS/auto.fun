@@ -161,7 +161,7 @@ const AgentSearch = () => {
 
       {showSearchResults && (
         <div
-          className="w-full min-w-[264px] p-3.5 bg-neutral-900 rounded-b-lg border border-x-neutral-800 border-b-neutral-800 border-t-0 flex flex-col gap-6 absolute mt-4"
+          className="w-full min-w-[264px] p-3.5 bg-neutral-900 rounded-b-lg border border-x-neutral-800 border-b-neutral-800 border-t-0 flex flex-col gap-6 absolute mt-[14px]"
           ref={ref}
         >
           <div className="text-[#03ff24] text-xs font-normal uppercase leading-none tracking-widest">
