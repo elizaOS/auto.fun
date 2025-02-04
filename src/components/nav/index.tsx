@@ -204,7 +204,7 @@ export const Nav = () => {
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
-    <nav className="flex justify-between items-center fixed top-0 left-0 right-0 z-50 px-4 py-3 bg-[#0e0e0e] border-b border-b-[#03ff24]/40 gap-10">
+    <nav className="flex justify-between items-center fixed top-0 left-0 right-0 z-50 body-padding-x py-3 bg-[#0e0e0e] border-b border-b-[#03ff24]/40 gap-10">
       <div className="flex gap-6 items-center">
         <div className="flex items-center">
           <Link href="/" className="flex items-center">
