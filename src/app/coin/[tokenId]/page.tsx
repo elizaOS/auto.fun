@@ -18,9 +18,13 @@ import { TokenBuySell } from "./swap/TokenBuySell";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Comments } from "./Comments";
+import { womboApi } from "@/utils/fetch";
 
 // Import Fal AI client
 import { fal } from "@fal-ai/client";
+import { formatNumber } from "@/utils/number";
+import { useTimeAgo } from "@/app/formatTimeAgo";
+import { TradeTable } from "@/components/TradeTable";
 
 const HolderSchema = z.object({
   address: z.string(),
@@ -30,6 +34,25 @@ const HolderSchema = z.object({
   createdAt: z.string().datetime(),
   lastUpdated: z.string().datetime(),
   updatedAt: z.string().datetime(),
+});
+
+const SwapSchema = z.object({
+  _id: z.string(),
+  txId: z.string(),
+  amountIn: z.number(),
+  amountOut: z.number(),
+  direction: z.number(),
+  price: z.number(),
+  timestamp: z.string(),
+  tokenMint: z.string(),
+  type: z.string(),
+  user: z.string(),
+});
+
+const SwapsResponseSchema = z.object({
+  swaps: z.array(SwapSchema),
+  nextCursor: z.string().nullable(),
+  hasMore: z.boolean(),
 });
 
 export default function TradingInterface() {
@@ -96,18 +119,6 @@ export default function TradingInterface() {
       timestamp: "(1 min ago)",
       role: "ASSISTANT",
     },
-  ];
-
-  const trades = [
-    {
-      account: "0x742...3ab",
-      type: "Buy",
-      sol: "0.515",
-      waifu: "1.55m",
-      date: "2s ago",
-      transaction: "#X7988",
-    },
-    // ...other trade items
   ];
 
   const handleCopy = (text: string) => {
@@ -223,64 +234,7 @@ export default function TradingInterface() {
               </TabsList>
 
               <TabsContent className="mt-0" value="trades">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left">
-                    <thead>
-                      <tr className="border-b border-gray-800">
-                        <th className="py-6 px-4 text-[#22C55E] text-sm">
-                          ACCOUNT
-                        </th>
-                        <th className="py-6 px-4 text-[#22C55E] text-sm">
-                          Type
-                        </th>
-                        <th className="py-6 px-4 text-[#22C55E] text-sm">
-                          SOL
-                        </th>
-                        <th className="py-6 px-4 text-[#22C55E] text-sm">
-                          WAIFU
-                        </th>
-                        <th className="py-6 px-4 text-[#22C55E] text-sm">
-                          DATE
-                        </th>
-                        <th className="py-6 px-4 text-[#22C55E] text-sm">
-                          TRANSACTION
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {trades.map((trade, index) => (
-                        <tr key={index} className="border-b border-gray-800">
-                          <td className="py-5 px-4 text-sm">
-                            {trade.account}
-                          </td>
-                          <td className="py-5 px-4 text-sm">
-                            <span
-                              className={
-                                trade.type === "Buy"
-                                  ? "text-[#22C55E]"
-                                  : "text-[#f44336]"
-                              }
-                            >
-                              {trade.type}
-                            </span>
-                          </td>
-                          <td className="py-5 px-4 text-sm">
-                            {trade.sol}
-                          </td>
-                          <td className="py-5 px-4 text-sm">
-                            {trade.waifu}
-                          </td>
-                          <td className="py-5 px-4 text-sm text-gray-400">
-                            {trade.date}
-                          </td>
-                          <td className="py-5 px-4 text-sm text-gray-400">
-                            {trade.transaction}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <TradeTable tokenId={tokenId} />
               </TabsContent>
 
               <Comments tokenId={tokenId} />
