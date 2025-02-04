@@ -13,7 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { useSearchTokens } from "@/utils/tokens";
+import { Token, useSearchTokens } from "@/utils/tokens";
 import { formatNumber } from "@/utils/number";
 import { useOutsideClickDetection } from "@/hooks/actions/useOutsideClickDetection";
 
@@ -34,16 +34,16 @@ const CopyButton = ({ text }: { text: string }) => {
         <path
           d="M15 6.75H8.25C7.42157 6.75 6.75 7.42157 6.75 8.25V15C6.75 15.8284 7.42157 16.5 8.25 16.5H15C15.8284 16.5 16.5 15.8284 16.5 15V8.25C16.5 7.42157 15.8284 6.75 15 6.75Z"
           stroke="#03FF24"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         />
         <path
           d="M3.75 11.25H3C2.60218 11.25 2.22064 11.092 1.93934 10.8107C1.65804 10.5294 1.5 10.1478 1.5 9.75V3C1.5 2.60218 1.65804 2.22064 1.93934 1.93934C2.22064 1.65804 2.60218 1.5 3 1.5H9.75C10.1478 1.5 10.5294 1.65804 10.8107 1.93934C11.092 2.22064 11.25 2.60218 11.25 3V3.75"
           stroke="#03FF24"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         />
       </g>
       <defs>
@@ -111,9 +111,7 @@ const AgentSearch = () => {
   const [searchInput, setSearchInput] = useState("");
   const { mutateAsync: searchTokens } = useSearchTokens();
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [searchResults, setSearchResults] = useState<
-    Awaited<ReturnType<typeof searchTokens>>["tokens"]
-  >([]);
+  const [searchResults, setSearchResults] = useState<Token[]>([]);
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClickDetection([ref], () => {
     setShowSearchResults(false);
