@@ -27,5 +27,5 @@ export const TokenSchema = z.object({
   reserveLamport: z.number(),
   virtualReserves: z.number(),
   solPriceUSD: z.number(),
-  holderCount: z.number(),
+  holderCount: z.number().default(0),
 });
