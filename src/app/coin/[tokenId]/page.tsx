@@ -406,7 +406,7 @@ const FalGenerator = () => {
   const [result, setResult] = useState<any>(null);
 
   // For now the Fal AI API key is pulled from env vars.
-  const falApiKey = process.env.NEXT_PUBLIC_FAL_AI_API_KEY;
+  const falApiKey = process.env.NEXT_PUBLIC_FAL_AI_API_KEY; // TODO: Remove this and replace with proxy / call to server
   // Initialize fal with the API key.
   fal.config({
     credentials: falApiKey,
