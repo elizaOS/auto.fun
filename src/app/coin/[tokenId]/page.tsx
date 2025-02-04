@@ -49,11 +49,6 @@ const SwapSchema = z.object({
   user: z.string(),
 });
 
-const SwapsResponseSchema = z.object({
-  swaps: z.array(SwapSchema),
-  nextCursor: z.string().nullable(),
-  hasMore: z.boolean(),
-});
 
 export default function TradingInterface() {
   const [activeTab, setActiveTab] = useState("comments");
@@ -61,6 +56,7 @@ export default function TradingInterface() {
 
   const tokenId = params.tokenId as string;
   const { data: token, isLoading } = useToken({ variables: tokenId });
+ 
 
   const { items: holders } = usePaginatedLiveData({
     itemsPerPage: 100,
@@ -151,10 +147,7 @@ export default function TradingInterface() {
                   </div>
                 </div>
                 <p className="text-[#a1a1a1] text-sm md:text-lg break-word">
-                  This AI agent is designed to process complex data and provide
-                  intelligent insights. It leverages cutting-edge machine
-                  learning algorithms and natural language processing to deliver
-                  accurate and contextual responses.
+                  {token.description}
                 </p>
                 <div className="flex gap-4 mt-6">
                   <div className="text-xs text-[#03FF24]">
