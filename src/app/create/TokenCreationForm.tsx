@@ -75,12 +75,12 @@ export const TokenCreationForm = ({
         step="any"
         {...register("initial_sol", {
           required: false,
-          validate: (value) => value === "" || parseInt(value, 10) >= 0,
+          validate: (value) => value === "" || parseFloat(value) >= 0,
         })}
         label="Buy Your Coin (optional)"
         rightIndicator="SOL"
         onKeyDown={(e) => {
-          if (e.key === "-") {
+          if (!/[0-9.]/.test(e.key) && e.key !== "Backspace" && e.key !== "Delete" && e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "Tab") {
             e.preventDefault();
           }
         }}
