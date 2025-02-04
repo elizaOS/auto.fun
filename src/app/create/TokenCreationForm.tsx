@@ -75,7 +75,7 @@ export const TokenCreationForm = ({
         step="any"
         {...register("initial_sol", {
           required: false,
-          validate: (value) => value === "" || parseInt(value, 10) >= 0,
+          validate: (value) => value === "" || parseFloat(value) >= 0,
         })}
         label="Buy Your Coin (optional)"
         rightIndicator="SOL"
