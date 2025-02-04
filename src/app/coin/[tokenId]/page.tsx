@@ -162,27 +162,33 @@ export default function TradingInterface() {
                   </div>
                 </div>
                 <div className="flex gap-4 mt-6 flex-col md:flex-row">
-                  <Link
-                    href="#"
-                    className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
-                  >
-                    {/* Discord SVG */}
-                    Discord
-                  </Link>
-                  <Link
-                    href="#"
-                    className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
-                  >
-                    {/* Twitter SVG */}
-                    Twitter
-                  </Link>
-                  <Link
-                    href="#"
-                    className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
-                  >
-                    {/* Telegram SVG */}
-                    Telegram
-                  </Link>
+                  {token.discord && (
+                    <Link
+                      href={token.discord}
+                      className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
+                    >
+                      {/* Discord SVG */}
+                      Discord
+                    </Link>
+                  )}
+                  {token.twitter && (
+                    <Link
+                      href={token.twitter}
+                      className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
+                    >
+                      {/* Twitter SVG */}
+                      Twitter
+                    </Link>
+                  )}
+                  {token.telegram && (
+                    <Link
+                      href={token.telegram}
+                      className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
+                    >
+                      {/* Telegram SVG */}
+                      Telegram
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
