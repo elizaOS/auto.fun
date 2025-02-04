@@ -16,7 +16,7 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({
 }) => {
   return (
     <div className="flex items-end justify-between">
-      <div className="flex gap-3">
+      <div className="flex gap-3 max-w-full overflow-hidden  whitespace-nowrap">
         {type === "video/mp4" ? (
           <video
             width="200"
@@ -36,13 +36,13 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({
             className="rounded-[10px]"
           />
         )}
-        <div>{name}</div>
+        <div className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap">{name}</div>
       </div>
       <RoundedButton
         onClick={onDelete}
         color="red"
         variant="outlined"
-        className="p-3"
+        className="p-3 ml-3"
       >
         Delete
       </RoundedButton>
