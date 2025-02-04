@@ -30,7 +30,7 @@ const CopyButton = ({ text }: { text: string }) => {
       }}
       className="cursor-pointer"
     >
-      <g clip-path="url(#clip0_726_6190)">
+      <g clipPath="url(#clip0_726_6190)">
         <path
           d="M15 6.75H8.25C7.42157 6.75 6.75 7.42157 6.75 8.25V15C6.75 15.8284 7.42157 16.5 8.25 16.5H15C15.8284 16.5 16.5 15.8284 16.5 15V8.25C16.5 7.42157 15.8284 6.75 15 6.75Z"
           stroke="#03FF24"
