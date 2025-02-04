@@ -645,6 +645,8 @@ router.get('/swaps/:mint', async (req, res) => {
     const cursor = req.query.cursor as string;
     const startTime = req.query.startTime ? new Date(req.query.startTime as string) : undefined;
     const endTime = req.query.endTime ? new Date(req.query.endTime as string) : undefined;
+    const userAddress = req.query.userAddress ? req.query.userAddress as string : undefined;
+    console.log(userAddress)
     
     // Build query
     let query: any = { tokenMint: mint };
@@ -657,6 +659,10 @@ router.get('/swaps/:mint', async (req, res) => {
       query.timestamp = {};
       if (startTime) query.timestamp.$gte = startTime;
       if (endTime) query.timestamp.$lte = endTime;
+    }
+
+    if (userAddress) {
+      query.user = userAddress;
     }
 
     const swaps = await Swap
