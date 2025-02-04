@@ -1,5 +1,5 @@
 "use client";
-
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Copy, Grid, Table as TableIcon } from "lucide-react";
 import {
@@ -60,6 +60,7 @@ export function AgentBrowser() {
     previousPage,
     isLoading,
   } = useTokens();
+  const router = useRouter();
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -151,7 +152,8 @@ export function AgentBrowser() {
             return (
               <Card
                 key={mint}
-                className="bg-[#171717] border-green-500/20 hover:border-green-500/50 transition-colors h-48 flex"
+                className="bg-[#171717] border-green-500/20 hover:border-green-500/50 transition-colors h-48 flex cursor-pointer"
+                onClick={() => router.push(`/coin/${mint}`)}
               >
                 <div className="flex flex-col p-[24px] flex-1">
                   <CardHeader className="p-0">
