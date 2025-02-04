@@ -79,7 +79,8 @@ export default function AgentsPage() {
             return (
               <div
                 key={token.mint}
-                className="flex flex-col bg-[#171717] p-6 rounded-xl gap-6 max-w-[420px] w-full border-solid border-[1px] border-[#03FF24]/15"
+                className="flex flex-col bg-[#171717] p-6 rounded-xl gap-6 max-w-[420px] w-full border-solid border-[1px] border-[#03FF24]/15 hover:border-[#03FF24]/50 cursor-pointer"
+                onClick={() => router.push(`/coin/${token.mint}`)}
               >
                 <div className="flex justify-between items-center">
                   <div className="flex gap-3 items-center">
