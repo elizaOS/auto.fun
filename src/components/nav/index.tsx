@@ -5,7 +5,7 @@ import Image from "next/image";
 import { WalletButton } from "../common/button/WalletButton";
 import { RoundedButton } from "../common/button/RoundedButton";
 import { useUserStore } from "../providers/UserProvider";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Modal } from "../common/Modal";
 import {
   DropdownMenu,
@@ -16,7 +16,7 @@ import {
 import { Token, useSearchTokens } from "@/utils/tokens";
 import { formatNumber } from "@/utils/number";
 import { useOutsideClickDetection } from "@/hooks/actions/useOutsideClickDetection";
-import _ from "lodash";
+import { debounce } from "lodash";
 
 const CopyButton = ({ text }: { text: string }) => {
   return (
@@ -26,12 +26,14 @@ const CopyButton = ({ text }: { text: string }) => {
       viewBox="0 0 18 18"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      onClick={() => {
+      onClick={(event) => {
         navigator.clipboard.writeText(text);
+        event.preventDefault();
+        event.stopPropagation();
       }}
       className="cursor-pointer"
     >
-      <g clip-path="url(#clip0_726_6190)">
+      <g clipPath="url(#clip0_726_6190)">
         <path
           d="M15 6.75H8.25C7.42157 6.75 6.75 7.42157 6.75 8.25V15C6.75 15.8284 7.42157 16.5 8.25 16.5H15C15.8284 16.5 16.5 15.8284 16.5 15V8.25C16.5 7.42157 15.8284 6.75 15 6.75Z"
           stroke="#03FF24"
@@ -106,13 +108,77 @@ const AgentSearchResult = ({
   );
 };
 
-const AgentSearch = () => {
+const SearchIcon = ({
+  onClick,
+  className,
+}: {
+  onClick?: () => void;
+  className?: string;
+}) => {
+  return (
+    <svg
+      className={className}
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      onClick={onClick}
+    >
+      <path
+        d="M17 17L12.3333 12.3333M13.8889 8.44444C13.8889 11.4513 11.4513 13.8889 8.44444 13.8889C5.43756 13.8889 3 11.4513 3 8.44444C3 5.43756 5.43756 3 8.44444 3C11.4513 3 13.8889 5.43756 13.8889 8.44444Z"
+        stroke="#D1D1D1"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+};
+
+const CloseIcon = ({ onClick }: { onClick: () => void }) => {
+  return (
+    <svg
+      onClick={onClick}
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <g clipPath="url(#clip0_726_7142)">
+        <path
+          d="M3 3L15 15"
+          stroke="#505050"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M3 15L15 3"
+          stroke="#505050"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
+      <defs>
+        <clipPath id="clip0_726_7142">
+          <rect width="18" height="18" fill="white" />
+        </clipPath>
+      </defs>
+    </svg>
+  );
+};
+
+const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
   const [searchInput, setSearchInput] = useState("");
   const { mutateAsync: searchTokens } = useSearchTokens();
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [searchResults, setSearchResults] = useState<Token[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isSearching, setIsSearching] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClickDetection([ref], () => {
     setShowSearchResults(false);
@@ -120,7 +186,7 @@ const AgentSearch = () => {
   });
 
   const handleSearch = useRef(
-    _.debounce(async (query: string) => {
+    debounce(async (query: string) => {
       if (query.trim().length === 0) {
         setSearchResults([]);
         setShowSearchResults(false);
@@ -159,6 +225,75 @@ const AgentSearch = () => {
     };
   }, [handleSearch]);
 
+  useLayoutEffect(
+    function hideBodyScrollBar() {
+      const { overflow } = window.getComputedStyle(document.body);
+
+      if (showMobileSearch) {
+        document.body.style.overflow = "hidden";
+      }
+
+      return () => {
+        document.body.style.overflow = overflow;
+      };
+    },
+    [showMobileSearch],
+  );
+
+  if (isMobile) {
+    return (
+      <div>
+        <SearchIcon
+          className="cursor-pointer"
+          onClick={() => setShowMobileSearch(true)}
+        />
+
+        {showMobileSearch && (
+          <div className="fixed inset-0 bg-neutral-900 body-padding-x flex flex-col">
+            <div className="flex items-center">
+              <div className="relative flex-1 py-5">
+                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyPress}
+                  placeholder="Symbol or Address..."
+                  className="w-full h-11 pl-10 pr-3 rounded-lg bg-transparent text-[#d1d1d1] text-sm placeholder:text-sm leading-tight focus:outline-none"
+                />
+              </div>
+              <CloseIcon onClick={() => setShowMobileSearch(false)} />
+            </div>
+            {showSearchResults && (
+              <div
+                className="w-full bg-neutral-900 px-4 rounded-b-lg flex flex-col flex-1 gap-6 mt-[14px] overflow-y-scroll no-scrollbar"
+                ref={ref}
+              >
+                <div className="text-[#03ff24] text-xs font-normal uppercase leading-none tracking-widest">
+                  Agents
+                </div>
+                {searchResults.map((token) => (
+                  <AgentSearchResult
+                    key={token.mint}
+                    id={token.mint}
+                    marketCap={token.marketCapUSD}
+                    name={token.name}
+                    symbol={token.ticker}
+                    imageUrl={token.image}
+                    onNavigate={() => {
+                      setShowSearchResults(false);
+                      setShowMobileSearch(false);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="relative flex-1 max-w-[500px]">
       <input
@@ -169,26 +304,11 @@ const AgentSearch = () => {
         placeholder="Symbol or Address..."
         className="w-full h-11 pl-10 pr-3 rounded-lg border border-[#d1d1d1] bg-transparent text-[#d1d1d1] text-sm placeholder:text-sm leading-tight focus:outline-none"
       />
-      <svg
-        className="absolute left-3 top-1/2 -translate-y-1/2"
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          d="M17 17L12.3333 12.3333M13.8889 8.44444C13.8889 11.4513 11.4513 13.8889 8.44444 13.8889C5.43756 13.8889 3 11.4513 3 8.44444C3 5.43756 5.43756 3 8.44444 3C11.4513 3 13.8889 5.43756 13.8889 8.44444Z"
-          stroke="#D1D1D1"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+      <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2" />
 
       {showSearchResults && (
         <div
-          className="w-full min-w-[264px] max-h-[400px] overflow-y-auto p-3.5 bg-neutral-900 rounded-b-lg border border-x-neutral-800 border-b-neutral-800 border-t-0 flex flex-col gap-6 absolute mt-4"
+          className="w-full min-w-[264px] p-3.5 bg-neutral-900 rounded-b-lg border border-x-neutral-800 border-b-neutral-800 border-t-0 flex flex-col gap-6 absolute mt-[14px] max-h-[60vh] overflow-scroll"
           ref={ref}
         >
           <div className="text-[#03ff24] text-xs font-normal uppercase leading-none tracking-widest">
@@ -243,7 +363,7 @@ export const Nav = () => {
             />
           </Link>
         </div>
-        <div className="flex hidden md:flex gap-6 items-center">
+        <div className="hidden md:flex gap-6 items-center">
           <Link href="/create">
             <RoundedButton variant="outlined" className="p-3 px-4 border-none">
               Create token
@@ -262,7 +382,7 @@ export const Nav = () => {
         </div>
       </div>
       <div className="hidden md:flex gap-6 items-center justify-end flex-1">
-        <AgentSearch />
+        <AgentSearch isMobile={false} />
         <button
           className="text-center text-[#d1d1d1] text-base font-medium leading-normal py-3 px-4"
           onClick={() => setModalOpen(true)}
@@ -342,7 +462,8 @@ export const Nav = () => {
         </Modal>
         <WalletButton />
       </div>
-      <div className="flex md:hidden items-center">
+      <div className="flex md:hidden items-center gap-4">
+        <AgentSearch isMobile />
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <button className="text-[#d1d1d1] outline-solid">
