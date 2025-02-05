@@ -5,7 +5,7 @@ import Image from "next/image";
 import { WalletButton } from "../common/button/WalletButton";
 import { RoundedButton } from "../common/button/RoundedButton";
 import { useUserStore } from "../providers/UserProvider";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Modal } from "../common/Modal";
 import {
   DropdownMenu,
@@ -16,6 +16,7 @@ import {
 import { Token, useSearchTokens } from "@/utils/tokens";
 import { formatNumber } from "@/utils/number";
 import { useOutsideClickDetection } from "@/hooks/actions/useOutsideClickDetection";
+import _ from "lodash";
 
 const CopyButton = ({ text }: { text: string }) => {
   return (
@@ -71,23 +72,20 @@ const AgentSearchResult = ({
   onNavigate: () => void;
 }) => {
   return (
+    <Link href={`/coin/${id}`} onClick={onNavigate}>
     <div className="self-stretch bg-neutral-900 flex items-center gap-6 p-2 rounded-md">
-      <Link href={`/coin/${id}`} onClick={onNavigate}>
-        <img className="w-10 h-10 rounded-lg" src={imageUrl} alt={name} />
-      </Link>
+      <img
+        className="w-10 h-10 rounded-lg object-cover"
+        src={imageUrl}
+        alt={name}
+      />
       <div className="flex flex-col gap-1">
-        <Link
-          href={`/coin/${id}`}
-          className="flex items-center gap-2"
-          onClick={onNavigate}
-        >
           <div className="text-white text-sm font-medium leading-tight">
             {name}
           </div>
           <div className="text-[#a6a6a6] text-xs font-normal uppercase leading-none tracking-widest">
             ${symbol}
           </div>
-        </Link>
         <div className="flex items-center gap-2">
           <div className="text-[#a6a6a6] text-xs font-normal leading-tight">
             {id.slice(0, 3)}...{id.slice(-3)}
@@ -104,6 +102,7 @@ const AgentSearchResult = ({
         </div>
       </div>
     </div>
+    </Link>
   );
 };
 
@@ -112,17 +111,39 @@ const AgentSearch = () => {
   const { mutateAsync: searchTokens } = useSearchTokens();
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [searchResults, setSearchResults] = useState<Token[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [isSearching, setIsSearching] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClickDetection([ref], () => {
     setShowSearchResults(false);
     setSearchResults([]);
   });
 
-  const handleSearch = async (searchQuery: string) => {
-    console.log("Searching for:", searchQuery);
-    const { tokens } = await searchTokens(searchQuery);
-    setSearchResults(tokens);
-    setShowSearchResults(true);
+  const handleSearch = useRef(
+    _.debounce(async (query: string) => {
+      if (query.trim().length === 0) {
+        setSearchResults([]);
+        setShowSearchResults(false);
+        return;
+      }
+
+      try {
+        setIsSearching(true);
+        const { tokens } = await searchTokens(query);
+        setSearchResults(tokens);
+        setShowSearchResults(true);
+      } catch (error) {
+        console.error('Search failed:', error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300)
+  ).current;
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchInput(value);
+    handleSearch(value);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -132,12 +153,18 @@ const AgentSearch = () => {
     }
   };
 
+  useEffect(() => {
+    return () => {
+      handleSearch.cancel();
+    };
+  }, [handleSearch]);
+
   return (
     <div className="relative flex-1 max-w-[500px]">
       <input
         type="text"
         value={searchInput}
-        onChange={(e) => setSearchInput(e.target.value)}
+        onChange={handleInputChange}
         onKeyDown={handleKeyPress}
         placeholder="Symbol or Address..."
         className="w-full h-11 pl-10 pr-3 rounded-lg border border-[#d1d1d1] bg-transparent text-[#d1d1d1] text-sm placeholder:text-sm leading-tight focus:outline-none"
@@ -161,7 +188,7 @@ const AgentSearch = () => {
 
       {showSearchResults && (
         <div
-          className="w-full min-w-[264px] p-3.5 bg-neutral-900 rounded-b-lg border border-x-neutral-800 border-b-neutral-800 border-t-0 flex flex-col gap-6 absolute mt-4"
+          className="w-full min-w-[264px] max-h-[400px] overflow-y-auto p-3.5 bg-neutral-900 rounded-b-lg border border-x-neutral-800 border-b-neutral-800 border-t-0 flex flex-col gap-6 absolute mt-4"
           ref={ref}
         >
           <div className="text-[#03ff24] text-xs font-normal uppercase leading-none tracking-widest">
