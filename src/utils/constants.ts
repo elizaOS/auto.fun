@@ -33,7 +33,7 @@ export const chartOverrides = {
   "scalesProperties.textColor": "#9494A8",
   "scalesProperties.lineColor": "#111114",
   "scalesProperties.fontSize": 14,
-  "priceScaleSelectionStrategyName": "left",
+  priceScaleSelectionStrategyName: "left",
   "scalesProperties.showSymbolLabels": true,
 
   ...chartStyleOverrides,

@@ -36,7 +36,9 @@ export const MediaPreview: React.FC<MediaPreviewProps> = ({
             className="rounded-[10px]"
           />
         )}
-        <div className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap">{name}</div>
+        <div className="max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
+          {name}
+        </div>
       </div>
       <RoundedButton
         onClick={onDelete}
