@@ -11,11 +11,13 @@ import { useState } from "react";
 import { Spinner } from "@/components/common/Spinner";
 
 const Replies = ({ commentId, mint }: { commentId: string; mint: string }) => {
-  const { data: replies = [], isLoading: isRepliesLoading } = useCommentReplies({
-    variables: commentId,
-    initialData: [],
-    refetchInterval: 5000,
-  });
+  const { data: replies = [], isLoading: isRepliesLoading } = useCommentReplies(
+    {
+      variables: commentId,
+      initialData: [],
+      refetchInterval: 5000,
+    },
+  );
 
   if (isRepliesLoading)
     return (
@@ -200,12 +202,12 @@ export const Comments = ({ tokenId }: { tokenId: string }) => {
       />
       {/* Send button to post the comment */}
       <div className="flex justify-end">
-      <button
-        onClick={handleSendComment}
-        className="px-4 py-2 bg-[#22C55E] text-white rounded hover:bg-[#1aab45] ml-auto"
-      >
-        Send
-      </button>
+        <button
+          onClick={handleSendComment}
+          className="px-4 py-2 bg-[#22C55E] text-white rounded hover:bg-[#1aab45] ml-auto"
+        >
+          Send
+        </button>
       </div>
 
       <div className="flex flex-col gap-4 mt-4">

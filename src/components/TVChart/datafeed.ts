@@ -34,7 +34,6 @@ const configurationData: DatafeedConfiguration = {
   ] as ResolutionString[],
 };
 
-
 export function getDataFeed({
   pairIndex,
   name,
@@ -97,14 +96,14 @@ export function getDataFeed({
       const { from, to, firstDataRequest } = periodParams;
       const FIVE_DAYS = 5 * 24 * 60 * 60;
       const adjustedFrom = firstDataRequest ? from - FIVE_DAYS : from;
-    
+
       try {
         // If we already know there's no data for this symbol, return immediately
         if (noDataFlags.get(symbolInfo.name)) {
           onHistoryCallback([], { noData: true });
           return;
         }
-    
+
         const chartTable = await getChartTable({
           token,
           pairIndex: pairIndex,
@@ -112,7 +111,7 @@ export function getDataFeed({
           to,
           range: +resolution,
         });
-    
+
         if (!chartTable || !chartTable.table || chartTable.table.length === 0) {
           // Set the no-data flag if this is the first request
           if (firstDataRequest) {
@@ -121,34 +120,34 @@ export function getDataFeed({
           onHistoryCallback([], { noData: true });
           return;
         }
-    
+
         // Clear the no-data flag if we got data
         noDataFlags.set(symbolInfo.name, false);
-    
+
         let bars: Bar[] = [];
         const nextTime =
           chartTable.table[0]?.time <= adjustedFrom
             ? null
             : chartTable.table[0]?.time;
-    
+
         chartTable.table.forEach((bar: Bar) => {
           if (bar.time >= adjustedFrom && bar.time < to) {
             bars = [...bars, { ...bar, time: bar.time * 1000 }];
           }
         });
-    
+
         if (!bars.length) {
           // Don't set noDataFlags here as this might be a temporary gap in data
           onHistoryCallback([], { noData: true });
           return;
         }
-    
+
         if (firstDataRequest) {
           lastBarsCache.set(symbolInfo.name, {
             ...bars[bars.length - 1],
           });
         }
-    
+
         onHistoryCallback(bars, {
           noData: false,
           nextTime,
@@ -170,14 +169,14 @@ export function getDataFeed({
       if (noDataFlags.get(symbolInfo.name)) {
         return;
       }
-    
+
       console.log(
         "[subscribeBars]: Method call with subscriberUID:",
         subscriberUID,
       );
-    
+
       socket.emit("subscribe", token);
-    
+
       // Ensure we have the last bar from cache
       const lastBar = lastBarsCache.get(symbolInfo.name);
       if (!lastBar) {
@@ -186,7 +185,7 @@ export function getDataFeed({
         noDataFlags.set(symbolInfo.name, true);
         return;
       }
-    
+
       subscribeOnStream(
         symbolInfo,
         resolution,

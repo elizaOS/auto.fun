@@ -73,35 +73,35 @@ const AgentSearchResult = ({
 }) => {
   return (
     <Link href={`/coin/${id}`} onClick={onNavigate}>
-    <div className="self-stretch bg-neutral-900 flex items-center gap-6 p-2 rounded-md">
-      <img
-        className="w-10 h-10 rounded-lg object-cover"
-        src={imageUrl}
-        alt={name}
-      />
-      <div className="flex flex-col gap-1">
+      <div className="self-stretch bg-neutral-900 flex items-center gap-6 p-2 rounded-md">
+        <img
+          className="w-10 h-10 rounded-lg object-cover"
+          src={imageUrl}
+          alt={name}
+        />
+        <div className="flex flex-col gap-1">
           <div className="text-white text-sm font-medium leading-tight">
             {name}
           </div>
           <div className="text-[#a6a6a6] text-xs font-normal uppercase leading-none tracking-widest">
             ${symbol}
           </div>
-        <div className="flex items-center gap-2">
-          <div className="text-[#a6a6a6] text-xs font-normal leading-tight">
-            {id.slice(0, 3)}...{id.slice(-3)}
+          <div className="flex items-center gap-2">
+            <div className="text-[#a6a6a6] text-xs font-normal leading-tight">
+              {id.slice(0, 3)}...{id.slice(-3)}
+            </div>
+            <CopyButton text={id} />
           </div>
-          <CopyButton text={id} />
+        </div>
+        <div className="flex items-center gap-1 ml-auto">
+          <div className="text-[#03ff24] text-xs font-normal leading-tight">
+            MC:
+          </div>
+          <div className="text-[#03ff24] text-xs font-normal leading-tight">
+            ${formatNumber(marketCap, 0)}
+          </div>
         </div>
       </div>
-      <div className="flex items-center gap-1 ml-auto">
-        <div className="text-[#03ff24] text-xs font-normal leading-tight">
-          MC:
-        </div>
-        <div className="text-[#03ff24] text-xs font-normal leading-tight">
-          ${formatNumber(marketCap, 0)}
-        </div>
-      </div>
-    </div>
     </Link>
   );
 };
@@ -133,11 +133,11 @@ const AgentSearch = () => {
         setSearchResults(tokens);
         setShowSearchResults(true);
       } catch (error) {
-        console.error('Search failed:', error);
+        console.error("Search failed:", error);
       } finally {
         setIsSearching(false);
       }
-    }, 300)
+    }, 300),
   ).current;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

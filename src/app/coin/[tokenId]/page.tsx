@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { InfoIcon, SendHorizontal, CheckCircle, Copy } from "lucide-react";
+import { InfoIcon, SendHorizontal, Copy } from "lucide-react";
 import { useToken } from "@/utils/tokens";
 import { useParams } from "next/navigation";
 import { TradingChart } from "@/components/TVChart/TradingChart";
@@ -18,12 +18,9 @@ import { TokenBuySell } from "./swap/TokenBuySell";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Comments } from "./Comments";
-import { womboApi } from "@/utils/fetch";
 
 // Import Fal AI client
 import { fal } from "@fal-ai/client";
-import { formatNumber } from "@/utils/number";
-import { useTimeAgo } from "@/app/formatTimeAgo";
 import { TradeTable } from "@/components/TradeTable";
 
 const HolderSchema = z.object({
@@ -36,27 +33,12 @@ const HolderSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
-const SwapSchema = z.object({
-  _id: z.string(),
-  txId: z.string(),
-  amountIn: z.number(),
-  amountOut: z.number(),
-  direction: z.number(),
-  price: z.number(),
-  timestamp: z.string(),
-  tokenMint: z.string(),
-  type: z.string(),
-  user: z.string(),
-});
-
-
 export default function TradingInterface() {
   const [activeTab, setActiveTab] = useState("comments");
   const params = useParams();
 
   const tokenId = params.tokenId as string;
   const { data: token, isLoading } = useToken({ variables: tokenId });
- 
 
   const { items: holders } = usePaginatedLiveData({
     itemsPerPage: 100,
@@ -206,7 +188,7 @@ export default function TradingInterface() {
                 <TabsTrigger
                   className={cn(
                     activeTab === "trades" ? "text-white bg-[#262626]" : "",
-                    "text-sm md:text-xl"
+                    "text-sm md:text-xl",
                   )}
                   value="trades"
                 >
@@ -215,7 +197,7 @@ export default function TradingInterface() {
                 <TabsTrigger
                   className={cn(
                     activeTab === "comments" ? "text-white bg-[#262626]" : "",
-                    "text-sm md:text-xl"
+                    "text-sm md:text-xl",
                   )}
                   value="comments"
                 >
@@ -224,7 +206,7 @@ export default function TradingInterface() {
                 <TabsTrigger
                   className={cn(
                     activeTab === "chat" ? "text-white bg-[#262626]" : "",
-                    "text-sm md:text-xl"
+                    "text-sm md:text-xl",
                   )}
                   value="chat"
                 >
@@ -245,9 +227,7 @@ export default function TradingInterface() {
                       key={message.id}
                       className={cn([
                         "flex flex-col",
-                        message.role === "USER"
-                          ? "items-end"
-                          : "items-start",
+                        message.role === "USER" ? "items-end" : "items-start",
                       ])}
                     >
                       <div className="flex items-center gap-4 mb-2">
@@ -267,9 +247,7 @@ export default function TradingInterface() {
                         </span>
                       </div>
                       <div className="flex flex-col">
-                        <p className="text-[#a1a1a1] mb-3">
-                          {message.content}
-                        </p>
+                        <p className="text-[#a1a1a1] mb-3">{message.content}</p>
                       </div>
                     </div>
                   ))}
@@ -336,10 +314,11 @@ export default function TradingInterface() {
   );
 }
 
-
 const FalGenerator = () => {
   // possible types: "image", "music", "video"
-  const [activeType, setActiveType] = useState<"image" /* | "music" */ | "video">("image");
+  const [activeType, setActiveType] = useState<"image" | "music" | "video">(
+    "image",
+  );
   // Shared prompt for image/video
   const [prompt, setPrompt] = useState("");
   // Music-specific state fields for separate song parts
@@ -353,9 +332,10 @@ const FalGenerator = () => {
   const params = useParams();
 
   const tokenId = params.tokenId as string;
-  const { data: token, isLoading } = useToken({ variables: tokenId });
+  const { data: token } = useToken({ variables: tokenId });
 
   const [loading, setLoading] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [result, setResult] = useState<any>(null);
 
   // For now the Fal AI API key is pulled from env vars.
@@ -380,33 +360,32 @@ const FalGenerator = () => {
           },
         });
         setResult(res.data);
-//       } else if (activeType === "music") {
-//         // Compile the separate music parts into one lyrics string.
-//         const compiledLyrics = `[verse1]
-// ${verse1}
+        //       } else if (activeType === "music") {
+        //         // Compile the separate music parts into one lyrics string.
+        //         const compiledLyrics = `[verse1]
+        // ${verse1}
 
-// [chorus]
-// ${chorus}
+        // [chorus]
+        // ${chorus}
 
-// [verse2]
-// ${verse2}
+        // [verse2]
+        // ${verse2}
 
-// [bridge]
-// ${bridge}
+        // [bridge]
+        // ${bridge}
 
-// [verse3]
-// ${verse3}`;
-//         const res = await fal.subscribe("fal-ai/yue", {
-//           input: { lyrics: compiledLyrics, genres },
-//           logs: true,
-//           onQueueUpdate: (update) => {
-//             if (update.status === "IN_PROGRESS") {
-//               update.logs.map((log) => log.message).forEach(console.log);
-//             }
-//           },
-//         });
-//         setResult(res.data);
-      
+        // [verse3]
+        // ${verse3}`;
+        //         const res = await fal.subscribe("fal-ai/yue", {
+        //           input: { lyrics: compiledLyrics, genres },
+        //           logs: true,
+        //           onQueueUpdate: (update) => {
+        //             if (update.status === "IN_PROGRESS") {
+        //               update.logs.map((log) => log.message).forEach(console.log);
+        //             }
+        //           },
+        //         });
+        //         setResult(res.data);
       } else if (activeType === "video") {
         const res = await fal.subscribe("fal-ai/t2v-turbo", {
           input: { prompt },
@@ -480,20 +459,24 @@ const FalGenerator = () => {
       );
     } else {
       // Fallback: show the raw JSON if no expected media is returned.
-      return <pre className="text-white">{JSON.stringify(result, null, 2)}</pre>;
+      return (
+        <pre className="text-white">{JSON.stringify(result, null, 2)}</pre>
+      );
     }
   };
 
   return (
     <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-6 mt-6">
-      <h2 className="text-white text-xl mb-4">Generate ${token.name} Content</h2>
+      <h2 className="text-white text-xl mb-4">
+        Generate ${token?.name} Content
+      </h2>
       <div className="flex gap-4 mb-4">
         <button
           className={cn(
             "px-4 py-2 rounded",
             activeType === "image"
               ? "bg-[#22C55E] text-white"
-              : "bg-gray-700 text-gray-300"
+              : "bg-gray-700 text-gray-300",
           )}
           onClick={() => setActiveType("image")}
         >
@@ -515,7 +498,7 @@ const FalGenerator = () => {
             "px-4 py-2 rounded",
             activeType === "video"
               ? "bg-[#22C55E] text-white"
-              : "bg-gray-700 text-gray-300"
+              : "bg-gray-700 text-gray-300",
           )}
           onClick={() => setActiveType("video")}
         >

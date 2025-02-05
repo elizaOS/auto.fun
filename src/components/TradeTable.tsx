@@ -47,8 +47,10 @@ function useDebounce<T>(value: T, delay: number): T {
 // Memoize TradeRow component separately
 const TradeRow = memo(({ trade }: { trade: z.infer<typeof SwapSchema> }) => {
   const isPositive = trade.direction === 0;
-  const solAmount = (trade.direction === 0 ? trade.amountIn : trade.amountOut) / 1e9;
-  const tokenAmount = (trade.direction === 0 ? trade.amountOut : trade.amountIn) / 1e6;
+  const solAmount =
+    (trade.direction === 0 ? trade.amountIn : trade.amountOut) / 1e9;
+  const tokenAmount =
+    (trade.direction === 0 ? trade.amountOut : trade.amountIn) / 1e6;
   const timeAgo = useTimeAgo(trade.timestamp);
 
   return (
@@ -65,7 +67,7 @@ const TradeRow = memo(({ trade }: { trade: z.infer<typeof SwapSchema> }) => {
       <td className="py-5 px-4 text-sm">{formatNumber(tokenAmount)}</td>
       <td className="py-5 px-4 text-sm text-gray-400">{timeAgo}</td>
       <td className="py-5 px-4 text-sm text-gray-400">
-        <Link 
+        <Link
           href={`https://solscan.io/tx/${trade.txId}`}
           target="_blank"
           className="hover:text-[#22C55E]"
@@ -76,7 +78,7 @@ const TradeRow = memo(({ trade }: { trade: z.infer<typeof SwapSchema> }) => {
     </tr>
   );
 });
-TradeRow.displayName = 'TradeRow';
+TradeRow.displayName = "TradeRow";
 
 export const TradeTable = ({ tokenId }: TradeTableProps) => {
   // Combine related state to reduce re-renders
@@ -84,14 +86,14 @@ export const TradeTable = ({ tokenId }: TradeTableProps) => {
     size: 50,
     startDate: "",
     endDate: "",
-    showOwnTrades: false
+    showOwnTrades: false,
   });
-  
+
   const [tableState, setTableState] = useState({
     trades: [] as z.infer<typeof SwapSchema>[],
     cursor: null as string | null,
     isLoading: false,
-    error: null as string | null
+    error: null as string | null,
   });
 
   const { publicKey } = useWallet();
@@ -101,61 +103,69 @@ export const TradeTable = ({ tokenId }: TradeTableProps) => {
   // Debounce all filters together
   const debouncedFilters = useDebounce(filters, 500);
 
-  const fetchTrades = useCallback(async (resetCursor = false) => {
-    if (!isMounted.current) return;
+  const fetchTrades = useCallback(
+    async (resetCursor = false) => {
+      if (!isMounted.current) return;
 
-    // Cancel previous request if it exists
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    abortControllerRef.current = new AbortController();
+      // Cancel previous request if it exists
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
 
-    setTableState(prev => ({ ...prev, isLoading: true, error: null }));
-    
-    try {
-      const params = new URLSearchParams();
-      params.append("limit", debouncedFilters.size.toString());
-      
-      if (!resetCursor && tableState.cursor) {
-        params.append("cursor", tableState.cursor);
-      }
-      
-      if (debouncedFilters.startDate) {
-        params.append("startTime", debouncedFilters.startDate);
-      }
-      
-      if (debouncedFilters.endDate) {
-        params.append("endTime", debouncedFilters.endDate);
-      }
+      setTableState((prev) => ({ ...prev, isLoading: true, error: null }));
 
-      if (debouncedFilters.showOwnTrades && publicKey) {
-        params.append("userAddress", publicKey.toBase58());
-      }
+      try {
+        const params = new URLSearchParams();
+        params.append("limit", debouncedFilters.size.toString());
 
-      const response = await womboApi.get({
-        endpoint: `/swaps/${tokenId}?${params.toString()}`,
-        schema: SwapsResponseSchema,
-        signal: abortControllerRef.current.signal
-      });
-      
-      if (isMounted.current) {
-        setTableState(prev => ({
-          ...prev,
-          trades: resetCursor ? response.swaps : [...prev.trades, ...response.swaps],
-          cursor: response.nextCursor,
-          isLoading: false
-        }));
+        if (!resetCursor && tableState.cursor) {
+          params.append("cursor", tableState.cursor);
+        }
+
+        if (debouncedFilters.startDate) {
+          params.append("startTime", debouncedFilters.startDate);
+        }
+
+        if (debouncedFilters.endDate) {
+          params.append("endTime", debouncedFilters.endDate);
+        }
+
+        if (debouncedFilters.showOwnTrades && publicKey) {
+          params.append("userAddress", publicKey.toBase58());
+        }
+
+        const response = await womboApi.get({
+          endpoint: `/swaps/${tokenId}?${params.toString()}`,
+          schema: SwapsResponseSchema,
+        });
+
+        if (isMounted.current) {
+          setTableState((prev) => ({
+            ...prev,
+            trades: resetCursor
+              ? response.swaps
+              : [...prev.trades, ...response.swaps],
+            cursor: response.nextCursor,
+            isLoading: false,
+          }));
+        }
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.name !== "AbortError" &&
+          isMounted.current
+        ) {
+          setTableState((prev) => ({
+            ...prev,
+            isLoading: false,
+            error: "Failed to fetch trades",
+          }));
+        }
       }
-    } catch (error) {
-      if (error.name !== 'AbortError' && isMounted.current) {
-        setTableState(prev => ({
-          ...prev,
-          isLoading: false,
-          error: 'Failed to fetch trades'
-        }));
-      }
-    }
-  }, [tokenId, debouncedFilters, publicKey]);
+    },
+    [tokenId, debouncedFilters, publicKey, tableState.cursor],
+  );
 
   // Cleanup
   useEffect(() => {
@@ -173,8 +183,9 @@ export const TradeTable = ({ tokenId }: TradeTableProps) => {
   }, [fetchTrades]);
 
   // Filter handlers
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleFilterChange = (key: keyof typeof filters, value: any) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   return (
@@ -183,10 +194,10 @@ export const TradeTable = ({ tokenId }: TradeTableProps) => {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2">
           <span className="text-[#cab7c7]">Size</span>
-          <input 
-            type="number" 
+          <input
+            type="number"
             value={filters.size}
-            onChange={(e) => handleFilterChange('size', Number(e.target.value))}
+            onChange={(e) => handleFilterChange("size", Number(e.target.value))}
             className="bg-[#262626] rounded px-2 py-1 w-20 text-white"
             min={1}
           />
@@ -197,14 +208,14 @@ export const TradeTable = ({ tokenId }: TradeTableProps) => {
           <input
             type="date"
             value={filters.startDate}
-            onChange={(e) => handleFilterChange('startDate', e.target.value)}
+            onChange={(e) => handleFilterChange("startDate", e.target.value)}
             className="bg-[#262626] rounded px-2 py-1 text-white"
           />
           <span className="text-[#cab7c7]">to</span>
           <input
             type="date"
             value={filters.endDate}
-            onChange={(e) => handleFilterChange('endDate', e.target.value)}
+            onChange={(e) => handleFilterChange("endDate", e.target.value)}
             className="bg-[#262626] rounded px-2 py-1 text-white"
           />
         </div>
@@ -213,14 +224,16 @@ export const TradeTable = ({ tokenId }: TradeTableProps) => {
         <div className="flex items-center gap-2">
           <span className="text-[#cab7c7]">Own Trades</span>
           <button
-            onClick={() => handleFilterChange('showOwnTrades', !filters.showOwnTrades)}
+            onClick={() =>
+              handleFilterChange("showOwnTrades", !filters.showOwnTrades)
+            }
             className={`w-12 h-6 rounded-full transition-colors duration-200 ease-in-out ${
-              filters.showOwnTrades ? 'bg-[#22C55E]' : 'bg-[#262626]'
+              filters.showOwnTrades ? "bg-[#22C55E]" : "bg-[#262626]"
             }`}
           >
             <div
               className={`w-5 h-5 rounded-full bg-white transition-transform duration-200 ease-in-out ${
-                filters.showOwnTrades ? 'translate-x-6' : 'translate-x-1'
+                filters.showOwnTrades ? "translate-x-6" : "translate-x-1"
               }`}
             />
           </button>
@@ -229,9 +242,7 @@ export const TradeTable = ({ tokenId }: TradeTableProps) => {
 
       {/* Error state */}
       {tableState.error && (
-        <div className="text-red-500 text-center py-4">
-          {tableState.error}
-        </div>
+        <div className="text-red-500 text-center py-4">{tableState.error}</div>
       )}
 
       {/* Loading state */}
@@ -249,7 +260,9 @@ export const TradeTable = ({ tokenId }: TradeTableProps) => {
                 <th className="py-6 px-4 text-[#22C55E] text-sm">SOL</th>
                 <th className="py-6 px-4 text-[#22C55E] text-sm">WAIFU</th>
                 <th className="py-6 px-4 text-[#22C55E] text-sm">DATE</th>
-                <th className="py-6 px-4 text-[#22C55E] text-sm">TRANSACTION</th>
+                <th className="py-6 px-4 text-[#22C55E] text-sm">
+                  TRANSACTION
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -279,4 +292,4 @@ export const TradeTable = ({ tokenId }: TradeTableProps) => {
       )}
     </div>
   );
-}; 
+};

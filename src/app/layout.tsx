@@ -44,7 +44,7 @@ export default async function RootLayout({
             autoClose={false}
             className="!w-[277px]"
             toastClassName={"!bg-transparent !rounded-none !mb-4 !p-0"}
-            bodyClassName={"!p-0 !m-0"}
+            // bodyClassName={"!p-0 !m-0"}
             closeButton={false}
           />
         </SkeletonTheme>
