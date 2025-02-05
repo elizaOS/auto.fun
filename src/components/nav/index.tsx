@@ -136,6 +136,41 @@ const SearchIcon = ({
   );
 };
 
+const CloseIcon = ({ onClick }: { onClick: () => void }) => {
+  return (
+    <svg
+      onClick={onClick}
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <g clipPath="url(#clip0_726_7142)">
+        <path
+          d="M3 3L15 15"
+          stroke="#505050"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M3 15L15 3"
+          stroke="#505050"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
+      <defs>
+        <clipPath id="clip0_726_7142">
+          <rect width="18" height="18" fill="white" />
+        </clipPath>
+      </defs>
+    </svg>
+  );
+};
+
 const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
   const [searchInput, setSearchInput] = useState("");
   const { mutateAsync: searchTokens } = useSearchTokens();
@@ -227,36 +262,7 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
                   className="w-full h-11 pl-10 pr-3 rounded-lg bg-transparent text-[#d1d1d1] text-sm placeholder:text-sm leading-tight focus:outline-none"
                 />
               </div>
-              <svg
-                onClick={() => setShowMobileSearch(false)}
-                width="18"
-                height="18"
-                viewBox="0 0 18 18"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <g clipPath="url(#clip0_726_7142)">
-                  <path
-                    d="M3 3L15 15"
-                    stroke="#505050"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M3 15L15 3"
-                    stroke="#505050"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </g>
-                <defs>
-                  <clipPath id="clip0_726_7142">
-                    <rect width="18" height="18" fill="white" />
-                  </clipPath>
-                </defs>
-              </svg>
+              <CloseIcon onClick={() => setShowMobileSearch(false)} />
             </div>
             {showSearchResults && (
               <div
