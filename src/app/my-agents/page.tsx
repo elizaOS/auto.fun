@@ -38,7 +38,7 @@ export default function AgentsPage() {
     if (!tokens) {
       fetchUserTokens();
     }
-  }, [publicKey]);
+  }, [publicKey, tokens]);
 
   const tokensWithoutAgents = useMemo(() => {
     if (!tokens || !agents || !Array.isArray(agents)) return null;
