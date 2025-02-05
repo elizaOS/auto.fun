@@ -12,23 +12,33 @@ export const Paginator = ({
   previousPage: () => void;
   nextPage: () => void;
 }) => {
+  const handlePreviousPage = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    previousPage();
+  };
+
+  const handleNextPage = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    nextPage();
+  };
+
   return (
     <div className="flex gap-4 items-center text-white">
       <button
         className="group disabled:opacity-30"
-        onClick={previousPage}
+        onClick={handlePreviousPage}
         disabled={!hasPreviousPage}
       >
-        <span className="group-enabled:hover:font-extrabold">[ &lt;&lt;</span>
+        <span className="group-hover:font-extrabold group-disabled:hover:font-normal">[ &lt;&lt;</span>
       </button>
       <span>{currentPage}</span>
 
       <button
         className="group disabled:opacity-30"
-        onClick={nextPage}
+        onClick={handleNextPage}
         disabled={!hasNextPage}
       >
-        <span className="group-enabled:hover:font-extrabold">&gt;&gt; ]</span>
+        <span className="group-hover:font-extrabold group-disabled:hover:font-normal">&gt;&gt; ]</span>
       </button>
     </div>
   );

@@ -224,7 +224,7 @@ export const usePaginatedLiveData = <TInput, TOutput>({
   return {
     items: currentPageItems,
     isLoading,
-    hasNextPage: !hasAllData && page < maxPages,
+    hasNextPage: !hasAllData && page < maxPages && allItems.length > page * itemsPerPage,
     hasPreviousPage: page > 1,
     currentPage: page,
     totalPages,
