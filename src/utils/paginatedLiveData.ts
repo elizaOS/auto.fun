@@ -31,7 +31,7 @@ const fetchData = async <TInput, TOutput>(
   itemsPropertyName: string,
 ): Promise<PaginatedResponse<TOutput>> => {
   const queryEndpoint = `${endpoint}?limit=${limit}&page=${page}`;
-console.log(queryEndpoint)
+  
   const response = await womboApi.get({
     endpoint: queryEndpoint,
     // schema: z.object({
@@ -42,7 +42,6 @@ console.log(queryEndpoint)
     //   hasMore: z.boolean(),
     // }),
   });
-  console.log("response", response);
 
   return {
     items: response[itemsPropertyName] as TOutput[],

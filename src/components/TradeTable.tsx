@@ -21,8 +21,10 @@ const SwapSchema = z.object({
 
 const SwapsResponseSchema = z.object({
   swaps: z.array(SwapSchema),
-  nextCursor: z.string().nullable(),
-  hasMore: z.boolean(),
+  page: z.number().optional(),
+  totalPages: z.number().optional(),
+  total: z.number().optional(),
+  hasMore: z.boolean().optional(),
 });
 
 type TradeTableProps = {
@@ -135,8 +137,8 @@ export const TradeTable = ({ tokenId }: TradeTableProps) => {
       const response = await womboApi.get({
         endpoint: `/swaps/${tokenId}?${params.toString()}`,
         schema: SwapsResponseSchema,
-        signal: abortControllerRef.current.signal
       });
+      
       
       if (isMounted.current) {
         setTableState(prev => ({

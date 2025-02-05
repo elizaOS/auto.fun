@@ -60,7 +60,6 @@ export function AgentBrowser() {
     previousPage,
     isLoading,
   } = useTokens();
-  const router = useRouter();
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -70,7 +69,7 @@ export function AgentBrowser() {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
       {[...Array(30)].map((_, index) => (
         <Card
-          key={index}
+          key={`skeleton-${index}`}
           className="bg-[#171717] border-green-500/20 hover:border-green-500/50 transition-colors h-48 flex"
         >
           <div className="flex flex-col p-[24px] flex-1">

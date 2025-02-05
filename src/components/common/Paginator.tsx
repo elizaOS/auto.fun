@@ -21,10 +21,12 @@ export const Paginator = ({
     window.scrollTo({ top: 0, behavior: 'smooth' });
     nextPage();
   };
+  console.log(currentPage, hasPreviousPage, hasNextPage);
 
   return (
     <div className="flex gap-4 items-center text-white">
       <button
+        type="button"
         className="group disabled:opacity-30"
         onClick={handlePreviousPage}
         disabled={!hasPreviousPage}
@@ -34,6 +36,7 @@ export const Paginator = ({
       <span>{currentPage}</span>
 
       <button
+        type="button"
         className="group disabled:opacity-30"
         onClick={handleNextPage}
         disabled={!hasNextPage}

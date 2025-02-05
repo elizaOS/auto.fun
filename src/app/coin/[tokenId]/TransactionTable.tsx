@@ -46,7 +46,6 @@ export const TransactionTable = ({
     hasPreviousPage,
   } = usePaginatedLiveData({
     itemsPerPage: 100,
-    maxPages: 1,
     endpoint: `/swaps/${mint}`,
     validationSchema: TransactionSchema,
     getUniqueId: (tx) => tx.txId,
