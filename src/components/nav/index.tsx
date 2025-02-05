@@ -315,7 +315,8 @@ export const Nav = () => {
         </Modal>
         <WalletButton />
       </div>
-      <div className="flex md:hidden items-center">
+      <div className="flex md:hidden items-center gap-4">
+        <AgentSearch />
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <button className="text-[#d1d1d1] outline-solid">
