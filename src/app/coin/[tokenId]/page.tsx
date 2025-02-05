@@ -316,9 +316,9 @@ export default function TradingInterface() {
 
 const FalGenerator = () => {
   // possible types: "image", "music", "video"
-  const [activeType, setActiveType] = useState<
-    "image" /* | "music" */ | "video"
-  >("image");
+  const [activeType, setActiveType] = useState<"image" | "music" | "video">(
+    "image",
+  );
   // Shared prompt for image/video
   const [prompt, setPrompt] = useState("");
   // Music-specific state fields for separate song parts
@@ -468,7 +468,7 @@ const FalGenerator = () => {
   return (
     <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-6 mt-6">
       <h2 className="text-white text-xl mb-4">
-        Generate ${token.name} Content
+        Generate ${token?.name} Content
       </h2>
       <div className="flex gap-4 mb-4">
         <button
