@@ -111,7 +111,8 @@ router.get('/health', (req, res) => {
 router.get('/tokens', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit as string) || 50;
-    const cursor = req.query.cursor as string;
+    const page = parseInt(req.query.page as string) || 1;
+    const skip = (page - 1) * limit;
     
     // Enhanced filtering options
     const {
@@ -125,12 +126,6 @@ router.get('/tokens', async (req, res) => {
 
     // Build query
     let query: any = {};
-    
-    if (cursor) {
-      // Use $lt for desc order, $gt for asc order
-      const operator = sortOrder === 'desc' ? '$lt' : '$gt';
-      query._id = { [operator]: cursor };
-    }
 
     if (status || secondaryStatus) {
       if (status && secondaryStatus) {
@@ -161,7 +156,10 @@ router.get('/tokens', async (req, res) => {
       ];
     }
     
-    // Modified query to include message count using aggregation
+    // Get total count first
+    const total = await Token.countDocuments(query);
+    
+    // Get paginated results
     const tokens = await Token.aggregate([
       { $match: query },
       {
@@ -170,7 +168,7 @@ router.get('/tokens', async (req, res) => {
           localField: 'mint',
           foreignField: 'tokenMint',
           pipeline: [
-            { $match: { parentId: null } } // Only count root messages
+            { $match: { parentId: null } }
           ],
           as: 'messages'
         }
@@ -182,7 +180,7 @@ router.get('/tokens', async (req, res) => {
       },
       {
         $project: {
-          messages: 0, // Remove the messages array from results
+          messages: 0,
           __v: 0
         }
       },
@@ -192,18 +190,18 @@ router.get('/tokens', async (req, res) => {
           sortOrder === 'desc' ? -1 : 1
         }
       },
-      { $limit: limit + 1 }
+      { $skip: skip },
+      { $limit: limit }
     ]);
 
-    const hasMore = tokens.length > limit;
-    const results = tokens.slice(0, limit);
-    const nextCursor = hasMore ? tokens[limit]._id : null;
+    const totalPages = Math.ceil(total / limit);
       
     res.json({
-      tokens: results,
-      nextCursor: nextCursor,
-      hasMore: hasMore,
-      total: await Token.countDocuments(query)
+      tokens,
+      page,
+      totalPages,
+      total,
+      hasMore: page < totalPages
     });
 
   } catch (error) {
@@ -237,13 +235,15 @@ router.get('/tokens/:mint', async (req, res) => {
   }
 });
 
+// Get token holders endpoint
 router.get('/tokens/:mint/holders', async (req, res) => {
   try {
     const mintValidation = z.string().min(32).max(44);
     const mint = mintValidation.parse(req.params.mint);
     
     const limit = parseInt(req.query.limit as string) || 50;
-    const cursor = req.query.cursor as string;
+    const page = parseInt(req.query.page as string) || 1;
+    const skip = (page - 1) * limit;
     const sortBy = req.query.sortBy as string || 'amount';
     const sortOrder = req.query.sortOrder as string || 'desc';
     const search = req.query.search as string;
@@ -251,11 +251,6 @@ router.get('/tokens/:mint/holders', async (req, res) => {
     // Build query
     let query: any = { mint };
     
-    if (cursor) {
-      const operator = sortOrder === 'desc' ? '$lt' : '$gt';
-      query._id = { [operator]: cursor };
-    }
-
     if (search) {
       query.address = { $regex: search, $options: 'i' };
     }
@@ -271,21 +266,24 @@ router.get('/tokens/:mint/holders', async (req, res) => {
       await updateHoldersCache(mint);
     }
 
+    // Get total count
+    const total = await TokenHolder.countDocuments(query);
+
     const holders = await TokenHolder
       .find(query)
       .sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 })
-      .limit(limit + 1)
+      .skip(skip)
+      .limit(limit)
       .select('-__v');
 
-    const hasMore = holders.length > limit;
-    const results = holders.slice(0, limit);
-    const nextCursor = hasMore ? holders[limit]._id : null;
+    const totalPages = Math.ceil(total / limit);
 
     res.json({
-      holders: results,
-      nextCursor,
-      hasMore,
-      total: await TokenHolder.countDocuments(query)
+      holders,
+      page,
+      totalPages,
+      total,
+      hasMore: page < totalPages
     });
 
   } catch (error) {
@@ -635,25 +633,21 @@ router.post('/new_token', apiKeyAuth, async (req, res) => {
 //   }
 // });
 
-// Get specific token swaps (for token detail charting)
+// Get specific token swaps endpoint
 router.get('/swaps/:mint', async (req, res) => {
   try {
     const mintValidation = z.string().min(32).max(44);
     const mint = mintValidation.parse(req.params.mint);
     
     const limit = parseInt(req.query.limit as string) || 50;
-    const cursor = req.query.cursor as string;
+    const page = parseInt(req.query.page as string) || 1;
+    const skip = (page - 1) * limit;
     const startTime = req.query.startTime ? new Date(req.query.startTime as string) : undefined;
     const endTime = req.query.endTime ? new Date(req.query.endTime as string) : undefined;
     const userAddress = req.query.userAddress ? req.query.userAddress as string : undefined;
-    console.log(userAddress)
     
     // Build query
     let query: any = { tokenMint: mint };
-    
-    if (cursor) {
-      query._id = { $gt: cursor };
-    }
     
     if (startTime || endTime) {
       query.timestamp = {};
@@ -665,20 +659,24 @@ router.get('/swaps/:mint', async (req, res) => {
       query.user = userAddress;
     }
 
+    // Get total count
+    const total = await Swap.countDocuments(query);
+
     const swaps = await Swap
       .find(query)
       .sort({ timestamp: -1 })
-      .limit(limit + 1)
+      .skip(skip)
+      .limit(limit)
       .select('-__v');
 
-    const hasMore = swaps.length > limit;
-    const results = swaps.slice(0, limit);
-    const nextCursor = hasMore ? results[results.length - 1]._id : null;
+    const totalPages = Math.ceil(total / limit);
 
     res.json({
-      swaps: results,
-      nextCursor,
-      hasMore
+      swaps,
+      page,
+      totalPages,
+      total,
+      hasMore: page < totalPages
     });
 
   } catch (error) {
