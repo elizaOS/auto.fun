@@ -187,6 +187,26 @@ export const AgentValidation = z.object({
   deletedAt: z.date().optional()
 });
 
+
+// Add the MediaGeneration validation schema
+export const MediaGenerationValidation = z.object({
+  mint: z.string().min(32).max(44),
+  type: z.enum(['image', 'video']),
+  prompt: z.string().min(1).max(500),
+  mediaUrl: z.string().url(),
+  model: z.string(),
+  negative_prompt: z.string().optional(),
+  num_inference_steps: z.number().optional(),
+  seed: z.number().optional(),
+  // Video specific fields
+  num_frames: z.number().optional(),
+  fps: z.number().optional(),
+  motion_bucket_id: z.number().optional(),
+  duration: z.number().optional(),
+  creator: z.string().min(32).max(44),
+  timestamp: z.date().default(() => new Date())
+});
+
 ///////////////////////////////////////
 // MongoDB Schemas
 ///////////////////////////////////////
@@ -516,6 +536,40 @@ PersonalitySchema.pre('save', async function(next) {
   }
 });
 
+// Add the MongoDB schema
+const MediaGenerationSchema = new mongoose.Schema({
+  mint: { type: String, required: true },
+  type: { type: String, enum: ['image', 'video'], required: true },
+  prompt: { type: String, required: true },
+  mediaUrl: { type: String, required: true },
+  model: { type: String, required: true },
+  negative_prompt: String,
+  num_inference_steps: Number,
+  seed: Number,
+  // Video specific fields
+  num_frames: Number,
+  fps: Number,
+  motion_bucket_id: Number,
+  duration: Number,
+  creator: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now }
+});
+
+
+// Add indexes for efficient querying
+MediaGenerationSchema.index({ mint: 1, type: 1, timestamp: -1 });
+MediaGenerationSchema.index({ creator: 1 });
+
+// Add validation middleware
+MediaGenerationSchema.pre('save', async function(next) {
+  try {
+    MediaGenerationValidation.parse(this.toObject());
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
 ///////////////////////////////////////
 // MongoDB Indexes
 ///////////////////////////////////////
@@ -582,6 +636,7 @@ export const VanityKeypair = mongoose.model('VanityKeypair', VanityKeypairSchema
 export const TokenHolder = mongoose.model('TokenHolder', TokenHolderSchema);
 export const Agent = mongoose.model('Agent', AgentSchema);
 export const Personality = mongoose.model('Personality', PersonalitySchema);
+export const MediaGeneration = mongoose.model('MediaGeneration', MediaGenerationSchema);
 
 // Export z types
 export type UserType = z.infer<typeof UserValidation>;
@@ -593,3 +648,4 @@ export type MessageLikeType = z.infer<typeof MessageLikeValidation>;
 export type TokenHolderType = z.infer<typeof TokenHolderValidation>;
 export type AgentType = z.infer<typeof AgentValidation>;
 export type PersonalityType = z.infer<typeof PersonalityValidation>;
+export type MediaGenerationType = z.infer<typeof MediaGenerationValidation>;
