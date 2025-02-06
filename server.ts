@@ -365,7 +365,7 @@ class TokenMonitor {
                 price24hAgo: tokenPriceUSD,
                 volume24h: 0,
                 inferenceCount: 0,
-                // TODO: store txId here
+                txId: logs.signature,
               },
               { 
                 upsert: true,
