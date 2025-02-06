@@ -145,7 +145,10 @@ export default function TradingInterface() {
                 <div className="flex gap-4 mt-6 flex-col md:flex-row">
                   {token.discord && (
                     <Link
-                      href={token.discord}
+                      // href={token.discord}
+                      href={token.discord.startsWith('http') ? token.discord : `https://discord.gg/${token.discord}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
                     >
                       {/* Discord SVG */}
@@ -154,7 +157,10 @@ export default function TradingInterface() {
                   )}
                   {token.twitter && (
                     <Link
-                      href={token.twitter}
+                      // href={token.twitter}
+                      href={token.twitter.startsWith('http') ? token.twitter : `https://twitter.com/${token.twitter}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
                     >
                       {/* Twitter SVG */}
@@ -163,7 +169,10 @@ export default function TradingInterface() {
                   )}
                   {token.telegram && (
                     <Link
-                      href={token.telegram}
+                      // href={token.telegram}
+                      href={token.telegram.startsWith('http') ? token.telegram : `https://t.me/${token.telegram}`}
+                       target="_blank"
+                       rel="noopener noreferrer"
                       className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
                     >
                       {/* Telegram SVG */}

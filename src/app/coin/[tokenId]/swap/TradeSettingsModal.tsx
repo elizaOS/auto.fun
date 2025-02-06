@@ -16,25 +16,36 @@ export const TradeSettingsModal = ({
 }) => {
   const {
     slippage: savedSlippage,
-    tipAmount: savedTipAmount,
+    // tipAmount: savedTipAmount,
     saveSettings,
     speed: savedSpeed,
-    isProtectionEnabled: savedProtectionEnabled,
+    tradeSize: savedTradeSize,
+    ownTradesFilter: savedOwnTradesFilter,
+    // isProtectionEnabled: savedProtectionEnabled,
   } = useTradeSettings();
 
   const [slippage, setSlippage] = useState(savedSlippage);
   const [speed, setSpeed] = useState(savedSpeed);
-  const [isProtectionEnabled, setIsProtectionEnabled] = useState(
-    savedProtectionEnabled,
-  );
-  const [tipAmount, setTipAmount] = useState(savedTipAmount);
+  const [tradeSize, setTradeSize] = useState(savedTradeSize);
+  const [ownTradesFilter, setOwnTradesFilter] = useState(savedOwnTradesFilter);
+  // const [isProtectionEnabled, setIsProtectionEnabled] = useState(
+  //   savedProtectionEnabled,
+  // );
+  // const [tipAmount, setTipAmount] = useState(savedTipAmount);
 
   const onModalClose = () => {
     onClose();
     setSlippage(savedSlippage);
     setSpeed(savedSpeed);
-    setIsProtectionEnabled(savedProtectionEnabled);
-    setTipAmount(savedTipAmount);
+    // setIsProtectionEnabled(savedProtectionEnabled);
+    // setTipAmount(savedTipAmount);
+    setTradeSize(savedTradeSize);
+    setOwnTradesFilter(savedOwnTradesFilter);
+  };
+  const speedTips = {
+    fast: "0.001 SOL",
+    turbo: "0.005 SOL",
+    ultra: "0.01 SOL"
   };
 
   return (
@@ -89,73 +100,70 @@ export const TradeSettingsModal = ({
               />
             </div>
             <div className="text-[#a6a6a6] text-sm font-['DM Mono']">
-              Higher speeds will increase your priority fees, making your
-              transactions confirm faster
+              Priority fee: {speedTips[speed]}
             </div>
           </div>
 
           <div className="border-t border-[#505050]" />
 
-          {/* Protection Section */}
+          {/* Trade Size Section */}
+          <div className="flex flex-col gap-3">
+            <div className="text-white text-xl font-medium font-['DM Mono']">
+              Trade Size
+            </div>
+            <div className="flex items-center justify-between px-3 py-2 bg-[#212121] rounded-md border border-neutral-800">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={tradeSize}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === "" || Number(value) >= 0) {
+                    setTradeSize(Number(value));
+                  }
+                }}
+                className="bg-transparent text-[#a6a6a6] text-base font-['DM Mono'] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none w-full"
+              />
+              <div className="flex items-center gap-1">
+                <SolanaIcon />
+                <span className="text-white text-base font-['DM Mono'] uppercase tracking-widest">
+                  SOL
+                </span>
+              </div>
+            </div>
+            <div className="text-[#a6a6a6] text-sm font-['DM Mono']">
+              Specify the maximum trade size in SOL
+            </div>
+          </div>
+
+          <div className="border-t border-[#505050]" />
+
+          {/* Own Trades Filter Section */}
           <div className="flex items-center justify-between py-1">
             <div className="text-white text-xl font-medium font-['DM Mono']">
-              Enable front-running protection:
+              Own Trades Only
             </div>
             <ToggleGroup
               options={[
                 { value: true, name: "On" },
                 { value: false, name: "Off" },
               ]}
-              onChange={(value) => setIsProtectionEnabled(value)}
-              defaultValue={savedProtectionEnabled}
+              onChange={(value) => setOwnTradesFilter(value)}
+              defaultValue={savedOwnTradesFilter}
             />
           </div>
-
-          <div className="border-t border-[#505050]" />
-
-          {/* Tip Amount Section */}
-          <div className="flex flex-col gap-1">
-            <div className="flex flex-col gap-3 py-1">
-              <div className="text-white text-xl font-medium font-['DM Mono']">
-                Tip Amount
-              </div>
-              <div className="flex items-center justify-between px-3 py-2 bg-[#212121] rounded-md border border-neutral-800">
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={tipAmount}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === "" || Number(value) >= 0) {
-                      setTipAmount(value);
-                    }
-                  }}
-                  className="bg-transparent text-[#a6a6a6] text-base font-['DM Mono'] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-                <div className="flex items-center gap-1">
-                  <SolanaIcon />
-
-                  <span className="text-white text-base font-['DM Mono'] uppercase tracking-widest">
-                    SOL
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="text-[#a6a6a6] text-sm font-['DM Mono']">
-              A higher tip amount will make your transactions confirm faster.
-              This is the transaction fee that you pay to the Solana network on
-              each trade.
-            </div>
-          </div>
-
-          <div className="border-t border-[#505050]" />
         </div>
 
         <button
           className="w-full px-5 py-2 bg-[#092f0e] rounded-lg"
           onClick={() => {
-            saveSettings({ slippage, speed, isProtectionEnabled, tipAmount });
+            saveSettings({
+              slippage,
+              speed,
+              tradeSize,
+              ownTradesFilter
+            });
             onClose();
           }}
         >
@@ -166,4 +174,4 @@ export const TradeSettingsModal = ({
       </div>
     </Modal>
   );
-};
+}
