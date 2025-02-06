@@ -15,7 +15,6 @@ const HolderSchema = z.object({
 export const HolderDistributionTable = ({ mint }: { mint: string }) => {
   const { items: holders } = usePaginatedLiveData({
     itemsPerPage: 100,
-    maxPages: 1,
     endpoint: `/tokens/${mint}/holders`,
     validationSchema: HolderSchema,
     getUniqueId: (holder) => holder.address,

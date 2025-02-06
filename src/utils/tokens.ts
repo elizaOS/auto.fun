@@ -11,8 +11,7 @@ const HomepageTokenSchema = TokenSchema.and(
 
 export const useTokens = () => {
   return usePaginatedLiveData({
-    itemsPerPage: 30,
-    maxPages: 4,
+    itemsPerPage: 10,
     endpoint: "/tokens",
     validationSchema: HomepageTokenSchema,
     getUniqueId: (token) => token.mint,

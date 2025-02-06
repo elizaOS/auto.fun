@@ -42,7 +42,6 @@ export default function TradingInterface() {
 
   const { items: holders } = usePaginatedLiveData({
     itemsPerPage: 100,
-    maxPages: 1,
     endpoint: `/tokens/${tokenId}/holders`,
     validationSchema: HolderSchema,
     getUniqueId: (holder) => holder.address,

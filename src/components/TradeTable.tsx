@@ -21,8 +21,10 @@ const SwapSchema = z.object({
 
 const SwapsResponseSchema = z.object({
   swaps: z.array(SwapSchema),
-  nextCursor: z.string().nullable(),
-  hasMore: z.boolean(),
+  page: z.number().optional(),
+  totalPages: z.number().optional(),
+  total: z.number().optional(),
+  hasMore: z.boolean().optional(),
 });
 
 type TradeTableProps = {
@@ -146,7 +148,6 @@ export const TradeTable = ({ tokenId }: TradeTableProps) => {
             trades: resetCursor
               ? response.swaps
               : [...prev.trades, ...response.swaps],
-            cursor: response.nextCursor,
             isLoading: false,
           }));
         }
