@@ -22,6 +22,8 @@ import { Comments } from "./Comments";
 // Import Fal AI client
 import { fal } from "@fal-ai/client";
 import { TradeTable } from "@/components/TradeTable";
+import { RoundedButton } from "@/components/common/button/RoundedButton";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 const HolderSchema = z.object({
   address: z.string(),
@@ -34,6 +36,7 @@ const HolderSchema = z.object({
 });
 
 export default function TradingInterface() {
+  const { publicKey } = useWallet();
   const [activeTab, setActiveTab] = useState("comments");
   const params = useParams();
 
@@ -116,9 +119,19 @@ export default function TradingInterface() {
               />
               <div className="flex-1 flex flex-col self-stretch gap-2">
                 <div className="flex flex-col gap-2">
-                  <h1 className="text-[#22C55E] font-bold text-xl md:text-2xl">
-                    {token.name} (${token.ticker})
-                  </h1>
+                  <div className="flex items-center flex-1 justify-between">
+                    <h1 className="text-[#22C55E] font-bold text-xl md:text-2xl">
+                      {token.name} (${token.ticker})
+                    </h1>
+                    {publicKey?.toString() === token.creator &&
+                      !token.hasAgent && (
+                        <Link href={`/create-agent/${token.mint}`}>
+                          <RoundedButton className="px-4 py-2">
+                            Launch Agent
+                          </RoundedButton>
+                        </Link>
+                      )}
+                  </div>
                   <div className="flex items-center gap-1 text-gray-300 text-xs">
                     {`${token.mint.slice(0, 3)}...${token.mint.slice(-3)}`}
                     <Copy

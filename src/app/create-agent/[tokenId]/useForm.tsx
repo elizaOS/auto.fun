@@ -1,29 +1,20 @@
 import { useCallback, useMemo, useState } from "react";
 import {
   AgentDetailsForm,
-  TokenMetadataForm,
   TwitterDetailsForm,
-} from "../../../types/form.type";
-import { TokenCreationForm } from "./TokenCreationForm";
+} from "../../../../types/form.type";
 import { useForm as useFormRhf } from "react-hook-form";
-import { FormStep } from "./page";
 import { AgentDetails } from "@/components/forms/AgentDetails";
 import { TwitterLoginForm } from "@/components/forms/TwitterLoginForm";
 
 export const useForm = () => {
-  const tokenForm = useFormRhf<TokenMetadataForm>({
-    defaultValues: { links: {} },
-  });
   const agentForm = useFormRhf<AgentDetailsForm>();
   const twitterForm = useFormRhf<TwitterDetailsForm>();
-  const [currentStep, setCurrentStep] = useState<FormStep>("token");
+  const [currentStep, setCurrentStep] = useState<"agent" | "twitter">("agent");
 
   const back = useCallback(() => {
     switch (currentStep) {
-      case "token":
-        break;
       case "agent":
-        setCurrentStep("token");
         break;
       case "twitter":
         setCurrentStep("agent");
@@ -33,9 +24,6 @@ export const useForm = () => {
 
   const next = useCallback(() => {
     switch (currentStep) {
-      case "token":
-        setCurrentStep("agent");
-        break;
       case "agent":
         setCurrentStep("twitter");
         break;
@@ -46,40 +34,30 @@ export const useForm = () => {
 
   const canGoNext = useMemo(() => {
     switch (currentStep) {
-      case "token":
-        return tokenForm.formState.isValid;
       case "agent":
         return agentForm.formState.isValid;
       case "twitter":
         return twitterForm.formState.isValid;
     }
-  }, [
-    agentForm.formState.isValid,
-    currentStep,
-    tokenForm.formState.isValid,
-    twitterForm.formState.isValid,
-  ]);
+  }, [agentForm.formState.isValid, currentStep, twitterForm.formState.isValid]);
 
   const FormBody = useMemo(() => {
     switch (currentStep) {
-      case "token":
-        return <TokenCreationForm form={tokenForm} />;
       case "agent":
         return <AgentDetails form={agentForm} mode="create" />;
       case "twitter":
         return <TwitterLoginForm form={twitterForm} />;
     }
-  }, [agentForm, currentStep, tokenForm, twitterForm]);
+  }, [agentForm, currentStep, twitterForm]);
 
   const getFormValues = useCallback(() => {
-    const tokenMetadata = tokenForm.getValues();
     const twitterCredentials = twitterForm.getValues();
     const agentDetails = agentForm.getValues();
 
-    return { tokenMetadata, twitterCredentials, agentDetails };
-  }, [agentForm, tokenForm, twitterForm]);
+    return { twitterCredentials, agentDetails };
+  }, [agentForm, twitterForm]);
 
-  const canGoBack = useMemo(() => currentStep !== "token", [currentStep]);
+  const canGoBack = useMemo(() => currentStep !== "agent", [currentStep]);
 
   return {
     currentStep,

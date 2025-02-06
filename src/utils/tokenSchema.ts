@@ -32,4 +32,5 @@ export const TokenSchema = z.object({
   discord: z.string().optional(),
   twitter: z.string().optional(),
   telegram: z.string().optional(),
+  creator: z.string(),
 });
