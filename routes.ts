@@ -1167,36 +1167,51 @@ router.post('/upload-pinata', requireAuth, async (req, res) => {
   }
 });
 
+router.post('/token', requireAuth, async (req, res) => {
+  const {
+    signed_transaction,
+    token_metadata,
+    public_key,
+    mint_keypair_public,
+  } = req.body;
+
+   // First create the token
+   let tokenResult;
+   try {
+     logger.log("Creating token", { mint_keypair_public });
+     tokenResult = await submitTokenTransaction({
+       signed_transaction,
+       token_metadata,
+       public_key,
+       mint_keypair_public,
+     });
+
+     logger.log("Token created successfully", {
+       signature: tokenResult.signature,
+     });
+
+     res.json(tokenResult) // TODO: figure out what fields if any we need to return to client
+   } catch (error) {
+     logger.error("Token creation failed", error);
+     return res.status(400).json({ error: "Failed to create token" });
+   }
+})
+
 // Create new agent
-router.post('/agents', requireAuth, async (req, res) => {
+router.post('/agents/:tokenId', requireAuth, async (req, res) => {
   try {
     const {
-      signed_transaction,
-      token_metadata,
-      public_key,
-      mint_keypair_public,
       twitter_credentials,
       agent_metadata,
     } = req.body;
+    const tokenId = req.params.tokenId
+    const ownerAddress = req.user?.publicKey;
 
-     // First create the token
-     let tokenResult;
-     try {
-       logger.log("Creating token", { mint_keypair_public });
-       tokenResult = await submitTokenTransaction({
-         signed_transaction,
-         token_metadata,
-         public_key,
-         mint_keypair_public,
-       });
+    const {creator, mint, ticker, txId} = await Token.findById(tokenId)
 
-       logger.log("Token created successfully", {
-         signature: tokenResult.signature,
-       });
-     } catch (error) {
-       logger.error("Token creation failed", error);
-       return res.status(400).json({ error: "Failed to create token" });
-     }
+    if (req.user?.publicKey !== creator) {
+      return res.status(401).json({error: 'only the token creator can add an agent to the token'})
+    }
 
     // Verify Twitter credentials if provided
     let twitterCookie;
@@ -1220,36 +1235,34 @@ router.post('/agents', requireAuth, async (req, res) => {
         });
       }
     }
+    
+    const agentData = {
+      ownerAddress,
+      txId, // TODO: ensure txId stored from server.ts
+      name: agent_metadata.name,
+      description: agent_metadata.description,
+      systemPrompt: agent_metadata.systemPrompt,
+      bio: splitIntoLines(agent_metadata.bio),
+      lore: splitIntoLines(agent_metadata.lore),
+      postExamples: splitIntoLines(agent_metadata.postExamples),
+      topics: splitIntoLines(agent_metadata.topics),
+      personalities: agent_metadata.personalities,
+      styleAll: splitIntoLines(agent_metadata.style),
+      adjectives: splitIntoLines(agent_metadata.adjectives),
+      contractAddress: mint,
+      symbol: ticker,
+      twitterUsername: twitter_credentials?.username,
+      twitterPassword: twitter_credentials?.password,
+      twitterEmail: twitter_credentials?.email,
+      twitterCookie,
+    };
 
-    if (Object.keys(agent_metadata).length > 0) {
-      const agentData = {
-        ownerAddress: public_key,
-        txId: tokenResult?.signature,
-        name: agent_metadata.name,
-        description: agent_metadata.description,
-        systemPrompt: agent_metadata.systemPrompt,
-        bio: splitIntoLines(agent_metadata.bio),
-        lore: splitIntoLines(agent_metadata.lore),
-        postExamples: splitIntoLines(agent_metadata.postExamples),
-        topics: splitIntoLines(agent_metadata.topics),
-        personalities: agent_metadata.personalities,
-        styleAll: splitIntoLines(agent_metadata.style),
-        adjectives: splitIntoLines(agent_metadata.adjectives),
-        contractAddress: mint_keypair_public,
-        symbol: token_metadata.symbol,
-        twitterUsername: twitter_credentials?.username,
-        twitterPassword: twitter_credentials?.password,
-        twitterEmail: twitter_credentials?.email,
-        twitterCookie,
-      };
+    const agent = await Agent.create(agentData);
+    await adjustTaskCount(1);
 
-      const agent = await Agent.create(agentData);
-      await adjustTaskCount(1);
-
-      logger.log("Increased ECS task count by 1 for agentId: ", {
-        agentId: agent.id,
-      });
-    }
+    logger.log("Increased ECS task count by 1 for agentId: ", {
+      agentId: agent.id,
+    });
 
     res.json({ success: true });
   } catch (error) {
