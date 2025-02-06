@@ -31,24 +31,24 @@ const fetchData = async <TInput, TOutput>(
   itemsPropertyName: string,
 ): Promise<PaginatedResponse<TOutput>> => {
   const queryEndpoint = `${endpoint}?limit=${limit}&page=${page}`;
-  
+
   const response = await womboApi.get({
     endpoint: queryEndpoint,
-    // schema: z.object({
-    //   [itemsPropertyName]: z.array(validationSchema),
-    //   page: z.number(),
-    //   totalPages: z.number(),
-    //   total: z.number(),
-    //   hasMore: z.boolean(),
-    // }),
+    schema: z.object({
+      [itemsPropertyName]: z.array(validationSchema),
+      page: z.number(),
+      totalPages: z.number(),
+      total: z.number(),
+      hasMore: z.boolean(),
+    }),
   });
 
   return {
     items: response[itemsPropertyName] as TOutput[],
-    page: response.page,
-    totalPages: response.totalPages,
-    hasMore: response.hasMore,
-    total: response.total,
+    page: response.page as number,
+    totalPages: response.totalPages as number,
+    hasMore: response.hasMore as boolean,
+    total: response.total as number,
   };
 };
 
@@ -101,8 +101,6 @@ export const usePaginatedLiveData = <TInput, TOutput>({
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
-       
-  
         const result = await fetchData(
           endpoint,
           1,
@@ -110,7 +108,6 @@ export const usePaginatedLiveData = <TInput, TOutput>({
           validationSchema,
           itemsPropertyName,
         );
-        
 
         setFetchedData({ items: result.items });
         setTotalPages(result.totalPages);

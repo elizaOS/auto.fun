@@ -60,6 +60,7 @@ export function AgentBrowser() {
     previousPage,
     isLoading,
   } = useTokens();
+  const router = useRouter();
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
