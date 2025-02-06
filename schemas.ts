@@ -566,6 +566,7 @@ TokenHolderSchema.index({ mint: 1, amount: -1 });
 AgentSchema.index({ ownerAddress: 1 });
 AgentSchema.index({ ecsTaskId: 1 });
 AgentSchema.index({ updatedAt: 1 });
+AgentSchema.index({ txId: 1 }, { unique: true });
 
 PersonalitySchema.index({ id: 1 }, { unique: true });
 
