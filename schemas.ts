@@ -62,6 +62,7 @@ export const TokenValidation = z.object({
   lastVolumeReset: z.date().optional(),
   lastPriceUpdate: z.date().optional(),
   holderCount: z.number().optional(),
+  txId: z.string()
 });
 
 // Swap Schema Validation
@@ -292,6 +293,7 @@ const TokenSchema = new mongoose.Schema({
   lastVolumeReset: Date,
   lastPriceUpdate: Date,
   holderCount: Number,
+  txId: String
 });
 
 // Swap Schema
