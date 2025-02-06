@@ -221,11 +221,13 @@ router.get('/tokens/:mint', async (req, res) => {
       return res.status(404).json({ error: 'Token not found' });
     }
 
+    const agent = await Agent.findOne({ txId: token.txId })
+
     // Get SOL price and calculate market data
     const solPrice = await getSOLPrice();
     const tokenWithMarketData = await calculateTokenMarketData(token, solPrice);
 
-    res.json(tokenWithMarketData);
+    res.json({ ...tokenWithMarketData, hasAgent: !!agent });
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: error.errors });
@@ -1205,7 +1207,7 @@ router.post('/agents/:tokenId', requireAuth, async (req, res) => {
     const tokenId = req.params.tokenId
     const ownerAddress = req.user?.publicKey;
 
-    const {creator, mint, ticker, txId} = await Token.findById(tokenId)
+    const { creator, mint, ticker, txId } = await Token.findOne({ mint: tokenId });
 
     if (req.user?.publicKey !== creator) {
       return res.status(401).json({error: 'only the token creator can add an agent to the token'})
@@ -1236,7 +1238,7 @@ router.post('/agents/:tokenId', requireAuth, async (req, res) => {
     
     const agentData = {
       ownerAddress,
-      txId, // TODO: ensure txId stored from server.ts
+      txId,
       name: agent_metadata.name,
       description: agent_metadata.description,
       systemPrompt: agent_metadata.systemPrompt,
