@@ -12,11 +12,12 @@ import { CenterFormContainer } from "@/components/common/containers/CenterFormCo
 import { WalletButton } from "@/components/common/button/WalletButton";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 export default function CreateAgentPage() {
   const { publicKey } = useWallet();
   const params = useParams();
+  const router = useRouter();
 
   const tokenId = params.tokenId as string;
 
@@ -89,16 +90,16 @@ export default function CreateAgentPage() {
         tokenId,
       });
 
-      //   TODO: handle success
-      //   router.push(
-      //     `/success?twitterHandle=${twitterCreds.username}&mintPublicKey=${mintPublicKey}`,
-      //   );
-    } catch {
+      router.push(
+        `/success?twitterHandle=${twitterCreds.username}&mintPublicKey=${tokenId}`,
+      );
+    } catch (e) {
       toast.error("Oops! Something went wrong. Please try again.");
+      throw e;
     } finally {
       setIsModalOpen(false);
     }
-  }, [convertFormData, createAgent, tokenId]);
+  }, [convertFormData, createAgent, router, tokenId]);
 
   const FormButton = useMemo(() => {
     switch (currentStep) {

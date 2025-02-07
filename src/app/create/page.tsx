@@ -12,6 +12,7 @@ import { Modal } from "@/components/common/Modal";
 import { Spinner } from "@/components/common/Spinner";
 import { useForm } from "react-hook-form";
 import { TokenCreationForm } from "./TokenCreationForm";
+import { useRouter } from "next/navigation";
 
 export type FormStep = "token" | "agent" | "twitter";
 
@@ -31,6 +32,7 @@ export default function TransactionSignPage() {
   const tokenForm = useForm<TokenMetadataForm>({
     defaultValues: { links: {} },
   });
+  const router = useRouter();
 
   const { mutateAsync: createToken } = useCreateToken();
 
@@ -62,13 +64,15 @@ export default function TransactionSignPage() {
       const { tokenMeta } = await convertFormData();
       await createToken(tokenMeta);
 
-      // TODO: handle success
-    } catch {
+      toast.success("Token created");
+      router.push("/");
+    } catch (e) {
       toast.error("Oops! Something went wrong. Please try again.");
+      throw e;
     } finally {
       setIsModalOpen(false);
     }
-  }, [convertFormData, createToken]);
+  }, [convertFormData, createToken, router]);
 
   return (
     <div className="flex flex-col justify-center h-full relative mt-12">

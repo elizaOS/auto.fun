@@ -17,6 +17,7 @@ import { useCallback } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { BN, Program } from "@coral-xyz/anchor";
 import { env } from "./env";
+import { getSocket } from "./socket";
 
 export type Token = z.infer<typeof TokenSchema>;
 const HomepageTokenSchema = TokenSchema.and(
@@ -79,6 +80,29 @@ const uploadToPinata = async (metadata: TokenMetadata) => {
     }),
   });
   return response.metadataUrl;
+};
+
+const waitForTokenCreation = async (mint: string, timeout = 10_000) => {
+  return new Promise<void>((resolve, reject) => {
+    const socket = getSocket();
+
+    const newTokenListener = (token: unknown) => {
+      const { mint: newMint } = HomepageTokenSchema.parse(token);
+      if (newMint === mint) {
+        clearTimeout(timerId);
+        socket.off("newToken", newTokenListener);
+        resolve();
+      }
+    };
+
+    socket.emit("subscribeGlobal");
+    socket.on("newToken", newTokenListener);
+
+    const timerId = setTimeout(() => {
+      socket.off("newToken", newTokenListener);
+      reject(new Error("Token creation timed out"));
+    }, timeout);
+  });
 };
 
 const useCreateTokenMutation = createMutation({
@@ -146,23 +170,30 @@ const useCreateTokenMutation = createMutation({
       .transaction();
     tx.instructions = [modifyComputeUnits, addPriorityFee, ...tx.instructions];
     tx.feePayer = userPublicKey;
-    tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+    const { blockhash, lastValidBlockHeight } =
+      await connection.getLatestBlockhash();
+    tx.recentBlockhash = blockhash;
 
     // Sign the transaction with the mint keypair
     tx.sign(mintKeypair);
 
     // Request the user's signature via Phantom
     const signedTx = await signTransaction(tx);
-
-    await womboApi.post({
-      endpoint: "/token",
-      body: {
-        signed_transaction: signedTx.serialize().toString("base64"),
-        token_metadata: token_metadata,
-        public_key: userPublicKey.toBase58(),
-        mint_keypair_public: mintKeypair.publicKey.toBase58(),
-      },
+    const txId = await connection.sendRawTransaction(signedTx.serialize(), {
+      preflightCommitment: "confirmed",
+      maxRetries: 5,
     });
+
+    await connection.confirmTransaction(
+      {
+        signature: txId,
+        blockhash,
+        lastValidBlockHeight,
+      },
+      "finalized",
+    );
+
+    await waitForTokenCreation(mintKeypair.publicKey.toBase58());
 
     return { mintPublicKey: mintKeypair.publicKey, userPublicKey };
   },
