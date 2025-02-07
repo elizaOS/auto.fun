@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { InfoIcon, SendHorizontal, Copy } from "lucide-react";
+import { InfoIcon, SendHorizontal, Copy, Check } from "lucide-react";
 import { useToken } from "@/utils/tokens";
 import { useParams } from "next/navigation";
 import { TradingChart } from "@/components/TVChart/TradingChart";
@@ -22,6 +22,8 @@ import { Comments } from "./Comments";
 // Import Fal AI client
 import { fal } from "@fal-ai/client";
 import { TradeTable } from "@/components/TradeTable";
+import { Toast } from "@/components/common/Toast";
+import { toast } from "react-toastify";
 
 const HolderSchema = z.object({
   address: z.string(),
@@ -39,6 +41,7 @@ export default function TradingInterface() {
 
   const tokenId = params.tokenId as string;
   const { data: token, isLoading } = useToken({ variables: tokenId });
+  const [copied, setCopied] = useState(false);
 
   const { items: holders } = usePaginatedLiveData({
     itemsPerPage: 100,
@@ -100,6 +103,20 @@ export default function TradingInterface() {
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast(
+      <Toast message="Address copied to clipboard" status="completed" />,
+      {
+        position: "bottom-right",
+        autoClose: 2000,
+        hideProgressBar: true,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: false,
+        progress: undefined,
+      }
+    );
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -121,10 +138,14 @@ export default function TradingInterface() {
                   </h1>
                   <div className="flex items-center gap-1 text-gray-300 text-xs">
                     {`${token.mint.slice(0, 3)}...${token.mint.slice(-3)}`}
-                    <Copy
-                      className="cursor-pointer text-gray-300 h-3"
-                      onClick={() => handleCopy(token.mint)}
-                    />
+                    {copied ? (
+                      <Check className="text-green-500 h-3" />
+                    ) : (
+                      <Copy
+                        className="cursor-pointer text-gray-300 h-3 hover:text-gray-400"
+                        onClick={() => handleCopy(token.mint)}
+                      />
+                    )}
                   </div>
                 </div>
                 <p className="text-[#a1a1a1] text-sm md:text-lg break-word">
