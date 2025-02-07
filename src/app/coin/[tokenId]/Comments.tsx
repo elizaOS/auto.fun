@@ -119,22 +119,31 @@ const CommentItem = ({
           </div>
 
           {replyingToId === comment._id && (
-            <div>
+            <div className="w-full">
               <input
                 type="text"
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
                 placeholder="Write your reply..."
+                className="w-full bg-[#262626] rounded px-3 py-2 text-[#a1a1a1] outline-none focus:ring-1 focus:ring-[#22C55E] mb-2"
               />
-              <button onClick={handleSendReply}>Send</button>
-              <button
-                onClick={() => {
-                  setReplyingToId(null);
-                  setReplyText("");
-                }}
-              >
-                Cancel
-              </button>
+              <div className="flex justify-start gap-2">
+                <button
+                  onClick={handleSendReply}
+                  className="px-3 py-2 bg-[#22C55E] text-white rounded text-sm hover:bg-[#1aab45]"
+                >
+                  Send
+                </button>
+                <button
+                  onClick={() => {
+                    setReplyingToId(null);
+                    setReplyText("");
+                  }}
+                  className="px-3 py-2 bg-[#262626] text-[#a1a1a1] rounded text-sm hover:bg-[#333]"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           )}
           {comment.replyCount > 0 && (
