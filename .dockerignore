@@ -1,0 +1,6 @@
+target/debug/
+target/release/
+target/deploy/
+node_modules/
+.anchor/
+.git/
