@@ -7,7 +7,8 @@
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
     "test": "mocha -r ts-node/register tests/**/*.ts",
     "script": "bun run ./cli/command.ts",
-    "server": "bun run server.ts"
+    "server": "bun run server.ts",
+    "dev": "bun --watch run server.ts"
   },
   "dependencies": {
     "@aws-sdk/client-ecs": "^3.726.1",
