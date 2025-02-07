@@ -24,7 +24,7 @@
     "@solana/spl-token": "^0.4.8",
     "@solana/web3.js": "^1.68.0",
     "@web3auth/sign-in-with-solana": "^4.0.0",
-    "agent-twitter-client": "^0.0.18",
+    "agent-twitter-client": "0.0.17",
     "bun": "^1.2.0",
     "commander": "^12.1.0",
     "cookie-parser": "^1.4.7",
