@@ -2,8 +2,17 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 export default function SuccessPage() {
+  return (
+    <Suspense>
+      <SuspendedSuccessPage />
+    </Suspense>
+  );
+}
+
+const SuspendedSuccessPage = () => {
   const searchParams = useSearchParams();
   const twitterHandle = searchParams.get("twitterHandle");
   const mintPublicKey = searchParams.get("mintPublicKey");
@@ -64,4 +73,4 @@ export default function SuccessPage() {
       </div>
     </div>
   );
-}
+};
