@@ -78,6 +78,7 @@ export const TokenValidation = z.object({
   lastVolumeReset: z.date().optional(),
   lastPriceUpdate: z.date().optional(),
   holderCount: z.number().optional(),
+  txId: z.string(),
 });
 
 // Swap Schema Validation
@@ -206,7 +207,7 @@ export const AgentValidation = z.object({
 // Update the MediaGenerationValidation schema
 export const MediaGenerationValidation = z.object({
   mint: z.string().min(32).max(44),
-  type: z.enum(["image", "video"]),
+  type: z.enum(["image", "video", "audio"]),
   prompt: z.string().min(1).max(500),
   mediaUrl: z.string().url(),
   negative_prompt: z.string().optional(),
@@ -217,9 +218,11 @@ export const MediaGenerationValidation = z.object({
   fps: z.number().optional(),
   motion_bucket_id: z.number().optional(),
   duration: z.number().optional(),
+  // Audio specific fields
+  duration_seconds: z.number().optional(),
+  bpm: z.number().optional(),
   creator: z.string().nullable(),
   timestamp: z.date().default(() => new Date()),
-  // Daily limit metadata
   dailyGenerationCount: z.number().optional(),
   lastGenerationReset: z.date().optional(),
 });
@@ -339,6 +342,7 @@ const TokenSchema = new mongoose.Schema({
   lastVolumeReset: Date,
   lastPriceUpdate: Date,
   holderCount: Number,
+  txId: String,
 });
 
 // Swap Schema
@@ -484,7 +488,7 @@ const AgentSchema = new mongoose.Schema(
 // Update the MongoDB schema
 const MediaGenerationSchema = new mongoose.Schema({
   mint: { type: String, required: true },
-  type: { type: String, enum: ["image", "video"], required: true },
+  type: { type: String, enum: ["image", "video", "audio"], required: true },
   prompt: { type: String, required: true },
   mediaUrl: { type: String, required: true },
   negative_prompt: String,
@@ -495,6 +499,9 @@ const MediaGenerationSchema = new mongoose.Schema({
   fps: Number,
   motion_bucket_id: Number,
   duration: Number,
+  // Audio specific fields
+  duration_seconds: Number,
+  bpm: Number,
   creator: { type: String, default: null, required: false },
   timestamp: { type: Date, default: Date.now },
   dailyGenerationCount: { type: Number, default: 0 },
@@ -563,6 +570,7 @@ TokenHolderSchema.index({ mint: 1, amount: -1 });
 AgentSchema.index({ ownerAddress: 1 });
 AgentSchema.index({ ecsTaskId: 1 });
 AgentSchema.index({ updatedAt: 1 });
+AgentSchema.index({ txId: 1 }, { unique: true });
 
 PersonalitySchema.index({ id: 1 }, { unique: true });
 

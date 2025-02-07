@@ -1,0 +1,25 @@
+services:
+  app:
+    build: .
+    ports:
+      - "${PORT}:${PORT}"
+    env_file: 
+      - .env    # Load all vars from .env
+    # Or specify individual vars:
+    environment:
+      - PORT=${PORT}
+      - CUSTOM_VAR=value
+      - MONGODB_URI=mongodb://mongo:27017/serlaunchalot
+
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data: 

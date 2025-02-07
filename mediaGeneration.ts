@@ -16,6 +16,7 @@ fal.config({
 export enum MediaType {
   IMAGE = "image",
   VIDEO = "video",
+  AUDIO = "audio",
 }
 
 router.all(falProxy.route, falProxy.handler);
@@ -30,8 +31,15 @@ const MediaGenerationRequestSchema = z.object({
   // Video specific options
   num_frames: z.number().min(1).max(50).optional(),
   fps: z.number().min(1).max(60).optional(),
-  motion_bucket_id: z.number().optional(),
+  motion_bucket_id: z.number().min(1).max(255).optional(),
   duration: z.number().optional(),
+  // Audio specific options
+  duration_seconds: z.number().min(1).max(30).optional(),
+  bpm: z.number().min(60).max(200).optional(),
+  // Common options
+  guidance_scale: z.number().min(1).max(20).optional(),
+  width: z.number().min(512).max(1024).optional(),
+  height: z.number().min(512).max(1024).optional(),
 });
 
 // Configure rate limits per media type
@@ -42,6 +50,10 @@ const RATE_LIMITS = {
   },
   [MediaType.VIDEO]: {
     MAX_GENERATIONS_PER_DAY: 10, // Lower limit for videos
+    COOLDOWN_PERIOD_MS: 24 * 60 * 60 * 1000,
+  },
+  [MediaType.AUDIO]: {
+    MAX_GENERATIONS_PER_DAY: 20,
     COOLDOWN_PERIOD_MS: 24 * 60 * 60 * 1000,
   },
 };
@@ -88,6 +100,23 @@ async function generateMedia(
     });
   }
 
+  if (data.type === MediaType.AUDIO) {
+    return await fal.subscribe("fal-ai/stable-audio", {
+      input: {
+        prompt: data.prompt,
+        duration_seconds: data.duration_seconds || 10,
+        bpm: data.bpm || 120,
+        seed: data.seed || Math.floor(Math.random() * 1000000),
+      },
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log("Audio generation progress:", update.logs);
+        }
+      },
+    });
+  }
+
   // For images
   return await fal.run("fal-ai/flux/dev", {
     input: {
@@ -100,6 +129,26 @@ async function generateMedia(
       height: 1024,
     },
   });
+
+  // return await fal.subscribe("fal-ai/flux/dev/image-to-image", {
+  //   input: {
+  //     prompt: data.prompt,
+  //     image_url:
+  //       "https://gateway.pinata.cloud/ipfs/QmdnugkQ6ZBAG1wiz7YgkkNASB81NCAxm2HEcuKxLQxM26",
+  //     // negative_prompt: data.negative_prompt || "",
+  //     // num_inference_steps: data.num_inference_steps || 25,
+  //     // seed: data.seed || Math.floor(Math.random() * 1000000),
+  //     // guidance_scale: 7.5,
+  //     // width: 1024,
+  //     // height: 1024,
+  //   },
+  //   logs: true,
+  //   onQueueUpdate: (update) => {
+  //     if (update.status === "IN_PROGRESS") {
+  //       console.log("Video generation progress:", update.logs);
+  //     }
+  //   },
+  // });
 }
 
 // Generate media endpoint
@@ -133,10 +182,14 @@ router.post("/:mint/generate", async (req, res) => {
     // Generate media
     const result = await generateMedia(validatedData);
 
+    console.log(result);
+
     // Extract the correct URL based on media type
     const mediaUrl =
       validatedData.type === MediaType.VIDEO
         ? result?.data?.video?.url
+        : validatedData.type === MediaType.AUDIO
+        ? result?.data?.audio_file?.url
         : result?.data?.images?.[0]?.url;
 
     if (!mediaUrl) {
@@ -157,6 +210,9 @@ router.post("/:mint/generate", async (req, res) => {
       fps: validatedData.fps,
       motion_bucket_id: validatedData.motion_bucket_id,
       duration: validatedData.duration,
+      // Audio specific metadata
+      duration_seconds: validatedData.duration_seconds,
+      bpm: validatedData.bpm,
       creator: req?.user?.publicKey || null,
       timestamp: new Date(),
     });
@@ -253,6 +309,10 @@ router.get("/:mint/history", requireAuth, async (req, res) => {
             [MediaType.VIDEO]:
               RATE_LIMITS[MediaType.VIDEO].MAX_GENERATIONS_PER_DAY -
               recentGenerations.filter((g) => g.type === MediaType.VIDEO)
+                .length,
+            [MediaType.AUDIO]:
+              RATE_LIMITS[MediaType.AUDIO].MAX_GENERATIONS_PER_DAY -
+              recentGenerations.filter((g) => g.type === MediaType.AUDIO)
                 .length,
           },
       resetTime: new Date(

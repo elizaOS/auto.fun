@@ -61,7 +61,7 @@ const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cors({
-  origin: ["https://autofun.vercel.app", "http://localhost:3000", "http://localhost:3420", "https://auto.fun", "*"],
+  origin: ["https://autofun-frontend.vercel.app", "https://autofun.vercel.app", "http://localhost:3000", "http://localhost:3420", "https://auto.fun", "*"],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 }));
@@ -366,7 +366,7 @@ class TokenMonitor {
                 price24hAgo: tokenPriceUSD,
                 volume24h: 0,
                 inferenceCount: 0,
-                holderCount: 0
+                txId: logs.signature,
               },
               { 
                 upsert: true,
