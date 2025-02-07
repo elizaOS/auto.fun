@@ -18,9 +18,7 @@ import { TokenBuySell } from "./swap/TokenBuySell";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Comments } from "./Comments";
-
-// Import Fal AI client
-import { fal } from "@fal-ai/client";
+import { FalGenerator } from "./FalGenerator";
 import { TradeTable } from "@/components/TradeTable";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -159,7 +157,11 @@ export default function TradingInterface() {
                   {token.discord && (
                     <Link
                       // href={token.discord}
-                      href={token.discord.startsWith('http') ? token.discord : `https://discord.gg/${token.discord}`}
+                      href={
+                        token.discord.startsWith("http")
+                          ? token.discord
+                          : `https://discord.gg/${token.discord}`
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
@@ -171,7 +173,11 @@ export default function TradingInterface() {
                   {token.twitter && (
                     <Link
                       // href={token.twitter}
-                      href={token.twitter.startsWith('http') ? token.twitter : `https://twitter.com/${token.twitter}`}
+                      href={
+                        token.twitter.startsWith("http")
+                          ? token.twitter
+                          : `https://twitter.com/${token.twitter}`
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
@@ -183,9 +189,13 @@ export default function TradingInterface() {
                   {token.telegram && (
                     <Link
                       // href={token.telegram}
-                      href={token.telegram.startsWith('http') ? token.telegram : `https://t.me/${token.telegram}`}
-                       target="_blank"
-                       rel="noopener noreferrer"
+                      href={
+                        token.telegram.startsWith("http")
+                          ? token.telegram
+                          : `https://t.me/${token.telegram}`
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
                     >
                       {/* Telegram SVG */}
@@ -199,7 +209,7 @@ export default function TradingInterface() {
 
           {token && token.status === "active" && <TradingChart param={token} />}
 
-          {/* --- Fal Generator Section --- */}
+          {/* Fal Generator Section */}
           <FalGenerator />
 
           {/* Trades/Comments/Chat */}
@@ -334,287 +344,6 @@ export default function TradingInterface() {
     </div>
   );
 }
-
-const FalGenerator = () => {
-  // possible types: "image", "music", "video"
-  const [activeType, setActiveType] = useState<"image" | "music" | "video">(
-    "image",
-  );
-  // Shared prompt for image/video
-  const [prompt, setPrompt] = useState("");
-  // Music-specific state fields for separate song parts
-  const [verse1, setVerse1] = useState("");
-  const [chorus, setChorus] = useState("");
-  const [verse2, setVerse2] = useState("");
-  const [bridge, setBridge] = useState("");
-  const [verse3, setVerse3] = useState("");
-  const [genres, setGenres] = useState("");
-
-  const params = useParams();
-
-  const tokenId = params.tokenId as string;
-  const { data: token } = useToken({ variables: tokenId });
-
-  const [loading, setLoading] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [result, setResult] = useState<any>(null);
-
-  // For now the Fal AI API key is pulled from env vars.
-  const falApiKey = process.env.NEXT_PUBLIC_FAL_AI_API_KEY; // TODO: Remove this and replace with proxy / call to server
-  // Initialize fal with the API key.
-  fal.config({
-    credentials: falApiKey,
-  });
-
-  const handleGenerate = async () => {
-    setLoading(true);
-    setResult(null);
-    try {
-      if (activeType === "image") {
-        const res = await fal.subscribe("fal-ai/flux/schnell", {
-          input: { prompt },
-          logs: true,
-          onQueueUpdate: (update) => {
-            if (update.status === "IN_PROGRESS") {
-              update.logs.map((log) => log.message).forEach(console.log);
-            }
-          },
-        });
-        setResult(res.data);
-        //       } else if (activeType === "music") {
-        //         // Compile the separate music parts into one lyrics string.
-        //         const compiledLyrics = `[verse1]
-        // ${verse1}
-
-        // [chorus]
-        // ${chorus}
-
-        // [verse2]
-        // ${verse2}
-
-        // [bridge]
-        // ${bridge}
-
-        // [verse3]
-        // ${verse3}`;
-        //         const res = await fal.subscribe("fal-ai/yue", {
-        //           input: { lyrics: compiledLyrics, genres },
-        //           logs: true,
-        //           onQueueUpdate: (update) => {
-        //             if (update.status === "IN_PROGRESS") {
-        //               update.logs.map((log) => log.message).forEach(console.log);
-        //             }
-        //           },
-        //         });
-        //         setResult(res.data);
-      } else if (activeType === "video") {
-        const res = await fal.subscribe("fal-ai/t2v-turbo", {
-          input: { prompt },
-          logs: true,
-          onQueueUpdate: (update) => {
-            if (update.status === "IN_PROGRESS") {
-              update.logs.map((log) => log.message).forEach(console.log);
-            }
-          },
-        });
-        setResult(res.data);
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Render the result differently based on activeType.
-  const renderResult = () => {
-    if (!result) return null;
-    if (activeType === "image" && result.images && result.images.length > 0) {
-      const image = result.images[0];
-      return (
-        <div className="flex flex-col items-center">
-          <img
-            src={image.url}
-            alt={prompt || "Generated Image"}
-            className="max-w-full rounded"
-          />
-          <a
-            href={image.url}
-            download="generated-image.png"
-            className="mt-2 inline-block px-4 py-2 bg-blue-500 text-white rounded"
-          >
-            Download Image
-          </a>
-        </div>
-      );
-    }
-    // else if (activeType === "music" && result.audio && result.audio.length > 0) {
-    //   const audio = result.audio[0];
-    //   return (
-    //     <div className="flex flex-col items-center">
-    //       <audio controls src={audio.url} className="w-full" />
-    //       <a
-    //         href={audio.url}
-    //         download="generated-music.mp3"
-    //         className="mt-2 inline-block px-4 py-2 bg-blue-500 text-white rounded"
-    //       >
-    //         Download Music
-    //       </a>
-    //     </div>
-    //   );
-    // }
-    else if (activeType === "video" && result.video) {
-      // Video result is returned as an object rather than an array.
-      const videoData = result.video;
-      return (
-        <div className="flex flex-col items-center">
-          <video controls src={videoData.url} className="max-w-full" />
-          <a
-            href={videoData.url}
-            download={videoData.file_name || "generated-video.mp4"}
-            className="mt-2 inline-block px-4 py-2 bg-blue-500 text-white rounded"
-          >
-            Download Video
-          </a>
-        </div>
-      );
-    } else {
-      // Fallback: show the raw JSON if no expected media is returned.
-      return (
-        <pre className="text-white">{JSON.stringify(result, null, 2)}</pre>
-      );
-    }
-  };
-
-  return (
-    <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-6 mt-6">
-      <h2 className="text-white text-xl mb-4">
-        Generate ${token?.name} Content
-      </h2>
-      <div className="flex gap-4 mb-4">
-        <button
-          className={cn(
-            "px-4 py-2 rounded",
-            activeType === "image"
-              ? "bg-[#22C55E] text-white"
-              : "bg-gray-700 text-gray-300",
-          )}
-          onClick={() => setActiveType("image")}
-        >
-          Image
-        </button>
-        {/* <button
-          className={cn(
-            "px-4 py-2 rounded",
-            activeType === "music"
-              ? "bg-[#22C55E] text-white"
-              : "bg-gray-700 text-gray-300"
-          )}
-          onClick={() => setActiveType("music")}
-        >
-          Music
-        </button> */}
-        <button
-          className={cn(
-            "px-4 py-2 rounded",
-            activeType === "video"
-              ? "bg-[#22C55E] text-white"
-              : "bg-gray-700 text-gray-300",
-          )}
-          onClick={() => setActiveType("video")}
-        >
-          Video
-        </button>
-      </div>
-      <div>
-        {activeType === "image" && (
-          <div className="flex flex-col gap-2">
-            <label className="text-white">Image Prompt</label>
-            <input
-              type="text"
-              className="bg-[#262626] rounded p-2 text-white"
-              placeholder="Enter image prompt"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-            />
-          </div>
-        )}
-        {activeType === "music" && (
-          <div className="flex flex-col gap-2">
-            <label className="text-white">Verse 1</label>
-            <textarea
-              className="bg-[#262626] rounded p-2 text-white"
-              placeholder="Enter Verse 1"
-              value={verse1}
-              onChange={(e) => setVerse1(e.target.value)}
-            />
-            <label className="text-white">Chorus</label>
-            <textarea
-              className="bg-[#262626] rounded p-2 text-white"
-              placeholder="Enter Chorus"
-              value={chorus}
-              onChange={(e) => setChorus(e.target.value)}
-            />
-            <label className="text-white">Verse 2</label>
-            <textarea
-              className="bg-[#262626] rounded p-2 text-white"
-              placeholder="Enter Verse 2"
-              value={verse2}
-              onChange={(e) => setVerse2(e.target.value)}
-            />
-            <label className="text-white">Bridge</label>
-            <textarea
-              className="bg-[#262626] rounded p-2 text-white"
-              placeholder="Enter Bridge"
-              value={bridge}
-              onChange={(e) => setBridge(e.target.value)}
-            />
-            <label className="text-white">Verse 3</label>
-            <textarea
-              className="bg-[#262626] rounded p-2 text-white"
-              placeholder="Enter Verse 3"
-              value={verse3}
-              onChange={(e) => setVerse3(e.target.value)}
-            />
-            <label className="text-white">Genres</label>
-            <input
-              type="text"
-              className="bg-[#262626] rounded p-2 text-white"
-              placeholder="Enter genres"
-              value={genres}
-              onChange={(e) => setGenres(e.target.value)}
-            />
-          </div>
-        )}
-        {activeType === "video" && (
-          <div className="flex flex-col gap-2">
-            <label className="text-white">Video Prompt</label>
-            <input
-              type="text"
-              className="bg-[#262626] rounded p-2 text-white"
-              placeholder="Enter video prompt"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-            />
-          </div>
-        )}
-      </div>
-      <button
-        onClick={handleGenerate}
-        className="mt-4 px-4 py-2 bg-[#22C55E] text-white rounded hover:bg-[#1aab45]"
-        disabled={loading}
-      >
-        {loading ? "Generating..." : "Generate"}
-      </button>
-      {result && (
-        <div className="mt-4">
-          <h3 className="text-white">Result:</h3>
-          {renderResult()}
-        </div>
-      )}
-    </div>
-  );
-};
 
 const renderSkeletons = () => (
   <div className="min-h-screen text-green-500 relative overflow-hidden">
