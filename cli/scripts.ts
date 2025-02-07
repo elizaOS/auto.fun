@@ -75,8 +75,8 @@ export const configProject = async () => {
     teamWallet: payer.publicKey,
 
     initBondingCurve: process.env.INIT_BONDING_CURVE,
-    platformBuyFee: process.env.SWAP_FEE, // Example fee: 1% (1.0)
-    platformSellFee: process.env.SWAP_FEE, // Example fee: 1% (1.0)
+    platformBuyFee: process.env.SWAP_FEE, // Example fee: 1% (100)
+    platformSellFee: process.env.SWAP_FEE, // Example fee: 1% (100)
 
     curveLimit: new BN(process.env.CURVE_LIMIT), //  Example limit: 4 SOL
 
