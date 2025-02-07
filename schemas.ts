@@ -9,8 +9,13 @@ import { z } from "zod";
 export const UserValidation = z.object({
   name: z.string().optional(),
   address: z.string().min(32).max(44), // Solana addresses are 32-44 chars
-  avatar: z.string().url().default('https://ipfs.io/ipfs/bafkreig4ob6pq5qy4v6j62krj4zkh2kc2pnv5egqy7f65djqhgqv3x56pq'),
-  createdAt: z.date().default(() => new Date())
+  avatar: z
+    .string()
+    .url()
+    .default(
+      "https://ipfs.io/ipfs/bafkreig4ob6pq5qy4v6j62krj4zkh2kc2pnv5egqy7f65djqhgqv3x56pq"
+    ),
+  createdAt: z.date().default(() => new Date()),
 });
 
 // Token Schema Validation
@@ -35,7 +40,18 @@ export const TokenValidation = z.object({
   lockedAmount: z.string().optional(),
   lockedAt: z.date().optional(),
   harvestedAt: z.date().optional(),
-  status: z.enum(['pending', 'active', 'withdrawn', 'migrating', 'migrated', 'locked', 'harvested', 'migration_failed']).default('active'),
+  status: z
+    .enum([
+      "pending",
+      "active",
+      "withdrawn",
+      "migrating",
+      "migrated",
+      "locked",
+      "harvested",
+      "migration_failed",
+    ])
+    .default("active"),
   createdAt: z.date().default(() => new Date()),
   lastUpdated: z.date().default(() => new Date()),
   completedAt: z.date().optional(),
@@ -62,7 +78,7 @@ export const TokenValidation = z.object({
   lastVolumeReset: z.date().optional(),
   lastPriceUpdate: z.date().optional(),
   holderCount: z.number().optional(),
-  txId: z.string()
+  txId: z.string(),
 });
 
 // Swap Schema Validation
@@ -76,7 +92,7 @@ export const SwapValidation = z.object({
   priceImpact: z.number().optional(),
   price: z.number().positive(),
   txId: z.string().min(32),
-  timestamp: z.date().default(() => new Date())
+  timestamp: z.date().default(() => new Date()),
 });
 
 // Fee Schema Validation
@@ -87,9 +103,9 @@ export const FeeValidation = z.object({
   feeAmount: z.string().optional(),
   tokenAmount: z.string().optional(),
   solAmount: z.string().optional(),
-  type: z.enum(['swap', 'migration']),
+  type: z.enum(["swap", "migration"]),
   txId: z.string().optional(),
-  timestamp: z.date()
+  timestamp: z.date(),
 });
 
 // Message Schema Validation
@@ -100,7 +116,7 @@ export const MessageValidation = z.object({
   parentId: z.instanceof(mongoose.Types.ObjectId).optional(), // Reference to parent message for replies
   replyCount: z.number().default(0), // Track number of replies
   likes: z.number().default(0), // Track number of likes
-  timestamp: z.date().default(() => new Date())
+  timestamp: z.date().default(() => new Date()),
 });
 
 export const NewMessageValidation = MessageValidation.pick({
@@ -112,7 +128,7 @@ export const NewMessageValidation = MessageValidation.pick({
 export const MessageLikeValidation = z.object({
   messageId: z.instanceof(mongoose.Types.ObjectId),
   userAddress: z.string().min(32).max(44),
-  timestamp: z.date().default(() => new Date())
+  timestamp: z.date().default(() => new Date()),
 });
 
 // Vanity Keypair Schema Validation
@@ -120,11 +136,11 @@ export const VanityKeypairValidation = z.object({
   address: z.string().min(32).max(44),
   secretKey: z.string(),
   createdAt: z.date().default(() => new Date()),
-  used: z.boolean().default(false)
+  used: z.boolean().default(false),
 });
 
 export const VanityKeypairRequestValidation = z.object({
-  address: z.string().min(32).max(44)
+  address: z.string().min(32).max(44),
 });
 
 // Token Holder Schema Validation
@@ -133,7 +149,7 @@ export const TokenHolderValidation = z.object({
   address: z.string().min(32).max(44),
   amount: z.number().positive(),
   percentage: z.number().positive(),
-  lastUpdated: z.date().default(() => new Date())
+  lastUpdated: z.date().default(() => new Date()),
 });
 
 export const PersonalityValidation = z.object({
@@ -142,7 +158,7 @@ export const PersonalityValidation = z.object({
   description: z.string().optional(),
   createdAt: z.date().default(() => new Date()),
   updatedAt: z.date().default(() => new Date()),
-  deletedAt: z.date().optional()
+  deletedAt: z.date().optional(),
 });
 
 export const AgentValidation = z.object({
@@ -155,7 +171,7 @@ export const AgentValidation = z.object({
   description: z.string().optional(),
   systemPrompt: z.string(),
   modelProvider: z.string().default("llama_cloud"),
-  
+
   // Arrays
   bio: z.array(z.string()),
   lore: z.array(z.string()),
@@ -185,7 +201,30 @@ export const AgentValidation = z.object({
   // Timestamps
   createdAt: z.date().default(() => new Date()),
   updatedAt: z.date().default(() => new Date()),
-  deletedAt: z.date().optional()
+  deletedAt: z.date().optional(),
+});
+
+// Update the MediaGenerationValidation schema
+export const MediaGenerationValidation = z.object({
+  mint: z.string().min(32).max(44),
+  type: z.enum(["image", "video", "audio"]),
+  prompt: z.string().min(1).max(500),
+  mediaUrl: z.string().url(),
+  negative_prompt: z.string().optional(),
+  num_inference_steps: z.number().optional(),
+  seed: z.number().optional(),
+  // Video specific fields
+  num_frames: z.number().optional(),
+  fps: z.number().optional(),
+  motion_bucket_id: z.number().optional(),
+  duration: z.number().optional(),
+  // Audio specific fields
+  duration_seconds: z.number().optional(),
+  bpm: z.number().optional(),
+  creator: z.string().nullable(),
+  timestamp: z.date().default(() => new Date()),
+  dailyGenerationCount: z.number().optional(),
+  lastGenerationReset: z.date().optional(),
 });
 
 ///////////////////////////////////////
@@ -196,24 +235,25 @@ export const AgentValidation = z.object({
 const UserSchema = new mongoose.Schema({
   name: String,
   address: String,
-  avatar: { 
+  avatar: {
     type: String,
-    default: 'https://ipfs.io/ipfs/bafkreig4ob6pq5qy4v6j62krj4zkh2kc2pnv5egqy7f65djqhgqv3x56pq' 
+    default:
+      "https://ipfs.io/ipfs/bafkreig4ob6pq5qy4v6j62krj4zkh2kc2pnv5egqy7f65djqhgqv3x56pq",
   },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
 });
 
 // Interfaces
 export interface TokenMetadataJson {
-    name: string;
-    symbol: string;
-    description: string;
-    image: string;
-    showName?: boolean;
-    createdOn?: string;
-    twitter?: string;
-    telegram?: string;
-    website?: string;
+  name: string;
+  symbol: string;
+  description: string;
+  image: string;
+  showName?: boolean;
+  createdOn?: string;
+  twitter?: string;
+  telegram?: string;
+  website?: string;
 }
 
 // Create Token Schema
@@ -229,15 +269,15 @@ export const createTokenSchema = z.object({
   xurl: z.string().url().optional(),
   xavatarurl: z.string().url().optional(),
   xname: z.string().optional(),
-  xtext: z.string().optional()
+  xtext: z.string().optional(),
 });
 
 export const ChartParamsSchema = z.object({
-  pairIndex: z.string().transform(val => parseInt(val)),
-  start: z.string().transform(val => parseInt(val)),
-  end: z.string().transform(val => parseInt(val)),
-  range: z.string().transform(val => parseInt(val)),
-  token: z.string().min(32).max(44)
+  pairIndex: z.string().transform((val) => parseInt(val)),
+  start: z.string().transform((val) => parseInt(val)),
+  end: z.string().transform((val) => parseInt(val)),
+  range: z.string().transform((val) => parseInt(val)),
+  token: z.string().min(32).max(44),
 });
 
 // Token Schema
@@ -264,8 +304,17 @@ const TokenSchema = new mongoose.Schema({
   harvestedAt: Date,
   status: {
     type: String,
-    enum: ['pending', 'active', 'withdrawn', 'migrating', 'migrated', 'locked', 'harvested', 'migration_failed'],
-    default: 'active'
+    enum: [
+      "pending",
+      "active",
+      "withdrawn",
+      "migrating",
+      "migrated",
+      "locked",
+      "harvested",
+      "migration_failed",
+    ],
+    default: "active",
   },
   createdAt: { type: Date, default: Date.now },
   lastUpdated: { type: Date, default: Date.now },
@@ -293,7 +342,7 @@ const TokenSchema = new mongoose.Schema({
   lastVolumeReset: Date,
   lastPriceUpdate: Date,
   holderCount: Number,
-  txId: String
+  txId: String,
 });
 
 // Swap Schema
@@ -307,24 +356,24 @@ const SwapSchema = new mongoose.Schema({
   priceImpact: Number,
   price: Number,
   txId: String,
-  timestamp: { type: Date, default: Date.now }
+  timestamp: { type: Date, default: Date.now },
 });
 
 // Fee Schema
 const FeeSchema = new mongoose.Schema({
   tokenMint: String,
   user: String,
-  direction: Number, 
+  direction: Number,
   feeAmount: String,
   tokenAmount: String,
   solAmount: String,
   type: {
-      type: String,
-      enum: ['swap', 'migration'],
-      required: true
+    type: String,
+    enum: ["swap", "migration"],
+    required: true,
   },
   txId: String,
-  timestamp: { type: Date, default: Date.now }
+  timestamp: { type: Date, default: Date.now },
 });
 
 // Message Schema
@@ -332,26 +381,26 @@ const MessageSchema = new mongoose.Schema({
   author: String,
   tokenMint: String,
   message: String,
-  parentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Message' }, // Reference to parent message
+  parentId: { type: mongoose.Schema.Types.ObjectId, ref: "Message" }, // Reference to parent message
   replyCount: { type: Number, default: 0 },
   likes: { type: Number, default: 0 },
-  timestamp: { type: Date, default: Date.now }
+  timestamp: { type: Date, default: Date.now },
 });
 
 const MessageLikeSchema = new mongoose.Schema({
-  messageId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Message',
-    required: true 
+  messageId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Message",
+    required: true,
   },
-  userAddress: { 
-    type: String, 
-    required: true 
+  userAddress: {
+    type: String,
+    required: true,
   },
-  timestamp: { 
-    type: Date, 
-    default: Date.now 
-  }
+  timestamp: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
 // Vanity Keypair Schema
@@ -359,159 +408,114 @@ const VanityKeypairSchema = new mongoose.Schema({
   address: String,
   secretKey: String,
   createdAt: { type: Date, default: Date.now },
-  used: { type: Boolean, default: false }
+  used: { type: Boolean, default: false },
 });
 
-const TokenHolderSchema = new mongoose.Schema({
+const TokenHolderSchema = new mongoose.Schema(
+  {
+    mint: { type: String, required: true },
+    address: { type: String, required: true },
+    amount: { type: Number, required: true },
+    percentage: { type: Number, required: true },
+    lastUpdated: { type: Date, default: Date.now },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+const PersonalitySchema = new mongoose.Schema(
+  {
+    id: { type: Number, required: true, unique: true },
+    name: { type: String, required: true },
+    description: String,
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
+    deletedAt: Date,
+  },
+  {
+    timestamps: true,
+  }
+);
+
+const AgentSchema = new mongoose.Schema(
+  {
+    ownerAddress: { type: String, required: true },
+    contractAddress: { type: String, required: true },
+    txId: { type: String, required: true },
+    symbol: { type: String, required: true },
+    name: { type: String, required: true },
+    description: String,
+    systemPrompt: { type: String, required: true },
+    modelProvider: { type: String, default: "llama_cloud" },
+
+    // Arrays
+    bio: [String],
+    lore: [String],
+    postExamples: [String],
+    adjectives: [String],
+    people: [String],
+    topics: [String],
+    styleAll: [String],
+    styleChat: [String],
+    stylePost: [String],
+
+    // JSON fields
+    messageExamples: mongoose.Schema.Types.Mixed,
+    twitterCookie: mongoose.Schema.Types.Mixed,
+
+    // Twitter fields
+    twitterUsername: { type: String, required: true },
+    twitterPassword: { type: String, required: true },
+    twitterEmail: { type: String, required: true },
+    postFreqMin: { type: Number, default: 90 },
+    postFreqMax: { type: Number, default: 180 },
+    pollIntervalSec: { type: Number, default: 120 },
+
+    // Task management
+    ecsTaskId: String,
+
+    // Timestamps
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
+    deletedAt: Date,
+  },
+  {
+    timestamps: true, // Handles updatedAt automatically
+  }
+);
+
+// Update the MongoDB schema
+const MediaGenerationSchema = new mongoose.Schema({
   mint: { type: String, required: true },
-  address: { type: String, required: true },
-  amount: { type: Number, required: true },
-  percentage: { type: Number, required: true },
-  lastUpdated: { type: Date, default: Date.now },
-}, {
-  timestamps: true
+  type: { type: String, enum: ["image", "video", "audio"], required: true },
+  prompt: { type: String, required: true },
+  mediaUrl: { type: String, required: true },
+  negative_prompt: String,
+  num_inference_steps: Number,
+  seed: Number,
+  // Video specific fields
+  num_frames: Number,
+  fps: Number,
+  motion_bucket_id: Number,
+  duration: Number,
+  // Audio specific fields
+  duration_seconds: Number,
+  bpm: Number,
+  creator: { type: String, default: null, required: false },
+  timestamp: { type: Date, default: Date.now },
+  dailyGenerationCount: { type: Number, default: 0 },
+  lastGenerationReset: { type: Date },
 });
 
-const PersonalitySchema = new mongoose.Schema({
-  id: { type: Number, required: true, unique: true },
-  name: { type: String, required: true },
-  description: String,
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-  deletedAt: Date
-}, {
-  timestamps: true
-});
+// Add indexes for efficient querying
+MediaGenerationSchema.index({ mint: 1, type: 1, timestamp: -1 });
+MediaGenerationSchema.index({ creator: 1 });
 
-const AgentSchema = new mongoose.Schema({
-  ownerAddress: { type: String, required: true },
-  contractAddress: { type: String, required: true },
-  txId: { type: String, required: true },
-  symbol: { type: String, required: true },
-  name: { type: String, required: true },
-  description: String,
-  systemPrompt: { type: String, required: true },
-  modelProvider: { type: String, default: "llama_cloud" },
-  
-  // Arrays
-  bio: [String],
-  lore: [String],
-  postExamples: [String],
-  adjectives: [String],
-  people: [String],
-  topics: [String],
-  styleAll: [String],
-  styleChat: [String],
-  stylePost: [String],
-
-  // JSON fields
-  messageExamples: mongoose.Schema.Types.Mixed,
-  twitterCookie: mongoose.Schema.Types.Mixed,
-
-  // Twitter fields
-  twitterUsername: { type: String, required: true },
-  twitterPassword: { type: String, required: true },
-  twitterEmail: { type: String, required: true },
-  postFreqMin: { type: Number, default: 90 },
-  postFreqMax: { type: Number, default: 180 },
-  pollIntervalSec: { type: Number, default: 120 },
-
-  // Task management
-  ecsTaskId: String,
-
-  // Timestamps
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-  deletedAt: Date
-}, {
-  timestamps: true // Handles updatedAt automatically
-});
-
-// Add middleware to validate documents before saving
-UserSchema.pre('save', async function(next) {
+// Add validation middleware
+MediaGenerationSchema.pre("save", async function (next) {
   try {
-    UserValidation.parse(this.toObject());
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
-TokenSchema.pre('save', async function(next) {
-  try {
-    TokenValidation.parse(this.toObject());
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
-SwapSchema.pre('save', async function(next) {
-  try {
-    SwapValidation.parse(this.toObject());
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
-FeeSchema.pre('save', async function(next) {
-  try {
-    FeeValidation.parse(this.toObject());
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
-MessageSchema.pre('save', async function(next) {
-  try {
-    MessageValidation.parse(this.toObject());
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
-MessageLikeSchema.pre('save', async function(next) {
-  try {
-    MessageLikeValidation.parse(this.toObject());
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
-VanityKeypairSchema.pre('save', async function(next) {
-  try {
-    VanityKeypairValidation.parse(this.toObject());
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
-TokenHolderSchema.pre('save', async function(next) {
-  try {
-    TokenHolderValidation.parse(this.toObject());
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
-AgentSchema.pre('save', async function(next) {
-  try {
-    AgentValidation.parse(this.toObject());
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
-PersonalitySchema.pre('save', async function(next) {
-  try {
-    PersonalityValidation.parse(this.toObject());
+    MediaGenerationValidation.parse(this.toObject());
     next();
   } catch (error) {
     next(error);
@@ -534,10 +538,10 @@ TokenSchema.index({ marketCapUSD: -1 });
 SwapSchema.index({ tokenMint: 1, timestamp: -1 });
 SwapSchema.index({ timestamp: 1 }); // For time-based queries
 SwapSchema.index({ user: 1 }); // For user-specific queries
-SwapSchema.index({ 
-  tokenMint: 1, 
-  timestamp: 1, 
-  price: 1 
+SwapSchema.index({
+  tokenMint: 1,
+  timestamp: 1,
+  price: 1,
 }); // For chart data queries
 
 // Fee Indexes
@@ -575,16 +579,23 @@ PersonalitySchema.index({ id: 1 }, { unique: true });
 ///////////////////////////////////////
 
 // Export models and z validation schemas
-export const User = mongoose.model('User', UserSchema);
-export const Token = mongoose.model('Token', TokenSchema);
-export const Swap = mongoose.model('Swap', SwapSchema);
-export const Fee = mongoose.model('Fee', FeeSchema);
-export const Message = mongoose.model('Message', MessageSchema);
-export const MessageLike = mongoose.model('MessageLike', MessageLikeSchema);
-export const VanityKeypair = mongoose.model('VanityKeypair', VanityKeypairSchema);
-export const TokenHolder = mongoose.model('TokenHolder', TokenHolderSchema);
-export const Agent = mongoose.model('Agent', AgentSchema);
-export const Personality = mongoose.model('Personality', PersonalitySchema);
+export const User = mongoose.model("User", UserSchema);
+export const Token = mongoose.model("Token", TokenSchema);
+export const Swap = mongoose.model("Swap", SwapSchema);
+export const Fee = mongoose.model("Fee", FeeSchema);
+export const Message = mongoose.model("Message", MessageSchema);
+export const MessageLike = mongoose.model("MessageLike", MessageLikeSchema);
+export const VanityKeypair = mongoose.model(
+  "VanityKeypair",
+  VanityKeypairSchema
+);
+export const TokenHolder = mongoose.model("TokenHolder", TokenHolderSchema);
+export const Agent = mongoose.model("Agent", AgentSchema);
+export const Personality = mongoose.model("Personality", PersonalitySchema);
+export const MediaGeneration = mongoose.model(
+  "MediaGeneration",
+  MediaGenerationSchema
+);
 
 // Export z types
 export type UserType = z.infer<typeof UserValidation>;
@@ -596,3 +607,4 @@ export type MessageLikeType = z.infer<typeof MessageLikeValidation>;
 export type TokenHolderType = z.infer<typeof TokenHolderValidation>;
 export type AgentType = z.infer<typeof AgentValidation>;
 export type PersonalityType = z.infer<typeof PersonalityValidation>;
+export type MediaGenerationType = z.infer<typeof MediaGenerationValidation>;

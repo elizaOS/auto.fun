@@ -42,6 +42,7 @@ import { logger } from './logger';
 import { metadataCache } from './cache';
 import { getSOLPrice } from './mcap';
 import PQueue from 'p-queue';
+import mediaGenerationRoutes from './mediaGeneration';
 
 const VALID_PROGRAM_ID = new Set(
   [
@@ -1252,6 +1253,7 @@ const initServer = async () => {
 
   // Start API endpoint routing
   app.use('/', routes);
+  app.use('/media', mediaGenerationRoutes);
 
   // Start backend server and API and socket.io
   const port = process.env.PORT || 3069;
