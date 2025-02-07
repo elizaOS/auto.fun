@@ -1167,36 +1167,6 @@ router.post('/upload-pinata', requireAuth, async (req, res) => {
   }
 });
 
-router.post('/token', requireAuth, async (req, res) => {
-  const {
-    signed_transaction,
-    token_metadata,
-    public_key,
-    mint_keypair_public,
-  } = req.body;
-
-   // First create the token
-   let tokenResult;
-   try {
-     logger.log("Creating token", { mint_keypair_public });
-     tokenResult = await submitTokenTransaction({
-       signed_transaction,
-       token_metadata,
-       public_key,
-       mint_keypair_public,
-     });
-
-     logger.log("Token created successfully", {
-       signature: tokenResult.signature,
-     });
-
-     res.json(tokenResult) // TODO: figure out what fields if any we need to return to client
-   } catch (error) {
-     logger.error("Token creation failed", error);
-     return res.status(400).json({ error: "Failed to create token" });
-   }
-})
-
 // Create new agent
 router.post('/agents/:tokenId', requireAuth, async (req, res) => {
   try {
