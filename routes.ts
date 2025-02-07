@@ -1197,6 +1197,56 @@ router.post('/token', requireAuth, async (req, res) => {
    }
 })
 
+// Claim a pending agent
+router.post("/agents/claim", async (req, res) => {
+  const { ecsTaskId } = req.body;
+
+  if (!ecsTaskId) {
+    logger.error("Missing ECS task ID", null);
+    return res.status(400).json({ error: "ECS task ID is required" });
+  }
+
+  try {
+    logger.log("Attempting to claim agent", {
+      ecsTaskId,
+    });
+    const claimedAgent = await Agent.findOneAndUpdate(
+      {
+        ecsTaskId: null,
+        deletedAt: null
+      },
+      {
+        $set: {
+          ecsTaskId: ecsTaskId,
+          updatedAt: new Date()
+        }
+      },
+      {
+        new: true, // Return the updated document
+        sort: { createdAt: 1 } // Claim oldest pending agent first
+      }
+    );
+
+    if (!claimedAgent) {
+      logger.log("No pending agents available");
+      // Set task count to match active agents when no pending agents are found
+      // await setTaskCountToActiveAgents();
+      return res.status(404).json({ error: "No pending agents available" });
+    }
+
+    logger.log("Agent claimed successfully", {
+      agentId: claimedAgent.id,
+      ecsTaskId,
+    });
+
+    res.json(claimedAgent);
+  } catch (error) {
+    logger.error("Failed to claim agent", error);
+    res.status(500).json({ error: "Failed to claim agent" });
+  }
+}
+);
+
 // Create new agent
 router.post('/agents/:tokenId', requireAuth, async (req, res) => {
   try {
@@ -1302,56 +1352,6 @@ router.put('/agents/:id', requireAuth, async (req, res) => {
     res.status(500).json({ error: 'Failed to update agent' });
   }
 });
-
-// Claim a pending agent
-router.post("/agents/claim", async (req, res) => {
-    const { ecsTaskId } = req.body;
-
-    if (!ecsTaskId) {
-      logger.error("Missing ECS task ID", null);
-      return res.status(400).json({ error: "ECS task ID is required" });
-    }
-
-    try {
-      logger.log("Attempting to claim agent", {
-        ecsTaskId,
-      });
-      const claimedAgent = await Agent.findOneAndUpdate(
-        {
-          ecsTaskId: null,
-          deletedAt: null
-        },
-        {
-          $set: {
-            ecsTaskId: ecsTaskId,
-            updatedAt: new Date()
-          }
-        },
-        {
-          new: true, // Return the updated document
-          sort: { createdAt: 1 } // Claim oldest pending agent first
-        }
-      );
-
-      if (!claimedAgent) {
-        logger.log("No pending agents available");
-        // Set task count to match active agents when no pending agents are found
-        // await setTaskCountToActiveAgents();
-        return res.status(404).json({ error: "No pending agents available" });
-      }
-
-      logger.log("Agent claimed successfully", {
-        agentId: claimedAgent.id,
-        ecsTaskId,
-      });
-
-      res.json(claimedAgent);
-    } catch (error) {
-      logger.error("Failed to claim agent", error);
-      res.status(500).json({ error: "Failed to claim agent" });
-    }
-  }
-);
 
 // Add a safety cleanup endpoint that can be run periodically
 // This handles cases where a task died without properly releasing
