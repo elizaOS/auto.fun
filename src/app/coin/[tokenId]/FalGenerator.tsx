@@ -134,7 +134,7 @@ export const FalGenerator = () => {
         },
       });
 
-      setResult(data);
+      setResult(data as GenerationResponse);
     } catch (error) {
       console.error("Generation failed:", error);
       setError(error instanceof Error ? error.message : "Generation failed");
