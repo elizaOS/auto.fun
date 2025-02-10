@@ -1609,11 +1609,11 @@
           },
           {
             "name": "platform_buy_fee",
-            "type": "f64"
+            "type": "u128"
           },
           {
             "name": "platform_sell_fee",
-            "type": "f64"
+            "type": "u128"
           },
           {
             "name": "curve_limit",

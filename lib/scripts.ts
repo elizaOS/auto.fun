@@ -12,6 +12,8 @@ import { VanityKeypair } from "../schemas";
 import { calculateAmountOutSell } from "../tests/utils";
 import { calculateAmountOutBuy } from "../tests/utils";
 
+const FEE_BASIS_POINTS = 10000;
+
 export const createConfigTx = async (
   admin: PublicKey,
 
@@ -173,8 +175,8 @@ export const swapTx = async (
   const curve = await program.account.bondingCurve.fetch(bondingCurvePda);
 
   // Apply platform fee
-  const feePercent = style === 1 ? configAccount.platformSellFee : configAccount.platformBuyFee;
-  const adjustedAmount = Math.floor(amount * (100 - feePercent) / 100);
+  const feePercent = style === 1 ? Number(configAccount.platformSellFee) : Number(configAccount.platformBuyFee);
+  const adjustedAmount = Math.floor(amount * (FEE_BASIS_POINTS - feePercent) / FEE_BASIS_POINTS);
 
   // Calculate expected output
   let estimatedOutput;

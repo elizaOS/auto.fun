@@ -10,6 +10,9 @@ use std::ops::Div;
 use std::ops::Mul;
 use std::ops::Sub;
 
+pub const FEE_BASIS_POINTS: u128 = 10000;
+pub const HUNDRED_PERCENT_BPS: u128 = 10000;
+
 #[account]
 pub struct Config {
     pub authority: Pubkey,
@@ -20,8 +23,8 @@ pub struct Config {
 
     pub init_bonding_curve: f64, // bonding curve init percentage. The remaining amount is sent to team wallet for distribution to agent
 
-    pub platform_buy_fee: f64, //  platform fee percentage
-    pub platform_sell_fee: f64,
+    pub platform_buy_fee: u128, //  platform fee percentage
+    pub platform_sell_fee: u128,
 
     pub curve_limit: u64, //  lamports to complete the bonding curve
 
@@ -114,10 +117,11 @@ pub trait BondingCurveAccount<'info> {
         amount: u64,
         token_one_decimals: u8,
         direction: u8,
-        platform_sell_fee: f64,
-        platform_buy_fee: f64,
+        platform_sell_fee: u128,
+        platform_buy_fee: u128,
     ) -> Result<(u64, u64)>;
 }
+
 
 impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
     fn update_reserves(
@@ -328,8 +332,9 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
         amount: u64,
         token_one_decimals: u8,
         direction: u8,
-        platform_sell_fee: f64,
-        platform_buy_fee: f64,
+        platform_sell_fee: u128,
+        platform_buy_fee: u128,
+
     ) -> Result<(u64, u64)> {
         // xy = k => Constant product formula
         // (x + dx)(y - dy) = k
@@ -345,11 +350,15 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
             platform_buy_fee
         };
 
-        let adjusted_amount_in_float = convert_to_float(amount, token_one_decimals)
-            .div(100_f64)
-            .mul(100_f64.sub(fee_percent));
+        let amount_u128 = amount as u128;
 
-        let adjusted_amount = convert_from_float(adjusted_amount_in_float, token_one_decimals);
+        let adjusted_amount = amount_u128
+            .checked_mul(HUNDRED_PERCENT_BPS.checked_sub(fee_percent).ok_or(PumpfunError::OverflowOrUnderflowOccurred)?)
+            .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?
+            .checked_div(FEE_BASIS_POINTS)
+            .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
+
+        let adjusted_amount = adjusted_amount as u64;
 
         let amount_out: u64;
 

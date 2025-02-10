@@ -1615,11 +1615,11 @@ export type Serlaunchalot = {
           },
           {
             "name": "platformBuyFee",
-            "type": "f64"
+            "type": "u128"
           },
           {
             "name": "platformSellFee",
-            "type": "f64"
+            "type": "u128"
           },
           {
             "name": "curveLimit",

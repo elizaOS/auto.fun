@@ -44,6 +44,7 @@ import { getSOLPrice } from './mcap';
 import PQueue from 'p-queue';
 import mediaGenerationRoutes from './mediaGeneration';
 
+const FEE_BASIS_POINTS = 10000;
 const VALID_PROGRAM_ID = new Set(
   [
     CREATE_CPMM_POOL_PROGRAM.toBase58(), 
@@ -701,7 +702,7 @@ class TokenMonitor {
 
       logger.log('feeConfig selected', feeConfig);
 
-      const FEE_PERCENTAGE = Number(process.env.FEE_PERCENTAGE || '1'); // 0.1% for migration to raydium of both token and SOL
+      const FEE_PERCENTAGE = Number(process.env.FEE_PERCENTAGE || '10'); // 0.1% for migration to raydium of both token and SOL
 
       // logger.log("Token Amount Total", tokenBalance.value.amount);
       // logger.log("Reserve Amount Total", token.reserveAmount);
@@ -729,12 +730,12 @@ class TokenMonitor {
       // Calculate fees using the exact withdrawn amounts
       const tokenFeeAmount = new BN(withdrawnTokens)
           .muln(FEE_PERCENTAGE)
-          .divn(1000)
+          .divn(FEE_BASIS_POINTS)
           .toString();
 
       const solFeeAmount = new BN(withdrawnSol)
           .muln(FEE_PERCENTAGE)
-          .divn(1000)
+          .divn(FEE_BASIS_POINTS)
           .toString();
 
       // Use remaining amounts for pool creation
