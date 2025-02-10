@@ -42,7 +42,7 @@ import { AgentDetailsRequest } from './characterCreation';
 import { submitTokenTransaction } from './tokenCreation';
 import mongoose from 'mongoose';
 import { initSdk, txVersion } from './lib/raydium-config';
-import { ApiV3PoolInfoStandardItemCpmm, CpmmKeys, CREATE_CPMM_POOL_PROGRAM, DEV_CREATE_CPMM_POOL_PROGRAM, DEV_LOCK_CPMM_AUTH, DEV_LOCK_CPMM_PROGRAM } from '@raydium-io/raydium-sdk-v2';
+import { ApiV3PoolInfoStandardItemCpmm, CpmmKeys, CREATE_CPMM_POOL_PROGRAM, DEV_CREATE_CPMM_POOL_AUTH, DEV_CREATE_CPMM_POOL_PROGRAM, DEV_LOCK_CPMM_AUTH, DEV_LOCK_CPMM_PROGRAM } from '@raydium-io/raydium-sdk-v2';
 
 const router = Router();
 
@@ -348,8 +348,9 @@ router.get('/tokens/:mint/harvest-tx', async (req, res) => {
     // We save 2 tokens in the database, for two locks, separated by a comma
     const nftMint = token.nftMinted.split(',')[0]
 
-    const { execute: harvestExecute, transaction, builder } = await raydium.cpmm.harvestLockLp({
+    const { transaction } = await raydium.cpmm.harvestLockLp({
       poolInfo,
+      poolKeys,
       nftMint: new PublicKey(nftMint), // locked nft mint (mint to address from lock liquidity)
       lpFeeAmount: new BN(99999999),
       txVersion,
@@ -357,20 +358,18 @@ router.get('/tokens/:mint/harvest-tx', async (req, res) => {
       authProgram: DEV_LOCK_CPMM_AUTH,
       clmmProgram: DEV_CREATE_CPMM_POOL_PROGRAM,
       cpmmProgram: {
-        authProgram: DEV_CREATE_CPMM_POOL_PROGRAM,
-        programId: DEV_CREATE_CPMM_POOL_PROGRAM
+        authProgram: DEV_CREATE_CPMM_POOL_AUTH,
+        programId: DEV_CREATE_CPMM_POOL_PROGRAM,
       }
     })
 
-    console.log(transaction.serialize({
+    const txBytes = transaction.serialize({
       requireAllSignatures: false,
       verifySignatures: false
-    }).toString("base64"))
+    });
+    const serializedTransaction = Buffer.from(txBytes).toString("base64");
 
-    res.json({ token, transaction: transaction.serialize({
-      requireAllSignatures: false,
-      verifySignatures: false
-    }).toString("base64") });
+    res.json({ token, transaction: serializedTransaction });
   } catch (error) {
     console.log(error)
     if (error instanceof z.ZodError) {
