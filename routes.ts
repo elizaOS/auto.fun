@@ -1242,35 +1242,55 @@ router.post('/upload-pinata', requireAuth, async (req, res) => {
   }
 });
 
-router.post('/token', requireAuth, async (req, res) => {
-  const {
-    signed_transaction,
-    token_metadata,
-    public_key,
-    mint_keypair_public,
-  } = req.body;
+// Claim a pending agent
+router.post("/agents/claim", async (req, res) => {
+  const { ecsTaskId } = req.body;
 
-   // First create the token
-   let tokenResult;
-   try {
-     logger.log("Creating token", { mint_keypair_public });
-     tokenResult = await submitTokenTransaction({
-       signed_transaction,
-       token_metadata,
-       public_key,
-       mint_keypair_public,
-     });
+  if (!ecsTaskId) {
+    logger.error("Missing ECS task ID", null);
+    return res.status(400).json({ error: "ECS task ID is required" });
+  }
 
-     logger.log("Token created successfully", {
-       signature: tokenResult.signature,
-     });
+  try {
+    logger.log("Attempting to claim agent", {
+      ecsTaskId,
+    });
+    const claimedAgent = await Agent.findOneAndUpdate(
+      {
+        ecsTaskId: null,
+        deletedAt: null
+      },
+      {
+        $set: {
+          ecsTaskId: ecsTaskId,
+          updatedAt: new Date()
+        }
+      },
+      {
+        new: true, // Return the updated document
+        sort: { createdAt: 1 } // Claim oldest pending agent first
+      }
+    );
 
-     res.json(tokenResult) // TODO: figure out what fields if any we need to return to client
-   } catch (error) {
-     logger.error("Token creation failed", error);
-     return res.status(400).json({ error: "Failed to create token" });
-   }
-})
+    if (!claimedAgent) {
+      logger.log("No pending agents available");
+      // Set task count to match active agents when no pending agents are found
+      // await setTaskCountToActiveAgents();
+      return res.status(404).json({ error: "No pending agents available" });
+    }
+
+    logger.log("Agent claimed successfully", {
+      agentId: claimedAgent.id,
+      ecsTaskId,
+    });
+
+    res.json(claimedAgent);
+  } catch (error) {
+    logger.error("Failed to claim agent", error);
+    res.status(500).json({ error: "Failed to claim agent" });
+  }
+}
+);
 
 // Create new agent
 router.post('/agents/:tokenId', requireAuth, async (req, res) => {
@@ -1377,56 +1397,6 @@ router.put('/agents/:id', requireAuth, async (req, res) => {
     res.status(500).json({ error: 'Failed to update agent' });
   }
 });
-
-// Claim a pending agent
-router.post("/agents/claim", async (req, res) => {
-    const { ecsTaskId } = req.body;
-
-    if (!ecsTaskId) {
-      logger.error("Missing ECS task ID", null);
-      return res.status(400).json({ error: "ECS task ID is required" });
-    }
-
-    try {
-      logger.log("Attempting to claim agent", {
-        ecsTaskId,
-      });
-      const claimedAgent = await Agent.findOneAndUpdate(
-        {
-          ecsTaskId: null,
-          deletedAt: null
-        },
-        {
-          $set: {
-            ecsTaskId: ecsTaskId,
-            updatedAt: new Date()
-          }
-        },
-        {
-          new: true, // Return the updated document
-          sort: { createdAt: 1 } // Claim oldest pending agent first
-        }
-      );
-
-      if (!claimedAgent) {
-        logger.log("No pending agents available");
-        // Set task count to match active agents when no pending agents are found
-        // await setTaskCountToActiveAgents();
-        return res.status(404).json({ error: "No pending agents available" });
-      }
-
-      logger.log("Agent claimed successfully", {
-        agentId: claimedAgent.id,
-        ecsTaskId,
-      });
-
-      res.json(claimedAgent);
-    } catch (error) {
-      logger.error("Failed to claim agent", error);
-      res.status(500).json({ error: "Failed to claim agent" });
-    }
-  }
-);
 
 // Add a safety cleanup endpoint that can be run periodically
 // This handles cases where a task died without properly releasing

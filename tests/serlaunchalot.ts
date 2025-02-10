@@ -93,8 +93,8 @@ describe("serlaunchalot", () => {
 
       initBondingCurve: Number(process.env.INIT_BONDING_CURVE),
 
-      platformBuyFee: 5.0, // Example fee: 5%
-      platformSellFee: 5.0, // Example fee: 5%
+      platformBuyFee: 500, // Example fee: 5%
+      platformSellFee: 500, // Example fee: 5%
 
       curveLimit: new BN(4_000_000_000), //  Example limit: 2 SOL
 
