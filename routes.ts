@@ -42,7 +42,7 @@ import { AgentDetailsRequest } from './characterCreation';
 import { submitTokenTransaction } from './tokenCreation';
 import mongoose from 'mongoose';
 import { initSdk, txVersion } from './lib/raydium-config';
-import { ApiV3PoolInfoStandardItemCpmm, CREATE_CPMM_POOL_PROGRAM, DEV_CREATE_CPMM_POOL_PROGRAM, DEV_LOCK_CPMM_AUTH, DEV_LOCK_CPMM_PROGRAM } from '@raydium-io/raydium-sdk-v2';
+import { ApiV3PoolInfoStandardItemCpmm, CpmmKeys, CREATE_CPMM_POOL_PROGRAM, DEV_CREATE_CPMM_POOL_PROGRAM, DEV_LOCK_CPMM_AUTH, DEV_LOCK_CPMM_PROGRAM } from '@raydium-io/raydium-sdk-v2';
 
 const router = Router();
 
@@ -307,7 +307,7 @@ const VALID_PROGRAM_ID = new Set(
   ])
 const isValidCpmm = (id: string) => VALID_PROGRAM_ID.has(id)
 
-router.get('/tokens/:mint/claim', async (req, res) => {
+router.get('/tokens/:mint/harvest-tx', async (req, res) => {
   try {
     const mintValidation = z.string().min(32).max(44);
     const mint = mintValidation.parse(req.params.mint);
@@ -327,44 +327,52 @@ router.get('/tokens/:mint/claim', async (req, res) => {
       return res.status(400).json({ error: 'Token has no NFT minted' });
     }
 
-
-    const raydium = await initSdk();
+    const raydium = await initSdk({ loadToken: true });
 
     let poolInfo: ApiV3PoolInfoStandardItemCpmm;
-      if (raydium.cluster === 'devnet') {
-        const data = await raydium.api.fetchPoolById({ ids: token.marketId });
-        poolInfo = data[0] as ApiV3PoolInfoStandardItemCpmm;
-        if (!isValidCpmm(poolInfo.programId)) throw new Error('target pool is not CPMM pool');
-      } else {
-        const data = await raydium.cpmm.getPoolInfoFromRpc(token.marketId);
-        poolInfo = data.poolInfo;
+    let poolKeys: CpmmKeys | undefined;
+
+    if (raydium.cluster === 'devnet') {
+      const data = await raydium.cpmm.getPoolInfoFromRpc(token.marketId);
+      poolInfo = data.poolInfo;
+      poolKeys = data.poolKeys;
+    } else {
+      const data = await raydium.api.fetchPoolById({ ids: token.marketId });
+      if (!data || data.length === 0) {
+        logger.error('Pool info not found');
+        throw new Error('Pool info not found');
       }
+      poolInfo = data[0] as ApiV3PoolInfoStandardItemCpmm;
+    }
+
+    // We save 2 tokens in the database, for two locks, separated by a comma
+    const nftMint = token.nftMinted.split(',')[0]
 
     const { execute: harvestExecute, transaction, builder } = await raydium.cpmm.harvestLockLp({
       poolInfo,
-      nftMint: new PublicKey(token.nftMinted), // locked nft mint (mint to address from lock liquidity)
+      nftMint: new PublicKey(nftMint), // locked nft mint (mint to address from lock liquidity)
       lpFeeAmount: new BN(99999999),
       txVersion,
       programId: DEV_LOCK_CPMM_PROGRAM,
       authProgram: DEV_LOCK_CPMM_AUTH,
+      clmmProgram: DEV_CREATE_CPMM_POOL_PROGRAM,
+      cpmmProgram: {
+        authProgram: DEV_CREATE_CPMM_POOL_PROGRAM,
+        programId: DEV_CREATE_CPMM_POOL_PROGRAM
+      }
     })
 
-    // @TODO Transfer NFT from wallet authority to user
-    // const nftMint = new PublicKey(nftMinted);
-    // const fromWallet = Keypair.fromSecretKey(
-    //   Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
-    //   { skipValidation: true }
-    // );
+    console.log(transaction.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false
+    }).toString("base64"))
 
-    // builder.addInstruction(
-    //   ...
-    // )
-
-    const { txId: harvestTxId } = await harvestExecute({ sendAndConfirm: true });
-    logger.log('LP token fees harvested with txId:', harvestTxId);
-
-    res.json({ token });
+    res.json({ token, transaction: transaction.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false
+    }).toString("base64") });
   } catch (error) {
+    console.log(error)
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: error.errors });
     } else {
