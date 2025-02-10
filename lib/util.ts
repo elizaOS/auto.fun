@@ -8,7 +8,8 @@ import {
     Connection,
     SystemProgram,
     SYSVAR_RENT_PUBKEY,
-    ComputeBudgetProgram
+    ComputeBudgetProgram,
+    Keypair
 } from "@solana/web3.js";
 
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
@@ -16,6 +17,57 @@ import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
 import { Market, OpenOrders } from '@project-serum/serum';
 import { raydiumProgramId } from "./constant";
 import { logger } from "../logger";
+import * as anchor from "@coral-xyz/anchor";
+import { Program } from "@coral-xyz/anchor";
+import { Serlaunchalot } from "../target/types/serlaunchalot";
+import mongoose from "mongoose";
+
+export const connectDB = async (retries = 5, delay = 500) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await mongoose.connect(process.env.MONGODB_URI, {
+        maxPoolSize: 10,
+        minPoolSize: 5,
+        retryWrites: true,
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 45000,
+      });
+      console.log('Connected to MongoDB');
+      return;
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      console.log(`Connection attempt ${i + 1} failed. Retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+};
+
+export const initializeConfig = async () => {
+  const connection = new Connection(process.env.SOLANA_RPC_URL);
+  
+  const walletKeypair = Keypair.fromSecretKey(
+    Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
+    { skipValidation: true }
+  );
+  const payer = new NodeWallet(walletKeypair);
+
+
+  logger.log("Wallet Address: ", payer.publicKey.toBase58());
+
+  anchor.setProvider(
+    new anchor.AnchorProvider(connection, payer, {
+      skipPreflight: true,
+      commitment: "confirmed",
+    })
+  );
+
+  // Generate the program client from IDL
+  const program = anchor.workspace.Serlaunchalot as Program<Serlaunchalot>;
+  
+  logger.log("ProgramId: ", program.programId.toBase58());
+  
+  return { connection, program, wallet: payer };
+};
 
 export const getAssociatedTokenAccount = (
     ownerPubkey: PublicKey,
