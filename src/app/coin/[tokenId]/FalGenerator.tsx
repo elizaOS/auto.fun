@@ -126,7 +126,7 @@ export const FalGenerator = () => {
       const enhancedPrompt = generateEnhancedPrompt(customPrompt);
       console.log("Enhanced prompt:", enhancedPrompt); // For debugging
 
-      const data = await womboApi.post({
+      const data: GenerationResponse = await womboApi.post({
         endpoint: `/media/${tokenId}/generate`,
         body: {
           prompt: enhancedPrompt,
