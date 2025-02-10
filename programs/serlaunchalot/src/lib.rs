@@ -10,7 +10,7 @@ use anchor_lang::prelude::*;
 use state::Config;
 // use crate::errors::PumpfunError;
 
-declare_id!("EMKuRh2K1M6zojoGWFFZkdwSHVKWQ4gJXwbNzmrmsY1J");
+declare_id!("81vBL51YPS5M6yUcgMVe9NcGtKNK48Kip81nXArLewrn");
 
 #[program]
 pub mod serlaunchalot {
@@ -43,7 +43,7 @@ pub mod serlaunchalot {
         //  metadata
         name: String,
         symbol: String,
-        uri: String,
+        uri: String
     ) -> Result<()> {
         ctx.accounts.process(
             decimals,
@@ -52,7 +52,7 @@ pub mod serlaunchalot {
             name,
             symbol,
             uri,
-            ctx.bumps.global_vault,
+            ctx.bumps.global_vault
         )
     }
 
@@ -63,14 +63,14 @@ pub mod serlaunchalot {
         amount: u64,
         direction: u8,
         minimum_receive_amount: u64,
-        deadline: i64,
+        deadline: i64
     ) -> Result<u64> {
         ctx.accounts.process(
             amount,
             direction,
             minimum_receive_amount,
             deadline,
-            ctx.bumps.global_vault,
+            ctx.bumps.global_vault
         )
     }
 

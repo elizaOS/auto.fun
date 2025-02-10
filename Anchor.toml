@@ -6,20 +6,20 @@ resolution = true
 skip-lint = true
 
 [programs.mainnet]
-serlaunchalot = "EMKuRh2K1M6zojoGWFFZkdwSHVKWQ4gJXwbNzmrmsY1J"
+serlaunchalot = "81vBL51YPS5M6yUcgMVe9NcGtKNK48Kip81nXArLewrn"
 
 [programs.devnet]
-serlaunchalot = "EMKuRh2K1M6zojoGWFFZkdwSHVKWQ4gJXwbNzmrmsY1J"
+serlaunchalot = "81vBL51YPS5M6yUcgMVe9NcGtKNK48Kip81nXArLewrn"
 
 [programs.localnet]
-serlaunchalot = "EMKuRh2K1M6zojoGWFFZkdwSHVKWQ4gJXwbNzmrmsY1J"
+serlaunchalot = "81vBL51YPS5M6yUcgMVe9NcGtKNK48Kip81nXArLewrn"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "https://api.mainnet-beta.solana.com"
-wallet = "../key/uu.json"
+cluster = "https://devnet.helius-rpc.com/?api-key=156e83be-b359-4f60-8abb-c6a17fd3ff5f"
+wallet = "wallet.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json --bail -t 1000000 tests/**/*.ts"
