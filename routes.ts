@@ -307,10 +307,12 @@ const VALID_PROGRAM_ID = new Set(
   ])
 const isValidCpmm = (id: string) => VALID_PROGRAM_ID.has(id)
 
+// Transaction to harvest LP fees
 router.get('/tokens/:mint/harvest-tx', async (req, res) => {
   try {
     const mintValidation = z.string().min(32).max(44);
     const mint = mintValidation.parse(req.params.mint);
+    const owner = req.query.owner as string;
     
     const token = await Token.findOne({ mint });
     if (!token) {
@@ -327,7 +329,10 @@ router.get('/tokens/:mint/harvest-tx', async (req, res) => {
       return res.status(400).json({ error: 'Token has no NFT minted' });
     }
 
-    const raydium = await initSdk({ loadToken: true });
+    // Setting up owner to be the user wallet is mandatory for the harvest tx to work
+    // Because of how Raydium SDK works
+    // It uses the owner scope variable to send as program instruction: https://github.com/raydium-io/raydium-sdk-V2/blob/e55ad0b78488426db1fea2e535f0f7511b18343b/src/raydium/cpmm/cpmm.ts#L916C32-L916C37
+    const raydium = await initSdk({ loadToken: true, owner: new PublicKey(owner) });
 
     let poolInfo: ApiV3PoolInfoStandardItemCpmm;
     let poolKeys: CpmmKeys | undefined;
@@ -351,6 +356,7 @@ router.get('/tokens/:mint/harvest-tx', async (req, res) => {
     const { transaction } = await raydium.cpmm.harvestLockLp({
       poolInfo,
       poolKeys,
+      feePayer: new PublicKey(owner),
       nftMint: new PublicKey(nftMint), // locked nft mint (mint to address from lock liquidity)
       lpFeeAmount: new BN(99999999),
       txVersion,
