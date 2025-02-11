@@ -140,6 +140,40 @@ const TokenInput = ({
   );
 };
 
+const getStatusContent = (status: string) => {
+  switch (status) {
+    case 'completed':
+      return (
+        <div className="flex items-center gap-2">
+          <div className="w-full bg-neutral-800 rounded-full h-2">
+            <div className="bg-green-500 h-2 rounded-full w-full"></div>
+          </div>
+          <span className="text-green-500 text-sm font-['DM Mono']">100%</span>
+        </div>
+      );
+    case 'migrating':
+      return (
+        <div className="flex items-center justify-center bg-yellow-500/10 py-2 rounded-lg">
+          <span className="text-yellow-500 text-sm font-['DM Mono']">MIGRATING</span>
+        </div>
+      );
+    case 'migration_failed':
+      return (
+        <div className="flex items-center justify-center bg-red-500/10 py-2 rounded-lg">
+          <span className="text-red-500 text-sm font-['DM Mono']">MIGRATION FAILED</span>
+        </div>
+      );
+    case 'failed':
+      return (
+        <div className="flex items-center justify-center bg-red-500/10 py-2 rounded-lg">
+          <span className="text-red-500 text-sm font-['DM Mono']">FAILED</span>
+        </div>
+      );
+    default:
+        return null;
+  }
+};
+
 export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
   const { data: token } = useToken({
     variables: tokenId,
@@ -242,7 +276,12 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
 
   if (!token) return null;
 
+  const isDisabled = ['migrating', 'migration_failed', 'failed'].includes(token.status);
+
+
   const handleSwapClick = async () => {
+    if (isDisabled) return;
+
     const amount = parseFloat(amountInput);
     if (isNaN(amount) || amount === 0) return;
 
@@ -252,18 +291,41 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
         style: isBuyMode ? "buy" : "sell",
         tokenAddress: tokenId,
       });
+
       toast(
         <Toast
           message={`${isBuyMode ? "Purchase" : "Sale"} of $${token.ticker}`}
           status="completed"
         />,
+        {
+          position: "bottom-right",
+          autoClose: 5000,
+          hideProgressBar: true,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: false,
+          closeButton: true,
+          className: "!p-0 !m-0"
+        }
       );
-    } catch {
+    } catch (err) {
+      console.error("Swap failed:", err);
+
       toast(
         <Toast
           message={`${isBuyMode ? "Purchase" : "Sale"} of $${token.ticker}`}
           status="failed"
         />,
+        {
+          position: "bottom-right",
+          autoClose: false,
+          hideProgressBar: true,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: false,
+          closeButton: true,
+          className: "!p-0 !m-0"
+        }
       );
     }
   };
@@ -292,7 +354,12 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
         <h2 className="text-green-500 text-2xl font-medium font-['DM Mono']">
           TRADE
         </h2>
-        <button onClick={() => setSettingsModalOpen(true)}>
+        {/* <button onClick={() => setSettingsModalOpen(true)}> */}
+        <button
+          onClick={() => setSettingsModalOpen(true)}
+          disabled={isDisabled}
+          className={isDisabled ? "opacity-50 cursor-not-allowed" : ""}
+        >
           <svg
             width="24"
             height="24"
@@ -314,6 +381,8 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
         </button>
       </div>
 
+      {token.status !== 'active' && getStatusContent(token.status)}
+
       <div className="flex-1 px-7 pb-[34px] flex flex-col justify-center gap-6 border-l border-r border-b border-neutral-800 rounded-b-xl min-w-fit">
         <div className="flex flex-col gap-2.5 relative min-w-fit">
           <TokenInput
@@ -322,14 +391,21 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
             value={amountInput}
             onChange={handleAmountChange}
             tokenSymbol={isBuyMode ? "SOL" : token.ticker}
-            disabled={false}
+            disabled={isDisabled}
             dollarValue={calculatedAmounts.dollarValue}
             tokenBalance={isBuyMode ? solBalance : tokenBalance}
             tokenImage={token.image}
           />
 
-          <button
+          {/* <button
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 p-2 bg-[#212121] rounded-full border-2 border-neutral-900 flex justify-center z-10"
+            onClick={handleModeSwitch}
+          > */}
+          <button
+            className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 p-2 bg-[#212121] rounded-full border-2 border-neutral-900 flex justify-center z-10 ${
+              isDisabled ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            disabled={isDisabled}
             onClick={handleModeSwitch}
           >
             <svg
@@ -363,20 +439,30 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
         </div>
 
         <div className="w-full h-10">
-          <button
-            className="w-full h-10 bg-green-500 relative flex items-center justify-center"
-            style={{
-              clipPath:
-                "polygon(0% 72%, 0% 0%, 95% 0%, 100% 29%, 100% 100%, 5% 100%)",
-            }}
-            onClick={
-              publicKey ? handleSwapClick : () => setWalletModalVisible(true)
-            }
-          >
-            <span className="text-black text-xl font-['DM Mono']">
-              {publicKey ? "SWAP" : "CONNECT WALLET"}
-            </span>
-          </button>
+        <button
+          className={`w-full h-10 relative flex items-center justify-center ${
+            isDisabled ? 'bg-neutral-700 cursor-not-allowed' : 'bg-green-500'
+          }`}
+          style={{
+            clipPath: "polygon(0% 72%, 0% 0%, 95% 0%, 100% 29%, 100% 100%, 5% 100%)",
+          }}
+          onClick={
+            isDisabled
+              ? undefined
+              : publicKey
+              ? handleSwapClick
+              : () => setWalletModalVisible(true)
+          }
+          disabled={isDisabled}
+        >
+          <span className="text-black text-xl font-['DM Mono']">
+            {isDisabled
+              ? token.status.toUpperCase()
+              : publicKey
+                ? "SWAP"
+                : "CONNECT WALLET"}
+          </span>
+        </button>
         </div>
       </div>
     </div>
