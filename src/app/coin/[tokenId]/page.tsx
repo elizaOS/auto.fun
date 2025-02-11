@@ -84,24 +84,20 @@ export default function TradingInterface() {
       const data: {
         transaction: string;
       } = await womboApi.get({
-        endpoint: `/tokens/${tokenId}/harvest-tx`,
+        endpoint: `/tokens/${tokenId}/harvest-tx?owner=${publicKey?.toString()}`,
       });
 
       const txBytes = Buffer.from(data.transaction, "base64");
       const tx = VersionedTransaction.deserialize(txBytes);
 
-      await connection.simulateTransaction(tx);
-
-      const txHash = await sendTransaction(tx, connection, {
-        skipPreflight: true,
-      });
+      const txHash = await sendTransaction(tx, connection);
 
       toast.success(`Fees harvested successfully ${txHash}`, {
         autoClose: 5000,
       });
     } catch (error) {
       console.error(error);
-      toast.error("Failed to harvest fees" + (error as Error).message);
+      toast.error("Failed to harvest fees: " + (error as Error).message);
     }
   };
 
