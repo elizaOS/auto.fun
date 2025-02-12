@@ -20,7 +20,6 @@ import { Input } from "@/components/ui/input";
 import { Comments } from "./Comments";
 import { TradeTable } from "@/components/TradeTable";
 import { Toast } from "@/components/common/Toast";
-import { toast } from "react-toastify";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { VersionedTransaction } from "@solana/web3.js";
