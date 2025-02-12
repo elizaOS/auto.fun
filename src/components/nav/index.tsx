@@ -437,21 +437,24 @@ export const Nav = () => {
 
               <div className="flex items-center gap-3">
                 <a
-                  href="#"
+                  href="/legal/privacy"
+                  target="_blank"
                   className="text-[#A6A6A6] font-mono font-medium underline"
                 >
                   Privacy Policy
                 </a>
                 <div className="h-6 w-px bg-[#505050]" />
                 <a
-                  href="#"
+                  href="/legal/terms"
+                  target="_blank"
                   className="text-[#A6A6A6] font-mono font-medium underline"
                 >
                   Terms of Service
                 </a>
                 <div className="h-6 w-px bg-[#505050]" />
                 <a
-                  href="#"
+                  href="/legal/fees"
+                  target="_blank"
                   className="text-[#A6A6A6] font-mono font-medium underline"
                 >
                   Fees

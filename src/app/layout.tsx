@@ -41,11 +41,18 @@ export default async function RootLayout({
           </Providers>
           <ToastContainer
             position="bottom-right"
-            autoClose={false}
-            className="!w-[277px]"
-            toastClassName={"!bg-transparent !rounded-none !mb-4 !p-0"}
-            // bodyClassName={"!p-0 !m-0"}
-            closeButton={false}
+            autoClose={5000}
+            hideProgressBar
+            newestOnTop={false}
+            closeOnClick={true}
+            rtl={false}
+            pauseOnFocusLoss
+            draggable={false}
+            pauseOnHover
+            theme="dark"
+            closeButton={true}
+            className="!w-[320px] !fixed !right-6 !bottom-6 !z-50"
+            toastClassName="!bg-transparent !rounded-none !mb-4 !p-0"
           />
         </SkeletonTheme>
 
