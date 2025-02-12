@@ -18,12 +18,13 @@ import { TokenBuySell } from "./swap/TokenBuySell";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Comments } from "./Comments";
-import { FalGenerator } from "./FalGenerator";
 import { TradeTable } from "@/components/TradeTable";
 import { Toast } from "@/components/common/Toast";
-import { toast } from "react-toastify";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { VersionedTransaction } from "@solana/web3.js";
+import { womboApi } from "@/utils/fetch";
+import { toast } from "react-toastify";
 
 const HolderSchema = z.object({
   address: z.string(),
@@ -36,7 +37,8 @@ const HolderSchema = z.object({
 });
 
 export default function TradingInterface() {
-  const { publicKey } = useWallet();
+  const { publicKey, sendTransaction } = useWallet();
+  const { connection } = useConnection();
   const [activeTab, setActiveTab] = useState("comments");
   const params = useParams();
 
@@ -78,6 +80,28 @@ export default function TradingInterface() {
       socket.off("updateToken");
     };
   }, [token, tokenId, socket]);
+
+  const harvestTokenFees = async () => {
+    try {
+      const data: {
+        transaction: string;
+      } = await womboApi.get({
+        endpoint: `/tokens/${tokenId}/harvest-tx?owner=${publicKey?.toString()}`,
+      });
+
+      const txBytes = Buffer.from(data.transaction, "base64");
+      const tx = VersionedTransaction.deserialize(txBytes);
+
+      const txHash = await sendTransaction(tx, connection);
+
+      toast.success(`Fees harvested successfully ${txHash}`, {
+        autoClose: 5000,
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to harvest fees: " + (error as Error).message);
+    }
+  };
 
   if (isLoading) {
     return renderSkeletons();
@@ -135,14 +159,6 @@ export default function TradingInterface() {
                     <h1 className="text-[#22C55E] font-bold text-xl md:text-2xl">
                       {token.name} (${token.ticker})
                     </h1>
-                    {publicKey?.toString() === token.creator &&
-                      !token.hasAgent && (
-                        <Link href={`/create-agent/${token.mint}`}>
-                          <RoundedButton className="px-4 py-2">
-                            Launch Agent
-                          </RoundedButton>
-                        </Link>
-                      )}
                   </div>
                   <div className="flex items-center gap-1 text-gray-300 text-xs">
                     {`${token.mint.slice(0, 3)}...${token.mint.slice(-3)}`}
@@ -225,10 +241,34 @@ export default function TradingInterface() {
             </div>
           </div>
 
+          {publicKey?.toString() === token.creator && (
+            <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-8">
+              <div className="flex items-center gap-6 flex-col md:flex-row justify-between">
+                <h3>Admin</h3>
+                <div className="flex items-center gap-4">
+                  <RoundedButton
+                    className="px-4 py-2"
+                    onClick={() => harvestTokenFees()}
+                  >
+                    Harvest Fees
+                  </RoundedButton>
+
+                  {!token.hasAgent && (
+                    <Link href={`/create-agent/${token.mint}`}>
+                      <RoundedButton className="px-4 py-2">
+                        Launch Agent
+                      </RoundedButton>
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {token && token.status === "active" && <TradingChart param={token} />}
 
           {/* Fal Generator Section */}
-          <FalGenerator />
+          {/* <FalGenerator /> */}
 
           {/* Trades/Comments/Chat */}
           <div className="bg-[#171717] border border-[#262626] text-sm md:text-lg text-gray-400 rounded-xl p-4 md:p-6">
