@@ -486,7 +486,7 @@ export const Nav = () => {
               </svg>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-[#0e0e0e] border-b border-b-[#03ff24]/40 gap-1 flex flex-col py-6 px-4 mr-4">
+          <DropdownMenuContent className="overflow-visible bg-[#0e0e0e] border-b border-b-[#03ff24]/40 gap-1 flex flex-col py-6 px-4 mr-4">
             <DropdownMenuItem asChild>
               <Link href="/create" className="text-[#d1d1d1]">
                 Create Agent
