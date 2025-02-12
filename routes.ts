@@ -9,7 +9,7 @@ import {
   FeeValidation, 
   MessageValidation 
 } from './schemas';
-import { ComputeBudgetProgram, Connection, Keypair, ParsedAccountData, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
+import { ComputeBudgetProgram, Connection, Keypair, ParsedAccountData, PublicKey, SystemProgram, Transaction, VersionedTransaction, TransactionInstruction, MessageCompiledInstruction, TransactionMessage } from '@solana/web3.js';
 import {
   verifySignature,
   authenticate,
@@ -335,7 +335,7 @@ router.get('/tokens/:mint/harvest-tx', async (req, res) => {
       return res.status(400).json({ error: 'Token has no NFT minted' });
     }
 
-    // Extract the NFT mint address (assumed to be the first of possibly several comma‐separated mints)
+    // Extract the NFT mint address (assumed to be the first in a comma‐separated list)
     const nftMint = token.nftMinted.split(',')[0];
     const ownerPubKey = new PublicKey(owner);
     const nftMintPubKey = new PublicKey(nftMint);
@@ -354,18 +354,17 @@ router.get('/tokens/:mint/harvest-tx', async (req, res) => {
     }
 
     // Prepare an array for additional instructions and signers
-    let instructions: any[] = [];
-    let signers: any[] = [];
+    let instructions: TransactionInstruction[] = [];
+    let signers: Keypair[] = [];
 
     // If the owner does not have the NFT, add instructions to transfer it from the team wallet
     if (!ownerHasNFT) {
-      // The team wallet must sign the transfer; its keypair is loaded from the environment variable
       const teamWalletKeypair = Keypair.fromSecretKey(
         Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
         { skipValidation: true }
       );
 
-      // If the owner's associated token account does not exist, create it
+      // Create the associated token account if it doesn't exist
       const destinationAccountInfo = await connection.getAccountInfo(destinationAta);
       if (!destinationAccountInfo) {
         instructions.push(
@@ -381,7 +380,7 @@ router.get('/tokens/:mint/harvest-tx', async (req, res) => {
       // Get the team wallet's associated token account for the NFT
       const sourceAta = getAssociatedTokenAddressSync(nftMintPubKey, teamWalletKeypair.publicKey);
 
-      // Create an instruction to transfer the NFT (amount = 1) from the team wallet to the owner
+      // Transfer the NFT (amount = 1) from the team wallet to the owner
       instructions.push(
         createTransferInstruction(
           sourceAta,
@@ -391,7 +390,6 @@ router.get('/tokens/:mint/harvest-tx', async (req, res) => {
         )
       );
 
- 
       signers.push(teamWalletKeypair);
     }
 
@@ -413,8 +411,8 @@ router.get('/tokens/:mint/harvest-tx', async (req, res) => {
     }
 
     // Create the harvest instruction using Raydium's SDK method.
-    // This harvests the LP fees using the NFT associated with the token.
-    const { transaction: harvestTx, builder: harvestTxBuilder } = await raydium.cpmm.harvestLockLp({
+    // Note: harvestTx is a VersionedTransaction.
+    const { transaction: harvestTx } = await raydium.cpmm.harvestLockLp({
       poolInfo,
       poolKeys,
       feePayer: ownerPubKey,
@@ -430,28 +428,42 @@ router.get('/tokens/:mint/harvest-tx', async (req, res) => {
       },
     });
 
-    let finalTx = harvestTx
-    // If NFT transfer instructions were added (i.e. the owner doesn't yet hold the NFT),
-    // prepend these instructions to the harvest transaction.
-    if (instructions.length > 0) {
-      const newTx = new Transaction()
-      newTx.instructions = [...instructions, harvestTx];
-      finalTx = newTx
+    // Convert the harvest transaction to an array of legacy TransactionInstruction objects.
+    // If harvestTx is already a legacy Transaction, its instructions are available directly;
+    // otherwise (if it is a VersionedTransaction) we decompile it.
+    let harvestLegacyInstructions: TransactionInstruction[] = [];
+    if (harvestTx instanceof VersionedTransaction) {
+      // Decompile the VersionedTransaction's message to get a TransactionMessage
+      const decompiledMessage: TransactionMessage = TransactionMessage.decompile(
+        harvestTx.message
+      );
+      harvestLegacyInstructions = decompiledMessage.instructions;
+    } else {
+      harvestLegacyInstructions = harvestTx.instructions;
     }
 
-    // Set transaction parameters: recent blockhash and fee payer
+    // Now combine your additional NFT transfer instructions with the harvest instructions.
+    // This approach always builds a new legacy Transaction.
+    const newTx = new Transaction();
+    if (instructions.length > 0) {
+      newTx.add(...instructions);
+    }
+    newTx.add(...harvestLegacyInstructions);
+    const finalTx: Transaction = newTx;
+
+    // Next, set the blockhash and fee payer, then partially sign if needed:
     const { blockhash } = await connection.getLatestBlockhash();
     finalTx.recentBlockhash = blockhash;
     finalTx.feePayer = ownerPubKey;
 
-    // Partially sign the transaction with any extra signers (e.g. the team wallet for NFT transfer)
     if (signers.length > 0) {
       finalTx.partialSign(...signers);
     }
 
-    const simulation = await connection.simulateTransaction(finalTx)
-    console.log(simulation)
-    // Serialize and encode the transaction to base64 for transmission
+    // Finally, simulate, serialize, and send the transaction.
+    const simulation = await connection.simulateTransaction(finalTx);
+    console.log(simulation);
+
     const txBytes = finalTx.serialize({
       requireAllSignatures: false,
       verifySignatures: false,
