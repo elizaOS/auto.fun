@@ -9,7 +9,7 @@ import {
   FeeValidation, 
   MessageValidation 
 } from './schemas';
-import { ComputeBudgetProgram, Connection, Keypair, ParsedAccountData, PublicKey, SystemProgram } from '@solana/web3.js';
+import { ComputeBudgetProgram, Connection, Keypair, ParsedAccountData, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 import {
   verifySignature,
   authenticate,
@@ -29,8 +29,9 @@ import NodeWallet from '@coral-xyz/anchor/dist/cjs/nodewallet';
 import { execTx, splitIntoLines } from './lib/util';
 import { getSOLPrice } from './mcap';
 import { calculateTokenMarketData } from './mcap';
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, createAssociatedTokenAccount, createAssociatedTokenAccountInstruction, createTransferInstruction, getAssociatedTokenAddressSync } from '@solana/spl-token';
 import PinataClient from '@pinata/sdk';
+
 
 import {
   adjustTaskCount,
@@ -310,33 +311,94 @@ const isValidCpmm = (id: string) => VALID_PROGRAM_ID.has(id)
 // Transaction to harvest LP fees
 router.get('/tokens/:mint/harvest-tx', async (req, res) => {
   try {
+    // Validate mint parameter and extract owner from query
     const mintValidation = z.string().min(32).max(44);
     const mint = mintValidation.parse(req.params.mint);
     const owner = req.query.owner as string;
-    
+
+    // Find the token by its mint address
     const token = await Token.findOne({ mint });
     if (!token) {
       return res.status(404).json({ error: 'Token not found' });
     }
 
+    // Make sure the request owner is actually the token creator
+    if (owner !== token.creator) {
+      return res.status(403).json({ error: 'Only the token creator can harvest' });
+    }
+
+    // Confirm token status is "locked" and that an NFT was minted
     if (token.status !== 'locked') {
       return res.status(400).json({ error: 'Token is not locked' });
     }
-
-    const nftMinted = token.nftMinted
-
-    if (!nftMinted) {
+    if (!token.nftMinted) {
       return res.status(400).json({ error: 'Token has no NFT minted' });
     }
 
-    // Setting up owner to be the user wallet is mandatory for the harvest tx to work
-    // Because of how Raydium SDK works
-    // It uses the owner scope variable to send as program instruction: https://github.com/raydium-io/raydium-sdk-V2/blob/e55ad0b78488426db1fea2e535f0f7511b18343b/src/raydium/cpmm/cpmm.ts#L916C32-L916C37
-    const raydium = await initSdk({ loadToken: true, owner: new PublicKey(owner) });
+    // Extract the NFT mint address (assumed to be the first of possibly several comma‐separated mints)
+    const nftMint = token.nftMinted.split(',')[0];
+    const ownerPubKey = new PublicKey(owner);
+    const nftMintPubKey = new PublicKey(nftMint);
 
+    // Check whether the owner wallet already holds the NFT by querying the associated token account balance
+    const destinationAta = getAssociatedTokenAddressSync(nftMintPubKey, ownerPubKey);
+    let ownerHasNFT = false;
+    try {
+      const tokenAccountBalance = await connection.getTokenAccountBalance(destinationAta);
+      if (tokenAccountBalance.value.uiAmount && tokenAccountBalance.value.uiAmount > 0) {
+        ownerHasNFT = true;
+      }
+    } catch (e) {
+      // If the account doesn't exist or any error occurs, assume the NFT is not held
+      ownerHasNFT = false;
+    }
+
+    // Prepare an array for additional instructions and signers
+    let instructions: any[] = [];
+    let signers: any[] = [];
+
+    // If the owner does not have the NFT, add instructions to transfer it from the team wallet
+    if (!ownerHasNFT) {
+      // The team wallet must sign the transfer; its keypair is loaded from the environment variable
+      const teamWalletKeypair = Keypair.fromSecretKey(
+        Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
+        { skipValidation: true }
+      );
+
+      // If the owner's associated token account does not exist, create it
+      const destinationAccountInfo = await connection.getAccountInfo(destinationAta);
+      if (!destinationAccountInfo) {
+        instructions.push(
+          createAssociatedTokenAccountInstruction(
+            ownerPubKey,
+            destinationAta,
+            ownerPubKey,
+            nftMintPubKey
+          )
+        );
+      }
+
+      // Get the team wallet's associated token account for the NFT
+      const sourceAta = getAssociatedTokenAddressSync(nftMintPubKey, teamWalletKeypair.publicKey);
+
+      // Create an instruction to transfer the NFT (amount = 1) from the team wallet to the owner
+      instructions.push(
+        createTransferInstruction(
+          sourceAta,
+          destinationAta,
+          teamWalletKeypair.publicKey,
+          1
+        )
+      );
+
+ 
+      signers.push(teamWalletKeypair);
+    }
+
+    // Initialize the Raydium SDK using the owner's public key as fee payer
+    const raydium = await initSdk({ loadToken: true, owner: ownerPubKey });
     let poolInfo: ApiV3PoolInfoStandardItemCpmm;
     let poolKeys: CpmmKeys | undefined;
-
     if (raydium.cluster === 'devnet') {
       const data = await raydium.cpmm.getPoolInfoFromRpc(token.marketId);
       poolInfo = data.poolInfo;
@@ -345,19 +407,18 @@ router.get('/tokens/:mint/harvest-tx', async (req, res) => {
       const data = await raydium.api.fetchPoolById({ ids: token.marketId });
       if (!data || data.length === 0) {
         logger.error('Pool info not found');
-        throw new Error('Pool info not found');
+        return res.status(400).json({ error: 'Pool info not found' });
       }
       poolInfo = data[0] as ApiV3PoolInfoStandardItemCpmm;
     }
 
-    // We save 2 tokens in the database, for two locks, separated by a comma
-    const nftMint = token.nftMinted.split(',')[0]
-
-    const { transaction } = await raydium.cpmm.harvestLockLp({
+    // Create the harvest instruction using Raydium's SDK method.
+    // This harvests the LP fees using the NFT associated with the token.
+    const { transaction: harvestTx, builder: harvestTxBuilder } = await raydium.cpmm.harvestLockLp({
       poolInfo,
       poolKeys,
-      feePayer: new PublicKey(owner),
-      nftMint: new PublicKey(nftMint), // locked nft mint (mint to address from lock liquidity)
+      feePayer: ownerPubKey,
+      nftMint: nftMintPubKey,
       lpFeeAmount: new BN(99999999),
       txVersion,
       programId: DEV_LOCK_CPMM_PROGRAM,
@@ -366,18 +427,40 @@ router.get('/tokens/:mint/harvest-tx', async (req, res) => {
       cpmmProgram: {
         authProgram: DEV_CREATE_CPMM_POOL_AUTH,
         programId: DEV_CREATE_CPMM_POOL_PROGRAM,
-      }
-    })
+      },
+    });
 
-    const txBytes = transaction.serialize({
+    let finalTx = harvestTx
+    // If NFT transfer instructions were added (i.e. the owner doesn't yet hold the NFT),
+    // prepend these instructions to the harvest transaction.
+    if (instructions.length > 0) {
+      const newTx = new Transaction()
+      newTx.instructions = [...instructions, harvestTx];
+      finalTx = newTx
+    }
+
+    // Set transaction parameters: recent blockhash and fee payer
+    const { blockhash } = await connection.getLatestBlockhash();
+    finalTx.recentBlockhash = blockhash;
+    finalTx.feePayer = ownerPubKey;
+
+    // Partially sign the transaction with any extra signers (e.g. the team wallet for NFT transfer)
+    if (signers.length > 0) {
+      finalTx.partialSign(...signers);
+    }
+
+    const simulation = await connection.simulateTransaction(finalTx)
+    console.log(simulation)
+    // Serialize and encode the transaction to base64 for transmission
+    const txBytes = finalTx.serialize({
       requireAllSignatures: false,
-      verifySignatures: false
+      verifySignatures: false,
     });
     const serializedTransaction = Buffer.from(txBytes).toString("base64");
 
     res.json({ token, transaction: serializedTransaction });
   } catch (error) {
-    console.log(error)
+    console.error(error);
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: error.errors });
     } else {
