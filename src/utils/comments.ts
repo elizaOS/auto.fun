@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { queryClient } from "@/components/providers";
 
 const CommentSchema = z.object({
-  author: z.string(),
+  author: z.string().optional().default(""),
   timestamp: z.string(),
   likes: z.number(),
   message: z.string(),
@@ -140,7 +140,7 @@ export const useLikeComment = createMutation({
     parentId?: string;
   }) => {
     const response = await womboApi.post({
-      endpoint: `/message-likes/${id}`,
+      endpoint: `/messages/${id}/like`,
     });
     return response;
   },

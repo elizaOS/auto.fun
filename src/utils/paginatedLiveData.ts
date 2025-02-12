@@ -39,7 +39,7 @@ const fetchData = async <TInput, TOutput>(
       page: z.number(),
       totalPages: z.number(),
       total: z.number(),
-      hasMore: z.boolean(),
+      // hasMore: z.boolean(),
     }),
   });
 
@@ -47,7 +47,7 @@ const fetchData = async <TInput, TOutput>(
     items: response[itemsPropertyName] as TOutput[],
     page: response.page as number,
     totalPages: response.totalPages as number,
-    hasMore: response.hasMore as boolean,
+    hasMore: ((response.page as number) < response.totalPages) as number,
     total: response.total as number,
   };
 };
