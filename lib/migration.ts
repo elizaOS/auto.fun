@@ -1,5 +1,6 @@
-import { Connection, PublicKey, ComputeBudgetProgram } from "@solana/web3.js"
+import { Connection, PublicKey } from "@solana/web3.js"
 import { Program, BN } from "@coral-xyz/anchor"
+import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet"
 import { withdrawTx } from "./scripts"
 import { execWithdrawTx, getAssociatedTokenAccount } from "./util"
 import { Token, Fee } from "../schemas"
@@ -13,21 +14,33 @@ import {
 import { logger } from "../logger"
 import { NATIVE_MINT } from "@solana/spl-token"
 
-interface WithdrawResult {
-  withdrawTxId: string
-  withdrawLogs: string[]
+// Helper to retry asynchronous operations
+async function retryOperation<T>(
+  operation: () => Promise<T>,
+  maxRetries: number,
+  delay: number
+): Promise<T> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await operation()
+    } catch (error) {
+      if (attempt === maxRetries - 1) throw error
+      await new Promise((resolve) => setTimeout(resolve, delay))
+    }
+  }
+  throw new Error("Unreachable")
 }
 
 export class MigrationService {
   private connection: Connection
   private program: Program<any>
-  private wallet: any
+  private wallet: NodeWallet
   private io: any
 
   constructor(
     connection: Connection,
     program: Program<any>,
-    wallet: any,
+    wallet: NodeWallet,
     io: any
   ) {
     this.connection = connection
@@ -36,64 +49,156 @@ export class MigrationService {
     this.io = io
   }
 
-  public async migrateToken(token: any): Promise<void> {
+  // Main migration flow; each step is idempotent and state is persisted.
+  async migrateToken(token: any): Promise<void> {
     try {
-      // 1. Withdraw funds with compute budget instructions
-      const { withdrawTxId, withdrawLogs } = await this.withdrawFunds(token)
+      if (!token.migration) {
+        token.migration = {}
+      }
 
-      // 2. Parse withdrawn amounts from logs
-      const withdrawnAmounts = this.parseWithdrawLogs(withdrawLogs)
+      // Step 1: Withdraw funds
+      if (
+        !token.migration.withdraw ||
+        token.migration.withdraw.status !== "success"
+      ) {
+        logger.log(`[Migrate] Starting withdrawal for token ${token.mint}`)
+        const withdrawResult = await retryOperation(
+          () => this.performWithdraw(token),
+          3,
+          2000
+        )
+        token.migration.withdraw = {
+          status: "success",
+          txId: withdrawResult.txId,
+          updatedAt: new Date(),
+        }
+        token.withdrawnAmounts = withdrawResult.withdrawnAmounts
+        await Token.findOneAndUpdate(
+          { mint: token.mint },
+          {
+            migration: token.migration,
+            withdrawnAmounts: token.withdrawnAmounts,
+            lastUpdated: new Date(),
+          }
+        )
+        logger.log(
+          `[Migrate] Withdrawal successful for token ${token.mint} txId: ${withdrawResult.txId}`
+        )
+      } else {
+        logger.log(
+          `[Migrate] Withdrawal already processed for token ${token.mint}`
+        )
+      }
 
-      // 3. Initialize Raydium SDK & prepare pool creation parameters
-      const raydium = await initSdk({ loadToken: true })
-      const { mintA, mintB, feeConfig } = await this.preparePoolCreation(
-        token,
-        raydium
-      )
+      // Step 2: Create pool
+      if (
+        !token.migration.createPool ||
+        token.migration.createPool.status !== "success"
+      ) {
+        logger.log(`[Migrate] Starting pool creation for token ${token.mint}`)
+        const poolResult = await retryOperation(
+          () => this.performCreatePool(token),
+          3,
+          2000
+        )
+        token.migration.createPool = {
+          status: "success",
+          txId: poolResult.txId,
+          updatedAt: new Date(),
+        }
+        token.marketId = poolResult.poolId
+        token.poolInfo = poolResult.poolAddresses
+        await Token.findOneAndUpdate(
+          { mint: token.mint },
+          {
+            migration: token.migration,
+            marketId: token.marketId,
+            poolInfo: token.poolInfo,
+            lastUpdated: new Date(),
+          }
+        )
+        logger.log(
+          `[Migrate] Pool creation successful for token ${token.mint} txId: ${poolResult.txId}`
+        )
+      } else {
+        logger.log(
+          `[Migrate] Pool creation already processed for token ${token.mint}`
+        )
+      }
 
-      // 4. Compute fee amounts & remaining amounts to be used for pool creation
-      const { tokenFeeAmount, solFeeAmount, remainingTokens, remainingSol } =
-        this.computeFees(withdrawnAmounts)
+      // Step 3: Lock LP tokens
+      if (
+        !token.migration.lockLP ||
+        token.migration.lockLP.status !== "success"
+      ) {
+        logger.log(
+          `[Migrate] Starting LP token locking for token ${token.mint}`
+        )
+        const lockResult = await retryOperation(
+          () => this.performLockLP(token),
+          3,
+          2000
+        )
+        token.migration.lockLP = {
+          status: "success",
+          txId: lockResult.txId,
+          updatedAt: new Date(),
+        }
+        token.lockLpTxId = lockResult.txId
+        token.nftMinted = lockResult.nftMinted
+        await Token.findOneAndUpdate(
+          { mint: token.mint },
+          {
+            migration: token.migration,
+            lockLpTxId: token.lockLpTxId,
+            nftMinted: token.nftMinted,
+            lastUpdated: new Date(),
+          }
+        )
+        logger.log(
+          `[Migrate] LP token locking successful for token ${token.mint} txId: ${lockResult.txId}`
+        )
+      } else {
+        logger.log(
+          `[Migrate] LP token locking already processed for token ${token.mint}`
+        )
+      }
 
-      // 5. Create pool using Raydium CPMM pool creation
-      const { txId, poolAddresses } = await this.createPool(
-        token,
-        raydium,
-        mintA,
-        mintB,
-        feeConfig,
-        remainingTokens,
-        remainingSol
-      )
+      // Step 4: Finalize migration
+      if (
+        !token.migration.finalize ||
+        token.migration.finalize.status !== "success"
+      ) {
+        logger.log(`[Migrate] Finalizing migration for token ${token.mint}`)
+        const finalizeResult = await retryOperation(
+          () => this.performFinalizeMigration(token),
+          3,
+          2000
+        )
+        token.migration.finalize = {
+          status: "success",
+          txId: finalizeResult.txId,
+          updatedAt: new Date(),
+        }
+        token.status = "migrated"
+        await Token.findOneAndUpdate(
+          { mint: token.mint },
+          {
+            migration: token.migration,
+            status: token.status,
+            lastUpdated: new Date(),
+          }
+        )
+        logger.log(`[Migrate] Migration finalized for token ${token.mint}`)
+      } else {
+        logger.log(
+          `[Migrate] Migration finalization already processed for token ${token.mint}`
+        )
+      }
 
-      // 6. Record fee details related to migration
-      await this.recordFee(token, txId, tokenFeeAmount, solFeeAmount)
-
-      // 7. Update token status to 'migrated' and store pool info
-      const updatedToken = await this.updateTokenMigrated(token, poolAddresses)
-      this.io.to(`token-${token.mint}`).emit("updateToken", updatedToken)
-
-      // 8. Wait 20 minutes (1200000 ms) for pool confirmation
-      // await this.delay(1200000)
-
-      // 9. Fetch pool info with a retry loop to ensure the pool is confirmed
-      const { poolInfo, poolKeys } = await this.fetchPoolInfoWithRetry(
-        raydium,
-        poolAddresses.id
-      )
-
-      // 10. Wait an additional 25 seconds before next step
-      await this.delay(25000)
-
-      // 11. Lock LP tokens (split into primary and secondary portions)
-      await this.lockLpTokens(raydium, token, poolInfo, poolKeys)
-
-      logger.log(`Migration completed for token ${token.mint}`)
+      this.io.to(`token-${token.mint}`).emit("updateToken", token)
     } catch (error) {
-      logger.error(
-        `Migration failed for token ${token.mint} in MigrationService:`,
-        error
-      )
+      logger.error(`[Migrate] Migration failed for token ${token.mint}:`, error)
       await Token.findOneAndUpdate(
         { mint: token.mint },
         { status: "migration_failed", lastUpdated: new Date() }
@@ -101,43 +206,13 @@ export class MigrationService {
     }
   }
 
-  private async withdrawFunds(token: any): Promise<WithdrawResult> {
-    const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({
-      units: 300000,
-    })
-    const addPriorityFee = ComputeBudgetProgram.setComputeUnitPrice({
-      microLamports: 50000,
-    })
-
-    logger.log("Withdrawing funds for token:", token.mint)
-    const transaction = await withdrawTx(
-      this.wallet.publicKey,
-      new PublicKey(token.mint),
-      this.connection,
-      this.program
-    )
-
-    // Prepend the compute budget instructions
-    transaction.instructions = [
-      modifyComputeUnits,
-      addPriorityFee,
-      ...transaction.instructions,
-    ]
-
-    const { signature: withdrawTxId, logs: withdrawLogs } =
-      await execWithdrawTx(transaction, this.connection, this.wallet)
-
-    logger.log("Withdrawal complete with txId:", withdrawTxId)
-    return { withdrawTxId, withdrawLogs }
-  }
-
+  // Parse withdrawal logs to extract withdrawn amounts.
   private parseWithdrawLogs(withdrawLogs: string[]): {
     withdrawnSol: number
     withdrawnTokens: number
   } {
     let withdrawnSol = 0
     let withdrawnTokens = 0
-
     withdrawLogs.forEach((log) => {
       if (log.includes("withdraw lamports:")) {
         withdrawnSol = Number(
@@ -150,15 +225,39 @@ export class MigrationService {
         )
       }
     })
-
-    logger.log("Parsed withdrawn amounts:", { withdrawnSol, withdrawnTokens })
     return { withdrawnSol, withdrawnTokens }
   }
 
-  private async preparePoolCreation(
-    token: any,
-    raydium: any
-  ): Promise<{ mintA: any; mintB: any; feeConfig: any }> {
+  // Performs the withdrawal transaction.
+  private async performWithdraw(token: any): Promise<{
+    txId: string
+    withdrawnAmounts: { withdrawnSol: number; withdrawnTokens: number }
+  }> {
+    logger.log(`[Withdraw] Withdrawing funds for token ${token.mint}`)
+    const transaction = await withdrawTx(
+      this.wallet.publicKey,
+      new PublicKey(token.mint),
+      this.connection,
+      this.program
+    )
+
+    // Optionally add compute budget instructions here.
+    transaction.instructions = [...transaction.instructions]
+
+    const { signature: txId, logs } = await execWithdrawTx(
+      transaction,
+      this.connection,
+      this.wallet
+    )
+    const withdrawnAmounts = this.parseWithdrawLogs(logs)
+    return { txId, withdrawnAmounts }
+  }
+
+  // Creates the CPMM pool using Raydium's SDK.
+  private async performCreatePool(
+    token: any
+  ): Promise<{ txId: string; poolId: string; poolAddresses: any }> {
+    const raydium = await initSdk({ loadToken: true })
     const mintA = await raydium.token.getTokenInfo(token.mint)
     const mintB = await raydium.token.getTokenInfo(NATIVE_MINT)
 
@@ -171,22 +270,13 @@ export class MigrationService {
         ).publicKey.toBase58()
       })
     }
-
     const feeConfig =
       raydium.cluster === "devnet" ? feeConfigs[0] : feeConfigs[1]
-    logger.log("Fee configuration selected:", feeConfig)
-    return { mintA, mintB, feeConfig }
-  }
 
-  private computeFees(withdrawnAmounts: {
-    withdrawnSol: number
-    withdrawnTokens: number
-  }): {
-    tokenFeeAmount: BN
-    solFeeAmount: BN
-    remainingTokens: BN
-    remainingSol: BN
-  } {
+    const withdrawnAmounts = token.withdrawnAmounts
+    if (!withdrawnAmounts)
+      throw new Error("No withdrawn amounts found for pool creation")
+
     const FEE_BASIS_POINTS = 10000
     const FEE_PERCENTAGE = Number(process.env.FEE_PERCENTAGE || "10")
     const feePercentageBN = new BN(FEE_PERCENTAGE)
@@ -200,31 +290,10 @@ export class MigrationService {
     const solFeeAmount = withdrawnSolBN
       .mul(feePercentageBN)
       .div(feeBasisPointsBN)
-
     const remainingTokens = withdrawnTokensBN.sub(tokenFeeAmount)
     const remainingSol = withdrawnSolBN.sub(solFeeAmount)
 
-    logger.log("Fee computation:", {
-      tokenFeeAmount: tokenFeeAmount.toString(),
-      solFeeAmount: solFeeAmount.toString(),
-      remainingTokens: remainingTokens.toString(),
-      remainingSol: remainingSol.toString(),
-    })
-
-    return { tokenFeeAmount, solFeeAmount, remainingTokens, remainingSol }
-  }
-
-  private async createPool(
-    token: any,
-    raydium: any,
-    mintA: any,
-    mintB: any,
-    feeConfig: any,
-    remainingTokens: BN,
-    remainingSol: BN
-  ): Promise<{ txId: string; poolAddresses: any }> {
-    logger.log("Creating Raydium CPMM pool for token:", token.mint)
-
+    logger.log(`[Pool] Creating pool for token ${token.mint}`)
     const poolCreation = await raydium.cpmm.createPool({
       programId:
         raydium.cluster === "devnet"
@@ -236,8 +305,8 @@ export class MigrationService {
           : CREATE_CPMM_POOL_FEE_ACC,
       mintA,
       mintB,
-      mintAAmount: remainingTokens, // already a BN
-      mintBAmount: remainingSol, // already a BN
+      mintAAmount: remainingTokens,
+      mintBAmount: remainingSol,
       startTime: new BN(0),
       feeConfig,
       associatedOnly: true,
@@ -246,8 +315,6 @@ export class MigrationService {
     })
 
     const { txId } = await poolCreation.execute({ sendAndConfirm: true })
-    logger.log("Pool created with txId:", txId)
-
     const poolAddresses = {
       id: poolCreation.extInfo.address.poolId.toString(),
       lpMint: poolCreation.extInfo.address.lpMint.toString(),
@@ -255,103 +322,19 @@ export class MigrationService {
       quoteVault: poolCreation.extInfo.address.vaultB.toString(),
     }
 
-    logger.log("Pool addresses:", poolAddresses)
-    return { txId, poolAddresses }
+    return { txId, poolId: poolAddresses.id, poolAddresses }
   }
 
-  private async recordFee(
-    token: any,
-    txId: string,
-    tokenFeeAmount: BN,
-    solFeeAmount: BN
-  ): Promise<void> {
-    await Fee.findOneAndUpdate(
-      { txId },
-      {
-        tokenMint: token.mint,
-        tokenAmount: tokenFeeAmount.toString(),
-        solAmount: solFeeAmount.toString(),
-        type: "migration",
-        txId,
-        timestamp: new Date(),
-      },
-      { upsert: true, new: true }
-    )
-    logger.log("Fee record created for txId:", txId)
-  }
+  // Locks LP tokens using Raydium's SDK.
+  private async performLockLP(
+    token: any
+  ): Promise<{ txId: string; nftMinted: string }> {
+    const raydium = await initSdk({ loadToken: true })
+    const poolId = token.marketId
+    const poolInfoResult = await this.fetchPoolInfoWithRetry(raydium, poolId)
+    const poolInfo = poolInfoResult.poolInfo
+    const poolKeys = poolInfoResult.poolKeys
 
-  private async updateTokenMigrated(
-    token: any,
-    poolAddresses: any
-  ): Promise<any> {
-    const updatedToken = await Token.findOneAndUpdate(
-      { mint: token.mint },
-      {
-        status: "migrated",
-        migratedAt: new Date(),
-        marketId: poolAddresses.id,
-        baseVault: poolAddresses.baseVault,
-        quoteVault: poolAddresses.quoteVault,
-        lastUpdated: new Date(),
-      },
-      { new: true }
-    )
-    return updatedToken
-  }
-
-  private async fetchPoolInfoWithRetry(
-    raydium: any,
-    poolId: string
-  ): Promise<{ poolInfo: any; poolKeys: any }> {
-    const MAX_RETRIES = 12
-    let retryCount = 0
-    let poolInfo: any = null
-    let poolKeys: any
-
-    while (!poolInfo && retryCount < MAX_RETRIES) {
-      try {
-        logger.log(
-          `Attempt ${retryCount + 1} to fetch pool info for poolId: ${poolId}`
-        )
-        if (raydium.cluster === "devnet") {
-          const data = await raydium.cpmm.getPoolInfoFromRpc(poolId)
-          poolInfo = data.poolInfo
-          poolKeys = data.poolKeys
-        } else {
-          const data = await raydium.api.fetchPoolById({ ids: poolId })
-          if (!data || data.length === 0) {
-            logger.error("Pool info not found")
-            throw new Error("Pool info not found")
-          }
-          poolInfo = data[0]
-        }
-      } catch (error) {
-        retryCount++
-        if (retryCount === MAX_RETRIES) {
-          logger.error(
-            `Failed to fetch pool info after ${MAX_RETRIES} attempts for poolId: ${poolId}`
-          )
-          throw error
-        }
-        logger.log(
-          `Pool info not found, waiting 5 minutes before retry ${
-            retryCount + 1
-          }...`
-        )
-        await this.delay(300000) // 5 minutes delay
-      }
-    }
-    logger.log("Pool info fetched successfully.")
-    return { poolInfo, poolKeys }
-  }
-
-  private async lockLpTokens(
-    raydium: any,
-    token: any,
-    poolInfo: any,
-    poolKeys: any
-  ): Promise<void> {
-    logger.log("Locking LP tokens for token:", token.mint)
     await raydium.account.fetchWalletTokenAccounts()
     const lpMintStr = poolInfo.lpMint.address
     const lpAccount = raydium.account.tokenAccounts.find(
@@ -360,7 +343,6 @@ export class MigrationService {
     if (!lpAccount) {
       throw new Error(`No LP balance found for pool: ${poolInfo.id}`)
     }
-    logger.log("LP balance found:", lpAccount.amount.toString())
 
     const PRIMARY_LOCK_PERCENTAGE = Number(
       process.env.PRIMARY_LOCK_PERCENTAGE || "90"
@@ -369,10 +351,7 @@ export class MigrationService {
       process.env.SECONDARY_LOCK_PERCENTAGE || "10"
     )
     if (PRIMARY_LOCK_PERCENTAGE + SECONDARY_LOCK_PERCENTAGE !== 100) {
-      logger.error("Lock percentages must sum to 100%", {
-        primary: PRIMARY_LOCK_PERCENTAGE,
-        secondary: SECONDARY_LOCK_PERCENTAGE,
-      })
+      throw new Error("Lock percentages must sum to 100")
     }
     const totalLPAmount = lpAccount.amount
     const primaryAmount = totalLPAmount.muln(PRIMARY_LOCK_PERCENTAGE).divn(100)
@@ -380,7 +359,6 @@ export class MigrationService {
       .muln(SECONDARY_LOCK_PERCENTAGE)
       .divn(100)
 
-    // Lock primary portion
     const { execute: lockExecutePrimary, extInfo: lockExtInfoPrimary } =
       await raydium.cpmm.lockLp({
         poolInfo,
@@ -396,16 +374,8 @@ export class MigrationService {
     const { txId: lockTxIdPrimary } = await lockExecutePrimary({
       sendAndConfirm: true,
     })
-    logger.log(
-      `${PRIMARY_LOCK_PERCENTAGE}% LP tokens locked with txId:`,
-      lockTxIdPrimary
-    )
-    logger.log(
-      `NFT Minted for ${PRIMARY_LOCK_PERCENTAGE}% Lock:`,
-      lockExtInfoPrimary.nftMint.toString()
-    )
+    logger.log(`[Lock] Primary LP lock txId: ${lockTxIdPrimary}`)
 
-    // Lock secondary portion
     const { execute: lockExecuteSecondary, extInfo: lockExtInfoSecondary } =
       await raydium.cpmm.lockLp({
         poolInfo,
@@ -421,32 +391,63 @@ export class MigrationService {
     const { txId: lockTxIdSecondary } = await lockExecuteSecondary({
       sendAndConfirm: true,
     })
-    logger.log(
-      `${SECONDARY_LOCK_PERCENTAGE}% LP tokens locked with txId:`,
-      lockTxIdSecondary
-    )
-    logger.log(
-      `NFT Minted for ${SECONDARY_LOCK_PERCENTAGE}% Lock:`,
-      lockExtInfoSecondary.nftMint.toString()
-    )
+    logger.log(`[Lock] Secondary LP lock txId: ${lockTxIdSecondary}`)
 
-    // Store the lock details in the token record and emit a socket update
-    const lockedToken = await Token.findOneAndUpdate(
+    const aggregatedTxId = `${lockTxIdPrimary},${lockTxIdSecondary}`
+    const aggregatedNftMint = `${lockExtInfoPrimary.nftMint.toString()},${lockExtInfoSecondary.nftMint.toString()}`
+
+    await Token.findOneAndUpdate(
       { mint: token.mint },
       {
-        lockId: `${lockTxIdPrimary},${lockTxIdSecondary}`,
-        nftMinted: `${lockExtInfoPrimary.nftMint.toString()},${lockExtInfoSecondary.nftMint.toString()}`,
+        lockId: aggregatedTxId,
+        nftMinted: aggregatedNftMint,
         lockedAmount: totalLPAmount.toString(),
         lockedAt: new Date(),
         status: "locked",
         lastUpdated: new Date(),
-      },
-      { new: true }
+      }
     )
-    this.io.to(`token-${token.mint}`).emit("updateToken", lockedToken)
+
+    return { txId: aggregatedTxId, nftMinted: aggregatedNftMint }
   }
 
-  private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms))
+  // Fetch pool info with retry logic.
+  private async fetchPoolInfoWithRetry(
+    raydium: any,
+    poolId: string
+  ): Promise<{ poolInfo: any; poolKeys: any }> {
+    const MAX_RETRIES = 12
+    let retryCount = 0
+    let poolInfo: any = null
+    let poolKeys: any
+    while (!poolInfo && retryCount < MAX_RETRIES) {
+      try {
+        if (raydium.cluster === "devnet") {
+          const data = await raydium.cpmm.getPoolInfoFromRpc(poolId)
+          poolInfo = data.poolInfo
+          poolKeys = data.poolKeys
+        } else {
+          const data = await raydium.api.fetchPoolById({ ids: poolId })
+          if (!data || data.length === 0) {
+            throw new Error("Pool info not found")
+          }
+          poolInfo = data[0]
+        }
+      } catch (error) {
+        retryCount++
+        if (retryCount === MAX_RETRIES) {
+          throw error
+        }
+        await new Promise((res) => setTimeout(res, 300000)) // wait 5 minutes
+      }
+    }
+    return { poolInfo, poolKeys }
+  }
+
+  // Finalize migration (placeholder for additional on-chain steps if needed).
+  private async performFinalizeMigration(
+    token: any
+  ): Promise<{ txId: string }> {
+    return { txId: "finalized" }
   }
 }
