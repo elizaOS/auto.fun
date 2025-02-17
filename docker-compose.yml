@@ -4,11 +4,9 @@ services:
     ports:
       - "${PORT}:${PORT}"
     env_file: 
-      - .env    # Load all vars from .env
-    # Or specify individual vars:
+      - .env
     environment:
       - PORT=${PORT}
-      - CUSTOM_VAR=value
       - MONGODB_URI=mongodb://mongo:27017/serlaunchalot
 
     depends_on:
