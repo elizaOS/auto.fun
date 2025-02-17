@@ -357,3 +357,28 @@ Example output:
 See `schemas.ts` for the MongoDB schema.
 
 We utilize `users`, `tokens`, `swaps`, `fees`, and `messages` collections.
+
+## Docker Setup
+
+Run the entire stack (backend + MongoDB) using Docker Compose:
+
+```bash
+# Build and start containers
+docker compose up
+
+# View logs
+docker compose logs -f
+
+# Stop containers
+docker compose down
+```
+
+The backend will be available at `http://localhost:3069` and MongoDB at `localhost:27017`.
+
+### Environment Variables
+
+Create a `.env` file with:
+
+```
+WALLET_KEYPAIR_PATH=/path/to/keypair.json
+```

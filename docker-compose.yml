@@ -2,14 +2,13 @@ services:
   app:
     build: .
     ports:
-      - "${PORT}:${PORT}"
+      - "3069:3069"
     env_file: 
-      - .env    # Load all vars from .env
-    # Or specify individual vars:
+      - .env
     environment:
-      - PORT=${PORT}
-      - CUSTOM_VAR=value
+      - PORT=3069
       - MONGODB_URI=mongodb://mongo:27017/serlaunchalot
+      - SOLANA_RPC_URL=https://api.devnet.solana.com
 
     depends_on:
       - mongo
