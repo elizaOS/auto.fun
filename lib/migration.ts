@@ -2,7 +2,7 @@ import { Connection, PublicKey } from "@solana/web3.js"
 import { Program, BN } from "@coral-xyz/anchor"
 import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet"
 import { withdrawTx } from "./scripts"
-import { execWithdrawTx, getAssociatedTokenAccount } from "./util"
+import { connectDB, execWithdrawTx, initializeConfig } from "./util"
 import { Token, Fee } from "../schemas"
 import { txVersion, initSdk } from "./raydium-config"
 import {
@@ -10,9 +10,12 @@ import {
   CREATE_CPMM_POOL_FEE_ACC,
   DEVNET_PROGRAM_ID,
   getCpmmPdaAmmConfigId,
+  DEV_LOCK_CPMM_AUTH,
+  DEV_LOCK_CPMM_PROGRAM,
 } from "@raydium-io/raydium-sdk-v2"
 import { logger } from "../logger"
 import { NATIVE_MINT } from "@solana/spl-token"
+import { Server } from "socket.io"
 
 // Helper to retry asynchronous operations
 async function retryOperation<T>(
@@ -35,13 +38,13 @@ export class MigrationService {
   private connection: Connection
   private program: Program<any>
   private wallet: NodeWallet
-  private io: any
+  private io?: Server
 
   constructor(
     connection: Connection,
     program: Program<any>,
     wallet: NodeWallet,
-    io: any
+    io?: Server
   ) {
     this.connection = connection
     this.program = program
@@ -180,7 +183,7 @@ export class MigrationService {
           txId: finalizeResult.txId,
           updatedAt: new Date(),
         }
-        token.status = "migrated"
+        token.status = "locked"
         await Token.findOneAndUpdate(
           { mint: token.mint },
           {
@@ -196,9 +199,12 @@ export class MigrationService {
         )
       }
 
-      this.io.to(`token-${token.mint}`).emit("updateToken", token)
+      if (this.io) {
+        this.io.to(`token-${token.mint}`).emit("updateToken", token)
+      }
     } catch (error) {
-      logger.error(`[Migrate] Migration failed for token ${token.mint}:`, error)
+      logger.error(`[Migrate] Migration failed for token ${token.mint}:`)
+      console.log(error + "")
       await Token.findOneAndUpdate(
         { mint: token.mint },
         { status: "migration_failed", lastUpdated: new Date() }
@@ -257,7 +263,7 @@ export class MigrationService {
   private async performCreatePool(
     token: any
   ): Promise<{ txId: string; poolId: string; poolAddresses: any }> {
-    const raydium = await initSdk({ loadToken: true })
+    const raydium = await initSdk({ loadToken: false })
     const mintA = await raydium.token.getTokenInfo(token.mint)
     const mintB = await raydium.token.getTokenInfo(NATIVE_MINT)
 
@@ -329,7 +335,7 @@ export class MigrationService {
   private async performLockLP(
     token: any
   ): Promise<{ txId: string; nftMinted: string }> {
-    const raydium = await initSdk({ loadToken: true })
+    const raydium = await initSdk({ loadToken: false })
     const poolId = token.marketId
     const poolInfoResult = await this.fetchPoolInfoWithRetry(raydium, poolId)
     const poolInfo = poolInfoResult.poolInfo
@@ -368,8 +374,10 @@ export class MigrationService {
         txVersion,
         computeBudgetConfig: {
           units: 300000,
-          microLamports: 50000,
+          microLamports: 0.0001 * 1e9,
         },
+        programId: DEV_LOCK_CPMM_PROGRAM,
+        authProgram: DEV_LOCK_CPMM_AUTH,
       })
     const { txId: lockTxIdPrimary } = await lockExecutePrimary({
       sendAndConfirm: true,
@@ -385,8 +393,10 @@ export class MigrationService {
         txVersion,
         computeBudgetConfig: {
           units: 300000,
-          microLamports: 50000,
+          microLamports: 0.0001 * 1e9,
         },
+        programId: DEV_LOCK_CPMM_PROGRAM,
+        authProgram: DEV_LOCK_CPMM_AUTH,
       })
     const { txId: lockTxIdSecondary } = await lockExecuteSecondary({
       sendAndConfirm: true,
@@ -451,3 +461,19 @@ export class MigrationService {
     return { txId: "finalized" }
   }
 }
+
+// For testing, or migrating a token manually
+// ;(async () => {
+//   const { connection, program, wallet } = await initializeConfig()
+//   try {
+//     await connectDB()
+//   } catch (error) {
+//     logger.error("Failed to connect to MongoDB:", error)
+//   }
+
+//   const migrationService = new MigrationService(connection, program, wallet)
+//   const token = await Token.findOne({
+//     mint: "vwQVdGDodnS8UyeL9nhWNCRctqPSJa6LChqkKfc4Zy8",
+//   })
+//   await migrationService.migrateToken(token)
+// })()

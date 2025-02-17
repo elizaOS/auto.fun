@@ -1,5 +1,5 @@
 import { Raydium, TxVersion, parseTokenAccountResp } from '@raydium-io/raydium-sdk-v2'
-import { Connection, Keypair, clusterApiUrl } from '@solana/web3.js'
+import { Connection, Keypair, clusterApiUrl, PublicKey } from '@solana/web3.js'
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token'
 import { logger } from '../logger'
 
@@ -14,13 +14,13 @@ export const txVersion = TxVersion.V0 // or TxVersion.LEGACY
 const cluster = process.env.NETWORK as Cluster // 'mainnet' | 'devnet'
 
 let raydium: Raydium | undefined
-export const initSdk = async (params?: { loadToken?: boolean }) => {
+export const initSdk = async (params?: { loadToken?: boolean, owner?: PublicKey }) => {
   if (raydium) return raydium
   // if (connection.rpcEndpoint === clusterApiUrl('devnet')) // mainnet-beta
     // console.warn('using free rpc node might cause unexpected error, strongly suggest uses paid rpc node')
   logger.log(`Raydium SDK: Connected to RPC ${connection.rpcEndpoint} in ${cluster}`)
   raydium = await Raydium.load({
-    owner,
+    owner: params?.owner || owner,
     connection,
     cluster,
     disableFeatureCheck: true,
