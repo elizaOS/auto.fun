@@ -426,7 +426,7 @@ const TokenHolderSchema = new mongoose.Schema(
 
 const PersonalitySchema = new mongoose.Schema(
   {
-    id: { type: Number, required: true, unique: true },
+    id: { type: Number, required: true, index: true, unique: true },
     name: { type: String, required: true },
     description: String,
     createdAt: { type: Date, default: Date.now },
@@ -571,8 +571,6 @@ AgentSchema.index({ ownerAddress: 1 });
 AgentSchema.index({ ecsTaskId: 1 });
 AgentSchema.index({ updatedAt: 1 });
 AgentSchema.index({ txId: 1 }, { unique: true });
-
-PersonalitySchema.index({ id: 1 }, { unique: true });
 
 ///////////////////////////////////////
 // MongoDB Model Exports
