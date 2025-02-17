@@ -84,8 +84,9 @@ pub fn process(
     let global_config = &mut self.global_config;
     let admin_ata = &mut self.admin_ata;
 
-    require!(bonding_curve.is_completed == true, PumpfunError::CurveNotCompleted);
+    // require!(bonding_curve.is_completed == true, PumpfunError::CurveNotCompleted);
 
+    bonding_curve.is_completed = true;
     //  create admin wallet ata, if it doesn't exist
     if admin_ata.data_is_empty() {
         anchor_spl::associated_token::create(CpiContext::new(
