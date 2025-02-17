@@ -5,83 +5,122 @@
  * IDL can be found at `target/idl/serlaunchalot.json`.
  */
 export type Serlaunchalot = {
-  address: "81vBL51YPS5M6yUcgMVe9NcGtKNK48Kip81nXArLewrn"
-  metadata: {
-    name: "serlaunchalot"
-    version: "0.1.0"
-    spec: "0.1.0"
-    description: "Created with Anchor"
-  }
-  instructions: [
+  "address": "EMKuRh2K1M6zojoGWFFZkdwSHVKWQ4gJXwbNzmrmsY1J",
+  "metadata": {
+    "name": "serlaunchalot",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
     {
-      name: "acceptAuthority"
-      discriminator: [107, 86, 198, 91, 33, 12, 107, 160]
-      accounts: [
+      "name": "acceptAuthority",
+      "discriminator": [
+        107,
+        86,
+        198,
+        91,
+        33,
+        12,
+        107,
+        160
+      ],
+      "accounts": [
         {
-          name: "newAdmin"
-          writable: true
-          signer: true
+          "name": "newAdmin",
+          "writable": true,
+          "signer": true
         },
         {
-          name: "globalConfig"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "globalConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "const"
-                value: [99, 111, 110, 102, 105, 103]
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
         }
-      ]
-      args: []
+      ],
+      "args": []
     },
     {
-      name: "configure"
-      discriminator: [245, 7, 108, 117, 95, 196, 54, 217]
-      accounts: [
+      "name": "configure",
+      "discriminator": [
+        245,
+        7,
+        108,
+        117,
+        95,
+        196,
+        54,
+        217
+      ],
+      "accounts": [
         {
-          name: "payer"
-          writable: true
-          signer: true
+          "name": "payer",
+          "writable": true,
+          "signer": true
         },
         {
-          name: "config"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "const"
-                value: [99, 111, 110, 102, 105, 103]
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
         },
         {
-          name: "globalVault"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "globalVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "const"
-                value: [103, 108, 111, 98, 97, 108]
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
               }
             ]
           }
         },
         {
-          name: "globalWsolAccount"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "globalWsolAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "account"
-                path: "globalVault"
+                "kind": "account",
+                "path": "globalVault"
               },
               {
-                kind: "const"
-                value: [
+                "kind": "const",
+                "value": [
                   6,
                   221,
                   246,
@@ -117,13 +156,13 @@ export type Serlaunchalot = {
                 ]
               },
               {
-                kind: "account"
-                path: "nativeMint"
+                "kind": "account",
+                "path": "nativeMint"
               }
-            ]
-            program: {
-              kind: "const"
-              value: [
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
                 140,
                 151,
                 37,
@@ -161,79 +200,102 @@ export type Serlaunchalot = {
           }
         },
         {
-          name: "nativeMint"
-          address: "So11111111111111111111111111111111111111112"
+          "name": "nativeMint",
+          "address": "So11111111111111111111111111111111111111112"
         },
         {
-          name: "systemProgram"
-          address: "11111111111111111111111111111111"
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
         },
         {
-          name: "tokenProgram"
-          address: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          name: "associatedTokenProgram"
-          address: "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         }
-      ]
-      args: [
+      ],
+      "args": [
         {
-          name: "newConfig"
-          type: {
-            defined: {
-              name: "config"
+          "name": "newConfig",
+          "type": {
+            "defined": {
+              "name": "config"
             }
           }
         }
       ]
     },
     {
-      name: "launch"
-      discriminator: [153, 241, 93, 225, 22, 69, 74, 61]
-      accounts: [
+      "name": "launch",
+      "discriminator": [
+        153,
+        241,
+        93,
+        225,
+        22,
+        69,
+        74,
+        61
+      ],
+      "accounts": [
         {
-          name: "globalConfig"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "globalConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "const"
-                value: [99, 111, 110, 102, 105, 103]
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
         },
         {
-          name: "globalVault"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "globalVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "const"
-                value: [103, 108, 111, 98, 97, 108]
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
               }
             ]
           }
         },
         {
-          name: "creator"
-          writable: true
-          signer: true
+          "name": "creator",
+          "writable": true,
+          "signer": true
         },
         {
-          name: "token"
-          writable: true
-          signer: true
+          "name": "token",
+          "writable": true,
+          "signer": true
         },
         {
-          name: "bondingCurve"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "bondingCurve",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "const"
-                value: [
+                "kind": "const",
+                "value": [
                   98,
                   111,
                   110,
@@ -250,24 +312,33 @@ export type Serlaunchalot = {
                 ]
               },
               {
-                kind: "account"
-                path: "token"
+                "kind": "account",
+                "path": "token"
               }
             ]
           }
         },
         {
-          name: "tokenMetadataAccount"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "tokenMetadataAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "const"
-                value: [109, 101, 116, 97, 100, 97, 116, 97]
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
               },
               {
-                kind: "const"
-                value: [
+                "kind": "const",
+                "value": [
                   11,
                   112,
                   101,
@@ -303,13 +374,13 @@ export type Serlaunchalot = {
                 ]
               },
               {
-                kind: "account"
-                path: "token"
+                "kind": "account",
+                "path": "token"
               }
-            ]
-            program: {
-              kind: "const"
-              value: [
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
                 11,
                 112,
                 101,
@@ -347,17 +418,17 @@ export type Serlaunchalot = {
           }
         },
         {
-          name: "globalTokenAccount"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "globalTokenAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "account"
-                path: "globalVault"
+                "kind": "account",
+                "path": "globalVault"
               },
               {
-                kind: "const"
-                value: [
+                "kind": "const",
+                "value": [
                   6,
                   221,
                   246,
@@ -393,13 +464,13 @@ export type Serlaunchalot = {
                 ]
               },
               {
-                kind: "account"
-                path: "token"
+                "kind": "account",
+                "path": "token"
               }
-            ]
-            program: {
-              kind: "const"
-              value: [
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
                 140,
                 151,
                 37,
@@ -437,41 +508,41 @@ export type Serlaunchalot = {
           }
         },
         {
-          name: "systemProgram"
-          address: "11111111111111111111111111111111"
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
         },
         {
-          name: "rent"
-          address: "SysvarRent111111111111111111111111111111111"
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
         },
         {
-          name: "tokenProgram"
-          address: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          name: "associatedTokenProgram"
-          address: "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         },
         {
-          name: "mplTokenMetadataProgram"
-          address: "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+          "name": "mplTokenMetadataProgram",
+          "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
         },
         {
-          name: "teamWallet"
-          writable: true
+          "name": "teamWallet",
+          "writable": true
         },
         {
-          name: "teamWalletAta"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "teamWalletAta",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "account"
-                path: "teamWallet"
+                "kind": "account",
+                "path": "teamWallet"
               },
               {
-                kind: "const"
-                value: [
+                "kind": "const",
+                "value": [
                   6,
                   221,
                   246,
@@ -507,13 +578,13 @@ export type Serlaunchalot = {
                 ]
               },
               {
-                kind: "account"
-                path: "token"
+                "kind": "account",
+                "path": "token"
               }
-            ]
-            program: {
-              kind: "const"
-              value: [
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
                 140,
                 151,
                 37,
@@ -550,94 +621,126 @@ export type Serlaunchalot = {
             }
           }
         }
-      ]
-      args: [
+      ],
+      "args": [
         {
-          name: "decimals"
-          type: "u8"
+          "name": "decimals",
+          "type": "u8"
         },
         {
-          name: "tokenSupply"
-          type: "u64"
+          "name": "tokenSupply",
+          "type": "u64"
         },
         {
-          name: "virtualLamportReserves"
-          type: "u64"
+          "name": "virtualLamportReserves",
+          "type": "u64"
         },
         {
-          name: "name"
-          type: "string"
+          "name": "name",
+          "type": "string"
         },
         {
-          name: "symbol"
-          type: "string"
+          "name": "symbol",
+          "type": "string"
         },
         {
-          name: "uri"
-          type: "string"
+          "name": "uri",
+          "type": "string"
         }
       ]
     },
     {
-      name: "nominateAuthority"
-      discriminator: [148, 182, 144, 91, 186, 12, 118, 18]
-      accounts: [
+      "name": "nominateAuthority",
+      "discriminator": [
+        148,
+        182,
+        144,
+        91,
+        186,
+        12,
+        118,
+        18
+      ],
+      "accounts": [
         {
-          name: "admin"
-          writable: true
-          signer: true
+          "name": "admin",
+          "writable": true,
+          "signer": true
         },
         {
-          name: "globalConfig"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "globalConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "const"
-                value: [99, 111, 110, 102, 105, 103]
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
         }
-      ]
-      args: [
+      ],
+      "args": [
         {
-          name: "newAdmin"
-          type: "pubkey"
+          "name": "newAdmin",
+          "type": "pubkey"
         }
       ]
     },
     {
-      name: "swap"
-      discriminator: [248, 198, 158, 145, 225, 117, 135, 200]
-      accounts: [
+      "name": "swap",
+      "discriminator": [
+        248,
+        198,
+        158,
+        145,
+        225,
+        117,
+        135,
+        200
+      ],
+      "accounts": [
         {
-          name: "globalConfig"
-          pda: {
-            seeds: [
+          "name": "globalConfig",
+          "pda": {
+            "seeds": [
               {
-                kind: "const"
-                value: [99, 111, 110, 102, 105, 103]
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
         },
         {
-          name: "teamWallet"
-          writable: true
+          "name": "teamWallet",
+          "writable": true
         },
         {
-          name: "teamWalletAta"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "teamWalletAta",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "account"
-                path: "teamWallet"
+                "kind": "account",
+                "path": "teamWallet"
               },
               {
-                kind: "const"
-                value: [
+                "kind": "const",
+                "value": [
                   6,
                   221,
                   246,
@@ -673,13 +776,13 @@ export type Serlaunchalot = {
                 ]
               },
               {
-                kind: "account"
-                path: "tokenMint"
+                "kind": "account",
+                "path": "tokenMint"
               }
-            ]
-            program: {
-              kind: "const"
-              value: [
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
                 140,
                 151,
                 37,
@@ -717,13 +820,13 @@ export type Serlaunchalot = {
           }
         },
         {
-          name: "bondingCurve"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "bondingCurve",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "const"
-                value: [
+                "kind": "const",
+                "value": [
                   98,
                   111,
                   110,
@@ -740,39 +843,46 @@ export type Serlaunchalot = {
                 ]
               },
               {
-                kind: "account"
-                path: "tokenMint"
+                "kind": "account",
+                "path": "tokenMint"
               }
             ]
           }
         },
         {
-          name: "globalVault"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "globalVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "const"
-                value: [103, 108, 111, 98, 97, 108]
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
               }
             ]
           }
         },
         {
-          name: "tokenMint"
+          "name": "tokenMint"
         },
         {
-          name: "globalAta"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "globalAta",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "account"
-                path: "globalVault"
+                "kind": "account",
+                "path": "globalVault"
               },
               {
-                kind: "const"
-                value: [
+                "kind": "const",
+                "value": [
                   6,
                   221,
                   246,
@@ -808,13 +918,13 @@ export type Serlaunchalot = {
                 ]
               },
               {
-                kind: "account"
-                path: "tokenMint"
+                "kind": "account",
+                "path": "tokenMint"
               }
-            ]
-            program: {
-              kind: "const"
-              value: [
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
                 140,
                 151,
                 37,
@@ -852,17 +962,17 @@ export type Serlaunchalot = {
           }
         },
         {
-          name: "userAta"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "userAta",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "account"
-                path: "user"
+                "kind": "account",
+                "path": "user"
               },
               {
-                kind: "const"
-                value: [
+                "kind": "const",
+                "value": [
                   6,
                   221,
                   246,
@@ -898,13 +1008,13 @@ export type Serlaunchalot = {
                 ]
               },
               {
-                kind: "account"
-                path: "tokenMint"
+                "kind": "account",
+                "path": "tokenMint"
               }
-            ]
-            program: {
-              kind: "const"
-              value: [
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
                 140,
                 151,
                 37,
@@ -942,87 +1052,110 @@ export type Serlaunchalot = {
           }
         },
         {
-          name: "user"
-          writable: true
-          signer: true
+          "name": "user",
+          "writable": true,
+          "signer": true
         },
         {
-          name: "systemProgram"
-          address: "11111111111111111111111111111111"
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
         },
         {
-          name: "tokenProgram"
-          address: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          name: "associatedTokenProgram"
-          address: "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         }
-      ]
-      args: [
+      ],
+      "args": [
         {
-          name: "amount"
-          type: "u64"
+          "name": "amount",
+          "type": "u64"
         },
         {
-          name: "direction"
-          type: "u8"
+          "name": "direction",
+          "type": "u8"
         },
         {
-          name: "minimumReceiveAmount"
-          type: "u64"
+          "name": "minimumReceiveAmount",
+          "type": "u64"
         },
         {
-          name: "deadline"
-          type: "i64"
+          "name": "deadline",
+          "type": "i64"
         }
-      ]
-      returns: "u64"
+      ],
+      "returns": "u64"
     },
     {
-      name: "withdraw"
-      discriminator: [183, 18, 70, 156, 148, 109, 161, 34]
-      accounts: [
+      "name": "withdraw",
+      "discriminator": [
+        183,
+        18,
+        70,
+        156,
+        148,
+        109,
+        161,
+        34
+      ],
+      "accounts": [
         {
-          name: "globalConfig"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "globalConfig",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "const"
-                value: [99, 111, 110, 102, 105, 103]
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
               }
             ]
           }
         },
         {
-          name: "globalVault"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "globalVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "const"
-                value: [103, 108, 111, 98, 97, 108]
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
               }
             ]
           }
         },
         {
-          name: "admin"
-          writable: true
-          signer: true
+          "name": "admin",
+          "writable": true,
+          "signer": true
         },
         {
-          name: "tokenMint"
+          "name": "tokenMint"
         },
         {
-          name: "bondingCurve"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "bondingCurve",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "const"
-                value: [
+                "kind": "const",
+                "value": [
                   98,
                   111,
                   110,
@@ -1039,24 +1172,24 @@ export type Serlaunchalot = {
                 ]
               },
               {
-                kind: "account"
-                path: "tokenMint"
+                "kind": "account",
+                "path": "tokenMint"
               }
             ]
           }
         },
         {
-          name: "globalVaultAta"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "globalVaultAta",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "account"
-                path: "globalVault"
+                "kind": "account",
+                "path": "globalVault"
               },
               {
-                kind: "const"
-                value: [
+                "kind": "const",
+                "value": [
                   6,
                   221,
                   246,
@@ -1092,13 +1225,13 @@ export type Serlaunchalot = {
                 ]
               },
               {
-                kind: "account"
-                path: "tokenMint"
+                "kind": "account",
+                "path": "tokenMint"
               }
-            ]
-            program: {
-              kind: "const"
-              value: [
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
                 140,
                 151,
                 37,
@@ -1136,17 +1269,17 @@ export type Serlaunchalot = {
           }
         },
         {
-          name: "adminAta"
-          writable: true
-          pda: {
-            seeds: [
+          "name": "adminAta",
+          "writable": true,
+          "pda": {
+            "seeds": [
               {
-                kind: "account"
-                path: "admin"
+                "kind": "account",
+                "path": "admin"
               },
               {
-                kind: "const"
-                value: [
+                "kind": "const",
+                "value": [
                   6,
                   221,
                   246,
@@ -1182,13 +1315,13 @@ export type Serlaunchalot = {
                 ]
               },
               {
-                kind: "account"
-                path: "tokenMint"
+                "kind": "account",
+                "path": "tokenMint"
               }
-            ]
-            program: {
-              kind: "const"
-              value: [
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
                 140,
                 151,
                 37,
@@ -1226,153 +1359,180 @@ export type Serlaunchalot = {
           }
         },
         {
-          name: "systemProgram"
-          address: "11111111111111111111111111111111"
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
         },
         {
-          name: "tokenProgram"
-          address: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          name: "associatedTokenProgram"
-          address: "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "bondingCurve",
+      "discriminator": [
+        23,
+        183,
+        248,
+        55,
+        96,
+        216,
+        172,
+        96
       ]
-      args: []
+    },
+    {
+      "name": "config",
+      "discriminator": [
+        155,
+        12,
+        170,
+        224,
+        30,
+        250,
+        204,
+        130
+      ]
     }
-  ]
-  accounts: [
+  ],
+  "events": [
     {
-      name: "bondingCurve"
-      discriminator: [23, 183, 248, 55, 96, 216, 172, 96]
-    },
-    {
-      name: "config"
-      discriminator: [155, 12, 170, 224, 30, 250, 204, 130]
+      "name": "completeEvent",
+      "discriminator": [
+        95,
+        114,
+        97,
+        156,
+        212,
+        46,
+        152,
+        8
+      ]
     }
-  ]
-  events: [
+  ],
+  "errors": [
     {
-      name: "completeEvent"
-      discriminator: [95, 114, 97, 156, 212, 46, 152, 8]
+      "code": 6000,
+      "name": "valueTooSmall",
+      "msg": "valueTooSmall"
+    },
+    {
+      "code": 6001,
+      "name": "valueTooLarge",
+      "msg": "valueTooLarge"
+    },
+    {
+      "code": 6002,
+      "name": "valueInvalid",
+      "msg": "valueInvalid"
+    },
+    {
+      "code": 6003,
+      "name": "incorrectConfigAccount",
+      "msg": "incorrectConfigAccount"
+    },
+    {
+      "code": 6004,
+      "name": "incorrectAuthority",
+      "msg": "incorrectAuthority"
+    },
+    {
+      "code": 6005,
+      "name": "overflowOrUnderflowOccurred",
+      "msg": "Overflow or underflow occured"
+    },
+    {
+      "code": 6006,
+      "name": "invalidAmount",
+      "msg": "Amount is invalid"
+    },
+    {
+      "code": 6007,
+      "name": "incorrectTeamWallet",
+      "msg": "Incorrect team wallet address"
+    },
+    {
+      "code": 6008,
+      "name": "curveNotCompleted",
+      "msg": "Curve is not completed"
+    },
+    {
+      "code": 6009,
+      "name": "curveAlreadyCompleted",
+      "msg": "Can not swap after the curve is completed"
+    },
+    {
+      "code": 6010,
+      "name": "mintAuthorityEnabled",
+      "msg": "Mint authority should be revoked"
+    },
+    {
+      "code": 6011,
+      "name": "freezeAuthorityEnabled",
+      "msg": "Freeze authority should be revoked"
+    },
+    {
+      "code": 6012,
+      "name": "returnAmountTooSmall",
+      "msg": "Return amount is too small compared to the minimum received amount"
+    },
+    {
+      "code": 6013,
+      "name": "transactionExpired",
+      "msg": "Transaction expired"
+    },
+    {
+      "code": 6014,
+      "name": "decimalOverflow",
+      "msg": "Decimal overflow"
     }
-  ]
-  errors: [
+  ],
+  "types": [
     {
-      code: 6000
-      name: "valueTooSmall"
-      msg: "valueTooSmall"
-    },
-    {
-      code: 6001
-      name: "valueTooLarge"
-      msg: "valueTooLarge"
-    },
-    {
-      code: 6002
-      name: "valueInvalid"
-      msg: "valueInvalid"
-    },
-    {
-      code: 6003
-      name: "incorrectConfigAccount"
-      msg: "incorrectConfigAccount"
-    },
-    {
-      code: 6004
-      name: "incorrectAuthority"
-      msg: "incorrectAuthority"
-    },
-    {
-      code: 6005
-      name: "overflowOrUnderflowOccurred"
-      msg: "Overflow or underflow occured"
-    },
-    {
-      code: 6006
-      name: "invalidAmount"
-      msg: "Amount is invalid"
-    },
-    {
-      code: 6007
-      name: "incorrectTeamWallet"
-      msg: "Incorrect team wallet address"
-    },
-    {
-      code: 6008
-      name: "curveNotCompleted"
-      msg: "Curve is not completed"
-    },
-    {
-      code: 6009
-      name: "curveAlreadyCompleted"
-      msg: "Can not swap after the curve is completed"
-    },
-    {
-      code: 6010
-      name: "mintAuthorityEnabled"
-      msg: "Mint authority should be revoked"
-    },
-    {
-      code: 6011
-      name: "freezeAuthorityEnabled"
-      msg: "Freeze authority should be revoked"
-    },
-    {
-      code: 6012
-      name: "returnAmountTooSmall"
-      msg: "Return amount is too small compared to the minimum received amount"
-    },
-    {
-      code: 6013
-      name: "transactionExpired"
-      msg: "Transaction expired"
-    },
-    {
-      code: 6014
-      name: "decimalOverflow"
-      msg: "Decimal overflow"
-    }
-  ]
-  types: [
-    {
-      name: "amountConfig"
-      generics: [
+      "name": "amountConfig",
+      "generics": [
         {
-          kind: "type"
-          name: "t"
+          "kind": "type",
+          "name": "t"
         }
-      ]
-      type: {
-        kind: "enum"
-        variants: [
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
           {
-            name: "range"
-            fields: [
+            "name": "range",
+            "fields": [
               {
-                name: "min"
-                type: {
-                  option: {
-                    generic: "t"
+                "name": "min",
+                "type": {
+                  "option": {
+                    "generic": "t"
                   }
                 }
               },
               {
-                name: "max"
-                type: {
-                  option: {
-                    generic: "t"
+                "name": "max",
+                "type": {
+                  "option": {
+                    "generic": "t"
                   }
                 }
               }
             ]
           },
           {
-            name: "enum"
-            fields: [
+            "name": "enum",
+            "fields": [
               {
-                vec: {
-                  generic: "t"
+                "vec": {
+                  "generic": "t"
                 }
               }
             ]
@@ -1381,127 +1541,127 @@ export type Serlaunchalot = {
       }
     },
     {
-      name: "bondingCurve"
-      type: {
-        kind: "struct"
-        fields: [
+      "name": "bondingCurve",
+      "type": {
+        "kind": "struct",
+        "fields": [
           {
-            name: "tokenMint"
-            type: "pubkey"
+            "name": "tokenMint",
+            "type": "pubkey"
           },
           {
-            name: "creator"
-            type: "pubkey"
+            "name": "creator",
+            "type": "pubkey"
           },
           {
-            name: "initLamport"
-            type: "u64"
+            "name": "initLamport",
+            "type": "u64"
           },
           {
-            name: "reserveLamport"
-            type: "u64"
+            "name": "reserveLamport",
+            "type": "u64"
           },
           {
-            name: "reserveToken"
-            type: "u64"
+            "name": "reserveToken",
+            "type": "u64"
           },
           {
-            name: "isCompleted"
-            type: "bool"
+            "name": "isCompleted",
+            "type": "bool"
           }
         ]
       }
     },
     {
-      name: "completeEvent"
-      type: {
-        kind: "struct"
-        fields: [
+      "name": "completeEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
           {
-            name: "user"
-            type: "pubkey"
+            "name": "user",
+            "type": "pubkey"
           },
           {
-            name: "mint"
-            type: "pubkey"
+            "name": "mint",
+            "type": "pubkey"
           },
           {
-            name: "bondingCurve"
-            type: "pubkey"
+            "name": "bondingCurve",
+            "type": "pubkey"
           }
         ]
       }
     },
     {
-      name: "config"
-      type: {
-        kind: "struct"
-        fields: [
+      "name": "config",
+      "type": {
+        "kind": "struct",
+        "fields": [
           {
-            name: "authority"
-            type: "pubkey"
+            "name": "authority",
+            "type": "pubkey"
           },
           {
-            name: "pendingAuthority"
-            type: "pubkey"
+            "name": "pendingAuthority",
+            "type": "pubkey"
           },
           {
-            name: "teamWallet"
-            type: "pubkey"
+            "name": "teamWallet",
+            "type": "pubkey"
           },
           {
-            name: "initBondingCurve"
-            type: "f64"
+            "name": "initBondingCurve",
+            "type": "f64"
           },
           {
-            name: "platformBuyFee"
-            type: "u128"
+            "name": "platformBuyFee",
+            "type": "u128"
           },
           {
-            name: "platformSellFee"
-            type: "u128"
+            "name": "platformSellFee",
+            "type": "u128"
           },
           {
-            name: "curveLimit"
-            type: "u64"
+            "name": "curveLimit",
+            "type": "u64"
           },
           {
-            name: "lamportAmountConfig"
-            type: {
-              defined: {
-                name: "amountConfig"
-                generics: [
+            "name": "lamportAmountConfig",
+            "type": {
+              "defined": {
+                "name": "amountConfig",
+                "generics": [
                   {
-                    kind: "type"
-                    type: "u64"
+                    "kind": "type",
+                    "type": "u64"
                   }
                 ]
               }
             }
           },
           {
-            name: "tokenSupplyConfig"
-            type: {
-              defined: {
-                name: "amountConfig"
-                generics: [
+            "name": "tokenSupplyConfig",
+            "type": {
+              "defined": {
+                "name": "amountConfig",
+                "generics": [
                   {
-                    kind: "type"
-                    type: "u64"
+                    "kind": "type",
+                    "type": "u64"
                   }
                 ]
               }
             }
           },
           {
-            name: "tokenDecimalsConfig"
-            type: {
-              defined: {
-                name: "amountConfig"
-                generics: [
+            "name": "tokenDecimalsConfig",
+            "type": {
+              "defined": {
+                "name": "amountConfig",
+                "generics": [
                   {
-                    kind: "type"
-                    type: "u8"
+                    "kind": "type",
+                    "type": "u8"
                   }
                 ]
               }
@@ -1511,4 +1671,4 @@ export type Serlaunchalot = {
       }
     }
   ]
-}
+};
