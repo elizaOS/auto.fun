@@ -44,7 +44,7 @@ pub struct Launch<'info> {
     #[account(
         init,
         payer = creator,
-        space = 8 + std::mem::size_of::<BondingCurve>(),
+        space = 8 + BondingCurve::INIT_SPACE,
         seeds = [BONDING_CURVE.as_bytes(), &token.key().to_bytes()],
         bump
     )]
@@ -112,7 +112,7 @@ pub struct Launch<'info> {
     )]
     team_wallet_ata: AccountInfo<'info>,
 }
-
+#[allow(clippy::too_many_arguments)]
 impl<'info> Launch<'info> {
     pub fn process(
         &mut self,
@@ -138,7 +138,12 @@ impl<'info> Launch<'info> {
         let team_wallet = &mut self.team_wallet;
         let team_wallet_ata = &self.team_wallet_ata;
 
-        //  check params
+        // Decimal overflow check
+        if decimals >= 20 {
+            return err!(PumpfunError::DecimalOverflow);
+        }
+
+        // Check if token supply is a whole number of tokens
         let decimal_multiplier = 10u64.pow(decimals as u32);
         let fractional_tokens = token_supply % decimal_multiplier;
         if fractional_tokens != 0 {
@@ -168,6 +173,7 @@ impl<'info> Launch<'info> {
         bonding_curve.init_lamport = reserve_lamport;
         bonding_curve.reserve_lamport = reserve_lamport;
         bonding_curve.reserve_token = init_bonding_curve;
+        bonding_curve.curve_limit = global_config.curve_limit;
 
         // create global token account
         associated_token::create(CpiContext::new(
