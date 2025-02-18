@@ -343,6 +343,39 @@ const TokenSchema = new mongoose.Schema({
   lastPriceUpdate: Date,
   holderCount: Number,
   txId: String,
+  migration: {
+    withdraw: {
+      status: String,
+      txId: String,
+      updatedAt: Date,
+    },
+    createPool: {
+      status: String,
+      txId: String,
+      updatedAt: Date,
+    },
+    lockLP: {
+      status: String,
+      txId: String,
+      updatedAt: Date,
+    },
+    finalize: {
+      status: String,
+      txId: String,
+      updatedAt: Date,
+    },
+  },
+  withdrawnAmounts: {
+    withdrawnSol: Number,
+    withdrawnTokens: Number,
+  },
+  poolInfo: {
+    id: String,
+    lpMint: String,
+    baseVault: String,
+    quoteVault: String,
+  },
+  lockLpTxId: String,
 });
 
 // Swap Schema
