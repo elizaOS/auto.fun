@@ -1566,6 +1566,10 @@ export type Serlaunchalot = {
             "type": "u64"
           },
           {
+            "name": "curveLimit",
+            "type": "u64"
+          },
+          {
             "name": "isCompleted",
             "type": "bool"
           }
