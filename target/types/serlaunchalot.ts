@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/serlaunchalot.json`.
  */
 export type Serlaunchalot = {
-  "address": "EMKuRh2K1M6zojoGWFFZkdwSHVKWQ4gJXwbNzmrmsY1J",
+  "address": "4K3K7BA6Q9tEKJ8FQoz7xswkETxtik5GtgQ7syfJLj3j",
   "metadata": {
     "name": "serlaunchalot",
     "version": "0.1.0",
