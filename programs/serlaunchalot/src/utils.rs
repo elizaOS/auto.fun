@@ -1,14 +1,18 @@
 use crate::*;
 use anchor_spl::token::{self, Token};
 use solana_program::program::{invoke, invoke_signed};
-use std::ops::{Div, Mul};
 
+// TODO, remove all floats and conversions for precision
 pub fn convert_to_float(value: u64, decimals: u8) -> f64 {
-    (value as f64).div(f64::powf(10.0, decimals as f64))
+    let denominator = 10u64.checked_pow(decimals as u32)
+        .expect("Decimal power overflow") as f64;
+    (value as f64) / denominator
 }
 
 pub fn convert_from_float(value: f64, decimals: u8) -> u64 {
-    value.mul(f64::powf(10.0, decimals as f64)) as u64
+    let multiplier = 10u64.checked_pow(decimals as u32)
+        .expect("Decimal power overflow") as f64;
+    (value * multiplier) as u64
 }
 
 //  transfer sol from user

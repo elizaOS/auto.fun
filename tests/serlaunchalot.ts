@@ -93,8 +93,8 @@ describe("serlaunchalot", () => {
 
       initBondingCurve: Number(process.env.INIT_BONDING_CURVE),
 
-      platformBuyFee: 500, // Example fee: 5%
-      platformSellFee: 500, // Example fee: 5%
+      platformBuyFee: 500n, // Example fee: 5% = 500 basis points
+      platformSellFee: 500n, // Example fee: 5% = 500 basis points
 
       curveLimit: new BN(4_000_000_000), //  Example limit: 2 SOL
 
@@ -133,12 +133,13 @@ describe("serlaunchalot", () => {
       configAccount.authority.toString(),
       adminKp.publicKey.toString()
     );
-    assert.equal(configAccount.platformBuyFee, 5);
-    assert.equal(configAccount.platformSellFee, 5);
+    assert.equal(configAccount.platformBuyFee, 500n);
+    assert.equal(configAccount.platformSellFee, 500n);
     assert.equal(
       parseFloat(configAccount.lamportAmountConfig.range.min.toString()),
       1000000000
     );
+
     assert.equal(
       parseFloat(configAccount.lamportAmountConfig.range.max.toString()),
       100000000000

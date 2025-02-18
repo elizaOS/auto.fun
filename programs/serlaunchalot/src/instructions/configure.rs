@@ -94,7 +94,7 @@ impl<'info> Configure<'info> {
             )?;
         } else {
             let data = self.config.try_borrow_data()?;
-            if data.len() < 8 || &data[0..8] != Config::DISCRIMINATOR {
+            if data.len() < 8 || data[0..8] != Config::DISCRIMINATOR {
                 return err!(PumpfunError::IncorrectConfigAccount);
             }
             let config = Config::deserialize(&mut &data[8..])?;

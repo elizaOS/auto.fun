@@ -6,13 +6,9 @@ use anchor_lang::{prelude::*, AnchorDeserialize, AnchorSerialize};
 use anchor_spl::token::Mint;
 use anchor_spl::token::Token;
 use core::fmt::Debug;
-use std::ops::Div;
-use std::ops::Mul;
-use std::ops::Sub;
 
 pub const FEE_BASIS_POINTS: u128 = 10000;
 pub const HUNDRED_PERCENT_BPS: u128 = 10000;
-
 #[account]
 pub struct Config {
     pub authority: Pubkey,
@@ -71,15 +67,14 @@ impl<T: PartialEq + PartialOrd + Debug> AmountConfig<T> {
 }
 
 #[account]
+#[derive(InitSpace)]
 pub struct BondingCurve {
     pub token_mint: Pubkey,
     pub creator: Pubkey,
-
     pub init_lamport: u64,
-
     pub reserve_lamport: u64,
     pub reserve_token: u64,
-
+    pub curve_limit: u64,  // Store curve limit at launch time
     pub is_completed: bool,
 }
 pub trait BondingCurveAccount<'info> {
@@ -90,7 +85,7 @@ pub trait BondingCurveAccount<'info> {
         reserve_one: u64,
         reserve_two: u64,
     ) -> Result<bool>;
-
+    #[allow(clippy::too_many_arguments)]
     fn swap(
         &mut self,
         global_config: &Account<'info, Config>,
@@ -122,23 +117,22 @@ pub trait BondingCurveAccount<'info> {
     ) -> Result<(u64, u64)>;
 }
 
-
 impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
     fn update_reserves(
         &mut self,
-        global_config: &Account<'info, Config>,
+        _global_config: &Account<'info, Config>,
         reserve_token: u64,
         reserve_lamport: u64,
     ) -> Result<bool> {
         self.reserve_token = reserve_token;
         self.reserve_lamport = reserve_lamport;
-
-        if reserve_lamport >= global_config.curve_limit {
+    
+        if reserve_lamport >= self.curve_limit {
             msg!("curve is completed");
             self.is_completed = true;
             return Ok(true);
         }
-
+    
         Ok(false)
     }
 
@@ -165,7 +159,7 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
         token_program: &Program<'info, Token>,
         system_program: &Program<'info, System>,
     ) -> Result<u64> {
-        if amount <= 0 {
+        if amount == 0 {
             return err!(PumpfunError::InvalidAmount);
         }
 
@@ -191,9 +185,8 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
         let (amount_to_swap, refund_amount, adjusted_minimum_receive) = if direction == 1 {
             (amount, 0, minimum_receive_amount)
         } else {
-            let remaining = global_config.curve_limit - self.reserve_lamport;
+            let remaining = self.curve_limit.saturating_sub(self.reserve_lamport);
             if amount > remaining {
-                // Also adjust minimum_receive_amount proportionally
                 let adjustment_ratio = convert_to_float(remaining, LAMPORT_DECIMALS) / 
                                     convert_to_float(amount, LAMPORT_DECIMALS);
                 let adjusted_minimum = convert_from_float(
@@ -247,16 +240,16 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
 
             token_transfer_user(
                 user_ata.clone(),
-                &user,
+                user,
                 global_ata.clone(),
-                &token_program,
+                token_program,
                 adjusted_amount,
             )?;
 
             sol_transfer_with_signer(
                 source.clone(),
                 user.to_account_info(),
-                &system_program,
+                system_program,
                 signer,
                 amount_out,
             )?;
@@ -270,9 +263,9 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
 
             token_transfer_user(
                 user_ata.clone(),
-                &user,
+                user,
                 team_wallet_ata.clone(),
-                &token_program,
+                token_program,
                 fee_amount,
             )?;
         } else {
@@ -289,7 +282,7 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
             let is_completed =
                 self.update_reserves(global_config, new_reserves_one, new_reserves_two)?;
 
-            if is_completed == true {
+            if is_completed {
                 emit!(CompleteEvent {
                     user: user.key(),
                     mint: token_mint.key(),
@@ -303,12 +296,12 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
                 global_ata.clone(),
                 source.clone(),
                 user_ata.clone(),
-                &token_program,
+                token_program,
                 signer,
                 amount_out,
             )?;
 
-            sol_transfer_from_user(&user, source.clone(), &system_program, amount_to_swap)?;
+            sol_transfer_from_user(user, source.clone(), system_program, amount_to_swap)?;
 
             // msg!("SwapEvent: {:?} {:?} {:?}", user.key(), direction, amount_out);
 
@@ -316,11 +309,11 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
             let fee_amount = amount_to_swap - adjusted_amount;
             msg! {"fee: {:?}", fee_amount}
 
-            sol_transfer_from_user(&user, team_wallet.clone(), &system_program, fee_amount)?;
+            sol_transfer_from_user(user, team_wallet.clone(), system_program, fee_amount)?;
 
             // Refund excess SOL directly back to user
             if refund_amount > 0 {
-                sol_transfer_from_user(&user, user.to_account_info(), &system_program, refund_amount)?;
+                sol_transfer_from_user(user, user.to_account_info(), system_program, refund_amount)?;
             }
         }
         msg!("SwapEvent: {:?} {:?} {:?}", user.key(), direction, amount_out);
@@ -330,76 +323,53 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
     fn cal_amount_out(
         &self,
         amount: u64,
-        token_one_decimals: u8,
+        _token_one_decimals: u8,
         direction: u8,
         platform_sell_fee: u128,
         platform_buy_fee: u128,
-
     ) -> Result<(u64, u64)> {
-        // xy = k => Constant product formula
-        // (x + dx)(y - dy) = k
-        // y - dy = k / (x + dx)
-        // y - dy = xy / (x + dx)
-        // dy = y - (xy / (x + dx))
-        // dy = (yx + ydx - xy) / (x + dx)
-        // formula => dy = ydx / (x + dx)
-
-        let fee_percent = if direction == 1 {
+        // Convert percentage fees to basis points
+        let fee_basis_points = if direction == 1 {
             platform_sell_fee
         } else {
             platform_buy_fee
         };
-
+    
         let amount_u128 = amount as u128;
-
         let adjusted_amount = amount_u128
-            .checked_mul(HUNDRED_PERCENT_BPS.checked_sub(fee_percent).ok_or(PumpfunError::OverflowOrUnderflowOccurred)?)
+            .checked_mul(HUNDRED_PERCENT_BPS.checked_sub(fee_basis_points).ok_or(PumpfunError::OverflowOrUnderflowOccurred)?)
             .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?
             .checked_div(FEE_BASIS_POINTS)
             .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
-
+    
         let adjusted_amount = adjusted_amount as u64;
-
-        let amount_out: u64;
-
-        // sell
-        if direction == 1 {
-            // sell, token for sel
-            // x + dx token
-            let denominator_sum = self
-                .reserve_token
-                .checked_add(adjusted_amount)
+    
+        let amount_out = if direction == 1 {
+            // Selling tokens for SOL: dy = (y * dx) / (x + dx)
+            let numerator = (self.reserve_lamport as u128)
+                .checked_mul(adjusted_amount as u128)
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
-
-            // (x + dx) / dx
-            let div_amt = convert_to_float(denominator_sum, token_one_decimals)
-                .div(convert_to_float(adjusted_amount, token_one_decimals));
-
-            // dy = y / ((x + dx) / dx)
-            // dx = ydx / (x + dx)
-            let amount_out_in_float =
-                convert_to_float(self.reserve_lamport, LAMPORT_DECIMALS).div(div_amt);
-
-            amount_out = convert_from_float(amount_out_in_float, LAMPORT_DECIMALS);
+                
+            let denominator = (self.reserve_token as u128)
+                .checked_add(adjusted_amount as u128)
+                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
+                
+            (numerator.checked_div(denominator)
+                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?) as u64
         } else {
-            // buy, sol for token
-            // y + dy sol
-            let denominator_sum = self
-                .reserve_lamport
-                .checked_add(adjusted_amount)
+            // Buying tokens with SOL: dx = (x * dy) / (y + dy)
+            let numerator = (self.reserve_token as u128)
+                .checked_mul(adjusted_amount as u128)
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
-
-            // (y + dy) / dy
-            let div_amt = convert_to_float(denominator_sum, LAMPORT_DECIMALS)
-                .div(convert_to_float(adjusted_amount, LAMPORT_DECIMALS));
-
-            // dx = x / ((y + dy) / dy)
-            // dx = xdy / (y + dy)
-            let amount_out_in_float =
-                convert_to_float(self.reserve_token, token_one_decimals).div(div_amt);
-
-            amount_out = convert_from_float(amount_out_in_float, token_one_decimals);
-        }
+                
+            let denominator = (self.reserve_lamport as u128)
+                .checked_add(adjusted_amount as u128)
+                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
+                
+            (numerator.checked_div(denominator)
+                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?) as u64
+        };
+    
         Ok((adjusted_amount, amount_out))
     }
 }

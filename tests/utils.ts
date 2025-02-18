@@ -2,7 +2,7 @@
 import {
   PublicKey,
 } from "@solana/web3.js";
-
+import BN from "bn.js";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 export const sleep = (ms: number) => {
@@ -27,66 +27,47 @@ export const getAssociatedTokenAccount = (
   return associatedTokenAccountPubkey;
 }
 
-export function convertToFloat(value: number, decimals: number): number {
-  return value / Math.pow(10, decimals);
-}
-
-export function convertFromFloat(value: number, decimals: number): number {
-  return value * Math.pow(10, decimals);
-}
-
-export function calculateAmountOutBuy(
-  reserveLamport: number,
-  adjustedAmount: number,
-  solDecimals: number,  // renamed for clarity
-  reserveToken: number,
-): number {
-  // Calculate the denominator sum which is (y + dy)
-  const denominatorSum = reserveLamport + adjustedAmount;
-
-  // Convert to float for division
-  const denominatorSumFloat = convertToFloat(denominatorSum, solDecimals);
-  const adjustedAmountFloat = convertToFloat(adjustedAmount, solDecimals);
-
-  // (y + dy) / dy
-  const divAmt = denominatorSumFloat / adjustedAmountFloat;
-
-  // Convert reserveToken to float with 6 decimals (token decimals)
-  const reserveTokenFloat = convertToFloat(reserveToken, 6);
-
-  // Calculate dx = xdy / (y + dy)
-  const amountOutInFloat = reserveTokenFloat / divAmt;
-
-  // Convert the result back to the original decimal format
-  const amountOut = convertFromFloat(amountOutInFloat, 6); 
-
-  return Math.floor(amountOut);  // Added Math.floor for safety
+export function convertToBasisPoints(feePercent: number): number {
+  return Math.floor(feePercent * 10000);
 }
 
 export function calculateAmountOutSell(
-  reserveLamport: number,
-  adjustedAmount: number,
-  tokenOneDecimals: number,
-  reserveToken: number,
+reserveLamport: number,
+amount: number,
+tokenDecimals: number,
+platformSellFee: number
 ): number {
-  // Calculate the denominator sum which is (x + dx)
-  const denominatorSum = reserveToken + adjustedAmount;
+  const feeBasisPoints = convertToBasisPoints(platformSellFee);
+  const amountBN = new BN(amount);
+  
+  // Apply fee: adjusted_amount = amount * (10000 - fee_basis_points) / 10000
+  const adjustedAmount = amountBN
+      .mul(new BN(10000 - feeBasisPoints))
+      .div(new BN(10000));
 
-  // Convert to float for division
-  const denominatorSumFloat = convertToFloat(denominatorSum, tokenOneDecimals);
-  const adjustedAmountFloat = convertToFloat(adjustedAmount, tokenOneDecimals);
+  const numerator = new BN(reserveLamport).mul(adjustedAmount);
+  const denominator = new BN(reserveLamport).add(adjustedAmount);
+  
+  return numerator.div(denominator).toNumber();
+}
 
-  // (x + dx) / dx
-  const divAmt = denominatorSumFloat / adjustedAmountFloat;
+export function calculateAmountOutBuy(
+reserveToken: number,
+amount: number,
+solDecimals: number,
+reserveLamport: number,
+platformBuyFee: number
+): number {
+  const feeBasisPoints = convertToBasisPoints(platformBuyFee);
+  const amountBN = new BN(amount);
+  
+  // Apply fee: adjusted_amount = amount * (10000 - fee_basis_points) / 10000
+  const adjustedAmount = amountBN
+      .mul(new BN(10000 - feeBasisPoints))
+      .div(new BN(10000));
 
-  // Convert reserveLamport to float with 9 decimals
-  const reserveLamportFloat = convertToFloat(reserveLamport, 9);
-
-  // Calculate dy = y / ((x + dx) / dx)
-  const amountOutInFloat = reserveLamportFloat / divAmt;
-
-  // Convert the result back to the original decimal format
-  const amountOut = convertFromFloat(amountOutInFloat, 9);
-
-  return Math.floor(amountOut);
+  const numerator = new BN(reserveToken).mul(adjustedAmount);
+  const denominator = new BN(reserveLamport).add(adjustedAmount);
+  
+  return numerator.div(denominator).toNumber();
 }

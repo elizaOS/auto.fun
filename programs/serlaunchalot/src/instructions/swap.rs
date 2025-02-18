@@ -108,7 +108,7 @@ pub fn process(&mut self, amount: u64, direction: u8, minimum_receive_amount: u6
 
     //  check curve is not completed
     require!(
-        bonding_curve.is_completed == false,
+        !bonding_curve.is_completed,
         PumpfunError::CurveAlreadyCompleted
     );
 
@@ -158,7 +158,7 @@ pub fn process(&mut self, amount: u64, direction: u8, minimum_receive_amount: u6
 
     
     let amount_out = bonding_curve.swap(
-        &*self.global_config,
+        &self.global_config,
         token.as_ref(),
         &mut self.global_ata,
         user_ata,
