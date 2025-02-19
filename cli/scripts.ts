@@ -71,21 +71,21 @@ export const configProject = async () => {
   const newConfig = {
     authority: payer.publicKey,
     pendingAuthority: PublicKey.default,
-
+    
     teamWallet: payer.publicKey,
-
-    initBondingCurve: process.env.INIT_BONDING_CURVE,
-    platformBuyFee: process.env.SWAP_FEE, // Example fee: 1% (100)
-    platformSellFee: process.env.SWAP_FEE, // Example fee: 1% (100)
-
-    curveLimit: new BN(process.env.CURVE_LIMIT), //  Example limit: 4 SOL
-
+    
+    initBondingCurve: Number(process.env.INIT_BONDING_CURVE),
+    platformBuyFee: new BN(process.env.SWAP_FEE), // Convert to BN
+    platformSellFee: new BN(process.env.SWAP_FEE), // Convert to BN
+    
+    curveLimit: new BN(process.env.CURVE_LIMIT),
+    
     lamportAmountConfig: {
-      range: { min: new BN(1000000000), max: new BN(100000000000) },
+        range: { min: new BN(1000000000), max: new BN(100000000000) },
     },
     tokenSupplyConfig: { range: { min: new BN(5000), max: new BN(1000000000000000) } },
     tokenDecimalsConfig: { range: { min: 6, max: 9 } },
-  };
+};
 
   const tx = await createConfigTx(
     payer.publicKey,

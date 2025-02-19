@@ -1,5 +1,5 @@
 {
-  "address": "EMKuRh2K1M6zojoGWFFZkdwSHVKWQ4gJXwbNzmrmsY1J",
+  "address": "4K3K7BA6Q9tEKJ8FQoz7xswkETxtik5GtgQ7syfJLj3j",
   "metadata": {
     "name": "serlaunchalot",
     "version": "0.1.0",
@@ -1557,6 +1557,10 @@
           },
           {
             "name": "reserve_token",
+            "type": "u64"
+          },
+          {
+            "name": "curve_limit",
             "type": "u64"
           },
           {
