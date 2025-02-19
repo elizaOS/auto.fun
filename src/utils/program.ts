@@ -19,7 +19,7 @@ export const SEED_BONDING_CURVE = "bonding_curve";
  * IDL can be found at `target/idl/serlaunchalot.json`.
  */
 export type Serlaunchalot = {
-  address: "EMKuRh2K1M6zojoGWFFZkdwSHVKWQ4gJXwbNzmrmsY1J";
+  address: "4K3K7BA6Q9tEKJ8FQoz7xswkETxtik5GtgQ7syfJLj3j";
   metadata: {
     name: "serlaunchalot";
     version: "0.1.0";
@@ -1342,6 +1342,11 @@ export type Serlaunchalot = {
       name: "transactionExpired";
       msg: "Transaction expired";
     },
+    {
+      code: 6014;
+      name: "decimalOverflow";
+      msg: "Decimal overflow";
+    },
   ];
   types: [
     {
@@ -1415,6 +1420,10 @@ export type Serlaunchalot = {
             type: "u64";
           },
           {
+            name: "curveLimit";
+            type: "u64";
+          },
+          {
             name: "isCompleted";
             type: "bool";
           },
@@ -1464,15 +1473,11 @@ export type Serlaunchalot = {
           },
           {
             name: "platformBuyFee";
-            type: "f64";
+            type: "u128";
           },
           {
             name: "platformSellFee";
-            type: "f64";
-          },
-          {
-            name: "platformMigrationFee";
-            type: "f64";
+            type: "u128";
           },
           {
             name: "curveLimit";
@@ -1527,7 +1532,7 @@ export type Serlaunchalot = {
 };
 
 export const IDL = {
-  address: "EMKuRh2K1M6zojoGWFFZkdwSHVKWQ4gJXwbNzmrmsY1J",
+  address: "4K3K7BA6Q9tEKJ8FQoz7xswkETxtik5GtgQ7syfJLj3j",
   metadata: {
     name: "serlaunchalot",
     version: "0.1.0",
@@ -2292,6 +2297,11 @@ export const IDL = {
       name: "TransactionExpired",
       msg: "Transaction expired",
     },
+    {
+      code: 6014,
+      name: "DecimalOverflow",
+      msg: "Decimal overflow",
+    },
   ],
   types: [
     {
@@ -2365,6 +2375,10 @@ export const IDL = {
             type: "u64",
           },
           {
+            name: "curve_limit",
+            type: "u64",
+          },
+          {
             name: "is_completed",
             type: "bool",
           },
@@ -2414,15 +2428,11 @@ export const IDL = {
           },
           {
             name: "platform_buy_fee",
-            type: "f64",
+            type: "u128",
           },
           {
             name: "platform_sell_fee",
-            type: "f64",
-          },
-          {
-            name: "platform_migration_fee",
-            type: "f64",
+            type: "u128",
           },
           {
             name: "curve_limit",
