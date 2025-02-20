@@ -1,5 +1,10 @@
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { Connection, PublicKey, VersionedTransaction } from "@solana/web3.js";
+import {
+  Connection,
+  PublicKey,
+  Transaction,
+  VersionedTransaction,
+} from "@solana/web3.js";
 import { BN, Program } from "@coral-xyz/anchor";
 import {
   SEED_CONFIG,
@@ -8,6 +13,7 @@ import {
   useProgram,
 } from "@/utils/program";
 import { useTradeSettings } from "./useTradeSettings";
+import { Token } from "@/utils/tokens";
 
 export function convertToFloat(value: number, decimals: number): number {
   return value / Math.pow(10, decimals);
@@ -73,7 +79,7 @@ export function calculateAmountOutSell(
   return Math.floor(amountOut);
 }
 
-export const swapTx = async (
+export const getAutofunSwapTx = async (
   user: PublicKey,
   token: PublicKey,
   amount: number,
@@ -84,7 +90,7 @@ export const swapTx = async (
 ) => {
   console.log(
     JSON.stringify({
-      message: "swapTx",
+      message: "getAutofunSwapTx",
       amount,
       style,
       slippageBps,
@@ -155,10 +161,101 @@ export const swapTx = async (
   return tx;
 };
 
+/**
+ * Implements swapping via the Jupiter API.
+ *
+ * For buys, we swap SOL for a token.
+ * For sells, we swap the token for SOL.
+ *
+ * We first generate a quote (using GET) and then POST the quote
+ * to build a swap transaction. By setting asLegacyTransaction: true,
+ * we receive a legacy Transaction, which can be simulated and submitted
+ * in the same manner as our alternate getAutofunSwapTx.
+ */
+export const getJupiterSwapTx = async (
+  user: PublicKey,
+  token: PublicKey,
+  amount: number,
+  style: number, // 0 for buy; 1 for sell
+  slippageBps: number = 100,
+  connection: Connection,
+): Promise<Transaction> => {
+  // Jupiter uses the following constant to represent SOL
+  const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
+
+  const tokenMintAddress = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
+  // When buying, spending SOL to get the target token, and vice versa for selling.
+  const inputMint = style === 0 ? SOL_MINT_ADDRESS : tokenMintAddress;
+  const outputMint = style === 0 ? tokenMintAddress : SOL_MINT_ADDRESS;
+
+  // 1. Get a quote from Jupiter.
+  const quoteUrl = `https://api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=${slippageBps}&restrictIntermediateTokens=true`;
+  const quoteRes = await fetch(quoteUrl);
+  if (!quoteRes.ok) {
+    const errorMsg = await quoteRes.text();
+    throw new Error(`Failed to fetch quote from Jupiter: ${errorMsg}`);
+  }
+  const quoteResponse = await quoteRes.json();
+  console.log("Jupiter quote response:", quoteResponse);
+
+  // 2. Build the swap transaction by POSTing to Jupiter's swap endpoint.
+  const swapUrl = "https://api.jup.ag/swap/v1/swap";
+  const body = {
+    quoteResponse,
+    userPublicKey: user.toBase58(),
+    // Request a legacy transaction so that it can be simulated/used with our UI flow.
+    asLegacyTransaction: true,
+    dynamicComputeUnitLimit: true,
+    dynamicSlippage: true,
+    // You can also add prioritizationFeeLamports if desired:
+    // prioritizationFeeLamports: {
+    //   priorityLevelWithMaxLamports: {
+    //     maxLamports: 1000000,
+    //     priorityLevel: "veryHigh"
+    //   }
+    // }
+  };
+  const swapRes = await fetch(swapUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!swapRes.ok) {
+    const errorMsg = await swapRes.text();
+    throw new Error(`Failed to build Jupiter swap transaction: ${errorMsg}`);
+  }
+  const swapJson = await swapRes.json();
+  console.log("Jupiter swap response:", swapJson);
+
+  if (swapJson.simulationError) {
+    console.error("Simulation error:", swapJson.simulationError.error);
+    throw new Error(`Simulation failed: ${swapJson.simulationError.error}`);
+  }
+
+  if (!swapJson.swapTransaction) {
+    throw new Error("Jupiter swap transaction is missing in the response.");
+  }
+
+  // 3. Deserialize the swap transaction from base64.
+  // When asLegacyTransaction is true, the endpoint returns a base64-encoded legacy Transaction.
+  const txBuffer = Buffer.from(swapJson.swapTransaction, "base64");
+  const transaction = Transaction.from(txBuffer);
+
+  // 4. Override fee payer & refresh blockhash to be safe.
+  transaction.feePayer = user;
+  const { blockhash } = await connection.getLatestBlockhash();
+  transaction.recentBlockhash = blockhash;
+
+  return transaction;
+};
+
 interface SwapParams {
   style: "buy" | "sell";
   amount: number;
   tokenAddress: string;
+  token: Token;
 }
 
 export const useSwap = () => {
@@ -168,7 +265,12 @@ export const useSwap = () => {
   // TODO: implement speed, front-running protection, and tip amount
   const { slippage: slippagePercentage } = useTradeSettings();
 
-  const handleSwap = async ({ style, amount, tokenAddress }: SwapParams) => {
+  const handleSwap = async ({
+    style,
+    amount,
+    tokenAddress,
+    token,
+  }: SwapParams) => {
     if (!program || !wallet.publicKey) {
       throw new Error("Wallet not connected or missing required methods");
     }
@@ -180,23 +282,66 @@ export const useSwap = () => {
     const amountLamports = Math.floor(amount * 1e9);
     const amountTokens = Math.floor(amount * 1e6);
 
-    // Convert string style to numeric style
+    // Convert string style ("buy" or "sell") to numeric style (0 for buy; 1 for sell)
     const numericStyle = style === "buy" ? 0 : 1;
 
-    const tx = await swapTx(
-      wallet.publicKey,
-      new PublicKey(tokenAddress),
-      style === "buy" ? amountLamports : amountTokens,
-      numericStyle,
-      slippageBps,
-      connection,
-      program,
-    );
+    let tx: Transaction | undefined;
+    if (token.status === "locked") {
+      const mainnetConnection = new Connection(
+        "https://mainnet.helius-rpc.com/?api-key=156e83be-b359-4f60-8abb-c6a17fd3ff5f",
+      );
+      // Use Jupiter API when tokens are locked
+      tx = await getJupiterSwapTx(
+        wallet.publicKey,
+        new PublicKey(tokenAddress),
+        style === "buy" ? amountLamports : amountTokens,
+        numericStyle,
+        slippageBps,
+        mainnetConnection,
+      );
+
+      console.log("Simulating transaction...");
+      const simulation = await mainnetConnection.simulateTransaction(tx);
+      console.log("Simulation logs:", simulation.value.logs);
+      if (simulation.value.err) {
+        console.error("Simulation failed:", simulation.value.err.toString());
+        throw new Error(
+          `Transaction simulation failed: ${simulation.value.err}`,
+        );
+      }
+
+      const { blockhash, lastValidBlockHeight } =
+        await mainnetConnection.getLatestBlockhash();
+      tx.recentBlockhash = blockhash;
+
+      // Convert to a versioned transaction to be sent
+      const versionedTx = new VersionedTransaction(tx.compileMessage());
+      const signature = await wallet.sendTransaction(
+        versionedTx,
+        mainnetConnection,
+      );
+      const confirmation = await mainnetConnection.confirmTransaction({
+        signature,
+        blockhash: versionedTx.message.recentBlockhash,
+        lastValidBlockHeight,
+      });
+
+      return { signature, confirmation };
+    } else {
+      // Use the internal swap function otherwise
+      tx = await getAutofunSwapTx(
+        wallet.publicKey,
+        new PublicKey(tokenAddress),
+        style === "buy" ? amountLamports : amountTokens,
+        numericStyle,
+        slippageBps,
+        connection,
+        program,
+      );
+    }
 
     console.log("Simulating transaction...");
     const simulation = await connection.simulateTransaction(tx);
-
-    // Print simulation logs
     console.log("Simulation logs:", simulation.value.logs);
     if (simulation.value.err) {
       console.error("Simulation failed:", simulation.value.err.toString());
@@ -207,6 +352,7 @@ export const useSwap = () => {
       await connection.getLatestBlockhash();
     tx.recentBlockhash = blockhash;
 
+    // Convert to a versioned transaction to be sent
     const versionedTx = new VersionedTransaction(tx.compileMessage());
     const signature = await wallet.sendTransaction(versionedTx, connection);
     const confirmation = await connection.confirmTransaction({
