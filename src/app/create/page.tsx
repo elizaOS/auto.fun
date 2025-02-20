@@ -31,6 +31,7 @@ function toBase64(file: File) {
 export default function TransactionSignPage() {
   const tokenForm = useForm<TokenMetadataForm>({
     defaultValues: { links: {} },
+    mode: "onTouched",
   });
   const router = useRouter();
 
