@@ -1319,6 +1319,10 @@ router.post('/upload-pinata', requireAuth, async (req, res) => {
     // Convert base64 to buffer
     const imageBuffer = Buffer.from(image.split(',')[1], 'base64');
     
+    if (imageBuffer.length >= 5 * 1024 * 1024) {
+      return res.status(400).json({ error: 'Image size must be less than 5MB' });
+    }
+    
     // Upload image to IPFS
     const imageUrl = await uploadToPinata(imageBuffer);
     
