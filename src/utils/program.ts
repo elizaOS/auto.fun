@@ -19,7 +19,7 @@ export const SEED_BONDING_CURVE = "bonding_curve";
  * IDL can be found at `target/idl/serlaunchalot.json`.
  */
 export type Serlaunchalot = {
-  address: "EMKuRh2K1M6zojoGWFFZkdwSHVKWQ4gJXwbNzmrmsY1J";
+  address: "4K3K7BA6Q9tEKJ8FQoz7xswkETxtik5GtgQ7syfJLj3j";
   metadata: {
     name: "serlaunchalot";
     version: "0.1.0";
@@ -1420,6 +1420,10 @@ export type Serlaunchalot = {
             type: "u64";
           },
           {
+            name: "curveLimit";
+            type: "u64";
+          },
+          {
             name: "isCompleted";
             type: "bool";
           },
@@ -1528,7 +1532,7 @@ export type Serlaunchalot = {
 };
 
 export const IDL = {
-  address: "EMKuRh2K1M6zojoGWFFZkdwSHVKWQ4gJXwbNzmrmsY1J",
+  address: "4K3K7BA6Q9tEKJ8FQoz7xswkETxtik5GtgQ7syfJLj3j",
   metadata: {
     name: "serlaunchalot",
     version: "0.1.0",
@@ -2368,6 +2372,10 @@ export const IDL = {
           },
           {
             name: "reserve_token",
+            type: "u64",
+          },
+          {
+            name: "curve_limit",
             type: "u64",
           },
           {
