@@ -17,6 +17,7 @@ interface ImageUploadInputProps<TFieldValues extends FieldValues = FieldValues>
   extends InputPropsWithoutConflicts,
     UseControllerProps<TFieldValues> {
   label?: string;
+  maxSizeMb: number;
 }
 
 const ImageUploadInput = ({
@@ -25,6 +26,7 @@ const ImageUploadInput = ({
   control,
   rules,
   defaultValue,
+  maxSizeMb,
   ...props
 }: ImageUploadInputProps) => {
   const {
@@ -62,6 +64,10 @@ const ImageUploadInput = ({
   const changeFile = (file: File | null) => {
     onChange(file);
     setFile(file);
+
+    // manually trigger blur since our hidden input won't automatically do it
+    // this helps trigger form validation
+    inputProps.onBlur?.();
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -137,7 +143,7 @@ const ImageUploadInput = ({
             type={file.type}
           />
         ) : (
-          <EmptyState />
+          <EmptyState maxSizeMb={maxSizeMb} />
         )}
         {/* Overlay for drag state */}
         <DragOverlay isDragging={isDragging} />

@@ -6,10 +6,12 @@ import { TokenMetadataForm } from "../../../types/form.type";
 import { DropdownButton } from "@/components/common/button/DropdownButton";
 import { useState } from "react";
 
+const MAX_FILE_SIZE_MB = 5;
+
 // TODO: put form tag in here, will split into 3 separate forms
 // that way we can easily check form validity for each form step
 export const TokenCreationForm = ({
-  form: { register, control },
+  form: { register, control, formState },
 }: {
   form: UseFormReturn<TokenMetadataForm>;
 }) => {
@@ -28,6 +30,7 @@ export const TokenCreationForm = ({
         rightIndicator={`${name?.length ?? 0}/50`}
         rightIndicatorOpacity={name?.length >= 50 ? "full" : "low"}
         placeholder="Da Vinci"
+        error={formState.errors.name?.message}
       />
 
       <FormInput
@@ -59,7 +62,8 @@ export const TokenCreationForm = ({
           required: "Please upload an image",
           validate: {
             lessThan4MB: (file) =>
-              (file && file.size < 4000000) || "Max file size is 4MB",
+              (file && file.size < MAX_FILE_SIZE_MB * 1024 * 1024) ||
+              `Max file size is ${MAX_FILE_SIZE_MB}MB`,
             acceptedFormats: (file) =>
               (file &&
                 ["image/jpeg", "image/png", "image/gif", "video/mp4"].includes(
@@ -68,6 +72,7 @@ export const TokenCreationForm = ({
               "Only JPEG, PNG, GIF, and MP4 files are accepted",
           },
         }}
+        maxSizeMb={MAX_FILE_SIZE_MB}
       />
 
       <FormInput
@@ -75,7 +80,10 @@ export const TokenCreationForm = ({
         step="any"
         {...register("initial_sol", {
           required: false,
-          validate: (value) => value === "" || parseFloat(value) >= 0,
+          validate: (value) =>
+            value === "" ||
+            (parseFloat(value) >= 0 && parseFloat(value) <= 45) ||
+            "Max initial SOL is 45",
         })}
         label="Buy Your Coin (optional)"
         rightIndicator="SOL"
@@ -92,6 +100,7 @@ export const TokenCreationForm = ({
           }
         }}
         min={0}
+        error={formState.errors.initial_sol?.message}
       />
 
       <DropdownButton open={showLinks} onClick={() => setShowLinks(!showLinks)}>
