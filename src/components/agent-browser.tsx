@@ -25,6 +25,8 @@ import Skeleton from "react-loading-skeleton";
 import { Paginator } from "./common/Paginator";
 import { VerifiedBanner } from "./verified-banner";
 import { DM_Mono } from 'next/font/google';
+import { Listbox } from "@headlessui/react";
+import { ChevronDownIcon } from "@heroicons/react/20/solid";
 
 // Initialize the font
 const dmMono = DM_Mono({
@@ -58,9 +60,21 @@ export const columns: ColumnDef<Agent>[] = [
   { accessorKey: "replies", header: "Inferences" },
 ];
 
+interface SortOption {
+  label: string;
+  value: string;
+}
+
+const sortOptions: SortOption[] = [
+  { label: 'Creation Time (Newest)', value: 'newest' },
+  { label: 'Creation Time (Oldest)', value: 'oldest' },
+  { label: 'Market Cap (High to Low)', value: 'mcap_high' },
+  { label: 'Market Cap (Low to High)', value: 'mcap_low' },
+];
+
 export function AgentBrowser() {
   const [view, setView] = useState<"grid" | "table">("grid");
-  const [sortBy, setSortBy] = useState<"all" | "marketcap" | "creation">("all");
+  const [sortBy, setSortBy] = useState(sortOptions[0].value);
   const [isCreationDropdownOpen, setIsCreationDropdownOpen] = useState(false);
   const {
     items: tokens,
@@ -92,46 +106,110 @@ export function AgentBrowser() {
   };
 
   const renderSkeletons = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
-      {[...Array(30)].map((_, index) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {[...Array(12)].map((_, index) => (
         <Card
           key={`skeleton-${index}`}
-          className="bg-[#171717] border-green-500/20 hover:border-green-500/50 transition-colors h-48 flex"
+          className="bg-[#171717] border-green-500/20 hover:border-green-500/50 transition-colors h-[288px] flex flex-col overflow-hidden"
         >
-          <div className="flex flex-col p-[24px] flex-1">
-            <CardHeader className="p-0">
+          <div className="flex p-[16px_12px] h-full">
+            <div className="flex w-[120px] h-[127.5px] flex-none">
               <Skeleton
                 width={120}
-                height={24}
+                height={127.5}
                 baseColor="#171717"
                 highlightColor="#00ff0026"
-                className="mb-2"
+                className="rounded-md"
               />
-              <Skeleton
-                width={80}
-                height={16}
-                baseColor="#171717"
-                highlightColor="#00ff0026"
-              />
-            </CardHeader>
-            <CardContent className="p-0 flex flex-col flex-1">
-              <div className="mt-auto flex flex-col gap-1">
+            </div>
+            
+            <div className="flex flex-col flex-1 ml-3 min-w-0">
+              <div className="flex justify-between items-start w-full mb-3">
+                <div className="flex-1 min-w-0 pr-2">
+                  <Skeleton
+                    width="80%"
+                    height={24}
+                    baseColor="#171717"
+                    highlightColor="#00ff0026"
+                  />
+                </div>
+                <div className="flex-shrink-0">
+                  <Skeleton
+                    width={60}
+                    height={24}
+                    baseColor="#171717"
+                    highlightColor="#00ff0026"
+                  />
+                </div>
+              </div>
+              
+              <div className="mb-3">
                 <Skeleton
-                  width={100}
+                  width={80}
                   height={16}
                   baseColor="#171717"
                   highlightColor="#00ff0026"
+                  className="mb-1"
+                />
+                <div className="flex justify-between items-center">
+                  <Skeleton
+                    width={60}
+                    height={21}
+                    baseColor="#171717"
+                    highlightColor="#00ff0026"
+                  />
+                  <Skeleton
+                    width={100}
+                    height={16}
+                    baseColor="#171717"
+                    highlightColor="#00ff0026"
+                  />
+                </div>
+              </div>
+              
+              <div className="mb-3">
+                <div className="flex justify-between items-center mb-1">
+                  <Skeleton
+                    width="70%"
+                    height={16}
+                    baseColor="#171717"
+                    highlightColor="#00ff0026"
+                  />
+                  <Skeleton
+                    width={40}
+                    height={16}
+                    baseColor="#171717"
+                    highlightColor="#00ff0026"
+                  />
+                </div>
+                <Skeleton
+                  width="100%"
+                  height={8}
+                  baseColor="#171717"
+                  highlightColor="#00ff0026"
+                  className="rounded-full"
                 />
               </div>
-            </CardContent>
+            </div>
           </div>
-          <div className="flex items-center justify-center flex-shrink-0 w-1/2">
+          
+          <div className="px-[12px] mb-3">
             <Skeleton
               width="100%"
-              height="100%"
+              height={40}
               baseColor="#171717"
               highlightColor="#00ff0026"
-              className="rounded-r-lg"
+            />
+            <div className="w-full h-[1px] bg-[#262626] mt-2" />
+          </div>
+          
+          <div className="px-[12px] mt-auto mb-[12px]">
+            <Skeleton
+              width="100%"
+              height={44}
+              baseColor="#171717"
+              highlightColor="#00ff0026"
+              className="rounded-md"
             />
           </div>
         </Card>
@@ -140,209 +218,173 @@ export function AgentBrowser() {
   );
 
   return (
-    <div className="flex flex-col gap-2">
-      <VerifiedBanner tokens={tokens.slice(-3)} />
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-8">
+        <div className="flex items-center gap-4">
+          <div className="flex flex-row items-center w-[112px] h-10 bg-[#171717] rounded-lg">
+            <button
+              onClick={() => handleViewChange("grid")}
+              className={`flex items-center justify-center p-2 gap-3.5 w-14 h-[39px] cursor-pointer ${
+                view === "grid" ? "bg-[#2E2E2E]" : "bg-[#171717]"
+              } rounded-md`}
+            >
+              <img
+                src="/grid.svg"
+                width={24}
+                height={23}
+                alt="Grid View"
+                className={view === "grid" ? "opacity-100" : "opacity-50"}
+              />
+            </button>
 
-      <div className="flex flex-row items-center gap-6 w-[546.38px] h-10">
-        <div className="flex flex-row items-center w-[112px] h-10 bg-[#171717] rounded-lg">
-          <button
-            onClick={() => handleViewChange("grid")}
-            className={`flex items-center justify-center p-2 gap-3.5 w-14 h-[39px] cursor-pointer ${
-              view === "grid" ? "bg-[#2E2E2E]" : "bg-[#171717]"
-            } rounded-md`}
-          >
-            <img
-              src="/grid.svg"
-              width={24}
-              height={23}
-              alt="Grid View"
-              className={view === "grid" ? "opacity-100" : "opacity-50"}
-            />
-          </button>
+            <button
+              onClick={() => handleViewChange("table")}
+              className={`flex items-center justify-center p-2 gap-3.5 w-14 h-10 cursor-pointer ${
+                view === "table" ? "bg-[#2E2E2E]" : "bg-[#171717]"
+              } rounded-r-md`}
+            >
+              <img
+                src="/list.svg"
+                width={24}
+                height={24}
+                alt="List View"
+                className={view === "table" ? "opacity-100" : "opacity-50"}
+              />
+            </button>
+          </div>
 
-          <button
-            onClick={() => handleViewChange("table")}
-            className={`flex items-center justify-center p-2 gap-3.5 w-14 h-10 cursor-pointer ${
-              view === "table" ? "bg-[#2E2E2E]" : "bg-[#171717]"
-            } rounded-r-md`}
-          >
-            <img
-              src="/list.svg"
-              width={24}
-              height={24}
-              alt="List View"
-              className={view === "table" ? "opacity-100" : "opacity-50"}
-            />
-          </button>
-        </div>
-
-        <div className="flex flex-row items-center gap-3 w-[410.38px] h-10">
           <button
             onClick={() => handleSortChange("all")}
-            className={`flex justify-center items-center px-4 py-2.5 gap-2 w-[65px] h-10 border border-[#262626] rounded-md cursor-pointer hover:bg-[#2E2E2E] transition-colors ${
-              sortBy === "all" ? "bg-[#2E2E2E]" : ""
-            }`}
+            className={`px-4 py-2 rounded-lg ${
+              sortBy === "all" ? "bg-[#2E2E2E]" : "bg-[#171717]"
+            } text-white`}
           >
-            <span className="font-['DM_Mono'] font-medium text-lg leading-5 text-white">
-              All
-            </span>
+            All
           </button>
-
           <button
             onClick={() => handleSortChange("marketcap")}
-            className={`flex justify-center items-center px-4 py-2.5 gap-2 w-[130px] h-10 border border-[#262626] rounded-md cursor-pointer hover:bg-[#2E2E2E] transition-colors ${
-              sortBy === "marketcap" ? "bg-[#2E2E2E]" : ""
-            }`}
+            className={`px-4 py-2 rounded-lg ${
+              sortBy === "marketcap" ? "bg-[#2E2E2E]" : "bg-[#171717]"
+            } text-white`}
           >
-            <span className="font-['DM_Mono'] font-medium text-lg leading-5 text-white">
-              Marketcap
-            </span>
+            Market Cap
           </button>
 
           <div className="relative">
-            <button
-              onClick={() => setIsCreationDropdownOpen(!isCreationDropdownOpen)}
-              className={`flex justify-center items-center px-4 py-2.5 gap-2 w-[191.38px] h-10 border border-[#262626] rounded-md cursor-pointer hover:bg-[#2E2E2E] transition-colors ${
-                sortBy === "creation" ? "bg-[#2E2E2E]" : ""
-              }`}
-            >
-              <span className="font-['DM_Mono'] font-medium text-lg leading-5 text-white">
-                Creation Time
-              </span>
-              <svg
-                width="11"
-                height="7"
-                viewBox="0 0 11 7"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className={`transition-transform ${isCreationDropdownOpen ? "rotate-180" : ""}`}
-              >
-                <path
-                  d="M1 1L5.5 5.5L10 1"
-                  stroke="white"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-
-            {isCreationDropdownOpen && (
-              <div className="absolute top-full left-0 mt-1 w-full bg-[#171717] border border-[#262626] rounded-md py-1 z-10">
-                <button
-                  onClick={() => {
-                    handleSortChange("creation");
-                    setIsCreationDropdownOpen(false);
-                  }}
-                  className="w-full px-4 py-2 text-left text-white hover:bg-[#2E2E2E] transition-colors"
-                >
-                  Newest First
-                </button>
-                <button
-                  onClick={() => {
-                    handleSortChange("creation");
-                    setIsCreationDropdownOpen(false);
-                  }}
-                  className="w-full px-4 py-2 text-left text-white hover:bg-[#2E2E2E] transition-colors"
-                >
-                  Oldest First
-                </button>
-              </div>
-            )}
+            <Listbox value={sortBy} onChange={setSortBy}>
+              <Listbox.Button className="flex items-center gap-2 px-4 py-2 bg-[#171717] border border-[#262626] rounded-lg text-white">
+                <span className="text-sm">
+                  {sortOptions.find(opt => opt.value === sortBy)?.label || 'Sort by'}
+                </span>
+                <ChevronDownIcon className="w-4 h-4" />
+              </Listbox.Button>
+              <Listbox.Options className="absolute right-0 mt-2 w-56 bg-[#171717] border border-[#262626] rounded-lg py-1 shadow-lg z-10">
+                {sortOptions.map((option) => (
+                  <Listbox.Option
+                    key={option.value}
+                    value={option.value}
+                    className={({ active, selected }: { active: boolean; selected: boolean }) => `
+                      ${active ? 'bg-[#262626]' : ''}
+                      ${selected ? 'text-[#2FD345]' : 'text-white'}
+                      cursor-pointer select-none relative px-4 py-2 text-sm
+                    `}
+                  >
+                    {option.label}
+                  </Listbox.Option>
+                ))}
+              </Listbox.Options>
+            </Listbox>
           </div>
         </div>
       </div>
 
       {isLoading ? (
-        renderSkeletons()
-      ) : view === "grid" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
-          {tokens.map(({ mint, name, image, marketCapUSD, ticker }) => (
-            <div 
-              key={mint}
-              onClick={() => router.push(`/coin/${mint}`)}
-              className="flex flex-col p-4 bg-[#171717] border border-[#262626] rounded-lg cursor-pointer hover:border-[#2FD345]/50 transition-colors"
-            >
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-2">
-                  <span className={`${dmMono.className} text-base font-medium text-white`}>{name}</span>
-                  <span className={`${dmMono.className} text-base text-[#8C8C8C] tracking-[2px] uppercase`}>
-                    ${ticker}
-                  </span>
-                </div>
-                
-                <div className="px-2 py-1 bg-[#171717] rounded">
-                  <span className={`${dmMono.className} text-sm text-[#8C8C8C]`}>17 Min</span>
-                </div>
-              </div>
-
-              <div 
-                className="w-[120px] h-[127.5px] mt-4 rounded-lg bg-cover bg-center" 
-                style={{
-                  backgroundImage: `url(${image}), url(/checker.png)`,
-                  backgroundBlendMode: 'normal, multiply'
-                }}
-              />
-
-              <div className="mt-4">
-                <span className={`${dmMono.className} text-sm text-[#8C8C8C] uppercase tracking-[2px]`}>
-                  MARKETCAP
-                </span>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`${dmMono.className} text-xl text-[#2FD345]`}>
-                    {Intl.NumberFormat("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                      notation: "compact",
-                    }).format(Number(marketCapUSD))}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <span className={`${dmMono.className} text-xs text-[#8C8C8C]`}>
-                      {mint.slice(0, 6)}...{mint.slice(-4)}
-                    </span>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCopy(mint);
-                      }}
-                      className="text-[#8C8C8C] hover:text-white transition-colors"
-                    >
-                      <Copy size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <div className="flex items-center gap-2">
-                  <span className={`${dmMono.className} text-sm text-[#A6A6A6]`}>
-                    Bonding curve progress:
-                  </span>
-                  <span className={`${dmMono.className} text-sm text-[#2FD345]`}>28%</span>
-                </div>
-                <div className="relative w-full h-2 mt-2">
-                  <div className="absolute w-full h-2 bg-[#262626] rounded-full" />
-                  <div 
-                    className="absolute h-2 bg-gradient-to-r from-[#0F4916] to-[#2FD345] rounded-full"
-                    style={{ width: '28%' }}
-                  />
-                </div>
-              </div>
-
-              <p className={`${dmMono.className} text-xs text-[#8C8C8C] leading-4 mt-4`}>
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et
-                <button className="text-white hover:underline ml-1">See More...</button>
-              </p>
-
-              <button 
-                className="w-full h-11 mt-4 bg-[#2E2E2E] rounded-md transition-all hover:bg-[#2E2E2E]/80 active:scale-[0.98]"
-              >
-                <span className={`${dmMono.className} text-base text-white`}>Buy</span>
-              </button>
+          renderSkeletons()
+        ) : view === "grid" ? (
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {tokens.map(({ mint, name, image, marketCapUSD, ticker }) => (
+               <div 
+               key={mint}
+               onClick={() => router.push(`/coin/${mint}`)}
+               className="flex flex-col gap-3 w-full h-[288px] p-[16px_12px] bg-[#171717] border border-[#262626] rounded-lg cursor-pointer hover:border-[#2FD345]/50 transition-colors overflow-hidden"
+             >
+               {/* Top container with image and details */}
+               <div className="flex gap-3 w-full h-[136px] items-center">
+                 {/* Image */}
+                 <div 
+                   className="w-[120px] h-[127.5px] rounded-md bg-cover bg-center flex-none" 
+                   style={{
+                     backgroundImage: `url(${image}), url(/checker.png)`,
+                     backgroundBlendMode: 'normal, multiply'
+                   }}
+                 />
+                 
+                 {/* Right side content */}
+                 <div className="flex flex-col gap-3 flex-1 min-w-0 h-[136px]">
+                   {/* Name and time */}
+                   <div className="flex justify-between items-start w-full h-[24px]">
+                     <div className="flex items-center gap-2 h-[24px] min-w-0 overflow-hidden pr-2">
+                       <span className="font-satoshi text-base font-medium text-white truncate">{name}</span>
+                       <span className={`${dmMono.className} text-base tracking-[2px] uppercase text-[#8C8C8C] flex-shrink-0`}>
+                         ${ticker}
+                       </span>
+                     </div>
+                     <div className="flex items-center gap-1 px-2 h-[24px] border border-[#262626] rounded-md flex-shrink-0">
+                       <span className={`${dmMono.className} text-xs text-[#8C8C8C]`}>17</span>
+                       <span className={`${dmMono.className} text-xs text-[#8C8C8C]`}>Min</span>
+                     </div>
+                   </div>
+             
+                   {/* Market cap */}
+                   <div className="flex flex-col gap-1 w-full h-[48px]">
+                     <span className="font-satoshi text-xs font-medium text-[#8C8C8C]">Market Cap</span>
+                     <div className="flex items-center justify-between">
+                       <span className={`${dmMono.className} text-xl text-[#2FD345]`}>$123K</span>
+                       <div className="flex items-center gap-1.5 flex-shrink-0">
+                         <span className={`${dmMono.className} text-xs text-[#8C8C8C]`}>49n...ump</span>
+                         <Copy className="w-4 h-4 text-[#8C8C8C] cursor-pointer" />
+                       </div>
+                     </div>
+                   </div>
+             
+                   {/* Bonding curve */}
+                   <div className="flex flex-col gap-1 w-full h-[40px] justify-center">
+                     <div className="flex justify-between items-center">
+                       <span className={`${dmMono.className} text-sm text-[#A6A6A6] tracking-[-0.02em] truncate pr-2`}>
+                         Bonding curve progress:
+                       </span>
+                       <span className={`${dmMono.className} text-sm text-[#2FD345] flex-shrink-0`}>28%</span>
+                     </div>
+                     <div className="relative w-full h-2 mt-1">
+                       <div className="absolute w-full h-2 bg-[#262626] rounded-full" />
+                       <div 
+                         className="absolute h-2 bg-gradient-to-r from-[#0F4916] to-[#2FD345] rounded-full"
+                         style={{ width: '28%' }}
+                       />
+                     </div>
+                   </div>
+                 </div>
+               </div>
+             
+               {/* Description */}
+               <div className="flex flex-col gap-2 w-full h-[52px]">
+                 <p className={`${dmMono.className} text-xs text-[#8C8C8C] h-[40px] line-clamp-2 overflow-hidden`}>
+                   Rorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et
+                   <span className="text-white cursor-pointer"> See More...</span>
+                 </p>
+                 <div className="w-full h-[1px] bg-[#262626]" />
+               </div>
+             
+               {/* Buy button */}
+               <button className="flex justify-center items-center w-full h-[44px] px-5 bg-[#2E2E2E] border border-[#262626] rounded-md text-white mt-auto hover:bg-[#3E3E3E] hover:border-[#2FD345]/50 transition-all duration-200 ease-in-out transform hover:scale-[1.02] active:scale-[0.98]">
+                 Buy
+               </button>
+             </div>
+              ))}
             </div>
-          ))}
-        </div>
-      ) : (
+          </div>
+        ) : (
         <div className="flex flex-col gap-4">
           <div className={`flex items-center w-full h-[20px] ${dmMono.className} text-[14px] leading-5 tracking-[2px] uppercase text-[#A6A6A6]`}>
             <div className="w-[596px]">AI AGENTS</div>

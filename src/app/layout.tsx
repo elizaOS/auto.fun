@@ -67,11 +67,32 @@ export default async function RootLayout({
               />
             </div>
             <div className="justify-center items-center gap-8 flex">
-              <div className="justify-start items-center gap-2.5 flex">
-                <div className="text-center text-[#d1d1d1] text-base font-medium leading-normal">
+              <div className="justify-start items-center gap-3.5 flex">
+                <a 
+                  href="/legal/privacy"
+                  className="text-[#8C8C8C] hover:text-white transition-colors duration-200 font-mono text-base"
+                >
+                  Privacy Policy
+                </a>
+                <div className="w-[1px] h-6 bg-[#707070]" />
+                <a 
+                  href="/legal/terms"
+                  className="text-[#8C8C8C] hover:text-white transition-colors duration-200 font-mono text-base"
+                >
+                  Terms of Service
+                </a>
+                <div className="w-[1px] h-6 bg-[#707070]" />
+                <a 
+                  href="/legal/fees"
+                  className="text-[#8C8C8C] hover:text-white transition-colors duration-200 font-mono text-base"
+                >
+                  Fees
+                </a>
+                <div className="w-[1px] h-6 bg-[#707070]" />
+                <div className="text-center text-[#8C8C8C] text-base font-mono">
                   ©2024 Auto.fun
                 </div>
-                <div className="w-10 h-10 p-2.5 rounded-lg border border-[#f1f1f1] justify-center items-center gap-2 flex">
+                <div className="w-10 h-10 p-2.5 rounded-lg border border-[#f1f1f1] justify-center items-center gap-2 flex hover:bg-white/10 transition-colors duration-200 cursor-pointer">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
