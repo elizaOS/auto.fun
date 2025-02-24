@@ -1,6 +1,6 @@
 import React from "react";
 
-export const EmptyState: React.FC = () => (
+export const EmptyState: React.FC<{ maxSizeMb: number }> = ({ maxSizeMb }) => (
   <div className="flex flex-col items-center">
     <svg
       width="36"
@@ -25,7 +25,7 @@ export const EmptyState: React.FC = () => (
     </div>
 
     <div className="text-[#03FF2466] text-[13px] font-medium leading-none">
-      JPG, PNG, GIF, or MP4. Max file size: 4MB
+      JPG, PNG, GIF, or MP4. Max file size: {maxSizeMb}MB
     </div>
   </div>
 );

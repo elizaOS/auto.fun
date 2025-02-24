@@ -15,15 +15,15 @@ import {
 import { useTradeSettings } from "./useTradeSettings";
 import { Token } from "@/utils/tokens";
 
-export function convertToFloat(value: number, decimals: number): number {
+function convertToFloat(value: number, decimals: number): number {
   return value / Math.pow(10, decimals);
 }
 
-export function convertFromFloat(value: number, decimals: number): number {
+function convertFromFloat(value: number, decimals: number): number {
   return value * Math.pow(10, decimals);
 }
 
-export function calculateAmountOutBuy(
+function calculateAmountOutBuy(
   reserveLamport: number,
   adjustedAmount: number,
   solDecimals: number, // renamed for clarity
@@ -51,7 +51,7 @@ export function calculateAmountOutBuy(
   return Math.floor(amountOut); // Added Math.floor for safety
 }
 
-export function calculateAmountOutSell(
+function calculateAmountOutSell(
   reserveLamport: number,
   adjustedAmount: number,
   tokenOneDecimals: number,
