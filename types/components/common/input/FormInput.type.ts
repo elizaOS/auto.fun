@@ -7,4 +7,5 @@ export type FormInputProps = LabelledInputProps & {
    */
   inputPad?: "left" | "right" | "both";
   variant?: "error" | "default";
+  error?: string;
 } & Omit<InputHTMLAttributes<HTMLInputElement>, "className">;

@@ -8,6 +8,7 @@ export const FormInput = ({
   rightIndicatorOpacity,
   inputPad,
   variant,
+  error,
   ...props
 }: FormInputProps) => {
   const leftIndicatorStyle =
@@ -64,6 +65,8 @@ export const FormInput = ({
           )}
         </div>
       </div>
+
+      {error && <p className="text-red-600 text-sm">{error}</p>}
     </div>
   );
 };
