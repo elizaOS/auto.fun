@@ -335,79 +335,79 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
 const Step = ({
   number,
   title,
-  description,
+  isHighlighted = false
 }: {
-  number?: number;
-  title?: string;
-  description: string;
+  number: number;
+  title: string;
+  isHighlighted?: boolean;
 }) => (
-  <div className="py-2">
-    {number && (
-      <span className="text-white font-mono font-medium text-xl">
-        Step {number}:{" "}
-      </span>
-    )}
-    {title && (
-      <span className="text-[#8C8C8C] font-mono text-xl">
-        {title}
-      </span>
-    )}
-    <div className="text-[#8C8C8C] font-mono text-base">
-      {description}
-    </div>
+  <div className="flex items-start gap-2">
+    <span className={`font-mono text-xl ${isHighlighted ? 'text-white' : 'text-[#8C8C8C]'}`}>
+      Step {number}:
+    </span>
+    <span className="font-mono text-[#8C8C8C] text-xl">
+      {title}
+    </span>
   </div>
 );
 
 const TabContent = ({ type }: { type: 'trading' | 'creation' }) => {
   if (type === 'trading') {
     return (
-      <div className="flex flex-col">
-        <div className="flex flex-col justify-center items-start px-4 pt-5 pb-3">
-          <h2 className="text-[#2FD345] text-[32px] leading-9 tracking-[-0.018em] font-satoshi">
-            Token Trading
-          </h2>
-          <p className="text-[#8C8C8C] text-base leading-6 tracking-[-0.6px] font-satoshi">
-            Auto.fun ensures that all created tokens are safe to trade through a secure and battle-tested token launching system.
-          </p>
-        </div>
+      <div className="flex flex-col p-8">
+        <h2 className="text-[#2FD345] text-[32px] font-satoshi mb-4">
+          Token Trading
+        </h2>
+        
+        <p className="text-[#8C8C8C] text-base font-satoshi mb-8">
+          Auto.fun streamlines agentic trading through a token launching system. Create value for projects you believe in.
+        </p>
 
-        <div className="flex flex-col px-4 py-2">
-          <div className="flex flex-col divide-y divide-[#262626]/30 border-y border-[#262626]/30">
-            <Step number={1} description="Pick a coin that you like" />
-            <Step number={2} description="Buy the coin on the bonding curve" />
-            <Step number={3} description="Sell at any time to lock in your profits or losses" />
-            <Step number={4} description="When enough people buy on the bonding curve, it reaches a market cap of $100k" />
-            <Step number={5} description="$17k of liquidity is then deposited in Raydium and burned" />
-          </div>
+        <div className="flex flex-col gap-6">
+          <Step 
+            number={1} 
+            title="Browse and select a token from the marketplace"
+            isHighlighted={true}
+          />
+          <Step 
+            number={2} 
+            title="Buy tokens through our bonding curve mechanism"
+          />
+          <Step 
+            number={3} 
+            title="Buy and sell with instant liquidity"
+          />
+          <Step 
+            number={4} 
+            title="When the bonding curve compeltes, the token reaches a $100k market cap"
+          />
+          <Step 
+            number={5} 
+            title="Token transitions to Raydium"
+          />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col">
-      <div className="flex flex-col justify-center items-start px-4 pt-5 pb-3">
-        <h2 className="text-[#2FD345] text-[32px] leading-9 tracking-[-0.018em] font-satoshi">
-          Token Creation
-        </h2>
-        <p className="text-[#8C8C8C] text-base leading-6 tracking-[-0.6px] font-satoshi">
-          Auto.fun creates a dual-pool trading environment for sustainable AI token launches.
-        </p>
-      </div>
+    <div className="flex flex-col p-8">
+      <h2 className="text-[#2FD345] text-[32px] font-satoshi mb-4">
+        Token Creation
+      </h2>
+      
+      <p className="text-[#8C8C8C] text-base font-satoshi mb-8">
+        Auto.fun creates a dual-pool trading environment for sustainable AI token launches.
+      </p>
 
-      <div className="flex flex-col px-4 py-2">
-        <div className="flex flex-col divide-y divide-[#262626]/30 border-y border-[#262626]/30">
-          <Step number={1} title="Initial Setup" description="Configure token details & symbol" />
-          <Step description="Create or link an agent if desired" />
-          <Step description="Define project parameters" />
-          <Step number={2} title="Launch Configuration" description="Set optional creator allocation" />
-          <Step description="Initialize bonding curve" />
-          <Step number={3} title="Market Activity" description="Trading begins in primary SOL pool" />
-          <Step number={4} title="Raydium Graduation" description="Once Token reaches $100k market cap, there is an automatic transition to Raydium" />
-          <Step description="Maintains dual pool benefits" />
-          <Step description="Primary pool (SOL:Token) for main trading activity" />
-          <Step description="Secondary pool (Ai16z:Token) for secondary layer of liquidity" />
-        </div>
+      <div className="flex flex-col gap-6">
+        <Step number={1} title="Configure token details & symbol" />
+        <Step number={2} title="Create or link an agent if desired" />
+        <Step number={3} title="Define project parameters" />
+        <Step number={4} title="Set optional creator allocation" />
+        <Step number={5} title="Initialize bonding curve" />
+        <Step number={6} title="Trading begins in primary SOL pool" />
+        <Step number={7} title="Once Token reaches $100k market cap, automatic transition to Raydium" />
       </div>
     </div>
   );
@@ -534,58 +534,58 @@ export const Nav = () => {
         onClose={() => setModalOpen(false)}
         title=""
         maxWidth={587}
-        className="bg-[#171717]"
+        className="bg-[#171717] border border-[#262626] rounded-lg p-0"
         allowClose={false}
       >
-        <div className="flex flex-col">
+        <div className="flex flex-col w-[587px]">
           {/* Tab Bar */}
           <div className="flex w-full border-b border-[#262626]">
             <button
               onClick={() => setActiveTab('trading')}
-              className={`flex justify-center items-center w-[293.5px] h-[60px] px-4 font-satoshi text-xl tracking-[-0.02em] transition-all duration-200
+              className={`flex justify-center items-center w-[293.5px] h-[60px] font-satoshi text-xl tracking-[-0.02em] transition-all duration-200
                 ${activeTab === 'trading' 
                   ? 'text-[#2FD345] bg-[#171717]' 
-                  : 'text-[#8C8C8C] hover:text-white'}`}
+                  : 'text-[#8C8C8C]'}`}
             >
               Token Trading
             </button>
             <button
               onClick={() => setActiveTab('creation')}
-              className={`flex justify-center items-center w-[293.5px] h-[60px] px-4 font-satoshi text-xl tracking-[-0.02em] transition-all duration-200 border-l border-[#262626]
+              className={`flex justify-center items-center w-[293.5px] h-[60px] font-satoshi text-xl tracking-[-0.02em] transition-all duration-200 border-l border-[#262626]
                 ${activeTab === 'creation' 
                   ? 'text-[#2FD345] bg-[#171717]' 
-                  : 'text-[#8C8C8C] hover:text-white'}`}
+                  : 'text-[#8C8C8C]'}`}
             >
               Token Creation
             </button>
           </div>
 
-          {/* Tab Content */}
+          {/* Content */}
           <TabContent type={activeTab} />
 
           {/* Footer */}
-          <div className="flex flex-col gap-4 items-center mt-4 pb-4">
+          <div className="flex flex-col gap-4 items-center px-8 pb-6">
             <button
-              className="w-full py-2 px-5 bg-[#505050] rounded-lg text-[#03FF24] font-mono font-medium"
+              className="w-full py-3 bg-[#171717] hover:bg-[#262626] rounded-lg text-white font-satoshi"
               onClick={() => setModalOpen(false)}
             >
               Continue
             </button>
 
-            <p className="text-center text-[#A6A6A6] font-mono font-medium text-sm">
+            <p className="text-[#8C8C8C] font-satoshi text-sm">
               By clicking this button you agree to the terms and conditions.
             </p>
 
             <div className="flex items-center gap-3">
-              <a href="/legal/privacy" className="text-[#A6A6A6] font-mono text-sm underline">
+              <a href="/legal/privacy" className="text-[#8C8C8C] font-satoshi text-sm underline hover:text-white">
                 Privacy Policy
               </a>
               <div className="h-4 w-px bg-[#505050]" />
-              <a href="/legal/terms" className="text-[#A6A6A6] font-mono text-sm underline">
+              <a href="/legal/terms" className="text-[#8C8C8C] font-satoshi text-sm underline hover:text-white">
                 Terms of Service
               </a>
               <div className="h-4 w-px bg-[#505050]" />
-              <a href="/legal/fees" className="text-[#A6A6A6] font-mono text-sm underline">
+              <a href="/legal/fees" className="text-[#8C8C8C] font-satoshi text-sm underline hover:text-white">
                 Fees
               </a>
             </div>
