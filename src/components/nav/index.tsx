@@ -1,5 +1,5 @@
-"use client";
 
+"use client";
 import Link from "next/link";
 import Image from "next/image";
 import { WalletButton } from "../common/button/WalletButton";
@@ -269,7 +269,9 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
                 ref={ref}
               >
                 <div className="text-[#03ff24] text-xs font-normal uppercase leading-none tracking-widest">
-                  Agents
+                  <Link href="/">
+                    Agents
+                  </Link>
                 </div>
                 {searchResults.map((token) => (
                   <AgentSearchResult
@@ -564,7 +566,7 @@ export const Nav = () => {
           {/* Footer */}
           <div className="flex flex-col gap-4 items-center px-8 pb-6">
             <button
-              className="w-full py-3 bg-[#171717] hover:bg-[#262626] rounded-lg text-white font-satoshi"
+              className="w-full py-3 bg-[#2E2E2E] hover:bg-[#262626] rounded-lg text-white font-satoshi"
               onClick={() => setModalOpen(false)}
             >
               Continue
