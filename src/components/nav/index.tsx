@@ -471,9 +471,7 @@ export const Nav = () => {
                 />
               </button>
             </Link>
-            <button className="flex items-center justify-center px-4 py-2.5 h-11 bg-[#212121] border border-[#262626] rounded-md">
-              <span className="text-base font-medium text-white">Connect Wallet</span>
-            </button>
+            <WalletButton />
           </div>
 
           {/* Keep existing mobile menu code */}
