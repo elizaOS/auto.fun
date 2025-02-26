@@ -142,7 +142,7 @@ const TokenInput = ({
 
 const getStatusContent = (status: string) => {
   switch (status) {
-    case 'completed':
+    case "completed":
       return (
         <div className="flex items-center gap-2">
           <div className="w-full bg-neutral-800 rounded-full h-2">
@@ -151,26 +151,30 @@ const getStatusContent = (status: string) => {
           <span className="text-green-500 text-sm font-['DM Mono']">100%</span>
         </div>
       );
-    case 'migrating':
+    case "migrating":
       return (
         <div className="flex items-center justify-center bg-yellow-500/10 py-2 rounded-lg">
-          <span className="text-yellow-500 text-sm font-['DM Mono']">MIGRATING</span>
+          <span className="text-yellow-500 text-sm font-['DM Mono']">
+            MIGRATING
+          </span>
         </div>
       );
-    case 'migration_failed':
+    case "migration_failed":
       return (
         <div className="flex items-center justify-center bg-red-500/10 py-2 rounded-lg">
-          <span className="text-red-500 text-sm font-['DM Mono']">MIGRATION FAILED</span>
+          <span className="text-red-500 text-sm font-['DM Mono']">
+            MIGRATION FAILED
+          </span>
         </div>
       );
-    case 'failed':
+    case "failed":
       return (
         <div className="flex items-center justify-center bg-red-500/10 py-2 rounded-lg">
           <span className="text-red-500 text-sm font-['DM Mono']">FAILED</span>
         </div>
       );
     default:
-        return null;
+      return null;
   }
 };
 
@@ -186,7 +190,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
   const { publicKey } = useWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { connection } = useConnection();
-  const { handleSwap } = useSwap();
+  const { executeSwap } = useSwap();
   const [tokenBalance, setTokenBalance] = useState<number>(0);
   const [solBalance, setSolBalance] = useState<number>(0);
   const [isBuyMode, setIsBuyMode] = useState(true);
@@ -276,8 +280,9 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
 
   if (!token) return null;
 
-  const isDisabled = ['migrating', 'migration_failed', 'failed'].includes(token.status);
-
+  const isDisabled = ["migrating", "migration_failed", "failed"].includes(
+    token.status,
+  );
 
   const handleSwapClick = async () => {
     if (isDisabled) return;
@@ -286,7 +291,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
     if (isNaN(amount) || amount === 0) return;
 
     try {
-      await handleSwap({
+      await executeSwap({
         amount,
         style: isBuyMode ? "buy" : "sell",
         tokenAddress: tokenId,
@@ -305,8 +310,8 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
           pauseOnHover: true,
           draggable: false,
           closeButton: true,
-          className: "!p-0 !m-0"
-        }
+          className: "!p-0 !m-0",
+        },
       );
     } catch (err) {
       console.error("Swap failed:", err);
@@ -324,8 +329,8 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
           pauseOnHover: true,
           draggable: false,
           closeButton: true,
-          className: "!p-0 !m-0"
-        }
+          className: "!p-0 !m-0",
+        },
       );
     }
   };
@@ -381,7 +386,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
         </button>
       </div>
 
-      {token.status !== 'active' && getStatusContent(token.status)}
+      {token.status !== "active" && getStatusContent(token.status)}
 
       <div className="flex-1 px-7 pb-[34px] flex flex-col justify-center gap-6 border-l border-r border-b border-neutral-800 rounded-b-xl min-w-fit">
         <div className="flex flex-col gap-2.5 relative min-w-fit">
@@ -403,7 +408,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
           > */}
           <button
             className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 p-2 bg-[#212121] rounded-full border-2 border-neutral-900 flex justify-center z-10 ${
-              isDisabled ? 'opacity-50 cursor-not-allowed' : ''
+              isDisabled ? "opacity-50 cursor-not-allowed" : ""
             }`}
             disabled={isDisabled}
             onClick={handleModeSwitch}
@@ -439,30 +444,31 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
         </div>
 
         <div className="w-full h-10">
-        <button
-          className={`w-full h-10 relative flex items-center justify-center ${
-            isDisabled ? 'bg-neutral-700 cursor-not-allowed' : 'bg-green-500'
-          }`}
-          style={{
-            clipPath: "polygon(0% 72%, 0% 0%, 95% 0%, 100% 29%, 100% 100%, 5% 100%)",
-          }}
-          onClick={
-            isDisabled
-              ? undefined
-              : publicKey
-              ? handleSwapClick
-              : () => setWalletModalVisible(true)
-          }
-          disabled={isDisabled}
-        >
-          <span className="text-black text-xl font-['DM Mono']">
-            {isDisabled
-              ? token.status.toUpperCase()
-              : publicKey
-                ? "SWAP"
-                : "CONNECT WALLET"}
-          </span>
-        </button>
+          <button
+            className={`w-full h-10 relative flex items-center justify-center ${
+              isDisabled ? "bg-neutral-700 cursor-not-allowed" : "bg-green-500"
+            }`}
+            style={{
+              clipPath:
+                "polygon(0% 72%, 0% 0%, 95% 0%, 100% 29%, 100% 100%, 5% 100%)",
+            }}
+            onClick={
+              isDisabled
+                ? undefined
+                : publicKey
+                  ? handleSwapClick
+                  : () => setWalletModalVisible(true)
+            }
+            disabled={isDisabled}
+          >
+            <span className="text-black text-xl font-['DM Mono']">
+              {isDisabled
+                ? token.status.toUpperCase()
+                : publicKey
+                  ? "SWAP"
+                  : "CONNECT WALLET"}
+            </span>
+          </button>
         </div>
       </div>
     </div>

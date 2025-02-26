@@ -1,5 +1,10 @@
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { Connection, PublicKey, VersionedTransaction } from "@solana/web3.js";
+import {
+  Connection,
+  PublicKey,
+  Transaction,
+  VersionedTransaction,
+} from "@solana/web3.js";
 import { BN, Program } from "@coral-xyz/anchor";
 import {
   SEED_CONFIG,
@@ -73,7 +78,7 @@ function calculateAmountOutSell(
   return Math.floor(amountOut);
 }
 
-const swapTx = async (
+const swapIx = async (
   user: PublicKey,
   token: PublicKey,
   amount: number,
@@ -147,10 +152,7 @@ const swapTx = async (
       user,
       tokenMint: token,
     })
-    .transaction();
-
-  tx.feePayer = user;
-  tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+    .instruction();
 
   return tx;
 };
@@ -168,7 +170,7 @@ export const useSwap = () => {
   // TODO: implement speed, front-running protection, and tip amount
   const { slippage: slippagePercentage } = useTradeSettings();
 
-  const handleSwap = async ({ style, amount, tokenAddress }: SwapParams) => {
+  const createSwapIx = async ({ style, amount, tokenAddress }: SwapParams) => {
     if (!program || !wallet.publicKey) {
       throw new Error("Wallet not connected or missing required methods");
     }
@@ -183,7 +185,7 @@ export const useSwap = () => {
     // Convert string style to numeric style
     const numericStyle = style === "buy" ? 0 : 1;
 
-    const tx = await swapTx(
+    const ix = await swapIx(
       wallet.publicKey,
       new PublicKey(tokenAddress),
       style === "buy" ? amountLamports : amountTokens,
@@ -192,6 +194,22 @@ export const useSwap = () => {
       connection,
       program,
     );
+
+    return ix;
+  };
+
+  const executeSwap = async ({ style, amount, tokenAddress }: SwapParams) => {
+    if (!wallet.publicKey || !wallet.signTransaction) {
+      throw new Error("Wallet not connected or missing required methods");
+    }
+
+    const ix = await createSwapIx({ style, amount, tokenAddress });
+
+    const tx = new Transaction().add(ix);
+    const { blockhash, lastValidBlockHeight } =
+      await connection.getLatestBlockhash();
+    tx.feePayer = wallet.publicKey;
+    tx.recentBlockhash = blockhash;
 
     console.log("Simulating transaction...");
     const simulation = await connection.simulateTransaction(tx);
@@ -203,10 +221,6 @@ export const useSwap = () => {
       throw new Error(`Transaction simulation failed: ${simulation.value.err}`);
     }
 
-    const { blockhash, lastValidBlockHeight } =
-      await connection.getLatestBlockhash();
-    tx.recentBlockhash = blockhash;
-
     const versionedTx = new VersionedTransaction(tx.compileMessage());
     const signature = await wallet.sendTransaction(versionedTx, connection);
     const confirmation = await connection.confirmTransaction({
@@ -214,9 +228,8 @@ export const useSwap = () => {
       blockhash: versionedTx.message.recentBlockhash,
       lastValidBlockHeight,
     });
-
     return { signature, confirmation };
   };
 
-  return { handleSwap };
+  return { createSwapIx, executeSwap };
 };
