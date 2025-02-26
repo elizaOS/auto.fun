@@ -6,13 +6,9 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import { BN, Program } from "@coral-xyz/anchor";
-import {
-  SEED_CONFIG,
-  Serlaunchalot,
-  SEED_BONDING_CURVE,
-  useProgram,
-} from "@/utils/program";
+import { SEED_CONFIG, Serlaunchalot, useProgram } from "@/utils/program";
 import { useTradeSettings } from "./useTradeSettings";
+import { env } from "@/utils/env";
 
 function convertToFloat(value: number, decimals: number): number {
   return value / Math.pow(10, decimals);
@@ -103,16 +99,14 @@ const swapIx = async (
     program.programId,
   );
   const configAccount = await program.account.config.fetch(configPda);
-  const [bondingCurvePda] = PublicKey.findProgramAddressSync(
-    [Buffer.from(SEED_BONDING_CURVE), token.toBytes()],
-    program.programId,
-  );
-  const curve = await program.account.bondingCurve.fetch(bondingCurvePda);
 
   // Apply platform fee
   const feePercent =
     style === 1 ? configAccount.platformSellFee : configAccount.platformBuyFee;
   const adjustedAmount = Math.floor((amount * (100 - feePercent)) / 100);
+  const tokenSupply = new BN(Number(env.tokenSupply));
+  const reserveLamport = new BN(Number(env.virtualReserves));
+  const reserveToken = tokenSupply.div(new BN(Number(env.decimals)));
 
   // Calculate expected output
   let estimatedOutput;
@@ -120,19 +114,19 @@ const swapIx = async (
     console.log("buying", amount, "SOL");
     // Buy
     estimatedOutput = calculateAmountOutBuy(
-      curve.reserveLamport.toNumber(),
+      reserveLamport.toNumber(),
       adjustedAmount,
       9, // SOL decimals
-      curve.reserveToken.toNumber(),
+      reserveToken.toNumber(),
     );
   } else {
     console.log("selling", amount, "tokens");
     // Sell
     estimatedOutput = calculateAmountOutSell(
-      curve.reserveLamport.toNumber(),
+      reserveLamport.toNumber(),
       adjustedAmount,
       9,
-      curve.reserveToken.toNumber(),
+      reserveToken.toNumber(),
     );
 
     console.log("Estimated output:", estimatedOutput);
