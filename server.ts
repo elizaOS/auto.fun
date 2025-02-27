@@ -1,3 +1,4 @@
+import axios from 'axios';
 import express from 'express';
 import { Server } from 'socket.io';
 import { createServer } from 'http';
@@ -657,35 +658,118 @@ const initializeConfig = async () => {
 };
 
 export async function fetchPriceChartData(pairIndex: number, start: number, end: number, range: number, token: string) {
-  // logger.info(`Fetching chart data for pairIndex: ${pairIndex}, start: ${start}, end: ${end}, range: ${range}, token: ${token}`);
+  logger.log(`Fetching chart data for pairIndex: ${pairIndex}, start: ${start}, end: ${end}, range: ${range}, token: ${token}`);
 
-  // load price histories from DB
-  const swaps = await Swap.find(
-    { 
-      tokenMint: token,
-      timestamp: { 
-        $gte: new Date(start),
-        $lte: new Date(end) 
+  const tokenInfo = await Token.findOne({ mint: token });
+  if (!tokenInfo) {
+    logger.error(`Token ${token} not found`);
+    return [];
+  }
+
+  if (tokenInfo.status !== 'locked') {
+    // load price histories from DB
+    const swaps = await Swap.find(
+      { 
+        tokenMint: token,
+        timestamp: { 
+          $gte: new Date(start),
+          $lte: new Date(end) 
+        }
+      },
+      { price: 1, amountIn: 1, amountOut: 1, direction: 1, timestamp: 1 } 
+    ).sort({ timestamp: 1 });
+    
+    // Convert to PriceFeedInfo array
+    const priceFeeds: PriceFeedInfo[] = swaps
+      .filter(swap => swap.price != null) // Filter out any null prices
+      .map(swap => ({
+        price: swap.price,
+        timestamp: swap.timestamp,
+        // If direction is 0 (buy), amountIn is SOL
+        // If direction is 1 (sell), amountOut is SOL
+        volume: swap.direction === 0 ? 
+          swap.amountIn / 1e9 : // Convert from lamports to SOL
+          swap.amountOut / 1e9
+      }));
+
+    if (!priceFeeds.length) return [];
+
+    const cdFeeds = getCandleData(priceFeeds, range);
+
+    return cdFeeds;
+  } else if (tokenInfo.status === 'locked') {
+    // Fetch price history from raydium (Codex API)
+    let allItems: any[] = [];
+    let cursor: string | null = null;
+
+    do {
+      // @TODO Deploy our program to mainnet in, otherwise token address is fixed for now, for development, since we're not working with mainnet, code is working for mainnet
+      let data = JSON.stringify({
+        query: `query {
+          getTokenEvents(
+            query: {address: "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump", networkId: 1399811149, timestamp: {
+              from: ${Math.floor(start / 1000)},
+              to: ${Math.floor(end / 1000)}
+            }},
+            limit: 200,
+            cursor: ${cursor ? `"${cursor}"` : null}
+          ) {
+            cursor
+            items {
+              eventDisplayType
+              token1SwapValueUsd
+              token1PoolValueUsd
+              timestamp
+              data {
+                ... on SwapEventData {
+                  amount0,
+                  amount1,
+                }
+              }
+            }
+          }
+        }`,
+        variables: {}
+      });
+
+      let config = {
+        method: 'post',
+        maxBodyLength: Infinity,
+        url: 'https://graph.codex.io/graphql',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': process.env.CODEX_API_KEY
+        },
+        data: data
+      };
+
+      try {
+        const res = await axios.request(config);
+        const { items, cursor: newCursor } = res.data.data.getTokenEvents;
+        allItems = allItems.concat(items);
+        cursor = newCursor;
+      } catch (error) {
+        logger.error('Error fetching data from Codex API:', error);
+        return [];
       }
-    },
-    { price: 1, amountIn: 1, amountOut: 1, direction: 1, timestamp: 1 } 
-  ).sort({ timestamp: 1 });
-  
-  // Convert to PriceFeedInfo array
-  const priceFeeds: PriceFeedInfo[] = swaps
-    .filter(swap => swap.price != null) // Filter out any null prices
-    .map(swap => ({
-      price: swap.price,
-      timestamp: swap.timestamp,
-      // If direction is 0 (buy), amountIn is SOL
-      // If direction is 1 (sell), amountOut is SOL
-      volume: swap.direction === 0 ? 
-        swap.amountIn / 1e9 : // Convert from lamports to SOL
-        swap.amountOut / 1e9
+    } while (cursor);
+
+    // Convert to PriceFeedInfo array
+    const priceFeeds: PriceFeedInfo[] = allItems.map(item => ({
+      price: parseFloat(item.token1PoolValueUsd),
+      timestamp: new Date(item.timestamp * 1000),
+      volume: parseFloat(item.data.amount0)
     }));
 
-  if (!priceFeeds.length) return [];
+    if (!priceFeeds.length) return [];
 
+    const cdFeeds = getCandleData(priceFeeds, range);
+
+    return cdFeeds;
+  }
+}
+
+function getCandleData(priceFeeds: PriceFeedInfo[], range: number) {
   const priceHistory = priceFeeds.map((feed) => ({
     price: feed.price,
     ts: feed.timestamp.getTime() / 1000,
@@ -693,7 +777,7 @@ export async function fetchPriceChartData(pairIndex: number, start: number, end:
 
   if (!priceHistory.length) return [];
 
-  let candlePeriod = 60; // 1 min  default
+  let candlePeriod = 60; // 1 min default
   switch (range) {
     case 1:
       // default candle period
@@ -712,7 +796,7 @@ export async function fetchPriceChartData(pairIndex: number, start: number, end:
       break;
   }
 
-  // convert price feed to candle price data
+  // Convert price feed to candle price data
   let cdStart = Math.floor(priceHistory[0].ts / candlePeriod) * candlePeriod;
   let cdEnd = Math.floor(priceHistory[priceHistory.length - 1].ts / candlePeriod) * candlePeriod;
 
@@ -729,9 +813,9 @@ export async function fetchPriceChartData(pairIndex: number, start: number, end:
       if (hi < priceHistory[pIndex].price) hi = priceHistory[pIndex].price;
       if (lo > priceHistory[pIndex].price) lo = priceHistory[pIndex].price;
       en = priceHistory[pIndex].price;
-      vol = priceFeeds[pIndex].volume;
+      vol += priceFeeds[pIndex].volume;
 
-      // break new candle data starts
+      // Break new candle data starts
       if (priceHistory[pIndex].ts >= curCdStart + candlePeriod) break;
       pIndex++;
     }
