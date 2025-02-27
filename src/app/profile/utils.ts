@@ -54,25 +54,36 @@ export const useTokensHeld = () => {
         const metadataAccounts =
           await connection.getMultipleAccountsInfo(metadataPDAs);
 
-        const tokenData = tokenAccounts
-          .map((account, i) => {
+        const tokenData = await Promise.all(
+          tokenAccounts.map(async (account, i) => {
             const metadata = metadataAccounts[i];
             if (!metadata) return null;
 
             const { name, symbol, uri } = decodeMetadata(metadata.data);
+            let image: string | null = null;
+
+            try {
+              const response = await fetch(uri);
+              const json = await response.json();
+              image = json.image;
+            } catch (error) {
+              console.error(
+                `Error fetching metadata for token ${name}:`,
+                error,
+              );
+            }
 
             return {
-              image: uri,
+              image,
               name,
               ticker: symbol,
               tokensHeld: account.amount,
               solValue: 0,
-              // mint: account.mint.toString(),
             } satisfies ProfileToken;
-          })
-          .filter((data): data is ProfileToken => !!data);
+          }),
+        );
 
-        setData(tokenData);
+        setData(tokenData.filter((data): data is ProfileToken => !!data));
       } catch (error) {
         console.error("Error fetching tokens:", error);
         setIsError(true);

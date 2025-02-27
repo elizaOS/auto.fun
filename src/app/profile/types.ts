@@ -1,5 +1,5 @@
 export type ProfileToken = {
-  image: string;
+  image: string | null;
   name: string;
   ticker: string;
   tokensHeld: bigint;
