@@ -97,8 +97,7 @@ export function AgentCard({ name, image, ticker, mint, marketCapUSD, onClick }: 
         <div className="w-full h-[1px] bg-[#262626]" />
       </div>
     
-      {/* Buy button */}
-      <button className="flex justify-center items-center w-full h-[44px] px-5 bg-[#2E2E2E] border border-[#262626] rounded-[6px] text-white">
+      <button className="flex justify-center items-center w-full h-[44px] px-5 bg-[#2E2E2E] border border-[#262626] rounded-[6px] text-white hover:bg-[#2FD345] hover:text-black transition-colors">
         Buy
       </button>
     </div>
