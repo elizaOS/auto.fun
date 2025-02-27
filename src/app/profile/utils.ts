@@ -54,26 +54,23 @@ export const useTokensHeld = () => {
         const metadataAccounts =
           await connection.getMultipleAccountsInfo(metadataPDAs);
 
-        const tokenData = tokenAccounts.map((account, i) => {
-          const metadata = metadataAccounts[i];
-          let name = "";
-          let symbol = "";
+        const tokenData = tokenAccounts
+          .map((account, i) => {
+            const metadata = metadataAccounts[i];
+            if (!metadata) return null;
 
-          if (metadata) {
-            const decoded = decodeMetadata(metadata.data);
-            name = decoded[0];
-            symbol = decoded[1];
-          }
+            const { name, symbol, uri } = decodeMetadata(metadata.data);
 
-          return {
-            image: "",
-            name,
-            ticker: symbol,
-            tokensHeld: Number(account.amount),
-            solValue: 0,
-            mint: account.mint.toString(),
-          } as ProfileToken;
-        });
+            return {
+              image: uri,
+              name,
+              ticker: symbol,
+              tokensHeld: account.amount,
+              solValue: 0,
+              // mint: account.mint.toString(),
+            } satisfies ProfileToken;
+          })
+          .filter((data): data is ProfileToken => !!data);
 
         setData(tokenData);
       } catch (error) {
@@ -97,20 +94,37 @@ export const useTokensHeld = () => {
   return { data, isLoading, isError };
 };
 
-// Helper function to decode metadata (unchanged)
-const decodeMetadata = (buffer: Buffer): [string, string] => {
-  let offset = 1;
-  offset += 32;
-  offset += 32;
+// Helper function to decode metadata
+const decodeMetadata = (
+  buffer: Buffer,
+): { name: string; symbol: string; uri: string } => {
+  // Skip key, update authority, mint, and name length prefix
+  let offset = 1 + 32 + 32 + 4;
 
-  const nameLength = buffer[offset];
-  offset += 1;
-  const name = buffer.slice(offset, offset + nameLength).toString();
+  // Read name
+  const nameLength = buffer.readUInt32LE(offset - 4);
+  const name = buffer
+    .subarray(offset, offset + nameLength)
+    .toString()
+    .replace(/\u0000/g, "");
   offset += nameLength;
 
-  const symbolLength = buffer[offset];
-  offset += 1;
-  const symbol = buffer.slice(offset, offset + symbolLength).toString();
+  // Read symbol length and symbol
+  const symbolLength = buffer.readUInt32LE(offset);
+  offset += 4;
+  const symbol = buffer
+    .subarray(offset, offset + symbolLength)
+    .toString()
+    .replace(/\u0000/g, "");
+  offset += symbolLength;
 
-  return [name, symbol];
+  // Read uri length and uri
+  const uriLength = buffer.readUInt32LE(offset);
+  offset += 4;
+  const uri = buffer
+    .subarray(offset, offset + uriLength)
+    .toString()
+    .replace(/\u0000/g, "");
+
+  return { name, symbol, uri };
 };
