@@ -199,7 +199,6 @@ export const getJupiterSwapTx = async (
     throw new Error(`Failed to fetch quote from Jupiter: ${errorMsg}`);
   }
   const quoteResponse = await quoteRes.json();
-  console.log("Jupiter quote response:", quoteResponse);
 
   // 2. Build the swap transaction by POSTing to Jupiter's swap endpoint.
   const feeAccount = associatedAddress({
@@ -220,7 +219,6 @@ export const getJupiterSwapTx = async (
     );
     additionalIxs.push(createFeeAccountIx);
   }
-  console.log("Fee account data:", feeAccountData);
 
   const swapUrl = "https://api.jup.ag/swap/v1/swap";
   const body = {
@@ -243,7 +241,6 @@ export const getJupiterSwapTx = async (
     throw new Error(`Failed to build Jupiter swap transaction: ${errorMsg}`);
   }
   const swapJson = await swapRes.json();
-  console.log("Jupiter swap response:", swapJson);
 
   if (swapJson.simulationError) {
     console.error("Simulation error:", swapJson.simulationError.error);
