@@ -170,10 +170,6 @@ export const getAutofunSwapTx = async (
  * For buys, we swap SOL for a token.
  * For sells, we swap the token for SOL.
  *
- * We first generate a quote (using GET) and then POST the quote
- * to build a swap transaction. By setting asLegacyTransaction: true,
- * we receive a legacy Transaction, which can be simulated and submitted
- * in the same manner as our alternate getAutofunSwapTx.
  */
 export const getJupiterSwapTx = async (
   user: PublicKey,
@@ -186,6 +182,7 @@ export const getJupiterSwapTx = async (
   // Jupiter uses the following constant to represent SOL
   const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
 
+  // @TODO token address is static for now because our project is not deployed to mainnet yet
   const tokenMintAddress = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
   const inputMint = style === 0 ? SOL_MINT_ADDRESS : tokenMintAddress;
   const outputMint = style === 0 ? tokenMintAddress : SOL_MINT_ADDRESS;
@@ -229,18 +226,10 @@ export const getJupiterSwapTx = async (
   const body = {
     quoteResponse,
     userPublicKey: user.toBase58(),
-    // Request a legacy transaction so that it can be simulated/used with our UI flow.
     asLegacyTransaction: true,
     dynamicComputeUnitLimit: true,
     dynamicSlippage: true,
     feeAccount: feeAccount.toBase58(),
-    // You can also add prioritizationFeeLamports if desired:
-    // prioritizationFeeLamports: {
-    //   priorityLevelWithMaxLamports: {
-    //     maxLamports: 1000000,
-    //     priorityLevel: "veryHigh"
-    //   }
-    // }
   };
   const swapRes = await fetch(swapUrl, {
     method: "POST",
@@ -256,10 +245,10 @@ export const getJupiterSwapTx = async (
   const swapJson = await swapRes.json();
   console.log("Jupiter swap response:", swapJson);
 
-  // if (swapJson.simulationError) {
-  //   console.error("Simulation error:", swapJson.simulationError.error);
-  //   throw new Error(`Simulation failed: ${swapJson.simulationError.error}`);
-  // }
+  if (swapJson.simulationError) {
+    console.error("Simulation error:", swapJson.simulationError.error);
+    throw new Error(`Simulation failed: ${swapJson.simulationError.error}`);
+  }
 
   if (!swapJson.swapTransaction) {
     throw new Error("Jupiter swap transaction is missing in the response.");
