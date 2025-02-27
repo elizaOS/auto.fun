@@ -12,8 +12,11 @@ import {
   SEED_BONDING_CURVE,
   useProgram,
 } from "@/utils/program";
+import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { useTradeSettings } from "./useTradeSettings";
 import { Token } from "@/utils/tokens";
+import { associatedAddress } from "@coral-xyz/anchor/dist/cjs/utils/token";
+import { env } from "@/utils/env";
 
 function convertToFloat(value: number, decimals: number): number {
   return value / Math.pow(10, decimals);
@@ -184,13 +187,16 @@ export const getJupiterSwapTx = async (
   const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
 
   const tokenMintAddress = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
-  // When buying, spending SOL to get the target token, and vice versa for selling.
   const inputMint = style === 0 ? SOL_MINT_ADDRESS : tokenMintAddress;
   const outputMint = style === 0 ? tokenMintAddress : SOL_MINT_ADDRESS;
 
   // 1. Get a quote from Jupiter.
-  const quoteUrl = `https://api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=${slippageBps}&restrictIntermediateTokens=true`;
+  const feePercent = 0.2;
+  const feeBps = feePercent * 100;
+  // Add platform fee to the quote
+  const quoteUrl = `https://api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=${slippageBps}&restrictIntermediateTokens=true&platformFeeBps=${feeBps}`;
   const quoteRes = await fetch(quoteUrl);
+
   if (!quoteRes.ok) {
     const errorMsg = await quoteRes.text();
     throw new Error(`Failed to fetch quote from Jupiter: ${errorMsg}`);
@@ -199,6 +205,26 @@ export const getJupiterSwapTx = async (
   console.log("Jupiter quote response:", quoteResponse);
 
   // 2. Build the swap transaction by POSTing to Jupiter's swap endpoint.
+  const feeAccount = associatedAddress({
+    mint: new PublicKey(tokenMintAddress),
+    owner: new PublicKey(env.devAddress),
+  });
+
+  const feeAccountData = await connection.getAccountInfo(feeAccount);
+
+  const additionalIxs = [];
+  if (!feeAccountData) {
+    // Create the fee account
+    const createFeeAccountIx = createAssociatedTokenAccountInstruction(
+      user,
+      feeAccount,
+      new PublicKey(env.devAddress),
+      new PublicKey(tokenMintAddress),
+    );
+    additionalIxs.push(createFeeAccountIx);
+  }
+  console.log("Fee account data:", feeAccountData);
+
   const swapUrl = "https://api.jup.ag/swap/v1/swap";
   const body = {
     quoteResponse,
@@ -207,6 +233,7 @@ export const getJupiterSwapTx = async (
     asLegacyTransaction: true,
     dynamicComputeUnitLimit: true,
     dynamicSlippage: true,
+    feeAccount: feeAccount.toBase58(),
     // You can also add prioritizationFeeLamports if desired:
     // prioritizationFeeLamports: {
     //   priorityLevelWithMaxLamports: {
@@ -229,19 +256,21 @@ export const getJupiterSwapTx = async (
   const swapJson = await swapRes.json();
   console.log("Jupiter swap response:", swapJson);
 
-  if (swapJson.simulationError) {
-    console.error("Simulation error:", swapJson.simulationError.error);
-    throw new Error(`Simulation failed: ${swapJson.simulationError.error}`);
-  }
+  // if (swapJson.simulationError) {
+  //   console.error("Simulation error:", swapJson.simulationError.error);
+  //   throw new Error(`Simulation failed: ${swapJson.simulationError.error}`);
+  // }
 
   if (!swapJson.swapTransaction) {
     throw new Error("Jupiter swap transaction is missing in the response.");
   }
 
   // 3. Deserialize the swap transaction from base64.
-  // When asLegacyTransaction is true, the endpoint returns a base64-encoded legacy Transaction.
+  const transaction = new Transaction();
+  transaction.add(...additionalIxs);
   const txBuffer = Buffer.from(swapJson.swapTransaction, "base64");
-  const transaction = Transaction.from(txBuffer);
+  const swapTransaction = Transaction.from(txBuffer);
+  transaction.add(...swapTransaction.instructions);
 
   // 4. Override fee payer & refresh blockhash to be safe.
   transaction.feePayer = user;
