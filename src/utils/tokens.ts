@@ -137,6 +137,7 @@ const useCreateTokenMutation = createMutation({
     }
 
     // Generate a random keypair for the token mint
+    // TODO: now that this is on frontend, it no longer has the correct suffix of 'ser' or later 'auto'. we can add an endpoint that returns a valid mint keypair, or use the user's machine.
     const mintKeypair = Keypair.generate();
 
     const [configPda] = PublicKey.findProgramAddressSync(
