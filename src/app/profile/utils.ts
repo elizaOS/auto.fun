@@ -6,13 +6,16 @@ import { AccountInfo, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { SEED_BONDING_CURVE, useProgram } from "@/utils/program";
 import { calculateAmountOutSell } from "../coin/[tokenId]/swap/useSwap";
 import { env } from "@/utils/env";
+import { womboApi } from "@/utils/fetch";
+import { z } from "zod";
+import { TokenSchema } from "@/utils/tokenSchema";
 
 // TODO: update after mainnet launch
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
 );
 
-const useOwnedTokens = () => {
+const useTokenAccounts = () => {
   const { connection } = useConnection();
   const { publicKey } = useWallet();
 
@@ -101,7 +104,7 @@ const decodeMetadata = (
   const name = buffer
     .subarray(offset, offset + nameLength)
     .toString()
-    .replace(/\u0000/g, "");
+    .replace(/\u0000/g, ""); // remove null characters
   offset += nameLength;
 
   // Read symbol length and symbol
@@ -163,68 +166,113 @@ const getProfileTokens = async (
   return profileTokens.filter((data): data is ProfileToken => !!data);
 };
 
-export const useTokensHeld = () => {
-  const { publicKey } = useWallet();
-  const { connection } = useConnection();
-  const [data, setData] = useState<ProfileToken[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isError, setIsError] = useState(false);
-
-  const getOwnedTokens = useOwnedTokens();
+const useOwnedTokens = () => {
+  const getTokenAccounts = useTokenAccounts();
   const removeNonAutofunTokens = useRemoveNonAutofunTokens();
   const getTokenMetadata = useTokenMetadata();
 
-  useEffect(() => {
+  const fetchTokens = useCallback(async () => {
+    const tokenAccounts = await getTokenAccounts();
+    const ownedTokenAccounts = tokenAccounts.filter(
+      (account) => account.amount > 0,
+    );
+    const autofunTokenAccounts =
+      await removeNonAutofunTokens(ownedTokenAccounts);
+
+    const metadataAccounts = await getTokenMetadata(autofunTokenAccounts);
+
+    const profileTokens = await getProfileTokens(
+      autofunTokenAccounts,
+      metadataAccounts,
+    );
+
+    return profileTokens;
+  }, [getTokenAccounts, getTokenMetadata, removeNonAutofunTokens]);
+
+  return fetchTokens;
+};
+
+const useCreatedTokens = () => {
+  const { publicKey } = useWallet();
+
+  const getTokenAccounts = useTokenAccounts();
+  const removeNonAutofunTokens = useRemoveNonAutofunTokens();
+  const getTokenMetadata = useTokenMetadata();
+
+  const fetchTokens = useCallback(async () => {
     if (!publicKey) {
-      return;
+      throw new Error("user not connected to wallet");
     }
 
-    const fetchTokens = async () => {
-      try {
-        setIsLoading(true);
-        setIsError(false);
+    const { tokens } = await womboApi.get({
+      endpoint: `/tokens?creator=${publicKey}`,
+      schema: z.object({
+        tokens: z.array(TokenSchema),
+      }),
+    });
 
-        const tokenAccounts = await getOwnedTokens();
-        const autofunTokenAccounts =
-          await removeNonAutofunTokens(tokenAccounts);
-        const autofunTokenAccountsWithBalance = autofunTokenAccounts.filter(
-          (account) => account.amount > 0,
-        );
-        const metadataAccounts = await getTokenMetadata(
-          autofunTokenAccountsWithBalance,
-        );
+    const tokenAccounts = await getTokenAccounts();
+    const createdTokenAccounts = tokenAccounts.filter((account) =>
+      tokens.find((token) => token.mint === account.mint.toBase58()),
+    );
+    const autofunTokenAccounts =
+      await removeNonAutofunTokens(createdTokenAccounts);
 
-        const profileTokens = await getProfileTokens(
-          autofunTokenAccountsWithBalance,
-          metadataAccounts,
-        );
+    const metadataAccounts = await getTokenMetadata(autofunTokenAccounts);
 
-        setData(profileTokens);
-      } catch (error) {
-        console.error("Error fetching tokens:", error);
-        setIsError(true);
-        setData([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    const profileTokens = await getProfileTokens(
+      autofunTokenAccounts,
+      metadataAccounts,
+    );
 
-    fetchTokens();
+    return profileTokens;
+  }, [getTokenAccounts, getTokenMetadata, publicKey, removeNonAutofunTokens]);
+
+  return fetchTokens;
+};
+
+export const useProfile = () => {
+  const [data, setData] = useState<{
+    tokensHeld: ProfileToken[];
+    tokensCreated: ProfileToken[];
+  }>({ tokensHeld: [], tokensCreated: [] });
+  const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
+
+  const { publicKey } = useWallet();
+  const { connection } = useConnection();
+  const getOwnedTokens = useOwnedTokens();
+  const getCreatedTokens = useCreatedTokens();
+
+  useEffect(() => {
+    setIsLoading(true);
+  }, []);
+
+  const fetchProfile = useCallback(async () => {
+    try {
+      const tokensHeld = await getOwnedTokens();
+      const tokensCreated = await getCreatedTokens();
+
+      setData({ tokensHeld, tokensCreated });
+    } catch {
+      setIsError(true);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getCreatedTokens, getOwnedTokens]);
+
+  useEffect(() => {
+    if (!publicKey) return;
 
     // update profile automatically when the user's wallet account changes
-    const id = connection.onAccountChange(publicKey, () => {
-      fetchTokens();
-    });
+    const id = connection.onAccountChange(publicKey, fetchProfile);
+
+    fetchProfile();
+
     return () => {
       connection.removeAccountChangeListener(id);
     };
-  }, [
-    connection,
-    getOwnedTokens,
-    getTokenMetadata,
-    publicKey,
-    removeNonAutofunTokens,
-  ]);
+  }, [connection, fetchProfile, getCreatedTokens, getOwnedTokens, publicKey]);
 
   return { data, isLoading, isError };
 };

@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { useTokensHeld } from "./utils";
+import { useProfile } from "./utils";
 
 export default function Profile() {
-  const { data: tokens, isLoading } = useTokensHeld();
+  const { data: tokens, isLoading } = useProfile();
 
   useEffect(() => {
     console.log(tokens);
