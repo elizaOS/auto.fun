@@ -232,10 +232,11 @@ export const getJupiterSwapIx = async (
   }
   const swapJson = await swapRes.json();
 
-  if (swapJson.simulationError) {
-    console.error("Simulation error:", swapJson.simulationError.error);
-    throw new Error(`Simulation failed: ${swapJson.simulationError.error}`);
-  }
+  // if (swapJson.simulationError) {
+  //   console.error("Simulation error:", swapJson.simulationError.error);
+  //   console.log(swapJson);
+  //   throw new Error(`Simulation failed: ${swapJson.simulationError.error}`);
+  // }
 
   if (!swapJson.swapTransaction) {
     throw new Error("Jupiter swap transaction is missing in the response.");
