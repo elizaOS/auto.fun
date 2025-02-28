@@ -265,8 +265,9 @@ export default function TradingInterface() {
             </div>
           )}
 
-          {token?.status === "active" ||
-            (token?.status === "locked" && <TradingChart param={token} />)}
+          {(token?.status === "active" || token?.status === "locked") && (
+            <TradingChart param={token} />
+          )}
 
           {/* Fal Generator Section */}
           {/* <FalGenerator /> */}
