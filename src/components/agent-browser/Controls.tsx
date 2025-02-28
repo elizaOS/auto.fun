@@ -1,14 +1,14 @@
 import { ViewToggle } from './ViewToggle';
 import { FilterButtons } from './FilterButtons';
-import { SortDropdown, sortOptions, SortValue } from './SortDropdown';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 
 interface ControlsProps {
   view: "grid" | "table";
-  sortBy: SortValue;
+  sortBy: "newest" | "oldest";
   filterBy: "all" | "marketcap";
   onViewChange: (view: "grid" | "table") => void;
   onSortChange: (sort: "all" | "marketcap") => void;
-  onSortByChange: (value: SortValue) => void;
+  onSortByChange: () => void;
 }
 
 export function Controls({ 
@@ -26,11 +26,19 @@ export function Controls({
           <div className="flex items-center gap-4">
             <ViewToggle view={view} onViewChange={onViewChange} />
             <FilterButtons sortBy={filterBy} onSortChange={onSortChange} />
-            <SortDropdown 
-              value={sortBy} 
-              onChange={onSortByChange} 
-              options={sortOptions} 
-            />
+            <button
+              onClick={onSortByChange}
+              className="flex items-center gap-2 px-4 py-2 bg-[#171717] border border-[#262626] rounded-lg text-white hover:border-[#2FD345]/50 transition-all duration-200"
+            >
+              <span className="text-sm whitespace-nowrap">
+                Creation Time
+              </span>
+              {sortBy === 'newest' ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </button>
           </div>
         </div>
       </div>

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { InfoIcon, SendHorizontal, Copy, Check } from "lucide-react";
+import { SendHorizontal, Copy, Check } from "lucide-react";
 import { useToken } from "@/utils/tokens";
 import { useParams } from "next/navigation";
 import { TradingChart } from "@/components/TVChart/TradingChart";
@@ -13,7 +13,6 @@ import { getSocket } from "@/utils/socket";
 import { queryClient } from "@/components/providers";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { CardContent, CardHeader, CardTitle, Card } from "@/components/ui/card";
-import Skeleton from "react-loading-skeleton";
 import { TokenBuySell } from "./swap/TokenBuySell";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -25,6 +24,9 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { VersionedTransaction } from "@solana/web3.js";
 import { womboApi } from "@/utils/fetch";
 import { toast } from "react-toastify";
+import { AgentCardInfo } from "@/components/agent-card/AgentCardInfo";
+import { TokenBuySellSkeleton } from "./swap/TokenBuySell";
+import { TokenMarketCapSkeleton } from "./TokenMarketCap";
 
 const HolderSchema = z.object({
   address: z.string(),
@@ -46,7 +48,7 @@ export default function TradingInterface() {
   const { data: token, isLoading } = useToken({ variables: tokenId });
   const [copied, setCopied] = useState(false);
 
-  const { items: holders } = usePaginatedLiveData({
+  const { items: _holders } = usePaginatedLiveData({
     itemsPerPage: 100,
     endpoint: `/tokens/${tokenId}/holders`,
     validationSchema: HolderSchema,
@@ -346,7 +348,7 @@ export default function TradingInterface() {
                   <Input
                     type="text"
                     placeholder="Type a message..."
-                    className="flex-1 bg-[#262626] border border-gray-700 rounded px-7 py-6 text-white !text-xl md:text-2xl rounded-lg"
+                    className="flex-1 bg-[#262626] border border-gray-700 px-7 py-6 text-white !text-xl md:text-2xl rounded-lg"
                   />
                   <button className="text-[#22C55E] hover:text-[#45a049]">
                     <SendHorizontal className="w-5 h-5" />
@@ -358,45 +360,19 @@ export default function TradingInterface() {
         </div>
 
         <div className="flex flex-col space-y-4 md:max-w-[420px] 2xl:max-w-[480px]">
+          <AgentCardInfo 
+            name={token.name}
+            ticker={token.ticker}
+            image={token.image}
+            description={token.description}
+            bondingCurveProgress={2}
+            bondingCurveAmount={0.382}
+            targetMarketCap={87140}
+            isCompleted={token.status === 'migrated'}
+            raydiumLink={token.url}
+          />
+
           <TokenBuySell tokenId={tokenId} />
-
-          <div className="flex flex-col gap-2 bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-6">
-            <div className="flex justify-between items-center">
-              <span className="text-[#22C55E] text-sm">
-                Bonding curve progress: 2%
-              </span>
-              <InfoIcon className="w-4 h-4 text-gray-400" />
-            </div>
-            <div className="w-full bg-[#333] rounded-full h-2 mt-2">
-              <div
-                className="bg-[#22C55E] h-2 rounded-full"
-                style={{ width: "2%" }}
-              />
-            </div>
-            <p className="text-xs text-gray-400 mt-2">
-              Graduate this coin to Raydium at $87,140 market cap. There is
-              0.382 SOL in the bonding curve.
-            </p>
-          </div>
-
-          {/* Holder Distribution */}
-          <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-6">
-            <h2 className="text-gray-200 mb-4">Holder Distribution</h2>
-
-            <div className="space-y-2">
-              {holders.map((holder, index) => (
-                <div key={index} className="flex justify-between items-center">
-                  <span className="text-[#22C55E] text-sm">
-                    {holder.address.slice(0, 4)}...
-                    {holder.address.slice(-4)}
-                  </span>
-                  <span className="text-[#a1a1a1] text-sm">
-                    {holder.percentage}%
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -404,126 +380,70 @@ export default function TradingInterface() {
 }
 
 const renderSkeletons = () => (
-  <div className="min-h-screen">
-    <div className="container mx-auto p-4 space-y-6">
-      {/* Header Profile Skeleton */}
-      <div className="flex flex-col md:flex-row items-center gap-6 p-4 bg-[#171717] border border-[#262626] rounded-xl">
-        <div className="h-[150px] w-[150px] rounded-xl overflow-hidden">
-          <Skeleton
-            height={150}
-            width={150}
-            baseColor="#262626"
-            highlightColor="#404040"
-          />
+  <div className="min-h-screen text-gray-200 flex flex-col mt-12">
+    <div className="flex flex-col lg:flex-row gap-4 justify-center">
+      <div className="flex flex-col space-y-4 flex-1 max-w-[960px]">
+        {/* Header Profile Skeleton */}
+        <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-8">
+          <div className="flex items-start gap-6 flex-col md:flex-row items-stretch">
+            <div className="h-[150px] w-[150px] bg-neutral-800 rounded-xl animate-pulse" />
+            <div className="flex-1 flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
+                <div className="w-24 h-4 bg-neutral-800 rounded animate-pulse" />
+              </div>
+              <div className="w-full h-20 bg-neutral-800 rounded animate-pulse" />
+              <div className="w-32 h-5 bg-neutral-800 rounded animate-pulse mt-2" />
+              <div className="flex gap-4 mt-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="w-24 h-8 bg-neutral-800 rounded animate-pulse" />
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="flex-1 space-y-4">
-          <Skeleton
-            width={200}
-            height={32}
-            baseColor="#262626"
-            highlightColor="#404040"
-          />
-          <Skeleton
-            width={100}
-            height={20}
-            baseColor="#262626"
-            highlightColor="#404040"
-          />
-          <Skeleton
-            width="80%"
-            height={60}
-            baseColor="#262626"
-            highlightColor="#404040"
-          />
+
+        {/* Chart Skeleton */}
+        <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 h-[400px] flex items-center justify-center">
+          <div className="w-full h-full bg-neutral-800 rounded animate-pulse" />
+        </div>
+
+        {/* Tabs Section Skeleton */}
+        <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-6">
+          <div className="flex gap-4 mb-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="w-24 h-8 bg-neutral-800 rounded animate-pulse" />
+            ))}
+          </div>
+          <div className="space-y-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="w-full h-16 bg-neutral-800 rounded animate-pulse" />
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Chart Skeleton */}
-          <div className="bg-[#171717] border border-[#262626] rounded-xl p-6">
-            <Skeleton
-              height={400}
-              baseColor="#262626"
-              highlightColor="#404040"
-            />
-          </div>
-
-          {/* Tabs Skeleton */}
-          <div className="bg-[#171717] border border-[#262626] rounded-xl p-6">
-            <div className="flex gap-4 mb-6">
-              {[1, 2, 3].map((i) => (
-                <Skeleton
-                  key={i}
-                  width={100}
-                  height={32}
-                  baseColor="#262626"
-                  highlightColor="#404040"
-                />
-              ))}
+      <div className="flex flex-col space-y-4 md:max-w-[420px] 2xl:max-w-[480px]">
+        {/* Agent Card Info Skeleton */}
+        <div className="bg-[#171717] border border-[#262626] rounded-xl p-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-neutral-800 rounded-xl animate-pulse" />
+              <div className="flex-1">
+                <div className="w-32 h-6 bg-neutral-800 rounded animate-pulse mb-2" />
+                <div className="w-24 h-4 bg-neutral-800 rounded animate-pulse" />
+              </div>
             </div>
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <Skeleton
-                  key={i}
-                  height={60}
-                  baseColor="#262626"
-                  highlightColor="#404040"
-                />
-              ))}
-            </div>
+            <div className="w-full h-24 bg-neutral-800 rounded animate-pulse" />
+            <div className="w-full h-8 bg-neutral-800 rounded animate-pulse" />
           </div>
         </div>
 
-        {/* Right Column */}
-        <div className="space-y-6">
-          {/* Buy/Sell Skeleton */}
-          <div className="bg-[#171717] border border-[#262626] rounded-xl p-6">
-            <Skeleton
-              height={200}
-              baseColor="#262626"
-              highlightColor="#404040"
-            />
-          </div>
+        {/* Market Cap Skeleton */}
+        <TokenMarketCapSkeleton />
 
-          {/* Progress Skeleton */}
-          <div className="bg-[#171717] border border-[#262626] rounded-xl p-6">
-            <Skeleton
-              height={100}
-              baseColor="#262626"
-              highlightColor="#404040"
-            />
-          </div>
-
-          {/* Holders Skeleton */}
-          <div className="bg-[#171717] border border-[#262626] rounded-xl p-6">
-            <Skeleton
-              width={150}
-              height={24}
-              baseColor="#262626"
-              highlightColor="#404040"
-              className="mb-4"
-            />
-            <div className="space-y-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex justify-between">
-                  <Skeleton
-                    width={100}
-                    height={20}
-                    baseColor="#262626"
-                    highlightColor="#404040"
-                  />
-                  <Skeleton
-                    width={50}
-                    height={20}
-                    baseColor="#262626"
-                    highlightColor="#404040"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        {/* Buy/Sell Skeleton */}
+        <TokenBuySellSkeleton />
       </div>
     </div>
   </div>
