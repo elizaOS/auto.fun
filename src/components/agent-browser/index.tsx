@@ -66,7 +66,7 @@ export function AgentBrowser() {
 
   const handleTokenClick = (mint: string) => router.push(`/coin/${mint}`);
 
-  const renderSkeletons = () => (
+  const renderGridSkeletons = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 w-full px-2 sm:px-4">
       {[...Array(8)].map((_, i) => (
         <div key={i} className="flex flex-col gap-[12px] w-full max-w-[411.5px] h-auto min-h-[288px] p-4 bg-[#171717] border border-[#262626] rounded-[8px]">
@@ -124,6 +124,50 @@ export function AgentBrowser() {
     </div>
   );
 
+  const renderListSkeletons = () => (
+    <div className="w-full px-2 sm:px-4">
+      <div className="w-full bg-[#171717] border border-[#262626] rounded-lg overflow-hidden">
+        {/* Table Header */}
+        <div className="grid grid-cols-[1fr,1fr,1fr,1fr] md:grid-cols-[2fr,1fr,1fr,1fr,1fr] gap-4 p-4 border-b border-[#262626]">
+          {['Name', 'Price', 'Market Cap', 'Volume', '24h'].map((_, i) => (
+            <div key={i} className="h-6 bg-[#262626] rounded animate-pulse" />
+          ))}
+        </div>
+        
+        {/* Table Body */}
+        {[...Array(8)].map((_, i) => (
+          <div 
+            key={i}
+            className="grid grid-cols-[1fr,1fr,1fr,1fr] md:grid-cols-[2fr,1fr,1fr,1fr,1fr] gap-4 p-4 border-b border-[#262626] last:border-b-0"
+          >
+            {/* Name Column */}
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-[#262626] rounded animate-pulse" />
+              <div className="flex-1">
+                <div className="h-5 bg-[#262626] rounded w-24 animate-pulse mb-1" />
+                <div className="h-4 bg-[#262626] rounded w-16 animate-pulse" />
+              </div>
+            </div>
+            
+            {/* Price Column */}
+            <div className="h-6 bg-[#262626] rounded w-20 animate-pulse" />
+            
+            {/* Market Cap Column */}
+            <div className="h-6 bg-[#262626] rounded w-24 animate-pulse" />
+            
+            {/* Volume Column */}
+            <div className="hidden md:block">
+              <div className="h-6 bg-[#262626] rounded w-20 animate-pulse" />
+            </div>
+            
+            {/* 24h Column */}
+            <div className="h-6 bg-[#262626] rounded w-16 animate-pulse" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="w-full">
       <div className="w-full max-w-[1680px] mx-auto mt-8 sm:mt-14 px-2 sm:px-4">
@@ -140,7 +184,7 @@ export function AgentBrowser() {
 
         <div className="pt-4 pb-6">
           {isLoading ? (
-            renderSkeletons()
+            view === "grid" ? renderGridSkeletons() : renderListSkeletons()
           ) : view === "grid" ? (
             <GridView tokens={tokens} onTokenClick={handleTokenClick} />
           ) : (

@@ -26,7 +26,6 @@ import { womboApi } from "@/utils/fetch";
 import { toast } from "react-toastify";
 import { AgentCardInfo } from "@/components/agent-card/AgentCardInfo";
 import { TokenBuySellSkeleton } from "./swap/TokenBuySell";
-import { TokenMarketCapSkeleton } from "./TokenMarketCap";
 
 const HolderSchema = z.object({
   address: z.string(),
@@ -368,8 +367,7 @@ export default function TradingInterface() {
             bondingCurveProgress={2}
             bondingCurveAmount={0.382}
             targetMarketCap={87140}
-            isCompleted={token.status === 'migrated'}
-            raydiumLink={token.url}
+            contractAddress={token.mint}
           />
 
           <TokenBuySell tokenId={tokenId} />
@@ -425,22 +423,74 @@ const renderSkeletons = () => (
 
       <div className="flex flex-col space-y-4 md:max-w-[420px] 2xl:max-w-[480px]">
         {/* Agent Card Info Skeleton */}
-        <div className="bg-[#171717] border border-[#262626] rounded-xl p-4">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-neutral-800 rounded-xl animate-pulse" />
-              <div className="flex-1">
-                <div className="w-32 h-6 bg-neutral-800 rounded animate-pulse mb-2" />
-                <div className="w-24 h-4 bg-neutral-800 rounded animate-pulse" />
+        <div className="flex flex-col justify-center items-start p-4 gap-6 w-[587px] bg-[#171717] border border-[#262626] rounded-[6px]">
+          {/* Product Info Skeleton */}
+          <div className="flex flex-row items-start gap-5 w-full">
+            {/* Product Image */}
+            <div className="flex flex-col justify-center items-start w-[144px] h-[144px]">
+              <div className="w-[144px] h-[144px] bg-[#262626] rounded-[4px] border border-[#262626] animate-pulse" />
+            </div>
+            
+            {/* Product Details */}
+            <div className="flex flex-col items-start gap-4 flex-1">
+              <div className="flex flex-col gap-2 w-full">
+                <div className="flex items-center gap-2">
+                  <div className="h-9 w-48 bg-[#262626] rounded animate-pulse" />
+                  <div className="h-6 w-20 bg-[#262626] rounded animate-pulse" />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-1">
+                    <div className="h-4 w-12 bg-[#262626] rounded animate-pulse" />
+                    <div className="h-4 w-24 bg-[#262626] rounded animate-pulse" />
+                  </div>
+                  <div className="font-satoshi text-base leading-6 tracking-[-0.4px] h-20 w-full bg-[#262626] rounded animate-pulse mt-2" />
+                </div>
               </div>
             </div>
-            <div className="w-full h-24 bg-neutral-800 rounded animate-pulse" />
-            <div className="w-full h-8 bg-neutral-800 rounded animate-pulse" />
+          </div>
+
+          {/* Contract Address Skeleton */}
+          <div className="flex w-full h-10 border border-[#262626] rounded-[6px]">
+            <div className="flex items-center px-3 h-10 bg-[#2E2E2E] border-r border-[#262626] rounded-l-[6px] w-[40px] animate-pulse" />
+            <div className="flex flex-1 items-center justify-between px-3 h-10 bg-[#212121] rounded-r-[6px] animate-pulse" />
+          </div>
+
+          {/* Social Links Skeleton */}
+          <div className="flex w-full h-10 gap-0.5">
+            {[...Array(4)].map((_, i) => (
+              <div 
+                key={i}
+                className={`flex-1 h-10 bg-[#212121] border border-[#262626] animate-pulse
+                  ${i === 0 ? 'rounded-l-[6px]' : ''} 
+                  ${i === 3 ? 'rounded-r-[6px]' : ''}`}
+              />
+            ))}
+          </div>
+
+          {/* Price Information Skeleton */}
+          <div className="flex w-full h-[72px] gap-0.5">
+            <div className="flex-1 flex flex-col justify-center items-center gap-2 p-4 bg-[#212121] border border-[#262626] rounded-l-[6px]">
+              <div className="h-6 w-24 bg-[#262626] rounded animate-pulse" />
+              <div className="h-6 w-32 bg-[#262626] rounded animate-pulse" />
+            </div>
+            <div className="flex-1 flex flex-col justify-center items-center gap-2 p-4 bg-[#212121] border border-[#262626] rounded-r-[6px]">
+              <div className="h-6 w-24 bg-[#262626] rounded animate-pulse" />
+              <div className="h-6 w-32 bg-[#262626] rounded animate-pulse" />
+            </div>
+          </div>
+
+          {/* Bonding Curve Progress Skeleton */}
+          <div className="flex flex-col gap-3.5 w-full">
+            <div className="flex items-center gap-2">
+              <div className="font-satoshi text-xl leading-7 h-7 w-48 bg-[#262626] rounded animate-pulse" />
+              <div className="font-geist text-xl leading-7 h-7 w-12 bg-[#262626] rounded animate-pulse" />
+            </div>
+            <div className="relative w-full h-2 bg-[#262626] rounded-[999px] animate-pulse">
+              <div className="absolute h-full w-[28%] bg-gradient-to-r from-[#1a1a1a] to-[#333333] rounded-[999px]" />
+            </div>
+            <div className="font-satoshi text-base leading-5 h-10 w-full bg-[#262626] rounded animate-pulse" />
           </div>
         </div>
-
-        {/* Market Cap Skeleton */}
-        <TokenMarketCapSkeleton />
 
         {/* Buy/Sell Skeleton */}
         <TokenBuySellSkeleton />

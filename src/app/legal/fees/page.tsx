@@ -1,90 +1,45 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import Skeleton from 'react-loading-skeleton';
 
 const FeesSkeleton = () => {
   return (
-    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-      <div className="w-[600px] bg-[#171717] border border-[#262626] rounded-md">
-        {/* Header Skeleton */}
-        <div className="flex flex-col p-5 gap-3.5 border-b border-[#262626]">
-          <Skeleton 
-            width={240} 
-            height={36} 
-            baseColor="#262626"
-            highlightColor="#404040"
-          />
-          <Skeleton 
-            width="100%" 
-            height={24} 
-            baseColor="#262626"
-            highlightColor="#404040"
-          />
-        </div>
-
-        {/* Table Header Skeleton */}
-        <div className="flex justify-between px-4 py-2 border-b border-[#262626]">
-          <Skeleton 
-            width={100} 
-            height={24} 
-            baseColor="#262626"
-            highlightColor="#404040"
-          />
-          <Skeleton 
-            width={60} 
-            height={24} 
-            baseColor="#262626"
-            highlightColor="#404040"
-          />
-        </div>
-
-        {/* Table Rows Skeleton */}
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="flex justify-between px-4 py-2 border-b border-[#262626]">
-            <Skeleton 
-              width={200} 
-              height={16} 
-              baseColor="#262626"
-              highlightColor="#404040"
-            />
-            <Skeleton 
-              width={120} 
-              height={16} 
-              baseColor="#262626"
-              highlightColor="#404040"
-            />
+    <>
+      <div className="w-full min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-[600px] bg-[#171717] border border-[#262626] rounded-md animate-pulse">
+          {/* Header Skeleton */}
+          <div className="flex flex-col p-5 gap-3.5 border-b border-[#262626]">
+            <div className="w-48 h-9 bg-neutral-800 rounded" />
+            <div className="w-full h-6 bg-neutral-800 rounded" />
           </div>
-        ))}
 
-        {/* Footer Skeleton */}
-        <div className="flex flex-col p-5 gap-3.5">
-          <Skeleton 
-            width={300} 
-            height={24} 
-            baseColor="#262626"
-            highlightColor="#404040"
-          />
-          {[1, 2].map((i) => (
-            <div key={i} className="flex items-center gap-2">
-              <Skeleton 
-                circle
-                width={6} 
-                height={6} 
-                baseColor="#262626"
-                highlightColor="#404040"
-              />
-              <Skeleton 
-                width={250} 
-                height={24} 
-                baseColor="#262626"
-                highlightColor="#404040"
-              />
+          {/* Table Header Skeleton */}
+          <div className="flex justify-between px-4 py-2 border-b border-[#262626]">
+            <div className="w-24 h-6 bg-neutral-800 rounded" />
+            <div className="w-16 h-6 bg-neutral-800 rounded" />
+          </div>
+
+          {/* Table Rows Skeleton */}
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex justify-between px-4 py-2 border-b border-[#262626]">
+              <div className="w-32 h-4 bg-neutral-800 rounded" />
+              <div className="w-24 h-4 bg-neutral-800 rounded" />
             </div>
           ))}
+
+          {/* Footer Skeleton */}
+          <div className="flex flex-col p-5 gap-3.5">
+            <div className="w-48 h-6 bg-neutral-800 rounded" />
+            {[1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 bg-neutral-800 rounded-full" />
+                <div className="w-40 h-6 bg-neutral-800 rounded" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
@@ -92,7 +47,6 @@ const FeesContent = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate loading for 1 second
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 1000);
@@ -105,70 +59,70 @@ const FeesContent = () => {
   }
 
   return (
-    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-      <div className="w-[600px] bg-[#171717] border border-[#262626] rounded-md">
+    <div className="w-full min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-[600px] bg-[#171717] border border-[#262626] rounded-md">
         {/* Header */}
         <div className="flex flex-col p-5 gap-3.5 border-b border-[#262626]">
-          <h1 className="text-[32px] font-satoshi font-medium leading-9 tracking-[-0.018em] text-[#2FD345]">
+          <h1 className="text-2xl md:text-[32px] font-satoshi font-medium leading-9 tracking-[-0.018em] text-[#2FD345]">
             Fees On Auto.fun
           </h1>
-          <p className="text-base font-satoshi text-[#8C8C8C] leading-6">
+          <p className="text-sm md:text-base font-satoshi text-[#8C8C8C] leading-6">
             The following fees apply when using the auto.fun platform
           </p>
         </div>
 
         {/* Table Header */}
         <div className="flex justify-between px-4 py-2 border-b border-[#262626]">
-          <span className="font-mono text-base text-[#8C8C8C] tracking-[2px] uppercase">
+          <span className="font-mono text-sm md:text-base text-[#8C8C8C] tracking-[2px] uppercase">
             Actions
           </span>
-          <span className="font-mono text-base text-[#8C8C8C] tracking-[2px] uppercase">
+          <span className="font-mono text-sm md:text-base text-[#8C8C8C] tracking-[2px] uppercase">
             Fee
           </span>
         </div>
 
         {/* Table Rows */}
         <div className="flex justify-between px-4 py-2 border-b border-[#262626]">
-          <span className="font-mono text-xs text-white tracking-[2px] uppercase">
+          <span className="font-mono text-[10px] md:text-xs text-white tracking-[2px] uppercase">
             Create a token
           </span>
-          <span className="font-mono text-xs text-[#2FD345] tracking-[2px] uppercase">
+          <span className="font-mono text-[10px] md:text-xs text-[#2FD345] tracking-[2px] uppercase">
             0 SOL
           </span>
         </div>
 
         <div className="flex justify-between px-4 py-2 border-b border-[#262626]">
-          <span className="font-mono text-xs text-white tracking-[2px] uppercase">
+          <span className="font-mono text-[10px] md:text-xs text-white tracking-[2px] uppercase">
             Trading while on bonding curve
           </span>
-          <span className="font-mono text-xs text-[#2FD345] tracking-[2px] uppercase">
+          <span className="font-mono text-[10px] md:text-xs text-[#2FD345] tracking-[2px] uppercase">
             1% of total sale price
           </span>
         </div>
 
         <div className="flex justify-between px-4 py-2 border-b border-[#262626]">
-          <span className="font-mono text-xs text-white tracking-[2px] uppercase">
+          <span className="font-mono text-[10px] md:text-xs text-white tracking-[2px] uppercase">
             raydium graduation
           </span>
-          <span className="font-mono text-xs text-[#2FD345] tracking-[2px] uppercase">
+          <span className="font-mono text-[10px] md:text-xs text-[#2FD345] tracking-[2px] uppercase">
             1% of migrated liquidity
           </span>
         </div>
 
         {/* Footer */}
         <div className="flex flex-col p-5 gap-3.5">
-          <p className="text-base font-satoshi text-[#2FD345]">
+          <p className="text-sm md:text-base font-satoshi text-[#2FD345]">
             Trading fees are distributed as follows
           </p>
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-[#2FD345]" />
-            <span className="font-mono text-base text-[#8C8C8C] tracking-[-0.6px]">
+            <span className="font-mono text-sm md:text-base text-[#8C8C8C] tracking-[-0.6px]">
               Buy fees (1%) are collected in SOL
             </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-[#2FD345]" />
-            <span className="font-mono text-base text-[#8C8C8C] tracking-[-0.6px]">
+            <span className="font-mono text-sm md:text-base text-[#8C8C8C] tracking-[-0.6px]">
               All fees are sent to token creators
             </span>
           </div>

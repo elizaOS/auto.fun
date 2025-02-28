@@ -1,3 +1,5 @@
+import { LayoutGrid, List } from "lucide-react";
+
 export function ViewToggle({ view, onViewChange }: { 
   view: "grid" | "table", 
   onViewChange: (view: "grid" | "table") => void 
@@ -9,10 +11,9 @@ export function ViewToggle({ view, onViewChange }: {
         className={`flex items-center justify-center w-14 h-[39px] rounded-l-lg transition-all duration-200
           ${view === "grid" ? "bg-[#2E2E2E]" : "bg-[#171717] hover:bg-[#262626]"}`}
       >
-        <img
-          src="/grid.svg"
-          className={`w-6 h-6 transition-opacity duration-200 ${view === "grid" ? "opacity-100" : "opacity-50"}`}
-          alt="Grid View"
+        <LayoutGrid 
+          className={`w-5 h-5 transition-colors duration-200 
+          ${view === "grid" ? "text-white" : "text-[#8C8C8C]"}`}
         />
       </button>
       <button
@@ -20,10 +21,9 @@ export function ViewToggle({ view, onViewChange }: {
         className={`flex items-center justify-center w-14 h-[39px] rounded-r-lg transition-all duration-200
           ${view === "table" ? "bg-[#2E2E2E]" : "bg-[#171717] hover:bg-[#262626]"}`}
       >
-        <img
-          src="/list.svg"
-          className={`w-6 h-6 transition-opacity duration-200 ${view === "table" ? "opacity-100" : "opacity-50"}`}
-          alt="List View"
+        <List 
+          className={`w-5 h-5 transition-colors duration-200 
+          ${view === "table" ? "text-white" : "text-[#8C8C8C]"}`}
         />
       </button>
     </div>
