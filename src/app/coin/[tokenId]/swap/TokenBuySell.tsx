@@ -190,7 +190,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
   const { publicKey } = useWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { connection } = useConnection();
-  const { handleSwap } = useSwap();
+  const { executeSwap } = useSwap();
   const [tokenBalance, setTokenBalance] = useState<number>(0);
   const [solBalance, setSolBalance] = useState<number>(0);
   const [isBuyMode, setIsBuyMode] = useState(true);
@@ -291,7 +291,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
     if (isNaN(amount) || amount === 0) return;
 
     try {
-      await handleSwap({
+      await executeSwap({
         amount,
         style: isBuyMode ? "buy" : "sell",
         tokenAddress: tokenId,

@@ -6,12 +6,7 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import { BN, Program } from "@coral-xyz/anchor";
-import {
-  SEED_CONFIG,
-  Serlaunchalot,
-  SEED_BONDING_CURVE,
-  useProgram,
-} from "@/utils/program";
+import { SEED_CONFIG, Serlaunchalot, useProgram } from "@/utils/program";
 import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { useTradeSettings } from "./useTradeSettings";
 import { Token } from "@/utils/tokens";
@@ -82,7 +77,7 @@ function calculateAmountOutSell(
   return Math.floor(amountOut);
 }
 
-export const getAutofunSwapTx = async (
+const swapIx = async (
   user: PublicKey,
   token: PublicKey,
   amount: number,
@@ -107,16 +102,14 @@ export const getAutofunSwapTx = async (
     program.programId,
   );
   const configAccount = await program.account.config.fetch(configPda);
-  const [bondingCurvePda] = PublicKey.findProgramAddressSync(
-    [Buffer.from(SEED_BONDING_CURVE), token.toBytes()],
-    program.programId,
-  );
-  const curve = await program.account.bondingCurve.fetch(bondingCurvePda);
 
   // Apply platform fee
   const feePercent =
     style === 1 ? configAccount.platformSellFee : configAccount.platformBuyFee;
   const adjustedAmount = Math.floor((amount * (100 - feePercent)) / 100);
+  const tokenSupply = new BN(Number(env.tokenSupply));
+  const reserveLamport = new BN(Number(env.virtualReserves));
+  const reserveToken = tokenSupply.div(new BN(Number(env.decimals)));
 
   // Calculate expected output
   let estimatedOutput;
@@ -124,19 +117,19 @@ export const getAutofunSwapTx = async (
     console.log("buying", amount, "SOL");
     // Buy
     estimatedOutput = calculateAmountOutBuy(
-      curve.reserveLamport.toNumber(),
+      reserveLamport.toNumber(),
       adjustedAmount,
       9, // SOL decimals
-      curve.reserveToken.toNumber(),
+      reserveToken.toNumber(),
     );
   } else {
     console.log("selling", amount, "tokens");
     // Sell
     estimatedOutput = calculateAmountOutSell(
-      curve.reserveLamport.toNumber(),
+      reserveLamport.toNumber(),
       adjustedAmount,
       9,
-      curve.reserveToken.toNumber(),
+      reserveToken.toNumber(),
     );
 
     console.log("Estimated output:", estimatedOutput);
@@ -156,10 +149,7 @@ export const getAutofunSwapTx = async (
       user,
       tokenMint: token,
     })
-    .transaction();
-
-  tx.feePayer = user;
-  tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+    .instruction();
 
   return tx;
 };
@@ -171,14 +161,14 @@ export const getAutofunSwapTx = async (
  * For sells, we swap the token for SOL.
  *
  */
-export const getJupiterSwapTx = async (
+export const getJupiterSwapIx = async (
   user: PublicKey,
   token: PublicKey,
   amount: number,
   style: number, // 0 for buy; 1 for sell
   slippageBps: number = 100,
   connection: Connection,
-): Promise<Transaction> => {
+) => {
   // Jupiter uses the following constant to represent SOL
   const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
 
@@ -251,19 +241,10 @@ export const getJupiterSwapTx = async (
     throw new Error("Jupiter swap transaction is missing in the response.");
   }
 
-  // 3. Deserialize the swap transaction from base64.
-  const transaction = new Transaction();
-  transaction.add(...additionalIxs);
   const txBuffer = Buffer.from(swapJson.swapTransaction, "base64");
   const swapTransaction = Transaction.from(txBuffer);
-  transaction.add(...swapTransaction.instructions);
 
-  // 4. Override fee payer & refresh blockhash to be safe.
-  transaction.feePayer = user;
-  const { blockhash } = await connection.getLatestBlockhash();
-  transaction.recentBlockhash = blockhash;
-
-  return transaction;
+  return [...additionalIxs, ...swapTransaction.instructions];
 };
 
 interface SwapParams {
@@ -280,7 +261,7 @@ export const useSwap = () => {
   // TODO: implement speed, front-running protection, and tip amount
   const { slippage: slippagePercentage } = useTradeSettings();
 
-  const handleSwap = async ({
+  const createSwapIx = async ({
     style,
     amount,
     tokenAddress,
@@ -300,13 +281,12 @@ export const useSwap = () => {
     // Convert string style ("buy" or "sell") to numeric style (0 for buy; 1 for sell)
     const numericStyle = style === "buy" ? 0 : 1;
 
-    let tx: Transaction | undefined;
     if (token.status === "locked") {
       const mainnetConnection = new Connection(
         "https://mainnet.helius-rpc.com/?api-key=156e83be-b359-4f60-8abb-c6a17fd3ff5f",
       );
       // Use Jupiter API when tokens are locked
-      tx = await getJupiterSwapTx(
+      const ix = await getJupiterSwapIx(
         wallet.publicKey,
         new PublicKey(tokenAddress),
         style === "buy" ? amountLamports : amountTokens,
@@ -315,36 +295,10 @@ export const useSwap = () => {
         mainnetConnection,
       );
 
-      console.log("Simulating transaction...");
-      const simulation = await mainnetConnection.simulateTransaction(tx);
-      console.log("Simulation logs:", simulation.value.logs);
-      if (simulation.value.err) {
-        console.error("Simulation failed:", simulation.value.err.toString());
-        throw new Error(
-          `Transaction simulation failed: ${simulation.value.err}`,
-        );
-      }
-
-      const { blockhash, lastValidBlockHeight } =
-        await mainnetConnection.getLatestBlockhash();
-      tx.recentBlockhash = blockhash;
-
-      // Convert to a versioned transaction to be sent
-      const versionedTx = new VersionedTransaction(tx.compileMessage());
-      const signature = await wallet.sendTransaction(
-        versionedTx,
-        mainnetConnection,
-      );
-      const confirmation = await mainnetConnection.confirmTransaction({
-        signature,
-        blockhash: versionedTx.message.recentBlockhash,
-        lastValidBlockHeight,
-      });
-
-      return { signature, confirmation };
+      return ix;
     } else {
       // Use the internal swap function otherwise
-      tx = await getAutofunSwapTx(
+      const ix = await swapIx(
         wallet.publicKey,
         new PublicKey(tokenAddress),
         style === "buy" ? amountLamports : amountTokens,
@@ -353,7 +307,27 @@ export const useSwap = () => {
         connection,
         program,
       );
+      return ix;
     }
+  };
+
+  const executeSwap = async ({
+    style,
+    amount,
+    tokenAddress,
+    token,
+  }: SwapParams) => {
+    if (!wallet.publicKey || !wallet.signTransaction) {
+      throw new Error("Wallet not connected or missing required methods");
+    }
+
+    const ix = await createSwapIx({ style, amount, tokenAddress, token });
+
+    const tx = new Transaction().add(...(Array.isArray(ix) ? ix : [ix]));
+    const { blockhash, lastValidBlockHeight } =
+      await connection.getLatestBlockhash();
+    tx.feePayer = wallet.publicKey;
+    tx.recentBlockhash = blockhash;
 
     console.log("Simulating transaction...");
     const simulation = await connection.simulateTransaction(tx);
@@ -363,11 +337,6 @@ export const useSwap = () => {
       throw new Error(`Transaction simulation failed: ${simulation.value.err}`);
     }
 
-    const { blockhash, lastValidBlockHeight } =
-      await connection.getLatestBlockhash();
-    tx.recentBlockhash = blockhash;
-
-    // Convert to a versioned transaction to be sent
     const versionedTx = new VersionedTransaction(tx.compileMessage());
     const signature = await wallet.sendTransaction(versionedTx, connection);
     const confirmation = await connection.confirmTransaction({
@@ -375,9 +344,8 @@ export const useSwap = () => {
       blockhash: versionedTx.message.recentBlockhash,
       lastValidBlockHeight,
     });
-
     return { signature, confirmation };
   };
 
-  return { handleSwap };
+  return { createSwapIx, executeSwap };
 };
