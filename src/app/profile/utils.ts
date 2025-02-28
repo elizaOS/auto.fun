@@ -153,12 +153,13 @@ const getProfileTokens = async (
         image,
         name,
         ticker: symbol,
-        tokensHeld: account.amount,
+        tokensHeld: account.amount / BigInt(10) ** BigInt(env.decimals),
         solValue:
           // TODO: might want to include platform fee in this number
           calculateAmountOutSell(Number(account.amount)) /
           Number(env.decimals) /
           LAMPORTS_PER_SOL,
+        mint: account.mint.toBase58(),
       } satisfies ProfileToken;
     }),
   );

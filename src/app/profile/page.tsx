@@ -1,7 +1,8 @@
 "use client";
 
-import { PropsWithChildren, useEffect, useState } from "react";
+import { PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { useProfile } from "./utils";
+import { TokenTable } from "./table";
 
 type TabButtonProps = PropsWithChildren<{
   isSelected: boolean;
@@ -61,6 +62,14 @@ type Tab = "held" | "created";
 export default function Profile() {
   const [selectedTab, setSelectedTab] = useState<Tab>("held");
   const { data: tokens, isLoading } = useProfile();
+  const tableTokens = useMemo(() => {
+    switch (selectedTab) {
+      case "created":
+        return tokens.tokensCreated;
+      case "held":
+        return tokens.tokensHeld;
+    }
+  }, [selectedTab, tokens.tokensCreated, tokens.tokensHeld]);
 
   useEffect(() => {
     console.log(tokens);
@@ -77,7 +86,7 @@ export default function Profile() {
         User Profile
       </div>
       <WalletAddress />
-      <div className="flex gap-2.5">
+      <div className="flex gap-2.5 mb-4">
         <TabButton
           isSelected={selectedTab === "held"}
           onClick={() => setSelectedTab("held")}
@@ -91,6 +100,8 @@ export default function Profile() {
           Agents Created
         </TabButton>
       </div>
+
+      <TokenTable tokens={tableTokens} />
     </div>
   );
 }
