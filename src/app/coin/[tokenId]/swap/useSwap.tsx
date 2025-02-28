@@ -21,14 +21,14 @@ function convertFromFloat(value: number, decimals: number): number {
   return value * Math.pow(10, decimals);
 }
 
-function calculateAmountOutBuy(
-  reserveLamport: number,
-  adjustedAmount: number,
-  solDecimals: number, // renamed for clarity
-  reserveToken: number,
-): number {
+const tokenSupply = new BN(Number(env.tokenSupply));
+const reserveLamport = new BN(Number(env.virtualReserves));
+const reserveToken = tokenSupply.div(new BN(Number(env.decimals)));
+
+export function calculateAmountOutBuy(adjustedAmount: number): number {
+  const solDecimals = 9;
   // Calculate the denominator sum which is (y + dy)
-  const denominatorSum = reserveLamport + adjustedAmount;
+  const denominatorSum = reserveLamport.toNumber() + adjustedAmount;
 
   // Convert to float for division
   const denominatorSumFloat = convertToFloat(denominatorSum, solDecimals);
@@ -38,7 +38,7 @@ function calculateAmountOutBuy(
   const divAmt = denominatorSumFloat / adjustedAmountFloat;
 
   // Convert reserveToken to float with 6 decimals (token decimals)
-  const reserveTokenFloat = convertToFloat(reserveToken, 6);
+  const reserveTokenFloat = convertToFloat(reserveToken.toNumber(), 6);
 
   // Calculate dx = xdy / (y + dy)
   const amountOutInFloat = reserveTokenFloat / divAmt;
@@ -49,14 +49,10 @@ function calculateAmountOutBuy(
   return Math.floor(amountOut); // Added Math.floor for safety
 }
 
-function calculateAmountOutSell(
-  reserveLamport: number,
-  adjustedAmount: number,
-  tokenOneDecimals: number,
-  reserveToken: number,
-): number {
+export function calculateAmountOutSell(adjustedAmount: number): number {
+  const tokenOneDecimals = 9;
   // Calculate the denominator sum which is (x + dx)
-  const denominatorSum = reserveToken + adjustedAmount;
+  const denominatorSum = reserveToken.toNumber() + adjustedAmount;
 
   // Convert to float for division
   const denominatorSumFloat = convertToFloat(denominatorSum, tokenOneDecimals);
@@ -66,7 +62,7 @@ function calculateAmountOutSell(
   const divAmt = denominatorSumFloat / adjustedAmountFloat;
 
   // Convert reserveLamport to float with 9 decimals
-  const reserveLamportFloat = convertToFloat(reserveLamport, 9);
+  const reserveLamportFloat = convertToFloat(reserveLamport.toNumber(), 9);
 
   // Calculate dy = y / ((x + dx) / dx)
   const amountOutInFloat = reserveLamportFloat / divAmt;
@@ -107,30 +103,17 @@ const swapIx = async (
   const feePercent =
     style === 1 ? configAccount.platformSellFee : configAccount.platformBuyFee;
   const adjustedAmount = Math.floor((amount * (100 - feePercent)) / 100);
-  const tokenSupply = new BN(Number(env.tokenSupply));
-  const reserveLamport = new BN(Number(env.virtualReserves));
-  const reserveToken = tokenSupply.div(new BN(Number(env.decimals)));
 
   // Calculate expected output
   let estimatedOutput;
   if (style === 0) {
     console.log("buying", amount, "SOL");
     // Buy
-    estimatedOutput = calculateAmountOutBuy(
-      reserveLamport.toNumber(),
-      adjustedAmount,
-      9, // SOL decimals
-      reserveToken.toNumber(),
-    );
+    estimatedOutput = calculateAmountOutBuy(adjustedAmount);
   } else {
     console.log("selling", amount, "tokens");
     // Sell
-    estimatedOutput = calculateAmountOutSell(
-      reserveLamport.toNumber(),
-      adjustedAmount,
-      9,
-      reserveToken.toNumber(),
-    );
+    estimatedOutput = calculateAmountOutSell(adjustedAmount);
 
     console.log("Estimated output:", estimatedOutput);
   }
