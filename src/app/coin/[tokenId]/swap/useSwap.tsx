@@ -251,7 +251,7 @@ interface SwapParams {
   style: "buy" | "sell";
   amount: number;
   tokenAddress: string;
-  token: Token;
+  token?: Token;
 }
 
 export const useSwap = () => {
@@ -281,7 +281,7 @@ export const useSwap = () => {
     // Convert string style ("buy" or "sell") to numeric style (0 for buy; 1 for sell)
     const numericStyle = style === "buy" ? 0 : 1;
 
-    if (token.status === "locked") {
+    if (token?.status === "locked") {
       const mainnetConnection = new Connection(
         "https://mainnet.helius-rpc.com/?api-key=156e83be-b359-4f60-8abb-c6a17fd3ff5f",
       );
