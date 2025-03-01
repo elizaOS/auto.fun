@@ -658,8 +658,6 @@ const initializeConfig = async () => {
 };
 
 export async function fetchPriceChartData(pairIndex: number, start: number, end: number, range: number, token: string) {
-  logger.log(`Fetching chart data for pairIndex: ${pairIndex}, start: ${start}, end: ${end}, range: ${range}, token: ${token}`);
-
   const tokenInfo = await Token.findOne({ mint: token });
   if (!tokenInfo) {
     logger.error(`Token ${token} not found`);
