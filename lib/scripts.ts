@@ -182,18 +182,19 @@ export const swapTx = async (
   let estimatedOutput;
   if (style === 0) { // Buy
     estimatedOutput = calculateAmountOutBuy(
-      curve.reserveLamport.toNumber(),
-      adjustedAmount,
-      9, // SOL decimals
       curve.reserveToken.toNumber(),
+      adjustedAmount, 
+      9, // SOL decimals
+      curve.reserveLamport.toNumber(),
       feePercent
     );
   } else { // Sell
     estimatedOutput = calculateAmountOutSell(
       curve.reserveLamport.toNumber(),
       adjustedAmount,
-      9,
-      curve.reserveToken.toNumber()
+      6,               
+      feePercent,
+      curve.reserveToken.toNumber() 
     );
   }
 
