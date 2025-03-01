@@ -28,14 +28,18 @@ export const getAssociatedTokenAccount = (
 }
 
 export function convertToBasisPoints(feePercent: number): number {
+  if (feePercent >= 1) {
+    return feePercent;
+  } 
   return Math.floor(feePercent * 10000);
 }
 
 export function calculateAmountOutSell(
-reserveLamport: number,
-amount: number,
-tokenDecimals: number,
-platformSellFee: number
+  reserveLamport: number,
+  amount: number,
+  tokenDecimals: number,
+  platformSellFee: number,
+  reserveToken: number
 ): number {
   const feeBasisPoints = convertToBasisPoints(platformSellFee);
   const amountBN = new BN(amount);
@@ -44,9 +48,10 @@ platformSellFee: number
   const adjustedAmount = amountBN
       .mul(new BN(10000 - feeBasisPoints))
       .div(new BN(10000));
-
+  
+  // For selling tokens: amount_out = reserve_lamport * adjusted_amount / (reserve_token + adjusted_amount)
   const numerator = new BN(reserveLamport).mul(adjustedAmount);
-  const denominator = new BN(reserveLamport).add(adjustedAmount);
+  const denominator = new BN(reserveToken).add(adjustedAmount);
   
   return numerator.div(denominator).toNumber();
 }
