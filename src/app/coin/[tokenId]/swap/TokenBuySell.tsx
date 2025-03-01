@@ -295,6 +295,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
         amount,
         style: isBuyMode ? "buy" : "sell",
         tokenAddress: tokenId,
+        token,
       });
 
       toast(
@@ -318,7 +319,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
 
       toast(
         <Toast
-          message={`${isBuyMode ? "Purchase" : "Sale"} of $${token.ticker}`}
+          message={`${isBuyMode ? "Purchase" : "Sale"} of $${token.ticker}: ${err}`}
           status="failed"
         />,
         {

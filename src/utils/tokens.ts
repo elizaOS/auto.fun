@@ -180,7 +180,7 @@ const useCreateTokenMutation = createMutation({
         amount: token_metadata.initial_sol,
         tokenAddress: mintKeypair.publicKey.toBase58(),
       });
-      tx.instructions.push(swapIx);
+      tx.instructions.push(...(Array.isArray(swapIx) ? swapIx : [swapIx]));
     }
 
     tx.feePayer = userPublicKey;
