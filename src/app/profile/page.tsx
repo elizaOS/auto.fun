@@ -1,10 +1,11 @@
 "use client";
 
-import { PropsWithChildren, useEffect, useMemo, useState } from "react";
+import { PropsWithChildren, useMemo, useState } from "react";
 import { useProfile } from "./utils";
 import { TokenTable } from "./table";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { env } from "@/utils/env";
+import Skeleton from "react-loading-skeleton";
 
 type TabButtonProps = PropsWithChildren<{
   isSelected: boolean;
@@ -80,13 +81,32 @@ export default function Profile() {
     }
   }, [selectedTab, tokens.tokensCreated, tokens.tokensHeld]);
 
-  useEffect(() => {
-    console.log(tokens);
-  }, [tokens]);
-
-  if (isLoading) {
-    // TODO: loading skeleton
-    return null;
+  if (isLoading || true) {
+    return (
+      <div className="flex flex-col flex-1 mt-32 max-w-4xl w-full m-auto">
+        <Skeleton width={200} height={40} className="mb-6" />
+        <div className="p-4 bg-neutral-900 rounded-md border border-neutral-800 mb-[28px]">
+          <div className="mb-2">
+            <Skeleton width={80} height={24} />
+          </div>
+          <div className="px-3 py-2 bg-[#212121] rounded-md border border-neutral-800">
+            <Skeleton width="100%" height={24} />
+          </div>
+        </div>
+        <div className="flex gap-2.5 mb-4">
+          <Skeleton width={120} height={40} />
+          <Skeleton width={120} height={40} />
+        </div>
+        <div className="border border-neutral-800 rounded-lg p-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="flex items-center gap-4 mb-4 last:mb-0">
+              <Skeleton width={40} height={40} circle />
+              <Skeleton width="100%" height={24} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
