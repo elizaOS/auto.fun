@@ -3,6 +3,8 @@
 import { PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { useProfile } from "./utils";
 import { TokenTable } from "./table";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { env } from "@/utils/env";
 
 type TabButtonProps = PropsWithChildren<{
   isSelected: boolean;
@@ -22,26 +24,33 @@ const TabButton = ({ isSelected, onClick, children }: TabButtonProps) => (
   </button>
 );
 
-const ExternalLinkIcon = () => {
+const ExternalLinkIcon = ({ address }: { address: string }) => {
   return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        d="M11 1.5H14.5V5M13.75 2.25L10 6M8.5 2.5H4C3.60218 2.5 3.22064 2.65804 2.93934 2.93934C2.65804 3.22064 2.5 3.60218 2.5 4V12C2.5 12.3978 2.65804 12.7794 2.93934 13.0607C3.22064 13.342 3.60218 13.5 4 13.5H12C12.3978 13.5 12.7794 13.342 13.0607 13.0607C13.342 12.7794 13.5 12.3978 13.5 12V7.5"
-        stroke="#8C8C8C"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <a href={env.getWalletUrl(address)} target="_blank">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 16 16"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M11 1.5H14.5V5M13.75 2.25L10 6M8.5 2.5H4C3.60218 2.5 3.22064 2.65804 2.93934 2.93934C2.65804 3.22064 2.5 3.60218 2.5 4V12C2.5 12.3978 2.65804 12.7794 2.93934 13.0607C3.22064 13.342 3.60218 13.5 4 13.5H12C12.3978 13.5 12.7794 13.342 13.0607 13.0607C13.342 12.7794 13.5 12.3978 13.5 12V7.5"
+          stroke="#8C8C8C"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </a>
   );
 };
 
 const WalletAddress = () => {
+  const { publicKey } = useWallet();
+  const walletAddress = publicKey?.toBase58();
+
+  if (!walletAddress) return null;
+
   return (
     <div className="p-4 bg-neutral-900 rounded-md border border-neutral-800 mb-[28px]">
       <div className="text-white text-base font-normal uppercase leading-normal tracking-widest mb-2">
@@ -49,9 +58,9 @@ const WalletAddress = () => {
       </div>
       <div className="px-3 py-2 bg-[#212121] rounded-md border border-neutral-800 flex justify-between items-center gap-4">
         <div className="text-[#8c8c8c] text-base font-normal leading-normal">
-          0xeb9131c62ef95c6b0cc976ad236818daass
+          {walletAddress}
         </div>
-        <ExternalLinkIcon />
+        <ExternalLinkIcon address={walletAddress} />
       </div>
     </div>
   );
