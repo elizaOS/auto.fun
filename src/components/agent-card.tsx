@@ -1,4 +1,4 @@
-import { Copy } from "lucide-react";
+import { Copy, Grid } from "lucide-react";
 import { DM_Mono } from 'next/font/google';
 
 const dmMono = DM_Mono({
@@ -12,16 +12,20 @@ interface AgentCardProps {
   ticker: string;
   mint: string;
   marketCapUSD: number;
+  bondingCurveProgress?: number;
   onClick?: () => void;
 }
 
-export function AgentCard({ name, image, ticker, mint, marketCapUSD, onClick }: AgentCardProps) {
+export function AgentCard({ name, image, ticker, mint, marketCapUSD, bondingCurveProgress = 0, onClick }: AgentCardProps) {
   const formattedMarketCap = Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     notation: "compact",
     maximumFractionDigits: 2
   }).format(marketCapUSD);
+
+  // Cap the progress at 100%
+  const normalizedProgress = Math.min(100, bondingCurveProgress || 0);
 
   return (
     <div 
@@ -31,13 +35,19 @@ export function AgentCard({ name, image, ticker, mint, marketCapUSD, onClick }: 
       {/* Top container with image and details */}
       <div className="flex flex-col lg:flex-row gap-3 w-full">
         {/* Image */}
-        <div 
-          className="w-full lg:w-[120px] h-[127.5px] rounded-[4px] bg-cover bg-center shrink-0" 
-          style={{
-            backgroundImage: `url(${image}), url(/checker.png)`,
-            backgroundBlendMode: 'normal, multiply'
-          }}
-        />
+        <div className="relative w-full lg:w-[120px] h-[127.5px] rounded-[4px] bg-[#262626] overflow-hidden">
+          {image ? (
+            <img 
+              src={image} 
+              alt={name} 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Grid className="w-12 h-12 text-[#8C8C8C]" />
+            </div>
+          )}
+        </div>
         
         {/* Right side content */}
         <div className="flex flex-col gap-3 flex-1 min-w-0">
@@ -75,13 +85,13 @@ export function AgentCard({ name, image, ticker, mint, marketCapUSD, onClick }: 
               <span className={`${dmMono.className} text-sm text-[#A6A6A6] tracking-[-0.02em] truncate`}>
                 Bonding curve progress:
               </span>
-              <span className={`${dmMono.className} text-sm text-[#2FD345] whitespace-nowrap`}>28%</span>
+              <span className={`${dmMono.className} text-sm text-[#2FD345] whitespace-nowrap`}>{normalizedProgress}%</span>
             </div>
             <div className="relative w-full h-2">
               <div className="absolute inset-0 bg-[#262626] rounded-full" />
               <div 
                 className="absolute inset-y-0 left-0 bg-gradient-to-r from-[#0F4916] to-[#2FD345] rounded-full"
-                style={{ width: '28%' }}
+                style={{ width: `${normalizedProgress}%` }}
               />
             </div>
           </div>
@@ -90,10 +100,14 @@ export function AgentCard({ name, image, ticker, mint, marketCapUSD, onClick }: 
     
       {/* Description */}
       <div className="flex flex-col gap-3 w-full">
-        <p className={`${dmMono.className} text-xs text-[#8C8C8C] min-h-[40px] line-clamp-2`}>
-          Rorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et
-          <span className="text-white cursor-pointer hover:text-[#2FD345] transition-colors"> See More...</span>
-        </p>
+        <div className="flex flex-col w-full">
+          <p className={`${dmMono.className} text-xs text-[#8C8C8C] min-h-[40px]`}>
+            <span className="line-clamp-2">Rorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et</span>
+            <button className="text-white hover:text-[#2FD345] transition-colors inline-block mt-1">
+              See More...
+            </button>
+          </p>
+        </div>
         <div className="w-full h-px bg-[#262626]" />
       </div>
     

@@ -16,7 +16,6 @@ export function AgentBrowser() {
   const {
     items: tokensOriginal,
     currentPage,
-    hasPreviousPage,
     hasNextPage,
     nextPage,
     previousPage,
@@ -31,7 +30,12 @@ export function AgentBrowser() {
 
     // Apply filters first
     if (filterBy === "marketcap") {
-      filteredTokens = filteredTokens.filter(token => Number(token.marketCapUSD) > 0);
+      filteredTokens = filteredTokens.filter(token => {
+        const marketCap = typeof token.marketCapUSD === 'string' 
+          ? parseFloat(token.marketCapUSD) 
+          : token.marketCapUSD;
+        return !isNaN(marketCap) && marketCap > 0;
+      });
     }
 
     // Then apply sorting
@@ -195,7 +199,6 @@ export function AgentBrowser() {
         <div className="flex justify-center py-4 sm:py-6">
           <Paginator
             currentPage={currentPage}
-            hasPreviousPage={hasPreviousPage}
             hasNextPage={hasNextPage}
             previousPage={previousPage}
             nextPage={nextPage}

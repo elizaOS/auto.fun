@@ -184,24 +184,49 @@ export function AgentCardInfo({
 
       {/* Bonding Curve Progress */}
       <div className="flex flex-col gap-3.5 w-full">
-        <div className="flex items-center gap-2">
-          <span className="font-satoshi text-xl leading-7 tracking-[-0.014em] text-white font-medium">
-            Bonding curve progress:
-          </span>
-          <span className="font-geist text-xl leading-7 text-[#2FD345]">
-            {bondingCurveProgress}%
-          </span>
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-2">
+            <span className="font-satoshi text-xl leading-7 tracking-[-0.014em] text-white font-medium">
+              Bonding curve progress:
+            </span>
+            <span className="font-geist text-xl leading-7 text-[#2FD345]">
+              {bondingCurveProgress >= 100 ? "Complete" : `${Math.min(100, bondingCurveProgress)}%`}
+            </span>
+          </div>
+          <div className="relative group">
+            <Icon 
+              icon="mingcute:information-line" 
+              className="w-5 h-5 text-[#8C8C8C] hover:text-white transition-colors" 
+            />
+            <div className="absolute bottom-full right-0 mb-2 w-[300px] px-4 py-3 bg-[#262626] rounded-lg text-sm text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-[#404040]">
+              When the market cap reaches $100,000 liquidity will transition to Raydium. Trading fees are distributed to token owners rather than being burned.
+            </div>
+          </div>
         </div>
         <div className="relative w-full h-2">
           <div className="absolute w-full h-full bg-[#262626] rounded-[999px]" />
           <div
             className="absolute h-full bg-gradient-to-r from-[#0F4916] to-[#2FD345] rounded-[999px]"
-            style={{ width: `${bondingCurveProgress}%` }}
+            style={{ width: `${Math.min(100, bondingCurveProgress)}%` }}
           />
         </div>
         <p className="font-satoshi text-base leading-5 text-[#8C8C8C]">
-          Graduate this coin to raydium at ${targetMarketCap.toLocaleString()} market cap.
-          there is {formatNumber(bondingCurveAmount, 3)} SOL in the bonding curve.
+          {bondingCurveProgress >= 100 ? (
+            <>
+              Raydium pool has been seeded. View on Raydium{" "}
+              <a
+                href="#"
+                className="text-[#2FD345] hover:underline"
+              >
+                here
+              </a>
+            </>
+          ) : (
+            <>
+              Graduate this coin to raydium at ${targetMarketCap.toLocaleString()} market cap.
+              there is {formatNumber(bondingCurveAmount, 3)} SOL in the bonding curve.
+            </>
+          )}
         </p>
       </div>
     </div>

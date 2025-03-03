@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SendHorizontal, Copy, Check } from "lucide-react";
+import { SendHorizontal } from "lucide-react";
 import { useToken } from "@/utils/tokens";
 import { useParams } from "next/navigation";
 import { TradingChart } from "@/components/TVChart/TradingChart";
@@ -18,7 +18,6 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Comments } from "./Comments";
 import { TradeTable } from "@/components/TradeTable";
-import { Toast } from "@/components/common/Toast";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { VersionedTransaction } from "@solana/web3.js";
@@ -45,7 +44,6 @@ export default function TradingInterface() {
 
   const tokenId = params.tokenId as string;
   const { data: token, isLoading } = useToken({ variables: tokenId });
-  const [copied, setCopied] = useState(false);
 
   const { items: _holders } = usePaginatedLiveData({
     itemsPerPage: 100,
@@ -127,120 +125,41 @@ export default function TradingInterface() {
     },
   ];
 
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    toast(<Toast message="Address copied to clipboard" status="completed" />, {
-      position: "bottom-right",
-      autoClose: 2000,
-      hideProgressBar: true,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: false,
-      progress: undefined,
-    });
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   return (
     <div className="min-h-screen text-gray-200 flex flex-col mt-12">
       <div className="flex flex-col lg:flex-row gap-4 justify-center">
         <div className="flex flex-col space-y-4 flex-1 max-w-[960px]">
-          {/* Header Profile */}
-          <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-8">
-            <div className="flex items-start gap-6 flex-col md:flex-row items-stretch">
-              <img
-                src={token.image}
-                alt="AI Agent Profile"
-                className="rounded-xl h-[150px] self-start"
-              />
-              <div className="flex-1 flex flex-col self-stretch gap-2">
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center flex-1 justify-between">
-                    <h1 className="text-[#22C55E] font-bold text-xl md:text-2xl">
-                      {token.name} (${token.ticker})
-                    </h1>
-                  </div>
-                  <div className="flex items-center gap-1 text-gray-300 text-xs">
-                    {`${token.mint.slice(0, 3)}...${token.mint.slice(-3)}`}
-                    {copied ? (
-                      <Check className="text-green-500 h-3" />
-                    ) : (
-                      <Copy
-                        className="cursor-pointer text-gray-300 h-3 hover:text-gray-400"
-                        onClick={() => handleCopy(token.mint)}
-                      />
-                    )}
-                  </div>
-                </div>
-                <p className="text-[#a1a1a1] text-sm md:text-lg break-word">
-                  {token.description}
-                </p>
-                <div className="flex gap-4 mt-6">
-                  <div className="text-xs text-[#03FF24]">
-                    <span className="text-gray-300">MC</span>{" "}
-                    <b>
-                      {Intl.NumberFormat("en-US", {
-                        style: "currency",
-                        currency: "USD",
-                        notation: "compact",
-                      }).format(Number(token.marketCapUSD))}
-                    </b>
-                  </div>
-                </div>
-                <div className="flex gap-4 mt-6 flex-col md:flex-row">
-                  {token.discord && (
-                    <Link
-                      // href={token.discord}
-                      href={
-                        token.discord.startsWith("http")
-                          ? token.discord
-                          : `https://discord.gg/${token.discord}`
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
-                    >
-                      {/* Discord SVG */}
-                      Discord
-                    </Link>
-                  )}
-                  {token.twitter && (
-                    <Link
-                      // href={token.twitter}
-                      href={
-                        token.twitter.startsWith("http")
-                          ? token.twitter
-                          : `https://twitter.com/${token.twitter}`
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
-                    >
-                      {/* Twitter SVG */}
-                      Twitter
-                    </Link>
-                  )}
-                  {token.telegram && (
-                    <Link
-                      // href={token.telegram}
-                      href={
-                        token.telegram.startsWith("http")
-                          ? token.telegram
-                          : `https://t.me/${token.telegram}`
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
-                    >
-                      {/* Telegram SVG */}
-                      Telegram
-                    </Link>
-                  )}
-                </div>
+          {/* Stats Section */}
+          <div className="box-border flex flex-row items-center py-3 px-0 w-full h-[80px] bg-[#171717] border border-[#262626] rounded-[6px]">
+            <div className="flex flex-col justify-center items-center p-0 gap-2 w-[266.88px] h-[56px] rounded-l-[6px] flex-1">
+              <span className="font-['DM_Mono'] font-normal text-base leading-6 text-[#8C8C8C]">Market Cap</span>
+              <span className="font-['DM_Mono'] font-normal text-xl leading-6 text-[#2FD345]">{Intl.NumberFormat("en-US", {style: "currency", currency: "USD", notation: "compact"}).format(Number(token.marketCapUSD))}</span>
+            </div>
+            <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
+            <div className="flex flex-col justify-center items-center p-0 gap-2 w-[266.88px] h-[56px] flex-1">
+              <span className="font-['DM_Mono'] font-normal text-base leading-6 text-[#8C8C8C]">24hr Volume</span>
+              <span className="font-['DM_Mono'] font-normal text-xl leading-6 text-white">{Intl.NumberFormat("en-US", {style: "currency", currency: "USD", notation: "compact"}).format(Number(token.liquidity || 0))}</span>
+            </div>
+            <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
+            <div className="flex flex-col justify-center items-center p-0 gap-2 w-[266.88px] h-[56px] flex-1">
+              <span className="font-['DM_Mono'] font-normal text-base leading-6 text-[#8C8C8C]">Creator</span>
+              <div className="flex flex-row items-center p-0 gap-2 w-[132px] h-6">
+                <span className="font-['DM_Mono'] font-normal text-xl leading-6 text-white">{`${token.creator.slice(0, 4)}...${token.creator.slice(-4)}`}</span>
               </div>
             </div>
+            <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
+            <div className="flex flex-col justify-center items-center p-0 gap-2 w-[266.88px] h-[56px] rounded-r-[6px] flex-1">
+              <span className="font-['DM_Mono'] font-normal text-base leading-6 text-[#8C8C8C]">Creation Time</span>
+              <span className="font-['DM_Mono'] font-normal text-xl leading-6 text-white">{new Date(token.createdAt).toLocaleString(undefined, {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</span>
+            </div>
           </div>
+
+          {/* Trading Chart */}
+          {token && token.status === "active" && (
+            <div className="w-full h-[846px] bg-[#171717] border border-[#262626] rounded-xl overflow-hidden">
+              <TradingChart param={token} />
+            </div>
+          )}
 
           {publicKey?.toString() === token.creator && (
             <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-8">
@@ -265,8 +184,6 @@ export default function TradingInterface() {
               </div>
             </div>
           )}
-
-          {token && token.status === "active" && <TradingChart param={token} />}
 
           {/* Fal Generator Section */}
           {/* <FalGenerator /> */}
@@ -364,9 +281,9 @@ export default function TradingInterface() {
             ticker={token.ticker}
             image={token.image}
             description={token.description}
-            bondingCurveProgress={2}
-            bondingCurveAmount={0.382}
-            targetMarketCap={87140}
+            bondingCurveProgress={token.curveProgress}
+            bondingCurveAmount={token.reserveLamport / 1e9}
+            targetMarketCap={token.curveLimit}
             contractAddress={token.mint}
           />
 
@@ -381,22 +298,39 @@ const renderSkeletons = () => (
   <div className="min-h-screen text-gray-200 flex flex-col mt-12">
     <div className="flex flex-col lg:flex-row gap-4 justify-center">
       <div className="flex flex-col space-y-4 flex-1 max-w-[960px]">
-        {/* Header Profile Skeleton */}
-        <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-8">
-          <div className="flex items-start gap-6 flex-col md:flex-row items-stretch">
-            <div className="h-[150px] w-[150px] bg-neutral-800 rounded-xl animate-pulse" />
-            <div className="flex-1 flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
-                <div className="w-24 h-4 bg-neutral-800 rounded animate-pulse" />
-              </div>
-              <div className="w-full h-20 bg-neutral-800 rounded animate-pulse" />
-              <div className="w-32 h-5 bg-neutral-800 rounded animate-pulse mt-2" />
-              <div className="flex gap-4 mt-2">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="w-24 h-8 bg-neutral-800 rounded animate-pulse" />
-                ))}
-              </div>
+        {/* Stats Section Skeleton */}
+        <div className="box-border flex flex-row items-center py-3 px-0 w-full h-[80px] bg-[#171717] border border-[#262626] rounded-[6px]">
+          <div className="flex flex-col justify-center items-center p-0 gap-2 w-[266.88px] h-[56px] rounded-l-[6px] flex-1">
+            <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
+          </div>
+          <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
+          <div className="flex flex-col justify-center items-center p-0 gap-2 w-[266.88px] h-[56px] flex-1">
+            <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
+          </div>
+          <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
+          <div className="flex flex-col justify-center items-center p-0 gap-2 w-[266.88px] h-[56px] flex-1">
+            <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
+          </div>
+          <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
+          <div className="flex flex-col justify-center items-center p-0 gap-2 w-[266.88px] h-[56px] rounded-r-[6px] flex-1">
+            <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
+          </div>
+        </div>
+
+        {/* Chart Skeleton */}
+        <div className="bg-[#171717] border border-[#262626] rounded-[6px] p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="flex flex-col">
+              <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
+            </div>
+            <div className="flex flex-col">
+              <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
+            </div>
+            <div className="flex flex-col">
+              <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
+            </div>
+            <div className="flex flex-col">
+              <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
             </div>
           </div>
         </div>

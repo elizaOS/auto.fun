@@ -12,21 +12,22 @@ interface BondingCurveProgressProps {
   amount: number;
   _targetMarketCap: number;
   isCompleted?: boolean;
-  raydiumLink?: string;
 }
 
 export function BondingCurveProgress({
   progress,
   amount,
   _targetMarketCap,
-  isCompleted,
-  raydiumLink
+  isCompleted = progress >= 100,
 }: BondingCurveProgressProps) {
+  // Cap the progress at 100%
+  const normalizedProgress = Math.min(100, progress);
+
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 w-full">
       <div className="flex justify-between items-center">
         <span className="text-[#22C55E] text-sm">
-          {isCompleted ? "Completed" : `Bonding curve progress: ${progress}%`}
+          {isCompleted ? "Complete" : `Bonding curve progress: ${normalizedProgress}%`}
         </span>
         <TooltipProvider>
           <Tooltip>
@@ -55,24 +56,20 @@ export function BondingCurveProgress({
       <div className="w-full bg-[#333] rounded-full h-2">
         <div
           className="bg-[#22C55E] h-2 rounded-full transition-all duration-300"
-          style={{ width: `${isCompleted ? 100 : progress}%` }}
+          style={{ width: `${normalizedProgress}%` }}
         />
       </div>
 
       <div className="text-xs text-gray-400">
         {isCompleted ? (
           <p>
-            Raydium pool has been seeded.{" "}
-            {raydiumLink && (
-              <Link 
-                href={raydiumLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#22C55E] hover:underline"
-              >
-                View on Raydium here
-              </Link>
-            )}
+            Raydium pool has been seeded. View on Raydium{" "}
+            <Link 
+              href="#"
+              className="text-[#22C55E] hover:underline"
+            >
+              here
+            </Link>
           </p>
         ) : (
           <p>

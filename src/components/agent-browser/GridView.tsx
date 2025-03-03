@@ -8,23 +8,19 @@ interface GridViewProps {
 
 export function GridView({ tokens, onTokenClick }: GridViewProps) {
   return (
-    <div className="w-full px-2 sm:px-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
-        {tokens.map(({ mint, name, image, marketCapUSD, ticker }) => (
-          <div key={mint} className="flex justify-center w-full">
-            <div className="w-full max-w-[411.5px]">
-              <AgentCard
-                name={name}
-                image={image}
-                ticker={ticker}
-                mint={mint}
-                marketCapUSD={Number(marketCapUSD)}
-                onClick={() => onTokenClick(mint)}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
+      {tokens.map(({ mint, name, image, marketCapUSD, ticker, curveProgress }) => (
+        <AgentCard
+          key={mint}
+          name={name}
+          image={image}
+          ticker={ticker}
+          mint={mint}
+          marketCapUSD={Number(marketCapUSD)}
+          bondingCurveProgress={curveProgress}
+          onClick={() => onTokenClick(mint)}
+        />
+      ))}
     </div>
   );
 } 
