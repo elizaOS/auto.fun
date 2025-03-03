@@ -4,7 +4,7 @@ import {
   ChartingLibraryWidgetOptions,
   IChartingLibraryWidget,
   ResolutionString,
-  SeriesStyle,
+  SeriesType,
   widget,
 } from "@/libraries/charting_library";
 import {
@@ -41,10 +41,11 @@ export const TVChartContainer = ({
   pairIndex,
   token,
 }: TVChartContainerProps) => {
-  const chartContainerRef = useRef<HTMLDivElement>() as React.MutableRefObject<HTMLInputElement>;
+  const chartContainerRef =
+    useRef<HTMLDivElement>() as React.MutableRefObject<HTMLInputElement>;
   const tvWidgetRef = useRef<IChartingLibraryWidget | null>(null);
   const { isLoading, setIsLoading } = useContext(UserContext);
-  const [chartType, setChartType] = useState<SeriesStyle>('Candlestick');
+  const [chartType, setChartType] = useState("Candlestick");
 
   useEffect(() => {
     if (!chartContainerRef.current) {
@@ -100,21 +101,21 @@ export const TVChartContainer = ({
           "paneProperties.crossHairProperties.color": "#4ADE80",
           "paneProperties.rightMargin": 5,
           "paneProperties.leftMargin": 5,
-          
+
           // Scales
           "scalesProperties.backgroundColor": "#171717",
           "scalesProperties.lineColor": "#262626",
           "scalesProperties.textColor": "#8C8C8C",
           "scalesProperties.fontSize": 11,
           "scalesProperties.showSymbolLabels": false,
-          
+
           // Price Axis
-          "priceScaleSelectionStrategyName": "right",
-          
+          priceScaleSelectionStrategyName: "right",
+
           // Legend
           "paneProperties.legendProperties.showSeriesTitle": false,
           "paneProperties.legendProperties.showVolume": true,
-          
+
           // Candles
           "mainSeriesProperties.candleStyle.upColor": "#4ADE80",
           "mainSeriesProperties.candleStyle.downColor": "#FF4444",
@@ -124,7 +125,7 @@ export const TVChartContainer = ({
           "mainSeriesProperties.candleStyle.borderDownColor": "#FF4444",
           "mainSeriesProperties.candleStyle.wickUpColor": "#4ADE80",
           "mainSeriesProperties.candleStyle.wickDownColor": "#FF4444",
-          
+
           // Volume
           "volume.show": true,
           "volume.color.up": "#4ADE80",
@@ -138,7 +139,7 @@ export const TVChartContainer = ({
           "header_widget.buttons.backgroundColor": "#171717",
           "header_widget.buttons.borderColor": "#262626",
           "header_widget.buttons.fontSize": 11,
-          
+
           // Chart Type
           "mainSeriesProperties.style": chartType,
         },
@@ -151,49 +152,52 @@ export const TVChartContainer = ({
         const chart = tvWidgetRef.current?.activeChart();
         const priceScale = chart?.getPanes()[0].getMainSourcePriceScale();
         priceScale?.setAutoScale(true);
-        
+
         // Create custom header toolbar
         const header = document.createElement("div");
-        header.className = "flex items-center justify-between px-4 py-2 bg-[#171717] border-b border-[#262626]";
-        
+        header.className =
+          "flex items-center justify-between px-4 py-2 bg-[#171717] border-b border-[#262626]";
+
         // Left section: Time frames and chart types
         const leftSection = document.createElement("div");
         leftSection.className = "flex items-center gap-6";
-        
+
         // Time frames
         const timeFrames = document.createElement("div");
         timeFrames.className = "flex items-center gap-2";
         TIME_FRAMES.forEach(({ label, resolution }) => {
           const button = document.createElement("button");
-          button.className = "px-3 py-1 text-[#8C8C8C] hover:text-white text-sm font-medium";
+          button.className =
+            "px-3 py-1 text-[#8C8C8C] hover:text-white text-sm font-medium";
           button.textContent = label;
           button.onclick = () => chart?.setResolution(resolution);
           timeFrames.appendChild(button);
         });
-        
+
         // Chart types
         const chartTypes = document.createElement("div");
-        chartTypes.className = "flex items-center gap-4 border-l border-[#262626] pl-6";
-        
-        const types: { value: SeriesStyle; icon: LucideIcon }[] = [
-          { icon: CandlestickChart, value: 'Candlestick' },
-          { icon: LineChart, value: 'Line' },
-          { icon: BarChart3, value: 'Bars' },
+        chartTypes.className =
+          "flex items-center gap-4 border-l border-[#262626] pl-6";
+
+        const types: { value: string; icon: LucideIcon }[] = [
+          { icon: CandlestickChart, value: "Candlestick" },
+          { icon: LineChart, value: "Line" },
+          { icon: BarChart3, value: "Bars" },
         ];
-        
+
         types.forEach(({ value }) => {
           const button = document.createElement("button");
           button.className = "text-[#8C8C8C] hover:text-white";
           button.onclick = () => {
             setChartType(value);
-            chart?.setChartType(value);
+            chart?.setChartType(value as unknown as SeriesType);
           };
           chartTypes.appendChild(button);
         });
 
         leftSection.appendChild(timeFrames);
         leftSection.appendChild(chartTypes);
-        
+
         header.appendChild(leftSection);
         chartContainerRef.current.prepend(header);
       });
@@ -210,7 +214,12 @@ export const TVChartContainer = ({
     <div className="relative h-full w-full bg-[#171717] rounded-xl overflow-hidden">
       {isLoading ? (
         <div className="z-50 absolute left-0 top-0 flex h-full w-full items-center justify-center bg-[#171717]">
-          <ReactLoading height={20} width={50} type={"bars"} color={"#4ADE80"} />
+          <ReactLoading
+            height={20}
+            width={50}
+            type={"bars"}
+            color={"#4ADE80"}
+          />
         </div>
       ) : null}
       <div ref={chartContainerRef} className={twMerge("h-full w-full")} />

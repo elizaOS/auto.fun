@@ -453,8 +453,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
       <div className="flex-1 px-7 pb-[34px] flex flex-col justify-center gap-6 border-l border-r border-b border-neutral-800 rounded-b-xl min-w-fit">
         <div className="flex flex-col gap-2.5 relative min-w-fit">
           <TokenInput
-            type="Sell"
-            showPercentages={!isBuyMode}
+            type="Selling"
             value={amountInput}
             onChange={handleAmountChange}
             tokenSymbol={isBuyMode ? "SOL" : token.ticker}

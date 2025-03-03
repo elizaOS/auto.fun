@@ -1,5 +1,5 @@
 import { Copy } from "lucide-react";
-import { Icon } from '@iconify/react';
+import { Icon } from "@iconify/react";
 import { useState } from "react";
 import { DM_Mono } from "next/font/google";
 
@@ -38,7 +38,7 @@ export function AgentCardInfo({
   priceUSD = 0,
   priceSOL = 0,
   socialLinks,
-  description = "This AI agent is designed to process complex data and provide intelli..This AI agent is designed to process complex data and provide intelli.complex data and provide intelli..."
+  description = "This AI agent is designed to process complex data and provide intelli..This AI agent is designed to process complex data and provide intelli.complex data and provide intelli...",
 }: AgentCardInfoProps) {
   const [copied, setCopied] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
@@ -59,7 +59,7 @@ export function AgentCardInfo({
 
   const truncateDescription = (text: string) => {
     if (text.length <= 100) return text;
-    return showFullDescription ? text : text.split('...')[0] + "...";
+    return showFullDescription ? text : text.split("...")[0] + "...";
   };
 
   return (
@@ -83,16 +83,22 @@ export function AgentCardInfo({
               <h1 className="font-satoshi text-[32px] leading-9 tracking-[-0.014em] text-white font-medium">
                 {name}
               </h1>
-              <span className={`${dmMono.className} text-[18px] leading-6 tracking-[2px] uppercase text-[#8C8C8C]`}>
+              <span
+                className={`${dmMono.className} text-[18px] leading-6 tracking-[2px] uppercase text-[#8C8C8C]`}
+              >
                 ${ticker}
               </span>
             </div>
             <div className="flex flex-col gap-2">
               <div className="flex flex-row items-start gap-1">
-                <span className={`${dmMono.className} text-xs leading-4 tracking-[2px] uppercase text-white`}>
+                <span
+                  className={`${dmMono.className} text-xs leading-4 tracking-[2px] uppercase text-white`}
+                >
                   AGENT:
                 </span>
-                <span className={`${dmMono.className} text-xs leading-4 tracking-[2px] uppercase text-[#2FD345] underline`}>
+                <span
+                  className={`${dmMono.className} text-xs leading-4 tracking-[2px] uppercase text-[#2FD345] underline`}
+                >
                   AGENT NAME
                 </span>
               </div>
@@ -116,12 +122,16 @@ export function AgentCardInfo({
       {/* Contract Address */}
       <div className="flex w-full h-10 border border-[#262626] rounded-[6px]">
         <div className="flex items-center px-3 h-10 bg-[#2E2E2E] border-r border-[#262626] rounded-l-[6px]">
-          <span className={`${dmMono.className} text-base leading-6 tracking-[2px] uppercase text-[#8C8C8C]`}>
+          <span
+            className={`${dmMono.className} text-base leading-6 tracking-[2px] uppercase text-[#8C8C8C]`}
+          >
             CA
           </span>
         </div>
         <div className="flex flex-1 items-center justify-between px-3 h-10 bg-[#212121] rounded-r-[6px]">
-          <span className={`${dmMono.className} text-base leading-6 text-[#8C8C8C]`}>
+          <span
+            className={`${dmMono.className} text-base leading-6 text-[#8C8C8C]`}
+          >
             {contractAddress}
           </span>
           <button
@@ -140,10 +150,22 @@ export function AgentCardInfo({
       {/* Social Links */}
       <div className="flex w-full h-10 gap-0.5">
         {[
-          { icon: <Icon icon="mingcute:globe-line" width="24" height="24" />, link: socialLinks?.website || "#" },
-          { icon: <Icon icon="ri:twitter-x-fill" width="24" height="24" />, link: socialLinks?.twitter || "#" },
-          { icon: <Icon icon="ic:baseline-telegram" width="24" height="24" />, link: socialLinks?.telegram || "#" },
-          { icon: <Icon icon="ic:baseline-discord" width="24" height="24" />, link: socialLinks?.discord || "#" }
+          {
+            icon: <Icon icon="mingcute:globe-line" width="24" height="24" />,
+            link: socialLinks?.website || "#",
+          },
+          {
+            icon: <Icon icon="ri:twitter-x-fill" width="24" height="24" />,
+            link: socialLinks?.twitter || "#",
+          },
+          {
+            icon: <Icon icon="ic:baseline-telegram" width="24" height="24" />,
+            link: socialLinks?.telegram || "#",
+          },
+          {
+            icon: <Icon icon="ic:baseline-discord" width="24" height="24" />,
+            link: socialLinks?.discord || "#",
+          },
         ].map((item, index, arr) => (
           <a
             key={index}
@@ -151,9 +173,9 @@ export function AgentCardInfo({
             target="_blank"
             rel="noopener noreferrer"
             className={`flex justify-center items-center h-10 bg-[#212121] border border-[#262626] flex-1
-              ${index === 0 ? 'rounded-l-[6px]' : ''} 
-              ${index === arr.length - 1 ? 'rounded-r-[6px]' : ''}
-              ${item.link === "#" ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#2FD345] hover:text-black'}
+              ${index === 0 ? "rounded-l-[6px]" : ""} 
+              ${index === arr.length - 1 ? "rounded-r-[6px]" : ""}
+              ${item.link === "#" ? "opacity-50 cursor-not-allowed" : "hover:bg-[#2FD345] hover:text-black"}
               text-white transition-colors`}
             onClick={item.link === "#" ? (e) => e.preventDefault() : undefined}
           >
@@ -165,18 +187,26 @@ export function AgentCardInfo({
       {/* Price Information */}
       <div className="flex w-full h-[72px] gap-0.5">
         <div className="flex-1 flex flex-col justify-center items-center gap-2 p-4 bg-[#212121] border border-[#262626] rounded-l-[6px]">
-          <span className={`${dmMono.className} text-base leading-6 text-[#8C8C8C]`}>
+          <span
+            className={`${dmMono.className} text-base leading-6 text-[#8C8C8C]`}
+          >
             Price USD
           </span>
-          <span className={`${dmMono.className} text-xl leading-6 tracking-[2px] uppercase text-white`}>
+          <span
+            className={`${dmMono.className} text-xl leading-6 tracking-[2px] uppercase text-white`}
+          >
             ${formatNumber(priceUSD, 8)}
           </span>
         </div>
         <div className="flex-1 flex flex-col justify-center items-center gap-2 p-4 bg-[#212121] border border-[#262626] rounded-r-[6px]">
-          <span className={`${dmMono.className} text-base leading-6 text-[#8C8C8C]`}>
+          <span
+            className={`${dmMono.className} text-base leading-6 text-[#8C8C8C]`}
+          >
             Price
           </span>
-          <span className={`${dmMono.className} text-xl leading-6 tracking-[2px] uppercase text-white`}>
+          <span
+            className={`${dmMono.className} text-xl leading-6 tracking-[2px] uppercase text-white`}
+          >
             {formatNumber(priceSOL, 6)} SOL
           </span>
         </div>
@@ -190,16 +220,20 @@ export function AgentCardInfo({
               Bonding curve progress:
             </span>
             <span className="font-geist text-xl leading-7 text-[#2FD345]">
-              {bondingCurveProgress >= 100 ? "Complete" : `${Math.min(100, bondingCurveProgress)}%`}
+              {bondingCurveProgress >= 100
+                ? "Complete"
+                : `${Math.min(100, bondingCurveProgress)}%`}
             </span>
           </div>
           <div className="relative group">
-            <Icon 
-              icon="mingcute:information-line" 
-              className="w-5 h-5 text-[#8C8C8C] hover:text-white transition-colors" 
+            <Icon
+              icon="mingcute:information-line"
+              className="w-5 h-5 text-[#8C8C8C] hover:text-white transition-colors"
             />
             <div className="absolute bottom-full right-0 mb-2 w-[300px] px-4 py-3 bg-[#262626] rounded-lg text-sm text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-[#404040]">
-              When the market cap reaches $100,000 liquidity will transition to Raydium. Trading fees are distributed to token owners rather than being burned.
+              When the market cap reaches $100,000 liquidity will transition to
+              Raydium. Trading fees are distributed to token owners rather than
+              being burned.
             </div>
           </div>
         </div>
@@ -214,21 +248,19 @@ export function AgentCardInfo({
           {bondingCurveProgress >= 100 ? (
             <>
               Raydium pool has been seeded. View on Raydium{" "}
-              <a
-                href="#"
-                className="text-[#2FD345] hover:underline"
-              >
+              <a href="#" className="text-[#2FD345] hover:underline">
                 here
               </a>
             </>
           ) : (
             <>
-              Graduate this coin to raydium at ${targetMarketCap.toLocaleString()} market cap.
-              there is {formatNumber(bondingCurveAmount, 3)} SOL in the bonding curve.
+              Graduate this coin to raydium at $
+              {targetMarketCap.toLocaleString()} market cap. there is{" "}
+              {formatNumber(bondingCurveAmount, 3)} SOL in the bonding curve.
             </>
           )}
         </p>
       </div>
     </div>
   );
-} 
+}
