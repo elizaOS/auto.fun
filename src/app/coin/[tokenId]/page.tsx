@@ -30,18 +30,26 @@ const HolderSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
-const Switcher = ({ enabled, onChange, label }: { enabled: boolean; onChange: (value: boolean) => void; label: string }) => (
+const Switcher = ({
+  enabled,
+  onChange,
+  label,
+}: {
+  enabled: boolean;
+  onChange: (value: boolean) => void;
+  label: string;
+}) => (
   <div className="flex items-center gap-2">
     <span className="text-[#8C8C8C] text-sm">{label}</span>
     <button
       onClick={() => onChange(!enabled)}
       className={`w-10 h-5 rounded-full transition-colors duration-200 ease-in-out ${
-        enabled ? 'bg-[#4ADE80]' : 'bg-[#262626]'
+        enabled ? "bg-[#4ADE80]" : "bg-[#262626]"
       } relative`}
     >
       <div
         className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-transform duration-200 ease-in-out ${
-          enabled ? 'translate-x-5' : 'translate-x-1'
+          enabled ? "translate-x-5" : "translate-x-1"
         }`}
       />
     </button>
@@ -129,25 +137,52 @@ export default function TradingInterface() {
           {/* Stats Section */}
           <div className="box-border flex flex-row items-center py-3 px-4 w-full bg-[#171717] border border-[#262626] rounded-[6px] overflow-x-auto scrollbar-hide">
             <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[140px] sm:min-w-0 sm:w-[266.88px] h-[56px] rounded-l-[6px] flex-1">
-              <span className="font-['DM_Mono'] font-normal text-xs sm:text-base leading-6 text-[#8C8C8C] whitespace-nowrap">Market Cap</span>
-              <span className="font-['DM_Mono'] font-normal text-sm sm:text-xl leading-6 text-[#2FD345]">{Intl.NumberFormat("en-US", {style: "currency", currency: "USD", notation: "compact"}).format(Number(token.marketCapUSD))}</span>
+              <span className="font-['DM_Mono'] font-normal text-xs sm:text-base leading-6 text-[#8C8C8C] whitespace-nowrap">
+                Market Cap
+              </span>
+              <span className="font-['DM_Mono'] font-normal text-sm sm:text-xl leading-6 text-[#2FD345]">
+                {Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                  notation: "compact",
+                }).format(Number(token.marketCapUSD))}
+              </span>
             </div>
             <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
             <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[140px] sm:min-w-0 sm:w-[266.88px] h-[56px] flex-1">
-              <span className="font-['DM_Mono'] font-normal text-xs sm:text-base leading-6 text-[#8C8C8C] whitespace-nowrap">24hr Volume</span>
-              <span className="font-['DM_Mono'] font-normal text-sm sm:text-xl leading-6 text-white">{Intl.NumberFormat("en-US", {style: "currency", currency: "USD", notation: "compact"}).format(Number(token.liquidity || 0))}</span>
+              <span className="font-['DM_Mono'] font-normal text-xs sm:text-base leading-6 text-[#8C8C8C] whitespace-nowrap">
+                24hr Volume
+              </span>
+              <span className="font-['DM_Mono'] font-normal text-sm sm:text-xl leading-6 text-white">
+                {Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                  notation: "compact",
+                }).format(Number(token.liquidity || 0))}
+              </span>
             </div>
             <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
             <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[140px] sm:min-w-0 sm:w-[266.88px] h-[56px] flex-1">
-              <span className="font-['DM_Mono'] font-normal text-xs sm:text-base leading-6 text-[#8C8C8C] whitespace-nowrap">Creator</span>
+              <span className="font-['DM_Mono'] font-normal text-xs sm:text-base leading-6 text-[#8C8C8C] whitespace-nowrap">
+                Creator
+              </span>
               <div className="flex flex-row items-center p-0 gap-2 w-[132px] h-6">
                 <span className="font-['DM_Mono'] font-normal text-sm sm:text-xl leading-6 text-white">{`${token.creator.slice(0, 4)}...${token.creator.slice(-4)}`}</span>
               </div>
             </div>
             <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
             <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[140px] sm:min-w-0 sm:w-[266.88px] h-[56px] rounded-r-[6px] flex-1">
-              <span className="font-['DM_Mono'] font-normal text-xs sm:text-base leading-6 text-[#8C8C8C] whitespace-nowrap">Creation Time</span>
-              <span className="font-['DM_Mono'] font-normal text-sm sm:text-xl leading-6 text-white">{new Date(token.createdAt).toLocaleString(undefined, {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</span>
+              <span className="font-['DM_Mono'] font-normal text-xs sm:text-base leading-6 text-[#8C8C8C] whitespace-nowrap">
+                Creation Time
+              </span>
+              <span className="font-['DM_Mono'] font-normal text-sm sm:text-xl leading-6 text-white">
+                {new Date(token.createdAt).toLocaleString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
             </div>
           </div>
 
@@ -164,34 +199,38 @@ export default function TradingInterface() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-b border-[#262626] gap-4">
               <div className="flex gap-4">
                 <button
-                  onClick={() => setActiveTab('trades')}
+                  onClick={() => setActiveTab("trades")}
                   className={`px-4 py-2 rounded-md text-sm font-medium ${
-                    activeTab === 'trades' 
-                      ? 'bg-[#262626] text-white' 
-                      : 'text-[#8C8C8C] hover:text-white'
+                    activeTab === "trades"
+                      ? "bg-[#262626] text-white"
+                      : "text-[#8C8C8C] hover:text-white"
                   }`}
                 >
                   Trades
                 </button>
                 <button
-                  onClick={() => setActiveTab('holders')}
+                  onClick={() => setActiveTab("holders")}
                   className={`px-4 py-2 rounded-md text-sm font-medium ${
-                    activeTab === 'holders' 
-                      ? 'bg-[#262626] text-white' 
-                      : 'text-[#8C8C8C] hover:text-white'
+                    activeTab === "holders"
+                      ? "bg-[#262626] text-white"
+                      : "text-[#8C8C8C] hover:text-white"
                   }`}
                 >
                   Holders
                 </button>
               </div>
-              
+
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-4 overflow-x-auto sm:overflow-visible">
                   <div className="flex items-center gap-1 whitespace-nowrap">
                     <span className="text-[#8C8C8C] text-sm">Size</span>
                     <div className="flex items-center gap-1">
-                      <SolanaIcon/>
-                      <span className={`text-sm transition-colors duration-200 ${showSize ? 'text-white' : 'text-[#8C8C8C]'}`}>0.05</span>
+                      <SolanaIcon />
+                      <span
+                        className={`text-sm transition-colors duration-200 ${showSize ? "text-white" : "text-[#8C8C8C]"}`}
+                      >
+                        0.05
+                      </span>
                     </div>
                     <Switcher
                       enabled={showSize}
@@ -209,7 +248,7 @@ export default function TradingInterface() {
             </div>
 
             {/* Trade List */}
-            {activeTab === 'trades' && (
+            {activeTab === "trades" && (
               <div className="overflow-x-auto p-4">
                 <table className="w-full min-w-[600px]">
                   <thead>
@@ -224,17 +263,28 @@ export default function TradingInterface() {
                   </thead>
                   <tbody className="text-sm">
                     {[...Array(10)].map((_, i) => (
-                      <tr key={i} className="border-b border-[#262626] last:border-0">
+                      <tr
+                        key={i}
+                        className="border-b border-[#262626] last:border-0"
+                      >
                         <td className="py-3 text-[#8C8C8C]">0x742..3ab</td>
-                        <td className={`py-3 ${i % 2 === 0 ? 'text-[#4ADE80]' : 'text-[#FF4444]'}`}>
-                          {i % 2 === 0 ? 'Buy' : 'Sell'}
+                        <td
+                          className={`py-3 ${i % 2 === 0 ? "text-[#4ADE80]" : "text-[#FF4444]"}`}
+                        >
+                          {i % 2 === 0 ? "Buy" : "Sell"}
                         </td>
                         <td className="py-3 text-white">0.515</td>
                         <td className="py-3 text-white">1.55m</td>
                         <td className="py-3 text-[#8C8C8C]">2s ago</td>
                         <td className="py-3">
                           <button className="text-[#8C8C8C] hover:text-white">
-                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg
+                              className="w-4 h-4"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
                               <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                             </svg>
                           </button>
@@ -247,7 +297,7 @@ export default function TradingInterface() {
             )}
 
             {/* Holders List */}
-            {activeTab === 'holders' && (
+            {activeTab === "holders" && (
               <div className="overflow-x-auto p-4">
                 <table className="w-full">
                   <thead>
@@ -260,9 +310,17 @@ export default function TradingInterface() {
                   </thead>
                   <tbody className="text-sm">
                     {[
-                      { account: "0x742..3ab", type: "(Bonding Curve)", percentage: 7.36 },
-                      { account: "0x742..3ab", type: "(DEV)", percentage: 6.16 },
-                      { account: "0x742..3ab", type: "", percentage: 6.00 },
+                      {
+                        account: "0x742..3ab",
+                        type: "(Bonding Curve)",
+                        percentage: 7.36,
+                      },
+                      {
+                        account: "0x742..3ab",
+                        type: "(DEV)",
+                        percentage: 6.16,
+                      },
+                      { account: "0x742..3ab", type: "", percentage: 6.0 },
                       { account: "0x742..3ab", type: "", percentage: 5.59 },
                       { account: "0x742..3ab", type: "", percentage: 5.43 },
                       { account: "0x742..3ab", type: "", percentage: 5.12 },
@@ -271,11 +329,16 @@ export default function TradingInterface() {
                       { account: "0x742..3ab", type: "", percentage: 3.89 },
                       { account: "0x742..3ab", type: "", percentage: 3.25 },
                     ].map((holder, i) => (
-                      <tr key={i} className="border-b border-[#262626] last:border-0">
+                      <tr
+                        key={i}
+                        className="border-b border-[#262626] last:border-0"
+                      >
                         <td className="py-3 text-[#8C8C8C]">#{i + 1}</td>
                         <td className="py-3 text-white">{holder.account}</td>
                         <td className="py-3 text-[#8C8C8C]">{holder.type}</td>
-                        <td className="py-3 text-white text-right">{holder.percentage}%</td>
+                        <td className="py-3 text-white text-right">
+                          {holder.percentage}%
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -306,6 +369,10 @@ export default function TradingInterface() {
                 </div>
               </div>
             </div>
+          )}
+
+          {(token?.status === "active" || token?.status === "locked") && (
+            <TradingChart param={token} />
           )}
 
           {/* Fal Generator Section */}
@@ -401,7 +468,7 @@ export default function TradingInterface() {
 
         <div className="flex flex-col space-y-4 w-full lg:w-auto lg:min-w-[380px] lg:max-w-[420px] 2xl:max-w-[480px]">
           <div className="w-full">
-            <AgentCardInfo 
+            <AgentCardInfo
               name={token.name}
               ticker={token.ticker}
               image={token.image}
@@ -472,12 +539,18 @@ const renderSkeletons = () => (
         <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-6">
           <div className="flex gap-4 mb-6">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="w-24 h-8 bg-neutral-800 rounded animate-pulse" />
+              <div
+                key={i}
+                className="w-24 h-8 bg-neutral-800 rounded animate-pulse"
+              />
             ))}
           </div>
           <div className="space-y-4">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="w-full h-16 bg-neutral-800 rounded animate-pulse" />
+              <div
+                key={i}
+                className="w-full h-16 bg-neutral-800 rounded animate-pulse"
+              />
             ))}
           </div>
         </div>

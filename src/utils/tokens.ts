@@ -18,6 +18,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { BN, Program } from "@coral-xyz/anchor";
 import { env } from "./env";
 import { getSocket } from "./socket";
+import { useSwap } from "@/app/coin/[tokenId]/swap/useSwap";
 
 export type Token = z.infer<typeof TokenSchema>;
 const HomepageTokenSchema = TokenSchema.and(
@@ -112,6 +113,7 @@ const useCreateTokenMutation = createMutation({
     connection,
     signTransaction,
     token_metadata,
+    createSwapIx,
   }: {
     token_metadata: TokenMetadata;
     program: Program<Serlaunchalot>;
@@ -119,6 +121,7 @@ const useCreateTokenMutation = createMutation({
     signTransaction: <T extends Transaction | VersionedTransaction>(
       transaction: T,
     ) => Promise<T>;
+    createSwapIx: ReturnType<typeof useSwap>["createSwapIx"];
   }) => {
     const provider = window.solana;
 
@@ -168,7 +171,18 @@ const useCreateTokenMutation = createMutation({
         teamWallet: configAccount.teamWallet,
       })
       .transaction();
+
     tx.instructions = [modifyComputeUnits, addPriorityFee, ...tx.instructions];
+
+    if (token_metadata.initial_sol > 0) {
+      const swapIx = await createSwapIx({
+        style: "buy",
+        amount: token_metadata.initial_sol,
+        tokenAddress: mintKeypair.publicKey.toBase58(),
+      });
+      tx.instructions.push(...(Array.isArray(swapIx) ? swapIx : [swapIx]));
+    }
+
     tx.feePayer = userPublicKey;
     const { blockhash, lastValidBlockHeight } =
       await connection.getLatestBlockhash();
@@ -204,6 +218,7 @@ export function useCreateToken() {
   const { connection } = useConnection();
   const mutation = useCreateTokenMutation();
   const { signTransaction } = useWallet();
+  const { createSwapIx } = useSwap();
 
   const createToken = useCallback(
     async (token_metadata: TokenMetadata) => {
@@ -224,9 +239,10 @@ export function useCreateToken() {
         signTransaction,
         connection,
         program,
+        createSwapIx,
       });
     },
-    [connection, mutation, program, signTransaction],
+    [connection, mutation, program, signTransaction, createSwapIx],
   );
 
   const createTokenAsync = useCallback(
@@ -248,9 +264,10 @@ export function useCreateToken() {
         signTransaction,
         connection,
         program,
+        createSwapIx,
       });
     },
-    [connection, mutation, program, signTransaction],
+    [connection, mutation, program, signTransaction, createSwapIx],
   );
 
   return { ...mutation, mutateAsync: createTokenAsync, mutate: createToken };

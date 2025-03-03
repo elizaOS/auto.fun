@@ -22,6 +22,7 @@
     "@radix-ui/react-tabs": "^1.1.2",
     "@radix-ui/react-toggle": "^1.1.1",
     "@radix-ui/react-tooltip": "^1.1.8",
+    "@solana/spl-token": "^0.4.12",
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/wallet-adapter-base-ui": "^0.1.2",
     "@solana/wallet-adapter-react": "^0.15.35",
