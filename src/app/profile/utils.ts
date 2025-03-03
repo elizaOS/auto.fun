@@ -284,17 +284,13 @@ export const useProfile = () => {
     tokensHeld: ProfileToken[];
     tokensCreated: ProfileToken[];
   }>({ tokensHeld: [], tokensCreated: [] });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
 
   const { publicKey } = useWallet();
   const { connection } = useConnection();
   const getOwnedTokens = useOwnedTokens();
   const getCreatedTokens = useCreatedTokens();
-
-  useEffect(() => {
-    setIsLoading(true);
-  }, []);
 
   const fetchProfile = useCallback(async () => {
     try {

@@ -5,7 +5,7 @@ import { useProfile } from "./utils";
 import { TokenTable } from "./table";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { env } from "@/utils/env";
-import Skeleton from "react-loading-skeleton";
+import Skeleton, { SkeletonTheme } from "react-loading-skeleton";
 
 type TabButtonProps = PropsWithChildren<{
   isSelected: boolean;
@@ -81,31 +81,39 @@ export default function Profile() {
     }
   }, [selectedTab, tokens.tokensCreated, tokens.tokensHeld]);
 
-  if (isLoading || true) {
+  if (isLoading) {
     return (
-      <div className="flex flex-col flex-1 mt-32 max-w-4xl w-full m-auto">
-        <Skeleton width={200} height={40} className="mb-6" />
-        <div className="p-4 bg-neutral-900 rounded-md border border-neutral-800 mb-[28px]">
-          <div className="mb-2">
-            <Skeleton width={80} height={24} />
-          </div>
-          <div className="px-3 py-2 bg-[#212121] rounded-md border border-neutral-800">
-            <Skeleton width="100%" height={24} />
-          </div>
-        </div>
-        <div className="flex gap-2.5 mb-4">
-          <Skeleton width={120} height={40} />
-          <Skeleton width={120} height={40} />
-        </div>
-        <div className="border border-neutral-800 rounded-lg p-4">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="flex items-center gap-4 mb-4 last:mb-0">
-              <Skeleton width={40} height={40} circle />
+      <SkeletonTheme baseColor="#262626" highlightColor="#404040">
+        <div className="flex flex-col flex-1 mt-32 max-w-4xl w-full m-auto">
+          <Skeleton width={200} height={40} className="mb-6" />
+          <div className="p-4 bg-neutral-900 rounded-md border border-neutral-800 mb-[28px]">
+            <div className="mb-2">
+              <Skeleton width={80} height={24} />
+            </div>
+            <div className="px-3 py-2 bg-[#212121] rounded-md border border-neutral-800">
               <Skeleton width="100%" height={24} />
             </div>
-          ))}
+          </div>
+          <div className="flex gap-2.5 mb-4">
+            <Skeleton width={120} height={40} />
+            <Skeleton width={120} height={40} />
+          </div>
+          <div className="border border-neutral-800 rounded-lg p-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center gap-4 mb-4 last:mb-0">
+                <Skeleton width={20} height={20} circle />
+                <div className="flex-1 gap-16 flex">
+                  {[...Array(4)].map((_, j) => (
+                    <div key={j} className="flex-1">
+                      <Skeleton height={24} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      </SkeletonTheme>
     );
   }
 
