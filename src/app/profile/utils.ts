@@ -4,11 +4,12 @@ import { ProfileToken } from "./types";
 import { AccountLayout, RawAccount, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { AccountInfo, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { SEED_BONDING_CURVE, useProgram } from "@/utils/program";
-import { calculateAmountOutSell } from "../coin/[tokenId]/swap/useSwap";
 import { env } from "@/utils/env";
 import { womboApi } from "@/utils/fetch";
 import { z } from "zod";
 import { TokenSchema } from "@/utils/tokenSchema";
+import { BN } from "@coral-xyz/anchor";
+import { calculateAmountOutSell } from "../coin/[tokenId]/swap/useSwap";
 
 // TODO: update after mainnet launch
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
@@ -39,6 +40,19 @@ const useTokenAccounts = () => {
   }, [connection, publicKey]);
 };
 
+type Account = {
+  tokenAccount: RawAccount;
+  bondingCurveAccount: {
+    tokenMint: PublicKey;
+    creator: PublicKey;
+    initLamport: BN;
+    reserveLamport: BN;
+    reserveToken: BN;
+    curveLimit: BN;
+    isCompleted: boolean;
+  };
+};
+
 const useRemoveNonAutofunTokens = () => {
   const { connection } = useConnection();
   const { publicKey } = useWallet();
@@ -61,7 +75,14 @@ const useRemoveNonAutofunTokens = () => {
       const bondingCurveAccounts =
         await program.account.bondingCurve.fetchMultiple(bondingCurvePDAs);
 
-      return tokenAccounts.filter((_, index) => !!bondingCurveAccounts[index]);
+      return tokenAccounts
+        .map((tokenAccount, index) => ({
+          tokenAccount,
+          bondingCurveAccount: bondingCurveAccounts[index],
+        }))
+        .filter(
+          (accounts): accounts is Account => !!accounts.bondingCurveAccount,
+        );
     },
     [connection, program, publicKey],
   );
@@ -71,9 +92,9 @@ const useTokenMetadata = () => {
   const { connection } = useConnection();
 
   return useCallback(
-    async (tokenAccounts: RawAccount[]) => {
-      const metadataPDAs = tokenAccounts.map(
-        ({ mint }) =>
+    async (accounts: Account[]) => {
+      const metadataPDAs = accounts.map(
+        ({ tokenAccount: { mint } }) =>
           PublicKey.findProgramAddressSync(
             [
               Buffer.from("metadata"),
@@ -129,48 +150,62 @@ const decodeMetadata = (
 
 type MetadataAccount = AccountInfo<Buffer>;
 
-const getProfileTokens = async (
-  tokenAccounts: RawAccount[],
-  metadataAccounts: (MetadataAccount | null)[],
-) => {
-  const profileTokens = await Promise.all(
-    tokenAccounts.map(async (account, i) => {
-      const metadata = metadataAccounts[i];
-      if (!metadata) return null;
+const useGetProfileTokens = () => {
+  const getProfileTokens = useCallback(
+    async (
+      accounts: Account[],
+      metadataAccounts: (MetadataAccount | null)[],
+    ) => {
+      const profileTokens = await Promise.all(
+        accounts.map(async ({ tokenAccount, bondingCurveAccount }, i) => {
+          const metadata = metadataAccounts[i];
+          if (!metadata) return null;
 
-      const { name, symbol, uri } = decodeMetadata(metadata.data);
-      let image: string | null = null;
+          const { name, symbol, uri } = decodeMetadata(metadata.data);
+          let image: string | null = null;
 
-      try {
-        const response = await fetch(uri);
-        const json = await response.json();
-        image = json.image;
-      } catch (error) {
-        console.error(`Error fetching metadata for token ${name}:`, error);
-      }
+          try {
+            const response = await fetch(uri);
+            const json = await response.json();
+            image = json.image;
+          } catch (error) {
+            console.error(`Error fetching metadata for token ${name}:`, error);
+          }
 
-      return {
-        image,
-        name,
-        ticker: symbol,
-        tokensHeld: account.amount / BigInt(10) ** BigInt(env.decimals),
-        solValue:
-          // TODO: might want to include platform fee in this number
-          calculateAmountOutSell(Number(account.amount)) /
-          Number(env.decimals) /
-          LAMPORTS_PER_SOL,
-        mint: account.mint.toBase58(),
-      } satisfies ProfileToken;
-    }),
+          const tokensHeld =
+            tokenAccount.amount / BigInt(10) ** BigInt(env.decimals);
+          const solValue =
+            calculateAmountOutSell(
+              bondingCurveAccount.reserveLamport.toNumber(),
+              Number(tokenAccount.amount),
+              6,
+              1,
+              bondingCurveAccount.reserveToken.toNumber(),
+            ) / LAMPORTS_PER_SOL;
+          return {
+            image,
+            name,
+            ticker: symbol,
+            tokensHeld,
+            solValue,
+            mint: tokenAccount.mint.toBase58(),
+          } satisfies ProfileToken;
+        }),
+      );
+
+      return profileTokens.filter((data): data is ProfileToken => !!data);
+    },
+    [],
   );
 
-  return profileTokens.filter((data): data is ProfileToken => !!data);
+  return getProfileTokens;
 };
 
 const useOwnedTokens = () => {
   const getTokenAccounts = useTokenAccounts();
   const removeNonAutofunTokens = useRemoveNonAutofunTokens();
   const getTokenMetadata = useTokenMetadata();
+  const getProfileTokens = useGetProfileTokens();
 
   const fetchTokens = useCallback(async () => {
     const tokenAccounts = await getTokenAccounts();
@@ -188,7 +223,12 @@ const useOwnedTokens = () => {
     );
 
     return profileTokens;
-  }, [getTokenAccounts, getTokenMetadata, removeNonAutofunTokens]);
+  }, [
+    getProfileTokens,
+    getTokenAccounts,
+    getTokenMetadata,
+    removeNonAutofunTokens,
+  ]);
 
   return fetchTokens;
 };
@@ -199,6 +239,7 @@ const useCreatedTokens = () => {
   const getTokenAccounts = useTokenAccounts();
   const removeNonAutofunTokens = useRemoveNonAutofunTokens();
   const getTokenMetadata = useTokenMetadata();
+  const getProfileTokens = useGetProfileTokens();
 
   const fetchTokens = useCallback(async () => {
     if (!publicKey) {
@@ -227,7 +268,13 @@ const useCreatedTokens = () => {
     );
 
     return profileTokens;
-  }, [getTokenAccounts, getTokenMetadata, publicKey, removeNonAutofunTokens]);
+  }, [
+    getProfileTokens,
+    getTokenAccounts,
+    getTokenMetadata,
+    publicKey,
+    removeNonAutofunTokens,
+  ]);
 
   return fetchTokens;
 };
