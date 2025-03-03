@@ -81,7 +81,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="flex flex-col flex-1 justify-center max-w-4xl w-full m-auto">
+    <div className="flex flex-col flex-1 mt-32 max-w-4xl w-full m-auto">
       <div className="text-white text-[32px] font-medium leading-9 mb-6">
         User Profile
       </div>
