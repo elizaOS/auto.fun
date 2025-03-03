@@ -25,15 +25,8 @@ export const TradeSettingsModal = ({
     savedProtectionEnabled,
   );
 
-  const discardChanges = () => {
-    setSlippage(savedSlippage);
-    setSpeed(savedSpeed);
-    setIsProtectionEnabled(savedProtectionEnabled);
-  };
-
   const onModalClose = () => {
     onClose();
-    discardChanges();
   };
 
   return (
@@ -130,6 +123,9 @@ export const TradeSettingsModal = ({
               slippage,
               speed,
               isProtectionEnabled,
+              tradeSize: 0.1,
+              ownTradesFilter: false,
+              tipAmount: "0.004",
             });
             onClose();
           }}

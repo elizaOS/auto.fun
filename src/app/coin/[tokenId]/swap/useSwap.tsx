@@ -19,6 +19,7 @@ import { useTradeSettings } from "./useTradeSettings";
 import { Token } from "@/utils/tokens";
 import { associatedAddress } from "@coral-xyz/anchor/dist/cjs/utils/token";
 import { env } from "@/utils/env";
+import { sendTxUsingJito } from "@/utils/jito";
 
 // copied from backend
 function convertToBasisPoints(feePercent: number): number {
@@ -247,7 +248,12 @@ export const useSwap = () => {
   const wallet = useWallet();
   const program = useProgram();
   // TODO: implement speed, front-running protection, and tip amount
-  const { slippage: slippagePercentage, speed } = useTradeSettings();
+  const {
+    slippage: slippagePercentage,
+    speed,
+    isProtectionEnabled,
+    // tipAmount, @TODO use on jito
+  } = useTradeSettings();
 
   const createSwapIx = async ({
     style,
@@ -368,6 +374,30 @@ export const useSwap = () => {
     }
 
     const versionedTx = new VersionedTransaction(tx.compileMessage());
+
+    // If protection is enabled, use Jito to send the transaction
+    if (isProtectionEnabled) {
+      console.log("Sending transaction through Jito for MEV protection...");
+      try {
+        const jitoResponse = await sendTxUsingJito({
+          serializedTx: versionedTx.serialize(),
+          region: "mainnet",
+        });
+        return { signature: jitoResponse.result, confirmation: null };
+      } catch (error) {
+        console.error("Failed to send through Jito:", error);
+        // Fallback to regular transaction sending if Jito fails
+        const signature = await wallet.sendTransaction(versionedTx, connection);
+        const confirmation = await connection.confirmTransaction({
+          signature,
+          blockhash: versionedTx.message.recentBlockhash,
+          lastValidBlockHeight,
+        });
+        return { signature, confirmation };
+      }
+    }
+
+    // Regular transaction sending if protection is not enabled
     const signature = await wallet.sendTransaction(versionedTx, connection);
     const confirmation = await connection.confirmTransaction({
       signature,
