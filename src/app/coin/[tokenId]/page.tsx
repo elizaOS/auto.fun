@@ -158,7 +158,7 @@ export default function TradingInterface() {
                   style: "currency",
                   currency: "USD",
                   notation: "compact",
-                }).format(Number(token.liquidity || 0))}
+                }).format(Number(token.volume24h))}
               </span>
             </div>
             <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
