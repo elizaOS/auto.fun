@@ -45,7 +45,7 @@ const TokenInput = ({
       : type === "Buying"
         ? formatNumber(parseFloat(value))
         : parseFloat(value).toFixed(4)
-    : value || "0.00";
+    : value;
 
   const handlePercentageClick = (percent: string) => {
     if (!onChange) return;
@@ -57,6 +57,16 @@ const TokenInput = ({
     } else {
       const percentage = Number(percent.replace("%", "")) / 100;
       onChange((tokenBalance * percentage).toFixed(4));
+    }
+  };
+
+  const handleSolPresetClick = (sol: string) => {
+    if (!onChange) return;
+
+    if (sol === "Reset") {
+      onChange("");
+    } else {
+      onChange(sol);
     }
   };
 
@@ -73,11 +83,15 @@ const TokenInput = ({
           {!disabled && (
             <div className="flex items-center h-[36px]">
               <div className="flex h-full">
-                {(type === "Buying" ? buyingButtons : sellingButtons).map(
+                {(tokenSymbol === "SOL" ? sellingButtons : buyingButtons).map(
                   (value, index, arr) => (
                     <button
                       key={value}
-                      onClick={() => handlePercentageClick(value)}
+                      onClick={() =>
+                        tokenSymbol === "SOL"
+                          ? handleSolPresetClick(value)
+                          : handlePercentageClick(value)
+                      }
                       className={`
                       h-[36px] px-4 bg-[#121212] flex items-center justify-center
                       ${index === 0 ? "rounded-l-md" : ""}
@@ -489,14 +503,14 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
           </button>
 
           <TokenInput
-            type={isBuyMode ? "Selling" : "Buying"}
+            type="Buying"
             value={calculatedAmounts.tokenAmount.toString()}
             onChange={undefined}
-            tokenSymbol={isBuyMode ? "SOL" : token.ticker}
+            tokenSymbol={isBuyMode ? token.ticker : "SOL"}
             disabled={true}
             dollarValue={calculatedAmounts.dollarValue}
-            tokenBalance={isBuyMode ? solBalance : tokenBalance}
-            tokenImage={isBuyMode ? "" : token.image}
+            tokenBalance={isBuyMode ? tokenBalance : solBalance}
+            tokenImage={token.image}
             onSettingsClick={() => setSettingsModalOpen(true)}
           />
         </div>
