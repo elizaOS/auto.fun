@@ -440,15 +440,9 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
   };
 
   const handleModeSwitch = () => {
-    // Switch mode
+    // Use the calculated amount directly without formatting
+    setAmountInput(calculatedAmounts.tokenAmount.toString());
     setIsBuyMode(!isBuyMode);
-
-    // Clear the input value
-    setAmountInput("");
-
-    // Reset calculated amounts
-    calculatedAmounts.tokenAmount = 0;
-    calculatedAmounts.dollarValue = 0;
   };
 
   return (
