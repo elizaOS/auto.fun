@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { BaseWalletConnectionButton } from "./BaseWalletConnectionButton";
 import type { ButtonProps } from "./Button";
 import { useWalletModal } from "./useWalletModal";
+import { useRouter } from "next/navigation";
 
 type Props = ButtonProps & {
   labels: Omit<
@@ -17,10 +18,13 @@ type Props = ButtonProps & {
     copied: string;
     "change-wallet": string;
     disconnect: string;
+    "view-profile": string;
   };
 };
 
 export function BaseWalletMultiButton({ children, labels, ...props }: Props) {
+  const router = useRouter();
+
   const { setVisible: setModalVisible } = useWalletModal();
   const {
     buttonState,
@@ -120,6 +124,16 @@ export function BaseWalletMultiButton({ children, labels, ...props }: Props) {
             {copied ? labels["copied"] : labels["copy-address"]}
           </li>
         ) : null}
+        <li
+          className="wallet-adapter-dropdown-list-item"
+          onClick={() => {
+            router.push("/profile");
+            setMenuOpen(false);
+          }}
+          role="menuitem"
+        >
+          {labels["view-profile"]}
+        </li>
         <li
           className="wallet-adapter-dropdown-list-item"
           onClick={() => {

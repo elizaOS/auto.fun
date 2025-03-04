@@ -11,6 +11,7 @@ const LABELS = {
   disconnect: "Disconnect",
   "has-wallet": "Connect Wallet",
   "no-wallet": "Connect Wallet",
+  "view-profile": "Profile Page",
 } as const;
 
 export function WalletMultiButton(props: ButtonProps) {
