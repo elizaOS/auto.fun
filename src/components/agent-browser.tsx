@@ -1,463 +1,331 @@
-// /* eslint-disable @typescript-eslint/no-unused-vars */
-// "use client";
-// import { useRouter } from "next/navigation";
-// import { useState } from "react";
-// import { Copy } from "lucide-react";
-// import {
-//   Table,
-//   TableHeader,
-//   TableBody,
-//   TableRow,
-//   TableHead,
-//   TableCell,
-// } from "@/components/ui/table";
-// import {
-//   Card,
-//   CardContent,
-//   CardDescription,
-//   CardHeader,
-//   CardTitle,
-// } from "@/components/ui/card";
-// import { ColumnDef } from "@tanstack/react-table";
-// import Link from "next/link";
-// import { useTokens } from "@/utils/tokens";
-// import Skeleton from "react-loading-skeleton";
-// import { Paginator } from "./common/Paginator";
-// import { VerifiedBanner } from "./verified-banner";
-// import { DM_Mono } from 'next/font/google';
-// import { Listbox } from "@headlessui/react";
-// import { ChevronDownIcon } from "@heroicons/react/20/solid";
-// import { AgentCard } from "./agent-card";
+"use client";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Copy, Grid, Table as TableIcon } from "lucide-react";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
+import { useTokens } from "@/utils/tokens";
+import Skeleton from "react-loading-skeleton";
+import { Paginator } from "./common/Paginator";
+import { VerifiedBanner } from "./verified-banner";
+export type Agent = {
+  id: number;
+  name: string;
+  mint: string;
+  marketCap: string;
+  priceChange: string;
+  tvl: string;
+  holders: number;
+  volume: string;
+  replies: number;
+  getImageUrl: () => string;
+};
 
-// // Initialize the font
-// const dmMono = DM_Mono({
-//   weight: ['400', '500'],
-//   subsets: ['latin'],
-// });
+export const columns: ColumnDef<Agent>[] = [
+  {
+    accessorKey: "name",
+    header: "AI Agents",
+  },
+  { accessorKey: "marketCap", header: "Market Cap" },
+  { accessorKey: "priceChange", header: "24h Change" },
+  { accessorKey: "tvl", header: "TVL" },
+  { accessorKey: "holders", header: "Holders" },
+  { accessorKey: "volume", header: "24h Volume" },
+  { accessorKey: "replies", header: "Inferences" },
+];
 
-// export type Agent = {
-//   id: number;
-//   name: string;
-//   mint: string;
-//   marketCap: string;
-//   priceChange: string;
-//   tvl: string;
-//   holders: number;
-//   volume: string;
-//   replies: number;
-//   getImageUrl: () => string;
-// };
+export function AgentBrowser() {
+  const [view, setView] = useState<"grid" | "table">("grid");
+  const {
+    items: tokens,
+    currentPage,
+    hasPreviousPage,
+    hasNextPage,
+    nextPage,
+    previousPage,
+    isLoading,
+  } = useTokens();
+  const router = useRouter();
 
-// export const columns: ColumnDef<Agent>[] = [
-//   {
-//     accessorKey: "name",
-//     header: "AI Agents",
-//   },
-//   { accessorKey: "marketCap", header: "Market Cap" },
-//   { accessorKey: "priceChange", header: "24h Change" },
-//   { accessorKey: "tvl", header: "TVL" },
-//   { accessorKey: "holders", header: "Holders" },
-//   { accessorKey: "volume", header: "24h Volume" },
-//   { accessorKey: "replies", header: "Inferences" },
-// ];
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
 
-// interface SortOption {
-//   label: string;
-//   value: string;
-// }
+  const renderSkeletons = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
+      {[...Array(30)].map((_, index) => (
+        <Card
+          key={`skeleton-${index}`}
+          className="bg-[#171717] border-green-500/20 hover:border-green-500/50 transition-colors h-48 flex"
+        >
+          <div className="flex flex-col p-[24px] flex-1">
+            <CardHeader className="p-0">
+              <Skeleton
+                width={120}
+                height={24}
+                baseColor="#171717"
+                highlightColor="#00ff0026"
+                className="mb-2"
+              />
+              <Skeleton
+                width={80}
+                height={16}
+                baseColor="#171717"
+                highlightColor="#00ff0026"
+              />
+            </CardHeader>
+            <CardContent className="p-0 flex flex-col flex-1">
+              <div className="mt-auto flex flex-col gap-1">
+                <Skeleton
+                  width={100}
+                  height={16}
+                  baseColor="#171717"
+                  highlightColor="#00ff0026"
+                />
+              </div>
+            </CardContent>
+          </div>
+          <div className="flex items-center justify-center flex-shrink-0 w-1/2">
+            <Skeleton
+              width="100%"
+              height="100%"
+              baseColor="#171717"
+              highlightColor="#00ff0026"
+              className="rounded-r-lg"
+            />
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
 
-// const sortOptions: SortOption[] = [
-//   { label: 'Creation Time (Newest)', value: 'newest' },
-//   { label: 'Creation Time (Oldest)', value: 'oldest' },
-//   { label: 'Market Cap (High to Low)', value: 'mcap_high' },
-//   { label: 'Market Cap (Low to High)', value: 'mcap_low' },
-// ];
+  return (
+    <div className="flex flex-col gap-2">
+      <VerifiedBanner tokens={tokens.slice(-3)} />
 
-// export function AgentBrowser() {
-//   const [view, setView] = useState<"grid" | "table">("grid");
-//   const [sortBy, setSortBy] = useState(sortOptions[0].value);
-//   const [isCreationDropdownOpen, setIsCreationDropdownOpen] = useState(false);
-//   const {
-//     items: tokens,
-//     currentPage,
-//     hasPreviousPage,
-//     hasNextPage,
-//     nextPage,
-//     previousPage,
-//     isLoading,
-//   } = useTokens();
-//   const router = useRouter();
+      <div className="flex justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <p>New</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Grid
+            className={`cursor-pointer ${view === "grid" ? "text-green-500" : "text-gray-500"}`}
+            onClick={() => setView("grid")}
+          />
+          <TableIcon
+            className={`cursor-pointer ${view === "table" ? "text-green-500" : "text-gray-500"}`}
+            onClick={() => setView("table")}
+          />
+          {/* <Toggle
+            defaultPressed
+            size="sm"
+            className="text-gray-100 data-[state=on]:bg-gray-300/20 data-[state=on]:text-gray-50"
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            Animations
+          </Toggle> */}
+        </div>
+      </div>
 
-//   const handleCopy = (text: string) => {
-//     navigator.clipboard.writeText(text);
-//   };
+      {isLoading ? (
+        renderSkeletons()
+      ) : view === "grid" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
+          {tokens.map(
+            ({
+              mint,
+              name,
+              image,
+              marketCapUSD,
+              ticker,
+              liquidity,
+              holderCount,
+              numComments,
+            }) => {
+              const mintDisplay = `${mint.slice(0, 3)}...${mint.slice(-3)}`;
+              const numCommentsDisplay = numComments > 99 ? "99+" : numComments;
 
-//   const handleViewChange = (newView: "grid" | "table") => {
-//     setView(newView);
-//   };
+              return (
+                <Card
+                  key={mint}
+                  className="bg-[#171717] border-green-500/20 hover:border-green-500/50 transition-colors flex flex-col cursor-pointer"
+                  onClick={() => router.push(`/coin/${mint}`)}
+                >
+                  <div className="flex items-center justify-center flex-shrink-0 rounded-lg overflow-hidden m-2 aspect-[1.55] relative">
+                    <img
+                      src={image}
+                      alt="Agent Preview"
+                      className="object-cover h-full w-full"
+                    />
+                    <div className="h-[26px] px-1.5 py-1 bg-neutral-950 rounded-lg justify-start items-center gap-0.5 inline-flex absolute right-2 top-2">
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 18 18"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M9.00039 1.5C8.01547 1.5 7.0402 1.69399 6.13026 2.0709C5.22032 2.44781 4.39353 3.00026 3.69709 3.6967C2.29056 5.10322 1.50039 7.01088 1.50039 9C1.49383 10.7319 2.09348 12.4114 3.19539 13.7475L1.69539 15.2475C1.59132 15.353 1.52082 15.4869 1.49279 15.6324C1.46476 15.7779 1.48045 15.9284 1.53789 16.065C1.60018 16.1999 1.70117 16.3133 1.82802 16.3908C1.95488 16.4682 2.10189 16.5063 2.25039 16.5H9.00039C10.9895 16.5 12.8972 15.7098 14.3037 14.3033C15.7102 12.8968 16.5004 10.9891 16.5004 9C16.5004 7.01088 15.7102 5.10322 14.3037 3.6967C12.8972 2.29018 10.9895 1.5 9.00039 1.5ZM9.00039 15H4.05789L4.75539 14.3025C4.89508 14.162 4.97348 13.9719 4.97348 13.7738C4.97348 13.5756 4.89508 13.3855 4.75539 13.245C3.77333 12.264 3.16177 10.9729 3.02491 9.5916C2.88804 8.21029 3.23434 6.82425 4.00481 5.66964C4.77527 4.51503 5.92223 3.66327 7.25027 3.25948C8.57832 2.85569 10.0053 2.92485 11.288 3.45519C12.5708 3.98552 13.63 4.94421 14.2852 6.16792C14.9404 7.39163 15.151 8.80466 14.8812 10.1663C14.6114 11.5279 13.8779 12.7538 12.8055 13.6352C11.7332 14.5166 10.3885 14.9989 9.00039 15Z"
+                          fill="#12D359"
+                        />
+                      </svg>
 
-//   const handleSortChange = (sort: "all" | "marketcap" | "creation") => {
-//     setSortBy(sort);
-//     // Add your sorting logic here
-//     if (sort === "marketcap") {
-//       // Sort by market cap
-//     } else if (sort === "creation") {
-//       // Sort by creation time
-//     }
-//   };
+                      <div className="text-[#03ff24] text-xs font-medium leading-none">
+                        {numCommentsDisplay}
+                      </div>
+                    </div>
+                  </div>
 
-//   const renderSkeletons = () => (
-//     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-//       {[...Array(12)].map((_, index) => (
-//         <Card
-//           key={`skeleton-${index}`}
-//           className="bg-[#171717] border-green-500/20 hover:border-green-500/50 transition-colors h-[288px] flex flex-col overflow-hidden"
-//         >
-//           <div className="flex p-[16px_12px] h-full">
-//             <div className="flex w-[120px] h-[127.5px] flex-none">
-//               <Skeleton
-//                 width={120}
-//                 height={127.5}
-//                 baseColor="#171717"
-//                 highlightColor="#00ff0026"
-//                 className="rounded-md"
-//               />
-//             </div>
-            
-//             <div className="flex flex-col flex-1 ml-3 min-w-0">
-//               <div className="flex justify-between items-start w-full mb-3">
-//                 <div className="flex-1 min-w-0 pr-2">
-//                   <Skeleton
-//                     width="80%"
-//                     height={24}
-//                     baseColor="#171717"
-//                     highlightColor="#00ff0026"
-//                   />
-//                 </div>
-//                 <div className="flex-shrink-0">
-//                   <Skeleton
-//                     width={60}
-//                     height={24}
-//                     baseColor="#171717"
-//                     highlightColor="#00ff0026"
-//                   />
-//                 </div>
-//               </div>
-              
-//               <div className="mb-3">
-//                 <Skeleton
-//                   width={80}
-//                   height={16}
-//                   baseColor="#171717"
-//                   highlightColor="#00ff0026"
-//                   className="mb-1"
-//                 />
-//                 <div className="flex justify-between items-center">
-//                   <Skeleton
-//                     width={60}
-//                     height={21}
-//                     baseColor="#171717"
-//                     highlightColor="#00ff0026"
-//                   />
-//                   <Skeleton
-//                     width={100}
-//                     height={16}
-//                     baseColor="#171717"
-//                     highlightColor="#00ff0026"
-//                   />
-//                 </div>
-//               </div>
-              
-//               <div className="mb-3">
-//                 <div className="flex justify-between items-center mb-1">
-//                   <Skeleton
-//                     width="70%"
-//                     height={16}
-//                     baseColor="#171717"
-//                     highlightColor="#00ff0026"
-//                   />
-//                   <Skeleton
-//                     width={40}
-//                     height={16}
-//                     baseColor="#171717"
-//                     highlightColor="#00ff0026"
-//                   />
-//                 </div>
-//                 <Skeleton
-//                   width="100%"
-//                   height={8}
-//                   baseColor="#171717"
-//                   highlightColor="#00ff0026"
-//                   className="rounded-full"
-//                 />
-//               </div>
-//             </div>
-//           </div>
-          
-//           <div className="px-[12px] mb-3">
-//             <Skeleton
-//               width="100%"
-//               height={40}
-//               baseColor="#171717"
-//               highlightColor="#00ff0026"
-//             />
-//             <div className="w-full h-[1px] bg-[#262626] mt-2" />
-//           </div>
-          
-//           <div className="px-[12px] mt-auto mb-[12px]">
-//             <Skeleton
-//               width="100%"
-//               height={44}
-//               baseColor="#171717"
-//               highlightColor="#00ff0026"
-//               className="rounded-md"
-//             />
-//           </div>
-//         </Card>
-//       ))}
-//     </div>
-//   );
+                  <div className="flex flex-col p-[18px] flex-1">
+                    <CardHeader className="p-0 mb-[22px]">
+                      <Link href={`/coin/${mint}`}>
+                        <CardTitle className="flex items-center gap-2 text-white">
+                          {name}
+                          <span className="text-[#a6a6a6] tracking-widest">
+                            ${ticker}
+                          </span>
+                        </CardTitle>
+                      </Link>
 
-//   return (
-//     <div className="min-h-screen bg-black">
-//       <div className="max-w-[1440px] mx-auto px-5">
-//         {/* Header Controls */}
-//         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between py-4 border-b border-[#262626]/40">
-//           {/* Left Controls */}
-//           <div className="flex items-center gap-3 overflow-x-auto pb-2 sm:pb-0">
-//             {/* View Toggle */}
-//             <div className="flex-shrink-0 flex items-center h-10 bg-[#171717] rounded-lg">
-//               <button
-//                 onClick={() => handleViewChange("grid")}
-//                 className={`flex items-center justify-center w-14 h-[39px] rounded-l-lg transition-all duration-200
-//                   ${view === "grid" 
-//                     ? "bg-[#2E2E2E]" 
-//                     : "bg-[#171717] hover:bg-[#262626]"}`}
-//               >
-//                 <img
-//                   src="/grid.svg"
-//                   className={`w-6 h-6 transition-opacity duration-200 
-//                     ${view === "grid" ? "opacity-100" : "opacity-50"}`}
-//                   alt="Grid View"
-//                 />
-//               </button>
-//               <button
-//                 onClick={() => handleViewChange("table")}
-//                 className={`flex items-center justify-center w-14 h-[39px] rounded-r-lg transition-all duration-200
-//                   ${view === "table" 
-//                     ? "bg-[#2E2E2E]" 
-//                     : "bg-[#171717] hover:bg-[#262626]"}`}
-//               >
-//                 <img
-//                   src="/list.svg"
-//                   className={`w-6 h-6 transition-opacity duration-200 
-//                     ${view === "table" ? "opacity-100" : "opacity-50"}`}
-//                   alt="List View"
-//                 />
-//               </button>
-//             </div>
+                      <CardDescription className="text-[#a6a6a6] flex items-center gap-2">
+                        {mintDisplay}
+                        <Copy
+                          className="cursor-pointer text-[#03ff24] h-3"
+                          onClick={() => handleCopy(mint)}
+                        />
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0 flex flex-col flex-1">
+                      <div className="grid grid-cols-3">
+                        <div className="gap-1 flex flex-col">
+                          <div className="text-[#a6a6a6] text-[11px] font-normal uppercase leading-none tracking-widest">
+                            Marketcap
+                          </div>
+                          <div className="text-[#03ff24] text-xs font-normal leading-tight">
+                            {Intl.NumberFormat("en-US", {
+                              style: "currency",
+                              currency: "USD",
+                              notation: "compact",
+                            }).format(Number(marketCapUSD))}
+                          </div>
+                        </div>
+                        <div className="gap-1 flex flex-col">
+                          <div className="text-[#a6a6a6] text-[11px] font-normal uppercase leading-none tracking-widest">
+                            Volume
+                          </div>
+                          <div className="text-white text-xs font-normal leading-tight">
+                            {Intl.NumberFormat("en-US", {
+                              style: "currency",
+                              currency: "USD",
+                              notation: "compact",
+                            }).format(Number(liquidity))}
+                          </div>
+                        </div>
+                        <div className="gap-1 flex flex-col">
+                          <div className="text-[#a6a6a6] text-[11px] font-normal uppercase leading-none tracking-widest">
+                            Holders
+                          </div>
+                          <div className="text-white text-xs font-normal leading-tight">
+                            {holderCount}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </div>
+                </Card>
+              );
+            },
+          )}
+        </div>
+      ) : (
+        <Table className="min-w-full bg-[#0a0a0a] text-white">
+          <TableHeader>
+            <TableRow className="py-4 border-gray-600">
+              <TableHead className="text-green-500 h-14">AI AGENTS</TableHead>
+              <TableHead className="text-green-500 h-14">Market Cap</TableHead>
+              <TableHead className="text-green-500 h-14">24h</TableHead>
+              <TableHead className="text-green-500 h-14">
+                Total Value Locked
+              </TableHead>
+              <TableHead className="text-green-500 h-14">
+                Holders Count
+              </TableHead>
+              <TableHead className="text-green-500 h-14">24h Vol</TableHead>
+              <TableHead className="text-green-500 h-14">Inferences</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody className="bg-[#0a0a0a]">
+            {tokens.map((token) => (
+              <TableRow className="border-none " key={token.mint}>
+                <TableCell className="flex items-center">
+                  <img
+                    src={token.image}
+                    alt="Agent Preview"
+                    className="h-12 w-12 rounded-full mr-2"
+                  />
+                  <div>
+                    <Link href={`/coin/${token.mint}`}>
+                      <span className="text-white">{token.name}</span>
+                    </Link>
+                    <div className="flex items-center gap-1 text-gray-300 text-xs">
+                      {`${token.mint.slice(0, 3)}...${token.mint.slice(-3)}`}
+                      <Copy
+                        className="cursor-pointer text-gray-300 h-3"
+                        onClick={() => handleCopy(token.mint)}
+                      />
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                    notation: "compact",
+                  }).format(Number(token.marketCapUSD))}
+                </TableCell>
+                <TableCell>??</TableCell>
+                <TableCell>
+                  {" "}
+                  {Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                    notation: "compact",
+                  }).format(Number(token.liquidity))}
+                </TableCell>
+                <TableCell>??</TableCell>
+                <TableCell>??</TableCell>
+                <TableCell>??</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
 
-//             {/* Filter Buttons */}
-//             <div className="flex gap-2 flex-shrink-0">
-//               <button
-//                 onClick={() => handleSortChange("all")}
-//                 className={`px-4 py-2 rounded-lg transition-all duration-200
-//                   ${sortBy === "all" 
-//                     ? "bg-[#2E2E2E] text-[#2FD345]" 
-//                     : "bg-[#171717] text-white hover:bg-[#262626]"}`}
-//               >
-//                 All
-//               </button>
-//               <button
-//                 onClick={() => handleSortChange("marketcap")}
-//                 className={`px-4 py-2 rounded-lg transition-all duration-200
-//                   ${sortBy === "marketcap" 
-//                     ? "bg-[#2E2E2E] text-[#2FD345]" 
-//                     : "bg-[#171717] text-white hover:bg-[#262626]"}`}
-//               >
-//                 Market Cap
-//               </button>
-//             </div>
-//           </div>
-
-//           {/* Sort Dropdown */}
-//           <div className="flex-shrink-0">
-//             <Listbox value={sortBy} onChange={setSortBy}>
-//               <div className="relative">
-//                 <Listbox.Button className="flex items-center gap-2 px-4 py-2 bg-[#171717] border border-[#262626] rounded-lg text-white hover:border-[#2FD345]/50 transition-all duration-200">
-//                   <span className="text-sm whitespace-nowrap">
-//                     {sortOptions.find(opt => opt.value === sortBy)?.label || 'Sort by'}
-//                   </span>
-//                   <ChevronDownIcon className="w-4 h-4" />
-//                 </Listbox.Button>
-//                 <Listbox.Options className="absolute right-0 mt-2 w-56 bg-[#171717] border border-[#262626] rounded-lg py-1 shadow-lg z-10">
-//                   {sortOptions.map((option) => (
-//                     <Listbox.Option
-//                       key={option.value}
-//                       value={option.value}
-//                       className={({ active, selected }) => `
-//                         ${active ? 'bg-[#262626]' : ''}
-//                         ${selected ? 'text-[#2FD345]' : 'text-white'}
-//                         cursor-pointer select-none px-4 py-2 text-sm transition-colors
-//                       `}
-//                     >
-//                       {option.label}
-//                     </Listbox.Option>
-//                   ))}
-//                 </Listbox.Options>
-//               </div>
-//             </Listbox>
-//           </div>
-//         </div>
-
-//         {/* Content */}
-//         <div className="py-6">
-//           {isLoading ? (
-//             renderSkeletons()
-//           ) : view === "grid" ? (
-//             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-//               {tokens.map(({ mint, name, image, marketCapUSD, ticker }) => (
-//                 <div key={mint} className="flex justify-center">
-//                   <AgentCard
-//                     name={name}
-//                     image={image}
-//                     ticker={ticker}
-//                     mint={mint}
-//                     marketCapUSD={marketCapUSD}
-//                     onClick={() => router.push(`/coin/${mint}`)}
-//                   />
-//                 </div>
-//               ))}
-//             </div>
-//           ) : (
-//             <div className="flex flex-col gap-4">
-//               <div className={`flex items-center w-full h-[20px] ${dmMono.className} text-[14px] leading-5 tracking-[2px] uppercase text-[#A6A6A6]`}>
-//                 <div className="w-[596px]">AI AGENTS</div>
-//                 <div className="flex flex-1 items-center">
-//                   <div className="flex-1 flex items-center gap-1">Market Cap</div>
-//                   <div className="flex-1 flex items-center gap-1">24h Volume</div>
-//                   <div className="flex-1 flex items-center gap-1">Holders Count</div>
-//                   <div className="flex-1 flex items-center gap-1">Bonding curve</div>
-//                   <div className="w-[200px] flex justify-end">Creation time</div>
-//                 </div>
-//               </div>
-
-//               {tokens.map(({
-//                 mint,
-//                 name,
-//                 image,
-//                 marketCapUSD,
-//                 ticker,
-//                 liquidity,
-//                 holderCount,
-//                 numComments,
-//               }) => (
-//                 <div 
-//                   key={mint}
-//                   onClick={() => router.push(`/coin/${mint}`)}
-//                   className="flex w-full h-[74px] bg-[#171717] border border-[#262626] rounded-[6px] cursor-pointer hover:border-[#2FD345]/50 transition-colors"
-//                 >
-//                   <div className="flex items-center gap-4 px-4 w-[596px]">
-//                     <div 
-//                       className="w-[50px] h-[50px] rounded-lg bg-cover bg-center"
-//                       style={{ 
-//                         backgroundImage: `url(${image}), url(/Checker.png)`,
-//                         backgroundBlendMode: 'normal, multiply'
-//                       }}
-//                     />
-//                     <div className="flex flex-col gap-1">
-//                       <div className="flex items-center gap-2">
-//                         <span className={`${dmMono.className} text-base font-medium text-white`}>{name}</span>
-//                         <span className={`${dmMono.className} text-base font-normal text-[#8C8C8C] tracking-[2px] uppercase`}>${ticker}</span>
-//                       </div>
-//                       <div className="flex items-center gap-2">
-//                         <span className={`${dmMono.className} text-xs text-[#8C8C8C]`}>
-//                           {mint.slice(0, 6)}...{mint.slice(-4)}
-//                         </span>
-//                         <button 
-//                           onClick={(e) => {
-//                             e.stopPropagation();
-//                             navigator.clipboard.writeText(mint);
-//                           }}
-//                           className="text-[#8C8C8C] hover:text-white transition-colors"
-//                         >
-//                           <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-//                             <path d="M10.5 10.5H13.5V2.5H5.5V5.5M2.5 5.5H10.5V13.5H2.5V5.5Z"/>
-//                           </svg>
-//                         </button>
-//                       </div>
-//                     </div>
-//                   </div>
-
-//                   <div className="flex flex-1 items-center px-4">
-//                     <div className="flex-1">
-//                       <span className={`${dmMono.className} text-base text-[#2FD345]`}>
-//                         {Intl.NumberFormat("en-US", {
-//                           style: "currency",
-//                           currency: "USD",
-//                           notation: "compact",
-//                         }).format(Number(marketCapUSD))}
-//                       </span>
-//                     </div>
-//                     <div className="flex-1">
-//                       <span className={`${dmMono.className} text-base text-white`}>
-//                         {Intl.NumberFormat("en-US", {
-//                           style: "currency",
-//                           currency: "USD",
-//                           notation: "compact",
-//                         }).format(Number(liquidity))}
-//                       </span>
-//                     </div>
-//                     <div className="flex-1">
-//                       <span className={`${dmMono.className} text-base text-white`}>{holderCount}</span>
-//                     </div>
-//                     <div className="flex-1">
-//                       <div className="flex items-center gap-2">
-//                         <div className="relative w-[161px] h-2">
-//                           <div className="absolute w-full h-2 bg-[#2E2E2E] rounded-full" />
-//                           <div 
-//                             className="absolute h-2 bg-gradient-to-r from-[#0F4916] to-[#2FD345] rounded-full"
-//                             style={{ width: '28%' }}
-//                           />
-//                         </div>
-//                         <span className={`${dmMono.className} text-sm text-white`}>28%</span>
-//                       </div>
-//                     </div>
-//                     <div className="w-[200px] flex justify-end">
-//                       <span className={`${dmMono.className} text-base text-white`}>16 mins Ago</span>
-//                     </div>
-//                   </div>
-//                 </div>
-//               ))}
-//             </div>
-//           )}
-//         </div>
-
-//         {/* Pagination */}
-//         <div className="flex justify-center py-6">
-//           <Paginator
-//             currentPage={currentPage}
-//             hasPreviousPage={hasPreviousPage}
-//             hasNextPage={hasNextPage}
-//             previousPage={previousPage}
-//             nextPage={nextPage}
-//           />
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-// // eslint-disable-next-line @typescript-eslint/no-unused-vars
-// const styles = `
-// .grid-icon {
-//   background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7.5 17.5H12.5C17.5 17.5 19.5 15.5833 19.5 10.7917V5.04167C19.5 0.25 17.5 -1.66667 12.5 -1.66667H7.5C2.5 -1.66667 0.5 0.25 0.5 5.04167V10.7917C0.5 15.5833 2.5 17.5 7.5 17.5Z' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M0.529846 4.5625H20.4998' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M0.529846 11.2708H20.4998' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M7.00977 17.4904V-1.65723' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M14.0098 17.4904V-1.65723' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-//   background-repeat: no-repeat;
-//   background-position: center;
-// }
-
-// @keyframes progress {
-//   from { stroke-dashoffset: 100; }
-//   to { stroke-dashoffset: 0; }
-// }
-// `;
+      <div className="mt-6 flex justify-center">
+        <Paginator
+          currentPage={currentPage}
+          hasPreviousPage={hasPreviousPage}
+          hasNextPage={hasNextPage}
+          previousPage={previousPage}
+          nextPage={nextPage}
+        />
+      </div>
+    </div>
+  );
+}

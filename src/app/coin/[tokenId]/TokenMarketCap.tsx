@@ -144,43 +144,10 @@ export const BondingStatus = ({ token }: { token: Token }) => {
   );
 };
 
-export const TokenMarketCapSkeleton = () => {
-  return (
-    <div className="flex flex-col bg-[#272727] rounded-xl p-4 gap-3 animate-pulse">
-      <div className="flex gap-3 w-full">
-        <div className="bg-[#33c55e]/10 rounded-xl flex-1 py-3 px-4">
-          <div className="text-white text-base font-medium leading-normal mb-2">
-            <div className="w-24 h-4 bg-neutral-800 rounded"></div>
-          </div>
-          <div className="text-[#33c55e] text-2xl font-bold leading-loose">
-            <div className="w-32 h-7 bg-[#33c55e]/20 rounded"></div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-[#33c55e]/10 rounded-xl flex-1 py-3 px-4">
-        <div className="flex justify-between mb-3">
-          <div className="w-32 h-4 bg-neutral-800 rounded"></div>
-          <div className="w-4 h-4 bg-neutral-800 rounded-full"></div>
-        </div>
-        <div className="flex gap-2 items-center">
-          <div className="w-full h-1 rounded-full bg-gray-900 flex overflow-hidden">
-            <div className="h-full bg-neutral-800 rounded-full" style={{ width: '60%' }}></div>
-            <div className="bg-gradient-to-r from-neutral-800 to-transparent w-20 h-full -ml-1"></div>
-          </div>
-          <div className="w-8 h-4 bg-neutral-800 rounded"></div>
-        </div>
-      </div>
-
-      <div className="w-full h-3 bg-neutral-800/50 rounded"></div>
-    </div>
-  );
-};
-
 export const TokenMarketCap = ({ mint }: { mint: string }) => {
   const { data: token } = useToken({ variables: mint });
 
-  if (!token) return <TokenMarketCapSkeleton />;
+  if (!token) return null;
 
   return (
     <div className="flex flex-col bg-[#272727] rounded-xl p-4 gap-3">
