@@ -43,6 +43,7 @@ export const TransactionTable = ({
     nextPage,
     previousPage,
     hasNextPage,
+    hasPreviousPage,
   } = usePaginatedLiveData({
     itemsPerPage: 100,
     endpoint: `/swaps/${mint}`,
@@ -123,6 +124,7 @@ export const TransactionTable = ({
       <div className="flex justify-center mt-4">
         <Paginator
           currentPage={currentPage}
+          hasPreviousPage={hasPreviousPage}
           hasNextPage={hasNextPage}
           previousPage={previousPage}
           nextPage={nextPage}
