@@ -8,7 +8,6 @@ export default function HomePage() {
   return (
     <div>
       <Suspense fallback={<LoadingScreen />}>
-        {/* <AgentBrowser /> */}
         <AgentBrowser />
       </Suspense>
     </div>
