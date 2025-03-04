@@ -48,7 +48,7 @@ export const TradeSettingsModal = ({
           {/* Slippage Section */}
           <div className="flex flex-col gap-3">
             <div className="flex justify-between">
-              <div className="text-white flex items-center gap-2">
+              <div className="text-white text-xl flex items-center gap-2">
                 SLIPPAGE_%:{" "}
                 <span className="text-[#2fd345] text-xl">
                   {slippage.toFixed(1)}
@@ -74,7 +74,7 @@ export const TradeSettingsModal = ({
                 }}
               />
             </div>
-            <div className="text-[#a6a6a6] text-sm font-['DM Mono']">
+            <div className="text-[#8c8c8c] text-sm font-['DM Mono']">
               This is the maximum amount of slippage you are willing to accept
               when placing trades
             </div>
@@ -83,7 +83,7 @@ export const TradeSettingsModal = ({
           {/* Speed Section */}
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <div className="text-white text-xl font-['DM Mono']">Speed</div>
+              <div className="text-white text-xl">Speed</div>
               <ToggleGroup
                 options={
                   [
@@ -98,7 +98,7 @@ export const TradeSettingsModal = ({
                 defaultValue={speed}
               />
             </div>
-            <div className="text-[#a6a6a6] text-sm font-['DM Mono']">
+            <div className="text-[#8c8c8c] text-sm font-['DM Mono']">
               Higher speeds will increase your priority fees, making your
               transactions confirm faster
             </div>
@@ -133,7 +133,7 @@ export const TradeSettingsModal = ({
             });
             onClose();
           }}
-          className="w-full h-12 bg-[#092f0e] hover:bg-[#0a3711] active:bg-[#072409] transition-colors rounded-lg text-[#03ff24] text-xl font-['DM Mono'] active:shadow-none"
+          className="w-full py-2 bg-[#2e2e2e] hover:bg-[#0a3711] active:bg-[#072409] transition-colors rounded-md text-[#03ff24] text-sm leading-tight font-['DM Mono'] active:shadow-none"
         >
           Update
         </button>
