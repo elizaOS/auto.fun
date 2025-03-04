@@ -3,7 +3,6 @@
 import { Modal } from "@/components/common/Modal";
 import { useState } from "react";
 import ToggleGroup from "@/components/common/ToggleGroup";
-import { Slider } from "@/components/common/Slider";
 import { useTradeSettings } from "./useTradeSettings";
 
 export const TradeSettingsModal = ({
@@ -48,23 +47,32 @@ export const TradeSettingsModal = ({
         <div className="flex flex-col gap-8">
           {/* Slippage Section */}
           <div className="flex flex-col gap-3">
-            <div className="text-[#a6a6a6] text-xl font-['DM Mono'] flex items-center gap-2">
-              SLIPPAGE_%:{" "}
-              <span className="text-[#22C55E]">{slippage.toFixed(1)}</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <Slider
-                  value={slippage}
-                  onChange={setSlippage}
-                  minValue={0}
-                  maxValue={30}
-                  step={0.1}
-                />
+            <div className="flex justify-between">
+              <div className="text-white flex items-center gap-2">
+                SLIPPAGE_%:{" "}
+                <span className="text-[#2fd345] text-xl">
+                  {slippage.toFixed(1)}
+                </span>
               </div>
-              <div className="w-[120px] px-4 py-2 bg-[#262626] rounded-md text-white text-xl font-['DM Mono']">
-                {slippage.toFixed(1)}%
-              </div>
+              <input
+                className="w-[120px] px-4 py-2 bg-[#262626] rounded-md text-white text-xl font-['DM Mono']"
+                placeholder={slippage.toFixed(1) + "%"}
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={slippage || ""}
+                onChange={(e) => {
+                  const value =
+                    e.target.value === "" ? 0 : parseFloat(e.target.value);
+                  if (
+                    e.target.value === "" ||
+                    (!isNaN(value) && value >= 0 && value <= 100)
+                  ) {
+                    setSlippage(value);
+                  }
+                }}
+              />
             </div>
             <div className="text-[#a6a6a6] text-sm font-['DM Mono']">
               This is the maximum amount of slippage you are willing to accept
