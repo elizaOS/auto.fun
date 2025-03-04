@@ -461,12 +461,9 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
             dollarValue={calculatedAmounts.dollarValue}
             tokenBalance={isBuyMode ? solBalance : tokenBalance}
             tokenImage={token.image}
+            onSettingsClick={() => setSettingsModalOpen(true)}
           />
 
-          {/* <button
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 p-2 bg-[#212121] rounded-full border-2 border-neutral-900 flex justify-center z-10"
-            onClick={handleModeSwitch}
-          > */}
           <button
             className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 p-2 bg-[#212121] rounded-full border-2 border-neutral-900 flex justify-center z-10 ${
               isDisabled ? "opacity-50 cursor-not-allowed" : ""

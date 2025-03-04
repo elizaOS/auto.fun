@@ -4,10 +4,7 @@ import { useCallback } from "react";
 export interface TradeSettings {
   slippage: number;
   speed: "fast" | "turbo" | "ultra";
-  // isProtectionEnabled: boolean;
-  // tipAmount: string;
-  tradeSize: number;
-  ownTradesFilter: boolean;
+  isProtectionEnabled: boolean;
 }
 
 export function useTradeSettings() {
@@ -19,40 +16,17 @@ export function useTradeSettings() {
     "trade-settings-speed",
     "turbo",
   );
-  const [tradeSize, setTradeSize] = useLocalStorage<TradeSettings["tradeSize"]>(
-    "trade-settings-trade-size",
-    0.1, // Default trade size in SOL
-  );
-  const [ownTradesFilter, setOwnTradesFilter] = useLocalStorage<TradeSettings["ownTradesFilter"]>(
-    "trade-settings-own-trades-filter",
-    false,
-  );
-  // Protection & tip commented code
-  // const [isProtectionEnabled, setIsProtectionEnabled] = useLocalStorage<
-  //   TradeSettings["isProtectionEnabled"]
-  // >("trade-settings-protection", false);
-  // const [tipAmount, setTipAmount] = useLocalStorage<TradeSettings["tipAmount"]>(
-  //   "trade-settings-tip-amount",
-  //   "0.004",
-  // );
+  const [isProtectionEnabled, setIsProtectionEnabled] = useLocalStorage<
+    TradeSettings["isProtectionEnabled"]
+  >("trade-settings-protection", false);
 
-  // const saveSettings = useCallback(
-  //   (settings: TradeSettings) => {
-  //     setSlippage(settings.slippage);
-  //     setSpeed(settings.speed);
-  //     setIsProtectionEnabled(settings.isProtectionEnabled);
-  //     setTipAmount(settings.tipAmount);
-  //   },
-  //   [setSlippage, setSpeed, setIsProtectionEnabled, setTipAmount],
-  // );
   const saveSettings = useCallback(
     (settings: TradeSettings) => {
       setSlippage(settings.slippage);
       setSpeed(settings.speed);
-      setTradeSize(settings.tradeSize);
-      setOwnTradesFilter(settings.ownTradesFilter);
+      setIsProtectionEnabled(settings.isProtectionEnabled);
     },
-    [setSlippage, setSpeed, setTradeSize, setOwnTradesFilter],
+    [setSlippage, setSpeed, setIsProtectionEnabled],
   );
 
   return {
@@ -60,14 +34,8 @@ export function useTradeSettings() {
     setSlippage,
     speed,
     setSpeed,
-    // isProtectionEnabled,
-    // setIsProtectionEnabled,
-    // tipAmount,
-    // setTipAmount,
-    tradeSize,
-    setTradeSize,
-    ownTradesFilter,
-    setOwnTradesFilter,
+    isProtectionEnabled,
+    setIsProtectionEnabled,
     saveSettings,
   };
 }
