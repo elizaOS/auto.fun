@@ -45,6 +45,7 @@ import { getSOLPrice } from './mcap';
 import PQueue from 'p-queue';
 import mediaGenerationRoutes from './mediaGeneration';
 import { MigrationService } from './lib/migration';
+import { fetchCodexTokenEvents, convertCodexEventsToPriceFeed } from './lib/api';
 
 const FEE_BASIS_POINTS = 10000;
 const VALID_PROGRAM_ID = new Set(
@@ -696,74 +697,29 @@ export async function fetchPriceChartData(pairIndex: number, start: number, end:
 
     return cdFeeds;
   } else if (tokenInfo.status === 'locked') {
-    // Fetch price history from raydium (Codex API)
-    let allItems: any[] = [];
-    let cursor: string | null = null;
-
-    do {
+    try {
       // @TODO Deploy our program to mainnet in, otherwise token address is fixed for now, for development, since we're not working with mainnet, code is working for mainnet
-      let data = JSON.stringify({
-        query: `query {
-          getTokenEvents(
-            query: {address: "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump", networkId: 1399811149, timestamp: {
-              from: ${Math.floor(start / 1000)},
-              to: ${Math.floor(end / 1000)}
-            }},
-            limit: 200,
-            cursor: ${cursor ? `"${cursor}"` : null}
-          ) {
-            cursor
-            items {
-              eventDisplayType
-              token1SwapValueUsd
-              token1PoolValueUsd
-              timestamp
-              data {
-                ... on SwapEventData {
-                  amount0,
-                  amount1,
-                }
-              }
-            }
-          }
-        }`,
-        variables: {}
-      });
+      const tokenAddress = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
+      
+      // Fetch price history from Codex API using our utility function
+      const tokenEvents = await fetchCodexTokenEvents(
+        tokenAddress,
+        Math.floor(start / 1000),
+        Math.floor(end / 1000)
+      );
+      
+      // Convert to price feed format
+      const priceFeeds = convertCodexEventsToPriceFeed(tokenEvents);
 
-      let config = {
-        method: 'post',
-        maxBodyLength: Infinity,
-        url: 'https://graph.codex.io/graphql',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'Authorization': process.env.CODEX_API_KEY
-        },
-        data: data
-      };
+      if (!priceFeeds.length) return [];
 
-      try {
-        const res = await axios.request(config);
-        const { items, cursor: newCursor } = res.data.data.getTokenEvents;
-        allItems = allItems.concat(items);
-        cursor = newCursor;
-      } catch (error) {
-        logger.error('Error fetching data from Codex API:', error);
-        return [];
-      }
-    } while (cursor);
-
-    // Convert to PriceFeedInfo array
-    const priceFeeds: PriceFeedInfo[] = allItems.map(item => ({
-      price: parseFloat(item.token1PoolValueUsd),
-      timestamp: new Date(item.timestamp * 1000),
-      volume: parseFloat(item.data.amount0)
-    }));
-
-    if (!priceFeeds.length) return [];
-
-    const cdFeeds = getCandleData(priceFeeds, range);
-
-    return cdFeeds;
+      const cdFeeds = getCandleData(priceFeeds, range);
+      return cdFeeds;
+      
+    } catch (error) {
+      logger.error('Error fetching data for locked token:', error);
+      return [];
+    }
   }
 }
 
@@ -876,6 +832,11 @@ const initServer = async () => {
     await connectDB();
   } catch (error) {
     logger.error('Failed to connect to MongoDB:', error);
+  }
+
+  // Verify required environment variables
+  if (!process.env.CODEX_API_KEY) {
+    logger.warn('CODEX_API_KEY environment variable is not set. Codex API features will not work properly.');
   }
 
   // Initialize Solana connection and program
