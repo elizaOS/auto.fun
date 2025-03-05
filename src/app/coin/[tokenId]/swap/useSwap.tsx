@@ -6,76 +6,72 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import { BN, Program } from "@coral-xyz/anchor";
-import { SEED_CONFIG, Serlaunchalot, useProgram } from "@/utils/program";
+import {
+  SEED_BONDING_CURVE,
+  SEED_CONFIG,
+  Serlaunchalot,
+  useProgram,
+} from "@/utils/program";
 import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { useTradeSettings } from "./useTradeSettings";
 import { Token } from "@/utils/tokens";
 import { associatedAddress } from "@coral-xyz/anchor/dist/cjs/utils/token";
 import { env } from "@/utils/env";
 
-function convertToFloat(value: number, decimals: number): number {
-  return value / Math.pow(10, decimals);
+// copied from backend
+function convertToBasisPoints(feePercent: number): number {
+  if (feePercent >= 1) {
+    return feePercent;
+  }
+  return Math.floor(feePercent * 10000);
 }
 
-function convertFromFloat(value: number, decimals: number): number {
-  return value * Math.pow(10, decimals);
+// copied from backend
+export function calculateAmountOutSell(
+  reserveLamport: number,
+  amount: number,
+  tokenDecimals: number,
+  platformSellFee: number,
+  reserveToken: number,
+): number {
+  const feeBasisPoints = convertToBasisPoints(platformSellFee);
+  const amountBN = new BN(amount);
+
+  // Apply fee: adjusted_amount = amount * (10000 - fee_basis_points) / 10000
+  const adjustedAmount = amountBN
+    .mul(new BN(10000 - feeBasisPoints))
+    .div(new BN(10000));
+
+  // For selling tokens: amount_out = reserve_lamport * adjusted_amount / (reserve_token + adjusted_amount)
+  const numerator = new BN(reserveLamport).mul(adjustedAmount);
+  const denominator = new BN(reserveToken).add(adjustedAmount);
+
+  return numerator.div(denominator).toNumber();
 }
 
+// copied from backend
 function calculateAmountOutBuy(
-  reserveLamport: number,
-  adjustedAmount: number,
-  solDecimals: number, // renamed for clarity
   reserveToken: number,
+  amount: number,
+  solDecimals: number,
+  reserveLamport: number,
+  platformBuyFee: number,
 ): number {
-  // Calculate the denominator sum which is (y + dy)
-  const denominatorSum = reserveLamport + adjustedAmount;
+  const feeBasisPoints = convertToBasisPoints(platformBuyFee);
+  const amountBN = new BN(amount);
 
-  // Convert to float for division
-  const denominatorSumFloat = convertToFloat(denominatorSum, solDecimals);
-  const adjustedAmountFloat = convertToFloat(adjustedAmount, solDecimals);
+  // Apply fee: adjusted_amount = amount * (10000 - fee_basis_points) / 10000
+  const adjustedAmount = amountBN
+    .mul(new BN(10000 - feeBasisPoints))
+    .div(new BN(10000));
 
-  // (y + dy) / dy
-  const divAmt = denominatorSumFloat / adjustedAmountFloat;
+  const numerator = new BN(reserveToken).mul(adjustedAmount);
+  const denominator = new BN(reserveLamport).add(adjustedAmount);
 
-  // Convert reserveToken to float with 6 decimals (token decimals)
-  const reserveTokenFloat = convertToFloat(reserveToken, 6);
-
-  // Calculate dx = xdy / (y + dy)
-  const amountOutInFloat = reserveTokenFloat / divAmt;
-
-  // Convert the result back to the original decimal format
-  const amountOut = convertFromFloat(amountOutInFloat, 6);
-
-  return Math.floor(amountOut); // Added Math.floor for safety
+  return numerator.div(denominator).toNumber();
 }
 
-function calculateAmountOutSell(
-  reserveLamport: number,
-  adjustedAmount: number,
-  tokenOneDecimals: number,
-  reserveToken: number,
-): number {
-  // Calculate the denominator sum which is (x + dx)
-  const denominatorSum = reserveToken + adjustedAmount;
-
-  // Convert to float for division
-  const denominatorSumFloat = convertToFloat(denominatorSum, tokenOneDecimals);
-  const adjustedAmountFloat = convertToFloat(adjustedAmount, tokenOneDecimals);
-
-  // (x + dx) / dx
-  const divAmt = denominatorSumFloat / adjustedAmountFloat;
-
-  // Convert reserveLamport to float with 9 decimals
-  const reserveLamportFloat = convertToFloat(reserveLamport, 9);
-
-  // Calculate dy = y / ((x + dx) / dx)
-  const amountOutInFloat = reserveLamportFloat / divAmt;
-
-  // Convert the result back to the original decimal format
-  const amountOut = convertFromFloat(amountOutInFloat, 9);
-
-  return Math.floor(amountOut);
-}
+const FEE_BASIS_POINTS = 10000;
 
 const swapIx = async (
   user: PublicKey,
@@ -85,18 +81,9 @@ const swapIx = async (
   slippageBps: number = 100,
   connection: Connection,
   program: Program<Serlaunchalot>,
+  reserveToken: number,
+  reserveLamport: number,
 ) => {
-  console.log(
-    JSON.stringify({
-      message: "getAutofunSwapTx",
-      amount,
-      style,
-      slippageBps,
-      user: user.toString(),
-      token: token.toString(),
-    }),
-  );
-
   const [configPda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_CONFIG)],
     program.programId,
@@ -105,34 +92,33 @@ const swapIx = async (
 
   // Apply platform fee
   const feePercent =
-    style === 1 ? configAccount.platformSellFee : configAccount.platformBuyFee;
-  const adjustedAmount = Math.floor((amount * (100 - feePercent)) / 100);
-  const tokenSupply = new BN(Number(env.tokenSupply));
-  const reserveLamport = new BN(Number(env.virtualReserves));
-  const reserveToken = tokenSupply.div(new BN(Number(env.decimals)));
+    style === 1
+      ? Number(configAccount.platformSellFee)
+      : Number(configAccount.platformBuyFee);
+  const adjustedAmount = Math.floor(
+    (amount * (FEE_BASIS_POINTS - feePercent)) / FEE_BASIS_POINTS,
+  );
 
   // Calculate expected output
   let estimatedOutput;
   if (style === 0) {
-    console.log("buying", amount, "SOL");
     // Buy
     estimatedOutput = calculateAmountOutBuy(
-      reserveLamport.toNumber(),
+      reserveToken,
       adjustedAmount,
       9, // SOL decimals
-      reserveToken.toNumber(),
+      reserveLamport,
+      feePercent,
     );
   } else {
-    console.log("selling", amount, "tokens");
     // Sell
     estimatedOutput = calculateAmountOutSell(
-      reserveLamport.toNumber(),
+      reserveLamport,
       adjustedAmount,
-      9,
-      reserveToken.toNumber(),
+      6,
+      feePercent,
+      reserveToken,
     );
-
-    console.log("Estimated output:", estimatedOutput);
   }
 
   // Apply slippage to estimated output
@@ -247,6 +233,8 @@ interface SwapParams {
   amount: number;
   tokenAddress: string;
   token?: Token;
+  reserveToken: number;
+  reserveLamport: number;
 }
 
 export const useSwap = () => {
@@ -261,6 +249,8 @@ export const useSwap = () => {
     amount,
     tokenAddress,
     token,
+    reserveToken,
+    reserveLamport,
   }: SwapParams) => {
     if (!program || !wallet.publicKey) {
       throw new Error("Wallet not connected or missing required methods");
@@ -301,6 +291,8 @@ export const useSwap = () => {
         slippageBps,
         connection,
         program,
+        reserveToken,
+        reserveLamport,
       );
       return ix;
     }
@@ -311,12 +303,25 @@ export const useSwap = () => {
     amount,
     tokenAddress,
     token,
-  }: SwapParams) => {
-    if (!wallet.publicKey || !wallet.signTransaction) {
+  }: Omit<SwapParams, "reserveToken" | "reserveLamport">) => {
+    if (!wallet.publicKey || !wallet.signTransaction || !program) {
       throw new Error("Wallet not connected or missing required methods");
     }
 
-    const ix = await createSwapIx({ style, amount, tokenAddress, token });
+    const [bondingCurvePda] = PublicKey.findProgramAddressSync(
+      [Buffer.from(SEED_BONDING_CURVE), new PublicKey(tokenAddress).toBytes()],
+      program.programId,
+    );
+    const curve = await program.account.bondingCurve.fetch(bondingCurvePda);
+
+    const ix = await createSwapIx({
+      style,
+      amount,
+      tokenAddress,
+      reserveLamport: curve.reserveLamport,
+      reserveToken: curve.reserveToken,
+      token,
+    });
 
     const tx = new Transaction().add(...(Array.isArray(ix) ? ix : [ix]));
     const { blockhash, lastValidBlockHeight } =
@@ -342,5 +347,20 @@ export const useSwap = () => {
     return { signature, confirmation };
   };
 
-  return { createSwapIx, executeSwap };
+  const initialBuyIx = async (
+    params: Omit<SwapParams, "reserveToken" | "reserveLamport">,
+  ) => {
+    /**
+     * we avoid fetching from the curve here for initial buy since
+     * the curve does not exist yet at time of transaction creation.
+     * so we use env vars instead, since we know they will always initially be the same.
+     */
+    return createSwapIx({
+      ...params,
+      reserveLamport: new BN(env.tokenSupply).div(new BN(env.decimals)),
+      reserveToken: new BN(env.virtualReserves),
+    });
+  };
+
+  return { createSwapIx: initialBuyIx, executeSwap };
 };
