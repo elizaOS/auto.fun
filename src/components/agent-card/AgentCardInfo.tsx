@@ -13,9 +13,9 @@ interface AgentCardInfoProps {
   ticker: string;
   image: string;
   description: string;
-  bondingCurveProgress?: number;
-  bondingCurveAmount?: number;
-  targetMarketCap?: number;
+  bondingCurveProgress: number;
+  bondingCurveAmount: number;
+  targetMarketCap: number;
   contractAddress: string;
   priceUSD?: number;
   priceSOL?: number;
@@ -31,14 +31,14 @@ export function AgentCardInfo({
   name,
   ticker,
   image,
-  bondingCurveProgress = 0,
-  bondingCurveAmount = 0,
-  targetMarketCap = 0,
+  bondingCurveProgress,
+  bondingCurveAmount,
+  targetMarketCap,
   contractAddress,
   priceUSD = 0,
   priceSOL = 0,
   socialLinks,
-  description = "This AI agent is designed to process complex data and provide intelli..This AI agent is designed to process complex data and provide intelli.complex data and provide intelli...",
+  description,
 }: AgentCardInfoProps) {
   const [copied, setCopied] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
@@ -147,6 +147,7 @@ export function AgentCardInfo({
         </div>
       </div>
 
+      {/* TODO: placeholders for now */}
       {/* Social Links */}
       <div className="flex w-full h-10 gap-0.5">
         {[
