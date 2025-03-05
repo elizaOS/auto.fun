@@ -1,5 +1,5 @@
 "use client";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef } from "react";
 import {
   ChartingLibraryWidgetOptions,
   IChartingLibraryWidget,
@@ -45,7 +45,6 @@ export const TVChartContainer = ({
     useRef<HTMLDivElement>() as React.MutableRefObject<HTMLInputElement>;
   const tvWidgetRef = useRef<IChartingLibraryWidget | null>(null);
   const { isLoading, setIsLoading } = useContext(UserContext);
-  const [chartType, setChartType] = useState("Candlestick");
 
   useEffect(() => {
     if (!chartContainerRef.current) {
@@ -139,19 +138,19 @@ export const TVChartContainer = ({
           "header_widget.buttons.backgroundColor": "#171717",
           "header_widget.buttons.borderColor": "#262626",
           "header_widget.buttons.fontSize": 11,
-
-          // Chart Type
-          "mainSeriesProperties.style": chartType,
         },
         interval: "1D" as ResolutionString,
       };
 
       tvWidgetRef.current = new widget(widgetOptions);
-      tvWidgetRef.current.onChartReady(function () {
+      tvWidgetRef.current.onChartReady(() => {
         setIsLoading(false);
         const chart = tvWidgetRef.current?.activeChart();
         const priceScale = chart?.getPanes()[0].getMainSourcePriceScale();
         priceScale?.setAutoScale(true);
+
+        // Set chart type to columns by default
+        chart?.setChartType(13);
 
         // Create custom header toolbar
         const header = document.createElement("div");
@@ -189,7 +188,6 @@ export const TVChartContainer = ({
           const button = document.createElement("button");
           button.className = "text-[#8C8C8C] hover:text-white";
           button.onclick = () => {
-            setChartType(value);
             chart?.setChartType(value as unknown as SeriesType);
           };
           chartTypes.appendChild(button);
