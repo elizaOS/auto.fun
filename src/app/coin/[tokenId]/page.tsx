@@ -12,12 +12,13 @@ import { queryClient } from "@/components/providers";
 import { TokenBuySell } from "./swap/TokenBuySell";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { VersionedTransaction } from "@solana/web3.js";
+import { LAMPORTS_PER_SOL, VersionedTransaction } from "@solana/web3.js";
 import { womboApi } from "@/utils/fetch";
 import { toast } from "react-toastify";
 import { AgentCardInfo } from "@/components/agent-card/AgentCardInfo";
 import { SolanaIcon } from "./swap/SolanaIcon";
 import { env } from "@/utils/env";
+import { useTimeAgo } from "@/app/formatTimeAgo";
 
 const HolderSchema = z.object({
   address: z.string(),
@@ -28,6 +29,26 @@ const HolderSchema = z.object({
   lastUpdated: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
+
+const TransactionSchema = z
+  .object({
+    txId: z.string(),
+    timestamp: z.string().datetime(),
+    user: z.string(),
+    direction: z.number().int().min(0).max(1),
+    amountIn: z.number(),
+    amountOut: z.number(),
+  })
+  .transform((tx) => ({
+    txId: tx.txId,
+    timestamp: tx.timestamp,
+    user: tx.user,
+    type: tx.direction === 0 ? ("Buy" as const) : ("Sell" as const),
+    solAmount:
+      (tx.direction === 0 ? tx.amountIn : tx.amountOut) / LAMPORTS_PER_SOL,
+    tokenAmount:
+      tx.direction === 0 ? tx.amountOut / 10 ** 6 : tx.amountIn / 10 ** 6,
+  }));
 
 const Switcher = ({
   enabled,
@@ -80,6 +101,28 @@ export default function TradingInterface() {
     },
     itemsPropertyName: "holders",
   });
+
+  const { items: transactions } = usePaginatedLiveData({
+    itemsPerPage: 100,
+    endpoint: `/swaps/${tokenId}`,
+    validationSchema: TransactionSchema,
+    getUniqueId: (tx) => tx.txId,
+    socketConfig: {
+      subscribeEvent: {
+        event: "subscribe",
+        args: [tokenId],
+      },
+      newDataEvent: "newSwap",
+    },
+    itemsPropertyName: "swaps",
+  });
+
+  const timestamps = useMemo(
+    () => transactions?.map((tx) => tx.timestamp),
+    [transactions],
+  );
+
+  const timeAgo = useTimeAgo(timestamps);
 
   const socket = useMemo(() => getSocket(), []);
 
@@ -255,28 +298,40 @@ export default function TradingInterface() {
                       <th className="text-left py-2">Account</th>
                       <th className="text-left py-2">Type</th>
                       <th className="text-left py-2">SOL</th>
-                      <th className="text-left py-2">WAIFU</th>
+                      <th className="text-left py-2">{token.ticker}</th>
                       <th className="text-left py-2">Date</th>
                       <th className="text-left py-2">TXN</th>
                     </tr>
                   </thead>
                   <tbody className="text-sm">
-                    {[...Array(10)].map((_, i) => (
+                    {transactions.map((tx, i) => (
                       <tr
                         key={i}
                         className="border-b border-[#262626] last:border-0"
                       >
-                        <td className="py-3 text-[#8C8C8C]">0x742..3ab</td>
-                        <td
-                          className={`py-3 ${i % 2 === 0 ? "text-[#4ADE80]" : "text-[#FF4444]"}`}
-                        >
-                          {i % 2 === 0 ? "Buy" : "Sell"}
+                        <td className="py-3 text-[#8C8C8C]">
+                          {tx.user.slice(0, 5)}...{tx.user.slice(-3)}
                         </td>
-                        <td className="py-3 text-white">0.515</td>
-                        <td className="py-3 text-white">1.55m</td>
-                        <td className="py-3 text-[#8C8C8C]">2s ago</td>
+                        <td
+                          className={`py-3 ${tx.type === "Buy" ? "text-[#4ADE80]" : "text-[#FF4444]"}`}
+                        >
+                          {tx.type}
+                        </td>
+                        <td className="py-3 text-white">{tx.solAmount}</td>
+                        <td className="py-3 text-white">
+                          {Intl.NumberFormat("en-US", {
+                            style: "decimal",
+                            notation: "compact",
+                          })
+                            .format(Number(tx.tokenAmount))
+                            .toLowerCase()}
+                        </td>
+                        <td className="py-3 text-[#8C8C8C]">{timeAgo[i]}</td>
                         <td className="py-3">
-                          <button className="text-[#8C8C8C] hover:text-white">
+                          <a
+                            className="text-[#8C8C8C] hover:text-white"
+                            href={env.getTransactionUrl(tx.txId)}
+                          >
                             <svg
                               className="w-4 h-4"
                               viewBox="0 0 24 24"
@@ -286,7 +341,7 @@ export default function TradingInterface() {
                             >
                               <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                             </svg>
-                          </button>
+                          </a>
                         </td>
                       </tr>
                     ))}
