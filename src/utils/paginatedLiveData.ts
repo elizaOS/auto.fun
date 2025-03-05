@@ -65,7 +65,7 @@ export const usePaginatedLiveData = <TInput, TOutput>({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoizedGetUniqueId = useCallback(getUniqueId, []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const memoizedSocketConfig = useMemo(() => socketConfig, [socketConfig]);
+  const memoizedSocketConfig = useMemo(() => socketConfig, []);
 
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
