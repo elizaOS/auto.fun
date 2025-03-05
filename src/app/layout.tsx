@@ -8,9 +8,8 @@ import { Providers } from "@/components/providers";
 import { SkeletonTheme } from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import "react-toastify/dist/ReactToastify.css";
-// import Image from "next/image";
 import { Suspense } from "react";
-import { Footer,FooterSkeleton } from "@/components/common/Footer";
+import { Footer, FooterSkeleton } from "@/components/common/Footer";
 
 const ppMondwest = localFont({
   src: "./fonts/PPMondwest-Regular.otf",
