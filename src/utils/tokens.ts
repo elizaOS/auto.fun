@@ -83,7 +83,7 @@ const uploadToPinata = async (metadata: TokenMetadata) => {
   return response.metadataUrl;
 };
 
-const waitForTokenCreation = async (mint: string, timeout = 10_000) => {
+const waitForTokenCreation = async (mint: string, timeout = 80_000) => {
   return new Promise<void>((resolve, reject) => {
     const socket = getSocket();
 
@@ -205,7 +205,7 @@ const useCreateTokenMutation = createMutation({
         blockhash,
         lastValidBlockHeight,
       },
-      "finalized",
+      "confirmed",
     );
 
     await waitForTokenCreation(mintKeypair.publicKey.toBase58());
