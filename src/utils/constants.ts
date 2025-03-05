@@ -21,17 +21,17 @@ const chartStyleOverrides = [
 }, {});
 
 export const chartOverrides = {
-  "paneProperties.background": "#111114",
-  "paneProperties.backgroundGradientStartColor": "#111114",
-  "paneProperties.backgroundGradientEndColor": "#111114",
+  "paneProperties.background": "#171717",
+  "paneProperties.backgroundGradientStartColor": "#171717",
+  "paneProperties.backgroundGradientEndColor": "#171717",
   "paneProperties.backgroundType": "solid",
-  "paneProperties.vertGridProperties.color": "rgba(35, 38, 59, 1)",
+  "paneProperties.vertGridProperties.color": "#171717",
   "paneProperties.vertGridProperties.style": 2,
-  "paneProperties.horzGridProperties.color": "rgba(35, 38, 59, 1)",
+  "paneProperties.horzGridProperties.color": "#171717",
   "paneProperties.horzGridProperties.style": 2,
   "mainSeriesProperties.priceLineColor": "#3a3e5e",
   "scalesProperties.textColor": "#9494A8",
-  "scalesProperties.lineColor": "#111114",
+  "scalesProperties.lineColor": "#171717",
   "scalesProperties.fontSize": 14,
   priceScaleSelectionStrategyName: "left",
   "scalesProperties.showSymbolLabels": true,
