@@ -52,8 +52,7 @@ export default async function RootLayout({
             pauseOnHover
             theme="dark"
             closeButton={true}
-            className="!w-[320px] !fixed !right-6 !bottom-6 !z-50"
-            toastClassName="!bg-transparent !rounded-none !mb-4 !p-0"
+            toastClassName="border border-[#262626]"
           />
         </SkeletonTheme>
         <Suspense fallback={<FooterSkeleton />}>

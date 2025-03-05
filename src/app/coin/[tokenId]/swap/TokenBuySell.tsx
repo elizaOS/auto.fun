@@ -406,7 +406,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
           closeOnClick: true,
           pauseOnHover: true,
           draggable: false,
-          closeButton: true,
+          closeButton: false,
           className: "!p-0 !m-0",
         },
       );
@@ -425,7 +425,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
           closeOnClick: true,
           pauseOnHover: true,
           draggable: false,
-          closeButton: true,
+          closeButton: false,
           className: "!p-0 !m-0",
         },
       );
