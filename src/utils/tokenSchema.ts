@@ -21,6 +21,7 @@ export const TokenSchema = z.object({
     "migrated",
     "locked",
     "migration_failed",
+    "partner_import",
   ]),
   liquidity: z.number(),
   curveLimit: z.number(),
