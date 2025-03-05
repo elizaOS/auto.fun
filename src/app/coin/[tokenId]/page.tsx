@@ -9,8 +9,6 @@ import { usePaginatedLiveData } from "@/utils/paginatedLiveData";
 import { z } from "zod";
 import { getSocket } from "@/utils/socket";
 import { queryClient } from "@/components/providers";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { CardContent, CardHeader, CardTitle, Card } from "@/components/ui/card";
 import { TokenBuySell } from "./swap/TokenBuySell";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
@@ -19,6 +17,7 @@ import { womboApi } from "@/utils/fetch";
 import { toast } from "react-toastify";
 import { AgentCardInfo } from "@/components/agent-card/AgentCardInfo";
 import { SolanaIcon } from "./swap/SolanaIcon";
+import { env } from "@/utils/env";
 
 const HolderSchema = z.object({
   address: z.string(),
@@ -67,7 +66,7 @@ export default function TradingInterface() {
   const tokenId = params.tokenId as string;
   const { data: token, isLoading } = useToken({ variables: tokenId });
 
-  const { items: _holders } = usePaginatedLiveData({
+  const { items: holders } = usePaginatedLiveData({
     itemsPerPage: 100,
     endpoint: `/tokens/${tokenId}/holders`,
     validationSchema: HolderSchema,
@@ -302,42 +301,58 @@ export default function TradingInterface() {
                 <table className="w-full">
                   <thead>
                     <tr className="text-[#8C8C8C] text-xs uppercase">
-                      <th className="text-left py-2">#</th>
                       <th className="text-left py-2">Account</th>
-                      <th className="text-left py-2">Type</th>
                       <th className="text-right py-2">%</th>
+                      <th className="text-right py-2">EXP</th>
                     </tr>
                   </thead>
                   <tbody className="text-sm">
-                    {[
-                      {
-                        account: "0x742..3ab",
-                        type: "(Bonding Curve)",
-                        percentage: 7.36,
-                      },
-                      {
-                        account: "0x742..3ab",
-                        type: "(DEV)",
-                        percentage: 6.16,
-                      },
-                      { account: "0x742..3ab", type: "", percentage: 6.0 },
-                      { account: "0x742..3ab", type: "", percentage: 5.59 },
-                      { account: "0x742..3ab", type: "", percentage: 5.43 },
-                      { account: "0x742..3ab", type: "", percentage: 5.12 },
-                      { account: "0x742..3ab", type: "", percentage: 4.64 },
-                      { account: "0x742..3ab", type: "", percentage: 4.32 },
-                      { account: "0x742..3ab", type: "", percentage: 3.89 },
-                      { account: "0x742..3ab", type: "", percentage: 3.25 },
-                    ].map((holder, i) => (
+                    {holders.map((holder, i) => (
                       <tr
                         key={i}
                         className="border-b border-[#262626] last:border-0"
                       >
-                        <td className="py-3 text-[#8C8C8C]">#{i + 1}</td>
-                        <td className="py-3 text-white">{holder.account}</td>
-                        <td className="py-3 text-[#8C8C8C]">{holder.type}</td>
+                        <td className="py-3 text-white">
+                          <span className="py-3 pr-8 text-[#8C8C8C]">
+                            #{i + 1}
+                          </span>
+                          {holder.address.slice(0, 5)}...
+                          {holder.address.slice(-3)}
+                          {holder.address === env.bondingCurveAddress && (
+                            <span className="text-[#b3a0b3] font-medium ml-2">
+                              (Bonding curve)
+                            </span>
+                          )}
+                          {holder.address === env.devAddress && (
+                            <span className="text-[#b3a0b3] font-medium ml-2">
+                              (DEV)
+                            </span>
+                          )}
+                        </td>
                         <td className="py-3 text-white text-right">
-                          {holder.percentage}%
+                          {holder.percentage.toFixed(2)}%
+                        </td>
+                        <td className="py-3 text-white text-right flex">
+                          <a
+                            href={env.getWalletUrl(holder.address)}
+                            className="inline-flex justify-end w-full"
+                            target="_blank"
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 16 16"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M11 1.5H14.5V5M13.75 2.25L10 6M8.5 2.5H4C3.60218 2.5 3.22064 2.65804 2.93934 2.93934C2.65804 3.22064 2.5 3.60218 2.5 4V12C2.5 12.3978 2.65804 12.7794 2.93934 13.0607C3.22064 13.342 3.60218 13.5 4 13.5H12C12.3978 13.5 12.7794 13.342 13.0607 13.0607C13.342 12.7794 13.5 12.3978 13.5 12V7.5"
+                                stroke="#8C8C8C"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </a>
                         </td>
                       </tr>
                     ))}
@@ -377,93 +392,6 @@ export default function TradingInterface() {
 
           {/* Fal Generator Section */}
           {/* <FalGenerator /> */}
-
-          {/* Commented out Trades/Comments/Chat section
-          <div className="bg-[#171717] border border-[#262626] text-sm md:text-lg text-gray-400 rounded-xl p-4 md:p-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="gap-2 mb-10 flex justify-start overflow-x-scroll lg:overflow-hidden">
-                <TabsTrigger
-                  className={cn(
-                    activeTab === "trades" ? "text-white bg-[#262626]" : "",
-                    "text-sm md:text-xl",
-                  )}
-                  value="trades"
-                >
-                  Trades
-                </TabsTrigger>
-                <TabsTrigger
-                  className={cn(
-                    activeTab === "comments" ? "text-white bg-[#262626]" : "",
-                    "text-sm md:text-xl",
-                  )}
-                  value="comments"
-                >
-                  Comments
-                </TabsTrigger>
-                <TabsTrigger
-                  className={cn(
-                    activeTab === "chat" ? "text-white bg-[#262626]" : "",
-                    "text-sm md:text-xl",
-                  )}
-                  value="chat"
-                >
-                  Agent Chat
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent className="mt-0" value="trades">
-                <TradeTable tokenId={tokenId} />
-              </TabsContent>
-
-              <Comments tokenId={tokenId} />
-
-              <TabsContent className="mt-0" value="chat">
-                <div className="flex flex-col gap-4 h-[400px] overflow-y-scroll">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={cn([
-                        "flex flex-col",
-                        message.role === "USER" ? "items-end" : "items-start",
-                      ])}
-                    >
-                      <div className="flex items-center gap-4 mb-2">
-                        <span
-                          className={cn("text-[#22C55E] font-bold", [
-                            message.role === "USER" ? "text-white" : "",
-                          ])}
-                        >
-                          {message.role === "USER" ? "You" : "AI"}
-                        </span>
-                        <span
-                          className={cn("text-[#11632F] text-sm", [
-                            message.role === "USER" ? "text-gray-400" : "",
-                          ])}
-                        >
-                          {message.timestamp}
-                        </span>
-                      </div>
-                      <div className="flex flex-col">
-                        <p className="text-[#a1a1a1] mb-3">{message.content}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-4 flex items-center gap-2">
-                  <Input
-                    type="text"
-                    placeholder="Type a message..."
-                    className="flex-1 bg-[#262626] border border-gray-700 px-7 py-6 text-white !text-xl md:text-2xl rounded-lg"
-                  />
-                  <button className="text-[#22C55E] hover:text-[#45a049]">
-                    <SendHorizontal className="w-5 h-5" />
-                  </button>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </div>
-          */}
         </div>
 
         <div className="flex flex-col space-y-4 w-full lg:w-auto lg:min-w-[380px] lg:max-w-[420px] 2xl:max-w-[480px]">
