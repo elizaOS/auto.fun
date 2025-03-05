@@ -1,14 +1,43 @@
 import { useState, useEffect } from "react";
-import { formatDistanceToNow, differenceInSeconds } from "date-fns";
+import {
+  differenceInSeconds,
+  differenceInMinutes,
+  differenceInHours,
+  differenceInDays,
+  differenceInMonths,
+  differenceInYears,
+} from "date-fns";
 
 const formatTimeAgo = (date: Date): string => {
-  const seconds = differenceInSeconds(new Date(), date);
+  const now = new Date();
 
+  const seconds = differenceInSeconds(now, date);
   if (seconds < 60) {
-    return `${seconds} ${seconds === 1 ? "second" : "seconds"} ago`;
+    return `${seconds} Sec`;
   }
 
-  return formatDistanceToNow(date, { addSuffix: true });
+  const minutes = differenceInMinutes(now, date);
+  if (minutes < 60) {
+    return `${minutes} Min`;
+  }
+
+  const hours = differenceInHours(now, date);
+  if (hours < 24) {
+    return `${hours} Hour`;
+  }
+
+  const days = differenceInDays(now, date);
+  if (days < 30) {
+    return `${days} Day`;
+  }
+
+  const months = differenceInMonths(now, date);
+  if (months < 12) {
+    return `${months} Month`;
+  }
+
+  const years = differenceInYears(now, date);
+  return `${years} Year`;
 };
 
 export const useTimeAgo = <T extends string | string[]>(dates: T) => {
@@ -44,3 +73,5 @@ export const useTimeAgo = <T extends string | string[]>(dates: T) => {
 
   return timeAgo;
 };
+
+export default formatTimeAgo;

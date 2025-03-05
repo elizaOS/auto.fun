@@ -18,6 +18,7 @@ export function GridView({ tokens, onTokenClick }: GridViewProps) {
           ticker,
           curveProgress,
           description,
+          createdAt,
         }) => (
           <AgentCard
             key={mint}
@@ -28,6 +29,7 @@ export function GridView({ tokens, onTokenClick }: GridViewProps) {
             marketCapUSD={Number(marketCapUSD)}
             bondingCurveProgress={curveProgress}
             description={description}
+            creationDate={createdAt}
             onClick={() => onTokenClick(mint)}
           />
         ),

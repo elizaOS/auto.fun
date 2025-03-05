@@ -1,5 +1,7 @@
-import { Copy, Grid } from "lucide-react";
+import { useTimeAgo } from "@/app/formatTimeAgo";
+import { Copy, Grid, Check } from "lucide-react";
 import { DM_Mono } from "next/font/google";
+import { useState } from "react";
 
 const dmMono = DM_Mono({
   weight: ["400", "500"],
@@ -14,6 +16,7 @@ interface AgentCardProps {
   marketCapUSD: number;
   bondingCurveProgress: number;
   description: string;
+  creationDate: string;
   onClick?: () => void;
 }
 
@@ -25,6 +28,7 @@ export function AgentCard({
   marketCapUSD,
   bondingCurveProgress = 0,
   description,
+  creationDate,
   onClick,
 }: AgentCardProps) {
   const formattedMarketCap = Intl.NumberFormat("en-US", {
@@ -34,8 +38,21 @@ export function AgentCard({
     maximumFractionDigits: 2,
   }).format(marketCapUSD);
 
-  // Cap the progress at 100%
-  const normalizedProgress = Math.min(100, bondingCurveProgress || 0);
+  const timeAgo = useTimeAgo(creationDate);
+
+  // Cap the progress at 100% and round to the nearest whole number
+  const normalizedProgress = Math.round(
+    Math.min(100, bondingCurveProgress || 0),
+  );
+
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyClick = async (event: React.MouseEvent) => {
+    event.stopPropagation();
+    await navigator.clipboard.writeText(mint);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1000);
+  };
 
   return (
     <div
@@ -75,10 +92,7 @@ export function AgentCard({
             </div>
             <div className="flex items-center gap-1 px-2 h-6 border border-[#262626] rounded-[6px] whitespace-nowrap">
               <span className={`${dmMono.className} text-xs text-[#8C8C8C]`}>
-                17
-              </span>
-              <span className={`${dmMono.className} text-xs text-[#8C8C8C]`}>
-                Min
+                {timeAgo}
               </span>
             </div>
           </div>
@@ -98,7 +112,14 @@ export function AgentCard({
                 <span className={`${dmMono.className} text-xs text-[#8C8C8C]`}>
                   {mint.slice(0, 4)}...{mint.slice(-3)}
                 </span>
-                <Copy className="w-4 h-4 text-[#8C8C8C] cursor-pointer hover:text-[#2FD345] transition-colors" />
+                {copied ? (
+                  <Check className="w-4 h-4 text-[#2FD345]" />
+                ) : (
+                  <Copy
+                    className="w-4 h-4 text-[#8C8C8C] cursor-pointer hover:text-[#2FD345] transition-colors"
+                    onClick={handleCopyClick}
+                  />
+                )}
               </div>
             </div>
           </div>
