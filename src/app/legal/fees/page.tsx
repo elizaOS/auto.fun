@@ -1,63 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-
-const FeesSkeleton = () => {
-  return (
-    <>
-      <div className="w-full min-h-screen flex items-center justify-center p-4">
-        <div className="w-full max-w-[600px] bg-[#171717] border border-[#262626] rounded-md animate-pulse">
-          {/* Header Skeleton */}
-          <div className="flex flex-col p-5 gap-3.5 border-b border-[#262626]">
-            <div className="w-48 h-9 bg-neutral-800 rounded" />
-            <div className="w-full h-6 bg-neutral-800 rounded" />
-          </div>
-
-          {/* Table Header Skeleton */}
-          <div className="flex justify-between px-4 py-2 border-b border-[#262626]">
-            <div className="w-24 h-6 bg-neutral-800 rounded" />
-            <div className="w-16 h-6 bg-neutral-800 rounded" />
-          </div>
-
-          {/* Table Rows Skeleton */}
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="flex justify-between px-4 py-2 border-b border-[#262626]">
-              <div className="w-32 h-4 bg-neutral-800 rounded" />
-              <div className="w-24 h-4 bg-neutral-800 rounded" />
-            </div>
-          ))}
-
-          {/* Footer Skeleton */}
-          <div className="flex flex-col p-5 gap-3.5">
-            <div className="w-48 h-6 bg-neutral-800 rounded" />
-            {[1, 2].map((i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 bg-neutral-800 rounded-full" />
-                <div className="w-40 h-6 bg-neutral-800 rounded" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </>
-  );
-};
+import React from "react";
 
 const FeesContent = () => {
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (isLoading) {
-    return <FeesSkeleton />;
-  }
-
   return (
     <div className="w-full min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-[600px] bg-[#171717] border border-[#262626] rounded-md">
