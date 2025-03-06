@@ -7,6 +7,7 @@ import {
 import { DragOverlay } from "./DragOverlay";
 import { MediaPreview } from "./MediaPreview";
 import { EmptyState } from "./EmptyState";
+import { RoundedButton } from "../../button/RoundedButton";
 
 type InputPropsWithoutConflicts = Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
@@ -116,39 +117,58 @@ const ImageUploadInput = ({
           {label}
         </label>
       )}
-      <div
-        className={`relative border-2 border-dashed rounded-md p-6 cursor-pointer text-center ${shouldShowError ? "border-[#ef5350]" : "border-[#8c8c8c]"}`}
-        onClick={handleContainerClick}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        <input
-          type="file"
-          accept="image/png, image/jpeg, image/gif, image/webp"
-          {...props}
-          {...inputProps}
-          ref={(e) => {
-            inputRef.current = e;
-            ref(e);
-          }}
-          onChange={handleFileChange}
-          className="hidden"
-        />
-        {/* Render the appropriate component based on the state */}
-        {mediaSrc && file ? (
-          <MediaPreview
-            mediaSrc={mediaSrc}
-            onDelete={handleDeleteImage}
-            name={file.name}
-            type={file.type}
+      <div className={`${mediaSrc && file ? "flex items-start" : "block"}`}>
+        <div
+          className={`relative border-2 border-dashed rounded-md p-6 cursor-pointer text-center ${shouldShowError ? "border-[#ef5350]" : "border-[#8c8c8c]"}`}
+          onClick={handleContainerClick}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <input
+            type="file"
+            accept="image/png, image/jpeg, image/gif, image/webp"
+            {...props}
+            {...inputProps}
+            ref={(e) => {
+              inputRef.current = e;
+              ref(e);
+            }}
+            onChange={handleFileChange}
+            className="hidden"
           />
-        ) : (
-          <EmptyState maxSizeMb={maxSizeMb} />
+          {/* Render the appropriate component based on the state */}
+          {mediaSrc && file ? (
+            <MediaPreview mediaSrc={mediaSrc} type={file.type} />
+          ) : (
+            <EmptyState maxSizeMb={maxSizeMb} />
+          )}
+          {/* Overlay for drag state */}
+          <DragOverlay isDragging={isDragging} />
+        </div>
+
+        {mediaSrc && file && (
+          <div className="flex flex-col gap-[14px]">
+            <RoundedButton
+              onClick={handleContainerClick}
+              type="button"
+              variant="filled"
+              className="p-3 ml-3 bg-[#262626] text-white"
+            >
+              Change
+            </RoundedButton>
+            <RoundedButton
+              type="button"
+              onClick={handleDeleteImage}
+              variant="filled"
+              className="p-3 ml-3 bg-[#262626] text-white"
+            >
+              Delete
+            </RoundedButton>
+          </div>
         )}
-        {/* Overlay for drag state */}
-        <DragOverlay isDragging={isDragging} />
       </div>
+
       {shouldShowError && (
         <p className="mt-2 text-sm text-[#ef5350]">{error.message}</p>
       )}
