@@ -1,10 +1,7 @@
-import axios from 'axios';
 import express from 'express';
 import { Server } from 'socket.io';
 import { createServer } from 'http';
 import { 
-  Cluster,
-  ComputeBudgetProgram,
   Connection, 
   Keypair, 
   PublicKey,
@@ -12,10 +9,7 @@ import {
 import * as anchor from "@coral-xyz/anchor";
 import { Program, BN } from '@coral-xyz/anchor';
 import mongoose from 'mongoose';
-import { withdrawTx } from './lib/scripts';
 import NodeWallet from '@coral-xyz/anchor/dist/cjs/nodewallet';
-import { execTx, execWithdrawTx } from './lib/util';
-import * as fs from 'fs';
 import { SEED_BONDING_CURVE } from './lib/constant';
 import { Serlaunchalot } from './target/types/serlaunchalot';
 import { getMint, NATIVE_MINT, TOKEN_PROGRAM_ID } from '@solana/spl-token';
@@ -24,15 +18,10 @@ import { initSdk, txVersion } from './lib/raydium-config';
 import { fetchDigitalAsset, mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
 import { publicKey, Umi } from '@metaplex-foundation/umi';
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults"
-import { clusterApiUrl } from '@solana/web3.js'
 import {
   CREATE_CPMM_POOL_PROGRAM,
-  CREATE_CPMM_POOL_FEE_ACC,
-  DEVNET_PROGRAM_ID,
   DEV_CREATE_CPMM_POOL_PROGRAM,
-  getCpmmPdaAmmConfigId,
   ApiV3PoolInfoStandardItemCpmm,
-  CpmmKeys,
 } from '@raydium-io/raydium-sdk-v2';
 import cors from 'cors';
 import { Token, Swap, Fee, TokenMetadataJson } from './schemas';
@@ -45,9 +34,8 @@ import { getSOLPrice } from './mcap';
 import PQueue from 'p-queue';
 import mediaGenerationRoutes from './mediaGeneration';
 import { MigrationService } from './lib/migration';
-import { fetchCodexTokenEvents, convertCodexEventsToPriceFeed } from './lib/api';
+import { fetchCodexTokenEvents } from './lib/api';
 
-const FEE_BASIS_POINTS = 10000;
 const VALID_PROGRAM_ID = new Set(
   [
     CREATE_CPMM_POOL_PROGRAM.toBase58(), 
