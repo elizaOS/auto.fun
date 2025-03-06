@@ -61,7 +61,7 @@ export const TokenCreationForm = ({
           validate: {
             lessThan4MB: (file) =>
               (file && file.size < MAX_FILE_SIZE_MB * 1024 * 1024) ||
-              `Max file size is ${MAX_FILE_SIZE_MB}MB`,
+              `The uploaded image exceeds the ${MAX_FILE_SIZE_MB}MB limit. Please upload a smaller file.`,
             acceptedFormats: (file) =>
               (file &&
                 ["image/jpeg", "image/png", "image/gif", "video/mp4"].includes(

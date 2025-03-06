@@ -38,6 +38,7 @@ const ImageUploadInput = ({
     rules,
     defaultValue,
   });
+  const shouldShowError = isDirty && error;
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [mediaSrc, setMediaSrc] = useState<string | null>(null);
@@ -116,7 +117,7 @@ const ImageUploadInput = ({
         </label>
       )}
       <div
-        className="relative border-2 border-dashed rounded-md p-6 cursor-pointer text-center border-[#8c8c8c]"
+        className={`relative border-2 border-dashed rounded-md p-6 cursor-pointer text-center ${shouldShowError ? "border-[#ef5350]" : "border-[#8c8c8c]"}`}
         onClick={handleContainerClick}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -148,8 +149,8 @@ const ImageUploadInput = ({
         {/* Overlay for drag state */}
         <DragOverlay isDragging={isDragging} />
       </div>
-      {isDirty && error && (
-        <p className="mt-2 text-sm text-red-600">{error.message}</p>
+      {shouldShowError && (
+        <p className="mt-2 text-sm text-[#ef5350]">{error.message}</p>
       )}
     </div>
   );
