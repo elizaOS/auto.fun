@@ -1,39 +1,37 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap");
 
 .wallet-adapter-button {
-  background-color: transparent;
-  border: none;
-  color: #fff;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  font-size: 16px;
-  font-weight: 600;
-  padding: 0 24px;
-  border-radius: 4px;
-  padding: 8px;
+  background-color: #212121 !important;
+  border: 1px solid #262626 !important;
+  border-radius: 6px !important;
+  height: 44px !important;
+  padding: 10px 16px !important;
+  font-family: 'Satoshi', sans-serif !important;
+  font-weight: 500 !important;
+  font-size: 16px !important;
+  color: white !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: background-color 200ms ease !important;
 }
 
-.wallet-adapter-modal-list .wallet-adapter-button {
-  span {
-    color: #03ff24;
-  }
+.wallet-adapter-button:hover {
+  background-color: #262626 !important;
 }
 
-/* the wallet button in the nav */
-.wallet-adapter-button:not(
-    .wallet-adapter-modal-wrapper .wallet-adapter-button
-  ) {
-  border-radius: 12px;
-  color: rgb(3, 255, 36);
-  background-color: rgba(0, 255, 0, 0.15);
-  height: 48px;
-  line-height: 48px;
-  padding: 8px 20px;
+.wallet-adapter-button:not(.wallet-adapter-modal-wrapper .wallet-adapter-button) {
+  background-color: #212121 !important;
+  border: 1px solid #262626 !important;
+  color: white !important;
+  height: 44px !important;
+  padding: 10px 16px !important;
+  border-radius: 6px !important;
 }
 
-.wallet-adapter-button-trigger {
-  background-color: #512da8;
+.wallet-adapter-button:not([disabled]):hover {
+  background-color: #262626 !important;
 }
 
 .wallet-adapter-button:not([disabled]):focus-visible {
@@ -85,8 +83,8 @@
   right: 0;
   margin: 0;
   list-style: none;
-  background: #2c2d30;
-  border-radius: 10px;
+  background: #171717 !important;
+  border-radius: 6px !important;
   box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.6);
   opacity: 0;
   visibility: hidden;
@@ -94,7 +92,7 @@
     opacity 200ms ease,
     transform 200ms ease,
     visibility 200ms;
-  border: 1px solid #072713;
+  border: 1px solid #262626 !important;
 }
 
 .wallet-adapter-dropdown-list-active {

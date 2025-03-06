@@ -97,6 +97,14 @@ export const Modal: FC<ModalProps> = ({
     [container],
   );
 
+  const handleOverlayClick = useCallback(
+    (event: MouseEvent) => {
+      event.preventDefault();
+      onClose();
+    },
+    [onClose],
+  );
+
   if (!isOpen || !portal) return null;
 
   return createPortal(
@@ -106,8 +114,6 @@ export const Modal: FC<ModalProps> = ({
       ref={ref}
       role="dialog"
     >
-      {/* wallet class names are for compatibility with the wallet modal. can change them to more
-      generic names later */}
       <div className="wallet-adapter-modal-container">
         <div
           className={`wallet-adapter-modal-wrapper ${className}`}
@@ -116,25 +122,30 @@ export const Modal: FC<ModalProps> = ({
             width: "100%",
           }}
         >
-          <div className="wallet-adapter-modal-header">
-            {title && (
-              <div className="wallet-adapter-modal-header-left">{title}</div>
-            )}
-            {allowClose && (
-              <button
-                onClick={handleClose}
-                className="wallet-adapter-modal-button-close"
-              >
-                <svg width="14" height="14">
-                  <path d="M14 12.461 8.3 6.772l5.234-5.233L12.006 0 6.772 5.234 1.54 0 0 1.539l5.234 5.233L0 12.006l1.539 1.528L6.772 8.3l5.69 5.7L14 12.461z" />
-                </svg>
-              </button>
-            )}
-          </div>
+          {(title || allowClose) && (
+            <div className="wallet-adapter-modal-header">
+              {title && (
+                <div className="wallet-adapter-modal-header-left">{title}</div>
+              )}
+              {allowClose && (
+                <button
+                  onClick={handleClose}
+                  className="wallet-adapter-modal-button-close"
+                >
+                  <svg width="14" height="14">
+                    <path d="M14 12.461 8.3 6.772l5.234-5.233L12.006 0 6.772 5.234 1.54 0 0 1.539l5.234 5.233L0 12.006l1.539 1.528L6.772 8.3l5.69 5.7L14 12.461z" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
           <div className="wallet-adapter-modal-content">{children}</div>
         </div>
       </div>
-      <div className="wallet-adapter-modal-overlay" onMouseDown={handleClose} />
+      <div 
+        className="wallet-adapter-modal-overlay" 
+        onMouseDown={handleOverlayClick}
+      />
     </div>,
     portal,
   );

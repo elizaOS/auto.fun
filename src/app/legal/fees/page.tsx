@@ -1,68 +1,77 @@
+"use client";
+
 import React from "react";
 
 const FeesContent = () => {
   return (
-    <div className="flex flex-col p-[14px] text-[#A6A6A6]">
-      <h2 className="text-white text-lg font-mono font-medium mb-4">
-        Fees on auto.fun
-      </h2>
+    <div className="w-full min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-[600px] bg-[#171717] border border-[#262626] rounded-md">
+        {/* Header */}
+        <div className="flex flex-col p-5 gap-3.5 border-b border-[#262626]">
+          <h1 className="text-2xl md:text-[32px] font-satoshi font-medium leading-9 tracking-[-0.018em] text-[#2FD345]">
+            Fees On Auto.fun
+          </h1>
+          <p className="text-sm md:text-base font-satoshi text-[#8C8C8C] leading-6">
+            The following fees apply when using the auto.fun platform
+          </p>
+        </div>
 
-      <p className="text-sm font-mono leading-5 mb-6">
-        The following are fees charged by the auto.fun platform when you use our
-        services:
-      </p>
+        {/* Table Header */}
+        <div className="flex justify-between px-4 py-2 border-b border-[#262626]">
+          <span className="font-mono text-sm md:text-base text-[#8C8C8C] tracking-[2px] uppercase">
+            Actions
+          </span>
+          <span className="font-mono text-sm md:text-base text-[#8C8C8C] tracking-[2px] uppercase">
+            Fee
+          </span>
+        </div>
 
-      <div className="mb-6">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="border-b border-[#505050]/30">
-              <th className="text-left text-sm font-mono py-2 text-white">
-                Action
-              </th>
-              <th className="text-right text-sm font-mono py-2 text-white">
-                Fee
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="border-b border-[#505050]/30">
-              <td className="text-sm font-mono py-2">Create an Agent</td>
-              <td className="text-right text-sm font-mono py-2">0 SOL</td>
-            </tr>
-            <tr className="border-b border-[#505050]/30">
-              <td className="text-sm font-mono py-2">
-                Buy or sell an Agent on the bonding curve
-              </td>
-              <td className="text-right text-sm font-mono py-2">
-                1% of total purchase or sale price
-              </td>
-            </tr>
-            <tr>
-              <td className="text-sm font-mono py-2">
-                When an Agent graduates to Raydium
-              </td>
-              <td className="text-right text-sm font-mono py-2">6 SOL*</td>
-            </tr>
-          </tbody>
-        </table>
-        <p className="text-xs font-mono mt-2 italic">
-          *This is a fixed fee of 6 SOL that includes network and Raydium fees.
-          This is taken from the liquidity of the Agent and does not require an
-          additional payment from the user.
-        </p>
-      </div>
+        {/* Table Rows */}
+        <div className="flex justify-between px-4 py-2 border-b border-[#262626]">
+          <span className="font-mono text-[10px] md:text-xs text-white tracking-[2px] uppercase">
+            Create a token
+          </span>
+          <span className="font-mono text-[10px] md:text-xs text-[#2FD345] tracking-[2px] uppercase">
+            0 SOL
+          </span>
+        </div>
 
-      <p className="text-sm font-mono leading-5 mb-4">
-        Note that none of the auto.fun frontend services (web app, advanced
-        interface, or mobile app) charge any additional fees beyond those listed
-        above. If you access the platform or smart contracts via another
-        interface, you may incur additional fees charged by those platforms.
-      </p>
+        <div className="flex justify-between px-4 py-2 border-b border-[#262626]">
+          <span className="font-mono text-[10px] md:text-xs text-white tracking-[2px] uppercase">
+            Trading while on bonding curve
+          </span>
+          <span className="font-mono text-[10px] md:text-xs text-[#2FD345] tracking-[2px] uppercase">
+            1% of total sale price
+          </span>
+        </div>
 
-      <div className="flex flex-col gap-[34px] items-center">
-        <p className="text-center text-[#A6A6A6] font-mono font-medium px-4">
-          Fees are subject to change. Always refer to the latest documentation.
-        </p>
+        <div className="flex justify-between px-4 py-2 border-b border-[#262626]">
+          <span className="font-mono text-[10px] md:text-xs text-white tracking-[2px] uppercase">
+            raydium graduation
+          </span>
+          <span className="font-mono text-[10px] md:text-xs text-[#2FD345] tracking-[2px] uppercase">
+            1% of migrated liquidity
+          </span>
+        </div>
+
+        {/* Footer */}
+        <div className="flex flex-col p-5 gap-3.5">
+          <p className="text-sm md:text-base font-satoshi text-[#2FD345]">
+            Trading fees are distributed as follows
+          </p>
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#2FD345]" />
+            <span className="font-mono text-sm md:text-base text-[#8C8C8C] tracking-[-0.6px]">
+              Buy fees (1%) are collected in SOL
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#2FD345]" />
+            <span className="font-mono text-sm md:text-base text-[#8C8C8C] tracking-[-0.6px]">
+              All fees are sent to token creators
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

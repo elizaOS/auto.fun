@@ -3,9 +3,7 @@
 import { Modal } from "@/components/common/Modal";
 import { useState } from "react";
 import ToggleGroup from "@/components/common/ToggleGroup";
-import { Slider } from "@/components/common/Slider";
 import { useTradeSettings } from "./useTradeSettings";
-import { SolanaIcon } from "./SolanaIcon";
 
 export const TradeSettingsModal = ({
   modalOpen,
@@ -16,36 +14,26 @@ export const TradeSettingsModal = ({
 }) => {
   const {
     slippage: savedSlippage,
-    // tipAmount: savedTipAmount,
     saveSettings,
     speed: savedSpeed,
-    tradeSize: savedTradeSize,
-    ownTradesFilter: savedOwnTradesFilter,
-    // isProtectionEnabled: savedProtectionEnabled,
+    isProtectionEnabled: savedProtectionEnabled,
   } = useTradeSettings();
 
   const [slippage, setSlippage] = useState(savedSlippage);
-  const [speed, setSpeed] = useState(savedSpeed);
-  const [tradeSize, setTradeSize] = useState(savedTradeSize);
-  const [ownTradesFilter, setOwnTradesFilter] = useState(savedOwnTradesFilter);
-  // const [isProtectionEnabled, setIsProtectionEnabled] = useState(
-  //   savedProtectionEnabled,
-  // );
-  // const [tipAmount, setTipAmount] = useState(savedTipAmount);
+  const [speed, setSpeed] = useState<"fast" | "turbo" | "ultra">(savedSpeed);
+  const [isProtectionEnabled, setIsProtectionEnabled] = useState(
+    savedProtectionEnabled,
+  );
+
+  const discardChanges = () => {
+    setSlippage(savedSlippage);
+    setSpeed(savedSpeed);
+    setIsProtectionEnabled(savedProtectionEnabled);
+  };
 
   const onModalClose = () => {
     onClose();
-    setSlippage(savedSlippage);
-    setSpeed(savedSpeed);
-    // setIsProtectionEnabled(savedProtectionEnabled);
-    // setTipAmount(savedTipAmount);
-    setTradeSize(savedTradeSize);
-    setOwnTradesFilter(savedOwnTradesFilter);
-  };
-  const speedTips = {
-    fast: "0.001 SOL",
-    turbo: "0.005 SOL",
-    ultra: "0.01 SOL",
+    discardChanges();
   };
 
   return (
@@ -53,40 +41,49 @@ export const TradeSettingsModal = ({
       isOpen={modalOpen}
       onClose={onModalClose}
       title="Trade Settings"
-      className="!max-w-[587px] !p-0 !bg-neutral-900 !border-neutral-800"
+      className="!max-w-[587px] !p-0 !bg-[#171717] !border-neutral-800"
     >
-      <div className="flex flex-col gap-[34px] py-2.5 px-3.5">
-        <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-8 p-6">
+        <div className="flex flex-col gap-8">
           {/* Slippage Section */}
           <div className="flex flex-col gap-3">
-            <div className="text-[#a1a1a1] text-xl font-['DM Mono']">
-              SLIPPAGE: {slippage.toFixed(1)}%
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <Slider
-                  value={slippage}
-                  onChange={setSlippage}
-                  minValue={0}
-                  maxValue={30}
-                  step={0.1}
-                />
+            <div className="flex justify-between">
+              <div className="text-white text-xl flex items-center gap-2">
+                SLIPPAGE_%:{" "}
+                <span className="text-[#2fd345] text-xl">
+                  {slippage.toFixed(1)}
+                </span>
               </div>
+              <input
+                className="w-[120px] px-4 py-2 bg-[#262626] rounded-md text-white text-xl font-['DM Mono']"
+                placeholder={slippage.toFixed(1) + "%"}
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={slippage || ""}
+                onChange={(e) => {
+                  const value =
+                    e.target.value === "" ? 0 : parseFloat(e.target.value);
+                  if (
+                    e.target.value === "" ||
+                    (!isNaN(value) && value >= 0 && value <= 100)
+                  ) {
+                    setSlippage(value);
+                  }
+                }}
+              />
             </div>
-            <div className="text-[#a6a6a6] text-sm font-['DM Mono']">
+            <div className="text-[#8c8c8c] text-sm font-['DM Mono']">
               This is the maximum amount of slippage you are willing to accept
               when placing trades
             </div>
           </div>
 
-          <div className="border-t border-[#505050]" />
-
           {/* Speed Section */}
-          <div className="flex flex-col gap-3.5">
+          <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <div className="text-white text-xl font-medium font-['DM Mono']">
-                Speed
-              </div>
+              <div className="text-white text-xl">Speed</div>
               <ToggleGroup
                 options={
                   [
@@ -95,81 +92,50 @@ export const TradeSettingsModal = ({
                     { value: "ultra", name: "Ultra" },
                   ] as const
                 }
-                onChange={(value) => setSpeed(value)}
-                defaultValue={savedSpeed}
+                onChange={(value: "fast" | "turbo" | "ultra") =>
+                  setSpeed(value)
+                }
+                defaultValue={speed}
               />
             </div>
-            <div className="text-[#a6a6a6] text-sm font-['DM Mono']">
-              Priority fee: {speedTips[speed]}
+            <div className="text-[#8c8c8c] text-sm font-['DM Mono']">
+              Higher speeds will increase your priority fees, making your
+              transactions confirm faster
             </div>
           </div>
 
-          <div className="border-t border-[#505050]" />
-
-          {/* Trade Size Section */}
+          {/* Protection Section */}
           <div className="flex flex-col gap-3">
-            <div className="text-white text-xl font-medium font-['DM Mono']">
-              Trade Size
-            </div>
-            <div className="flex items-center justify-between px-3 py-2 bg-[#212121] rounded-md border border-neutral-800">
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={tradeSize}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value === "" || Number(value) >= 0) {
-                    setTradeSize(Number(value));
-                  }
-                }}
-                className="bg-transparent text-[#a6a6a6] text-base font-['DM Mono'] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none w-full"
-              />
-              <div className="flex items-center gap-1">
-                <SolanaIcon />
-                <span className="text-white text-base font-['DM Mono'] uppercase tracking-widest">
-                  SOL
-                </span>
+            <div className="flex items-center justify-between">
+              <div className="text-white text-xl font-['DM Mono']">
+                Enable front-running protection:
               </div>
+              <ToggleGroup
+                options={
+                  [
+                    { value: true, name: "ON" },
+                    { value: false, name: "OFF" },
+                  ] as const
+                }
+                onChange={(value: boolean) => setIsProtectionEnabled(value)}
+                defaultValue={isProtectionEnabled}
+              />
             </div>
-            <div className="text-[#a6a6a6] text-sm font-['DM Mono']">
-              Specify the maximum trade size in SOL
-            </div>
-          </div>
-
-          <div className="border-t border-[#505050]" />
-
-          {/* Own Trades Filter Section */}
-          <div className="flex items-center justify-between py-1">
-            <div className="text-white text-xl font-medium font-['DM Mono']">
-              Own Trades Only
-            </div>
-            <ToggleGroup
-              options={[
-                { value: true, name: "On" },
-                { value: false, name: "Off" },
-              ]}
-              onChange={(value) => setOwnTradesFilter(value)}
-              defaultValue={savedOwnTradesFilter}
-            />
           </div>
         </div>
 
         <button
-          className="w-full px-5 py-2 bg-[#092f0e] rounded-lg"
           onClick={() => {
             saveSettings({
               slippage,
               speed,
-              tradeSize,
-              ownTradesFilter,
+              isProtectionEnabled,
             });
             onClose();
           }}
+          className="w-full py-2 bg-[#2e2e2e] hover:bg-[#0a3711] active:bg-[#072409] transition-colors rounded-md text-[#03ff24] text-sm leading-tight font-['DM Mono'] active:shadow-none"
         >
-          <span className="text-center text-[#03ff24] text-base font-medium font-['DM Mono']">
-            Update
-          </span>
+          Update
         </button>
       </div>
     </Modal>

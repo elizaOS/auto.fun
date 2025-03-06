@@ -154,6 +154,21 @@ export const useAgentData = createAuthenticatedQuery<
   },
 });
 
+export const useAgentByMintAddress = createAuthenticatedQuery<
+  AgentData,
+  Pick<AgentData, "contractAddress">
+>({
+  queryKey: ["agentData"],
+  fetcher: async ({ contractAddress }) => {
+    const result = await womboApi.get({
+      endpoint: `/agents/mint/${contractAddress}`,
+      schema: AgentDataSchema,
+    });
+
+    return result;
+  },
+});
+
 export const useAgents = createAuthenticatedQuery<AgentSummary[]>({
   queryKey: ["agents"],
   fetcher: async () => {

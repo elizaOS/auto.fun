@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { InfoIcon, SendHorizontal, Copy, Check } from "lucide-react";
 import { useToken } from "@/utils/tokens";
 import { useParams } from "next/navigation";
 import { TradingChart } from "@/components/TVChart/TradingChart";
@@ -11,20 +9,17 @@ import { usePaginatedLiveData } from "@/utils/paginatedLiveData";
 import { z } from "zod";
 import { getSocket } from "@/utils/socket";
 import { queryClient } from "@/components/providers";
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Card } from "@/components/ui/card";
-import Skeleton from "react-loading-skeleton";
 import { TokenBuySell } from "./swap/TokenBuySell";
-import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
-import { Comments } from "./Comments";
-import { TradeTable } from "@/components/TradeTable";
-import { Toast } from "@/components/common/Toast";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { VersionedTransaction } from "@solana/web3.js";
+import { LAMPORTS_PER_SOL, VersionedTransaction } from "@solana/web3.js";
 import { womboApi } from "@/utils/fetch";
 import { toast } from "react-toastify";
+import { AgentCardInfo } from "@/components/agent-card/AgentCardInfo";
+import { SolanaIcon } from "./swap/SolanaIcon";
+import { env } from "@/utils/env";
+import { useTimeAgo } from "@/app/formatTimeAgo";
+import { useAgentByMintAddress } from "@/utils/agent";
 
 const HolderSchema = z.object({
   address: z.string(),
@@ -36,15 +31,69 @@ const HolderSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
+const TransactionSchema = z
+  .object({
+    txId: z.string(),
+    timestamp: z.string().datetime(),
+    user: z.string(),
+    direction: z.number().int().min(0).max(1),
+    amountIn: z.number(),
+    amountOut: z.number(),
+  })
+  .transform((tx) => ({
+    txId: tx.txId,
+    timestamp: tx.timestamp,
+    user: tx.user,
+    type: tx.direction === 0 ? ("Buy" as const) : ("Sell" as const),
+    solAmount:
+      (tx.direction === 0 ? tx.amountIn : tx.amountOut) / LAMPORTS_PER_SOL,
+    tokenAmount:
+      tx.direction === 0 ? tx.amountOut / 10 ** 6 : tx.amountIn / 10 ** 6,
+  }));
+
+const Switcher = ({
+  enabled,
+  onChange,
+  label,
+}: {
+  enabled: boolean;
+  onChange: (value: boolean) => void;
+  label: string;
+}) => (
+  <div className="flex items-center gap-2">
+    <span className="text-[#8C8C8C] text-sm">{label}</span>
+    <button
+      onClick={() => onChange(!enabled)}
+      className={`w-10 h-5 rounded-full transition-colors duration-200 ease-in-out ${
+        enabled ? "bg-[#4ADE80]" : "bg-[#262626]"
+      } relative`}
+    >
+      <div
+        className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-transform duration-200 ease-in-out ${
+          enabled ? "translate-x-5" : "translate-x-1"
+        }`}
+      />
+    </button>
+  </div>
+);
+
 export default function TradingInterface() {
   const { publicKey, sendTransaction } = useWallet();
   const { connection } = useConnection();
-  const [activeTab, setActiveTab] = useState("comments");
+  const [activeTab, setActiveTab] = useState("trades");
+  const [showOwnTrades, setShowOwnTrades] = useState(false);
+  const [showSize, setShowSize] = useState(false);
   const params = useParams();
 
   const tokenId = params.tokenId as string;
-  const { data: token, isLoading } = useToken({ variables: tokenId });
-  const [copied, setCopied] = useState(false);
+  const { data: token, isLoading: isTokenLoading } = useToken({
+    variables: tokenId,
+  });
+  const { data: agent, isLoading: isAgentLoading } = useAgentByMintAddress({
+    enabled: !!token?.hasAgent,
+    variables: { contractAddress: token?.mint ?? "" },
+  });
+  const isLoading = isTokenLoading || isAgentLoading;
 
   const { items: holders } = usePaginatedLiveData({
     itemsPerPage: 100,
@@ -60,6 +109,28 @@ export default function TradingInterface() {
     },
     itemsPropertyName: "holders",
   });
+
+  const { items: transactions } = usePaginatedLiveData({
+    itemsPerPage: 100,
+    endpoint: `/swaps/${tokenId}`,
+    validationSchema: TransactionSchema,
+    getUniqueId: (tx) => tx.txId,
+    socketConfig: {
+      subscribeEvent: {
+        event: "subscribe",
+        args: [tokenId],
+      },
+      newDataEvent: "newSwap",
+    },
+    itemsPropertyName: "swaps",
+  });
+
+  const timestamps = useMemo(
+    () => transactions?.map((tx) => tx.timestamp),
+    [transactions],
+  );
+
+  const timeAgo = useTimeAgo(timestamps);
 
   const socket = useMemo(() => getSocket(), []);
 
@@ -109,136 +180,251 @@ export default function TradingInterface() {
 
   if (!token) return null;
 
-  const messages = [
-    {
-      id: "1",
-      address: "0x742...3ab",
-      content: "This agent is performing really well!",
-      timestamp: "(2 min ago)",
-      role: "USER",
-    },
-    {
-      id: "2",
-      address: "0x123...def",
-      content: "Agreed, the market cap is growing steadily",
-      timestamp: "(1 min ago)",
-      role: "ASSISTANT",
-    },
-  ];
-
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    toast(<Toast message="Address copied to clipboard" status="completed" />, {
-      position: "bottom-right",
-      autoClose: 2000,
-      hideProgressBar: true,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: false,
-      progress: undefined,
-    });
-    setTimeout(() => setCopied(false), 2000);
-  };
+  if (agent && "unauthenticated" in agent) return null;
 
   return (
-    <div className="min-h-screen text-gray-200 flex flex-col mt-12">
-      <div className="flex flex-col lg:flex-row gap-4 justify-center">
-        <div className="flex flex-col space-y-4 flex-1 max-w-[960px]">
-          {/* Header Profile */}
-          <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-8">
-            <div className="flex items-start gap-6 flex-col md:flex-row items-stretch">
-              <img
-                src={token.image}
-                alt="AI Agent Profile"
-                className="rounded-xl h-[150px] self-start"
-              />
-              <div className="flex-1 flex flex-col self-stretch gap-2">
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center flex-1 justify-between">
-                    <h1 className="text-[#22C55E] font-bold text-xl md:text-2xl">
-                      {token.name} (${token.ticker})
-                    </h1>
+    <div className="min-h-screen text-gray-200 flex flex-col mt-[92px]">
+      <div className="flex flex-col lg:flex-row gap-4 justify-center px-4 md:px-[120px] py-6 max-w-[1680px] mx-auto w-full">
+        <div className="flex flex-col space-y-4 flex-1 w-full lg:max-w-[960px]">
+          {/* Stats Section */}
+          <div className="box-border flex flex-row items-center py-3 px-4 w-full bg-[#171717] border border-[#262626] rounded-[6px] overflow-x-auto scrollbar-hide">
+            <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[140px] sm:min-w-0 sm:w-[266.88px] h-[56px] rounded-l-[6px] flex-1">
+              <span className="font-['DM_Mono'] font-normal text-xs sm:text-base leading-6 text-[#8C8C8C] whitespace-nowrap">
+                Market Cap
+              </span>
+              <span className="font-['DM_Mono'] font-normal text-sm sm:text-xl leading-6 text-[#2FD345]">
+                {Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                  notation: "compact",
+                }).format(Number(token.marketCapUSD))}
+              </span>
+            </div>
+            <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
+            <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[140px] sm:min-w-0 sm:w-[266.88px] h-[56px] flex-1">
+              <span className="font-['DM_Mono'] font-normal text-xs sm:text-base leading-6 text-[#8C8C8C] whitespace-nowrap">
+                24hr Volume
+              </span>
+              <span className="font-['DM_Mono'] font-normal text-sm sm:text-xl leading-6 text-white">
+                {Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                  notation: "compact",
+                }).format(Number(token.volume24h))}
+              </span>
+            </div>
+            <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
+            <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[140px] sm:min-w-0 sm:w-[266.88px] h-[56px] flex-1">
+              <span className="font-['DM_Mono'] font-normal text-xs sm:text-base leading-6 text-[#8C8C8C] whitespace-nowrap">
+                Creator
+              </span>
+              <div className="flex flex-row items-center p-0 gap-2 w-[132px] h-6">
+                <span className="font-['DM_Mono'] font-normal text-sm sm:text-xl leading-6 text-white">{`${token.creator.slice(0, 4)}...${token.creator.slice(-4)}`}</span>
+              </div>
+            </div>
+            <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
+            <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[140px] sm:min-w-0 sm:w-[266.88px] h-[56px] rounded-r-[6px] flex-1">
+              <span className="font-['DM_Mono'] font-normal text-xs sm:text-base leading-6 text-[#8C8C8C] whitespace-nowrap">
+                Creation Time
+              </span>
+              <span className="font-['DM_Mono'] font-normal text-sm sm:text-xl leading-6 text-white">
+                {new Date(token.createdAt).toLocaleString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </div>
+          </div>
+
+          {/* Trading Chart */}
+          {token && token.status === "active" && (
+            <div className="w-full h-[400px] sm:h-[600px] lg:h-[846px] bg-[#171717] border border-[#262626] rounded-xl overflow-hidden">
+              <TradingChart param={token} />
+            </div>
+          )}
+
+          {/* Trading Activity Panel */}
+          <div className="bg-[#171717] border border-[#262626] rounded-xl overflow-hidden">
+            {/* Tab Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-b border-[#262626] gap-4">
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setActiveTab("trades")}
+                  className={`px-4 py-2 rounded-md text-sm font-medium ${
+                    activeTab === "trades"
+                      ? "bg-[#262626] text-white"
+                      : "text-[#8C8C8C] hover:text-white"
+                  }`}
+                >
+                  Trades
+                </button>
+                <button
+                  onClick={() => setActiveTab("holders")}
+                  className={`px-4 py-2 rounded-md text-sm font-medium ${
+                    activeTab === "holders"
+                      ? "bg-[#262626] text-white"
+                      : "text-[#8C8C8C] hover:text-white"
+                  }`}
+                >
+                  Holders
+                </button>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 overflow-x-auto sm:overflow-visible">
+                  <div className="flex items-center gap-1 whitespace-nowrap">
+                    <span className="text-[#8C8C8C] text-sm">Size</span>
+                    <div className="flex items-center gap-1">
+                      <SolanaIcon />
+                      <span
+                        className={`text-sm transition-colors duration-200 ${showSize ? "text-white" : "text-[#8C8C8C]"}`}
+                      >
+                        0.05
+                      </span>
+                    </div>
+                    <Switcher
+                      enabled={showSize}
+                      onChange={setShowSize}
+                      label=""
+                    />
                   </div>
-                  <div className="flex items-center gap-1 text-gray-300 text-xs">
-                    {`${token.mint.slice(0, 3)}...${token.mint.slice(-3)}`}
-                    {copied ? (
-                      <Check className="text-green-500 h-3" />
-                    ) : (
-                      <Copy
-                        className="cursor-pointer text-gray-300 h-3 hover:text-gray-400"
-                        onClick={() => handleCopy(token.mint)}
-                      />
-                    )}
-                  </div>
-                </div>
-                <p className="text-[#a1a1a1] text-sm md:text-lg break-word">
-                  {token.description}
-                </p>
-                <div className="flex gap-4 mt-6">
-                  <div className="text-xs text-[#03FF24]">
-                    <span className="text-gray-300">MC</span>{" "}
-                    <b>
-                      {Intl.NumberFormat("en-US", {
-                        style: "currency",
-                        currency: "USD",
-                        notation: "compact",
-                      }).format(Number(token.marketCapUSD))}
-                    </b>
-                  </div>
-                </div>
-                <div className="flex gap-4 mt-6 flex-col md:flex-row">
-                  {token.discord && (
-                    <Link
-                      // href={token.discord}
-                      href={
-                        token.discord.startsWith("http")
-                          ? token.discord
-                          : `https://discord.gg/${token.discord}`
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
-                    >
-                      {/* Discord SVG */}
-                      Discord
-                    </Link>
-                  )}
-                  {token.twitter && (
-                    <Link
-                      // href={token.twitter}
-                      href={
-                        token.twitter.startsWith("http")
-                          ? token.twitter
-                          : `https://twitter.com/${token.twitter}`
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
-                    >
-                      {/* Twitter SVG */}
-                      Twitter
-                    </Link>
-                  )}
-                  {token.telegram && (
-                    <Link
-                      // href={token.telegram}
-                      href={
-                        token.telegram.startsWith("http")
-                          ? token.telegram
-                          : `https://t.me/${token.telegram}`
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-gray-400 hover:text-gray-200 py-3 md:py-1 px-3 bg-[#262626] text-white gap-2 rounded-lg text-sm flex items-center gap-1"
-                    >
-                      {/* Telegram SVG */}
-                      Telegram
-                    </Link>
-                  )}
+                  <Switcher
+                    enabled={showOwnTrades}
+                    onChange={setShowOwnTrades}
+                    label="Own Trades"
+                  />
                 </div>
               </div>
             </div>
+
+            {/* Trade List */}
+            {activeTab === "trades" && (
+              <div className="overflow-x-auto p-4">
+                <table className="w-full min-w-[600px]">
+                  <thead>
+                    <tr className="text-[#8C8C8C] text-xs uppercase">
+                      <th className="text-left py-2">Account</th>
+                      <th className="text-left py-2">Type</th>
+                      <th className="text-left py-2">SOL</th>
+                      <th className="text-left py-2">{token.ticker}</th>
+                      <th className="text-left py-2">Date</th>
+                      <th className="text-left py-2">TXN</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-sm">
+                    {transactions.map((tx, i) => (
+                      <tr
+                        key={i}
+                        className="border-b border-[#262626] last:border-0"
+                      >
+                        <td className="py-3 text-[#8C8C8C]">
+                          {tx.user.slice(0, 5)}...{tx.user.slice(-3)}
+                        </td>
+                        <td
+                          className={`py-3 ${tx.type === "Buy" ? "text-[#4ADE80]" : "text-[#FF4444]"}`}
+                        >
+                          {tx.type}
+                        </td>
+                        <td className="py-3 text-white">{tx.solAmount}</td>
+                        <td className="py-3 text-white">
+                          {Intl.NumberFormat("en-US", {
+                            style: "decimal",
+                            notation: "compact",
+                          })
+                            .format(Number(tx.tokenAmount))
+                            .toLowerCase()}
+                        </td>
+                        <td className="py-3 text-[#8C8C8C]">{timeAgo[i]}</td>
+                        <td className="py-3">
+                          <a
+                            className="text-[#8C8C8C] hover:text-white"
+                            href={env.getTransactionUrl(tx.txId)}
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Holders List */}
+            {activeTab === "holders" && (
+              <div className="overflow-x-auto p-4">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-[#8C8C8C] text-xs uppercase">
+                      <th className="text-left py-2">Account</th>
+                      <th className="text-right py-2">%</th>
+                      <th className="text-right py-2">EXP</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-sm">
+                    {holders.map((holder, i) => (
+                      <tr
+                        key={i}
+                        className="border-b border-[#262626] last:border-0"
+                      >
+                        <td className="py-3 text-white">
+                          <span className="py-3 pr-8 text-[#8C8C8C]">
+                            #{i + 1}
+                          </span>
+                          {holder.address.slice(0, 5)}...
+                          {holder.address.slice(-3)}
+                          {holder.address === env.bondingCurveAddress && (
+                            <span className="text-[#b3a0b3] font-medium ml-2">
+                              (Bonding curve)
+                            </span>
+                          )}
+                          {holder.address === env.devAddress && (
+                            <span className="text-[#b3a0b3] font-medium ml-2">
+                              (DEV)
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 text-white text-right">
+                          {holder.percentage.toFixed(2)}%
+                        </td>
+                        <td className="py-3 text-white text-right flex">
+                          <a
+                            href={env.getWalletUrl(holder.address)}
+                            className="inline-flex justify-end w-full"
+                            target="_blank"
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 16 16"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M11 1.5H14.5V5M13.75 2.25L10 6M8.5 2.5H4C3.60218 2.5 3.22064 2.65804 2.93934 2.93934C2.65804 3.22064 2.5 3.60218 2.5 4V12C2.5 12.3978 2.65804 12.7794 2.93934 13.0607C3.22064 13.342 3.60218 13.5 4 13.5H12C12.3978 13.5 12.7794 13.342 13.0607 13.0607C13.342 12.7794 13.5 12.3978 13.5 12V7.5"
+                                stroke="#8C8C8C"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {publicKey?.toString() === token.creator && (
@@ -271,133 +457,15 @@ export default function TradingInterface() {
 
           {/* Fal Generator Section */}
           {/* <FalGenerator /> */}
-
-          {/* Trades/Comments/Chat */}
-          <div className="bg-[#171717] border border-[#262626] text-sm md:text-lg text-gray-400 rounded-xl p-4 md:p-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="gap-2 mb-10 flex justify-start overflow-x-scroll lg:overflow-hidden">
-                <TabsTrigger
-                  className={cn(
-                    activeTab === "trades" ? "text-white bg-[#262626]" : "",
-                    "text-sm md:text-xl",
-                  )}
-                  value="trades"
-                >
-                  Trades
-                </TabsTrigger>
-                <TabsTrigger
-                  className={cn(
-                    activeTab === "comments" ? "text-white bg-[#262626]" : "",
-                    "text-sm md:text-xl",
-                  )}
-                  value="comments"
-                >
-                  Comments
-                </TabsTrigger>
-                <TabsTrigger
-                  className={cn(
-                    activeTab === "chat" ? "text-white bg-[#262626]" : "",
-                    "text-sm md:text-xl",
-                  )}
-                  value="chat"
-                >
-                  Agent Chat
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent className="mt-0" value="trades">
-                <TradeTable tokenId={tokenId} />
-              </TabsContent>
-
-              <Comments tokenId={tokenId} />
-
-              <TabsContent className="mt-0" value="chat">
-                <div className="flex flex-col gap-4 h-[400px] overflow-y-scroll">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={cn([
-                        "flex flex-col",
-                        message.role === "USER" ? "items-end" : "items-start",
-                      ])}
-                    >
-                      <div className="flex items-center gap-4 mb-2">
-                        <span
-                          className={cn("text-[#22C55E] font-bold", [
-                            message.role === "USER" ? "text-white" : "",
-                          ])}
-                        >
-                          {message.role === "USER" ? "You" : "AI"}
-                        </span>
-                        <span
-                          className={cn("text-[#11632F] text-sm", [
-                            message.role === "USER" ? "text-gray-400" : "",
-                          ])}
-                        >
-                          {message.timestamp}
-                        </span>
-                      </div>
-                      <div className="flex flex-col">
-                        <p className="text-[#a1a1a1] mb-3">{message.content}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-4 flex items-center gap-2">
-                  <Input
-                    type="text"
-                    placeholder="Type a message..."
-                    className="flex-1 bg-[#262626] border border-gray-700 rounded px-7 py-6 text-white !text-xl md:text-2xl rounded-lg"
-                  />
-                  <button className="text-[#22C55E] hover:text-[#45a049]">
-                    <SendHorizontal className="w-5 h-5" />
-                  </button>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </div>
         </div>
 
-        <div className="flex flex-col space-y-4 md:max-w-[420px] 2xl:max-w-[480px]">
-          <TokenBuySell tokenId={tokenId} />
-
-          <div className="flex flex-col gap-2 bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-6">
-            <div className="flex justify-between items-center">
-              <span className="text-[#22C55E] text-sm">
-                Bonding curve progress: 2%
-              </span>
-              <InfoIcon className="w-4 h-4 text-gray-400" />
-            </div>
-            <div className="w-full bg-[#333] rounded-full h-2 mt-2">
-              <div
-                className="bg-[#22C55E] h-2 rounded-full"
-                style={{ width: "2%" }}
-              />
-            </div>
-            <p className="text-xs text-gray-400 mt-2">
-              Graduate this coin to Raydium at $87,140 market cap. There is
-              0.382 SOL in the bonding curve.
-            </p>
+        <div className="flex flex-col space-y-4 w-full lg:w-auto lg:min-w-[380px] lg:max-w-[420px] 2xl:max-w-[480px]">
+          <div className="w-full">
+            <AgentCardInfo token={token} agentName={agent?.name} />
           </div>
 
-          {/* Holder Distribution */}
-          <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-6">
-            <h2 className="text-gray-200 mb-4">Holder Distribution</h2>
-
-            <div className="space-y-2">
-              {holders.map((holder, index) => (
-                <div key={index} className="flex justify-between items-center">
-                  <span className="text-[#22C55E] text-sm">
-                    {holder.address.slice(0, 4)}...
-                    {holder.address.slice(-4)}
-                  </span>
-                  <span className="text-[#a1a1a1] text-sm">
-                    {holder.percentage}%
-                  </span>
-                </div>
-              ))}
-            </div>
+          <div className="w-full">
+            <TokenBuySell tokenId={tokenId} />
           </div>
         </div>
       </div>
@@ -406,173 +474,77 @@ export default function TradingInterface() {
 }
 
 const renderSkeletons = () => (
-  <div className="min-h-screen text-green-500 relative overflow-hidden">
-    <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20"></div>
-    <div className="relative z-10">
-      <div className="container mx-auto p-4 space-y-6">
-        <div className="flex flex-col md:flex-row items-center justify-between p-4 bg-black/50 border border-green-500/20 rounded-xl backdrop-blur-sm">
-          <div className="flex items-center gap-4 mb-4 md:mb-0">
-            <div className="h-16 w-16 rounded-full bg-green-500/20 flex items-center justify-center relative overflow-hidden group">
-              <Skeleton
-                width={64}
-                height={64}
-                baseColor="#171717"
-                highlightColor="#00ff0026"
-                className="rounded-full"
-              />
-            </div>
-            <div>
-              <Skeleton
-                width={150}
-                height={24}
-                baseColor="#171717"
-                highlightColor="#00ff0026"
-                className="mb-2"
-              />
-              <Skeleton
-                width={100}
-                height={16}
-                baseColor="#171717"
-                highlightColor="#00ff0026"
-              />
-            </div>
+  <div className="min-h-screen text-gray-200 flex flex-col mt-[92px]">
+    <div className="flex flex-col lg:flex-row gap-4 justify-center px-4 md:px-[120px] py-6 max-w-[1680px] mx-auto w-full">
+      <div className="flex flex-col space-y-4 flex-1 w-full lg:max-w-[960px]">
+        {/* Stats Section Skeleton */}
+        <div className="box-border flex flex-row items-center py-3 px-0 w-full h-[80px] bg-[#171717] border border-[#262626] rounded-[6px] overflow-x-auto">
+          <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[200px] sm:min-w-0 sm:w-[266.88px] h-[56px] rounded-l-[6px] flex-1">
+            <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
           </div>
-
-          <div className="flex items-center gap-2">
-            <Skeleton
-              width={32}
-              height={32}
-              baseColor="#171717"
-              highlightColor="#00ff0026"
-              className="rounded-full"
-            />
-            <Skeleton
-              width={32}
-              height={32}
-              baseColor="#171717"
-              highlightColor="#00ff0026"
-              className="rounded-full"
-            />
+          <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
+          <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[200px] sm:min-w-0 sm:w-[266.88px] h-[56px] flex-1">
+            <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
+          </div>
+          <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
+          <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[200px] sm:min-w-0 sm:w-[266.88px] h-[56px] flex-1">
+            <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
+          </div>
+          <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
+          <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[200px] sm:min-w-0 sm:w-[266.88px] h-[56px] rounded-r-[6px] flex-1">
+            <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <Skeleton
-              width="100%"
-              height={300}
-              baseColor="#171717"
-              highlightColor="#00ff0026"
-              className="rounded-xl"
-            />
-            <Card className="bg-black/50 border-green-500/50 backdrop-blur-sm [clip-path:polygon(0_10px,10px_0,100%_0,100%_calc(100%-10px),calc(100%-10px)_100%,0_100%)]">
-              <CardContent className="p-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {[...Array(4)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="text-center p-4 border border-green-500/20 rounded-xl relative overflow-hidden group"
-                    >
-                      <Skeleton
-                        width={80}
-                        height={24}
-                        baseColor="#171717"
-                        highlightColor="#00ff0026"
-                        className="mb-2"
-                      />
-                      <Skeleton
-                        width={60}
-                        height={16}
-                        baseColor="#171717"
-                        highlightColor="#00ff0026"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="space-y-6 lg:sticky lg:top-4 lg:self-start">
-            <Card className="bg-black border-green-500/20">
-              <CardHeader className="text-green-500">
-                <CardTitle>{/* Token Buy/Sell */}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Skeleton
-                  width="100%"
-                  height={50}
-                  baseColor="#171717"
-                  highlightColor="#00ff0026"
-                  className="rounded-xl mb-4"
-                />
-                <Skeleton
-                  width="100%"
-                  height={50}
-                  baseColor="#171717"
-                  highlightColor="#00ff0026"
-                  className="rounded-xl"
-                />
-              </CardContent>
-            </Card>
-
-            <Card className="bg-black border-green-500/20">
-              <CardHeader className="text-green-500">
-                <CardTitle>{/* Bonding Status */}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Skeleton
-                  width="100%"
-                  height={20}
-                  baseColor="#171717"
-                  highlightColor="#00ff0026"
-                  className="rounded-xl mb-2"
-                />
-                <Skeleton
-                  width="100%"
-                  height={10}
-                  baseColor="#171717"
-                  highlightColor="#00ff0026"
-                  className="rounded-xl"
-                />
-              </CardContent>
-            </Card>
-            <Card className="bg-black border-green-500/20">
-              <CardHeader className="text-green-500">
-                <CardTitle>{/* Holder Distribution */}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4 text-green-500">
-                  {[...Array(5)].map((_, i) => (
-                    <div key={i} className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <Skeleton
-                          width={50}
-                          height={16}
-                          baseColor="#171717"
-                          highlightColor="#00ff0026"
-                        />
-                        <Skeleton
-                          width={30}
-                          height={16}
-                          baseColor="#171717"
-                          highlightColor="#00ff0026"
-                        />
-                      </div>
-                      <Skeleton
-                        width="100%"
-                        height={4}
-                        baseColor="#171717"
-                        highlightColor="#00ff0026"
-                        className="rounded"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+        {/* Chart Skeleton */}
+        <div className="bg-[#171717] border border-[#262626] rounded-[6px] p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="flex flex-col">
+              <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
+            </div>
+            <div className="flex flex-col">
+              <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
+            </div>
+            <div className="flex flex-col">
+              <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
+            </div>
+            <div className="flex flex-col">
+              <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
+            </div>
           </div>
         </div>
+
+        {/* Chart Skeleton */}
+        <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 h-[400px] flex items-center justify-center">
+          <div className="w-full h-full bg-neutral-800 rounded animate-pulse" />
+        </div>
+
+        {/* Tabs Section Skeleton */}
+        <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-6">
+          <div className="flex gap-4 mb-6">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="w-24 h-8 bg-neutral-800 rounded animate-pulse"
+              />
+            ))}
+          </div>
+          <div className="space-y-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="w-full h-16 bg-neutral-800 rounded animate-pulse"
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col space-y-4 w-full lg:w-auto lg:min-w-[380px] lg:max-w-[420px] 2xl:max-w-[480px]">
+        {/* Add skeleton for AgentCardInfo */}
+        <div className="w-full h-[400px] bg-[#171717] border border-[#262626] rounded-xl animate-pulse" />
+        {/* Add skeleton for TokenBuySell */}
+        <div className="w-full h-[200px] bg-[#171717] border border-[#262626] rounded-xl animate-pulse" />
       </div>
     </div>
   </div>

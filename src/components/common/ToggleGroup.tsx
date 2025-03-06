@@ -59,7 +59,7 @@ export default function ToggleGroup<TOptions extends Option<any>[]>({
               transition-colors duration-200
               ${
                 selectedValue === option.value
-                  ? "text-white"
+                  ? "text-[#0a0a0a]"
                   : "text-[#6c6c6c] hover:text-white"
               }
               z-10
