@@ -8,4 +8,5 @@ export type LabelledInputProps = {
   rightIndicatorOpacity?: "full" | "low";
   rightHeaderIndicator?: ReactNode;
   inputTag?: ReactNode;
+  isOptional?: boolean;
 };

@@ -10,6 +10,7 @@ export const FormInput = ({
   inputPad,
   variant,
   error,
+  isOptional,
   ...props
 }: FormInputProps) => {
   const leftIndicatorStyle =
@@ -45,8 +46,13 @@ export const FormInput = ({
 
   return (
     <div className="font-medium flex flex-col gap-3">
-      <label className="text-white uppercase leading-normal tracking-widest">
-        {label}
+      <label>
+        <span className="text-white uppercase leading-normal tracking-widest">
+          {label}
+        </span>
+        {isOptional && (
+          <span className="text-[#8c8c8c] font-semibold"> (Optional)</span>
+        )}
       </label>
       <div
         className={
