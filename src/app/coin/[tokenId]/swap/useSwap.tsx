@@ -5,7 +5,6 @@ import {
   Transaction,
   VersionedTransaction,
   ComputeBudgetProgram,
-  TransactionInstruction,
 } from "@solana/web3.js";
 import { BN, Program } from "@coral-xyz/anchor";
 import {
@@ -85,7 +84,6 @@ const swapIx = async (
   program: Program<Serlaunchalot>,
   reserveToken: number,
   reserveLamport: number,
-  preInstructions: TransactionInstruction[],
 ) => {
   const [configPda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_CONFIG)],
@@ -139,7 +137,6 @@ const swapIx = async (
       user,
       tokenMint: token,
     })
-    .postInstructions(preInstructions)
     .instruction();
 
   return tx;
@@ -159,7 +156,6 @@ export const getJupiterSwapIx = async (
   style: number, // 0 for buy; 1 for sell
   slippageBps: number = 100,
   connection: Connection,
-  preInstructions: TransactionInstruction[],
 ) => {
   // Jupiter uses the following constant to represent SOL
   const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
@@ -190,7 +186,7 @@ export const getJupiterSwapIx = async (
 
   const feeAccountData = await connection.getAccountInfo(feeAccount);
 
-  const additionalIxs = preInstructions;
+  const additionalIxs = [];
   if (!feeAccountData) {
     // Create the fee account
     const createFeeAccountIx = createAssociatedTokenAccountInstruction(
@@ -270,6 +266,45 @@ export const useSwap = () => {
     // Convert percentage to basis points (1% = 100 bps)
     const slippageBps = slippagePercentage * 100;
 
+    // Convert SOL to lamports (1 SOL = 1e9 lamports)
+    const amountLamports = Math.floor(amount * 1e9);
+    const amountTokens = Math.floor(amount * 1e6);
+
+    // Convert string style ("buy" or "sell") to numeric style (0 for buy; 1 for sell)
+    const numericStyle = style === "buy" ? 0 : 1;
+
+    const ixs = [];
+    if (token?.status === "locked") {
+      const mainnetConnection = new Connection(
+        "https://mainnet.helius-rpc.com/?api-key=156e83be-b359-4f60-8abb-c6a17fd3ff5f",
+      );
+      // Use Jupiter API when tokens are locked
+      const ixsJupiterSwap = await getJupiterSwapIx(
+        wallet.publicKey,
+        new PublicKey(tokenAddress),
+        style === "buy" ? amountLamports : amountTokens,
+        numericStyle,
+        slippageBps,
+        mainnetConnection,
+      );
+
+      ixs.push(...ixsJupiterSwap);
+    } else {
+      // Use the internal swap function otherwise
+      const ix = await swapIx(
+        wallet.publicKey,
+        new PublicKey(tokenAddress),
+        style === "buy" ? amountLamports : amountTokens,
+        numericStyle,
+        slippageBps,
+        program,
+        reserveToken,
+        reserveLamport,
+      );
+
+      ixs.push(ix);
+    }
+
     // Define SOL fee amounts based on speed
     let solFee;
     switch (speed) {
@@ -285,53 +320,17 @@ export const useSwap = () => {
       default:
         solFee = 0.00005;
     }
-
     // Convert SOL fee to lamports (1 SOL = 1e9 lamports)
     const feeLamports = Math.floor(solFee * 1e9);
 
     // Create a transaction instruction to apply the fee
     const feeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
-      microLamports: feeLamports * 1e6,
+      microLamports: feeLamports,
     });
 
-    // Convert SOL to lamports (1 SOL = 1e9 lamports)
-    const amountLamports = Math.floor(amount * 1e9);
-    const amountTokens = Math.floor(amount * 1e6);
+    ixs.push(feeInstruction);
 
-    // Convert string style ("buy" or "sell") to numeric style (0 for buy; 1 for sell)
-    const numericStyle = style === "buy" ? 0 : 1;
-
-    if (token?.status === "locked") {
-      const mainnetConnection = new Connection(
-        "https://mainnet.helius-rpc.com/?api-key=156e83be-b359-4f60-8abb-c6a17fd3ff5f",
-      );
-      // Use Jupiter API when tokens are locked
-      const ix = await getJupiterSwapIx(
-        wallet.publicKey,
-        new PublicKey(tokenAddress),
-        style === "buy" ? amountLamports : amountTokens,
-        numericStyle,
-        slippageBps,
-        mainnetConnection,
-        [feeInstruction],
-      );
-
-      return ix;
-    } else {
-      // Use the internal swap function otherwise
-      const ix = await swapIx(
-        wallet.publicKey,
-        new PublicKey(tokenAddress),
-        style === "buy" ? amountLamports : amountTokens,
-        numericStyle,
-        slippageBps,
-        program,
-        reserveToken,
-        reserveLamport,
-        [feeInstruction],
-      );
-      return ix;
-    }
+    return ixs;
   };
 
   const executeSwap = async ({
@@ -350,7 +349,7 @@ export const useSwap = () => {
     );
     const curve = await program.account.bondingCurve.fetch(bondingCurvePda);
 
-    const ix = await createSwapIx({
+    const ixs = await createSwapIx({
       style,
       amount,
       tokenAddress,
@@ -359,7 +358,7 @@ export const useSwap = () => {
       token,
     });
 
-    const tx = new Transaction().add(...(Array.isArray(ix) ? ix : [ix]));
+    const tx = new Transaction().add(...(Array.isArray(ixs) ? ixs : [ixs]));
     const { blockhash, lastValidBlockHeight } =
       await connection.getLatestBlockhash();
     tx.feePayer = wallet.publicKey;
