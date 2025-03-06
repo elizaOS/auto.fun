@@ -91,23 +91,6 @@ export async function fetchCodexTokenEvents(
 }
 
 /**
- * Converts Codex token events to price feed format
- * @param events Array of Codex token events
- * @returns Array of price feed objects
- */
-export function convertCodexEventsToPriceFeed(events: CodexTokenEvent[]): Array<{
-  price: number;
-  timestamp: Date;
-  volume: number;
-}> {
-  return events.map(item => ({
-    price: parseFloat(item.token1PoolValueUsd),
-    timestamp: new Date(item.timestamp * 1000),
-    volume: parseFloat(item.data.amount0 || '0')
-  }));
-}
-
-/**
  * Fetches current token price and market data from Codex API
  * @param tokenAddress Token address to fetch price for (defaults to hardcoded value for development)
  * @param networkId Network ID (default: 1399811149 for Solana)

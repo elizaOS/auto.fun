@@ -709,7 +709,11 @@ export async function fetchPriceChartData(pairIndex: number, start: number, end:
       );
       
       // Convert to price feed format
-      const priceFeeds = convertCodexEventsToPriceFeed(tokenEvents);
+      const priceFeeds: PriceFeedInfo[] = tokenEvents.map(item => ({
+        price: parseFloat(item.token1PoolValueUsd),
+        timestamp: new Date(item.timestamp * 1000),
+        volume: parseFloat(item.data.amount0)
+      }));
 
       if (!priceFeeds.length) return [];
 
@@ -836,7 +840,7 @@ const initServer = async () => {
 
   // Verify required environment variables
   if (!process.env.CODEX_API_KEY) {
-    logger.warn('CODEX_API_KEY environment variable is not set. Codex API features will not work properly.');
+    logger.error('CODEX_API_KEY environment variable is not set. Codex API features will not work properly.');
   }
 
   // Initialize Solana connection and program
