@@ -2,6 +2,8 @@ import { Copy } from "lucide-react";
 import { Icon } from "@iconify/react";
 import { useState } from "react";
 import { DM_Mono } from "next/font/google";
+import { Token } from "@/utils/tokens";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 
 const dmMono = DM_Mono({
   weight: ["400", "500"],
@@ -9,39 +11,19 @@ const dmMono = DM_Mono({
 });
 
 interface AgentCardInfoProps {
-  name: string;
-  ticker: string;
-  image: string;
-  description: string;
-  bondingCurveProgress: number;
-  bondingCurveAmount: number;
-  targetMarketCap: number;
-  contractAddress: string;
-  priceUSD?: number;
-  priceSOL?: number;
-  socialLinks?: {
-    website?: string;
-    twitter?: string;
-    telegram?: string;
-    discord?: string;
-  };
+  token: Token;
+  agentName?: string;
 }
 
-export function AgentCardInfo({
-  name,
-  ticker,
-  image,
-  bondingCurveProgress,
-  bondingCurveAmount,
-  targetMarketCap,
-  contractAddress,
-  priceUSD = 0,
-  priceSOL = 0,
-  socialLinks,
-  description,
-}: AgentCardInfoProps) {
+export function AgentCardInfo({ token, agentName }: AgentCardInfoProps) {
   const [copied, setCopied] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
+
+  // Graduation market cap is the market cap at which the token will graduate to Raydium
+  // This is the market cap at which the token will have 100% of the bonding curve
+  const finalTokenPrice = 0.00000045; // Approximated value from the bonding curve configuration
+  const finalTokenUSDPrice = finalTokenPrice * token.solPriceUSD;
+  const graduationMarketCap = finalTokenUSDPrice * 1_000_000_000;
 
   const handleCopy = async (text: string) => {
     try {
@@ -69,8 +51,8 @@ export function AgentCardInfo({
         {/* Product Image */}
         <div className="flex flex-col justify-center items-start w-[144px] h-[144px]">
           <img
-            src={image}
-            alt={name}
+            src={token.image}
+            alt={token.name}
             className="w-[144px] h-[144px] rounded-[4px] border border-[#262626] object-cover"
           />
         </div>
@@ -81,31 +63,33 @@ export function AgentCardInfo({
           <div className="flex flex-col items-start gap-2 w-full">
             <div className="flex flex-row items-center gap-2">
               <h1 className="font-satoshi text-[32px] leading-9 tracking-[-0.014em] text-white font-medium">
-                {name}
+                {token.name}
               </h1>
               <span
                 className={`${dmMono.className} text-[18px] leading-6 tracking-[2px] uppercase text-[#8C8C8C]`}
               >
-                ${ticker}
+                ${token.ticker}
               </span>
             </div>
             <div className="flex flex-col gap-2">
-              <div className="flex flex-row items-start gap-1">
-                <span
-                  className={`${dmMono.className} text-xs leading-4 tracking-[2px] uppercase text-white`}
-                >
-                  AGENT:
-                </span>
-                <span
-                  className={`${dmMono.className} text-xs leading-4 tracking-[2px] uppercase text-[#2FD345] underline`}
-                >
-                  AGENT NAME
-                </span>
-              </div>
+              {agentName && (
+                <div className="flex flex-row items-start gap-1">
+                  <span
+                    className={`${dmMono.className} text-xs leading-4 tracking-[2px] uppercase text-white`}
+                  >
+                    AGENT:
+                  </span>
+                  <span
+                    className={`${dmMono.className} text-xs leading-4 tracking-[2px] uppercase text-[#2FD345] underline`}
+                  >
+                    {agentName}
+                  </span>
+                </div>
+              )}
               {/* Description */}
               <div className="font-satoshi text-base leading-6 tracking-[-0.4px] text-[#8C8C8C] mt-2">
-                <p>{truncateDescription(description)}</p>
-                {description.length > 100 && (
+                <p>{truncateDescription(token.description)}</p>
+                {token.description.length > 100 && (
                   <button
                     onClick={() => setShowFullDescription(!showFullDescription)}
                     className="text-[#2FD345] hover:text-[#2FD345]/80 transition-colors ml-1"
@@ -132,10 +116,10 @@ export function AgentCardInfo({
           <span
             className={`${dmMono.className} text-base leading-6 text-[#8C8C8C]`}
           >
-            {contractAddress}
+            {token.mint}
           </span>
           <button
-            onClick={() => handleCopy(contractAddress)}
+            onClick={() => handleCopy(token.mint)}
             className="text-[#8C8C8C] hover:text-white transition-colors"
           >
             {copied ? (
@@ -153,19 +137,19 @@ export function AgentCardInfo({
         {[
           {
             icon: <Icon icon="mingcute:globe-line" width="24" height="24" />,
-            link: socialLinks?.website || "#",
+            link: token.website,
           },
           {
             icon: <Icon icon="ri:twitter-x-fill" width="24" height="24" />,
-            link: socialLinks?.twitter || "#",
+            link: token.twitter,
           },
           {
             icon: <Icon icon="ic:baseline-telegram" width="24" height="24" />,
-            link: socialLinks?.telegram || "#",
+            link: token.telegram,
           },
           {
             icon: <Icon icon="ic:baseline-discord" width="24" height="24" />,
-            link: socialLinks?.discord || "#",
+            link: "#", // TODO: add discord link after new token creation UI
           },
         ].map((item, index, arr) => (
           <a
@@ -196,7 +180,7 @@ export function AgentCardInfo({
           <span
             className={`${dmMono.className} text-xl leading-6 tracking-[2px] uppercase text-white`}
           >
-            ${formatNumber(priceUSD, 8)}
+            ${formatNumber(token.tokenPriceUSD, 8)}
           </span>
         </div>
         <div className="flex-1 flex flex-col justify-center items-center gap-2 p-4 bg-[#212121] border border-[#262626] rounded-r-[6px]">
@@ -208,7 +192,7 @@ export function AgentCardInfo({
           <span
             className={`${dmMono.className} text-xl leading-6 tracking-[2px] uppercase text-white`}
           >
-            {formatNumber(priceSOL, 6)} SOL
+            {formatNumber(token.tokenPriceUSD / token.solPriceUSD, 6)} SOL
           </span>
         </div>
       </div>
@@ -221,9 +205,9 @@ export function AgentCardInfo({
               Bonding curve progress:
             </span>
             <span className="font-geist text-xl leading-7 text-[#2FD345]">
-              {bondingCurveProgress >= 100
+              {token.curveProgress >= 100
                 ? "Complete"
-                : `${Math.min(100, bondingCurveProgress)}%`}
+                : `${Math.min(100, token.curveProgress)}%`}
             </span>
           </div>
           <div className="relative group">
@@ -242,11 +226,11 @@ export function AgentCardInfo({
           <div className="absolute w-full h-full bg-[#262626] rounded-[999px]" />
           <div
             className="absolute h-full bg-gradient-to-r from-[#0F4916] to-[#2FD345] rounded-[999px]"
-            style={{ width: `${Math.min(100, bondingCurveProgress)}%` }}
+            style={{ width: `${Math.min(100, token.curveProgress)}%` }}
           />
         </div>
         <p className="font-satoshi text-base leading-5 text-[#8C8C8C]">
-          {bondingCurveProgress >= 100 ? (
+          {token.curveProgress >= 100 ? (
             <>
               Raydium pool has been seeded. View on Raydium{" "}
               <a href="#" className="text-[#2FD345] hover:underline">
@@ -255,9 +239,20 @@ export function AgentCardInfo({
             </>
           ) : (
             <>
-              Graduate this coin to raydium at $
-              {targetMarketCap.toLocaleString()} market cap. there is{" "}
-              {formatNumber(bondingCurveAmount, 3)} SOL in the bonding curve.
+              Graduate this coin to raydium at{" "}
+              {new Intl.NumberFormat("en-US", {
+                style: "currency",
+                currency: "USD",
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+              }).format(graduationMarketCap)}{" "}
+              market cap. there is{" "}
+              {formatNumber(
+                (token.reserveLamport - token.virtualReserves) /
+                  LAMPORTS_PER_SOL,
+                3,
+              )}{" "}
+              SOL in the bonding curve.
             </>
           )}
         </p>
