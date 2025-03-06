@@ -19,6 +19,7 @@ import { AgentCardInfo } from "@/components/agent-card/AgentCardInfo";
 import { SolanaIcon } from "./swap/SolanaIcon";
 import { env } from "@/utils/env";
 import { useTimeAgo } from "@/app/formatTimeAgo";
+import { useAgentByMintAddress } from "@/utils/agent";
 
 const HolderSchema = z.object({
   address: z.string(),
@@ -85,7 +86,14 @@ export default function TradingInterface() {
   const params = useParams();
 
   const tokenId = params.tokenId as string;
-  const { data: token, isLoading } = useToken({ variables: tokenId });
+  const { data: token, isLoading: isTokenLoading } = useToken({
+    variables: tokenId,
+  });
+  const { data: agent, isLoading: isAgentLoading } = useAgentByMintAddress({
+    enabled: !!token?.hasAgent,
+    variables: { contractAddress: token?.mint ?? "" },
+  });
+  const isLoading = isTokenLoading || isAgentLoading;
 
   const { items: holders } = usePaginatedLiveData({
     itemsPerPage: 100,
@@ -460,6 +468,9 @@ export default function TradingInterface() {
               bondingCurveAmount={token.reserveLamport / 1e9}
               targetMarketCap={token.curveLimit}
               contractAddress={token.mint}
+              agentName={
+                (agent && !("unauthenticated" in agent) && agent.name) || null
+              }
             />
           </div>
 

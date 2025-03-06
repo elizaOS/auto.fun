@@ -165,7 +165,10 @@ export const TokenMarketCapSkeleton = () => {
         </div>
         <div className="flex gap-2 items-center">
           <div className="w-full h-1 rounded-full bg-gray-900 flex overflow-hidden">
-            <div className="h-full bg-neutral-800 rounded-full" style={{ width: '60%' }}></div>
+            <div
+              className="h-full bg-neutral-800 rounded-full"
+              style={{ width: "60%" }}
+            ></div>
             <div className="bg-gradient-to-r from-neutral-800 to-transparent w-20 h-full -ml-1"></div>
           </div>
           <div className="w-8 h-4 bg-neutral-800 rounded"></div>
@@ -184,18 +187,11 @@ export const TokenMarketCap = ({ mint }: { mint: string }) => {
 
   return (
     <div className="flex flex-col bg-[#272727] rounded-xl p-4 gap-3">
-      {/* <Tweet url={token.xurl} /> */}
-
       <div className="flex gap-3 w-full">
         <Container>
           <Title>Market cap</Title>
           <Money>${formatNumber(token.marketCapUSD)}</Money>
         </Container>
-
-        {/* <Container>
-          <Title>Capital Raised</Title>
-          <Money>${formatNumber(token.liquidity)}</Money>
-        </Container> */}
       </div>
 
       <BondingStatus token={token} />

@@ -25,6 +25,7 @@ interface AgentCardInfoProps {
     telegram?: string;
     discord?: string;
   };
+  agentName: string | null;
 }
 
 export function AgentCardInfo({
@@ -39,6 +40,7 @@ export function AgentCardInfo({
   priceSOL = 0,
   socialLinks,
   description,
+  agentName,
 }: AgentCardInfoProps) {
   const [copied, setCopied] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
@@ -90,18 +92,20 @@ export function AgentCardInfo({
               </span>
             </div>
             <div className="flex flex-col gap-2">
-              <div className="flex flex-row items-start gap-1">
-                <span
-                  className={`${dmMono.className} text-xs leading-4 tracking-[2px] uppercase text-white`}
-                >
-                  AGENT:
-                </span>
-                <span
-                  className={`${dmMono.className} text-xs leading-4 tracking-[2px] uppercase text-[#2FD345] underline`}
-                >
-                  AGENT NAME
-                </span>
-              </div>
+              {agentName && (
+                <div className="flex flex-row items-start gap-1">
+                  <span
+                    className={`${dmMono.className} text-xs leading-4 tracking-[2px] uppercase text-white`}
+                  >
+                    AGENT:
+                  </span>
+                  <span
+                    className={`${dmMono.className} text-xs leading-4 tracking-[2px] uppercase text-[#2FD345] underline`}
+                  >
+                    {agentName}
+                  </span>
+                </div>
+              )}
               {/* Description */}
               <div className="font-satoshi text-base leading-6 tracking-[-0.4px] text-[#8C8C8C] mt-2">
                 <p>{truncateDescription(description)}</p>
