@@ -57,9 +57,15 @@ export function Controls({
                 className="flex items-center gap-2 px-4 py-2 bg-[#171717] border border-[#262626] rounded-lg text-white hover:border-[#2FD345]/50 transition-all duration-200"
               >
                 {sortOrder === "desc" ? (
-                  <ChevronDown className="w-4 h-4" />
+                  <>
+                    Descending
+                    <ChevronDown className="w-4 h-4" />
+                  </>
                 ) : (
-                  <ChevronUp className="w-4 h-4" />
+                  <>
+                    Ascending
+                    <ChevronUp className="w-4 h-4" />
+                  </>
                 )}
               </button>
             </div>
