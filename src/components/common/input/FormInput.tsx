@@ -43,11 +43,13 @@ export const FormInput = ({
   };
 
   return (
-    <div className="font-medium flex flex-col gap-3 ">
-      <label className="text-[16px]">{label}</label>
+    <div className="font-medium flex flex-col gap-3">
+      <label className="text-white uppercase leading-normal tracking-widest">
+        {label}
+      </label>
       <div className={backgroundColor[variant || "default"]}>
         <div
-          className={`flex items-center bg-[#262626] rounded-xl overflow-hidden ${borderStyles[variant || "default"]}`}
+          className={`flex items-center bg-[#0f0f0f] rounded-md overflow-hidden ${borderStyles[variant || "default"]}`}
         >
           {leftIndicator && (
             <div className={`${leftIndicatorStyle} pl-3 flex justify-center`}>
@@ -55,7 +57,7 @@ export const FormInput = ({
             </div>
           )}
           <input
-            className={`w-full bg-inherit h-11 ${inputPaddingStyles[inputPad || "both"]} py-4 placeholder-[#017d11]`}
+            className={`w-full bg-inherit h-11 ${inputPaddingStyles[inputPad || "both"]} py-4 placeholder-[#8c8c8c]`}
             {...props}
           />
           {rightIndicator && (

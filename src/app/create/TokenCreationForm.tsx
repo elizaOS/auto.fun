@@ -8,8 +8,6 @@ import { useState } from "react";
 
 const MAX_FILE_SIZE_MB = 5;
 
-// TODO: put form tag in here, will split into 3 separate forms
-// that way we can easily check form validity for each form step
 export const TokenCreationForm = ({
   form: { register, control, formState },
 }: {
