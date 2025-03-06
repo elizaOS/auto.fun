@@ -20,6 +20,8 @@ export function AgentBrowser() {
     nextPage,
     previousPage,
     isLoading,
+    totalPages,
+    goToPage,
   } = useTokens(sortBy, sortOrder);
 
   const handleViewChange = (newView: "grid" | "table") => setView(newView);
@@ -173,6 +175,8 @@ export function AgentBrowser() {
             hasNextPage={hasNextPage}
             previousPage={previousPage}
             nextPage={nextPage}
+            goToPage={goToPage}
+            totalPages={totalPages}
           />
         </div>
       </div>
