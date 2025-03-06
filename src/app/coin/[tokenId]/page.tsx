@@ -180,6 +180,8 @@ export default function TradingInterface() {
 
   if (!token) return null;
 
+  if (agent && "unauthenticated" in agent) return null;
+
   return (
     <div className="min-h-screen text-gray-200 flex flex-col mt-[92px]">
       <div className="flex flex-col lg:flex-row gap-4 justify-center px-4 md:px-[120px] py-6 max-w-[1680px] mx-auto w-full">
@@ -459,19 +461,7 @@ export default function TradingInterface() {
 
         <div className="flex flex-col space-y-4 w-full lg:w-auto lg:min-w-[380px] lg:max-w-[420px] 2xl:max-w-[480px]">
           <div className="w-full">
-            <AgentCardInfo
-              name={token.name}
-              ticker={token.ticker}
-              image={token.image}
-              description={token.description}
-              bondingCurveProgress={token.curveProgress}
-              bondingCurveAmount={token.reserveLamport / 1e9}
-              targetMarketCap={token.curveLimit}
-              contractAddress={token.mint}
-              agentName={
-                (agent && !("unauthenticated" in agent) && agent.name) || null
-              }
-            />
+            <AgentCardInfo token={token} agentName={agent?.name} />
           </div>
 
           <div className="w-full">
