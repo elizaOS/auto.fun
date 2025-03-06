@@ -6,6 +6,7 @@ export const FormInput = ({
   leftIndicatorOpacity,
   rightIndicator,
   rightIndicatorOpacity,
+  inputTag,
   inputPad,
   variant,
   error,
@@ -47,9 +48,19 @@ export const FormInput = ({
       <label className="text-white uppercase leading-normal tracking-widest">
         {label}
       </label>
-      <div className={backgroundColor[variant || "default"]}>
+      <div
+        className={
+          backgroundColor[variant || "default"] +
+          " flex border border-[#262626] rounded-md overflow-hidden"
+        }
+      >
+        {inputTag && (
+          <div className="bg-[#262626] flex items-center py-2 px-3">
+            {inputTag}
+          </div>
+        )}
         <div
-          className={`flex items-center bg-[#0f0f0f] rounded-md overflow-hidden ${borderStyles[variant || "default"]}`}
+          className={`flex items-center bg-[#0f0f0f] overflow-hidden ${borderStyles[variant || "default"]} flex-1`}
         >
           {leftIndicator && (
             <div className={`${leftIndicatorStyle} pl-3 flex justify-center`}>
