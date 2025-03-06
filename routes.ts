@@ -1308,6 +1308,56 @@ router.get('/agents/:id', requireAuth, async (req, res) => {
   }
 });
 
+router.get('/agents/mint/:contractAddress', requireAuth, async (req, res) => {
+  try {
+    const ownerAddress = req.user?.publicKey;
+    
+    const agent = await Agent.findOne({
+      contractAddress: req.params.contractAddress,
+      ownerAddress,
+      deletedAt: null
+    }).select([
+      'ownerAddress',
+      'contractAddress',
+      'txId',
+      'symbol',
+      'name',
+      'twitterUsername',
+      'description',
+      'systemPrompt',
+      'modelProvider',
+      'bio',
+      'lore',
+      'messageExamples',
+      'postExamples',
+      'adjectives',
+      'people',
+      'topics',
+      'styleAll',
+      'styleChat',
+      'stylePost',
+      'createdAt',
+      'updatedAt'
+    ]).lean();
+
+    if (!agent) {
+      logger.log("Agent not found or unauthorized", {
+        id: req.params.id,
+      });
+      return res.status(404).json({ error: "Agent not found" });
+    }
+
+    logger.log("Agent fetched successfully", {
+      agentId: agent._id,
+    });
+
+    res.json(agent);
+  } catch (error) {
+    logger.error("Failed to fetch agent", error);
+    res.status(400).json({ error: "Failed to fetch agent" });
+  }
+});
+
 router.post('/upload-pinata', requireAuth, async (req, res) => {
   try {
     const { image, metadata } = req.body;
