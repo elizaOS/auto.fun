@@ -116,7 +116,7 @@ const ImageUploadInput = ({
         </label>
       )}
       <div
-        className="relative border-2 border-dashed rounded-md p-4 cursor-pointer text-center border-[#8c8c8c]"
+        className="relative border-2 border-dashed rounded-md p-6 cursor-pointer text-center border-[#8c8c8c]"
         onClick={handleContainerClick}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -124,7 +124,7 @@ const ImageUploadInput = ({
       >
         <input
           type="file"
-          accept="image/jpeg, image/png, image/gif, video/mp4"
+          accept="image/png, image/jpeg, image/gif, image/webp"
           {...props}
           {...inputProps}
           ref={(e) => {
