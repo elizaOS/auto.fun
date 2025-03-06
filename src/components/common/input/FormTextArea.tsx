@@ -15,14 +15,16 @@ export const FormTextArea = ({
   return (
     <div className="font-medium flex flex-col gap-3 ">
       <div className="flex justify-between">
-        <label className="text-[16px]">{label}</label>
+        <label className="text-white uppercase leading-normal tracking-widest">
+          {label}
+        </label>
         {rightHeaderIndicator}
       </div>
       <div
-        className={`flex flex-col items-center rounded-xl bg-[#262626] overflow-hidden relative`}
+        className={`flex flex-col items-center rounded-md bg-[#0f0f0f] overflow-hidden relative`}
       >
         <TextareaAutosize
-          className={`w-full bg-inherit h-11 py-3 px-4 resize-none placeholder-[#017d11]`}
+          className={`w-full bg-inherit h-11 py-3 px-4 resize-none placeholder-[#8c8c8c]`}
           {...props}
         />
         {children}
