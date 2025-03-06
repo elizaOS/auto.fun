@@ -32,7 +32,6 @@ export function useTradeSettings() {
       setSlippage(settings.slippage || 1);
       setSpeed(settings.speed || "turbo");
       setIsProtectionEnabled(settings.isProtectionEnabled || false);
-      setIsProtectionEnabled(settings.isProtectionEnabled || false);
       setTipAmount(settings.tipAmount || "0.004");
     },
     [setSlippage, setSpeed, setIsProtectionEnabled, setTipAmount],
