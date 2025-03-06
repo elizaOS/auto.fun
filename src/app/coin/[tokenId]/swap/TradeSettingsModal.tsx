@@ -123,8 +123,6 @@ export const TradeSettingsModal = ({
               slippage,
               speed,
               isProtectionEnabled,
-              tradeSize: 0.1,
-              ownTradesFilter: false,
               tipAmount: "0.004",
             });
             onClose();
