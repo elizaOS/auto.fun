@@ -4,6 +4,8 @@ import {
   PublicKey,
   Transaction,
   VersionedTransaction,
+  ComputeBudgetProgram,
+  TransactionInstruction,
 } from "@solana/web3.js";
 import { BN, Program } from "@coral-xyz/anchor";
 import {
@@ -79,10 +81,10 @@ const swapIx = async (
   amount: number,
   style: number,
   slippageBps: number = 100,
-  connection: Connection,
   program: Program<Serlaunchalot>,
   reserveToken: number,
   reserveLamport: number,
+  preInstructions: TransactionInstruction[],
 ) => {
   const [configPda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_CONFIG)],
@@ -128,6 +130,7 @@ const swapIx = async (
 
   const deadline = Math.floor(Date.now() / 1000) + 120;
 
+  // Apply the fee instruction to the transaction
   const tx = await program.methods
     .swap(new BN(amount), style, minOutput, new BN(deadline))
     .accounts({
@@ -135,6 +138,7 @@ const swapIx = async (
       user,
       tokenMint: token,
     })
+    .postInstructions(preInstructions)
     .instruction();
 
   return tx;
@@ -154,6 +158,7 @@ export const getJupiterSwapIx = async (
   style: number, // 0 for buy; 1 for sell
   slippageBps: number = 100,
   connection: Connection,
+  preInstructions: TransactionInstruction[],
 ) => {
   // Jupiter uses the following constant to represent SOL
   const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
@@ -184,7 +189,7 @@ export const getJupiterSwapIx = async (
 
   const feeAccountData = await connection.getAccountInfo(feeAccount);
 
-  const additionalIxs = [];
+  const additionalIxs = preInstructions;
   if (!feeAccountData) {
     // Create the fee account
     const createFeeAccountIx = createAssociatedTokenAccountInstruction(
@@ -242,7 +247,7 @@ export const useSwap = () => {
   const wallet = useWallet();
   const program = useProgram();
   // TODO: implement speed, front-running protection, and tip amount
-  const { slippage: slippagePercentage } = useTradeSettings();
+  const { slippage: slippagePercentage, speed } = useTradeSettings();
 
   const createSwapIx = async ({
     style,
@@ -258,6 +263,30 @@ export const useSwap = () => {
 
     // Convert percentage to basis points (1% = 100 bps)
     const slippageBps = slippagePercentage * 100;
+
+    // Define SOL fee amounts based on speed
+    let solFee;
+    switch (speed) {
+      case "fast":
+        solFee = 0.00005;
+        break;
+      case "turbo":
+        solFee = 0.0005;
+        break;
+      case "ultra":
+        solFee = 0.005;
+        break;
+      default:
+        solFee = 0.00005;
+    }
+
+    // Convert SOL fee to lamports (1 SOL = 1e9 lamports)
+    const feeLamports = Math.floor(solFee * 1e9);
+
+    // Create a transaction instruction to apply the fee
+    const feeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: feeLamports * 1e6,
+    });
 
     // Convert SOL to lamports (1 SOL = 1e9 lamports)
     const amountLamports = Math.floor(amount * 1e9);
@@ -278,6 +307,7 @@ export const useSwap = () => {
         numericStyle,
         slippageBps,
         mainnetConnection,
+        [feeInstruction],
       );
 
       return ix;
@@ -289,10 +319,10 @@ export const useSwap = () => {
         style === "buy" ? amountLamports : amountTokens,
         numericStyle,
         slippageBps,
-        connection,
         program,
         reserveToken,
         reserveLamport,
+        [feeInstruction],
       );
       return ix;
     }
