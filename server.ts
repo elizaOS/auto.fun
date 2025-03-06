@@ -2,8 +2,6 @@ import express from 'express';
 import { Server } from 'socket.io';
 import { createServer } from 'http';
 import { 
-  Cluster,
-  ComputeBudgetProgram,
   Connection, 
   Keypair, 
   PublicKey,
@@ -11,10 +9,7 @@ import {
 import * as anchor from "@coral-xyz/anchor";
 import { Program, BN } from '@coral-xyz/anchor';
 import mongoose from 'mongoose';
-import { withdrawTx } from './lib/scripts';
 import NodeWallet from '@coral-xyz/anchor/dist/cjs/nodewallet';
-import { execTx, execWithdrawTx } from './lib/util';
-import * as fs from 'fs';
 import { SEED_BONDING_CURVE } from './lib/constant';
 import { Serlaunchalot } from './target/types/serlaunchalot';
 import { getMint, NATIVE_MINT, TOKEN_PROGRAM_ID } from '@solana/spl-token';
@@ -23,15 +18,10 @@ import { initSdk, txVersion } from './lib/raydium-config';
 import { fetchDigitalAsset, mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
 import { publicKey, Umi } from '@metaplex-foundation/umi';
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults"
-import { clusterApiUrl } from '@solana/web3.js'
 import {
   CREATE_CPMM_POOL_PROGRAM,
-  CREATE_CPMM_POOL_FEE_ACC,
-  DEVNET_PROGRAM_ID,
   DEV_CREATE_CPMM_POOL_PROGRAM,
-  getCpmmPdaAmmConfigId,
   ApiV3PoolInfoStandardItemCpmm,
-  CpmmKeys,
 } from '@raydium-io/raydium-sdk-v2';
 import cors from 'cors';
 import { Token, Swap, Fee, TokenMetadataJson } from './schemas';
@@ -44,8 +34,8 @@ import { getSOLPrice } from './mcap';
 import PQueue from 'p-queue';
 import mediaGenerationRoutes from './mediaGeneration';
 import { MigrationService } from './lib/migration';
+import { fetchCodexTokenEvents } from './lib/api';
 
-const FEE_BASIS_POINTS = 10000;
 const VALID_PROGRAM_ID = new Set(
   [
     CREATE_CPMM_POOL_PROGRAM.toBase58(), 
@@ -657,35 +647,75 @@ const initializeConfig = async () => {
 };
 
 export async function fetchPriceChartData(pairIndex: number, start: number, end: number, range: number, token: string) {
-  // logger.info(`Fetching chart data for pairIndex: ${pairIndex}, start: ${start}, end: ${end}, range: ${range}, token: ${token}`);
+  const tokenInfo = await Token.findOne({ mint: token });
+  if (!tokenInfo) {
+    logger.error(`Token ${token} not found`);
+    return [];
+  }
 
-  // load price histories from DB
-  const swaps = await Swap.find(
-    { 
-      tokenMint: token,
-      timestamp: { 
-        $gte: new Date(start),
-        $lte: new Date(end) 
-      }
-    },
-    { price: 1, amountIn: 1, amountOut: 1, direction: 1, timestamp: 1 } 
-  ).sort({ timestamp: 1 });
-  
-  // Convert to PriceFeedInfo array
-  const priceFeeds: PriceFeedInfo[] = swaps
-    .filter(swap => swap.price != null) // Filter out any null prices
-    .map(swap => ({
-      price: swap.price,
-      timestamp: swap.timestamp,
-      // If direction is 0 (buy), amountIn is SOL
-      // If direction is 1 (sell), amountOut is SOL
-      volume: swap.direction === 0 ? 
-        swap.amountIn / 1e9 : // Convert from lamports to SOL
-        swap.amountOut / 1e9
-    }));
+  if (tokenInfo.status !== 'locked') {
+    // load price histories from DB
+    const swaps = await Swap.find(
+      { 
+        tokenMint: token,
+        timestamp: { 
+          $gte: new Date(start),
+          $lte: new Date(end) 
+        }
+      },
+      { price: 1, amountIn: 1, amountOut: 1, direction: 1, timestamp: 1 } 
+    ).sort({ timestamp: 1 });
+    
+    // Convert to PriceFeedInfo array
+    const priceFeeds: PriceFeedInfo[] = swaps
+      .filter(swap => swap.price != null) // Filter out any null prices
+      .map(swap => ({
+        price: swap.price,
+        timestamp: swap.timestamp,
+        // If direction is 0 (buy), amountIn is SOL
+        // If direction is 1 (sell), amountOut is SOL
+        volume: swap.direction === 0 ? 
+          swap.amountIn / 1e9 : // Convert from lamports to SOL
+          swap.amountOut / 1e9
+      }));
 
-  if (!priceFeeds.length) return [];
+    if (!priceFeeds.length) return [];
 
+    const cdFeeds = getCandleData(priceFeeds, range);
+
+    return cdFeeds;
+  } else if (tokenInfo.status === 'locked') {
+    try {
+      // @TODO Deploy our program to mainnet in, otherwise token address is fixed for now, for development, since we're not working with mainnet, code is working for mainnet
+      const tokenAddress = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
+      
+      // Fetch price history from Codex API using our utility function
+      const tokenEvents = await fetchCodexTokenEvents(
+        tokenAddress,
+        Math.floor(start / 1000),
+        Math.floor(end / 1000)
+      );
+      
+      // Convert to price feed format
+      const priceFeeds: PriceFeedInfo[] = tokenEvents.map(item => ({
+        price: parseFloat(item.token1PoolValueUsd),
+        timestamp: new Date(item.timestamp * 1000),
+        volume: parseFloat(item.data.amount0)
+      }));
+
+      if (!priceFeeds.length) return [];
+
+      const cdFeeds = getCandleData(priceFeeds, range);
+      return cdFeeds;
+      
+    } catch (error) {
+      logger.error('Error fetching data for locked token:', error);
+      return [];
+    }
+  }
+}
+
+function getCandleData(priceFeeds: PriceFeedInfo[], range: number) {
   const priceHistory = priceFeeds.map((feed) => ({
     price: feed.price,
     ts: feed.timestamp.getTime() / 1000,
@@ -693,7 +723,7 @@ export async function fetchPriceChartData(pairIndex: number, start: number, end:
 
   if (!priceHistory.length) return [];
 
-  let candlePeriod = 60; // 1 min  default
+  let candlePeriod = 60; // 1 min default
   switch (range) {
     case 1:
       // default candle period
@@ -712,7 +742,7 @@ export async function fetchPriceChartData(pairIndex: number, start: number, end:
       break;
   }
 
-  // convert price feed to candle price data
+  // Convert price feed to candle price data
   let cdStart = Math.floor(priceHistory[0].ts / candlePeriod) * candlePeriod;
   let cdEnd = Math.floor(priceHistory[priceHistory.length - 1].ts / candlePeriod) * candlePeriod;
 
@@ -729,9 +759,9 @@ export async function fetchPriceChartData(pairIndex: number, start: number, end:
       if (hi < priceHistory[pIndex].price) hi = priceHistory[pIndex].price;
       if (lo > priceHistory[pIndex].price) lo = priceHistory[pIndex].price;
       en = priceHistory[pIndex].price;
-      vol = priceFeeds[pIndex].volume;
+      vol += priceFeeds[pIndex].volume;
 
-      // break new candle data starts
+      // Break new candle data starts
       if (priceHistory[pIndex].ts >= curCdStart + candlePeriod) break;
       pIndex++;
     }
@@ -794,6 +824,11 @@ const initServer = async () => {
     await connectDB();
   } catch (error) {
     logger.error('Failed to connect to MongoDB:', error);
+  }
+
+  // Verify required environment variables
+  if (!process.env.CODEX_API_KEY) {
+    logger.error('CODEX_API_KEY environment variable is not set. Codex API features will not work properly.');
   }
 
   // Initialize Solana connection and program
