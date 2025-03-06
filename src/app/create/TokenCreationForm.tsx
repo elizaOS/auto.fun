@@ -20,35 +20,35 @@ export const TokenCreationForm = ({
 
   return (
     <form className="flex flex-col w-full m-auto gap-7 justify-center">
-      <FormInput
-        type="text"
-        {...register("name", { required: true })}
-        label="Name"
-        maxLength={50}
-        rightIndicator={`${name?.length ?? 0}/50`}
-        rightIndicatorOpacity={name?.length >= 50 ? "full" : "low"}
-        placeholder="Da Vinci"
-        error={formState.errors.name?.message}
-      />
+      <div className="grid grid-cols-2 gap-4">
+        <FormInput
+          type="text"
+          {...register("name", { required: true })}
+          label="Name"
+          maxLength={50}
+          rightIndicator={`${name?.length ?? 0}/50`}
+          rightIndicatorOpacity={name?.length >= 50 ? "full" : "low"}
+          error={formState.errors.name?.message}
+        />
 
-      <FormInput
-        type="text"
-        {...register("symbol", { required: true })}
-        label="Ticker"
-        leftIndicator="$"
-        maxLength={8}
-        rightIndicator={`${symbol?.length ?? 0}/8`}
-        rightIndicatorOpacity={symbol?.length >= 8 ? "full" : "low"}
-      />
+        <FormInput
+          type="text"
+          {...register("symbol", { required: true })}
+          label="Ticker"
+          leftIndicator="$"
+          maxLength={8}
+          rightIndicator={`${symbol?.length ?? 0}/8`}
+          rightIndicatorOpacity={symbol?.length >= 8 ? "full" : "low"}
+        />
+      </div>
 
       <FormTextArea
         {...register("description", { required: true })}
         label="Token Description"
         rightIndicator={`${description?.length ?? 0}/2000`}
-        minRows={2}
+        minRows={5}
         maxLength={2000}
         rightIndicatorOpacity={description?.length >= 2000 ? "full" : "low"}
-        placeholder="The ghost of Da Vinci trapped in Web3"
       />
 
       <FormImageInput
@@ -83,7 +83,8 @@ export const TokenCreationForm = ({
             (parseFloat(value) >= 0 && parseFloat(value) <= 45) ||
             "Max initial SOL is 45",
         })}
-        label="Buy Your Coin (optional)"
+        label="Buy Your Coin"
+        isOptional
         rightIndicator="SOL"
         onKeyDown={(e) => {
           if (

@@ -46,14 +46,9 @@ export const FormInput = ({
 
   return (
     <div className="font-medium flex flex-col gap-3">
-      <label>
-        <span className="text-white uppercase leading-normal tracking-widest">
-          {label}
-        </span>
-        {isOptional && (
-          <span className="text-[#8c8c8c] font-semibold"> (Optional)</span>
-        )}
-      </label>
+      {label && (
+        <FormInput.Label id={props.id} label={label} isOptional={isOptional} />
+      )}
       <div
         className={
           backgroundColor[variant || "default"] +
@@ -89,3 +84,26 @@ export const FormInput = ({
     </div>
   );
 };
+
+const Label = ({
+  id,
+  label,
+  isOptional,
+}: {
+  id?: string;
+  label: string;
+  isOptional?: boolean;
+}) => {
+  return (
+    <label htmlFor={id}>
+      <span className="text-white uppercase leading-normal tracking-widest">
+        {label}
+      </span>
+      {isOptional && (
+        <span className="text-[#8c8c8c] font-semibold"> (Optional)</span>
+      )}
+    </label>
+  );
+};
+
+FormInput.Label = Label;

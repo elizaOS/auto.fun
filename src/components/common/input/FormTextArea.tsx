@@ -21,7 +21,7 @@ export const FormTextArea = ({
         {rightHeaderIndicator}
       </div>
       <div
-        className={`flex flex-col items-center rounded-md bg-[#0f0f0f] overflow-hidden relative`}
+        className={`flex flex-col items-center rounded-md bg-[#0f0f0f] overflow-hidden relative border border-[#262626]`}
       >
         <TextareaAutosize
           className={`w-full bg-inherit h-11 py-3 px-4 resize-none placeholder-[#8c8c8c]`}

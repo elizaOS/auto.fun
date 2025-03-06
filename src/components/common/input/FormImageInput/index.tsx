@@ -110,13 +110,13 @@ const ImageUploadInput = ({
       {label && (
         <label
           htmlFor={props.id}
-          className="block mb-3 text-[#03ff24] font-medium"
+          className="text-white uppercase leading-normal tracking-widest mb-3 block"
         >
           {label}
         </label>
       )}
       <div
-        className="relative border-2 border-dashed rounded-md p-4 cursor-pointer text-center border-[#03ff24]"
+        className="relative border-2 border-dashed rounded-md p-4 cursor-pointer text-center border-[#8c8c8c]"
         onClick={handleContainerClick}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
