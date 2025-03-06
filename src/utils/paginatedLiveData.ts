@@ -13,6 +13,8 @@ interface PaginatedLiveDataConfig<TInput, TOutput> {
     newDataEvent: string;
   };
   itemsPropertyName?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 interface PaginatedResponse<T> {
@@ -29,8 +31,17 @@ const fetchData = async <TInput, TOutput>(
   limit: number,
   validationSchema: z.ZodSchema<TOutput, z.ZodTypeDef, TInput>,
   itemsPropertyName: string,
+  sortBy?: string,
+  sortOrder?: "asc" | "desc",
 ): Promise<PaginatedResponse<TOutput>> => {
-  const queryEndpoint = `${endpoint}?limit=${limit}&page=${page}`;
+  const queryParams = new URLSearchParams({
+    limit: limit.toString(),
+    page: page.toString(),
+    ...(sortBy && { sortBy }),
+    ...(sortOrder && { sortOrder }),
+  });
+
+  const queryEndpoint = `${endpoint}?${queryParams.toString()}`;
 
   const response = await womboApi.get({
     endpoint: queryEndpoint,
@@ -39,7 +50,6 @@ const fetchData = async <TInput, TOutput>(
       page: z.number(),
       totalPages: z.number(),
       total: z.number(),
-      // hasMore: z.boolean(),
     }),
   });
 
@@ -61,6 +71,8 @@ export const usePaginatedLiveData = <TInput, TOutput>({
   getUniqueId,
   socketConfig,
   itemsPropertyName = "tokens",
+  sortBy,
+  sortOrder,
 }: PaginatedLiveDataConfig<TInput, TOutput>) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoizedGetUniqueId = useCallback(getUniqueId, []);
@@ -107,6 +119,8 @@ export const usePaginatedLiveData = <TInput, TOutput>({
           itemsPerPage,
           validationSchema,
           itemsPropertyName,
+          sortBy,
+          sortOrder,
         );
 
         setFetchedData({ items: result.items });
@@ -121,7 +135,14 @@ export const usePaginatedLiveData = <TInput, TOutput>({
     };
 
     loadInitialData();
-  }, [endpoint, itemsPerPage, validationSchema, itemsPropertyName]);
+  }, [
+    endpoint,
+    itemsPerPage,
+    validationSchema,
+    itemsPropertyName,
+    sortBy,
+    sortOrder,
+  ]);
 
   useEffect(() => {
     const handleNewItem = (newItem: unknown) => {
@@ -192,6 +213,8 @@ export const usePaginatedLiveData = <TInput, TOutput>({
           itemsPerPage,
           validationSchema,
           itemsPropertyName,
+          sortBy,
+          sortOrder,
         );
         setFetchedData((prev) => ({
           items: [...prev.items, ...result.items],
@@ -218,6 +241,8 @@ export const usePaginatedLiveData = <TInput, TOutput>({
     itemsPerPage,
     validationSchema,
     itemsPropertyName,
+    sortBy,
+    sortOrder,
   ]);
 
   const previousPage = useCallback(() => {
