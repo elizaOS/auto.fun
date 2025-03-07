@@ -1386,7 +1386,9 @@ router.post('/upload-pinata', requireAuth, async (req, res) => {
       createdOn: "https://x.com/autofun", // TODO: change this
       twitter: metadata.twitter,
       telegram: metadata.telegram,
-      website: metadata.website
+      website: metadata.website,
+      discord: metadata.discord,
+      agentLink: metadata.agentLink
     };
     
     // Upload metadata to IPFS
