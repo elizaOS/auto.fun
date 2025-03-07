@@ -5,4 +5,5 @@ export type CenterFormContainerProps = {
   header?: ReactNode;
   description?: ReactNode;
   submitButton?: ReactNode;
+  borderless?: boolean;
 };

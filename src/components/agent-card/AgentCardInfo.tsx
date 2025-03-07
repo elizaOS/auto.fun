@@ -2,8 +2,8 @@ import { Copy } from "lucide-react";
 import { Icon } from "@iconify/react";
 import { useState } from "react";
 import { DM_Mono } from "next/font/google";
-import { Token } from "@/utils/tokens";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { PlaceholderImage } from "../common/PlaceholderImage";
 
 const dmMono = DM_Mono({
   weight: ["400", "500"],
@@ -11,19 +11,51 @@ const dmMono = DM_Mono({
 });
 
 interface AgentCardInfoProps {
-  token: Token;
+  name: string;
+  ticker: string;
+  image: string;
+  description: string;
+  curveProgress: number;
+  mint: string;
+  tokenPriceUSD?: number;
+  solPriceUSD?: number;
+  socialLinks?: {
+    website?: string;
+    twitter?: string;
+    telegram?: string;
+    discord?: string;
+    agentLink?: string;
+  };
   agentName?: string;
+  reserveLamport: number;
+  virtualReserves: number;
+  placeholderTargetMarketCap?: number;
 }
 
-export function AgentCardInfo({ token, agentName }: AgentCardInfoProps) {
+export function AgentCardInfo({
+  name,
+  ticker,
+  image,
+  curveProgress,
+  mint,
+  solPriceUSD = 0,
+  tokenPriceUSD = 0,
+  socialLinks,
+  description,
+  agentName,
+  reserveLamport,
+  virtualReserves,
+  placeholderTargetMarketCap,
+}: AgentCardInfoProps) {
   const [copied, setCopied] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
 
   // Graduation market cap is the market cap at which the token will graduate to Raydium
   // This is the market cap at which the token will have 100% of the bonding curve
   const finalTokenPrice = 0.00000045; // Approximated value from the bonding curve configuration
-  const finalTokenUSDPrice = finalTokenPrice * token.solPriceUSD;
-  const graduationMarketCap = finalTokenUSDPrice * 1_000_000_000;
+  const finalTokenUSDPrice = finalTokenPrice * solPriceUSD;
+  const graduationMarketCap =
+    placeholderTargetMarketCap ?? finalTokenUSDPrice * 1_000_000_000;
 
   const handleCopy = async (text: string) => {
     try {
@@ -45,16 +77,20 @@ export function AgentCardInfo({ token, agentName }: AgentCardInfoProps) {
   };
 
   return (
-    <div className="flex flex-col justify-center items-start p-4 gap-6 w-[587px] bg-[#171717] border border-[#262626] rounded-[6px]">
+    <div className="flex flex-col justify-center items-start p-4 gap-6 bg-[#171717] border border-[#262626] rounded-[6px]">
       {/* Product Info */}
       <div className="flex flex-row items-start gap-5 w-full">
         {/* Product Image */}
         <div className="flex flex-col justify-center items-start w-[144px] h-[144px]">
-          <img
-            src={token.image}
-            alt={token.name}
-            className="w-[144px] h-[144px] rounded-[4px] border border-[#262626] object-cover"
-          />
+          {image ? (
+            <img
+              src={image}
+              alt={name}
+              className="w-[144px] h-[144px] rounded-[4px] border border-[#262626] object-cover"
+            />
+          ) : (
+            <PlaceholderImage />
+          )}
         </div>
 
         {/* Product Details */}
@@ -63,12 +99,12 @@ export function AgentCardInfo({ token, agentName }: AgentCardInfoProps) {
           <div className="flex flex-col items-start gap-2 w-full">
             <div className="flex flex-row items-center gap-2">
               <h1 className="font-satoshi text-[32px] leading-9 tracking-[-0.014em] text-white font-medium">
-                {token.name}
+                {name}
               </h1>
               <span
                 className={`${dmMono.className} text-[18px] leading-6 tracking-[2px] uppercase text-[#8C8C8C]`}
               >
-                ${token.ticker}
+                ${ticker}
               </span>
             </div>
             <div className="flex flex-col gap-2">
@@ -79,17 +115,18 @@ export function AgentCardInfo({ token, agentName }: AgentCardInfoProps) {
                   >
                     AGENT:
                   </span>
-                  <span
+                  <a
+                    href="" // TODO: figure out the link between agentLink for external agents and agents from our system. maybe unify the link in the backend data structure
                     className={`${dmMono.className} text-xs leading-4 tracking-[2px] uppercase text-[#2FD345] underline`}
                   >
                     {agentName}
-                  </span>
+                  </a>
                 </div>
               )}
               {/* Description */}
               <div className="font-satoshi text-base leading-6 tracking-[-0.4px] text-[#8C8C8C] mt-2">
-                <p>{truncateDescription(token.description)}</p>
-                {token.description.length > 100 && (
+                <p>{truncateDescription(description)}</p>
+                {description.length > 100 && (
                   <button
                     onClick={() => setShowFullDescription(!showFullDescription)}
                     className="text-[#2FD345] hover:text-[#2FD345]/80 transition-colors ml-1"
@@ -116,10 +153,10 @@ export function AgentCardInfo({ token, agentName }: AgentCardInfoProps) {
           <span
             className={`${dmMono.className} text-base leading-6 text-[#8C8C8C]`}
           >
-            {token.mint}
+            {mint}
           </span>
           <button
-            onClick={() => handleCopy(token.mint)}
+            onClick={() => handleCopy(mint)}
             className="text-[#8C8C8C] hover:text-white transition-colors"
           >
             {copied ? (
@@ -137,19 +174,19 @@ export function AgentCardInfo({ token, agentName }: AgentCardInfoProps) {
         {[
           {
             icon: <Icon icon="mingcute:globe-line" width="24" height="24" />,
-            link: token.website,
+            link: socialLinks?.website,
           },
           {
             icon: <Icon icon="ri:twitter-x-fill" width="24" height="24" />,
-            link: token.twitter,
+            link: socialLinks?.twitter,
           },
           {
             icon: <Icon icon="ic:baseline-telegram" width="24" height="24" />,
-            link: token.telegram,
+            link: socialLinks?.telegram,
           },
           {
             icon: <Icon icon="ic:baseline-discord" width="24" height="24" />,
-            link: "#", // TODO: add discord link after new token creation UI
+            link: socialLinks?.discord,
           },
         ].map((item, index, arr) => (
           <a
@@ -180,7 +217,7 @@ export function AgentCardInfo({ token, agentName }: AgentCardInfoProps) {
           <span
             className={`${dmMono.className} text-xl leading-6 tracking-[2px] uppercase text-white`}
           >
-            ${formatNumber(token.tokenPriceUSD, 8)}
+            ${formatNumber(tokenPriceUSD, 8)}
           </span>
         </div>
         <div className="flex-1 flex flex-col justify-center items-center gap-2 p-4 bg-[#212121] border border-[#262626] rounded-r-[6px]">
@@ -192,7 +229,7 @@ export function AgentCardInfo({ token, agentName }: AgentCardInfoProps) {
           <span
             className={`${dmMono.className} text-xl leading-6 tracking-[2px] uppercase text-white`}
           >
-            {formatNumber(token.tokenPriceUSD / token.solPriceUSD, 6)} SOL
+            {formatNumber(tokenPriceUSD / solPriceUSD, 6)} SOL
           </span>
         </div>
       </div>
@@ -205,9 +242,9 @@ export function AgentCardInfo({ token, agentName }: AgentCardInfoProps) {
               Bonding curve progress:
             </span>
             <span className="font-geist text-xl leading-7 text-[#2FD345]">
-              {token.curveProgress >= 100
+              {curveProgress >= 100
                 ? "Complete"
-                : `${Math.min(100, token.curveProgress)}%`}
+                : `${Math.min(100, curveProgress)}%`}
             </span>
           </div>
           <div className="relative group">
@@ -226,11 +263,11 @@ export function AgentCardInfo({ token, agentName }: AgentCardInfoProps) {
           <div className="absolute w-full h-full bg-[#262626] rounded-[999px]" />
           <div
             className="absolute h-full bg-gradient-to-r from-[#0F4916] to-[#2FD345] rounded-[999px]"
-            style={{ width: `${Math.min(100, token.curveProgress)}%` }}
+            style={{ width: `${Math.min(100, curveProgress)}%` }}
           />
         </div>
         <p className="font-satoshi text-base leading-5 text-[#8C8C8C]">
-          {token.curveProgress >= 100 ? (
+          {curveProgress >= 100 ? (
             <>
               Raydium pool has been seeded. View on Raydium{" "}
               <a href="#" className="text-[#2FD345] hover:underline">
@@ -248,8 +285,7 @@ export function AgentCardInfo({ token, agentName }: AgentCardInfoProps) {
               }).format(graduationMarketCap)}{" "}
               market cap. there is{" "}
               {formatNumber(
-                (token.reserveLamport - token.virtualReserves) /
-                  LAMPORTS_PER_SOL,
+                (reserveLamport - virtualReserves) / LAMPORTS_PER_SOL,
                 3,
               )}{" "}
               SOL in the bonding curve.

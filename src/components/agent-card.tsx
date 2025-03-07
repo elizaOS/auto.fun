@@ -1,7 +1,8 @@
 import { useTimeAgo } from "@/app/formatTimeAgo";
-import { Copy, Grid, Check } from "lucide-react";
+import { Copy, Check } from "lucide-react";
 import { DM_Mono } from "next/font/google";
 import { useState } from "react";
+import { PlaceholderImage } from "./common/PlaceholderImage";
 
 const dmMono = DM_Mono({
   weight: ["400", "500"],
@@ -10,14 +11,16 @@ const dmMono = DM_Mono({
 
 interface AgentCardProps {
   name: string;
-  image: string;
+  image?: string;
   ticker: string;
   mint: string;
   marketCapUSD: number;
   bondingCurveProgress: number;
   description: string;
-  creationDate: string;
+  creationDate?: string;
   onClick?: () => void;
+  placeholderTime?: string;
+  className?: string;
 }
 
 export function AgentCard({
@@ -30,15 +33,19 @@ export function AgentCard({
   description,
   creationDate,
   onClick,
+  placeholderTime,
+  className,
 }: AgentCardProps) {
-  const formattedMarketCap = Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    notation: "compact",
-    maximumFractionDigits: 2,
-  }).format(marketCapUSD);
+  const formattedMarketCap = marketCapUSD
+    ? Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        notation: "compact",
+        maximumFractionDigits: 2,
+      }).format(marketCapUSD)
+    : "$0.00";
 
-  const timeAgo = useTimeAgo(creationDate);
+  const timeAgo = useTimeAgo(creationDate ?? "");
 
   // Cap the progress at 100% and round to the nearest whole number
   const normalizedProgress = Math.round(
@@ -57,7 +64,7 @@ export function AgentCard({
   return (
     <div
       onClick={onClick}
-      className="flex flex-col gap-3 w-full max-w-[411.5px] min-h-[288px] p-4 bg-[#171717] border border-[#262626] rounded-[8px] cursor-pointer hover:border-[#2FD345]/50 transition-colors"
+      className={`flex flex-col gap-3 w-full max-w-[411.5px] min-h-[288px] p-4 bg-[#171717] border border-[#262626] rounded-[8px] cursor-pointer hover:border-[#2FD345]/50 transition-colors ${className}`}
     >
       {/* Top container with image and details */}
       <div className="flex flex-col lg:flex-row gap-3 w-full">
@@ -71,7 +78,7 @@ export function AgentCard({
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
-              <Grid className="w-12 h-12 text-[#8C8C8C]" />
+              <PlaceholderImage />
             </div>
           )}
         </div>
@@ -92,7 +99,7 @@ export function AgentCard({
             </div>
             <div className="flex items-center gap-1 px-2 h-6 border border-[#262626] rounded-[6px] whitespace-nowrap">
               <span className={`${dmMono.className} text-xs text-[#8C8C8C]`}>
-                {timeAgo}
+                {placeholderTime || timeAgo}
               </span>
             </div>
           </div>
