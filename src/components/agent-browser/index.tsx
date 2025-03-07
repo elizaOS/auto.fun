@@ -1,71 +1,37 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useTokens } from "@/utils/tokens";
-import { Controls } from './Controls';
-import { GridView } from './GridView';
+import { Controls } from "./Controls";
+import { GridView } from "./GridView";
 import { Paginator } from "../common/Paginator";
-import { TableView } from './TableView';
+import { TableView } from "./TableView";
 
 export function AgentBrowser() {
   const [view, setView] = useState<"grid" | "table">("grid");
-  const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
-  const [filterBy, setFilterBy] = useState<"all" | "marketcap">("all");
+  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const router = useRouter();
 
   const {
-    items: tokensOriginal,
+    items: tokens,
     currentPage,
     hasNextPage,
     nextPage,
     previousPage,
     isLoading,
-  } = useTokens();
-
-  // Sort and filter tokens
-  const tokens = useMemo(() => {
-    if (!tokensOriginal) return [];
-    
-    let filteredTokens = [...tokensOriginal];
-
-    // Apply filters first
-    if (filterBy === "marketcap") {
-      filteredTokens = filteredTokens.filter(token => {
-        const marketCap = typeof token.marketCapUSD === 'string' 
-          ? parseFloat(token.marketCapUSD) 
-          : token.marketCapUSD;
-        return !isNaN(marketCap) && marketCap > 0;
-      });
-    }
-
-    // Then apply sorting
-    switch (sortBy) {
-      case 'newest':
-        return filteredTokens.sort((a, b) => 
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-      
-      case 'oldest':
-        return filteredTokens.sort((a, b) => 
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        );
-      
-      default:
-        return filteredTokens;
-    }
-  }, [tokensOriginal, sortBy, filterBy]);
+    totalPages,
+    goToPage,
+  } = useTokens(sortBy, sortOrder);
 
   const handleViewChange = (newView: "grid" | "table") => setView(newView);
-  
-  const handleSortChange = (sort: "all" | "marketcap") => {
-    setFilterBy(sort);
-    // When changing filter, reset sort to newest
-    setSortBy('newest');
+
+  const handleSortByChange = (newSortBy: string) => {
+    setSortBy(newSortBy);
   };
 
-  const handleSortByChange = () => {
-    // Toggle between newest and oldest
-    setSortBy(sortBy === 'newest' ? 'oldest' : 'newest');
+  const handleSortOrderChange = (newOrder: "asc" | "desc") => {
+    setSortOrder(newOrder);
   };
 
   const handleTokenClick = (mint: string) => router.push(`/coin/${mint}`);
@@ -73,12 +39,15 @@ export function AgentBrowser() {
   const renderGridSkeletons = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 w-full px-2 sm:px-4">
       {[...Array(8)].map((_, i) => (
-        <div key={i} className="flex flex-col gap-[12px] w-full max-w-[411.5px] h-auto min-h-[288px] p-4 bg-[#171717] border border-[#262626] rounded-[8px]">
+        <div
+          key={i}
+          className="flex flex-col gap-[12px] w-full max-w-[411.5px] h-auto min-h-[288px] p-4 bg-[#171717] border border-[#262626] rounded-[8px]"
+        >
           {/* Top container with image and details */}
           <div className="flex flex-col sm:flex-row gap-[12px] w-full">
             {/* Image skeleton */}
             <div className="w-full sm:w-[120px] h-[127.5px] rounded-[4px] bg-[#262626] animate-pulse shrink-0" />
-            
+
             {/* Right side content */}
             <div className="flex flex-col gap-[12px] flex-1 min-w-0">
               {/* Name and time */}
@@ -89,7 +58,7 @@ export function AgentBrowser() {
                 </div>
                 <div className="flex items-center gap-[4px] px-[8px] h-[24px] w-[60px] bg-[#262626] rounded-[6px] animate-pulse shrink-0" />
               </div>
-              
+
               {/* Market cap skeleton */}
               <div className="flex flex-col gap-[4px] w-full">
                 <div className="h-4 bg-[#262626] rounded w-1/4 animate-pulse" />
@@ -101,7 +70,7 @@ export function AgentBrowser() {
                   </div>
                 </div>
               </div>
-              
+
               {/* Bonding curve skeleton */}
               <div className="flex flex-col gap-[4px] w-full">
                 <div className="flex justify-between items-center flex-wrap gap-2">
@@ -114,13 +83,13 @@ export function AgentBrowser() {
               </div>
             </div>
           </div>
-          
+
           {/* Description skeleton */}
           <div className="flex flex-col gap-[12px] w-full">
             <div className="h-[40px] bg-[#262626] rounded animate-pulse" />
             <div className="w-full h-[1px] bg-[#262626]" />
           </div>
-          
+
           {/* Button skeleton */}
           <div className="w-full h-[44px] bg-[#2E2E2E] rounded-[6px] animate-pulse mt-auto" />
         </div>
@@ -133,14 +102,14 @@ export function AgentBrowser() {
       <div className="w-full bg-[#171717] border border-[#262626] rounded-lg overflow-hidden">
         {/* Table Header */}
         <div className="grid grid-cols-[1fr,1fr,1fr,1fr] md:grid-cols-[2fr,1fr,1fr,1fr,1fr] gap-4 p-4 border-b border-[#262626]">
-          {['Name', 'Price', 'Market Cap', 'Volume', '24h'].map((_, i) => (
+          {["Name", "Price", "Market Cap", "Volume", "24h"].map((_, i) => (
             <div key={i} className="h-6 bg-[#262626] rounded animate-pulse" />
           ))}
         </div>
-        
+
         {/* Table Body */}
         {[...Array(8)].map((_, i) => (
-          <div 
+          <div
             key={i}
             className="grid grid-cols-[1fr,1fr,1fr,1fr] md:grid-cols-[2fr,1fr,1fr,1fr,1fr] gap-4 p-4 border-b border-[#262626] last:border-b-0"
           >
@@ -152,18 +121,18 @@ export function AgentBrowser() {
                 <div className="h-4 bg-[#262626] rounded w-16 animate-pulse" />
               </div>
             </div>
-            
+
             {/* Price Column */}
             <div className="h-6 bg-[#262626] rounded w-20 animate-pulse" />
-            
+
             {/* Market Cap Column */}
             <div className="h-6 bg-[#262626] rounded w-24 animate-pulse" />
-            
+
             {/* Volume Column */}
             <div className="hidden md:block">
               <div className="h-6 bg-[#262626] rounded w-20 animate-pulse" />
             </div>
-            
+
             {/* 24h Column */}
             <div className="h-6 bg-[#262626] rounded w-16 animate-pulse" />
           </div>
@@ -179,16 +148,20 @@ export function AgentBrowser() {
           <Controls
             view={view}
             sortBy={sortBy}
-            filterBy={filterBy}
+            sortOrder={sortOrder}
             onViewChange={handleViewChange}
-            onSortChange={handleSortChange}
             onSortByChange={handleSortByChange}
+            onSortOrderChange={handleSortOrderChange}
           />
         </div>
 
         <div className="pt-4 pb-6">
           {isLoading ? (
-            view === "grid" ? renderGridSkeletons() : renderListSkeletons()
+            view === "grid" ? (
+              renderGridSkeletons()
+            ) : (
+              renderListSkeletons()
+            )
           ) : view === "grid" ? (
             <GridView tokens={tokens} onTokenClick={handleTokenClick} />
           ) : (
@@ -202,9 +175,11 @@ export function AgentBrowser() {
             hasNextPage={hasNextPage}
             previousPage={previousPage}
             nextPage={nextPage}
+            goToPage={goToPage}
+            totalPages={totalPages}
           />
         </div>
       </div>
     </div>
   );
-} 
+}

@@ -13,6 +13,8 @@ interface PaginatedLiveDataConfig<TInput, TOutput> {
     newDataEvent: string;
   };
   itemsPropertyName?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 interface PaginatedResponse<T> {
@@ -29,8 +31,17 @@ const fetchData = async <TInput, TOutput>(
   limit: number,
   validationSchema: z.ZodSchema<TOutput, z.ZodTypeDef, TInput>,
   itemsPropertyName: string,
+  sortBy?: string,
+  sortOrder?: "asc" | "desc",
 ): Promise<PaginatedResponse<TOutput>> => {
-  const queryEndpoint = `${endpoint}?limit=${limit}&page=${page}`;
+  const queryParams = new URLSearchParams({
+    limit: limit.toString(),
+    page: page.toString(),
+    ...(sortBy && { sortBy }),
+    ...(sortOrder && { sortOrder }),
+  });
+
+  const queryEndpoint = `${endpoint}?${queryParams.toString()}`;
 
   const response = await womboApi.get({
     endpoint: queryEndpoint,
@@ -39,7 +50,6 @@ const fetchData = async <TInput, TOutput>(
       page: z.number(),
       totalPages: z.number(),
       total: z.number(),
-      // hasMore: z.boolean(),
     }),
   });
 
@@ -61,11 +71,13 @@ export const usePaginatedLiveData = <TInput, TOutput>({
   getUniqueId,
   socketConfig,
   itemsPropertyName = "tokens",
+  sortBy,
+  sortOrder,
 }: PaginatedLiveDataConfig<TInput, TOutput>) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoizedGetUniqueId = useCallback(getUniqueId, []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const memoizedSocketConfig = useMemo(() => socketConfig, [socketConfig]);
+  const memoizedSocketConfig = useMemo(() => socketConfig, []);
 
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -97,31 +109,53 @@ export const usePaginatedLiveData = <TInput, TOutput>({
     [],
   );
 
-  useEffect(() => {
-    const loadInitialData = async () => {
+  const goToPage = useCallback(
+    async (pageNumber: number) => {
+      if (pageNumber < 1 || pageNumber > totalPages) return;
+
       setIsLoading(true);
       try {
         const result = await fetchData(
           endpoint,
-          1,
+          pageNumber,
           itemsPerPage,
           validationSchema,
           itemsPropertyName,
+          sortBy,
+          sortOrder,
         );
 
-        setFetchedData({ items: result.items });
+        setFetchedData({
+          items: result.items,
+        });
         setTotalPages(result.totalPages);
         setTotalItems(result.total);
         setHasMore(result.hasMore);
+        setPage(pageNumber);
+        dispatch({ type: "TRIM" });
       } catch (error) {
-        console.error("Failed to fetch initial data:", error);
+        console.error("Failed to fetch page:", error);
+        return;
       } finally {
         setIsLoading(false);
       }
-    };
+    },
+    [
+      totalPages,
+      endpoint,
+      itemsPerPage,
+      validationSchema,
+      itemsPropertyName,
+      sortBy,
+      sortOrder,
+    ],
+  );
 
-    loadInitialData();
-  }, [endpoint, itemsPerPage, validationSchema, itemsPropertyName]);
+  useEffect(() => {
+    if (!fetchedData.items.length) {
+      goToPage(1);
+    }
+  }, [goToPage, fetchedData.items.length]);
 
   useEffect(() => {
     const handleNewItem = (newItem: unknown) => {
@@ -174,8 +208,8 @@ export const usePaginatedLiveData = <TInput, TOutput>({
   }, [fetchedData?.items, liveItems, memoizedGetUniqueId]);
 
   const currentPageItems = useMemo(
-    () => allItems.slice((page - 1) * itemsPerPage, page * itemsPerPage),
-    [allItems, page, itemsPerPage],
+    () => allItems.slice(0, itemsPerPage),
+    [allItems, itemsPerPage],
   );
 
   const nextPage = useCallback(async () => {
@@ -184,28 +218,7 @@ export const usePaginatedLiveData = <TInput, TOutput>({
     if (nextPageIndex > totalPages) return;
 
     if (hasMore && allItems.length < nextPageIndex * itemsPerPage) {
-      setIsLoading(true);
-      try {
-        const result = await fetchData(
-          endpoint,
-          nextPageIndex,
-          itemsPerPage,
-          validationSchema,
-          itemsPropertyName,
-        );
-        setFetchedData((prev) => ({
-          items: [...prev.items, ...result.items],
-        }));
-        setTotalPages(result.totalPages as number);
-        setTotalItems(result.total as number);
-        setHasMore(result.hasMore as boolean);
-        setPage(nextPageIndex);
-      } catch (error) {
-        console.error("Failed to fetch next page:", error);
-        return;
-      } finally {
-        setIsLoading(false);
-      }
+      goToPage(nextPageIndex);
     } else {
       setPage(nextPageIndex);
     }
@@ -218,11 +231,14 @@ export const usePaginatedLiveData = <TInput, TOutput>({
     itemsPerPage,
     validationSchema,
     itemsPropertyName,
+    sortBy,
+    sortOrder,
   ]);
 
   const previousPage = useCallback(() => {
-    setPage((p) => (p > 1 ? p - 1 : p));
-  }, []);
+    if (page === 1) return;
+    goToPage(page - 1);
+  }, [page]);
 
   return {
     items: currentPageItems,
@@ -235,5 +251,6 @@ export const usePaginatedLiveData = <TInput, TOutput>({
     nextPage,
     previousPage,
     isLiveUpdate,
+    goToPage,
   };
 };

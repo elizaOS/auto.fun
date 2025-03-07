@@ -25,7 +25,7 @@ const HomepageTokenSchema = TokenSchema.and(
   z.object({ numComments: z.number().default(0) }),
 );
 
-export const useTokens = () => {
+export const useTokens = (sortBy?: string, sortOrder?: "asc" | "desc") => {
   return usePaginatedLiveData({
     itemsPerPage: 10,
     endpoint: "/tokens",
@@ -35,6 +35,8 @@ export const useTokens = () => {
       subscribeEvent: "subscribeGlobal",
       newDataEvent: "newToken",
     },
+    sortBy,
+    sortOrder,
   });
 };
 

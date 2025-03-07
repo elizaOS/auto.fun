@@ -35,4 +35,6 @@ export const TokenSchema = z.object({
   telegram: z.string().optional(),
   creator: z.string(),
   volume24h: z.number(),
+  website: z.string().optional(),
+  tokenPriceUSD: z.number(),
 });
