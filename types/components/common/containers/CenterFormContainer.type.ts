@@ -4,5 +4,5 @@ export type CenterFormContainerProps = {
   formComponent: ReactNode;
   header?: ReactNode;
   description?: ReactNode;
-  submitButton: ReactNode;
+  submitButton?: ReactNode;
 };

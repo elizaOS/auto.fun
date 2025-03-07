@@ -5,15 +5,21 @@ import { UseFormReturn, useWatch } from "react-hook-form";
 import { TokenMetadataForm } from "../../../types/form.type";
 import { Icons } from "./Icons";
 import { CopyButton } from "./CopyButton";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { WalletButton } from "@/components/common/button/WalletButton";
 
 const MAX_FILE_SIZE_MB = 5;
 const MAX_INITIAL_SOL = 45;
 
 export const TokenCreationForm = ({
   form: { register, control, formState, setValue },
+  submit,
 }: {
   form: UseFormReturn<TokenMetadataForm>;
+  submit: () => void;
 }) => {
+  const { publicKey } = useWallet();
+
   const symbol = useWatch({ control, name: "symbol" });
   const description = useWatch({ control, name: "description" });
   const name = useWatch({ control, name: "name" });
@@ -183,6 +189,28 @@ export const TokenCreationForm = ({
             error={formState.errors.initial_sol?.message}
           />
         </div>
+      </div>
+
+      <div className="h-0.5 bg-[#262626]" />
+
+      <div className="flex flex-col items-center">
+        <div className="text-white text-base font-normal font-['DM Mono'] uppercase leading-normal tracking-widest mb-2.5">
+          Continue
+        </div>
+        {publicKey ? (
+          <button
+            type="button"
+            className="bg-[#2e2e2e] py-2.5 px-4 rounded-md border border-neutral-800 text-[#2fd345] text-sm leading-tight disabled:opacity-30"
+            onClick={submit}
+            disabled={!formState.isValid}
+          >
+            Launch Token
+          </button>
+        ) : (
+          <div className="absolute">
+            <WalletButton />
+          </div>
+        )}
       </div>
     </form>
   );

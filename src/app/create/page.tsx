@@ -2,10 +2,7 @@
 
 import { useCreateToken } from "@/utils/tokens";
 import { toast } from "react-toastify";
-import { useWallet } from "@solana/wallet-adapter-react";
 import { useCallback, useState } from "react";
-import { RoundedButton } from "@/components/common/button/RoundedButton";
-import { WalletButton } from "@/components/common/button/WalletButton";
 import { TokenMetadata, TokenMetadataForm } from "../../../types/form.type";
 import { CenterFormContainer } from "@/components/common/containers/CenterFormContainer";
 import { Modal } from "@/components/common/Modal";
@@ -37,8 +34,6 @@ export default function TransactionSignPage() {
 
   const { mutateAsync: createToken } = useCreateToken();
 
-  const { publicKey } = useWallet();
-
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const convertFormData = useCallback(async (): Promise<{
@@ -46,6 +41,11 @@ export default function TransactionSignPage() {
   }> => {
     const tokenMetadata = tokenForm.getValues();
     const media_base64 = tokenMetadata.media_base64;
+
+    if (tokenMetadata.links.agentLink) {
+      tokenMetadata.links.agentLink =
+        "https://" + tokenMetadata.links.agentLink;
+    }
 
     return {
       tokenMeta: {
@@ -93,22 +93,11 @@ export default function TransactionSignPage() {
       </Modal>
 
       <CenterFormContainer
-        formComponent={<TokenCreationForm form={tokenForm} />}
-        header="Create token"
-        description="Create your token on auto.fun. Set up your token details, add visuals, and connect social channels. You can optionally create or link an existing AI agent to your token. You can also personally allocate a portion of tokens before launch."
-        submitButton={
-          publicKey ? (
-            <RoundedButton
-              className="px-6 py-3"
-              disabled={!tokenForm.formState.isValid}
-              onClick={submitForm}
-            >
-              Launch token
-            </RoundedButton>
-          ) : (
-            <WalletButton />
-          )
+        formComponent={
+          <TokenCreationForm form={tokenForm} submit={submitForm} />
         }
+        header="Create Token"
+        description="Create your token on auto.fun. Set up your token details, add visuals, and connect social channels. You can optionally create or link an existing AI agent to your token. You can also personally allocate a portion of tokens before launch."
       />
     </div>
   );
