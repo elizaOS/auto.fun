@@ -27,7 +27,6 @@ export const TwitterLoginForm = ({
         {...register("twitter_password", { required: true })}
         type={showPassword ? "text" : "password"}
         label="Password"
-        rightIndicatorOpacity="full"
         rightIndicator={
           <button
             type="button"

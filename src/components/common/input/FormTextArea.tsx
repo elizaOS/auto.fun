@@ -4,14 +4,10 @@ import TextareaAutosize from "react-textarea-autosize";
 export const FormTextArea = ({
   label,
   rightIndicator,
-  rightIndicatorOpacity,
   rightHeaderIndicator,
   children,
   ...props
 }: FormTextAreaProps) => {
-  const indicatorStyles =
-    rightIndicatorOpacity === "full" ? "opacity-100" : "opacity-30";
-
   return (
     <div className="font-medium flex flex-col gap-3 ">
       <div className="flex justify-between">
@@ -30,7 +26,7 @@ export const FormTextArea = ({
         {children}
         {rightIndicator && (
           <div
-            className={`${indicatorStyles} pr-3 rounded-b-xl w-full flex justify-end pb-3`}
+            className={`pr-3 rounded-b-xl w-full flex justify-end pb-3 text-[#a1a1a1]`}
           >
             {rightIndicator}
           </div>

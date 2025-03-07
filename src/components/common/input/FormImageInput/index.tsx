@@ -108,7 +108,7 @@ const ImageUploadInput = ({
   };
 
   return (
-    <div className="mb-4">
+    <div>
       {label && (
         <label
           htmlFor={props.id}

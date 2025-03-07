@@ -3,9 +3,7 @@ import { FormInputProps } from "../../../../types/components/common/input/FormIn
 export const FormInput = ({
   label,
   leftIndicator,
-  leftIndicatorOpacity,
   rightIndicator,
-  rightIndicatorOpacity,
   inputTag,
   inputPad,
   variant,
@@ -13,12 +11,6 @@ export const FormInput = ({
   isOptional,
   ...props
 }: FormInputProps) => {
-  const leftIndicatorStyle =
-    leftIndicatorOpacity === "full" ? "opacity-100" : "opacity-30";
-
-  const rightIndicatorStyle =
-    rightIndicatorOpacity === "full" ? "opacity-100" : "opacity-30";
-
   const inputPaddingStyles: Record<
     Exclude<FormInputProps["inputPad"], undefined>,
     string
@@ -64,7 +56,7 @@ export const FormInput = ({
           className={`flex items-center bg-[#0f0f0f] overflow-hidden ${borderStyles[variant || "default"]} flex-1`}
         >
           {leftIndicator && (
-            <div className={`${leftIndicatorStyle} pl-3 flex justify-center`}>
+            <div className={`pl-3 flex justify-center text-[#a1a1a1]`}>
               {leftIndicator}
             </div>
           )}
@@ -73,7 +65,7 @@ export const FormInput = ({
             {...props}
           />
           {rightIndicator && (
-            <div className={`${rightIndicatorStyle} pr-3 flex justify-center`}>
+            <div className={`pr-3 flex justify-center text-[#a1a1a1]`}>
               {rightIndicator}
             </div>
           )}

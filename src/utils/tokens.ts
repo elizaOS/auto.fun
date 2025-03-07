@@ -74,6 +74,8 @@ const uploadToPinata = async (metadata: TokenMetadata) => {
         twitter: metadata.links.twitter,
         telegram: metadata.links.telegram,
         website: metadata.links.website,
+        discord: metadata.links.discord,
+        agentLink: metadata.links.agentLink,
       },
     },
     schema: z.object({
