@@ -453,7 +453,6 @@ const TokenHolderSchema = new mongoose.Schema(
 
 const PersonalitySchema = new mongoose.Schema(
   {
-    id: { type: Number, required: true, index: true, unique: true },
     name: { type: String, required: true },
     description: String,
     createdAt: { type: Date, default: Date.now },

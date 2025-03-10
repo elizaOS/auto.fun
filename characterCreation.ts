@@ -13,7 +13,7 @@ const together = new OpenAI({
 export interface AgentDetailsInput {
     name: string;
     description: string;
-    personality?: number[];
+    personalities?: string[];
     systemPrompt?: string;
     bio?: string;
     lore?: string;
@@ -98,9 +98,10 @@ export async function createCharacterDetails(request: AgentDetailsRequest): Prom
 
   // Look up personality names if personality IDs are provided
   let personalityNames: string[] = [];
-  if (inputs.personality && inputs.personality.length > 0) {
+  if (inputs.personalities && inputs.personalities.length > 0) {
     const allPersonalities = await getAllPersonalities();
-    personalityNames = inputs.personality
+
+    personalityNames = inputs.personalities
       .map(id => allPersonalities.find(p => p.id === id)?.name)
       .filter((name): name is string => !!name); // Filter out undefined values
   }
