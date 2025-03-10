@@ -8,6 +8,12 @@ export type PersonalitiesProps = {
   selectedPersonalities: string[];
 };
 
+<div className="px-4 py-2.5 rounded-md outline-1 outline-offset-[-1px] outline-neutral-800 inline-flex justify-start items-center gap-2">
+  <div className="text-center justify-center text-white text-base font-normal font-['DM_Mono'] leading-tight">
+    Schizo-autist (obsessed, aggressive)
+  </div>
+</div>;
+
 const PersonalitySelection = ({
   selected,
   ...props
@@ -17,7 +23,7 @@ const PersonalitySelection = ({
 >) => {
   return (
     <button
-      className={`text-left p-3 rounded-lg min-h-[64px] ${selected ? "bg-[#03FF24] text-black" : "bg-[#002605]"}`}
+      className={`px-4 py-2.5 rounded-md border leading-tight ${selected ? "border-[#2fd345]" : "border-neutral-800"} `}
       type="button"
       {...props}
     />
