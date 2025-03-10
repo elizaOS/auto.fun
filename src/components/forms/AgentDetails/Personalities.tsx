@@ -1,10 +1,11 @@
 import { HTMLAttributes } from "react";
-import { Personality } from "../../../../types/components/forms/AgentDetails/index.type";
+import { FormInput } from "@/components/common/input/FormInput";
+import { Personality } from "@/utils/personality";
 
 export type PersonalitiesProps = {
   allPersonalities: Personality[];
-  onChange: (selectedPersonalities: number[]) => void;
-  selectedPersonalities: number[];
+  onChange: (selectedPersonalities: string[]) => void;
+  selectedPersonalities: string[];
 };
 
 const PersonalitySelection = ({
@@ -28,8 +29,8 @@ export const Personalities = ({
   onChange,
   selectedPersonalities,
 }: PersonalitiesProps) => {
-  const selectPersonality = (id: number) => {
-    let newPersonality: number[] = [];
+  const selectPersonality = (id: string) => {
+    let newPersonality: string[] = [];
     const idIndex = selectedPersonalities?.indexOf(id) ?? -1;
 
     if (idIndex > -1) {
@@ -46,13 +47,13 @@ export const Personalities = ({
     onChange(newPersonality);
   };
 
-  console.log(allPersonalities);
-
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-between">
-        <p>Your Personality (optional)</p>
-        <p className="opacity-40">select up to 3</p>
+        <FormInput.Label label="your personality" isOptional />
+        <div className="text-[#8c8c8c] uppercase tracking-widest">
+          select up to 3
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         {allPersonalities.map(({ id, name }) => (
