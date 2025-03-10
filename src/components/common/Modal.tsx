@@ -6,11 +6,12 @@ export interface ModalProps {
   className?: string;
   container?: string;
   isOpen: boolean;
-  onClose: () => void;
+  onClose?: () => void;
   children: React.ReactNode;
-  title: string;
+  title?: string;
   allowClose?: boolean;
   maxWidth?: number | string;
+  contentClassName?: string;
 }
 
 export const Modal: FC<ModalProps> = ({
@@ -22,6 +23,7 @@ export const Modal: FC<ModalProps> = ({
   title,
   allowClose = true,
   maxWidth,
+  contentClassName,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [fadeIn, setFadeIn] = useState(false);
@@ -31,7 +33,7 @@ export const Modal: FC<ModalProps> = ({
     if (!allowClose) return;
 
     setFadeIn(false);
-    setTimeout(() => onClose(), 150);
+    setTimeout(() => onClose?.(), 150);
   }, [onClose, allowClose]);
 
   const handleClose = useCallback(
@@ -100,7 +102,7 @@ export const Modal: FC<ModalProps> = ({
   const handleOverlayClick = useCallback(
     (event: MouseEvent) => {
       event.preventDefault();
-      onClose();
+      onClose?.();
     },
     [onClose],
   );
@@ -139,12 +141,14 @@ export const Modal: FC<ModalProps> = ({
               )}
             </div>
           )}
-          <div className="wallet-adapter-modal-content">{children}</div>
+          <div className={`wallet-adapter-modal-content ${contentClassName}`}>
+            {children}
+          </div>
         </div>
       </div>
-      <div 
-        className="wallet-adapter-modal-overlay" 
-        onMouseDown={handleOverlayClick}
+      <div
+        className="wallet-adapter-modal-overlay"
+        onClick={allowClose ? handleOverlayClick : undefined}
       />
     </div>,
     portal,

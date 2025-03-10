@@ -21,6 +21,7 @@ interface AgentCardProps {
   onClick?: () => void;
   placeholderTime?: string;
   className?: string;
+  showBuy?: boolean;
 }
 
 export function AgentCard({
@@ -35,6 +36,7 @@ export function AgentCard({
   onClick,
   placeholderTime,
   className,
+  showBuy = true,
 }: AgentCardProps) {
   const formattedMarketCap = marketCapUSD
     ? Intl.NumberFormat("en-US", {
@@ -64,7 +66,7 @@ export function AgentCard({
   return (
     <div
       onClick={onClick}
-      className={`flex flex-col gap-3 w-full max-w-[411.5px] min-h-[288px] p-4 bg-[#171717] border border-[#262626] rounded-[8px] cursor-pointer hover:border-[#2FD345]/50 transition-colors ${className}`}
+      className={`flex flex-col gap-3 w-full max-w-[411.5px] p-4 bg-[#171717] border border-[#262626] rounded-[8px] cursor-pointer hover:border-[#2FD345]/50 transition-colors ${className}`}
     >
       {/* Top container with image and details */}
       <div className="flex flex-col lg:flex-row gap-3 w-full">
@@ -159,9 +161,7 @@ export function AgentCard({
       {/* Description */}
       <div className="flex flex-col gap-3 w-full">
         <div className="flex flex-col w-full">
-          <p
-            className={`${dmMono.className} text-xs text-[#8C8C8C] min-h-[40px]`}
-          >
+          <p className={`${dmMono.className} text-xs text-[#8C8C8C]`}>
             <span className="line-clamp-2">{description}</span>
             {/* TODO: figure out the UX around this, if we expand inline it will shift the entire page's grid around. https://t.me/c/2271804620/289/2765 */}
             <button className="text-white hover:text-[#2FD345] transition-colors inline-block mt-1">
@@ -169,12 +169,17 @@ export function AgentCard({
             </button>
           </p>
         </div>
-        <div className="w-full h-px bg-[#262626]" />
       </div>
 
-      <button className="flex justify-center items-center w-full h-11 px-5 bg-[#2E2E2E] border border-[#262626] rounded-[6px] text-white hover:bg-[#2FD345] hover:text-black transition-colors mt-auto">
-        Buy
-      </button>
+      {showBuy && (
+        <>
+          <div className="w-full h-px bg-[#262626]" />
+
+          <button className="flex justify-center items-center w-full h-11 px-5 bg-[#2E2E2E] border border-[#262626] rounded-[6px] text-white hover:bg-[#2FD345] hover:text-black transition-colors mt-auto">
+            Buy
+          </button>
+        </>
+      )}
     </div>
   );
 }

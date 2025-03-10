@@ -30,6 +30,7 @@ interface AgentCardInfoProps {
   reserveLamport: number;
   virtualReserves: number;
   placeholderTargetMarketCap?: number;
+  className?: string;
 }
 
 export function AgentCardInfo({
@@ -46,6 +47,7 @@ export function AgentCardInfo({
   reserveLamport,
   virtualReserves,
   placeholderTargetMarketCap,
+  className,
 }: AgentCardInfoProps) {
   const [copied, setCopied] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
@@ -77,7 +79,9 @@ export function AgentCardInfo({
   };
 
   return (
-    <div className="flex flex-col justify-center items-start p-4 gap-6 bg-[#171717] border border-[#262626] rounded-[6px]">
+    <div
+      className={`flex flex-col justify-center items-start p-4 gap-6 bg-[#171717] border border-[#262626] rounded-[6px] ${className}`}
+    >
       {/* Product Info */}
       <div className="flex flex-row items-start gap-5 w-full">
         {/* Product Image */}
