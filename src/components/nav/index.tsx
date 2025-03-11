@@ -261,7 +261,7 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
                 ref={ref}
               >
                 <div className="text-[#03ff24] text-xs font-normal uppercase leading-none tracking-widest">
-                  <Link href="/">Agents</Link>
+                  <Link href="/">Tokens</Link>
                 </div>
                 {searchResults.map((token) => (
                   <AgentSearchResult
@@ -305,7 +305,7 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
           ref={ref}
         >
           <div className="text-[#2FD345] text-xs font-normal uppercase leading-none tracking-widest">
-            Agents
+            Tokens
           </div>
           {searchResults.map((token) => (
             <AgentSearchResult
@@ -426,7 +426,7 @@ export const Nav = () => {
             <div className="hidden md:flex gap-6">
               <Link href="/">
                 <button className="flex items-center justify-center px-3 py-2 gap-2 h-9 rounded-md bg-transparent text-white">
-                  <span className="text-base font-medium">Agents</span>
+                  <span className="text-base font-medium">Tokens</span>
                 </button>
               </Link>
               <button
