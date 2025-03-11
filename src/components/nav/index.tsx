@@ -2,8 +2,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { WalletButton } from "../common/button/WalletButton";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { RoundedButton } from "../common/button/RoundedButton";
 import { useUserStore } from "../providers/UserProvider";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Modal } from "../common/Modal";
@@ -174,8 +172,6 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
   const { mutateAsync: searchTokens } = useSearchTokens();
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [searchResults, setSearchResults] = useState<Token[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [isSearching, setIsSearching] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClickDetection([ref], () => {
@@ -192,14 +188,11 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
       }
 
       try {
-        setIsSearching(true);
         const { tokens } = await searchTokens(query);
         setSearchResults(tokens);
         setShowSearchResults(true);
       } catch (error) {
         console.error("Search failed:", error);
-      } finally {
-        setIsSearching(false);
       }
     }, 300),
   ).current;
@@ -268,9 +261,7 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
                 ref={ref}
               >
                 <div className="text-[#03ff24] text-xs font-normal uppercase leading-none tracking-widest">
-                  <Link href="/">
-                    Agents
-                  </Link>
+                  <Link href="/">Agents</Link>
                 </div>
                 {searchResults.map((token) => (
                   <AgentSearchResult
@@ -336,56 +327,51 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
 const Step = ({
   number,
   title,
-  isHighlighted = false
+  isHighlighted = false,
 }: {
   number: number;
   title: string;
   isHighlighted?: boolean;
 }) => (
   <div className="flex items-start gap-2">
-    <span className={`font-mono text-xl ${isHighlighted ? 'text-white' : 'text-[#8C8C8C]'}`}>
+    <span
+      className={`font-mono text-xl ${isHighlighted ? "text-white" : "text-[#8C8C8C]"}`}
+    >
       Step {number}:
     </span>
-    <span className="font-mono text-[#8C8C8C] text-xl">
-      {title}
-    </span>
+    <span className="font-mono text-[#8C8C8C] text-xl">{title}</span>
   </div>
 );
 
-const TabContent = ({ type }: { type: 'trading' | 'creation' }) => {
-  if (type === 'trading') {
+const TabContent = ({ type }: { type: "trading" | "creation" }) => {
+  if (type === "trading") {
     return (
       <div className="flex flex-col p-8">
         <h2 className="text-[#2FD345] text-[32px] font-satoshi mb-4">
           Token Trading
         </h2>
-        
+
         <p className="text-[#8C8C8C] text-base font-satoshi mb-8">
-          Auto.fun streamlines agentic trading through a token launching system. Create value for projects you believe in.
+          Auto.fun streamlines agentic trading through a token launching system.
+          Create value for projects you believe in.
         </p>
 
         <div className="flex flex-col gap-6">
-          <Step 
-            number={1} 
+          <Step
+            number={1}
             title="Browse and select a token from the marketplace"
             isHighlighted={true}
           />
-          <Step 
-            number={2} 
+          <Step
+            number={2}
             title="Buy tokens through our bonding curve mechanism"
           />
-          <Step 
-            number={3} 
-            title="Buy and sell with instant liquidity"
-          />
-          <Step 
-            number={4} 
+          <Step number={3} title="Buy and sell with instant liquidity" />
+          <Step
+            number={4}
             title="When the bonding curve compeltes, the token reaches a $100k market cap"
           />
-          <Step 
-            number={5} 
-            title="Token transitions to Raydium"
-          />
+          <Step number={5} title="Token transitions to Raydium" />
         </div>
       </div>
     );
@@ -396,9 +382,10 @@ const TabContent = ({ type }: { type: 'trading' | 'creation' }) => {
       <h2 className="text-[#2FD345] text-[32px] font-satoshi mb-4">
         Token Creation
       </h2>
-      
+
       <p className="text-[#8C8C8C] text-base font-satoshi mb-8">
-        Auto.fun creates a dual-pool trading environment for sustainable AI token launches.
+        Auto.fun creates a dual-pool trading environment for sustainable AI
+        token launches.
       </p>
 
       <div className="flex flex-col gap-6">
@@ -408,7 +395,10 @@ const TabContent = ({ type }: { type: 'trading' | 'creation' }) => {
         <Step number={4} title="Set optional creator allocation" />
         <Step number={5} title="Initialize bonding curve" />
         <Step number={6} title="Trading begins in primary SOL pool" />
-        <Step number={7} title="Once Token reaches $100k market cap, automatic transition to Raydium" />
+        <Step
+          number={7}
+          title="Once Token reaches $100k market cap, automatic transition to Raydium"
+        />
       </div>
     </div>
   );
@@ -417,7 +407,7 @@ const TabContent = ({ type }: { type: 'trading' | 'creation' }) => {
 export const Nav = () => {
   const authenticated = useUserStore((state) => state.authenticated);
   const [modalOpen, setModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'trading' | 'creation'>('trading');
+  const [activeTab, setActiveTab] = useState<"trading" | "creation">("trading");
 
   return (
     <>
@@ -439,7 +429,7 @@ export const Nav = () => {
                   <span className="text-base font-medium">Agents</span>
                 </button>
               </Link>
-              <button 
+              <button
                 className="flex items-center justify-center px-3 py-2 gap-2 h-9 rounded-md bg-transparent text-[#8C8C8C] hover:text-white transition-colors duration-200"
                 onClick={() => setModalOpen(true)}
               >
@@ -462,7 +452,9 @@ export const Nav = () => {
           <div className="flex items-center gap-4">
             <Link href="/create">
               <button className="flex items-center justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border border-[#2FD345] rounded-md">
-                <span className="text-base font-medium text-white">Create Token</span>
+                <span className="text-base font-medium text-white">
+                  Create Token
+                </span>
                 <Image
                   src="/stars.svg"
                   width={24}
@@ -540,20 +532,24 @@ export const Nav = () => {
           {/* Tab Bar */}
           <div className="flex w-full border-b border-[#262626]">
             <button
-              onClick={() => setActiveTab('trading')}
+              onClick={() => setActiveTab("trading")}
               className={`flex justify-center items-center w-[293.5px] h-[60px] font-satoshi text-xl tracking-[-0.02em] transition-all duration-200
-                ${activeTab === 'trading' 
-                  ? 'text-[#2FD345] bg-[#171717]' 
-                  : 'text-[#8C8C8C]'}`}
+                ${
+                  activeTab === "trading"
+                    ? "text-[#2FD345] bg-[#171717]"
+                    : "text-[#8C8C8C]"
+                }`}
             >
               Token Trading
             </button>
             <button
-              onClick={() => setActiveTab('creation')}
+              onClick={() => setActiveTab("creation")}
               className={`flex justify-center items-center w-[293.5px] h-[60px] font-satoshi text-xl tracking-[-0.02em] transition-all duration-200 border-l border-[#262626]
-                ${activeTab === 'creation' 
-                  ? 'text-[#2FD345] bg-[#171717]' 
-                  : 'text-[#8C8C8C]'}`}
+                ${
+                  activeTab === "creation"
+                    ? "text-[#2FD345] bg-[#171717]"
+                    : "text-[#8C8C8C]"
+                }`}
             >
               Token Creation
             </button>
@@ -576,15 +572,24 @@ export const Nav = () => {
             </p>
 
             <div className="flex items-center gap-3">
-              <a href="/legal/privacy" className="text-[#8C8C8C] font-satoshi text-sm underline hover:text-white">
+              <a
+                href="/legal/privacy"
+                className="text-[#8C8C8C] font-satoshi text-sm underline hover:text-white"
+              >
                 Privacy Policy
               </a>
               <div className="h-4 w-px bg-[#505050]" />
-              <a href="/legal/terms" className="text-[#8C8C8C] font-satoshi text-sm underline hover:text-white">
+              <a
+                href="/legal/terms"
+                className="text-[#8C8C8C] font-satoshi text-sm underline hover:text-white"
+              >
                 Terms of Service
               </a>
               <div className="h-4 w-px bg-[#505050]" />
-              <a href="/legal/fees" className="text-[#8C8C8C] font-satoshi text-sm underline hover:text-white">
+              <a
+                href="/legal/fees"
+                className="text-[#8C8C8C] font-satoshi text-sm underline hover:text-white"
+              >
                 Fees
               </a>
             </div>
@@ -604,7 +609,7 @@ export const NavSkeleton = () => {
           <div className="flex items-center gap-6 flex-1">
             {/* Logo */}
             <div className="w-10 h-10 bg-neutral-800 rounded-full animate-pulse" />
-            
+
             {/* Navigation Links */}
             <div className="hidden md:flex gap-6">
               <div className="flex items-center justify-center px-3 py-2 h-9">
@@ -622,8 +627,10 @@ export const NavSkeleton = () => {
           {/* Center section - Search */}
           <div className="flex-1 max-w-[500px] mr-6 hidden md:block">
             <div className="flex items-center h-11 w-full px-2 gap-2 bg-[#171717] border border-[#262626] rounded-md">
-              <div className="w-6 h-6 bg-neutral-800 rounded animate-pulse" /> {/* Search icon */}
-              <div className="flex-1 h-4 bg-neutral-800 rounded animate-pulse" /> {/* Search input */}
+              <div className="w-6 h-6 bg-neutral-800 rounded animate-pulse" />{" "}
+              {/* Search icon */}
+              <div className="flex-1 h-4 bg-neutral-800 rounded animate-pulse" />{" "}
+              {/* Search input */}
             </div>
           </div>
 
@@ -632,9 +639,10 @@ export const NavSkeleton = () => {
             {/* Create Token Button */}
             <div className="hidden md:flex items-center justify-center px-4 py-2.5 h-11 bg-[#171717] border border-[#2FD345] rounded-md gap-2">
               <div className="w-24 h-4 bg-neutral-800 rounded animate-pulse" />
-              <div className="w-6 h-6 bg-neutral-800 rounded animate-pulse" /> {/* Stars icon */}
+              <div className="w-6 h-6 bg-neutral-800 rounded animate-pulse" />{" "}
+              {/* Stars icon */}
             </div>
-            
+
             {/* Wallet Button */}
             <div className="h-11 px-4 bg-[#171717] border border-[#262626] rounded-md flex items-center justify-center">
               <div className="w-28 h-4 bg-neutral-800 rounded animate-pulse" />
@@ -661,7 +669,7 @@ export const NavSkeleton = () => {
             </div>
             <div className="w-6 h-6 bg-neutral-800 rounded animate-pulse ml-4" />
           </div>
-          
+
           {/* Search Results Skeleton */}
           <div className="mt-4 flex flex-col gap-4">
             <div className="w-20 h-4 bg-neutral-800 rounded animate-pulse" />
