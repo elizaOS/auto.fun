@@ -25,8 +25,15 @@ export const TradeSettingsModal = ({
     savedProtectionEnabled,
   );
 
+  const discardChanges = () => {
+    setSlippage(savedSlippage);
+    setSpeed(savedSpeed);
+    setIsProtectionEnabled(savedProtectionEnabled);
+  };
+
   const onModalClose = () => {
     onClose();
+    discardChanges();
   };
 
   return (
