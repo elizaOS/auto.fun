@@ -10,7 +10,7 @@ use anchor_lang::prelude::*;
 use state::Config;
 // use crate::errors::PumpfunError;
 
-declare_id!("4K3K7BA6Q9tEKJ8FQoz7xswkETxtik5GtgQ7syfJLj3j");
+declare_id!("6qXDRh3nSj9isLRDpUqXWyK1nR9eHBVLrdLZpjeoNfc");
 
 #[program]
 pub mod serlaunchalot {
