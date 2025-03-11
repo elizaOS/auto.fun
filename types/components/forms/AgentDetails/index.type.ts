@@ -6,4 +6,6 @@ export type AgentDetailsProps = {
   twitterForm?: UseFormReturn<TwitterDetailsForm, unknown, undefined>;
   mode: "update" | "create";
   loading?: boolean;
+  submit?: () => void;
+  disabled?: boolean;
 };

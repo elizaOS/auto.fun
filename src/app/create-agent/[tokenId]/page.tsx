@@ -13,9 +13,6 @@ import { toast } from "react-toastify";
 import { Modal } from "@/components/common/Modal";
 import { Spinner } from "@/components/common/Spinner";
 import { CenterFormContainer } from "@/components/common/containers/CenterFormContainer";
-import { WalletButton } from "@/components/common/button/WalletButton";
-import { RoundedButton } from "@/components/common/button/RoundedButton";
-import { useWallet } from "@solana/wallet-adapter-react";
 import { useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { AgentDetails } from "@/components/forms/AgentDetails";
@@ -99,7 +96,6 @@ const AgentCreatedModal = ({
 };
 
 export default function CreateAgentPage() {
-  const { publicKey } = useWallet();
   const params = useParams();
 
   const tokenId = params.tokenId as string;
@@ -148,40 +144,51 @@ export default function CreateAgentPage() {
 
   const submitForm = useCallback(async () => {
     setAgentStatus("creating");
+    const {
+      twitter_email: email,
+      twitter_password: password,
+      twitter_username: username,
+    } = getFormValues().twitterCredentials;
 
-    try {
-      const { twitterCreds, agentDetails } = await convertFormData();
+    if (email && password && username) {
+      const invalidCredentials =
+        "Invalid Twitter credentials. Please try again.";
+      const unknownError = "Oops! Something went wrong. Please try again.";
 
-      if (
-        twitterCreds.email &&
-        twitterCreds.password &&
-        twitterCreds.username
+      switch (
+        await validateTwitterCredentials({
+          email,
+          password,
+          username,
+        })
       ) {
-        switch (await validateTwitterCredentials(twitterCreds)) {
-          case "valid":
-            break;
-          case "invalid":
-            toast.error("Invalid Twitter credentials. Please try again.");
-            return;
-          case "unknown_error":
-            toast.error("Oops! Something went wrong. Please try again.");
-            return;
-        }
+        case "valid":
+          break;
+        case "invalid":
+          toast.error(invalidCredentials);
+          setAgentStatus("idle");
+          return;
+        case "unknown_error":
+          toast.error(unknownError);
+          setAgentStatus("idle");
+          return;
       }
 
-      await createAgent({
-        twitter_credentials: twitterCreds,
-        agent_metadata: agentDetails,
-        tokenId,
-      });
+      try {
+        const { twitterCreds, agentDetails } = await convertFormData();
+        await createAgent({
+          twitter_credentials: twitterCreds,
+          agent_metadata: agentDetails,
+          tokenId,
+        });
 
-      setAgentStatus("created");
-    } catch (e) {
-      toast.error("Oops! Something went wrong. Please try again.");
-      setAgentStatus("idle");
-      throw e;
+        setAgentStatus("created");
+      } catch {
+        toast.error("Oops! Something went wrong. Please try again.");
+        setAgentStatus("idle");
+      }
     }
-  }, [convertFormData, createAgent, tokenId]);
+  }, [convertFormData, createAgent, getFormValues, tokenId]);
 
   return (
     <div className="flex flex-col justify-center h-full relative mt-12">
@@ -193,11 +200,7 @@ export default function CreateAgentPage() {
       >
         <Spinner />
         <div className="text-[#2fd345] text-2xl font-medium font-satoshi leading-loose mb-3.5">
-          Launching Token...
-        </div>
-        <div className="text-center text-[#8c8c8c] font-satoshi leading-normal">
-          Forem ipsum dolor sit amet, consectetur adipiscing elit. Nunc
-          vulputate libero et
+          Launching Agent...
         </div>
       </Modal>
 
@@ -223,26 +226,12 @@ export default function CreateAgentPage() {
               form={agentForm}
               twitterForm={twitterForm}
               mode="create"
+              submit={submitForm}
+              disabled={
+                !agentForm.formState.isValid || !twitterForm.formState.isValid
+              }
             />
           </form>
-        }
-        submitButton={
-          publicKey ? (
-            <div className="flex flex-col items-center gap-6">
-              <p>*NOTE* this is your Agent&apos;s login information</p>
-              <RoundedButton
-                className="px-6 py-3"
-                onClick={submitForm}
-                disabled={
-                  !agentForm.formState.isValid || !twitterForm.formState.isValid
-                }
-              >
-                Launch agent
-              </RoundedButton>
-            </div>
-          ) : (
-            <WalletButton />
-          )
         }
       />
     </div>

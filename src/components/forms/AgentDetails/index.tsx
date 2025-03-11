@@ -19,13 +19,18 @@ import { usePersonalities } from "@/utils/personality";
 import { DropdownButton } from "@/components/common/button/DropdownButton";
 import { useRateLimiter } from "@/hooks/useRateLimiter";
 import { TwitterLoginForm } from "../TwitterLoginForm";
+import { WalletButton } from "@/components/common/button/WalletButton";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 export const AgentDetails = ({
   form: { register, control, getValues, setValue },
   twitterForm,
   mode,
   loading,
+  submit,
+  disabled,
 }: AgentDetailsProps) => {
+  const { publicKey } = useWallet();
   const {
     mutateAsync: generateAllAdvancedAgentDetails,
     isPending: advancedDetailsPending,
@@ -151,7 +156,9 @@ export const AgentDetails = ({
             }}
             open={showAdvanced}
           >
-            Advanced Creation
+            <span className="text-[#2fd345] uppercase tracking-widest">
+              Advanced Creation (Optional)
+            </span>
           </DropdownButton>
           {showAdvanced && (
             <RoundedButton
@@ -188,6 +195,21 @@ export const AgentDetails = ({
             />
           </svg>
         </div>
+      )}
+
+      {publicKey ? (
+        <div className="flex flex-col items-center gap-6">
+          <button
+            className="px-4 py-2.5 bg-[#2e2e2e] rounded-md border  border-neutral-800 justify-center items-center text-[#2fd345] font-satoshi leading-tight mt-6 self-start disabled:opacity-30"
+            disabled={disabled}
+            onClick={submit}
+            type="button"
+          >
+            Launch agent
+          </button>
+        </div>
+      ) : (
+        <WalletButton />
       )}
     </>
   );
