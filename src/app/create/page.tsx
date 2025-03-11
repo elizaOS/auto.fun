@@ -148,12 +148,9 @@ export default function TransactionSignPage() {
         <div className="flex flex-col items-start self-start w-full">
           <div className="flex items-center gap-2 mb-3">
             <div className="text-[#2fd345] text-[32px] font-medium font-satoshi leading-9">
-              Agent Created
+              Token Created
             </div>
             <Modal.SparkleIcon />
-          </div>
-          <div className="text-[#8c8c8c] text-2xl font-normal font-satoshi leading-7 mb-6">
-            Token launch takes 1-3 minutes. Agent takes ~10 minutes to tweet
           </div>
 
           <AgentCardPreview
