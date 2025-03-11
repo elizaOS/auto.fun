@@ -165,7 +165,7 @@ export async function execWithdrawTx(
               });
               
               if (txInfo?.meta?.logMessages?.some(log => 
-                  log.includes(`Program ${process.env.PROGRAM_ID} success`))) {
+                  log.includes(`Program success`))) {
                   logger.log('Transaction succeeded despite ProgramFailedToComplete error');
                   return { signature, logs: txInfo.meta.logMessages };
               }
