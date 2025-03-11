@@ -18,9 +18,11 @@ import {
 import { usePersonalities } from "@/utils/personality";
 import { DropdownButton } from "@/components/common/button/DropdownButton";
 import { useRateLimiter } from "@/hooks/useRateLimiter";
+import { TwitterLoginForm } from "../TwitterLoginForm";
 
 export const AgentDetails = ({
   form: { register, control, getValues, setValue },
+  twitterForm,
   mode,
   loading,
 }: AgentDetailsProps) => {
@@ -106,7 +108,7 @@ export const AgentDetails = ({
 
   return (
     <>
-      <form className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6">
         <FormInput
           {...register("name", { required: true })}
           type="text"
@@ -128,6 +130,9 @@ export const AgentDetails = ({
           allPersonalities={personalities || []}
           onChange={(personality) => onChange(personality)}
         />
+
+        {twitterForm && <TwitterLoginForm form={twitterForm} />}
+
         <div className="flex justify-between">
           <DropdownButton
             disabled={!name || !description}
@@ -163,7 +168,7 @@ export const AgentDetails = ({
         {showAdvanced && (
           <AdvancedCreation register={register} refreshField={refreshField} />
         )}
-      </form>
+      </div>
       {(advancedDetailsPending || loading) && (
         <div className="absolute inset-0 backdrop-blur-sm z-10 flex justify-center items-center">
           <svg

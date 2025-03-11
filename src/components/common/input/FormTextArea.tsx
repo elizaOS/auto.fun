@@ -21,6 +21,7 @@ export const FormTextArea = ({
       >
         <TextareaAutosize
           className={`w-full bg-inherit h-11 py-3 px-4 resize-none placeholder-[#8c8c8c]`}
+          style={{ height: 144 }}
           {...props}
         />
         {children}

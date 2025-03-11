@@ -19,7 +19,6 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { AgentDetails } from "@/components/forms/AgentDetails";
-import { TwitterLoginForm } from "@/components/forms/TwitterLoginForm";
 
 export default function CreateAgentPage() {
   const { publicKey } = useWallet();
@@ -125,7 +124,7 @@ export default function CreateAgentPage() {
 
       <CenterFormContainer
         formComponent={
-          <div>
+          <form>
             <div className="text-[#2fd345] text-[32px] font-medium mb-3.5">
               Create Agent
             </div>
@@ -134,9 +133,12 @@ export default function CreateAgentPage() {
               Connect the agent to X. Define its personality, behavior, and
               communication style.
             </div>
-            <AgentDetails form={agentForm} mode="create" />
-            <TwitterLoginForm form={twitterForm} />
-          </div>
+            <AgentDetails
+              form={agentForm}
+              twitterForm={twitterForm}
+              mode="create"
+            />
+          </form>
         }
         submitButton={
           publicKey ? (
