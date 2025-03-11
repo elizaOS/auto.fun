@@ -95,15 +95,15 @@ export const TVChartContainer = ({
           // Background and Grid
           "paneProperties.background": "#171717",
           "paneProperties.backgroundType": "solid",
-          "paneProperties.vertGridProperties.color": "#262626",
-          "paneProperties.horzGridProperties.color": "#262626",
-          "paneProperties.crossHairProperties.color": "#4ADE80",
+          "paneProperties.vertGridProperties.color": "#2e2e2e",
+          "paneProperties.horzGridProperties.color": "#2e2e2e",
+          "paneProperties.crossHairProperties.color": "#8C8C8C",
           "paneProperties.rightMargin": 5,
           "paneProperties.leftMargin": 5,
 
           // Scales
           "scalesProperties.backgroundColor": "#171717",
-          "scalesProperties.lineColor": "#262626",
+          "scalesProperties.lineColor": "#2e2e2e",
           "scalesProperties.textColor": "#8C8C8C",
           "scalesProperties.fontSize": 11,
           "scalesProperties.showSymbolLabels": false,
@@ -116,19 +116,22 @@ export const TVChartContainer = ({
           "paneProperties.legendProperties.showVolume": true,
 
           // Candles
-          "mainSeriesProperties.candleStyle.upColor": "#4ADE80",
-          "mainSeriesProperties.candleStyle.downColor": "#FF4444",
+          "mainSeriesProperties.candleStyle.upColor": "#008e12",
+          "mainSeriesProperties.candleStyle.downColor": "#ef5350",
           "mainSeriesProperties.candleStyle.drawWick": true,
           "mainSeriesProperties.candleStyle.drawBorder": true,
-          "mainSeriesProperties.candleStyle.borderUpColor": "#4ADE80",
-          "mainSeriesProperties.candleStyle.borderDownColor": "#FF4444",
-          "mainSeriesProperties.candleStyle.wickUpColor": "#4ADE80",
-          "mainSeriesProperties.candleStyle.wickDownColor": "#FF4444",
+          "mainSeriesProperties.candleStyle.borderUpColor": "#008e12",
+          "mainSeriesProperties.candleStyle.borderDownColor": "#ef5350",
+          "mainSeriesProperties.candleStyle.wickUpColor": "#008e12",
+          "mainSeriesProperties.candleStyle.wickDownColor": "#ef5350",
+
+          // Price Line
+          "mainSeriesProperties.priceLineColor": "#2fd345",
 
           // Volume
           "volume.show": true,
-          "volume.color.up": "#4ADE80",
-          "volume.color.down": "#FF4444",
+          "volume.color.up": "#008e12",
+          "volume.color.down": "#ef5350",
           "volume.transparency": 50,
 
           // Header
@@ -148,9 +151,6 @@ export const TVChartContainer = ({
         const chart = tvWidgetRef.current?.activeChart();
         const priceScale = chart?.getPanes()[0].getMainSourcePriceScale();
         priceScale?.setAutoScale(true);
-
-        // Set chart type to columns by default
-        chart?.setChartType(13);
 
         // Create custom header toolbar
         const header = document.createElement("div");
