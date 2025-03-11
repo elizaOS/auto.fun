@@ -17,7 +17,7 @@ serlaunchalot = "6qXDRh3nSj9isLRDpUqXWyK1nR9eHBVLrdLZpjeoNfc"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "https://api.devnet.solana.com"
+cluster = "https://mainnet.helius-rpc.com/?api-key=156e83be-b359-4f60-8abb-c6a17fd3ff5f"
 wallet = "./deployer.json"
 
 [scripts]
