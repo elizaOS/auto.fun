@@ -11,9 +11,9 @@ import "react-toastify/dist/ReactToastify.css";
 import { Suspense } from "react";
 import { Footer, FooterSkeleton } from "@/components/common/Footer";
 
-const ppMondwest = localFont({
-  src: "./fonts/PPMondwest-Regular.otf",
-  variable: "--font-pp-mondwest",
+const satoshi = localFont({
+  src: "./fonts/Satoshi-Variable.ttf",
+  variable: "--font-satoshi",
 });
 
 const inter = Inter({
@@ -33,7 +33,7 @@ export default async function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body
-        className={`${inter.className} ${ppMondwest.variable} ${inter.variable} font-mono antialiased flex flex-col sm:gap-16 body-padding-x pt-[83px] min-h-screen`}
+        className={`${inter.className} ${satoshi.variable} ${inter.variable} font-mono antialiased flex flex-col sm:gap-16 body-padding-x pt-[83px] min-h-screen`}
       >
         <SkeletonTheme baseColor="#002605" highlightColor="#008011">
           <Providers>

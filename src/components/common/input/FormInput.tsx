@@ -3,20 +3,14 @@ import { FormInputProps } from "../../../../types/components/common/input/FormIn
 export const FormInput = ({
   label,
   leftIndicator,
-  leftIndicatorOpacity,
   rightIndicator,
-  rightIndicatorOpacity,
+  inputTag,
   inputPad,
   variant,
   error,
+  isOptional,
   ...props
 }: FormInputProps) => {
-  const leftIndicatorStyle =
-    leftIndicatorOpacity === "full" ? "opacity-100" : "opacity-30";
-
-  const rightIndicatorStyle =
-    rightIndicatorOpacity === "full" ? "opacity-100" : "opacity-30";
-
   const inputPaddingStyles: Record<
     Exclude<FormInputProps["inputPad"], undefined>,
     string
@@ -43,23 +37,35 @@ export const FormInput = ({
   };
 
   return (
-    <div className="font-medium flex flex-col gap-3 ">
-      <label className="text-[16px]">{label}</label>
-      <div className={backgroundColor[variant || "default"]}>
+    <div className="font-medium flex flex-col gap-3">
+      {label && (
+        <FormInput.Label id={props.id} label={label} isOptional={isOptional} />
+      )}
+      <div
+        className={
+          backgroundColor[variant || "default"] +
+          " flex border border-[#262626] rounded-md overflow-hidden"
+        }
+      >
+        {inputTag && (
+          <div className="bg-[#262626] flex items-center py-2 px-3">
+            {inputTag}
+          </div>
+        )}
         <div
-          className={`flex items-center bg-[#262626] rounded-xl overflow-hidden ${borderStyles[variant || "default"]}`}
+          className={`flex items-center bg-[#0f0f0f] overflow-hidden ${borderStyles[variant || "default"]} flex-1`}
         >
           {leftIndicator && (
-            <div className={`${leftIndicatorStyle} pl-3 flex justify-center`}>
+            <div className={`pl-3 flex justify-center text-[#a1a1a1]`}>
               {leftIndicator}
             </div>
           )}
           <input
-            className={`w-full bg-inherit h-11 ${inputPaddingStyles[inputPad || "both"]} py-4 placeholder-[#017d11]`}
+            className={`w-full bg-inherit h-11 ${inputPaddingStyles[inputPad || "both"]} py-4 placeholder-[#8c8c8c]`}
             {...props}
           />
           {rightIndicator && (
-            <div className={`${rightIndicatorStyle} pr-3 flex justify-center`}>
+            <div className={`pr-3 flex justify-center text-[#a1a1a1]`}>
               {rightIndicator}
             </div>
           )}
@@ -70,3 +76,26 @@ export const FormInput = ({
     </div>
   );
 };
+
+const Label = ({
+  id,
+  label,
+  isOptional,
+}: {
+  id?: string;
+  label: string;
+  isOptional?: boolean;
+}) => {
+  return (
+    <label htmlFor={id}>
+      <span className="text-white uppercase leading-normal tracking-widest">
+        {label}
+      </span>
+      {isOptional && (
+        <span className="text-[#8c8c8c] font-semibold"> (Optional)</span>
+      )}
+    </label>
+  );
+};
+
+FormInput.Label = Label;

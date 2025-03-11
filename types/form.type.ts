@@ -19,6 +19,8 @@ type TokenLinks = {
   twitter: string;
   telegram: string;
   website: string;
+  discord: string;
+  agentLink: string;
 };
 
 export type TokenMetadataForm = {

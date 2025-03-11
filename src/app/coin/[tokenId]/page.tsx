@@ -461,7 +461,25 @@ export default function TradingInterface() {
 
         <div className="flex flex-col space-y-4 w-full lg:w-auto lg:min-w-[380px] lg:max-w-[420px] 2xl:max-w-[480px]">
           <div className="w-full">
-            <AgentCardInfo token={token} agentName={agent?.name} />
+            <AgentCardInfo
+              curveProgress={token.curveProgress}
+              description={token.description}
+              image={token.image}
+              mint={token.mint}
+              name={token.name}
+              reserveLamport={token.reserveLamport}
+              virtualReserves={token.virtualReserves}
+              ticker={token.ticker}
+              socialLinks={{
+                discord: token.discord,
+                telegram: token.telegram,
+                twitter: token.twitter,
+                website: token.website,
+              }}
+              solPriceUSD={token.solPriceUSD}
+              tokenPriceUSD={token.tokenPriceUSD}
+              agentName={agent?.name}
+            />
           </div>
 
           <div className="w-full">
