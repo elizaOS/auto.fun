@@ -6,7 +6,10 @@ const unparsedEnv = {
   bondingCurveAddress: process.env.NEXT_PUBLIC_BONDING_CURVE_ADDRESS,
   devAddress: process.env.NEXT_PUBLIC_DEV_ADDRESS,
   raydiumAddress: process.env.NEXT_PUBLIC_RAYDIUM_ADDRESS,
-  rpcUrl: process.env.NEXT_PUBLIC_RPC_URL,
+  rpcUrl:
+    process.env.NEXT_PUBLIC_SOLANA_NETWORK === "devnet"
+      ? process.env.NEXT_PUBLIC_DEVNET_RPC_URL
+      : process.env.NEXT_PUBLIC_MAINNET_RPC_URL,
   virtualReserves: process.env.NEXT_PUBLIC_VIRTUAL_RESERVES,
   tokenSupply: process.env.NEXT_PUBLIC_TOKEN_SUPPLY,
   decimals: process.env.NEXT_PUBLIC_DECIMALS,
