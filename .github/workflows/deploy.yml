@@ -12,6 +12,9 @@ on:
         options:
           - development
           - production
+  push:
+    branches:
+      - main
 
 env:
   # Common settings
