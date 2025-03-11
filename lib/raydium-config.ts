@@ -9,7 +9,7 @@ export const owner: Keypair = Keypair.fromSecretKey(
     Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY))
   )
 // export const connection = new Connection('<YOUR_RPC_URL>') //<YOUR_RPC_URL>
-export const connection = new Connection(process.env.SOLANA_RPC_URL)
+export const connection = new Connection(process.env.NETWORK === 'devnet' ? process.env.DEVNET_SOLANA_RPC_URL! : process.env.MAINNET_SOLANA_RPC_URL!)
 export const txVersion = TxVersion.V0 // or TxVersion.LEGACY
 const cluster = process.env.NETWORK as Cluster // 'mainnet' | 'devnet'
 

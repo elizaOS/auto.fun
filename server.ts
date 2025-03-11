@@ -164,7 +164,7 @@ class TokenMonitor {
       { skipValidation: true }
     );
     this.wallet = new NodeWallet(walletKeypair);
-    this.umi = createUmi(process.env.SOLANA_RPC_URL)
+    this.umi = createUmi(process.env.NETWORK === 'devnet' ? process.env.DEVNET_SOLANA_RPC_URL! : process.env.MAINNET_SOLANA_RPC_URL!)
     .use(mplTokenMetadata());
     this.queue = new PQueue({ 
       concurrency: 5,  // Process 5 tokens at a time
@@ -623,7 +623,7 @@ class TokenMonitor {
 
 // Initialize connection and program
 const initializeConfig = async () => {
-  solConnection = new Connection(process.env.SOLANA_RPC_URL);
+  solConnection = new Connection(process.env.NETWORK === 'devnet' ? process.env.DEVNET_SOLANA_RPC_URL! : process.env.MAINNET_SOLANA_RPC_URL!);
   
   const walletKeypair = Keypair.fromSecretKey(
     Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),

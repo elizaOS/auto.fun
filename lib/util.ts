@@ -43,7 +43,7 @@ export const connectDB = async (retries = 5, delay = 500) => {
 };
 
 export const initializeConfig = async () => {
-  const connection = new Connection(process.env.SOLANA_RPC_URL);
+  const connection = new Connection(process.env.NETWORK === 'devnet' ? process.env.DEVNET_SOLANA_RPC_URL! : process.env.MAINNET_SOLANA_RPC_URL!);
   
   const walletKeypair = Keypair.fromSecretKey(
     Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),

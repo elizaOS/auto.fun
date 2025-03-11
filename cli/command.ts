@@ -93,7 +93,7 @@ function programCommand(name: string) {
     .option(
       "-r, --rpc <string>",
       "Solana cluster RPC name",
-      process.env.SOLANA_RPC_URL
+      process.env.NETWORK === 'devnet' ? process.env.DEVNET_SOLANA_RPC_URL! : process.env.MAINNET_SOLANA_RPC_URL!
     )
     .option(
       "-k, --private-key <string>",

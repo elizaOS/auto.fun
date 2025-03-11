@@ -482,7 +482,7 @@ router.get('/tokens/:mint/harvest-tx', async (req, res) => {
 });
 
 export async function updateHoldersCache(mint: string) {
-  const connection = new Connection(process.env.SOLANA_RPC_URL!);
+  const connection = new Connection(process.env.NETWORK === 'devnet' ? process.env.DEVNET_SOLANA_RPC_URL! : process.env.MAINNET_SOLANA_RPC_URL!);
   
   try {
     // Clear existing holder data for this token

@@ -156,7 +156,7 @@ export const submitTokenTransaction = async (tokenData: {
     public_key: string;
     mint_keypair_public: string;
   }): Promise<{ signature: string; solscan_url: string }> => {
-    const HELIUS_RPC = process.env.HELIUS_RPC;
+    const HELIUS_RPC = process.env.NETWORK === 'devnet' ? process.env.DEVNET_SOLANA_RPC_URL! : process.env.MAINNET_SOLANA_RPC_URL!;
   
     if (!HELIUS_RPC) {
       logger.error("Environment variables not set");
