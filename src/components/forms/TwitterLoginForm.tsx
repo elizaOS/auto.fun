@@ -11,7 +11,7 @@ export const TwitterLoginForm = ({
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-2.5">
       <FormInput.Label label="connect agent" />
       <FormInput
         {...register("twitter_username", { required: true })}

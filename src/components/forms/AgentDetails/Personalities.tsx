@@ -61,7 +61,7 @@ export const Personalities = ({
           select up to 3
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-5">
         {allPersonalities.map(({ id, name }) => (
           <PersonalitySelection
             selected={selectedPersonalities?.indexOf(id) > -1}
