@@ -2,7 +2,7 @@ import Image from "next/image";
 
 export const Footer = () => {
   return (
-    <div className="flex-col justify-center items-center inline-flex overflow-hidden pt-8">
+    <div className="flex-col justify-center items-center inline-flex overflow-hidden py-3.5 mt-10">
       <div className="self-stretch justify-between items-center inline-flex px-8">
         <div className="justify-start items-center gap-4 flex">
           <Image
@@ -14,21 +14,21 @@ export const Footer = () => {
         </div>
         <div className="justify-center items-center gap-6 flex">
           <div className="justify-start items-center gap-2.5 flex">
-            <a 
+            <a
               href="/legal/privacy"
               className="text-[#8C8C8C] hover:text-white transition-colors duration-200 font-mono text-sm"
             >
               Privacy Policy
             </a>
             <div className="w-[1px] h-4 bg-[#707070]" />
-            <a 
+            <a
               href="/legal/terms"
               className="text-[#8C8C8C] hover:text-white transition-colors duration-200 font-mono text-sm"
             >
               Terms of Service
             </a>
             <div className="w-[1px] h-4 bg-[#707070]" />
-            <a 
+            <a
               href="/legal/fees"
               className="text-[#8C8C8C] hover:text-white transition-colors duration-200 font-mono text-sm"
             >
@@ -75,4 +75,4 @@ export const FooterSkeleton = () => {
       </div>
     </footer>
   );
-}; 
+};
