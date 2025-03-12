@@ -130,6 +130,7 @@ export const TradeSettingsModal = ({
               slippage,
               speed,
               isProtectionEnabled,
+              tipAmount: "0.004",
             });
             onClose();
           }}

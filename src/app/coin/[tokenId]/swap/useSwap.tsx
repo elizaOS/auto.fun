@@ -4,6 +4,7 @@ import {
   PublicKey,
   Transaction,
   VersionedTransaction,
+  ComputeBudgetProgram,
 } from "@solana/web3.js";
 import { BN, Program } from "@coral-xyz/anchor";
 import {
@@ -17,6 +18,7 @@ import { useTradeSettings } from "./useTradeSettings";
 import { Token } from "@/utils/tokens";
 import { associatedAddress } from "@coral-xyz/anchor/dist/cjs/utils/token";
 import { env } from "@/utils/env";
+import { sendTxUsingJito } from "@/utils/jito";
 
 // copied from backend
 function convertToBasisPoints(feePercent: number): number {
@@ -79,7 +81,6 @@ const swapIx = async (
   amount: number,
   style: number,
   slippageBps: number = 100,
-  connection: Connection,
   program: Program<Serlaunchalot>,
   reserveToken: number,
   reserveLamport: number,
@@ -128,6 +129,7 @@ const swapIx = async (
 
   const deadline = Math.floor(Date.now() / 1000) + 120;
 
+  // Apply the fee instruction to the transaction
   const tx = await program.methods
     .swap(new BN(amount), style, minOutput, new BN(deadline))
     .accounts({
@@ -242,7 +244,12 @@ export const useSwap = () => {
   const wallet = useWallet();
   const program = useProgram();
   // TODO: implement speed, front-running protection, and tip amount
-  const { slippage: slippagePercentage } = useTradeSettings();
+  const {
+    slippage: slippagePercentage,
+    speed,
+    isProtectionEnabled,
+    // tipAmount, @TODO use on jito
+  } = useTradeSettings();
 
   const createSwapIx = async ({
     style,
@@ -266,12 +273,13 @@ export const useSwap = () => {
     // Convert string style ("buy" or "sell") to numeric style (0 for buy; 1 for sell)
     const numericStyle = style === "buy" ? 0 : 1;
 
+    const ixs = [];
     if (token?.status === "locked") {
       const mainnetConnection = new Connection(
         "https://mainnet.helius-rpc.com/?api-key=156e83be-b359-4f60-8abb-c6a17fd3ff5f",
       );
       // Use Jupiter API when tokens are locked
-      const ix = await getJupiterSwapIx(
+      const ixsJupiterSwap = await getJupiterSwapIx(
         wallet.publicKey,
         new PublicKey(tokenAddress),
         style === "buy" ? amountLamports : amountTokens,
@@ -280,7 +288,7 @@ export const useSwap = () => {
         mainnetConnection,
       );
 
-      return ix;
+      ixs.push(...ixsJupiterSwap);
     } else {
       // Use the internal swap function otherwise
       const ix = await swapIx(
@@ -289,13 +297,40 @@ export const useSwap = () => {
         style === "buy" ? amountLamports : amountTokens,
         numericStyle,
         slippageBps,
-        connection,
         program,
         reserveToken,
         reserveLamport,
       );
-      return ix;
+
+      ixs.push(ix);
     }
+
+    // Define SOL fee amounts based on speed
+    let solFee;
+    switch (speed) {
+      case "fast":
+        solFee = 0.00005;
+        break;
+      case "turbo":
+        solFee = 0.0005;
+        break;
+      case "ultra":
+        solFee = 0.005;
+        break;
+      default:
+        solFee = 0.00005;
+    }
+    // Convert SOL fee to lamports (1 SOL = 1e9 lamports)
+    const feeLamports = Math.floor(solFee * 1e9);
+
+    // Create a transaction instruction to apply the fee
+    const feeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
+      microLamports: feeLamports,
+    });
+
+    ixs.push(feeInstruction);
+
+    return ixs;
   };
 
   const executeSwap = async ({
@@ -314,7 +349,7 @@ export const useSwap = () => {
     );
     const curve = await program.account.bondingCurve.fetch(bondingCurvePda);
 
-    const ix = await createSwapIx({
+    const ixs = await createSwapIx({
       style,
       amount,
       tokenAddress,
@@ -323,7 +358,7 @@ export const useSwap = () => {
       token,
     });
 
-    const tx = new Transaction().add(...(Array.isArray(ix) ? ix : [ix]));
+    const tx = new Transaction().add(...(Array.isArray(ixs) ? ixs : [ixs]));
     const { blockhash, lastValidBlockHeight } =
       await connection.getLatestBlockhash();
     tx.feePayer = wallet.publicKey;
@@ -338,6 +373,30 @@ export const useSwap = () => {
     }
 
     const versionedTx = new VersionedTransaction(tx.compileMessage());
+
+    // If protection is enabled, use Jito to send the transaction
+    if (isProtectionEnabled) {
+      console.log("Sending transaction through Jito for MEV protection...");
+      try {
+        const jitoResponse = await sendTxUsingJito({
+          serializedTx: versionedTx.serialize(),
+          region: "mainnet",
+        });
+        return { signature: jitoResponse.result, confirmation: null };
+      } catch (error) {
+        console.error("Failed to send through Jito:", error);
+        // Fallback to regular transaction sending if Jito fails
+        const signature = await wallet.sendTransaction(versionedTx, connection);
+        const confirmation = await connection.confirmTransaction({
+          signature,
+          blockhash: versionedTx.message.recentBlockhash,
+          lastValidBlockHeight,
+        });
+        return { signature, confirmation };
+      }
+    }
+
+    // Regular transaction sending if protection is not enabled
     const signature = await wallet.sendTransaction(versionedTx, connection);
     const confirmation = await connection.confirmTransaction({
       signature,
