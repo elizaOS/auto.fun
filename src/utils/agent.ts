@@ -192,12 +192,13 @@ export const useCreateAgent = createMutation({
     agent_metadata: AgentDetails;
     tokenId: string;
   }) => {
-    return womboApi.post({
+    await womboApi.post({
       endpoint: `/agents/${tokenId}`,
       body: {
         twitter_credentials,
         agent_metadata,
       },
+      validateStatus: (status) => status === 200,
     });
   },
 });

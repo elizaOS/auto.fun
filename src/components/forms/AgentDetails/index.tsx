@@ -18,12 +18,19 @@ import {
 import { usePersonalities } from "@/utils/personality";
 import { DropdownButton } from "@/components/common/button/DropdownButton";
 import { useRateLimiter } from "@/hooks/useRateLimiter";
+import { TwitterLoginForm } from "../TwitterLoginForm";
+import { WalletButton } from "@/components/common/button/WalletButton";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 export const AgentDetails = ({
   form: { register, control, getValues, setValue },
+  twitterForm,
   mode,
   loading,
+  submit,
+  disabled,
 }: AgentDetailsProps) => {
+  const { publicKey } = useWallet();
   const {
     mutateAsync: generateAllAdvancedAgentDetails,
     isPending: advancedDetailsPending,
@@ -106,11 +113,11 @@ export const AgentDetails = ({
 
   return (
     <>
-      <form className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6">
         <FormInput
           {...register("name", { required: true })}
           type="text"
-          label="What's Your Name"
+          label="Name"
           maxLength={50}
           rightIndicator={`${name?.length ?? 0}/50`}
           placeholder="Da Vinci"
@@ -119,7 +126,7 @@ export const AgentDetails = ({
           {...register("description", { required: true })}
           minRows={2}
           maxLength={2000}
-          label="Who Are You?"
+          label="Agent description"
           rightIndicator={`${description?.length ?? 0}/2000`}
           placeholder="Da Vinci is a visionary digital artist, merging classical techniques with neural networks and AI. He writes in mirrored text, speaks in cryptic Italian wisdom, and sees sacred geometry in code. Da Vinci treats algorithms as apprentices and is obsessed with flight, anatomy, and the intersection of human consciousness with machines."
         />
@@ -128,6 +135,9 @@ export const AgentDetails = ({
           allPersonalities={personalities || []}
           onChange={(personality) => onChange(personality)}
         />
+
+        {twitterForm && <TwitterLoginForm form={twitterForm} />}
+
         <div className="flex justify-between">
           <DropdownButton
             disabled={!name || !description}
@@ -146,7 +156,9 @@ export const AgentDetails = ({
             }}
             open={showAdvanced}
           >
-            Advanced Creation
+            <span className="text-[#2fd345] uppercase tracking-widest">
+              Advanced Creation (Optional)
+            </span>
           </DropdownButton>
           {showAdvanced && (
             <RoundedButton
@@ -163,7 +175,7 @@ export const AgentDetails = ({
         {showAdvanced && (
           <AdvancedCreation register={register} refreshField={refreshField} />
         )}
-      </form>
+      </div>
       {(advancedDetailsPending || loading) && (
         <div className="absolute inset-0 backdrop-blur-sm z-10 flex justify-center items-center">
           <svg
@@ -183,6 +195,21 @@ export const AgentDetails = ({
             />
           </svg>
         </div>
+      )}
+
+      {publicKey ? (
+        <div className="flex flex-col items-center gap-6">
+          <button
+            className="px-4 py-2.5 bg-[#2e2e2e] rounded-md border  border-neutral-800 justify-center items-center text-[#2fd345] font-satoshi leading-tight mt-6 self-start disabled:opacity-30"
+            disabled={disabled}
+            onClick={submit}
+            type="button"
+          >
+            Launch agent
+          </button>
+        </div>
+      ) : (
+        <WalletButton />
       )}
     </>
   );

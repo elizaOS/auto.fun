@@ -16,6 +16,14 @@ export const validateTwitterCredentials = async (
       schema: z.object({
         verified: z.boolean(),
       }),
+      validateStatus: (status) => {
+        const success = status >= 200 && status < 299;
+        const verificationFailure = status === 400;
+
+        // backend returns 400 if credentials invalid,
+        // so we need to parse it as a 'success' state here
+        return success || verificationFailure;
+      },
     });
 
     return response.verified ? "valid" : "invalid";

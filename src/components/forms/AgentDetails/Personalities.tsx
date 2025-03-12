@@ -1,11 +1,18 @@
 import { HTMLAttributes } from "react";
-import { Personality } from "../../../../types/components/forms/AgentDetails/index.type";
+import { FormInput } from "@/components/common/input/FormInput";
+import { Personality } from "@/utils/personality";
 
 export type PersonalitiesProps = {
   allPersonalities: Personality[];
-  onChange: (selectedPersonalities: number[]) => void;
-  selectedPersonalities: number[];
+  onChange: (selectedPersonalities: string[]) => void;
+  selectedPersonalities: string[];
 };
+
+<div className="px-4 py-2.5 rounded-md outline-1 outline-offset-[-1px] outline-neutral-800 inline-flex justify-start items-center gap-2">
+  <div className="text-center justify-center text-white text-base font-normal font-['DM_Mono'] leading-tight">
+    Schizo-autist (obsessed, aggressive)
+  </div>
+</div>;
 
 const PersonalitySelection = ({
   selected,
@@ -16,7 +23,7 @@ const PersonalitySelection = ({
 >) => {
   return (
     <button
-      className={`text-left p-3 rounded-lg min-h-[64px] ${selected ? "bg-[#03FF24] text-black" : "bg-[#002605]"}`}
+      className={`px-4 py-2.5 rounded-md border leading-tight ${selected ? "border-[#2fd345]" : "border-neutral-800"} `}
       type="button"
       {...props}
     />
@@ -28,8 +35,8 @@ export const Personalities = ({
   onChange,
   selectedPersonalities,
 }: PersonalitiesProps) => {
-  const selectPersonality = (id: number) => {
-    let newPersonality: number[] = [];
+  const selectPersonality = (id: string) => {
+    let newPersonality: string[] = [];
     const idIndex = selectedPersonalities?.indexOf(id) ?? -1;
 
     if (idIndex > -1) {
@@ -46,15 +53,15 @@ export const Personalities = ({
     onChange(newPersonality);
   };
 
-  console.log(allPersonalities);
-
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-between">
-        <p>Your Personality (optional)</p>
-        <p className="opacity-40">select up to 3</p>
+        <FormInput.Label label="your personality" isOptional />
+        <div className="text-[#8c8c8c] uppercase tracking-widest">
+          select up to 3
+        </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-5">
         {allPersonalities.map(({ id, name }) => (
           <PersonalitySelection
             selected={selectedPersonalities?.indexOf(id) > -1}

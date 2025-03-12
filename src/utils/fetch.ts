@@ -9,6 +9,7 @@ type WomboApiOptionsWithoutBody<TSchema, T1 extends ZodTypeDef, T2> = {
    * a zod schema to be used to parse/validate the response
    */
   schema?: ZodSchema<TSchema, T1, T2>;
+  validateStatus?: (status: number) => boolean;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,11 +31,15 @@ const axiosInstance = axios.create({
   withCredentials: true,
 });
 
+const defaultStatusValidator = (status: number) =>
+  status >= 200 && status < 300;
+
 const axiosWrapper = async <TSchema, T1 extends ZodTypeDef, T2>({
   endpoint,
   body,
   schema,
   method,
+  validateStatus,
 }: AxiosWrapperOptions<TSchema, T1, T2>) => {
   try {
     const response = await axiosInstance.request<
@@ -44,9 +49,11 @@ const axiosWrapper = async <TSchema, T1 extends ZodTypeDef, T2>({
       url: endpoint,
       method,
       data: body,
-      headers: {
-        // 'x-app-version': app.getVersion(),
-      },
+      /**
+       * axios doesn't fall back to default behavior when passing undefined so we
+       * must manually set it
+       */
+      validateStatus: validateStatus ?? defaultStatusValidator,
     });
 
     if (!schema) {

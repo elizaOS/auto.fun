@@ -3,166 +3,40 @@ import React from "react";
 export const Spinner = () => {
   return (
     <svg
-      viewBox="0 0 24 24"
+      width="101"
+      height="101"
+      viewBox="0 0 101 101"
+      fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className="inline w-10 h-10 fill-[#03ff24]"
+      className="animate-spin mb-10"
     >
-      <circle cx="12" cy="3" r="0">
-        <animate
-          id="spinner_318l"
-          begin="0;spinner_cvkU.end-0.5s"
-          attributeName="r"
-          calcMode="spline"
-          dur="0.6s"
-          values="0;2;0"
-          keyTimes="0;.2;1"
-          keySplines="0,1,0,1;.53,0,.61,.73"
-          fill="freeze"
-        />
-      </circle>
-      <circle cx="16.50" cy="4.21" r="0">
-        <animate
-          id="spinner_g5Gj"
-          begin="spinner_318l.begin+0.1s"
-          attributeName="r"
-          calcMode="spline"
-          dur="0.6s"
-          values="0;2;0"
-          keyTimes="0;.2;1"
-          keySplines="0,1,0,1;.53,0,.61,.73"
-          fill="freeze"
-        />
-      </circle>
-      <circle cx="7.50" cy="4.21" r="0">
-        <animate
-          id="spinner_cvkU"
-          begin="spinner_Uuk0.begin+0.1s"
-          attributeName="r"
-          calcMode="spline"
-          dur="0.6s"
-          values="0;2;0"
-          keyTimes="0;.2;1"
-          keySplines="0,1,0,1;.53,0,.61,.73"
-          fill="freeze"
-        />
-      </circle>
-      <circle cx="19.79" cy="7.50" r="0">
-        <animate
-          id="spinner_e8rM"
-          begin="spinner_g5Gj.begin+0.1s"
-          attributeName="r"
-          calcMode="spline"
-          dur="0.6s"
-          values="0;2;0"
-          keyTimes="0;.2;1"
-          keySplines="0,1,0,1;.53,0,.61,.73"
-          fill="freeze"
-        />
-      </circle>
-      <circle cx="4.21" cy="7.50" r="0">
-        <animate
-          id="spinner_Uuk0"
-          begin="spinner_z7ol.begin+0.1s"
-          attributeName="r"
-          calcMode="spline"
-          dur="0.6s"
-          values="0;2;0"
-          keyTimes="0;.2;1"
-          keySplines="0,1,0,1;.53,0,.61,.73"
-          fill="freeze"
-        />
-      </circle>
-      <circle cx="21.00" cy="12.00" r="0">
-        <animate
-          id="spinner_MooL"
-          begin="spinner_e8rM.begin+0.1s"
-          attributeName="r"
-          calcMode="spline"
-          dur="0.6s"
-          values="0;2;0"
-          keyTimes="0;.2;1"
-          keySplines="0,1,0,1;.53,0,.61,.73"
-          fill="freeze"
-        />
-      </circle>
-      <circle cx="3.00" cy="12.00" r="0">
-        <animate
-          id="spinner_z7ol"
-          begin="spinner_KEoo.begin+0.1s"
-          attributeName="r"
-          calcMode="spline"
-          dur="0.6s"
-          values="0;2;0"
-          keyTimes="0;.2;1"
-          keySplines="0,1,0,1;.53,0,.61,.73"
-          fill="freeze"
-        />
-      </circle>
-      <circle cx="19.79" cy="16.50" r="0">
-        <animate
-          id="spinner_btyV"
-          begin="spinner_MooL.begin+0.1s"
-          attributeName="r"
-          calcMode="spline"
-          dur="0.6s"
-          values="0;2;0"
-          keyTimes="0;.2;1"
-          keySplines="0,1,0,1;.53,0,.61,.73"
-          fill="freeze"
-        />
-      </circle>
-      <circle cx="4.21" cy="16.50" r="0">
-        <animate
-          id="spinner_KEoo"
-          begin="spinner_1IYD.begin+0.1s"
-          attributeName="r"
-          calcMode="spline"
-          dur="0.6s"
-          values="0;2;0"
-          keyTimes="0;.2;1"
-          keySplines="0,1,0,1;.53,0,.61,.73"
-          fill="freeze"
-        />
-      </circle>
-      <circle cx="16.50" cy="19.79" r="0">
-        <animate
-          id="spinner_1sIS"
-          begin="spinner_btyV.begin+0.1s"
-          attributeName="r"
-          calcMode="spline"
-          dur="0.6s"
-          values="0;2;0"
-          keyTimes="0;.2;1"
-          keySplines="0,1,0,1;.53,0,.61,.73"
-          fill="freeze"
-        />
-      </circle>
-      <circle cx="7.50" cy="19.79" r="0">
-        <animate
-          id="spinner_1IYD"
-          begin="spinner_NWhh.begin+0.1s"
-          attributeName="r"
-          calcMode="spline"
-          dur="0.6s"
-          values="0;2;0"
-          keyTimes="0;.2;1"
-          keySplines="0,1,0,1;.53,0,.61,.73"
-          fill="freeze"
-        />
-      </circle>
-      <circle cx="12" cy="21" r="0">
-        <animate
-          id="spinner_NWhh"
-          begin="spinner_1sIS.begin+0.1s"
-          attributeName="r"
-          calcMode="spline"
-          dur="0.6s"
-          values="0;2;0"
-          keyTimes="0;.2;1"
-          keySplines="0,1,0,1;.53,0,.61,.73"
-          fill="freeze"
-        />
-      </circle>
+      <circle
+        opacity="0.25"
+        cx="50.5"
+        cy="50.502"
+        r="42.5926"
+        stroke="#262626"
+        strokeWidth="14.8148"
+      />
+      <path
+        d="M93.0934 50.5018C93.0934 74.025 74.024 93.0944 50.5008 93.0944C26.9776 93.0944 7.9082 74.025 7.9082 50.5018C7.9082 26.9785 26.9776 7.90918 50.5008 7.90918"
+        stroke="url(#paint0_linear_2573_3488)"
+        strokeWidth="14.8148"
+        strokeLinecap="round"
+      />
+      <defs>
+        <linearGradient
+          id="paint0_linear_2573_3488"
+          x1="50.5008"
+          y1="7.90918"
+          x2="93.0934"
+          y2="31.9832"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop stopColor="#2FD345" />
+          <stop offset="0.518595" stopColor="#666666" stopOpacity="0" />
+        </linearGradient>
+      </defs>
     </svg>
   );
 };

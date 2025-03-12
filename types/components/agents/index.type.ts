@@ -19,7 +19,7 @@ export const AgentDataSchema = z.object({
   name: z.string(),
   twitterUsername: z.string(),
   description: z.string().nullable(),
-  personalities: z.number().array().optional(),
+  personalities: z.string().array().optional(),
   image_src: z.string().optional().nullable(),
   systemPrompt: z.string().nullable(),
   modelProvider: z.string().nullable(),

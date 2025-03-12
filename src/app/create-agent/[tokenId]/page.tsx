@@ -1,45 +1,126 @@
 "use client";
 
-import { useForm } from "@/app/create-agent/[tokenId]/useForm";
 import { useCreateAgent, useGenerateAgentDetails } from "@/utils/agent";
-import { useCallback, useMemo, useState } from "react";
-import { AgentDetails, TwitterCredentials } from "@/../types/form.type";
+import { useCallback, useState } from "react";
+import {
+  AgentDetailsForm,
+  TwitterCredentials,
+  TwitterDetailsForm,
+  AgentDetails as AgentDetailsType,
+} from "@/../types/form.type";
 import { validateTwitterCredentials } from "@/utils/twitter";
 import { toast } from "react-toastify";
 import { Modal } from "@/components/common/Modal";
 import { Spinner } from "@/components/common/Spinner";
 import { CenterFormContainer } from "@/components/common/containers/CenterFormContainer";
-import { WalletButton } from "@/components/common/button/WalletButton";
-import { RoundedButton } from "@/components/common/button/RoundedButton";
-import { useWallet } from "@solana/wallet-adapter-react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { AgentDetails } from "@/components/forms/AgentDetails";
+import Link from "next/link";
+import { AgentCard } from "@/components/agent-card";
+import { useToken } from "@/utils/tokens";
+
+const AgentCreatedModal = ({
+  isOpen,
+  tokenId,
+  twitterUsername,
+}: {
+  isOpen: boolean;
+  tokenId: string;
+  twitterUsername: string;
+}) => {
+  const { data: token } = useToken({ variables: tokenId });
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      allowClose={false}
+      contentClassName="w-full"
+      className="!max-w-[555px]"
+    >
+      {token ? (
+        <div className="flex flex-col items-start self-start w-full">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="text-[#2fd345] text-[32px] font-medium font-satoshi leading-9">
+              Agent Created
+            </div>
+            <Modal.SparkleIcon />
+          </div>
+
+          <AgentCard
+            name={token.name}
+            ticker={token.ticker}
+            creationDate={token.createdAt}
+            bondingCurveProgress={token.curveProgress}
+            description={token.description}
+            marketCapUSD={token.marketCapUSD}
+            image={token.image}
+            mint={token.mint}
+            className={`!max-w-none !bg-[#0f0f0f] !border-2 !border-dashed`}
+            showBuy={false}
+          />
+
+          <div className="mt-6 flex flex-col gap-2.5 w-full">
+            <Link
+              className="py-2.5 bg-[#2e2e2e] rounded-md border border-neutral-800 text-[#2fd345] text-sm font-satoshi leading-tight flex-1 text-center"
+              href={`/coin/${token.mint}`}
+            >
+              View Token
+            </Link>
+            <a
+              className="py-2.5 rounded-md border border-neutral-800 text-sm font-satoshi leading-tight flex-1 text-center flex justify-center gap-2 text-[#8c8c8c]"
+              href={`https://x.com/${twitterUsername}`}
+              target="_blank"
+            >
+              View AI Agent on Twitter{" "}
+              <svg
+                width="19"
+                height="17"
+                viewBox="0 0 19 17"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M14.6761 0H17.4362L11.4061 7.20103L18.5 17H12.9456L8.59512 11.057L3.61723 17H0.855444L7.30517 9.29769L0.5 0H6.19545L10.1279 5.43215L14.6761 0ZM13.7073 15.2738H15.2368L5.36441 1.63549H3.7232L13.7073 15.2738Z"
+                  fill="#8C8C8C"
+                />
+              </svg>
+            </a>
+          </div>
+        </div>
+      ) : (
+        <Spinner />
+      )}
+    </Modal>
+  );
+};
 
 export default function CreateAgentPage() {
-  const { publicKey } = useWallet();
   const params = useParams();
-  const router = useRouter();
 
   const tokenId = params.tokenId as string;
 
-  const {
-    currentStep,
-    back,
-    next,
-    FormBody,
-    getFormValues,
-    canGoNext,
-    canGoBack,
-    agentForm,
-  } = useForm();
+  const agentForm = useForm<AgentDetailsForm>();
+  const twitterForm = useForm<TwitterDetailsForm>();
+  const twitterUsername = twitterForm.watch("twitter_username");
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [agentStatus, setAgentStatus] = useState<
+    "idle" | "creating" | "created"
+  >("idle");
 
   const { mutateAsync: generateAgentDetails } = useGenerateAgentDetails();
   const { mutateAsync: createAgent } = useCreateAgent();
 
+  const getFormValues = useCallback(() => {
+    const twitterCredentials = twitterForm.getValues();
+    const agentDetails = agentForm.getValues();
+
+    return { twitterCredentials, agentDetails };
+  }, [agentForm, twitterForm]);
+
   const convertFormData = useCallback(async (): Promise<{
     twitterCreds: TwitterCredentials;
-    agentDetails: AgentDetails;
+    agentDetails: AgentDetailsType;
   }> => {
     let { agentDetails, twitterCredentials } = getFormValues();
 
@@ -62,131 +143,96 @@ export default function CreateAgentPage() {
   }, [agentForm, generateAgentDetails, getFormValues]);
 
   const submitForm = useCallback(async () => {
-    setIsModalOpen(true);
+    setAgentStatus("creating");
+    const {
+      twitter_email: email,
+      twitter_password: password,
+      twitter_username: username,
+    } = getFormValues().twitterCredentials;
 
-    try {
-      const { twitterCreds, agentDetails } = await convertFormData();
+    if (email && password && username) {
+      const invalidCredentials =
+        "Invalid Twitter credentials. Please try again.";
+      const unknownError = "Oops! Something went wrong. Please try again.";
 
-      if (
-        twitterCreds.email &&
-        twitterCreds.password &&
-        twitterCreds.username
+      switch (
+        await validateTwitterCredentials({
+          email,
+          password,
+          username,
+        })
       ) {
-        switch (await validateTwitterCredentials(twitterCreds)) {
-          case "valid":
-            break;
-          case "invalid":
-            toast.error("Invalid Twitter credentials. Please try again.");
-            return;
-          case "unknown_error":
-            toast.error("Oops! Something went wrong. Please try again.");
-            return;
-        }
+        case "valid":
+          break;
+        case "invalid":
+          toast.error(invalidCredentials);
+          setAgentStatus("idle");
+          return;
+        case "unknown_error":
+          toast.error(unknownError);
+          setAgentStatus("idle");
+          return;
       }
 
-      await createAgent({
-        twitter_credentials: twitterCreds,
-        agent_metadata: agentDetails,
-        tokenId,
-      });
+      try {
+        const { twitterCreds, agentDetails } = await convertFormData();
+        await createAgent({
+          twitter_credentials: twitterCreds,
+          agent_metadata: agentDetails,
+          tokenId,
+        });
 
-      router.push(
-        `/success?twitterHandle=${twitterCreds.username}&mintPublicKey=${tokenId}`,
-      );
-    } catch (e) {
-      toast.error("Oops! Something went wrong. Please try again.");
-      throw e;
-    } finally {
-      setIsModalOpen(false);
+        setAgentStatus("created");
+      } catch {
+        toast.error("Oops! Something went wrong. Please try again.");
+        setAgentStatus("idle");
+      }
     }
-  }, [convertFormData, createAgent, router, tokenId]);
-
-  const FormButton = useMemo(() => {
-    switch (currentStep) {
-      case "agent":
-        return (
-          <RoundedButton
-            className="px-6 py-3"
-            onClick={next}
-            disabled={!canGoNext}
-          >
-            Next
-          </RoundedButton>
-        );
-      case "twitter":
-        return (
-          <div className="flex flex-col items-center gap-6">
-            <p>*NOTE* this is your Agent&apos;s login information</p>
-            <RoundedButton
-              className="px-6 py-3"
-              disabled={!canGoNext}
-              onClick={submitForm}
-            >
-              Launch agent
-            </RoundedButton>
-          </div>
-        );
-    }
-  }, [canGoNext, currentStep, next, submitForm]);
-
-  const FormHeader = useMemo(() => {
-    switch (currentStep) {
-      case "agent":
-        return <h1>Step 1. Enter Agent Details</h1>;
-      case "twitter":
-        return <h1>Step 2. Connect Agent&apos;s Twitter Account</h1>;
-    }
-  }, [currentStep]);
+  }, [convertFormData, createAgent, getFormValues, tokenId]);
 
   return (
     <div className="flex flex-col justify-center h-full relative mt-12">
-      {/* TODO: update UI */}
       <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Launching agent"
+        isOpen={agentStatus === "creating"}
         allowClose={false}
+        contentClassName="w-full !p-10"
+        className="!max-w-[465px]"
       >
-        <div className="flex flex-col items-center p-6 gap-6">
-          <Spinner />
-          <p className="p-3 bg-[#03FF24] text-black rounded-lg font-bold">
-            Launching Agent...
-          </p>
+        <Spinner />
+        <div className="text-[#2fd345] text-2xl font-medium font-satoshi leading-loose mb-3.5">
+          Launching Agent...
         </div>
       </Modal>
 
-      {canGoBack && (
-        <button className="absolute top-4 left-[5%]" onClick={back}>
-          <svg
-            width="44"
-            height="44"
-            viewBox="0 0 44 44"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <rect
-              x="0.5"
-              y="0.5"
-              width="43"
-              height="43"
-              rx="11.5"
-              stroke="#03FF24"
-            />
-            <path
-              d="M16.1665 21.9993H27.8332M16.1665 21.9993L19.4998 25.3327M16.1665 21.9993L19.4998 18.666"
-              stroke="#03FF24"
-              strokeWidth="1.66667"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-      )}
+      <AgentCreatedModal
+        isOpen={agentStatus === "created"}
+        tokenId={tokenId}
+        twitterUsername={twitterUsername}
+      />
 
       <CenterFormContainer
-        formComponent={FormBody}
-        header={FormHeader}
-        submitButton={publicKey ? <div>{FormButton}</div> : <WalletButton />}
+        className="max-w-[830px]"
+        formComponent={
+          <form>
+            <div className="text-[#2fd345] text-[32px] font-medium mb-3.5">
+              Create Agent
+            </div>
+            <div className="text-[#8c8c8c] mb-6">
+              Create your AI agent to represent your token across the platform.
+              Connect the agent to X. Define its personality, behavior, and
+              communication style.
+            </div>
+            <AgentDetails
+              form={agentForm}
+              twitterForm={twitterForm}
+              mode="create"
+              submit={submitForm}
+              disabled={
+                !agentForm.formState.isValid || !twitterForm.formState.isValid
+              }
+            />
+          </form>
+        }
       />
     </div>
   );
