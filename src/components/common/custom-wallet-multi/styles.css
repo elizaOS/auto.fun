@@ -6,7 +6,7 @@
   border-radius: 6px !important;
   height: 44px !important;
   padding: 10px 16px !important;
-  font-family: 'Satoshi', sans-serif !important;
+  font-family: "Satoshi", sans-serif !important;
   font-weight: 500 !important;
   font-size: 16px !important;
   color: white !important;
@@ -21,7 +21,9 @@
   background-color: #262626 !important;
 }
 
-.wallet-adapter-button:not(.wallet-adapter-modal-wrapper .wallet-adapter-button) {
+.wallet-adapter-button:not(
+    .wallet-adapter-modal-wrapper .wallet-adapter-button
+  ) {
   background-color: #212121 !important;
   border: 1px solid #262626 !important;
   color: white !important;
@@ -215,10 +217,10 @@
   flex: 1;
   border: 1px solid #262626;
   background-color: #0a0a0a;
+  padding: 16px;
 }
 
 .wallet-adapter-modal-content {
-  padding: 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -231,18 +233,18 @@
 .wallet-adapter-modal-header {
   display: flex;
   justify-content: space-between;
-  padding: 14px;
+  margin-bottom: 24px;
   align-items: center;
   width: 100%;
-  border-bottom: 1px solid #262626;
 }
 
 .wallet-adapter-modal-header-left {
   color: #03ff24;
-  font-size: 20px;
+  font-size: 32px;
   font-weight: 500;
   line-height: 28px;
   letter-spacing: -1.4px;
+  font-family: "Satoshi";
 }
 
 .wallet-adapter-modal-title {

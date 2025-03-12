@@ -5,6 +5,10 @@ import { useState } from "react";
 import ToggleGroup from "@/components/common/ToggleGroup";
 import { useTradeSettings } from "./useTradeSettings";
 
+const Separator = () => {
+  return <div className="self-stretch h-px bg-neutral-800" />;
+};
+
 export const TradeSettingsModal = ({
   modalOpen,
   onClose,
@@ -41,21 +45,21 @@ export const TradeSettingsModal = ({
       isOpen={modalOpen}
       onClose={onModalClose}
       title="Trade Settings"
-      className="!max-w-[587px] !p-0 !bg-[#171717] !border-neutral-800"
+      className="!max-w-[496px] !bg-[#171717] !border-neutral-800"
     >
-      <div className="flex flex-col gap-8 p-6">
-        <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-6">
           {/* Slippage Section */}
           <div className="flex flex-col gap-3">
             <div className="flex justify-between">
-              <div className="text-white text-xl flex items-center gap-2">
-                SLIPPAGE_%:{" "}
-                <span className="text-[#2fd345] text-xl">
+              <div className="text-white font-satoshi flex items-center gap-2">
+                SLIPPAGE%:{" "}
+                <span className="text-[#2fd345] text-xl font-satoshi">
                   {slippage.toFixed(1)}
                 </span>
               </div>
               <input
-                className="w-[120px] px-4 py-2 bg-[#262626] rounded-md text-white text-xl font-['DM Mono']"
+                className="w-[120px] px-3 py-2 bg-[#0a0a0a] rounded-md text-white border border-[#262626]"
                 placeholder={slippage.toFixed(1) + "%"}
                 type="number"
                 min="0"
@@ -74,16 +78,18 @@ export const TradeSettingsModal = ({
                 }}
               />
             </div>
-            <div className="text-[#8c8c8c] text-sm font-['DM Mono']">
+            <div className="text-[#8c8c8c] font-satoshi">
               This is the maximum amount of slippage you are willing to accept
               when placing trades
             </div>
           </div>
 
+          <Separator />
+
           {/* Speed Section */}
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <div className="text-white text-xl">Speed</div>
+              <div className="text-white font-satoshi text-xl">Speed</div>
               <ToggleGroup
                 options={
                   [
@@ -98,23 +104,25 @@ export const TradeSettingsModal = ({
                 defaultValue={speed}
               />
             </div>
-            <div className="text-[#8c8c8c] text-sm font-['DM Mono']">
+            <div className="text-[#8c8c8c] font-satoshi">
               Higher speeds will increase your priority fees, making your
               transactions confirm faster
             </div>
           </div>
 
+          <Separator />
+
           {/* Protection Section */}
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <div className="text-white text-xl font-['DM Mono']">
+              <div className="text-white font-satoshi">
                 Enable front-running protection:
               </div>
               <ToggleGroup
                 options={
                   [
                     { value: true, name: "ON" },
-                    { value: false, name: "OFF" },
+                    { value: false, name: "OFF", offState: true },
                   ] as const
                 }
                 onChange={(value: boolean) => setIsProtectionEnabled(value)}
@@ -123,6 +131,8 @@ export const TradeSettingsModal = ({
             </div>
           </div>
         </div>
+
+        <Separator />
 
         <button
           onClick={() => {
@@ -133,7 +143,7 @@ export const TradeSettingsModal = ({
             });
             onClose();
           }}
-          className="w-full py-2 bg-[#2e2e2e] hover:bg-[#0a3711] active:bg-[#072409] transition-colors rounded-md text-[#03ff24] text-sm leading-tight font-['DM Mono'] active:shadow-none"
+          className="w-full py-2 bg-[#2e2e2e] hover:bg-[#0a3711] active:bg-[#072409] transition-colors rounded-md text-[#03ff24] text-sm leading-tight active:shadow-none"
         >
           Update
         </button>
