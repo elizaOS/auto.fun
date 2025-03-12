@@ -256,7 +256,7 @@ const TokenInputSkeleton = () => {
 
 export const TokenBuySellSkeleton = () => {
   return (
-    <div className="w-[587px] h-fit bg-[#121212] rounded-[6px] border border-neutral-800 p-4 flex flex-col gap-4">
+    <div className="bg-[#121212] rounded-[6px] border border-neutral-800 p-4 flex flex-col gap-4">
       <div className="flex flex-col gap-4 relative">
         <TokenInputSkeleton />
 
@@ -446,7 +446,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
   };
 
   return (
-    <div className="w-[587px] h-fit bg-[#121212] rounded-[6px] border border-neutral-800 p-4 flex flex-col gap-4">
+    <div className="bg-[#121212] rounded-[6px] border border-neutral-800 p-4 flex flex-col gap-4">
       <TradeSettingsModal
         modalOpen={settingsModalOpen}
         onClose={() => setSettingsModalOpen(false)}
@@ -458,7 +458,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
 
       {token.status !== "active" && getStatusContent(token.status)}
 
-      <div className="flex-1 px-7 pb-[34px] flex flex-col justify-center gap-6 border-l border-r border-b border-neutral-800 rounded-b-xl min-w-fit">
+      <div className="flex-1 flex flex-col justify-center gap-6 border-b border-neutral-800 rounded-b-xl min-w-fit">
         <div className="flex flex-col gap-2.5 relative min-w-fit">
           <TokenInput
             type="Selling"

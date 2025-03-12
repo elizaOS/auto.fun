@@ -78,10 +78,6 @@ body {
 }
 
 @layer utilities {
-  .body-padding-x {
-    @apply px-2 md:px-16 lg:px-24;
-  }
-
   /* Hide scrollbar for Chrome, Safari and Opera */
   .no-scrollbar::-webkit-scrollbar {
     display: none;
