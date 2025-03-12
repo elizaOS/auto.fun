@@ -4,7 +4,7 @@ import React from "react";
 
 const FeesContent = () => {
   return (
-    <div className="w-full min-h-screen flex items-center justify-center p-4">
+    <div className="w-full m-auto flex items-center justify-center p-4">
       <div className="w-full max-w-[600px] bg-[#171717] border border-[#262626] rounded-md">
         {/* Header */}
         <div className="flex flex-col p-5 gap-3.5 border-b border-[#262626]">
