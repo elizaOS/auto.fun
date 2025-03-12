@@ -254,6 +254,8 @@ export interface TokenMetadataJson {
   twitter?: string;
   telegram?: string;
   website?: string;
+  discord?: string;
+  agentLink?: string;
 }
 
 // Create Token Schema
@@ -265,11 +267,6 @@ export const createTokenSchema = z.object({
   twitter: z.string().url().optional(),
   telegram: z.string().url().optional(),
   website: z.string().url().optional(),
-  xusername: z.string().optional(),
-  xurl: z.string().url().optional(),
-  xavatarurl: z.string().url().optional(),
-  xname: z.string().optional(),
-  xtext: z.string().optional(),
 });
 
 export const ChartParamsSchema = z.object({
@@ -286,14 +283,11 @@ const TokenSchema = new mongoose.Schema({
   ticker: String,
   url: String,
   image: String,
-  xusername: String,
-  xurl: String,
-  xavatarurl: String,
-  xname: String,
-  xtext: String,
   twitter: String,
   telegram: String,
   website: String,
+  discord: String,
+  agentLink: String,
   description: String,
   mint: String,
   creator: String,
@@ -459,7 +453,6 @@ const TokenHolderSchema = new mongoose.Schema(
 
 const PersonalitySchema = new mongoose.Schema(
   {
-    id: { type: Number, required: true, index: true, unique: true },
     name: { type: String, required: true },
     description: String,
     createdAt: { type: Date, default: Date.now },

@@ -13,7 +13,7 @@ import NodeWallet from '@coral-xyz/anchor/dist/cjs/nodewallet';
 import { SEED_BONDING_CURVE } from './lib/constant';
 import { Serlaunchalot } from './target/types/serlaunchalot';
 import { getMint, NATIVE_MINT, TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { getAssociatedTokenAccount } from './lib/util';
+import { getAssociatedTokenAccount, getRpcUrl } from './lib/util';
 import { initSdk, txVersion } from './lib/raydium-config';
 import { fetchDigitalAsset, mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
 import { publicKey, Umi } from '@metaplex-foundation/umi';
@@ -164,7 +164,7 @@ class TokenMonitor {
       { skipValidation: true }
     );
     this.wallet = new NodeWallet(walletKeypair);
-    this.umi = createUmi(process.env.SOLANA_RPC_URL)
+    this.umi = createUmi(getRpcUrl())
     .use(mplTokenMetadata());
     this.queue = new PQueue({ 
       concurrency: 5,  // Process 5 tokens at a time
@@ -336,7 +336,9 @@ class TokenMonitor {
                 twitter: additionalMetadata?.twitter || '',
                 telegram: additionalMetadata?.telegram || '',
                 website: additionalMetadata?.website || '',
+                discord: additionalMetadata?.discord || '',
                 description: additionalMetadata?.description || '',
+                agentLink: additionalMetadata?.agentLink || '',
                 mint: tokenAddress,
                 creator: creatorAddress,
                 reserveAmount: Number(bondingCurveAccount.reserveToken.toNumber()),
@@ -621,7 +623,7 @@ class TokenMonitor {
 
 // Initialize connection and program
 const initializeConfig = async () => {
-  solConnection = new Connection(process.env.SOLANA_RPC_URL);
+  solConnection = new Connection(getRpcUrl());
   
   const walletKeypair = Keypair.fromSecretKey(
     Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),

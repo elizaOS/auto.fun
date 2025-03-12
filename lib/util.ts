@@ -22,6 +22,10 @@ import { Program } from "@coral-xyz/anchor";
 import { Serlaunchalot } from "../target/types/serlaunchalot";
 import mongoose from "mongoose";
 
+export const getRpcUrl = () => {
+ return process.env.NETWORK === 'devnet' ? process.env.DEVNET_SOLANA_RPC_URL! : process.env.MAINNET_SOLANA_RPC_URL!
+}
+
 export const connectDB = async (retries = 5, delay = 500) => {
   for (let i = 0; i < retries; i++) {
     try {
@@ -43,7 +47,7 @@ export const connectDB = async (retries = 5, delay = 500) => {
 };
 
 export const initializeConfig = async () => {
-  const connection = new Connection(process.env.SOLANA_RPC_URL);
+  const connection = new Connection(getRpcUrl());
   
   const walletKeypair = Keypair.fromSecretKey(
     Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
@@ -165,7 +169,7 @@ export async function execWithdrawTx(
               });
               
               if (txInfo?.meta?.logMessages?.some(log => 
-                  log.includes(`Program ${process.env.PROGRAM_ID} success`))) {
+                  log.includes(`Program success`))) {
                   logger.log('Transaction succeeded despite ProgramFailedToComplete error');
                   return { signature, logs: txInfo.meta.logMessages };
               }

@@ -12,6 +12,9 @@ on:
         options:
           - development
           - production
+  push:
+    branches:
+      - main
 
 env:
   # Common settings
@@ -34,6 +37,12 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    # These permissions are needed for OIDC authentication with AWS
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
       - name: Set environment variables
         run: |
@@ -58,8 +67,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::221082216409:role/GitHubActionsECSRole
           aws-region: us-east-1
 
       - name: Login to Amazon ECR

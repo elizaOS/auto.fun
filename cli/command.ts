@@ -8,6 +8,7 @@ import {
   setClusterConfig,
   swap,
 } from "./scripts";
+import { getRpcUrl } from "../lib/util";
 
 program.version("0.0.1");
 
@@ -93,7 +94,7 @@ function programCommand(name: string) {
     .option(
       "-r, --rpc <string>",
       "Solana cluster RPC name",
-      process.env.SOLANA_RPC_URL
+      getRpcUrl()
     )
     .option(
       "-k, --private-key <string>",
