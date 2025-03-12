@@ -33,7 +33,7 @@ export default async function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body
-        className={`${inter.className} ${satoshi.variable} ${inter.variable} font-mono antialiased flex flex-col sm:gap-16 body-padding-x pt-[83px] min-h-screen`}
+        className={`${inter.className} ${satoshi.variable} ${inter.variable} font-mono antialiased flex flex-col body-padding-x pt-[83px] min-h-screen`}
       >
         <SkeletonTheme baseColor="#002605" highlightColor="#008011">
           <Providers>
