@@ -666,8 +666,6 @@ export async function fetchPriceChartData(pairIndex: number, start: number, end:
     return [];
   }
   
-  // Force token status to 'locked' for testing Codex API
-  tokenInfo.status = 'locked';
   
   if (tokenInfo.status !== 'locked') {
     // load price histories from DB
