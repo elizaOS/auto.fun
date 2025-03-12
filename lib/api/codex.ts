@@ -214,7 +214,7 @@ export interface CandleData {
  * @returns Processed candle data in our application's format
  */
 export async function fetchCodexBars(
-  tokenAddress: string = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump",
+  tokenAddress: string,
   startTimestamp: number,
   endTimestamp: number,
   resolution: CodexBarResolution = '1',
