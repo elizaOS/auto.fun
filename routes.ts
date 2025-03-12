@@ -26,7 +26,7 @@ import { BN } from "@coral-xyz/anchor";
 import { SEED_CONFIG } from './lib/constant';
 import { program, connection } from './server';
 import NodeWallet from '@coral-xyz/anchor/dist/cjs/nodewallet';
-import { execTx, splitIntoLines } from './lib/util';
+import { execTx, getRpcUrl, splitIntoLines } from './lib/util';
 import { getSOLPrice } from './mcap';
 import { calculateTokenMarketData } from './mcap';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, createAssociatedTokenAccount, createAssociatedTokenAccountInstruction, createTransferInstruction, getAssociatedTokenAddressSync } from '@solana/spl-token';
@@ -482,7 +482,7 @@ router.get('/tokens/:mint/harvest-tx', async (req, res) => {
 });
 
 export async function updateHoldersCache(mint: string) {
-  const connection = new Connection(process.env.NETWORK === 'devnet' ? process.env.DEVNET_SOLANA_RPC_URL! : process.env.MAINNET_SOLANA_RPC_URL!);
+  const connection = new Connection(getRpcUrl());
   
   try {
     // Clear existing holder data for this token

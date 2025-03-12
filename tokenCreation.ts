@@ -8,6 +8,7 @@ import {
   import { fetchWithExponentialBackoff } from "./lib/fetch";
   import { Keypair } from "@solana/web3.js";
   import bs58 from "bs58";
+  import { getRpcUrl } from "./lib/util";
   // Define the data models
   interface TwitterCredentials {
     username: string;
@@ -156,7 +157,7 @@ export const submitTokenTransaction = async (tokenData: {
     public_key: string;
     mint_keypair_public: string;
   }): Promise<{ signature: string; solscan_url: string }> => {
-    const HELIUS_RPC = process.env.NETWORK === 'devnet' ? process.env.DEVNET_SOLANA_RPC_URL! : process.env.MAINNET_SOLANA_RPC_URL!;
+    const HELIUS_RPC = getRpcUrl();
   
     if (!HELIUS_RPC) {
       logger.error("Environment variables not set");

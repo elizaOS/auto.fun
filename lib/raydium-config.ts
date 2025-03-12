@@ -2,6 +2,7 @@ import { Raydium, TxVersion, parseTokenAccountResp } from '@raydium-io/raydium-s
 import { Connection, Keypair, clusterApiUrl, PublicKey } from '@solana/web3.js'
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token'
 import { logger } from '../logger'
+import { getRpcUrl } from './util'
 
 type Cluster = 'mainnet' | 'devnet'
 
@@ -9,7 +10,7 @@ export const owner: Keypair = Keypair.fromSecretKey(
     Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY))
   )
 // export const connection = new Connection('<YOUR_RPC_URL>') //<YOUR_RPC_URL>
-export const connection = new Connection(process.env.NETWORK === 'devnet' ? process.env.DEVNET_SOLANA_RPC_URL! : process.env.MAINNET_SOLANA_RPC_URL!)
+export const connection = new Connection(getRpcUrl())
 export const txVersion = TxVersion.V0 // or TxVersion.LEGACY
 const cluster = process.env.NETWORK as Cluster // 'mainnet' | 'devnet'
 
