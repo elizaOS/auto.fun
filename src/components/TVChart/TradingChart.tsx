@@ -20,8 +20,6 @@ const TVChartContainer = dynamic(
 export const TradingChart: React.FC<TradingChartProps> = ({ param }) => {
   const [isScriptReady, setIsScriptReady] = useState(false);
 
-  console.log("tradingview chart", param);
-
   return (
     <>
       {/* <Head>
