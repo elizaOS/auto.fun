@@ -240,7 +240,7 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
         />
 
         {showMobileSearch && (
-          <div className="fixed inset-0 bg-neutral-900 body-padding-x flex flex-col">
+          <div className="fixed inset-0 bg-neutral-900 flex flex-col">
             <div className="flex items-center">
               <div className="relative flex-1 py-5">
                 <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2" />
@@ -661,7 +661,7 @@ export const NavSkeleton = () => {
 
       {/* Mobile Search Modal Skeleton */}
       <div className="md:hidden">
-        <div className="fixed inset-0 bg-neutral-900 body-padding-x flex flex-col opacity-0 pointer-events-none">
+        <div className="fixed inset-0 bg-neutral-900 flex flex-col opacity-0 pointer-events-none">
           <div className="flex items-center py-5">
             <div className="relative flex-1">
               <div className="w-6 h-6 bg-neutral-800 rounded absolute left-3 top-1/2 -translate-y-1/2 animate-pulse" />

@@ -82,9 +82,7 @@ export function AgentCardInfo({
     <div
       className={`flex flex-col justify-center items-start p-4 gap-6 bg-[#171717] border border-[#262626] rounded-[6px] ${className}`}
     >
-      {/* Product Info */}
-      <div className="flex flex-row items-start gap-5 w-full">
-        {/* Product Image */}
+      <div className="flex flex-row items-start gap-5">
         <div className="flex flex-col justify-center items-start w-[144px] h-[144px]">
           {image ? (
             <img
@@ -100,7 +98,7 @@ export function AgentCardInfo({
         {/* Product Details */}
         <div className="flex flex-col items-start gap-4 flex-1">
           {/* Title Section */}
-          <div className="flex flex-col items-start gap-2 w-full">
+          <div className="flex flex-col items-start gap-2">
             <div className="flex flex-row items-center gap-2">
               <h1 className="font-satoshi text-[32px] leading-9 tracking-[-0.014em] text-white font-medium">
                 {name}
@@ -157,7 +155,7 @@ export function AgentCardInfo({
           <span
             className={`${dmMono.className} text-base leading-6 text-[#8C8C8C]`}
           >
-            {mint}
+            {mint.slice(0, 4)}...{mint.slice(-4)}
           </span>
           <button
             onClick={() => handleCopy(mint)}
@@ -211,7 +209,7 @@ export function AgentCardInfo({
       </div>
 
       {/* Price Information */}
-      <div className="flex w-full h-[72px] gap-0.5">
+      <div className="flex h-[72px] gap-0.5">
         <div className="flex-1 flex flex-col justify-center items-center gap-2 p-4 bg-[#212121] border border-[#262626] rounded-l-[6px]">
           <span
             className={`${dmMono.className} text-base leading-6 text-[#8C8C8C]`}
@@ -219,7 +217,7 @@ export function AgentCardInfo({
             Price USD
           </span>
           <span
-            className={`${dmMono.className} text-xl leading-6 tracking-[2px] uppercase text-white`}
+            className={`${dmMono.className} text-xl leading-6 tracking-[2px] uppercase text-white whitespace-nowrap`}
           >
             ${formatNumber(tokenPriceUSD, 8)}
           </span>
@@ -231,7 +229,7 @@ export function AgentCardInfo({
             Price
           </span>
           <span
-            className={`${dmMono.className} text-xl leading-6 tracking-[2px] uppercase text-white`}
+            className={`${dmMono.className} text-xl leading-6 tracking-[2px] uppercase text-white whitespace-nowrap`}
           >
             {formatNumber(tokenPriceUSD / solPriceUSD, 6)} SOL
           </span>
@@ -239,7 +237,7 @@ export function AgentCardInfo({
       </div>
 
       {/* Bonding Curve Progress */}
-      <div className="flex flex-col gap-3.5 w-full">
+      <div className="flex flex-col gap-3.5">
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-2">
             <span className="font-satoshi text-xl leading-7 tracking-[-0.014em] text-white font-medium">
@@ -248,7 +246,7 @@ export function AgentCardInfo({
             <span className="font-geist text-xl leading-7 text-[#2FD345]">
               {curveProgress >= 100
                 ? "Complete"
-                : `${Math.min(100, curveProgress)}%`}
+                : `${Math.min(100, curveProgress).toFixed(0)}%`}
             </span>
           </div>
           <div className="relative group">
@@ -270,7 +268,7 @@ export function AgentCardInfo({
             style={{ width: `${Math.min(100, curveProgress)}%` }}
           />
         </div>
-        <p className="font-satoshi text-base leading-5 text-[#8C8C8C]">
+        <p className="font-satoshi text-base leading-5 text-[#8C8C8C] max-w-[390px]">
           {curveProgress >= 100 ? (
             <>
               Raydium pool has been seeded. View on Raydium{" "}

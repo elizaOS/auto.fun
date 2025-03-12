@@ -183,12 +183,12 @@ export default function TradingInterface() {
   if (agent && "unauthenticated" in agent) return null;
 
   return (
-    <div className="min-h-screen text-gray-200 flex flex-col mt-[92px]">
-      <div className="flex flex-col lg:flex-row gap-4 justify-center px-4 md:px-[120px] py-6 max-w-[1680px] mx-auto w-full">
-        <div className="flex flex-col space-y-4 flex-1 w-full lg:max-w-[960px]">
+    <div className="min-h-screen text-gray-200 flex flex-col mt-4">
+      <div className="flex flex-col lg:flex-row gap-4 justify-center px-4 py-6 max-w-[1680px] mx-auto w-full">
+        <div className="order-1 lg:order-0 flex flex-col flex-1 w-full space-y-4">
           {/* Stats Section */}
           <div className="box-border flex flex-row items-center py-3 px-4 w-full bg-[#171717] border border-[#262626] rounded-[6px] overflow-x-auto scrollbar-hide">
-            <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[140px] sm:min-w-0 sm:w-[266.88px] h-[56px] rounded-l-[6px] flex-1">
+            <div className="flex flex-col justify-center items-center p-0 gap-2 rounded-l-[6px] flex-1">
               <span className="font-['DM_Mono'] font-normal text-xs sm:text-base leading-6 text-[#8C8C8C] whitespace-nowrap">
                 Market Cap
               </span>
@@ -200,8 +200,8 @@ export default function TradingInterface() {
                 }).format(Number(token.marketCapUSD))}
               </span>
             </div>
-            <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
-            <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[140px] sm:min-w-0 sm:w-[266.88px] h-[56px] flex-1">
+            <div className="bg-[#262626] flex-none" />
+            <div className="flex flex-col justify-center items-center p-0 gap-2 flex-1">
               <span className="font-['DM_Mono'] font-normal text-xs sm:text-base leading-6 text-[#8C8C8C] whitespace-nowrap">
                 24hr Volume
               </span>
@@ -213,8 +213,8 @@ export default function TradingInterface() {
                 }).format(Number(token.volume24h))}
               </span>
             </div>
-            <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
-            <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[140px] sm:min-w-0 sm:w-[266.88px] h-[56px] flex-1">
+            <div className="bg-[#262626] flex-none" />
+            <div className="flex flex-col justify-center items-center p-0 gap-2 flex-1">
               <span className="font-['DM_Mono'] font-normal text-xs sm:text-base leading-6 text-[#8C8C8C] whitespace-nowrap">
                 Creator
               </span>
@@ -222,8 +222,8 @@ export default function TradingInterface() {
                 <span className="font-['DM_Mono'] font-normal text-sm sm:text-xl leading-6 text-white">{`${token.creator.slice(0, 4)}...${token.creator.slice(-4)}`}</span>
               </div>
             </div>
-            <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
-            <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[140px] sm:min-w-0 sm:w-[266.88px] h-[56px] rounded-r-[6px] flex-1">
+            <div className="bg-[#262626] flex-none" />
+            <div className="flex flex-col justify-center items-center p-0 gap-2 rounded-r-[6px] flex-1">
               <span className="font-['DM_Mono'] font-normal text-xs sm:text-base leading-6 text-[#8C8C8C] whitespace-nowrap">
                 Creation Time
               </span>
@@ -238,9 +238,9 @@ export default function TradingInterface() {
             </div>
           </div>
 
-          {/* Trading Chart */}
-          {token && token.status === "active" && (
-            <div className="w-full h-[400px] sm:h-[600px] lg:h-[846px] bg-[#171717] border border-[#262626] rounded-xl overflow-hidden">
+          {((token && token.status === "active") ||
+            token?.status === "locked") && (
+            <div className="w-full h-[50vh] bg-[#171717] border border-[#262626] rounded-xl overflow-hidden">
               <TradingChart param={token} />
             </div>
           )}
@@ -451,38 +451,32 @@ export default function TradingInterface() {
             </div>
           )}
 
-          {(token?.status === "active" || token?.status === "locked") && (
-            <TradingChart param={token} />
-          )}
-
           {/* Fal Generator Section */}
           {/* <FalGenerator /> */}
         </div>
 
-        <div className="flex flex-col space-y-4 w-full lg:w-auto lg:min-w-[380px] lg:max-w-[420px] 2xl:max-w-[480px]">
-          <div className="w-full">
-            <AgentCardInfo
-              curveProgress={token.curveProgress}
-              description={token.description}
-              image={token.image}
-              mint={token.mint}
-              name={token.name}
-              reserveLamport={token.reserveLamport}
-              virtualReserves={token.virtualReserves}
-              ticker={token.ticker}
-              socialLinks={{
-                discord: token.discord,
-                telegram: token.telegram,
-                twitter: token.twitter,
-                website: token.website,
-              }}
-              solPriceUSD={token.solPriceUSD}
-              tokenPriceUSD={token.tokenPriceUSD}
-              agentName={agent?.name}
-            />
-          </div>
+        <div className="order-0 lg:order-1 flex flex-col items-start space-y-4">
+          <AgentCardInfo
+            curveProgress={token.curveProgress}
+            description={token.description}
+            image={token.image}
+            mint={token.mint}
+            name={token.name}
+            reserveLamport={token.reserveLamport}
+            virtualReserves={token.virtualReserves}
+            ticker={token.ticker}
+            socialLinks={{
+              discord: token.discord,
+              telegram: token.telegram,
+              twitter: token.twitter,
+              website: token.website,
+            }}
+            solPriceUSD={token.solPriceUSD}
+            tokenPriceUSD={token.tokenPriceUSD}
+            agentName={agent?.name}
+          />
 
-          <div className="w-full">
+          <div className="flex flex-col lg:flex-1 lg:w-full">
             <TokenBuySell tokenId={tokenId} />
           </div>
         </div>
@@ -492,23 +486,23 @@ export default function TradingInterface() {
 }
 
 const renderSkeletons = () => (
-  <div className="min-h-screen text-gray-200 flex flex-col mt-[92px]">
-    <div className="flex flex-col lg:flex-row gap-4 justify-center px-4 md:px-[120px] py-6 max-w-[1680px] mx-auto w-full">
+  <div className="min-h-screen text-gray-200 flex flex-col mt-4">
+    <div className="flex flex-col lg:flex-row gap-4 justify-center px-4 py-6">
       <div className="flex flex-col space-y-4 flex-1 w-full lg:max-w-[960px]">
         {/* Stats Section Skeleton */}
         <div className="box-border flex flex-row items-center py-3 px-0 w-full h-[80px] bg-[#171717] border border-[#262626] rounded-[6px] overflow-x-auto">
           <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[200px] sm:min-w-0 sm:w-[266.88px] h-[56px] rounded-l-[6px] flex-1">
             <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
           </div>
-          <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
+          <div className="bg-[#262626] flex-none" />
           <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[200px] sm:min-w-0 sm:w-[266.88px] h-[56px] flex-1">
             <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
           </div>
-          <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
+          <div className="bg-[#262626] flex-none" />
           <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[200px] sm:min-w-0 sm:w-[266.88px] h-[56px] flex-1">
             <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
           </div>
-          <div className="w-[1px] h-[56px] bg-[#262626] flex-none" />
+          <div className="bg-[#262626] flex-none" />
           <div className="flex flex-col justify-center items-center p-0 gap-2 min-w-[200px] sm:min-w-0 sm:w-[266.88px] h-[56px] rounded-r-[6px] flex-1">
             <div className="w-48 h-7 bg-neutral-800 rounded animate-pulse" />
           </div>
@@ -558,7 +552,7 @@ const renderSkeletons = () => (
         </div>
       </div>
 
-      <div className="flex flex-col space-y-4 w-full lg:w-auto lg:min-w-[380px] lg:max-w-[420px] 2xl:max-w-[480px]">
+      <div className="flex flex-col space-y-4 w-full lg:w-auto lg:min-w-[380px] lg:max-w-[420px] 2lg:max-w-[480px]">
         {/* Add skeleton for AgentCardInfo */}
         <div className="w-full h-[400px] bg-[#171717] border border-[#262626] rounded-xl animate-pulse" />
         {/* Add skeleton for TokenBuySell */}
