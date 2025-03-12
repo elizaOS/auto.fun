@@ -133,10 +133,6 @@ export default function TransactionSignPage() {
         <div className="text-[#2fd345] text-2xl font-medium font-satoshi leading-loose mb-3.5">
           Launching Token...
         </div>
-        <div className="text-center text-[#8c8c8c] font-satoshi leading-normal">
-          Forem ipsum dolor sit amet, consectetur adipiscing elit. Nunc
-          vulputate libero et
-        </div>
       </Modal>
 
       <Modal
