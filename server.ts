@@ -36,6 +36,9 @@ import mediaGenerationRoutes from './mediaGeneration';
 import { MigrationService } from './lib/migration';
 import { fetchCodexTokenEvents } from './lib/api';
 
+// For devnet testing - placeholder token address for locked tokens since there are none in devnet
+const DEV_TEST_TOKEN_ADDRESS = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
+
 const VALID_PROGRAM_ID = new Set(
   [
     CREATE_CPMM_POOL_PROGRAM.toBase58(), 
@@ -648,13 +651,25 @@ const initializeConfig = async () => {
   return { connection: solConnection, program, wallet: payer };
 };
 
+import { fetchCodexBars, CodexBarResolution } from './lib/api';
+
+/**
+ * Fetches price chart data from either DB or Codex API
+ * @param pairIndex Pair index
+ * @param start Start timestamp in milliseconds
+ * @param end End timestamp in milliseconds
+ * @param range Time range in minutes (1, 5, 15, 60, 120)
+ * @param token Token mint address
+ * @returns Array of candle data
+ */
 export async function fetchPriceChartData(pairIndex: number, start: number, end: number, range: number, token: string) {
   const tokenInfo = await Token.findOne({ mint: token });
   if (!tokenInfo) {
     logger.error(`Token ${token} not found`);
     return [];
   }
-
+  
+  
   if (tokenInfo.status !== 'locked') {
     // load price histories from DB
     const swaps = await Swap.find(
@@ -688,31 +703,87 @@ export async function fetchPriceChartData(pairIndex: number, start: number, end:
     return cdFeeds;
   } else if (tokenInfo.status === 'locked') {
     try {
-      // @TODO Deploy our program to mainnet in, otherwise token address is fixed for now, for development, since we're not working with mainnet, code is working for mainnet
-      const tokenAddress = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
+      // Use the test token address only in devnet since there are no locked pools in dev
+      const tokenAddress = process.env.NETWORK === 'devnet' 
+        ? DEV_TEST_TOKEN_ADDRESS 
+        : token;
       
-      // Fetch price history from Codex API using our utility function
-      const tokenEvents = await fetchCodexTokenEvents(
+      // Convert range to Codex resolution format
+      let resolution: CodexBarResolution = '1';
+      switch (range) {
+        case 1: resolution = '1'; break;
+        case 5: resolution = '5'; break;
+        case 15: resolution = '15'; break;
+        case 60: resolution = '60'; break;
+        case 120: resolution = '60'; break; // Use 60m and group if needed
+        default: resolution = '1';
+      }
+      
+      // Use the new getBars API directly
+      const candles = await fetchCodexBars(
         tokenAddress,
         Math.floor(start / 1000),
-        Math.floor(end / 1000)
+        Math.floor(end / 1000),
+        resolution
       );
       
-      // Convert to price feed format
-      const priceFeeds: PriceFeedInfo[] = tokenEvents.map(item => ({
-        price: parseFloat(item.token1PoolValueUsd),
-        timestamp: new Date(item.timestamp * 1000),
-        volume: parseFloat(item.data.amount0)
-      }));
-
-      if (!priceFeeds.length) return [];
-
-      const cdFeeds = getCandleData(priceFeeds, range);
-      return cdFeeds;
+      // For 120 minute resolution, we need to combine 2 x 60m candles
+      if (range === 120 && candles.length > 1) {
+        const combined = [];
+        for (let i = 0; i < candles.length; i += 2) {
+          // If we have a pair, combine them
+          if (i + 1 < candles.length) {
+            combined.push({
+              open: candles[i].open,
+              high: Math.max(candles[i].high, candles[i+1].high),
+              low: Math.min(candles[i].low, candles[i+1].low),
+              close: candles[i+1].close,
+              volume: candles[i].volume + candles[i+1].volume,
+              time: candles[i].time
+            });
+          } else {
+            // Add the last odd candle if there is one
+            combined.push(candles[i]);
+          }
+        }
+        return combined;
+      }
+      
+      return candles;
       
     } catch (error) {
-      logger.error('Error fetching data for locked token:', error);
-      return [];
+      logger.error('Error fetching data with getBars API:', error);
+      
+      // Fallback to the old method if getBars fails
+      try {
+        logger.log('Falling back to getTokenEvents API');
+        // Use the test token address only in devnet
+        const tokenAddress = process.env.NETWORK === 'devnet' 
+          ? DEV_TEST_TOKEN_ADDRESS 
+          : token;
+        
+        // Fetch price history from Codex API using our utility function
+        const tokenEvents = await fetchCodexTokenEvents(
+          tokenAddress,
+          Math.floor(start / 1000),
+          Math.floor(end / 1000)
+        );
+        
+        // Convert to price feed format
+        const priceFeeds: PriceFeedInfo[] = tokenEvents.map(item => ({
+          price: parseFloat(item.token1PoolValueUsd),
+          timestamp: new Date(item.timestamp * 1000),
+          volume: parseFloat(item.data.amount0)
+        }));
+
+        if (!priceFeeds.length) return [];
+
+        const cdFeeds = getCandleData(priceFeeds, range);
+        return cdFeeds;
+      } catch (fallbackError) {
+        logger.error('Fallback method also failed:', fallbackError);
+        return [];
+      }
     }
   }
 }
@@ -787,7 +858,32 @@ export async function getLatestCandle(token: string, swap: any) {
   const candlePeriod = 60; // 1 min default
   const candleStart = Math.floor(swapTime / candlePeriod) * candlePeriod;
   
-  // Fetch all swaps in this candle period to properly calculate OHLCV
+  // Check if token is locked (should use Codex API)
+  const tokenInfo = await Token.findOne({ mint: token });
+  
+  if (tokenInfo?.status === 'locked') {
+    try {
+      // Use the test token address only in devnet since there are no locked pools in dev
+      const tokenAddress = process.env.NETWORK === 'devnet' 
+        ? DEV_TEST_TOKEN_ADDRESS 
+        : token;
+      const candles = await fetchCodexBars(
+        tokenAddress,
+        candleStart,
+        candleStart + candlePeriod,
+        '1' // 1 minute candles
+      );
+      
+      if (candles.length > 0) {
+        return candles[0];
+      }
+    } catch (error) {
+      logger.error('Error fetching latest candle from Codex:', error);
+      // Fall through to default method
+    }
+  }
+  
+  // Fallback: Fetch all swaps in this candle period to properly calculate OHLCV
   const latestCandle = await fetchPriceChartData(
     0, // pairIndex
     candleStart * 1000, // start (ms)
