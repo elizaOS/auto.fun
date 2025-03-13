@@ -151,6 +151,13 @@ export const usePaginatedLiveData = <TInput, TOutput>({
     ],
   );
 
+  useEffect(
+    function updateSortOrder() {
+      goToPage(page);
+    },
+    [goToPage, page],
+  );
+
   useEffect(() => {
     if (!fetchedData.items.length) {
       goToPage(1);
@@ -222,23 +229,12 @@ export const usePaginatedLiveData = <TInput, TOutput>({
     } else {
       setPage(nextPageIndex);
     }
-  }, [
-    page,
-    totalPages,
-    hasMore,
-    allItems.length,
-    endpoint,
-    itemsPerPage,
-    validationSchema,
-    itemsPropertyName,
-    sortBy,
-    sortOrder,
-  ]);
+  }, [page, totalPages, hasMore, allItems.length, itemsPerPage, goToPage]);
 
   const previousPage = useCallback(() => {
     if (page === 1) return;
     goToPage(page - 1);
-  }, [page]);
+  }, [goToPage, page]);
 
   return {
     items: currentPageItems,
