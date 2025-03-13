@@ -24,7 +24,7 @@ import {
   ApiV3PoolInfoStandardItemCpmm,
 } from '@raydium-io/raydium-sdk-v2';
 import cors from 'cors';
-import { Token, Swap, Fee, TokenMetadataJson } from './schemas';
+import { Token, Swap, Fee, TokenMetadataJson, TokenType } from './schemas';
 import routes from './routes';
 import { updateHoldersCache } from './routes';
 import { VanityKeypairGenerator } from './keypairgen';
@@ -205,6 +205,117 @@ class TokenMonitor {
     }, 5 * 60 * 1000); // Run every 5 minutes
   }
 
+  private async getTxIdAndCreatorFromTokenAddress(tokenAddress: string) {
+    const transactionHistory = await this.connection.getSignaturesForAddress(
+      new PublicKey(tokenAddress)
+    );
+
+    if (transactionHistory.length > 0) {
+      console.log(transactionHistory)
+      const tokenCreationTxId = transactionHistory[transactionHistory.length - 1].signature;
+      const transactionDetails = await this.connection.getTransaction(tokenCreationTxId);
+
+      if (transactionDetails && transactionDetails.transaction && transactionDetails.transaction.message) {
+        // The creator address is typically the first account in the transaction's account keys
+        const creatorAddress = transactionDetails.transaction.message.accountKeys[0].toBase58(); 
+        return { tokenCreationTxId, creatorAddress };
+      }
+    }
+
+    throw new Error(`No transaction found for token address: ${tokenAddress}`);
+  }
+
+  async createNewToken(txId: string, tokenAddress: string, creatorAddress: string) {
+    try {
+      let metadata;
+
+      metadata = await fetchMetadataWithBackoff(this.umi, tokenAddress);
+      logger.log(`Fetched metadata for token ${tokenAddress}:`, metadata);
+  
+      const [bondingCurvePda] = PublicKey.findProgramAddressSync(
+        [Buffer.from(SEED_BONDING_CURVE), new PublicKey(tokenAddress).toBytes()],
+        this.program.programId
+      );
+  
+      const bondingCurveAccount = await this.program.account.bondingCurve.fetchNullable(
+        bondingCurvePda
+      );
+
+      let additionalMetadata: TokenMetadataJson | null = null;
+      try {
+        const response = await fetch(metadata.metadata.uri);
+        additionalMetadata = await response.json() as TokenMetadataJson;
+      } catch (error) {
+        logger.error(`Failed to fetch IPFS metadata from URI: ${metadata.metadata.uri}`, error);
+      }
+
+      const TOKEN_DECIMALS = Number(process.env.DECIMALS || 6);
+
+      const solPrice = await getSOLPrice();
+
+      const currentPrice = Number(bondingCurveAccount.reserveToken) > 0 ? 
+        (Number(bondingCurveAccount.reserveLamport) / 1e9) / 
+        (Number(bondingCurveAccount.reserveToken) / Math.pow(10, TOKEN_DECIMALS))
+        : 0;
+
+      const tokenPriceInSol = currentPrice / Math.pow(10, TOKEN_DECIMALS);
+      const tokenPriceUSD = currentPrice > 0 ? 
+          (tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)) : 0;
+
+      const marketCapUSD = (Number(process.env.TOKEN_SUPPLY) / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD;
+  
+      const token = await Token.findOneAndUpdate(
+        { mint: tokenAddress },
+        {
+          name: metadata.metadata.name,
+          ticker: metadata.metadata.symbol,
+          url: metadata.metadata.uri,
+          image: additionalMetadata?.image || '',
+          twitter: additionalMetadata?.twitter || '',
+          telegram: additionalMetadata?.telegram || '',
+          website: additionalMetadata?.website || '',
+          discord: additionalMetadata?.discord || '',
+          description: additionalMetadata?.description || '',
+          agentLink: additionalMetadata?.agentLink || '',
+          mint: tokenAddress,
+          creator: creatorAddress,
+          reserveAmount: Number(bondingCurveAccount.reserveToken.toNumber()),
+          reserveLamport: Number(bondingCurveAccount.reserveLamport.toNumber()),
+          virtualReserves: Number(process.env.VIRTUAL_RESERVES),
+          liquidity:
+            ((Number(bondingCurveAccount.reserveLamport) / 1e9 * solPrice) + 
+            (Number(bondingCurveAccount.reserveToken) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD)),
+          currentPrice: (Number(bondingCurveAccount.reserveLamport) / 1e9) / (Number(bondingCurveAccount.reserveToken) / Math.pow(10, TOKEN_DECIMALS)),
+          marketCapUSD: marketCapUSD,
+          tokenPriceUSD: tokenPriceUSD,
+          solPriceUSD: solPrice,
+          curveProgress: ((Number(bondingCurveAccount.reserveLamport) - Number(process.env.VIRTUAL_RESERVES))  / (Number(process.env.CURVE_LIMIT) - Number(process.env.VIRTUAL_RESERVES))) * 100,
+          curveLimit: Number(process.env.CURVE_LIMIT),
+          status: 'active',
+          createdAt: new Date(),
+          lastUpdated: new Date(),
+          priceChange24h: 0,
+          price24hAgo: tokenPriceUSD,
+          volume24h: 0,
+          inferenceCount: 0,
+          txId
+        },
+        { 
+          upsert: true,
+          new: true 
+        }
+      );
+
+      logger.log(`Found new token: ${tokenAddress}`);
+      io.to('global').emit('newToken', token);
+  
+      return token;
+    } catch (error) {
+      logger.error('Error processing new token log:', error);
+      throw new Error('Error processing new token log: ' + error)
+    }
+  }
+
   async startMonitoring() {
     if (this.isMonitoring) return;
     this.isMonitoring = true;
@@ -287,93 +398,8 @@ class TokenMonitor {
         }
 
         if (newTokenLog) {
-          try {
-            const [tokenAddress, creatorAddress] = newTokenLog.split(" ").slice(-2).map(s => s.replace(/[",)]/g, ''));
-            
-            let metadata;
-
-            metadata = await fetchMetadataWithBackoff(this.umi, tokenAddress);
-        
-            const [bondingCurvePda] = PublicKey.findProgramAddressSync(
-              [Buffer.from(SEED_BONDING_CURVE), new PublicKey(tokenAddress).toBytes()],
-              this.program.programId
-            );
-        
-            const bondingCurveAccount = await this.program.account.bondingCurve.fetchNullable(
-              bondingCurvePda
-            );
-
-            let additionalMetadata: TokenMetadataJson | null = null;
-            try {
-              const response = await fetch(metadata.metadata.uri);
-              additionalMetadata = await response.json() as TokenMetadataJson;
-            } catch (error) {
-              logger.error(`Failed to fetch IPFS metadata from URI: ${metadata.metadata.uri}`, error);
-            }
-
-            const TOKEN_DECIMALS = Number(process.env.DECIMALS || 6);
-
-            const solPrice = await getSOLPrice();
-
-            const currentPrice = Number(bondingCurveAccount.reserveToken) > 0 ? 
-              (Number(bondingCurveAccount.reserveLamport) / 1e9) / 
-              (Number(bondingCurveAccount.reserveToken) / Math.pow(10, TOKEN_DECIMALS))
-              : 0;
-
-            const tokenPriceInSol = currentPrice / Math.pow(10, TOKEN_DECIMALS);
-            const tokenPriceUSD = currentPrice > 0 ? 
-                (tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)) : 0;
-
-            const marketCapUSD = (Number(process.env.TOKEN_SUPPLY) / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD;
-        
-            const token = await Token.findOneAndUpdate(
-              { mint: tokenAddress },
-              {
-                name: metadata.metadata.name,
-                ticker: metadata.metadata.symbol,
-                url: metadata.metadata.uri,
-                image: additionalMetadata?.image || '',
-                twitter: additionalMetadata?.twitter || '',
-                telegram: additionalMetadata?.telegram || '',
-                website: additionalMetadata?.website || '',
-                discord: additionalMetadata?.discord || '',
-                description: additionalMetadata?.description || '',
-                agentLink: additionalMetadata?.agentLink || '',
-                mint: tokenAddress,
-                creator: creatorAddress,
-                reserveAmount: Number(bondingCurveAccount.reserveToken.toNumber()),
-                reserveLamport: Number(bondingCurveAccount.reserveLamport.toNumber()),
-                virtualReserves: Number(process.env.VIRTUAL_RESERVES),
-                liquidity:
-                  ((Number(bondingCurveAccount.reserveLamport) / 1e9 * solPrice) + 
-                  (Number(bondingCurveAccount.reserveToken) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD)),
-                currentPrice: (Number(bondingCurveAccount.reserveLamport) / 1e9) / (Number(bondingCurveAccount.reserveToken) / Math.pow(10, TOKEN_DECIMALS)),
-                marketCapUSD: marketCapUSD,
-                tokenPriceUSD: tokenPriceUSD,
-                solPriceUSD: solPrice,
-                curveProgress: ((Number(bondingCurveAccount.reserveLamport) - Number(process.env.VIRTUAL_RESERVES))  / (Number(process.env.CURVE_LIMIT) - Number(process.env.VIRTUAL_RESERVES))) * 100,
-                curveLimit: Number(process.env.CURVE_LIMIT),
-                status: 'active',
-                createdAt: new Date(),
-                lastUpdated: new Date(),
-                priceChange24h: 0,
-                price24hAgo: tokenPriceUSD,
-                volume24h: 0,
-                inferenceCount: 0,
-                txId: logs.signature,
-              },
-              { 
-                upsert: true,
-                new: true 
-              }
-            );
-
-            logger.log(`Found new token: ${tokenAddress}`);
-            io.to('global').emit('newToken', token);
-        
-          } catch (error) {
-            logger.error('Error processing new token log:', error);
-          }
+          const [tokenAddress, creatorAddress] = newTokenLog.split(" ").slice(-2).map(s => s.replace(/[",)]/g, ''));
+          await this.createNewToken(logs.signature, tokenAddress, creatorAddress);
         }
 
         if (logs.err || !logs.logs.some(log => log.includes("success"))) {
@@ -447,40 +473,53 @@ class TokenMonitor {
               ? ((tokenPriceUSD - existingToken.price24hAgo) / existingToken.price24hAgo) * 100
               : 0;
 
-            const token = await Token.findOneAndUpdate(
-              { mint: mintAddress },
-              {
-                reserveAmount: Number(reserveToken), // WIP
-                reserveLamport: Number(reserveLamport), // WIP
-                currentPrice: (Number(reserveLamport) / 1e9) / (Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS)),
-                liquidity:  
-                  (Number(reserveLamport) / 1e9 * solPrice) + 
-                  (Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD),
-                marketCapUSD: marketCapUSD,
-                tokenPriceUSD: tokenPriceUSD,
-                solPriceUSD: solPrice,
-                curveProgress: ((Number(reserveLamport) - Number(process.env.VIRTUAL_RESERVES))  / (Number(process.env.CURVE_LIMIT) - Number(process.env.VIRTUAL_RESERVES))) * 100,
-                lastUpdated: new Date(),
-                $inc: { 
-                  volume24h: direction === "1" 
-                    ? (Number(amount) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD)
-                    : (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD)
+              let token: TokenType;
+            if (existingToken) {
+              token = await Token.findOneAndUpdate(
+                { mint: mintAddress },
+                {
+                  reserveAmount: Number(reserveToken), // WIP
+                  reserveLamport: Number(reserveLamport), // WIP
+                  currentPrice: (Number(reserveLamport) / 1e9) / (Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS)),
+                  liquidity:  
+                    (Number(reserveLamport) / 1e9 * solPrice) + 
+                    (Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD),
+                  marketCapUSD: marketCapUSD,
+                  tokenPriceUSD: tokenPriceUSD,
+                  solPriceUSD: solPrice,
+                  curveProgress: ((Number(reserveLamport) - Number(process.env.VIRTUAL_RESERVES))  / (Number(process.env.CURVE_LIMIT) - Number(process.env.VIRTUAL_RESERVES))) * 100,
+                  lastUpdated: new Date(),
+                  $inc: { 
+                    volume24h: direction === "1" 
+                      ? (Number(amount) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD)
+                      : (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD)
+                  },
+                  $set: {
+                    priceChange24h: priceChange,
+                    // Only update price24hAgo if it's been more than 24 hours or doesn't exist
+                    ...((!existingToken?.price24hAgo || 
+                      Date.now() - (existingToken?.lastPriceUpdate?.getTime() || 0) > 24 * 60 * 60 * 1000) && { // 24 hours
+                      price24hAgo: tokenPriceUSD,
+                      lastPriceUpdate: new Date()
+                    })
+                  }
                 },
-                $set: {
-                  priceChange24h: priceChange,
-                  // Only update price24hAgo if it's been more than 24 hours or doesn't exist
-                  ...((!existingToken?.price24hAgo || 
-                     Date.now() - (existingToken?.lastPriceUpdate?.getTime() || 0) > 24 * 60 * 60 * 1000) && { // 24 hours
-                    price24hAgo: tokenPriceUSD,
-                    lastPriceUpdate: new Date()
-                  })
+                { 
+                  upsert: true,
+                  new: true 
                 }
-              },
-              { 
-                upsert: true,
-                new: true 
-              }
-            );
+              );
+          } else {
+            /**
+             * This is a very edge case to handle when a token might have been created while the API
+             * was down, and then a user swaps it via a direct program interaction without using our app when the API is back up.
+             * In that case the API will miss the token creation logs, but still get a swap log.
+             * If we don't handle this separately, the swap log will upsert partial data and
+             * break client-side validation.
+             */
+            const {creatorAddress, tokenCreationTxId} = await this.getTxIdAndCreatorFromTokenAddress(mintAddress)
+            token = await this.createNewToken(tokenCreationTxId, mintAddress, creatorAddress)
+          }
             
             // Create fee record
             const fee = await Fee.findOneAndUpdate(
@@ -496,7 +535,6 @@ class TokenMonitor {
                 txId: logs.signature,
               },
               { 
-                upsert: true,
                 new: true 
               }
             );
