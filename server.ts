@@ -24,7 +24,7 @@ import {
   ApiV3PoolInfoStandardItemCpmm,
 } from '@raydium-io/raydium-sdk-v2';
 import cors from 'cors';
-import { Token, Swap, Fee, TokenMetadataJson, TokenType } from './schemas';
+import { Token, Swap, Fee, TokenMetadataJson, TokenType, TokenValidation } from './schemas';
 import routes from './routes';
 import { updateHoldersCache } from './routes';
 import { VanityKeypairGenerator } from './keypairgen';
@@ -473,53 +473,56 @@ class TokenMonitor {
               ? ((tokenPriceUSD - existingToken.price24hAgo) / existingToken.price24hAgo) * 100
               : 0;
 
-              let token: TokenType;
-            if (existingToken) {
-              token = await Token.findOneAndUpdate(
-                { mint: mintAddress },
-                {
-                  reserveAmount: Number(reserveToken), // WIP
-                  reserveLamport: Number(reserveLamport), // WIP
-                  currentPrice: (Number(reserveLamport) / 1e9) / (Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS)),
-                  liquidity:  
-                    (Number(reserveLamport) / 1e9 * solPrice) + 
-                    (Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD),
-                  marketCapUSD: marketCapUSD,
-                  tokenPriceUSD: tokenPriceUSD,
-                  solPriceUSD: solPrice,
-                  curveProgress: ((Number(reserveLamport) - Number(process.env.VIRTUAL_RESERVES))  / (Number(process.env.CURVE_LIMIT) - Number(process.env.VIRTUAL_RESERVES))) * 100,
-                  lastUpdated: new Date(),
-                  $inc: { 
-                    volume24h: direction === "1" 
-                      ? (Number(amount) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD)
-                      : (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD)
-                  },
-                  $set: {
-                    priceChange24h: priceChange,
-                    // Only update price24hAgo if it's been more than 24 hours or doesn't exist
-                    ...((!existingToken?.price24hAgo || 
-                      Date.now() - (existingToken?.lastPriceUpdate?.getTime() || 0) > 24 * 60 * 60 * 1000) && { // 24 hours
-                      price24hAgo: tokenPriceUSD,
-                      lastPriceUpdate: new Date()
-                    })
-                  }
+            let token: TokenType = {};
+            const {success: isTokenValid} = await TokenValidation.safeParseAsync(existingToken);
+
+            if (!isTokenValid) {
+              /**
+              * This is a very edge case to handle when a token might have been created while the API
+              * was down, and then a user swaps it via a direct program interaction without using our app when the API is back up.
+              * In that case the API will miss the token creation logs, but still get a swap log.
+              * If we don't handle this separately, the swap log will upsert partial data and
+              * break client-side validation.
+              */
+             const {creatorAddress, tokenCreationTxId} = await this.getTxIdAndCreatorFromTokenAddress(mintAddress)
+             token = await this.createNewToken(tokenCreationTxId, mintAddress, creatorAddress)
+            }
+
+            token = await Token.findOneAndUpdate(
+              { mint: mintAddress },
+              {
+                ...token,
+                reserveAmount: Number(reserveToken), // WIP
+                reserveLamport: Number(reserveLamport), // WIP
+                currentPrice: (Number(reserveLamport) / 1e9) / (Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS)),
+                liquidity:  
+                  (Number(reserveLamport) / 1e9 * solPrice) + 
+                  (Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD),
+                marketCapUSD: marketCapUSD,
+                tokenPriceUSD: tokenPriceUSD,
+                solPriceUSD: solPrice,
+                curveProgress: ((Number(reserveLamport) - Number(process.env.VIRTUAL_RESERVES))  / (Number(process.env.CURVE_LIMIT) - Number(process.env.VIRTUAL_RESERVES))) * 100,
+                lastUpdated: new Date(),
+                $inc: { 
+                  volume24h: direction === "1" 
+                    ? (Number(amount) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD)
+                    : (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD)
                 },
-                { 
-                  upsert: true,
-                  new: true 
+                $set: {
+                  priceChange24h: priceChange,
+                  // Only update price24hAgo if it's been more than 24 hours or doesn't exist
+                  ...((!existingToken?.price24hAgo || 
+                    Date.now() - (existingToken?.lastPriceUpdate?.getTime() || 0) > 24 * 60 * 60 * 1000) && { // 24 hours
+                    price24hAgo: tokenPriceUSD,
+                    lastPriceUpdate: new Date()
+                  })
                 }
-              );
-          } else {
-            /**
-             * This is a very edge case to handle when a token might have been created while the API
-             * was down, and then a user swaps it via a direct program interaction without using our app when the API is back up.
-             * In that case the API will miss the token creation logs, but still get a swap log.
-             * If we don't handle this separately, the swap log will upsert partial data and
-             * break client-side validation.
-             */
-            const {creatorAddress, tokenCreationTxId} = await this.getTxIdAndCreatorFromTokenAddress(mintAddress)
-            token = await this.createNewToken(tokenCreationTxId, mintAddress, creatorAddress)
-          }
+              },
+              { 
+                upsert: true,
+                new: true 
+              }
+            );
             
             // Create fee record
             const fee = await Fee.findOneAndUpdate(
