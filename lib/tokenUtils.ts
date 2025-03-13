@@ -60,32 +60,6 @@ export async function getTxIdAndCreatorFromTokenAddress(
   throw new Error(`No transaction found for token address: ${tokenAddress}`);
 }
 
-// export async function completeTokenData(tokenDocument: Partial<TokenType> | null) {
-//   try {
-//     if (!tokenDocument?.mint) {
-//       throw new Error('Token must have a mint address to complete data');
-//     }
-    
-//     console.log(`Token data is incomplete for ${tokenDocument.mint}, attempting to fetch complete data`);
-    
-//     const {tokenCreationTxId, creatorAddress} = await getTxIdAndCreatorFromTokenAddress(tokenDocument.mint)
-    
-//     console.log('Fetched txId and creator:', tokenCreationTxId, creatorAddress);
-
-//     const completeToken = await createNewTokenData(
-//       tokenCreationTxId,
-//       tokenDocument.mint,
-//       creatorAddress,
-//     );
-
-//     console.log('Completed token fetching');
-//     return completeToken;
-//   } catch (error) {
-//     console.error('Error completing token data:', error);
-//     throw error;
-//   }
-// }
-
 /**
  * Creates a new token record with all required data
  */
