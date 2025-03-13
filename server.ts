@@ -36,6 +36,9 @@ import mediaGenerationRoutes from './mediaGeneration';
 import { MigrationService } from './lib/migration';
 import { fetchCodexTokenEvents } from './lib/api';
 
+// For devnet testing - placeholder token address for locked tokens since there are none in devnet
+const DEV_TEST_TOKEN_ADDRESS = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
+
 const VALID_PROGRAM_ID = new Set(
   [
     CREATE_CPMM_POOL_PROGRAM.toBase58(), 
@@ -700,8 +703,10 @@ export async function fetchPriceChartData(pairIndex: number, start: number, end:
     return cdFeeds;
   } else if (tokenInfo.status === 'locked') {
     try {
-      // Hardcode token address for Codex API since there are no locked pools in devnet
-      const tokenAddress = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
+      // Use the test token address only in devnet since there are no locked pools in dev
+      const tokenAddress = process.env.NETWORK === 'devnet' 
+        ? DEV_TEST_TOKEN_ADDRESS 
+        : token;
       
       // Convert range to Codex resolution format
       let resolution: CodexBarResolution = '1';
@@ -752,7 +757,10 @@ export async function fetchPriceChartData(pairIndex: number, start: number, end:
       // Fallback to the old method if getBars fails
       try {
         logger.log('Falling back to getTokenEvents API');
-        const tokenAddress = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
+        // Use the test token address only in devnet
+        const tokenAddress = process.env.NETWORK === 'devnet' 
+          ? DEV_TEST_TOKEN_ADDRESS 
+          : token;
         
         // Fetch price history from Codex API using our utility function
         const tokenEvents = await fetchCodexTokenEvents(
@@ -855,8 +863,10 @@ export async function getLatestCandle(token: string, swap: any) {
   
   if (tokenInfo?.status === 'locked') {
     try {
-      // Use the Codex getBars API directly for better performance
-      const tokenAddress = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
+      // Use the test token address only in devnet since there are no locked pools in dev
+      const tokenAddress = process.env.NETWORK === 'devnet' 
+        ? DEV_TEST_TOKEN_ADDRESS 
+        : token;
       const candles = await fetchCodexBars(
         tokenAddress,
         candleStart,

@@ -20,14 +20,14 @@ export interface CodexTokenEventsResponse {
 
 /**
  * Fetches token events from the Codex API
- * @param tokenAddress Token address to fetch events for (defaults to hardcoded value for development)
+ * @param tokenAddress Token address to fetch events for
  * @param startTimestamp Start timestamp in seconds
  * @param endTimestamp End timestamp in seconds
  * @param networkId Network ID (default: 1399811149 for Solana)
  * @returns Array of token events
  */
 export async function fetchCodexTokenEvents(
-  tokenAddress: string = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump",
+  tokenAddress: string,
   startTimestamp: number,
   endTimestamp: number,
   networkId: number = 1399811149
@@ -92,12 +92,12 @@ export async function fetchCodexTokenEvents(
 
 /**
  * Fetches current token price and market data from Codex API
- * @param tokenAddress Token address to fetch price for (defaults to hardcoded value for development)
+ * @param tokenAddress Token address to fetch price for
  * @param networkId Network ID (default: 1399811149 for Solana)
  * @returns Object with current price and market data
  */
 export async function fetchCodexTokenPrice(
-  tokenAddress: string = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump", 
+  tokenAddress: string, 
   networkId: number = 1399811149
 ): Promise<{
   currentPrice: number;
