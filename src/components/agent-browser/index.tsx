@@ -9,7 +9,7 @@ import { TableView } from "./TableView";
 
 export function AgentBrowser() {
   const [view, setView] = useState<"grid" | "table">("grid");
-  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortBy, setSortBy] = useState<string>("featured");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const router = useRouter();
 

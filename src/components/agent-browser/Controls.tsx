@@ -1,5 +1,4 @@
 import { ViewToggle } from "./ViewToggle";
-// import { FilterButtons } from "./FilterButtons";
 import { ChevronUp, ChevronDown } from "lucide-react";
 
 interface ControlsProps {
@@ -12,6 +11,7 @@ interface ControlsProps {
 }
 
 const SORT_OPTIONS = [
+  { value: "featured", label: "All" },
   { value: "name", label: "Name" },
   { value: "marketCapUSD", label: "Market Cap" },
   { value: "volume24h", label: "24h Volume" },
