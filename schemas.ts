@@ -550,8 +550,8 @@ const ensureValidToken = async (doc: Partial<TokenType | TokenType[]>) => {
 
     const {creatorAddress, tokenCreationTxId} = await getTxIdAndCreatorFromTokenAddress(token.mint)
     const baseToken = await createNewTokenData(tokenCreationTxId, token.mint, creatorAddress);
-    await Token.updateOne({mint: token.mint}, {...baseToken, ...token}, {new: true});
     Object.assign(token, {...baseToken, ...token})
+    await Token.updateOne({mint: token.mint}, token, {new: true});
   }
 
   if (Array.isArray(doc)) {
@@ -567,7 +567,7 @@ const ensureValidToken = async (doc: Partial<TokenType | TokenType[]>) => {
 
 TokenSchema.post(['find', 'findOne', 'findOneAndUpdate', 'findOneAndReplace', 'updateMany', 'updateOne'], async function (maybeDoc) {
   // maybeDoc is only the document if caller requests it via {new: true}
-  if (maybeDoc.mint) {
+  if (maybeDoc?.mint) {
     return ensureValidToken(maybeDoc)
   }
 })

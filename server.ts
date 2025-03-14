@@ -314,19 +314,9 @@ class TokenMonitor {
               ? ((tokenPriceUSD - existingToken.price24hAgo) / existingToken.price24hAgo) * 100
               : 0;
 
-            let baseToken: Partial<TokenType> = {};
-            const {success: isValidExistingToken} = await TokenValidation.safeParseAsync(existingToken)
-
-            if (!isValidExistingToken) {
-              const {tokenCreationTxId, creatorAddress} = await getTxIdAndCreatorFromTokenAddress(mintAddress);
-              baseToken = await createNewTokenData(tokenCreationTxId, mintAddress, creatorAddress);
-            }
-
-
             const token = await Token.findOneAndUpdate(
               { mint: mintAddress },
               {
-                ...baseToken,
                 reserveAmount: Number(reserveToken), // WIP
                 reserveLamport: Number(reserveLamport), // WIP
                 currentPrice: (Number(reserveLamport) / 1e9) / (Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS)),
