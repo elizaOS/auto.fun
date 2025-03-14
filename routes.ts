@@ -163,7 +163,8 @@ router.get('/tokens', async (req, res) => {
     const total = await Token.countDocuments(query);
     
     // Get paginated results
-    const tokens = await Token.aggregate([
+    // Define the pipeline steps as any[] to avoid TypeScript errors with complex aggregations
+    let aggregationPipeline: any[] = [
       { $match: query },
       {
         $lookup: {
@@ -186,19 +187,64 @@ router.get('/tokens', async (req, res) => {
           messages: 0,
           __v: 0
         }
-      },
-      {
+      }
+    ];
+
+    // Apply special weighted sorting if "Featured" sort is specified
+    if (sortBy === 'Featured') {
+      // First, find the max values to use for normalization
+      const [maxStats] = await Token.aggregate([
+        { $match: query },
+        { 
+          $group: { 
+            _id: null, 
+            maxVolume24h: { $max: '$volume24h' },
+            maxHolderCount: { $max: '$holderCount' } 
+          } 
+        }
+      ]);
+
+      const maxVolume = maxStats?.maxVolume24h || 1;
+      const maxHolders = maxStats?.maxHolderCount || 1;
+
+      // Add a weighted score field with normalized values (70% volume24h, 30% holderCount)
+      aggregationPipeline.push({
+        $addFields: {
+          featuredScore: {
+            $add: [
+              // Normalize volume24h to 0-1 range and apply 70% weight
+              { $multiply: [{ $divide: [{ $ifNull: ['$volume24h', 0] }, maxVolume] }, 0.7] },
+              // Normalize holderCount to 0-1 range and apply 30% weight
+              { $multiply: [{ $divide: [{ $ifNull: ['$holderCount', 0] }, maxHolders] }, 0.3] }
+            ]
+          }
+        }
+      });
+      
+      // Sort by the featured score
+      aggregationPipeline.push({
+        $sort: {
+          featuredScore: sortOrder === 'desc' ? -1 : 1
+        }
+      });
+    } else {
+      // Use the standard sorting
+      aggregationPipeline.push({
         $sort: {
           [sortBy === 'marketCapUSD' ? 'marketCapUSD' : sortBy]: 
           sortOrder === 'desc' ? -1 : 1
         }
-      },
-      { $skip: skip },
-      { $limit: limit }
-    ]);
+      });
+    }
+    
+    // Add pagination
+    aggregationPipeline.push({ $skip: skip });
+    aggregationPipeline.push({ $limit: limit });
+    
+    const tokens = await Token.aggregate(aggregationPipeline);
 
     const totalPages = Math.ceil(total / limit);
-      
+
     res.json({
       tokens,
       page,
