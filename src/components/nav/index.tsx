@@ -414,18 +414,24 @@ export const Nav = () => {
             <div className="hidden md:flex gap-6">
               <Link href="/">
                 <button className="flex items-center justify-center px-3 py-2 gap-2 h-9 rounded-md bg-transparent text-white">
-                  <span className="text-base font-medium">Tokens</span>
+                  <span className="text-base font-medium font-satoshi">
+                    Tokens
+                  </span>
                 </button>
               </Link>
               <button
                 className="flex items-center justify-center px-3 py-2 gap-2 h-9 rounded-md bg-transparent text-[#8C8C8C] hover:text-white transition-colors duration-200"
                 onClick={() => setModalOpen(true)}
               >
-                <span className="text-base font-normal">How It Works</span>
+                <span className="text-base font-normal font-satoshi">
+                  How It Works
+                </span>
               </button>
               <Link href="/support">
                 <button className="flex items-center justify-center px-3 py-2 gap-2 h-9 rounded-md bg-transparent text-[#8C8C8C] hover:text-white transition-colors duration-200">
-                  <span className="text-base font-normal">Support</span>
+                  <span className="text-base font-normal font-satoshi">
+                    Support
+                  </span>
                 </button>
               </Link>
             </div>
@@ -440,7 +446,7 @@ export const Nav = () => {
           <div className="flex items-center gap-4">
             <Link href="/create">
               <button className="flex items-center justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border border-[#2FD345] rounded-md">
-                <span className="text-base font-medium text-white">
+                <span className="text-base font-medium text-white font-satoshi">
                   Create Token
                 </span>
                 <Image
