@@ -86,7 +86,7 @@ export function AgentCard({
         </div>
 
         {/* Right side content */}
-        <div className="flex flex-col gap-3 flex-1 min-w-0">
+        <div className="flex flex-col justify-between flex-1 min-w-0">
           {/* Name and time */}
           <div className="flex items-start justify-between w-full gap-2">
             <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -107,9 +107,9 @@ export function AgentCard({
           </div>
 
           {/* Market cap */}
-          <div className="flex flex-col gap-1 w-full">
-            <span className="font-satoshi text-xs font-medium text-[#8C8C8C]">
-              Market Cap
+          <div className="flex flex-col w-full">
+            <span className="text-xs text-[#8C8C8C] uppercase tracking-widest">
+              MarketCap
             </span>
             <div className="flex items-center justify-between gap-2">
               <span
@@ -137,7 +137,7 @@ export function AgentCard({
           <div className="flex flex-col gap-1 w-full">
             <div className="flex justify-between items-center gap-2">
               <span
-                className={`${dmMono.className} text-sm text-[#A6A6A6] tracking-[-0.02em] truncate`}
+                className={`${dmMono.className} text-sm text-[#A6A6A6] truncate mb-1`}
               >
                 Bonding curve progress:
               </span>
@@ -175,7 +175,7 @@ export function AgentCard({
         <>
           <div className="w-full h-px bg-[#262626]" />
 
-          <button className="flex justify-center items-center w-full h-11 px-5 bg-[#2E2E2E] border border-[#262626] rounded-[6px] text-white hover:bg-[#2FD345] hover:text-black transition-colors mt-auto">
+          <button className="flex justify-center items-center w-full h-11 px-5 bg-[#2E2E2E] border border-[#262626] rounded-[6px] text-white hover:bg-[#2FD345] hover:text-black transition-colors mt-auto font-satoshi">
             Buy
           </button>
         </>
