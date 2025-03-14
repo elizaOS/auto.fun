@@ -123,7 +123,7 @@ router.get('/tokens', async (req, res) => {
       secondaryStatus, 
       search,
       creator,
-      sortBy = 'createdAt',
+      sortBy = 'featured',
       sortOrder = 'desc'
     } = req.query;
 
@@ -191,7 +191,7 @@ router.get('/tokens', async (req, res) => {
     ];
 
     // Apply special weighted sorting if "Featured" sort is specified
-    if (sortBy === 'Featured') {
+    if (sortBy === 'featured') {
       // First, find the max values to use for normalization
       const [maxStats] = await Token.aggregate([
         { $match: query },
