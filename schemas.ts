@@ -566,16 +566,9 @@ const ensureValidToken = async (doc: Partial<TokenType | TokenType[]>) => {
   }
 }
 
-TokenSchema.post(['find', 'findOne', 'findOneAndUpdate', 'findOneAndReplace', 'updateMany', 'updateOne'], async function (maybeDoc) {
-  // maybeDoc is only the document if caller requests it via {new: true}
-  if (maybeDoc?.mint) {
-    return ensureValidToken(maybeDoc)
-  }
-})
+TokenSchema.post(['find', 'findOne', 'findOneAndUpdate', 'findOneAndReplace', 'updateMany', 'updateOne'], ensureValidToken)
 
-TokenSchema.post('aggregate', async function (maybeDoc) {
-    return ensureValidToken(maybeDoc)
-});
+TokenSchema.post('aggregate', ensureValidToken);
 
 ///////////////////////////////////////
 // MongoDB Indexes
