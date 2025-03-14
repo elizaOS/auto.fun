@@ -546,7 +546,8 @@ MediaGenerationSchema.pre("save", async function (next) {
 
 const ensureValidToken = async (doc: Partial<TokenType | TokenType[]>) => {
   const modify = async (token: TokenType) => {
-    if (token.name) return
+    // If token already has a name, skip. If the token doesn't have a mint we can't match it up anyway
+    if (token?.name || !token?.mint) return
 
     const {creatorAddress, tokenCreationTxId} = await getTxIdAndCreatorFromTokenAddress(token.mint)
     const baseToken = await createNewTokenData(tokenCreationTxId, token.mint, creatorAddress);
