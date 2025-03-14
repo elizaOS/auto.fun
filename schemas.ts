@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { z } from "zod";
+import { createNewTokenData, getTxIdAndCreatorFromTokenAddress } from "./lib/tokenUtils";
 
 ///////////////////////////////////////
 // Zod Validation Schemas
@@ -24,14 +25,9 @@ export const TokenValidation = z.object({
   ticker: z.string().min(1).max(10),
   url: z.string().url(),
   image: z.string().url(),
-  xusername: z.string().optional(),
-  xurl: z.string().url().optional(),
-  xavatarurl: z.string().url().optional(),
-  xname: z.string().optional(),
-  xtext: z.string().optional(),
-  twitter: z.string().url().optional(),
-  telegram: z.string().url().optional(),
-  website: z.string().url().optional(),
+  twitter: z.union([z.string().url(), z.literal('')]).optional(),
+  telegram: z.union([z.string().url(), z.literal('')]).optional(),
+  website: z.union([z.string().url(), z.literal('')]).optional(),
   description: z.string().optional(),
   mint: z.string().min(32).max(44), // Solana addresses
   creator: z.string().min(32).max(44),
@@ -546,6 +542,38 @@ MediaGenerationSchema.pre("save", async function (next) {
   } catch (error) {
     next(error);
   }
+});
+
+const ensureValidToken = async (doc: Partial<TokenType | TokenType[]>) => {
+  const modify = async (token: TokenType) => {
+    if (token.name) return
+
+    const {creatorAddress, tokenCreationTxId} = await getTxIdAndCreatorFromTokenAddress(token.mint)
+    const baseToken = await createNewTokenData(tokenCreationTxId, token.mint, creatorAddress);
+    Object.assign(token, {...baseToken, ...token})
+    await Token.updateOne({mint: token.mint}, token, {new: true});
+  }
+
+  if (Array.isArray(doc)) {
+    const promises = [];
+    for (const item of doc) {
+      promises.push(modify(item));
+    }
+    await Promise.all(promises); 
+  } else {
+    return modify(doc);
+  }
+}
+
+TokenSchema.post(['find', 'findOne', 'findOneAndUpdate', 'findOneAndReplace', 'updateMany', 'updateOne'], async function (maybeDoc) {
+  // maybeDoc is only the document if caller requests it via {new: true}
+  if (maybeDoc?.mint) {
+    return ensureValidToken(maybeDoc)
+  }
+})
+
+TokenSchema.post('aggregate', async function (maybeDoc) {
+    return ensureValidToken(maybeDoc)
 });
 
 ///////////////////////////////////////
