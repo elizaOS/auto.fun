@@ -34,14 +34,14 @@ const CopyButton = ({ text }: { text: string }) => {
       <g clipPath="url(#clip0_726_6190)">
         <path
           d="M15 6.75H8.25C7.42157 6.75 6.75 7.42157 6.75 8.25V15C6.75 15.8284 7.42157 16.5 8.25 16.5H15C15.8284 16.5 16.5 15.8284 16.5 15V8.25C16.5 7.42157 15.8284 6.75 15 6.75Z"
-          stroke="#03FF24"
+          stroke="#8c8c8c"
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
         <path
           d="M3.75 11.25H3C2.60218 11.25 2.22064 11.092 1.93934 10.8107C1.65804 10.5294 1.5 10.1478 1.5 9.75V3C1.5 2.60218 1.65804 2.22064 1.93934 1.93934C2.22064 1.65804 2.60218 1.5 3 1.5H9.75C10.1478 1.5 10.5294 1.65804 10.8107 1.93934C11.092 2.22064 11.25 2.60218 11.25 3V3.75"
-          stroke="#03FF24"
+          stroke="#8c8c8c"
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -80,22 +80,25 @@ const AgentSearchResult = ({
           alt={name}
         />
         <div className="flex flex-col gap-1">
-          <div className="text-white text-sm font-medium group-hover:text-[#2FD345] transition-colors">
-            {name}
+          <div className="flex gap-2 items-baseline">
+            <span className="text-white font-medium font-satoshi group-hover:text-[#2FD345] transition-colors">
+              {name}
+            </span>
+            <span className="text-[#a6a6a6] uppercase tracking-widest group-hover:text-white/80 transition-colors">
+              ${symbol}
+            </span>
           </div>
-          <div className="text-[#8C8C8C] text-xs uppercase tracking-widest group-hover:text-white/80 transition-colors">
-            ${symbol}
-          </div>
+
           <div className="flex items-center gap-2">
-            <div className="text-[#8C8C8C] text-xs group-hover:text-white/70 transition-colors">
+            <div className="text-[#a6a6a6] text-sm group-hover:text-white/70 transition-colors">
               {id.slice(0, 3)}...{id.slice(-3)}
             </div>
             <CopyButton text={id} />
           </div>
         </div>
         <div className="flex items-center gap-1 ml-auto">
-          <span className="text-[#2FD345] text-xs">MC:</span>
-          <span className="text-[#2FD345] text-xs">
+          <span className="text-[#8c8c8c] text-sm">MC:</span>
+          <span className="text-[#03ff24] text-sm">
             ${formatNumber(marketCap, 0)}
           </span>
         </div>
@@ -250,7 +253,7 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
                   onChange={handleInputChange}
                   onKeyDown={handleKeyPress}
                   placeholder="Symbol or Address..."
-                  className="w-full h-11 pl-10 pr-3 rounded-lg bg-transparent text-[#d1d1d1] text-sm placeholder:text-sm leading-tight focus:outline-none"
+                  className="w-full h-11 pl-10 pr-3 rounded-lg bg-transparent text-[#d1d1d1] text-sm placeholder:text-sm leading-tight focus:outline-none font-satoshi placeholder:font-satoshi focus:font-satoshi"
                 />
               </div>
               <CloseIcon onClick={() => setShowMobileSearch(false)} />
@@ -260,9 +263,7 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
                 className="w-full bg-neutral-900 px-4 rounded-b-lg flex flex-col flex-1 gap-6 mt-[14px] overflow-y-scroll no-scrollbar"
                 ref={ref}
               >
-                <div className="text-[#03ff24] text-xs font-normal uppercase leading-none tracking-widest">
-                  <Link href="/">Tokens</Link>
-                </div>
+                <div className="text-white font-satoshi">Tokens</div>
                 {searchResults.map((token) => (
                   <AgentSearchResult
                     key={token.mint}
@@ -295,7 +296,7 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
           onChange={handleInputChange}
           onKeyDown={handleKeyPress}
           placeholder="Symbol or Address..."
-          className="flex-1 bg-transparent text-base font-medium text-[#8C8C8C] placeholder-[#8C8C8C] focus:outline-none hover:placeholder-white focus:placeholder-white transition-colors"
+          className="flex-1 bg-transparent text-base font-medium text-[#8C8C8C] placeholder-[#8C8C8C] focus:outline-none hover:placeholder-white focus:placeholder-white transition-colors font-satoshi placeholder:font-satoshi focus:font-satoshi"
         />
       </div>
 
@@ -304,9 +305,7 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
           className="absolute w-full p-3.5 bg-[#171717] rounded-lg border border-[#262626] flex flex-col gap-6 mt-2 max-h-[60vh] overflow-auto z-50 shadow-lg"
           ref={ref}
         >
-          <div className="text-[#2FD345] text-xs font-normal uppercase leading-none tracking-widest">
-            Tokens
-          </div>
+          <div className="text-white font-satoshi">Tokens</div>
           {searchResults.map((token) => (
             <AgentSearchResult
               key={token.mint}
@@ -324,22 +323,12 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
   );
 };
 
-const Step = ({
-  number,
-  title,
-  isHighlighted = false,
-}: {
-  number: number;
-  title: string;
-  isHighlighted?: boolean;
-}) => (
+const Step = ({ number, title }: { number: number; title: string }) => (
   <div className="flex items-start gap-2">
-    <span
-      className={`font-mono text-xl ${isHighlighted ? "text-white" : "text-[#8C8C8C]"}`}
-    >
+    <span className={`font-mono text-xl text-white whitespace-nowrap`}>
       Step {number}:
     </span>
-    <span className="font-mono text-[#8C8C8C] text-xl">{title}</span>
+    <span className="font-mono text-[#8C8C8C] mt-0.5">{title}</span>
   </div>
 );
 
@@ -352,15 +341,14 @@ const TabContent = ({ type }: { type: "trading" | "creation" }) => {
         </h2>
 
         <p className="text-[#8C8C8C] text-base font-satoshi mb-8">
-          Auto.fun streamlines agentic trading through a token launching system.
-          Create value for projects you believe in.
+          Auto.fun streamlines agentic trading through our token launching
+          system. Create value for projects you believe in.
         </p>
 
         <div className="flex flex-col gap-6">
           <Step
             number={1}
             title="Browse and select a token from the marketplace"
-            isHighlighted={true}
           />
           <Step
             number={2}
@@ -561,7 +549,7 @@ export const Nav = () => {
           {/* Footer */}
           <div className="flex flex-col gap-4 items-center px-8 pb-6">
             <button
-              className="w-full py-3 bg-[#2E2E2E] hover:bg-[#262626] rounded-lg text-white font-satoshi"
+              className="w-full py-2 bg-[#2E2E2E] hover:bg-[#262626] rounded-lg text-white font-satoshi mb-2"
               onClick={() => setModalOpen(false)}
             >
               Continue
@@ -574,21 +562,21 @@ export const Nav = () => {
             <div className="flex items-center gap-3">
               <a
                 href="/legal/privacy"
-                className="text-[#8C8C8C] font-satoshi text-sm underline hover:text-white"
+                className="text-[#8C8C8C] font-satoshi underline underline-offset-4 hover:text-white"
               >
                 Privacy Policy
               </a>
-              <div className="h-4 w-px bg-[#505050]" />
+              <div className="h-4 w-px bg-[#8c8c8c]" />
               <a
                 href="/legal/terms"
-                className="text-[#8C8C8C] font-satoshi text-sm underline hover:text-white"
+                className="text-[#8C8C8C] font-satoshi underline underline-offset-4 hover:text-white"
               >
                 Terms of Service
               </a>
-              <div className="h-4 w-px bg-[#505050]" />
+              <div className="h-4 w-px bg-[#8c8c8c]" />
               <a
                 href="/legal/fees"
-                className="text-[#8C8C8C] font-satoshi text-sm underline hover:text-white"
+                className="text-[#8C8C8C] font-satoshi underline underline-offset-4 hover:text-white"
               >
                 Fees
               </a>
