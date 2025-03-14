@@ -170,6 +170,7 @@ export const WalletModal: FC<WalletModalProps> = ({
       className={className}
       container={container}
       title="Connect Wallet"
+      maxWidth={363}
     >
       {modalContent}
     </Modal>
