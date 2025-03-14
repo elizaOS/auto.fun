@@ -1,40 +1,33 @@
 import express from 'express';
-import { Server } from 'socket.io';
-import { createServer } from 'http';
 import { 
-  Connection, 
-  Keypair, 
   PublicKey,
 } from '@solana/web3.js';
-import * as anchor from "@coral-xyz/anchor";
-import { Program, BN } from '@coral-xyz/anchor';
+import { BN } from '@coral-xyz/anchor';
 import mongoose from 'mongoose';
 import NodeWallet from '@coral-xyz/anchor/dist/cjs/nodewallet';
 import { SEED_BONDING_CURVE } from './lib/constant';
-import { Serlaunchalot } from './target/types/serlaunchalot';
-import { getMint, NATIVE_MINT, TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { getAssociatedTokenAccount, getRpcUrl } from './lib/util';
+import { getMint } from '@solana/spl-token';
+import { app, connectDB, getIoServer, httpServer } from './lib/util';
 import { initSdk, txVersion } from './lib/raydium-config';
-import { fetchDigitalAsset, mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata';
-import { publicKey, Umi } from '@metaplex-foundation/umi';
-import { createUmi } from "@metaplex-foundation/umi-bundle-defaults"
 import {
   CREATE_CPMM_POOL_PROGRAM,
   DEV_CREATE_CPMM_POOL_PROGRAM,
   ApiV3PoolInfoStandardItemCpmm,
 } from '@raydium-io/raydium-sdk-v2';
 import cors from 'cors';
-import { Token, Swap, Fee, TokenMetadataJson } from './schemas';
+import { Token, Swap, Fee, TokenType, TokenValidation } from './schemas';
 import routes from './routes';
 import { updateHoldersCache } from './routes';
 import { VanityKeypairGenerator } from './keypairgen';
 import { logger } from './logger';
-import { metadataCache } from './cache';
 import { getSOLPrice } from './mcap';
 import PQueue from 'p-queue';
 import mediaGenerationRoutes from './mediaGeneration';
 import { MigrationService } from './lib/migration';
 import { fetchCodexTokenEvents } from './lib/api';
+import { config } from './lib/solana';
+import { createNewTokenData } from './lib/tokenUtils';
+import { fetchCodexBars, CodexBarResolution } from './lib/api';
 
 // For devnet testing - placeholder token address for locked tokens since there are none in devnet
 const DEV_TEST_TOKEN_ADDRESS = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
@@ -51,8 +44,6 @@ const keypairGen = new VanityKeypairGenerator();
 
 const TOKEN_DECIMALS = Number(process.env.DECIMALS || 6);
 
-// Express server setup
-const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cors({
@@ -63,16 +54,8 @@ app.use(cors({
 app.use(express.json());
 
 // HTTP server and Socket.IO instance
-const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    // origin: process.env.FRONTEND_URL || "http://localhost:3420", // Allow frontend URL
-    origin: "*", // Just allow everything for now
-    methods: ["GET", "POST"],
-    allowedHeaders: ["*"]
-  },
-  allowEIO3: true
-});
+
+const io = getIoServer()
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
@@ -101,11 +84,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// Global variables
-let solConnection: Connection = null;
-let program: Program<Serlaunchalot> = null;
-let payer: NodeWallet = null;
-
 interface PriceFeedInfo {
   price: number,
   timestamp: Date,
@@ -121,54 +99,14 @@ type CandlePrice = {
   time: number;
 };
 
-const fetchMetadataWithBackoff = async (umi: Umi, tokenAddress: string) => {
-  const cached = metadataCache.get(tokenAddress);
-  if (cached) return cached;
-
-  const maxRetries = 15;
-  const baseDelay = 500;
-  const maxDelay = 30000;
-
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const metadata = await fetchDigitalAsset(umi, publicKey(tokenAddress));
-      metadataCache.set(tokenAddress, metadata);
-      return metadata;
-    } catch (error: any) {
-      if (i === maxRetries - 1) throw error;
-      const delay = Math.min(
-        baseDelay * Math.pow(2, i) + Math.random() * 1000,
-        maxDelay
-      );
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-};
-
 class TokenMonitor {
-  private connection: Connection;
-  private program: Program<Serlaunchalot>;
   private wallet: NodeWallet;
   private isMonitoring: boolean = false;
-  private umi: Umi;
   private queue: PQueue;
   private holderUpdateQueue: PQueue;
 
   constructor(
-    connection: Connection, 
-    program: Program<Serlaunchalot>,
-    walletKey: string
   ) {
-    this.connection = connection;
-    this.program = program;
-    
-    const walletKeypair = Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(walletKey)),
-      { skipValidation: true }
-    );
-    this.wallet = new NodeWallet(walletKeypair);
-    this.umi = createUmi(getRpcUrl())
-    .use(mplTokenMetadata());
     this.queue = new PQueue({ 
       concurrency: 5,  // Process 5 tokens at a time
       interval: 1000,  // Time window in ms
@@ -215,8 +153,8 @@ class TokenMonitor {
     this.startHolderUpdates();
 
      // Subscribe to program logs
-     this.connection.onLogs(
-      this.program.programId,
+     config.connection.onLogs(
+      config.program.programId,
       async (logs) => {
         if (logs.err) return;
         
@@ -235,7 +173,7 @@ class TokenMonitor {
             const mintAddress = mintLog.split("Mint:")[1].trim().replace(/[",)]/g, '');
             const [bondingCurvePda] = PublicKey.findProgramAddressSync(
               [Buffer.from(SEED_BONDING_CURVE), new PublicKey(mintAddress).toBytes()],
-              this.program.programId
+              config.program.programId
             );
         
             // Add to queue for processing with retries
@@ -243,7 +181,7 @@ class TokenMonitor {
               const maxRetries = 15;
               for (let i = 0; i < maxRetries; i++) {
                 try {
-                  const bondingCurveAccount = await this.program.account.bondingCurve.fetch(bondingCurvePda);
+                  const bondingCurveAccount = await config.program.account.bondingCurve.fetch(bondingCurvePda);
                   if (!bondingCurveAccount.isCompleted) {
                     if (i === maxRetries - 1) {
                       logger.error('Failed to confirm curve completion after max retries');
@@ -290,93 +228,23 @@ class TokenMonitor {
         }
 
         if (newTokenLog) {
-          try {
-            const [tokenAddress, creatorAddress] = newTokenLog.split(" ").slice(-2).map(s => s.replace(/[",)]/g, ''));
-            
-            let metadata;
+          const [tokenAddress, creatorAddress] = newTokenLog
+            .split(" ")
+            .slice(-2)
+            .map((s) => s.replace(/[",)]/g, ""));
 
-            metadata = await fetchMetadataWithBackoff(this.umi, tokenAddress);
-        
-            const [bondingCurvePda] = PublicKey.findProgramAddressSync(
-              [Buffer.from(SEED_BONDING_CURVE), new PublicKey(tokenAddress).toBytes()],
-              this.program.programId
-            );
-        
-            const bondingCurveAccount = await this.program.account.bondingCurve.fetchNullable(
-              bondingCurvePda
-            );
+          const newToken = await createNewTokenData(
+            logs.signature,
+            tokenAddress,
+            creatorAddress
+          );
 
-            let additionalMetadata: TokenMetadataJson | null = null;
-            try {
-              const response = await fetch(metadata.metadata.uri);
-              additionalMetadata = await response.json() as TokenMetadataJson;
-            } catch (error) {
-              logger.error(`Failed to fetch IPFS metadata from URI: ${metadata.metadata.uri}`, error);
-            }
+          await Token.findOneAndUpdate({ mint: tokenAddress }, newToken, {
+            upsert: true,
+            new: true,
+          });
 
-            const TOKEN_DECIMALS = Number(process.env.DECIMALS || 6);
-
-            const solPrice = await getSOLPrice();
-
-            const currentPrice = Number(bondingCurveAccount.reserveToken) > 0 ? 
-              (Number(bondingCurveAccount.reserveLamport) / 1e9) / 
-              (Number(bondingCurveAccount.reserveToken) / Math.pow(10, TOKEN_DECIMALS))
-              : 0;
-
-            const tokenPriceInSol = currentPrice / Math.pow(10, TOKEN_DECIMALS);
-            const tokenPriceUSD = currentPrice > 0 ? 
-                (tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)) : 0;
-
-            const marketCapUSD = (Number(process.env.TOKEN_SUPPLY) / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD;
-        
-            const token = await Token.findOneAndUpdate(
-              { mint: tokenAddress },
-              {
-                name: metadata.metadata.name,
-                ticker: metadata.metadata.symbol,
-                url: metadata.metadata.uri,
-                image: additionalMetadata?.image || '',
-                twitter: additionalMetadata?.twitter || '',
-                telegram: additionalMetadata?.telegram || '',
-                website: additionalMetadata?.website || '',
-                discord: additionalMetadata?.discord || '',
-                description: additionalMetadata?.description || '',
-                agentLink: additionalMetadata?.agentLink || '',
-                mint: tokenAddress,
-                creator: creatorAddress,
-                reserveAmount: Number(bondingCurveAccount.reserveToken.toNumber()),
-                reserveLamport: Number(bondingCurveAccount.reserveLamport.toNumber()),
-                virtualReserves: Number(process.env.VIRTUAL_RESERVES),
-                liquidity:
-                  ((Number(bondingCurveAccount.reserveLamport) / 1e9 * solPrice) + 
-                  (Number(bondingCurveAccount.reserveToken) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD)),
-                currentPrice: (Number(bondingCurveAccount.reserveLamport) / 1e9) / (Number(bondingCurveAccount.reserveToken) / Math.pow(10, TOKEN_DECIMALS)),
-                marketCapUSD: marketCapUSD,
-                tokenPriceUSD: tokenPriceUSD,
-                solPriceUSD: solPrice,
-                curveProgress: ((Number(bondingCurveAccount.reserveLamport) - Number(process.env.VIRTUAL_RESERVES))  / (Number(process.env.CURVE_LIMIT) - Number(process.env.VIRTUAL_RESERVES))) * 100,
-                curveLimit: Number(process.env.CURVE_LIMIT),
-                status: 'active',
-                createdAt: new Date(),
-                lastUpdated: new Date(),
-                priceChange24h: 0,
-                price24hAgo: tokenPriceUSD,
-                volume24h: 0,
-                inferenceCount: 0,
-                txId: logs.signature,
-              },
-              { 
-                upsert: true,
-                new: true 
-              }
-            );
-
-            logger.log(`Found new token: ${tokenAddress}`);
-            io.to('global').emit('newToken', token);
-        
-          } catch (error) {
-            logger.error('Error processing new token log:', error);
-          }
+          logger.log(`New token event processed for ${tokenAddress}`);
         }
 
         if (logs.err || !logs.logs.some(log => log.includes("success"))) {
@@ -394,7 +262,7 @@ class TokenMonitor {
 
             // Fetch token data to get decimals
             const tokenMint = new PublicKey(mintAddress);
-            const tokenData = await getMint(this.connection, tokenMint);
+            const tokenData = await getMint(config.connection, tokenMint);
     
             const SOL_DECIMALS = 9;
             const TOKEN_DECIMALS = tokenData.decimals; // get the token decimals from token data
@@ -473,7 +341,7 @@ class TokenMonitor {
                   priceChange24h: priceChange,
                   // Only update price24hAgo if it's been more than 24 hours or doesn't exist
                   ...((!existingToken?.price24hAgo || 
-                     Date.now() - (existingToken?.lastPriceUpdate?.getTime() || 0) > 24 * 60 * 60 * 1000) && { // 24 hours
+                    Date.now() - (existingToken?.lastPriceUpdate?.getTime() || 0) > 24 * 60 * 60 * 1000) && { // 24 hours
                     price24hAgo: tokenPriceUSD,
                     lastPriceUpdate: new Date()
                   })
@@ -499,7 +367,6 @@ class TokenMonitor {
                 txId: logs.signature,
               },
               { 
-                upsert: true,
                 new: true 
               }
             );
@@ -615,7 +482,7 @@ class TokenMonitor {
   }
 
   private async handleMigration(token: any) {
-    const migrationService = new MigrationService(this.connection, this.program, this.wallet, io);
+    const migrationService = new MigrationService(config.connection, config.program, this.wallet, io);
     await migrationService.migrateToken(token);
   }
 
@@ -624,34 +491,7 @@ class TokenMonitor {
   // }
 }
 
-// Initialize connection and program
-const initializeConfig = async () => {
-  solConnection = new Connection(getRpcUrl());
-  
-  const walletKeypair = Keypair.fromSecretKey(
-    Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
-    { skipValidation: true }
-  );
-  payer = new NodeWallet(walletKeypair);
 
-  logger.log("Wallet Address: ", payer.publicKey.toBase58());
-
-  anchor.setProvider(
-    new anchor.AnchorProvider(solConnection, payer, {
-      skipPreflight: true,
-      commitment: "confirmed",
-    })
-  );
-
-  // Generate the program client from IDL
-  program = anchor.workspace.Serlaunchalot as Program<Serlaunchalot>;
-  
-  logger.log("ProgramId: ", program.programId.toBase58());
-  
-  return { connection: solConnection, program, wallet: payer };
-};
-
-import { fetchCodexBars, CodexBarResolution } from './lib/api';
 
 /**
  * Fetches price chart data from either DB or Codex API
@@ -895,26 +735,6 @@ export async function getLatestCandle(token: string, swap: any) {
   return latestCandle[0]; // Return the single candle
 }
 
-const connectDB = async (retries = 5, delay = 500) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      await mongoose.connect(process.env.MONGODB_URI, {
-        maxPoolSize: 10,
-        minPoolSize: 5,
-        retryWrites: true,
-        serverSelectionTimeoutMS: 5000,
-        socketTimeoutMS: 45000,
-      });
-      console.log('Connected to MongoDB');
-      return;
-    } catch (err) {
-      if (i === retries - 1) throw err;
-      console.log(`Connection attempt ${i + 1} failed. Retrying in ${delay}ms...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-};
-
 // Server initialization
 const initServer = async () => {
   // Connect to MongoDB
@@ -928,16 +748,9 @@ const initServer = async () => {
   if (!process.env.CODEX_API_KEY) {
     logger.error('CODEX_API_KEY environment variable is not set. Codex API features will not work properly.');
   }
-
-  // Initialize Solana connection and program
-  const { connection, program, wallet } = await initializeConfig();
   
   // Create token monitor
-  const monitor = new TokenMonitor(
-    connection,
-    program,
-    process.env.WALLET_PRIVATE_KEY
-  );
+  const monitor = new TokenMonitor();
 
   // Start monitoring
   monitor.startMonitoring();
@@ -977,4 +790,5 @@ process.on('uncaughtException', (error) => {
   process.exit(1);
 });
 
-export { program, solConnection as connection };
+export const connection = config.connection;
+export const program = config.program;

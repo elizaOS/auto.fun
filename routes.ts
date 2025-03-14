@@ -757,11 +757,6 @@ router.post('/new_token', apiKeyAuth, async (req, res) => {
           volume24h: 0,
           inferenceCount: 0,
           virutalReserves: process.env.VIRTUAL_RESERVES,
-          xusername: validatedData.xusername,
-          xurl: validatedData.xurl,
-          xavatarurl: validatedData.xavatarurl,
-          xname: validatedData.xname,
-          xtext: validatedData.xtext
         },
         { 
           upsert: true,

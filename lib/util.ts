@@ -21,6 +21,9 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { Serlaunchalot } from "../target/types/serlaunchalot";
 import mongoose from "mongoose";
+import { Server } from "socket.io";
+import { createServer } from "http";
+import express from 'express';
 
 export const getRpcUrl = () => {
  return process.env.NETWORK === 'devnet' ? process.env.DEVNET_SOLANA_RPC_URL! : process.env.MAINNET_SOLANA_RPC_URL!
@@ -46,32 +49,26 @@ export const connectDB = async (retries = 5, delay = 500) => {
   }
 };
 
-export const initializeConfig = async () => {
-  const connection = new Connection(getRpcUrl());
-  
-  const walletKeypair = Keypair.fromSecretKey(
-    Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
-    { skipValidation: true }
-  );
-  const payer = new NodeWallet(walletKeypair);
+export const app = express();
+export const httpServer = createServer(app);
 
+let io: Server
 
-  logger.log("Wallet Address: ", payer.publicKey.toBase58());
+export const getIoServer = () => {
+    if (!io) {
+        io = new Server(httpServer, {
+            cors: {
+              // origin: process.env.FRONTEND_URL || "http://localhost:3420", // Allow frontend URL
+              origin: "*", // Just allow everything for now
+              methods: ["GET", "POST"],
+              allowedHeaders: ["*"]
+            },
+            allowEIO3: true
+          });
+    }
 
-  anchor.setProvider(
-    new anchor.AnchorProvider(connection, payer, {
-      skipPreflight: true,
-      commitment: "confirmed",
-    })
-  );
-
-  // Generate the program client from IDL
-  const program = anchor.workspace.Serlaunchalot as Program<Serlaunchalot>;
-  
-  logger.log("ProgramId: ", program.programId.toBase58());
-  
-  return { connection, program, wallet: payer };
-};
+    return io;
+}
 
 export const getAssociatedTokenAccount = (
     ownerPubkey: PublicKey,
