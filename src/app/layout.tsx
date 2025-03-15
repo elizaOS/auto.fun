@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { DM_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import { ToastContainer } from "react-toastify";
@@ -16,9 +16,10 @@ const satoshi = localFont({
   variable: "--font-satoshi",
 });
 
-const inter = Inter({
+const dmMono = DM_Mono({
+  weight: ["300", "400", "500"],
+  variable: "--font-mono",
   subsets: ["latin"],
-  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
@@ -33,7 +34,7 @@ export default async function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body
-        className={`${inter.className} ${satoshi.variable} ${inter.variable} font-mono antialiased flex flex-col pt-[83px] min-h-screen`}
+        className={`${dmMono.className} ${satoshi.variable} antialiased flex flex-col pt-[83px] min-h-screen`}
       >
         <SkeletonTheme baseColor="#002605" highlightColor="#008011">
           <Providers>

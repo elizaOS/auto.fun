@@ -77,7 +77,7 @@ const TokenInput = ({
     <div className="p-3.5 bg-[#171717] rounded-lg border border-neutral-800">
       <div className="flex flex-col gap-[18px]">
         <div className="flex justify-between items-center gap-[10px] h-[36px] w-full">
-          <div className="text-white text-base font-normal font-['DM Mono'] flex-grow">
+          <div className="text-white text-base font-normal flex-grow">
             {type}
           </div>
           {!disabled && (
@@ -121,11 +121,11 @@ const TokenInput = ({
           )}
         </div>
 
-        <div className="flex items-center justify-between w-full pr-[2px] text-4xl">
+        <div className="flex items-center gap-6 w-full pr-[2px] text-4xl">
           <input
             type="text"
             placeholder="0.00"
-            className="w-[120px] font-normal font-['DM Mono'] bg-transparent outline-none placeholder:text-[#a1a1a1] text-[#a1a1a1]"
+            className="w-[120px] bg-transparent outline-none placeholder:text-[#8c8c8c] text-[#8c8c8c] flex-1"
             value={displayValue}
             onChange={(e) => onChange?.(e.target.value)}
             disabled={disabled}
@@ -141,7 +141,7 @@ const TokenInput = ({
                   className="w-6 h-6 rounded-2xl"
                 />
               )}
-              <span className="text-white text-base font-normal font-['DM Mono'] uppercase tracking-widest">
+              <span className="text-white text-base font-normal uppercase tracking-widest">
                 {tokenSymbol}
               </span>
             </div>
@@ -149,12 +149,12 @@ const TokenInput = ({
         </div>
 
         <div className="flex justify-between items-start w-full">
-          <span className="text-[#a1a1a1] text-sm font-normal font-['DM Mono']">
-            ${dollarValue.toFixed(2)}
+          <span className="text-[#8c8c8c] text-sm font-normal">
+            {tokenSymbol === "SOL" ? `$${dollarValue.toFixed(2)}` : ""}
           </span>
           <div className="flex gap-1 items-center">
-            <Wallet className="w-3 h-3 text-[#a6a6a6]" />
-            <span className="text-[#a6a6a6] text-xs font-normal font-['DM Mono']">
+            <Wallet className="w-3 h-3 text-[#8c8c8c]" />
+            <span className="text-[#8c8c8c] text-xs font-normal">
               {tokenSymbol === "SOL"
                 ? tokenBalance.toFixed(4)
                 : formatNumber(tokenBalance)}{" "}
@@ -458,7 +458,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
 
       {token.status !== "active" && getStatusContent(token.status)}
 
-      <div className="flex-1 flex flex-col justify-center gap-6 border-b border-neutral-800 rounded-b-xl min-w-fit">
+      <div className="flex-1 flex flex-col justify-center gap-6 border-neutral-800 rounded-b-xl min-w-fit">
         <div className="flex flex-col gap-2.5 relative min-w-fit">
           <TokenInput
             type="Selling"
@@ -473,7 +473,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
           />
 
           <button
-            className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 p-2 bg-[#212121] rounded-full border-2 border-neutral-900 flex justify-center z-10 ${
+            className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 p-2 bg-[#212121] rounded-full border-2 border-[#121212] flex justify-center z-10 ${
               isDisabled ? "opacity-50 cursor-not-allowed" : ""
             }`}
             disabled={isDisabled}
@@ -509,15 +509,11 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
           />
         </div>
 
-        <div className="w-full h-10">
+        <div className="w-full">
           <button
-            className={`w-full h-10 relative flex items-center justify-center ${
-              isDisabled ? "bg-neutral-700 cursor-not-allowed" : "bg-green-500"
+            className={`px-4 py-3 bg-[#2e2e2e] rounded-md border border-neutral-800 w-full text-[#2fd345] text-lg font-medium ${
+              isDisabled && "opacity-40 cursor-not-allowed"
             }`}
-            style={{
-              clipPath:
-                "polygon(0% 72%, 0% 0%, 95% 0%, 100% 29%, 100% 100%, 5% 100%)",
-            }}
             onClick={
               isDisabled
                 ? undefined
@@ -527,13 +523,11 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
             }
             disabled={isDisabled}
           >
-            <span className="text-black text-xl font-['DM Mono']">
-              {isDisabled
-                ? token.status.toUpperCase()
-                : publicKey
-                  ? "SWAP"
-                  : "CONNECT WALLET"}
-            </span>
+            {isDisabled
+              ? token.status.toUpperCase()
+              : publicKey
+                ? "Swap"
+                : "Connect"}
           </button>
         </div>
       </div>
