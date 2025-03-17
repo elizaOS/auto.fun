@@ -34,14 +34,14 @@ const CopyButton = ({ text }: { text: string }) => {
       <g clipPath="url(#clip0_726_6190)">
         <path
           d="M15 6.75H8.25C7.42157 6.75 6.75 7.42157 6.75 8.25V15C6.75 15.8284 7.42157 16.5 8.25 16.5H15C15.8284 16.5 16.5 15.8284 16.5 15V8.25C16.5 7.42157 15.8284 6.75 15 6.75Z"
-          stroke="#03FF24"
+          stroke="#8c8c8c"
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
         <path
           d="M3.75 11.25H3C2.60218 11.25 2.22064 11.092 1.93934 10.8107C1.65804 10.5294 1.5 10.1478 1.5 9.75V3C1.5 2.60218 1.65804 2.22064 1.93934 1.93934C2.22064 1.65804 2.60218 1.5 3 1.5H9.75C10.1478 1.5 10.5294 1.65804 10.8107 1.93934C11.092 2.22064 11.25 2.60218 11.25 3V3.75"
-          stroke="#03FF24"
+          stroke="#8c8c8c"
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -80,22 +80,25 @@ const AgentSearchResult = ({
           alt={name}
         />
         <div className="flex flex-col gap-1">
-          <div className="text-white text-sm font-medium group-hover:text-[#2FD345] transition-colors">
-            {name}
+          <div className="flex gap-2 items-baseline">
+            <span className="text-white font-medium font-satoshi group-hover:text-[#2FD345] transition-colors">
+              {name}
+            </span>
+            <span className="text-[#a6a6a6] uppercase tracking-widest group-hover:text-white/80 transition-colors">
+              ${symbol}
+            </span>
           </div>
-          <div className="text-[#8C8C8C] text-xs uppercase tracking-widest group-hover:text-white/80 transition-colors">
-            ${symbol}
-          </div>
+
           <div className="flex items-center gap-2">
-            <div className="text-[#8C8C8C] text-xs group-hover:text-white/70 transition-colors">
+            <div className="text-[#a6a6a6] text-sm group-hover:text-white/70 transition-colors">
               {id.slice(0, 3)}...{id.slice(-3)}
             </div>
             <CopyButton text={id} />
           </div>
         </div>
         <div className="flex items-center gap-1 ml-auto">
-          <span className="text-[#2FD345] text-xs">MC:</span>
-          <span className="text-[#2FD345] text-xs">
+          <span className="text-[#8c8c8c] text-sm">MC:</span>
+          <span className="text-[#03ff24] text-sm">
             ${formatNumber(marketCap, 0)}
           </span>
         </div>
@@ -250,7 +253,7 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
                   onChange={handleInputChange}
                   onKeyDown={handleKeyPress}
                   placeholder="Symbol or Address..."
-                  className="w-full h-11 pl-10 pr-3 rounded-lg bg-transparent text-[#d1d1d1] text-sm placeholder:text-sm leading-tight focus:outline-none"
+                  className="w-full h-11 pl-10 pr-3 rounded-lg bg-transparent text-[#d1d1d1] text-sm placeholder:text-sm leading-tight focus:outline-none font-satoshi placeholder:font-satoshi focus:font-satoshi"
                 />
               </div>
               <CloseIcon onClick={() => setShowMobileSearch(false)} />
@@ -260,9 +263,7 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
                 className="w-full bg-neutral-900 px-4 rounded-b-lg flex flex-col flex-1 gap-6 mt-[14px] overflow-y-scroll no-scrollbar"
                 ref={ref}
               >
-                <div className="text-[#03ff24] text-xs font-normal uppercase leading-none tracking-widest">
-                  <Link href="/">Tokens</Link>
-                </div>
+                <div className="text-white font-satoshi">Tokens</div>
                 {searchResults.map((token) => (
                   <AgentSearchResult
                     key={token.mint}
@@ -295,7 +296,7 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
           onChange={handleInputChange}
           onKeyDown={handleKeyPress}
           placeholder="Symbol or Address..."
-          className="flex-1 bg-transparent text-base font-medium text-[#8C8C8C] placeholder-[#8C8C8C] focus:outline-none hover:placeholder-white focus:placeholder-white transition-colors"
+          className="flex-1 bg-transparent text-base font-medium text-[#8C8C8C] placeholder-[#8C8C8C] focus:outline-none hover:placeholder-white focus:placeholder-white transition-colors font-satoshi placeholder:font-satoshi focus:font-satoshi"
         />
       </div>
 
@@ -304,9 +305,7 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
           className="absolute w-full p-3.5 bg-[#171717] rounded-lg border border-[#262626] flex flex-col gap-6 mt-2 max-h-[60vh] overflow-auto z-50 shadow-lg"
           ref={ref}
         >
-          <div className="text-[#2FD345] text-xs font-normal uppercase leading-none tracking-widest">
-            Tokens
-          </div>
+          <div className="text-white font-satoshi">Tokens</div>
           {searchResults.map((token) => (
             <AgentSearchResult
               key={token.mint}
@@ -324,22 +323,12 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
   );
 };
 
-const Step = ({
-  number,
-  title,
-  isHighlighted = false,
-}: {
-  number: number;
-  title: string;
-  isHighlighted?: boolean;
-}) => (
+const Step = ({ number, title }: { number: number; title: string }) => (
   <div className="flex items-start gap-2">
-    <span
-      className={`font-mono text-xl ${isHighlighted ? "text-white" : "text-[#8C8C8C]"}`}
-    >
+    <span className={`font-mono text-xl text-white whitespace-nowrap`}>
       Step {number}:
     </span>
-    <span className="font-mono text-[#8C8C8C] text-xl">{title}</span>
+    <span className="font-mono text-[#8C8C8C] mt-0.5">{title}</span>
   </div>
 );
 
@@ -352,15 +341,14 @@ const TabContent = ({ type }: { type: "trading" | "creation" }) => {
         </h2>
 
         <p className="text-[#8C8C8C] text-base font-satoshi mb-8">
-          Auto.fun streamlines agentic trading through a token launching system.
-          Create value for projects you believe in.
+          Auto.fun streamlines agentic trading through our token launching
+          system. Create value for projects you believe in.
         </p>
 
         <div className="flex flex-col gap-6">
           <Step
             number={1}
             title="Browse and select a token from the marketplace"
-            isHighlighted={true}
           />
           <Step
             number={2}
@@ -426,18 +414,24 @@ export const Nav = () => {
             <div className="hidden md:flex gap-6">
               <Link href="/">
                 <button className="flex items-center justify-center px-3 py-2 gap-2 h-9 rounded-md bg-transparent text-white">
-                  <span className="text-base font-medium">Tokens</span>
+                  <span className="text-base font-medium font-satoshi">
+                    Tokens
+                  </span>
                 </button>
               </Link>
               <button
                 className="flex items-center justify-center px-3 py-2 gap-2 h-9 rounded-md bg-transparent text-[#8C8C8C] hover:text-white transition-colors duration-200"
                 onClick={() => setModalOpen(true)}
               >
-                <span className="text-base font-normal">How It Works</span>
+                <span className="text-base font-normal font-satoshi">
+                  How It Works
+                </span>
               </button>
               <Link href="/support">
                 <button className="flex items-center justify-center px-3 py-2 gap-2 h-9 rounded-md bg-transparent text-[#8C8C8C] hover:text-white transition-colors duration-200">
-                  <span className="text-base font-normal">Support</span>
+                  <span className="text-base font-normal font-satoshi">
+                    Support
+                  </span>
                 </button>
               </Link>
             </div>
@@ -452,7 +446,7 @@ export const Nav = () => {
           <div className="flex items-center gap-4">
             <Link href="/create">
               <button className="flex items-center justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border border-[#2FD345] rounded-md">
-                <span className="text-base font-medium text-white">
+                <span className="text-base font-medium text-white font-satoshi">
                   Create Token
                 </span>
                 <Image
@@ -561,7 +555,7 @@ export const Nav = () => {
           {/* Footer */}
           <div className="flex flex-col gap-4 items-center px-8 pb-6">
             <button
-              className="w-full py-3 bg-[#2E2E2E] hover:bg-[#262626] rounded-lg text-white font-satoshi"
+              className="w-full py-2 bg-[#2E2E2E] hover:bg-[#262626] rounded-lg text-white font-satoshi mb-2"
               onClick={() => setModalOpen(false)}
             >
               Continue
@@ -574,21 +568,21 @@ export const Nav = () => {
             <div className="flex items-center gap-3">
               <a
                 href="/legal/privacy"
-                className="text-[#8C8C8C] font-satoshi text-sm underline hover:text-white"
+                className="text-[#8C8C8C] font-satoshi underline underline-offset-4 hover:text-white"
               >
                 Privacy Policy
               </a>
-              <div className="h-4 w-px bg-[#505050]" />
+              <div className="h-4 w-px bg-[#8c8c8c]" />
               <a
                 href="/legal/terms"
-                className="text-[#8C8C8C] font-satoshi text-sm underline hover:text-white"
+                className="text-[#8C8C8C] font-satoshi underline underline-offset-4 hover:text-white"
               >
                 Terms of Service
               </a>
-              <div className="h-4 w-px bg-[#505050]" />
+              <div className="h-4 w-px bg-[#8c8c8c]" />
               <a
                 href="/legal/fees"
-                className="text-[#8C8C8C] font-satoshi text-sm underline hover:text-white"
+                className="text-[#8C8C8C] font-satoshi underline underline-offset-4 hover:text-white"
               >
                 Fees
               </a>
@@ -596,96 +590,6 @@ export const Nav = () => {
           </div>
         </div>
       </Modal>
-    </>
-  );
-};
-
-export const NavSkeleton = () => {
-  return (
-    <>
-      <nav className="fixed top-0 left-0 right-0 z-50 flex flex-col justify-center items-center py-6 px-4 md:px-[120px] h-[92px] bg-[#0A0A0A] border-b border-[#262626]">
-        <div className="flex justify-between items-center w-full max-w-[1680px] h-11 gap-8">
-          {/* Left section */}
-          <div className="flex items-center gap-6 flex-1">
-            {/* Logo */}
-            <div className="w-10 h-10 bg-neutral-800 rounded-full animate-pulse" />
-
-            {/* Navigation Links */}
-            <div className="hidden md:flex gap-6">
-              <div className="flex items-center justify-center px-3 py-2 h-9">
-                <div className="w-16 h-4 bg-white rounded animate-pulse" />
-              </div>
-              <div className="flex items-center justify-center px-3 py-2 h-9">
-                <div className="w-24 h-4 bg-neutral-800 rounded animate-pulse" />
-              </div>
-              <div className="flex items-center justify-center px-3 py-2 h-9">
-                <div className="w-16 h-4 bg-neutral-800 rounded animate-pulse" />
-              </div>
-            </div>
-          </div>
-
-          {/* Center section - Search */}
-          <div className="flex-1 max-w-[500px] mr-6 hidden md:block">
-            <div className="flex items-center h-11 w-full px-2 gap-2 bg-[#171717] border border-[#262626] rounded-md">
-              <div className="w-6 h-6 bg-neutral-800 rounded animate-pulse" />{" "}
-              {/* Search icon */}
-              <div className="flex-1 h-4 bg-neutral-800 rounded animate-pulse" />{" "}
-              {/* Search input */}
-            </div>
-          </div>
-
-          {/* Right section */}
-          <div className="flex items-center gap-4">
-            {/* Create Token Button */}
-            <div className="hidden md:flex items-center justify-center px-4 py-2.5 h-11 bg-[#171717] border border-[#2FD345] rounded-md gap-2">
-              <div className="w-24 h-4 bg-neutral-800 rounded animate-pulse" />
-              <div className="w-6 h-6 bg-neutral-800 rounded animate-pulse" />{" "}
-              {/* Stars icon */}
-            </div>
-
-            {/* Wallet Button */}
-            <div className="h-11 px-4 bg-[#171717] border border-[#262626] rounded-md flex items-center justify-center">
-              <div className="w-28 h-4 bg-neutral-800 rounded animate-pulse" />
-            </div>
-          </div>
-
-          {/* Mobile menu */}
-          <div className="flex md:hidden items-center gap-4">
-            {/* Mobile Search Icon */}
-            <div className="w-6 h-6 bg-neutral-800 rounded animate-pulse" />
-            {/* Mobile Menu Icon */}
-            <div className="w-6 h-6 bg-neutral-800 rounded animate-pulse" />
-          </div>
-        </div>
-      </nav>
-
-      {/* Mobile Search Modal Skeleton */}
-      <div className="md:hidden">
-        <div className="fixed inset-0 bg-neutral-900 flex flex-col opacity-0 pointer-events-none">
-          <div className="flex items-center py-5">
-            <div className="relative flex-1">
-              <div className="w-6 h-6 bg-neutral-800 rounded absolute left-3 top-1/2 -translate-y-1/2 animate-pulse" />
-              <div className="w-full h-11 bg-neutral-800 rounded animate-pulse" />
-            </div>
-            <div className="w-6 h-6 bg-neutral-800 rounded animate-pulse ml-4" />
-          </div>
-
-          {/* Search Results Skeleton */}
-          <div className="mt-4 flex flex-col gap-4">
-            <div className="w-20 h-4 bg-neutral-800 rounded animate-pulse" />
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-4 p-2">
-                <div className="w-10 h-10 bg-neutral-800 rounded-lg animate-pulse" />
-                <div className="flex-1">
-                  <div className="w-32 h-4 bg-neutral-800 rounded mb-2 animate-pulse" />
-                  <div className="w-24 h-3 bg-neutral-800 rounded animate-pulse" />
-                </div>
-                <div className="w-20 h-4 bg-neutral-800 rounded animate-pulse" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
     </>
   );
 };
