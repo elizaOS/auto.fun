@@ -122,3 +122,8 @@
   font-weight: 500;
   font-style: italic;
 }
+
+/* Prevent layout shifts by reserving scrollbar space */
+html {
+  overflow-y: scroll;
+}

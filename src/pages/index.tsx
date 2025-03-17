@@ -4,7 +4,7 @@ import SkeletonImage from "@/components/skeleton-image";
 export default function Page() {
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {Array(12)
           .fill("A")
           .map((token, _) => (
@@ -14,7 +14,7 @@ export default function Page() {
             >
               <div className="flex flex-col gap-4">
                 <SkeletonImage
-                  src="https://picsum.photos/200"
+                  src={`https://picsum.photos/seed/${_}/200/200`}
                   alt="image"
                   className="size-32"
                 />
