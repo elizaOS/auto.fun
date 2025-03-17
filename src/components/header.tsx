@@ -1,4 +1,5 @@
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
+import { twMerge } from "tailwind-merge";
 
 export default function Header() {
   return (
@@ -6,18 +7,27 @@ export default function Header() {
       <div className="container flex gap-8 items-center">
         {/* Logo */}
         <img className="size-10" src="/logo.png" />
-        <NavLink title="Tokens" href="/tokens" />
-        <NavLink title="How It's Done" href="/tokens" />
-        <NavLink title="Support" href="/tokens" />
+        <NavLink title="Tokens" href="/" />
+        <NavLink title="How It's Done" href="/" />
+        <NavLink title="Support" href="/" />
       </div>
     </div>
   );
 }
 
 const NavLink = ({ title, href }: { title: string; href: string }) => {
+  const location = useLocation();
+
   return (
     <Link to={href}>
-      <div className="text-center justify-center text-autofun-text-primary text-base font-medium font-satoshi leading-tight">
+      <div
+        className={twMerge([
+          "text-center justify-center text-base font-medium font-satoshi leading-tight",
+          location.pathname === href
+            ? "text-autofun-text-primary"
+            : "text-autofun-text-secondary",
+        ])}
+      >
         {title}
       </div>
     </Link>
