@@ -22,7 +22,7 @@ export const WalletListItem: FC<WalletListItemProps> = ({
         startIcon={<WalletIcon wallet={wallet} />}
         tabIndex={tabIndex}
       >
-        Connect to {wallet.adapter.name}
+        {wallet.adapter.name}
       </Button>
     </li>
   );

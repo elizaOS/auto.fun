@@ -249,14 +249,14 @@
 
 .wallet-adapter-modal-title {
   font-weight: 500;
-  font-size: 24px;
+  font-size: 20px;
   margin: 0;
   text-align: center;
   color: #fff;
   line-height: 32px;
   letter-spacing: -0.48px;
   margin-bottom: 14px;
-  max-width: 220px;
+  font-family: Satoshi;
 }
 
 @media (max-width: 374px) {
@@ -273,6 +273,7 @@
   display: flex;
   flex-direction: column;
   margin-top: 14px;
+  gap: 8px;
 }
 
 .wallet-adapter-modal-list .wallet-adapter-button {
