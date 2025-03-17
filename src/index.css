@@ -1,2 +1,8 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
+
+@layer base {
+    .border {
+      border-color: theme('colors.autofun.stroke.primary');
+    }
+  }

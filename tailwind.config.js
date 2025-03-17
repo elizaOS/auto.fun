@@ -46,10 +46,6 @@ module.exports = {
           },
         },
       },
-      borderColor: (theme) => ({
-        DEFAULT: theme("colors.stroke.primary"),
-        ...theme("colors"),
-      }),
     },
   },
   plugins: [],
