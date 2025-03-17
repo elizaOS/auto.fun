@@ -150,16 +150,16 @@ export async function createNewTokenData(
 
 export const bulkUpdatePartialTokens = async (tokens: Partial<TokenType>[]) => {
   const filledTokenPromises = tokens.map(async token => {
-    if (token.name) return token;
+    if (token.name) return { token, updated: false };
 
     const {creatorAddress, tokenCreationTxId} = await getTxIdAndCreatorFromTokenAddress(token.mint)
     const baseToken = await createNewTokenData(tokenCreationTxId, token.mint, creatorAddress);
-    return {...baseToken, ...token}
+    return {token: {...baseToken, ...token}, updated: true}
   })
 
   const filledTokens = await Promise.all(filledTokenPromises);
 
-  await Token.bulkWrite(filledTokens.map(token => ({
+  await Token.bulkWrite(filledTokens.filter(token => token.updated).map(({token}) => ({
     updateOne: {
       filter: { mint: token.mint },
       update: {$set: token},
@@ -167,5 +167,5 @@ export const bulkUpdatePartialTokens = async (tokens: Partial<TokenType>[]) => {
     }
   })));
 
-  return filledTokens;
+  return filledTokens.map(token => token.token);
 }
