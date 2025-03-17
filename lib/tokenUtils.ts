@@ -4,7 +4,7 @@ import { fetchDigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
 
 import { logger } from '../logger';
 import { SEED_BONDING_CURVE } from './constant';
-import type { TokenMetadataJson, TokenType } from '../schemas';
+import { Token, type TokenMetadataJson, type TokenType } from '../schemas';
 import { metadataCache } from '../cache';
 import { config } from './solana';
 import { getIoServer } from './util';
@@ -46,7 +46,6 @@ export async function getTxIdAndCreatorFromTokenAddress(
   );
 
   if (transactionHistory.length > 0) {
-    console.log(transactionHistory)
     const tokenCreationTxId = transactionHistory[transactionHistory.length - 1].signature;
     const transactionDetails = await config.connection.getTransaction(tokenCreationTxId);
 
@@ -147,4 +146,26 @@ export async function createNewTokenData(
     logger.error('Error processing new token log:', error);
     throw new Error('Error processing new token log: ' + error);
   }
+}
+
+export const bulkUpdatePartialTokens = async (tokens: Partial<TokenType>[]) => {
+  const filledTokenPromises = tokens.map(async token => {
+    if (token.name) return token;
+
+    const {creatorAddress, tokenCreationTxId} = await getTxIdAndCreatorFromTokenAddress(token.mint)
+    const baseToken = await createNewTokenData(tokenCreationTxId, token.mint, creatorAddress);
+    return {...baseToken, ...token}
+  })
+
+  const filledTokens = await Promise.all(filledTokenPromises);
+
+  await Token.bulkWrite(filledTokens.map(token => ({
+    updateOne: {
+      filter: { mint: token.mint },
+      update: {$set: token},
+      upsert: true,
+    }
+  })));
+
+  return filledTokens;
 }

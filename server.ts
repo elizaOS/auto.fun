@@ -26,7 +26,7 @@ import mediaGenerationRoutes from './mediaGeneration';
 import { MigrationService } from './lib/migration';
 import { fetchCodexTokenEvents } from './lib/api';
 import { config } from './lib/solana';
-import { createNewTokenData } from './lib/tokenUtils';
+import { createNewTokenData, getTxIdAndCreatorFromTokenAddress } from './lib/tokenUtils';
 import { fetchCodexBars, CodexBarResolution } from './lib/api';
 
 // For devnet testing - placeholder token address for locked tokens since there are none in devnet
@@ -314,6 +314,15 @@ class TokenMonitor {
             logger.log('marketCapUSD', marketCapUSD);
 
             const existingToken = await Token.findOne({ mint: mintAddress });
+
+            let baseToken: Partial<TokenType> = {};
+            if (!existingToken?.name) {
+              const {creatorAddress, tokenCreationTxId} = await getTxIdAndCreatorFromTokenAddress(mintAddress);
+              // need to remove volume24h since it is incremented in the following query. cannot set and $inc at the same time
+              const {volume24h, ...token} = await createNewTokenData(tokenCreationTxId, mintAddress, creatorAddress);
+              baseToken = token;
+            }
+
             const priceChange = existingToken?.price24hAgo 
               ? ((tokenPriceUSD - existingToken.price24hAgo) / existingToken.price24hAgo) * 100
               : 0;
@@ -321,6 +330,7 @@ class TokenMonitor {
             const token = await Token.findOneAndUpdate(
               { mint: mintAddress },
               {
+                ...baseToken,
                 reserveAmount: Number(reserveToken), // WIP
                 reserveLamport: Number(reserveLamport), // WIP
                 currentPrice: (Number(reserveLamport) / 1e9) / (Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS)),

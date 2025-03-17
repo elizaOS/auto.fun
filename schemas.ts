@@ -544,32 +544,6 @@ MediaGenerationSchema.pre("save", async function (next) {
   }
 });
 
-const ensureValidToken = async (doc: Partial<TokenType | TokenType[]>) => {
-  const modify = async (token: TokenType) => {
-    // If token already has a name, skip. If the token doesn't have a mint we can't match it up anyway
-    if (token?.name || !token?.mint) return
-
-    const {creatorAddress, tokenCreationTxId} = await getTxIdAndCreatorFromTokenAddress(token.mint)
-    const baseToken = await createNewTokenData(tokenCreationTxId, token.mint, creatorAddress);
-    Object.assign(token, {...baseToken, ...token})
-    await Token.updateOne({mint: token.mint}, token, {new: true});
-  }
-
-  if (Array.isArray(doc)) {
-    const promises = [];
-    for (const item of doc) {
-      promises.push(modify(item));
-    }
-    await Promise.all(promises); 
-  } else {
-    return modify(doc);
-  }
-}
-
-TokenSchema.post(['find', 'findOne', 'findOneAndUpdate', 'findOneAndReplace', 'updateMany', 'updateOne'], ensureValidToken)
-
-TokenSchema.post('aggregate', ensureValidToken);
-
 ///////////////////////////////////////
 // MongoDB Indexes
 ///////////////////////////////////////
