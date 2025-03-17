@@ -1,4 +1,5 @@
 import Button from "@/components/button";
+import SkeletonImage from "@/components/skeleton-image";
 
 export default function Page() {
   return (
@@ -12,7 +13,10 @@ export default function Page() {
               className="bg-autofun-background-card p-5 rounded-md border"
             >
               <div className="flex flex-col gap-4">
-                <Button variant="primary" size="large">Buy</Button>
+                <SkeletonImage src="https://picsum.photos/200" alt="image" className="size-24" />
+                <Button variant="primary" size="large">
+                  Buy
+                </Button>
                 <Button variant="secondary">Buy</Button>
                 <Button variant="primary" disabled>
                   Buy
