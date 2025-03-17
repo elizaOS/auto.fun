@@ -6,6 +6,7 @@ import { BrowserRouter } from "react-router";
 import { Routes, Route } from "react-router";
 import Layout from "./layout/root";
 import Homepage from "./pages";
+import Support from "./pages/support";
 
 const queryClient = new QueryClient();
 
@@ -16,6 +17,7 @@ createRoot(document.getElementById("root")!).render(
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<Homepage />} />
+            <Route path="/support" element={<Support />} />
           </Route>
         </Routes>
       </BrowserRouter>

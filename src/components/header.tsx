@@ -5,11 +5,12 @@ export default function Header() {
   return (
     <div className="border-b py-6">
       <div className="container flex gap-8 items-center">
-        {/* Logo */}
-        <img className="size-10" src="/logo.png" />
+        <Link to="/">
+          <img className="size-10" src="/logo.png" />
+        </Link>
         <NavLink title="Tokens" href="/" />
         <NavLink title="How It's Done" href="/" />
-        <NavLink title="Support" href="/" />
+        <NavLink title="Support" href="/support" />
       </div>
     </div>
   );

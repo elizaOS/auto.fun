@@ -4,7 +4,7 @@ import SkeletonImage from "@/components/skeleton-image";
 export default function Page() {
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-4 gap-3">
         {Array(12)
           .fill("A")
           .map((token, _) => (
@@ -13,7 +13,11 @@ export default function Page() {
               className="bg-autofun-background-card p-5 rounded-md border"
             >
               <div className="flex flex-col gap-4">
-                <SkeletonImage src="https://picsum.photos/200" alt="image" className="size-24" />
+                <SkeletonImage
+                  src="https://picsum.photos/200"
+                  alt="image"
+                  className="size-32"
+                />
                 <Button variant="primary" size="large">
                   Buy
                 </Button>
