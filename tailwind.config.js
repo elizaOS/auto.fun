@@ -22,7 +22,7 @@ module.exports = {
           background: {
             primary: "#0a0a0a",
             card: "#171717",
-            "action-primary": "#262626",
+            "action-primary": "#2E2E2E",
             disabled: "#505050",
             input: "#262626",
             "action-secondary": "#092f0e",
