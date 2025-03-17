@@ -12,7 +12,7 @@ export default function Page() {
               className="bg-autofun-background-card p-5 rounded-md border"
             >
               <div className="flex flex-col gap-4">
-                <Button variant="primary">Buy</Button>
+                <Button variant="primary" size="large">Buy</Button>
                 <Button variant="secondary">Buy</Button>
                 <Button variant="primary" disabled>
                   Buy

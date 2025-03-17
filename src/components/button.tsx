@@ -5,6 +5,7 @@ import { twMerge } from "tailwind-merge";
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary";
   isLoading?: boolean;
+  size?: "default" | "large" | "small";
 }
 
 const variantClasses = {
@@ -13,12 +14,19 @@ const variantClasses = {
     "bg-autofun-background-action-primary border text-autofun-text-highlight",
 };
 
+const sizeClasses = {
+  small: "h-[36px]",
+  default: "h-10",
+  large: "h-[44px]",
+};
+
 const baseClasses =
   "px-4 py-2 rounded focus:outline-none transition duration-150 ease-in-out cursor-pointer font-medium";
 const disabledClasses = "opacity-50 cursor-not-allowed";
 
 const Button: React.FC<ButtonProps> = ({
   variant = "primary",
+  size = "default",
   isLoading,
   disabled,
   children,
@@ -27,6 +35,7 @@ const Button: React.FC<ButtonProps> = ({
 }) => {
   const classes = twMerge(
     baseClasses,
+    sizeClasses[size],
     variantClasses[variant],
     (disabled || isLoading) && disabledClasses,
     className
@@ -34,11 +43,7 @@ const Button: React.FC<ButtonProps> = ({
 
   return (
     <button disabled={disabled || isLoading} className={classes} {...props}>
-      {isLoading ? (
-        <Loader2 className="animate-spin size-5 m-auto" />
-      ) : (
-        children
-      )}
+      {isLoading ? <Loader2 className="animate-spin w-5 h-5 mx-auto" /> : children}
     </button>
   );
 };
