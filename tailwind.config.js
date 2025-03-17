@@ -13,6 +13,10 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        satoshi: ["Satoshi", "sans-serif"],
+        "dm-mono": ["DMMono", "monospace"],
+      },
       colors: {
         autofun: {
           background: {
