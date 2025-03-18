@@ -144,18 +144,16 @@ export function AgentBrowser() {
   return (
     <div className="w-full">
       <div className="w-full max-w-[1680px] mx-auto mt-8 sm:mt-14 px-2 sm:px-4">
-        <div className="border-b border-[#262626]/40">
-          <Controls
-            view={view}
-            sortBy={sortBy}
-            sortOrder={sortOrder}
-            onViewChange={handleViewChange}
-            onSortByChange={handleSortByChange}
-            onSortOrderChange={handleSortOrderChange}
-          />
-        </div>
+        <Controls
+          view={view}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onViewChange={handleViewChange}
+          onSortByChange={handleSortByChange}
+          onSortOrderChange={handleSortOrderChange}
+        />
 
-        <div className="pt-4 pb-6">
+        <div className="mt-4">
           {isLoading ? (
             view === "grid" ? (
               renderGridSkeletons()
