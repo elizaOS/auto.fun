@@ -5,16 +5,18 @@ import { WalletButton } from "../common/button/WalletButton";
 import { useUserStore } from "../providers/UserProvider";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Modal } from "../common/Modal";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
+
 import { Token, useSearchTokens } from "@/utils/tokens";
 import { formatNumber } from "@/utils/number";
 import { useOutsideClickDetection } from "@/hooks/actions/useOutsideClickDetection";
 import { debounce } from "lodash";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerTrigger,
+  DrawerClose,
+} from "@/components/ui/drawer";
+import { DialogTitle } from "@radix-ui/react-dialog";
 
 const CopyButton = ({ text }: { text: string }) => {
   return (
@@ -237,10 +239,17 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
   if (isMobile) {
     return (
       <div>
-        <SearchIcon
-          className="cursor-pointer"
-          onClick={() => setShowMobileSearch(true)}
-        />
+        <div className="flex items-center h-11 w-full px-2 gap-2 bg-[#171717] border border-[#262626] rounded-md hover:border-[#2FD345]/50 focus-within:border-[#2FD345]/50 transition-colors">
+          <SearchIcon className="w-6 h-6 text-[#8C8C8C] group-hover:text-[#2FD345]" />
+          <input
+            type="text"
+            value={searchInput}
+            onClick={() => setShowMobileSearch(true)}
+            readOnly
+            placeholder="Symbol or Address..."
+            className="flex-1 bg-transparent text-base font-medium text-[#8C8C8C] placeholder-[#8C8C8C] focus:outline-none hover:placeholder-white focus:placeholder-white transition-colors font-satoshi placeholder:font-satoshi focus:font-satoshi"
+          />
+        </div>
 
         {showMobileSearch && (
           <div className="fixed inset-0 bg-neutral-900 flex flex-col">
@@ -324,11 +333,13 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
 };
 
 const Step = ({ number, title }: { number: number; title: string }) => (
-  <div className="flex items-start gap-2">
+  <div className="flex items-start gap-2 flex-col lg:flex-row">
     <span className={`font-mono text-xl text-white whitespace-nowrap`}>
       Step {number}:
     </span>
-    <span className="font-mono text-[#8C8C8C] mt-0.5">{title}</span>
+    <span className="font-mono text-[#8C8C8C] mt-0.5 max-w-[360px] lg:max-w-none">
+      {title}
+    </span>
   </div>
 );
 
@@ -399,8 +410,8 @@ export const Nav = () => {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 flex flex-col justify-center items-center py-6 px-[120px] h-[92px] bg-[#0A0A0A] border-b border-[#262626]">
-        <div className="flex justify-between items-center w-full max-w-[1680px] h-11 gap-8">
+      <nav className="fixed top-0 left-0 right-0 z-50 flex flex-col justify-center items-center p-2 xl:py-6 h-[92px] bg-[#0A0A0A] border-b border-[#262626]">
+        <div className="flex justify-between items-center w-full max-w-[1680px] h-11 gap-2 xl:gap-8">
           {/* Left section */}
           <div className="flex items-center gap-6 flex-1">
             <Link href="/" className="flex items-center">
@@ -411,7 +422,7 @@ export const Nav = () => {
                 alt="logo"
               />
             </Link>
-            <div className="hidden md:flex gap-6">
+            <div className="hidden xl:flex gap-6">
               <Link href="/">
                 <button className="flex items-center justify-center px-3 py-2 gap-2 h-9 rounded-md bg-transparent text-white">
                   <span className="text-base font-medium font-satoshi">
@@ -438,12 +449,15 @@ export const Nav = () => {
           </div>
 
           {/* Center section - Search */}
-          <div className="flex-1 max-w-[500px] mr-6">
+          <div className="flex-1 max-w-[500px] mr-6 hidden xl:block">
             <AgentSearch isMobile={false} />
+          </div>
+          <div className="flex-1 max-w-[500px] mr-6 xl:hidden">
+            <AgentSearch isMobile />
           </div>
 
           {/* Right section */}
-          <div className="flex items-center gap-4">
+          <div className="items-center gap-4 hidden xl:flex">
             <Link href="/create">
               <button className="flex items-center justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border border-[#2FD345] rounded-md">
                 <span className="text-base font-medium text-white font-satoshi">
@@ -461,14 +475,13 @@ export const Nav = () => {
             <WalletButton />
           </div>
 
-          {/* Keep existing mobile menu code */}
-          <div className="flex md:hidden items-center gap-4">
-            <AgentSearch isMobile />
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                <button className="text-[#d1d1d1] outline-solid">
+          {/* Mobile menu */}
+          <div className="flex xl:hidden items-center gap-4">
+            <Drawer direction="right">
+              <DrawerTrigger asChild>
+                <button className="text-[#d1d1d1] outline-none">
                   <svg
-                    className="w-6 h-6"
+                    className="w-8 h-8"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -482,33 +495,101 @@ export const Nav = () => {
                     />
                   </svg>
                 </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="overflow-visible bg-[#0e0e0e] border-b border-b-[#03ff24]/40 gap-1 flex flex-col py-6 px-4 mr-4">
-                <DropdownMenuItem asChild>
-                  <Link href="/create" className="text-[#d1d1d1]">
-                    Create Agent
-                  </Link>
-                </DropdownMenuItem>
-                {authenticated && (
-                  <DropdownMenuItem asChild>
-                    <Link href={`/my-agents`} className="text-[#d1d1d1]">
-                      My Agents
+              </DrawerTrigger>
+              <DrawerContent className="h-full w-[80%] max-w-[400px] rounded-l-[20px] border-l border-[#262626] fixed bottom-0 right-0">
+                <DialogTitle className="sr-only">Mobile Menu</DialogTitle>
+                <div className="flex flex-col h-full bg-[#0A0A0A] p-6 pb-12 gap-2">
+                  <DrawerClose asChild>
+                    <button className="text-[#d1d1d1] outline-none ml-auto">
+                      <svg
+                        className="w-8 h-8"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18 18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </DrawerClose>
+                  <WalletButton className="w-full mb-6" />
+
+                  <div className="flex flex-col gap-6">
+                    <Link
+                      href="/create"
+                      className="flex items-center gap-1 text-[#8c8c8c] text-lg hover:text-white font-satoshi"
+                    >
+                      <Image
+                        src="/stars.svg"
+                        width={16}
+                        height={16}
+                        alt="stars"
+                        className="text-[#2FD345]"
+                      />
+                      Create Token
                     </Link>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem asChild>
-                  <button
-                    className="text-center text-[#d1d1d1]"
-                    onClick={() => setModalOpen(true)}
-                  >
-                    How it works?
-                  </button>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <WalletButton />
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    <Link
+                      href="/"
+                      className="flex items-center gap-1 text-[#8c8c8c] text-lg hover:text-white font-satoshi"
+                    >
+                      <EyeIcon />
+                      Tokens
+                    </Link>
+
+                    {authenticated && (
+                      <Link
+                        href="/my-agents"
+                        className="flex items-center gap-1 text-[#8c8c8c] text-lg hover:text-white font-satoshi"
+                      >
+                        <EyeIcon />
+                        My Agents
+                      </Link>
+                    )}
+                    <button
+                      onClick={() => setModalOpen(true)}
+                      className="flex items-center gap-1 text-left text-[#8c8c8c] text-lg hover:text-white transition-colors font-satoshi"
+                    >
+                      <InfoIcon />
+                      How It Works
+                    </button>
+                    <Link
+                      href="/support"
+                      className="flex items-center gap-1 text-[#8c8c8c] text-lg hover:text-white transition-colors font-satoshi"
+                    >
+                      <SupportIcon />
+                      Support
+                    </Link>
+                  </div>
+
+                  <hr className="border-t border-[#262626] my-3" />
+                  <div className="flex flex-col gap-2 text-sm">
+                    <Link
+                      href="/legal/privacy"
+                      className="text-[#8c8c8c] hover:text-white"
+                    >
+                      Privacy Policy
+                    </Link>
+                    <Link
+                      href="/legal/terms"
+                      className="text-[#8c8c8c] hover:text-white"
+                    >
+                      Terms of Service
+                    </Link>
+                    <Link
+                      href="/legal/fees"
+                      className="text-[#8c8c8c] hover:text-white"
+                    >
+                      Fees
+                    </Link>
+                  </div>
+                </div>
+              </DrawerContent>
+            </Drawer>
           </div>
         </div>
       </nav>
@@ -522,12 +603,12 @@ export const Nav = () => {
         className="bg-[#171717] border border-[#262626] rounded-lg p-0"
         allowClose={false}
       >
-        <div className="flex flex-col w-[587px]">
+        <div className="flex flex-col lg:w-[587px]">
           {/* Tab Bar */}
           <div className="flex w-full border-b border-[#262626]">
             <button
               onClick={() => setActiveTab("trading")}
-              className={`flex justify-center items-center w-[293.5px] h-[60px] font-satoshi text-xl tracking-[-0.02em] transition-all duration-200
+              className={`flex justify-center items-center p-6 lg:w-[293.5px] h-[60px] font-satoshi text-xl tracking-[-0.02em] transition-all duration-200
                 ${
                   activeTab === "trading"
                     ? "text-[#2FD345] bg-[#171717]"
@@ -538,7 +619,7 @@ export const Nav = () => {
             </button>
             <button
               onClick={() => setActiveTab("creation")}
-              className={`flex justify-center items-center w-[293.5px] h-[60px] font-satoshi text-xl tracking-[-0.02em] transition-all duration-200 border-l border-[#262626]
+              className={`flex justify-center items-center p-6 lg:w-[293.5px] h-[60px] font-satoshi text-xl tracking-[-0.02em] transition-all duration-200 border-l border-[#262626]
                 ${
                   activeTab === "creation"
                     ? "text-[#2FD345] bg-[#171717]"
@@ -568,21 +649,21 @@ export const Nav = () => {
             <div className="flex items-center gap-3">
               <a
                 href="/legal/privacy"
-                className="text-[#8C8C8C] font-satoshi underline underline-offset-4 hover:text-white"
+                className="text-[#8c8c8c] font-satoshi underline underline-offset-4 hover:text-white"
               >
                 Privacy Policy
               </a>
               <div className="h-4 w-px bg-[#8c8c8c]" />
               <a
                 href="/legal/terms"
-                className="text-[#8C8C8C] font-satoshi underline underline-offset-4 hover:text-white"
+                className="text-[#8c8c8c] font-satoshi underline underline-offset-4 hover:text-white"
               >
                 Terms of Service
               </a>
               <div className="h-4 w-px bg-[#8c8c8c]" />
               <a
                 href="/legal/fees"
-                className="text-[#8C8C8C] font-satoshi underline underline-offset-4 hover:text-white"
+                className="text-[#8c8c8c] font-satoshi underline underline-offset-4 hover:text-white"
               >
                 Fees
               </a>
@@ -593,3 +674,58 @@ export const Nav = () => {
     </>
   );
 };
+
+const SupportIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="21"
+    fill="none"
+    viewBox="0 0 20 21"
+  >
+    <path
+      fill="#8C8C8C"
+      d="m9 20.25-.25-3H8.5q-3.55 0-6.025-2.475T0 8.75t2.475-6.025T8.5.25a8.3 8.3 0 0 1 3.313.662 8.57 8.57 0 0 1 4.524 4.525A8.3 8.3 0 0 1 17 8.75q0 1.875-.612 3.6a12.7 12.7 0 0 1-1.676 3.2 14.2 14.2 0 0 1-2.525 2.675A15.6 15.6 0 0 1 9 20.25m2-3.65q1.775-1.5 2.888-3.512A8.8 8.8 0 0 0 15 8.75q0-2.725-1.888-4.612T8.5 2.25 3.888 4.138Q2 6.028 2 8.75t1.888 4.613T8.5 15.25H11zm-2.525-2.375q.425 0 .725-.3t.3-.725-.3-.725-.725-.3-.725.3-.3.725.3.725.725.3M7.75 11.05h1.5q0-.75.15-1.05t.95-1.1q.45-.45.75-.975t.3-1.125q0-1.275-.862-1.912T8.5 4.25q-1.1 0-1.85.613T5.6 6.35L7 6.9a2.3 2.3 0 0 1 .475-.837q.35-.412 1.025-.413.675 0 1.013.375.338.376.337.825 0 .425-.25.763A6 6 0 0 1 9 8.3q-.875.75-1.062 1.188T7.75 11.05"
+    ></path>
+  </svg>
+);
+
+const InfoIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="21"
+    fill="none"
+    viewBox="0 0 20 21"
+  >
+    <path
+      fill="#8C8C8C"
+      d="M5 17.75a3.2 3.2 0 0 1-2.354-.98 3.2 3.2 0 0 1-.98-2.353q0-1.376.98-2.354A3.2 3.2 0 0 1 5 11.083a3.2 3.2 0 0 1 2.354.98 3.2 3.2 0 0 1 .98 2.354 3.2 3.2 0 0 1-.98 2.354A3.2 3.2 0 0 1 5 17.75m10 0a3.2 3.2 0 0 1-2.354-.98 3.2 3.2 0 0 1-.98-2.353q0-1.376.98-2.354a3.2 3.2 0 0 1 2.354-.98 3.2 3.2 0 0 1 2.354.98 3.2 3.2 0 0 1 .98 2.354 3.2 3.2 0 0 1-.98 2.354A3.2 3.2 0 0 1 15 17.75m-5-8.333a3.2 3.2 0 0 1-2.354-.98 3.2 3.2 0 0 1-.98-2.354q0-1.374.98-2.354A3.2 3.2 0 0 1 10 2.75a3.2 3.2 0 0 1 2.354.98 3.2 3.2 0 0 1 .98 2.353 3.2 3.2 0 0 1-.98 2.355A3.2 3.2 0 0 1 10 9.417"
+    ></path>
+  </svg>
+);
+
+const EyeIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="21"
+    fill="none"
+    viewBox="0 0 20 21"
+  >
+    <path
+      stroke="#8C8C8C"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2.213"
+      d="M10 11.357a1.107 1.107 0 1 0 0-2.214 1.107 1.107 0 0 0 0 2.214"
+    ></path>
+    <path
+      stroke="#8C8C8C"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2.213"
+      d="M17.685 10.615a1.1 1.1 0 0 0 0-.73 8.3 8.3 0 0 0-15.37 0 1.1 1.1 0 0 0 0 .73 8.3 8.3 0 0 0 15.37 0"
+    ></path>
+  </svg>
+);

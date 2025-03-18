@@ -112,7 +112,7 @@ export const Modal = ({
   return createPortal(
     <div
       aria-modal="true"
-      className={`wallet-adapter-modal ${fadeIn && "wallet-adapter-modal-fade-in"}`}
+      className={`wallet-adapter-modal ${fadeIn && "wallet-adapter-modal-fade-in"} z-[100] pointer-events-auto`}
       ref={ref}
       role="dialog"
     >

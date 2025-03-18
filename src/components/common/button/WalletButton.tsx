@@ -45,7 +45,7 @@ export const useWalletConnection = () => {
   };
 };
 
-export const WalletButton = () => {
+export const WalletButton = ({ className }: { className?: string }) => {
   const { disconnect, publicKey, connected, signMessage } = useWallet();
   const router = useRouter();
   const pathname = usePathname();
@@ -183,5 +183,5 @@ export const WalletButton = () => {
     }
   }, [connected, signIn, signOut, authenticated]);
 
-  return <WalletMultiButton />;
+  return <WalletMultiButton className={className} />;
 };
