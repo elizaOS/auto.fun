@@ -37,11 +37,13 @@ export default function Page() {
   return (
     <div className="flex flex-col gap-4">
       {/* Top Navigation */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap-reverse lg:flex-wrap">
         <GridListSwitcher />
-        <Button variant="outline">All</Button>
-        <Button>Market Cap</Button>
-        <Button variant="outline">Creation Time</Button>
+        <div className="flex items-center gap-3">
+          <Button variant="outline">All</Button>
+          <Button>Market Cap</Button>
+          <Button variant="outline">Creation Time</Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -116,7 +118,11 @@ export default function Page() {
               </span>
             </div>
             <Divider />
-            <Button variant="primary" size="large" className="hover:border-autofun-stroke-highlight">
+            <Button
+              variant="primary"
+              size="large"
+              className="hover:border-autofun-stroke-highlight"
+            >
               Buy
             </Button>
           </div>
