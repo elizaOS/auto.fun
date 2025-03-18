@@ -331,11 +331,13 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
 };
 
 const Step = ({ number, title }: { number: number; title: string }) => (
-  <div className="flex items-start gap-2">
+  <div className="flex items-start gap-2 flex-col lg:flex-row">
     <span className={`font-mono text-xl text-white whitespace-nowrap`}>
       Step {number}:
     </span>
-    <span className="font-mono text-[#8C8C8C] mt-0.5">{title}</span>
+    <span className="font-mono text-[#8C8C8C] mt-0.5 max-w-[360px] lg:max-w-none">
+      {title}
+    </span>
   </div>
 );
 
@@ -598,12 +600,12 @@ export const Nav = () => {
         className="bg-[#171717] border border-[#262626] rounded-lg p-0"
         allowClose={false}
       >
-        <div className="flex flex-col w-[587px]">
+        <div className="flex flex-col lg:w-[587px]">
           {/* Tab Bar */}
           <div className="flex w-full border-b border-[#262626]">
             <button
               onClick={() => setActiveTab("trading")}
-              className={`flex justify-center items-center w-[293.5px] h-[60px] font-satoshi text-xl tracking-[-0.02em] transition-all duration-200
+              className={`flex justify-center items-center p-6 lg:w-[293.5px] h-[60px] font-satoshi text-xl tracking-[-0.02em] transition-all duration-200
                 ${
                   activeTab === "trading"
                     ? "text-[#2FD345] bg-[#171717]"
@@ -614,7 +616,7 @@ export const Nav = () => {
             </button>
             <button
               onClick={() => setActiveTab("creation")}
-              className={`flex justify-center items-center w-[293.5px] h-[60px] font-satoshi text-xl tracking-[-0.02em] transition-all duration-200 border-l border-[#262626]
+              className={`flex justify-center items-center p-6 lg:w-[293.5px] h-[60px] font-satoshi text-xl tracking-[-0.02em] transition-all duration-200 border-l border-[#262626]
                 ${
                   activeTab === "creation"
                     ? "text-[#2FD345] bg-[#171717]"
