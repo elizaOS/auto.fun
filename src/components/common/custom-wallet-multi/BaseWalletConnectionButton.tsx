@@ -16,7 +16,7 @@ export function BaseWalletConnectionButton({
   return (
     <Button
       {...props}
-      className="wallet-adapter-button-trigger"
+      className={`wallet-adapter-button-trigger ${props.className || ""}`}
       startIcon={
         walletIcon && walletName ? (
           <WalletIcon

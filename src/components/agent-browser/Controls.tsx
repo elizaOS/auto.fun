@@ -32,7 +32,7 @@ export function Controls({
     <div className="sticky top-0 z-10">
       <div className="py-4">
         <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-col md:flex-row">
             <ViewToggle view={view} onViewChange={onViewChange} />
             {/* TODO: Commented because functionality is not implemented yet */}
             {/* <FilterButtons sortBy={filterBy} onSortChange={onSortChange} /> */}
