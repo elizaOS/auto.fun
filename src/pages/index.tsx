@@ -6,8 +6,6 @@ import SkeletonImage from "@/components/skeleton-image";
 import { useQuery } from "@tanstack/react-query";
 import { faker } from "@faker-js/faker";
 import { abbreviateNumber, moment, shortenAddress } from "@/utils";
-import { Grid1 } from "iconsax-react";
-import { List } from "lucide-react";
 import GridListSwitcher from "@/components/grid-list-switcher";
 
 export default function Page() {
@@ -50,13 +48,13 @@ export default function Page() {
         {data?.map((token, _) => (
           <div
             key={token.address}
-            className="bg-autofun-background-card p-4 rounded-md border flex flex-col gap-3"
+            className="bg-autofun-background-card p-4 rounded-lg border flex flex-col gap-3"
           >
             <div className="flex items-start gap-3 min-w-0">
               <SkeletonImage
                 src={token.image}
                 alt="image"
-                className="size-32 grow shrink-0"
+                className="aspect-square w-34 grow shrink-0"
               />
               <div className="flex flex-col gap-3 justify-between grow min-w-0">
                 {/* Token Info and Time */}
