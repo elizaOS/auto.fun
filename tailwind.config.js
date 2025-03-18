@@ -3,7 +3,7 @@ module.exports = {
   theme: {
     container: {
       center: true,
-      padding: "1rem",
+      // padding: "1rem",
       screens: {
         sm: "640px",
         md: "768px",

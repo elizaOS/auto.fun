@@ -6,6 +6,9 @@ import SkeletonImage from "@/components/skeleton-image";
 import { useQuery } from "@tanstack/react-query";
 import { faker } from "@faker-js/faker";
 import { abbreviateNumber, moment, shortenAddress } from "@/utils";
+import { Grid1 } from "iconsax-react";
+import { List } from "lucide-react";
+import GridListSwitcher from "@/components/grid-list-switcher";
 
 export default function Page() {
   const query = useQuery({
@@ -37,6 +40,7 @@ export default function Page() {
     <div className="flex flex-col gap-4">
       {/* Top Navigation */}
       <div className="flex items-center gap-3">
+        <GridListSwitcher />
         <Button variant="outline">All</Button>
         <Button>Market Cap</Button>
         <Button variant="outline">Creation Time</Button>
