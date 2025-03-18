@@ -32,7 +32,7 @@ export const TokenCreationForm = ({
 
   return (
     <form className="flex flex-col w-full m-auto gap-7 justify-center">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <FormInput
           type="text"
           {...register("name", { required: true })}

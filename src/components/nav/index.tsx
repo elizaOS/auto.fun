@@ -16,6 +16,7 @@ import {
   DrawerTrigger,
   DrawerClose,
 } from "@/components/ui/drawer";
+import { DialogTitle } from "@radix-ui/react-dialog";
 
 const CopyButton = ({ text }: { text: string }) => {
   return (
@@ -244,6 +245,7 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
             type="text"
             value={searchInput}
             onClick={() => setShowMobileSearch(true)}
+            readOnly
             placeholder="Symbol or Address..."
             className="flex-1 bg-transparent text-base font-medium text-[#8C8C8C] placeholder-[#8C8C8C] focus:outline-none hover:placeholder-white focus:placeholder-white transition-colors font-satoshi placeholder:font-satoshi focus:font-satoshi"
           />
@@ -495,6 +497,7 @@ export const Nav = () => {
                 </button>
               </DrawerTrigger>
               <DrawerContent className="h-full w-[80%] max-w-[400px] rounded-l-[20px] border-l border-[#262626] fixed bottom-0 right-0">
+                <DialogTitle className="sr-only">Mobile Menu</DialogTitle>
                 <div className="flex flex-col h-full bg-[#0A0A0A] p-6 pb-12 gap-2">
                   <DrawerClose asChild>
                     <button className="text-[#d1d1d1] outline-none ml-auto">
