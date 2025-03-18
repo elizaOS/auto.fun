@@ -186,7 +186,7 @@ const AgentSearch = ({ isMobile }: { isMobile: boolean }) => {
 
   const handleSearch = useRef(
     debounce(async (query: string) => {
-      if (query.trim().length === 0) {
+      if (query.trim().length < 2) {
         setSearchResults([]);
         setShowSearchResults(false);
         return;
