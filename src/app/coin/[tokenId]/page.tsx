@@ -80,12 +80,14 @@ const Switcher = ({
   </div>
 );
 
+const SMALL_TRADE_THRESHOLD = 0.05;
+
 export default function TradingInterface() {
   const { publicKey, sendTransaction } = useWallet();
   const { connection } = useConnection();
   const [activeTab, setActiveTab] = useState("trades");
   const [showOwnTrades, setShowOwnTrades] = useState(false);
-  const [showSize, setShowSize] = useState(false);
+  const [showSmallTrades, setShowSmallTrades] = useState(false);
   const params = useParams();
 
   const tokenId = params.tokenId as string;
@@ -127,6 +129,12 @@ export default function TradingInterface() {
     },
     itemsPropertyName: "swaps",
   });
+
+  const filteredTransactions = useMemo(() => {
+    return transactions
+      .filter((tx) => showSmallTrades || tx.solAmount > SMALL_TRADE_THRESHOLD)
+      .filter((tx) => !showOwnTrades || tx.user === publicKey?.toBase58());
+  }, [publicKey, showOwnTrades, showSmallTrades, transactions]);
 
   const tokenTimeAgo =
     useTimeAgo(token?.createdAt || "").toLowerCase() + " ago";
@@ -274,11 +282,13 @@ export default function TradingInterface() {
                     </span>
                     <div className="flex items-center gap-1">
                       <SolanaIcon />
-                      <span className="text-xs font-satoshi">0.05</span>
+                      <span className="text-xs font-satoshi">
+                        {SMALL_TRADE_THRESHOLD}
+                      </span>
                     </div>
                     <Switcher
-                      enabled={showSize}
-                      onChange={setShowSize}
+                      enabled={showSmallTrades}
+                      onChange={setShowSmallTrades}
                       label=""
                     />
                   </div>
@@ -293,7 +303,10 @@ export default function TradingInterface() {
 
             {/* Trade List */}
             {activeTab === "trades" && (
-              <TradeTable ticker={token.ticker} transactions={transactions} />
+              <TradeTable
+                ticker={token.ticker}
+                transactions={filteredTransactions}
+              />
             )}
 
             {/* Holders List */}
