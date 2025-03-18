@@ -32,7 +32,7 @@ export default function GridView({ data }: { data: any }) {
                 </div>
                 <div className="px-2 py-1 rounded-md border flex ml-auto shrink-0">
                   <div className="text-autofun-text-secondary text-xs font-medium font-dm-mono">
-                    {fromNow(token.createdAt)}
+                    {fromNow(token.createdAt, true)}
                   </div>
                 </div>
               </div>

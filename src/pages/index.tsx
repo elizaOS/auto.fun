@@ -29,13 +29,13 @@ export default function Page() {
         count: 12,
       });
     },
-    refetchInterval: 1_000,
+    refetchInterval: 500,
   });
 
   const data = query?.data;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col">
       {/* Top Navigation */}
       <div className="flex items-center gap-3 flex-wrap-reverse lg:flex-wrap">
         <GridListSwitcher />
@@ -47,7 +47,9 @@ export default function Page() {
       </div>
 
       {activeTab === "grid" ? (
-        <GridView data={data} />
+        <div className="mt-6">
+          <GridView data={data} />
+        </div>
       ) : (
         <TableView data={data} />
       )}

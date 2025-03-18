@@ -8,7 +8,7 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
   }, [progress]);
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       {/* Background */}
       <div className="absolute left-0 h-2 w-full bg-autofun-stroke-primary rounded-md" />
       {/* Progress */}
