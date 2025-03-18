@@ -118,6 +118,14 @@ export const TradeTable = ({
             ))}
           </tr>
         ))}
+
+        {transactions.length === 0 && (
+          <tr>
+            <td colSpan={columns.length} className="py-3.5">
+              <div className="flex justify-center">No transactions found</div>
+            </td>
+          </tr>
+        )}
       </tbody>
     </table>
   );
