@@ -172,7 +172,7 @@ export default function TransactionSignPage() {
         </div>
       </Modal>
 
-      <div className="rounded-md border border-neutral-800 overflow-hidden flex">
+      <div className="rounded-md border border-neutral-800 overflow-hidden flex flex-col lg:flex-row">
         <div className="border-r border-r-neutral-800 w-fit">
           <CenterFormContainer
             formComponent={
