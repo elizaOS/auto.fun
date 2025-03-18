@@ -1,177 +1,190 @@
 import { Token } from "@/utils/tokens";
-import { DM_Mono } from "next/font/google";
 import { Grid } from "lucide-react";
 import { useTimeAgo } from "@/app/formatTimeAgo";
-import { useMemo } from "react";
-
-const dmMono = DM_Mono({
-  weight: ["400", "500"],
-  subsets: ["latin"],
-});
+import { CopyButton } from "@/app/create/CopyButton";
+import {
+  CellContext,
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
 
 interface TableViewProps {
   tokens: Token[];
   onTokenClick: (mint: string) => void;
 }
 
-export function TableView({ tokens, onTokenClick }: TableViewProps) {
-  const timestamps = useMemo(
-    () => tokens.map((token) => token.createdAt),
-    [tokens],
-  );
+const CreationTime = ({ row }: CellContext<Token, unknown>) => {
+  const { createdAt } = row.original;
+  const timeAgo = useTimeAgo(createdAt);
 
-  const timeAgos = useTimeAgo(timestamps);
+  return <div className={`truncate text-right`}>{timeAgo}</div>;
+};
+
+const columnHelper = createColumnHelper<Token>();
+
+const columns = [
+  columnHelper.display({
+    id: "aiAgents",
+    header: "AI AGENTS",
+    cell: ({ row }) => {
+      const { image, name, ticker, mint } = row.original;
+
+      return (
+        <div className="flex items-center gap-4">
+          <div className="relative w-[50px] h-[50px] rounded-lg bg-[#262626] overflow-hidden">
+            {image ? (
+              <img
+                src={image}
+                alt={name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Grid className="w-6 h-6 text-[#8C8C8C]" />
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col gap-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-base font-medium text-white truncate font-satoshi`}
+              >
+                {name}
+              </span>
+              <span
+                className={`text-base font-normal text-[#8C8C8C] tracking-widest uppercase shrink-0`}
+              >
+                ${ticker}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs text-[#8C8C8C] truncate`}>
+                {mint.slice(0, 6)}...{mint.slice(-4)}
+              </span>
+              <CopyButton text={mint} />
+            </div>
+          </div>
+        </div>
+      );
+    },
+  }),
+  columnHelper.display({
+    id: "marketCap",
+    header: "MARKET CAP",
+    cell: ({ row }) => {
+      const { marketCapUSD } = row.original;
+
+      return (
+        <span className={`text-[#2FD345]`}>
+          {Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: "USD",
+            notation: "compact",
+          }).format(Number(marketCapUSD))}
+        </span>
+      );
+    },
+  }),
+  columnHelper.display({
+    id: "24hVolume",
+    header: "24H VOLUME",
+    cell: ({ row }) => {
+      const { volume24h } = row.original;
+
+      return (
+        <span className={`text-white`}>
+          {Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: "USD",
+            notation: "compact",
+          }).format(volume24h)}
+        </span>
+      );
+    },
+  }),
+  columnHelper.display({
+    id: "holdersCount",
+    header: "HOLDERS COUNT",
+    cell: ({ row }) => {
+      const { holderCount } = row.original;
+
+      return <span className={`text-white`}>{holderCount || 0}</span>;
+    },
+  }),
+  columnHelper.display({
+    id: "bondingCurve",
+    header: "BONDING CURVE",
+    cell: ({ row }) => {
+      const { curveProgress } = row.original;
+      const normalizedProgress = Math.round(Math.min(100, curveProgress));
+
+      return (
+        <div className="flex items-center gap-2">
+          <div className="relative w-[120px] h-2">
+            <div className="absolute w-full h-2 bg-[#2E2E2E] rounded-full" />
+            <div
+              className="absolute h-2 bg-gradient-to-r from-[#0F4916] to-[#2FD345] rounded-full"
+              style={{ width: `${normalizedProgress}%` }}
+            />
+          </div>
+          <span className={`text-sm text-white`}>{normalizedProgress}%</span>
+        </div>
+      );
+    },
+  }),
+  columnHelper.display({
+    id: "creationTime",
+    header: "CREATION TIME",
+    cell: CreationTime,
+  }),
+];
+
+export function TableView({ tokens, onTokenClick }: TableViewProps) {
+  const table = useReactTable({
+    data: tokens,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  });
 
   return (
-    <div className="flex flex-col gap-4 overflow-x-auto">
-      {/* Header */}
-      <div
-        className={`flex items-center w-full h-[20px] ${dmMono.className} text-[14px] leading-5 tracking-[2px] uppercase text-[#A6A6A6] px-4`}
-      >
-        <div className="w-[300px] md:w-[400px]">AI AGENTS</div>
-        <div className="flex flex-1 items-center">
-          <div className="w-[150px] md:w-[200px]">Market Cap</div>
-          <div className="w-[150px] md:w-[200px] hidden md:block">
-            24h Volume
-          </div>
-          <div className="w-[120px] hidden lg:block">Holders</div>
-          <div className="w-[200px] hidden xl:block">Bonding curve</div>
-          <div className="w-[120px] md:w-[150px] text-right">Created</div>
-        </div>
-      </div>
-
-      {/* Rows */}
-      {tokens.map(
-        (
-          {
-            mint,
-            name,
-            image,
-            marketCapUSD,
-            ticker,
-            holderCount,
-            curveProgress = 0,
-            volume24h,
-          },
-          index,
-        ) => {
-          const normalizedProgress = Math.round(Math.min(100, curveProgress));
-
-          return (
-            <div
-              key={mint}
-              onClick={() => onTokenClick(mint)}
-              className="flex w-full h-[74px] bg-[#171717] border border-[#262626] rounded-[6px] cursor-pointer hover:border-[#2FD345]/50 transition-colors"
-            >
-              {/* Agent Info */}
-              <div className="flex items-center gap-4 px-4 w-[300px] md:w-[400px]">
-                <div className="relative w-[50px] h-[50px] rounded-lg bg-[#262626] overflow-hidden">
-                  {image ? (
-                    <img
-                      src={image}
-                      alt={name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Grid className="w-6 h-6 text-[#8C8C8C]" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col gap-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`${dmMono.className} text-base font-medium text-white truncate`}
-                    >
-                      {name}
-                    </span>
-                    <span
-                      className={`${dmMono.className} text-base font-normal text-[#8C8C8C] tracking-[2px] uppercase shrink-0`}
-                    >
-                      ${ticker}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`${dmMono.className} text-xs text-[#8C8C8C] truncate`}
-                    >
-                      {mint.slice(0, 6)}...{mint.slice(-4)}
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigator.clipboard.writeText(mint);
-                      }}
-                      className="text-[#8C8C8C] hover:text-white transition-colors shrink-0"
-                    >
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                      >
-                        <path d="M10.5 10.5H13.5V2.5H5.5V5.5M2.5 5.5H10.5V13.5H2.5V5.5Z" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div className="flex flex-1 items-center px-4">
-                <div className="w-[150px] md:w-[200px]">
-                  <span
-                    className={`${dmMono.className} text-base text-[#2FD345]`}
-                  >
-                    {Intl.NumberFormat("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                      notation: "compact",
-                    }).format(Number(marketCapUSD))}
-                  </span>
-                </div>
-                <div className="w-[150px] md:w-[200px] hidden md:block">
-                  <span className={`${dmMono.className} text-base text-white`}>
-                    {Intl.NumberFormat("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                      notation: "compact",
-                    }).format(volume24h)}
-                  </span>
-                </div>
-                <div className="w-[120px] hidden lg:block">
-                  <span className={`${dmMono.className} text-base text-white`}>
-                    {holderCount || 0}
-                  </span>
-                </div>
-                <div className="w-[200px] hidden xl:block">
-                  <div className="flex items-center gap-2">
-                    <div className="relative w-[120px] h-2">
-                      <div className="absolute w-full h-2 bg-[#2E2E2E] rounded-full" />
-                      <div
-                        className="absolute h-2 bg-gradient-to-r from-[#0F4916] to-[#2FD345] rounded-full"
-                        style={{ width: `${normalizedProgress}%` }}
-                      />
-                    </div>
-                    <span className={`${dmMono.className} text-sm text-white`}>
-                      {normalizedProgress}%
-                    </span>
-                  </div>
-                </div>
-                <div className="w-[120px] md:w-[150px] text-right">
-                  <span
-                    className={`${dmMono.className} text-base text-white truncate`}
-                  >
-                    {timeAgos[index]}
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        },
-      )}
-    </div>
+    <table className="w-full border-separate border-spacing-y-3.5 -mt-3.5">
+      <thead>
+        {table.getHeaderGroups().map((headerGroup) => (
+          <tr key={headerGroup.id}>
+            {headerGroup.headers.map((header, index) => (
+              <th
+                key={header.id}
+                className={`pb-3 px-4 text-left text-[#8c8c8c] uppercase text-[14px] tracking-widest ${index === headerGroup.headers.length - 1 && "text-right"}`}
+              >
+                {flexRender(
+                  header.column.columnDef.header,
+                  header.getContext(),
+                )}
+              </th>
+            ))}
+          </tr>
+        ))}
+      </thead>
+      <tbody>
+        {table.getRowModel().rows.map((row) => (
+          <tr
+            key={row.id}
+            className="bg-[#171717] cursor-pointer"
+            onClick={() => onTokenClick(row.original.mint)}
+          >
+            {row.getVisibleCells().map((cell, index) => (
+              <td
+                key={cell.id}
+                className={`py-3 px-4 border-t border-b border-t-neutral-800 border-b-neutral-800  bg-neutral-900 ${index === 0 && "border-l rounded-l-md border-l-neutral-800"} ${index === row.getVisibleCells().length - 1 && "border-r rounded-r-md border-r-neutral-800"}`}
+              >
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
