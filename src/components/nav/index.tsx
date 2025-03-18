@@ -517,35 +517,46 @@ export const Nav = () => {
                   <div className="flex flex-col gap-6">
                     <Link
                       href="/create"
-                      className="text-[#8c8c8c] text-lg hover:text-white font-satoshi"
+                      className="flex items-center gap-1 text-[#8c8c8c] text-lg hover:text-white font-satoshi"
                     >
+                      <Image
+                        src="/stars.svg"
+                        width={16}
+                        height={16}
+                        alt="stars"
+                        className="text-[#2FD345]"
+                      />
                       Create Token
                     </Link>
                     <Link
                       href="/"
-                      className="text-[#8c8c8c] text-lg hover:text-white font-satoshi"
+                      className="flex items-center gap-1 text-[#8c8c8c] text-lg hover:text-white font-satoshi"
                     >
+                      <EyeIcon />
                       Tokens
                     </Link>
 
                     {authenticated && (
                       <Link
                         href="/my-agents"
-                        className="text-[#8c8c8c] text-lg hover:text-white font-satoshi"
+                        className="flex items-center gap-1 text-[#8c8c8c] text-lg hover:text-white font-satoshi"
                       >
+                        <EyeIcon />
                         My Agents
                       </Link>
                     )}
                     <button
                       onClick={() => setModalOpen(true)}
-                      className="text-left text-[#8c8c8c] text-lg hover:text-white transition-colors font-satoshi"
+                      className="flex items-center gap-1 text-left text-[#8c8c8c] text-lg hover:text-white transition-colors font-satoshi"
                     >
+                      <InfoIcon />
                       How It Works
                     </button>
                     <Link
                       href="/support"
-                      className="text-[#8c8c8c] text-lg hover:text-white transition-colors font-satoshi"
+                      className="flex items-center gap-1 text-[#8c8c8c] text-lg hover:text-white transition-colors font-satoshi"
                     >
+                      <SupportIcon />
                       Support
                     </Link>
                   </div>
@@ -571,7 +582,6 @@ export const Nav = () => {
                       Fees
                     </Link>
                   </div>
-                  <div className="text-[#8c8c8c] mt-auto">©2024 Auto.fun</div>
                 </div>
               </DrawerContent>
             </Drawer>
@@ -659,3 +669,58 @@ export const Nav = () => {
     </>
   );
 };
+
+const SupportIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="21"
+    fill="none"
+    viewBox="0 0 20 21"
+  >
+    <path
+      fill="#8C8C8C"
+      d="m9 20.25-.25-3H8.5q-3.55 0-6.025-2.475T0 8.75t2.475-6.025T8.5.25a8.3 8.3 0 0 1 3.313.662 8.57 8.57 0 0 1 4.524 4.525A8.3 8.3 0 0 1 17 8.75q0 1.875-.612 3.6a12.7 12.7 0 0 1-1.676 3.2 14.2 14.2 0 0 1-2.525 2.675A15.6 15.6 0 0 1 9 20.25m2-3.65q1.775-1.5 2.888-3.512A8.8 8.8 0 0 0 15 8.75q0-2.725-1.888-4.612T8.5 2.25 3.888 4.138Q2 6.028 2 8.75t1.888 4.613T8.5 15.25H11zm-2.525-2.375q.425 0 .725-.3t.3-.725-.3-.725-.725-.3-.725.3-.3.725.3.725.725.3M7.75 11.05h1.5q0-.75.15-1.05t.95-1.1q.45-.45.75-.975t.3-1.125q0-1.275-.862-1.912T8.5 4.25q-1.1 0-1.85.613T5.6 6.35L7 6.9a2.3 2.3 0 0 1 .475-.837q.35-.412 1.025-.413.675 0 1.013.375.338.376.337.825 0 .425-.25.763A6 6 0 0 1 9 8.3q-.875.75-1.062 1.188T7.75 11.05"
+    ></path>
+  </svg>
+);
+
+const InfoIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="21"
+    fill="none"
+    viewBox="0 0 20 21"
+  >
+    <path
+      fill="#8C8C8C"
+      d="M5 17.75a3.2 3.2 0 0 1-2.354-.98 3.2 3.2 0 0 1-.98-2.353q0-1.376.98-2.354A3.2 3.2 0 0 1 5 11.083a3.2 3.2 0 0 1 2.354.98 3.2 3.2 0 0 1 .98 2.354 3.2 3.2 0 0 1-.98 2.354A3.2 3.2 0 0 1 5 17.75m10 0a3.2 3.2 0 0 1-2.354-.98 3.2 3.2 0 0 1-.98-2.353q0-1.376.98-2.354a3.2 3.2 0 0 1 2.354-.98 3.2 3.2 0 0 1 2.354.98 3.2 3.2 0 0 1 .98 2.354 3.2 3.2 0 0 1-.98 2.354A3.2 3.2 0 0 1 15 17.75m-5-8.333a3.2 3.2 0 0 1-2.354-.98 3.2 3.2 0 0 1-.98-2.354q0-1.374.98-2.354A3.2 3.2 0 0 1 10 2.75a3.2 3.2 0 0 1 2.354.98 3.2 3.2 0 0 1 .98 2.353 3.2 3.2 0 0 1-.98 2.355A3.2 3.2 0 0 1 10 9.417"
+    ></path>
+  </svg>
+);
+
+const EyeIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="21"
+    fill="none"
+    viewBox="0 0 20 21"
+  >
+    <path
+      stroke="#8C8C8C"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2.213"
+      d="M10 11.357a1.107 1.107 0 1 0 0-2.214 1.107 1.107 0 0 0 0 2.214"
+    ></path>
+    <path
+      stroke="#8C8C8C"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2.213"
+      d="M17.685 10.615a1.1 1.1 0 0 0 0-.73 8.3 8.3 0 0 0-15.37 0 1.1 1.1 0 0 0 0 .73 8.3 8.3 0 0 0 15.37 0"
+    ></path>
+  </svg>
+);
