@@ -63,8 +63,8 @@ const Switcher = ({
   onChange: (value: boolean) => void;
   label: string;
 }) => (
-  <div className="flex items-center gap-2">
-    <span className="text-[#8C8C8C] text-sm">{label}</span>
+  <div className="flex items-center gap-2 font-satoshi">
+    <span className="text-sm font-medium">{label}</span>
     <button
       onClick={() => onChange(!enabled)}
       className={`w-10 h-5 rounded-full transition-colors duration-200 ease-in-out ${
@@ -73,7 +73,7 @@ const Switcher = ({
     >
       <div
         className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-transform duration-200 ease-in-out ${
-          enabled ? "translate-x-5" : "translate-x-1"
+          enabled ? "translate-x-[22px]" : "translate-x-0.5"
         }`}
       />
     </button>
@@ -246,7 +246,7 @@ export default function TradingInterface() {
               <div className="flex gap-4">
                 <button
                   onClick={() => setActiveTab("trades")}
-                  className={`px-4 py-2 rounded-md text-sm font-medium ${
+                  className={`px-4 py-2 rounded-md text-sm font-medium font-satoshi ${
                     activeTab === "trades"
                       ? "bg-[#262626] text-white"
                       : "text-[#8C8C8C] hover:text-white"
@@ -256,7 +256,7 @@ export default function TradingInterface() {
                 </button>
                 <button
                   onClick={() => setActiveTab("holders")}
-                  className={`px-4 py-2 rounded-md text-sm font-medium ${
+                  className={`px-4 py-2 rounded-md text-sm font-medium font-satoshi ${
                     activeTab === "holders"
                       ? "bg-[#262626] text-white"
                       : "text-[#8C8C8C] hover:text-white"
@@ -269,14 +269,12 @@ export default function TradingInterface() {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-4 overflow-x-auto sm:overflow-visible">
                   <div className="flex items-center gap-1 whitespace-nowrap">
-                    <span className="text-[#8C8C8C] text-sm">Size</span>
+                    <span className="text-sm font-satoshi font-medium">
+                      Size
+                    </span>
                     <div className="flex items-center gap-1">
                       <SolanaIcon />
-                      <span
-                        className={`text-sm transition-colors duration-200 ${showSize ? "text-white" : "text-[#8C8C8C]"}`}
-                      >
-                        0.05
-                      </span>
+                      <span className="text-xs font-satoshi">0.05</span>
                     </div>
                     <Switcher
                       enabled={showSize}
@@ -295,9 +293,7 @@ export default function TradingInterface() {
 
             {/* Trade List */}
             {activeTab === "trades" && (
-              <div className="overflow-x-auto p-4">
-                <TradeTable ticker={token.ticker} transactions={transactions} />
-              </div>
+              <TradeTable ticker={token.ticker} transactions={transactions} />
             )}
 
             {/* Holders List */}

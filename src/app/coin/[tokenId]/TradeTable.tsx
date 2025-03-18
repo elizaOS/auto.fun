@@ -12,7 +12,7 @@ import {
 
 const TransactionDate = ({ row }: CellContext<Transaction, unknown>) => {
   const timeAgo = useTimeAgo(row.original.timestamp);
-  return <span className="py-3 text-[#8C8C8C]">{timeAgo}</span>;
+  return <span>{timeAgo}</span>;
 };
 
 const columnHelper = createColumnHelper<Transaction>();
@@ -21,7 +21,7 @@ const createColumns = (ticker: string) => [
   columnHelper.accessor("user", {
     header: "ACCOUNT",
     cell: ({ cell }) => (
-      <span className="text-[#8C8C8C]">
+      <span>
         {cell.getValue().slice(0, 5)}...{cell.getValue().slice(-3)}
       </span>
     ),
@@ -30,7 +30,7 @@ const createColumns = (ticker: string) => [
     header: "TYPE",
     cell: ({ cell }) => (
       <span
-        className={`${cell.getValue() === "Buy" ? "text-[#4ADE80]" : "text-[#FF4444]"}`}
+        className={`${cell.getValue() === "Buy" ? "text-[#03ff24]" : "text-[#ef5350]"}`}
       >
         {cell.getValue()}
       </span>
@@ -38,7 +38,6 @@ const createColumns = (ticker: string) => [
   }),
   columnHelper.accessor("solAmount", {
     header: "SOL",
-    cell: ({ cell }) => <span className="text-white">{cell.getValue()}</span>,
   }),
   columnHelper.accessor("tokenAmount", {
     header: ticker,
@@ -98,9 +97,12 @@ export const TradeTable = ({
   return (
     <table className="w-full min-w-[600px]">
       <thead>
-        <tr className="text-[#8C8C8C] text-xs uppercase">
+        <tr className="text-[#8C8C8C] uppercase border-b border-neutral-800">
           {table.getFlatHeaders().map((header) => (
-            <th key={header.id} className="text-left py-2 last:text-right">
+            <th
+              key={header.id}
+              className="text-left py-3 px-6 last:text-right text-sm tracking-widest"
+            >
               {flexRender(header.column.columnDef.header, header.getContext())}
             </th>
           ))}
@@ -110,7 +112,7 @@ export const TradeTable = ({
         {table.getRowModel().rows.map((row) => (
           <tr key={row.id} className="border-b border-[#262626] last:border-0">
             {row.getVisibleCells().map((cell) => (
-              <td key={cell.id} className="py-2 ">
+              <td key={cell.id} className="py-3.5 px-6">
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
               </td>
             ))}
