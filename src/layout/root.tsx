@@ -1,3 +1,4 @@
+import BreakpointIndicator from "@/components/breakpoint-indicator";
 import Header from "@/components/header";
 import { Outlet } from "react-router";
 
@@ -7,6 +8,7 @@ export default function Layout() {
       <Header />
       <main className="flex-grow container py-10">
         <Outlet />
+        <BreakpointIndicator />
       </main>
     </div>
   );
