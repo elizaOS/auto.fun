@@ -467,6 +467,7 @@ export default function TradingInterface() {
               telegram: token.telegram,
               twitter: token.twitter,
               website: token.website,
+              agentLink: token.agentLink,
             }}
             solPriceUSD={token.solPriceUSD}
             tokenPriceUSD={token.tokenPriceUSD}
