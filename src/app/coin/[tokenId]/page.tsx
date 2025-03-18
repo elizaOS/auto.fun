@@ -125,12 +125,14 @@ export default function TradingInterface() {
     itemsPropertyName: "swaps",
   });
 
-  const timestamps = useMemo(
+  const txTimestamps = useMemo(
     () => transactions?.map((tx) => tx.timestamp),
     [transactions],
   );
 
-  const timeAgo = useTimeAgo(timestamps);
+  const txTimeAgos = useTimeAgo(txTimestamps);
+  const tokenTimeAgo =
+    useTimeAgo(token?.createdAt || "").toLowerCase() + " ago";
 
   const socket = useMemo(() => getSocket(), []);
 
@@ -228,12 +230,7 @@ export default function TradingInterface() {
                 Creation Time
               </span>
               <span className="font-['DM_Mono'] font-normal text-sm sm:text-xl leading-6 text-white">
-                {new Date(token.createdAt).toLocaleString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {tokenTimeAgo}
               </span>
             </div>
           </div>
@@ -336,7 +333,7 @@ export default function TradingInterface() {
                             .format(Number(tx.tokenAmount))
                             .toLowerCase()}
                         </td>
-                        <td className="py-3 text-[#8C8C8C]">{timeAgo[i]}</td>
+                        <td className="py-3 text-[#8C8C8C]">{txTimeAgos[i]}</td>
                         <td className="py-3">
                           <a
                             className="text-[#8C8C8C] hover:text-white"
