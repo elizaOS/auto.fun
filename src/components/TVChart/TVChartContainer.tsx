@@ -4,7 +4,6 @@ import {
   ChartingLibraryWidgetOptions,
   IChartingLibraryWidget,
   ResolutionString,
-  SeriesType,
   widget,
 } from "@/libraries/charting_library";
 import {
@@ -16,8 +15,6 @@ import { getDataFeed } from "./datafeed";
 import ReactLoading from "react-loading";
 import { twMerge } from "tailwind-merge";
 import UserContext from "@/context/UserContext";
-import { CandlestickChart, LineChart, BarChart3 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 
 export type TVChartContainerProps = {
   name: string;
@@ -27,14 +24,6 @@ export type TVChartContainerProps = {
     container: string;
   };
 };
-
-const TIME_FRAMES = [
-  { label: "1m", resolution: "1" as ResolutionString },
-  { label: "15m", resolution: "15" as ResolutionString },
-  { label: "1h", resolution: "60" as ResolutionString },
-  { label: "8h", resolution: "480" as ResolutionString },
-  { label: "1M", resolution: "1M" as ResolutionString },
-];
 
 export const TVChartContainer = ({
   name,
@@ -151,53 +140,6 @@ export const TVChartContainer = ({
         const chart = tvWidgetRef.current?.activeChart();
         const priceScale = chart?.getPanes()[0].getMainSourcePriceScale();
         priceScale?.setAutoScale(true);
-
-        // Create custom header toolbar
-        const header = document.createElement("div");
-        header.className =
-          "flex items-center justify-between px-4 py-2 bg-[#171717] border-b border-[#262626]";
-
-        // Left section: Time frames and chart types
-        const leftSection = document.createElement("div");
-        leftSection.className = "flex items-center gap-6";
-
-        // Time frames
-        const timeFrames = document.createElement("div");
-        timeFrames.className = "flex items-center gap-2";
-        TIME_FRAMES.forEach(({ label, resolution }) => {
-          const button = document.createElement("button");
-          button.className =
-            "px-3 py-1 text-[#8C8C8C] hover:text-white text-sm font-medium";
-          button.textContent = label;
-          button.onclick = () => chart?.setResolution(resolution);
-          timeFrames.appendChild(button);
-        });
-
-        // Chart types
-        const chartTypes = document.createElement("div");
-        chartTypes.className =
-          "flex items-center gap-4 border-l border-[#262626] pl-6";
-
-        const types: { value: string; icon: LucideIcon }[] = [
-          { icon: CandlestickChart, value: "Candlestick" },
-          { icon: LineChart, value: "Line" },
-          { icon: BarChart3, value: "Bars" },
-        ];
-
-        types.forEach(({ value }) => {
-          const button = document.createElement("button");
-          button.className = "text-[#8C8C8C] hover:text-white";
-          button.onclick = () => {
-            chart?.setChartType(value as unknown as SeriesType);
-          };
-          chartTypes.appendChild(button);
-        });
-
-        leftSection.appendChild(timeFrames);
-        leftSection.appendChild(chartTypes);
-
-        header.appendChild(leftSection);
-        chartContainerRef.current.prepend(header);
       });
 
       return () => {
