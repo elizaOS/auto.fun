@@ -1,11 +1,12 @@
 import { Grid1 } from "iconsax-react";
 import Button from "./button";
 import { List } from "lucide-react";
-import { useState } from "react";
 import { twMerge } from "tailwind-merge";
+import { useViewMode } from "@/hooks/use-view-mode";
 
 export default function GridListSwitcher() {
-  const [activeTab, setActiveTab] = useState<"grid" | "list">("grid");
+  const [activeTab, setActiveTab] = useViewMode();
+
   return (
     <div className="flex bg-autofun-background-card rounded-md mr-3">
       <Button

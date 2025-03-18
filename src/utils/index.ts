@@ -30,3 +30,7 @@ export const formatNumber = (num: number) => {
     notation: "compact",
   }).format(num);
 };
+
+export const fromNow = (date: Date | number): string => {
+  return String(moment(date).fromNow()).replace("ago", "");
+};

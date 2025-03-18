@@ -23,7 +23,7 @@ const BreakpointIndicator = () => {
   }, []);
 
   return (
-    <div className="fixed bottom-4 left-4 bg-autofun-background-card text-white p-2 rounded border">
+    <div className="select-none fixed bottom-4 left-4 bg-autofun-background-card text-white p-2 rounded border">
       {breakpoint}
     </div>
   );
