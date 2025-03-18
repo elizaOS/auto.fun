@@ -3,13 +3,14 @@ import React from "react";
 import { twMerge } from "tailwind-merge";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "outline";
   isLoading?: boolean;
   size?: "default" | "large" | "small";
 }
 
 const variantClasses = {
   primary: "bg-autofun-background-action-primary border text-white",
+  outline: "bg-transparent border text-white",
   secondary:
     "bg-autofun-background-action-primary border text-autofun-text-highlight",
 };
@@ -21,7 +22,7 @@ const sizeClasses = {
 };
 
 const baseClasses =
-  "px-4 py-2 rounded focus:outline-none transition duration-150 ease-in-out cursor-pointer font-medium";
+  "px-4 py-2 rounded-md focus:outline-none transition duration-150 ease-in-out cursor-pointer font-medium flex items-center justify-center";
 const disabledClasses = "opacity-50 cursor-not-allowed";
 
 const Button: React.FC<ButtonProps> = ({
@@ -43,7 +44,11 @@ const Button: React.FC<ButtonProps> = ({
 
   return (
     <button disabled={disabled || isLoading} className={classes} {...props}>
-      {isLoading ? <Loader2 className="animate-spin w-5 h-5 mx-auto" /> : children}
+      {isLoading ? (
+        <Loader2 className="animate-spin w-5 h-5 mx-auto" />
+      ) : (
+        children
+      )}
     </button>
   );
 };

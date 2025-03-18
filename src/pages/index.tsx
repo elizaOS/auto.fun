@@ -1,10 +1,19 @@
 import BondingCurveBar from "@/components/bonding-curve-bar";
 import Button from "@/components/button";
+import CopyButton from "@/components/copy-button";
+import Divider from "@/components/divider";
 import SkeletonImage from "@/components/skeleton-image";
 
 export default function Page() {
   return (
     <div className="flex flex-col gap-4">
+      {/* Top Navigation */}
+      <div className="flex items-center gap-3">
+        <Button variant="outline">All</Button>
+        <Button>Market Cap</Button>
+        <Button variant="outline">Creation Time</Button>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {Array(12)
           .fill("A")
@@ -44,8 +53,11 @@ export default function Page() {
                         <div className="text-autofun-text-secondary text-xs font-medium font-satoshi">
                           Market Cap
                         </div>
-                        <div className="text-autofun-text-secondary text-xs font-normal font-dm-mono">
-                          49n...ump
+                        <div className="flex items-center gap-1.5">
+                          <div className="text-autofun-text-secondary text-xs font-normal font-dm-mono">
+                            49n...ump
+                          </div>
+                          <CopyButton text="Hello World" className="size-4" />
                         </div>
                       </div>
                       <div className="inline-flex justify-start items-center gap-2">
@@ -76,14 +88,8 @@ export default function Page() {
                     See More...
                   </span>
                 </div>
+                <Divider />
                 <Button variant="primary" size="large">
-                  Buy
-                </Button>
-                <Button variant="secondary">Buy</Button>
-                <Button variant="primary" disabled>
-                  Buy
-                </Button>
-                <Button variant="secondary" isLoading>
                   Buy
                 </Button>
               </div>
