@@ -272,14 +272,10 @@ export function AgentCardInfo({
               href={item.link}
               target="_blank"
               rel="noopener noreferrer"
-              className={`flex justify-center items-center h-10 bg-[#212121] border border-[#262626] flex-1
+              className={`flex justify-center items-center h-10 bg-[#212121] border border-[#262626] flex-1 hover:bg-[#2e2e2e] hover:border-[#707070]
               ${index === 0 ? "rounded-l-[6px]" : ""} 
               ${index === arr.length - 1 ? "rounded-r-[6px]" : ""}
-              ${item.link === "#" ? "opacity-50 cursor-not-allowed" : "hover:bg-[#2FD345] hover:text-black"}
               text-white transition-colors`}
-              onClick={
-                item.link === "#" ? (e) => e.preventDefault() : undefined
-              }
             >
               {item.icon}
             </a>
