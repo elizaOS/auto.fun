@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router";
 import { twMerge } from "tailwind-merge";
+import { HowItWorksDialog } from "./how-it-works-dialog";
 
 export default function Header() {
   return (
@@ -9,7 +10,7 @@ export default function Header() {
           <img className="size-10" src="/logo.png" />
         </Link>
         <NavLink title="Tokens" href="/" />
-        <NavLink title="How It's Done" href="/support" />
+        <HowItWorksDialog />
         <NavLink title="Support" href="/support" />
       </div>
     </div>

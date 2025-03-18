@@ -29,7 +29,7 @@ export default function Page() {
         count: 12,
       });
     },
-    refetchInterval: 500,
+    refetchInterval: 5000,
   });
 
   const data = query?.data;

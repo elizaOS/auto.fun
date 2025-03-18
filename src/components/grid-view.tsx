@@ -69,7 +69,7 @@ export default function GridView({ data }: { data: any }) {
               <BondingCurveBar progress={token.bondingCurvePercentage} />
             </div>
           </div>
-
+          {/* Description */}
           <div className="flex-1 self-stretch justify-start">
             <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight line-clamp-2">
               {token.description}

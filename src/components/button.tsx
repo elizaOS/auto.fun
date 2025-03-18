@@ -16,7 +16,8 @@ const variantClasses = {
 };
 
 const sizeClasses = {
-  small: "h-[36px]",
+  small:
+    "h-[36px] text-center justify-center text-autofun-text-primary text-sm font-medium font-satoshi leading-tight",
   default: "h-10",
   large: "h-[44px]",
 };
