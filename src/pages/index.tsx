@@ -116,7 +116,7 @@ export default function Page() {
               </span>
             </div>
             <Divider />
-            <Button variant="primary" size="large">
+            <Button variant="primary" size="large" className="hover:border-autofun-stroke-highlight">
               Buy
             </Button>
           </div>
