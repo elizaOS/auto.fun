@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { User, Token, createTokenSchema, TokenHolder, Swap, Fee, Message, VanityKeypair, VanityKeypairValidation, VanityKeypairRequestValidation, ChartParamsSchema, Agent, Personality, MessageLikeValidation, MessageLike, NewMessageValidation } from './schemas';
+import { User, Token, createTokenSchema, TokenHolder, Swap, Fee, Message, VanityKeypair, VanityKeypairValidation, VanityKeypairRequestValidation, ChartParamsSchema, Agent, Personality, MessageLikeValidation, MessageLike, NewMessageValidation, TokenType } from './schemas';
 import { fetchPriceChartData } from './server';
 import { z } from 'zod';
 import { 
@@ -44,6 +44,7 @@ import { submitTokenTransaction } from './tokenCreation';
 import mongoose from 'mongoose';
 import { initSdk, txVersion } from './lib/raydium-config';
 import { ApiV3PoolInfoStandardItemCpmm, CpmmKeys, CREATE_CPMM_POOL_PROGRAM, DEV_CREATE_CPMM_POOL_AUTH, DEV_CREATE_CPMM_POOL_PROGRAM, DEV_LOCK_CPMM_AUTH, DEV_LOCK_CPMM_PROGRAM } from '@raydium-io/raydium-sdk-v2';
+import { bulkUpdatePartialTokens } from './lib/tokenUtils';
 
 const router = Router();
 
@@ -242,11 +243,13 @@ router.get('/tokens', async (req, res) => {
     aggregationPipeline.push({ $limit: limit });
     
     const tokens = await Token.aggregate(aggregationPipeline);
+    
+    const filledTokens = await bulkUpdatePartialTokens(tokens);
 
     const totalPages = Math.ceil(total / limit);
 
     res.json({
-      tokens,
+      tokens: filledTokens,
       page,
       totalPages,
       total,
