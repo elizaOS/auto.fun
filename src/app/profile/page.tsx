@@ -14,7 +14,7 @@ type TabButtonProps = PropsWithChildren<{
 
 const TabButton = ({ isSelected, onClick, children }: TabButtonProps) => (
   <button
-    className={`px-3 py-2 rounded-lg border border-[#262626] justify-center items-center gap-2 self-start ${
+    className={`px-3 py-2 rounded-lg border border-[#262626] justify-center items-center gap-2 self-start font-satoshi ${
       isSelected ? "bg-[#2e2e2e]" : "bg-neutral-900"
     }`}
     onClick={onClick}
@@ -119,7 +119,7 @@ export default function Profile() {
 
   return (
     <div className="flex flex-col flex-1 mt-32 max-w-4xl w-full m-auto">
-      <div className="text-white text-[32px] font-medium leading-9 mb-6">
+      <div className="text-white text-[32px] font-medium leading-9 mb-6 font-satoshi">
         User Profile
       </div>
       <WalletAddress />

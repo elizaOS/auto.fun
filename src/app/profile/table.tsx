@@ -32,7 +32,7 @@ const columns = [
     },
   }),
   columnHelper.accessor("tokensHeld", {
-    header: "Amount Tokens",
+    header: "Token Amount",
     cell: ({ cell }) => cell.getValue().toLocaleString(),
   }),
   columnHelper.accessor("solValue", {
@@ -45,7 +45,7 @@ const columns = [
       const mint = cell.getValue();
 
       return (
-        <Link href={`/coin/${mint}`}>
+        <Link href={`/coin/${mint}`} className="flex justify-end">
           <svg
             width="17"
             height="17"
@@ -85,7 +85,7 @@ export const TokenTable = ({ tokens }: { tokens: ProfileToken[] }) => {
               {headerGroup.headers.map((header) => (
                 <th
                   key={header.id}
-                  className="text-left px-6 py-3 text-[#8c8c8c] uppercase text-[14px] tracking-widest"
+                  className="text-left last:text-right px-6 py-3 text-[#8c8c8c] uppercase text-[14px] tracking-widest text-sm"
                 >
                   {flexRender(
                     header.column.columnDef.header,
