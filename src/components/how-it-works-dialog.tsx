@@ -176,27 +176,29 @@ export function HowItWorksDialog() {
           {activeTab === "trading" ? <Trading /> : <Creation />}
         </div>
         <div className="flex flex-col gap-4 px-4">
-          <Button onClick={() => setOpen(false)} size="small">Continue</Button>
+          <Button onClick={() => setOpen(false)} size="small">
+            Continue
+          </Button>
           <p className="text-autofun-text-secondary text-base font-satoshi font-medium text-center">
             By clicking this button you agree to the terms and conditions.
           </p>
           <div className="flex items-center gap-4 mx-auto">
             <Link
-              to="/legal/privacy"
+              to="/privacy-policy"
               className="text-autofun-text-secondary text-base font-satoshi font-medium underline underline-offset-4"
             >
               Privacy Policy
             </Link>
             <div className="h-5 w-[1px] bg-[#505050]" />
             <Link
-              to="/legal/terms"
+              to="/terms-of-service"
               className="text-autofun-text-secondary text-base font-satoshi font-medium underline underline-offset-4"
             >
               Terms of Service
             </Link>
             <div className="h-5 w-[1px] bg-[#505050]" />
             <Link
-              to="/legal/fees"
+              to="/fees"
               className="text-autofun-text-secondary text-base font-satoshi font-medium underline underline-offset-4"
             >
               Fees

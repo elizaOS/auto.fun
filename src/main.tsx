@@ -7,6 +7,9 @@ import { Routes, Route } from "react-router";
 import Layout from "./layout/root";
 import Homepage from "./pages";
 import Support from "./pages/support";
+import TermsOfService from "./pages/terms-of-service";
+import PrivacyPolicy from "./pages/privacy-policy";
+import Fees from "./pages/fees";
 
 const queryClient = new QueryClient();
 
@@ -18,6 +21,9 @@ createRoot(document.getElementById("root")!).render(
           <Route element={<Layout />}>
             <Route index element={<Homepage />} />
             <Route path="/support" element={<Support />} />
+            <Route path="/terms-of-service" element={<TermsOfService />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/fees" element={<Fees />} />
           </Route>
         </Routes>
       </BrowserRouter>
