@@ -56,3 +56,9 @@ export const getTokens = async ({
 
   return data;
 };
+
+export const getToken = async ({ address }: { address: string }) => {
+  const data = await fetcher(`/tokens/${address}`, "GET");
+
+  return data;
+};
