@@ -72,7 +72,7 @@ export default function GridView({ data }: { data: IToken[] }) {
           </div>
           {/* Description */}
           <div className="flex-1 self-stretch justify-start">
-            <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight line-clamp-2">
+            <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight line-clamp-2 h-8">
               {token.description}
             </span>
             <span className="text-autofun-text-primary text-xs font-normal font-dm-mono leading-tight">

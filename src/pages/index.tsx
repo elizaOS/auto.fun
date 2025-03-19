@@ -52,7 +52,7 @@ export default function Page() {
           <GridView data={data} />
         </div>
       ) : (
-        <div>
+        <div className="mb-2">
           <TableView data={data} />
         </div>
       )}
