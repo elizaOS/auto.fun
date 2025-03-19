@@ -19,6 +19,7 @@ import { AgentDetails } from "@/components/forms/AgentDetails";
 import Link from "next/link";
 import { AgentCard } from "@/components/agent-card";
 import { useToken } from "@/utils/tokens";
+import { LoadingModal } from "@/components/common/LoadingModal";
 
 const AgentCreatedModal = ({
   isOpen,
@@ -192,17 +193,9 @@ export default function CreateAgentPage() {
 
   return (
     <div className="flex flex-col justify-center h-full relative mt-12">
-      <Modal
-        isOpen={agentStatus === "creating"}
-        allowClose={false}
-        contentClassName="w-full !p-10"
-        className="!max-w-[465px]"
-      >
-        <Spinner />
-        <div className="text-[#2fd345] text-2xl font-medium font-satoshi leading-loose mb-3.5">
-          Launching Agent...
-        </div>
-      </Modal>
+      <LoadingModal isOpen={agentStatus === "creating"}>
+        Launching Agent...
+      </LoadingModal>
 
       <AgentCreatedModal
         isOpen={agentStatus === "created"}

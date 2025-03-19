@@ -11,7 +11,7 @@ import { TokenCreationForm } from "./TokenCreationForm";
 import { AgentCard } from "@/components/agent-card";
 import { AgentCardInfo } from "@/components/agent-card/AgentCardInfo";
 import Link from "next/link";
-import { Spinner } from "@/components/common/Spinner";
+import { LoadingModal } from "@/components/common/LoadingModal";
 
 export type FormStep = "token" | "agent" | "twitter";
 
@@ -123,17 +123,9 @@ export default function TransactionSignPage() {
 
   return (
     <div className="flex flex-col justify-center h-full relative mt-12 w-fit mx-auto">
-      <Modal
-        isOpen={tokenStatus === "creating"}
-        allowClose={false}
-        contentClassName="w-full !p-10"
-        className="!max-w-[465px]"
-      >
-        <Spinner />
-        <div className="text-[#2fd345] text-2xl font-medium font-satoshi leading-loose mb-3.5">
-          Launching Token...
-        </div>
-      </Modal>
+      <LoadingModal isOpen={tokenStatus === "creating"}>
+        Launching Token...
+      </LoadingModal>
 
       <Modal
         isOpen={tokenStatus === "created"}
