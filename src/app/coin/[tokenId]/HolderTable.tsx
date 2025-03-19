@@ -6,6 +6,15 @@ import {
 import { Holder } from "./page";
 import { env } from "@/utils/env";
 import { StandardTable } from "./StandardTable";
+import { PropsWithChildren } from "react";
+
+const AddressLabel = ({ children }: PropsWithChildren) => {
+  return (
+    <span className="text-[#8c8c8c] text-sm font-satoshi ml-3.5">
+      {children}
+    </span>
+  );
+};
 
 const columnHelper = createColumnHelper<Holder>();
 
@@ -20,12 +29,10 @@ const columns = [
         {cell.getValue().slice(0, 5)}...
         {cell.getValue().slice(-3)}
         {cell.getValue() === env.bondingCurveAddress && (
-          <span className="text-[#b3a0b3] font-medium ml-2">
-            (Bonding curve)
-          </span>
+          <AddressLabel>(Bonding Curve)</AddressLabel>
         )}
         {cell.getValue() === env.devAddress && (
-          <span className="text-[#b3a0b3] font-medium ml-2">(DEV)</span>
+          <AddressLabel>(DEV)</AddressLabel>
         )}
       </>
     ),
