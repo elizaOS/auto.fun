@@ -28,7 +28,7 @@ export function TableView({ data }: { data: any }) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {data?.map((token, index: number) => {
+        {data?.map((token: any, index: number) => {
           return (
             <TableRow
               key={index}
