@@ -62,3 +62,21 @@ export const getToken = async ({ address }: { address: string }) => {
 
   return data;
 };
+
+export const optimizePinataImage = (
+  image: string,
+  height: number,
+  width: number
+) => {
+  if (!image?.includes("pinata")) return image;
+
+  const url = new URL(
+    image?.replace("gateway.pinata.cloud", "ser.mypinata.cloud")
+  );
+
+  url.searchParams.set("img-width", String(height));
+  url.searchParams.set("img-height", String(width));
+  url.searchParams.set("img-format", "webp");
+
+  return String(url);
+};
