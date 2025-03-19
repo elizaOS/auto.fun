@@ -31,7 +31,10 @@ export const formatNumber = (num: number) => {
   }).format(num);
 };
 
-export const fromNow = (date: Date | number, hideAgo?: boolean): string => {
+export const fromNow = (
+  date: string | Date | number,
+  hideAgo?: boolean
+): string => {
   const now = String(moment(date).fromNow());
   if (hideAgo) {
     return String(moment(date).fromNow()).replace("ago", "");

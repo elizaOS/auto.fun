@@ -1,38 +1,30 @@
 import Button from "@/components/button";
 import { useQuery } from "@tanstack/react-query";
-import { faker } from "@faker-js/faker";
 import GridListSwitcher from "@/components/grid-list-switcher";
 import { TableView } from "@/components/table-view";
 import { useViewMode } from "@/hooks/use-view-mode";
 import GridView from "@/components/grid-view";
+import { getTokens } from "@/utils/api";
+import { IToken } from "@/types";
 
 export default function Page() {
   const [activeTab] = useViewMode();
+  const page = 1;
 
   const query = useQuery({
-    queryKey: ["tokens"],
-
+    queryKey: ["tokens", page],
     queryFn: async () => {
-      function createRandomToken() {
-        return {
-          name: faker.lorem.word({ length: { min: 3, max: 5 } }),
-          symbol: faker.finance.currency().code,
-          image: faker.image.dataUri({ width: 200, height: 200 }),
-          address: faker.finance.ethereumAddress(),
-          marketcap: faker.number.int({ min: 12_000, max: 3_000_000 }),
-          createdAt: faker.date.recent(),
-          bondingCurvePercentage: faker.number.int({ min: 1, max: 100 }),
-          description: faker.lorem.lines(3),
-        };
-      }
-      return faker.helpers.multiple(createRandomToken, {
-        count: 12,
+      return await getTokens({
+        page,
+        limit: 12,
+        sortBy: "featured",
+        sortOrder: "desc",
       });
     },
     refetchInterval: 5000,
   });
 
-  const data = query?.data;
+  const data = query?.data?.tokens as IToken[];
 
   return (
     <div className="flex flex-col">

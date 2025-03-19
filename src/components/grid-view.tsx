@@ -3,16 +3,17 @@ import Button from "@/components/button";
 import CopyButton from "@/components/copy-button";
 import Divider from "@/components/divider";
 import SkeletonImage from "@/components/skeleton-image";
+import { IToken } from "@/types";
 import { abbreviateNumber, fromNow, shortenAddress } from "@/utils";
 import { Link } from "react-router";
 
-export default function GridView({ data }: { data: any }) {
+export default function GridView({ data }: { data: IToken[] }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-      {data?.map((token: any, _: number) => (
+      {data?.map((token: IToken, _: number) => (
         <Link
-          to={`/token/${token.address}`}
-          key={token.address}
+          to={`/token/${token.mint}`}
+          key={token.mint}
           className="bg-autofun-background-card p-4 rounded-lg border flex flex-col gap-3"
         >
           <div className="flex items-start gap-3 min-w-0">
@@ -29,7 +30,7 @@ export default function GridView({ data }: { data: any }) {
                     {token.name}
                   </div>
                   <div className="text-autofun-text-secondary text-base font-normal font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0">
-                    ${token.symbol}
+                    ${token.ticker}
                   </div>
                 </div>
                 <div className="px-2 py-1 rounded-md border flex ml-auto shrink-0">
@@ -47,14 +48,14 @@ export default function GridView({ data }: { data: any }) {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="text-autofun-text-secondary text-xs font-normal font-dm-mono">
-                      {shortenAddress(token.address)}
+                      {shortenAddress(token.mint)}
                     </div>
                     <CopyButton text="Hello World" className="size-4" />
                   </div>
                 </div>
                 <div className="inline-flex justify-start items-center gap-2 min-w-0">
                   <div className="justify-start text-autofun-text-highlight text-xl font-normal font-dm-mono leading-7 truncate">
-                    ${abbreviateNumber(token.marketcap)}
+                    ${abbreviateNumber(token.marketCapUSD)}
                   </div>
                 </div>
               </div>
@@ -65,10 +66,10 @@ export default function GridView({ data }: { data: any }) {
                   Bonding Curve Progress
                 </div>
                 <div className="text-autofun-text-highlight text-sm font-normal font-dm-mono">
-                  {token.bondingCurvePercentage}%
+                  {100}%
                 </div>
               </div>
-              <BondingCurveBar progress={token.bondingCurvePercentage} />
+              <BondingCurveBar progress={100} />
             </div>
           </div>
           {/* Description */}

@@ -12,8 +12,9 @@ import { formatNumber, fromNow, shortenAddress } from "@/utils";
 import BondingCurveBar from "./bonding-curve-bar";
 import SkeletonImage from "./skeleton-image";
 import { useNavigate } from "react-router";
+import { IToken } from "@/types";
 
-export function TableView({ data }: { data: any }) {
+export function TableView({ data }: { data: IToken[] }) {
   const navigate = useNavigate();
   return (
     <Table>
@@ -28,12 +29,12 @@ export function TableView({ data }: { data: any }) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {data?.map((token: any, index: number) => {
+        {data?.map((token: IToken, index: number) => {
           return (
             <TableRow
               key={index}
               className="cursor-pointer"
-              onClick={() => navigate(`/token/${token.address}`)}
+              onClick={() => navigate(`/token/${token.mint}`)}
             >
               <TableCell>
                 <div className="flex items-center gap-4">
@@ -58,30 +59,30 @@ export function TableView({ data }: { data: any }) {
                         {token.name}
                       </div>
                       <div className="text-autofun-text-secondary text-base font-normal font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0">
-                        ${token.symbol}
+                        ${token.ticker}
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <div className="text-autofun-text-secondary text-xs font-normal font-dm-mono">
-                        {shortenAddress(token.address)}
+                        {shortenAddress(token.mint)}
                       </div>
-                      <CopyButton text="Hello World" className="size-4" />
+                      <CopyButton text={token.mint} className="size-4" />
                     </div>
                   </div>
                 </div>
               </TableCell>
               <TableCell className="text-left text-[#2FD345]">
-                {formatNumber(token.marketcap)}
+                {formatNumber(token.marketCapUSD)}
               </TableCell>
-              <TableCell className="text-left">{token.marketcap}</TableCell>
+              <TableCell className="text-left">{token.marketCapUSD}</TableCell>
               <TableCell className="text-left">
-                {token.bondingCurvePercentage}
+                {100}
               </TableCell>
               <TableCell className="text-left">
                 <div className="flex items-center gap-2 w-full">
-                  <BondingCurveBar progress={token.bondingCurvePercentage} />
+                  <BondingCurveBar progress={100} />
                   <span className={`font-dm-mono text-sm text-white`}>
-                    {token.bondingCurvePercentage}%
+                    {100}%
                   </span>
                 </div>
               </TableCell>
