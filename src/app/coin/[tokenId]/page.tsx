@@ -17,9 +17,9 @@ import { womboApi } from "@/utils/fetch";
 import { toast } from "react-toastify";
 import { AgentCardInfo } from "@/components/agent-card/AgentCardInfo";
 import { SolanaIcon } from "./swap/SolanaIcon";
-import { env } from "@/utils/env";
 import { useTimeAgo } from "@/app/formatTimeAgo";
 import { useAgentByMintAddress } from "@/utils/agent";
+import { HolderTable } from "./HolderTable";
 import { TradeTable } from "./TradeTable";
 
 const HolderSchema = z.object({
@@ -31,6 +31,8 @@ const HolderSchema = z.object({
   lastUpdated: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
+
+export type Holder = z.infer<typeof HolderSchema>;
 
 const TransactionSchema = z
   .object({
@@ -310,70 +312,7 @@ export default function TradingInterface() {
             )}
 
             {/* Holders List */}
-            {activeTab === "holders" && (
-              <div className="overflow-x-auto p-4">
-                <table className="w-full">
-                  <thead>
-                    <tr className="text-[#8C8C8C] text-xs uppercase">
-                      <th className="text-left py-2">Account</th>
-                      <th className="text-right py-2">%</th>
-                      <th className="text-right py-2">EXP</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-sm">
-                    {holders.map((holder, i) => (
-                      <tr
-                        key={i}
-                        className="border-b border-[#262626] last:border-0"
-                      >
-                        <td className="py-3 text-white">
-                          <span className="py-3 pr-8 text-[#8C8C8C]">
-                            #{i + 1}
-                          </span>
-                          {holder.address.slice(0, 5)}...
-                          {holder.address.slice(-3)}
-                          {holder.address === env.bondingCurveAddress && (
-                            <span className="text-[#b3a0b3] font-medium ml-2">
-                              (Bonding curve)
-                            </span>
-                          )}
-                          {holder.address === env.devAddress && (
-                            <span className="text-[#b3a0b3] font-medium ml-2">
-                              (DEV)
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3 text-white text-right">
-                          {holder.percentage.toFixed(2)}%
-                        </td>
-                        <td className="py-3 text-white text-right flex">
-                          <a
-                            href={env.getWalletUrl(holder.address)}
-                            className="inline-flex justify-end w-full"
-                            target="_blank"
-                          >
-                            <svg
-                              width="16"
-                              height="16"
-                              viewBox="0 0 16 16"
-                              fill="none"
-                              xmlns="http://www.w3.org/2000/svg"
-                            >
-                              <path
-                                d="M11 1.5H14.5V5M13.75 2.25L10 6M8.5 2.5H4C3.60218 2.5 3.22064 2.65804 2.93934 2.93934C2.65804 3.22064 2.5 3.60218 2.5 4V12C2.5 12.3978 2.65804 12.7794 2.93934 13.0607C3.22064 13.342 3.60218 13.5 4 13.5H12C12.3978 13.5 12.7794 13.342 13.0607 13.0607C13.342 12.7794 13.5 12.3978 13.5 12V7.5"
-                                stroke="#8C8C8C"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          </a>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            {activeTab === "holders" && <HolderTable holders={holders} />}
           </div>
 
           {publicKey?.toString() === token.creator && (
