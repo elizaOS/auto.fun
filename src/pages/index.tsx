@@ -5,11 +5,13 @@ import { TableView } from "@/components/table-view";
 import { useViewMode } from "@/hooks/use-view-mode";
 import GridView from "@/components/grid-view";
 import { getTokens } from "@/utils/api";
-import { IToken } from "@/types";
+import { IPagination, IToken } from "@/types";
+import Pagination from "@/components/pagination";
+import usePagination from "@/hooks/use-pagination";
 
 export default function Page() {
   const [activeTab] = useViewMode();
-  const page = 1;
+  const { page, onPageChange } = usePagination();
 
   const query = useQuery({
     queryKey: ["tokens", page],
@@ -26,6 +28,13 @@ export default function Page() {
 
   const data = query?.data?.tokens as IToken[];
 
+  const pagination = {
+    page: query?.data?.page || 1,
+    totalPages: query?.data?.totalPages || 1,
+    total: query?.data?.total || 1,
+    hasMore: query?.data?.hasMore || false,
+  } as IPagination;
+
   return (
     <div className="flex flex-col">
       {/* Top Navigation */}
@@ -39,12 +48,16 @@ export default function Page() {
       </div>
 
       {activeTab === "grid" ? (
-        <div className="mt-6">
+        <div className="my-6">
           <GridView data={data} />
         </div>
       ) : (
-        <TableView data={data} />
+        <div>
+          <TableView data={data} />
+        </div>
       )}
+
+      <Pagination pagination={pagination} onPageChange={onPageChange} />
     </div>
   );
 }

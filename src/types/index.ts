@@ -32,3 +32,10 @@ export interface IToken {
   lastVolumeReset: string;
   hasAgent: boolean;
 }
+
+export interface IPagination {
+  page: number;
+  totalPages: number;
+  total: number;
+  hasMore: boolean;
+}

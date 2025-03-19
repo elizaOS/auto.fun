@@ -7,7 +7,7 @@ import { fileURLToPath, URL } from "url";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [tailwindcss(), preact(), viteCompression()],
+  plugins: [preact(), tailwindcss(), viteCompression()],
   server: {
     watch: {
       usePolling: true,
