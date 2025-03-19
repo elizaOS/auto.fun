@@ -17,12 +17,10 @@ export default function GridView({ data }: { data: IToken[] }) {
           className="bg-autofun-background-card p-4 rounded-lg border flex flex-col gap-3"
         >
           <div className="flex items-start gap-3 min-w-0">
-            <SkeletonImage
-              src={token.image}
-              alt="image"
-              className="aspect-square w-34 grow shrink-0"
-            />
-            <div className="flex flex-col gap-3 justify-between grow min-w-0">
+            <div className="size-32">
+              <SkeletonImage src={token.image} alt="image" />
+            </div>
+            <div className="flex flex-col gap-3 justify-between min-w-0">
               {/* Token Info and Time */}
               <div className="flex items-center w-full min-w-0">
                 <div className="flex items-center gap-2 min-w-0">
@@ -50,12 +48,12 @@ export default function GridView({ data }: { data: IToken[] }) {
                     <div className="text-autofun-text-secondary text-xs font-normal font-dm-mono">
                       {shortenAddress(token.mint)}
                     </div>
-                    <CopyButton text="Hello World" className="size-4" />
+                    <CopyButton text={token.mint} className="size-4" />
                   </div>
                 </div>
                 <div className="inline-flex justify-start items-center gap-2 min-w-0">
-                  <div className="justify-start text-autofun-text-highlight text-xl font-normal font-dm-mono leading-7 truncate">
-                    ${abbreviateNumber(token.marketCapUSD)}
+                  <div className="justify-start text-autofun-text-highlight text-xl font-medium font-dm-mono leading-7 truncate">
+                    {abbreviateNumber(token.marketCapUSD)}
                   </div>
                 </div>
               </div>

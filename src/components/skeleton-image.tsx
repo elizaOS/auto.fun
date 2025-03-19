@@ -19,7 +19,7 @@ const SkeletonImage: React.FC<SkeletonImageProps> = ({
   };
 
   return (
-    <div className="relative">
+    <div className="relative size-full">
       {/* Skeleton placeholder */}
       {!loaded && (
         <div
@@ -34,7 +34,7 @@ const SkeletonImage: React.FC<SkeletonImageProps> = ({
         alt={alt}
         onLoad={handleLoad}
         className={twMerge(
-          "transition-opacity duration-200 rounded-sm",
+          "transition-opacity duration-200 rounded-sm object-cover size-full",
           loaded ? "opacity-100" : "opacity-0",
           className
         )}

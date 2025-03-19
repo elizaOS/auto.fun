@@ -74,10 +74,10 @@ export function TableView({ data }: { data: IToken[] }) {
               <TableCell className="text-left text-[#2FD345]">
                 {formatNumber(token.marketCapUSD)}
               </TableCell>
-              <TableCell className="text-left">{token.marketCapUSD}</TableCell>
               <TableCell className="text-left">
-                {100}
+                {formatNumber(token.volume24h)}
               </TableCell>
+              <TableCell className="text-left">{token.holderCount}</TableCell>
               <TableCell className="text-left">
                 <div className="flex items-center gap-2 w-full">
                   <BondingCurveBar progress={100} />

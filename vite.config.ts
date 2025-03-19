@@ -17,6 +17,14 @@ export default defineConfig({
     //   brotliSize: true,
     // }),
   ],
+  server: {
+    open: true,
+    port: 3000,
+    hmr: true,
+    watch: {
+      usePolling: true,
+    },
+  },
   resolve: {
     alias: {
       react: "preact/compat",
