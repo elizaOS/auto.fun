@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import "./index.css";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import { Routes, Route } from "react-router";
@@ -11,8 +11,7 @@ import TermsOfService from "./pages/terms-of-service";
 import PrivacyPolicy from "./pages/privacy-policy";
 import Fees from "./pages/fees";
 import Token from "./pages/token";
-
-const queryClient = new QueryClient();
+import { queryClient } from "./utils/api";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

@@ -19,11 +19,12 @@ export default function Page() {
       return await getTokens({
         page,
         limit: 12,
-        sortBy: "featured",
+        sortBy: "marketCapUSD",
         sortOrder: "desc",
       });
     },
-    refetchInterval: 5000,
+    refetchInterval: 5_000,
+    staleTime: 1_000,
   });
 
   const data = query?.data?.tokens as IToken[];

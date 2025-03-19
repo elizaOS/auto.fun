@@ -1,3 +1,8 @@
+import { IToken, TSortBy, TSortOrder } from "@/types";
+import { QueryClient } from "@tanstack/react-query";
+
+export const queryClient = new QueryClient();
+
 const BASE_URL = "https://dev-api.auto.fun";
 
 const fetcher = async (
@@ -25,7 +30,7 @@ const fetcher = async (
   return await response.json();
 };
 
-export const getTokens = ({
+export const getTokens = async ({
   page,
   limit,
   sortBy,
@@ -33,13 +38,21 @@ export const getTokens = ({
 }: {
   page: number;
   limit: number;
-  sortBy: string;
-  sortOrder: string;
+  sortBy: TSortBy;
+  sortOrder: TSortOrder;
 }) => {
-  return fetcher(
+  const data = await fetcher(
     `/tokens?limit=${limit || 12}&page=${
       page || 1
     }&sortBy=${sortBy}&sortOrder=${sortOrder}`,
     "GET"
   );
+
+  if (data?.tokens?.length > 0) {
+    data?.tokens?.forEach((token: IToken) => {
+      queryClient.setQueryData(["token", token.mint], token);
+    });
+  }
+
+  return data;
 };

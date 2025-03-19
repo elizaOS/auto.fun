@@ -1,3 +1,6 @@
+export type TSortBy = "featured" | "name" | "marketCapUSD" | "volume24h" | "holderCount" | "curveProgress" | "createdAt"
+export type TSortOrder = "asc" | "desc"
+
 export interface IToken {
   mint: string;
   createdAt: string;

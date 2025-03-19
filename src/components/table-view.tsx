@@ -34,10 +34,10 @@ export function TableView({ data }: { data: IToken[] }) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {data?.map((token: IToken, index: number) => {
+        {data?.map((token: IToken) => {
           return (
             <TableRow
-              key={index}
+              key={token.mint}
               className="cursor-pointer"
               onClick={() => navigate(`/token/${token.mint}`)}
             >
