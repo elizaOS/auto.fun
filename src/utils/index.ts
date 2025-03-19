@@ -3,7 +3,7 @@ import dayjs from "dayjs";
 
 dayjs.extend(relativeTime);
 
-export const moment = dayjs;
+const moment = dayjs;
 
 export const shortenAddress = (address: string) => {
   return address.slice(0, 3) + "..." + address.slice(-3);

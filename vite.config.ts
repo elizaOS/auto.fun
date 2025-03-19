@@ -1,34 +1,21 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import viteCompression from "vite-plugin-compression";
+import preact from "@preact/preset-vite";
 /** @ts-ignore */
 import { fileURLToPath, URL } from "url";
-// import { visualizer } from "rollup-plugin-visualizer";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-    // visualizer({
-    //   open: true,
-    //   filename: "stats.html",
-    //   gzipSize: true,
-    //   brotliSize: true,
-    // }),
-  ],
+  plugins: [tailwindcss(), preact(), viteCompression()],
   server: {
-    open: true,
-    port: 3000,
-    hmr: true,
     watch: {
       usePolling: true,
     },
+    port: 3000,
   },
   resolve: {
     alias: {
-      react: "preact/compat",
-      "react-dom": "preact/compat",
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },

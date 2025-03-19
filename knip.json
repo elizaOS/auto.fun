@@ -1,0 +1,18 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "vite": {
+    "config": ["vite.config.{js,mjs,ts,cjs,mts,cts}"]
+  },
+  "entry": [
+    "src/main.tsx",
+    "src/pages/**/*.{ts,tsx}",
+    "src/layout/**/*.{ts,tsx}",
+    "src/components/**/*.{ts,tsx}"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx}",
+    "vite.config.{js,mjs,ts,cjs,mts,cts}",
+    "tailwind.config.{js,ts}",
+    "postcss.config.{js,ts}"
+  ]
+}

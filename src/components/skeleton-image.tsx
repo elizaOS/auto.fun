@@ -30,6 +30,7 @@ const SkeletonImage: React.FC<SkeletonImageProps> = ({
         />
       )}
       <img
+        loading="lazy"
         src={src}
         alt={alt}
         onLoad={handleLoad}
