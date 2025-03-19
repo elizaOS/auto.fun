@@ -1,10 +1,12 @@
+import { normalizedProgress } from "@/utils";
 import { useState, useEffect } from "react";
 
 export default function BondingCurveBar({ progress }: { progress: number }) {
   const [width, setWidth] = useState<number>(0);
 
   useEffect(() => {
-    setWidth(progress);
+    const prog = normalizedProgress(progress);
+    setWidth(Number(prog));
   }, [progress]);
 
   return (

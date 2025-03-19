@@ -5,6 +5,8 @@ dayjs.extend(relativeTime);
 
 const moment = dayjs;
 
+export const normalizedProgress = (progress: number) => Math.round(Math.min(100, progress));
+
 export const shortenAddress = (address: string) => {
   return address.slice(0, 3) + "..." + address.slice(-3);
 };

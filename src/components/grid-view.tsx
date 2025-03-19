@@ -4,7 +4,12 @@ import CopyButton from "@/components/copy-button";
 import Divider from "@/components/divider";
 import SkeletonImage from "@/components/skeleton-image";
 import { IToken } from "@/types";
-import { abbreviateNumber, fromNow, shortenAddress } from "@/utils";
+import {
+  abbreviateNumber,
+  fromNow,
+  normalizedProgress,
+  shortenAddress,
+} from "@/utils";
 import { Link } from "react-router";
 
 export default function GridView({ data }: { data: IToken[] }) {
@@ -64,10 +69,10 @@ export default function GridView({ data }: { data: IToken[] }) {
                   Bonding Curve Progress
                 </div>
                 <div className="text-autofun-text-highlight text-sm font-normal font-dm-mono">
-                  {100}%
+                  {normalizedProgress(token.curveProgress)}%
                 </div>
               </div>
-              <BondingCurveBar progress={100} />
+              <BondingCurveBar progress={token.curveProgress} />
             </div>
           </div>
           {/* Description */}

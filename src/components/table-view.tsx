@@ -8,7 +8,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import CopyButton from "./copy-button";
-import { formatNumber, fromNow, shortenAddress } from "@/utils";
+import {
+  formatNumber,
+  fromNow,
+  normalizedProgress,
+  shortenAddress,
+} from "@/utils";
 import BondingCurveBar from "./bonding-curve-bar";
 import SkeletonImage from "./skeleton-image";
 import { useNavigate } from "react-router";
@@ -80,9 +85,9 @@ export function TableView({ data }: { data: IToken[] }) {
               <TableCell className="text-left">{token.holderCount}</TableCell>
               <TableCell className="text-left">
                 <div className="flex items-center gap-2 w-full">
-                  <BondingCurveBar progress={100} />
+                  <BondingCurveBar progress={token.curveProgress} />
                   <span className={`font-dm-mono text-sm text-white`}>
-                    {100}%
+                    {normalizedProgress(token.curveProgress)}%
                   </span>
                 </div>
               </TableCell>
