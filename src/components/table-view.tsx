@@ -11,8 +11,10 @@ import CopyButton from "./copy-button";
 import { formatNumber, fromNow, shortenAddress } from "@/utils";
 import BondingCurveBar from "./bonding-curve-bar";
 import SkeletonImage from "./skeleton-image";
+import { useNavigate } from "react-router";
 
 export function TableView({ data }: { data: any }) {
+  const navigate = useNavigate();
   return (
     <Table>
       <TableHeader>
@@ -28,7 +30,11 @@ export function TableView({ data }: { data: any }) {
       <TableBody>
         {data?.map((token, index: number) => {
           return (
-            <TableRow key={index} className="cursor-pointer">
+            <TableRow
+              key={index}
+              className="cursor-pointer"
+              onClick={() => navigate(`/token/${token.address}`)}
+            >
               <TableCell>
                 <div className="flex items-center gap-4">
                   <div className="relative w-[50px] h-[50px] rounded-lg bg-[#262626] overflow-hidden">

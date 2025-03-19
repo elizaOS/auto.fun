@@ -20,65 +20,9 @@
 
 @font-face {
   font-family: "Satoshi";
-  src: url("./assets/fonts/Satoshi-Italic.otf") format("opentype");
-  font-weight: 400;
-  font-style: italic;
-}
-
-@font-face {
-  font-family: "Satoshi";
-  src: url("./assets/fonts/Satoshi-Light.otf") format("opentype");
-  font-weight: 300;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: "Satoshi";
-  src: url("./assets/fonts/Satoshi-LightItalic.otf") format("opentype");
-  font-weight: 300;
-  font-style: italic;
-}
-
-@font-face {
-  font-family: "Satoshi";
   src: url("./assets/fonts/Satoshi-Medium.otf") format("opentype");
   font-weight: 500;
   font-style: normal;
-}
-
-@font-face {
-  font-family: "Satoshi";
-  src: url("./assets/fonts/Satoshi-MediumItalic.otf") format("opentype");
-  font-weight: 500;
-  font-style: italic;
-}
-
-@font-face {
-  font-family: "Satoshi";
-  src: url("./assets/fonts/Satoshi-Bold.otf") format("opentype");
-  font-weight: 700;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: "Satoshi";
-  src: url("./assets/fonts/Satoshi-BoldItalic.otf") format("opentype");
-  font-weight: 700;
-  font-style: italic;
-}
-
-@font-face {
-  font-family: "Satoshi";
-  src: url("./assets/fonts/Satoshi-Black.otf") format("opentype");
-  font-weight: 900;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: "Satoshi";
-  src: url("./assets/fonts/Satoshi-BlackItalic.otf") format("opentype");
-  font-weight: 900;
-  font-style: italic;
 }
 
 @font-face {
@@ -90,35 +34,7 @@
 
 @font-face {
   font-family: "DMMono";
-  src: url("./assets/fonts/DMMono-Italic.ttf") format("truetype");
-  font-weight: 400;
-  font-style: italic;
-}
-
-@font-face {
-  font-family: "DMMono";
-  src: url("./assets/fonts/DMMono-Light.ttf") format("truetype");
-  font-weight: 300;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: "DMMono";
-  src: url("./assets/fonts/DMMono-LightItalic.ttf") format("truetype");
-  font-weight: 300;
-  font-style: italic;
-}
-
-@font-face {
-  font-family: "DMMono";
   src: url("./assets/fonts/DMMono-Medium.ttf") format("truetype");
   font-weight: 500;
   font-style: normal;
-}
-
-@font-face {
-  font-family: "DMMono";
-  src: url("./assets/fonts/DMMono-MediumItalic.ttf") format("truetype");
-  font-weight: 500;
-  font-style: italic;
 }

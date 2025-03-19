@@ -10,6 +10,7 @@ import Support from "./pages/support";
 import TermsOfService from "./pages/terms-of-service";
 import PrivacyPolicy from "./pages/privacy-policy";
 import Fees from "./pages/fees";
+import Token from "./pages/token";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/terms-of-service" element={<TermsOfService />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/fees" element={<Fees />} />
+            <Route path="/token/:address" element={<Token />} />
           </Route>
         </Routes>
       </BrowserRouter>

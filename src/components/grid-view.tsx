@@ -4,12 +4,14 @@ import CopyButton from "@/components/copy-button";
 import Divider from "@/components/divider";
 import SkeletonImage from "@/components/skeleton-image";
 import { abbreviateNumber, fromNow, shortenAddress } from "@/utils";
+import { Link } from "react-router";
 
 export default function GridView({ data }: { data: any }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
       {data?.map((token, _) => (
-        <div
+        <Link
+          to={`/token/${token.address}`}
           key={token.address}
           className="bg-autofun-background-card p-4 rounded-lg border flex flex-col gap-3"
         >
@@ -86,7 +88,7 @@ export default function GridView({ data }: { data: any }) {
           >
             Buy
           </Button>
-        </div>
+        </Link>
       ))}
     </div>
   );
