@@ -1,3 +1,4 @@
+import { IToken } from "@/types";
 import { abbreviateNumber, fromNow, shortenAddress } from "@/utils";
 import { getToken } from "@/utils/api";
 import { useQuery } from "@tanstack/react-query";
@@ -16,7 +17,7 @@ export default function Page() {
     refetchInterval: 3_000,
   });
 
-  const token = query?.data;
+  const token: IToken = query?.data;
   console.log(token);
 
   return (
@@ -40,7 +41,7 @@ export default function Page() {
               24hr Volume
             </span>
             <span className="text-xl font-dm-mono text-autofun-text-primary">
-              {token?.volume24h ? abbreviateNumber(token?.volume24h) : null}
+              {token?.price24hAgo ? abbreviateNumber(token?.volume24h) : null}
             </span>
           </div>
           <div className="flex flex-col gap-2 items-center w-full">

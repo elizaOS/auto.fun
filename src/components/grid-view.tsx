@@ -12,6 +12,7 @@ import {
 } from "@/utils";
 import { optimizePinataImage } from "@/utils/api";
 import { Link } from "react-router";
+import ShowMoreText from "react-show-more-text";
 
 export default function GridView({ data }: { data: IToken[] }) {
   return (
@@ -80,14 +81,24 @@ export default function GridView({ data }: { data: IToken[] }) {
             </div>
           </div>
           {/* Description */}
-          <div className="flex-1 self-stretch justify-start">
-            <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight line-clamp-2 h-8">
+          <ShowMoreText
+            /* Default options */
+            lines={2}
+            more="Show more"
+            less="Show less"
+            className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight min-h-8"
+            anchorClass="text-autofun-text-primary hover:text-autofun-text-highlight transition-all duration-200"
+            truncatedEndingComponent={" ... "}
+          >
+            <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
+              {token.description}
+              {token.description}
+              {token.description}
+              {token.description}
+              {token.description}
               {token.description}
             </span>
-            <span className="text-autofun-text-primary text-xs font-normal font-dm-mono leading-tight">
-              See More...
-            </span>
-          </div>
+          </ShowMoreText>
           <Divider />
           <Button
             variant="primary"
