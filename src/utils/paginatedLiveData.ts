@@ -109,9 +109,9 @@ export const usePaginatedLiveData = <TInput, TOutput>({
     [],
   );
 
-  const goToPage = useCallback(
+  const loadPage = useCallback(
     async (pageNumber: number) => {
-      if (pageNumber < 1 || pageNumber > totalPages) return;
+      if (pageNumber < 1) return;
 
       setIsLoading(true);
       try {
@@ -141,7 +141,6 @@ export const usePaginatedLiveData = <TInput, TOutput>({
       }
     },
     [
-      totalPages,
       endpoint,
       itemsPerPage,
       validationSchema,
@@ -153,16 +152,10 @@ export const usePaginatedLiveData = <TInput, TOutput>({
 
   useEffect(
     function updateSortOrder() {
-      goToPage(page);
+      loadPage(page);
     },
-    [goToPage, page],
+    [loadPage, page],
   );
-
-  useEffect(() => {
-    if (!fetchedData.items.length) {
-      goToPage(1);
-    }
-  }, [goToPage, fetchedData.items.length]);
 
   useEffect(() => {
     const handleNewItem = (newItem: unknown) => {
@@ -220,21 +213,24 @@ export const usePaginatedLiveData = <TInput, TOutput>({
   );
 
   const nextPage = useCallback(async () => {
-    const nextPageIndex = page + 1;
-
-    if (nextPageIndex > totalPages) return;
-
-    if (hasMore && allItems.length < nextPageIndex * itemsPerPage) {
-      goToPage(nextPageIndex);
-    } else {
-      setPage(nextPageIndex);
+    if (page < totalPages) {
+      setPage(page + 1);
     }
-  }, [page, totalPages, hasMore, allItems.length, itemsPerPage, goToPage]);
+  }, [page, totalPages]);
 
   const previousPage = useCallback(() => {
-    if (page === 1) return;
-    goToPage(page - 1);
-  }, [goToPage, page]);
+    if (page > 1) {
+      setPage(page - 1);
+    }
+  }, [page]);
+
+  const goToPage = useCallback(
+    (pageNumber: number) => {
+      if (page < 1 || page > totalPages) return;
+      setPage(pageNumber);
+    },
+    [page, totalPages],
+  );
 
   return {
     items: currentPageItems,
