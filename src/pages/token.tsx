@@ -12,12 +12,12 @@ export default function Page() {
       if (!address) throw new Error("No address passed");
       return await getToken({ address });
     },
+    refetchInterval: 3_000,
   });
 
   return (
-    <div>
-      Token
-      {JSON.stringify(query?.data || {})}
+    <div className="whitespace-pre">
+      {JSON.stringify(query?.data || {}, null, 4)}
     </div>
   );
 }
