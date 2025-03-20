@@ -77,6 +77,7 @@ export const optimizePinataImage = (
   url.searchParams.set("img-width", String(height));
   url.searchParams.set("img-height", String(width));
   url.searchParams.set("img-format", "webp");
+  url.searchParams.set("img-quality", "90");
 
   return String(url);
 };

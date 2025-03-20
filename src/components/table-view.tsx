@@ -18,6 +18,7 @@ import BondingCurveBar from "./bonding-curve-bar";
 import SkeletonImage from "./skeleton-image";
 import { useNavigate } from "react-router";
 import { IToken } from "@/types";
+import { optimizePinataImage } from "@/utils/api";
 
 export function TableView({ data }: { data: IToken[] }) {
   const navigate = useNavigate();
@@ -43,12 +44,10 @@ export function TableView({ data }: { data: IToken[] }) {
             >
               <TableCell>
                 <div className="flex items-center gap-4">
-                  <div className="relative w-[50px] h-[50px] rounded-lg bg-[#262626] overflow-hidden">
+                  <div className="relative size-[50px] rounded-lg bg-[#262626] overflow-hidden">
                     {token.image ? (
                       <SkeletonImage
-                        height={128}
-                        width={128}
-                        src={token.image}
+                        src={optimizePinataImage(token.image, 80, 80)}
                         alt={token.name}
                         className="w-full h-full object-cover"
                       />
