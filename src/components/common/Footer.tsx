@@ -1,4 +1,34 @@
 import Image from "next/image";
+import Link from "next/link";
+import { Fragment, PropsWithChildren } from "react";
+
+const FooterItem = ({
+  children,
+  className,
+}: PropsWithChildren<{ className?: string }>) => (
+  <span
+    className={`text-[#8C8C8C] transition-colors duration-200 font-mono text-sm ${className}`}
+  >
+    {children}
+  </span>
+);
+
+const FooterLink = ({
+  href,
+  children,
+}: PropsWithChildren<{ href: string }>) => {
+  return (
+    <Link href={href}>
+      <FooterItem className="hover:text-white">{children}</FooterItem>
+    </Link>
+  );
+};
+
+const links: { name: string; href: string }[] = [
+  { name: "Privacy Policy", href: "/legal/privacy" },
+  { name: "Terms of Service", href: "/legal/terms" },
+  { name: "Fees", href: "/legal/fees" },
+];
 
 export const Footer = () => {
   return (
@@ -13,31 +43,16 @@ export const Footer = () => {
           />
         </div>
         <div className="justify-center items-center gap-6 flex">
-          <div className="justify-start items-center gap-2.5 flex">
-            <a
-              href="/legal/privacy"
-              className="text-[#8C8C8C] hover:text-white transition-colors duration-200 font-mono text-sm"
-            >
-              Privacy Policy
-            </a>
-            <div className="w-[1px] h-4 bg-[#707070]" />
-            <a
-              href="/legal/terms"
-              className="text-[#8C8C8C] hover:text-white transition-colors duration-200 font-mono text-sm"
-            >
-              Terms of Service
-            </a>
-            <div className="w-[1px] h-4 bg-[#707070]" />
-            <a
-              href="/legal/fees"
-              className="text-[#8C8C8C] hover:text-white transition-colors duration-200 font-mono text-sm"
-            >
-              Fees
-            </a>
-            <div className="w-[1px] h-4 bg-[#707070]" />
-            <div className="text-center text-[#8C8C8C] text-sm font-mono">
-              ©2024 Auto.fun
-            </div>
+          <div className="justify-start items-center gap-3.5 flex">
+            {links.map(({ href, name }) => (
+              <Fragment key={href}>
+                <FooterLink href={href}>{name}</FooterLink>
+                <FooterItem>|</FooterItem>
+              </Fragment>
+            ))}
+
+            <FooterItem>©2024 Auto.fun</FooterItem>
+
             <div className="w-8 h-8 p-2 rounded-lg border border-[#f1f1f1] justify-center items-center gap-2 flex hover:bg-white/10 transition-colors duration-200 cursor-pointer">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
