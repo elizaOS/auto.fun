@@ -139,8 +139,6 @@ export async function createNewTokenData(
       txId
     };
 
-    getIoServer().to('global').emit('newToken', tokenData);
-
     return tokenData;
   } catch (error) {
     logger.error('Error processing new token log:', error);

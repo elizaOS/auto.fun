@@ -45,6 +45,7 @@ import mongoose from 'mongoose';
 import { initSdk, txVersion } from './lib/raydium-config';
 import { ApiV3PoolInfoStandardItemCpmm, CpmmKeys, CREATE_CPMM_POOL_PROGRAM, DEV_CREATE_CPMM_POOL_AUTH, DEV_CREATE_CPMM_POOL_PROGRAM, DEV_LOCK_CPMM_AUTH, DEV_LOCK_CPMM_PROGRAM } from '@raydium-io/raydium-sdk-v2';
 import { bulkUpdatePartialTokens } from './lib/tokenUtils';
+import { statsManager } from './lib/statsManager';
 
 const router = Router();
 
@@ -65,6 +66,97 @@ const pinata = new PinataClient({
   pinataSecretApiKey: process.env.PINATA_SECRET_KEY,
   pinataJWTKey: process.env.PINATA_JWT
 });
+
+async function getTokensWithPagination({
+  page = 1,
+  limit = 50,
+  sortBy = 'featured',
+  sortOrder = 'desc',
+  query = { status: { $ne: 'pending' } }
+} = {}) {
+  const skip = (page - 1) * limit;
+  
+  // Get total count first
+  const total = await Token.countDocuments(query);
+  
+  // Define the pipeline steps
+  let aggregationPipeline: any[] = [
+    { $match: query },
+    {
+      $lookup: {
+        from: 'messages',
+        localField: 'mint',
+        foreignField: 'tokenMint',
+        pipeline: [
+          { $match: { parentId: null } }
+        ],
+        as: 'messages'
+      }
+    },
+    {
+      $addFields: {
+        numComments: { $size: '$messages' }
+      }
+    },
+    {
+      $project: {
+        messages: 0,
+        __v: 0
+      }
+    }
+  ];
+
+  // Apply special weighted sorting if "Featured" sort is specified
+  if (sortBy === 'featured') {
+    const { maxVolume24h, maxHolderCount } = statsManager.getMaxStats();
+
+    // Add a weighted score field
+    aggregationPipeline.push({
+      $addFields: {
+        featuredScore: {
+          $add: [
+            { $multiply: [{ $divide: [{ $ifNull: ['$volume24h', 0] }, maxVolume24h] }, Number(process.env.FEATURED_SCORE_VOLUME_WEIGHT)] },
+            { $multiply: [{ $divide: [{ $ifNull: ['$holderCount', 0] }, maxHolderCount] }, Number(process.env.FEATURED_SCORE_HOLDER_WEIGHT)] }
+          ]
+        }
+      }
+    });
+    
+    // Sort by the featured score
+    aggregationPipeline.push({
+      $sort: {
+        featuredScore: sortOrder === 'desc' ? -1 : 1
+      }
+    });
+  } else {
+    // Use the standard sorting
+    aggregationPipeline.push({
+      $sort: {
+        [sortBy === 'marketCapUSD' ? 'marketCapUSD' : sortBy]: 
+        sortOrder === 'desc' ? -1 : 1
+      }
+    });
+  }
+  
+  // Add pagination
+  aggregationPipeline.push({ $skip: skip });
+  aggregationPipeline.push({ $limit: limit });
+  
+  const tokens = await Token.aggregate(aggregationPipeline);
+
+  // When the homepage is fetched we want to make sure we don't have any missing data/partial Tokens
+  const filledTokens = await bulkUpdatePartialTokens(tokens);
+
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    tokens: filledTokens,
+    page,
+    totalPages,
+    total,
+    hasMore: page < totalPages
+  };
+}
 
 async function uploadToPinata(data: Buffer | object, options: { isJson?: boolean } = {}) {
   try {
@@ -116,9 +208,6 @@ router.get('/tokens', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit as string) || 50;
     const page = parseInt(req.query.page as string) || 1;
-    const skip = (page - 1) * limit;
-    
-    // Enhanced filtering options
     const {
       status,
       secondaryStatus, 
@@ -133,18 +222,15 @@ router.get('/tokens', async (req, res) => {
 
     if (status || secondaryStatus) {
       if (status && secondaryStatus) {
-        // If both statuses provided, use $or to match either
         query.$or = [
           { status },
           { status: secondaryStatus }
         ];
       } else {
-        // If only one status provided, use that one
         query.status = status || secondaryStatus;
       }
     }
 
-    // do not show tokens that have a status of 'pending'
     query.status = { $ne: 'pending' };
 
     if (creator) {
@@ -159,103 +245,16 @@ router.get('/tokens', async (req, res) => {
         { description: { $regex: search, $options: 'i' } }
       ];
     }
-    
-    // Get total count first
-    const total = await Token.countDocuments(query);
-    
-    // Get paginated results
-    // Define the pipeline steps as any[] to avoid TypeScript errors with complex aggregations
-    let aggregationPipeline: any[] = [
-      { $match: query },
-      {
-        $lookup: {
-          from: 'messages',
-          localField: 'mint',
-          foreignField: 'tokenMint',
-          pipeline: [
-            { $match: { parentId: null } }
-          ],
-          as: 'messages'
-        }
-      },
-      {
-        $addFields: {
-          numComments: { $size: '$messages' }
-        }
-      },
-      {
-        $project: {
-          messages: 0,
-          __v: 0
-        }
-      }
-    ];
 
-    // Apply special weighted sorting if "Featured" sort is specified
-    if (sortBy === 'featured') {
-      // First, find the max values to use for normalization
-      const [maxStats] = await Token.aggregate([
-        { $match: query },
-        { 
-          $group: { 
-            _id: null, 
-            maxVolume24h: { $max: '$volume24h' },
-            maxHolderCount: { $max: '$holderCount' } 
-          } 
-        }
-      ]);
-
-      const maxVolume = maxStats?.maxVolume24h || 1;
-      const maxHolders = maxStats?.maxHolderCount || 1;
-
-      // Add a weighted score field with normalized values (70% volume24h, 30% holderCount)
-      aggregationPipeline.push({
-        $addFields: {
-          featuredScore: {
-            $add: [
-              // Normalize volume24h to 0-1 range and apply 70% weight
-              { $multiply: [{ $divide: [{ $ifNull: ['$volume24h', 0] }, maxVolume] }, 0.7] },
-              // Normalize holderCount to 0-1 range and apply 30% weight
-              { $multiply: [{ $divide: [{ $ifNull: ['$holderCount', 0] }, maxHolders] }, 0.3] }
-            ]
-          }
-        }
-      });
-      
-      // Sort by the featured score
-      aggregationPipeline.push({
-        $sort: {
-          featuredScore: sortOrder === 'desc' ? -1 : 1
-        }
-      });
-    } else {
-      // Use the standard sorting
-      aggregationPipeline.push({
-        $sort: {
-          [sortBy === 'marketCapUSD' ? 'marketCapUSD' : sortBy]: 
-          sortOrder === 'desc' ? -1 : 1
-        }
-      });
-    }
-    
-    // Add pagination
-    aggregationPipeline.push({ $skip: skip });
-    aggregationPipeline.push({ $limit: limit });
-    
-    const tokens = await Token.aggregate(aggregationPipeline);
-    
-    const filledTokens = await bulkUpdatePartialTokens(tokens);
-
-    const totalPages = Math.ceil(total / limit);
-
-    res.json({
-      tokens: filledTokens,
+    const result = await getTokensWithPagination({
       page,
-      totalPages,
-      total,
-      hasMore: page < totalPages
+      limit,
+      sortBy: sortBy as string,
+      sortOrder: sortOrder as 'asc' | 'desc',
+      query
     });
 
+    res.json(result);
   } catch (error) {
     logger.error('Error fetching tokens:', error);
     res.status(500).json({ error: error.message });
@@ -616,6 +615,9 @@ export async function updateHoldersCache(mint: string) {
         lastUpdated: new Date()
       }
     );
+    
+    // Update max holder count in stats manager
+    statsManager.updateMaxHolderCount(validHolders);
 
     // Prepare bulk operation for holder records
     const bulkOps = accountDetails.map(account => ({

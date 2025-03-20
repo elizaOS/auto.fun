@@ -28,6 +28,7 @@ import { fetchCodexTokenEvents } from './lib/api';
 import { config } from './lib/solana';
 import { createNewTokenData, getTxIdAndCreatorFromTokenAddress } from './lib/tokenUtils';
 import { fetchCodexBars, CodexBarResolution } from './lib/api';
+import { statsManager } from './lib/statsManager';
 
 // For devnet testing - placeholder token address for locked tokens since there are none in devnet
 const DEV_TEST_TOKEN_ADDRESS = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
@@ -239,11 +240,11 @@ class TokenMonitor {
             creatorAddress
           );
 
-          await Token.findOneAndUpdate({ mint: tokenAddress }, newToken, {
+          const tokenData = await Token.findOneAndUpdate({ mint: tokenAddress }, newToken, {
             upsert: true,
             new: true,
           });
-
+          io.to('global').emit('newToken', tokenData);
           logger.log(`New token event processed for ${tokenAddress}`);
         }
 
@@ -381,7 +382,8 @@ class TokenMonitor {
               }
             );
 
-            const ONE_DAY = 24 * 60 * 60 * 1000;
+            const ONE_HOUR = 60 * 60 * 1000;
+            const ONE_DAY = 24 * ONE_HOUR;
             const lastVolumeReset = token.lastVolumeReset || new Date(0);
 
             if (Date.now() - lastVolumeReset.getTime() > ONE_DAY) {
@@ -394,7 +396,6 @@ class TokenMonitor {
               );
             }
 
-            const ONE_HOUR = 60 * 60 * 1000;
             const lastPriceUpdate = token.lastPriceUpdate || new Date(0);
 
             if (Date.now() - lastPriceUpdate.getTime() > ONE_HOUR) {
@@ -414,12 +415,22 @@ class TokenMonitor {
             this.holderUpdateQueue.add(async () => {
               try {
                 await updateHoldersCache(mintAddress);
+                
+                // Update statsManager with latest holder count and market cap
+                const updatedToken = await Token.findOne({ mint: mintAddress });
+                if (updatedToken) {
+                  statsManager.updateStats({
+                    marketCap: updatedToken.marketCapUSD || 0,
+                    holderCount: updatedToken.holderCount || 0,
+                    volume24h: updatedToken.volume24h || 0
+                  });
+                }
               } catch (error) {
                 logger.error(`Failed to update holders after swap for ${mintAddress}:`, error);
               }
             });
 
-            // Emit the new swap data
+            // Emit swap-specific updates
             io.to(`token-${swap.tokenMint}`).emit('newSwap', {
               tokenMint: swap.tokenMint,
               user: swap.user,
@@ -438,9 +449,12 @@ class TokenMonitor {
             // Emit the new candle data
             io.to(`token-${swap.tokenMint}`).emit('newCandle', latestCandle);
 
-            // Emit the new token data
-            io.to(`token-${swap.tokenMint}`).emit('updateToken', token);
+            // Emit the updated token data with enriched featured score
+            const enrichedToken = statsManager.enrichTokenWithScore(token);
+            io.to(`token-${swap.tokenMint}`).emit('updateToken', enrichedToken);
 
+            io.to('global').emit('updateToken', enrichedToken);
+            
             logger.log(`Recorded swap and fee: ${logs.signature}`);
           } catch (error) {
             logger.error('Error processing swap logs:', error);
@@ -752,6 +766,13 @@ const initServer = async () => {
     await connectDB();
   } catch (error) {
     logger.error('Failed to connect to MongoDB:', error);
+  }
+
+  // Initialize statsManager with initial values from DB
+  try {
+    await statsManager.initialize();
+  } catch (error) {
+    logger.error('Failed to initialize statsManager:', error);
   }
 
   // Verify required environment variables
