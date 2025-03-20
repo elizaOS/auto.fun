@@ -8,19 +8,21 @@ import { getTokens } from "@/utils/api";
 import { IPagination, IToken } from "@/types";
 import Pagination from "@/components/pagination";
 import usePagination from "@/hooks/use-pagination";
+import { useFilter } from "@/hooks/use-filter";
 
 export default function Page() {
   const [activeTab] = useViewMode();
   const { page, onPageChange } = usePagination();
+  const [sortBy, setSortBy, sortOrder] = useFilter();
 
   const query = useQuery({
-    queryKey: ["tokens", page],
+    queryKey: ["tokens", page, sortBy, sortOrder],
     queryFn: async () => {
       return await getTokens({
         page,
         limit: 12,
-        sortBy: "marketCapUSD",
-        sortOrder: "desc",
+        sortBy,
+        sortOrder,
       });
     },
     refetchInterval: 5_000,
@@ -42,9 +44,24 @@ export default function Page() {
       <div className="flex items-center gap-3 flex-wrap-reverse lg:flex-wrap">
         <GridListSwitcher />
         <div className="flex items-center gap-3">
-          <Button variant="outline">All</Button>
-          <Button>Market Cap</Button>
-          <Button variant="outline">Creation Time</Button>
+          <Button
+            variant={sortBy === "featured" ? "primary" : "outline"}
+            onClick={() => setSortBy("featured")}
+          >
+            All
+          </Button>
+          <Button
+            variant={sortBy === "marketCapUSD" ? "primary" : "outline"}
+            onClick={() => setSortBy("marketCapUSD")}
+          >
+            Market Cap
+          </Button>
+          <Button
+            variant={sortBy === "createdAt" ? "primary" : "outline"}
+            onClick={() => setSortBy("createdAt")}
+          >
+            Creation Time
+          </Button>
         </div>
       </div>
 

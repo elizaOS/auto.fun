@@ -6,7 +6,6 @@ import { useViewMode } from "@/hooks/use-view-mode";
 
 export default function GridListSwitcher() {
   const [activeTab, setActiveTab] = useViewMode();
-
   return (
     <div className="flex bg-autofun-background-card rounded-md mr-3">
       <Button
