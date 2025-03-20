@@ -24,7 +24,7 @@ const SkeletonImage: React.FC<SkeletonImageProps> = ({
       {!loaded && (
         <div
           className={twMerge(
-            "absolute inset-0 bg-autofun-background-input animate-pulse rounded-sm",
+            "absolute inset-0 bg-autofun-background-input animate-pulse rounded-sm size-full",
             className
           )}
         />

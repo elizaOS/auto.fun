@@ -23,13 +23,13 @@ export default function GridView({ data }: { data: IToken[] }) {
           className="bg-autofun-background-card p-4 rounded-lg border flex flex-col gap-3"
         >
           <div className="flex items-start gap-3 min-w-0">
-            <div className="size-32">
+            <div className="size-32 grow shrink-0">
               <SkeletonImage
                 src={optimizePinataImage(token.image, 180, 180)}
                 alt="image"
               />
             </div>
-            <div className="flex flex-col gap-3 justify-between min-w-0">
+            <div className="flex flex-col gap-3 justify-between min-w-0 w-full">
               {/* Token Info and Time */}
               <div className="flex items-center w-full min-w-0">
                 <div className="flex items-center gap-2 min-w-0">
