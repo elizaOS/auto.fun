@@ -4,7 +4,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Fragment, useEffect, useState } from "react";
+import { act, Fragment, useEffect, useState } from "react";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useLocation, Link } from "react-router";
 import { twMerge } from "tailwind-merge";
@@ -145,6 +145,12 @@ export function HowItWorksDialog() {
       setOpen(false);
     }
   }, [pathname]);
+
+  useEffect(() => {
+    if (activeTab !== "trading") {
+      setActiveTab("trading");
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={(op: boolean) => setOpen(op)}>
