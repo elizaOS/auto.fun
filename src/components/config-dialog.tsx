@@ -60,7 +60,12 @@ export default function ConfigDialog({ children }: PropsWithChildren) {
                 <span className="text-base font-medium font-satoshi uppercase text-autofun-text-primary">
                   Slippage%:{" "}
                 </span>
-                <span className="font-normal font-satoshi text-autofun-text-highlight text-xl">
+                <span className="font-normal font-satoshi text-autofun-text-highlight text-xl" style={{
+                    lineHeight: '28px',
+                    fontSize: '20px',
+                    letterSpacing: '-1.4px',
+
+                }}>
                   {Number(slippage).toFixed(1)}
                 </span>
               </div>
