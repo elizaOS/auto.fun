@@ -1,3 +1,4 @@
+import BottomBar from "@/components/bottom-bar";
 import BreakpointIndicator from "@/components/breakpoint-indicator";
 import Header from "@/components/header";
 import { Outlet } from "react-router";
@@ -10,6 +11,9 @@ export default function Layout() {
         <Outlet />
         <BreakpointIndicator />
       </main>
+      <div className="visible md:hidden">
+        <BottomBar />
+      </div>
     </div>
   );
 }
