@@ -52,7 +52,7 @@ export default function Header() {
           </div>
         </div>
       </div>
-      <div className="block md:hidden border-b py-6">
+      <div className="block md:hidden border-b z-auto py-6">
         <div className="flex items-center lg:hidden">
           {drawerOpen ? (
             <CloseButton>
@@ -65,7 +65,7 @@ export default function Header() {
           <Dialog
             open={drawerOpen}
             onClose={() => setDrawerOpen(false)}
-            className="relative z-30"
+            className="relative z-20"
           >
             <div className="fixed inset-0 overflow-hidden">
               <div className="inset-0 overflow-hidden">
