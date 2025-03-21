@@ -6,6 +6,7 @@ import { optimizePinataImage } from "@/utils/api";
 import { formatNumber } from "@/utils";
 import { Fragment, useState } from "react";
 import { twMerge } from "tailwind-merge";
+import ConfigDialog from "./config-dialog";
 
 export default function Trade({ token }: { token: IToken }) {
   const solanaPrice = token?.solPriceUSD || 0;
@@ -63,9 +64,11 @@ export default function Trade({ token }: { token: IToken }) {
                     </Button>
                   </Fragment>
                 )}
-                <Button size="small" variant="trade">
-                  <Cog />
-                </Button>
+                <ConfigDialog>
+                  <Button size="small" variant="trade">
+                    <Cog />
+                  </Button>
+                </ConfigDialog>
               </div>
             </div>
             <div className="flex justify-between gap-3">
