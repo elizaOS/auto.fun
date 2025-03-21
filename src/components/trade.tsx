@@ -1,10 +1,11 @@
-import { ArrowUpDown, Cog, Wallet } from "lucide-react";
+import { ArrowUpDown, Cog, Info, Wallet } from "lucide-react";
 import Button from "./button";
 import SkeletonImage from "./skeleton-image";
 import { IToken } from "@/types";
 import { optimizePinataImage } from "@/utils/api";
 import { formatNumber } from "@/utils";
 import { Fragment, useState } from "react";
+import { twMerge } from "tailwind-merge";
 
 export default function Trade({ token }: { token: IToken }) {
   const solanaPrice = token?.solPriceUSD || 0;
@@ -12,13 +13,19 @@ export default function Trade({ token }: { token: IToken }) {
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
     undefined
   );
+  const [error, setError] = useState<string | undefined>("");
 
   return (
     <div className="relative border rounded-md p-4 bg-autofun-background-card">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col">
           {/* Selling */}
-          <div className="flex flex-col py-3 px-4 bg-autofun-background-input border rounded-md gap-[18px]">
+          <div
+            className={twMerge([
+              "flex flex-col py-3 px-4 bg-autofun-background-input border rounded-md gap-[18px] transition-colors duration-200",
+              error ? "border-autofun-text-error" : "",
+            ])}
+          >
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-base font-dm-mono text-autofun-text-primary select-none">
                 Selling
@@ -112,6 +119,18 @@ export default function Trade({ token }: { token: IToken }) {
               <Balance token={token} isSolana={isTokenSelling} />
             </div>
           </div>
+        </div>
+
+        <div
+          className={twMerge([
+            "flex items-center gap-2 h-4 transition-opacity duration-200",
+            error ? "opacity-100" : "opacity-0",
+          ])}
+        >
+          <Info className="text-autofun-text-error size-4" />
+          <p className="text-autofun-text-error text-xs font-dm-mono">
+            Insufficient Funds: You have 0.0043 SOL
+          </p>
         </div>
 
         <Button variant="secondary" className="font-dm-mono" size="large">
