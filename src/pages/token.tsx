@@ -1,10 +1,19 @@
+import BondingCurveBar from "@/components/bonding-curve-bar";
 import Button from "@/components/button";
 import CopyButton from "@/components/copy-button";
 import Loader from "@/components/loader";
 import SkeletonImage from "@/components/skeleton-image";
+import TokenStatus from "@/components/token-status";
 import Trade from "@/components/trade";
 import { IToken } from "@/types";
-import { abbreviateNumber, fromNow, shortenAddress } from "@/utils";
+import {
+  abbreviateNumber,
+  formatNumber,
+  fromNow,
+  LAMPORTS_PER_SOL,
+  normalizedProgress,
+  shortenAddress,
+} from "@/utils";
 import { getToken, optimizePinataImage } from "@/utils/api";
 import {
   IconBrandDiscord,
@@ -14,6 +23,7 @@ import {
   IconBrandX,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
+import { InfoCircle } from "iconsax-react";
 import { Globe } from "lucide-react";
 import { Link, useParams } from "react-router";
 import ShowMoreText from "react-show-more-text";
@@ -32,6 +42,11 @@ export default function Page() {
   });
 
   const token: IToken = query?.data;
+
+  const solPriceUSD = token?.solPriceUSD;
+  const finalTokenPrice = 0.00000045; // Approximated value from the bonding curve configuration
+  const finalTokenUSDPrice = finalTokenPrice * solPriceUSD;
+  const graduationMarketCap = finalTokenUSDPrice * 1_000_000_000;
 
   if (query?.isLoading) {
     return <Loader />;
@@ -192,6 +207,38 @@ export default function Page() {
                 {token?.price24hAgo ? abbreviateNumber(token?.volume24h) : null}
               </span>
             </div>
+          </div>
+          {/* Bonding Curve */}
+          <div className="flex flex-col gap-3.5">
+            <div className="flex justify-between gap-3.5">
+              <p className="font-medium font-satoshi">
+                Bonding Curve Progress:{" "}
+                <span className="text-autofun-text-highlight">
+                  {normalizedProgress(token?.curveProgress) === 100
+                    ? "Completed"
+                    : `${normalizedProgress(token?.curveProgress)}%`}
+                </span>
+              </p>
+              <InfoCircle className="size-5 text-autofun-text-secondary" />
+            </div>
+            <BondingCurveBar progress={token?.curveProgress} />
+            {token?.status !== "migrated" ? (
+              <p className="font-satoshi text-base text-autofun-text-secondary whitespace-pre">
+                Graduate this coin to Raydium at{" "}
+                {formatNumber(graduationMarketCap, true)}
+                 market cap.{"\n"}
+                There is{" "}
+                {formatNumber(
+                  (token?.reserveLamport - token?.virtualReserves) /
+                    LAMPORTS_PER_SOL,
+                  true,
+                  true
+                )}{" "}
+                SOL in the bonding curve.
+              </p>
+            ) : null}
+
+            <TokenStatus token={token} />
           </div>
         </div>
         <Trade token={token} />

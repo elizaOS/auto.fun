@@ -15,6 +15,10 @@ export default function Trade({ token }: { token: IToken }) {
   );
   const [error, setError] = useState<string | undefined>("");
 
+  const isDisabled = ["migrating", "migration_failed", "failed"].includes(
+    token.status
+  );
+
   return (
     <div className="relative border rounded-md p-4 bg-autofun-background-card">
       <div className="flex flex-col gap-4">
@@ -132,7 +136,14 @@ export default function Trade({ token }: { token: IToken }) {
             Insufficient Funds: You have 0.0043 SOL
           </p>
         </div>
-
+        <Button
+          variant="secondary"
+          className="font-dm-mono"
+          size="large"
+          disabled={isDisabled}
+        >
+          Swap
+        </Button>
         <Button variant="secondary" className="font-dm-mono" size="large">
           Connect
         </Button>

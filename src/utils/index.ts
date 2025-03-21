@@ -5,6 +5,8 @@ dayjs.extend(relativeTime);
 
 const moment = dayjs;
 
+export const LAMPORTS_PER_SOL = 1000000000;
+
 export const normalizedProgress = (progress: number) =>
   Math.round(Math.min(100, progress));
 
@@ -26,12 +28,22 @@ export const abbreviateNumber = (num: number): string => {
   return `$${(num < 0 ? "-" : "") + formatted + unit}`;
 };
 
-export const formatNumber = (num: number, showDecimals?: boolean) => {
-  return Intl.NumberFormat("en-US", {
+export const formatNumber = (
+  num: number,
+  showDecimals?: boolean,
+  hideDollarSign?: boolean
+) => {
+  const formatted = Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     notation: showDecimals ? "standard" : "compact",
   }).format(num);
+
+  if (hideDollarSign) {
+    return formatted?.replace("$", "");
+  }
+
+  return formatted;
 };
 
 export const fromNow = (
