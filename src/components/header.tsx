@@ -71,15 +71,15 @@ export default function Header() {
           <Dialog
             open={drawerOpen}
             onClose={() => setDrawerOpen(false)}
-            className="relative"
+            className="relative md:hidden"
           >
             <div className="fixed inset-0 overflow-hidden">
               <div className="inset-0 overflow-hidden">
-                <div className="pointer-events-none fixed inset-y-0 flex w-full -right-4 max-w-[280px]">
-                  <DialogPanel className="pointer-events-auto mt-19 relative w-full max-w-md">
-                    <div className="flex w-full h-full flex-col overflow-y-hidden bg-[#171717] py-1 shadow-xl">
+                <div className="pointer-events-none fixed inset-y-0 flex -right-4 w-[310px]">
+                  <DialogPanel className="pointer-events-auto mt-16 relative w-full max-w-md">
+                    <div className="flex w-full h-full flex-col overflow-y-hidden bg-[#171717] py-0 shadow-xl">
                       <div className="relative flex flex-col py-10 px-6 gap-3">
-                        <button className="rounded-lg text-white border w-full h-[44px] border-[#2FD345] hover:bg-green-400">
+                        <button className="rounded-lg text-white border max-w-[233px] w-full h-[44px] border-[#2FD345] cursor-pointer">
                           Connect Wallet
                         </button>
                         <div>
