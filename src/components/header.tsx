@@ -6,7 +6,6 @@ import Button from "./button";
 import { CloseButton, Dialog, DialogPanel } from "@headlessui/react";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
-import { cn } from "@/utils";
 
 export default function Header() {
   const { pathname } = useLocation();
@@ -52,8 +51,16 @@ export default function Header() {
           </div>
         </div>
       </div>
-      <div className="block md:hidden border-b z-auto py-6">
-        <div className="flex items-center lg:hidden">
+
+      {/* mobile menu */}
+      <div className="sticky block md:hidden bg-[#171717] border-b py-4">
+        <div className="flex items-center mx-4 space-x-4 lg:hidden ">
+          <div className="flex flex-row ">
+            <Link to="/">
+              <img className="size-10" src="/logo.png" />
+            </Link>
+          </div>
+            <SearchBar />
           {drawerOpen ? (
             <CloseButton>
               <X className="size-[30px]" />
@@ -61,16 +68,15 @@ export default function Header() {
           ) : (
             <Menu className="size-[30px]" onClick={() => setDrawerOpen(true)} />
           )}
-
           <Dialog
             open={drawerOpen}
             onClose={() => setDrawerOpen(false)}
-            className="relative z-20"
+            className="relative"
           >
             <div className="fixed inset-0 overflow-hidden">
               <div className="inset-0 overflow-hidden">
-                <div className="pointer-events-none fixed inset-y-0 flex w-full right-0 max-w-[280px]">
-                  <DialogPanel className="pointer-events-auto relative w-full max-w-md">
+                <div className="pointer-events-none fixed inset-y-0 flex w-full -right-4 max-w-[280px]">
+                  <DialogPanel className="pointer-events-auto  relative w-full max-w-md">
                     <div className="flex w-full h-full flex-col overflow-y-scroll bg-[#171717] py-6 shadow-xl">
                       <div className="relative flex flex-col py-20 px-6 gap-3">
                         <button className="rounded-lg text-white border w-full h-[44px] border-[#2FD345] hover:bg-green-400">
@@ -79,7 +85,7 @@ export default function Header() {
                         <div>
                           {mobileNavItems.map((item, index) => (
                             <Link
-                              className={cn([
+                              className={twMerge([
                                 pathname === item.href ? "text-white" : "",
                                 "font-satoshi text-[20px] gap-2 flex text-[#8C8C8C] w-fit hover:text-white py-3",
                               ])}
@@ -110,12 +116,12 @@ export default function Header() {
                           ))}
                         </div>
                       </div>
-                      <div className="absolute bottom-20 flex flex-row  items-center w-full px-6 gap-4 text-[#8C8C8C] text-center bg-[#171717]">
+                      <div className="absolute bottom-20 flex flex-row items-center w-full px-6 gap-4 text-[#8C8C8C] text-center bg-[#171717]">
                         <img
-                          src="X-icon.svg"
+                          src="/nav/X-icon.svg"
                           height={40}
                           width={40}
-                          alt="stars-icon"
+                          alt="x-icon"
                         />
                         <h1 className="text-[16px]">®2024 Auto.fun</h1>
                       </div>
