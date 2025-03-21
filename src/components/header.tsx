@@ -6,7 +6,7 @@ export default function Header() {
   return (
     <div className="border-b py-6">
       <div className="container flex items-center">
-        <Link to="/" className="mr-6">
+        <Link to="/" className="mr-6 select-none">
           <img className="size-10" src="/logo.png" />
         </Link>
         <NavLink title="Tokens" href="/" />

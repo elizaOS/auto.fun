@@ -92,11 +92,6 @@ export default function GridView({ data }: { data: IToken[] }) {
           >
             <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
               {token.description}
-              {token.description}
-              {token.description}
-              {token.description}
-              {token.description}
-              {token.description}
             </span>
           </ShowMoreText>
           <div className="mt-auto">
