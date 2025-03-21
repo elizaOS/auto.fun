@@ -13,7 +13,7 @@ export default function Trade({ token }: { token: IToken }) {
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
     undefined
   );
-  const [error, setError] = useState<string | undefined>("");
+  const [error] = useState<string | undefined>("");
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
     token.status

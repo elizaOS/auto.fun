@@ -15,13 +15,7 @@ import {
   shortenAddress,
 } from "@/utils";
 import { getToken, optimizePinataImage } from "@/utils/api";
-import {
-  IconBrandDiscord,
-  IconBrandDiscordFilled,
-  IconBrandTelegram,
-  IconBrandTwitter,
-  IconBrandX,
-} from "@tabler/icons-react";
+import { IconBrandDiscordFilled, IconBrandTelegram, IconBrandX } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { InfoCircle } from "iconsax-react";
 import { Globe } from "lucide-react";

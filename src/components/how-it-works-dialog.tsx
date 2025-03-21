@@ -4,7 +4,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { act, Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useLocation, Link } from "react-router";
 import { twMerge } from "tailwind-merge";
