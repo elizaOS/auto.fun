@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { XIcon } from "lucide-react";
-import { PropsWithChildren } from "react";
+import { PropsWithChildren, useState } from "react";
 import Divider from "./divider";
 import { twMerge } from "tailwind-merge";
 import {
@@ -20,12 +20,20 @@ import {
 } from "@/hooks/use-mev-protection";
 
 export default function ConfigDialog({ children }: PropsWithChildren) {
+  const [open, setOpen] = useState<boolean>(false);
   const [transactionSpeed, setTransactionSpeed] = useTransactionSpeed();
   const [slippage, setSlippage] = useSlippage();
   const [mevProtection, setMevProtection] = useMevProtection();
 
+  const storeSlippage = (num: number) => {
+    if (num <= 0) return;
+    if (num >= 100) return;
+
+    setSlippage(num);
+  };
+
   return (
-    <Dialog>
+    <Dialog onOpenChange={(op: boolean) => setOpen(op)} open={open}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <VisuallyHidden>
         <DialogTitle />
@@ -41,7 +49,10 @@ export default function ConfigDialog({ children }: PropsWithChildren) {
             >
               Trade Settings
             </h1>
-            <XIcon className="size-5 text-autofun-icon-disabled" />
+            <XIcon
+              className="size-5 text-autofun-icon-disabled cursor-pointer"
+              onClick={() => setOpen(false)}
+            />
           </div>
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -53,6 +64,16 @@ export default function ConfigDialog({ children }: PropsWithChildren) {
                   {Number(slippage).toFixed(1)}
                 </span>
               </div>
+              <input
+                className="max-w-[120px] px-3 py-2 bg-[#0a0a0a] rounded-md text-white border outline-none"
+                placeholder="1.0%"
+                min="0"
+                max="100"
+                step="0.1"
+                type="number"
+                onChange={({ target }) => storeSlippage(Number(target.value))}
+                value={slippage}
+              ></input>
             </div>
             <p className="font-medium text-base text-autofun-text-secondary font-satoshi">
               This is the maximum amount of slippage you are willing to accept
@@ -91,9 +112,11 @@ export default function ConfigDialog({ children }: PropsWithChildren) {
               transactions confirm faster
             </p>
           </div>
+          <Divider />
+
           <div className="flex justify-between items-center gap-3">
             <span className="text-base font-medium font-satoshi text-autofun-text-primary">
-              Speed
+              Enable front-running protection:
             </span>
             <div className="p-1 rounded-md border flex items-center gap-2">
               {([true, false] as TMevProtection[]).map(
