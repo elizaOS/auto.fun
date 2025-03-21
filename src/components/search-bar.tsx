@@ -8,7 +8,7 @@ export default function SearchBar() {
           <Search className="w-6 h-6 text-[#8C8C8C] group-hover:text-[#2FD345]" />
           <input
             type="text"
-            value="Search Token"
+            value=""
             placeholder="Symbol or Address..."
             className="flex-1 bg-transparent text-base font-medium text-[#8C8C8C] placeholder-[#8C8C8C] focus:outline-none hover:placeholder-white focus:placeholder-white transition-colors font-satoshi placeholder:font-satoshi focus:font-satoshi"
           />

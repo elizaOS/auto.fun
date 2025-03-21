@@ -76,9 +76,9 @@ export default function Header() {
             <div className="fixed inset-0 overflow-hidden">
               <div className="inset-0 overflow-hidden">
                 <div className="pointer-events-none fixed inset-y-0 flex w-full -right-4 max-w-[280px]">
-                  <DialogPanel className="pointer-events-auto  relative w-full max-w-md">
-                    <div className="flex w-full h-full flex-col overflow-y-scroll bg-[#171717] py-6 shadow-xl">
-                      <div className="relative flex flex-col py-20 px-6 gap-3">
+                  <DialogPanel className="pointer-events-auto mt-19 relative w-full max-w-md">
+                    <div className="flex w-full h-full flex-col overflow-y-hidden bg-[#171717] py-1 shadow-xl">
+                      <div className="relative flex flex-col py-10 px-6 gap-3">
                         <button className="rounded-lg text-white border w-full h-[44px] border-[#2FD345] hover:bg-green-400">
                           Connect Wallet
                         </button>
