@@ -99,7 +99,9 @@ export default function GridView({ data }: { data: IToken[] }) {
               {token.description}
             </span>
           </ShowMoreText>
-          <Divider />
+          <div className="mt-auto">
+            <Divider />
+          </div>
           <Button
             variant="primary"
             size="large"
