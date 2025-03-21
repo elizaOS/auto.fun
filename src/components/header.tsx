@@ -1,17 +1,21 @@
 import { Link, useLocation } from "react-router";
 import { twMerge } from "tailwind-merge";
 import { HowItWorksDialog } from "./how-it-works-dialog";
+import SearchBar from "./search-bar";
 
 export default function Header() {
   return (
     <div className="border-b py-6">
-      <div className="container flex items-center">
-        <Link to="/" className="mr-6">
-          <img className="size-10" src="/logo.png" />
-        </Link>
-        <NavLink title="Tokens" href="/" />
-        <HowItWorksDialog />
-        <NavLink title="Support" href="/support" />
+      <div className="container flex flex-row items-center justify-between">
+        <div className="flex items-center">
+          <Link to="/" className="mr-6">
+            <img className="size-10" src="/logo.png" />
+          </Link>
+          <NavLink title="Tokens" href="/" />
+          <HowItWorksDialog />
+          <NavLink title="Support" href="/support" />
+        </div>
+        <SearchBar />
       </div>
     </div>
   );
