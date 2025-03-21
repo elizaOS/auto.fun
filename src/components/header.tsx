@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router";
 import { twMerge } from "tailwind-merge";
 import { HowItWorksDialog } from "./how-it-works-dialog";
 import SearchBar from "./search-bar";
+import Button from "./button";
 
 export default function Header() {
   return (
@@ -15,7 +16,16 @@ export default function Header() {
           <HowItWorksDialog />
           <NavLink title="Support" href="/support" />
         </div>
-        <SearchBar />
+        <div className="flex space-x-4 flex-row justify-between">
+          <SearchBar />
+          <Button className="flex items-center text-base font-medium text-white font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border border-[#2FD345] rounded-md">
+            Create Token{" "}
+            <img src="/stars.svg" alt="stars" className="text-[#2FD345]" />
+          </Button>
+          <Button className="px-4 py-2.5 gap-2 h-11 rounded-md">
+            Connect Wallet
+          </Button>
+        </div>
       </div>
     </div>
   );
