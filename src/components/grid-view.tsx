@@ -58,7 +58,9 @@ export default function GridView({ data }: { data: IToken[] }) {
                     <div className="text-autofun-text-secondary text-xs font-normal font-dm-mono">
                       {shortenAddress(token.mint)}
                     </div>
-                    <CopyButton text={token.mint} className="size-4" />
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <CopyButton text={token.mint} className="size-4" />
+                    </div>
                   </div>
                 </div>
                 <div className="inline-flex justify-start items-center gap-2 min-w-0">
