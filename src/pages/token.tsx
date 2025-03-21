@@ -1,5 +1,6 @@
 import Button from "@/components/button";
 import CopyButton from "@/components/copy-button";
+import Loader from "@/components/loader";
 import Trade from "@/components/trade";
 import { IToken } from "@/types";
 import { abbreviateNumber, fromNow, shortenAddress } from "@/utils";
@@ -22,7 +23,10 @@ export default function Page() {
   });
 
   const token: IToken = query?.data;
-  console.log(token);
+
+  if (query?.isLoading) {
+    return <Loader />;
+  }
 
   return (
     <div className="grid grid-cols-3 gap-3">
