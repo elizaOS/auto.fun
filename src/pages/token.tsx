@@ -77,13 +77,15 @@ export default function Page() {
       <div className="flex flex-col gap-3">
         <div className="border rounded-md p-4 bg-autofun-background-card flex flex-col gap-3">
           <div className="flex border rounded-md">
-            <div className="size-10 rounded-l-md inline-flex border-r grow shrink-0 bg-autofun-background-action-primary">
+            <div className="size-10 rounded-l-md inline-flex border-r shrink-0 bg-autofun-background-action-primary">
               <span className="text-base font-dm-mono m-auto text-autofun-text-secondary">
                 CA
               </span>
             </div>
-            <div className="bg-autofun-background-input flex justify-between py-2 px-3 w-full">
-              <span>{token?.mint}</span>
+            <div className="bg-autofun-background-input flex justify-between py-2 px-3 min-w-0 w-full gap-2">
+              <span className="text-base text-autofun-text-secondary truncate">
+                {token?.mint}
+              </span>
               <CopyButton text={token?.mint} />
             </div>
           </div>
