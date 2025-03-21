@@ -41,6 +41,7 @@ module.exports = {
             secondary: "#8c8c8c",
             disabled: "#505050",
             info: "#a6a6a6",
+            error: "#872C2C"
           },
           icon: {
             primary: "#ffffff",
