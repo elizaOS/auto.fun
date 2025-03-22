@@ -171,7 +171,7 @@ export default function Page() {
             </Link>
             <Link to={token?.telegram} className="w-full" target="_blank">
               <Button
-                className="w-full rounded-none"
+                className="w-full rounded-none py-0 flex"
                 disabled={!token?.telegram}
               >
                 <SkeletonImage
@@ -179,13 +179,13 @@ export default function Page() {
                   height={24}
                   width={24}
                   alt="telegram_icon"
-                  className="w-6 m-auto object-contain"
+                  className="size-6 object-contain m-auto h-full"
                 />
               </Button>
             </Link>
             <Link to={token?.website} className="w-full" target="_blank">
               <Button
-                className="w-full rounded-none rounded-r-md"
+                className="w-full rounded-none rounded-r-md px-0"
                 disabled={!token?.website}
               >
                 <SkeletonImage
@@ -193,7 +193,7 @@ export default function Page() {
                   height={24}
                   width={24}
                   alt="discord_icon"
-                  className="w-6 m-auto"
+                  className="w-auto m-auto"
                 />
               </Button>
             </Link>
