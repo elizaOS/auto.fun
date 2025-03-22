@@ -14,7 +14,7 @@ export async function getLastProcessedSlotFromDB(): Promise<number> {
       const now = Date.now() / 1000;
       const diffSeconds = now - lastUpdatedTime;
 
-      // Assuming an average of 0.4 seconds per slot on Solana.
+      // 0.4 seconds per slot on Solana.
       const estimatedSlotDiff = Math.floor(diffSeconds / 0.4);
       const currentSlot = await config.connection.getSlot("finalized");
 
