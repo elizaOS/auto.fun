@@ -55,7 +55,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
                 {swap?.direction === 0 ? "Buy" : "Sell"}
               </TableCell>
               <TableCell className="text-left">{swap?.amountIn}</TableCell>
-              <TableCell className="text-left">{swap?.amountIn}</TableCell>
+              <TableCell className="text-left">{swap?.amountOut}</TableCell>
               <TableCell className="text-left">
                 {fromNow(swap?.timestamp)}
               </TableCell>

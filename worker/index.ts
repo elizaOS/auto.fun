@@ -87,7 +87,7 @@ interface ITokenHolder {
   address: string;
   amount: number;
   percentage: number;
-  lastUpdated: string;
+  lastUpdated: string | Date;
 }
 
 // Define the app with environment typing
@@ -195,6 +195,13 @@ function getRandomNumber(options?: {
     return parseFloat(random.toFixed(options.decimals));
   }
   return Math.floor(random);
+}
+
+function getRandomRecentDate(): Date {
+  const now = new Date();
+  const oneDayMs = 24 * 60 * 60 * 1000; // milliseconds in one day
+  const randomOffset = Math.floor(Math.random() * oneDayMs);
+  return new Date(now.getTime() - randomOffset);
 }
 
 const generateMockToken = (): IToken => {
@@ -332,15 +339,14 @@ api.get("/tokens/:mint/holders", async (c) => {
 
     // Generate mock holders data
     const mockHolders: ITokenHolder[] = [];
-    for (let i = 0; i < 5; i++) {
-      const amount = 100000 / (i + 1);
+    for (let i = 0; i < 12; i++) {
       mockHolders.push({
         id: crypto.randomUUID(),
         mint: mint,
-        address: `mock-holder-${i + 1}`,
-        amount: amount,
-        percentage: (amount / 100000) * 100,
-        lastUpdated: new Date().toISOString(),
+        address: crypto.randomUUID(),
+        amount: getRandomNumber({ min: 1, max: 100, decimals: 2 }),
+        percentage: getRandomNumber({ min: 1, max: 100 }),
+        lastUpdated: getRandomRecentDate(),
       });
     }
 
@@ -544,7 +550,7 @@ api.get("/swaps/:mint", async (c) => {
         amountOut: getRandomNumber({ min: 10, max: 5000 }),
         price: getRandomNumber({ min: 0, max: 5000 }),
         txId: crypto.randomUUID(),
-        timestamp: new Date().toISOString(),
+        timestamp: getRandomRecentDate(),
       };
     };
 
