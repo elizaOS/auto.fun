@@ -47,7 +47,7 @@ export default function Page() {
   }
 
   return (
-    <div className="flex gap-3">
+    <div className="flex flex-wrap md:flex-wrap-reverse gap-3">
       {/* Left Section */}
       <div className="w-fit grow flex flex-col gap-3">
         {/* Info */}
@@ -138,7 +138,7 @@ export default function Page() {
               </span>
             </div>
             <div className="bg-autofun-background-input flex justify-between py-2 px-3 min-w-0 w-full gap-2">
-              <span className="text-base text-autofun-text-secondary truncate">
+              <span className="w-0 flex-1 min-w-0 block text-base text-autofun-text-secondary truncate">
                 {token?.mint}
               </span>
               <CopyButton text={token?.mint} />
