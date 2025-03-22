@@ -70,3 +70,12 @@ export interface ISwap {
   type: string;
   user: string;
 }
+
+export interface ITokenHolder {
+  id: string;
+  mint: string;
+  address: string;
+  amount: number;
+  percentage: number;
+  lastUpdated: string | Date;
+}
