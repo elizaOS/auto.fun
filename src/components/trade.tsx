@@ -16,7 +16,7 @@ export default function Trade({ token }: { token: IToken }) {
   const [error] = useState<string | undefined>("");
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token.status
+    token?.status
   );
 
   return (

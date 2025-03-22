@@ -98,17 +98,17 @@ export default function Page() {
         <div className="border rounded-md p-4 bg-autofun-background-card flex flex-col gap-3">
           <div className="flex gap-3">
             <div className="size-36 shrink-0">
-              <SkeletonImage src={token.image} alt="image" />
+              <SkeletonImage src={token?.image} alt="image" />
             </div>
             <div className="flex flex-col gap-3">
               {/* Token Info and Time */}
               <div className="flex items-center w-full min-w-0">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="capitalize text-autofun-text-primary text-3xl font-medium font-satoshi leading-normal truncate min-w-0">
-                    {token.name}
+                    {token?.name}
                   </div>
                   <div className="text-autofun-text-secondary text-base font-normal font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0">
-                    ${token.ticker}
+                    ${token?.ticker}
                   </div>
                 </div>
               </div>
@@ -122,7 +122,7 @@ export default function Page() {
                 truncatedEndingComponent={" ... "}
               >
                 <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
-                  {token.description}
+                  {token?.description}
                 </span>
               </ShowMoreText>
             </div>
