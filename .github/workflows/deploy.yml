@@ -57,7 +57,6 @@ jobs:
             echo "WORKER_ENV=production" >> $GITHUB_ENV
             echo "DB_SUFFIX=" >> $GITHUB_ENV
             # Pages settings
-            echo "PROJECT_NAME=autofun" >> $GITHUB_ENV
             echo "NODE_ENV=production" >> $GITHUB_ENV
             echo "DATABASE_NAME=autofun" >> $GITHUB_ENV
             # API URL for production
@@ -68,7 +67,6 @@ jobs:
             echo "WORKER_ENV=development" >> $GITHUB_ENV
             echo "DB_SUFFIX=-dev" >> $GITHUB_ENV
             # Pages settings
-            echo "PROJECT_NAME=autofun-dev" >> $GITHUB_ENV
             echo "NODE_ENV=development" >> $GITHUB_ENV
             echo "DATABASE_NAME=autofun-dev" >> $GITHUB_ENV
             echo "DATABASE_NAME_DEV=autofun-dev" >> $GITHUB_ENV
@@ -140,7 +138,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          projectName: ${{ env.PROJECT_NAME }}
+          projectName: ${{ env.PROJECT_NAME || 'autofun' }}
           directory: dist
           branch: ${{ github.ref_name }}
           wranglerVersion: '3'
@@ -151,14 +149,14 @@ jobs:
       - name: Set Cloudflare Pages environment variables
         if: success()
         run: |
-          echo "Setting environment variables for Cloudflare Pages project: ${{ env.PROJECT_NAME }}"
+          echo "Setting environment variables for Cloudflare Pages project: ${{ env.PROJECT_NAME || 'autofun' }}"
           API_URL="${{ env.WORKER_ENV == 'production' && 'https://api.autofun.pages.dev' || 'https://api-dev.autofun.pages.dev' }}"
           
           # Using wrangler to set environment variables for Pages project
           # Note: This step is skipped for now because it's not working correctly
           # We'll add environment variables manually in the Cloudflare dashboard
           echo "API URL for the environment: $API_URL"
-          echo "Please set this manually in Cloudflare Pages dashboard for ${{ env.PROJECT_NAME }}"
+          echo "Please set this manually in Cloudflare Pages dashboard for ${{ env.PROJECT_NAME || 'autofun' }}"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
