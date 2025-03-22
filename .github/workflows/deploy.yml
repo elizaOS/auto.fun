@@ -56,21 +56,21 @@ jobs:
         run: |
           if [[ $GITHUB_REF == *"main"* ]]; then
             # Worker settings
-            echo "WORKER_NAME=autofun-api" >> $GITHUB_ENV
+            echo "WORKER_NAME=api" >> $GITHUB_ENV
             echo "WORKER_ENV=production" >> $GITHUB_ENV
             echo "DB_SUFFIX=" >> $GITHUB_ENV
             # Pages settings
             echo "PROJECT_NAME=autofun" >> $GITHUB_ENV
-            echo "DEPLOY_URL=https://autofun-frontend.pages.dev" >> $GITHUB_ENV
+            echo "DEPLOY_URL=https://autofun.pages.dev" >> $GITHUB_ENV
             echo "NODE_ENV=production" >> $GITHUB_ENV
           else
             # Worker settings
-            echo "WORKER_NAME=autofun-api-dev" >> $GITHUB_ENV
+            echo "WORKER_NAME=api-dev" >> $GITHUB_ENV
             echo "WORKER_ENV=development" >> $GITHUB_ENV
             echo "DB_SUFFIX=-dev" >> $GITHUB_ENV
             # Pages settings
             echo "PROJECT_NAME=autofun-dev" >> $GITHUB_ENV
-            echo "DEPLOY_URL=https://autofun-frontend-dev.pages.dev" >> $GITHUB_ENV
+            echo "DEPLOY_URL=https://autofun-dev.pages.dev" >> $GITHUB_ENV
             echo "NODE_ENV=development" >> $GITHUB_ENV
           fi
 
