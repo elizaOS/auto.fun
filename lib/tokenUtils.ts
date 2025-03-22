@@ -80,18 +80,22 @@ export async function createNewTokenData(
       bondingCurvePda
     );
 
-    let additionalMetadata: TokenMetadataJson | null = null;
-    try {
-      const response = await fetch(metadata.metadata.uri);
-      additionalMetadata = await response.json() as TokenMetadataJson;
-    } catch (error) {
-      logger.error(`Failed to fetch IPFS metadata from URI: ${metadata.metadata.uri}`, error);
-    }
+    const {getSOLPrice} = await import('../mcap');
+
+    const [additionalMetadata, solPrice] = await Promise.all([
+      (async () => {
+        try {
+          const response = await fetch(metadata.metadata.uri);
+          return await response.json() as TokenMetadataJson;
+        } catch (error) {
+          logger.error(`Failed to fetch IPFS metadata from URI: ${metadata.metadata.uri}`, error);
+          return null;
+        }
+      })(),
+      getSOLPrice()
+    ]);
 
     const TOKEN_DECIMALS = Number(process.env.DECIMALS || 6);
-
-    const {getSOLPrice} = await import('../mcap');
-    const solPrice = await getSOLPrice();
 
     const currentPrice = Number(bondingCurveAccount.reserveToken) > 0 ? 
       (Number(bondingCurveAccount.reserveLamport) / 1e9) / 
