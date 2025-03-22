@@ -272,10 +272,11 @@ router.get('/tokens/:mint', async (req, res) => {
       return res.status(404).json({ error: 'Token not found' });
     }
 
-    const agent = await Agent.findOne({ txId: token.txId })
+    const [agent, solPrice] = await Promise.all([
+      Agent.findOne({ txId: token.txId }),
+      getSOLPrice()
+    ]);
 
-    // Get SOL price and calculate market data
-    const solPrice = await getSOLPrice();
     const tokenWithMarketData = await calculateTokenMarketData(token, solPrice);
 
     res.json({ ...tokenWithMarketData, hasAgent: !!agent });
@@ -320,14 +321,15 @@ router.get('/tokens/:mint/holders', async (req, res) => {
     }
 
     // Get total count
-    const total = await TokenHolder.countDocuments(query);
-
-    const holders = await TokenHolder
-      .find(query)
-      .sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 })
-      .skip(skip)
-      .limit(limit)
-      .select('-__v');
+    const [total, holders] = await Promise.all([
+      TokenHolder.countDocuments(query),
+      TokenHolder
+        .find(query)
+        .sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 })
+        .skip(skip)
+        .limit(limit)
+        .select('-__v')
+    ]);
 
     const totalPages = Math.ceil(total / limit);
 
