@@ -4,6 +4,7 @@ import Button from "./button";
 
 export default function TransactionsAndHolders({ token }: { token: IToken }) {
   const [mode, setMode] = useState<"transactions" | "holders">("transactions");
+
   return (
     <div className="border rounded-md bg-autofun-background-card">
       <div className="flex items-center p-3">
@@ -22,6 +23,7 @@ export default function TransactionsAndHolders({ token }: { token: IToken }) {
           Holders
         </Button>
       </div>
+      {token?.name}
     </div>
   );
 }
