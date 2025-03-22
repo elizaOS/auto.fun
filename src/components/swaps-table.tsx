@@ -42,7 +42,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
       <TableBody>
         {data?.map((swap: ISwap) => {
           return (
-            <TableRow key={token?.txId}>
+            <TableRow key={swap?.txId}>
               <TableCell className="text-left">
                 {shortenAddress(swap?.user)}
               </TableCell>
