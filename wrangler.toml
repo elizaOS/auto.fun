@@ -15,7 +15,7 @@ crons = ["*/10 * * * * *"] # Run every 10 seconds
 [[d1_databases]]
 binding = "autofun"
 database_name = "autofun"
-database_id = "$DATABASE_ID"
+database_id = "b086a46c-b1c3-4eec-8eca-2abea542e45b"
 
 # R2 bucket for storage
 [[r2_buckets]]
@@ -49,7 +49,7 @@ bucket = "./dist"
 [[env.development.d1_databases]]
 binding = "autofun-dev"
 database_name = "autofun-dev"
-database_id = "$DATABASE_ID_DEV"
+database_id = "00ade209-86ac-46a9-bed5-b74aaaac4ad4"
 
 # Production environment configuration
 [env.production]

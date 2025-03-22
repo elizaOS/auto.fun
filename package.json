@@ -11,7 +11,7 @@
     "start": "concurrently \"npm run dev\" \"npm run worker:dev\"",
     "migrate": "wrangler d1 execute AUTO_DB --local --file=./drizzle/migrations.sql",
     "migrate:prod": "wrangler d1 execute AUTO_DB --file=./drizzle/migrations.sql",
-    "generate": "npx drizzle-kit generate:sqlite",
+    "generate": "drizzle-kit generate:sqlite",
     "deploy:worker": "wrangler deploy",
     "deploy:pages": "npm run build && wrangler pages deploy dist",
     "test": "vitest run worker/tests",
