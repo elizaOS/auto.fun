@@ -228,7 +228,7 @@ async function calculateRaydiumTokenMarketData(token: any, env?: Env) {
       logger.error("Mcap: Invalid pool info structure");
     }
 
-    // const virtualLiquidity = Number(process.env.VIRTUAL_RESERVES) / Math.pow(10, 9);
+    // const virtualLiquidity = env ? Number(env.VIRTUAL_RESERVES) / Math.pow(10, 9) : 0;
 
     if (!poolInfo) {
       throw new Error("Mcap: Invalid pool info structure");
@@ -324,17 +324,14 @@ export async function updateMigratedTokenMarketData(env?: Env) {
   try {
     const startTime = Date.now();
 
-    // Use the provided env or create a fallback with minimal required properties
-    const workingEnv =
-      env ||
-      ({
-        DATABASE: process.env.DATABASE as any,
-        NETWORK: process.env.NETWORK || "mainnet",
-        DECIMALS: process.env.DECIMALS || "6",
-        TOKEN_SUPPLY: process.env.TOKEN_SUPPLY || "1000000000000",
-        VIRTUAL_RESERVES: process.env.VIRTUAL_RESERVES || "100000000",
-        CURVE_LIMIT: process.env.CURVE_LIMIT || "1000000000",
-      } as Partial<Env> as Env); // Cast to Env for compatibility
+    // Use the provided env or create a minimal fallback (no process.env)
+    const workingEnv = env || {
+      NETWORK: "devnet",
+      DECIMALS: "6",
+      TOKEN_SUPPLY: "1000000000000",
+      VIRTUAL_RESERVES: "100000000",
+      CURVE_LIMIT: "1000000000",
+    } as Env; // Cast to Env for compatibility
 
     const db = getDB(workingEnv);
     const migratedTokens = await db

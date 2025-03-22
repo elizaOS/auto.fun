@@ -27,8 +27,7 @@ export interface InitSdkOptions {
 export const initSdk = async ({ loadToken = true, env }: InitSdkOptions) => {
   try {
     // Set the cluster from env or use default
-    const cluster =
-      env?.NETWORK || (process.env.NETWORK as Cluster) || "mainnet";
+    const cluster = env?.NETWORK || "mainnet";
 
     // Get connection based on env if provided
     const sdkConnection = env ? new Connection(getRpcUrl(env)) : connection;

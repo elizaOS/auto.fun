@@ -3,7 +3,28 @@ import { QueryClient } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient();
 
-const BASE_URL = import.meta.env.VITE_API_URL || "https://api.autofun.pages.dev";
+// Log the environment variables to help with debugging
+console.log("VITE_API_URL:", import.meta.env.VITE_API_URL);
+console.log("MODE:", import.meta.env.MODE);
+console.log("DEV:", import.meta.env.DEV);
+console.log("PROD:", import.meta.env.PROD);
+
+// Determine the API URL with proper fallbacks
+let apiUrl = import.meta.env.VITE_API_URL;
+
+// If no API URL is provided, use environment-specific defaults
+if (!apiUrl) {
+  if (import.meta.env.PROD) {
+    apiUrl = "https://api.autofun.pages.dev";
+  } else {
+    apiUrl = "https://api-dev.autofun.pages.dev";
+  }
+}
+
+// For local development, uncomment to override:
+// apiUrl = "http://localhost:8787";
+
+const BASE_URL = apiUrl;
 export const HELIUS_RPC_URL = import.meta.env.VITE_RPC_URL;
 
 const fetcher = async (

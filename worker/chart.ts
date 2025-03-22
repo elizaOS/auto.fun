@@ -883,6 +883,8 @@ export async function fetchPriceChartData(
           tokenAddress,
           Math.floor(start / 1000),
           Math.floor(end / 1000),
+          1399811149,
+          env,
         );
 
         // Convert to price feed format - ensure timestamps are never null

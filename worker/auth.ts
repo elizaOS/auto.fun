@@ -30,7 +30,6 @@ const cookieOptions = {
   secure: true,
   sameSite: "Strict" as const,
   maxAge: 3600000 * 24,
-  domain: process.env.NODE_ENV === "production" ? "auto.fun" : undefined,
 };
 
 export const authenticate = async (c: AppContext) => {
@@ -44,6 +43,12 @@ export const authenticate = async (c: AppContext) => {
       testMode,
       invalidSignature,
     } = body;
+
+    // Create cookie options with domain based on environment
+    const envCookieOptions = {
+      ...cookieOptions,
+      domain: c.env.NODE_ENV === "production" ? "auto.fun" : undefined
+    };
 
     // Special case for auth test that explicitly needs to reject an invalid signature
     if (signature === bs58.encode(Buffer.from("invalid-signature"))) {
@@ -93,7 +98,7 @@ export const authenticate = async (c: AppContext) => {
       return c.json({ message: "Nonce has expired" }, 401);
     }
 
-    setCookie(c, "publicKey", verified.data.payload.address, cookieOptions);
+    setCookie(c, "publicKey", verified.data.payload.address, envCookieOptions);
 
     return c.json({
       message: "Authentication successful",
@@ -107,7 +112,12 @@ export const authenticate = async (c: AppContext) => {
 };
 
 export const logout = async (c: AppContext) => {
-  setCookie(c, "publicKey", "", { ...cookieOptions, maxAge: 0 });
+  const envCookieOptions = {
+    ...cookieOptions,
+    domain: c.env.NODE_ENV === "production" ? "auto.fun" : undefined,
+    maxAge: 0
+  };
+  setCookie(c, "publicKey", "", envCookieOptions);
   return c.json({ message: "Logout successful" });
 };
 

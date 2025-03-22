@@ -537,17 +537,18 @@ export const withdrawTx = async (
 // Get RPC URL based on the environment
 export const getRpcUrl = (env: any) => {
   return env.NETWORK === "devnet"
-    ? env.DEVNET_SOLANA_RPC_URL
-    : env.MAINNET_SOLANA_RPC_URL;
+    ? env.DEVNET_SOLANA_RPC_URL || "https://api.devnet.solana.com"
+    : env.MAINNET_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
 };
 
-// For compatibility with existing code that doesn't pass env
-export const getLegacyRpcUrl = () => {
-  // Fallback URLs if called without proper env
-  return process.env.NETWORK === "devnet"
-    ? process.env.DEVNET_SOLANA_RPC_URL || "https://api.devnet.solana.com"
-    : process.env.MAINNET_SOLANA_RPC_URL ||
-        "https://api.mainnet-beta.solana.com";
+// Replace the getLegacyRpcUrl function
+export const getLegacyRpcUrl = (env?: any) => {
+  if (!env) {
+    // If no env is provided, use safe defaults
+    return "https://api.mainnet-beta.solana.com";
+  }
+  
+  return getRpcUrl(env);
 };
 
 // Generate a logger that works with Cloudflare Workers

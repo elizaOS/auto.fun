@@ -61,7 +61,7 @@ jobs:
             echo "NODE_ENV=production" >> $GITHUB_ENV
             echo "DATABASE_NAME=autofun" >> $GITHUB_ENV
             # API URL for production
-            echo "VITE_API_URL=https://autofun.pages.dev" >> $GITHUB_ENV
+            echo "VITE_API_URL=https://api.autofun.pages.dev" >> $GITHUB_ENV
           else
             # Worker settings
             echo "WORKER_NAME=api-dev" >> $GITHUB_ENV
@@ -73,7 +73,7 @@ jobs:
             echo "DATABASE_NAME=autofun-dev" >> $GITHUB_ENV
             echo "DATABASE_NAME_DEV=autofun-dev" >> $GITHUB_ENV
             # API URL for development
-            echo "VITE_API_URL=https://develop.autofun.pages.dev" >> $GITHUB_ENV
+            echo "VITE_API_URL=https://api-dev.autofun.pages.dev" >> $GITHUB_ENV
           fi
 
       # Build frontend before deploying backend
@@ -147,12 +147,32 @@ jobs:
           # Disable GitHub integration to avoid permission issues
           gitHubToken: ""
           
+      # Set environment variables in Cloudflare Pages project
+      - name: Set Cloudflare Pages environment variables
+        if: success()
+        run: |
+          echo "Setting environment variables for Cloudflare Pages project: ${{ env.PROJECT_NAME }}"
+          API_URL="${{ env.WORKER_ENV == 'production' && 'https://api.autofun.pages.dev' || 'https://api-dev.autofun.pages.dev' }}"
+          
+          # Using wrangler to set environment variables for Pages project
+          npx wrangler pages deployment-settings set-environment-variables ${{ env.PROJECT_NAME }} --branch=${{ github.ref_name }} --variables VITE_API_URL="$API_URL"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          
       - name: Notify on Success
         if: success()
         run: |
           echo "Deployment completed successfully!"
           echo "Worker deployed: ${{ env.WORKER_NAME }} (Environment: ${{ env.WORKER_ENV }})"
-          echo "Frontend deployed to: ${{ env.VITE_API_URL }}"
+          
+          if [[ "${{ env.WORKER_ENV }}" == "production" ]]; then
+            echo "API URL: https://api.autofun.pages.dev"
+            echo "Frontend URL: https://autofun.pages.dev"
+          else
+            echo "API URL: https://api-dev.autofun.pages.dev"
+            echo "Frontend URL: https://autofun-dev.pages.dev"
+          fi
           
       - name: Notify on Failure
         if: failure()

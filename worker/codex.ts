@@ -24,6 +24,7 @@ export interface CodexTokenEventsResponse {
  * @param startTimestamp Start timestamp in seconds
  * @param endTimestamp End timestamp in seconds
  * @param networkId Network ID (default: 1399811149 for Solana)
+ * @param env Environment variables containing CODEX_API_KEY
  * @returns Array of token events
  */
 export async function fetchCodexTokenEvents(
@@ -31,6 +32,7 @@ export async function fetchCodexTokenEvents(
   startTimestamp: number,
   endTimestamp: number,
   networkId: number = 1399811149,
+  env?: any
 ): Promise<CodexTokenEvent[]> {
   const apiUrl = "https://graph.codex.io/graphql";
   let allItems: CodexTokenEvent[] = [];
@@ -73,7 +75,7 @@ export async function fetchCodexTokenEvents(
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: process.env.CODEX_API_KEY || "",
+            Authorization: env?.CODEX_API_KEY || "",
           },
         },
       );
@@ -94,11 +96,13 @@ export async function fetchCodexTokenEvents(
  * Fetches current token price and market data from Codex API
  * @param tokenAddress Token address to fetch price for
  * @param networkId Network ID (default: 1399811149 for Solana)
+ * @param env Environment variables containing CODEX_API_KEY
  * @returns Object with current price and market data
  */
 export async function fetchCodexTokenPrice(
   tokenAddress: string,
   networkId: number = 1399811149,
+  env?: any
 ): Promise<{
   currentPrice: number;
   priceUsd: number;
@@ -132,7 +136,7 @@ export async function fetchCodexTokenPrice(
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: process.env.CODEX_API_KEY || "",
+          Authorization: env?.CODEX_API_KEY || "",
         },
       },
     );
@@ -226,6 +230,7 @@ export interface CandleData {
  * @param resolution Candle resolution (1min, 5min, 15min, etc.)
  * @param networkId Network ID (default: 1399811149 for Solana)
  * @param quoteToken Quote token to use for price calculation (default: token1)
+ * @param env Environment variables containing CODEX_API_KEY
  * @returns Processed candle data in our application's format
  */
 export async function fetchCodexBars(
@@ -235,6 +240,7 @@ export async function fetchCodexBars(
   resolution: CodexBarResolution = "1",
   networkId: number = 1399811149,
   quoteToken: string = "token1",
+  env?: any
 ): Promise<CandleData[]> {
   const apiUrl = "https://graph.codex.io/graphql";
 
@@ -258,12 +264,10 @@ export async function fetchCodexBars(
       timeInterval = parseInt(resolution) * 60;
   }
 
-  // Calculate max data points and chunk size to avoid API limits
-  const MAX_DATA_POINTS = 1400; // Slightly under Codex limit of 1500
-  const totalPoints = Math.ceil((endTimestamp - startTimestamp) / timeInterval);
-
-  if (totalPoints <= MAX_DATA_POINTS) {
-    // If under limit, fetch in a single request
+  // If the time range is less than 1000 intervals, fetch all in one request
+  if (
+    Math.floor((endTimestamp - startTimestamp) / timeInterval) <= 1000
+  ) {
     return fetchCodexBarsChunk(
       apiUrl,
       symbol,
@@ -272,54 +276,45 @@ export async function fetchCodexBars(
       resolution,
       quoteToken,
       timeInterval,
+      env
     );
   } else {
-    // Split into multiple requests to stay within limits
-    logger.log(
-      `Splitting Codex request into chunks (${totalPoints} points requested, max ${MAX_DATA_POINTS} per request)`,
-    );
+    // Otherwise, fetch in chunks of 1000 intervals each
+    const maxChunkSize = 1000 * timeInterval;
+    let chunks: CandleData[] = [];
+    let currentStart = startTimestamp;
 
-    const chunkSize = MAX_DATA_POINTS * timeInterval;
-    const chunkPromises: Promise<CandleData[]>[] = [];
-
-    // Create an array of chunk requests to run in parallel
-    for (
-      let chunkStart = startTimestamp;
-      chunkStart < endTimestamp;
-      chunkStart += chunkSize
-    ) {
-      const chunkEnd = Math.min(chunkStart + chunkSize, endTimestamp);
-
-      // Create a promise that handles its own errors
-      const chunkPromise = fetchCodexBarsChunk(
+    // Process each time chunk sequentially
+    while (currentStart < endTimestamp) {
+      const chunkEnd = Math.min(
+        currentStart + maxChunkSize,
+        endTimestamp
+      );
+      const barsChunk = await fetchCodexBarsChunk(
         apiUrl,
         symbol,
-        chunkStart,
+        currentStart,
         chunkEnd,
         resolution,
         quoteToken,
         timeInterval,
+        env
       ).catch((error) => {
         logger.error(
-          `Error fetching chunk from ${new Date(chunkStart * 1000).toISOString()} to ${new Date(chunkEnd * 1000).toISOString()}:`,
+          `Error fetching chunk from ${new Date(currentStart * 1000).toISOString()} to ${new Date(chunkEnd * 1000).toISOString()}:`,
           error,
         );
         return [] as CandleData[]; // Return empty array for failed chunks
       });
 
-      chunkPromises.push(chunkPromise);
+      chunks = chunks.concat(barsChunk);
+      currentStart = chunkEnd;
     }
 
-    // Run all chunk requests in parallel
-    const chunksResults = await Promise.all(chunkPromises);
-
-    // Flatten the results
-    const allResults = chunksResults.flat();
-
     // Sort by time to ensure correct order
-    allResults.sort((a, b) => a.time - b.time);
+    chunks.sort((a, b) => a.time - b.time);
 
-    return allResults;
+    return chunks;
   }
 }
 
@@ -335,32 +330,35 @@ async function fetchCodexBarsChunk(
   resolution: CodexBarResolution,
   quoteToken: string,
   timeInterval: number,
+  env?: any
 ): Promise<CandleData[]> {
-  const query = `query {
-    getBars(
-      symbol: "${symbol}"
-      from: ${Math.floor(startTimestamp)}
-      to: ${Math.floor(endTimestamp)}
-      resolution: "${resolution}"
-      quoteToken: ${quoteToken}
-    ) {
-      o
-      h
-      l
-      c
-      v
-      volume
-    }
-  }`;
-
   try {
+    const query = `query {
+      getBars(
+        query: {
+          symbol: "${symbol}",
+          from: ${startTimestamp},
+          to: ${endTimestamp},
+          resolution: ${resolution}
+        },
+        quoteToken: "${quoteToken}"
+      ) {
+        o
+        h
+        l
+        c
+        v
+        volume
+      }
+    }`;
+
     const response = await axios.post(
       apiUrl,
       { query, variables: {} },
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: process.env.CODEX_API_KEY || "",
+          Authorization: env?.CODEX_API_KEY || "",
         },
       },
     );
