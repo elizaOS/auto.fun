@@ -235,7 +235,7 @@ export default function Page() {
             {token?.status !== "migrated" ? (
               <p className="font-satoshi text-base text-autofun-text-secondary whitespace-pre-line break-words">
                 Graduate this coin to Raydium at{" "}
-                {formatNumber(graduationMarketCap, true)}
+                {formatNumber(graduationMarketCap, true)}{" "}
                 market cap.{"\n"}
                 There is{" "}
                 {formatNumber(
