@@ -23,11 +23,11 @@ export async function getLastProcessedSlotFromDB(): Promise<number> {
       logger.log(
         `Estimated starting slot based on tokens.lastUpdated: ${startingSlot}`
       );
-      return startingSlot;
+      return startingSlot - 50; // go back 50 slots to be safe
     } else {
       const currentSlot = await config.connection.getSlot("finalized");
-      // go back 100 slots to be safe (/* Malibu */ we can change this number if needed)
-      const startingSlot = Math.max(0, currentSlot - 100);
+      // go back 1000 slots to be safe (/* Malibu */ we can change this number if needed)
+      const startingSlot = Math.max(0, currentSlot - 1000);
       logger.log(`No tokens found. Using current slot: ${currentSlot}`);
       return startingSlot;
     }
