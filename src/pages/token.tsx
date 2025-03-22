@@ -33,7 +33,7 @@ export default function Page() {
       if (!address) throw new Error("No address passed");
       return (await getToken({ address })) as { token: IToken };
     },
-    refetchInterval: 3_000,
+    refetchInterval: 20_000,
   });
 
   const token = query?.data?.token as IToken;

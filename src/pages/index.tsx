@@ -28,7 +28,7 @@ export default function Page() {
         sortOrder,
       });
     },
-    refetchInterval: 5_000,
+    refetchInterval: 20_000,
     staleTime: 1_000,
   });
 

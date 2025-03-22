@@ -88,10 +88,10 @@ export const getToken = async ({ address }: { address: string }) => {
 };
 
 export const getTokenHolders = async ({ address }: { address: string }) => {
-  const data = await fetcher(`/tokens/${address}/holders`, "GET");
+  const data = await fetcher(`/api/tokens/${address}/holders`, "GET");
   return data;
 };
 export const getTokenSwapHistory = async ({ address }: { address: string }) => {
-  const data = await fetcher(`/swaps/${address}`, "GET");
+  const data = await fetcher(`/api/swaps/${address}`, "GET");
   return data;
 };

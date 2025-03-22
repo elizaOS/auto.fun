@@ -57,3 +57,16 @@ export interface IPagination {
   total: number;
   hasMore: boolean;
 }
+
+export interface ISwap {
+  amountIn: number;
+  amountOut: number;
+  direction: 0 | 1;
+  id: string;
+  price: number;
+  timestamp: string | Date;
+  tokenMint: string;
+  txId: string;
+  type: string;
+  user: string;
+}
