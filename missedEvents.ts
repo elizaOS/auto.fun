@@ -26,8 +26,8 @@ export async function getLastProcessedSlotFromDB(): Promise<number> {
       return startingSlot - 50; // go back 50 slots to be safe
     } else {
       const currentSlot = await config.connection.getSlot("finalized");
-      // go back 1000 slots to be safe (/* Malibu */ we can change this number if needed)
-      const startingSlot = Math.max(0, currentSlot - 1000);
+      // go back 500 slots to be safe (/* Malibu */ we can change this number if needed)
+      const startingSlot = Math.max(0, currentSlot - 500);
       logger.log(`No tokens found. Using current slot: ${currentSlot}`);
       return startingSlot;
     }
@@ -89,8 +89,8 @@ export async function processMissedEvents(): Promise<void> {
 
               // Process the event
               await handleLogEvent(logEvent);
-              // wait for 5 seconds to avoid rate limiting
-              await new Promise((resolve) => setTimeout(resolve, 5000));
+              // // wait for 5 seconds to avoid rate limiting
+              // await new Promise((resolve) => setTimeout(resolve, 5000));
             }
           }
         } catch (slotError) {
