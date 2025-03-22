@@ -265,12 +265,16 @@ router.get('/tokens', async (req, res) => {
 // Get top tokens sorted by volume24h
 router.get("/tokens/top", async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 6;
+
+    const {
+      sortBy = 'volume24h',
+      limit = 6
+    } = req.query;
     
     const result = await getTokensWithPagination({
       page: 1,
       limit,
-      sortBy: 'volume24h',
+      sortBy,
       sortOrder: 'desc',
       query: { status: { $ne: 'pending' } }
     });
