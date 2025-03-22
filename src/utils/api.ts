@@ -11,18 +11,21 @@ let apiUrl = import.meta.env.VITE_API_URL;
 
 // If no environment variable is set, infer from the current hostname
 if (!apiUrl) {
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
     // Local development
-    apiUrl = 'http://localhost:8787';
-  } else if (hostname === 'autofun.pages.dev' || hostname.includes('autofun')) {
+    apiUrl = "http://localhost:8787";
+  } else if (hostname === "autofun.pages.dev" || hostname.includes("autofun")) {
     // Production
-    apiUrl = 'https://api.autofun.pages.dev';
-  } else if (hostname === 'autofun-dev.pages.dev' || hostname.includes('autofun-dev')) {
+    apiUrl = "https://api.autofun.pages.dev";
+  } else if (
+    hostname === "autofun-dev.pages.dev" ||
+    hostname.includes("autofun-dev")
+  ) {
     // Development/staging
-    apiUrl = 'https://api-dev.autofun.pages.dev';
+    apiUrl = "https://api-dev.autofun.pages.dev";
   } else {
     // Default fallback - production
-    apiUrl = 'https://api.autofun.pages.dev';
+    apiUrl = "https://api.autofun.pages.dev";
   }
 }
 const BASE_URL = apiUrl;
@@ -30,7 +33,7 @@ const BASE_URL = apiUrl;
 const fetcher = async (
   endpoint: string,
   method: "GET" | "POST",
-  body?: object,
+  body?: object
 ) => {
   const query: { method: string; body?: string; headers: object } = {
     method,
@@ -67,7 +70,7 @@ export const getTokens = async ({
     `/api/tokens?limit=${limit || 12}&page=${
       page || 1
     }&sortBy=${sortBy}&sortOrder=${sortOrder}`,
-    "GET",
+    "GET"
   )) as { tokens: IToken[] };
 
   if (data?.tokens?.length > 0) {
@@ -81,6 +84,14 @@ export const getTokens = async ({
 
 export const getToken = async ({ address }: { address: string }) => {
   const data = await fetcher(`/api/tokens/${address}`, "GET");
+  return data as IToken;
+};
 
+export const getTokenHolders = async ({ address }: { address: string }) => {
+  const data = await fetcher(`/tokens/${address}/holders`, "GET");
+  return data;
+};
+export const getTokenSwapHistory = async ({ address }: { address: string }) => {
+  const data = await fetcher(`/swaps/${address}`, "GET");
   return data;
 };

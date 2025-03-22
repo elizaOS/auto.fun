@@ -200,7 +200,7 @@ export default function Page() {
               <span className="text-base font-dm-mono text-autofun-text-secondary">
                 Price USD
               </span>
-              <span className="text-xl font-dm-mono text-autofun-text-highlight">
+              <span className="text-xl font-dm-mono text-autofun-text-primary">
                 {token?.tokenPriceUSD ? token?.tokenPriceUSD : null}
               </span>
             </div>
