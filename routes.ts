@@ -261,6 +261,25 @@ router.get('/tokens', async (req, res) => {
   }
 });
 
+router.get("/tokens/top", async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 6;
+    
+    const result = await getTokensWithPagination({
+      page: 1,
+      limit,
+      sortBy: 'volume24h',
+      sortOrder: 'desc',
+      query: { status: { $ne: 'pending' } }
+    });
+
+    res.json(result.tokens);
+  } catch (error) {
+    logger.error('Error fetching top tokens:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get specific token via mint id
 router.get('/tokens/:mint', async (req, res) => {
   try {
