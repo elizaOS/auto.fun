@@ -10,19 +10,29 @@ console.log("DEV:", import.meta.env.DEV);
 console.log("PROD:", import.meta.env.PROD);
 
 // Determine the API URL with proper fallbacks
+const hostname = window.location.hostname;
+
+// Set API URL based on the current hostname
 let apiUrl = import.meta.env.VITE_API_URL;
 
-// If no API URL is provided, use environment-specific defaults
+// If no environment variable is set, infer from the current hostname
 if (!apiUrl) {
-  if (import.meta.env.PROD) {
-    apiUrl = "https://api.autofun.pages.dev";
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    // Local development
+    apiUrl = 'http://localhost:8787';
+  } else if (hostname === 'autofun.pages.dev' || hostname.includes('autofun')) {
+    // Production
+    apiUrl = 'https://api.autofun.pages.dev';
+  } else if (hostname === 'autofun-dev.pages.dev' || hostname.includes('autofun-dev')) {
+    // Development/staging
+    apiUrl = 'https://api-dev.autofun.pages.dev';
   } else {
-    apiUrl = "https://api-dev.autofun.pages.dev";
+    // Default fallback - production
+    apiUrl = 'https://api.autofun.pages.dev';
   }
 }
 
-// For local development, uncomment to override:
-// apiUrl = "http://localhost:8787";
+console.log('Using API URL:', apiUrl);
 
 const BASE_URL = apiUrl;
 export const HELIUS_RPC_URL = import.meta.env.VITE_RPC_URL;
