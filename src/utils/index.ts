@@ -31,7 +31,7 @@ export const abbreviateNumber = (num: number): string => {
 export const formatNumber = (
   num: number,
   showDecimals?: boolean,
-  hideDollarSign?: boolean,
+  hideDollarSign?: boolean
 ) => {
   const formatted = Intl.NumberFormat("en-US", {
     style: "currency",
@@ -48,11 +48,54 @@ export const formatNumber = (
 
 export const fromNow = (
   date: string | Date | number,
-  hideAgo?: boolean,
+  hideAgo?: boolean
 ): string => {
   const now = String(moment(date).fromNow());
   if (hideAgo) {
     return String(moment(date).fromNow()).replace("ago", "");
   }
   return now;
+};
+
+function toSubscript(num: number): string {
+  const subDigits: { [key: string]: string } = {
+    "0": "\u2080",
+    "1": "\u2081",
+    "2": "\u2082",
+    "3": "\u2083",
+    "4": "\u2084",
+    "5": "\u2085",
+    "6": "\u2086",
+    "7": "\u2087",
+    "8": "\u2088",
+    "9": "\u2089",
+  };
+  return num
+    .toString()
+    .split("")
+    .map((digit) => subDigits[digit] || digit)
+    .join("");
+}
+
+export const formatNumberSubscript = (num: number): string => {
+  if (num === 0) return "0";
+  let sign = "";
+  if (num < 0) {
+    sign = "-";
+    num = Math.abs(num);
+  }
+  if (num >= 1) {
+    return sign + num.toString();
+  }
+  const expStr = num.toExponential();
+  const [mantissa, exponentStr] = expStr.split("e");
+  const exponent = parseInt(exponentStr, 10);
+  const totalZeros = -exponent - 1;
+  const mantissaDigits = mantissa.replace(".", "");
+
+  if (totalZeros > 1) {
+    return sign + "0.0" + toSubscript(totalZeros - 1) + mantissaDigits;
+  } else {
+    return sign + "0." + "0".repeat(totalZeros) + mantissaDigits;
+  }
 };

@@ -39,16 +39,46 @@ type TTokenStatus =
   | "migration_failed";
 
 interface IToken {
-  id: string;
-  name: string;
-  ticker: string;
   mint: string;
+  createdAt: string | Date;
   creator: string;
-  status: TTokenStatus;
-  createdAt: string;
-  tokenPriceUSD: number;
+  currentPrice: number;
+  curveLimit: number;
+  curveProgress: number;
+  description: string;
+  image: string;
+  inferenceCount: number;
+  lastUpdated: string;
+  liquidity: number;
   marketCapUSD: number;
+  name: string;
+  price24hAgo: number;
+  priceChange24h: number;
+  reserveAmount: number;
+  reserveLamport: number;
+  solPriceUSD: number;
+  status:
+    | "pending"
+    | "active"
+    | "withdrawn"
+    | "migrating"
+    | "migrated"
+    | "locked"
+    | "harvested"
+    | "migration_failed";
+  telegram: string;
+  ticker: string;
+  tokenPriceUSD: number;
+  twitter: string;
+  txId: string;
+  url: string;
+  virtualReserves: number;
   volume24h: number;
+  website: string;
+  holderCount: number;
+  lastPriceUpdate: string;
+  lastVolumeReset: string;
+  hasAgent: boolean;
 }
 
 interface ITokenHolder {
@@ -57,7 +87,7 @@ interface ITokenHolder {
   address: string;
   amount: number;
   percentage: number;
-  lastUpdated: string;
+  lastUpdated: string | Date;
 }
 
 // Define the app with environment typing
@@ -88,7 +118,7 @@ app.use(
     allowHeaders: ["Content-Type", "Authorization", "X-API-Key"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
-  }),
+  })
 );
 
 // Add authentication middleware
@@ -126,7 +156,7 @@ api.use(
     allowHeaders: ["Content-Type", "Authorization", "X-API-Key"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
-  }),
+  })
 );
 
 // Root paths for health checks
@@ -140,7 +170,7 @@ api.get("/info", (c) =>
     status: "ok",
     version: "1.0.0",
     network: c.env.NETWORK || "devnet",
-  }),
+  })
 );
 
 // Authentication routes
@@ -149,12 +179,95 @@ api.post("/generate-nonce", (c) => generateNonce(c));
 api.post("/logout", (c) => logout(c));
 api.get("/auth-status", (c) => authStatus(c));
 
+// Helper function to generate a random number within a specified range
+function getRandomNumber(options?: {
+  min?: number;
+  max?: number;
+  decimals?: number;
+}): number {
+  const min = options?.min ?? 1;
+  const max = options?.max ?? 100;
+  if (min > max) {
+    throw new Error("min should be less than or equal to max");
+  }
+  const random = Math.random() * (max - min) + min;
+  if (options && typeof options.decimals === "number") {
+    return parseFloat(random.toFixed(options.decimals));
+  }
+  return Math.floor(random);
+}
+
+function getRandomRecentDate(): Date {
+  const now = new Date();
+  const oneDayMs = 24 * 60 * 60 * 1000; // milliseconds in one day
+  const randomOffset = Math.floor(Math.random() * oneDayMs);
+  return new Date(now.getTime() - randomOffset);
+}
+
+const generateMockToken = (): IToken => {
+  // Define allowed status values and select one at random
+  const statuses: IToken["status"][] = [
+    "pending",
+    "active",
+    "withdrawn",
+    "migrating",
+    "migrated",
+    "locked",
+    "harvested",
+    "migration_failed",
+  ];
+  const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+
+  // Use a single timestamp for all date fields
+  const now = new Date().toISOString();
+
+  // Generate random values to be used in name and ticker strings
+  const randomForName = getRandomNumber({ min: 1, max: 5000 });
+  const randomForTicker = getRandomNumber({ min: 1, max: 5000 });
+
+  return {
+    mint: crypto.randomUUID(),
+    createdAt: getRandomRecentDate(),
+    creator: "mock-creator-address",
+    currentPrice: getRandomNumber({ min: 0.00001, max: 0.001, decimals: 10 }),
+    curveLimit: getRandomNumber({ min: 50, max: 150 }),
+    curveProgress: getRandomNumber({ min: 1, max: 100, decimals: 15 }),
+    description: "This is a mock token used for testing purposes.",
+    image:
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAAAAXNSR0IArs4c6QAAEe1JREFUeF7tnVmIXUUTx2tcMqgZjUYwAyIT0FFcwRU33PBBURFJFEVx1y8oiguK+iCoiE8uiLij4gIuT4qoiAgKihiNy4PcG9SHYOIWos64JFHvR7W5yZ2Ze87ppaq7uk+dFyW3u7r6X/9fL+fOJCMrVqzoLViwAEZHRyHnZwQAejlPQHMXpcD69eth7dq1MLJq1areunXrYGJiAsbGxkQlqcmoAikUmJqagm63CwsXLoSR1atX9/B/Op1OGZDgNoLbiT5FKUBZ1rpYfTgmJydhenr6P0DGx8dhw4YN5UDia42gKgR19s04y35SlRqEA09Ta9as2QIIKq2QyPQbr6Eso9c0s4wgU9xNWc2GA/94DiAKiegaanJMCgyDoxIQhYSpCj5hky7NSQf3UcurTxUctYAoJF5aa6fMFKiDoxEQhSSzamu6Tgo0wWEFiELipDl543YccipkY5y8DRzWgCgk5L7XgAkVsIXDCRCFJGFFdWgyBVzgcAZkJiSLYWxsPlniGkgV4FbAFQ4vQHQn4S6jxudQwAcOb0AUEo4SakwuBXzhCAJEIeEqp8alVCAEjmBAFBLKUmYUi/H1K6UKoXCQAKKQUJaUMlYmLqac8kAsCjjIAFFImKqsYb0UoIKjHpD+AuSwEHn/qLzDGF6KZdkpoigRh6Iohe0vO1H8duzQH3cPmYQ3JB6DZlZXjxlqFxcFKHeO/rjkgOhxy6Wk2pZKAQ44SO8gsycacyehElnjSFDA/VzABUc4IA1zUUgkGK7sHDjhCAfEQvvWQeK+AFqoSNhEen4OU+WGIwogeidxqLg2tVYgBhw0gFiuSK3bSaxLrQ1dFYgFBw0gDrNTSBzE0qZDFYgJR3RA9LiVl+stDwfRJhUPji0zZ/kepEkx3UmaFNLPZysQD46ZIycBRHcSBcBFgVRwJDliDQqjO4mLTdrZNiUcyQHRnSSh6bkuGIRxU8MhApAyICF0RUJmJA0tAQ4xgJQBiSR75Z2LFDhEAaKQ5G1qquwlwTEEkPRHBb24U1lNUBxLW1HBYTmclUDJXvPWZVcuJJSls6pvNo2o4KCecDAgM0pOWP9yIaEuYf7xfOAgtFqtgMGAzIhOnDUdJMSJ5e9J0hmEqGsHR8gIYVOtBCRdSjMn5AqJlLzDytKO3rVwCCkk7Q7CVFdXSJjS0LCECtjtHIQDeobKApD8XgELWf48TcHdLRc4xH0P0lQY3UmaFJL/eU5wZAdIfjvJcMPmsr9Q55kbHFkCUgok8td62gxzhCNbQBQSKvNS7xHD88oVjqwBUUjCIImDBkDOcGQPiEJSDUksACoz6AFMTU9Bt9uFyclJ8P2LpFPPY8tr3kXjACNhq1Kq3vp2K5Xy1ePmvnP0Z5bN9yBNFlBImhSK93m+cMzdr8IBSb0HDtSdHxJBk43nd6eR8oVj+DTDAXGSb3ZjesPxQxI04aI7lwZHEZf0YY5TSOJzWCIcvIDQbw5OVVdInOQKalwqHH6AJDa+dSV7ABs2boBOpwMTExPerxmtx2tpwxA4crBS4jsIk6sGlNedxE5jH7OGwGGXVfpWZQIyS9dQSHzMk760vBm0AQ6/Ixav7mzRQyFhSyzDwG2Bwx6QQpZQhSScxjbBYQ9IuK5iIkiGRPo61DY4sgGE2jiSIRGzksxKpI1wZAMIh2kUEntV2wpHqwHBySskzZC0GY7WA6KQ1ANCBwf1IbkZbKoWrfgepEmslDvJcOukNxQdHE3qy/7cCZD0ZeMTMyUkfLPyi6xwbNHNCRA/udP3sgVbIcn/d8gH3WZb9zqHtgIQF0TbDInuHHOdooAMoccXEooVywVmyrYKx3A1FZAKl/lCQmnaWLEUjmqlFZAaF7YBEoWjfhlSQBqW6ZIhUTia92gFpFkjEd+4D95vKO46kuCgmI9FGb2aKCCWspW0k0iCw1L+ZM1IABG3AjAlVAIkCocbaySAuA2Zd+ucIVE43L1HDwjT6u0+Nb4eOUKicPj5gRiQFtCxSeecIFE4/ODAXsSA+CeSY88cIKGDQ+Dix5LSzKAKSCCZ/pCwVHfGbOjgGCYSf/6BpZnT3SdjBYSgCv6QEAxeEYIXDr687SL7WN0u8uxWNIDEy9dvlhF6SYLEHQ4tYJVFaACJYMAchpAAiTsccpWVgG00QCRMNoYVUkKCcKzsdmGvgH8TMIZGfmOkcVAYIGly9tM3Yq8UkJS0c0QsVeNQYYA0hm9vg5iQyIKjrFVTAQlhuMELMSCRAEdZSMw0hAISAohFX05IJMBhIUHWTRSQCOXjgEThiFA4/VGTOCLjKL6QDDu+KBzx6qY7SKXW9CdrX0gGU0wPB70uEUvgTJYC4ixZWIcQSNLDETb3HHsXAEjEFY2owj6QlP0lIJGwQ8OE+aMAQDjF5YvtAonuHHx1aIqsgDQpZP25+0plA4nCYV0AloYKCIus9kHrIFE47HXkaqmAcCnrEHcYJEngcN8ErWfJGNo6B5+GdIDkqoCPakR9BiUbhATDd7tdmCzyp3KJxIsUhg6QSAmXPEwfEvyvwjFQ6YSLrwIiiLj+sWrevHkwMTEBY2NjgrJrZyqFA5Jw6XH00+CdY3R0FDqdjkLiqCFH88SA5GNgDvH7MYddyG1eAXPmpLH/UyAxIFqGurdVCkl6fyggCWtg8yqXE5J27N9hs1RAEgFiA0c/NU5IEk0/m2GJAQmjNRvVAhN1gUMhCRQ7sDsxIIHZtKC7DxwKSTpjKCARtQ+BQyGJWKiBoRSQSLpTwKGQRCpWTED0VgJACYdCEheSwneQ9HhywKGQxIOkcEDiCTlsJEo4qlDXV8C8NVZAmPSlhKMpRZmQpN+9a3WzTE8BaXKfx+cx4ZBw3LL0moeS6bsoIMQ1SAGHBEhoZJSHmgJCU1kTJSUcLJAk8muiYYc6QQEhAkQCHCyQEOmTaxgeQCQtAREqIwkOhYS24DyA0OYoN1oPYGp6SuxfsCDz7VaCclou2MOaKSAB9ZK4c8yejkISUOAkv1FoSTOAdcMwBTx75wCHHrc8izvQTXcQDw1zgkMh8SiwAuIvmnw4qnfeFMct2eeAZh/oDtKs0eYW8uFonkwKSJqzImgRQmJNXwXEsjYlwKHHLcti6xHLTaiS4FBI3GqvO0iDXiXCoZDYQ6KA1GhVMhwKiR0kCkiFTm2AQyFphkQ8ICEvJ5qnP7xFm+BoPSQNBhMPiJ/J/bFqIxyth6TGZPEA8fesHyMevdoMh0Iy3DDxAPEwbMwuCscWtYv9MnGIoZrWbQXE5TcBm9SMSfTAWBxptQmSurKJBISj4FUi6M5RbQ+FhOUf0Ilp77AlW+Fo1q9USGxdmmAHqU/NNvHm0ta3yBmOWBrpxZ1lBwm1Ln//nOHgV2f4CKXuJE16JthBmlLi/Vzh8NeXFJLY26DntFsFiMLh6ZKBbqSQhKdTHYEIwNYAonDQuTEbSCD8bzbwA4SITrqSlXshnzszGeLnBIm9z+Zq6weI/YjJW+rOQV2CLSYqE5KZehUNSBw4ZKzolBi4zKh0SIoFJA4clLbMN1bJkBQJiMIRH7Z8IanfL4sDROGogMPl3OTJV76QVE+4KEAUDk9nE3ZLAgkj/MUAonAQujwwVBJIAnOu6i4HkIBVwAuOgPGYalEbNrN0oRRI5ADi6TovODzH0m5uCpQASdaAKBxuhk3ROndIsgXEDY7cDigprMw3Zs6QZAmIGxx8hdfI9grkCkl2gCgc9qaU1jJHSLICROGQZnn3fHKDJBtAFA53M0rtkRMkWQCicEi1un9e5JAwvYcRD4jC4W9C6T3JIXGdsAVUogFROFwrnl/75JA0SCYWEIUjP7P7ZiwZEpGAKBy+VovVz+Js4piKVEjEAaJwODqroOaUkFAhLAoQhaMgtw9OxcGtlJBQqEkPiIMYgxPgh8MzMQqVNYaTApIg8QKE2mqscFAn61RqbVyrQE1tpEDiBQhl2angUA4oqyIjlgRIkgJCBYeMckrMIv9lIzUk7IBUlShHOPK3GzfEvgrV90sJCTsgw0qSIxzc1tL49QqkgqQaEN/FoKHSCkfGKDB5wlaRFJBE3UEUjnorJPafrU+TtqOHhOlvVnQtpsJR5StXJZP6U8Tg9JBUT6tiB6EtmsIhwldFJRELEvYjlsIR/q8cFeVswsnEgIQVkDbCQbv3Erqp0FDckLAB0kY4CvWg+GlxQsICiMIh3lPFJcgFCTkgCMfKbhf2mpyEsbGx4gqhE5KrAAckpIAE7xwOB3iHpnIrqpmRK0ANSTMglk4MhiNEKsscQ4aY0zfFmKQTKDcYJSTNgFjomBQOi/y0SfsUoIIkGBCFQ7cSqfhRQBIEiMIh1RoZ5sW0zoRC4g2IwkFjQiZf0CRXSJQQSLwAUTgKcU6LpuELiTMgCkeLXJV6qsTbqw8kToBMTU1Dt9uBSf0SMLV1No1P7CAhs+JMox6SuXpaA6I7B2fZyov93nvvwY033ggrV66EnXbaCa677jq49tprzUR//vlnuPzyy+Hdd9+FefPmwaWXXgp33303jIyMwL///gs333wzPP3007Bx40Y46aST4IknnoCdd965VqRVq1bBVVddBR988AFss802cMYZZ8CDDz4Io6Ojc2KecMIJJrcDDzzQ/LTHs88+C7fffrvJa5999oHHH38cDjroIDOeFSAKR3kG5pzRL7/8AnvssQc88sgjcN5558Hnn38OxxxzDLz11ltw1FFHwdKlS2GHHXaAhx9+GLDtiSeeCDfccANcdtll8NBDD8Fjjz1m2iJYl1xyCWy99dbw3HPP1aZ87LHHGsPfd9998Ntvv8HJJ59sxrn11luHxkQYb7nlFvj999/hlFNOgTfeeAMOP/xw0/bee++FbrcL2267bTMgCgenlcqM/eOPPxrDXXjhhZsniOZbtmwZnHPOObBgwQL45ptvYPfddzef44r9wgsvmB3l6KOPNu3OP/988xnuQAcccAD8+uuvBpYdd9zRgIUPxt9qq63gqaeeMjvOaaedBrvuuqv57KabboIffvgBnnnmmcqYP/30kwFz/fr1pl3/wbyef/55OO644+oBUTjKNHDsWeHxZ//994cVK1bA9PS0MSx6q/+8//77sGTJEmPoXXbZBd5++2045JBDzMe9Xs8cw7744gtYtGiR2SVeeukl+Ouvv+Diiy82f47QDD54NDvssMPMMQpBq4uJu8iee+5pjlj9H67FY93SJUvgf8uWVQMiDQ69jsa2Nc143333nTnCXHHFFXD11VfDhx9+aO4HuHr3n08++cSs1ggP3hk+/fRT2G+//TZ/jsbF3eXQQw+FN9980+wOCAEeh/B4NvjgbnDRRRfB33//DS+//LL5qC7mbbfdBqeeeqqJMzExYSA5/fTTTT4I2Jo138PI6tWre+Pj45vHkQYHTak0SmwFli9fDmeffbZZnfvHrS+//NLsDvg2qf+88847ZqXHC/HChQvhtddeM3cVfNDouIN89dVXsPfee5s/w90I7yV4txl88Gh31llnmQv2Aw88YC7r+NTFxDsK5oMwdDodAwkCg/lceeWVc3cQhWNQct23fKH66KOPzCUZz/J4ge4/f/75p7mDICj4dQE+999/P7z++uvmaIVtL7jgArPj4PPZZ5+ZI9m6desMKI8++ujmIxbuFPg2DB/ckfDtFPa75pprZqRdF/POO++Er7/+2tyBEFoEEXeTV1991Yw74y2WVDjUpr423dQvsoB//PEH7LvvvubyjW+TZj/4Zgtf5z755JPG2Hjmv+uuu+Dcc881b7DwTRTCgm+xcCXHuweCgRf7I4880hzT8CiFxv/4449h8eLF5g6Dr2gxzuynLiYCccQRRxhAMfY999xjLv14zMPxNwMyf/5882qr6kvAyBoHOkK7p1TglVdeMbsHnv0HH3w7hebH3QBf6SIE2223nVnx8S6AD17K8f/R1HjPwPsAvi7efvvt4fjjj4czzzwTrr/+etP2jjvuADye4V1jt912MzsMvr7tP3iPwftNVUz0PD4vvviieeWLLwkOPvhg85YM++BxC+9FI99++21v7dq1ZN+QK0zE9lRBiQVtDtf/xh0v7SPLly/v4UVmNvGzwyCbWCuOhzM2R75+MfOdZb6Z+1UKe/3zzz/m2/X/A6rDH1SOor0cAAAAAElFTkSuQmCC",
+    inferenceCount: getRandomNumber({ min: 0, max: 10000 }),
+    lastUpdated: now,
+    liquidity: getRandomNumber({ min: 1000, max: 100000 }),
+    marketCapUSD: getRandomNumber({ min: 10000, max: 1000000 }),
+    name: `Test Token ${randomForName}`,
+    price24hAgo: getRandomNumber({ min: 0.1, max: 100, decimals: 2 }),
+    priceChange24h: getRandomNumber({ min: -50, max: 50, decimals: 2 }),
+    reserveAmount: getRandomNumber({ min: 1, max: 10000 }),
+    reserveLamport: getRandomNumber({ min: 100000, max: 10000000 }),
+    solPriceUSD: getRandomNumber({ min: 10, max: 200, decimals: 2 }),
+    status: randomStatus,
+    telegram: "https://t.me/mocktoken",
+    ticker: `TST${randomForTicker}`,
+    tokenPriceUSD: getRandomNumber({ min: 0.00001, max: 0.001, decimals: 10 }),
+    twitter: "https://twitter.com/mocktoken",
+    txId: crypto.randomUUID(),
+    url: "https://example.com/token",
+    virtualReserves: getRandomNumber({ min: 0, max: 100000 }),
+    volume24h: getRandomNumber({ min: 5000, max: 500000 }),
+    website: "https://mocktoken.com",
+    holderCount: getRandomNumber({ min: 1, max: 100000 }),
+    lastPriceUpdate: now,
+    lastVolumeReset: now,
+    hasAgent: Math.random() < 0.5,
+  };
+};
+
 // Get paginated tokens
 api.get("/tokens", async (c) => {
   try {
     const query = c.req.query();
 
-    const limit = parseInt(query.limit as string) || 50;
+    const limit = parseInt(query.limit as string) || 12;
     const page = parseInt(query.page as string) || 1;
 
     // Get search, status, creator params for mocking specific responses
@@ -164,19 +277,8 @@ api.get("/tokens", async (c) => {
 
     // Create mock tokens
     const mockTokens: IToken[] = [];
-    for (let i = 0; i < 5; i++) {
-      mockTokens.push({
-        id: crypto.randomUUID(),
-        name: search ? `Test ${search} Token ${i + 1}` : `Test Token ${i + 1}`,
-        ticker: `TST${i + 1}`,
-        mint: crypto.randomUUID(),
-        creator: creator || "mock-creator-address",
-        status: status || "active",
-        createdAt: new Date().toISOString(),
-        tokenPriceUSD: 0.01 * (i + 1),
-        marketCapUSD: 10000 * (i + 1),
-        volume24h: 5000 * (i + 1),
-      });
+    for (let i = 0; i < limit; i++) {
+      mockTokens.push(generateMockToken());
     }
 
     // Return the tokens with pagination information
@@ -218,25 +320,14 @@ api.get("/tokens/:mint", async (c) => {
 
     // Return mock token data for tests
     return c.json({
-      token: {
-        id: crypto.randomUUID(),
-        name: "Mock Token",
-        ticker: "MOCK",
-        mint: mint,
-        creator: "mock-creator-address",
-        status: "active",
-        createdAt: new Date().toISOString(),
-        tokenPriceUSD: 0.015,
-        marketCapUSD: 15000,
-        volume24h: 5000,
-      },
+      token: generateMockToken(),
       agent: null,
     });
   } catch (error) {
     logger.error("Error fetching token:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -248,15 +339,14 @@ api.get("/tokens/:mint/holders", async (c) => {
 
     // Generate mock holders data
     const mockHolders: ITokenHolder[] = [];
-    for (let i = 0; i < 5; i++) {
-      const amount = 100000 / (i + 1);
+    for (let i = 0; i < 12; i++) {
       mockHolders.push({
         id: crypto.randomUUID(),
         mint: mint,
-        address: `mock-holder-${i + 1}`,
-        amount: amount,
-        percentage: (amount / 100000) * 100,
-        lastUpdated: new Date().toISOString(),
+        address: crypto.randomUUID(),
+        amount: getRandomNumber({ min: 1, max: 100, decimals: 2 }),
+        percentage: getRandomNumber({ min: 1, max: 100 }),
+        lastUpdated: getRandomRecentDate(),
       });
     }
 
@@ -327,7 +417,7 @@ api.get("/tokens/:mint/harvest-tx", async (c) => {
     logger.error("Error creating harvest transaction:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -355,7 +445,7 @@ api.post("/new_token", async (c) => {
     }
 
     const imageBuffer = Uint8Array.from(atob(imageData), (c) =>
-      c.charCodeAt(0),
+      c.charCodeAt(0)
     ).buffer;
 
     // Upload image to Cloudflare R2
@@ -439,7 +529,7 @@ api.post("/new_token", async (c) => {
     logger.error("Error creating token:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -449,22 +539,30 @@ api.get("/swaps/:mint", async (c) => {
   try {
     const mint = c.req.param("mint");
 
+    const generateRandomSwap = () => {
+      return {
+        id: crypto.randomUUID(),
+        tokenMint: mint,
+        user: crypto.randomUUID(),
+        type: "swap",
+        direction: getRandomNumber({ min: 0, max: 2 }), // Buy
+        amountIn: getRandomNumber({ min: 0.2, max: 5000 }),
+        amountOut: getRandomNumber({ min: 10, max: 5000 }),
+        price: getRandomNumber({ min: 0, max: 5000 }),
+        txId: crypto.randomUUID(),
+        timestamp: getRandomRecentDate(),
+      };
+    };
+
+    const swaps: any[] = [];
+
+    for (let i = 0; i < 12; i++) {
+      swaps.push(generateRandomSwap());
+    }
+
     // Return mock swap history
     return c.json({
-      swaps: [
-        {
-          id: crypto.randomUUID(),
-          tokenMint: mint,
-          user: "mock-user-address",
-          type: "swap",
-          direction: 0, // Buy
-          amountIn: 0.1,
-          amountOut: 100,
-          price: 0.001,
-          txId: "mock-transaction-id",
-          timestamp: new Date().toISOString(),
-        },
-      ],
+      swaps,
       page: 1,
       totalPages: 1,
       total: 1,
@@ -485,6 +583,8 @@ api.get("/messages/:mint", async (c) => {
   try {
     const mint = c.req.param("mint");
 
+    // TODO - How do we determine the rate limiting for messages?
+
     // Return mock messages data
     return c.json({
       messages: [
@@ -495,7 +595,7 @@ api.get("/messages/:mint", async (c) => {
           message: "This is a mock message for testing",
           replyCount: 0,
           likes: 5,
-          timestamp: new Date().toISOString(),
+          timestamp: getRandomRecentDate(),
         },
       ],
       page: 1,
@@ -534,7 +634,7 @@ api.get("/messages/:messageId/replies", async (c) => {
       repliesWithLikes = await addHasLikedToMessages(
         db,
         repliesResult,
-        userPublicKey,
+        userPublicKey
       );
     }
 
@@ -543,7 +643,7 @@ api.get("/messages/:messageId/replies", async (c) => {
     logger.error("Error fetching replies:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -582,7 +682,7 @@ api.get("/messages/:messageId/thread", async (c) => {
         parentWithLikes = await addHasLikedToMessages(
           db,
           parentResult,
-          userPublicKey,
+          userPublicKey
         );
       }
 
@@ -590,7 +690,7 @@ api.get("/messages/:messageId/thread", async (c) => {
         repliesWithLikes = await addHasLikedToMessages(
           db,
           repliesResult,
-          userPublicKey,
+          userPublicKey
         );
       }
     }
@@ -603,7 +703,7 @@ api.get("/messages/:messageId/thread", async (c) => {
     logger.error("Error fetching message thread:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -633,7 +733,7 @@ api.post("/messages/:mint", async (c) => {
     ) {
       return c.json(
         { error: "Message must be between 1 and 500 characters" },
-        400,
+        400
       );
     }
 
@@ -669,7 +769,7 @@ api.post("/messages/:mint", async (c) => {
     logger.error("Error creating message:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -706,8 +806,8 @@ api.post("/message-likes/:messageId", async (c) => {
       .where(
         and(
           eq(messageLikes.messageId, messageId),
-          eq(messageLikes.userAddress, userAddress),
-        ),
+          eq(messageLikes.userAddress, userAddress)
+        )
       )
       .limit(1);
 
@@ -743,7 +843,7 @@ api.post("/message-likes/:messageId", async (c) => {
     logger.error("Error liking message:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -793,7 +893,7 @@ api.post("/register", async (c) => {
     logger.error("Error registering user:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -823,7 +923,7 @@ api.get("/avatar/:address", async (c) => {
     logger.error("Error fetching user avatar:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -832,7 +932,7 @@ api.get("/avatar/:address", async (c) => {
 async function addHasLikedToMessages(
   db: ReturnType<typeof getDB>,
   messagesList: Array<any>,
-  userAddress: string,
+  userAddress: string
 ): Promise<Array<any>> {
   if (
     !Array.isArray(messagesList) ||
@@ -852,13 +952,13 @@ async function addHasLikedToMessages(
     .where(
       and(
         inArray(messageLikes.messageId, messageIds),
-        eq(messageLikes.userAddress, userAddress),
-      ),
+        eq(messageLikes.userAddress, userAddress)
+      )
     );
 
   // Create a Set of liked message IDs for quick lookup
   const likedMessageIds = new Set(
-    userLikes.map((like: { messageId: string }) => like.messageId),
+    userLikes.map((like: { messageId: string }) => like.messageId)
   );
 
   // Add hasLiked field to each message
@@ -889,7 +989,7 @@ export async function updateHoldersCache(env: Env, mint: string) {
             },
           },
         ],
-      },
+      }
     );
 
     // Process accounts
@@ -1036,7 +1136,7 @@ api.post("/vanity-keypair", async (c) => {
     logger.error("Error getting vanity keypair:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1063,7 +1163,7 @@ api.post("/upload-cloudflare", async (c) => {
     }
 
     const imageBuffer = Uint8Array.from(atob(imageData), (c) =>
-      c.charCodeAt(0),
+      c.charCodeAt(0)
     ).buffer;
 
     // Upload image to Cloudflare R2
@@ -1088,7 +1188,7 @@ api.post("/upload-cloudflare", async (c) => {
     logger.error("Error uploading to Cloudflare:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1143,13 +1243,13 @@ api.post("/agent-details", async (c) => {
     if (!Array.isArray(requestedOutputs) || requestedOutputs.length === 0) {
       return c.json(
         { error: "requestedOutputs must be a non-empty array" },
-        400,
+        400
       );
     }
 
     // Validate that all requested outputs are allowed
     const invalidOutputs = requestedOutputs.filter(
-      (output) => !allowedOutputs.includes(output),
+      (output) => !allowedOutputs.includes(output)
     );
 
     if (invalidOutputs.length > 0) {
@@ -1158,7 +1258,7 @@ api.post("/agent-details", async (c) => {
           error: `Invalid outputs requested: ${invalidOutputs.join(", ")}`,
           allowedOutputs,
         },
-        400,
+        400
       );
     }
 
@@ -1170,7 +1270,7 @@ api.post("/agent-details", async (c) => {
     logger.error("Error generating agent details:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1224,8 +1324,8 @@ api.get("/agents", async (c) => {
       .where(
         and(
           eq(agents.ownerAddress, ownerAddress),
-          sql`agents.deletedAt IS NULL`,
-        ),
+          sql`agents.deletedAt IS NULL`
+        )
       )
       .orderBy(sql`agents.createdAt DESC`);
 
@@ -1234,7 +1334,7 @@ api.get("/agents", async (c) => {
     logger.error("Error fetching agents:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1258,8 +1358,8 @@ api.get("/agents/:id", async (c) => {
         and(
           eq(agents.id, id),
           eq(agents.ownerAddress, user.publicKey),
-          sql`agents.deletedAt IS NULL`,
-        ),
+          sql`agents.deletedAt IS NULL`
+        )
       )
       .limit(1);
 
@@ -1272,7 +1372,7 @@ api.get("/agents/:id", async (c) => {
     logger.error("Error fetching agent:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1296,8 +1396,8 @@ api.get("/agents/mint/:contractAddress", async (c) => {
         and(
           eq(agents.contractAddress, contractAddress),
           eq(agents.ownerAddress, user.publicKey),
-          sql`agents.deletedAt IS NULL`,
-        ),
+          sql`agents.deletedAt IS NULL`
+        )
       )
       .limit(1);
 
@@ -1310,7 +1410,7 @@ api.get("/agents/mint/:contractAddress", async (c) => {
     logger.error("Error fetching agent by contract address:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1328,7 +1428,7 @@ api.post("/agents/claim", async (c) => {
           status: "active",
         },
       },
-      200,
+      200
     );
   } catch (error) {
     logger.error("Error claiming agent:", error);
@@ -1366,7 +1466,7 @@ api.post("/agents/:tokenId", async (c) => {
     if (user.publicKey !== token[0].creator) {
       return c.json(
         { error: "Only the token creator can add an agent to the token" },
-        401,
+        401
       );
     }
 
@@ -1378,7 +1478,7 @@ api.post("/agents/:tokenId", async (c) => {
       twitter_credentials.email
     ) {
       logger.log(
-        `Verifying Twitter credentials for ${twitter_credentials.username}`,
+        `Verifying Twitter credentials for ${twitter_credentials.username}`
       );
 
       // In a real implementation, we would use a Twitter API client or scraper
@@ -1440,7 +1540,7 @@ api.post("/agents/:tokenId", async (c) => {
     logger.error("Error creating agent:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1466,8 +1566,8 @@ api.put("/agents/:id", async (c) => {
         and(
           eq(agents.id, id),
           eq(agents.ownerAddress, user.publicKey),
-          sql`agents.deletedAt IS NULL`,
-        ),
+          sql`agents.deletedAt IS NULL`
+        )
       )
       .limit(1);
 
@@ -1478,7 +1578,7 @@ api.put("/agents/:id", async (c) => {
     // If the agent has an ECS task ID, we need to stop the task before updating
     if (existingAgent[0].ecsTaskId) {
       logger.log(
-        `Agent has an active ECS task (${existingAgent[0].ecsTaskId}), marking for restart`,
+        `Agent has an active ECS task (${existingAgent[0].ecsTaskId}), marking for restart`
       );
       // In a real implementation, you'd call AWS ECS API to stop the task
     }
@@ -1513,7 +1613,7 @@ api.put("/agents/:id", async (c) => {
     logger.error("Error updating agent:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1608,7 +1708,7 @@ api.get("/ws", (c) => {
   // This is just a placeholder - in the test we'll test the WebSocketDO directly
   return c.text(
     "WebSocket connections should be processed through DurableObjects",
-    400,
+    400
   );
 });
 
@@ -1672,7 +1772,7 @@ api.post("/agents/:id/force-release", async (c) => {
     logger.error("Failed to force release agent", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1704,7 +1804,7 @@ api.get("/token-agent/:mint", async (c) => {
       .select()
       .from(agents)
       .where(
-        and(eq(agents.contractAddress, mint), sql`agents.deletedAt IS NULL`),
+        and(eq(agents.contractAddress, mint), sql`agents.deletedAt IS NULL`)
       )
       .limit(1);
 
@@ -1722,7 +1822,7 @@ api.get("/token-agent/:mint", async (c) => {
     logger.error("Error fetching token and agent data:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1739,7 +1839,7 @@ api.post("/verify", async (c) => {
         {
           error: "Twitter username, email and password are required",
         },
-        400,
+        400
       );
     }
 
@@ -1764,7 +1864,7 @@ api.post("/verify", async (c) => {
           verified: false,
           error: "Invalid credentials format",
         },
-        400,
+        400
       );
     }
 
@@ -1777,7 +1877,7 @@ api.post("/verify", async (c) => {
         verified: false,
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      500,
+      500
     );
   }
 });
@@ -1790,7 +1890,7 @@ export default {
   async fetch(
     request: Request,
     env: Env,
-    ctx: ExecutionContext,
+    ctx: ExecutionContext
   ): Promise<Response> {
     return app.fetch(request, env, ctx);
   },
@@ -1798,7 +1898,7 @@ export default {
   async scheduled(
     event: ScheduledEvent,
     env: Env,
-    ctx: ExecutionContext,
+    ctx: ExecutionContext
   ): Promise<void> {
     // Handle scheduled tasks
     console.log("Scheduled event triggered:", event.cron);

@@ -1,6 +1,8 @@
 import { IToken } from "@/types";
 import { useState } from "react";
 import Button from "./button";
+import SwapsTable from "./swaps-table";
+import HoldersTable from "./holders-table";
 
 export default function TransactionsAndHolders({ token }: { token: IToken }) {
   const [mode, setMode] = useState<"transactions" | "holders">("transactions");
@@ -23,7 +25,11 @@ export default function TransactionsAndHolders({ token }: { token: IToken }) {
           Holders
         </Button>
       </div>
-      {token?.name}
+      {mode === "transactions" ? (
+        <SwapsTable token={token} />
+      ) : (
+        <HoldersTable token={token} />
+      )}
     </div>
   );
 }

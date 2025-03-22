@@ -34,6 +34,8 @@ export default function TokenStatus({ token }: { token: IToken }) {
     warning: "text-yellow-500 bg-yellow-500/10",
   };
 
+  if (!status) return null;
+
   return (
     <div
       className={twMerge([

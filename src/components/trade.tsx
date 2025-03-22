@@ -11,12 +11,12 @@ export default function Trade({ token }: { token: IToken }) {
   const solanaPrice = token?.solPriceUSD || 0;
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
-    undefined,
+    undefined
   );
   const [error] = useState<string | undefined>("");
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token.status,
+    token?.status
   );
 
   return (
@@ -35,7 +35,11 @@ export default function Trade({ token }: { token: IToken }) {
                 Selling
               </span>
               <div className="flex items-center gap-0.5 xl:ml-auto">
-                <Button size="small" variant="trade">
+                <Button
+                  size="small"
+                  variant="trade"
+                  onClick={() => setSellingAmount(0)}
+                >
                   Reset
                 </Button>
                 {isTokenSelling ? (
@@ -52,13 +56,25 @@ export default function Trade({ token }: { token: IToken }) {
                   </Fragment>
                 ) : (
                   <Fragment>
-                    <Button size="small" variant="trade">
+                    <Button
+                      size="small"
+                      variant="trade"
+                      onClick={() => setSellingAmount(0.5)}
+                    >
                       0.5
                     </Button>
-                    <Button size="small" variant="trade">
+                    <Button
+                      size="small"
+                      variant="trade"
+                      onClick={() => setSellingAmount(1)}
+                    >
                       1
                     </Button>
-                    <Button size="small" variant="trade">
+                    <Button
+                      size="small"
+                      variant="trade"
+                      onClick={() => setSellingAmount(5)}
+                    >
                       5
                     </Button>
                   </Fragment>
@@ -92,7 +108,7 @@ export default function Trade({ token }: { token: IToken }) {
                   : token?.tokenPriceUSD
                     ? formatNumber(
                         Number(sellingAmount || 0) * token?.tokenPriceUSD,
-                        true,
+                        true
                       )
                     : formatNumber(0)}
               </span>
@@ -164,7 +180,7 @@ const TokenDisplay = ({
   return (
     <div className="flex items-center gap-2 rounded-lg border bg-autofun-background-card p-2 select-none">
       <SkeletonImage
-        src={token?.image || ""}
+        src={isSolana ? "/solana.png" : token?.image || ""}
         alt={token?.name || "token"}
         className="rounded-full size-6"
       />
