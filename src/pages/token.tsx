@@ -34,7 +34,7 @@ export default function Page() {
     refetchInterval: 3_000,
   });
 
-  const token: IToken = query?.data;
+  const token = query?.data as IToken;
 
   const solPriceUSD = token?.solPriceUSD;
   const finalTokenPrice = 0.00000045; // Approximated value from the bonding curve configuration
@@ -237,7 +237,7 @@ export default function Page() {
               <p className="font-satoshi text-base text-autofun-text-secondary whitespace-pre">
                 Graduate this coin to Raydium at{" "}
                 {formatNumber(graduationMarketCap, true)}
-                 market cap.{"\n"}
+                market cap.{"\n"}
                 There is{" "}
                 {formatNumber(
                   (token?.reserveLamport - token?.virtualReserves) /

@@ -45,6 +45,9 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Lint worker
+        run: bun run lint
+
       - name: Generate Drizzle migrations
         run: bun run generate
       

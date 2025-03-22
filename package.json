@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "export NODE_ENV=development && npm run generate && concurrently \"vite\" \"wrangler dev\"",
     "build": "tsc -b && vite build",
-    "lint": "eslint ./worker --fix",
+    "lint": "eslint ./src --fix && eslint ./worker --fix",
     "preview": "vite preview",
     "start": "concurrently \"npm run dev\" \"npm run worker:dev\"",
     "migrate": "wrangler d1 execute AUTO_DB --local --file=./drizzle/migrations.sql",

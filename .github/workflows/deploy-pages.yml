@@ -36,6 +36,9 @@ jobs:
             echo "NODE_ENV=development" >> $GITHUB_ENV
           fi
 
+      - name: Lint frontend
+        run: bun run lint
+
       - name: Build frontend
         run: bun run build
         env:
