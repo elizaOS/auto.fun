@@ -60,7 +60,7 @@ jobs:
             echo "NODE_ENV=production" >> $GITHUB_ENV
             echo "DATABASE_NAME=autofun" >> $GITHUB_ENV
             # API URL for production
-            echo "VITE_API_URL=https://api.autofun.pages.dev" >> $GITHUB_ENV
+            echo "VITE_API_URL=https://api.autofun.workers.dev" >> $GITHUB_ENV
           else
             # Worker settings
             echo "WORKER_NAME=api-dev" >> $GITHUB_ENV
@@ -71,7 +71,7 @@ jobs:
             echo "DATABASE_NAME=autofun-dev" >> $GITHUB_ENV
             echo "DATABASE_NAME_DEV=autofun-dev" >> $GITHUB_ENV
             # API URL for development
-            echo "VITE_API_URL=https://api-dev.autofun.pages.dev" >> $GITHUB_ENV
+            echo "VITE_API_URL=https://api-dev.autofun.workers.dev" >> $GITHUB_ENV
           fi
 
       # Build frontend before deploying backend
