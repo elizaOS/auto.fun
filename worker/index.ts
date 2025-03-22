@@ -49,6 +49,7 @@ interface IToken {
   tokenPriceUSD: number;
   marketCapUSD: number;
   volume24h: number;
+  curveProgress: number;
 }
 
 interface ITokenHolder {
@@ -88,7 +89,7 @@ app.use(
     allowHeaders: ["Content-Type", "Authorization", "X-API-Key"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
-  }),
+  })
 );
 
 // Add authentication middleware
@@ -126,7 +127,7 @@ api.use(
     allowHeaders: ["Content-Type", "Authorization", "X-API-Key"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
-  }),
+  })
 );
 
 // Root paths for health checks
@@ -140,7 +141,7 @@ api.get("/info", (c) =>
     status: "ok",
     version: "1.0.0",
     network: c.env.NETWORK || "devnet",
-  }),
+  })
 );
 
 // Authentication routes
@@ -148,6 +149,40 @@ api.post("/authenticate", (c) => authenticate(c));
 api.post("/generate-nonce", (c) => generateNonce(c));
 api.post("/logout", (c) => logout(c));
 api.get("/auth-status", (c) => authStatus(c));
+
+const generateMockToken = (): IToken => {
+  function getRandomNumber(options?: {
+    min?: number;
+    max?: number;
+    decimals?: number;
+  }): number {
+    const min = options?.min ?? 1;
+    const max = options?.max ?? 100;
+
+    if (min > max) {
+      throw new Error("min should be less than or equal to max");
+    }
+    const random = Math.random() * (max - min) + min;
+    if (options && typeof options.decimals === "number") {
+      return parseFloat(random.toFixed(options.decimals));
+    }
+    return Math.floor(random);
+  }
+  const random = getRandomNumber({ min: 1, max: 5000 });
+  return {
+    id: crypto.randomUUID(),
+    name: `Test Token ${random}`,
+    ticker: `TST${random}`,
+    mint: crypto.randomUUID(),
+    creator: "mock-creator-address",
+    status: "active",
+    createdAt: new Date().toISOString(),
+    tokenPriceUSD: 0.01 * random,
+    marketCapUSD: 10000 * random,
+    volume24h: 5000 * random,
+    curveProgress: getRandomNumber({ min: 1, max: 100, decimals: 15 }),
+  };
+};
 
 // Get paginated tokens
 api.get("/tokens", async (c) => {
@@ -165,18 +200,7 @@ api.get("/tokens", async (c) => {
     // Create mock tokens
     const mockTokens: IToken[] = [];
     for (let i = 0; i < limit; i++) {
-      mockTokens.push({
-        id: crypto.randomUUID(),
-        name: search ? `Test ${search} Token ${i + 1}` : `Test Token ${i + 1}`,
-        ticker: `TST${i + 1}`,
-        mint: crypto.randomUUID(),
-        creator: creator || "mock-creator-address",
-        status: status || "active",
-        createdAt: new Date().toISOString(),
-        tokenPriceUSD: 0.01 * (i + 1),
-        marketCapUSD: 10000 * (i + 1),
-        volume24h: 5000 * (i + 1),
-      });
+      mockTokens.push(generateMockToken());
     }
 
     // Return the tokens with pagination information
@@ -218,25 +242,14 @@ api.get("/tokens/:mint", async (c) => {
 
     // Return mock token data for tests
     return c.json({
-      token: {
-        id: crypto.randomUUID(),
-        name: "Mock Token",
-        ticker: "MOCK",
-        mint: mint,
-        creator: "mock-creator-address",
-        status: "active",
-        createdAt: new Date().toISOString(),
-        tokenPriceUSD: 0.015,
-        marketCapUSD: 15000,
-        volume24h: 5000,
-      },
+      token: generateMockToken(),
       agent: null,
     });
   } catch (error) {
     logger.error("Error fetching token:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -327,7 +340,7 @@ api.get("/tokens/:mint/harvest-tx", async (c) => {
     logger.error("Error creating harvest transaction:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -355,7 +368,7 @@ api.post("/new_token", async (c) => {
     }
 
     const imageBuffer = Uint8Array.from(atob(imageData), (c) =>
-      c.charCodeAt(0),
+      c.charCodeAt(0)
     ).buffer;
 
     // Upload image to Cloudflare R2
@@ -439,7 +452,7 @@ api.post("/new_token", async (c) => {
     logger.error("Error creating token:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -484,6 +497,8 @@ api.get("/swaps/:mint", async (c) => {
 api.get("/messages/:mint", async (c) => {
   try {
     const mint = c.req.param("mint");
+
+    // TODO - How do we determine the rate limiting for messages?
 
     // Return mock messages data
     return c.json({
@@ -534,7 +549,7 @@ api.get("/messages/:messageId/replies", async (c) => {
       repliesWithLikes = await addHasLikedToMessages(
         db,
         repliesResult,
-        userPublicKey,
+        userPublicKey
       );
     }
 
@@ -543,7 +558,7 @@ api.get("/messages/:messageId/replies", async (c) => {
     logger.error("Error fetching replies:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -582,7 +597,7 @@ api.get("/messages/:messageId/thread", async (c) => {
         parentWithLikes = await addHasLikedToMessages(
           db,
           parentResult,
-          userPublicKey,
+          userPublicKey
         );
       }
 
@@ -590,7 +605,7 @@ api.get("/messages/:messageId/thread", async (c) => {
         repliesWithLikes = await addHasLikedToMessages(
           db,
           repliesResult,
-          userPublicKey,
+          userPublicKey
         );
       }
     }
@@ -603,7 +618,7 @@ api.get("/messages/:messageId/thread", async (c) => {
     logger.error("Error fetching message thread:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -633,7 +648,7 @@ api.post("/messages/:mint", async (c) => {
     ) {
       return c.json(
         { error: "Message must be between 1 and 500 characters" },
-        400,
+        400
       );
     }
 
@@ -669,7 +684,7 @@ api.post("/messages/:mint", async (c) => {
     logger.error("Error creating message:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -706,8 +721,8 @@ api.post("/message-likes/:messageId", async (c) => {
       .where(
         and(
           eq(messageLikes.messageId, messageId),
-          eq(messageLikes.userAddress, userAddress),
-        ),
+          eq(messageLikes.userAddress, userAddress)
+        )
       )
       .limit(1);
 
@@ -743,7 +758,7 @@ api.post("/message-likes/:messageId", async (c) => {
     logger.error("Error liking message:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -793,7 +808,7 @@ api.post("/register", async (c) => {
     logger.error("Error registering user:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -823,7 +838,7 @@ api.get("/avatar/:address", async (c) => {
     logger.error("Error fetching user avatar:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -832,7 +847,7 @@ api.get("/avatar/:address", async (c) => {
 async function addHasLikedToMessages(
   db: ReturnType<typeof getDB>,
   messagesList: Array<any>,
-  userAddress: string,
+  userAddress: string
 ): Promise<Array<any>> {
   if (
     !Array.isArray(messagesList) ||
@@ -852,13 +867,13 @@ async function addHasLikedToMessages(
     .where(
       and(
         inArray(messageLikes.messageId, messageIds),
-        eq(messageLikes.userAddress, userAddress),
-      ),
+        eq(messageLikes.userAddress, userAddress)
+      )
     );
 
   // Create a Set of liked message IDs for quick lookup
   const likedMessageIds = new Set(
-    userLikes.map((like: { messageId: string }) => like.messageId),
+    userLikes.map((like: { messageId: string }) => like.messageId)
   );
 
   // Add hasLiked field to each message
@@ -889,7 +904,7 @@ export async function updateHoldersCache(env: Env, mint: string) {
             },
           },
         ],
-      },
+      }
     );
 
     // Process accounts
@@ -1036,7 +1051,7 @@ api.post("/vanity-keypair", async (c) => {
     logger.error("Error getting vanity keypair:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1063,7 +1078,7 @@ api.post("/upload-cloudflare", async (c) => {
     }
 
     const imageBuffer = Uint8Array.from(atob(imageData), (c) =>
-      c.charCodeAt(0),
+      c.charCodeAt(0)
     ).buffer;
 
     // Upload image to Cloudflare R2
@@ -1088,7 +1103,7 @@ api.post("/upload-cloudflare", async (c) => {
     logger.error("Error uploading to Cloudflare:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1143,13 +1158,13 @@ api.post("/agent-details", async (c) => {
     if (!Array.isArray(requestedOutputs) || requestedOutputs.length === 0) {
       return c.json(
         { error: "requestedOutputs must be a non-empty array" },
-        400,
+        400
       );
     }
 
     // Validate that all requested outputs are allowed
     const invalidOutputs = requestedOutputs.filter(
-      (output) => !allowedOutputs.includes(output),
+      (output) => !allowedOutputs.includes(output)
     );
 
     if (invalidOutputs.length > 0) {
@@ -1158,7 +1173,7 @@ api.post("/agent-details", async (c) => {
           error: `Invalid outputs requested: ${invalidOutputs.join(", ")}`,
           allowedOutputs,
         },
-        400,
+        400
       );
     }
 
@@ -1170,7 +1185,7 @@ api.post("/agent-details", async (c) => {
     logger.error("Error generating agent details:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1224,8 +1239,8 @@ api.get("/agents", async (c) => {
       .where(
         and(
           eq(agents.ownerAddress, ownerAddress),
-          sql`agents.deletedAt IS NULL`,
-        ),
+          sql`agents.deletedAt IS NULL`
+        )
       )
       .orderBy(sql`agents.createdAt DESC`);
 
@@ -1234,7 +1249,7 @@ api.get("/agents", async (c) => {
     logger.error("Error fetching agents:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1258,8 +1273,8 @@ api.get("/agents/:id", async (c) => {
         and(
           eq(agents.id, id),
           eq(agents.ownerAddress, user.publicKey),
-          sql`agents.deletedAt IS NULL`,
-        ),
+          sql`agents.deletedAt IS NULL`
+        )
       )
       .limit(1);
 
@@ -1272,7 +1287,7 @@ api.get("/agents/:id", async (c) => {
     logger.error("Error fetching agent:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1296,8 +1311,8 @@ api.get("/agents/mint/:contractAddress", async (c) => {
         and(
           eq(agents.contractAddress, contractAddress),
           eq(agents.ownerAddress, user.publicKey),
-          sql`agents.deletedAt IS NULL`,
-        ),
+          sql`agents.deletedAt IS NULL`
+        )
       )
       .limit(1);
 
@@ -1310,7 +1325,7 @@ api.get("/agents/mint/:contractAddress", async (c) => {
     logger.error("Error fetching agent by contract address:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1328,7 +1343,7 @@ api.post("/agents/claim", async (c) => {
           status: "active",
         },
       },
-      200,
+      200
     );
   } catch (error) {
     logger.error("Error claiming agent:", error);
@@ -1366,7 +1381,7 @@ api.post("/agents/:tokenId", async (c) => {
     if (user.publicKey !== token[0].creator) {
       return c.json(
         { error: "Only the token creator can add an agent to the token" },
-        401,
+        401
       );
     }
 
@@ -1378,7 +1393,7 @@ api.post("/agents/:tokenId", async (c) => {
       twitter_credentials.email
     ) {
       logger.log(
-        `Verifying Twitter credentials for ${twitter_credentials.username}`,
+        `Verifying Twitter credentials for ${twitter_credentials.username}`
       );
 
       // In a real implementation, we would use a Twitter API client or scraper
@@ -1440,7 +1455,7 @@ api.post("/agents/:tokenId", async (c) => {
     logger.error("Error creating agent:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1466,8 +1481,8 @@ api.put("/agents/:id", async (c) => {
         and(
           eq(agents.id, id),
           eq(agents.ownerAddress, user.publicKey),
-          sql`agents.deletedAt IS NULL`,
-        ),
+          sql`agents.deletedAt IS NULL`
+        )
       )
       .limit(1);
 
@@ -1478,7 +1493,7 @@ api.put("/agents/:id", async (c) => {
     // If the agent has an ECS task ID, we need to stop the task before updating
     if (existingAgent[0].ecsTaskId) {
       logger.log(
-        `Agent has an active ECS task (${existingAgent[0].ecsTaskId}), marking for restart`,
+        `Agent has an active ECS task (${existingAgent[0].ecsTaskId}), marking for restart`
       );
       // In a real implementation, you'd call AWS ECS API to stop the task
     }
@@ -1513,7 +1528,7 @@ api.put("/agents/:id", async (c) => {
     logger.error("Error updating agent:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1608,7 +1623,7 @@ api.get("/ws", (c) => {
   // This is just a placeholder - in the test we'll test the WebSocketDO directly
   return c.text(
     "WebSocket connections should be processed through DurableObjects",
-    400,
+    400
   );
 });
 
@@ -1672,7 +1687,7 @@ api.post("/agents/:id/force-release", async (c) => {
     logger.error("Failed to force release agent", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1704,7 +1719,7 @@ api.get("/token-agent/:mint", async (c) => {
       .select()
       .from(agents)
       .where(
-        and(eq(agents.contractAddress, mint), sql`agents.deletedAt IS NULL`),
+        and(eq(agents.contractAddress, mint), sql`agents.deletedAt IS NULL`)
       )
       .limit(1);
 
@@ -1722,7 +1737,7 @@ api.get("/token-agent/:mint", async (c) => {
     logger.error("Error fetching token and agent data:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1739,7 +1754,7 @@ api.post("/verify", async (c) => {
         {
           error: "Twitter username, email and password are required",
         },
-        400,
+        400
       );
     }
 
@@ -1764,7 +1779,7 @@ api.post("/verify", async (c) => {
           verified: false,
           error: "Invalid credentials format",
         },
-        400,
+        400
       );
     }
 
@@ -1777,7 +1792,7 @@ api.post("/verify", async (c) => {
         verified: false,
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      500,
+      500
     );
   }
 });
@@ -1790,7 +1805,7 @@ export default {
   async fetch(
     request: Request,
     env: Env,
-    ctx: ExecutionContext,
+    ctx: ExecutionContext
   ): Promise<Response> {
     return app.fetch(request, env, ctx);
   },
@@ -1798,7 +1813,7 @@ export default {
   async scheduled(
     event: ScheduledEvent,
     env: Env,
-    ctx: ExecutionContext,
+    ctx: ExecutionContext
   ): Promise<void> {
     // Handle scheduled tasks
     console.log("Scheduled event triggered:", event.cron);
