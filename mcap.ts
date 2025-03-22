@@ -20,7 +20,18 @@ let totalUpdatesProcessed = 0;
 let failedUpdates = 0;
 let lastUpdateTime: Date | null = null;
 
+let cachedSolPrice: number = 0;
+let lastSolPriceFetchTime: number = 0;
+const SOL_PRICE_CACHE_TTL = 5 * 1000; // 5 seconds cache TTL
+
 export async function getSOLPrice(): Promise<number> {
+  const now = Date.now();
+  
+  // Return cached price if it's still valid
+  if (cachedSolPrice > 0 && now - lastSolPriceFetchTime < SOL_PRICE_CACHE_TTL) {
+    return cachedSolPrice;
+  }
+  
   try {
     const pythConnection = new Connection(getPythClusterApiUrl(PYTHNET_CLUSTER_NAME));
     const pythPublicKey = getPythProgramKeyForCluster(PYTHNET_CLUSTER_NAME);
@@ -31,13 +42,17 @@ export async function getSOLPrice(): Promise<number> {
     
     if (!solPrice || !solPrice.price) {
       logger.error("Unable to get SOL/USD price");
-      return 0;
+      return cachedSolPrice || 0;
     }
     
-    return solPrice.price;
+    // Update cache
+    cachedSolPrice = solPrice.price;
+    lastSolPriceFetchTime = now;
+    
+    return cachedSolPrice;
   } catch (error) {
     logger.error('Error fetching SOL price:', error);
-    return 0;
+    return cachedSolPrice || 0;
   }
 }
 
