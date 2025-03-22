@@ -3,7 +3,7 @@ import { QueryClient } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient();
 
-const BASE_URL = import.meta.env.VITE_API_URL || "https://dev-api.auto.fun";
+const BASE_URL = import.meta.env.VITE_API_URL || "https://api.autofun.pages.dev";
 export const HELIUS_RPC_URL = import.meta.env.VITE_RPC_URL;
 
 const fetcher = async (

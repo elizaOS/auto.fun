@@ -128,6 +128,8 @@ jobs:
           DATABASE_ID: ${{ secrets.DATABASE_ID }}
           DATABASE_NAME_DEV: ${{ env.DATABASE_NAME_DEV }}
           DATABASE_ID_DEV: ${{ secrets.DATABASE_ID_DEV || '00ade209-86ac-46a9-bed5-b74aaaac4ad4' }}
+          # API URL for the worker
+          API_URL: ${{ env.WORKER_ENV == 'production' && 'https://api.autofun.pages.dev' || 'https://api-dev.autofun.pages.dev' }}
           # Additional secrets
           API_KEY: ${{ secrets.API_KEY }}
           WALLET_PRIVATE_KEY: ${{ secrets.WALLET_PRIVATE_KEY }}

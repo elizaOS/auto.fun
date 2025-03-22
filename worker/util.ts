@@ -358,8 +358,7 @@ export const launchTokenTx = async (
   env?: any,
 ) => {
   // Auth our user (register/login)
-  const apiUrl =
-    env?.VITE_API_URL || process.env.VITE_API_URL || "https://api.auto.fun";
+  const apiUrl = env?.API_URL || "https://api.auto.fun";
   const jwt = await fetch(`${apiUrl}/register`, {
     method: "POST",
     headers: {
