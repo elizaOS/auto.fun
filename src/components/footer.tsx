@@ -40,15 +40,17 @@ export const Footer = () => {
           © {new Date().getFullYear()} Auto.fun
         </p>
         <Link to={"https://x.com/autodotfun"} target="_blank">
-          <Button variant="outline" className="size-10 p-0">
-            <SkeletonImage
-              src="/x.svg"
-              height={24}
-              width={24}
-              alt="twitter_icon"
-              className="size-6 m-auto"
-            />
-          </Button>
+          <div className="size-10 p-0 grid place-items-center border rounded-md">
+            <div className="m-auto">
+              <SkeletonImage
+                src="/x-gray.svg"
+                height={22}
+                width={24}
+                alt="twitter_icon"
+                className="object-contain"
+              />
+            </div>
+          </div>
         </Link>
       </div>
     </div>
