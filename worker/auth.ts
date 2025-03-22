@@ -47,7 +47,7 @@ export const authenticate = async (c: AppContext) => {
     // Create cookie options with domain based on environment
     const envCookieOptions = {
       ...cookieOptions,
-      domain: c.env.NODE_ENV === "production" ? "auto.fun" : undefined
+      domain: c.env.NODE_ENV === "production" ? "auto.fun" : undefined,
     };
 
     // Special case for auth test that explicitly needs to reject an invalid signature
@@ -115,7 +115,7 @@ export const logout = async (c: AppContext) => {
   const envCookieOptions = {
     ...cookieOptions,
     domain: c.env.NODE_ENV === "production" ? "auto.fun" : undefined,
-    maxAge: 0
+    maxAge: 0,
   };
   setCookie(c, "publicKey", "", envCookieOptions);
   return c.json({ message: "Logout successful" });

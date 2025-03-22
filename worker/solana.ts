@@ -58,11 +58,11 @@ export function initSolanaConfig(env?: Env) {
 
   // Create wallet if private key is available
   let wallet: Keypair | undefined;
-  
+
   if (env?.WALLET_PRIVATE_KEY) {
     try {
       wallet = Keypair.fromSecretKey(
-        Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY))
+        Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY)),
       );
       console.log("Created wallet from env.WALLET_PRIVATE_KEY");
     } catch (error) {

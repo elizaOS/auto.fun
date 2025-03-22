@@ -325,13 +325,15 @@ export async function updateMigratedTokenMarketData(env?: Env) {
     const startTime = Date.now();
 
     // Use the provided env or create a minimal fallback (no process.env)
-    const workingEnv = env || {
-      NETWORK: "devnet",
-      DECIMALS: "6",
-      TOKEN_SUPPLY: "1000000000000",
-      VIRTUAL_RESERVES: "100000000",
-      CURVE_LIMIT: "1000000000",
-    } as Env; // Cast to Env for compatibility
+    const workingEnv =
+      env ||
+      ({
+        NETWORK: "devnet",
+        DECIMALS: "6",
+        TOKEN_SUPPLY: "1000000000000",
+        VIRTUAL_RESERVES: "100000000",
+        CURVE_LIMIT: "1000000000",
+      } as Env); // Cast to Env for compatibility
 
     const db = getDB(workingEnv);
     const migratedTokens = await db

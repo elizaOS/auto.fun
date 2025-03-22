@@ -32,7 +32,7 @@ export async function fetchCodexTokenEvents(
   startTimestamp: number,
   endTimestamp: number,
   networkId: number = 1399811149,
-  env?: any
+  env?: any,
 ): Promise<CodexTokenEvent[]> {
   const apiUrl = "https://graph.codex.io/graphql";
   let allItems: CodexTokenEvent[] = [];
@@ -102,7 +102,7 @@ export async function fetchCodexTokenEvents(
 export async function fetchCodexTokenPrice(
   tokenAddress: string,
   networkId: number = 1399811149,
-  env?: any
+  env?: any,
 ): Promise<{
   currentPrice: number;
   priceUsd: number;
@@ -240,7 +240,7 @@ export async function fetchCodexBars(
   resolution: CodexBarResolution = "1",
   networkId: number = 1399811149,
   quoteToken: string = "token1",
-  env?: any
+  env?: any,
 ): Promise<CandleData[]> {
   const apiUrl = "https://graph.codex.io/graphql";
 
@@ -265,9 +265,7 @@ export async function fetchCodexBars(
   }
 
   // If the time range is less than 1000 intervals, fetch all in one request
-  if (
-    Math.floor((endTimestamp - startTimestamp) / timeInterval) <= 1000
-  ) {
+  if (Math.floor((endTimestamp - startTimestamp) / timeInterval) <= 1000) {
     return fetchCodexBarsChunk(
       apiUrl,
       symbol,
@@ -276,7 +274,7 @@ export async function fetchCodexBars(
       resolution,
       quoteToken,
       timeInterval,
-      env
+      env,
     );
   } else {
     // Otherwise, fetch in chunks of 1000 intervals each
@@ -286,10 +284,7 @@ export async function fetchCodexBars(
 
     // Process each time chunk sequentially
     while (currentStart < endTimestamp) {
-      const chunkEnd = Math.min(
-        currentStart + maxChunkSize,
-        endTimestamp
-      );
+      const chunkEnd = Math.min(currentStart + maxChunkSize, endTimestamp);
       const barsChunk = await fetchCodexBarsChunk(
         apiUrl,
         symbol,
@@ -298,7 +293,7 @@ export async function fetchCodexBars(
         resolution,
         quoteToken,
         timeInterval,
-        env
+        env,
       ).catch((error) => {
         logger.error(
           `Error fetching chunk from ${new Date(currentStart * 1000).toISOString()} to ${new Date(chunkEnd * 1000).toISOString()}:`,
@@ -330,7 +325,7 @@ async function fetchCodexBarsChunk(
   resolution: CodexBarResolution,
   quoteToken: string,
   timeInterval: number,
-  env?: any
+  env?: any,
 ): Promise<CandleData[]> {
   try {
     const query = `query {
