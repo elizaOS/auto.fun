@@ -36,6 +36,8 @@ export async function setupWorkerTest(): Promise<TestContext> {
       JWT_SECRET: "test-jwt-secret",
       // Add wallet private key (test key)
       WALLET_PRIVATE_KEY: JSON.stringify([...Array(32)].map(() => Math.floor(Math.random() * 256))),
+      // Add FAL.AI key for media generation tests
+      FAL_API_KEY: process.env.FAL_API_KEY || "test-fal-api-key",
     },
     // Use type assertion for test bindings that aren't properly typed
   } as any);
@@ -52,7 +54,7 @@ export async function setupWorkerTest(): Promise<TestContext> {
   console.log("Token pubkey:", testTokenKp.publicKey.toBase58());
 
   // Get base URL for API requests - accessing as any due to type inconsistencies in wrangler
-  const baseUrl = (worker as any).url || `http://localhost:8787`;
+  const baseUrl = (worker as any).url || `http://localhost:3000`;
 
   console.log(`Using API base URL: ${baseUrl}`);
 

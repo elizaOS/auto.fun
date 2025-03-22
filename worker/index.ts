@@ -1,10 +1,14 @@
-import { Connection, ParsedAccountData, PublicKey } from "@solana/web3.js";
+import {
+  ExecutionContext,
+  ScheduledEvent,
+} from "@cloudflare/workers-types/experimental";
+import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
+import { ComputeBudgetProgram, Connection, Keypair, ParsedAccountData, PublicKey, Transaction } from "@solana/web3.js";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { authenticate, authStatus, generateNonce, logout } from "./auth";
 import { createCharacterDetails } from "./character";
-import { handleScheduled } from "./cron";
 import {
   agents,
   getDB,
@@ -16,22 +20,13 @@ import {
   vanityKeypairs,
 } from "./db";
 import { Env } from "./env";
+import generationRoutes from "./generation"; // Import the generation routes
 import { logger } from "./logger";
 import { getSOLPrice } from "./mcap";
 import { verifyAuth } from "./middleware";
 import { uploadToCloudflare } from "./uploader";
-import { getRpcUrl } from "./util";
+import { bulkUpdatePartialTokens, getRpcUrl } from "./util";
 import { WebSocketDO } from "./websocket";
-import {
-  ExecutionContext,
-  ScheduledEvent,
-} from "@cloudflare/workers-types/experimental";
-import { bulkUpdatePartialTokens } from "./util";
-import { Keypair, ComputeBudgetProgram } from "@solana/web3.js";
-import { Program, BN, AnchorProvider } from "@coral-xyz/anchor";
-import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
-import { SEED_CONFIG } from "./constant";
-import { Transaction } from "@solana/web3.js";
 
 type TTokenStatus =
   | "pending"
@@ -133,6 +128,12 @@ api.use(
     maxAge: 600,
   }),
 );
+
+// Add authentication middleware
+api.use("*", verifyAuth);
+
+// Mount generation routes
+api.route('/', generationRoutes); 
 
 // Root paths for health checks
 app.get("/", (c) => c.json({ status: "ok" }));
