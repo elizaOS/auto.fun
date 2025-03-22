@@ -261,6 +261,8 @@ router.get('/tokens', async (req, res) => {
   }
 });
 
+
+// Get top tokens sorted by volume24h
 router.get("/tokens/top", async (req, res) => {
   try {
     const limit = parseInt(req.query.limit as string) || 6;
