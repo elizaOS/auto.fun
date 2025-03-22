@@ -19,7 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import { InfoCircle } from "iconsax-react";
 import { Globe } from "lucide-react";
 import { Link, useParams } from "react-router";
-import ShowMoreText from "react-show-more-text";
+import ShowMoreText from "@/components/show-more-text";
 
 export default function Page() {
   const params = useParams();

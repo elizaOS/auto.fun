@@ -11,7 +11,7 @@ import {
   shortenAddress,
 } from "@/utils";
 import { Link } from "react-router";
-import ShowMoreText from "react-show-more-text";
+import ShowMoreText from "./show-more-text";
 
 export default function GridView({ data }: { data: IToken[] }) {
   return (
