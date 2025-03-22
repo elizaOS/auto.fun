@@ -11,18 +11,21 @@ let apiUrl = import.meta.env.VITE_API_URL;
 
 // If no environment variable is set, infer from the current hostname
 if (!apiUrl) {
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
     // Local development
-    apiUrl = 'http://localhost:8787';
-  } else if (hostname === 'autofun.pages.dev' || hostname.includes('autofun')) {
+    apiUrl = "http://localhost:8787";
+  } else if (hostname === "autofun.pages.dev" || hostname.includes("autofun")) {
     // Production
-    apiUrl = 'https://api.autofun.pages.dev';
-  } else if (hostname === 'autofun-dev.pages.dev' || hostname.includes('autofun-dev')) {
+    apiUrl = "https://api.autofun.pages.dev";
+  } else if (
+    hostname === "autofun-dev.pages.dev" ||
+    hostname.includes("autofun-dev")
+  ) {
     // Development/staging
-    apiUrl = 'https://api-dev.autofun.pages.dev';
+    apiUrl = "https://api-dev.autofun.pages.dev";
   } else {
     // Default fallback - production
-    apiUrl = 'https://api.autofun.pages.dev';
+    apiUrl = "https://api.autofun.pages.dev";
   }
 }
 const BASE_URL = apiUrl;
