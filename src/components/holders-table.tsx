@@ -1,5 +1,5 @@
-import { IToken } from "@/types";
+// import { IToken } from "@/types";
 
-export default function HoldersTable({ token }: { token: IToken }) {
+export default function HoldersTable() {
   return <div>Hi</div>;
 }
