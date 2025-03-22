@@ -27,6 +27,7 @@ import {
   ScheduledEvent,
 } from "@cloudflare/workers-types/experimental";
 import { bulkUpdatePartialTokens } from "./util";
+import generationRoutes from "./generation"; // Import the generation routes
 
 type TTokenStatus =
   | "pending"
@@ -128,6 +129,12 @@ api.use(
     maxAge: 600,
   }),
 );
+
+// Add authentication middleware
+api.use("*", verifyAuth);
+
+// Mount generation routes
+api.route('/', generationRoutes); 
 
 // Root paths for health checks
 app.get("/", (c) => c.json({ status: "ok" }));
