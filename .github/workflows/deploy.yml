@@ -58,24 +58,22 @@ jobs:
             echo "DB_SUFFIX=" >> $GITHUB_ENV
             # Pages settings
             echo "PROJECT_NAME=autofun" >> $GITHUB_ENV
-            echo "DEPLOY_URL=https://autofun.pages.dev" >> $GITHUB_ENV
             echo "NODE_ENV=production" >> $GITHUB_ENV
             echo "DATABASE_NAME=autofun" >> $GITHUB_ENV
             # API URL for production
-            echo "VITE_API_URL=https://api.autofun.pages.dev" >> $GITHUB_ENV
+            echo "VITE_API_URL=https://autofun.pages.dev" >> $GITHUB_ENV
           else
             # Worker settings
             echo "WORKER_NAME=api-dev" >> $GITHUB_ENV
             echo "WORKER_ENV=development" >> $GITHUB_ENV
             echo "DB_SUFFIX=-dev" >> $GITHUB_ENV
             # Pages settings
-            echo "PROJECT_NAME=autofun" >> $GITHUB_ENV
-            echo "DEPLOY_URL=https://develop.autofun.pages.dev" >> $GITHUB_ENV
+            echo "PROJECT_NAME=autofun-dev" >> $GITHUB_ENV
             echo "NODE_ENV=development" >> $GITHUB_ENV
             echo "DATABASE_NAME=autofun-dev" >> $GITHUB_ENV
             echo "DATABASE_NAME_DEV=autofun-dev" >> $GITHUB_ENV
             # API URL for development
-            echo "VITE_API_URL=https://api-dev.autofun.pages.dev" >> $GITHUB_ENV
+            echo "VITE_API_URL=https://develop.autofun.pages.dev" >> $GITHUB_ENV
           fi
 
       # Build frontend before deploying backend
@@ -154,7 +152,7 @@ jobs:
         run: |
           echo "Deployment completed successfully!"
           echo "Worker deployed: ${{ env.WORKER_NAME }} (Environment: ${{ env.WORKER_ENV }})"
-          echo "Frontend deployed to: ${{ env.DEPLOY_URL }}"
+          echo "Frontend deployed to: ${{ env.VITE_API_URL }}"
           
       - name: Notify on Failure
         if: failure()
