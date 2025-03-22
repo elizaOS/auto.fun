@@ -63,6 +63,7 @@ jobs:
             echo "PROJECT_NAME=autofun" >> $GITHUB_ENV
             echo "DEPLOY_URL=https://autofun.pages.dev" >> $GITHUB_ENV
             echo "NODE_ENV=production" >> $GITHUB_ENV
+            echo "DATABASE_NAME=autofun" >> $GITHUB_ENV
           else
             # Worker settings
             echo "WORKER_NAME=api-dev" >> $GITHUB_ENV
@@ -72,6 +73,7 @@ jobs:
             echo "PROJECT_NAME=autofun-dev" >> $GITHUB_ENV
             echo "DEPLOY_URL=https://autofun-dev.pages.dev" >> $GITHUB_ENV
             echo "NODE_ENV=development" >> $GITHUB_ENV
+            echo "DATABASE_NAME_DEV=autofun-dev" >> $GITHUB_ENV
           fi
 
       # Build frontend before deploying backend
@@ -118,6 +120,11 @@ jobs:
           PRIMARY_LOCK_PERCENTAGE: ${{ secrets.PRIMARY_LOCK_PERCENTAGE || '90' }}
           SECONDARY_LOCK_PERCENTAGE: ${{ secrets.SECONDARY_LOCK_PERCENTAGE || '10' }}
           FEE_PERCENTAGE: ${{ secrets.FEE_PERCENTAGE || '1' }}
+          # Database configuration
+          DATABASE_NAME: ${{ env.DATABASE_NAME }}
+          DATABASE_ID: ${{ secrets.DATABASE_ID }}
+          DATABASE_NAME_DEV: ${{ env.DATABASE_NAME_DEV }}
+          DATABASE_ID_DEV: ${{ secrets.DATABASE_ID_DEV }}
           # Additional secrets
           API_KEY: ${{ secrets.API_KEY }}
           WALLET_PRIVATE_KEY: ${{ secrets.WALLET_PRIVATE_KEY }}

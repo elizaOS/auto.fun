@@ -14,7 +14,7 @@ crons = ["*/10 * * * * *"] # Run every 10 seconds
 # D1 Database for production
 [[d1_databases]]
 binding = "DB"
-database_name = "autofun"
+database_name = "$DATABASE_NAME"
 database_id = "$DATABASE_ID"
 
 # R2 bucket for storage
@@ -40,7 +40,7 @@ new_classes = ["WebSocketDO"]
 
 # Development environment configuration
 [env.development]
-name = "autofun-api-dev"
+name = "api-dev"
 # Site configuration for development
 [env.development.site]
 bucket = "./dist"
@@ -48,10 +48,10 @@ bucket = "./dist"
 # D1 Database for development
 [[env.development.d1_databases]]
 binding = "DB"
-database_name = "autofun-dev"
+database_name = "$DATABASE_NAME_DEV"
 database_id = "$DATABASE_ID_DEV"
 
 # Production environment configuration
 [env.production]
-name = "autofun-api"
+name = "api"
 # The production database is already defined in the default configuration
