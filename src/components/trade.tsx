@@ -35,7 +35,11 @@ export default function Trade({ token }: { token: IToken }) {
                 Selling
               </span>
               <div className="flex items-center gap-0.5 xl:ml-auto">
-                <Button size="small" variant="trade">
+                <Button
+                  size="small"
+                  variant="trade"
+                  onClick={() => setSellingAmount(0)}
+                >
                   Reset
                 </Button>
                 {isTokenSelling ? (
@@ -52,13 +56,25 @@ export default function Trade({ token }: { token: IToken }) {
                   </Fragment>
                 ) : (
                   <Fragment>
-                    <Button size="small" variant="trade">
+                    <Button
+                      size="small"
+                      variant="trade"
+                      onClick={() => setSellingAmount(0.5)}
+                    >
                       0.5
                     </Button>
-                    <Button size="small" variant="trade">
+                    <Button
+                      size="small"
+                      variant="trade"
+                      onClick={() => setSellingAmount(1)}
+                    >
                       1
                     </Button>
-                    <Button size="small" variant="trade">
+                    <Button
+                      size="small"
+                      variant="trade"
+                      onClick={() => setSellingAmount(5)}
+                    >
                       5
                     </Button>
                   </Fragment>
