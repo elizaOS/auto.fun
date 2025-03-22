@@ -127,7 +127,7 @@ export async function createNewTokenData(
     const bondingCurveAccountInfo = await solanaConfig.connection.getAccountInfo(bondingCurvePda);
     
     // Simple structure for the bondingCurve account data
-    let bondingCurveAccount = null;
+    let bondingCurveAccount: any = null;
     if (bondingCurveAccountInfo && bondingCurveAccountInfo.data) {
       // Parse the account data based on the expected structure
       const dataView = new DataView(bondingCurveAccountInfo.data.buffer);
@@ -724,7 +724,7 @@ export async function updateHoldersCache(env: Env, mint: string) {
       
       // Process accounts
       let totalTokens = 0;
-      const holders = [];
+      const holders: any[] = [];
       
       for (const account of accounts) {
         const parsedAccountInfo = account.account.data as ParsedAccountData;
