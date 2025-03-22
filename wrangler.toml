@@ -45,6 +45,11 @@ name = "api-dev"
 [env.development.site]
 bucket = "./dist"
 
+# Development environment doesn't use cron triggers
+# to avoid the ENOENT utime error with registry/api
+[env.development.triggers]
+crons = [] # No cron jobs in development mode
+
 # Copy vars to development environment
 [env.development.vars]
 NETWORK = "mainnet"

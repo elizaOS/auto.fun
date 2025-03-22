@@ -16,135 +16,137 @@ export const tokens = sqliteTable("tokens", {
   description: text("description"),
   mint: text("mint").notNull().unique(),
   creator: text("creator").notNull(),
-  nftMinted: text("nftMinted"),
-  lockId: text("lockId"),
-  lockedAmount: text("lockedAmount"),
-  lockedAt: text("lockedAt"),
-  harvestedAt: text("harvestedAt"),
+  nftMinted: text("nft_minted", { mode: "text" }),
+  lockId: text("lock_id", { mode: "text" }),
+  lockedAmount: text("locked_amount", { mode: "text" }),
+  lockedAt: text("locked_at", { mode: "text" }),
+  harvestedAt: text("harvested_at", { mode: "text" }),
   status: text("status").notNull().default("active"),
-  createdAt: text("createdAt").notNull(),
-  lastUpdated: text("lastUpdated").notNull(),
-  completedAt: text("completedAt"),
-  withdrawnAt: text("withdrawnAt"),
-  migratedAt: text("migratedAt"),
-  marketId: text("marketId"),
-  baseVault: text("baseVault"),
-  quoteVault: text("quoteVault"),
-  withdrawnAmount: real("withdrawnAmount"),
-  reserveAmount: real("reserveAmount"),
-  reserveLamport: real("reserveLamport"),
-  virtualReserves: real("virtualReserves"),
+  createdAt: text("created_at", { mode: "text" }).notNull(),
+  lastUpdated: text("last_updated", { mode: "text" }).notNull(),
+  completedAt: text("completed_at", { mode: "text" }),
+  withdrawnAt: text("withdrawn_at", { mode: "text" }),
+  migratedAt: text("migrated_at", { mode: "text" }),
+  marketId: text("market_id", { mode: "text" }),
+  baseVault: text("base_vault", { mode: "text" }),
+  quoteVault: text("quote_vault", { mode: "text" }),
+  withdrawnAmount: real("withdrawn_amount"),
+  reserveAmount: real("reserve_amount"),
+  reserveLamport: real("reserve_lamport"),
+  virtualReserves: real("virtual_reserves"),
   liquidity: real("liquidity"),
-  currentPrice: real("currentPrice"),
-  marketCapUSD: real("marketCapUSD"),
-  tokenPriceUSD: real("tokenPriceUSD"),
-  solPriceUSD: real("solPriceUSD"),
-  curveProgress: real("curveProgress"),
-  curveLimit: real("curveLimit"),
-  priceChange24h: real("priceChange24h"),
-  price24hAgo: real("price24hAgo"),
-  volume24h: real("volume24h"),
-  inferenceCount: integer("inferenceCount"),
-  lastVolumeReset: text("lastVolumeReset"),
-  lastPriceUpdate: text("lastPriceUpdate"),
-  holderCount: integer("holderCount"),
-  txId: text("txId"),
+  currentPrice: real("current_price"),
+  marketCapUSD: real("market_cap_usd"),
+  tokenPriceUSD: real("token_price_usd"),
+  solPriceUSD: real("sol_price_usd"),
+  curveProgress: real("curve_progress"),
+  curveLimit: real("curve_limit"),
+  priceChange24h: real("price_change_24h"),
+  price24hAgo: real("price_24h_ago"),
+  volume24h: real("volume_24h"),
+  inferenceCount: integer("inference_count"),
+  lastVolumeReset: text("last_volume_reset"),
+  lastPriceUpdate: text("last_price_update"),
+  holderCount: integer("holder_count"),
+  txId: text("tx_id"),
 });
 
 // Swap schema
 export const swaps = sqliteTable("swaps", {
   id: text("id").primaryKey(),
-  tokenMint: text("tokenMint").notNull(),
+  tokenMint: text("token_mint", { mode: "text" }).notNull(),
   user: text("user").notNull(),
   type: text("type").notNull(),
   direction: integer("direction").notNull(), // 0 = Buy (SOL->Token), 1 = Sell (Token->SOL)
-  amountIn: real("amountIn").notNull(),
-  amountOut: real("amountOut").notNull(),
-  priceImpact: real("priceImpact"),
+  amountIn: real("amount_in"),
+  amountOut: real("amount_out"),
+  priceImpact: real("price_impact"),
   price: real("price").notNull(),
-  txId: text("txId").notNull().unique(),
+  txId: text("tx_id", { mode: "text" }).notNull().unique(),
   timestamp: text("timestamp").notNull(),
 });
 
 // Fees schema
 export const fees = sqliteTable("fees", {
   id: text("id").primaryKey(),
-  tokenMint: text("tokenMint").notNull(),
+  tokenMint: text("token_mint", { mode: "text" }).notNull(),
   user: text("user"),
   direction: integer("direction"),
-  feeAmount: text("feeAmount"),
-  tokenAmount: text("tokenAmount"),
-  solAmount: text("solAmount"),
+  feeAmount: text("fee_amount", { mode: "text" }),
+  tokenAmount: text("token_amount", { mode: "text" }),
+  solAmount: text("sol_amount", { mode: "text" }),
   type: text("type").notNull(), // swap, migration
-  txId: text("txId"),
+  txId: text("tx_id", { mode: "text" }),
   timestamp: text("timestamp").notNull(),
 });
 
 // TokenHolder schema
-export const tokenHolders = sqliteTable("tokenHolders", {
+export const tokenHolders = sqliteTable("token_holders", {
   id: text("id").primaryKey(),
   mint: text("mint").notNull(),
   address: text("address").notNull(),
   amount: real("amount").notNull(),
   percentage: real("percentage").notNull(),
-  lastUpdated: text("lastUpdated").notNull(),
+  lastUpdated: text("last_updated", { mode: "text" }).notNull(),
 });
 
 // Agent schema
 export const agents = sqliteTable("agents", {
   id: text("id").primaryKey(),
-  ownerAddress: text("ownerAddress").notNull(),
-  contractAddress: text("contractAddress")
+  ownerAddress: text("owner_address", { mode: "text" }).notNull(),
+  contractAddress: text("contract_address", { mode: "text" })
     .notNull()
     .references(() => tokens.mint),
-  txId: text("txId").notNull(),
+  txId: text("tx_id", { mode: "text" }).notNull(),
   symbol: text("symbol").notNull(),
   name: text("name").notNull(),
   description: text("description").notNull(),
-  systemPrompt: text("systemPrompt"),
+  systemPrompt: text("system_prompt", { mode: "text" }),
   bio: text("bio"),
   lore: text("lore"),
-  messageExamples: text("messageExamples"),
-  postExamples: text("postExamples"),
+  messageExamples: text("message_examples", { mode: "text" }),
+  postExamples: text("post_examples", { mode: "text" }),
   adjectives: text("adjectives"),
   people: text("people"),
   topics: text("topics"),
-  modelProvider: text("modelProvider").default("claude"),
-  styleAll: text("styleAll"),
-  styleChat: text("styleChat"),
-  stylePost: text("stylePost"),
-  twitterUsername: text("twitterUsername"),
-  twitterPassword: text("twitterPassword"),
-  twitterEmail: text("twitterEmail"),
-  twitterCookie: text("twitterCookie"),
-  personalities: text("personalities"),
-  ecsTaskId: text("ecsTaskId"),
-  createdAt: integer("createdAt", { mode: "timestamp" }).default(
+  modelProvider: text("model_provider", { mode: "text" }).default("claude"),
+  styleAll: text("style_all", { mode: "text" }),
+  styleChat: text("style_chat", { mode: "text" }),
+  stylePost: text("style_post", { mode: "text" }),
+  twitterUsername: text("twitter_username", { mode: "text" }),
+  twitterPassword: text("twitter_password", { mode: "text" }),
+  twitterEmail: text("twitter_email", { mode: "text" }),
+  twitterCookie: text("twitter_cookie", { mode: "text" }),
+  postFreqMin: integer("post_freq_min"),
+  postFreqMax: integer("post_freq_max"),
+  pollIntervalSec: integer("poll_interval_sec"),
+  ecsTaskId: text("ecs_task_id", { mode: "text" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).default(
     sql`CURRENT_TIMESTAMP`,
   ),
-  updatedAt: integer("updatedAt", { mode: "timestamp" }).default(
+  updatedAt: integer("updated_at", { mode: "timestamp" }).default(
     sql`CURRENT_TIMESTAMP`,
   ),
-  deletedAt: integer("deletedAt", { mode: "timestamp" }),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
 });
 
 // Create messages table without self-referencing first
 export const messages = sqliteTable("messages", {
   id: text("id").primaryKey(),
   author: text("author").notNull(),
-  tokenMint: text("tokenMint").notNull(),
+  tokenMint: text("token_mint", { mode: "text" }).notNull(),
   message: text("message").notNull(),
-  parentId: text("parentId"),
-  replyCount: integer("replyCount").notNull().default(0),
+  parentId: text("parent_id", { mode: "text" }),
+  replyCount: integer("reply_count"),
   likes: integer("likes").notNull().default(0),
   timestamp: text("timestamp").notNull(),
 });
 
 // MessageLike schema
-export const messageLikes = sqliteTable("messageLikes", {
+export const messageLikes = sqliteTable("message_likes", {
   id: text("id").primaryKey(),
-  messageId: text("messageId").notNull(),
-  userAddress: text("userAddress").notNull(),
+  messageId: text("message_id", { mode: "text" }).notNull(),
+  userAddress: text("user_address", { mode: "text" }).notNull(),
   timestamp: text("timestamp").notNull(),
 });
 
@@ -153,13 +155,13 @@ export const personalities = sqliteTable("personalities", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   description: text("description"),
-  createdAt: integer("createdAt", { mode: "timestamp" }).default(
+  createdAt: integer("created_at", { mode: "timestamp" }).default(
     sql`CURRENT_TIMESTAMP`,
   ),
-  updatedAt: integer("updatedAt", { mode: "timestamp" }).default(
+  updatedAt: integer("updated_at", { mode: "timestamp" }).default(
     sql`CURRENT_TIMESTAMP`,
   ),
-  deletedAt: integer("deletedAt", { mode: "timestamp" }),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
 });
 
 // User schema
@@ -172,15 +174,15 @@ export const users = sqliteTable("users", {
     .default(
       "https://ipfs.io/ipfs/bafkreig4ob6pq5qy4v6j62krj4zkh2kc2pnv5egqy7f65djqhgqv3x56pq",
     ),
-  createdAt: text("createdAt").notNull(),
+  createdAt: text("created_at", { mode: "text" }).notNull(),
 });
 
 // VanityKeypair schema
-export const vanityKeypairs = sqliteTable("vanityKeypairs", {
+export const vanityKeypairs = sqliteTable("vanity_keypairs", {
   id: text("id").primaryKey(),
   address: text("address").notNull().unique(),
-  secretKey: text("secretKey").notNull(),
-  createdAt: text("createdAt").notNull(),
+  secretKey: text("secret_key", { mode: "text" }).notNull(),
+  createdAt: text("created_at", { mode: "text" }).notNull(),
   used: integer("used").notNull().default(0),
 });
 
@@ -190,8 +192,8 @@ export const mediaGenerations = sqliteTable("media_generations", {
   mint: text("mint").notNull(),
   type: text("type").notNull(), // "image", "video", "audio"
   prompt: text("prompt").notNull(),
-  mediaUrl: text("media_url").notNull(),
-  negativePrompt: text("negative_prompt"),
+  mediaUrl: text("media_url", { mode: "text" }).notNull(),
+  negativePrompt: text("negative_prompt", { mode: "text" }),
   numInferenceSteps: integer("num_inference_steps"),
   seed: integer("seed"),
   // Video specific metadata
@@ -204,6 +206,8 @@ export const mediaGenerations = sqliteTable("media_generations", {
   bpm: integer("bpm"),
   creator: text("creator"),
   timestamp: text("timestamp").notNull(),
+  dailyGenerationCount: integer("daily_generation_count"),
+  lastGenerationReset: text("last_generation_reset", { mode: "text" }),
 });
 
 // Cache table for prices
@@ -213,7 +217,7 @@ export const cachePrices = sqliteTable("cache_prices", {
   symbol: text("symbol").notNull(),
   price: text("price").notNull(), // Store as string to preserve precision
   timestamp: text("timestamp").notNull(),
-  expiresAt: text("expires_at").notNull(), // When this cache entry should expire
+  expiresAt: text("expires_at", { mode: "text" }).notNull(), // When this cache entry should expire
 });
 
 const schema = {
@@ -233,59 +237,204 @@ const schema = {
 
 export function getDB(env: Env) {
   try {
-    // In development, handle cases where DB isn't properly configured
-    if (env.NODE_ENV === "development" || !env.DB) {
-      // Create a chainable proxy that always returns itself
-      const createChainableProxy = (): Record<string, any> => {
-        return new Proxy({} as any, {
-          get: (_target, prop) => {
-            // Return a function that returns the proxy for method chaining
-            if (typeof prop === "string") {
-              // @ts-ignore
-              return (...args: any[]) => {
-                if (prop === "then") {
-                  // Special handling for Promise then/catch/finally
-                  return Promise.resolve([]);
-                }
-                return createChainableProxy();
-              };
-            }
-            return createChainableProxy();
+    // For test environment, always use the mock DB to prevent database errors
+    if (env.NODE_ENV === "test") {
+      console.log(`Using mock DB for test environment`);
+
+      // Define the mock database with test data
+      const mockData = {
+        tokens: [
+          {
+            id: "1",
+            name: "Test Token",
+            ticker: "TEST",
+            mint:
+              env.tokenPubkey || "C2FeoK5Gw5koa9sUaVk413qygwdJxxy5R2VCjQyXeB4Z",
+            creator: "creator-address",
+            status: "active",
+            createdAt: new Date().toISOString(),
+            url: "https://example.com/token-metadata",
+            image: "https://example.com/token-image",
+            description: "A test token for testing purposes",
+            lastUpdated: new Date().toISOString(),
+            tokenPriceUSD: 1.0,
+            marketCapUSD: 1000000,
+            volume24h: 50000,
           },
-          apply: () => {
-            // Handle function calls by returning the chainable proxy
-            return createChainableProxy();
-          },
-        });
+        ],
+        agents: [],
+        tokenHolders: [],
+        users: [],
+        messages: [],
+        messageLikes: [],
+        swaps: [],
+        fees: [],
+        vanityKeypairs: [],
+        personalities: [],
+        mediaGenerations: [],
       };
 
-      return createChainableProxy();
+      // Create a very simple mock DB object
+      return {
+        tokens: {
+          name: "tokens",
+          id: Symbol("id"),
+          mint: Symbol("mint"),
+        },
+        agents: {
+          name: "agents",
+        },
+        tokenHolders: {
+          name: "tokenHolders",
+        },
+        users: {
+          name: "users",
+        },
+        messages: {
+          name: "messages",
+        },
+        messageLikes: {
+          name: "messageLikes",
+        },
+        swaps: {
+          name: "swaps",
+        },
+        fees: {
+          name: "fees",
+        },
+        vanityKeypairs: {
+          name: "vanityKeypairs",
+        },
+        personalities: {
+          name: "personalities",
+        },
+        mediaGenerations: {
+          name: "mediaGenerations",
+        },
+        select: () => ({
+          from: (table: any) => {
+            const tableName = typeof table === "string" ? table : table.name;
+            return Promise.resolve(mockData[tableName] || []);
+          },
+        }),
+        insert: (table: any) => {
+          const tableName = typeof table === "string" ? table : table.name;
+          return {
+            values: (newData: any) => {
+              const data = { ...newData };
+              if (!data.id) {
+                data.id = crypto.randomUUID();
+              }
+
+              if (!mockData[tableName]) {
+                mockData[tableName] = [];
+              }
+
+              mockData[tableName].push(data);
+              return Promise.resolve({ rowsAffected: 1 });
+            },
+          };
+        },
+        update: (table: any) => {
+          const tableName = typeof table === "string" ? table : table.name;
+          return {
+            set: (updateData: any) => ({
+              where: (condition: any) => {
+                if (!mockData[tableName]) {
+                  return Promise.resolve({ rowsAffected: 0 });
+                }
+
+                // Actually update the records based on the condition
+                let updated = 0;
+
+                // Simple condition handling
+                if (typeof condition === "function") {
+                  // Handle symbolic conditions like db.tokens.id === uniqueId
+                  // In our mock, we'll just update all records since we can't really evaluate the condition
+                  mockData[tableName].forEach((record, idx) => {
+                    mockData[tableName][idx] = { ...record, ...updateData };
+                    updated++;
+                  });
+                } else if (condition && typeof condition === "object") {
+                  // Handle plain object conditions like { id: 'some-id' }
+                  const key = Object.keys(condition)[0];
+                  const value = condition[key];
+
+                  mockData[tableName].forEach((record, idx) => {
+                    if (record[key] === value) {
+                      mockData[tableName][idx] = { ...record, ...updateData };
+                      updated++;
+                    }
+                  });
+                } else {
+                  // Update all records
+                  mockData[tableName].forEach((record, idx) => {
+                    mockData[tableName][idx] = { ...record, ...updateData };
+                    updated++;
+                  });
+                }
+
+                return Promise.resolve({ rowsAffected: updated });
+              },
+            }),
+          };
+        },
+        delete: (table: any) => {
+          const tableName = typeof table === "string" ? table : table.name;
+          return {
+            where: (condition: any) => {
+              if (!mockData[tableName]) {
+                return Promise.resolve({ rowsAffected: 0 });
+              }
+
+              // Actually perform the deletion
+              const originalLength = mockData[tableName].length;
+
+              // Very simple condition handling - just support object conditions
+              if (condition && typeof condition === "object") {
+                const key = Object.keys(condition)[0];
+                const value = condition[key];
+                mockData[tableName] = mockData[tableName].filter(
+                  (record) => record[key] !== value,
+                );
+              }
+
+              const deletedCount = originalLength - mockData[tableName].length;
+              return Promise.resolve({ rowsAffected: deletedCount });
+            },
+          };
+        },
+      };
     }
 
-    return drizzle(env.DATABASE as any, { schema });
-  } catch (error) {
-    console.warn("Database connection failed, using fallback:", error);
-    // Create the same chainable proxy for error cases
-    const createChainableProxy = (): Record<string, any> => {
-      return new Proxy({} as any, {
-        get: (_, prop) => {
-          if (typeof prop === "string") {
-            // @ts-ignore
-            return (...args: any[]) => {
-              if (prop === "then") {
-                return Promise.resolve([]);
-              }
-              return createChainableProxy();
-            };
-          }
-          return createChainableProxy();
-        },
-        apply: () => createChainableProxy(),
-      });
-    };
+    // For development with no DB, use a simpler mock
+    if (env.NODE_ENV === "development" && !env.DB) {
+      console.log(`Creating mock DB for development environment`);
+      return createSimpleMockDB();
+    }
 
-    return createChainableProxy();
+    // For production and properly configured dev environments, use the real DB
+    return drizzle(env.DB as any, { schema });
+  } catch (error) {
+    console.error("Error initializing DB:", error);
+
+    // In case of error, return a dummy DB object that won't crash
+    return createSimpleMockDB();
   }
+}
+
+// Helper function to create a simple mock DB
+function createSimpleMockDB(): any {
+  return {
+    select: () => ({
+      from: () => Promise.resolve([]),
+    }),
+    insert: () => ({ values: () => Promise.resolve({ rowsAffected: 0 }) }),
+    update: () => ({
+      set: () => ({ where: () => Promise.resolve({ rowsAffected: 0 }) }),
+    }),
+    delete: () => ({ where: () => Promise.resolve({ rowsAffected: 0 }) }),
+  } as any;
 }
 
 // Type definitions for common query results

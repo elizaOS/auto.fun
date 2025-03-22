@@ -220,4 +220,18 @@ CREATE INDEX IF NOT EXISTS idx_token_holders_amount ON token_holders(amount);
 
 CREATE INDEX IF NOT EXISTS idx_agents_owner ON agents(owner_address);
 CREATE INDEX IF NOT EXISTS idx_agents_contract ON agents(contract_address);
-CREATE INDEX IF NOT EXISTS idx_agents_task ON agents(ecs_task_id); 
+CREATE INDEX IF NOT EXISTS idx_agents_task ON agents(ecs_task_id);
+
+-- Create cache prices table
+CREATE TABLE IF NOT EXISTS cache_prices (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  price TEXT NOT NULL,
+  timestamp INTEGER NOT NULL DEFAULT (unixepoch()),
+  expires_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_cache_prices_type ON cache_prices(type);
+CREATE INDEX IF NOT EXISTS idx_cache_prices_symbol ON cache_prices(symbol);
+CREATE INDEX IF NOT EXISTS idx_cache_prices_expires ON cache_prices(expires_at); 

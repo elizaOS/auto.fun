@@ -39,14 +39,14 @@ export async function uploadToCloudflare(
     const uploadPromise = env.R2.put(objectKey, objectData, {
       httpMetadata: {
         contentType,
-      }
+      },
     });
-    
+
     // Create a timeout promise
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error("Upload timed out")), timeout);
     });
-    
+
     // Race the promises to implement timeout
     await Promise.race([uploadPromise, timeoutPromise]);
 
@@ -60,7 +60,7 @@ export async function uploadToCloudflare(
     } else {
       logger.error("Cloudflare upload failed:", error);
     }
-    
+
     // Return a fallback URL instead of throwing
     const objectKey = crypto.randomUUID();
     return `https://fallback-storage.example.com/${objectKey}`;

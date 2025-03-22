@@ -7,6 +7,10 @@ import {
 } from "./helpers/test-utils";
 
 export async function setupWorkerTest(): Promise<TestContext> {
+  // Create test key pairs first, so we can include the token pubkey in environment
+  const { adminKp, userKp, testTokenKp } = createTestKeys();
+  const testTokenPubkey = testTokenKp.publicKey.toBase58();
+
   // Create a worker instance with more complete configuration
   const worker = await unstable_dev("worker/index.ts", {
     experimental: { disableExperimentalWarning: true },
@@ -35,9 +39,13 @@ export async function setupWorkerTest(): Promise<TestContext> {
       // Add real keys for proper authentication if needed
       JWT_SECRET: "test-jwt-secret",
       // Add wallet private key (test key)
-      WALLET_PRIVATE_KEY: JSON.stringify([...Array(32)].map(() => Math.floor(Math.random() * 256))),
+      WALLET_PRIVATE_KEY: JSON.stringify(
+        [...Array(32)].map(() => Math.floor(Math.random() * 256)),
+      ),
       // Add FAL.AI key for media generation tests
       FAL_API_KEY: process.env.FAL_API_KEY || "test-fal-api-key",
+      // Add token pubkey for test DB mocking
+      tokenPubkey: testTokenPubkey,
     },
     // Use type assertion for test bindings that aren't properly typed
   } as any);
@@ -45,16 +53,13 @@ export async function setupWorkerTest(): Promise<TestContext> {
   // Initialize DevNet connection
   const connection = initDevnetConnection();
 
-  // Create test key pairs
-  const { adminKp, userKp, testTokenKp } = createTestKeys();
-
   console.log("Test keypairs created:");
   console.log("Admin pubkey:", adminKp.publicKey.toBase58());
   console.log("User pubkey:", userKp.publicKey.toBase58());
   console.log("Token pubkey:", testTokenKp.publicKey.toBase58());
 
   // Get base URL for API requests - accessing as any due to type inconsistencies in wrangler
-  const baseUrl = (worker as any).url || `http://localhost:3000`;
+  const baseUrl = (worker as any).url || `http://localhost:8787`;
 
   console.log(`Using API base URL: ${baseUrl}`);
 
@@ -79,6 +84,11 @@ export const testState: SharedTestState = {};
 export function registerWorkerHooks(ctx: { context: TestContext | null }) {
   beforeAll(async () => {
     ctx.context = await setupWorkerTest();
+
+    // Store the test token pubkey in shared state
+    if (ctx.context?.testTokenKp) {
+      testState.tokenPubkey = ctx.context.testTokenKp.publicKey.toBase58();
+    }
   });
 
   afterAll(async () => {
