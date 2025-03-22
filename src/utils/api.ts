@@ -3,12 +3,6 @@ import { QueryClient } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient();
 
-// Log the environment variables to help with debugging
-console.log("VITE_API_URL:", import.meta.env.VITE_API_URL);
-console.log("MODE:", import.meta.env.MODE);
-console.log("DEV:", import.meta.env.DEV);
-console.log("PROD:", import.meta.env.PROD);
-
 // Determine the API URL with proper fallbacks
 const hostname = window.location.hostname;
 
@@ -31,11 +25,7 @@ if (!apiUrl) {
     apiUrl = 'https://api.autofun.pages.dev';
   }
 }
-
-console.log('Using API URL:', apiUrl);
-
 const BASE_URL = apiUrl;
-export const HELIUS_RPC_URL = import.meta.env.VITE_RPC_URL;
 
 const fetcher = async (
   endpoint: string,

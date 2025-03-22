@@ -4,11 +4,6 @@ import viteCompression from "vite-plugin-compression";
 import preact from "@preact/preset-vite";
 /** @ts-ignore */
 import { fileURLToPath, URL } from "url";
-import { config } from "dotenv";
-
-config();
-
-console.log("VITE_API_URL is", process.env.VITE_API_URL);
 
 // https://vite.dev/config/
 export default defineConfig({
