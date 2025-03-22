@@ -37,17 +37,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # Apply migrations to D1 database before deploying
+      - name: Apply D1 migrations
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          command: d1 execute autofun${{ env.DB_SUFFIX }} --file=./drizzle/migrations.sql
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-
       - name: Install dependencies
         run: bun install
-
-    #   - name: Lint
-    #     run: bun run lint
-
       - name: Generate Drizzle migrations
         run: bun run generate
       
@@ -75,22 +79,11 @@ jobs:
             echo "NODE_ENV=development" >> $GITHUB_ENV
             echo "DATABASE_NAME_DEV=autofun-dev" >> $GITHUB_ENV
           fi
-
       # Build frontend before deploying backend
       - name: Build frontend
         run: bun run build
         env:
           NODE_ENV: ${{ env.NODE_ENV }}
-
-      # Apply migrations to D1 database before deploying
-      - name: Apply D1 migrations
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: d1 execute autofun${{ env.DB_SUFFIX }} --file=./drizzle/migrations.sql
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
 
       # Publish Durable Object migrations
       - name: Publish Durable Object migrations
