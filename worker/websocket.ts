@@ -20,7 +20,7 @@ const WebSocketReadyState = {
   CONNECTING: 0,
   OPEN: 1,
   CLOSING: 2,
-  CLOSED: 3
+  CLOSED: 3,
 };
 
 export class WebSocketDO {
@@ -36,24 +36,27 @@ export class WebSocketDO {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
-    
+
     // Special internal endpoints for broadcasting to rooms
-    if (path === '/broadcast') {
-      const { room, message } = await request.json() as { room: string, message: any };
+    if (path === "/broadcast") {
+      const { room, message } = (await request.json()) as {
+        room: string;
+        message: any;
+      };
       this.broadcastToRoom(room, message);
-      return new Response('Message broadcasted', { status: 200 });
+      return new Response("Message broadcasted", { status: 200 });
     }
-    
-    if (path === '/send') {
-      await request.json() as { message: any };
+
+    if (path === "/send") {
+      (await request.json()) as { message: any };
       // This would need the specific session ID, which we'd pass in the request
-      return new Response('Direct message sent', { status: 200 });
+      return new Response("Direct message sent", { status: 200 });
     }
-    
+
     // Handle WebSocket upgrade
-    const upgradeHeader = request.headers.get('Upgrade');
-    if (!upgradeHeader || upgradeHeader !== 'websocket') {
-      return new Response('Expected Upgrade: websocket', { status: 426 });
+    const upgradeHeader = request.headers.get("Upgrade");
+    if (!upgradeHeader || upgradeHeader !== "websocket") {
+      return new Response("Expected Upgrade: websocket", { status: 426 });
     }
 
     // Create the WebSocket pair, using the WebSocketPair global
@@ -61,31 +64,31 @@ export class WebSocketDO {
     const pair = new WebSocketPair() as CFWebSocketPair;
     const server = pair[1] as CFWebSocket;
     const client = pair[0];
-    
+
     // Get a unique session ID
-    const sessionId = request.headers.get('X-Client-ID') || crypto.randomUUID();
-    
+    const sessionId = request.headers.get("X-Client-ID") || crypto.randomUUID();
+
     // Accept the WebSocket connection
     server.accept();
-    
+
     // Store the server WebSocket
     this.sessions.set(sessionId, server);
 
     // Set up event handlers for the WebSocket
-    server.addEventListener('message', async (event: { data: string }) => {
+    server.addEventListener("message", async (event: { data: string }) => {
       try {
         const data = JSON.parse(event.data);
         await this.handleMessage(sessionId, data);
       } catch (error) {
-        console.error('Error handling WebSocket message:', error);
+        console.error("Error handling WebSocket message:", error);
       }
     });
 
-    server.addEventListener('close', () => {
+    server.addEventListener("close", () => {
       this.handleClose(sessionId);
     });
 
-    server.addEventListener('error', () => {
+    server.addEventListener("error", () => {
       this.handleClose(sessionId);
     });
 
@@ -93,23 +96,21 @@ export class WebSocketDO {
     return new Response(null, {
       status: 101,
       // @ts-ignore - WebSocket is a valid property for Cloudflare Workers Response init
-      webSocket: client
+      webSocket: client,
     });
   }
 
   private async handleMessage(sessionId: string, data: any): Promise<void> {
     // Handle messages from clients
-    if (data.type === 'subscribe') {
+    if (data.type === "subscribe") {
       const token = data.token;
       const roomName = `token-${token}`;
       this.joinRoom(sessionId, roomName);
       console.log(`Client ${sessionId} subscribed to ${roomName}`);
-    } 
-    else if (data.type === 'subscribeGlobal') {
-      this.joinRoom(sessionId, 'global');
+    } else if (data.type === "subscribeGlobal") {
+      this.joinRoom(sessionId, "global");
       console.log(`Client ${sessionId} subscribed to global updates`);
-    }
-    else if (data.type === 'unsubscribe') {
+    } else if (data.type === "unsubscribe") {
       const token = data.token;
       const roomName = `token-${token}`;
       this.leaveRoom(sessionId, roomName);
@@ -127,7 +128,7 @@ export class WebSocketDO {
         // Ignore errors when closing already closed connections
       }
       this.sessions.delete(sessionId);
-      
+
       // Remove from all rooms
       for (const [roomName, members] of this.rooms.entries()) {
         if (members.has(sessionId)) {
@@ -137,7 +138,7 @@ export class WebSocketDO {
           }
         }
       }
-      
+
       console.log(`Client ${sessionId} disconnected`);
     }
   }
@@ -162,18 +163,21 @@ export class WebSocketDO {
   private broadcastToRoom(roomName: string, message: any): void {
     const room = this.rooms.get(roomName);
     if (!room) return;
-    
+
     const messageStr = JSON.stringify(message);
-    
+
     for (const sessionId of room) {
       const session = this.sessions.get(sessionId);
       if (session && session.readyState === WebSocketReadyState.OPEN) {
         try {
           session.send(messageStr);
         } catch (error) {
-          console.error(`Error sending message to session ${sessionId}:`, error);
+          console.error(
+            `Error sending message to session ${sessionId}:`,
+            error,
+          );
         }
       }
     }
   }
-} 
+}

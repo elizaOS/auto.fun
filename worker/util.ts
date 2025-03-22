@@ -1,18 +1,31 @@
 import { BN, Program } from "@coral-xyz/anchor";
-import { fetchDigitalAsset } from '@metaplex-foundation/mpl-token-metadata';
-import { publicKey, Umi } from '@metaplex-foundation/umi';
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { ComputeBudgetProgram, Connection, Keypair, ParsedAccountData, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction, TransactionInstruction } from "@solana/web3.js";
+import { fetchDigitalAsset } from "@metaplex-foundation/mpl-token-metadata";
+import { publicKey, Umi } from "@metaplex-foundation/umi";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
+import {
+  ComputeBudgetProgram,
+  Connection,
+  Keypair,
+  ParsedAccountData,
+  PublicKey,
+  SystemProgram,
+  SYSVAR_RENT_PUBKEY,
+  Transaction,
+  TransactionInstruction,
+} from "@solana/web3.js";
 import { eq } from "drizzle-orm";
 import { Autodotfun } from "./target/types/autodotfun";
 import { calculateAmountOutBuy, calculateAmountOutSell } from "./tests/utils";
-import { CacheService } from './cache';
+import { CacheService } from "./cache";
 import { SEED_BONDING_CURVE, SEED_CONFIG } from "./constant";
 import { getDB, Token, tokenHolders, tokens } from "./db";
 import { Env } from "./env";
-import { calculateTokenMarketData, getSOLPrice } from './mcap';
-import { initSolanaConfig } from './solana';
-import { getWebSocketClient } from './websocket-client';
+import { calculateTokenMarketData, getSOLPrice } from "./mcap";
+import { initSolanaConfig } from "./solana";
+import { getWebSocketClient } from "./websocket-client";
 
 // Type definition for token metadata from JSON
 export interface TokenMetadataJson {
@@ -33,7 +46,7 @@ const FEE_BASIS_POINTS = 10000;
 export const getIoServer = (env?: Partial<Env>) => {
   // Create a mock env with needed properties
   const fullEnv = {
-    NETWORK: env?.NETWORK || 'mainnet',
+    NETWORK: env?.NETWORK || "mainnet",
   } as Env;
   return getWebSocketClient(fullEnv);
 };
@@ -41,7 +54,11 @@ export const getIoServer = (env?: Partial<Env>) => {
 /**
  * Fetches metadata with exponential backoff retry
  */
-export const fetchMetadataWithBackoff = async (umi: Umi, tokenAddress: string, env?: Env) => {
+export const fetchMetadataWithBackoff = async (
+  umi: Umi,
+  tokenAddress: string,
+  env?: Env,
+) => {
   // If env is provided, try to get from cache first
   if (env) {
     const cacheService = new CacheService(env);
@@ -56,45 +73,53 @@ export const fetchMetadataWithBackoff = async (umi: Umi, tokenAddress: string, e
   for (let i = 0; i < maxRetries; i++) {
     try {
       const metadata = await fetchDigitalAsset(umi, publicKey(tokenAddress));
-      
+
       // Cache the result if env is provided
       if (env) {
         const cacheService = new CacheService(env);
         await cacheService.setMetadata(tokenAddress, metadata, 3600); // Cache for 1 hour
       }
-      
+
       return metadata;
     } catch (error: any) {
       if (i === maxRetries - 1) throw error;
       const delay = Math.min(
         baseDelay * Math.pow(2, i) + Math.random() * 1000,
-        maxDelay
+        maxDelay,
       );
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 };
 
 export async function getTxIdAndCreatorFromTokenAddress(
   tokenAddress: string,
-  env?: Env
+  env?: Env,
 ) {
   console.log(`tokenAddress: ${tokenAddress}`);
 
   // Get a Solana config with the right environment
   const solanaConfig = initSolanaConfig(env);
-  
-  const transactionHistory = await solanaConfig.connection.getSignaturesForAddress(
-    new PublicKey(tokenAddress)
-  );
+
+  const transactionHistory =
+    await solanaConfig.connection.getSignaturesForAddress(
+      new PublicKey(tokenAddress),
+    );
 
   if (transactionHistory.length > 0) {
-    const tokenCreationTxId = transactionHistory[transactionHistory.length - 1].signature;
-    const transactionDetails = await solanaConfig.connection.getTransaction(tokenCreationTxId);
+    const tokenCreationTxId =
+      transactionHistory[transactionHistory.length - 1].signature;
+    const transactionDetails =
+      await solanaConfig.connection.getTransaction(tokenCreationTxId);
 
-    if (transactionDetails && transactionDetails.transaction && transactionDetails.transaction.message) {
+    if (
+      transactionDetails &&
+      transactionDetails.transaction &&
+      transactionDetails.transaction.message
+    ) {
       // The creator address is typically the first account in the transaction's account keys
-      const creatorAddress = transactionDetails.transaction.message.accountKeys[0].toBase58(); 
+      const creatorAddress =
+        transactionDetails.transaction.message.accountKeys[0].toBase58();
       return { tokenCreationTxId, creatorAddress };
     }
   }
@@ -106,26 +131,31 @@ export async function getTxIdAndCreatorFromTokenAddress(
  * Creates a new token record with all required data
  */
 export async function createNewTokenData(
-  txId: string, 
-  tokenAddress: string, 
+  txId: string,
+  tokenAddress: string,
   creatorAddress: string,
-  env?: Env
+  env?: Env,
 ): Promise<Partial<Token>> {
   try {
     // Get a Solana config with the right environment
     const solanaConfig = initSolanaConfig(env);
-    
-    const metadata = await fetchMetadataWithBackoff(solanaConfig.umi, tokenAddress, env);
+
+    const metadata = await fetchMetadataWithBackoff(
+      solanaConfig.umi,
+      tokenAddress,
+      env,
+    );
     logger.log(`Fetched metadata for token ${tokenAddress}:`);
 
     const [bondingCurvePda] = PublicKey.findProgramAddressSync(
       [Buffer.from(SEED_BONDING_CURVE), new PublicKey(tokenAddress).toBytes()],
-      solanaConfig.programId
+      solanaConfig.programId,
     );
 
     // Fetch the account data directly using the connection instead of Anchor program
-    const bondingCurveAccountInfo = await solanaConfig.connection.getAccountInfo(bondingCurvePda);
-    
+    const bondingCurveAccountInfo =
+      await solanaConfig.connection.getAccountInfo(bondingCurvePda);
+
     // Simple structure for the bondingCurve account data
     let bondingCurveAccount: any = null;
     if (bondingCurveAccountInfo && bondingCurveAccountInfo.data) {
@@ -140,9 +170,12 @@ export async function createNewTokenData(
     let additionalMetadata: TokenMetadataJson | null = null;
     try {
       const response = await fetch(metadata.metadata.uri);
-      additionalMetadata = await response.json() as TokenMetadataJson;
+      additionalMetadata = (await response.json()) as TokenMetadataJson;
     } catch (error) {
-      logger.error(`Failed to fetch IPFS metadata from URI: ${metadata.metadata.uri}`, error);
+      logger.error(
+        `Failed to fetch IPFS metadata from URI: ${metadata.metadata.uri}`,
+        error,
+      );
     }
 
     // Get TOKEN_DECIMALS from env if available, otherwise use default
@@ -150,26 +183,38 @@ export async function createNewTokenData(
 
     const solPrice = env ? await getSOLPrice(env) : await getSOLPrice();
 
-    if(!bondingCurveAccount) {
-      throw new Error(`Bonding curve account not found for token ${tokenAddress}`);
+    if (!bondingCurveAccount) {
+      throw new Error(
+        `Bonding curve account not found for token ${tokenAddress}`,
+      );
     }
 
-    const currentPrice = Number(bondingCurveAccount.reserveToken) > 0 ? 
-      (Number(bondingCurveAccount.reserveLamport) / 1e9) / 
-      (Number(bondingCurveAccount.reserveToken) / Math.pow(10, TOKEN_DECIMALS))
-      : 0;
+    const currentPrice =
+      Number(bondingCurveAccount.reserveToken) > 0
+        ? Number(bondingCurveAccount.reserveLamport) /
+          1e9 /
+          (Number(bondingCurveAccount.reserveToken) /
+            Math.pow(10, TOKEN_DECIMALS))
+        : 0;
 
     const tokenPriceInSol = currentPrice / Math.pow(10, TOKEN_DECIMALS);
-    const tokenPriceUSD = currentPrice > 0 ? 
-        (tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)) : 0;
+    const tokenPriceUSD =
+      currentPrice > 0
+        ? tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)
+        : 0;
 
     // Get TOKEN_SUPPLY from env if available, otherwise use default
-    const tokenSupply = env?.TOKEN_SUPPLY ? Number(env.TOKEN_SUPPLY) : 1000000000000;
-    const marketCapUSD = (tokenSupply / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD;
+    const tokenSupply = env?.TOKEN_SUPPLY
+      ? Number(env.TOKEN_SUPPLY)
+      : 1000000000000;
+    const marketCapUSD =
+      (tokenSupply / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD;
 
     // Get virtual reserves from env if available, otherwise use default
-    const virtualReserves = env?.VIRTUAL_RESERVES ? Number(env.VIRTUAL_RESERVES) : 100000000;
-    
+    const virtualReserves = env?.VIRTUAL_RESERVES
+      ? Number(env.VIRTUAL_RESERVES)
+      : 100000000;
+
     // Get curve limit from env if available, otherwise use default
     const curveLimit = env?.CURVE_LIMIT ? Number(env.CURVE_LIMIT) : 1000000000;
 
@@ -178,26 +223,35 @@ export async function createNewTokenData(
       name: metadata.metadata.name,
       ticker: metadata.metadata.symbol,
       url: metadata.metadata.uri,
-      image: additionalMetadata?.image || '',
-      twitter: additionalMetadata?.twitter || '',
-      telegram: additionalMetadata?.telegram || '',
-      website: additionalMetadata?.website || '',
-      description: additionalMetadata?.description || '',
+      image: additionalMetadata?.image || "",
+      twitter: additionalMetadata?.twitter || "",
+      telegram: additionalMetadata?.telegram || "",
+      website: additionalMetadata?.website || "",
+      description: additionalMetadata?.description || "",
       mint: tokenAddress,
       creator: creatorAddress,
       reserveAmount: Number(bondingCurveAccount.reserveToken),
       reserveLamport: Number(bondingCurveAccount.reserveLamport),
       virtualReserves: virtualReserves,
       liquidity:
-        ((Number(bondingCurveAccount.reserveLamport) / 1e9 * solPrice) + 
-        (Number(bondingCurveAccount.reserveToken) / Math.pow(10, TOKEN_DECIMALS) * tokenPriceUSD)),
-      currentPrice: (Number(bondingCurveAccount.reserveLamport) / 1e9) / (Number(bondingCurveAccount.reserveToken) / Math.pow(10, TOKEN_DECIMALS)),
+        (Number(bondingCurveAccount.reserveLamport) / 1e9) * solPrice +
+        (Number(bondingCurveAccount.reserveToken) /
+          Math.pow(10, TOKEN_DECIMALS)) *
+          tokenPriceUSD,
+      currentPrice:
+        Number(bondingCurveAccount.reserveLamport) /
+        1e9 /
+        (Number(bondingCurveAccount.reserveToken) /
+          Math.pow(10, TOKEN_DECIMALS)),
       marketCapUSD: marketCapUSD,
       tokenPriceUSD: tokenPriceUSD,
       solPriceUSD: solPrice,
-      curveProgress: ((Number(bondingCurveAccount.reserveLamport) - virtualReserves) / (curveLimit - virtualReserves)) * 100,
+      curveProgress:
+        ((Number(bondingCurveAccount.reserveLamport) - virtualReserves) /
+          (curveLimit - virtualReserves)) *
+        100,
       curveLimit: curveLimit,
-      status: 'active',
+      status: "active",
       priceChange24h: 0,
       price24hAgo: tokenPriceUSD,
       volume24h: 0,
@@ -209,12 +263,12 @@ export async function createNewTokenData(
       lastUpdated: new Date().toISOString(),
     };
 
-    getIoServer(env).to('global').emit('newToken', tokenData);
+    getIoServer(env).to("global").emit("newToken", tokenData);
 
     return tokenData;
   } catch (error) {
-    logger.error('Error processing new token log:', error);
-    throw new Error('Error processing new token log: ' + error);
+    logger.error("Error processing new token log:", error);
+    throw new Error("Error processing new token log: " + error);
   }
 }
 
@@ -224,19 +278,22 @@ export async function createNewTokenData(
  * @param env Cloudflare worker environment
  * @returns Array of tokens with updated market data
  */
-export async function bulkUpdatePartialTokens(tokens: Token[], env: Env): Promise<Token[]> {
+export async function bulkUpdatePartialTokens(
+  tokens: Token[],
+  env: Env,
+): Promise<Token[]> {
   if (!tokens || tokens.length === 0) {
     return [];
   }
 
   // Get SOL price once for all tokens
   const solPrice = await getSOLPrice(env);
-  
+
   // Process each token in parallel
-  const updatedTokensPromises = tokens.map(token => 
-    calculateTokenMarketData(token, solPrice)
+  const updatedTokensPromises = tokens.map((token) =>
+    calculateTokenMarketData(token, solPrice),
   );
-  
+
   // Wait for all updates to complete
   return Promise.all(updatedTokensPromises);
 }
@@ -247,30 +304,29 @@ export const createConfigTx = async (
   newConfig: any,
 
   connection: Connection,
-  program: Program<Autodotfun>
+  program: Program<Autodotfun>,
 ) => {
-
   const [configPda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_CONFIG)],
-    program.programId
+    program.programId,
   );
 
   console.log("configPda: ", configPda.toBase58());
 
   // Create compute budget instructions
-  const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({ 
-    units: 300000 // Increase compute units
+  const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({
+    units: 300000, // Increase compute units
   });
-  
+
   const addPriorityFee = ComputeBudgetProgram.setComputeUnitPrice({
-    microLamports: 50000 // Add priority fee
+    microLamports: 50000, // Add priority fee
   });
 
   // Get the transaction
   const configTx = await program.methods
     .configure(newConfig)
     .accounts({
-      payer: admin
+      payer: admin,
     })
     .transaction();
 
@@ -278,7 +334,7 @@ export const createConfigTx = async (
   configTx.instructions = [
     modifyComputeUnits,
     addPriorityFee,
-    ...configTx.instructions
+    ...configTx.instructions,
   ];
 
   configTx.feePayer = admin;
@@ -299,62 +355,66 @@ export const launchTokenTx = async (
 
   connection: Connection,
   program: Program<Autodotfun>,
-  env?: any
+  env?: any,
 ) => {
-    // Auth our user (register/login)
-    const apiUrl = env?.VITE_API_URL || (process.env.VITE_API_URL || 'https://api.auto.fun');
-    const jwt = await fetch(`${apiUrl}/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        address: user.toBase58()
-      })
-    })
+  // Auth our user (register/login)
+  const apiUrl =
+    env?.VITE_API_URL || process.env.VITE_API_URL || "https://api.auto.fun";
+  const jwt = await fetch(`${apiUrl}/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      address: user.toBase58(),
+    }),
+  });
 
-    if (!jwt.ok) {
-        throw new Error('Failed to register or login user wallet');
-    }
-    interface AuthResponse {
-      user: {
-        address: string;
-      };
-      token: string;
-    }
-
-    const jwtData = await jwt.json() as AuthResponse;
-
-    // Get pre-generated keypair from server
-    const response = await fetch(`${apiUrl}/vanity-keypair`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${jwtData.token}`
-      },
-      body: JSON.stringify({ address: user.toBase58() })
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to get vanity keypair');
-    }
-    interface VanityKeypairResponse {
+  if (!jwt.ok) {
+    throw new Error("Failed to register or login user wallet");
+  }
+  interface AuthResponse {
+    user: {
       address: string;
-      secretKey: number[];
-    }
-    const { secretKey } = await response.json() as VanityKeypairResponse;
-    const tokenKp = Keypair.fromSecretKey(new Uint8Array(secretKey));
- 
-   console.log("Using pre-generated vanity address:", tokenKp.publicKey.toBase58());
+    };
+    token: string;
+  }
+
+  const jwtData = (await jwt.json()) as AuthResponse;
+
+  // Get pre-generated keypair from server
+  const response = await fetch(`${apiUrl}/vanity-keypair`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${jwtData.token}`,
+    },
+    body: JSON.stringify({ address: user.toBase58() }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to get vanity keypair");
+  }
+  interface VanityKeypairResponse {
+    address: string;
+    secretKey: number[];
+  }
+  const { secretKey } = (await response.json()) as VanityKeypairResponse;
+  const tokenKp = Keypair.fromSecretKey(new Uint8Array(secretKey));
+
+  console.log(
+    "Using pre-generated vanity address:",
+    tokenKp.publicKey.toBase58(),
+  );
 
   const [configPda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_CONFIG)],
-    program.programId
+    program.programId,
   );
 
   console.log("configPda: ", configPda.toBase58());
   const configAccount = await program.account.config.fetch(configPda);
-  
+
   // Send the transaction to launch a token
   const tx = await program.methods
     .launch(
@@ -366,12 +426,12 @@ export const launchTokenTx = async (
       //  metadata
       name,
       symbol,
-      uri
+      uri,
     )
     .accounts({
       creator: user,
       token: tokenKp.publicKey,
-      teamWallet: configAccount.teamWallet
+      teamWallet: configAccount.teamWallet,
     })
     .transaction();
 
@@ -381,7 +441,7 @@ export const launchTokenTx = async (
   tx.sign(tokenKp);
 
   return tx;
-}
+};
 
 export const swapTx = async (
   user: PublicKey,
@@ -390,43 +450,52 @@ export const swapTx = async (
   style: number,
   slippageBps: number = 100,
   connection: Connection,
-  program: Program<Autodotfun>
+  program: Program<Autodotfun>,
 ) => {
   const [configPda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_CONFIG)],
-    program.programId
+    program.programId,
   );
   const configAccount = await program.account.config.fetch(configPda);
   const [bondingCurvePda] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_BONDING_CURVE), token.toBytes()],
-    program.programId
+    program.programId,
   );
   const curve = await program.account.bondingCurve.fetch(bondingCurvePda);
 
   // Apply platform fee
-  const feePercent = style === 1 ? Number(configAccount.platformSellFee) : Number(configAccount.platformBuyFee);
-  const adjustedAmount = Math.floor(amount * (FEE_BASIS_POINTS - feePercent) / FEE_BASIS_POINTS);
+  const feePercent =
+    style === 1
+      ? Number(configAccount.platformSellFee)
+      : Number(configAccount.platformBuyFee);
+  const adjustedAmount = Math.floor(
+    (amount * (FEE_BASIS_POINTS - feePercent)) / FEE_BASIS_POINTS,
+  );
 
   // Calculate expected output
   let estimatedOutput;
-  if (style === 0) { // Buy
+  if (style === 0) {
+    // Buy
     estimatedOutput = calculateAmountOutBuy(
       curve.reserveToken.toNumber(),
-      adjustedAmount, 
+      adjustedAmount,
       curve.reserveLamport.toNumber(),
-      feePercent
+      feePercent,
     );
-  } else { // Sell
+  } else {
+    // Sell
     estimatedOutput = calculateAmountOutSell(
       curve.reserveLamport.toNumber(),
       adjustedAmount,
       feePercent,
-      curve.reserveToken.toNumber() 
+      curve.reserveToken.toNumber(),
     );
   }
 
   // Apply slippage to estimated output
-  const minOutput = new BN(Math.floor(estimatedOutput * (10000 - slippageBps) / 10000));
+  const minOutput = new BN(
+    Math.floor((estimatedOutput * (10000 - slippageBps)) / 10000),
+  );
 
   const deadline = Math.floor(Date.now() / 1000) + 120;
 
@@ -435,7 +504,7 @@ export const swapTx = async (
     .accounts({
       teamWallet: configAccount.teamWallet,
       user,
-      tokenMint: token
+      tokenMint: token,
     })
     .transaction();
 
@@ -443,21 +512,20 @@ export const swapTx = async (
   tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
 
   return tx;
-}
+};
 
 export const withdrawTx = async (
   user: PublicKey,
   token: PublicKey,
 
   connection: Connection,
-  program: Program<Autodotfun>
+  program: Program<Autodotfun>,
 ) => {
-
   const tx = await program.methods
     .withdraw()
     .accounts({
       admin: user,
-      tokenMint: token
+      tokenMint: token,
     })
     .transaction();
 
@@ -465,25 +533,28 @@ export const withdrawTx = async (
   tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
 
   return tx;
-}
+};
 
 // Get RPC URL based on the environment
 export const getRpcUrl = (env: any) => {
-  return env.NETWORK === 'devnet' ? env.DEVNET_SOLANA_RPC_URL : env.MAINNET_SOLANA_RPC_URL;
-}
+  return env.NETWORK === "devnet"
+    ? env.DEVNET_SOLANA_RPC_URL
+    : env.MAINNET_SOLANA_RPC_URL;
+};
 
 // For compatibility with existing code that doesn't pass env
 export const getLegacyRpcUrl = () => {
   // Fallback URLs if called without proper env
-  return process.env.NETWORK === 'devnet' ? 
-    (process.env.DEVNET_SOLANA_RPC_URL || 'https://api.devnet.solana.com') : 
-    (process.env.MAINNET_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com');
-}
+  return process.env.NETWORK === "devnet"
+    ? process.env.DEVNET_SOLANA_RPC_URL || "https://api.devnet.solana.com"
+    : process.env.MAINNET_SOLANA_RPC_URL ||
+        "https://api.mainnet-beta.solana.com";
+};
 
 // Generate a logger that works with Cloudflare Workers
 export const logger = {
   log: (...args: any[]) => console.log(...args),
-  error: (...args: any[]) => console.error(...args)
+  error: (...args: any[]) => console.error(...args),
 };
 
 // Execute a transaction
@@ -491,65 +562,72 @@ export const execTx = async (
   transaction: Transaction,
   connection: Connection,
   payer: any,
-  commitment: "confirmed" | "finalized" = 'confirmed'
+  commitment: "confirmed" | "finalized" = "confirmed",
 ) => {
   try {
     //  Sign the transaction with payer wallet
     const signedTx = await payer.signTransaction(transaction);
 
     // Serialize, send and confirm the transaction
-    const rawTransaction = signedTx.serialize()
+    const rawTransaction = signedTx.serialize();
 
     logger.log(await connection.simulateTransaction(signedTx));
 
     const txid = await connection.sendRawTransaction(rawTransaction, {
       skipPreflight: true,
       maxRetries: 2,
-      preflightCommitment: "processed"
+      preflightCommitment: "processed",
     });
 
-    logger.log(`https://solscan.io/tx/${txid}?cluster=custom&customUrl=${connection.rpcEndpoint}`);
+    logger.log(
+      `https://solscan.io/tx/${txid}?cluster=custom&customUrl=${connection.rpcEndpoint}`,
+    );
 
     const confirmed = await connection.confirmTransaction(txid, commitment);
 
     if (confirmed.value.err) {
-      logger.error("err ", confirmed.value.err)
+      logger.error("err ", confirmed.value.err);
     }
 
     return txid;
   } catch (e) {
     console.log(e);
   }
-}
+};
 
 export async function execWithdrawTx(
   tx: Transaction,
   connection: Connection,
   wallet: any,
-  maxRetries = 1
+  maxRetries = 1,
 ): Promise<{ signature: string; logs: string[] }> {
   let lastError: Error | null = null;
-  
+
   for (let i = 0; i < maxRetries; i++) {
     try {
       const signedTx = await wallet.signTransaction(tx);
-      
+
       // Simulate before sending
       const simulation = await connection.simulateTransaction(signedTx);
       if (simulation.value.err) {
-        throw new Error(`Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`);
+        throw new Error(
+          `Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`,
+        );
       }
 
-      logger.log(simulation)
+      logger.log(simulation);
       const logs = simulation.value.logs || [];
-      
-      const signature = await connection.sendRawTransaction(signedTx.serialize(), {
-        skipPreflight: true,
-        maxRetries: 2,
-        preflightCommitment: 'confirmed'
-      });
 
-      if(!signature) {
+      const signature = await connection.sendRawTransaction(
+        signedTx.serialize(),
+        {
+          skipPreflight: true,
+          maxRetries: 2,
+          preflightCommitment: "confirmed",
+        },
+      );
+
+      if (!signature) {
         throw new Error("Transaction failed to send");
       }
 
@@ -558,57 +636,71 @@ export async function execWithdrawTx(
         {
           signature,
           blockhash: tx.recentBlockhash!,
-          lastValidBlockHeight: (await connection.getLatestBlockhash()).lastValidBlockHeight
+          lastValidBlockHeight: (await connection.getLatestBlockhash())
+            .lastValidBlockHeight,
         },
-        'confirmed'
+        "confirmed",
       );
 
       // Check if we got ProgramFailedToComplete but program actually succeeded
-      if (confirmation.value.err === 'ProgramFailedToComplete' || 
-          (confirmation.value.err && 
-           JSON.stringify(confirmation.value.err).includes('ProgramFailedToComplete'))) {
-          
-          // Get transaction logs to verify actual execution
-          const txInfo = await connection.getTransaction(signature, {
-              maxSupportedTransactionVersion: 0
-          });
-          
-          if (txInfo?.meta?.logMessages?.some(log => 
-              log.includes(`Program success`))) {
-              logger.log('Transaction succeeded despite ProgramFailedToComplete error');
-              return { signature, logs: txInfo.meta.logMessages };
-          }
+      if (
+        confirmation.value.err === "ProgramFailedToComplete" ||
+        (confirmation.value.err &&
+          JSON.stringify(confirmation.value.err).includes(
+            "ProgramFailedToComplete",
+          ))
+      ) {
+        // Get transaction logs to verify actual execution
+        const txInfo = await connection.getTransaction(signature, {
+          maxSupportedTransactionVersion: 0,
+        });
+
+        if (
+          txInfo?.meta?.logMessages?.some((log) =>
+            log.includes(`Program success`),
+          )
+        ) {
+          logger.log(
+            "Transaction succeeded despite ProgramFailedToComplete error",
+          );
+          return { signature, logs: txInfo.meta.logMessages };
+        }
       } else if (confirmation.value.err) {
-          throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+        throw new Error(
+          `Transaction failed: ${JSON.stringify(confirmation.value.err)}`,
+        );
       }
 
-      logger.log('Transaction succeeded');
+      logger.log("Transaction succeeded");
 
       return { signature, logs: logs };
-
     } catch (error: any) {
       lastError = error;
       logger.error(`Withdrawal execution attempt ${i + 1} failed:`, error);
-      
-      if (!error.message?.includes('ProgramFailedToComplete') && 
-          (error.message?.includes('Transaction was not confirmed') ||
-           error.message?.includes('Block height exceeded'))) {
-          await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, i), 15000)));
-          continue;
+
+      if (
+        !error.message?.includes("ProgramFailedToComplete") &&
+        (error.message?.includes("Transaction was not confirmed") ||
+          error.message?.includes("Block height exceeded"))
+      ) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, Math.min(1000 * Math.pow(2, i), 15000)),
+        );
+        continue;
       }
-      
+
       throw error;
     }
   }
-  
-  throw lastError || new Error('Max retries exceeded');
+
+  throw lastError || new Error("Max retries exceeded");
 }
 
 export const createAssociatedTokenAccountInstruction = (
   associatedTokenAddress: PublicKey,
   payer: PublicKey,
   walletAddress: PublicKey,
-  splTokenMintAddress: PublicKey
+  splTokenMintAddress: PublicKey,
 ) => {
   const keys = [
     { pubkey: payer, isSigner: true, isWritable: true },
@@ -636,19 +728,19 @@ export const createAssociatedTokenAccountInstruction = (
 
 export const getAssociatedTokenAccount = (
   ownerPubkey: PublicKey,
-  mintPk: PublicKey
+  mintPk: PublicKey,
 ): PublicKey => {
-  const associatedTokenAccountPubkey = (PublicKey.findProgramAddressSync(
+  const associatedTokenAccountPubkey = PublicKey.findProgramAddressSync(
     [
       ownerPubkey.toBytes(),
       TOKEN_PROGRAM_ID.toBytes(),
       mintPk.toBytes(), // mint address
     ],
-    ASSOCIATED_TOKEN_PROGRAM_ID
-  ))[0];
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+  )[0];
 
   return associatedTokenAccountPubkey;
-}
+};
 
 export const getATokenAccountsNeedCreate = async (
   connection: Connection,
@@ -700,76 +792,76 @@ export function splitIntoLines(text?: string): string[] | undefined {
 }
 
 export async function updateHoldersCache(env: Env, mint: string) {
-    try {
-      const db = getDB(env);
-      const connection = new Connection(getRpcUrl(env));
-      
-      // Get token holders from Solana
-      const accounts = await connection.getParsedProgramAccounts(
-        new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'), // Token program
-        {
-          filters: [
-            {
-              dataSize: 165, // Size of token account
+  try {
+    const db = getDB(env);
+    const connection = new Connection(getRpcUrl(env));
+
+    // Get token holders from Solana
+    const accounts = await connection.getParsedProgramAccounts(
+      new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), // Token program
+      {
+        filters: [
+          {
+            dataSize: 165, // Size of token account
+          },
+          {
+            memcmp: {
+              offset: 0,
+              bytes: mint, // Mint address
             },
-            {
-              memcmp: {
-                offset: 0,
-                bytes: mint, // Mint address
-              },
-            },
-          ],
-        }
-      );
-      
-      // Process accounts
-      let totalTokens = 0;
-      const holders: any[] = [];
-      
-      for (const account of accounts) {
-        const parsedAccountInfo = account.account.data as ParsedAccountData;
-        const tokenBalance = parsedAccountInfo.parsed?.info?.tokenAmount?.uiAmount || 0;
-        
-        if (tokenBalance > 0) {
-          totalTokens += tokenBalance;
-          holders.push({
-            address: parsedAccountInfo.parsed?.info?.owner,
-            amount: tokenBalance
-          });
-        }
+          },
+        ],
+      },
+    );
+
+    // Process accounts
+    let totalTokens = 0;
+    const holders: any[] = [];
+
+    for (const account of accounts) {
+      const parsedAccountInfo = account.account.data as ParsedAccountData;
+      const tokenBalance =
+        parsedAccountInfo.parsed?.info?.tokenAmount?.uiAmount || 0;
+
+      if (tokenBalance > 0) {
+        totalTokens += tokenBalance;
+        holders.push({
+          address: parsedAccountInfo.parsed?.info?.owner,
+          amount: tokenBalance,
+        });
       }
-      
-      // Calculate percentages and prepare for database
-      const holderRecords = holders.map(holder => ({
-        id: crypto.randomUUID(),
-        mint,
-        address: holder.address,
-        amount: holder.amount,
-        percentage: (holder.amount / totalTokens) * 100,
-        lastUpdated: new Date().toISOString()
-      }));
-      
-      // Remove old holders data
-      await db.delete(tokenHolders)
-        .where(eq(tokenHolders.mint, mint));
-      
-      // Insert new holders data
-      if (holderRecords.length > 0) {
-        await db.insert(tokenHolders)
-          .values(holderRecords);
-      }
-      
-      // Update the token with holder count
-      await db.update(tokens)
-        .set({ 
-          holderCount: holderRecords.length,
-          lastUpdated: new Date().toISOString()
-        })
-        .where(eq(tokens.mint, mint));
-        
-      return holderRecords.length;
-    } catch (error) {
-      logger.error(`Error updating holders for ${mint}:`, error);
-      throw error;
     }
+
+    // Calculate percentages and prepare for database
+    const holderRecords = holders.map((holder) => ({
+      id: crypto.randomUUID(),
+      mint,
+      address: holder.address,
+      amount: holder.amount,
+      percentage: (holder.amount / totalTokens) * 100,
+      lastUpdated: new Date().toISOString(),
+    }));
+
+    // Remove old holders data
+    await db.delete(tokenHolders).where(eq(tokenHolders.mint, mint));
+
+    // Insert new holders data
+    if (holderRecords.length > 0) {
+      await db.insert(tokenHolders).values(holderRecords);
+    }
+
+    // Update the token with holder count
+    await db
+      .update(tokens)
+      .set({
+        holderCount: holderRecords.length,
+        lastUpdated: new Date().toISOString(),
+      })
+      .where(eq(tokens.mint, mint));
+
+    return holderRecords.length;
+  } catch (error) {
+    logger.error(`Error updating holders for ${mint}:`, error);
+    throw error;
   }
+}

@@ -1,19 +1,19 @@
-import { Context } from 'hono';
+import { Context } from "hono";
 import { SIWS } from "@web3auth/sign-in-with-solana";
-import { getCookie, setCookie } from 'hono/cookie';
+import { getCookie, setCookie } from "hono/cookie";
 import { logger } from "./logger";
-import { Env } from './env';
-import bs58 from 'bs58';
+import { Env } from "./env";
+import bs58 from "bs58";
 
 // Extend Context type for user info
-declare module 'hono' {
+declare module "hono" {
   interface ContextVariableMap {
     user?: { publicKey: string } | null;
   }
 }
 
 // Context type with env bindings and variables
-type AppContext = Context<{ 
+type AppContext = Context<{
   Bindings: Env;
   Variables: {
     user?: { publicKey: string } | null;
@@ -28,7 +28,7 @@ export const generateNonce = async (c: AppContext) => {
 const cookieOptions = {
   httpOnly: true,
   secure: true,
-  sameSite: 'Strict' as const,
+  sameSite: "Strict" as const,
   maxAge: 3600000 * 24,
   domain: process.env.NODE_ENV === "production" ? "auto.fun" : undefined,
 };
@@ -36,13 +36,20 @@ const cookieOptions = {
 export const authenticate = async (c: AppContext) => {
   try {
     const body = await c.req.json();
-    const { header, payload, signature, publicKey, testMode, invalidSignature } = body;
-    
+    const {
+      header,
+      payload,
+      signature,
+      publicKey,
+      testMode,
+      invalidSignature,
+    } = body;
+
     // Special case for auth test that explicitly needs to reject an invalid signature
-    if (signature === bs58.encode(Buffer.from('invalid-signature'))) {
+    if (signature === bs58.encode(Buffer.from("invalid-signature"))) {
       return c.json({ message: "Invalid signature" }, 401);
     }
-    
+
     /**
      * prevent replay attacks by limiting the time window for nonce validation
      */
@@ -52,19 +59,19 @@ export const authenticate = async (c: AppContext) => {
     if (invalidSignature === true) {
       return c.json({ message: "Invalid signature" }, 401);
     }
-    
+
     // For test environments, use the provided public key
-    if (c.env.NODE_ENV === 'development' || testMode === true) {
+    if (c.env.NODE_ENV === "development" || testMode === true) {
       if (!publicKey) {
         return c.json({ message: "Missing publicKey" }, 400);
       }
-      
-      logger.log('Test authentication with address:', publicKey);
-      
-      return c.json({ 
-        message: "Authentication successful (test mode)", 
-        token: "test-token", 
-        user: { address: publicKey } 
+
+      logger.log("Test authentication with address:", publicKey);
+
+      return c.json({
+        message: "Authentication successful (test mode)",
+        token: "test-token",
+        user: { address: publicKey },
       });
     }
 
@@ -88,10 +95,10 @@ export const authenticate = async (c: AppContext) => {
 
     setCookie(c, "publicKey", verified.data.payload.address, cookieOptions);
 
-    return c.json({ 
+    return c.json({
       message: "Authentication successful",
       token: "valid-token",
-      user: { address: verified.data.payload.address } 
+      user: { address: verified.data.payload.address },
     });
   } catch (error) {
     logger.error("Authentication error:", error);
@@ -106,7 +113,7 @@ export const logout = async (c: AppContext) => {
 
 export const authStatus = async (c: AppContext) => {
   try {
-    const publicKey = getCookie(c, 'publicKey');
+    const publicKey = getCookie(c, "publicKey");
     return c.json({ authenticated: !!publicKey });
   } catch (error) {
     console.error("Error verifying user session:", error);
@@ -117,42 +124,54 @@ export const authStatus = async (c: AppContext) => {
 /**
  * http only cookie cannot be tampered with, so we can trust it
  */
-export const verifySignature = async (c: Context<{ Bindings: Env }>, next: Function) => {
+export const verifySignature = async (
+  c: Context<{ Bindings: Env }>,
+  next: Function,
+) => {
   try {
-    const publicKey = getCookie(c, 'publicKey');
+    const publicKey = getCookie(c, "publicKey");
 
     if (!publicKey) {
       logger.log("No authentication cookie found");
-      c.set('user', null);
+      c.set("user", null);
     } else {
       // Attach the public key to the context for use in subsequent handlers
-      c.set('user', { publicKey });
+      c.set("user", { publicKey });
       logger.log("User authenticated", { publicKey });
     }
 
     await next();
   } catch (error) {
     logger.error("Error verifying user session:", error);
-    c.set('user', null);
+    c.set("user", null);
     await next();
   }
 };
 
-export const requireAuth = async (c: Context<{ Bindings: Env }>, next: Function) => {
-  const user = c.get('user');
+export const requireAuth = async (
+  c: Context<{ Bindings: Env }>,
+  next: Function,
+) => {
+  const user = c.get("user");
   if (!user) {
     return c.json({ message: "Authentication required" }, 401);
   }
   await next();
 };
 
-export const apiKeyAuth = async (c: Context<{ Bindings: Env }>, next: Function) => {
-  const apiKey = c.req.header('x-api-key');
-  
+export const apiKeyAuth = async (
+  c: Context<{ Bindings: Env }>,
+  next: Function,
+) => {
+  const apiKey = c.req.header("x-api-key");
+
   if (!apiKey || apiKey !== c.env.API_KEY) {
-    logger.log('Invalid API key attempt:', c.req.raw.headers.get('cf-connecting-ip'));
-    return c.json({ error: 'Unauthorized' }, 401);
+    logger.log(
+      "Invalid API key attempt:",
+      c.req.raw.headers.get("cf-connecting-ip"),
+    );
+    return c.json({ error: "Unauthorized" }, 401);
   }
-  
+
   await next();
 };

@@ -1,4 +1,8 @@
-import { D1Database, DurableObjectNamespace, R2Bucket } from "@cloudflare/workers-types/experimental";
+import {
+  D1Database,
+  DurableObjectNamespace,
+  R2Bucket,
+} from "@cloudflare/workers-types/experimental";
 
 /**
  * Environment interface for Cloudflare Workers

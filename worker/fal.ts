@@ -1,7 +1,7 @@
-import { eq, and, gte, sql } from 'drizzle-orm';
-import { getDB, mediaGenerations, tokens } from './db';
-import { Env } from './env';
-import { logger } from './logger';
+import { eq, and, gte, sql } from "drizzle-orm";
+import { getDB, mediaGenerations, tokens } from "./db";
+import { Env } from "./env";
+import { logger } from "./logger";
 
 // Enum for media types
 export enum MediaType {
@@ -30,39 +30,46 @@ export const RATE_LIMITS = {
 export async function checkRateLimits(
   env: Env,
   mint: string,
-  type: MediaType
-): Promise<{ allowed: boolean, remaining: number }> {
+  type: MediaType,
+): Promise<{ allowed: boolean; remaining: number }> {
   const db = getDB(env);
-  
+
   // Check if token exists
-  const token = await db.select()
+  const token = await db
+    .select()
     .from(tokens)
     .where(eq(tokens.mint, mint))
     .limit(1);
-  
+
   if (!token || token.length === 0) {
     throw new Error("Token not found");
   }
-  
-  const cutoffTime = new Date(Date.now() - RATE_LIMITS[type].COOLDOWN_PERIOD_MS).toISOString();
-  
+
+  const cutoffTime = new Date(
+    Date.now() - RATE_LIMITS[type].COOLDOWN_PERIOD_MS,
+  ).toISOString();
+
   // Count generations in the last 24 hours
-  const countResult = await db.select({ count: sql`count(*)` })
+  const countResult = await db
+    .select({ count: sql`count(*)` })
     .from(mediaGenerations)
     .where(
       and(
         eq(mediaGenerations.mint, mint),
         eq(mediaGenerations.type, type),
-        gte(mediaGenerations.timestamp, cutoffTime)
-      )
+        gte(mediaGenerations.timestamp, cutoffTime),
+      ),
     );
-  
+
   const count = Number(countResult[0]?.count || 0);
-  const remaining = Math.max(0, RATE_LIMITS[type].MAX_GENERATIONS_PER_DAY - count);
-  
+  const remaining = Math.max(
+    0,
+    RATE_LIMITS[type].MAX_GENERATIONS_PER_DAY - count,
+  );
+
   return {
     allowed: count < RATE_LIMITS[type].MAX_GENERATIONS_PER_DAY,
-    remaining
+    remaining,
   };
 }
 
@@ -70,21 +77,21 @@ export async function checkRateLimits(
 export async function generateMedia(
   falApiKey: string,
   data: {
-    prompt: string,
-    type: MediaType,
-    negative_prompt?: string,
-    num_inference_steps?: number,
-    seed?: number,
-    num_frames?: number,
-    fps?: number,
-    motion_bucket_id?: number,
-    duration?: number,
-    duration_seconds?: number,
-    bpm?: number,
-    guidance_scale?: number,
-    width?: number,
-    height?: number,
-  }
+    prompt: string;
+    type: MediaType;
+    negative_prompt?: string;
+    num_inference_steps?: number;
+    seed?: number;
+    num_frames?: number;
+    fps?: number;
+    motion_bucket_id?: number;
+    duration?: number;
+    duration_seconds?: number;
+    bpm?: number;
+    guidance_scale?: number;
+    width?: number;
+    height?: number;
+  },
 ) {
   try {
     // This is a simple implementation that would need proper fal.ai SDK integration
@@ -93,9 +100,9 @@ export async function generateMedia(
     let endpoint;
     let body;
 
-    switch(data.type) {
+    switch (data.type) {
       case MediaType.VIDEO:
-        endpoint = 'https://fal.run/fal-ai/t2v-turbo';
+        endpoint = "https://fal.run/fal-ai/t2v-turbo";
         body = {
           prompt: data.prompt,
           negative_prompt: data.negative_prompt || "",
@@ -111,7 +118,7 @@ export async function generateMedia(
         break;
 
       case MediaType.AUDIO:
-        endpoint = 'https://fal.run/fal-ai/stable-audio';
+        endpoint = "https://fal.run/fal-ai/stable-audio";
         body = {
           prompt: data.prompt,
           duration_seconds: data.duration_seconds || 10,
@@ -122,7 +129,7 @@ export async function generateMedia(
 
       case MediaType.IMAGE:
       default:
-        endpoint = 'https://fal.run/fal-ai/flux/dev';
+        endpoint = "https://fal.run/fal-ai/flux/dev";
         body = {
           prompt: data.prompt,
           negative_prompt: data.negative_prompt || "",
@@ -136,12 +143,12 @@ export async function generateMedia(
     }
 
     const response = await fetch(endpoint, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Key ${falApiKey}`
+        "Content-Type": "application/json",
+        Authorization: `Key ${falApiKey}`,
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -151,7 +158,7 @@ export async function generateMedia(
     const result = await response.json();
     return result;
   } catch (error) {
-    logger.error('Error generating media with fal.ai:', error);
+    logger.error("Error generating media with fal.ai:", error);
     throw error;
   }
-} 
+}

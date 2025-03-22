@@ -35,4 +35,3 @@ export const cpSwapProgramId =
   cluster.toString() == "mainnet-beta"
     ? new PublicKey("CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C") // Mainnet
     : new PublicKey("CPMDWBwJDtYax9qW7AyRuVC19Cc4L4Vcy4n2BHAbHkCW"); // Devnet
-

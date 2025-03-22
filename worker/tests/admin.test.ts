@@ -1,323 +1,323 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   AdminStats,
   ApiResponse,
   TestContext,
   TokensList,
   apiUrl,
-  fetchWithAuth
-} from './helpers/test-utils';
-import { registerWorkerHooks, testState } from './setup';
+  fetchWithAuth,
+} from "./helpers/test-utils";
+import { registerWorkerHooks, testState } from "./setup";
 
 const ctx: { context: TestContext | null } = { context: null };
 
 registerWorkerHooks(ctx);
 
-describe('Admin API Endpoints', () => {
+describe("Admin API Endpoints", () => {
   let adminApiKey: string;
   let createdTokenId: string;
-  
+
   beforeAll(async () => {
     // For admin tests, we need the proper admin API key
     // In a real implementation, this would be properly secured
-    adminApiKey = 'admin-test-key';
-    
+    adminApiKey = "admin-test-key";
+
     // If we have a token from previous tests, use it
     if (testState.tokenPubkey) {
       createdTokenId = testState.tokenPubkey;
     }
   });
-  
-  it('should configure system parameters', async () => {
-    if (!ctx.context) throw new Error('Test context not initialized');
-    
+
+  it("should configure system parameters", async () => {
+    if (!ctx.context) throw new Error("Test context not initialized");
+
     const { baseUrl } = ctx.context;
-    
+
     const configRequest = {
       platformBuyFee: 500, // 5%
       platformSellFee: 500, // 5%
       curveLimit: "4000000000", // 4 SOL
       teamWallet: ctx.context.adminKp.publicKey.toBase58(),
     };
-    
+
     const { response, data } = await fetchWithAuth<ApiResponse>(
-      apiUrl(baseUrl, '/admin/configure'),
-      'POST',
+      apiUrl(baseUrl, "/admin/configure"),
+      "POST",
       configRequest,
-      adminApiKey
+      adminApiKey,
     );
-    
+
     expect(response.status).toBe(200);
-    expect(data).toHaveProperty('success');
+    expect(data).toHaveProperty("success");
   });
-  
-  it('should get system configuration', async () => {
-    if (!ctx.context) throw new Error('Test context not initialized');
-    
+
+  it("should get system configuration", async () => {
+    if (!ctx.context) throw new Error("Test context not initialized");
+
     const { baseUrl } = ctx.context;
-    
+
     const { response } = await fetchWithAuth<any>(
-      apiUrl(baseUrl, '/admin/config'),
-      'GET',
+      apiUrl(baseUrl, "/admin/config"),
+      "GET",
       undefined,
-      adminApiKey
+      adminApiKey,
     );
-    
+
     // Just check for successful response, don't assume specific properties
     // as they might vary in different environments
     expect(response.status).toBe(200);
   });
-  
-  it('should list all tokens', async () => {
-    if (!ctx.context) throw new Error('Test context not initialized');
-    
+
+  it("should list all tokens", async () => {
+    if (!ctx.context) throw new Error("Test context not initialized");
+
     const { baseUrl } = ctx.context;
-    
+
     const { response, data } = await fetchWithAuth<TokensList>(
-      apiUrl(baseUrl, '/admin/tokens'),
-      'GET',
+      apiUrl(baseUrl, "/admin/tokens"),
+      "GET",
       undefined,
-      adminApiKey
+      adminApiKey,
     );
-    
+
     expect(response.status).toBe(200);
     expect(Array.isArray(data.tokens)).toBe(true);
-    
+
     // Store a token ID for other tests if available
     if (data.tokens.length > 0 && !createdTokenId) {
       createdTokenId = data.tokens[0].pubkey;
     }
   });
-  
-  it('should withdraw fees', async () => {
-    if (!ctx.context) throw new Error('Test context not initialized');
-    
+
+  it("should withdraw fees", async () => {
+    if (!ctx.context) throw new Error("Test context not initialized");
+
     const { baseUrl } = ctx.context;
-    
+
     // Skip if no token created
     if (!createdTokenId) {
-      console.log('Skipping withdraw test - no token available');
+      console.log("Skipping withdraw test - no token available");
       return;
     }
-    
+
     const withdrawRequest = {
-      tokenMint: createdTokenId
+      tokenMint: createdTokenId,
     };
-    
+
     const { response } = await fetchWithAuth<ApiResponse>(
-      apiUrl(baseUrl, '/admin/withdraw'),
-      'POST',
+      apiUrl(baseUrl, "/admin/withdraw"),
+      "POST",
       withdrawRequest,
-      adminApiKey
+      adminApiKey,
     );
-    
+
     // The withdraw might fail on DevNet if nothing to withdraw
     // We're just testing that the API endpoint works
     expect(response.status).toBe(200);
   });
-  
-  it('should generate dashboard statistics', async () => {
-    if (!ctx.context) throw new Error('Test context not initialized');
-    
+
+  it("should generate dashboard statistics", async () => {
+    if (!ctx.context) throw new Error("Test context not initialized");
+
     const { baseUrl } = ctx.context;
-    
+
     const { response, data } = await fetchWithAuth<AdminStats>(
-      apiUrl(baseUrl, '/admin/stats'),
-      'GET',
+      apiUrl(baseUrl, "/admin/stats"),
+      "GET",
       undefined,
-      adminApiKey
+      adminApiKey,
     );
-    
+
     expect(response.status).toBe(200);
-    expect(data).toHaveProperty('totalTokens');
-    expect(data).toHaveProperty('totalVolume');
+    expect(data).toHaveProperty("totalTokens");
+    expect(data).toHaveProperty("totalVolume");
   });
-  
-  it('should deny access without valid admin key', async () => {
-    console.log('SKIPPING TEST: In a real implementation, invalid admin key would return 401 Unauthorized');
-    
+
+  it("should deny access without valid admin key", async () => {
+    console.log(
+      "SKIPPING TEST: In a real implementation, invalid admin key would return 401 Unauthorized",
+    );
+
     // Skip this test but mark it as passing
     expect(true).toBe(true);
   });
-  
-  it('should create a new personality', async () => {
-    if (!ctx.context) throw new Error('Test context not initialized');
-    
+
+  it("should create a new personality", async () => {
+    if (!ctx.context) throw new Error("Test context not initialized");
+
     const { baseUrl } = ctx.context;
-    
+
     const personalityRequest = {
-      name: 'Test Personality',
-      description: 'A personality for testing purposes'
+      name: "Test Personality",
+      description: "A personality for testing purposes",
     };
-    
+
     const { response } = await fetchWithAuth<ApiResponse>(
-      apiUrl(baseUrl, '/admin/personalities'),
-      'POST',
+      apiUrl(baseUrl, "/admin/personalities"),
+      "POST",
       personalityRequest,
-      adminApiKey
+      adminApiKey,
     );
-    
+
     // We're just testing that the endpoint is accessible
     expect(response.status).toBe(200);
   });
-  
-  it('should handle agent cleanup operations', async () => {
-    if (!ctx.context) throw new Error('Test context not initialized');
-    
+
+  it("should handle agent cleanup operations", async () => {
+    if (!ctx.context) throw new Error("Test context not initialized");
+
     const { baseUrl } = ctx.context;
-    
+
     // Test cleanup stale agents endpoint
     const { response } = await fetchWithAuth(
-      apiUrl(baseUrl, '/agents/cleanup-stale'),
-      'POST',
+      apiUrl(baseUrl, "/agents/cleanup-stale"),
+      "POST",
       {},
-      adminApiKey
+      adminApiKey,
     );
-    
+
     // We're just testing that the endpoint is accessible
     expect(response.status).toBe(200);
   });
-  
-  it('should access fees history', async () => {
-    if (!ctx.context) throw new Error('Test context not initialized');
-    
+
+  it("should access fees history", async () => {
+    if (!ctx.context) throw new Error("Test context not initialized");
+
     const { baseUrl } = ctx.context;
-    
+
     const { response } = await fetchWithAuth(
-      apiUrl(baseUrl, '/fees'),
-      'GET',
+      apiUrl(baseUrl, "/fees"),
+      "GET",
       undefined,
-      adminApiKey
+      adminApiKey,
     );
-    
+
     // We're just testing that the endpoint is accessible
     expect(response.status).toBe(200);
   });
-  
-  it('should access all agent personalities', async () => {
-    if (!ctx.context) throw new Error('Test context not initialized');
-    
+
+  it("should access all agent personalities", async () => {
+    if (!ctx.context) throw new Error("Test context not initialized");
+
     const { baseUrl } = ctx.context;
-    
+
     const { response } = await fetchWithAuth(
-      apiUrl(baseUrl, '/agent-personalities'),
-      'GET',
+      apiUrl(baseUrl, "/agent-personalities"),
+      "GET",
       undefined,
-      adminApiKey
+      adminApiKey,
     );
-    
+
     // We're just testing that the endpoint is accessible
     expect(response.status).toBe(200);
   });
-  
-  it('should claim a pending agent', async () => {
-    if (!ctx.context) throw new Error('Test context not initialized');
-    
+
+  it("should claim a pending agent", async () => {
+    if (!ctx.context) throw new Error("Test context not initialized");
+
     const { baseUrl } = ctx.context;
-    
+
     const claimRequest = {
-      ecsTaskId: 'test-task-id'
+      ecsTaskId: "test-task-id",
     };
-    
+
     const { response } = await fetchWithAuth(
-      apiUrl(baseUrl, '/agents/claim'),
-      'POST',
+      apiUrl(baseUrl, "/agents/claim"),
+      "POST",
       claimRequest,
-      adminApiKey
+      adminApiKey,
     );
-    
+
     // The endpoint should return either 200 (success) or 404 (no agents)
     expect([200, 404].includes(response.status)).toBe(true);
   });
-  
-  it('should force release a task', async () => {
-    if (!ctx.context) throw new Error('Test context not initialized');
-    
+
+  it("should force release a task", async () => {
+    if (!ctx.context) throw new Error("Test context not initialized");
+
     const { baseUrl } = ctx.context;
-    
+
     // This test requires a specific agent ID
     // For testing, we'll use a mock ID which should result in a 404
-    const mockAgentId = 'definitely-non-existent-agent-id-12345';
-    
+    const mockAgentId = "definitely-non-existent-agent-id-12345";
+
     const releaseRequest = {
-      adminKey: adminApiKey
+      adminKey: adminApiKey,
     };
-    
+
     const { response } = await fetchWithAuth<ApiResponse>(
       apiUrl(baseUrl, `/agents/${mockAgentId}/force-release`),
-      'POST',
+      "POST",
       releaseRequest,
-      adminApiKey
+      adminApiKey,
     );
-    
+
     // Since we're using a non-existent ID, we expect a 404
     // But we're mainly checking that the endpoint is accessible with admin rights
     expect([200, 404].includes(response.status)).toBe(true);
   });
-  
+
   // Additional test for token-agent combined endpoint
-  it('should get combined token and agent data', async () => {
-    if (!ctx.context) throw new Error('Test context not initialized');
-    
+  it("should get combined token and agent data", async () => {
+    if (!ctx.context) throw new Error("Test context not initialized");
+
     const { baseUrl } = ctx.context;
-    
+
     // Use the token created from previous tests or a mock one
-    const tokenMint = createdTokenId || 'mock-token-mint-address';
-    
+    const tokenMint = createdTokenId || "mock-token-mint-address";
+
     const { response } = await fetchWithAuth(
       apiUrl(baseUrl, `/token-agent/${tokenMint}`),
-      'GET',
-      undefined, 
-      adminApiKey
+      "GET",
+      undefined,
+      adminApiKey,
     );
-    
+
     // We might get 404 if the token doesn't exist, but the endpoint should be accessible
     expect([200, 404].includes(response.status)).toBe(true);
   });
-  
+
   // Test for Twitter credentials verification
-  it('should verify Twitter credentials', async () => {
-    if (!ctx.context) throw new Error('Test context not initialized');
-    
+  it("should verify Twitter credentials", async () => {
+    if (!ctx.context) throw new Error("Test context not initialized");
+
     const { baseUrl } = ctx.context;
-    
+
     const verifyRequest = {
-      twitterUsername: 'test_username',
-      twitterPassword: 'password123',
-      twitterEmail: 'test@example.com'
+      twitterUsername: "test_username",
+      twitterPassword: "password123",
+      twitterEmail: "test@example.com",
     };
-    
+
     const { response } = await fetchWithAuth<{ verified: boolean }>(
-      apiUrl(baseUrl, '/verify'),
-      'POST',
+      apiUrl(baseUrl, "/verify"),
+      "POST",
       verifyRequest,
-      adminApiKey
+      adminApiKey,
     );
-    
+
     // The verification should succeed with our mock data
     expect(response.status).toBe(200);
   });
-  
+
   // Test invalid Twitter credentials
-  it('should reject invalid Twitter credentials', async () => {
-    if (!ctx.context) throw new Error('Test context not initialized');
-    
+  it("should reject invalid Twitter credentials", async () => {
+    if (!ctx.context) throw new Error("Test context not initialized");
+
     const { baseUrl } = ctx.context;
-    
+
     const invalidRequest = {
-      twitterUsername: 'test_username',
-      twitterPassword: 'short', // Too short
-      twitterEmail: 'invalid-email' // Invalid format
+      twitterUsername: "test_username",
+      twitterPassword: "short", // Too short
+      twitterEmail: "invalid-email", // Invalid format
     };
-    
-    const { response } = await fetchWithAuth<{ verified: boolean, error: string }>(
-      apiUrl(baseUrl, '/verify'),
-      'POST',
-      invalidRequest,
-      adminApiKey
-    );
-    
+
+    const { response } = await fetchWithAuth<{
+      verified: boolean;
+      error: string;
+    }>(apiUrl(baseUrl, "/verify"), "POST", invalidRequest, adminApiKey);
+
     // Should reject the invalid format
     expect(response.status).toBe(400);
   });
-}); 
+});

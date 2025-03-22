@@ -1,6 +1,9 @@
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { unstable_dev } from 'wrangler';
+import { unstable_dev } from "wrangler";
 
 // Extend context with common test properties
 export interface TestContext {
@@ -24,16 +27,12 @@ export function initDevnetConnection(): Connection {
  */
 export function getAssociatedTokenAccount(
   ownerPubkey: PublicKey,
-  mintPk: PublicKey
+  mintPk: PublicKey,
 ): PublicKey {
-  const associatedTokenAccountPubkey = (PublicKey.findProgramAddressSync(
-    [
-      ownerPubkey.toBytes(),
-      TOKEN_PROGRAM_ID.toBytes(),
-      mintPk.toBytes(),
-    ],
-    ASSOCIATED_TOKEN_PROGRAM_ID
-  ))[0];
+  const associatedTokenAccountPubkey = PublicKey.findProgramAddressSync(
+    [ownerPubkey.toBytes(), TOKEN_PROGRAM_ID.toBytes(), mintPk.toBytes()],
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+  )[0];
 
   return associatedTokenAccountPubkey;
 }
@@ -106,17 +105,17 @@ export interface AgentDetails {
  */
 export async function fetchWithAuth<T = any>(
   url: string,
-  method: string = 'GET',
+  method: string = "GET",
   body?: any,
   apiKey?: string,
-  extraHeaders?: Record<string, string>
+  extraHeaders?: Record<string, string>,
 ): Promise<{ response: Response; data: T }> {
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   };
 
   if (apiKey) {
-    headers['X-API-Key'] = apiKey;
+    headers["X-API-Key"] = apiKey;
   }
 
   // Merge any extra headers
@@ -131,20 +130,20 @@ export async function fetchWithAuth<T = any>(
     headers,
   };
 
-  if (body && method !== 'GET') {
+  if (body && method !== "GET") {
     options.body = JSON.stringify(body);
   }
 
   // Make a real request without any fallback to mocks
   const response = await fetch(url, options);
   let data: T;
-  
+
   try {
-    data = await response.json() as T;
+    data = (await response.json()) as T;
   } catch (e) {
     console.warn(`Error parsing JSON from ${url}: ${e}`);
     data = {} as T;
   }
-  
+
   return { response, data };
-} 
+}
