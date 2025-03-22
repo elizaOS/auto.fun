@@ -30,12 +30,12 @@ export default function Page() {
     queryKey: ["token", address],
     queryFn: async () => {
       if (!address) throw new Error("No address passed");
-      return await getToken({ address });
+      return (await getToken({ address })) as { token: IToken };
     },
     refetchInterval: 3_000,
   });
 
-  const token = query?.data as IToken;
+  const token = query?.data?.token as IToken;
 
   const solPriceUSD = token?.solPriceUSD;
   const finalTokenPrice = 0.00000045; // Approximated value from the bonding curve configuration
@@ -239,7 +239,7 @@ export default function Page() {
                   (token?.reserveLamport - token?.virtualReserves) /
                     LAMPORTS_PER_SOL,
                   true,
-                  true,
+                  true
                 )}{" "}
                 SOL in the bonding curve.
               </p>
