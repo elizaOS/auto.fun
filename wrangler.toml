@@ -9,7 +9,7 @@ bucket = "./dist"
 
 # Cron triggers
 [triggers]
-crons = ["*/10 * * * * *"] # Run every 10 seconds
+crons = ["*/1 * * * *"] # Run every 1 minute
 
 # D1 Database for production
 [[d1_databases]]
