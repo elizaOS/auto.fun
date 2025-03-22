@@ -13,7 +13,7 @@ crons = ["*/10 * * * * *"] # Run every 10 seconds
 
 # D1 Database for production
 [[d1_databases]]
-binding = "DB"
+binding = "$DATABASE_NAME"
 database_name = "$DATABASE_NAME"
 database_id = "$DATABASE_ID"
 
