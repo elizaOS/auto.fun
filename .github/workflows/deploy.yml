@@ -1,4 +1,4 @@
-name: Deploy to Cloudflare Workers
+name: Deploy to Cloudflare Workers and Pages
 
 on:
   push:
@@ -31,7 +31,7 @@ jobs:
         
   deploy:
     runs-on: ubuntu-latest
-    name: Deploy Worker
+    name: Deploy Worker and Pages
     needs: test
     steps:
       - name: Checkout code
@@ -45,7 +45,7 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Lint worker
+      - name: Lint
         run: bun run lint
 
       - name: Generate Drizzle migrations
@@ -55,14 +55,30 @@ jobs:
         id: set-env
         run: |
           if [[ $GITHUB_REF == *"main"* ]]; then
+            # Worker settings
             echo "WORKER_NAME=autofun-api" >> $GITHUB_ENV
             echo "WORKER_ENV=production" >> $GITHUB_ENV
             echo "DB_SUFFIX=" >> $GITHUB_ENV
+            # Pages settings
+            echo "PROJECT_NAME=autofun" >> $GITHUB_ENV
+            echo "DEPLOY_URL=https://autofun-frontend.pages.dev" >> $GITHUB_ENV
+            echo "NODE_ENV=production" >> $GITHUB_ENV
           else
+            # Worker settings
             echo "WORKER_NAME=autofun-api-dev" >> $GITHUB_ENV
             echo "WORKER_ENV=development" >> $GITHUB_ENV
             echo "DB_SUFFIX=-dev" >> $GITHUB_ENV
+            # Pages settings
+            echo "PROJECT_NAME=autofun-dev" >> $GITHUB_ENV
+            echo "DEPLOY_URL=https://autofun-frontend-dev.pages.dev" >> $GITHUB_ENV
+            echo "NODE_ENV=development" >> $GITHUB_ENV
           fi
+
+      # Build frontend before deploying backend
+      - name: Build frontend
+        run: bun run build
+        env:
+          NODE_ENV: ${{ env.NODE_ENV }}
 
       # Apply migrations to D1 database before deploying
       - name: Apply D1 migrations
@@ -90,7 +106,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: deploy --name ${{ env.WORKER_NAME }} --env ${{ env.WORKER_ENV }}
+          command: deploy --config wrangler.toml --name ${{ env.WORKER_NAME }} --env ${{ env.WORKER_ENV }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           # Environment variables from wrangler.toml, can be overridden by secrets
@@ -108,15 +124,27 @@ jobs:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
 
+      # Deploy to Pages
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          projectName: ${{ env.PROJECT_NAME }}
+          directory: dist
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref_name }}
+          wranglerVersion: '3'
+          
       - name: Notify on Success
         if: success()
         run: |
-          echo "Worker deployment completed successfully!"
-          echo "Deployed service: ${{ env.WORKER_NAME }}"
-          echo "Environment: ${{ env.WORKER_ENV }}"
-
+          echo "Deployment completed successfully!"
+          echo "Worker deployed: ${{ env.WORKER_NAME }} (Environment: ${{ env.WORKER_ENV }})"
+          echo "Frontend deployed to: ${{ env.DEPLOY_URL }}"
+          
       - name: Notify on Failure
         if: failure()
         run: |
-          echo "Worker deployment failed!"
-          echo "Please check the logs for more information and verify your Cloudflare credentials."
+          echo "Deployment failed!"
+          echo "Please check the logs for more information and verify your Cloudflare credentials." 

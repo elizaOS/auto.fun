@@ -1,7 +1,32 @@
+import { DurableObjectState } from "@cloudflare/workers-types/experimental";
+
+// Define a more specific type for our sessions
+type CFWebSocket = {
+  accept(): void;
+  send(data: string): void;
+  close(code?: number, reason?: string): void;
+  addEventListener(event: string, handler: (event: any) => void): void;
+  readyState: number;
+};
+
+// Define the WebSocketPair type structure for the Cloudflare environment
+interface CFWebSocketPair {
+  0: any; // client
+  1: any; // server
+}
+
+// WebSocket readyState values
+const WebSocketReadyState = {
+  CONNECTING: 0,
+  OPEN: 1,
+  CLOSING: 2,
+  CLOSED: 3
+};
+
 export class WebSocketDO {
   // @ts-ignore
   private state: DurableObjectState;
-  private sessions: Map<string, WebSocket> = new Map();
+  private sessions: Map<string, CFWebSocket> = new Map();
   private rooms: Map<string, Set<string>> = new Map(); // roomName -> Set of sessionIds
 
   constructor(state: DurableObjectState) {
@@ -31,18 +56,25 @@ export class WebSocketDO {
       return new Response('Expected Upgrade: websocket', { status: 426 });
     }
 
-    // Create the WebSocket pair
-    const { 0: client, 1: server } = new WebSocketPair();
-    const sessionId = crypto.randomUUID();
+    // Create the WebSocket pair, using the WebSocketPair global
+    // @ts-ignore: WebSocketPair is available in the Cloudflare Workers runtime
+    const pair = new WebSocketPair() as CFWebSocketPair;
+    const server = pair[1] as CFWebSocket;
+    const client = pair[0];
+    
+    // Get a unique session ID
+    const sessionId = request.headers.get('X-Client-ID') || crypto.randomUUID();
     
     // Accept the WebSocket connection
     server.accept();
+    
+    // Store the server WebSocket
     this.sessions.set(sessionId, server);
 
     // Set up event handlers for the WebSocket
-    server.addEventListener('message', async (event) => {
+    server.addEventListener('message', async (event: { data: string }) => {
       try {
-        const data = JSON.parse(event.data as string);
+        const data = JSON.parse(event.data);
         await this.handleMessage(sessionId, data);
       } catch (error) {
         console.error('Error handling WebSocket message:', error);
@@ -60,7 +92,8 @@ export class WebSocketDO {
     // Return the client end of the WebSocket to the client
     return new Response(null, {
       status: 101,
-      webSocket: client,
+      // @ts-ignore - WebSocket is a valid property for Cloudflare Workers Response init
+      webSocket: client
     });
   }
 
@@ -88,7 +121,11 @@ export class WebSocketDO {
     // Clean up when a client disconnects
     const session = this.sessions.get(sessionId);
     if (session) {
-      session.close();
+      try {
+        session.close();
+      } catch (err) {
+        // Ignore errors when closing already closed connections
+      }
       this.sessions.delete(sessionId);
       
       // Remove from all rooms
@@ -130,8 +167,12 @@ export class WebSocketDO {
     
     for (const sessionId of room) {
       const session = this.sessions.get(sessionId);
-      if (session && session.readyState === WebSocket.OPEN) {
-        session.send(messageStr);
+      if (session && session.readyState === WebSocketReadyState.OPEN) {
+        try {
+          session.send(messageStr);
+        } catch (error) {
+          console.error(`Error sending message to session ${sessionId}:`, error);
+        }
       }
     }
   }

@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
+body {
+  background-color: rgb(10, 10, 10);
+}
+
 @layer base {
   .border,
   .border-t,

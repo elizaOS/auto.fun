@@ -11,6 +11,7 @@ import usePagination from "@/hooks/use-pagination";
 import { useFilter } from "@/hooks/use-filter";
 import { Fragment } from "react/jsx-runtime";
 import Loader from "@/components/loader";
+import Footer from "@/components/footer";
 
 export default function Page() {
   const [activeTab] = useViewMode();
@@ -49,7 +50,7 @@ export default function Page() {
   } as IPagination;
 
   return (
-    <div className="flex flex-col">
+    <div className="w-full min-h-[100vh]">
       {/* Top Navigation */}
       <div className="flex items-center gap-3 flex-wrap-reverse lg:flex-wrap">
         <GridListSwitcher />
@@ -75,9 +76,10 @@ export default function Page() {
         </div>
       </div>
 
-      {!query?.isLoading ? (
-        <Fragment>
-          {activeTab === "grid" ? (
+      <div className="flex flex-col flex-1 min-h-[80vh]">
+        {!query?.isLoading ? (
+          <Fragment>
+            {activeTab === "grid" ? (
             <div className="my-6">
               <GridView data={tokens} />
             </div>
@@ -88,9 +90,11 @@ export default function Page() {
           )}
         </Fragment>
       ) : (
-        <Loader />
-      )}
-      <Pagination pagination={pagination} onPageChange={onPageChange} />
+          <Loader />
+        )}
+        <Pagination pagination={pagination} onPageChange={onPageChange} />
+      </div>
+      <Footer />
     </div>
   );
 }

@@ -3,6 +3,10 @@ main = "worker/index.ts"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
+# Cloudflare Pages configuration
+[site]
+bucket = "./dist"
+
 # Cron triggers
 [triggers]
 crons = ["*/10 * * * * *"] # Run every 10 seconds
@@ -37,6 +41,10 @@ new_classes = ["WebSocketDO"]
 # Development environment configuration
 [env.development]
 name = "autofun-api-dev"
+# Site configuration for development
+[env.development.site]
+bucket = "./dist"
+
 # D1 Database for development
 [[env.development.d1_databases]]
 binding = "DB"

@@ -248,7 +248,7 @@ export function getDB(env: Env) {
       return createChainableProxy();
     }
     
-    return drizzle(env.DB, { schema });
+    return drizzle(env.DATABASE as any, { schema });
   } catch (error) {
     console.warn('Database connection failed, using fallback:', error);
     // Create the same chainable proxy for error cases

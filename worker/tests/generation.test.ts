@@ -2,7 +2,7 @@ import { Keypair } from '@solana/web3.js';
 import bs58 from 'bs58';
 import nacl from 'tweetnacl';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { MediaType, RATE_LIMITS } from '../fal';
+import { MediaType, RATE_LIMITS } from '../generation';
 import {
     TestContext,
     apiUrl,
@@ -152,6 +152,104 @@ describe('Media Generation API Endpoints', () => {
     }
   });
   
+  it('should generate an image with only required parameters', async () => {
+    if (!ctx.context) throw new Error('Test context not initialized');
+    if (tokenCreationFailed) {
+      console.log('Skipping minimal image generation test - token creation failed');
+      return;
+    }
+    
+    const { baseUrl } = ctx.context;
+    
+    const headers = authToken ? { Authorization: `Bearer ${authToken}` } : undefined;
+    
+    // Only provide required parameters
+    const minimalRequest = {
+      prompt: 'A minimalist landscape',
+      type: MediaType.IMAGE
+    };
+    
+    const { response, data } = await fetchWithAuth<{ success: boolean; mediaUrl: string }>(
+      apiUrl(baseUrl, `/${tokenMint}/generate`),
+      'POST',
+      minimalRequest,
+      undefined,
+      headers
+    );
+    
+    if (response.status === 200) {
+      expect(data).toHaveProperty('success');
+      expect(data).toHaveProperty('mediaUrl');
+      expect(data.success).toBe(true);
+      expect(data.mediaUrl.startsWith('http')).toBe(true);
+    } else if (response.status === 429) {
+      // Rate limit case is acceptable
+      expect(data).toHaveProperty('error');
+    } else {
+      console.log(`Minimal image generation test skipped - service returned status ${response.status}`);
+    }
+  });
+  
+  it('should handle invalid prompt validation', async () => {
+    if (!ctx.context) throw new Error('Test context not initialized');
+    if (tokenCreationFailed) {
+      console.log('Skipping validation test - token creation failed');
+      return;
+    }
+    
+    const { baseUrl } = ctx.context;
+    
+    const headers = authToken ? { Authorization: `Bearer ${authToken}` } : undefined;
+    
+    // Empty prompt should fail validation
+    const invalidRequest = {
+      prompt: '', // Empty prompt
+      type: MediaType.IMAGE
+    };
+    
+    const { response, data } = await fetchWithAuth(
+      apiUrl(baseUrl, `/${tokenMint}/generate`),
+      'POST',
+      invalidRequest,
+      undefined,
+      headers
+    );
+    
+    // Should return a validation error
+    expect(response.status).toBe(400);
+    expect(data).toHaveProperty('error');
+  });
+  
+  it('should handle invalid media type validation', async () => {
+    if (!ctx.context) throw new Error('Test context not initialized');
+    if (tokenCreationFailed) {
+      console.log('Skipping media type validation test - token creation failed');
+      return;
+    }
+    
+    const { baseUrl } = ctx.context;
+    
+    const headers = authToken ? { Authorization: `Bearer ${authToken}` } : undefined;
+    
+    // Invalid media type
+    const invalidRequest = {
+      prompt: 'A beautiful landscape',
+      type: 'invalid_type' // Not a valid MediaType
+    };
+    
+    const { response, data } = await fetchWithAuth(
+      apiUrl(baseUrl, `/${tokenMint}/generate`),
+      'POST',
+      invalidRequest,
+      undefined,
+      headers
+    );
+    
+    // Should return a validation error
+    expect(response.status).toBe(400);
+    expect(data).toHaveProperty('error');
+  });
+  
   it('should handle rate limits for generations', async () => {
     if (!ctx.context) throw new Error('Test context not initialized');
     if (tokenCreationFailed) {
@@ -186,11 +284,14 @@ describe('Media Generation API Endpoints', () => {
         successCount++;
         expect(result.data).toHaveProperty('success');
         expect(result.data).toHaveProperty('mediaUrl');
+        expect(result.data).toHaveProperty('remainingGenerations');
+        expect(result.data).toHaveProperty('resetTime');
       } else if (result.response.status === 429) {
         rateLimitHit = true;
         expect(result.data).toHaveProperty('error');
         expect(result.data).toHaveProperty('limit');
         expect(result.data).toHaveProperty('cooldown');
+        expect(result.data).toHaveProperty('message');
         // Don't continue if we've hit the rate limit
         break;
       } else {
@@ -234,6 +335,7 @@ describe('Media Generation API Endpoints', () => {
       expect(data).toHaveProperty('total');
       expect(typeof data.total).toBe('number');
       expect(data).toHaveProperty('remaining');
+      expect(data).toHaveProperty('resetTime');
       
       // Verify the structure of generation history entries
       if (data.generations.length > 0) {
@@ -251,6 +353,75 @@ describe('Media Generation API Endpoints', () => {
       console.log(`Generation history test skipped - service returned status ${response.status}`);
       console.log('Response data:', data);
     }
+  });
+  
+  it('should filter generation history by type', async () => {
+    if (!ctx.context) throw new Error('Test context not initialized');
+    if (tokenCreationFailed) {
+      console.log('Skipping history filtering test - token creation failed');
+      return;
+    }
+    
+    const { baseUrl } = ctx.context;
+    
+    const headers = authToken ? { Authorization: `Bearer ${authToken}` } : undefined;
+    
+    // Get history filtered by type
+    const { response, data } = await fetchWithAuth<{ generations: any[]; remaining: any }>(
+      apiUrl(baseUrl, `/${tokenMint}/history?type=${MediaType.IMAGE}`),
+      'GET',
+      undefined,
+      undefined,
+      headers
+    );
+    
+    if (response.status === 200) {
+      expect(data).toHaveProperty('generations');
+      expect(Array.isArray(data.generations)).toBe(true);
+      
+      // Verify filtering worked - all entries should be images
+      if (data.generations.length > 0) {
+        const allImages = data.generations.every(gen => gen.type === MediaType.IMAGE);
+        expect(allImages).toBe(true);
+      }
+      
+      // Verify remaining count structure for specific type
+      expect(data.remaining).not.toBeUndefined();
+      if (typeof data.remaining === 'number') {
+        // If it's a number, it should be the remaining count for images
+        expect(data.remaining).toBeLessThanOrEqual(RATE_LIMITS[MediaType.IMAGE].MAX_GENERATIONS_PER_DAY);
+      }
+    } else if (response.status === 401) {
+      console.log('History filtering test skipped - authentication required');
+    } else {
+      console.log(`History filtering test skipped - service returned status ${response.status}`);
+    }
+  });
+  
+  it('should handle unauthorized access to history', async () => {
+    if (!ctx.context) throw new Error('Test context not initialized');
+    
+    const { baseUrl } = ctx.context;
+    
+    // Generate a random public key to use (which won't be authorized)
+    const randomKeypair = Keypair.generate();
+    const randomPublicKey = randomKeypair.publicKey.toBase58();
+    
+    // Create an invalid auth token
+    const invalidAuthToken = `invalid_token_${randomPublicKey}`;
+    
+    // Try to access history with invalid token
+    const { response, data } = await fetchWithAuth(
+      apiUrl(baseUrl, `/${tokenMint}/history`),
+      'GET',
+      undefined,
+      undefined,
+      { Authorization: `Bearer ${invalidAuthToken}` }
+    );
+    
+    // Should return an authentication error
+    expect([401, 403]).toContain(response.status);
+    expect(data).toHaveProperty('error');
   });
   
   it('should handle video generation request', async () => {
@@ -351,5 +522,57 @@ describe('Media Generation API Endpoints', () => {
       console.log(`Audio generation test skipped - service returned status ${response.status}`);
       console.log('Response data:', data);
     }
+  });
+  
+  it('should handle invalid token mint', async () => {
+    if (!ctx.context) throw new Error('Test context not initialized');
+    
+    const { baseUrl } = ctx.context;
+    
+    const headers = authToken ? { Authorization: `Bearer ${authToken}` } : undefined;
+    
+    // Use an invalid token mint address
+    const invalidMint = 'invalid_token_mint';
+    
+    const { response, data } = await fetchWithAuth(
+      apiUrl(baseUrl, `/${invalidMint}/generate`),
+      'POST',
+      {
+        prompt: 'Test prompt for invalid mint',
+        type: MediaType.IMAGE
+      },
+      undefined,
+      headers
+    );
+    
+    // Should return a validation error for invalid mint address
+    expect(response.status).toBe(400);
+    expect(data).toHaveProperty('error');
+  });
+  
+  it('should handle non-existent token mint', async () => {
+    if (!ctx.context) throw new Error('Test context not initialized');
+    
+    const { baseUrl } = ctx.context;
+    
+    const headers = authToken ? { Authorization: `Bearer ${authToken}` } : undefined;
+    
+    // Generate a valid-looking but non-existent token mint address
+    const nonExistentMint = Keypair.generate().publicKey.toBase58();
+    
+    const { response, data } = await fetchWithAuth(
+      apiUrl(baseUrl, `/${nonExistentMint}/generate`),
+      'POST',
+      {
+        prompt: 'Test prompt for non-existent mint',
+        type: MediaType.IMAGE
+      },
+      undefined,
+      headers
+    );
+    
+    // Should return a not found error
+    expect(response.status).toBe(404);
+    expect(data).toHaveProperty('error');
   });
 });

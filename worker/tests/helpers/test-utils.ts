@@ -89,6 +89,18 @@ export interface AdminStats {
   totalUsers?: number;
 }
 
+// Agent-related interfaces
+export interface AgentDetails {
+  systemPrompt?: string;
+  bio?: string;
+  lore?: string;
+  postExamples?: string;
+  adjectives?: string;
+  style?: string;
+  topics?: string;
+  [key: string]: any; // Allow for any other properties
+}
+
 /**
  * Helper to make API requests with authentication
  */

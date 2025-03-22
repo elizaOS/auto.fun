@@ -1,5 +1,6 @@
 // WebSocket client for sending messages to connected clients
 // This replaces the Socket.io server implementation
+import { DurableObjectNamespace } from '@cloudflare/workers-types/experimental';
 import { Env } from './env';
 
 interface WebSocketMessage {
