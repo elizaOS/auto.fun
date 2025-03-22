@@ -1,4 +1,3 @@
-import { Grid } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -7,18 +6,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import CopyButton from "./copy-button";
+import { IToken } from "@/types";
 import {
   formatNumber,
   fromNow,
   normalizedProgress,
   shortenAddress,
 } from "@/utils";
-import BondingCurveBar from "./bonding-curve-bar";
-import SkeletonImage from "./skeleton-image";
+import { Grid } from "lucide-react";
 import { useNavigate } from "react-router";
-import { IToken } from "@/types";
-import { optimizePinataImage } from "@/utils/api";
+import BondingCurveBar from "./bonding-curve-bar";
+import CopyButton from "./copy-button";
+import SkeletonImage from "./skeleton-image";
 
 export function TableView({ data }: { data: IToken[] }) {
   const navigate = useNavigate();
@@ -47,7 +46,7 @@ export function TableView({ data }: { data: IToken[] }) {
                   <div className="relative size-[50px] rounded-lg bg-[#262626] overflow-hidden">
                     {token.image ? (
                       <SkeletonImage
-                        src={optimizePinataImage(token.image, 80, 80)}
+                        src={token.image}
                         alt={token.name}
                         className="w-full h-full object-cover"
                       />

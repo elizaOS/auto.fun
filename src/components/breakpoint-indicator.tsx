@@ -11,7 +11,7 @@ const BreakpointIndicator = () => {
   };
 
   const [breakpoint, setBreakpoint] = useState(
-    getBreakpoint(window.innerWidth)
+    getBreakpoint(window.innerWidth),
   );
 
   useEffect(() => {

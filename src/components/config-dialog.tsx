@@ -111,7 +111,7 @@ export default function ConfigDialog({ children }: PropsWithChildren) {
                         {speedItem}
                       </div>
                     );
-                  }
+                  },
                 )}
               </div>
             </div>
@@ -144,7 +144,7 @@ export default function ConfigDialog({ children }: PropsWithChildren) {
                       {label}
                     </div>
                   );
-                }
+                },
               )}
             </div>
           </div>

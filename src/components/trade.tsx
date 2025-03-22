@@ -1,23 +1,22 @@
-import { ArrowUpDown, Cog, Info, Wallet } from "lucide-react";
-import Button from "./button";
-import SkeletonImage from "./skeleton-image";
 import { IToken } from "@/types";
-import { optimizePinataImage } from "@/utils/api";
 import { formatNumber } from "@/utils";
+import { ArrowUpDown, Cog, Info, Wallet } from "lucide-react";
 import { Fragment, useState } from "react";
 import { twMerge } from "tailwind-merge";
+import Button from "./button";
 import ConfigDialog from "./config-dialog";
+import SkeletonImage from "./skeleton-image";
 
 export default function Trade({ token }: { token: IToken }) {
   const solanaPrice = token?.solPriceUSD || 0;
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
-    undefined
+    undefined,
   );
   const [error] = useState<string | undefined>("");
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token.status
+    token.status,
   );
 
   return (
@@ -91,11 +90,11 @@ export default function Trade({ token }: { token: IToken }) {
                 {!isTokenSelling
                   ? formatNumber(Number(sellingAmount || 0) * solanaPrice, true)
                   : token?.tokenPriceUSD
-                  ? formatNumber(
-                      Number(sellingAmount || 0) * token?.tokenPriceUSD,
-                      true
-                    )
-                  : formatNumber(0)}
+                    ? formatNumber(
+                        Number(sellingAmount || 0) * token?.tokenPriceUSD,
+                        true,
+                      )
+                    : formatNumber(0)}
               </span>
               <Balance token={token} isSolana={!isTokenSelling} />
             </div>
@@ -165,13 +164,7 @@ const TokenDisplay = ({
   return (
     <div className="flex items-center gap-2 rounded-lg border bg-autofun-background-card p-2 select-none">
       <SkeletonImage
-        src={
-          isSolana
-            ? "/solana.png"
-            : token?.image
-            ? optimizePinataImage(token.image, 50, 50)
-            : ""
-        }
+        src={token?.image || ""}
         alt={token?.name || "token"}
         className="rounded-full size-6"
       />

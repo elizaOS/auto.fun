@@ -15,12 +15,12 @@ import {
   normalizedProgress,
   shortenAddress,
 } from "@/utils";
-import { getToken, optimizePinataImage } from "@/utils/api";
+import { getToken } from "@/utils/api";
 import { useQuery } from "@tanstack/react-query";
 import { InfoCircle } from "iconsax-react";
 import { Globe } from "lucide-react";
 import { Link, useParams } from "react-router";
-import ShowMoreText from "react-show-more-text";
+import ShowMoreText from "@/components/show-more-text";
 
 export default function Page() {
   const params = useParams();
@@ -35,7 +35,7 @@ export default function Page() {
     refetchInterval: 3_000,
   });
 
-  const token: IToken = query?.data;
+  const token = query?.data as IToken;
 
   const solPriceUSD = token?.solPriceUSD;
   const finalTokenPrice = 0.00000045; // Approximated value from the bonding curve configuration
@@ -97,11 +97,8 @@ export default function Page() {
       <div className="max-w-[587px] flex flex-col gap-3">
         <div className="border rounded-md p-4 bg-autofun-background-card flex flex-col gap-3">
           <div className="flex gap-3">
-            <div className="size-36 shrink-0">
-              <SkeletonImage
-                src={optimizePinataImage(token.image, 160, 160)}
-                alt="image"
-              />
+            <div className="w-36 shrink-0">
+              <SkeletonImage src={token.image} alt="image" />
             </div>
             <div className="flex flex-col gap-3">
               {/* Token Info and Time */}
@@ -236,13 +233,13 @@ export default function Page() {
               <p className="font-satoshi text-base text-autofun-text-secondary whitespace-pre-line break-words">
                 Graduate this coin to Raydium at{" "}
                 {formatNumber(graduationMarketCap, true)}
-                 market cap.{"\n"}
+                market cap.{"\n"}
                 There is{" "}
                 {formatNumber(
                   (token?.reserveLamport - token?.virtualReserves) /
                     LAMPORTS_PER_SOL,
                   true,
-                  true
+                  true,
                 )}{" "}
                 SOL in the bonding curve.
               </p>

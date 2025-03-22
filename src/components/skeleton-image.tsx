@@ -25,7 +25,7 @@ const SkeletonImage: React.FC<SkeletonImageProps> = ({
         <div
           className={twMerge(
             "absolute inset-0 bg-autofun-background-input animate-pulse rounded-sm size-full",
-            className
+            className,
           )}
         />
       )}
@@ -37,7 +37,7 @@ const SkeletonImage: React.FC<SkeletonImageProps> = ({
         className={twMerge(
           "transition-opacity duration-200 rounded-sm object-cover size-full",
           loaded ? "opacity-100" : "opacity-0",
-          className
+          className,
         )}
         {...props}
       />

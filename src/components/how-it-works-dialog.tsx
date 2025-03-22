@@ -8,7 +8,6 @@ import { Fragment, useEffect, useState } from "react";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useLocation, Link } from "react-router";
 import { twMerge } from "tailwind-merge";
-import Button from "./button";
 
 type TopButtonProps = {
   isActive?: boolean;
@@ -69,29 +68,14 @@ const TextWithCircle = ({ text }: { text: string }) => {
 const Trading = () => {
   return (
     <Fragment>
-      <p className="font-satoshi font-normal text-base leading-6 tracking-normal text-autofun-text-secondary">
-        Auto.fun streamlines agentic trading through our token launching system.
-        Create value for projects you believe in.
-      </p>
+      <StepText step={1} text="Pick a token you like" />
+      <Divider />
+      <StepText step={2} text="Buy the token on the bonding curve" />
       <Divider />
       <StepText
-        step={1}
-        text="Browse and select through our token from the marketplace"
+        step={3}
+        text="If the token reaches $100k market cap, the token transitions to Raydium"
       />
-      <Divider />
-      <StepText
-        step={2}
-        text="Buy tokens through our bonding curve mechanism"
-      />
-      <Divider />
-      <StepText step={3} text="Buy and sell with instant liquidity" />
-      <Divider />
-      <StepText
-        step={4}
-        text="When the bonding curve completes, the token reaches a $100k market cap"
-      />
-      <Divider />
-      <StepText step={5} text="Token transitions to Raydium" />
       <Divider />
     </Fragment>
   );
@@ -182,12 +166,6 @@ export function HowItWorksDialog() {
           {activeTab === "trading" ? <Trading /> : <Creation />}
         </div>
         <div className="flex flex-col gap-4 px-4">
-          <Button onClick={() => setOpen(false)} size="small">
-            Continue
-          </Button>
-          <p className="text-autofun-text-secondary text-base font-satoshi font-medium text-center">
-            By clicking this button you agree to the terms and conditions.
-          </p>
           <div className="flex items-center gap-4 mx-auto">
             <Link
               to="/privacy-policy"

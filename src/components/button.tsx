@@ -43,7 +43,7 @@ const Button: React.FC<ButtonProps> = ({
     sizeClasses[size],
     variantClasses[variant],
     (disabled || isLoading) && disabledClasses,
-    className
+    className,
   );
 
   return (

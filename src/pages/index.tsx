@@ -11,6 +11,7 @@ import usePagination from "@/hooks/use-pagination";
 import { useFilter } from "@/hooks/use-filter";
 import { Fragment } from "react/jsx-runtime";
 import Loader from "@/components/loader";
+import Footer from "@/components/footer";
 
 export default function Page() {
   const [activeTab] = useViewMode();
@@ -31,17 +32,25 @@ export default function Page() {
     staleTime: 1_000,
   });
 
-  const data = query?.data?.tokens as IToken[];
+  const queryData = query?.data as {
+    tokens: IToken[];
+    page: number;
+    totalPages: number;
+    total: number;
+    hasMore: boolean;
+  };
+
+  const tokens = queryData?.tokens as IToken[];
 
   const pagination = {
-    page: query?.data?.page || 1,
-    totalPages: query?.data?.totalPages || 1,
-    total: query?.data?.total || 1,
-    hasMore: query?.data?.hasMore || false,
+    page: queryData?.page || 1,
+    totalPages: queryData?.totalPages || 1,
+    total: queryData?.total || 1,
+    hasMore: queryData?.hasMore || false,
   } as IPagination;
 
   return (
-    <div className="flex flex-col">
+    <div className="w-full min-h-[100vh]">
       {/* Top Navigation */}
       <div className="flex items-center gap-3 flex-wrap-reverse lg:flex-wrap">
         <GridListSwitcher />
@@ -67,22 +76,25 @@ export default function Page() {
         </div>
       </div>
 
-      {!query?.isLoading ? (
-        <Fragment>
-          {activeTab === "grid" ? (
-            <div className="my-6">
-              <GridView data={data} />
-            </div>
-          ) : (
-            <div className="mb-2">
-              <TableView data={data} />
-            </div>
-          )}
-        </Fragment>
-      ) : (
-        <Loader />
-      )}
-      <Pagination pagination={pagination} onPageChange={onPageChange} />
+      <div className="flex flex-col flex-1 min-h-[80vh]">
+        {!query?.isLoading ? (
+          <Fragment>
+            {activeTab === "grid" ? (
+              <div className="my-6">
+                <GridView data={tokens} />
+              </div>
+            ) : (
+              <div className="mb-2">
+                <TableView data={tokens} />
+              </div>
+            )}
+          </Fragment>
+        ) : (
+          <Loader />
+        )}
+        <Pagination pagination={pagination} onPageChange={onPageChange} />
+      </div>
+      <Footer />
     </div>
   );
 }

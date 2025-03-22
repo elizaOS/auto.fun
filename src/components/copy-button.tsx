@@ -16,7 +16,9 @@ export default function CopyButton({
       await navigator.clipboard.writeText(String(text));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {}
+    } catch {
+      console.error("Failed to copy text");
+    }
   };
 
   return (
@@ -24,7 +26,7 @@ export default function CopyButton({
       onClick={() => handleCopy(text)}
       className={twMerge(
         "flex items-center justify-center text-autofun-icon-secondary hover:text-white transition-colors p-0 cursor-pointer",
-        className
+        className,
       )}
     >
       {copied ? (

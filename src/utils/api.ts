@@ -3,13 +3,34 @@ import { QueryClient } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient();
 
-const BASE_URL = "https://dev-api.auto.fun";
-export const HELIUS_RPC_URL = import.meta.env.VITE_RPC_URL;
+// Determine the API URL with proper fallbacks
+const hostname = window.location.hostname;
+
+// Set API URL based on the current hostname
+let apiUrl = import.meta.env.VITE_API_URL;
+
+// If no environment variable is set, infer from the current hostname
+if (!apiUrl) {
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    // Local development
+    apiUrl = 'http://localhost:8787';
+  } else if (hostname === 'autofun.pages.dev' || hostname.includes('autofun')) {
+    // Production
+    apiUrl = 'https://api.autofun.pages.dev';
+  } else if (hostname === 'autofun-dev.pages.dev' || hostname.includes('autofun-dev')) {
+    // Development/staging
+    apiUrl = 'https://api-dev.autofun.pages.dev';
+  } else {
+    // Default fallback - production
+    apiUrl = 'https://api.autofun.pages.dev';
+  }
+}
+const BASE_URL = apiUrl;
 
 const fetcher = async (
   endpoint: string,
   method: "GET" | "POST",
-  body?: object
+  body?: object,
 ) => {
   const query: { method: string; body?: string; headers: object } = {
     method,
@@ -42,12 +63,12 @@ export const getTokens = async ({
   sortBy: TSortBy;
   sortOrder: TSortOrder;
 }) => {
-  const data = await fetcher(
-    `/tokens?limit=${limit || 12}&page=${
+  const data = (await fetcher(
+    `/api/tokens?limit=${limit || 12}&page=${
       page || 1
     }&sortBy=${sortBy}&sortOrder=${sortOrder}`,
-    "GET"
-  );
+    "GET",
+  )) as { tokens: IToken[] };
 
   if (data?.tokens?.length > 0) {
     data?.tokens?.forEach((token: IToken) => {
@@ -59,26 +80,7 @@ export const getTokens = async ({
 };
 
 export const getToken = async ({ address }: { address: string }) => {
-  const data = await fetcher(`/tokens/${address}`, "GET");
+  const data = await fetcher(`/api/tokens/${address}`, "GET");
 
   return data;
-};
-
-export const optimizePinataImage = (
-  image: string,
-  height: number,
-  width: number
-) => {
-  if (!image?.includes("pinata")) return image;
-
-  const url = new URL(
-    image?.replace("gateway.pinata.cloud", "ser.mypinata.cloud")
-  );
-
-  url.searchParams.set("img-width", String(height));
-  url.searchParams.set("img-height", String(width));
-  url.searchParams.set("img-format", "webp");
-  url.searchParams.set("img-quality", "90");
-
-  return String(url);
 };

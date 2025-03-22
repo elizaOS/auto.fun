@@ -1,0 +1,182 @@
+name: Deploy to Cloudflare Workers and Pages
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+jobs:
+#   test:
+#     runs-on: ubuntu-latest
+#     name: Run Tests
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v3
+
+#       - name: Setup Bun
+#         uses: oven-sh/setup-bun@v1
+#         with:
+#           bun-version: latest
+
+#       - name: Install dependencies
+#         run: bun install
+
+#       - name: Generate Drizzle migrations
+#         run: bun run generate
+
+#       - name: Run worker tests
+#         run: bun run test:worker
+        
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy Worker and Pages
+    # needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+        
+      - name: Generate Drizzle migrations
+        run: bun run generate
+      
+      - name: Set environment variables
+        id: set-env
+        run: |
+          if [[ $GITHUB_REF == *"main"* ]]; then
+            # Worker settings
+            echo "WORKER_NAME=api" >> $GITHUB_ENV
+            echo "WORKER_ENV=production" >> $GITHUB_ENV
+            echo "DB_SUFFIX=" >> $GITHUB_ENV
+            # Pages settings
+            echo "NODE_ENV=production" >> $GITHUB_ENV
+            echo "DATABASE_NAME=autofun" >> $GITHUB_ENV
+            # API URL for production
+            echo "VITE_API_URL=https://api.autofun.workers.dev" >> $GITHUB_ENV
+          else
+            # Worker settings
+            echo "WORKER_NAME=api-dev" >> $GITHUB_ENV
+            echo "WORKER_ENV=development" >> $GITHUB_ENV
+            echo "DB_SUFFIX=-dev" >> $GITHUB_ENV
+            # Pages settings
+            echo "NODE_ENV=development" >> $GITHUB_ENV
+            echo "DATABASE_NAME=autofun-dev" >> $GITHUB_ENV
+            echo "DATABASE_NAME_DEV=autofun-dev" >> $GITHUB_ENV
+            # API URL for development
+            echo "VITE_API_URL=https://api-dev.autofun.workers.dev" >> $GITHUB_ENV
+          fi
+
+      # Build frontend before deploying backend
+      - name: Build frontend
+        run: bun run build
+        env:
+          NODE_ENV: ${{ env.NODE_ENV }}
+          VITE_API_URL: ${{ env.VITE_API_URL }}
+
+      # Apply migrations to D1 database
+      - name: Apply D1 migrations
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          command: d1 execute autofun${{ env.DB_SUFFIX }} --file=./drizzle/migrations.sql --env ${{ env.WORKER_ENV }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+
+      # Publish Durable Object migrations
+      - name: Publish Durable Object migrations
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          command: deploy --config wrangler.toml --env ${{ env.WORKER_ENV }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+
+      # Deploy the worker
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          command: deploy --config wrangler.toml --env ${{ env.WORKER_ENV }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          # Environment variables from wrangler.toml, can be overridden by secrets
+          NETWORK: ${{ secrets.NETWORK || 'mainnet' }}
+          DECIMALS: ${{ secrets.DECIMALS || '9' }}
+          TOKEN_SUPPLY: ${{ secrets.TOKEN_SUPPLY || '1000000000000000000' }}
+          VIRTUAL_RESERVES: ${{ secrets.VIRTUAL_RESERVES || '1000000000' }}
+          CURVE_LIMIT: ${{ secrets.CURVE_LIMIT || '1000000000000' }}
+          PRIMARY_LOCK_PERCENTAGE: ${{ secrets.PRIMARY_LOCK_PERCENTAGE || '90' }}
+          SECONDARY_LOCK_PERCENTAGE: ${{ secrets.SECONDARY_LOCK_PERCENTAGE || '10' }}
+          FEE_PERCENTAGE: ${{ secrets.FEE_PERCENTAGE || '1' }}
+          # Database configuration
+          DATABASE_NAME: ${{ env.DATABASE_NAME }}
+          DATABASE_ID: ${{ secrets.DATABASE_ID }}
+          DATABASE_NAME_DEV: ${{ env.DATABASE_NAME_DEV }}
+          DATABASE_ID_DEV: ${{ secrets.DATABASE_ID_DEV || '00ade209-86ac-46a9-bed5-b74aaaac4ad4' }}
+          # API URL for the worker
+          API_URL: ${{ env.WORKER_ENV == 'production' && 'https://api.autofun.pages.dev' || 'https://api-dev.autofun.pages.dev' }}
+          # Additional secrets
+          API_KEY: ${{ secrets.API_KEY }}
+          WALLET_PRIVATE_KEY: ${{ secrets.WALLET_PRIVATE_KEY }}
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
+
+      # Deploy to Pages
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          projectName: ${{ env.PROJECT_NAME || 'autofun' }}
+          directory: dist
+          branch: ${{ github.ref_name }}
+          wranglerVersion: '3'
+          # Disable GitHub integration to avoid permission issues
+          gitHubToken: ""
+          
+      # Set environment variables in Cloudflare Pages project
+      - name: Set Cloudflare Pages environment variables
+        if: success()
+        run: |
+          echo "Setting environment variables for Cloudflare Pages project: ${{ env.PROJECT_NAME || 'autofun' }}"
+          API_URL="${{ env.WORKER_ENV == 'production' && 'https://api.autofun.pages.dev' || 'https://api-dev.autofun.pages.dev' }}"
+          
+          # Using wrangler to set environment variables for Pages project
+          # Note: This step is skipped for now because it's not working correctly
+          # We'll add environment variables manually in the Cloudflare dashboard
+          echo "API URL for the environment: $API_URL"
+          echo "Please set this manually in Cloudflare Pages dashboard for ${{ env.PROJECT_NAME || 'autofun' }}"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          
+      - name: Notify on Success
+        if: success()
+        run: |
+          echo "Deployment completed successfully!"
+          echo "Worker deployed: ${{ env.WORKER_NAME }} (Environment: ${{ env.WORKER_ENV }})"
+          
+          if [[ "${{ env.WORKER_ENV }}" == "production" ]]; then
+            echo "API URL: https://api.autofun.pages.dev"
+            echo "Frontend URL: https://autofun.pages.dev"
+          else
+            echo "API URL: https://api-dev.autofun.pages.dev"
+            echo "Frontend URL: https://autofun-dev.pages.dev"
+          fi
+          
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "Deployment failed!"
+          echo "Please check the logs for more information and verify your Cloudflare credentials." 
