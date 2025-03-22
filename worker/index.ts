@@ -40,7 +40,7 @@ type TTokenStatus =
 
 interface IToken {
   mint: string;
-  createdAt: string;
+  createdAt: string | Date;
   creator: string;
   currentPrice: number;
   curveLimit: number;
@@ -227,7 +227,7 @@ const generateMockToken = (): IToken => {
 
   return {
     mint: crypto.randomUUID(),
-    createdAt: now,
+    createdAt: getRandomRecentDate(),
     creator: "mock-creator-address",
     currentPrice: getRandomNumber({ min: 0.00001, max: 0.001, decimals: 10 }),
     curveLimit: getRandomNumber({ min: 50, max: 150 }),
@@ -595,7 +595,7 @@ api.get("/messages/:mint", async (c) => {
           message: "This is a mock message for testing",
           replyCount: 0,
           likes: 5,
-          timestamp: new Date().toISOString(),
+          timestamp: getRandomRecentDate(),
         },
       ],
       page: 1,
