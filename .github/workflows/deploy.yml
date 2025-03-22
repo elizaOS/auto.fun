@@ -137,9 +137,11 @@ jobs:
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           projectName: ${{ env.PROJECT_NAME }}
           directory: dist
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.ref_name }}
           wranglerVersion: '3'
+          # Disable GitHub integration to avoid permission issues
+          gitHubToken: ""
+          createDeployment: false
           
       - name: Notify on Success
         if: success()
