@@ -60,6 +60,7 @@ jobs:
             echo "PROJECT_NAME=autofun" >> $GITHUB_ENV
             echo "DEPLOY_URL=https://autofun.pages.dev" >> $GITHUB_ENV
             echo "NODE_ENV=production" >> $GITHUB_ENV
+            echo "DATABASE_NAME=autofun" >> $GITHUB_ENV
           else
             # Worker settings
             echo "WORKER_NAME=api-dev" >> $GITHUB_ENV
@@ -69,6 +70,7 @@ jobs:
             echo "PROJECT_NAME=autofun-dev" >> $GITHUB_ENV
             echo "DEPLOY_URL=https://autofun-dev.pages.dev" >> $GITHUB_ENV
             echo "NODE_ENV=development" >> $GITHUB_ENV
+            echo "DATABASE_NAME=autofun-dev" >> $GITHUB_ENV
           fi
 
       # Build frontend before deploying backend
