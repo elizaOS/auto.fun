@@ -274,30 +274,31 @@ class TokenMonitor {
               return;
             }
 
-            // Create swap record
-            const swap = await Swap.findOneAndUpdate(
-              { txId: logs.signature },
-              {
-                tokenMint: mintAddress,
-                user: user,
-                direction: parseInt(direction),
-                type: direction === "1" ? "sell" : "buy",
-                amountIn: Number(amount),
-                amountOut: Number(amountOut),
-                price: direction === "1" ? 
-                  (Number(amountOut) / Math.pow(10, SOL_DECIMALS)) / (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) : // Sell price (SOL/token)
-                  (Number(amount) / Math.pow(10, SOL_DECIMALS)) / (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)),  // Buy price (SOL/token)
-                txId: logs.signature,
-                // reserveTokenAfter: reserveToken,
-                // reserveLamportAfter: reserveLamport
-              },
-              { 
-                upsert: true,
-                new: true 
-              }
-            );
-
-            const solPrice = await getSOLPrice();
+            // Create swap record and get solPrice   
+            const [swap, solPrice] = await Promise.all([
+              Swap.findOneAndUpdate(
+                { txId: logs.signature },
+                {
+                  tokenMint: mintAddress,
+                  user: user,
+                  direction: parseInt(direction),
+                  type: direction === "1" ? "sell" : "buy", 
+                  amountIn: Number(amount),
+                  amountOut: Number(amountOut),
+                  price: direction === "1" ? 
+                    (Number(amountOut) / Math.pow(10, SOL_DECIMALS)) / (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) : // Sell price (SOL/token)
+                    (Number(amount) / Math.pow(10, SOL_DECIMALS)) / (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)),  // Buy price (SOL/token)
+                  txId: logs.signature,
+                  // reserveTokenAfter: reserveToken,
+                  // reserveLamportAfter: reserveLamport
+                },
+                { 
+                  upsert: true,
+                  new: true 
+                }
+              ),
+              getSOLPrice()
+            ]);
 
             const currentPrice = (Number(reserveLamport) / 1e9) / 
               (Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS));
