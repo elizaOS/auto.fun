@@ -11,12 +11,12 @@ export default function Trade({ token }: { token: IToken }) {
   const solanaPrice = token?.solPriceUSD || 0;
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
-    undefined,
+    undefined
   );
   const [error] = useState<string | undefined>("");
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token.status,
+    token.status
   );
 
   return (
@@ -92,7 +92,7 @@ export default function Trade({ token }: { token: IToken }) {
                   : token?.tokenPriceUSD
                     ? formatNumber(
                         Number(sellingAmount || 0) * token?.tokenPriceUSD,
-                        true,
+                        true
                       )
                     : formatNumber(0)}
               </span>
@@ -164,7 +164,7 @@ const TokenDisplay = ({
   return (
     <div className="flex items-center gap-2 rounded-lg border bg-autofun-background-card p-2 select-none">
       <SkeletonImage
-        src={token?.image || ""}
+        src={isSolana ? "/solana.png" : token?.image || ""}
         alt={token?.name || "token"}
         className="rounded-full size-6"
       />
