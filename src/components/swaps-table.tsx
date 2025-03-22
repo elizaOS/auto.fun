@@ -22,6 +22,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
       return data as { swaps: ISwap[] };
     },
     enabled: token?.mint ? true : false,
+    refetchInterval: 2_500,
   });
 
   const data = query?.data?.swaps || ([] as ISwap[]);
@@ -39,7 +40,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {[...data, ...data, ...data]?.map((swap: ISwap) => {
+        {data?.map((swap: ISwap) => {
           return (
             <TableRow key={token?.txId} className="cursor-pointer">
               <TableCell className="text-left">

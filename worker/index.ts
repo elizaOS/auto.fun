@@ -179,25 +179,25 @@ api.post("/generate-nonce", (c) => generateNonce(c));
 api.post("/logout", (c) => logout(c));
 api.get("/auth-status", (c) => authStatus(c));
 
-const generateMockToken = (): IToken => {
-  // Helper function to generate a random number within a specified range
-  function getRandomNumber(options?: {
-    min?: number;
-    max?: number;
-    decimals?: number;
-  }): number {
-    const min = options?.min ?? 1;
-    const max = options?.max ?? 100;
-    if (min > max) {
-      throw new Error("min should be less than or equal to max");
-    }
-    const random = Math.random() * (max - min) + min;
-    if (options && typeof options.decimals === "number") {
-      return parseFloat(random.toFixed(options.decimals));
-    }
-    return Math.floor(random);
+// Helper function to generate a random number within a specified range
+function getRandomNumber(options?: {
+  min?: number;
+  max?: number;
+  decimals?: number;
+}): number {
+  const min = options?.min ?? 1;
+  const max = options?.max ?? 100;
+  if (min > max) {
+    throw new Error("min should be less than or equal to max");
   }
+  const random = Math.random() * (max - min) + min;
+  if (options && typeof options.decimals === "number") {
+    return parseFloat(random.toFixed(options.decimals));
+  }
+  return Math.floor(random);
+}
 
+const generateMockToken = (): IToken => {
   // Define allowed status values and select one at random
   const statuses: IToken["status"][] = [
     "pending",
@@ -533,22 +533,30 @@ api.get("/swaps/:mint", async (c) => {
   try {
     const mint = c.req.param("mint");
 
+    const generateRandomSwap = () => {
+      return {
+        id: crypto.randomUUID(),
+        tokenMint: mint,
+        user: crypto.randomUUID(),
+        type: "swap",
+        direction: getRandomNumber({ min: 0, max: 2 }), // Buy
+        amountIn: getRandomNumber({ min: 0.2, max: 5000 }),
+        amountOut: getRandomNumber({ min: 10, max: 5000 }),
+        price: getRandomNumber({ min: 0, max: 5000 }),
+        txId: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
+      };
+    };
+
+    const swaps: any[] = [];
+
+    for (let i = 0; i < 12; i++) {
+      swaps.push(generateRandomSwap());
+    }
+
     // Return mock swap history
     return c.json({
-      swaps: [
-        {
-          id: crypto.randomUUID(),
-          tokenMint: mint,
-          user: "mock-user-address",
-          type: "swap",
-          direction: 0, // Buy
-          amountIn: 0.1,
-          amountOut: 100,
-          price: 0.001,
-          txId: "mock-transaction-id",
-          timestamp: new Date().toISOString(),
-        },
-      ],
+      swaps,
       page: 1,
       totalPages: 1,
       total: 1,
