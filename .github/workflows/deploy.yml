@@ -96,7 +96,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: publish --config wrangler.toml --env ${{ env.WORKER_ENV }} --migrations
+          command: deploy --config wrangler.toml --env ${{ env.WORKER_ENV }} --migration-tag v1 --migrations-dir ./
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
 
