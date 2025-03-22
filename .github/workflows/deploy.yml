@@ -86,7 +86,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: d1 execute ${{ env.DATABASE_NAME }} --file=./drizzle/migrations.sql
+          command: d1 execute autofun${{ env.DB_SUFFIX }} --file=./drizzle/migrations.sql
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
 
