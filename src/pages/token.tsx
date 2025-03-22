@@ -5,6 +5,7 @@ import Loader from "@/components/loader";
 import SkeletonImage from "@/components/skeleton-image";
 import TokenStatus from "@/components/token-status";
 import Trade from "@/components/trade";
+import TransactionsAndHolders from "@/components/txs-and-holders";
 import { IToken } from "@/types";
 import {
   abbreviateNumber,
@@ -46,11 +47,11 @@ export default function Page() {
   }
 
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="flex flex-wrap md:flex-wrap-reverse gap-3">
       {/* Left Section */}
-      <div className="col-span-2 flex flex-col gap-3">
+      <div className="w-fit grow flex flex-col gap-3">
         {/* Info */}
-        <div className="flex border rounded-md bg-autofun-background-card p-3 items-center justify-between gap-3 divide-x divide-autofun-stroke-primary">
+        <div className="flex flex-wrap xl:flex-nowrap border rounded-md bg-autofun-background-card p-3 items-center justify-between gap-3 xl:divide-x divide-autofun-stroke-primary">
           <div className="flex flex-col gap-2 items-center w-full">
             <span className="text-base font-dm-mono text-autofun-text-secondary">
               Market Cap
@@ -90,12 +91,10 @@ export default function Page() {
         <div className="border rounded-md p-3 bg-autofun-background-card">
           Chart
         </div>
-        <div className="border rounded-md p-3 bg-autofun-background-card">
-          Tables
-        </div>
+        <TransactionsAndHolders token={token} />
       </div>
       {/* Right Section */}
-      <div className="flex flex-col gap-3">
+      <div className="max-w-[587px] flex flex-col gap-3">
         <div className="border rounded-md p-4 bg-autofun-background-card flex flex-col gap-3">
           <div className="flex gap-3">
             <div className="w-36 shrink-0">
@@ -136,7 +135,7 @@ export default function Page() {
               </span>
             </div>
             <div className="bg-autofun-background-input flex justify-between py-2 px-3 min-w-0 w-full gap-2">
-              <span className="text-base text-autofun-text-secondary truncate">
+              <span className="w-0 flex-1 min-w-0 block text-base text-autofun-text-secondary truncate">
                 {token?.mint}
               </span>
               <CopyButton text={token?.mint} />
@@ -231,7 +230,7 @@ export default function Page() {
             </div>
             <BondingCurveBar progress={token?.curveProgress} />
             {token?.status !== "migrated" ? (
-              <p className="font-satoshi text-base text-autofun-text-secondary whitespace-pre">
+              <p className="font-satoshi text-base text-autofun-text-secondary whitespace-pre-line break-words">
                 Graduate this coin to Raydium at{" "}
                 {formatNumber(graduationMarketCap, true)}
                 market cap.{"\n"}
