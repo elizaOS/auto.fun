@@ -201,9 +201,7 @@ export default function Page() {
                 Price USD
               </span>
               <span className="text-xl font-dm-mono text-autofun-text-highlight">
-                {token?.marketCapUSD
-                  ? abbreviateNumber(token?.marketCapUSD)
-                  : null}
+                {token?.tokenPriceUSD ? token?.tokenPriceUSD : null}
               </span>
             </div>
             <div className="flex flex-col gap-1 items-center w-full">
@@ -211,7 +209,7 @@ export default function Page() {
                 Price
               </span>
               <span className="text-xl font-dm-mono text-autofun-text-primary">
-                {token?.price24hAgo ? abbreviateNumber(token?.volume24h) : null}
+                {token?.currentPrice ? token?.currentPrice : null}
               </span>
             </div>
           </div>

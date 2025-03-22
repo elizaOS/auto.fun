@@ -39,17 +39,46 @@ type TTokenStatus =
   | "migration_failed";
 
 interface IToken {
-  id: string;
-  name: string;
-  ticker: string;
   mint: string;
-  creator: string;
-  status: TTokenStatus;
   createdAt: string;
-  tokenPriceUSD: number;
-  marketCapUSD: number;
-  volume24h: number;
+  creator: string;
+  currentPrice: number;
+  curveLimit: number;
   curveProgress: number;
+  description: string;
+  image: string;
+  inferenceCount: number;
+  lastUpdated: string;
+  liquidity: number;
+  marketCapUSD: number;
+  name: string;
+  price24hAgo: number;
+  priceChange24h: number;
+  reserveAmount: number;
+  reserveLamport: number;
+  solPriceUSD: number;
+  status:
+    | "pending"
+    | "active"
+    | "withdrawn"
+    | "migrating"
+    | "migrated"
+    | "locked"
+    | "harvested"
+    | "migration_failed";
+  telegram: string;
+  ticker: string;
+  tokenPriceUSD: number;
+  twitter: string;
+  txId: string;
+  url: string;
+  virtualReserves: number;
+  volume24h: number;
+  website: string;
+  holderCount: number;
+  lastPriceUpdate: string;
+  lastVolumeReset: string;
+  hasAgent: boolean;
 }
 
 interface ITokenHolder {
@@ -151,6 +180,7 @@ api.post("/logout", (c) => logout(c));
 api.get("/auth-status", (c) => authStatus(c));
 
 const generateMockToken = (): IToken => {
+  // Helper function to generate a random number within a specified range
   function getRandomNumber(options?: {
     min?: number;
     max?: number;
@@ -158,7 +188,6 @@ const generateMockToken = (): IToken => {
   }): number {
     const min = options?.min ?? 1;
     const max = options?.max ?? 100;
-
     if (min > max) {
       throw new Error("min should be less than or equal to max");
     }
@@ -168,19 +197,60 @@ const generateMockToken = (): IToken => {
     }
     return Math.floor(random);
   }
-  const random = getRandomNumber({ min: 1, max: 5000 });
+
+  // Define allowed status values and select one at random
+  const statuses: IToken["status"][] = [
+    "pending",
+    "active",
+    "withdrawn",
+    "migrating",
+    "migrated",
+    "locked",
+    "harvested",
+    "migration_failed",
+  ];
+  const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
+
+  // Use a single timestamp for all date fields
+  const now = new Date().toISOString();
+
+  // Generate random values to be used in name and ticker strings
+  const randomForName = getRandomNumber({ min: 1, max: 5000 });
+  const randomForTicker = getRandomNumber({ min: 1, max: 5000 });
+
   return {
-    id: crypto.randomUUID(),
-    name: `Test Token ${random}`,
-    ticker: `TST${random}`,
     mint: crypto.randomUUID(),
+    createdAt: now,
     creator: "mock-creator-address",
-    status: "active",
-    createdAt: new Date().toISOString(),
-    tokenPriceUSD: 0.01 * random,
-    marketCapUSD: 10000 * random,
-    volume24h: 5000 * random,
+    currentPrice: getRandomNumber({ min: 0.00001, max: 0.001, decimals: 10 }),
+    curveLimit: getRandomNumber({ min: 50, max: 150 }),
     curveProgress: getRandomNumber({ min: 1, max: 100, decimals: 15 }),
+    description: "This is a mock token used for testing purposes.",
+    image: "https://example.com/token.png",
+    inferenceCount: getRandomNumber({ min: 0, max: 10000 }),
+    lastUpdated: now,
+    liquidity: getRandomNumber({ min: 1000, max: 100000 }),
+    marketCapUSD: getRandomNumber({ min: 10000, max: 1000000 }),
+    name: `Test Token ${randomForName}`,
+    price24hAgo: getRandomNumber({ min: 0.1, max: 100, decimals: 2 }),
+    priceChange24h: getRandomNumber({ min: -50, max: 50, decimals: 2 }),
+    reserveAmount: getRandomNumber({ min: 1, max: 10000 }),
+    reserveLamport: getRandomNumber({ min: 100000, max: 10000000 }),
+    solPriceUSD: getRandomNumber({ min: 10, max: 200, decimals: 2 }),
+    status: randomStatus,
+    telegram: "https://t.me/mocktoken",
+    ticker: `TST${randomForTicker}`,
+    tokenPriceUSD: getRandomNumber({ min: 0.00001, max: 0.001, decimals: 10 }),
+    twitter: "https://twitter.com/mocktoken",
+    txId: crypto.randomUUID(),
+    url: "https://example.com/token",
+    virtualReserves: getRandomNumber({ min: 0, max: 100000 }),
+    volume24h: getRandomNumber({ min: 5000, max: 500000 }),
+    website: "https://mocktoken.com",
+    holderCount: getRandomNumber({ min: 1, max: 100000 }),
+    lastPriceUpdate: now,
+    lastVolumeReset: now,
+    hasAgent: Math.random() < 0.5,
   };
 };
 
