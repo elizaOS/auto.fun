@@ -10,6 +10,7 @@ import { IToken } from "@/types";
 import {
   abbreviateNumber,
   formatNumber,
+  formatNumberSubscript,
   fromNow,
   LAMPORTS_PER_SOL,
   normalizedProgress,
@@ -201,7 +202,9 @@ export default function Page() {
                 Price USD
               </span>
               <span className="text-xl font-dm-mono text-autofun-text-primary">
-                {token?.tokenPriceUSD ? token?.tokenPriceUSD : null}
+                {token?.tokenPriceUSD
+                  ? formatNumberSubscript(token?.tokenPriceUSD)
+                  : null}
               </span>
             </div>
             <div className="flex flex-col gap-1 items-center w-full">
@@ -209,7 +212,9 @@ export default function Page() {
                 Price
               </span>
               <span className="text-xl font-dm-mono text-autofun-text-primary">
-                {token?.currentPrice ? token?.currentPrice : null}
+                {token?.currentPrice
+                  ? formatNumberSubscript(token?.currentPrice)
+                  : null}
               </span>
             </div>
           </div>
