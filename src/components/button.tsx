@@ -13,7 +13,8 @@ const variantClasses = {
   outline: "bg-transparent border text-white",
   secondary:
     "bg-autofun-background-action-primary border text-autofun-text-highlight",
-  trade: "bg-autofun-background-card border text-autofun-text-primary px-3 font-dm-mono font-medium",
+  trade:
+    "bg-autofun-background-card border text-autofun-text-primary px-3 font-dm-mono font-medium",
 };
 
 const sizeClasses = {
@@ -41,7 +42,7 @@ const Button: React.FC<ButtonProps> = ({
     sizeClasses[size],
     variantClasses[variant],
     (disabled || isLoading) && disabledClasses,
-    className
+    className,
   );
 
   return (

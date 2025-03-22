@@ -80,16 +80,16 @@ export default function Page() {
         {!query?.isLoading ? (
           <Fragment>
             {activeTab === "grid" ? (
-            <div className="my-6">
-              <GridView data={tokens} />
-            </div>
-          ) : (
-            <div className="mb-2">
-              <TableView data={tokens} />
-            </div>
-          )}
-        </Fragment>
-      ) : (
+              <div className="my-6">
+                <GridView data={tokens} />
+              </div>
+            ) : (
+              <div className="mb-2">
+                <TableView data={tokens} />
+              </div>
+            )}
+          </Fragment>
+        ) : (
           <Loader />
         )}
         <Pagination pagination={pagination} onPageChange={onPageChange} />

@@ -24,10 +24,7 @@ export default function GridView({ data }: { data: IToken[] }) {
         >
           <div className="flex items-start gap-3 min-w-0">
             <div className="size-32 grow shrink-0">
-              <SkeletonImage
-                src={token.image}
-                alt="image"
-              />
+              <SkeletonImage src={token.image} alt="image" />
             </div>
             <div className="flex flex-col gap-3 justify-between min-w-0 w-full">
               {/* Token Info and Time */}

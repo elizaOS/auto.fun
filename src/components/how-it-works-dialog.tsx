@@ -68,15 +68,9 @@ const TextWithCircle = ({ text }: { text: string }) => {
 const Trading = () => {
   return (
     <Fragment>
-      <StepText
-        step={1}
-        text="Pick a token you like"
-      />
+      <StepText step={1} text="Pick a token you like" />
       <Divider />
-      <StepText
-        step={2}
-        text="Buy the token on the bonding curve"
-      />
+      <StepText step={2} text="Buy the token on the bonding curve" />
       <Divider />
       <StepText
         step={3}

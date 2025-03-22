@@ -99,10 +99,7 @@ export default function Page() {
         <div className="border rounded-md p-4 bg-autofun-background-card flex flex-col gap-3">
           <div className="flex gap-3">
             <div className="w-36 shrink-0">
-              <SkeletonImage
-                src={token.image}
-                alt="image"
-              />
+              <SkeletonImage src={token.image} alt="image" />
             </div>
             <div className="flex flex-col gap-3">
               {/* Token Info and Time */}
@@ -243,7 +240,7 @@ export default function Page() {
                   (token?.reserveLamport - token?.virtualReserves) /
                     LAMPORTS_PER_SOL,
                   true,
-                  true
+                  true,
                 )}{" "}
                 SOL in the bonding curve.
               </p>

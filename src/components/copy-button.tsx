@@ -26,7 +26,7 @@ export default function CopyButton({
       onClick={() => handleCopy(text)}
       className={twMerge(
         "flex items-center justify-center text-autofun-icon-secondary hover:text-white transition-colors p-0 cursor-pointer",
-        className
+        className,
       )}
     >
       {copied ? (

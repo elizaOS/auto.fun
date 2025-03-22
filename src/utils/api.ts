@@ -9,7 +9,7 @@ export const HELIUS_RPC_URL = import.meta.env.VITE_RPC_URL;
 const fetcher = async (
   endpoint: string,
   method: "GET" | "POST",
-  body?: object
+  body?: object,
 ) => {
   const query: { method: string; body?: string; headers: object } = {
     method,
@@ -42,12 +42,12 @@ export const getTokens = async ({
   sortBy: TSortBy;
   sortOrder: TSortOrder;
 }) => {
-  const data = await fetcher(
+  const data = (await fetcher(
     `/api/tokens?limit=${limit || 12}&page=${
       page || 1
     }&sortBy=${sortBy}&sortOrder=${sortOrder}`,
-    "GET"
-  ) as { tokens: IToken[] };
+    "GET",
+  )) as { tokens: IToken[] };
 
   if (data?.tokens?.length > 0) {
     data?.tokens?.forEach((token: IToken) => {

@@ -17,7 +17,7 @@ const usePagination = () => {
       newParams.set("page", String(validPage));
       setSearchParams(newParams);
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams],
   );
 
   return { page, onPageChange };

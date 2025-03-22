@@ -11,12 +11,12 @@ export default function Trade({ token }: { token: IToken }) {
   const solanaPrice = token?.solPriceUSD || 0;
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
-    undefined
+    undefined,
   );
   const [error] = useState<string | undefined>("");
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token.status
+    token.status,
   );
 
   return (
@@ -90,11 +90,11 @@ export default function Trade({ token }: { token: IToken }) {
                 {!isTokenSelling
                   ? formatNumber(Number(sellingAmount || 0) * solanaPrice, true)
                   : token?.tokenPriceUSD
-                  ? formatNumber(
-                      Number(sellingAmount || 0) * token?.tokenPriceUSD,
-                      true
-                    )
-                  : formatNumber(0)}
+                    ? formatNumber(
+                        Number(sellingAmount || 0) * token?.tokenPriceUSD,
+                        true,
+                      )
+                    : formatNumber(0)}
               </span>
               <Balance token={token} isSolana={!isTokenSelling} />
             </div>
