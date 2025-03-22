@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "WebWorker"],
-    "module": "ESNext",
+    "module": "ESNext", 
     "moduleResolution": "node",
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -17,8 +17,12 @@
     "types": ["@cloudflare/workers-types", "node"],
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationMap": true,
+    "declarationDir": "./dist/types"
   },
-  "include": ["src/**/*", "worker/**/*"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules"]
 }
