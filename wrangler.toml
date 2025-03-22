@@ -1,0 +1,49 @@
+name = "autofun-api"
+main = "worker/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Cron triggers
+[triggers]
+crons = ["*/10 * * * * *"] # Run every 10 seconds
+
+# D1 Database for production
+[[d1_databases]]
+binding = "DB"
+database_name = "autofun"
+database_id = "$DATABASE_ID"
+
+# R2 bucket for storage
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "autofun-storage"
+preview_bucket_name = "autofun-storage-dev"
+
+[vars]
+NETWORK = "mainnet"
+DECIMALS = "9"
+TOKEN_SUPPLY = "1000000000000000000"
+VIRTUAL_RESERVES = "1000000000"
+CURVE_LIMIT = "1000000000000"
+
+[[durable_objects.bindings]]
+name = "WEBSOCKET_DO"
+class_name = "WebSocketDO"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["WebSocketDO"]
+
+# Development environment configuration
+[env.development]
+name = "autofun-api-dev"
+# D1 Database for development
+[[env.development.d1_databases]]
+binding = "DB"
+database_name = "autofun-dev"
+database_id = "$DATABASE_ID_DEV"
+
+# Production environment configuration
+[env.production]
+name = "autofun-api"
+# The production database is already defined in the default configuration

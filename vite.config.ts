@@ -19,4 +19,13 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
+  define: {
+    // Define environment variables that will be replaced at build time
+    "import.meta.env.API_URL": JSON.stringify(
+      process.env.NODE_ENV === "production" 
+      ? "https://autofun-api.workers.dev" 
+      : "https://autofun-api-dev.workers.dev"
+    ),
+    "import.meta.env.APP_ENV": JSON.stringify(process.env.NODE_ENV || "development"),
+  },
 });
