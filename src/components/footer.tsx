@@ -1,10 +1,9 @@
 import { Link } from "react-router";
 import SkeletonImage from "./skeleton-image";
-import Button from "./button";
 
 export const Footer = () => {
   return (
-    <div className="hidden xl:flex justify-between py-5 w-full">
+    <div className="hidden xl:flex justify-between w-full">
       <div className="justify-start items-center gap-4 flex">
         <SkeletonImage
           height={32}
