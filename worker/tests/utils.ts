@@ -15,7 +15,7 @@ export const getAssociatedTokenAccount = (
   ownerPubkey: PublicKey,
   mintPk: PublicKey
 ): PublicKey => {
-  let associatedTokenAccountPubkey = (PublicKey.findProgramAddressSync(
+  const associatedTokenAccountPubkey = (PublicKey.findProgramAddressSync(
     [
       ownerPubkey.toBytes(),
       TOKEN_PROGRAM_ID.toBytes(),

@@ -69,7 +69,9 @@ export function TableView({ data }: { data: IToken[] }) {
                       <div className="text-autofun-text-secondary text-xs font-normal font-dm-mono">
                         {shortenAddress(token.mint)}
                       </div>
-                      <CopyButton text={token.mint} className="size-4" />
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <CopyButton text={token.mint} className="size-4" />
+                      </div>
                     </div>
                   </div>
                 </div>

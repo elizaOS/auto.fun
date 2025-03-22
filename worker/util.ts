@@ -115,7 +115,7 @@ export async function createNewTokenData(
     // Get a Solana config with the right environment
     const solanaConfig = initSolanaConfig(env);
     
-    let metadata = await fetchMetadataWithBackoff(solanaConfig.umi, tokenAddress, env);
+    const metadata = await fetchMetadataWithBackoff(solanaConfig.umi, tokenAddress, env);
     logger.log(`Fetched metadata for token ${tokenAddress}:`);
 
     const [bondingCurvePda] = PublicKey.findProgramAddressSync(
@@ -302,7 +302,7 @@ export const launchTokenTx = async (
   env?: any
 ) => {
     // Auth our user (register/login)
-    const apiUrl = env?.API_URL || (process.env.API_URL || 'https://api.auto.fun');
+    const apiUrl = env?.VITE_API_URL || (process.env.VITE_API_URL || 'https://api.auto.fun');
     const jwt = await fetch(`${apiUrl}/register`, {
       method: 'POST',
       headers: {
@@ -638,7 +638,7 @@ export const getAssociatedTokenAccount = (
   ownerPubkey: PublicKey,
   mintPk: PublicKey
 ): PublicKey => {
-  let associatedTokenAccountPubkey = (PublicKey.findProgramAddressSync(
+  const associatedTokenAccountPubkey = (PublicKey.findProgramAddressSync(
     [
       ownerPubkey.toBytes(),
       TOKEN_PROGRAM_ID.toBytes(),

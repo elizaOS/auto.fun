@@ -9,6 +9,8 @@ import { IPagination, IToken } from "@/types";
 import Pagination from "@/components/pagination";
 import usePagination from "@/hooks/use-pagination";
 import { useFilter } from "@/hooks/use-filter";
+import { Fragment } from "react/jsx-runtime";
+import Loader from "@/components/loader";
 
 export default function Page() {
   const [activeTab] = useViewMode();
@@ -73,16 +75,21 @@ export default function Page() {
         </div>
       </div>
 
-      {activeTab === "grid" ? (
-        <div className="my-6">
-          <GridView data={tokens} />
-        </div>
+      {!query?.isLoading ? (
+        <Fragment>
+          {activeTab === "grid" ? (
+            <div className="my-6">
+              <GridView data={tokens} />
+            </div>
+          ) : (
+            <div className="mb-2">
+              <TableView data={tokens} />
+            </div>
+          )}
+        </Fragment>
       ) : (
-        <div className="mb-2">
-          <TableView data={tokens} />
-        </div>
+        <Loader />
       )}
-
       <Pagination pagination={pagination} onPageChange={onPageChange} />
     </div>
   );

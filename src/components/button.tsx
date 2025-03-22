@@ -3,7 +3,7 @@ import React from "react";
 import { twMerge } from "tailwind-merge";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "outline";
+  variant?: "primary" | "secondary" | "outline" | "trade";
   isLoading?: boolean;
   size?: "default" | "large" | "small";
 }
@@ -13,6 +13,7 @@ const variantClasses = {
   outline: "bg-transparent border text-white",
   secondary:
     "bg-autofun-background-action-primary border text-autofun-text-highlight",
+  trade: "bg-autofun-background-card border text-autofun-text-primary px-3 font-dm-mono font-medium",
 };
 
 const sizeClasses = {

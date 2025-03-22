@@ -146,6 +146,12 @@ export function HowItWorksDialog() {
     }
   }, [pathname]);
 
+  useEffect(() => {
+    if (activeTab !== "trading") {
+      setActiveTab("trading");
+    }
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={(op: boolean) => setOpen(op)}>
       <DialogTrigger onClick={() => setOpen(true)} asChild>

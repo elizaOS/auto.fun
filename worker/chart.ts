@@ -766,18 +766,18 @@ export function getCandleData(priceFeeds: PriceFeedInfo[], range: number) {
   }
 
   // Convert price feed to candle price data
-  let cdStart = Math.floor(priceHistory[0].ts / candlePeriod) * candlePeriod;
-  let cdEnd = Math.floor(priceHistory[priceHistory.length - 1].ts / candlePeriod) * candlePeriod;
+  const cdStart = Math.floor(priceHistory[0].ts / candlePeriod) * candlePeriod;
+  const cdEnd = Math.floor(priceHistory[priceHistory.length - 1].ts / candlePeriod) * candlePeriod;
 
-  let cdFeeds: CandlePrice[] = [];
+  const cdFeeds: CandlePrice[] = [];
   let pIndex = 0;
   for (let curCdStart = cdStart; curCdStart <= cdEnd; curCdStart += candlePeriod) {
-    let st = priceHistory[pIndex].price;
+    const st = priceHistory[pIndex].price;
     let hi = priceHistory[pIndex].price;
     let lo = priceHistory[pIndex].price;
     let en = priceHistory[pIndex].price;
     let vol = 0;
-    let prevIndex = pIndex;
+    const prevIndex = pIndex;
     for (; pIndex < priceHistory.length; ) {
       if (hi < priceHistory[pIndex].price) hi = priceHistory[pIndex].price;
       if (lo > priceHistory[pIndex].price) lo = priceHistory[pIndex].price;

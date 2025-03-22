@@ -298,7 +298,7 @@ export class MigrationService {
     const mintA = await raydium.token.getTokenInfo(token.mint)
     const mintB = await raydium.token.getTokenInfo(NATIVE_MINT)
 
-    let feeConfigs = await raydium.api.getCpmmConfigs()
+    const feeConfigs = await raydium.api.getCpmmConfigs()
     if (raydium.cluster === "devnet") {
       feeConfigs.forEach((config: any) => {
         config.id = getCpmmPdaAmmConfigId(
