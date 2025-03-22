@@ -154,7 +154,7 @@ api.get("/tokens", async (c) => {
   try {
     const query = c.req.query();
 
-    const limit = parseInt(query.limit as string) || 50;
+    const limit = parseInt(query.limit as string) || 12;
     const page = parseInt(query.page as string) || 1;
 
     // Get search, status, creator params for mocking specific responses
@@ -164,7 +164,7 @@ api.get("/tokens", async (c) => {
 
     // Create mock tokens
     const mockTokens: IToken[] = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < limit; i++) {
       mockTokens.push({
         id: crypto.randomUUID(),
         name: search ? `Test ${search} Token ${i + 1}` : `Test Token ${i + 1}`,

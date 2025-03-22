@@ -97,7 +97,7 @@ export default function Page() {
       <div className="max-w-[587px] flex flex-col gap-3">
         <div className="border rounded-md p-4 bg-autofun-background-card flex flex-col gap-3">
           <div className="flex gap-3">
-            <div className="w-36 shrink-0">
+            <div className="size-36 shrink-0">
               <SkeletonImage src={token.image} alt="image" />
             </div>
             <div className="flex flex-col gap-3">
