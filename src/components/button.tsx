@@ -3,7 +3,7 @@ import React from "react";
 import { twMerge } from "tailwind-merge";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "outline" | "trade";
+  variant?: "primary" | "secondary" | "outline" | "trade" | "ghost";
   isLoading?: boolean;
   size?: "default" | "large" | "small";
 }
@@ -11,9 +11,11 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 const variantClasses = {
   primary: "bg-autofun-background-action-primary border text-white",
   outline: "bg-transparent border text-white",
+  ghost: "bg-transparent text-white border border-transparent",
   secondary:
     "bg-autofun-background-action-primary border text-autofun-text-highlight",
-  trade: "bg-autofun-background-card border text-autofun-text-primary px-3 font-dm-mono font-medium",
+  trade:
+    "bg-autofun-background-card border text-autofun-text-primary px-3 font-dm-mono font-medium",
 };
 
 const sizeClasses = {
@@ -24,7 +26,7 @@ const sizeClasses = {
 };
 
 const baseClasses =
-  "select-none px-4 py-2 rounded-md focus:outline-none transition-all duration-200 ease-in-out cursor-pointer font-medium flex items-center justify-center";
+  "select-none outline-none px-4 py-2 rounded-md focus:outline-none transition-all duration-200 ease-in-out cursor-pointer font-medium flex items-center justify-center";
 const disabledClasses = "opacity-50 cursor-not-allowed";
 
 const Button: React.FC<ButtonProps> = ({

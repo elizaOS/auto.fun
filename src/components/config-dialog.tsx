@@ -57,15 +57,17 @@ export default function ConfigDialog({ children }: PropsWithChildren) {
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-0.5">
-                <span className="text-base font-medium font-satoshi uppercase text-autofun-text-primary">
-                  Slippage%:{" "}
+                <span className="text-base font-medium font-satoshi text-autofun-text-primary">
+                  Slippage %:{" "}
                 </span>
-                <span className="font-normal font-satoshi text-autofun-text-highlight text-xl" style={{
-                    lineHeight: '28px',
-                    fontSize: '20px',
-                    letterSpacing: '-1.4px',
-
-                }}>
+                <span
+                  className="font-normal font-satoshi text-autofun-text-highlight text-xl"
+                  style={{
+                    lineHeight: "28px",
+                    fontSize: "20px",
+                    letterSpacing: "-1.4px",
+                  }}
+                >
                   {Number(slippage).toFixed(1)}
                 </span>
               </div>
@@ -76,6 +78,7 @@ export default function ConfigDialog({ children }: PropsWithChildren) {
                 max="100"
                 step="0.1"
                 type="number"
+                autoFocus={false}
                 onChange={({ target }) => storeSlippage(Number(target.value))}
                 value={slippage}
               ></input>
@@ -121,7 +124,7 @@ export default function ConfigDialog({ children }: PropsWithChildren) {
 
           <div className="flex justify-between items-center gap-3">
             <span className="text-base font-medium font-satoshi text-autofun-text-primary">
-              Enable front-running protection:
+              Enable front-running protection
             </span>
             <div className="p-1 rounded-md border flex items-center gap-2">
               {([true, false] as TMevProtection[]).map(
