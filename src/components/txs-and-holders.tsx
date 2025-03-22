@@ -24,7 +24,7 @@ export default function TransactionsAndHolders({ token }: { token: IToken }) {
           Holders
         </Button>
       </div>
-      <SwapsTable token={token} />
+      {mode === "transactions" ? <SwapsTable token={token} /> : null}
     </div>
   );
 }
