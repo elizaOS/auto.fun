@@ -15,7 +15,6 @@ import {
   shortenAddress,
 } from "@/utils";
 import { getToken, optimizePinataImage } from "@/utils/api";
-import { IconBrandDiscordFilled, IconBrandTelegram, IconBrandX } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { InfoCircle } from "iconsax-react";
 import { Globe } from "lucide-react";
@@ -161,7 +160,13 @@ export default function Page() {
                 className="w-full rounded-none"
                 disabled={!token?.twitter}
               >
-                <IconBrandX />
+                <SkeletonImage
+                  src="/x.svg"
+                  height={24}
+                  width={24}
+                  alt="twitter_icon"
+                  className="w-6 m-auto"
+                />
               </Button>
             </Link>
             <Link to={token?.telegram} className="w-full" target="_blank">
@@ -169,7 +174,13 @@ export default function Page() {
                 className="w-full rounded-none"
                 disabled={!token?.telegram}
               >
-                <IconBrandTelegram />
+                <SkeletonImage
+                  src="/telegram.svg"
+                  height={24}
+                  width={24}
+                  alt="telegram_icon"
+                  className="w-6 m-auto object-contain"
+                />
               </Button>
             </Link>
             <Link to={token?.website} className="w-full" target="_blank">
@@ -177,7 +188,13 @@ export default function Page() {
                 className="w-full rounded-none rounded-r-md"
                 disabled={!token?.website}
               >
-                <IconBrandDiscordFilled />
+                <SkeletonImage
+                  src="/discord.svg"
+                  height={24}
+                  width={24}
+                  alt="discord_icon"
+                  className="w-6 m-auto"
+                />
               </Button>
             </Link>
           </div>
