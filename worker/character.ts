@@ -49,7 +49,7 @@ export async function createCharacterDetails(
 ): Promise<AgentDetails> {
   try {
     const { inputs, requestedOutputs } = request;
-    const { name, description, mood = 'helpful', model = 'gpt-3.5-turbo' } = inputs;
+    const { name, description, mood = 'helpful' } = inputs;
     
     // Start with more detailed base outputs 
     const baseDetails: AgentDetails = {

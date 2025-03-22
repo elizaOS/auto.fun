@@ -1,4 +1,5 @@
 export class WebSocketDO {
+  // @ts-ignore
   private state: DurableObjectState;
   private sessions: Map<string, WebSocket> = new Map();
   private rooms: Map<string, Set<string>> = new Map(); // roomName -> Set of sessionIds
@@ -19,7 +20,7 @@ export class WebSocketDO {
     }
     
     if (path === '/send') {
-      const { message } = await request.json() as { message: any };
+      await request.json() as { message: any };
       // This would need the specific session ID, which we'd pass in the request
       return new Response('Direct message sent', { status: 200 });
     }

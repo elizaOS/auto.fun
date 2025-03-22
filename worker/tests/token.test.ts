@@ -1,14 +1,12 @@
-import { describe, it, expect, beforeAll } from 'vitest';
-import { 
-  TestContext, 
-  apiUrl, 
-  fetchWithAuth, 
-  sleep,
+import { beforeAll, describe, expect, it } from 'vitest';
+import { TEST_NAME, TEST_SYMBOL, TEST_URI } from './constant';
+import {
   ApiResponse,
-  TokenInfo 
+  TestContext,
+  apiUrl,
+  fetchWithAuth
 } from './helpers/test-utils';
 import { registerWorkerHooks, testState } from './setup';
-import { TEST_NAME, TEST_SYMBOL, TEST_URI } from './constant';
 
 const ctx: { context: TestContext | null } = { context: null };
 
@@ -27,10 +25,10 @@ describe('Token API Endpoints', () => {
   it('should return API info', async () => {
     if (!ctx.context) throw new Error('Test context not initialized');
     
-    const { worker, baseUrl } = ctx.context;
+    const { baseUrl } = ctx.context;
     
     // Don't use direct fetch, use our fetchWithAuth utility for consistency
-    const { response, data } = await fetchWithAuth(
+    const { response } = await fetchWithAuth(
       apiUrl(baseUrl, '/info'),
       'GET'
     );
@@ -84,7 +82,7 @@ describe('Token API Endpoints', () => {
     
     const { baseUrl } = ctx.context;
     
-    const { response, data } = await fetchWithAuth<any>(
+    const { response } = await fetchWithAuth<any>(
       apiUrl(baseUrl, `/token/${testState.tokenPubkey}`),
       'GET'
     );

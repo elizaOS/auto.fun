@@ -29,13 +29,21 @@ export default function Page() {
     staleTime: 1_000,
   });
 
-  const data = query?.data?.tokens as IToken[];
+  const queryData = query?.data as {
+    tokens: IToken[];
+    page: number;
+    totalPages: number;
+    total: number;
+    hasMore: boolean;
+  };
+
+  const tokens = queryData?.tokens as IToken[];
 
   const pagination = {
-    page: query?.data?.page || 1,
-    totalPages: query?.data?.totalPages || 1,
-    total: query?.data?.total || 1,
-    hasMore: query?.data?.hasMore || false,
+    page: queryData?.page || 1,
+    totalPages: queryData?.totalPages || 1,
+    total: queryData?.total || 1,
+    hasMore: queryData?.hasMore || false,
   } as IPagination;
 
   return (
@@ -67,11 +75,11 @@ export default function Page() {
 
       {activeTab === "grid" ? (
         <div className="my-6">
-          <GridView data={data} />
+          <GridView data={tokens} />
         </div>
       ) : (
         <div className="mb-2">
-          <TableView data={data} />
+          <TableView data={tokens} />
         </div>
       )}
 

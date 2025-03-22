@@ -413,7 +413,6 @@ export const swapTx = async (
     estimatedOutput = calculateAmountOutBuy(
       curve.reserveToken.toNumber(),
       adjustedAmount, 
-      9, // SOL decimals
       curve.reserveLamport.toNumber(),
       feePercent
     );
@@ -421,7 +420,6 @@ export const swapTx = async (
     estimatedOutput = calculateAmountOutSell(
       curve.reserveLamport.toNumber(),
       adjustedAmount,
-      6,               
       feePercent,
       curve.reserveToken.toNumber() 
     );

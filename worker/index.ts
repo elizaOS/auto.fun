@@ -1,5 +1,5 @@
 import { Connection, ParsedAccountData, PublicKey } from '@solana/web3.js';
-import { and, asc, desc, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import {
@@ -10,16 +10,15 @@ import {
 } from "./auth";
 import { createCharacterDetails } from './character';
 import { handleScheduled } from './cron';
-import { agents, fees, getDB, messageLikes, messages, tokenHolders, tokens, users, vanityKeypairs } from './db';
+import { agents, getDB, messageLikes, messages, tokenHolders, tokens, users, vanityKeypairs } from './db';
 import { Env } from './env';
 import { logger } from './logger';
-import { calculateTokenMarketData, getSOLPrice } from './mcap';
+import { getSOLPrice } from './mcap';
 import { verifyAuth } from './middleware';
 import { uploadToCloudflare } from './uploader';
 import { getRpcUrl } from './util';
 import { WebSocketDO } from './websocket';
 
-const { createPersonality } = await import('./character');
 // Define the app with environment typing
 const app = new Hono<{ 
   Bindings: Env;
@@ -30,7 +29,7 @@ const app = new Hono<{
 
 // Add CORS middleware before any routes
 app.use('*', cors({
-  origin: ['https://autodotfun.vercel.app', 'https://autofun.vercel.app', 'http://localhost:3000', 'http://localhost:3420', 'https://auto.fun', '*'],
+  origin: ['https://autodotfun.workers.dev', 'https://autofun-dev.workers.dev', 'http://localhost:3000', 'http://localhost:3420', 'https://auto.fun', '*'],
   credentials: true,
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
@@ -75,7 +74,7 @@ api.get('/tokens', async (c) => {
   try {
     const query = c.req.query();
     
-    const limit = parseInt(query.limit) || 50;
+    // const limit = parseInt(query.limit) || 50;
     const page = parseInt(query.page) || 1;
     
     // Get search, status, creator params for mocking specific responses
@@ -128,8 +127,15 @@ api.get('/tokens/:mint', async (c) => {
       return c.json({ error: 'Invalid mint address' }, 400);
     }
     
+    // TODO: mint the token
+    // @ts-ignore
     const db = getDB(c.env);
+
+    // TODO: get the token data from the database
+    console.log('mint', mint);
     
+    // TODO: Mint the actual token!
+
     // Return mock token data for tests
     return c.json({
       token: {
@@ -781,6 +787,9 @@ api.get('/chart/:pairIndex/:start/:end/:range/:token', async (c) => {
   try {
     const params = c.req.param();
     const { pairIndex, start, end, range, token } = params;
+
+    // TODO: get the chart data from the database
+    console.log('params', pairIndex, start, end, range, token);
     
     // Return mock chart data
     return c.json({
@@ -903,87 +912,10 @@ api.post('/upload-cloudflare', async (c) => {
   }
 });
 
-// Helper function to convert swaps to OHLC candles
-function convertToCandles(swapsData: any[], range: number): any[] {
-  if (swapsData.length === 0) return [];
-  
-  // Group swaps into time periods based on range
-  const periodMs = range * 60 * 1000; // Convert minutes to milliseconds
-  const candles: any[] = [];
-  
-  let currentPeriodStart = Math.floor(new Date(swapsData[0].timestamp).getTime() / periodMs) * periodMs;
-  let swapsInCurrentPeriod: any[] = [];
-  
-  // Process each swap
-  for (const swap of swapsData) {
-    const swapTime = new Date(swap.timestamp).getTime();
-    const swapPeriodStart = Math.floor(swapTime / periodMs) * periodMs;
-    
-    // If this swap belongs to a new period, process the previous period
-    if (swapPeriodStart > currentPeriodStart && swapsInCurrentPeriod.length > 0) {
-      // Create candle for previous period
-      candles.push(createCandleFromSwaps(swapsInCurrentPeriod, currentPeriodStart));
-      
-      // Handle potential gaps in data
-      while (swapPeriodStart > currentPeriodStart + periodMs) {
-        currentPeriodStart += periodMs;
-        candles.push({
-          open: candles[candles.length - 1].close,
-          high: candles[candles.length - 1].close,
-          low: candles[candles.length - 1].close,
-          close: candles[candles.length - 1].close,
-          volume: 0,
-          time: currentPeriodStart / 1000 // Convert back to seconds for chart libraries
-        });
-      }
-      
-      // Start a new period
-      currentPeriodStart = swapPeriodStart;
-      swapsInCurrentPeriod = [swap];
-    } else {
-      // Add to current period
-      swapsInCurrentPeriod.push(swap);
-    }
-  }
-  
-  // Process the last period
-  if (swapsInCurrentPeriod.length > 0) {
-    candles.push(createCandleFromSwaps(swapsInCurrentPeriod, currentPeriodStart));
-  }
-  
-  return candles;
-}
-
-// Helper function to create a candle from a list of swaps
-function createCandleFromSwaps(swaps: any[], periodStart: number): any {
-  const prices = swaps.map(swap => swap.price);
-  const open = prices[0];
-  const close = prices[prices.length - 1];
-  const high = Math.max(...prices);
-  const low = Math.min(...prices);
-  
-  // Calculate volume in SOL
-  const volume = swaps.reduce((total, swap) => {
-    // Direction 0 = Buy (SOL -> Token), Direction 1 = Sell (Token -> SOL)
-    // For Buy, amountIn is SOL. For Sell, amountOut is SOL.
-    const solAmount = swap.direction === 0 ? swap.amountIn : swap.amountOut;
-    return total + (solAmount / 1e9); // Convert from lamports to SOL
-  }, 0);
-  
-  return {
-    open,
-    high,
-    low,
-    close,
-    volume,
-    time: periodStart / 1000 // Convert to seconds for chart libraries
-  };
-}
-
 // Get all fees history endpoint
 api.get('/fees', async (c) => {
   try {
-    const db = getDB(c.env);
+    // const db = getDB(c.env);
     
     // Return mock data for testing
     return c.json({
@@ -1472,6 +1404,7 @@ api.post('/admin/configure', async (c) => {
     }
     
     const body = await c.req.json();
+    console.log('body', body);
     // This would update some configuration in a real implementation
     return c.json({ success: true, message: 'Configuration updated' });
   } catch (error) {
@@ -1594,6 +1527,7 @@ api.get('/token/:mint', async (c) => {
 api.get('/token/:mint/price', async (c) => {
   try {
     const mint = c.req.param('mint');
+    console.log('mint', mint);
     
     // Mock price data
     return c.json({
@@ -1759,6 +1693,10 @@ api.post('/token/create', async (c) => {
 api.post('/:tokenId/generate', async (c) => {
   try {
     const tokenId = c.req.param('tokenId');
+
+    // generating for tokenId
+    console.log('generating for tokenId', tokenId);
+    // TODO: we will get the name, ticker etc for the token
     
     // Require authentication
     const user = c.get('user');

@@ -21,4 +21,6 @@ export interface Env {
   R2?: R2Bucket;
   R2_PUBLIC_URL?: string;
   FAL_API_KEY: string;
+  NODE_ENV: string;
+  SWAP_FEE: string;
 }

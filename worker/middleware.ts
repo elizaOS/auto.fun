@@ -3,13 +3,6 @@ import { getCookie } from 'hono/cookie';
 import { Env } from './env';
 import { logger } from './logger';
 
-// Already declared in auth.ts
-// declare module 'hono' {
-//   interface ContextVariableMap {
-//     user?: { publicKey: string } | null;
-//   }
-// }
-
 export const verifyAuth: MiddlewareHandler<{
   Bindings: Env;
 }> = async (c, next) => {
@@ -17,7 +10,7 @@ export const verifyAuth: MiddlewareHandler<{
     const publicKey = getCookie(c, 'publicKey');
 
     if (!publicKey) {
-      logger.log("No authentication cookie found");
+      // logger.log("No authentication cookie found");
       c.set('user', null);
     } else {
       // Attach the public key to the context for use in subsequent handlers

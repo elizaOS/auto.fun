@@ -1,8 +1,4 @@
 import NodeWallet from '@coral-xyz/anchor/dist/cjs/nodewallet';
-import {
-  CREATE_CPMM_POOL_PROGRAM,
-  DEV_CREATE_CPMM_POOL_PROGRAM
-} from '@raydium-io/raydium-sdk-v2';
 import { getMint } from '@solana/spl-token';
 import {
   PublicKey,
@@ -16,8 +12,7 @@ import { logger } from './logger';
 import { getSOLPrice } from './mcap';
 import { createMigrationService } from './migration';
 import { initSolanaConfig } from './solana';
-import { updateHoldersCache } from './util';
-import { createNewTokenData, getTxIdAndCreatorFromTokenAddress } from './util';
+import { createNewTokenData, getTxIdAndCreatorFromTokenAddress, updateHoldersCache } from './util';
 import { getWebSocketClient } from './websocket-client';
 
 
@@ -53,12 +48,12 @@ export const DEV_TEST_TOKEN_ADDRESS = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEp
 // Constants
 const MAX_CONCURRENT_UPDATES = 3; // Maximum concurrent holder updates
 
-const VALID_PROGRAM_ID = new Set(
-  [
-    CREATE_CPMM_POOL_PROGRAM.toBase58(), 
-    DEV_CREATE_CPMM_POOL_PROGRAM.toBase58()
-  ])
-const isValidCpmm = (id: string) => VALID_PROGRAM_ID.has(id)
+// const VALID_PROGRAM_ID = new Set(
+//   [
+//     CREATE_CPMM_POOL_PROGRAM.toBase58(), 
+//     DEV_CREATE_CPMM_POOL_PROGRAM.toBase58()
+//   ])
+// const isValidCpmm = (id: string) => VALID_PROGRAM_ID.has(id)
 
 // Default values for when env is not available
 export const DEFAULT_TOKEN_SUPPLY = '1000000000000';
@@ -121,7 +116,7 @@ export class TokenMonitor {
           const tokenBatch = activeTokens.slice(i, i + MAX_CONCURRENT_UPDATES);
           
           // Update holders for this batch concurrently
-          await Promise.all(tokenBatch.map(async (token) => {
+          await Promise.all(tokenBatch.map(async (token: { mint: string; }) => {
             if (!token.mint) {
               logger.error('Token mint is not set:', { token });
               return;
@@ -630,8 +625,8 @@ export async function fetchPriceChartData(env: Env, start: number, end: number, 
 
     // Convert to PriceFeedInfo array - ensure timestamp is not null
     const priceFeeds: PriceFeedInfo[] = swapRecords
-      .filter(swap => swap.price != null && swap.timestamp != null) // Type guard to ensure price and timestamp are not null
-      .map(swap => ({
+      .filter((swap: { price: number; timestamp: number; direction: number; amountIn: number; amountOut: number; }) => swap.price != null && swap.timestamp != null) // Type guard to ensure price and timestamp are not null
+      .map((swap: { price: number; timestamp: number; direction: number; amountIn: number; amountOut: number; }) => ({
         price: swap.price,
         timestamp: new Date(swap.timestamp), // Create a new Date object from the string
         // If direction is 0 (buy), amountIn is SOL
@@ -821,7 +816,7 @@ export async function fetchLockedTokenChartData(
   start: number, 
   end: number, 
   range: number,
-  env: Env
+  _env: Env
 ): Promise<any[]> {
   try {
     // Construct Codex API URL for the token chart data

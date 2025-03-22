@@ -343,7 +343,7 @@ app.get('/:mint/history', async (c) => {
       [MediaType.AUDIO]: 0
     };
     
-    recentGenerations.forEach(gen => {
+    recentGenerations.forEach((gen: { type: MediaType }) => {
       counts[gen.type as MediaType]++;
     });
     

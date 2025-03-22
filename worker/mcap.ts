@@ -1,6 +1,6 @@
 import { PythCluster, PythHttpClient, getPythClusterApiUrl, getPythProgramKeyForCluster } from '@pythnetwork/client';
 import { Connection } from '@solana/web3.js';
-import { eq } from 'drizzle-orm';
+import { eq, SQLWrapper } from 'drizzle-orm';
 import { initSdk } from './raydium';
 import { getDB, tokens } from './db';
 import { Env } from './env';
@@ -318,7 +318,7 @@ export async function updateMigratedTokenMarketData(env?: Env) {
       
       // Process this batch of tokens concurrently
       const batchResults = await Promise.all(
-        tokenBatch.map(async (token) => {
+        tokenBatch.map(async (token: { mint: string | SQLWrapper; }) => {
           try {
             const marketData = await calculateRaydiumTokenMarketData(token, workingEnv);
             

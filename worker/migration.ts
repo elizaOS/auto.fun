@@ -67,7 +67,7 @@ async function retryOperation<T>(
 }
 
 // Add a helper function at the top of the file, after imports
-function storeMigrationMetadata(token: any, stateJson: string, db: any) {
+function storeMigrationMetadata(token: any, _stateJson: string, db: any) {
   return db.update(tokens)
     .set({ 
       status: token.status || 'migrating',
@@ -498,7 +498,7 @@ export class MigrationService {
 
   // Finalize migration (placeholder for additional on-chain steps if needed).
   private async performFinalizeMigration(
-    token: any
+    _token: any
   ): Promise<{ txId: string }> {
     return { txId: "finalized" }
   }
@@ -506,7 +506,7 @@ export class MigrationService {
 
 // For testing, or migrating a token manually
 // ;(async () => {
-//   const { connection, program, wallet } = await initializeConfig()
+//   const { connection, program, w∏allet } = await initializeConfig()
 //   try {
 //     await connectDB()
 //   } catch (error) {

@@ -224,9 +224,10 @@ export function getDB(env: Env) {
       // Create a chainable proxy that always returns itself
       const createChainableProxy = (): Record<string, any> => {
         return new Proxy({} as any, {
-          get: (target, prop) => {
+          get: (_target, prop) => {
             // Return a function that returns the proxy for method chaining
             if (typeof prop === 'string') {
+              // @ts-ignore
               return (...args: any[]) => {
                 if (prop === 'then') {
                   // Special handling for Promise then/catch/finally
@@ -253,8 +254,9 @@ export function getDB(env: Env) {
     // Create the same chainable proxy for error cases
     const createChainableProxy = (): Record<string, any> => {
       return new Proxy({} as any, {
-        get: (target, prop) => {
+        get: (_, prop) => {
           if (typeof prop === 'string') {
+            // @ts-ignore
             return (...args: any[]) => {
               if (prop === 'then') {
                 return Promise.resolve([]);

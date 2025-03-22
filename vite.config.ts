@@ -24,7 +24,7 @@ export default defineConfig({
     "import.meta.env.API_URL": JSON.stringify(
       process.env.NODE_ENV === "production" 
       ? "https://autofun-api.workers.dev" 
-      : "https://autofun-api-dev.workers.dev"
+      : "http://localhost:8787"
     ),
     "import.meta.env.APP_ENV": JSON.stringify(process.env.NODE_ENV || "development"),
   },

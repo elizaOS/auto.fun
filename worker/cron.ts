@@ -1,5 +1,4 @@
 import { Env } from './env';
-import { CacheService } from './cache';
 import { logger } from './logger';
 import { updateSOLPrice } from './mcap';
 
@@ -7,7 +6,7 @@ import { updateSOLPrice } from './mcap';
  * Handle scheduled tasks via Cloudflare Cron triggers
  * This runs according to the schedule defined in wrangler.toml
  */
-export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+export async function handleScheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
   const scheduler = new CronScheduler(env);
   
   try {
@@ -29,11 +28,9 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
  */
 class CronScheduler {
   private env: Env;
-  private cache: CacheService;
   
   constructor(env: Env) {
     this.env = env;
-    this.cache = new CacheService(env);
   }
   
   /**

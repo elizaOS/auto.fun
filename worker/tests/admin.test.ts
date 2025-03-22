@@ -56,7 +56,7 @@ describe('Admin API Endpoints', () => {
     
     const { baseUrl } = ctx.context;
     
-    const { response, data } = await fetchWithAuth<any>(
+    const { response } = await fetchWithAuth<any>(
       apiUrl(baseUrl, '/admin/config'),
       'GET',
       undefined,

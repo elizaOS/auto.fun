@@ -1,15 +1,15 @@
-import { beforeAll, describe, expect, it } from 'vitest';
-import { Keypair, PublicKey } from '@solana/web3.js';
-import nacl from 'tweetnacl';
+import { Keypair } from '@solana/web3.js';
 import bs58 from 'bs58';
+import nacl from 'tweetnacl';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { MediaType, RATE_LIMITS } from '../fal';
 import {
-  TestContext,
-  apiUrl,
-  fetchWithAuth,
-  sleep
+    TestContext,
+    apiUrl,
+    fetchWithAuth,
+    sleep
 } from './helpers/test-utils';
 import { registerWorkerHooks, testState } from './setup';
-import { MediaType, RATE_LIMITS } from '../fal';
 
 const ctx: { context: TestContext | null } = { context: null };
 

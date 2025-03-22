@@ -3,7 +3,7 @@ import { QueryClient } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient();
 
-const BASE_URL = "https://dev-api.auto.fun";
+const BASE_URL = import.meta.env.API_URL;
 
 const fetcher = async (
   endpoint: string,
@@ -42,11 +42,11 @@ export const getTokens = async ({
   sortOrder: TSortOrder;
 }) => {
   const data = await fetcher(
-    `/tokens?limit=${limit || 12}&page=${
+    `/api/tokens?limit=${limit || 12}&page=${
       page || 1
     }&sortBy=${sortBy}&sortOrder=${sortOrder}`,
     "GET"
-  );
+  ) as { tokens: IToken[] };
 
   if (data?.tokens?.length > 0) {
     data?.tokens?.forEach((token: IToken) => {
@@ -58,26 +58,7 @@ export const getTokens = async ({
 };
 
 export const getToken = async ({ address }: { address: string }) => {
-  const data = await fetcher(`/tokens/${address}`, "GET");
+  const data = await fetcher(`/api/tokens/${address}`, "GET");
 
   return data;
-};
-
-export const optimizePinataImage = (
-  image: string,
-  height: number,
-  width: number
-) => {
-  if (!image?.includes("pinata")) return image;
-
-  const url = new URL(
-    image?.replace("gateway.pinata.cloud", "ser.mypinata.cloud")
-  );
-
-  url.searchParams.set("img-width", String(height));
-  url.searchParams.set("img-height", String(width));
-  url.searchParams.set("img-format", "webp");
-  url.searchParams.set("img-quality", "90");
-
-  return String(url);
 };

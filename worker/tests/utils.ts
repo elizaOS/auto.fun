@@ -1,9 +1,9 @@
 
+import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
   PublicKey,
 } from "@solana/web3.js";
 import BN from "bn.js";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 export const sleep = (ms: number) => {
   return new Promise((resolve) => {
@@ -37,7 +37,6 @@ export function convertToBasisPoints(feePercent: number): number {
 export function calculateAmountOutSell(
   reserveLamport: number,
   amount: number,
-  tokenDecimals: number,
   platformSellFee: number,
   reserveToken: number
 ): number {
@@ -59,7 +58,6 @@ export function calculateAmountOutSell(
 export function calculateAmountOutBuy(
 reserveToken: number,
 amount: number,
-solDecimals: number,
 reserveLamport: number,
 platformBuyFee: number
 ): number {

@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "npm run generate && concurrently \"vite\" \"wrangler dev\"",
-    "build": "tsc -b && vite build && wrangler generate-types",
+    "dev": "export NODE_ENV=development && npm run generate && concurrently \"vite\" \"wrangler dev\"",
+    "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "concurrently \"npm run dev\" \"npm run worker:dev\"",

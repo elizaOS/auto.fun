@@ -211,7 +211,7 @@ export class CacheService {
         .limit(10);
       
       if (recentEntries.length > 0) {
-        const keepIds = recentEntries.map(entry => entry.id);
+        const keepIds = recentEntries.map((entry: { id: string }) => entry.id);
         
         if (keepIds.length > 0) {
           await this.db.delete(cachePrices)

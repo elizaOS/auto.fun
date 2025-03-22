@@ -36,7 +36,7 @@ const cookieOptions = {
 export const authenticate = async (c: AppContext) => {
   try {
     const body = await c.req.json();
-    const { header, payload, signature, publicKey, nonce, testMode, invalidSignature } = body;
+    const { header, payload, signature, publicKey, testMode, invalidSignature } = body;
     
     // Special case for auth test that explicitly needs to reject an invalid signature
     if (signature === bs58.encode(Buffer.from('invalid-signature'))) {

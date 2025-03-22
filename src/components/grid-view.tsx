@@ -10,7 +10,6 @@ import {
   normalizedProgress,
   shortenAddress,
 } from "@/utils";
-import { optimizePinataImage } from "@/utils/api";
 import { Link } from "react-router";
 
 export default function GridView({ data }: { data: IToken[] }) {
@@ -25,7 +24,7 @@ export default function GridView({ data }: { data: IToken[] }) {
           <div className="flex items-start gap-3 min-w-0">
             <div className="size-32 grow shrink-0">
               <SkeletonImage
-                src={optimizePinataImage(token.image, 180, 180)}
+                src={token.image}
                 alt="image"
               />
             </div>

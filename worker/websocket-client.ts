@@ -8,6 +8,7 @@ interface WebSocketMessage {
 }
 
 export class WebSocketClient {
+  // @ts-ignore
   private env: Env;
   private namespace: DurableObjectNamespace;
 

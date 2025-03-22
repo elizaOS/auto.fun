@@ -1,5 +1,5 @@
 import { Raydium, TxVersion } from '@raydium-io/raydium-sdk-v2'
-import { Connection, Keypair, PublicKey } from '@solana/web3.js'
+import { Connection, Keypair } from '@solana/web3.js'
 import { Env } from './env'
 import { logger } from './logger'
 import { getLegacyRpcUrl, getRpcUrl } from './util'
