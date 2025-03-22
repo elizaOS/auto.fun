@@ -4,6 +4,7 @@ import { logger } from './logger';
 import PQueue from 'p-queue';
 import { initSdk } from './lib/raydium-config';
 import { Token } from './schemas';
+import {processMissedEvents} from './missedEvents';
 
 const PYTHNET_CLUSTER_NAME: PythCluster = 'pythnet';
 const SOLUSD_SYMBOL = 'Crypto.SOL/USD';
@@ -223,3 +224,6 @@ setInterval(updateMigratedTokenMarketData, UPDATE_INTERVAL);
 
 // Run market data update on startup
 updateMigratedTokenMarketData();
+
+// Run missed events processing 
+processMissedEvents();
