@@ -13,7 +13,7 @@ crons = ["*/10 * * * * *"] # Run every 10 seconds
 
 # D1 Database for production
 [[d1_databases]]
-binding = "autofun"
+binding = "DB"
 database_name = "autofun"
 database_id = "b086a46c-b1c3-4eec-8eca-2abea542e45b"
 

@@ -80,22 +80,13 @@ jobs:
         env:
           NODE_ENV: ${{ env.NODE_ENV }}
 
-      # Debug step to verify wrangler.toml content
-      - name: Debug wrangler.toml
-        run: cat wrangler.toml
-          
-      # Apply migrations to D1 database before deploying - using database ID approach
+      # Apply migrations to D1 database
       - name: Apply D1 migrations
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: |
-            if [[ "${{ env.WORKER_ENV }}" == "production" ]]; then
-              d1 execute b086a46c-b1c3-4eec-8eca-2abea542e45b --file=./drizzle/migrations.sql
-            else
-              d1 execute 00ade209-86ac-46a9-bed5-b74aaaac4ad4 --file=./drizzle/migrations.sql
-            fi
+          command: d1 execute autofun${{ env.DB_SUFFIX }} --file=./drizzle/migrations.sql --env ${{ env.WORKER_ENV }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
 
@@ -115,8 +106,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: |
-            wrangler deploy --config wrangler.toml --env ${{ env.WORKER_ENV }}
+          command: deploy --config wrangler.toml --env ${{ env.WORKER_ENV }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           # Environment variables from wrangler.toml, can be overridden by secrets
