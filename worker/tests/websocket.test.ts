@@ -543,7 +543,7 @@ describe("WebSocket Token Data Streaming Tests", () => {
             ws.send(
               JSON.stringify({
                 type: "subscribe",
-                room: testState.tokenPubkey,
+                token: testState.tokenPubkey,
               }),
             );
           };

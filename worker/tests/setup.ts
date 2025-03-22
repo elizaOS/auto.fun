@@ -7,7 +7,7 @@ import {
 } from "./helpers/test-utils";
 
 export async function setupWorkerTest(): Promise<TestContext> {
-  // Create a worker instance
+  // Create a worker instance with more complete configuration
   const worker = await unstable_dev("worker/index.ts", {
     experimental: { disableExperimentalWarning: true },
     vars: {
@@ -16,13 +16,29 @@ export async function setupWorkerTest(): Promise<TestContext> {
       TOKEN_SUPPLY: "1000000000000000000",
       VIRTUAL_RESERVES: "1000000000",
       CURVE_LIMIT: "1000000000000",
+      PORT: "8787",
+      API_URL: "http://localhost:8787",
+      NODE_ENV: "test",
+      DEVNET_SOLANA_RPC_URL: "https://api.devnet.solana.com",
+      PROGRAM_ID: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      MIN_BUFFER: "100000000",
+      TARGET_BUFFER: "500000000",
+      NUM_WORKERS: "2",
+      INIT_BONDING_CURVE: "true",
+      FEE_PERCENTAGE: "1",
+      SWAP_FEE: "1.5",
+      TEST_CREATOR_ADDRESS: "4FRxv5k1iCrE4kdjtywUzAakCaxfDQmpdVLx48kUXQQC",
       // Add necessary environment variables for authentication
       ADMIN_API_KEY: "admin-test-key",
+      API_KEY: "test-api-key",
       USER_API_KEY: "test-api-key",
       // Add real keys for proper authentication if needed
       JWT_SECRET: "test-jwt-secret",
+      // Add wallet private key (test key)
+      WALLET_PRIVATE_KEY: JSON.stringify([...Array(32)].map(() => Math.floor(Math.random() * 256))),
     },
-  });
+    // Use type assertion for test bindings that aren't properly typed
+  } as any);
 
   // Initialize DevNet connection
   const connection = initDevnetConnection();
