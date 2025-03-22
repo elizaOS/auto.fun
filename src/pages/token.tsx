@@ -31,7 +31,10 @@ export default function Page() {
     queryKey: ["token", address],
     queryFn: async () => {
       if (!address) throw new Error("No address passed");
-      return (await getToken({ address })) as { token: IToken };
+      const data = (await getToken({ address })) as unknown as {
+        token: IToken;
+      };
+      return data;
     },
     refetchInterval: 20_000,
   });
@@ -235,8 +238,7 @@ export default function Page() {
             {token?.status !== "migrated" ? (
               <p className="font-satoshi text-base text-autofun-text-secondary whitespace-pre-line break-words">
                 Graduate this coin to Raydium at{" "}
-                {formatNumber(graduationMarketCap, true)}{" "}
-                market cap.{"\n"}
+                {formatNumber(graduationMarketCap, true)} market cap.{"\n"}
                 There is{" "}
                 {formatNumber(
                   (token?.reserveLamport - token?.virtualReserves) /
