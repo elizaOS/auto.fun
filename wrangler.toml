@@ -45,11 +45,29 @@ name = "api-dev"
 [env.development.site]
 bucket = "./dist"
 
+# Copy vars to development environment
+[env.development.vars]
+NETWORK = "mainnet"
+DECIMALS = "9"
+TOKEN_SUPPLY = "1000000000000000000"
+VIRTUAL_RESERVES = "1000000000"
+CURVE_LIMIT = "1000000000000"
+
 # D1 Database for development
 [[env.development.d1_databases]]
-binding = "autofun-dev"
+binding = "DB"
 database_name = "autofun-dev"
 database_id = "00ade209-86ac-46a9-bed5-b74aaaac4ad4"
+
+# Add R2 bucket for development
+[[env.development.r2_buckets]]
+binding = "R2"
+bucket_name = "autofun-storage-dev"
+
+# Add Durable Objects configuration for development
+[[env.development.durable_objects.bindings]]
+name = "WEBSOCKET_DO"
+class_name = "WebSocketDO"
 
 # Production environment configuration
 [env.production]
