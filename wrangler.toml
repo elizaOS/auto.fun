@@ -48,8 +48,8 @@ bucket = "./dist"
 # D1 Database for development
 [[env.development.d1_databases]]
 binding = "autofun-dev"
-database_name = "autofun-dev"
-database_id = "00ade209-86ac-46a9-bed5-b74aaaac4ad4"
+database_name = "$DATABASE_NAME_DEV"
+database_id = "$DATABASE_ID_DEV"
 
 # Production environment configuration
 [env.production]

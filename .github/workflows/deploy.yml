@@ -71,6 +71,7 @@ jobs:
             echo "DEPLOY_URL=https://autofun-dev.pages.dev" >> $GITHUB_ENV
             echo "NODE_ENV=development" >> $GITHUB_ENV
             echo "DATABASE_NAME=autofun-dev" >> $GITHUB_ENV
+            echo "DATABASE_NAME_DEV=autofun-dev" >> $GITHUB_ENV
           fi
 
       # Build frontend before deploying backend
@@ -85,7 +86,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: d1 execute autofun${{ env.DB_SUFFIX }} --file=./drizzle/migrations.sql
+          command: d1 execute ${{ env.DATABASE_NAME }} --file=./drizzle/migrations.sql
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
 
@@ -121,7 +122,7 @@ jobs:
           DATABASE_NAME: ${{ env.DATABASE_NAME }}
           DATABASE_ID: ${{ secrets.DATABASE_ID }}
           DATABASE_NAME_DEV: ${{ env.DATABASE_NAME_DEV }}
-          DATABASE_ID_DEV: ${{ secrets.DATABASE_ID_DEV }}
+          DATABASE_ID_DEV: ${{ secrets.DATABASE_ID_DEV || '00ade209-86ac-46a9-bed5-b74aaaac4ad4' }}
           # Additional secrets
           API_KEY: ${{ secrets.API_KEY }}
           WALLET_PRIVATE_KEY: ${{ secrets.WALLET_PRIVATE_KEY }}
