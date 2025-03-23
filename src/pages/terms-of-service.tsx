@@ -70,7 +70,7 @@ const TermsOfService = () => {
         {/* Section 1 */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section1")}
           >
             <span>1. Introduction</span>
@@ -103,7 +103,7 @@ const TermsOfService = () => {
         {/* Section 2 */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section2")}
           >
             <span>2. Eligibility</span>
@@ -158,7 +158,7 @@ const TermsOfService = () => {
         {/* Section 3 */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section3")}
           >
             <span>3. auto.fun Platform</span>
@@ -193,7 +193,7 @@ const TermsOfService = () => {
         {/* Section 4 */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section4")}
           >
             <span>4. Fees and Calculations</span>
@@ -228,7 +228,7 @@ const TermsOfService = () => {
         {/* Section 5 */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section5")}
           >
             <span>5. Records</span>
@@ -250,7 +250,7 @@ const TermsOfService = () => {
         {/* Jump to important sections */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section29")}
           >
             <span>29. Contact</span>
@@ -274,7 +274,7 @@ const TermsOfService = () => {
         {/* Section 31 */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section31")}
           >
             <span>31. Wallets</span>
@@ -299,7 +299,7 @@ const TermsOfService = () => {
         {/* Section 32 */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section32")}
           >
             <span>32. Definitions and interpretation</span>
