@@ -94,7 +94,6 @@ export default function Page() {
         )}
         <Pagination pagination={pagination} onPageChange={onPageChange} />
       </div>
-      <Footer />
     </div>
   );
 }

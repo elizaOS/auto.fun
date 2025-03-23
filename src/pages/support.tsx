@@ -133,7 +133,6 @@ export default function SupportPage() {
           </section>
         </div>
       </div>
-      <Footer />
     </div>
   );
 }
