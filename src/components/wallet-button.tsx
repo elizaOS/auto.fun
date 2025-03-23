@@ -2,6 +2,9 @@ import { WalletName } from "@solana/wallet-adapter-base";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useState } from "react";
 import { useWalletModal } from "../hooks/use-wallet-modal";
+import Button from "./button";
+import { shortenAddress } from "@/utils";
+import { ChevronDown } from "lucide-react";
 
 const WalletButton = () => {
   const {
@@ -98,14 +101,38 @@ const WalletButton = () => {
     });
   }, [connected, connecting, wallet, publicKey]);
 
+  if (connected && wallet) {
+    return (
+      <Button size="large" className="px-2" onClick={() => handleClick()}>
+        <div className="flex items-center gap-2.5 justify-between m-auto">
+          <span className="font-satoshi font-medium">
+            {wallet?.adapter?.publicKey?.toString()
+              ? shortenAddress(wallet?.adapter?.publicKey?.toString())
+              : null}
+          </span>
+
+          {wallet.adapter.icon ? (
+            <img
+              src={wallet?.adapter?.icon}
+              height={18}
+              width={18}
+              alt={`wallet_icon_${wallet?.adapter?.name}`}
+            />
+          ) : null}
+          <ChevronDown className="size-5 text-autofun-icon-secondary" />
+        </div>
+      </Button>
+    );
+  }
+
   return (
-    <button
-      className="px-4 py-2.5 gap-2 h-11 rounded-md bg-[#2e2e2e] border border-neutral-800 text-white"
+    <Button
+      size="large"
       onClick={handleClick}
       disabled={connecting || isAutoConnecting}
     >
       {buttonText}
-    </button>
+    </Button>
   );
 };
 
