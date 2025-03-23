@@ -1,5 +1,5 @@
 import { IToken, TSortBy, TSortOrder } from "@/types";
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, useQuery } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient();
 
@@ -95,3 +95,10 @@ export const getTokenSwapHistory = async ({ address }: { address: string }) => {
   const data = await fetcher(`/api/swaps/${address}`, "GET");
   return data;
 };
+
+export const getSearchTokens = async ({ search }: { search: string}) => {
+  const data = await fetcher(`/api/tokens?search=${search}`, "GET");
+  return data;
+}
+ 
+

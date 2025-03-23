@@ -36,7 +36,7 @@ export default function Header() {
             <NavLink title="Support" href="/support" />
           </div>
           <div className="flex space-x-4 flex-row justify-between">
-            <SearchBar />
+            <SearchBar isMobile={false} />
             <Button className="flex items-center text-base font-medium text-white font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border border-[#2FD345] rounded-md">
               Create Token{" "}
               <img
@@ -60,7 +60,7 @@ export default function Header() {
               <img className="size-10" src="/logo.png" />
             </Link>
           </div>
-          <SearchBar />
+          <SearchBar isMobile={false} />
           {drawerOpen ? (
             <CloseButton>
               <X className="size-[30px]" />
