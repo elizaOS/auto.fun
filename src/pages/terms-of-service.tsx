@@ -38,7 +38,7 @@ const TermsOfService = () => {
           </p>
         </div>
 
-        <div className="bg-black border border-red-500 p-4 rounded-md mb-8">
+        <div className="bg-autofun-background-action-disabled border border-red-500 p-4 rounded-md mb-8">
           <h2 className="text-xl font-bold text-red-700 mb-2">RISK WARNING</h2>
           <p className="mb-4">
             Digital Asset values can change dramatically, and you could lose
@@ -351,6 +351,7 @@ const TermsOfService = () => {
           )}
         </div>
       </div>
+      <Footer />
     </div>
   );
 };
