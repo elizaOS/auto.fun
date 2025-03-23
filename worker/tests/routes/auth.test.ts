@@ -159,8 +159,7 @@ describe("Authentication API Endpoints", () => {
       apiUrl(baseUrl, "/auth-status"),
       "GET",
       undefined,
-      undefined,
-      headers,
+      headers
     );
 
     // Try logout
@@ -168,8 +167,7 @@ describe("Authentication API Endpoints", () => {
       apiUrl(baseUrl, "/logout"),
       "POST",
       undefined,
-      undefined,
-      headers,
+      headers
     );
 
     // We're just confirming endpoints exist and respond
@@ -245,7 +243,7 @@ describe("Authentication API Endpoints", () => {
       protectedUrl,
       "GET",
       undefined,
-      "invalid-api-key",
+      { "X-API-Key": "invalid-api-key" }
     );
 
     // This endpoint might not exist in all configurations, so we just verify it doesn't return 200

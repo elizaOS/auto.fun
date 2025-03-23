@@ -202,7 +202,7 @@ describe("Token API Endpoints", () => {
       const { response, data } = await fetchWithAuth<{
         success: boolean;
         token: any;
-      }>(apiUrl(baseUrl, "/new_token"), "POST", tokenData, apiKey);
+      }>(apiUrl(baseUrl, "/new_token"), "POST", tokenData, { "X-API-Key": apiKey });
 
       // Accept 200, 500, or 503 status codes during testing
       expect([200, 500, 503]).toContain(response.status);
@@ -583,8 +583,7 @@ describe("Token API Endpoints", () => {
       ),
       "GET",
       undefined,
-      undefined,
-      authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+      { "X-API-Key": authToken }
     );
 
     // We expect this to likely fail with 400 or 403 in test environments

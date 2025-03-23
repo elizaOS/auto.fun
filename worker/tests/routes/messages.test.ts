@@ -8,7 +8,7 @@ const ctx: { context: TestContext | null } = { context: null };
 registerWorkerHooks(ctx);
 
 // Helper function to determine if a response is from a real server or a mock
-function isRealResponse(response: Response): boolean {
+function isRealResponse(response: { status: number }): boolean {
   return response.status !== 503;
 }
 
@@ -40,12 +40,11 @@ describe("Messages API Endpoints", () => {
   });
   
   // Helper function to make an authenticated request with test token
-  async function fetchWithAuthToken(url: string, method: string, body?: any) {
+  async function fetchWithAuthToken(url: string, method: "GET" | "POST" | "PUT" | "DELETE", body?: any) {
     const result = await fetchWithAuth(
       url,
       method,
       body,
-      undefined,
       { Authorization: `Bearer ${authToken}` }
     );
     

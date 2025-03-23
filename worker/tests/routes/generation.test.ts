@@ -127,7 +127,7 @@ describe("Media Generation API Endpoints", () => {
           telegram: "test_telegram",
           website: "https://test.com",
         },
-        "test-api-key",
+        { "X-API-Key": "test-api-key" }
       );
 
       if (
@@ -206,10 +206,6 @@ describe("Media Generation API Endpoints", () => {
 
     const { baseUrl } = ctx.context;
 
-    const headers = authToken
-      ? { Authorization: `Bearer ${authToken}` }
-      : undefined;
-
     const generationRequest = {
       prompt: "A beautiful sunset over mountains",
       type: MediaType.IMAGE,
@@ -227,8 +223,7 @@ describe("Media Generation API Endpoints", () => {
       apiUrl(baseUrl, `/${tokenMint}/generate`),
       "POST",
       generationRequest,
-      undefined,
-      headers,
+      { Authorization: `Bearer ${authToken}` }
     );
 
     if (response.status === 200) {
@@ -292,7 +287,6 @@ describe("Media Generation API Endpoints", () => {
       apiUrl(baseUrl, `/${tokenMint}/generate`),
       "POST",
       minimalRequest,
-      undefined,
       headers,
     );
 
@@ -340,8 +334,7 @@ describe("Media Generation API Endpoints", () => {
       apiUrl(baseUrl, `/${tokenMint}/generate`),
       "POST",
       invalidRequest,
-      undefined,
-      headers,
+      headers
     );
 
     // Should return a validation error
@@ -374,8 +367,7 @@ describe("Media Generation API Endpoints", () => {
       apiUrl(baseUrl, `/${tokenMint}/generate`),
       "POST",
       invalidRequest,
-      undefined,
-      headers,
+      headers
     );
 
     // Should return a validation error
@@ -425,8 +417,7 @@ describe("Media Generation API Endpoints", () => {
       apiUrl(baseUrl, `/${tokenMint}/history`),
       "GET",
       undefined,
-      undefined,
-      headers,
+      headers
     );
 
     if (response.status === 200) {
@@ -485,8 +476,7 @@ describe("Media Generation API Endpoints", () => {
       apiUrl(baseUrl, `/${tokenMint}/history?type=${MediaType.IMAGE}`),
       "GET",
       undefined,
-      undefined,
-      headers,
+      headers
     );
 
     if (response.status === 200) {
@@ -535,7 +525,6 @@ describe("Media Generation API Endpoints", () => {
       apiUrl(baseUrl, `/${tokenMint}/history`),
       "GET",
       undefined,
-      undefined,
       { Authorization: `Bearer ${invalidAuthToken}` },
     );
 
@@ -575,8 +564,7 @@ describe("Media Generation API Endpoints", () => {
       apiUrl(baseUrl, `/${tokenMint}/generate`),
       "POST",
       videoRequest,
-      undefined,
-      headers,
+      headers
     );
 
     if (response.status === 200) {
@@ -638,8 +626,7 @@ describe("Media Generation API Endpoints", () => {
       apiUrl(baseUrl, `/${tokenMint}/generate`),
       "POST",
       audioRequest,
-      undefined,
-      headers,
+      headers
     );
 
     if (response.status === 200) {
@@ -687,15 +674,16 @@ describe("Media Generation API Endpoints", () => {
     // Use an invalid token mint address
     const invalidMint = "invalid_token_mint";
 
-    const { response, data } = await fetchWithAuth(
+    const { response, data } = await fetchWithAuth<{
+      error: string;
+    }>(
       apiUrl(baseUrl, `/${invalidMint}/generate`),
       "POST",
       {
         prompt: "Test prompt for invalid mint",
         type: MediaType.IMAGE,
       },
-      undefined,
-      headers,
+      headers
     );
 
     // Should return a validation error for invalid mint address (status could be 400 or 404)
@@ -729,8 +717,7 @@ describe("Media Generation API Endpoints", () => {
         prompt: "Test image of a red circle",
         type: MediaType.IMAGE,
       },
-      undefined,
-      headers,
+      headers
     );
 
     // Should return a not found error
