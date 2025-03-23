@@ -3,7 +3,7 @@ import SkeletonImage from "./skeleton-image";
 
 export const Footer = () => {
   return (
-    <div className="hidden xl:flex justify-between w-full container">
+    <div className="hidden xl:flex justify-between w-full container pb-4">
       <div className="justify-start items-center gap-4 flex">
         <SkeletonImage
           height={32}
