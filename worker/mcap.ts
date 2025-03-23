@@ -173,9 +173,9 @@ export async function calculateTokenMarketData(
     }
 
     // Calculate market cap
-    if (token.reserveAmount && token.tokenPriceUSD) {
+    if (token.reserveAmount && tokenWithMarketData.tokenPriceUSD) {
       tokenWithMarketData.marketCapUSD =
-        token.reserveAmount * token.tokenPriceUSD;
+        token.reserveAmount * tokenWithMarketData.tokenPriceUSD;
     }
 
     // Add SOL price

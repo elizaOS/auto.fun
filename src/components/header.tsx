@@ -123,9 +123,6 @@ export default function Header() {
                           width={40}
                           alt="x-icon"
                         />
-                        <p className="text-base">
-                          ® {new Date().getFullYear()} Auto.fun
-                        </p>
                       </div>
                     </div>
                   </DialogPanel>

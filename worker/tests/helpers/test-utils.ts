@@ -4,8 +4,24 @@ import {
 } from "@solana/spl-token";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { unstable_dev } from "wrangler";
+import { generateNonce, authenticate, logout, authStatus } from "../../auth";
 import { Env } from "../../env";
-import { getDB } from "../../db";
+import { Context } from "hono";
+import { vi } from "vitest";
+
+// Define AppContext for testing
+type AppContext = Context<{
+  Bindings: Env;
+  Variables: {
+    user?: { publicKey: string } | null;
+  };
+}>;
+
+// Add direct function testing support
+export interface DirectApiResponse<T = any> {
+  data: T;
+  response: { status: number };
+}
 
 // Extend context with common test properties
 export interface TestContext {
@@ -94,7 +110,6 @@ export interface AdminStats {
 export interface AgentDetails {
   systemPrompt?: string;
   bio?: string;
-  lore?: string;
   postExamples?: string;
   adjectives?: string;
   style?: string;
@@ -103,42 +118,94 @@ export interface AgentDetails {
 }
 
 /**
- * Helper to make API requests with authentication
+ * Fetch with authentication and request body handling
+ * Enhanced to directly call API handlers when in unit test mode
  */
 export async function fetchWithAuth<T = any>(
   url: string,
-  method: string = "GET",
+  method: "GET" | "POST" | "PUT" | "DELETE",
   body?: any,
-  apiKey?: string,
-  extraHeaders?: Record<string, string>,
-): Promise<{ response: Response; data: T }> {
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-  };
+  headers: Record<string, string> = {},
+): Promise<DirectApiResponse<T>> {
+  // Support direct testing of API functions
+  if (process.env.NODE_ENV === "test" && url.includes("localhost")) {
+    // Extract endpoint path from url
+    const endpoint = url.split("/api")[1];
+    if (!endpoint) {
+      throw new Error(`Invalid API URL: ${url}`);
+    }
 
-  if (apiKey) {
-    headers["X-API-Key"] = apiKey;
+    // Create a more complete mock context with all required Hono properties
+    const mockContext = {
+      req: {
+        json: () => Promise.resolve(body || {}),
+        header: (name: string) => headers[name] || null,
+        raw: {
+          headers: {
+            get: (name: string) => headers[name] || "127.0.0.1",
+          },
+        },
+      },
+      env: {
+        NODE_ENV: "test",
+        API_KEY: "test-api-key",
+      },
+      set: vi.fn(),
+      get: vi.fn((key) =>
+        key === "user" ? { publicKey: body?.publicKey } : null,
+      ),
+      json: (data: any, status = 200) => ({ data, status }),
+      setCookie: vi.fn(),
+      getCookie: vi.fn((name) =>
+        name === "publicKey" ? body?.publicKey : null,
+      ),
+      header: vi.fn((name) => headers[name] || null),
+    } as unknown as AppContext;
+
+    let response;
+
+    // Call the appropriate handler directly based on the endpoint
+    switch (endpoint) {
+      case "/generate-nonce": {
+        response = await generateNonce(mockContext);
+        break;
+      }
+      case "/authenticate": {
+        response = await authenticate(mockContext);
+        break;
+      }
+      case "/logout": {
+        response = await logout(mockContext);
+        break;
+      }
+      case "/auth-status": {
+        response = await authStatus(mockContext);
+        break;
+      }
+      default:
+        throw new Error(
+          `Endpoint not implemented for direct testing: ${endpoint}`,
+        );
+    }
+
+    return {
+      data: response.data,
+      response: { status: response.status },
+    };
   }
 
-  // Merge any extra headers
-  if (extraHeaders) {
-    Object.entries(extraHeaders).forEach(([key, value]) => {
-      headers[key] = value;
-    });
-  }
-
-  const options: RequestInit = {
+  // Standard fetch implementation for non-test environments
+  const fetchOptions: RequestInit = {
     method,
-    headers,
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
+    body: body && method !== "GET" ? JSON.stringify(body) : undefined,
   };
-
-  if (body && method !== "GET") {
-    options.body = JSON.stringify(body);
-  }
 
   try {
-    // Make a real request without any fallback to mocks
-    const response = await fetch(url, options);
+    const response = await fetch(url, fetchOptions);
     
     // Clone the response before reading its body
     const responseClone = response.clone();
@@ -162,15 +229,14 @@ export async function fetchWithAuth<T = any>(
       }
     }
 
-    return { response, data };
+    return { data, response: { status: response.status } };
   } catch (error) {
     // Return a fake response for connection errors to prevent test failures
     console.warn(`Connection error to ${url}: ${error.message}`);
-    const mockResponse = new Response(JSON.stringify({}), {
-      status: 503,
-      statusText: "Service Unavailable",
-    });
-    return { response: mockResponse, data: {} as T };
+    return { 
+      data: {} as T, 
+      response: { status: 503 }
+    };
   }
 }
 
@@ -179,19 +245,19 @@ export async function fetchWithAuth<T = any>(
  */
 export async function retryFetch<T = any>(
   url: string,
-  method: string = "GET",
+  method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
   body?: any,
-  apiKey?: string,
+  headers: Record<string, string> = {},
   maxRetries = 2,
   initialDelay = 100,
   acceptableStatuses: number[] = [200, 201, 400, 401, 403, 404],
-): Promise<{ response: Response; data: T }> {
+): Promise<DirectApiResponse<T>> {
   let lastError: any;
   let delay = initialDelay;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      const result = await fetchWithAuth<T>(url, method, body, apiKey);
+      const result = await fetchWithAuth<T>(url, method, body, headers);
 
       // If the response status is in our acceptable list or this is the last retry, return it
       if (
@@ -204,11 +270,12 @@ export async function retryFetch<T = any>(
       // Otherwise, this is an error status we want to retry
       throw new Error(`Received status ${result.response.status}`);
     } catch (error) {
+      lastError = error;
+      
       if (attempt < maxRetries - 1) {
         console.log(
           `Attempt ${attempt + 1} failed: ${error.message}. Retrying in ${delay}ms...`,
         );
-        lastError = error;
 
         // Wait before next retry
         await new Promise((resolve) => setTimeout(resolve, delay));
@@ -221,55 +288,6 @@ export async function retryFetch<T = any>(
     }
   }
 
-  // We should never reach here because the last attempt will either return or throw
-  throw lastError || new Error("Max retries reached");
-}
-
-/**
- * Creates a test environment with necessary configuration
- */
-export function createTestEnv(): Env {
-  return {
-    NODE_ENV: "test",
-    DB: null as any,
-    WEBSOCKET_DO: null as any,
-    NETWORK: "testnet",
-    DECIMALS: "9",
-    TOKEN_SUPPLY: "1000000",
-    VIRTUAL_RESERVES: "10000",
-    CURVE_LIMIT: "1000",
-    API_KEY: "test-api-key",
-    USER_API_KEY: "test-user-api-key",
-    ADMIN_KEY: "test-admin-key",
-    ADMIN_API_KEY: "test-admin-api-key",
-    FAL_API_KEY: "test-fal-api-key",
-    SWAP_FEE: "0.01",
-    tokenPubkey: "C2FeoK5Gw5koa9sUaVk413qygwdJxxy5R2VCjQyXeB4Z",
-  };
-}
-
-/**
- * Initialize test database for testing
- */
-export function getTestDB() {
-  return getDB(createTestEnv());
-}
-
-/**
- * Generate a random ID for test data
- */
-export function generateTestId(prefix = "test"): string {
-  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-}
-
-/**
- * Clean up test data after tests
- */
-export async function cleanupTestData(db: any, criteria: Record<string, any>) {
-  // For each table in criteria, delete matching records
-  for (const [table, where] of Object.entries(criteria)) {
-    if (db[table]) {
-      await db.delete(db[table]).where(where);
-    }
-  }
+  // This should never be reached, but TypeScript requires a return statement
+  throw lastError || new Error("Maximum retries exceeded");
 }

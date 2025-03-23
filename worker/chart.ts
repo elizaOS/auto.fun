@@ -1098,7 +1098,7 @@ interface Candle {
  * @param rangeMinutes Time range in minutes
  * @returns Grouped candle data
  */
-function groupCandlesByRange(
+export function groupCandlesByRange(
   candles: Candle[],
   rangeMinutes: number,
 ): Candle[] {
