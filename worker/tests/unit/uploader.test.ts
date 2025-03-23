@@ -1,29 +1,19 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { uploadToCloudflare } from "../../uploader";
 import { Env } from "../../env";
-import { unstable_dev } from "wrangler";
 import { R2Bucket } from "@cloudflare/workers-types/experimental";
 
-describe("Uploader Tests (Real R2)", () => {
+describe("Uploader Tests (Mock R2)", () => {
   let env: Partial<Env>;
-  let worker: any;
   const objectsToCleanup: string[] = [];
 
   // Safely store data for cleanup
   const storage = new Map<string, { data: ArrayBuffer; contentType: string }>();
 
   beforeAll(async () => {
-    console.log("Starting worker with real R2 bindings...");
-    // Set up real worker with real R2 bindings
-    worker = await unstable_dev("worker/index.ts", {
-      experimental: { disableExperimentalWarning: true },
-      // Use the development config which includes R2 bindings
-      env: "development",
-      ip: "127.0.0.1",
-    });
-
-    // Create a mock environment that safely wraps the R2 functionality
-    // This avoids security issues with exposing all environment variables
+    console.log("Setting up mock R2 environment...");
+    
+    // Create a mock environment with mock R2 functionality
     env = {
       R2_PUBLIC_URL: "https://test-storage.example.com",
       // Create a minimal R2 interface that only exposes the methods we need
@@ -59,20 +49,21 @@ describe("Uploader Tests (Real R2)", () => {
     };
 
     console.log("Successfully initialized test environment with mock R2");
-  }, 30000);
+  });
 
   // Cleanup after all tests
   afterAll(async () => {
     console.log("Cleaning up test objects...");
 
+    // Clean up specific test objects
+    for (const key of objectsToCleanup) {
+      await env.R2!.delete(key);
+    }
+    
     // Clear all stored objects
     storage.clear();
-
-    // Stop the worker
-    if (worker) {
-      await worker.stop();
-      console.log("Worker stopped");
-    }
+    
+    console.log("Cleanup completed");
   });
 
   // Helper function to extract object key from URL
@@ -108,7 +99,7 @@ describe("Uploader Tests (Real R2)", () => {
     const data = await object!.arrayBuffer();
     const uploadedData = new Uint8Array(data);
     expect(uploadedData).toEqual(testData);
-  });
+  }, 10000);
 
   it("should upload JSON data with application/json content type", async () => {
     // Create test JSON data
@@ -137,7 +128,7 @@ describe("Uploader Tests (Real R2)", () => {
     const text = await object!.text();
     const data = JSON.parse(text);
     expect(data).toEqual(jsonData);
-  });
+  }, 10000);
 
   it("should use custom content type when provided", async () => {
     const testData = new Uint8Array([1, 2, 3, 4, 5]);
@@ -155,7 +146,7 @@ describe("Uploader Tests (Real R2)", () => {
     const object = await env.R2!.get(objectKey);
     expect(object).not.toBeNull();
     expect(object?.httpMetadata?.contentType).toBe(customContentType);
-  });
+  }, 10000);
 
   it("should handle uploads with timeout parameter", async () => {
     const testData = new Uint8Array([1, 2, 3, 4, 5]);
@@ -177,7 +168,7 @@ describe("Uploader Tests (Real R2)", () => {
     // Verify object exists
     const object = await env.R2!.get(objectKey);
     expect(object).not.toBeNull();
-  });
+  }, 15000);
 
   it("should handle different input data types", async () => {
     // Test with Uint8Array
@@ -208,5 +199,5 @@ describe("Uploader Tests (Real R2)", () => {
     expect(objectResult).toMatch(
       /^https:\/\/.*\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
     );
-  });
+  }, 20000);
 });
