@@ -1,10 +1,8 @@
-import Button from "@/components/button";
 import SkeletonImage from "@/components/skeleton-image";
 import {
   Dialog,
   DialogContent,
-  DialogTitle,
-  DialogTrigger,
+  DialogTitle
 } from "@/components/ui/dialog";
 import { useWalletModal, WalletModalContext } from "@/hooks/use-wallet-modal";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
