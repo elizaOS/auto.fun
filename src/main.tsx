@@ -19,19 +19,19 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <WalletProvider autoConnect={false}>
-      <BrowserRouter>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route index element={<Homepage />} />
-            <Route path="/support" element={<Support />} />
-            <Route path="/terms-of-service" element={<TermsOfService />} />
-            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-            <Route path="/fees" element={<Fees />} />
-            <Route path="/token/:address" element={<Token />} />
-            <Route path="/create" element={<Create />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+        <BrowserRouter>
+          <Routes>
+            <Route element={<Layout />}>
+              <Route index element={<Homepage />} />
+              <Route path="/support" element={<Support />} />
+              <Route path="/terms-of-service" element={<TermsOfService />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/fees" element={<Fees />} />
+              <Route path="/token/:address" element={<Token />} />
+              <Route path="/create" element={<Create />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
       </WalletProvider>
     </QueryClientProvider>
   </StrictMode>,

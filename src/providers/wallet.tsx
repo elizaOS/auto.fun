@@ -14,8 +14,11 @@ export const WalletProvider = ({
   autoConnect,
 }: PropsWithChildren<{ autoConnect: boolean }>) => {
   const network = WalletAdapterNetwork.Devnet;
-  const endpoint = useMemo(() => import.meta.env.VITE_RPC_URL || clusterApiUrl(network), []);
-  
+  const endpoint = useMemo(
+    () => import.meta.env.VITE_RPC_URL || clusterApiUrl(network),
+    [],
+  );
+
   return (
     <ConnectionProvider endpoint={endpoint}>
       <SolanaWalletProvider wallets={[]} autoConnect={autoConnect}>

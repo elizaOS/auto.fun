@@ -46,19 +46,13 @@ const FormInput = ({
 }) => {
   return (
     <div className="flex flex-col gap-1 w-full">
-      {label && (
-        <FormLabel label={label} isOptional={isOptional} />
-      )}
+      {label && <FormLabel label={label} isOptional={isOptional} />}
       <div className="relative flex items-center">
         {inputTag && (
-          <div className="absolute left-3 text-[#8c8c8c]">
-            {inputTag}
-          </div>
+          <div className="absolute left-3 text-[#8c8c8c]">{inputTag}</div>
         )}
         {leftIndicator && (
-          <div className="absolute left-3 text-[#8c8c8c]">
-            {leftIndicator}
-          </div>
+          <div className="absolute left-3 text-[#8c8c8c]">{leftIndicator}</div>
         )}
         <input
           className={`w-full bg-[#2e2e2e] py-2.5 px-3 rounded-md border border-neutral-800 text-white ${
@@ -77,15 +71,19 @@ const FormInput = ({
   );
 };
 
-const FormLabel = ({ label, isOptional }: { label: string; isOptional?: boolean }) => {
+const FormLabel = ({
+  label,
+  isOptional,
+}: {
+  label: string;
+  isOptional?: boolean;
+}) => {
   return (
     <div className="flex items-center gap-2">
       <div className="text-white uppercase text-sm font-medium tracking-wider">
         {label}
       </div>
-      {isOptional && (
-        <div className="text-[#8c8c8c] text-xs">Optional</div>
-      )}
+      {isOptional && <div className="text-[#8c8c8c] text-xs">Optional</div>}
     </div>
   );
 };
@@ -133,7 +131,7 @@ const FormImageInput = ({
   onChange: (file: File | null) => void;
 }) => {
   const [preview, setPreview] = useState<string | null>(null);
-  
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     if (file) {
@@ -141,12 +139,16 @@ const FormImageInput = ({
         alert(`The uploaded image exceeds the ${MAX_FILE_SIZE_MB}MB limit.`);
         return;
       }
-      
-      if (!["image/jpeg", "image/png", "image/gif", "video/mp4"].includes(file.type)) {
+
+      if (
+        !["image/jpeg", "image/png", "image/gif", "video/mp4"].includes(
+          file.type,
+        )
+      ) {
         alert("Only JPEG, PNG, GIF, and MP4 files are accepted");
         return;
       }
-      
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreview(reader.result as string);
@@ -158,22 +160,24 @@ const FormImageInput = ({
       onChange(null);
     }
   };
-  
+
   return (
     <div className="flex flex-col gap-1 w-full">
       <FormLabel label={label} />
       <div className="relative border border-neutral-800 rounded-md p-4 bg-[#2e2e2e]">
         {preview ? (
           <div className="flex justify-center">
-            <img 
-              src={preview} 
-              alt="Token preview" 
+            <img
+              src={preview}
+              alt="Token preview"
               className="max-h-40 object-contain"
             />
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-neutral-600 rounded-md">
-            <p className="text-[#8c8c8c] mb-2">Upload image (max {MAX_FILE_SIZE_MB}MB)</p>
+            <p className="text-[#8c8c8c] mb-2">
+              Upload image (max {MAX_FILE_SIZE_MB}MB)
+            </p>
           </div>
         )}
         <input
@@ -194,7 +198,7 @@ export const Create = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showWalletPrompt, setShowWalletPrompt] = useState(false);
-  
+
   // Simple form state
   const [form, setForm] = useState({
     name: "",
@@ -207,78 +211,78 @@ export const Create = () => {
       website: "",
       discord: "",
       agentLink: "",
-    }
+    },
   });
-  
+
   // Error state
   const [errors, setErrors] = useState({
     name: "",
     symbol: "",
     description: "",
-    initial_sol: ""
+    initial_sol: "",
   });
-  
+
   // Handle input changes
   const handleChange = (field: string, value: string) => {
     // Handle nested fields (for links)
     if (field.includes(".")) {
       const [parent, child] = field.split(".");
-      setForm(prev => {
+      setForm((prev) => {
         if (parent === "links") {
           return {
             ...prev,
             links: {
               ...prev.links,
-              [child]: value
-            }
+              [child]: value,
+            },
           };
         }
         return prev;
       });
     } else {
-      setForm(prev => ({
+      setForm((prev) => ({
         ...prev,
-        [field]: value
+        [field]: value,
       }));
     }
-    
+
     // Clear errors immediately when field has a value
     if (field === "name" || field === "symbol" || field === "description") {
       if (value) {
-        setErrors(prev => ({
+        setErrors((prev) => ({
           ...prev,
-          [field]: ""
+          [field]: "",
         }));
       } else {
-        setErrors(prev => ({
+        setErrors((prev) => ({
           ...prev,
-          [field]: `${field.charAt(0).toUpperCase() + field.slice(1)} is required`
+          [field]: `${field.charAt(0).toUpperCase() + field.slice(1)} is required`,
         }));
       }
     }
-    
+
     // Validate initial_sol
     if (field === "initial_sol" && value) {
       const numValue = parseFloat(value);
       if (numValue < 0 || numValue > MAX_INITIAL_SOL) {
-        setErrors(prev => ({
+        setErrors((prev) => ({
           ...prev,
-          initial_sol: `Max initial SOL is ${MAX_INITIAL_SOL}`
+          initial_sol: `Max initial SOL is ${MAX_INITIAL_SOL}`,
         }));
       } else {
-        setErrors(prev => ({
+        setErrors((prev) => ({
           ...prev,
-          initial_sol: ""
+          initial_sol: "",
         }));
       }
     }
   };
-  
+
   // Submit form to backend
   const submitFormToBackend = async () => {
     try {
       setIsSubmitting(true);
-      
+
       // Convert image to base64 if exists
       let media_base64 = null;
       if (imageFile) {
@@ -288,80 +292,96 @@ export const Create = () => {
           reader.readAsDataURL(imageFile);
         });
       }
-      
+
       // Create payload
       const payload = {
         ...form,
         media_base64,
-        wallet: publicKey?.toString()
+        wallet: publicKey?.toString(),
       };
-      
+
       // Submit to backend API
-      const response = await fetch('/api/create-token', {
-        method: 'POST',
+      const response = await fetch("/api/create-token", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
-      
+
       if (!response.ok) {
-        throw new Error('Failed to create token');
+        throw new Error("Failed to create token");
       }
-      
-      const data = await response.json() as { tokenId?: string };
-      
+
+      const data = (await response.json()) as { tokenId?: string };
+
       // Redirect to token page using React Router
       if (data.tokenId) {
         navigate(`/token/${data.tokenId}`);
       } else {
-        console.error('No token ID returned from API');
+        console.error("No token ID returned from API");
       }
     } catch (error) {
-      console.error('Error creating token:', error);
-      alert('Failed to create token. Please try again.');
+      console.error("Error creating token:", error);
+      alert("Failed to create token. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate required fields
     const newErrors = { ...errors };
     if (!form.name) newErrors.name = "Name is required";
     if (!form.symbol) newErrors.symbol = "Symbol is required";
     if (!form.description) newErrors.description = "Description is required";
-    
+
     // Check if there are any errors
-    if (newErrors.name || newErrors.symbol || newErrors.description || newErrors.initial_sol) {
+    if (
+      newErrors.name ||
+      newErrors.symbol ||
+      newErrors.description ||
+      newErrors.initial_sol
+    ) {
       setErrors(newErrors);
       return;
     }
-    
+
     // If not logged in, show wallet prompt
     if (!publicKey) {
       setShowWalletPrompt(true);
       return;
     }
-    
+
     // Submit form to backend
     await submitFormToBackend();
   };
-  
+
   // Check if form is valid
-  const isFormValid = !!form.name && !!form.symbol && !!form.description && 
-    !errors.name && !errors.symbol && !errors.description && !errors.initial_sol;
+  const isFormValid =
+    !!form.name &&
+    !!form.symbol &&
+    !!form.description &&
+    !errors.name &&
+    !errors.symbol &&
+    !errors.description &&
+    !errors.initial_sol;
 
   return (
-    <form className="flex flex-col w-full m-auto gap-7 justify-center" onSubmit={handleSubmit}>
+    <form
+      className="flex flex-col w-full m-auto gap-7 justify-center"
+      onSubmit={handleSubmit}
+    >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <FormInput
           type="text"
           value={form.name}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange("name", e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            handleChange("name", e.target.value)
+          }
           label="Name"
           maxLength={50}
           rightIndicator={`${form.name.length}/50`}
@@ -371,7 +391,9 @@ export const Create = () => {
         <FormInput
           type="text"
           value={form.symbol}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange("symbol", e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            handleChange("symbol", e.target.value)
+          }
           label="Ticker"
           leftIndicator="$"
           maxLength={8}
@@ -382,7 +404,9 @@ export const Create = () => {
 
       <FormTextArea
         value={form.description}
-        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleChange("description", e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+          handleChange("description", e.target.value)
+        }
         label="Token Description"
         rightIndicator={`${form.description.length}/2000`}
         minRows={5}
@@ -398,7 +422,9 @@ export const Create = () => {
       <FormInput
         type="text"
         value={form.links.agentLink}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange("links.agentLink", e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+          handleChange("links.agentLink", e.target.value)
+        }
         label="Link Agent"
         isOptional
         inputTag={
@@ -415,7 +441,9 @@ export const Create = () => {
           <FormInput
             type="text"
             value={form.links.website}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange("links.website", e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              handleChange("links.website", e.target.value)
+            }
             isOptional
             inputTag={<Icons.Website />}
             placeholder="Insert a link here"
@@ -424,7 +452,9 @@ export const Create = () => {
           <FormInput
             type="text"
             value={form.links.twitter}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange("links.twitter", e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              handleChange("links.twitter", e.target.value)
+            }
             isOptional
             inputTag={<Icons.Twitter />}
             placeholder="Insert a link here"
@@ -433,7 +463,9 @@ export const Create = () => {
           <FormInput
             type="text"
             value={form.links.telegram}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange("links.telegram", e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              handleChange("links.telegram", e.target.value)
+            }
             isOptional
             inputTag={<Icons.Telegram />}
             placeholder="Insert a link here"
@@ -442,7 +474,9 @@ export const Create = () => {
           <FormInput
             type="text"
             value={form.links.discord}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange("links.discord", e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              handleChange("links.discord", e.target.value)
+            }
             isOptional
             inputTag={<Icons.Discord />}
             placeholder="Insert a link here"
@@ -472,7 +506,9 @@ export const Create = () => {
             <button
               type="button"
               className="bg-[#2e2e2e] py-2 rounded-md border border-neutral-800 text-[#2fd345] text-sm leading-tight"
-              onClick={() => handleChange("initial_sol", MAX_INITIAL_SOL.toString())}
+              onClick={() =>
+                handleChange("initial_sol", MAX_INITIAL_SOL.toString())
+              }
             >
               Max
             </button>
@@ -481,7 +517,9 @@ export const Create = () => {
             type="number"
             step="any"
             value={form.initial_sol}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange("initial_sol", e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              handleChange("initial_sol", e.target.value)
+            }
             placeholder={`Custom max ${MAX_INITIAL_SOL} SOL`}
             onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
               if (
@@ -509,7 +547,9 @@ export const Create = () => {
         </div>
         {showWalletPrompt && !publicKey ? (
           <div className="flex flex-col items-center gap-2">
-            <p className="text-white mb-2">Connect your wallet to launch your token</p>
+            <p className="text-white mb-2">
+              Connect your wallet to launch your token
+            </p>
             <WalletButton />
           </div>
         ) : (

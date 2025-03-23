@@ -1,42 +1,48 @@
-import { useWallet } from '@solana/wallet-adapter-react';
-import { useCallback, useEffect } from 'react';
-import { useWalletModal } from '../hooks/use-wallet-modal';
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useCallback, useEffect } from "react";
+import { useWalletModal } from "../hooks/use-wallet-modal";
 
 const WalletButton = () => {
-  const { publicKey, disconnect, connecting, connected, disconnecting, wallet } = useWallet();
+  const {
+    publicKey,
+    disconnect,
+    connecting,
+    connected,
+    disconnecting,
+    wallet,
+  } = useWallet();
   const { setVisible } = useWalletModal();
 
   // Handle button click - just disconnect or open modal
   const handleClick = useCallback(async () => {
     if (connected) {
-      
       try {
         // Simple disconnect without any custom state management
         await disconnect();
-        console.log('Wallet disconnected');
+        console.log("Wallet disconnected");
       } catch (error) {
-        console.error('Error disconnecting wallet:', error);
+        console.error("Error disconnecting wallet:", error);
       }
     } else if (!connecting) {
-      console.log('Opening wallet modal');
+      console.log("Opening wallet modal");
       setVisible(true);
     }
   }, [connected, connecting, disconnect, disconnecting, setVisible]);
 
   // Simple button text
-  const buttonText = connecting 
-    ? 'Connecting...'
-      : connected 
-        ? 'Disconnect Wallet' 
-        : 'Connect Wallet';
+  const buttonText = connecting
+    ? "Connecting..."
+    : connected
+      ? "Disconnect Wallet"
+      : "Connect Wallet";
 
   // Log wallet state for debugging
   useEffect(() => {
-    console.log('Wallet state:', { 
-      connected, 
-      connecting, 
+    console.log("Wallet state:", {
+      connected,
+      connecting,
       wallet: wallet?.adapter.name,
-      publicKey: publicKey?.toString()
+      publicKey: publicKey?.toString(),
     });
   }, [connected, connecting, wallet, publicKey]);
 
