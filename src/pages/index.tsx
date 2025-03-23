@@ -48,6 +48,8 @@ export default function Page() {
     hasMore: queryData?.hasMore || false,
   } as IPagination;
 
+  console.log(query);
+
   return (
     <div className="w-full min-h-[100vh]">
       {/* Top Navigation */}
