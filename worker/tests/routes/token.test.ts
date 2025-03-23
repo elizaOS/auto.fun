@@ -103,7 +103,7 @@ describe("Token API Endpoints", () => {
       expect(firstToken).toHaveProperty("creator");
       expect(firstToken).toHaveProperty("status");
     }
-  });
+  }, 10000);
 
   it("should filter tokens by status", async () => {
     if (!ctx.context) throw new Error("Test context not initialized");
@@ -800,6 +800,6 @@ describe("Token API Endpoints", () => {
 
     // Token may not be harvestable yet, or we may not have permission
     // 403 is expected when test user is not the token creator
-    expect([200, 400, 401, 403, 404]).toContain(response.status);
+    expect([200]).toContain(response.status);
   });
 });

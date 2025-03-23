@@ -19,7 +19,7 @@
     "test:worker": "vitest run worker/tests",
     "test:routes": "vitest run worker/tests/routes",
     "test:routes:debug": "DEBUG=true vitest run worker/tests/routes",
-    "test:auth": "vitest run worker/tests/routes/auth.test.ts",
+    "test:auth": "vitest run worker/tests/unit/auth.test.ts",
     "test:token": "vitest run worker/tests/routes/token.test.ts",
     "setup:test-env": "./scripts/setup-test-env.sh"
   },

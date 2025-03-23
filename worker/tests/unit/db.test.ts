@@ -6,7 +6,6 @@ import {
   swaps,
   fees,
   tokenHolders,
-  agents,
   messages,
   messageLikes,
   users,
@@ -334,41 +333,6 @@ describe("Database Operations", () => {
       )
     `);
 
-    // Create agents table
-    await sqliteClient.execute(`
-      CREATE TABLE IF NOT EXISTS agents (
-        id TEXT PRIMARY KEY,
-        owner_address TEXT NOT NULL,
-        contract_address TEXT NOT NULL,
-        tx_id TEXT NOT NULL,
-        symbol TEXT NOT NULL,
-        name TEXT NOT NULL,
-        description TEXT NOT NULL,
-        system_prompt TEXT,
-        bio TEXT,
-        messageExamples TEXT,
-        postExamples TEXT,
-        adjectives TEXT,
-        people TEXT,
-        topics TEXT,
-        model_provider TEXT DEFAULT 'claude',
-        style_all TEXT,
-        style_chat TEXT,
-        style_post TEXT,
-        twitter_username TEXT,
-        twitter_password TEXT,
-        twitter_email TEXT,
-        twitter_cookie TEXT,
-        post_freq_min INTEGER,
-        post_freq_max INTEGER,
-        poll_interval_sec INTEGER,
-        ecs_task_id TEXT,
-        created_at INTEGER DEFAULT CURRENT_TIMESTAMP,
-        updated_at INTEGER DEFAULT CURRENT_TIMESTAMP,
-        deleted_at INTEGER
-      )
-    `);
-
     // Create messages table
     await sqliteClient.execute(`
       CREATE TABLE IF NOT EXISTS messages (
@@ -471,7 +435,6 @@ describe("Database Operations", () => {
       await sqliteClient.execute("DELETE FROM swaps");
       await sqliteClient.execute("DELETE FROM fees");
       await sqliteClient.execute("DELETE FROM token_holders");
-      await sqliteClient.execute("DELETE FROM agents");
       await sqliteClient.execute("DELETE FROM messages");
       await sqliteClient.execute("DELETE FROM message_likes");
       await sqliteClient.execute("DELETE FROM personalities");
@@ -491,7 +454,6 @@ describe("Database Operations", () => {
       await sqliteClient.execute("DROP TABLE IF EXISTS swaps");
       await sqliteClient.execute("DROP TABLE IF EXISTS fees");
       await sqliteClient.execute("DROP TABLE IF EXISTS token_holders");
-      await sqliteClient.execute("DROP TABLE IF EXISTS agents");
       await sqliteClient.execute("DROP TABLE IF EXISTS messages");
       await sqliteClient.execute("DROP TABLE IF EXISTS message_likes");
       await sqliteClient.execute("DROP TABLE IF EXISTS personalities");
@@ -1017,160 +979,6 @@ describe("Database Operations", () => {
           where: eq(tokenHolders.id, TEST_HOLDER_DATA.id),
         });
         expect(afterDelete).toBeUndefined();
-      } catch (error) {
-        console.error("Test failed with error:", error);
-        throw error;
-      }
-    });
-  });
-
-  describe("Agent Operations", () => {
-    it("should insert a new agent", async () => {
-      try {
-        // First insert a token (for foreign key reference)
-        await db.insert(tokens).values(TEST_TOKEN_DATA);
-
-        // Insert an agent using Drizzle ORM
-        const result = await db.insert(agents).values(TEST_AGENT_DATA);
-
-        // Verify using ORM query
-        const insertedAgent = await db.query.agents.findFirst({
-          where: eq(agents.id, TEST_AGENT_DATA.id),
-        });
-
-        expect(insertedAgent).toBeDefined();
-        expect(insertedAgent?.id).toBe(TEST_AGENT_DATA.id);
-        expect(insertedAgent?.ownerAddress).toBe(TEST_AGENT_DATA.ownerAddress);
-        expect(insertedAgent?.contractAddress).toBe(
-          TEST_AGENT_DATA.contractAddress,
-        );
-        expect(insertedAgent?.name).toBe(TEST_AGENT_DATA.name);
-        expect(insertedAgent?.description).toBe(TEST_AGENT_DATA.description);
-      } catch (error) {
-        console.error("Test failed with error:", error);
-        throw error;
-      }
-    });
-
-    it("should retrieve agents from database", async () => {
-      try {
-        // First insert a token
-        await db.insert(tokens).values(TEST_TOKEN_DATA);
-
-        // Insert an agent
-        await db.insert(agents).values(TEST_AGENT_DATA);
-
-        // Insert a second agent
-        const secondToken = {
-          ...TEST_TOKEN_DATA,
-          id: "test-token-2",
-          mint: "Second3Z8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
-        };
-        await db.insert(tokens).values(secondToken);
-
-        const secondAgentData = {
-          ...TEST_AGENT_DATA,
-          id: "test-agent-2",
-          contractAddress: secondToken.mint,
-          name: "Second Test Agent",
-          modelProvider: "gpt-4",
-        };
-        await db.insert(agents).values(secondAgentData);
-
-        // Query using ORM
-        const allAgents = await db.query.agents.findMany();
-
-        // Verify results
-        expect(Array.isArray(allAgents)).toBe(true);
-        expect(allAgents.length).toBe(2);
-
-        // Query by model provider
-        const claudeAgents = await db.query.agents.findMany({
-          where: eq(agents.modelProvider, "claude"),
-        });
-
-        expect(claudeAgents.length).toBe(1);
-        expect(claudeAgents[0].id).toBe(TEST_AGENT_DATA.id);
-
-        const gptAgents = await db.query.agents.findMany({
-          where: eq(agents.modelProvider, "gpt-4"),
-        });
-
-        expect(gptAgents.length).toBe(1);
-        expect(gptAgents[0].id).toBe(secondAgentData.id);
-      } catch (error) {
-        console.error("Test failed with error:", error);
-        throw error;
-      }
-    });
-
-    it("should update an existing agent", async () => {
-      try {
-        // First insert a token
-        await db.insert(tokens).values(TEST_TOKEN_DATA);
-
-        // Insert an agent
-        await db.insert(agents).values(TEST_AGENT_DATA);
-
-        // Update values
-        const updatedBio = "Updated agent bio";
-        const updatedSystemPrompt = "You are an updated test agent";
-
-        // Update using ORM
-        await db
-          .update(agents)
-          .set({
-            bio: updatedBio,
-            systemPrompt: updatedSystemPrompt,
-          })
-          .where(eq(agents.id, TEST_AGENT_DATA.id));
-
-        // Retrieve the updated agent
-        const updatedAgent = await db.query.agents.findFirst({
-          where: eq(agents.id, TEST_AGENT_DATA.id),
-        });
-
-        // Verify the update
-        expect(updatedAgent).toBeDefined();
-        expect(updatedAgent?.bio).toBe(updatedBio);
-        expect(updatedAgent?.systemPrompt).toBe(updatedSystemPrompt);
-      } catch (error) {
-        console.error("Test failed with error:", error);
-        throw error;
-      }
-    });
-
-    it("should soft delete an agent", async () => {
-      try {
-        // First insert a token
-        await db.insert(tokens).values(TEST_TOKEN_DATA);
-
-        // Insert an agent
-        await db.insert(agents).values(TEST_AGENT_DATA);
-
-        // Soft delete the agent (setting deletedAt)
-        const deletedAt = new Date().toISOString();
-        await db
-          .update(agents)
-          .set({
-            deletedAt: deletedAt,
-          })
-          .where(eq(agents.id, TEST_AGENT_DATA.id));
-
-        // Verify it has deletedAt set
-        const softDeletedAgent = await db.query.agents.findFirst({
-          where: eq(agents.id, TEST_AGENT_DATA.id),
-        });
-
-        expect(softDeletedAgent).toBeDefined();
-        expect(softDeletedAgent?.deletedAt).toBe(deletedAt);
-
-        // Query excluding soft deleted agents
-        const activeAgents = await db.query.agents.findMany({
-          where: sql`${agents.deletedAt} IS NULL`,
-        });
-
-        expect(activeAgents.length).toBe(0);
       } catch (error) {
         console.error("Test failed with error:", error);
         throw error;
@@ -1810,136 +1618,6 @@ describe("Database Operations", () => {
           where: eq(mediaGenerations.id, TEST_MEDIA_GENERATION_DATA.id),
         });
         expect(afterDelete).toBeUndefined();
-      } catch (error) {
-        console.error("Test failed with error:", error);
-        throw error;
-      }
-    });
-  });
-
-  describe("Personality Operations", () => {
-    it("should insert a new personality", async () => {
-      try {
-        // Insert a personality using Drizzle ORM
-        const result = await db
-          .insert(personalities)
-          .values(TEST_PERSONALITY_DATA);
-
-        // Verify using ORM query - need to get the auto-incremented ID
-        const insertedPersonality = await db.query.personalities.findFirst({
-          where: eq(personalities.name, TEST_PERSONALITY_DATA.name),
-        });
-
-        expect(insertedPersonality).toBeDefined();
-        expect(insertedPersonality?.name).toBe(TEST_PERSONALITY_DATA.name);
-        expect(insertedPersonality?.description).toBe(
-          TEST_PERSONALITY_DATA.description,
-        );
-        expect(insertedPersonality?.id).toBeDefined();
-      } catch (error) {
-        console.error("Test failed with error:", error);
-        throw error;
-      }
-    });
-
-    it("should retrieve personalities from database", async () => {
-      try {
-        // Insert a personality
-        await db.insert(personalities).values(TEST_PERSONALITY_DATA);
-
-        // Insert a second personality
-        const secondPersonalityData = {
-          name: "Second Test Personality",
-          description: "Another test personality",
-        };
-
-        await db.insert(personalities).values(secondPersonalityData);
-
-        // Query using ORM
-        const allPersonalities = await db.query.personalities.findMany();
-
-        // Verify results
-        expect(Array.isArray(allPersonalities)).toBe(true);
-        expect(allPersonalities.length).toBe(2);
-
-        // The names should match what we inserted
-        const names = allPersonalities.map((p) => p.name);
-        expect(names).toContain(TEST_PERSONALITY_DATA.name);
-        expect(names).toContain(secondPersonalityData.name);
-      } catch (error) {
-        console.error("Test failed with error:", error);
-        throw error;
-      }
-    });
-
-    it("should update an existing personality", async () => {
-      try {
-        // Insert a personality
-        await db.insert(personalities).values(TEST_PERSONALITY_DATA);
-
-        // Get the inserted personality to get its ID
-        const personality = await db.query.personalities.findFirst({
-          where: eq(personalities.name, TEST_PERSONALITY_DATA.name),
-        });
-
-        // Update description
-        const updatedDescription = "Updated personality description";
-
-        // Update using ORM
-        await db
-          .update(personalities)
-          .set({
-            description: updatedDescription,
-          })
-          .where(eq(personalities.id, personality!.id));
-
-        // Retrieve the updated personality
-        const updatedPersonality = await db.query.personalities.findFirst({
-          where: eq(personalities.id, personality!.id),
-        });
-
-        // Verify the update
-        expect(updatedPersonality).toBeDefined();
-        expect(updatedPersonality?.description).toBe(updatedDescription);
-      } catch (error) {
-        console.error("Test failed with error:", error);
-        throw error;
-      }
-    });
-
-    it("should soft delete a personality", async () => {
-      try {
-        // Insert a personality
-        await db.insert(personalities).values(TEST_PERSONALITY_DATA);
-
-        // Get the inserted personality to get its ID
-        const personality = await db.query.personalities.findFirst({
-          where: eq(personalities.name, TEST_PERSONALITY_DATA.name),
-        });
-
-        // Soft delete the personality (setting deletedAt)
-        const deletedAt = new Date().toISOString();
-        await db
-          .update(personalities)
-          .set({
-            deletedAt: deletedAt,
-          })
-          .where(eq(personalities.id, personality!.id));
-
-        // Verify it has deletedAt set
-        const softDeletedPersonality = await db.query.personalities.findFirst({
-          where: eq(personalities.id, personality!.id),
-        });
-
-        expect(softDeletedPersonality).toBeDefined();
-        expect(softDeletedPersonality?.deletedAt).toBe(deletedAt);
-
-        // Query excluding soft deleted personalities
-        const activePersonalities = await db.query.personalities.findMany({
-          where: sql`${personalities.deletedAt} IS NULL`,
-        });
-
-        expect(activePersonalities.length).toBe(0);
       } catch (error) {
         console.error("Test failed with error:", error);
         throw error;

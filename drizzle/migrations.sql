@@ -176,50 +176,6 @@ CREATE TABLE IF NOT EXISTS cache_prices (
   expires_at INTEGER NOT NULL
 );
 
--- Create agents table
-CREATE TABLE IF NOT EXISTS agents (
-  id TEXT PRIMARY KEY,
-  owner_address TEXT NOT NULL,
-  contract_address TEXT NOT NULL,
-  tx_id TEXT NOT NULL UNIQUE,
-  symbol TEXT NOT NULL,
-  name TEXT NOT NULL,
-  description TEXT,
-  system_prompt TEXT NOT NULL,
-  model_provider TEXT DEFAULT 'llama_cloud',
-  
-  -- Arrays (stored as JSON strings in SQLite)
-  bio TEXT, -- JSON array
-  lore TEXT, -- JSON array
-  post_examples TEXT, -- JSON array
-  adjectives TEXT, -- JSON array
-  people TEXT, -- JSON array
-  topics TEXT, -- JSON array
-  style_all TEXT, -- JSON array
-  style_chat TEXT, -- JSON array
-  style_post TEXT, -- JSON array
-  
-  -- JSON fields
-  message_examples TEXT, -- JSON
-  twitter_cookie TEXT, -- JSON
-  
-  -- Twitter fields
-  twitter_username TEXT NOT NULL,
-  twitter_password TEXT NOT NULL,
-  twitter_email TEXT NOT NULL,
-  post_freq_min INTEGER DEFAULT 90,
-  post_freq_max INTEGER DEFAULT 180,
-  poll_interval_sec INTEGER DEFAULT 120,
-  
-  -- Task management
-  ecs_task_id TEXT,
-  
-  -- Timestamps
-  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-  updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
-  deleted_at INTEGER
-);
-
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_tokens_creator ON tokens(creator);
 CREATE INDEX IF NOT EXISTS idx_tokens_status ON tokens(status);
@@ -237,12 +193,6 @@ CREATE INDEX IF NOT EXISTS idx_message_likes_user ON message_likes(user_address)
 
 CREATE INDEX IF NOT EXISTS idx_token_holders_mint ON token_holders(mint);
 CREATE INDEX IF NOT EXISTS idx_token_holders_amount ON token_holders(amount);
-
-CREATE INDEX IF NOT EXISTS idx_agents_owner ON agents(owner_address);
-CREATE INDEX IF NOT EXISTS idx_agents_contract ON agents(contract_address);
-CREATE INDEX IF NOT EXISTS idx_agents_task ON agents(ecs_task_id);
-CREATE INDEX IF NOT EXISTS idx_agents_tx_id ON agents(tx_id);
-CREATE INDEX IF NOT EXISTS idx_agents_updated_at ON agents(updated_at);
 
 CREATE INDEX IF NOT EXISTS idx_cache_prices_type ON cache_prices(type);
 CREATE INDEX IF NOT EXISTS idx_cache_prices_symbol ON cache_prices(symbol);
