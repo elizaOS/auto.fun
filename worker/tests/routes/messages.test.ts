@@ -149,18 +149,14 @@ describe("Messages API Endpoints", () => {
       apiUrl(baseUrl, `/messages/${testMint}`),
       "POST",
       { message: "Test message with proper authentication" },
-      { Authorization: `Bearer ${authToken}` },
+      {
+        Authorization: `Bearer ${authToken}`,
+        "X-Test-Mode": "true",
+        "X-Node-Env": "test",
+      },
     );
 
     // With valid auth token, expect a successful response
-    // If we get an auth error, skip this assertion as the test environment might not support full auth
-    if (createResponse.status === 401) {
-      console.log(
-        "Skipping authenticated message creation test - auth token not accepted",
-      );
-      return;
-    }
-
     expect(createResponse.status).toBe(200);
     expect(createData).toHaveProperty("id");
     expect(createData).toHaveProperty(
@@ -181,15 +177,14 @@ describe("Messages API Endpoints", () => {
       apiUrl(baseUrl, `/messages/${testMint}`),
       "POST",
       { message: "Parent message for thread testing" },
-      { Authorization: `Bearer ${authToken}` },
+      {
+        Authorization: `Bearer ${authToken}`,
+        "X-Test-Mode": "true",
+        "X-Node-Env": "test",
+      },
     );
 
-    // If we get an auth error, skip this test as the test environment might not support full auth
-    if (parentResponse.status === 401) {
-      console.log("Skipping message thread test - auth token not accepted");
-      return;
-    }
-
+    // Expect the message creation to be successful
     expect(parentResponse.status).toBe(200);
     expect(parentData).toHaveProperty("id");
     const parentId = parentData.id;
@@ -203,7 +198,11 @@ describe("Messages API Endpoints", () => {
         message: "Reply to parent message",
         parentId,
       },
-      { Authorization: `Bearer ${authToken}` },
+      {
+        Authorization: `Bearer ${authToken}`,
+        "X-Test-Mode": "true",
+        "X-Node-Env": "test",
+      },
     );
 
     expect(replyResponse.status).toBe(200);
@@ -242,7 +241,11 @@ describe("Messages API Endpoints", () => {
       apiUrl(baseUrl, `/message-likes/${parentId}`),
       "POST",
       {},
-      { Authorization: `Bearer ${authToken}` },
+      {
+        Authorization: `Bearer ${authToken}`,
+        "X-Test-Mode": "true",
+        "X-Node-Env": "test",
+      },
     );
 
     expect(likeResponse.status).toBe(200);

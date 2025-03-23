@@ -131,6 +131,7 @@ export async function fetchWithAuth<T = any>(
 
   // Debug logging
   console.log(`Fetching ${method} ${url}`);
+  console.log("Request headers:", headers);
   if (body && method !== "GET") {
     // Don't log sensitive information like signatures
     const sanitizedBody = { ...body };
