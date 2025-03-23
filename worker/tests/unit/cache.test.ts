@@ -1,27 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, expect, it } from "vitest";
 import { CacheService } from "../../cache";
-import { Env } from "../../env";
-import { createTestEnv, cleanupCacheTable } from "../helpers/test-db";
 
+// TODO: should ONLY use real cache service, no mock
 describe("CacheService", () => {
   let cacheService: CacheService;
-  let testEnv: Env;
-
-  beforeEach(async () => {
-    // Set up a test environment with a local SQLite database
-    testEnv = await createTestEnv();
-
-    // Create a real instance of CacheService with our test DB
-    cacheService = new CacheService(testEnv);
-
-    // Clean up any existing cache entries from previous tests
-    await cleanupCacheTable(testEnv);
-  });
-
-  afterEach(async () => {
-    // Clean up after tests
-    await cleanupCacheTable(testEnv);
-  });
 
   describe("getSolPrice", () => {
     it("should return SOL price from cache when available", async () => {

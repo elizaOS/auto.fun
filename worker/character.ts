@@ -9,7 +9,6 @@ export interface AgentDetailsInput {
   personalities?: string[];
   systemPrompt?: string;
   bio?: string;
-  lore?: string;
   postExamples?: string;
   adjectives?: string;
   style?: string;
@@ -29,12 +28,159 @@ export interface AgentDetailsRequest {
 export interface AgentDetails {
   systemPrompt?: string;
   bio?: string;
-  lore?: string;
   postExamples?: string[];
   adjectives?: string[];
   style?: string[];
   topics?: string[];
   [key: string]: string | string[] | undefined; // Add index signature for string keys
+}
+
+/**
+ * Validates character inputs for required fields and appropriate content
+ */
+export function validateCharacterInputs(inputs: any): {
+  valid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+
+  // Check required fields
+  if (!inputs.name) {
+    errors.push("Name is required");
+  }
+
+  if (!inputs.description) {
+    errors.push("Description is required");
+  } else if (inputs.description.length < 20) {
+    errors.push("Description must be at least 20 characters in length");
+  }
+
+  // Check for inappropriate content
+  const inappropriateTerms = ["illegal", "harmful", "violates"];
+  const combinedText =
+    `${inputs.name || ""} ${inputs.description || ""} ${inputs.personality || ""}`.toLowerCase();
+
+  for (const term of inappropriateTerms) {
+    if (combinedText.includes(term)) {
+      errors.push("Content contains inappropriate terms");
+      break;
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * Formats raw character metadata into a standardized display format
+ */
+export function formatCharacterMetadata(metadata: any) {
+  return {
+    displayName: metadata.name,
+    shortDescription: metadata.description,
+    traits: metadata.personality
+      ? metadata.personality.split(/,|;/).map((t: string) => t.trim())
+      : [],
+    skills: metadata.expertise
+      ? Array.isArray(metadata.expertise)
+        ? metadata.expertise
+        : metadata.expertise.split(/,|;/).map((s: string) => s.trim())
+      : [],
+    creationDate: metadata.createdAt || new Date().toISOString(),
+  };
+}
+
+/**
+ * Generates a system prompt based on character details
+ */
+export async function generateSystemPrompt(
+  characterInputs: any,
+  env: any,
+): Promise<string> {
+  const {
+    name,
+    description,
+    personality = "helpful",
+    expertise = [],
+  } = characterInputs;
+
+  return `You are ${name}, an AI assistant created to ${description}.
+Your personality is ${personality}.
+${expertise.length ? `Your areas of expertise include: ${expertise.join(", ")}.` : ""}
+You should provide responses that are informative, engaging, and relevant to user queries.
+Always maintain your persona and respond as ${name} would.`;
+}
+
+/**
+ * Generates a character bio based on inputs
+ */
+export async function generateCharacterBio(
+  characterInputs: any,
+  env: any,
+): Promise<string> {
+  const {
+    name,
+    description,
+    personality = "helpful",
+    expertise = [],
+  } = characterInputs;
+
+  return `${name} is an AI created to ${description}.
+With a ${personality} personality, ${name} excels at providing valuable assistance.
+${expertise.length ? `Specializing in ${expertise.join(", ")}, ` : ""}${name} aims to deliver accurate and helpful responses.`;
+}
+
+/**
+ * Generates character background story
+ */
+export async function generateCharacterLore(
+  characterInputs: any,
+  env: any,
+): Promise<string> {
+  const {
+    name,
+    description,
+    background = "",
+    personality = "helpful",
+  } = characterInputs;
+
+  return `${name} was developed as a specialized AI assistant focused on ${description}.
+${background ? `With a background in ${background}, ` : ""}${name} has accumulated extensive knowledge and skills.
+Designed with a ${personality} personality, ${name} has evolved to understand complex user needs and anticipate questions.
+Each interaction helps ${name} improve and provide more valuable assistance.`;
+}
+
+/**
+ * Generates example posts for the character
+ */
+export async function generatePostExamples(
+  characterInputs: any,
+  env: any,
+): Promise<string[]> {
+  const { name, description, expertise = [] } = characterInputs;
+
+  return [
+    `Just shared insights about ${description.split(" ").slice(0, 3).join(" ")}... Let me know if you have questions! #AI #Expertise`,
+    `Here's a helpful tip about ${expertise.length ? expertise[0] : "my field of expertise"}: Always consider the fundamentals first.`,
+    `Did you know? When approaching ${description.split(" ").slice(0, 4).join(" ")}..., there are several effective strategies to consider.`,
+  ];
+}
+
+/**
+ * Combines multiple character detail objects into one
+ */
+export function combineCharacterDetails(
+  detailsArray: AgentDetails[],
+): AgentDetails {
+  const combined: AgentDetails = {};
+
+  for (const details of detailsArray) {
+    Object.assign(combined, details);
+  }
+
+  return combined;
 }
 
 /**
@@ -61,11 +207,6 @@ Always stay within ethical and legal boundaries in your responses.`,
       bio: `${name} is an AI created to ${description}.
 With expertise in relevant topics, ${name} aims to assist users with their needs while maintaining a ${mood} demeanor.
 ${name} is always up-to-date with the latest information and strives to provide accurate and helpful responses.`,
-
-      lore: `${name} was created as a specialized AI assistant to ${description}.
-Its knowledge and capabilities were carefully crafted to excel in related fields.
-While maintaining a ${mood} persona, ${name} has evolved to understand complex user needs and anticipate questions.
-${name} continues to learn and improve with each interaction.`,
 
       postExamples: [
         `Just spent some time thinking about how I can better ${description}. I'm excited to share my insights with you all! #AI #Assistance`,
@@ -129,7 +270,7 @@ ${name} continues to learn and improve with each interaction.`,
     return filteredResponse;
   } catch (error) {
     logger.error("Error in createCharacterDetails:", error);
-    // Return minimal placeholder response on error
+    // Return minimal placeholder response on error - always include both properties
     return {
       systemPrompt: "You are a helpful assistant.",
       bio: "This is a helpful AI assistant.",
