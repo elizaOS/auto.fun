@@ -1,394 +1,347 @@
-import { DurableObjectState } from "@cloudflare/workers-types/experimental";
+import {
+  createDebugLogger,
+  createEioActor,
+  createSioActor,
+  generateBase64id,
+  setEnabledLoggerNamespace,
+} from "socket.io-serverless/dist/cf";
+import type { DurableObjectNamespace } from "@cloudflare/workers-types";
 import { logger } from "./logger";
+import * as forwardEverything from "./app/forward-everything";
+import type { Server } from "socket.io";
 
-// Define a more specific type for our sessions
-type CFWebSocket = {
-  accept(): void;
-  send(data: string): void;
-  close(code?: number, reason?: string): void;
-  addEventListener(event: string, handler: (event: any) => void): void;
-  readyState: number;
-};
+// Create debug logger
+const debugLogger = createDebugLogger("autofun:websocket");
 
-// Define the WebSocketPair type structure for the Cloudflare environment
-interface CFWebSocketPair {
-  0: any; // client
-  1: any; // server
+// Enable debug logging for socket.io-serverless
+setEnabledLoggerNamespace([
+  "socket.io-serverless:",
+  "autofun:websocket",
+  "autofun:websocket:app",
+]);
+
+// Define the worker binding types
+export interface WorkerBindings extends Record<string, unknown> {
+  engineActor: DurableObjectNamespace;
+  socketActor: DurableObjectNamespace;
+  WEBSOCKET_DO: DurableObjectNamespace;
 }
 
-// WebSocket readyState values
-const WebSocketReadyState = {
-  CONNECTING: 0,
-  OPEN: 1,
-  CLOSING: 2,
-  CLOSED: 3,
-};
+/**
+ * Utility function to create a new Response with CORS headers
+ * This handles the type conversions between Cloudflare Workers types and standard web types
+ */
+function createCorsResponse(
+  originalResponse: any,
+  corsHeaders: Record<string, string>,
+): Response {
+  // Handle body
+  let body: any = null;
 
-export class WebSocketDO {
-  // @ts-ignore
-  private state: DurableObjectState;
-  private sessions: Map<string, CFWebSocket> = new Map();
-  private roomSubscriptions: Map<string, Set<string>> = new Map();
-  private clientRooms: Map<string, Set<string>> = new Map();
-  private pendingSessions: Map<CFWebSocket, string> = new Map(); // For sessions awaiting identification
+  // For non-null bodies, use string or ArrayBuffer
+  if (originalResponse.body) {
+    // For WebSocket responses, keep the original body
+    const contentType = originalResponse.headers.get("content-type");
+    const upgradeHeader = originalResponse.headers.get("upgrade");
 
-  constructor(state: DurableObjectState) {
-    this.state = state;
-    logger.log("WebSocketDO created");
-  }
-
-  // Main entry point for the Durable Object
-  async fetch(request: Request): Promise<Response> {
-    try {
-      const url = new URL(request.url);
-      const path = url.pathname;
-      logger.log(`WebSocketDO handling request: ${path}`);
-
-      // Special internal endpoints for broadcasting to rooms
-      if (path === "/broadcast") {
-        try {
-          const { room, message } = (await request.json()) as {
-            room: string;
-            message: any;
-          };
-          logger.log(`Broadcasting to room: ${room}`, message);
-          this.broadcastToRoom(room, message);
-          return new Response("Message broadcasted", { status: 200 });
-        } catch (error) {
-          logger.error("Error broadcasting message:", error);
-          return new Response("Error broadcasting message", { status: 500 });
-        }
-      }
-
-      if (path === "/send") {
-        try {
-          const { clientId, message } = (await request.json()) as {
-            clientId: string;
-            message: any;
-          };
-
-          logger.log(`Sending direct message to client: ${clientId}`, message);
-          // Get the session for this client
-          const session = this.sessions.get(clientId);
-          if (session && session.readyState === WebSocketReadyState.OPEN) {
-            try {
-              session.send(JSON.stringify(message));
-              return new Response("Direct message sent", { status: 200 });
-            } catch (error) {
-              logger.error(
-                `Error sending direct message to ${clientId}:`,
-                error,
-              );
-              // Session might be broken, handle close
-              this.handleClose(clientId);
-              return new Response(
-                "Error sending message - client disconnected",
-                { status: 404 },
-              );
-            }
-          } else {
-            // Client not found or not connected
-            return new Response("Client not found or disconnected", {
-              status: 404,
-            });
-          }
-        } catch (error) {
-          logger.error("Error sending direct message:", error);
-          return new Response("Error sending message", { status: 500 });
-        }
-      }
-
-      // Handle WebSocket upgrade
-      const upgradeHeader = request.headers.get("Upgrade");
-      if (!upgradeHeader || upgradeHeader !== "websocket") {
-        return new Response("Expected Upgrade: websocket", { status: 426 });
-      }
-
-      // Create the WebSocket pair
-      // @ts-ignore: WebSocketPair is available in the Cloudflare Workers runtime
-      const pair = new WebSocketPair() as CFWebSocketPair;
-      const server = pair[1] as CFWebSocket;
-      const client = pair[0];
-
-      // Accept the WebSocket connection
-      server.accept();
-      logger.log("WebSocket connection accepted");
-
-      // Set up event handlers
-      server.addEventListener("message", async (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          logger.log("WebSocket message received:", data);
-
-          // Handle client identification
-          if (data.type === "identify") {
-            const clientId = data.clientId;
-            if (clientId) {
-              // Get pending session
-              const pendingId = this.pendingSessions.get(server);
-              if (pendingId) {
-                // If this session was already identified, unregister it
-                this.handleClose(pendingId);
-              }
-
-              // Register this client with its ID
-              this.sessions.set(clientId, server);
-              this.pendingSessions.delete(server);
-
-              // Create an empty set of rooms for this client
-              this.clientRooms.set(clientId, new Set());
-
-              logger.log(`Client ${clientId} connected`);
-            }
-            return;
-          }
-
-          // All other message types require the client to be identified
-          const clientId = this.getClientIdForSession(server);
-          if (!clientId) {
-            server.send(
-              JSON.stringify({
-                type: "error",
-                error: "Not identified. Please send an identify message first.",
-              }),
-            );
-            return;
-          }
-
-          // Handle subscription to specific token updates
-          if (data.type === "subscribe" && data.token) {
-            const token = data.token;
-            const room = `token-${token}`;
-
-            // Add client to the token room
-            this.addClientToRoom(clientId, room);
-
-            // Send confirmation
-            server.send(
-              JSON.stringify({
-                type: "subscribed",
-                token,
-              }),
-            );
-
-            logger.log(`Client ${clientId} subscribed to token ${token}`);
-          }
-
-          // Handle subscription to global updates
-          else if (data.type === "subscribeGlobal") {
-            // Add client to the global room
-            this.addClientToRoom(clientId, "global");
-
-            // Send confirmation
-            server.send(
-              JSON.stringify({
-                type: "subscribedGlobal",
-              }),
-            );
-
-            logger.log(`Client ${clientId} subscribed to global updates`);
-          }
-
-          // Handle unsubscribe requests
-          else if (data.type === "unsubscribe" && data.token) {
-            const token = data.token;
-            const room = `token-${token}`;
-
-            // Remove client from token room
-            this.removeClientFromRoom(clientId, room);
-
-            // Send confirmation
-            server.send(
-              JSON.stringify({
-                type: "unsubscribed",
-                token,
-              }),
-            );
-
-            logger.log(`Client ${clientId} unsubscribed from token ${token}`);
-          }
-
-          // Handle global unsubscribe
-          else if (data.type === "unsubscribeGlobal") {
-            // Remove client from global room
-            this.removeClientFromRoom(clientId, "global");
-
-            // Send confirmation
-            server.send(
-              JSON.stringify({
-                type: "unsubscribedGlobal",
-              }),
-            );
-
-            logger.log(`Client ${clientId} unsubscribed from global updates`);
-          }
-
-          // Handle unknown message types
-          else {
-            logger.warn(`Unknown message type: ${data.type}`);
-            server.send(
-              JSON.stringify({
-                type: "error",
-                message: `Unknown message type: ${data.type}`,
-              }),
-            );
-          }
-        } catch (error) {
-          logger.error("Error handling WebSocket message:", error);
-          server.send(
-            JSON.stringify({
-              type: "error",
-              message: `Error processing message: ${error.message}`,
-            }),
-          );
-        }
-      });
-
-      // Handle WebSocket closure
-      server.addEventListener("close", (event) => {
-        logger.log("WebSocket closed", event);
-        const clientId = this.getClientIdForSession(server);
-        if (clientId) {
-          this.handleClose(clientId);
-        } else {
-          // If not identified yet, remove from pending sessions
-          this.pendingSessions.delete(server);
-        }
-      });
-
-      // Handle WebSocket errors
-      server.addEventListener("error", (error) => {
-        logger.error("WebSocket error:", error);
-        // Cleanup will happen in the close handler
-      });
-
-      // Add to pending sessions (awaiting identification)
-      const tempId = crypto.randomUUID();
-      this.pendingSessions.set(server, tempId);
-      logger.log(`Added pending session with temp ID: ${tempId}`);
-
-      // Return the response with the client end of the WebSocket
-      return new Response(null, {
-        status: 101,
-        webSocket: client,
-      } as ResponseInit & { webSocket: any });
-    } catch (error) {
-      logger.error("Error in WebSocketDO fetch:", error);
-      return new Response(`Internal Error: ${error.message}`, { status: 500 });
-    }
-  }
-
-  // Get client ID for a session
-  private getClientIdForSession(session: CFWebSocket): string | null {
-    for (const [clientId, clientSession] of this.sessions.entries()) {
-      if (clientSession === session) {
-        return clientId;
-      }
-    }
-    return null;
-  }
-
-  // Add a client to a room
-  private addClientToRoom(clientId: string, room: string): void {
-    // Add room to client's subscriptions
-    const clientRooms = this.clientRooms.get(clientId) || new Set<string>();
-    clientRooms.add(room);
-    this.clientRooms.set(clientId, clientRooms);
-
-    // Add client to room's subscribers
-    const roomClients = this.roomSubscriptions.get(room) || new Set<string>();
-    roomClients.add(clientId);
-    this.roomSubscriptions.set(room, roomClients);
-
-    logger.log(`Added client ${clientId} to room ${room}`);
-  }
-
-  // Remove a client from a room
-  private removeClientFromRoom(clientId: string, room: string): void {
-    // Remove room from client's subscriptions
-    const clientRooms = this.clientRooms.get(clientId);
-    if (clientRooms) {
-      clientRooms.delete(room);
-    }
-
-    // Remove client from room's subscribers
-    const roomClients = this.roomSubscriptions.get(room);
-    if (roomClients) {
-      roomClients.delete(clientId);
-      if (roomClients.size === 0) {
-        // If no clients left in room, remove the room
-        this.roomSubscriptions.delete(room);
-        logger.log(`Removed empty room: ${room}`);
-      }
-    }
-
-    logger.log(`Removed client ${clientId} from room ${room}`);
-  }
-
-  // Clean up resources when a client disconnects
-  private handleClose(clientId: string): void {
-    // Get all rooms the client was subscribed to
-    const clientRooms = this.clientRooms.get(clientId);
-    if (clientRooms) {
-      // Remove client from all those rooms
-      for (const room of clientRooms) {
-        const roomClients = this.roomSubscriptions.get(room);
-        if (roomClients) {
-          roomClients.delete(clientId);
-          if (roomClients.size === 0) {
-            // If no clients left in room, remove the room
-            this.roomSubscriptions.delete(room);
-            logger.log(`Removed empty room: ${room}`);
-          }
-        }
-      }
-
-      // Clean up client's room subscriptions
-      this.clientRooms.delete(clientId);
-    }
-
-    // Remove the session
-    this.sessions.delete(clientId);
-
-    logger.log(`Client ${clientId} disconnected and cleaned up`);
-  }
-
-  // Broadcast a message to all clients in a room
-  private broadcastToRoom(room: string, message: any): void {
-    const clients = this.roomSubscriptions.get(room);
-    if (!clients || clients.size === 0) {
-      logger.log(`No clients in room ${room} to broadcast to`);
-      return;
-    }
-
-    const messageStr = JSON.stringify(message);
-    logger.log(
-      `Broadcasting to ${clients.size} clients in room ${room}: ${messageStr}`,
-    );
-
-    // Track failed sends to clean up later
-    const failedClients: string[] = [];
-
-    for (const clientId of clients) {
-      const session = this.sessions.get(clientId);
-      if (!session || session.readyState !== WebSocketReadyState.OPEN) {
-        // Client no longer connected, mark for cleanup
-        failedClients.push(clientId);
-        continue;
-      }
-
+    if (upgradeHeader && upgradeHeader.toLowerCase() === "websocket") {
+      // For WebSocket handshakes, use null body (the WebSocket handshake happens at a lower level)
+      body = null;
+    } else {
       try {
-        session.send(messageStr);
-      } catch (error) {
-        logger.error(`Error sending to client ${clientId}:`, error);
-        failedClients.push(clientId);
+        // For other responses, use empty string (for simplicity)
+        // Headers are what matter for many responses
+        body = "";
+      } catch (e) {
+        // If we can't clone the body, use empty body
+        body = null;
+      }
+    }
+  }
+
+  // Create new headers
+  const newHeaders: { [key: string]: string } = {};
+
+  // Copy original headers
+  originalResponse.headers.forEach((value: string, key: string) => {
+    newHeaders[key] = value;
+  });
+
+  // Add CORS headers
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    newHeaders[key] = value;
+  });
+
+  // Create and return the new response
+  return new Response(body, {
+    status: originalResponse.status,
+    statusText: originalResponse.statusText,
+    headers: newHeaders,
+  });
+}
+
+/**
+ * Engine.io Actor for handling WebSocket connections
+ */
+export const EngineActor = createEioActor<WorkerBindings>({
+  getSocketActorNamespace(bindings: WorkerBindings) {
+    return bindings.socketActor;
+  },
+});
+
+/**
+ * Socket.io Actor for handling Socket.IO protocol and rooms
+ */
+export const SocketActor = createSioActor<WorkerBindings>({
+  /**
+   * Called when the Socket.IO server is created
+   */
+  async onServerCreated(server: Server) {
+    debugLogger("Socket.IO Server created");
+
+    // Handler when a client connects to the default namespace
+    server.on("connection", (socket) => {
+      debugLogger("Client connected to default namespace:", socket.id);
+      forwardEverything.onConnection(socket);
+    });
+
+    // Add parent namespace with regex to match custom namespaces
+    server.of(forwardEverything.parentNamespace).on("connection", (socket) => {
+      debugLogger(
+        "Client connected to parent namespace:",
+        socket.nsp.name,
+        socket.id,
+      );
+      forwardEverything.onConnection(socket);
+    });
+  },
+
+  /**
+   * Called when namespaces/clients/sockets are restored
+   */
+  async onServerStateRestored(server: any) {
+    for (const [name, namespace] of server._nsps) {
+      debugLogger("Namespace restored:", name);
+      for (const [socketId, socket] of namespace.sockets) {
+        debugLogger("Active client:", socketId, (socket.client as any).id);
+      }
+    }
+  },
+
+  /**
+   * Get the engine actor namespace
+   */
+  getEngineActorNamespace(bindings: WorkerBindings) {
+    return bindings.engineActor;
+  },
+});
+
+/**
+ * Legacy WebSocketDO class for backward compatibility
+ */
+export class WebSocketDO {
+  private state: any;
+  private engineActor: DurableObjectNamespace;
+  private socketActor: DurableObjectNamespace;
+
+  constructor(state: any) {
+    this.state = state;
+    // Try to extract the bindings from state
+    this.engineActor = state.bindings?.engineActor;
+    this.socketActor = state.bindings?.socketActor;
+    logger.log("Legacy WebSocketDO created");
+
+    if (!this.engineActor || !this.socketActor) {
+      logger.error(
+        "Socket.IO not configured - missing engineActor or socketActor",
+      );
+    }
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    const path = url.pathname;
+    logger.log(`WebSocketDO handling: ${path}`);
+
+    // Add CORS headers to all responses
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept",
+      "Access-Control-Allow-Credentials": "true",
+    };
+
+    // Handle CORS preflight requests
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: corsHeaders,
+      });
+    }
+
+    // Handle Socket.IO requests (both polling and WebSocket)
+    if (
+      path.startsWith("/socket.io/") ||
+      (path === "/ws" && request.headers.get("Upgrade") === "websocket")
+    ) {
+      try {
+        if (!this.engineActor) {
+          logger.error("Socket.IO not configured - no engineActor available");
+          return new Response("Socket.IO not available", {
+            status: 503,
+            headers: corsHeaders,
+          });
+        }
+
+        const doId = this.engineActor.idFromName("singleton");
+        const stub = this.engineActor.get(doId);
+
+        // If it's a WebSocket request, convert it to Socket.IO format
+        if (path === "/ws" && request.headers.get("Upgrade") === "websocket") {
+          // Generate session ID for socket.io
+          const sessionId = generateBase64id();
+
+          // Extract the headers for a new request
+          const headers = new Headers();
+          for (const [key, value] of Object.entries(request.headers)) {
+            headers.set(key, value);
+          }
+
+          // Forward to the engine actor following the demo pattern
+          // Using a string URL to avoid type issues
+          const response = await stub.fetch(
+            `https://eioServer.internal/socket.io/?eio_sid=${sessionId}`,
+            {
+              method: request.method,
+              headers: headers,
+            },
+          );
+
+          return createCorsResponse(response, corsHeaders);
+        }
+
+        // For regular Socket.IO requests, handle potential type issues
+        const headers = new Headers();
+        for (const [key, value] of request.headers.entries()) {
+          headers.set(key, value);
+        }
+
+        // Forward with proper handling for body
+        const requestInit: any = {
+          method: request.method,
+          headers: headers,
+        };
+
+        // Only include body for POST/PUT etc.
+        if (
+          request.method !== "GET" &&
+          request.method !== "HEAD" &&
+          request.body
+        ) {
+          const bodyText = await request.clone().text();
+          if (bodyText) {
+            requestInit.body = bodyText;
+          }
+        }
+
+        const response = await stub.fetch(url.toString(), requestInit);
+        return createCorsResponse(response, corsHeaders);
+      } catch (error: any) {
+        logger.error("Error forwarding Socket.IO request:", error);
+        return new Response(`Error: ${error.message}`, {
+          status: 500,
+          headers: corsHeaders,
+        });
       }
     }
 
-    // Clean up any failed clients
-    for (const clientId of failedClients) {
-      logger.log(`Cleaning up failed client: ${clientId}`);
-      this.handleClose(clientId);
+    // Handle broadcasting to rooms
+    if (path === "/broadcast") {
+      try {
+        const { room, message } = (await request.json()) as {
+          room: string;
+          message: any;
+        };
+
+        // Forward to socket.io implementation
+        if (!this.socketActor) {
+          return new Response("Socket.IO not available", {
+            status: 503,
+            headers: corsHeaders,
+          });
+        }
+
+        const doId = this.socketActor.idFromName("singleton");
+        const stub = this.socketActor.get(doId);
+
+        // Forward the broadcast request
+        const response = await stub.fetch(
+          "https://internal/internal/broadcast",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              room,
+              event: message.event,
+              data: message.data,
+            }),
+          },
+        );
+
+        return createCorsResponse(response, corsHeaders);
+      } catch (error: any) {
+        logger.error("Error in broadcast:", error);
+        return new Response(`Error: ${error.message}`, {
+          status: 500,
+          headers: corsHeaders,
+        });
+      }
     }
+
+    // Handle direct client messaging
+    if (path === "/send") {
+      try {
+        const { clientId, message } = (await request.json()) as {
+          clientId: string;
+          message: any;
+        };
+
+        // Forward to socket.io implementation
+        if (!this.socketActor) {
+          return new Response("Socket.IO not available", {
+            status: 503,
+            headers: corsHeaders,
+          });
+        }
+
+        const doId = this.socketActor.idFromName("singleton");
+        const stub = this.socketActor.get(doId);
+
+        // Forward the direct message request
+        const response = await stub.fetch("https://internal/internal/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            clientId,
+            event: message.event,
+            data: message.data,
+          }),
+        });
+
+        return createCorsResponse(response, corsHeaders);
+      } catch (error: any) {
+        logger.error("Error in send:", error);
+        return new Response(`Error: ${error.message}`, {
+          status: 500,
+          headers: corsHeaders,
+        });
+      }
+    }
+
+    // Not found
+    return new Response("Not Found", {
+      status: 404,
+      headers: corsHeaders,
+    });
   }
 }

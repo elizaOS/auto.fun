@@ -69,6 +69,8 @@ export const authenticate = async (c: AppContext) => {
 
     logger.log("Authentication request:", {
       hasPublicKey: !!publicKey,
+      hasHeader: !!header,
+      hasPayload: !!payload,
       hasSignature: !!signature,
       hasNonce: !!nonce,
       env: c.env.NODE_ENV,
@@ -88,9 +90,41 @@ export const authenticate = async (c: AppContext) => {
       return c.json({ message: "Invalid signature" }, 401);
     }
 
-    // This is for signature verification with nonce
+    // First, prioritize checking for SIP-99 format (Sign-in with Solana)
+    if (header && payload && signature) {
+      try {
+        const msg = new SIWS({ header, payload });
+        const verified = await msg.verify({ payload, signature });
+
+        if (verified.error) {
+          logger.error("SIWS verification failed:", verified.error);
+          return c.json({ message: "Invalid signature" }, 401);
+        }
+
+        // Extract data from validated payload
+        const address = verified.data.payload.address;
+
+        if (!address) {
+          return c.json({ message: "Missing address in payload" }, 400);
+        }
+
+        setCookie(c, "publicKey", address, envCookieOptions);
+        setCookie(c, "auth_token", "valid-token", envCookieOptions);
+
+        return c.json({
+          message: "Authentication successful",
+          token: "valid-token",
+          user: { address },
+        });
+      } catch (siweError) {
+        logger.error("SIWS verification error:", siweError);
+        return c.json({ message: "Invalid signature format" }, 401);
+      }
+    }
+
+    // This is for legacy signature verification with nonce
     if (publicKey && signature && nonce) {
-      logger.log("Signature verification for:", publicKey);
+      logger.log("Legacy signature verification for:", publicKey);
 
       try {
         const message = `Sign this message for authenticating with nonce: ${nonce}`;
@@ -129,40 +163,13 @@ export const authenticate = async (c: AppContext) => {
       }
     }
 
-    // For normal authentication, check required fields
-    if (!publicKey) {
-      return c.json({ message: "Missing publicKey" }, 400);
+    // For normal authentication, check required fields last
+    if (!publicKey && !payload?.address) {
+      return c.json({ message: "Missing address or publicKey" }, 400);
     }
 
     if (!signature) {
       return c.json({ message: "Missing signature" }, 400);
-    }
-
-    // Proper SIWS verification
-    if (header && payload && signature) {
-      try {
-        const msg = new SIWS({ header, payload });
-        const verified = await msg.verify({ payload, signature });
-
-        if (verified.error) {
-          return c.json({ message: "Invalid signature" }, 401);
-        }
-
-        // Extract data from validated payload
-        const address = verified.data.payload.address;
-
-        setCookie(c, "publicKey", address, envCookieOptions);
-        setCookie(c, "auth_token", "valid-token", envCookieOptions);
-
-        return c.json({
-          message: "Authentication successful",
-          token: "valid-token",
-          user: { address },
-        });
-      } catch (siweError) {
-        logger.error("SIWS verification error:", siweError);
-        return c.json({ message: "Invalid signature format" }, 401);
-      }
     }
 
     // If we get here, it means no authentication method succeeded

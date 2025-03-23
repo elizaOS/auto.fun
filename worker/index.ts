@@ -14,7 +14,9 @@ import generationRouter from "./routes/generation";
 import messagesRouter from "./routes/messages";
 import tokenRouter from "./routes/token";
 import { uploadToCloudflare } from "./uploader";
-import { WebSocketDO } from "./websocket";
+import { EngineActor, SocketActor, WebSocketDO } from "./websocket";
+import { getWebSocketClient } from "./websocket-client";
+import { generateBase64id } from "socket.io-serverless/dist/cf";
 
 const origins = [
   "https://api-dev.autofun.workers.dev",
@@ -23,6 +25,7 @@ const origins = [
   "https://autofun.pages.dev",
   "https://*.autofun.pages.dev",
   "http://localhost:3000",
+  "http://localhost:3001",
   "http://localhost:3420",
   "https://auto.fun",
   "https://dev.auto.fun",
@@ -209,7 +212,9 @@ api.notFound((c) => {
   return c.json({ error: "Route not found" }, 404);
 });
 
-// Export the worker handler
+// Export the Durable Objects
+export { EngineActor, SocketActor, WebSocketDO };
+
 export default {
   async fetch(
     request: Request,
@@ -218,36 +223,174 @@ export default {
   ): Promise<Response> {
     const url = new URL(request.url);
 
-    // Special handling for WebSocket connections
-    if (url.pathname === "/websocket") {
-      try {
-        // Create a Durable Object stub for the WebSocketDO
-        const id = env.WEBSOCKET_DO.idFromName("websocket-connections");
-        const stub = env.WEBSOCKET_DO.get(id);
+    // Setup CORS headers for all Socket.IO requests
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept",
+      "Access-Control-Allow-Credentials": "true",
+    };
 
-        // Forward the request to the Durable Object with type casting to fix Cloudflare type issues
-        // @ts-ignore - Ignoring type issues with Cloudflare Workers types
-        return await stub.fetch(request);
-      } catch (error) {
-        logger.error("Error handling WebSocket connection:", error);
-        return new Response("Internal Server Error", { status: 500 });
-      }
+    // Handle CORS preflight requests for Socket.IO
+    if (
+      (url.pathname.startsWith("/socket.io/") || url.pathname === "/ws") &&
+      request.method === "OPTIONS"
+    ) {
+      return new Response(null, {
+        status: 204,
+        headers: corsHeaders,
+      });
     }
 
-    // For all other requests, use the Hono app
+    // Handle Socket.IO connections (both polling and WebSocket)
+    if (
+      url.pathname.startsWith("/socket.io/") ||
+      (url.pathname === "/ws" && request.headers.get("Upgrade") === "websocket")
+    ) {
+      // Use socket.io-serverless if engineActor is configured
+      if ((env as any).engineActor) {
+        try {
+          const isWebSocket = request.headers.get("Upgrade") === "websocket";
+          const isPolling =
+            url.pathname.startsWith("/socket.io/") && !isWebSocket;
+
+          if (isWebSocket) {
+            logger.log("Routing WebSocket connection to Socket.IO engineActor");
+
+            // Get the singleton engine actor
+            const actorId = (env as any).engineActor.idFromName("singleton");
+            const engineStub = (env as any).engineActor.get(actorId);
+
+            // Generate session ID for the connection
+            const sessionId = generateBase64id();
+
+            // Use the demo pattern approach for WebSocket connections
+            const internalUrl = `https://eioServer.internal/socket.io/?eio_sid=${sessionId}`;
+
+            // Extract the headers and create a compatible request
+            const headers = new Headers();
+            for (const [key, value] of Object.entries(request.headers)) {
+              headers.set(key, value);
+            }
+
+            // Forward the WebSocket request to the engine actor
+            const response = await engineStub.fetch(internalUrl, {
+              method: request.method,
+              headers,
+            });
+
+            // Create a new response with CORS headers
+            const responseHeaders = new Headers(response.headers);
+            Object.entries(corsHeaders).forEach(([key, value]) => {
+              responseHeaders.set(key, value);
+            });
+
+            return new Response(null, {
+              status: response.status,
+              statusText: response.statusText,
+              headers: responseHeaders,
+            });
+          } else if (isPolling) {
+            // Initial polling support - could be restricted if needed
+            // Return a 200 response to indicate we support polling
+            return new Response(
+              '{"code":0,"message":"Polling transport supported"}',
+              {
+                status: 200,
+                headers: {
+                  ...corsHeaders,
+                  "Content-Type": "application/json",
+                },
+              },
+            );
+          }
+        } catch (error) {
+          logger.error("Error routing to Socket.IO:", error);
+          return new Response(
+            JSON.stringify({ error: "Socket.IO connection error" }),
+            {
+              status: 500,
+              headers: {
+                ...corsHeaders,
+                "Content-Type": "application/json",
+              },
+            },
+          );
+        }
+      } else {
+        logger.warn("Socket.IO not configured - no engineActor available");
+      }
+
+      // Fallback to legacy WebSocketDO if available
+      if (env.WEBSOCKET_DO) {
+        logger.log(
+          "Falling back to legacy WebSocketDO for Socket.IO connection",
+        );
+        try {
+          // Create a legacy WebSocket connection
+          const id = env.WEBSOCKET_DO.idFromName("websocket-connections");
+          const stub = env.WEBSOCKET_DO.get(id);
+
+          // Create a new request to avoid type issues
+          const newRequest = new Request(request.url, {
+            method: request.method,
+            headers: request.headers,
+            // No need to include the body for WebSocket upgrade requests
+          });
+
+          // Forward the request to the legacy WebSocketDO
+          return stub.fetch(newRequest.url, {
+            method: newRequest.method,
+            headers: newRequest.headers,
+            // Body handling omitted for WebSocket requests
+          }) as unknown as Response;
+        } catch (error) {
+          logger.error("Error routing to legacy WebSocketDO:", error);
+          return new Response("WebSocket error", { status: 500 });
+        }
+      }
+
+      return new Response("WebSocket not configured", {
+        status: 503,
+        headers: corsHeaders,
+      });
+    }
+
+    // Expose environment info for testing
+    if (url.pathname === "/__env") {
+      // Create a safe version of the environment for client-side use
+      const safeEnv = {
+        WEBSOCKET_DO: !!env.WEBSOCKET_DO,
+        engineActor: !!(env as any).engineActor,
+        socketActor: !!(env as any).socketActor,
+      };
+      return new Response(JSON.stringify(safeEnv), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Handle regular HTTP requests via Hono app
     return app.fetch(request, env, ctx);
   },
 
-  async scheduled(
-    event: ScheduledEvent,
-    env: Env,
-    ctx: ExecutionContext,
-  ): Promise<void> {
-    console.log("Scheduled event triggered:", event.cron);
-    if (event.cron === "*/30 * * * *") {
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    // Initialize the WebSocket client for cron jobs
+    const wsClient = getWebSocketClient(env);
+
+    // Run frequent monitoring for token events if it's the right trigger
+    // We should run this more frequently than the regular price updates
+    if (event.cron === "*/1 * * * *") {
+      // Every minute
+      logger.log("Running token monitoring (every minute)");
+
+      // Call cron with the proper environment parameter
+      await cron(env);
+    } else if (event.cron === "*/15 * * * *") {
+      // Every 15 minutes
+      logger.log("Running full price updates (every 15 minutes)");
+
+      // Call cron with the proper environment parameter
       await cron(env);
     }
   },
 };
-
-export { WebSocketDO };

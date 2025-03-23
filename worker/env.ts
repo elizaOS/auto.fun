@@ -30,6 +30,9 @@ export interface Env {
   FAL_API_KEY: string;
   NODE_ENV: string;
   SWAP_FEE: string;
+  // Solana connection
+  RPC_URL?: string;
+  PROGRAM_ID: string;
   // Test environment properties
   tokenPubkey?: string; // Used in tests to track the current test token
 }

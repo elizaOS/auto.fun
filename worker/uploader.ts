@@ -29,7 +29,7 @@ export async function uploadToCloudflare(
     if (options.isJson) {
       // Convert JSON to ArrayBuffer for storage
       const jsonString = JSON.stringify(data);
-      objectData = new TextEncoder().encode(jsonString).buffer;
+      objectData = new TextEncoder().encode(jsonString).buffer as ArrayBuffer;
     } else if (data instanceof ArrayBuffer) {
       // Use data directly if it's already an ArrayBuffer
       objectData = data;
@@ -38,11 +38,11 @@ export async function uploadToCloudflare(
       data instanceof Uint8ClampedArray
     ) {
       // Handle typed arrays
-      objectData = data.buffer;
+      objectData = data.buffer as ArrayBuffer;
     } else {
       // Fallback for other object types
       const jsonString = JSON.stringify(data);
-      objectData = new TextEncoder().encode(jsonString).buffer;
+      objectData = new TextEncoder().encode(jsonString).buffer as ArrayBuffer;
     }
 
     try {
@@ -86,7 +86,7 @@ export async function uploadToCloudflare(
     }
   } catch (error) {
     // Log detailed error information
-    if (error.message === "Upload timed out") {
+    if (error instanceof Error && error.message === "Upload timed out") {
       logger.error(`Cloudflare R2 upload timed out after ${timeout}ms`);
     } else {
       logger.error("Error in uploadToCloudflare:", error);
