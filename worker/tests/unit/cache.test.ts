@@ -1,9 +1,54 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach, beforeAll, afterAll } from "vitest";
 import { CacheService } from "../../cache";
+import { Env } from "../../env";
+import { drizzle } from "drizzle-orm/d1";
+import { cachePrices } from "../../db";
 
-// TODO: should ONLY use real cache service, no mock
+// Create a minimal test environment with D1 database
+const createTestEnv = (): Env => {
+  // Create a mock D1 database that works with the actual CacheService
+  const mockDb = {
+    prepare: () => mockDb,
+    bind: () => mockDb,
+    all: () => ({ results: [] }),
+    run: () => ({}),
+    exec: () => ({}),
+  };
+
+  // Create drizzle schema for the mock DB
+  const drizzleDb = drizzle(mockDb as any, { schema: { cachePrices } });
+
+  return {
+    NODE_ENV: "test",
+    NETWORK: "devnet",
+    DECIMALS: "9",
+    TOKEN_SUPPLY: "1000000000000000000",
+    VIRTUAL_RESERVES: "1000000000",
+    CURVE_LIMIT: "1000000000000",
+    API_KEY: "test-api-key",
+    USER_API_KEY: "test-user-api-key",
+    ADMIN_KEY: "test-admin-key",
+    ADMIN_API_KEY: "test-admin-api-key",
+    FAL_API_KEY: "test-fal-api-key",
+    SWAP_FEE: "1.5",
+    DB: mockDb as any,
+    WEBSOCKET_DO: {} as any,
+  };
+};
+
 describe("CacheService", () => {
   let cacheService: CacheService;
+  let env: Env;
+
+  beforeAll(() => {
+    // Initialize test environment before all tests
+    env = createTestEnv();
+  });
+
+  beforeEach(() => {
+    // Create a fresh CacheService instance before each test
+    cacheService = new CacheService(env);
+  });
 
   describe("getSolPrice", () => {
     it("should return SOL price from cache when available", async () => {

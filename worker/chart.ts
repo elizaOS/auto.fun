@@ -771,19 +771,19 @@ export async function fetchPriceChartData(
       .filter(
         (swap: {
           price: number;
-          timestamp: number;
+          timestamp: string;
           direction: number;
-          amountIn: number;
-          amountOut: number;
+          amountIn: number | null;
+          amountOut: number | null;
         }) => swap.price != null && swap.timestamp != null,
       ) // Type guard to ensure price and timestamp are not null
       .map(
         (swap: {
           price: number;
-          timestamp: number;
+          timestamp: string;
           direction: number;
-          amountIn: number;
-          amountOut: number;
+          amountIn: number | null;
+          amountOut: number | null;
         }) => ({
           price: swap.price,
           timestamp: new Date(swap.timestamp), // Create a new Date object from the string
@@ -791,8 +791,8 @@ export async function fetchPriceChartData(
           // If direction is 1 (sell), amountOut is SOL
           volume:
             swap.direction === 0
-              ? swap.amountIn / 1e9 // Convert from lamports to SOL
-              : swap.amountOut / 1e9,
+              ? (swap.amountIn || 0) / 1e9 // Convert from lamports to SOL
+              : (swap.amountOut || 0) / 1e9,
         }),
       );
 
