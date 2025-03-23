@@ -75,6 +75,7 @@
     "react-router-dom": "^7.4.0",
     "react-toastify": "^11.0.5",
     "socket.io": "^4.8.1",
+    "socket.io-serverless": "^0.2.1",
     "sqlite3": "^5.1.7",
     "tailwind-merge": "^3.0.2",
     "tweetnacl": "^1.0.3",
