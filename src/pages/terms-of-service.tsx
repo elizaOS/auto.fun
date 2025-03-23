@@ -1,5 +1,4 @@
 import { useState } from "react";
-import Footer from "../components/footer";
 
 const TermsOfService = () => {
   const [activeSection, setActiveSection] = useState<string | null>(null);

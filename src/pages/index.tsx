@@ -11,7 +11,6 @@ import usePagination from "@/hooks/use-pagination";
 import { useFilter } from "@/hooks/use-filter";
 import { Fragment } from "react/jsx-runtime";
 import Loader from "@/components/loader";
-import Footer from "@/components/footer";
 
 export default function Page() {
   const [activeTab] = useViewMode();

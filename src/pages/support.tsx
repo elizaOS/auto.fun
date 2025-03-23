@@ -1,4 +1,3 @@
-import Footer from "@/components/footer";
 import { Link } from "react-router";
 
 export default function SupportPage() {
