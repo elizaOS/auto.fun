@@ -12,7 +12,7 @@ describe("Uploader Tests (Mock R2)", () => {
 
   beforeAll(async () => {
     console.log("Setting up mock R2 environment...");
-    
+
     // Create a mock environment with mock R2 functionality
     env = {
       R2_PUBLIC_URL: "https://test-storage.example.com",
@@ -59,10 +59,10 @@ describe("Uploader Tests (Mock R2)", () => {
     for (const key of objectsToCleanup) {
       await env.R2!.delete(key);
     }
-    
+
     // Clear all stored objects
     storage.clear();
-    
+
     console.log("Cleanup completed");
   });
 

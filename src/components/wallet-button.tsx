@@ -21,26 +21,27 @@ const WalletButton = () => {
   useEffect(() => {
     const attemptAutoConnect = async () => {
       if (hasStoredWallet && !connected && !connecting) {
-        const lastWalletName = localStorage.getItem('lastWalletName');
+        const lastWalletName = localStorage.getItem("lastWalletName");
         if (lastWalletName) {
           try {
             console.log("attemptAutoConnect", lastWalletName);
             setIsAutoConnecting(true);
             // await select(lastWalletName as WalletName);
-            if(signIn) {
+            if (signIn) {
               await signIn();
-            } else { console.log("signIn odesnt exist", signIn);
+            } else {
+              console.log("signIn odesnt exist", signIn);
               await select(lastWalletName as WalletName);
             }
-            if(!signIn) {
+            if (!signIn) {
               await connect();
             }
             console.log("Auto-connected to wallet:", lastWalletName);
           } catch (error) {
             console.error("Failed to auto-connect:", error);
             // Clear stored wallet data on failed connect
-            localStorage.removeItem('walletConnected');
-            localStorage.removeItem('lastWalletName');
+            localStorage.removeItem("walletConnected");
+            localStorage.removeItem("lastWalletName");
           } finally {
             setIsAutoConnecting(false);
           }
@@ -55,8 +56,8 @@ const WalletButton = () => {
   useEffect(() => {
     if (connected && wallet) {
       // Save wallet connection info in localStorage
-      localStorage.setItem('walletConnected', 'true');
-      localStorage.setItem('lastWalletName', wallet.adapter.name);
+      localStorage.setItem("walletConnected", "true");
+      localStorage.setItem("lastWalletName", wallet.adapter.name);
     }
   }, [connected, wallet]);
 
@@ -67,8 +68,8 @@ const WalletButton = () => {
         // Simple disconnect without any custom state management
         await disconnect();
         // Clear connection data on disconnect
-        localStorage.removeItem('walletConnected');
-        localStorage.removeItem('lastWalletName');
+        localStorage.removeItem("walletConnected");
+        localStorage.removeItem("lastWalletName");
         console.log("Wallet disconnected");
       } catch (error) {
         console.error("Error disconnecting wallet:", error);
@@ -77,14 +78,15 @@ const WalletButton = () => {
       console.log("Opening wallet modal");
       setVisible(true);
     }
-  }
+  };
 
   // Simple button text
-  const buttonText = connecting || isAutoConnecting
-    ? "Connecting..."
-    : connected
-      ? "Disconnect Wallet"
-      : "Connect Wallet";
+  const buttonText =
+    connecting || isAutoConnecting
+      ? "Connecting..."
+      : connected
+        ? "Disconnect Wallet"
+        : "Connect Wallet";
 
   // Log wallet state for debugging
   useEffect(() => {

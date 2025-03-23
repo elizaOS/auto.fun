@@ -21,7 +21,9 @@ Object.defineProperty(DEFAULT_CONTEXT, "visible", {
 });
 Object.defineProperty(DEFAULT_CONTEXT, "hasStoredWallet", {
   get() {
-    console.error(constructMissingProviderErrorMessage("read", "hasStoredWallet"));
+    console.error(
+      constructMissingProviderErrorMessage("read", "hasStoredWallet"),
+    );
     return false;
   },
 });

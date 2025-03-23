@@ -179,7 +179,6 @@ export const Create = () => {
   const { publicKey } = useWallet();
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showWalletPrompt, setShowWalletPrompt] = useState(false);
 
   // Simple form state
   const [form, setForm] = useState({
@@ -283,13 +282,16 @@ export const Create = () => {
       };
 
       // Submit to backend API
-      const response = await fetch(import.meta.env.VITE_API_URL + "/api/create-token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        import.meta.env.VITE_API_URL + "/api/create-token",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
         },
-        body: JSON.stringify(payload),
-      });
+      );
 
       if (!response.ok) {
         throw new Error("Failed to create token");
@@ -329,12 +331,6 @@ export const Create = () => {
       newErrors.initial_sol
     ) {
       setErrors(newErrors);
-      return;
-    }
-
-    // If not logged in, show wallet prompt
-    if (!publicKey) {
-      setShowWalletPrompt(true);
       return;
     }
 
