@@ -7,7 +7,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { logger } from "../logger";
 import { verifyAuth } from "../middleware";
-import crypto from "crypto";
+import crypto from "node:crypto";
 import { MediaGeneration } from "../types";
 
 // Enum for media types
@@ -331,7 +331,7 @@ app.post("/:mint/generate", async (c) => {
 
       token = await Promise.race([tokenQuery, dbTimeoutPromise]);
 
-      if (!token || token.length === 0) {
+      if (!token) {
         clearTimeout(endpointTimeout);
         return c.json({ error: "Token not found" }, 404);
       }
@@ -342,12 +342,12 @@ app.post("/:mint/generate", async (c) => {
     }
 
     // Check rate limits with timeout
-    let rateLimit;
+    let rateLimit: { allowed: boolean; remaining: number };
     try {
-      rateLimit = await Promise.race([
+      rateLimit = (await Promise.race([
         checkRateLimits(c.env, mint, validatedData.type),
         dbTimeoutPromise,
-      ]);
+      ])) as { allowed: boolean; remaining: number };
 
       if (!rateLimit.allowed) {
         clearTimeout(endpointTimeout);

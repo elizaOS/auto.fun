@@ -1,10 +1,14 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
+import { monitorSpecificToken } from "../cron";
 import { getDB, swaps, tokenHolders, tokens, users } from "../db";
 import { Env } from "../env";
 import { logger } from "../logger";
 import { getSOLPrice } from "../mcap";
 import { bulkUpdatePartialTokens } from "../util";
+import { Connection, PublicKey } from "@solana/web3.js";
+import { getWebSocketClient } from "../websocket-client";
+import { updateTokenInDB } from "../cron";
 
 // Define the router with environment typing
 const tokenRouter = new Hono<{
@@ -194,9 +198,7 @@ tokenRouter.get("/tokens/:mint", async (c) => {
       return c.json({ error: "Token not found" }, 404);
     }
 
-    return c.json({
-      token: tokenData[0],
-    });
+    return c.json(tokenData[0]);
   } catch (error) {
     logger.error("Error fetching token:", error);
     return c.json(
@@ -384,7 +386,7 @@ tokenRouter.post("/new_token", async (c) => {
           creator,
         },
       });
-    } catch (dbError) {
+    } catch (dbError: any) {
       logger.error("Database error creating token:", dbError);
       return c.json(
         {
@@ -394,7 +396,7 @@ tokenRouter.post("/new_token", async (c) => {
         500,
       );
     }
-  } catch (error) {
+  } catch (error: any) {
     logger.error("Error creating new token:", error);
     return c.json(
       { error: "Failed to create token", details: error.message },
@@ -602,11 +604,9 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     // Format response with additional data
     return c.json({
-      token: {
-        ...token,
-        holdersCount,
-        latestSwap,
-      },
+      ...token,
+      holdersCount,
+      latestSwap,
     });
   } catch (error) {
     logger.error(`Error getting token: ${error}`);
@@ -702,6 +702,279 @@ tokenRouter.get("/avatar/:address", async (c) => {
     logger.error("Error fetching avatar:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
+      500,
+    );
+  }
+});
+
+// Add this new endpoint near other token-related routes
+tokenRouter.post("/check-token", async (c) => {
+  try {
+    // Require authentication
+    const user = c.get("user");
+    if (!user) {
+      return c.json({ error: "Authentication required" }, 401);
+    }
+
+    // Get token from request
+    const { tokenMint } = await c.req.json();
+    if (!tokenMint) {
+      return c.json({ error: "Token mint address is required" }, 400);
+    }
+
+    logger.log(`Manual token check requested for: ${tokenMint}`);
+
+    // Basic token format validation - allow wider range of characters for testing
+    // But still enforce basic length rules
+    if (
+      typeof tokenMint !== "string" ||
+      tokenMint.length < 30 ||
+      tokenMint.length > 50
+    ) {
+      logger.warn(`Invalid token mint format (wrong length): ${tokenMint}`);
+      return c.json(
+        {
+          success: false,
+          tokenFound: false,
+          message: "Invalid token mint address length",
+        },
+        400,
+      );
+    }
+
+    // First check if token exists in DB regardless of validity
+    const db = getDB(c.env);
+    const existingToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, tokenMint))
+      .limit(1);
+
+    if (existingToken && existingToken.length > 0) {
+      logger.log(`Token ${tokenMint} already exists in database`);
+      return c.json({
+        success: true,
+        tokenFound: true,
+        message: "Token already exists in database",
+        token: existingToken[0],
+      });
+    }
+
+    try {
+      // Try to create a simple record first if nothing exists
+      const now = new Date().toISOString();
+      const tokenId = crypto.randomUUID();
+
+      // Insert with all required fields from the schema
+      await db.insert(tokens).values({
+        id: tokenId,
+        mint: tokenMint,
+        name: `Token ${tokenMint.slice(0, 8)}`,
+        ticker: "TOKEN",
+        url: "", // Required field
+        image: "", // Required field
+        creator: user.publicKey || "unknown",
+        status: "active",
+        tokenPriceUSD: 0,
+        createdAt: now,
+        lastUpdated: now,
+        txId: "",
+      });
+
+      // For response, create a simplified token object
+      const tokenData = {
+        id: tokenId,
+        mint: tokenMint,
+        name: `Token ${tokenMint.slice(0, 8)}`,
+        ticker: "TOKEN",
+        creator: user.publicKey || "unknown",
+        status: "active",
+        createdAt: now,
+      };
+
+      logger.log(`Created basic token record for ${tokenMint}`);
+
+      // Emit event to websocket clients
+      try {
+        const wsClient = getWebSocketClient(c.env);
+        await wsClient.emit("global", "newToken", {
+          ...tokenData,
+          timestamp: new Date(),
+        });
+        logger.log(`WebSocket event emitted for token ${tokenMint}`);
+      } catch (wsError) {
+        // Don't fail if WebSocket fails
+        logger.error(`WebSocket error: ${wsError}`);
+      }
+
+      // Now try monitoring to find more details
+      try {
+        // Run extended check to look for token on chain
+        const result = await monitorSpecificToken(c.env, tokenMint);
+
+        return c.json({
+          success: true,
+          tokenFound: true,
+          message: result.message || "Token added to database",
+          token: tokenData,
+        });
+      } catch (monitorError) {
+        // If monitoring fails, we still have the basic record
+        logger.error(`Error in monitorSpecificToken: ${monitorError}`);
+        return c.json({
+          success: true,
+          tokenFound: true,
+          message:
+            "Basic token record created, detailed info will update later",
+          token: tokenData,
+        });
+      }
+    } catch (dbError) {
+      logger.error(`Error creating token in database: ${dbError}`);
+
+      // Try monitoring anyway as fallback
+      try {
+        const result = await monitorSpecificToken(c.env, tokenMint);
+        return c.json({
+          success: result.found,
+          tokenFound: result.found,
+          message:
+            result.message ||
+            "Error creating database record but monitoring succeeded",
+        });
+      } catch (monitorError) {
+        logger.error(`Both database and monitoring failed: ${monitorError}`);
+        return c.json({
+          success: false,
+          tokenFound: false,
+          message: "Failed to create token record and monitoring failed",
+          error: `${dbError instanceof Error ? dbError.message : "Unknown database error"}`,
+        });
+      }
+    }
+  } catch (error) {
+    logger.error("Error checking token:", error);
+    return c.json(
+      {
+        success: false,
+        tokenFound: false,
+        error: "Failed to check token",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      500,
+    );
+  }
+});
+
+// Add direct token creation endpoint
+tokenRouter.post("/create-token", async (c) => {
+  try {
+    // Require authentication
+    const user = c.get("user");
+    if (!user) {
+      return c.json({ error: "Authentication required" }, 401);
+    }
+
+    const body = await c.req.json();
+    const { tokenMint, name, symbol, txId } = body;
+
+    if (!tokenMint) {
+      return c.json({ error: "Token mint address is required" }, 400);
+    }
+
+    logger.log(`Creating token record for: ${tokenMint}`);
+
+    const db = getDB(c.env);
+
+    // Check if token already exists
+    const existingToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, tokenMint))
+      .limit(1);
+
+    if (existingToken && existingToken.length > 0) {
+      logger.log(`Token ${tokenMint} already exists in database`);
+      return c.json({
+        success: true,
+        tokenFound: true,
+        message: "Token already exists in database",
+        token: existingToken[0],
+      });
+    }
+
+    try {
+      // Create token data with all required fields from the token schema
+      const now = new Date().toISOString();
+      const tokenId = crypto.randomUUID();
+
+      // Insert with all required fields from the schema
+      await db.insert(tokens).values({
+        id: tokenId,
+        mint: tokenMint,
+        name: name || `Token ${tokenMint.slice(0, 8)}`,
+        ticker: symbol || "TOKEN",
+        url: "", // Required field
+        image: "", // Required field
+        creator: user.publicKey || "unknown",
+        status: "active",
+        tokenPriceUSD: 0,
+        createdAt: now,
+        lastUpdated: now,
+        txId: txId || "",
+      });
+
+      // For response, include just what we need
+      const tokenData = {
+        id: tokenId,
+        mint: tokenMint,
+        name: name || `Token ${tokenMint.slice(0, 8)}`,
+        ticker: symbol || "TOKEN",
+        creator: user.publicKey || "unknown",
+        status: "active",
+        createdAt: now,
+      };
+
+      // Emit WebSocket event
+      try {
+        const wsClient = getWebSocketClient(c.env);
+        await wsClient.emit("global", "newToken", {
+          ...tokenData,
+          timestamp: new Date(),
+        });
+        logger.log(`WebSocket event emitted for token ${tokenMint}`);
+      } catch (wsError) {
+        // Don't fail if WebSocket fails
+        logger.error(`WebSocket error: ${wsError}`);
+      }
+
+      return c.json({
+        success: true,
+        token: tokenData,
+        message: "Token created successfully",
+      });
+    } catch (dbError) {
+      logger.error(`Database error creating token: ${dbError}`);
+      return c.json(
+        {
+          success: false,
+          error: "Failed to create token in database",
+          details:
+            dbError instanceof Error
+              ? dbError.message
+              : "Unknown database error",
+        },
+        500,
+      );
+    }
+  } catch (error) {
+    logger.error("Error creating token:", error);
+    return c.json(
+      {
+        success: false,
+        error: "Failed to create token",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       500,
     );
   }

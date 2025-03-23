@@ -12,7 +12,6 @@ import { fees, getDB, swaps, Token, tokens } from "./db";
 import { Env } from "./env";
 import { logger } from "./logger";
 import { getSOLPrice } from "./mcap";
-import { createMigrationService } from "./migration";
 import { initSolanaConfig } from "./solana";
 import {
   createNewTokenData,
@@ -282,7 +281,7 @@ export class TokenMonitor {
                       })
                       .where(eq(tokens.mint, mintAddress));
 
-                    await this.handleMigration(token);
+                    // await this.handleMigration(token);
                   }
                 } else {
                   if (i === maxRetries - 1) {
@@ -666,17 +665,6 @@ export class TokenMonitor {
       },
       "confirmed",
     );
-  }
-
-  private async handleMigration(token: Token) {
-    // Use the adapter to create a compatible MigrationService
-    const migrationService = createMigrationService(
-      this.solanaConfig.connection,
-      this.solanaConfig.programId,
-      this.wallet,
-      this.env,
-    );
-    await migrationService.migrateToken(token);
   }
 }
 
