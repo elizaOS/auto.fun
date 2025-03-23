@@ -36,7 +36,7 @@ export const WalletModal: FC<WalletModalProps> = ({ className = "" }) => {
   }, [setVisible]);
 
   const handleWalletClick = useCallback(
-    async (event: MouseEvent<HTMLButtonElement>, walletName: WalletName) => {
+    async (_event: MouseEvent<HTMLButtonElement>, walletName: WalletName) => {
       console.log(`Selecting wallet: ${walletName}`);
 
       try {
@@ -44,7 +44,7 @@ export const WalletModal: FC<WalletModalProps> = ({ className = "" }) => {
         await select(walletName);
         console.log(`Wallet ${walletName} selected successfully`);
 
-        // Step 2: Connect immediately after selection
+        // Step 2: Connect immediately after selection∏
         try {
           await connect();
           hideModal();

@@ -1,30 +1,12 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Icons } from "../components/icons";
 import CopyButton from "../components/copy-button";
+import { Icons } from "../components/icons";
 import WalletButton from "../components/wallet-button";
 
 const MAX_FILE_SIZE_MB = 5;
 const MAX_INITIAL_SOL = 45;
-
-type TokenLinks = {
-  twitter: string;
-  telegram: string;
-  website: string;
-  discord: string;
-  agentLink: string;
-};
-
-type TokenMetadataForm = {
-  name: string;
-  symbol: string;
-  initial_sol: string;
-  media_base64: File | null;
-  description: string;
-  links: TokenLinks;
-};
 
 // Form Components
 const FormInput = ({
