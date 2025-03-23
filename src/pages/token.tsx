@@ -244,7 +244,7 @@ export default function Page() {
                   (token?.reserveLamport - token?.virtualReserves) /
                     LAMPORTS_PER_SOL,
                   true,
-                  true
+                  true,
                 )}{" "}
                 SOL in the bonding curve.
               </p>

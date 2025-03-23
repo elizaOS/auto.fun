@@ -48,7 +48,7 @@ describe("Admin API Endpoints", () => {
         apiUrl(baseUrl, "/admin/configure"),
         "POST",
         configRequest,
-        { "X-API-Key": adminApiKey }
+        { "X-API-Key": adminApiKey },
       );
 
       // If route exists, check its behavior
@@ -74,7 +74,7 @@ describe("Admin API Endpoints", () => {
         apiUrl(baseUrl, "/admin/config"),
         "GET",
         undefined,
-        { "X-API-Key": adminApiKey }
+        { "X-API-Key": adminApiKey },
       );
 
       // If route exists, check its behavior
@@ -99,7 +99,7 @@ describe("Admin API Endpoints", () => {
         apiUrl(baseUrl, "/admin/tokens"),
         "GET",
         undefined,
-        { "X-API-Key": adminApiKey }
+        { "X-API-Key": adminApiKey },
       );
 
       // If route exists, check its behavior
@@ -140,7 +140,7 @@ describe("Admin API Endpoints", () => {
         apiUrl(baseUrl, "/admin/withdraw"),
         "POST",
         withdrawRequest,
-        { "X-API-Key": adminApiKey }
+        { "X-API-Key": adminApiKey },
       );
 
       // If route exists, check its behavior
@@ -167,7 +167,7 @@ describe("Admin API Endpoints", () => {
         apiUrl(baseUrl, "/admin/stats"),
         "GET",
         undefined,
-        { "X-API-Key": adminApiKey }
+        { "X-API-Key": adminApiKey },
       );
 
       // If route exists, check its behavior
@@ -208,7 +208,7 @@ describe("Admin API Endpoints", () => {
         apiUrl(baseUrl, "/admin/personalities"),
         "POST",
         personalityRequest,
-        { "X-API-Key": adminApiKey }
+        { "X-API-Key": adminApiKey },
       );
 
       // Accept various status codes as valid
@@ -228,7 +228,7 @@ describe("Admin API Endpoints", () => {
         apiUrl(baseUrl, "/fees"),
         "GET",
         undefined,
-        { "X-API-Key": adminApiKey }
+        { "X-API-Key": adminApiKey },
       );
 
       // Accept various status codes as valid
@@ -255,7 +255,7 @@ describe("Admin API Endpoints", () => {
         apiUrl(baseUrl, "/verify"),
         "POST",
         mockTwitterCredentials,
-        { "X-API-Key": adminApiKey }
+        { "X-API-Key": adminApiKey },
       );
 
       // Accept various status codes as valid
@@ -282,7 +282,7 @@ describe("Admin API Endpoints", () => {
         apiUrl(baseUrl, "/verify"),
         "POST",
         invalidCredentials,
-        { "X-API-Key": adminApiKey }
+        { "X-API-Key": adminApiKey },
       );
 
       // Accept various status codes as valid - should be 400 in ideal case, but accept others

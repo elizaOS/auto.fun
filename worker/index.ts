@@ -45,7 +45,7 @@ app.use(
     allowHeaders: ["Content-Type", "Authorization", "X-API-Key"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
-  })
+  }),
 );
 
 app.use("*", verifyAuth);
@@ -66,7 +66,7 @@ api.use(
     allowHeaders: ["Content-Type", "Authorization", "X-API-Key"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
-  })
+  }),
 );
 
 api.use("*", verifyAuth);
@@ -165,7 +165,7 @@ api.post("/upload", async (c) => {
     }
 
     const imageBuffer = Uint8Array.from(atob(imageData), (c) =>
-      c.charCodeAt(0)
+      c.charCodeAt(0),
     ).buffer;
 
     // Upload image to Cloudflare R2
@@ -190,7 +190,7 @@ api.post("/upload", async (c) => {
     logger.error("Error uploading to Cloudflare:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -199,7 +199,7 @@ api.get("/ws", (c) => {
   // This is just a placeholder - in the test we'll test the WebSocketDO directly
   return c.text(
     "WebSocket connections should be processed through DurableObjects",
-    400
+    400,
   );
 });
 
@@ -214,17 +214,17 @@ export default {
   async fetch(
     request: Request,
     env: Env,
-    ctx: ExecutionContext
+    ctx: ExecutionContext,
   ): Promise<Response> {
     const url = new URL(request.url);
-    
+
     // Special handling for WebSocket connections
     if (url.pathname === "/websocket") {
       try {
         // Create a Durable Object stub for the WebSocketDO
         const id = env.WEBSOCKET_DO.idFromName("websocket-connections");
         const stub = env.WEBSOCKET_DO.get(id);
-        
+
         // Forward the request to the Durable Object with type casting to fix Cloudflare type issues
         // @ts-ignore - Ignoring type issues with Cloudflare Workers types
         return await stub.fetch(request);
@@ -233,7 +233,7 @@ export default {
         return new Response("Internal Server Error", { status: 500 });
       }
     }
-    
+
     // For all other requests, use the Hono app
     return app.fetch(request, env, ctx);
   },
@@ -241,7 +241,7 @@ export default {
   async scheduled(
     event: ScheduledEvent,
     env: Env,
-    ctx: ExecutionContext
+    ctx: ExecutionContext,
   ): Promise<void> {
     console.log("Scheduled event triggered:", event.cron);
     if (event.cron === "*/30 * * * *") {

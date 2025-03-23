@@ -47,22 +47,19 @@ export async function uploadToCloudflare(
 
     try {
       // Create R2 upload and timeout promises
-      const uploadPromise = new Promise<void>(async (resolve, reject) => {
-        try {
-          // Check if R2 is available
-          if (!env.R2) {
-            reject(new Error("R2 is not available"));
-            return;
-          }
-
-          // Perform the upload
-          await env.R2.put(objectKey, objectData, {
-            httpMetadata: { contentType },
-          });
-          resolve();
-        } catch (e) {
-          reject(e);
+      const uploadPromise = new Promise<void>((resolve, reject) => {
+        // Check if R2 is available
+        if (!env.R2) {
+          reject(new Error("R2 is not available"));
+          return;
         }
+
+        // Perform the upload
+        env.R2.put(objectKey, objectData, {
+          httpMetadata: { contentType },
+        })
+          .then(() => resolve())
+          .catch((e) => reject(e));
       });
 
       const timeoutPromise = new Promise<void>((_, reject) => {

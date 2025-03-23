@@ -33,7 +33,7 @@ const BASE_URL = apiUrl;
 const fetcher = async (
   endpoint: string,
   method: "GET" | "POST",
-  body?: object
+  body?: object,
 ) => {
   const query: { method: string; body?: string; headers: object } = {
     method,
@@ -70,7 +70,7 @@ export const getTokens = async ({
     `/api/tokens?limit=${limit || 12}&page=${
       page || 1
     }&sortBy=${sortBy}&sortOrder=${sortOrder}`,
-    "GET"
+    "GET",
   )) as { tokens: IToken[] };
 
   if (data?.tokens?.length > 0) {

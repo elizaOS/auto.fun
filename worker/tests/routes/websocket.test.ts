@@ -11,18 +11,18 @@ const testWebSocketConnection = async (url: string): Promise<boolean> => {
   return new Promise((resolve) => {
     try {
       const ws = new WebSocket(url);
-      
+
       ws.onopen = () => {
         console.log("WebSocket connected successfully");
         ws.close();
         resolve(true);
       };
-      
+
       ws.onerror = (error) => {
         console.error("WebSocket connection error:", error);
         resolve(false);
       };
-      
+
       // Set a timeout in case the connection hangs
       setTimeout(() => {
         if (ws.readyState !== WebSocket.OPEN) {

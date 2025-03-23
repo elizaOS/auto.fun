@@ -35,8 +35,11 @@ describe("Token API Endpoints", () => {
     const { baseUrl } = ctx.context;
 
     // Set API key from environment - CRITICAL FOR AUTHENTICATION
-    apiKey = process.env.API_KEY || "test-api-key"; 
-    console.log("Using API key for authentication:", apiKey ? "Available" : "Not available");
+    apiKey = process.env.API_KEY || "test-api-key";
+    console.log(
+      "Using API key for authentication:",
+      apiKey ? "Available" : "Not available",
+    );
 
     // Create a test user keypair for authentication
     userKeypair = Keypair.generate();
@@ -46,13 +49,13 @@ describe("Token API Endpoints", () => {
     // Register user with API key authentication
     try {
       const { response: registerResponse } = await fetchWithAuth(
-        apiUrl(baseUrl, `/register`), 
-        "POST", 
+        apiUrl(baseUrl, `/register`),
+        "POST",
         {
           address: publicKey,
           name: "Test User",
         },
-        { "X-API-Key": apiKey }
+        { "X-API-Key": apiKey },
       );
       console.log("User registration status:", registerResponse.status);
     } catch (err) {
@@ -119,9 +122,7 @@ describe("Token API Endpoints", () => {
 
     // Check that all returned tokens have the specified status
     if (data.tokens.length > 0) {
-      const allActive = data.tokens.every(
-        (token) => token.status === "active",
-      );
+      const allActive = data.tokens.every((token) => token.status === "active");
       expect(allActive).toBe(true);
     }
   });
@@ -133,7 +134,7 @@ describe("Token API Endpoints", () => {
 
     // Get a token to use for testing
     const tokenMint = getTestToken();
-    
+
     // Skip test if no token is available
     if (!tokenMint) {
       console.warn("No test token available. Skipping token details test.");
@@ -147,7 +148,9 @@ describe("Token API Endpoints", () => {
 
     // In test environment, we may not have actual token data
     if (response.status === 404) {
-      console.log("Token not found in database, but this is expected in test environment");
+      console.log(
+        "Token not found in database, but this is expected in test environment",
+      );
       return;
     }
 
@@ -185,19 +188,23 @@ describe("Token API Endpoints", () => {
     if (process.env.TEST_TOKEN_PUBKEY) {
       console.log("Using existing token from environment, skipping creation");
       testState.tokenPubkey = process.env.TEST_TOKEN_PUBKEY;
-      
+
       // Verify token exists by fetching its details
       const { response } = await fetchWithAuth(
         apiUrl(baseUrl, `/token/${testState.tokenPubkey}`),
-        "GET"
+        "GET",
       );
-      
+
       if (response.status === 404) {
-        console.warn(`Warning: Environment token ${testState.tokenPubkey} not found in database. Some tests may fail.`);
+        console.warn(
+          `Warning: Environment token ${testState.tokenPubkey} not found in database. Some tests may fail.`,
+        );
       } else {
-        console.log(`Environment token ${testState.tokenPubkey} verified in database.`);
+        console.log(
+          `Environment token ${testState.tokenPubkey} verified in database.`,
+        );
       }
-      
+
       return;
     }
 
@@ -226,22 +233,27 @@ describe("Token API Endpoints", () => {
       symbol: TEST_SYMBOL,
       description: "A token for testing token creation",
       // Small base64 PNG for testing
-      image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      image:
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
       links: {
         twitter: "testaccount",
         telegram: "testgroup",
         website: "https://test.com",
         discord: "test-discord",
-        agentLink: ""
+        agentLink: "",
       },
-      initial_sol: 0.1 // Adding initial sol to simulate frontend behavior
+      initial_sol: 0.1, // Adding initial sol to simulate frontend behavior
     };
 
     // Now simulate the token creation with the transaction
     // Ensure tx_id is a direct field and use a simple string to avoid issues
-    const simpleTxId = "test-tx-" + Date.now() + "-" + Math.random().toString(36).substring(2, 15);
+    const simpleTxId =
+      "test-tx-" +
+      Date.now() +
+      "-" +
+      Math.random().toString(36).substring(2, 15);
     console.log("Using simplified tx_id:", simpleTxId);
-    
+
     const tokenData = {
       name: tokenMetadata.name,
       symbol: tokenMetadata.symbol,
@@ -253,76 +265,98 @@ describe("Token API Endpoints", () => {
       telegram: tokenMetadata.links.telegram,
       website: tokenMetadata.links.website,
       discord: tokenMetadata.links.discord,
-      
+
       // Include transaction-specific data that the frontend would generate
       decimals: 9,
       supply: "1000000000",
       virtualReserves: "1000000000",
       metadataUrl: "https://example.com/metadata.json", // Mock metadata URL for testing
-      
+
       // Initial liquidity information
       initial_sol: tokenMetadata.initial_sol,
-      
+
       // Transaction details
       transaction: {
         blockhash: bs58.encode(crypto.getRandomValues(new Uint8Array(32))),
         lastValidBlockHeight: 123456789,
         computeUnits: 300000,
-        computeUnitPrice: 50000
-      }
+        computeUnitPrice: 50000,
+      },
     };
 
     // Log the complete token data to debug tx_id issues
     console.log("Sending token data with txId:", tokenData.txId);
     console.log("Token data keys:", Object.keys(tokenData));
-    console.log("Token data stringified:", JSON.stringify({txId: tokenData.txId}));
+    console.log(
+      "Token data stringified:",
+      JSON.stringify({ txId: tokenData.txId }),
+    );
 
     // Send request to create token
     const { response, data } = await fetchWithAuth<{
       success?: boolean;
       token?: any;
       error?: string;
-    }>(apiUrl(baseUrl, "/new_token"), "POST", tokenData, { "X-API-Key": apiKey });
+    }>(apiUrl(baseUrl, "/new_token"), "POST", tokenData, {
+      "X-API-Key": apiKey,
+    });
 
-    console.log("Token creation response:", response.status, data?.error || "Success");
+    console.log(
+      "Token creation response:",
+      response.status,
+      data?.error || "Success",
+    );
 
     // Handle various error cases
     if (response.status !== 200) {
       console.log("Full error response:", data);
 
       // Case 1: Backend requires real Solana transaction
-      if (data?.error?.includes("transaction") || data?.error?.includes("signature")) {
-        console.log("Backend requires real Solana transaction - test environment can't create actual tokens");
-        console.log("Using mock token for remaining tests, but token operations may fail");
+      if (
+        data?.error?.includes("transaction") ||
+        data?.error?.includes("signature")
+      ) {
+        console.log(
+          "Backend requires real Solana transaction - test environment can't create actual tokens",
+        );
+        console.log(
+          "Using mock token for remaining tests, but token operations may fail",
+        );
         return;
       }
-      
+
       // Case 2: Database constraint issues with tx_id
       if (data?.error?.includes("NOT NULL constraint failed: tokens.tx_id")) {
         console.log("Retrying token creation with different tx_id format");
-        
+
         // Try a different approach with more direct tx_id field
         const verySimpleTxId = "tx-" + Math.floor(Math.random() * 1000000);
-        
-        const directTxData = { 
+
+        const directTxData = {
           ...tokenData,
-          tx_id: verySimpleTxId
+          tx_id: verySimpleTxId,
         };
-        
+
         // Log the exact data being sent for debugging
         console.log("Trying with very simple tx_id:", verySimpleTxId);
-        console.log("Direct tx_id JSON:", JSON.stringify({tx_id: verySimpleTxId}));
-        
-        const { response: simpleTxResp, data: simpleTxResult } = await fetchWithAuth<{
-          success?: boolean;
-          token?: any;
-          error?: string;
-        }>(apiUrl(baseUrl, "/new_token"), "POST", directTxData, { "X-API-Key": apiKey });
-        
+        console.log(
+          "Direct tx_id JSON:",
+          JSON.stringify({ tx_id: verySimpleTxId }),
+        );
+
+        const { response: simpleTxResp, data: simpleTxResult } =
+          await fetchWithAuth<{
+            success?: boolean;
+            token?: any;
+            error?: string;
+          }>(apiUrl(baseUrl, "/new_token"), "POST", directTxData, {
+            "X-API-Key": apiKey,
+          });
+
         if (simpleTxResp.status === 200) {
           console.log("Token creation succeeded with simple tx_id");
           Object.assign(response, { status: simpleTxResp.status });
-          
+
           if (simpleTxResult.token) {
             (data as any).token = simpleTxResult.token;
           }
@@ -330,33 +364,44 @@ describe("Token API Endpoints", () => {
             (data as any).success = simpleTxResult.success;
           }
         } else {
-          console.log("Simple tx_id approach failed:", simpleTxResp.status, simpleTxResult?.error);
-          
+          console.log(
+            "Simple tx_id approach failed:",
+            simpleTxResp.status,
+            simpleTxResult?.error,
+          );
+
           // Try a final approach with a completely different request structure
           const finalAttempt = {
             name: TEST_NAME,
             symbol: TEST_SYMBOL,
             description: "A token for testing token creation",
             mint: tokenPubkey,
-            image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+            image:
+              "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
             tx_id: "final-attempt-" + Date.now(),
             twitter: "testaccount",
             telegram: "testgroup",
-            website: "https://test.com"
+            website: "https://test.com",
           };
-          
-          console.log("Final attempt with minimal fields, tx_id:", finalAttempt.tx_id);
-          
-          const { response: finalResp, data: finalResult } = await fetchWithAuth<{
-            success?: boolean;
-            token?: any;
-            error?: string;
-          }>(apiUrl(baseUrl, "/new_token"), "POST", finalAttempt, { "X-API-Key": apiKey });
-          
+
+          console.log(
+            "Final attempt with minimal fields, tx_id:",
+            finalAttempt.tx_id,
+          );
+
+          const { response: finalResp, data: finalResult } =
+            await fetchWithAuth<{
+              success?: boolean;
+              token?: any;
+              error?: string;
+            }>(apiUrl(baseUrl, "/new_token"), "POST", finalAttempt, {
+              "X-API-Key": apiKey,
+            });
+
           if (finalResp.status === 200) {
             console.log("Token creation succeeded with final attempt");
             Object.assign(response, { status: finalResp.status });
-            
+
             if (finalResult.token) {
               (data as any).token = finalResult.token;
             }
@@ -364,15 +409,22 @@ describe("Token API Endpoints", () => {
               (data as any).success = finalResult.success;
             }
           } else {
-            console.log("All token creation attempts failed, token tests will be limited");
+            console.log(
+              "All token creation attempts failed, token tests will be limited",
+            );
           }
         }
       }
-      
+
       // Case 3: Other errors
       if (response.status !== 200) {
-        console.error("Failed to create token:", data?.error || `Status ${response.status}`);
-        console.warn("Using mock token for remaining tests. Message-related tests may fail.");
+        console.error(
+          "Failed to create token:",
+          data?.error || `Status ${response.status}`,
+        );
+        console.warn(
+          "Using mock token for remaining tests. Message-related tests may fail.",
+        );
         return;
       }
     }
@@ -387,14 +439,14 @@ describe("Token API Endpoints", () => {
 
     // Update test state with the actual token mint from the response
     testState.tokenPubkey = data.token.mint;
-    
+
     // Verify the token exists by fetching it
     try {
       const verifyResponse = await fetchWithAuth(
         apiUrl(baseUrl, `/token/${data.token.mint}`),
-        "GET"
+        "GET",
       );
-      
+
       if (verifyResponse.response.status === 200) {
         console.log("Token verified in database");
       } else {
@@ -418,7 +470,9 @@ describe("Token API Endpoints", () => {
 
     // In test environment, we may not have actual token data
     if (response.status === 404) {
-      console.log("Token not found in database, but this is expected in test environment");
+      console.log(
+        "Token not found in database, but this is expected in test environment",
+      );
       return;
     }
 
@@ -439,7 +493,9 @@ describe("Token API Endpoints", () => {
 
     // In test environment, we may not have actual token data
     if (response.status === 404) {
-      console.log("Token not found in database, but this is expected in test environment");
+      console.log(
+        "Token not found in database, but this is expected in test environment",
+      );
       return;
     }
 
@@ -492,7 +548,9 @@ describe("Token API Endpoints", () => {
 
     // In test environment, we may not have actual token data
     if (response.status === 404) {
-      console.log("Token price not found in database, but this is expected in test environment");
+      console.log(
+        "Token price not found in database, but this is expected in test environment",
+      );
       return;
     }
 
@@ -549,11 +607,13 @@ describe("Token API Endpoints", () => {
     // First check if we can get messages for this token (validate token exists in message context)
     const { response: getResponse } = await fetchWithAuth(
       apiUrl(baseUrl, `/messages/${testState.tokenPubkey}`),
-      "GET"
+      "GET",
     );
 
     if (getResponse.status !== 200) {
-      console.log(`Token ${testState.tokenPubkey} not ready for messages, skipping message creation test`);
+      console.log(
+        `Token ${testState.tokenPubkey} not ready for messages, skipping message creation test`,
+      );
       return;
     }
 
@@ -563,7 +623,7 @@ describe("Token API Endpoints", () => {
     // Create a message
     const messageData = {
       message: "Test message for the token",
-      user: userKeypair.publicKey.toBase58()
+      user: userKeypair.publicKey.toBase58(),
     };
 
     const { response, data } = await fetchWithAuth<{
@@ -574,11 +634,15 @@ describe("Token API Endpoints", () => {
       apiUrl(baseUrl, `/messages/${testState.tokenPubkey}`),
       "POST",
       messageData,
-      headers
+      headers,
     );
 
-    console.log("Message creation response:", response.status, data?.error || "Success");
-    
+    console.log(
+      "Message creation response:",
+      response.status,
+      data?.error || "Success",
+    );
+
     // Skip if authentication issues
     if (response.status === 401) {
       console.log("Authentication issues with message creation, skipping test");
@@ -634,11 +698,13 @@ describe("Token API Endpoints", () => {
     // First check if we can get messages for this token (validate token exists in message context)
     const { response: getResponse } = await fetchWithAuth(
       apiUrl(baseUrl, `/messages/${testState.tokenPubkey}`),
-      "GET"
+      "GET",
     );
 
     if (getResponse.status !== 200) {
-      console.log(`Token ${testState.tokenPubkey} not ready for messages, skipping message+like test`);
+      console.log(
+        `Token ${testState.tokenPubkey} not ready for messages, skipping message+like test`,
+      );
       return;
     }
 
@@ -648,20 +714,25 @@ describe("Token API Endpoints", () => {
     // Create a message
     const messageRequest = {
       message: "Test message for token API testing",
-      user: userKeypair.publicKey.toBase58()
+      user: userKeypair.publicKey.toBase58(),
     };
 
-    const { response: messageResponse, data: messageData } = await fetchWithAuth<{
-      id: string;
-      error?: string;
-    }>(
-      apiUrl(baseUrl, `/messages/${testState.tokenPubkey}`),
-      "POST",
-      messageRequest,
-      headers
-    );
+    const { response: messageResponse, data: messageData } =
+      await fetchWithAuth<{
+        id: string;
+        error?: string;
+      }>(
+        apiUrl(baseUrl, `/messages/${testState.tokenPubkey}`),
+        "POST",
+        messageRequest,
+        headers,
+      );
 
-    console.log("Message creation response:", messageResponse.status, messageData?.error || "Success");
+    console.log(
+      "Message creation response:",
+      messageResponse.status,
+      messageData?.error || "Success",
+    );
 
     // Skip if authentication issues
     if (messageResponse.status === 401) {
@@ -678,7 +749,7 @@ describe("Token API Endpoints", () => {
       apiUrl(baseUrl, `/message-likes/${messageData.id}`),
       "POST",
       {},
-      headers
+      headers,
     );
 
     expect(likeResponse.status).toBe(200);
@@ -694,11 +765,13 @@ describe("Token API Endpoints", () => {
     // First check if token exists to avoid testing with non-existent tokens
     const { response: tokenCheckResponse } = await fetchWithAuth(
       apiUrl(baseUrl, `/token/${testState.tokenPubkey}`),
-      "GET" 
+      "GET",
     );
-    
+
     if (tokenCheckResponse.status === 404) {
-      console.log(`Token ${testState.tokenPubkey} not found in database, skipping harvest test`);
+      console.log(
+        `Token ${testState.tokenPubkey} not found in database, skipping harvest test`,
+      );
       return;
     }
 
@@ -708,7 +781,9 @@ describe("Token API Endpoints", () => {
     // Use API key for authentication
     const headers = { "X-API-Key": apiKey };
 
-    console.log(`Fetching GET ${apiUrl(baseUrl, `/tokens/${testState.tokenPubkey}/harvest-tx?owner=${owner}`)}`);
+    console.log(
+      `Fetching GET ${apiUrl(baseUrl, `/tokens/${testState.tokenPubkey}/harvest-tx?owner=${owner}`)}`,
+    );
 
     const { response, data } = await fetchWithAuth(
       apiUrl(
@@ -717,7 +792,7 @@ describe("Token API Endpoints", () => {
       ),
       "GET",
       undefined,
-      headers
+      headers,
     );
 
     console.log("Response status:", response.status);

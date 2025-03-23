@@ -37,7 +37,7 @@ export async function createBuyTransaction(
     buyerWallet: Keypair;
     sellerWallet: Keypair;
     tokenPrice: number; // Price in SOL per token
-  }
+  },
 ) {
   const { tokenMint, amount, buyerWallet, sellerWallet, tokenPrice } = params;
   const tokenAmount = amount / tokenPrice; // Calculate token amount from SOL amount
@@ -45,13 +45,13 @@ export async function createBuyTransaction(
   // Get the associated token account for the seller
   const sellerTokenAccount = await getAssociatedTokenAddress(
     tokenMint,
-    sellerWallet.publicKey
+    sellerWallet.publicKey,
   );
 
   // Get or create the associated token account for the buyer
   const buyerTokenAccount = await getAssociatedTokenAddress(
-    tokenMint, 
-    buyerWallet.publicKey
+    tokenMint,
+    buyerWallet.publicKey,
   );
 
   // Create a transaction
@@ -63,8 +63,8 @@ export async function createBuyTransaction(
       buyerWallet.publicKey, // payer
       buyerTokenAccount, // associated token account
       buyerWallet.publicKey, // owner
-      tokenMint // mint
-    )
+      tokenMint, // mint
+    ),
   );
 
   // Transfer SOL from buyer to seller
@@ -73,7 +73,7 @@ export async function createBuyTransaction(
       fromPubkey: buyerWallet.publicKey,
       toPubkey: sellerWallet.publicKey,
       lamports: amount * 1e9, // convert SOL to lamports
-    })
+    }),
   );
 
   // Transfer tokens from seller to buyer
@@ -82,8 +82,8 @@ export async function createBuyTransaction(
       sellerTokenAccount, // source
       buyerTokenAccount, // destination
       sellerWallet.publicKey, // owner
-      Math.floor(tokenAmount * 1e9) // convert to token decimals (assuming 9 decimals)
-    )
+      Math.floor(tokenAmount * 1e9), // convert to token decimals (assuming 9 decimals)
+    ),
   );
 
   return transaction;
@@ -98,7 +98,7 @@ export async function createSellTransaction(
     sellerWallet: Keypair;
     buyerWallet: Keypair;
     tokenPrice: number; // Price in SOL per token
-  }
+  },
 ) {
   const { tokenMint, amount, sellerWallet, buyerWallet, tokenPrice } = params;
   const solAmount = amount * tokenPrice; // Calculate SOL amount from token amount
@@ -106,7 +106,7 @@ export async function createSellTransaction(
   // Get the associated token account for the seller
   const sellerTokenAccount = await getAssociatedTokenAddress(
     tokenMint,
-    sellerWallet.publicKey
+    sellerWallet.publicKey,
   );
 
   // Create a transaction
@@ -118,13 +118,13 @@ export async function createSellTransaction(
       fromPubkey: buyerWallet.publicKey,
       toPubkey: sellerWallet.publicKey,
       lamports: Math.floor(solAmount * 1e9), // convert SOL to lamports
-    })
+    }),
   );
 
   // Transfer tokens from seller to buyer
   const buyerTokenAccount = await getAssociatedTokenAddress(
     tokenMint,
-    buyerWallet.publicKey
+    buyerWallet.publicKey,
   );
 
   // Create the buyer's associated token account if it doesn't exist
@@ -133,8 +133,8 @@ export async function createSellTransaction(
       sellerWallet.publicKey, // payer
       buyerTokenAccount, // associated token account
       buyerWallet.publicKey, // owner
-      tokenMint // mint
-    )
+      tokenMint, // mint
+    ),
   );
 
   // Transfer tokens from seller to buyer
@@ -143,8 +143,8 @@ export async function createSellTransaction(
       sellerTokenAccount, // source
       buyerTokenAccount, // destination
       sellerWallet.publicKey, // owner
-      Math.floor(amount * 1e9) // convert to token decimals (assuming 9 decimals)
-    )
+      Math.floor(amount * 1e9), // convert to token decimals (assuming 9 decimals)
+    ),
   );
 
   return transaction;
@@ -153,7 +153,7 @@ export async function createSellTransaction(
 // Main function to execute a token swap with a real wallet
 export async function executeSwap(
   env: Env,
-  params: SwapParams
+  params: SwapParams,
 ): Promise<{
   success: boolean;
   txId?: string;
@@ -166,17 +166,19 @@ export async function executeSwap(
     const db = getDB(env);
 
     // Normalize direction
-    const directionInt = 
+    const directionInt =
       typeof params.direction === "string"
-        ? params.direction.toLowerCase() === "buy" ? 0 : 1
+        ? params.direction.toLowerCase() === "buy"
+          ? 0
+          : 1
         : typeof params.direction === "number"
-        ? params.direction
-        : -1;
+          ? params.direction
+          : -1;
 
     if (directionInt !== 0 && directionInt !== 1) {
-      return { 
-        success: false, 
-        error: "Invalid direction. Must be 'buy', 'sell', 0, or 1" 
+      return {
+        success: false,
+        error: "Invalid direction. Must be 'buy', 'sell', 0, or 1",
       };
     }
 
@@ -232,14 +234,14 @@ export async function executeSwap(
     // In a real implementation, this would be based on market impact
     const priceAdjustment = isBuy ? 0.001 : -0.001;
     const newPrice = Math.max(0.0001, price + priceAdjustment);
-    
+
     await db
       .update(tokens)
       .set({
         currentPrice: newPrice,
         tokenPriceUSD: newPrice * (token[0].solPriceUSD || 100),
         lastUpdated: new Date().toISOString(),
-        volume24h: (token[0].volume24h || 0) + params.amount
+        volume24h: (token[0].volume24h || 0) + params.amount,
       })
       .where(eq(tokens.mint, params.tokenMint));
 
@@ -248,13 +250,16 @@ export async function executeSwap(
       success: true,
       txId,
       price,
-      amountOut
+      amountOut,
     };
   } catch (error) {
     logger.error("Error executing swap:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error during swap execution"
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unknown error during swap execution",
     };
   }
 }
@@ -262,7 +267,7 @@ export async function executeSwap(
 // Future implementation for real on-chain swaps
 export async function executeOnChainSwap(
   env: Env,
-  params: SwapParams
+  params: SwapParams,
 ): Promise<{
   success: boolean;
   txId?: string;
@@ -279,7 +284,10 @@ export async function executeOnChainSwap(
     logger.error("Error executing on-chain swap:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error during on-chain swap execution"
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unknown error during on-chain swap execution",
     };
   }
-} 
+}

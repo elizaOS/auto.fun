@@ -1,5 +1,20 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from "vitest";
-import { tokens, schema, getDB, swaps, fees, tokenHolders, agents, messages, messageLikes, users, vanityKeypairs, mediaGenerations, personalities, cachePrices } from "../../db";
+import {
+  tokens,
+  schema,
+  getDB,
+  swaps,
+  fees,
+  tokenHolders,
+  agents,
+  messages,
+  messageLikes,
+  users,
+  vanityKeypairs,
+  mediaGenerations,
+  personalities,
+  cachePrices,
+} from "../../db";
 import { Env } from "../../env";
 import { eq, and, sql } from "drizzle-orm";
 import { createClient } from "@libsql/client";
@@ -44,7 +59,7 @@ const TEST_TOKEN_DATA = {
   marketCapUSD: 12345,
   tokenPriceUSD: 0.000123,
   solPriceUSD: 100.5,
-  volume24h: 12345.67
+  volume24h: 12345.67,
 };
 
 // Test swap data
@@ -59,7 +74,7 @@ const TEST_SWAP_DATA = {
   priceImpact: 0.01,
   price: 0.0000015,
   txId: "test-tx-id-1",
-  timestamp: new Date().toISOString()
+  timestamp: new Date().toISOString(),
 };
 
 // Test fee data
@@ -73,7 +88,7 @@ const TEST_FEE_DATA = {
   solAmount: "1.5",
   type: "swap",
   txId: "test-tx-id-1",
-  timestamp: new Date().toISOString()
+  timestamp: new Date().toISOString(),
 };
 
 // Test token holder data
@@ -83,7 +98,7 @@ const TEST_HOLDER_DATA = {
   address: "test-holder-address",
   amount: 10000000,
   percentage: 0.05,
-  lastUpdated: new Date().toISOString()
+  lastUpdated: new Date().toISOString(),
 };
 
 // Test agent data
@@ -98,7 +113,7 @@ const TEST_AGENT_DATA = {
   systemPrompt: "You are a test agent",
   bio: "Test agent bio",
   modelProvider: "claude",
-  createdAt: new Date().toISOString()
+  createdAt: new Date().toISOString(),
 };
 
 // Test message data
@@ -109,7 +124,7 @@ const TEST_MESSAGE_DATA = {
   message: "This is a test message",
   replyCount: 0,
   likes: 0,
-  timestamp: new Date().toISOString()
+  timestamp: new Date().toISOString(),
 };
 
 // Test message like data
@@ -117,13 +132,13 @@ const TEST_MESSAGE_LIKE_DATA = {
   id: "test-message-like-1",
   messageId: "test-message-1",
   userAddress: "test-user-address",
-  timestamp: new Date().toISOString()
+  timestamp: new Date().toISOString(),
 };
 
 // Test personality data
 const TEST_PERSONALITY_DATA = {
   name: "Test Personality",
-  description: "A test personality"
+  description: "A test personality",
 };
 
 // Test user data
@@ -132,7 +147,7 @@ const TEST_USER_DATA = {
   name: "Test User",
   address: "test-user-address",
   avatar: "https://example.com/avatar.png",
-  createdAt: new Date().toISOString()
+  createdAt: new Date().toISOString(),
 };
 
 // Test vanity keypair data
@@ -141,7 +156,7 @@ const TEST_VANITY_KEYPAIR_DATA = {
   address: "test-vanity-address",
   secretKey: "test-secret-key",
   createdAt: new Date().toISOString(),
-  used: 0
+  used: 0,
 };
 
 // Test media generation data
@@ -151,7 +166,7 @@ const TEST_MEDIA_GENERATION_DATA = {
   type: "image",
   prompt: "A test prompt",
   mediaUrl: "https://example.com/image.png",
-  timestamp: new Date().toISOString()
+  timestamp: new Date().toISOString(),
 };
 
 // Test cache price data
@@ -161,7 +176,7 @@ const TEST_CACHE_PRICE_DATA = {
   symbol: "SOL",
   price: "100.5",
   timestamp: new Date().toISOString(),
-  expiresAt: new Date(Date.now() + 3600000).toISOString() // 1 hour from now
+  expiresAt: new Date(Date.now() + 3600000).toISOString(), // 1 hour from now
 };
 
 describe("Database Operations", () => {
@@ -174,7 +189,7 @@ describe("Database Operations", () => {
     sqliteClient = createClient({
       url: "file::memory:",
     });
-    
+
     // Create a mock D1 client that wraps the SQLite client
     // This ensures compatibility with functions expecting a D1 interface
     const mockD1Client = {
@@ -188,7 +203,10 @@ describe("Database Operations", () => {
               all: async () => {
                 try {
                   // Execute the query directly via libsql
-                  const result = await sqliteClient.execute({ sql: query, args: params });
+                  const result = await sqliteClient.execute({
+                    sql: query,
+                    args: params,
+                  });
                   return result.rows || [];
                 } catch (error) {
                   console.error("Error executing query:", error);
@@ -198,26 +216,29 @@ describe("Database Operations", () => {
               run: async () => {
                 try {
                   // Execute the query directly via libsql
-                  return await sqliteClient.execute({ sql: query, args: params });
+                  return await sqliteClient.execute({
+                    sql: query,
+                    args: params,
+                  });
                 } catch (error) {
                   console.error("Error executing query:", error);
                   throw error;
                 }
-              }
+              },
             };
-          }
+          },
         };
-      }
+      },
     };
-    
+
     // Initialize the DrizzleORM with the wrapped mock client
     const drizzleDB = drizzle(sqliteClient, { schema });
-    
+
     // Initialize test environment
     testEnv = createTestEnv();
     testEnv.DB = mockD1Client; // Use the mock D1 client
     db = drizzleDB;
-    
+
     // Create the token table
     await sqliteClient.execute(`
       CREATE TABLE IF NOT EXISTS tokens (
@@ -267,7 +288,7 @@ describe("Database Operations", () => {
         tx_id TEXT
       )
     `);
-    
+
     // Create swaps table
     await sqliteClient.execute(`
       CREATE TABLE IF NOT EXISTS swaps (
@@ -284,7 +305,7 @@ describe("Database Operations", () => {
         timestamp TEXT NOT NULL
       )
     `);
-    
+
     // Create fees table
     await sqliteClient.execute(`
       CREATE TABLE IF NOT EXISTS fees (
@@ -300,7 +321,7 @@ describe("Database Operations", () => {
         timestamp TEXT NOT NULL
       )
     `);
-    
+
     // Create token_holders table
     await sqliteClient.execute(`
       CREATE TABLE IF NOT EXISTS token_holders (
@@ -312,7 +333,7 @@ describe("Database Operations", () => {
         last_updated TEXT NOT NULL
       )
     `);
-    
+
     // Create agents table
     await sqliteClient.execute(`
       CREATE TABLE IF NOT EXISTS agents (
@@ -347,7 +368,7 @@ describe("Database Operations", () => {
         deleted_at INTEGER
       )
     `);
-    
+
     // Create messages table
     await sqliteClient.execute(`
       CREATE TABLE IF NOT EXISTS messages (
@@ -361,7 +382,7 @@ describe("Database Operations", () => {
         timestamp TEXT NOT NULL
       )
     `);
-    
+
     // Create message_likes table
     await sqliteClient.execute(`
       CREATE TABLE IF NOT EXISTS message_likes (
@@ -371,7 +392,7 @@ describe("Database Operations", () => {
         timestamp TEXT NOT NULL
       )
     `);
-    
+
     // Create personalities table
     await sqliteClient.execute(`
       CREATE TABLE IF NOT EXISTS personalities (
@@ -383,7 +404,7 @@ describe("Database Operations", () => {
         deleted_at INTEGER
       )
     `);
-    
+
     // Create users table
     await sqliteClient.execute(`
       CREATE TABLE IF NOT EXISTS users (
@@ -394,7 +415,7 @@ describe("Database Operations", () => {
         created_at TEXT NOT NULL
       )
     `);
-    
+
     // Create vanity_keypairs table
     await sqliteClient.execute(`
       CREATE TABLE IF NOT EXISTS vanity_keypairs (
@@ -405,7 +426,7 @@ describe("Database Operations", () => {
         used INTEGER NOT NULL DEFAULT 0
       )
     `);
-    
+
     // Create media_generations table
     await sqliteClient.execute(`
       CREATE TABLE IF NOT EXISTS media_generations (
@@ -429,7 +450,7 @@ describe("Database Operations", () => {
         last_generation_reset TEXT
       )
     `);
-    
+
     // Create cache_prices table
     await sqliteClient.execute(`
       CREATE TABLE IF NOT EXISTS cache_prices (
@@ -488,16 +509,16 @@ describe("Database Operations", () => {
       try {
         // Insert a token using Drizzle ORM
         const result = await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Verify using ORM query
         const insertedToken = await db.query.tokens.findFirst({
-          where: eq(tokens.id, TEST_TOKEN_DATA.id)
+          where: eq(tokens.id, TEST_TOKEN_DATA.id),
         });
-        
+
         expect(insertedToken).toBeDefined();
         expect(insertedToken?.id).toBe(TEST_TOKEN_DATA.id);
         expect(insertedToken?.mint).toBe(TEST_TOKEN_DATA.mint);
-        
+
         console.log(`Inserted test token with ID: ${insertedToken?.id}`);
       } catch (error) {
         console.error("Test failed with error:", error);
@@ -509,20 +530,22 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Query using ORM
         const dbTokens = await db.query.tokens.findMany();
-        
+
         // Verify results
         expect(Array.isArray(dbTokens)).toBe(true);
         expect(dbTokens.length).toBeGreaterThan(0);
-        
+
         // Check that our test token is in the results
-        const testToken = dbTokens.find(token => token.mint === TEST_TOKEN_DATA.mint);
+        const testToken = dbTokens.find(
+          (token) => token.mint === TEST_TOKEN_DATA.mint,
+        );
         expect(testToken).toBeDefined();
         expect(testToken?.name).toBe(TEST_TOKEN_DATA.name);
         expect(testToken?.ticker).toBe(TEST_TOKEN_DATA.ticker);
-        
+
         console.log("Retrieved token data:", testToken);
       } catch (error) {
         console.error("Test failed with error:", error);
@@ -534,31 +557,32 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Update values
         const updatedPrice = 0.00000456;
         const updatedMarketCap = 45678;
         const updatedTime = new Date().toISOString();
-        
+
         // Update using ORM
-        await db.update(tokens)
+        await db
+          .update(tokens)
           .set({
             currentPrice: updatedPrice,
             marketCapUSD: updatedMarketCap,
-            lastUpdated: updatedTime
+            lastUpdated: updatedTime,
           })
           .where(eq(tokens.mint, TEST_TOKEN_DATA.mint));
-        
+
         // Retrieve the updated token
         const updatedToken = await db.query.tokens.findFirst({
-          where: eq(tokens.mint, TEST_TOKEN_DATA.mint)
+          where: eq(tokens.mint, TEST_TOKEN_DATA.mint),
         });
-        
+
         // Verify the update
         expect(updatedToken).toBeDefined();
         expect(updatedToken?.currentPrice).toBe(updatedPrice);
         expect(updatedToken?.marketCapUSD).toBe(updatedMarketCap);
-        
+
         console.log("Updated token data:", updatedToken);
       } catch (error) {
         console.error("Test failed with error:", error);
@@ -570,24 +594,25 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Verify it exists
         const beforeDelete = await db.query.tokens.findFirst({
-          where: eq(tokens.mint, TEST_TOKEN_DATA.mint)
+          where: eq(tokens.mint, TEST_TOKEN_DATA.mint),
         });
         expect(beforeDelete).toBeDefined();
-        
+
         // Delete using ORM
-        await db.delete(tokens)
-          .where(eq(tokens.mint, TEST_TOKEN_DATA.mint));
-        
+        await db.delete(tokens).where(eq(tokens.mint, TEST_TOKEN_DATA.mint));
+
         // Verify it's gone
         const afterDelete = await db.query.tokens.findFirst({
-          where: eq(tokens.mint, TEST_TOKEN_DATA.mint)
+          where: eq(tokens.mint, TEST_TOKEN_DATA.mint),
         });
         expect(afterDelete).toBeUndefined();
-        
-        console.log(`Successfully deleted token with mint: ${TEST_TOKEN_DATA.mint}`);
+
+        console.log(
+          `Successfully deleted token with mint: ${TEST_TOKEN_DATA.mint}`,
+        );
       } catch (error) {
         console.error("Test failed with error:", error);
         throw error;
@@ -600,15 +625,15 @@ describe("Database Operations", () => {
       try {
         // First insert a token (for foreign key reference)
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a swap using Drizzle ORM
         const result = await db.insert(swaps).values(TEST_SWAP_DATA);
-        
+
         // Verify using ORM query
         const insertedSwap = await db.query.swaps.findFirst({
-          where: eq(swaps.id, TEST_SWAP_DATA.id)
+          where: eq(swaps.id, TEST_SWAP_DATA.id),
         });
-        
+
         expect(insertedSwap).toBeDefined();
         expect(insertedSwap?.id).toBe(TEST_SWAP_DATA.id);
         expect(insertedSwap?.tokenMint).toBe(TEST_SWAP_DATA.tokenMint);
@@ -624,39 +649,39 @@ describe("Database Operations", () => {
       try {
         // First insert a token (for foreign key reference)
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a swap
         await db.insert(swaps).values(TEST_SWAP_DATA);
-        
+
         // Insert a second swap with different direction
         const sellSwapData = {
           ...TEST_SWAP_DATA,
           id: "test-swap-2",
           direction: 1, // Sell
-          txId: "test-tx-id-2"
+          txId: "test-tx-id-2",
         };
         await db.insert(swaps).values(sellSwapData);
-        
+
         // Query using ORM
         const allSwaps = await db.query.swaps.findMany();
-        
+
         // Verify results
         expect(Array.isArray(allSwaps)).toBe(true);
         expect(allSwaps.length).toBe(2);
-        
+
         // Query only buy swaps
         const buySwaps = await db.query.swaps.findMany({
-          where: eq(swaps.direction, 0)
+          where: eq(swaps.direction, 0),
         });
-        
+
         expect(buySwaps.length).toBe(1);
         expect(buySwaps[0].id).toBe(TEST_SWAP_DATA.id);
-        
+
         // Query only sell swaps
         const sellSwaps = await db.query.swaps.findMany({
-          where: eq(swaps.direction, 1)
+          where: eq(swaps.direction, 1),
         });
-        
+
         expect(sellSwaps.length).toBe(1);
         expect(sellSwaps[0].id).toBe(sellSwapData.id);
       } catch (error) {
@@ -669,27 +694,28 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a swap
         await db.insert(swaps).values(TEST_SWAP_DATA);
-        
+
         // Update values
         const updatedAmountIn = 2.5;
         const updatedAmountOut = 2000000;
-        
+
         // Update using ORM
-        await db.update(swaps)
+        await db
+          .update(swaps)
           .set({
             amountIn: updatedAmountIn,
-            amountOut: updatedAmountOut
+            amountOut: updatedAmountOut,
           })
           .where(eq(swaps.id, TEST_SWAP_DATA.id));
-        
+
         // Retrieve the updated swap
         const updatedSwap = await db.query.swaps.findFirst({
-          where: eq(swaps.id, TEST_SWAP_DATA.id)
+          where: eq(swaps.id, TEST_SWAP_DATA.id),
         });
-        
+
         // Verify the update
         expect(updatedSwap).toBeDefined();
         expect(updatedSwap?.amountIn).toBe(updatedAmountIn);
@@ -704,23 +730,22 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a swap
         await db.insert(swaps).values(TEST_SWAP_DATA);
-        
+
         // Verify it exists
         const beforeDelete = await db.query.swaps.findFirst({
-          where: eq(swaps.id, TEST_SWAP_DATA.id)
+          where: eq(swaps.id, TEST_SWAP_DATA.id),
         });
         expect(beforeDelete).toBeDefined();
-        
+
         // Delete using ORM
-        await db.delete(swaps)
-          .where(eq(swaps.id, TEST_SWAP_DATA.id));
-        
+        await db.delete(swaps).where(eq(swaps.id, TEST_SWAP_DATA.id));
+
         // Verify it's gone
         const afterDelete = await db.query.swaps.findFirst({
-          where: eq(swaps.id, TEST_SWAP_DATA.id)
+          where: eq(swaps.id, TEST_SWAP_DATA.id),
         });
         expect(afterDelete).toBeUndefined();
       } catch (error) {
@@ -735,15 +760,15 @@ describe("Database Operations", () => {
       try {
         // First insert a token (for reference)
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a fee using Drizzle ORM
         const result = await db.insert(fees).values(TEST_FEE_DATA);
-        
+
         // Verify using ORM query
         const insertedFee = await db.query.fees.findFirst({
-          where: eq(fees.id, TEST_FEE_DATA.id)
+          where: eq(fees.id, TEST_FEE_DATA.id),
         });
-        
+
         expect(insertedFee).toBeDefined();
         expect(insertedFee?.id).toBe(TEST_FEE_DATA.id);
         expect(insertedFee?.tokenMint).toBe(TEST_FEE_DATA.tokenMint);
@@ -759,39 +784,39 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a fee
         await db.insert(fees).values(TEST_FEE_DATA);
-        
+
         // Insert a second fee with different type
         const migrationFeeData = {
           ...TEST_FEE_DATA,
           id: "test-fee-2",
           type: "migration",
-          txId: "test-tx-id-2"
+          txId: "test-tx-id-2",
         };
         await db.insert(fees).values(migrationFeeData);
-        
+
         // Query using ORM
         const allFees = await db.query.fees.findMany();
-        
+
         // Verify results
         expect(Array.isArray(allFees)).toBe(true);
         expect(allFees.length).toBe(2);
-        
+
         // Query only swap fees
         const swapFees = await db.query.fees.findMany({
-          where: eq(fees.type, "swap")
+          where: eq(fees.type, "swap"),
         });
-        
+
         expect(swapFees.length).toBe(1);
         expect(swapFees[0].id).toBe(TEST_FEE_DATA.id);
-        
+
         // Query only migration fees
         const migrationFees = await db.query.fees.findMany({
-          where: eq(fees.type, "migration")
+          where: eq(fees.type, "migration"),
         });
-        
+
         expect(migrationFees.length).toBe(1);
         expect(migrationFees[0].id).toBe(migrationFeeData.id);
       } catch (error) {
@@ -804,27 +829,28 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a fee
         await db.insert(fees).values(TEST_FEE_DATA);
-        
+
         // Update values
         const updatedFeeAmount = "0.025";
         const updatedTokenAmount = "2000000";
-        
+
         // Update using ORM
-        await db.update(fees)
+        await db
+          .update(fees)
           .set({
             feeAmount: updatedFeeAmount,
-            tokenAmount: updatedTokenAmount
+            tokenAmount: updatedTokenAmount,
           })
           .where(eq(fees.id, TEST_FEE_DATA.id));
-        
+
         // Retrieve the updated fee
         const updatedFee = await db.query.fees.findFirst({
-          where: eq(fees.id, TEST_FEE_DATA.id)
+          where: eq(fees.id, TEST_FEE_DATA.id),
         });
-        
+
         // Verify the update
         expect(updatedFee).toBeDefined();
         expect(updatedFee?.feeAmount).toBe(updatedFeeAmount);
@@ -839,23 +865,22 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a fee
         await db.insert(fees).values(TEST_FEE_DATA);
-        
+
         // Verify it exists
         const beforeDelete = await db.query.fees.findFirst({
-          where: eq(fees.id, TEST_FEE_DATA.id)
+          where: eq(fees.id, TEST_FEE_DATA.id),
         });
         expect(beforeDelete).toBeDefined();
-        
+
         // Delete using ORM
-        await db.delete(fees)
-          .where(eq(fees.id, TEST_FEE_DATA.id));
-        
+        await db.delete(fees).where(eq(fees.id, TEST_FEE_DATA.id));
+
         // Verify it's gone
         const afterDelete = await db.query.fees.findFirst({
-          where: eq(fees.id, TEST_FEE_DATA.id)
+          where: eq(fees.id, TEST_FEE_DATA.id),
         });
         expect(afterDelete).toBeUndefined();
       } catch (error) {
@@ -870,15 +895,15 @@ describe("Database Operations", () => {
       try {
         // First insert a token (for reference)
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a token holder using Drizzle ORM
         const result = await db.insert(tokenHolders).values(TEST_HOLDER_DATA);
-        
+
         // Verify using ORM query
         const insertedHolder = await db.query.tokenHolders.findFirst({
-          where: eq(tokenHolders.id, TEST_HOLDER_DATA.id)
+          where: eq(tokenHolders.id, TEST_HOLDER_DATA.id),
         });
-        
+
         expect(insertedHolder).toBeDefined();
         expect(insertedHolder?.id).toBe(TEST_HOLDER_DATA.id);
         expect(insertedHolder?.mint).toBe(TEST_HOLDER_DATA.mint);
@@ -895,32 +920,32 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a token holder
         await db.insert(tokenHolders).values(TEST_HOLDER_DATA);
-        
+
         // Insert a second holder
         const secondHolderData = {
           ...TEST_HOLDER_DATA,
           id: "test-holder-2",
           address: "test-holder-address-2",
           amount: 20000000,
-          percentage: 0.1
+          percentage: 0.1,
         };
         await db.insert(tokenHolders).values(secondHolderData);
-        
+
         // Query using ORM
         const allHolders = await db.query.tokenHolders.findMany();
-        
+
         // Verify results
         expect(Array.isArray(allHolders)).toBe(true);
         expect(allHolders.length).toBe(2);
-        
+
         // Query by specific amount threshold
         const largeHolders = await db.query.tokenHolders.findMany({
-          where: sql`${tokenHolders.amount} > 15000000`
+          where: sql`${tokenHolders.amount} > 15000000`,
         });
-        
+
         expect(largeHolders.length).toBe(1);
         expect(largeHolders[0].id).toBe(secondHolderData.id);
       } catch (error) {
@@ -933,29 +958,30 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a token holder
         await db.insert(tokenHolders).values(TEST_HOLDER_DATA);
-        
+
         // Update values
         const updatedAmount = 15000000;
         const updatedPercentage = 0.075;
         const updatedTime = new Date().toISOString();
-        
+
         // Update using ORM
-        await db.update(tokenHolders)
+        await db
+          .update(tokenHolders)
           .set({
             amount: updatedAmount,
             percentage: updatedPercentage,
-            lastUpdated: updatedTime
+            lastUpdated: updatedTime,
           })
           .where(eq(tokenHolders.id, TEST_HOLDER_DATA.id));
-        
+
         // Retrieve the updated holder
         const updatedHolder = await db.query.tokenHolders.findFirst({
-          where: eq(tokenHolders.id, TEST_HOLDER_DATA.id)
+          where: eq(tokenHolders.id, TEST_HOLDER_DATA.id),
         });
-        
+
         // Verify the update
         expect(updatedHolder).toBeDefined();
         expect(updatedHolder?.amount).toBe(updatedAmount);
@@ -971,23 +997,24 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a token holder
         await db.insert(tokenHolders).values(TEST_HOLDER_DATA);
-        
+
         // Verify it exists
         const beforeDelete = await db.query.tokenHolders.findFirst({
-          where: eq(tokenHolders.id, TEST_HOLDER_DATA.id)
+          where: eq(tokenHolders.id, TEST_HOLDER_DATA.id),
         });
         expect(beforeDelete).toBeDefined();
-        
+
         // Delete using ORM
-        await db.delete(tokenHolders)
+        await db
+          .delete(tokenHolders)
           .where(eq(tokenHolders.id, TEST_HOLDER_DATA.id));
-        
+
         // Verify it's gone
         const afterDelete = await db.query.tokenHolders.findFirst({
-          where: eq(tokenHolders.id, TEST_HOLDER_DATA.id)
+          where: eq(tokenHolders.id, TEST_HOLDER_DATA.id),
         });
         expect(afterDelete).toBeUndefined();
       } catch (error) {
@@ -1002,19 +1029,21 @@ describe("Database Operations", () => {
       try {
         // First insert a token (for foreign key reference)
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert an agent using Drizzle ORM
         const result = await db.insert(agents).values(TEST_AGENT_DATA);
-        
+
         // Verify using ORM query
         const insertedAgent = await db.query.agents.findFirst({
-          where: eq(agents.id, TEST_AGENT_DATA.id)
+          where: eq(agents.id, TEST_AGENT_DATA.id),
         });
-        
+
         expect(insertedAgent).toBeDefined();
         expect(insertedAgent?.id).toBe(TEST_AGENT_DATA.id);
         expect(insertedAgent?.ownerAddress).toBe(TEST_AGENT_DATA.ownerAddress);
-        expect(insertedAgent?.contractAddress).toBe(TEST_AGENT_DATA.contractAddress);
+        expect(insertedAgent?.contractAddress).toBe(
+          TEST_AGENT_DATA.contractAddress,
+        );
         expect(insertedAgent?.name).toBe(TEST_AGENT_DATA.name);
         expect(insertedAgent?.description).toBe(TEST_AGENT_DATA.description);
       } catch (error) {
@@ -1027,46 +1056,46 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert an agent
         await db.insert(agents).values(TEST_AGENT_DATA);
-        
+
         // Insert a second agent
         const secondToken = {
           ...TEST_TOKEN_DATA,
           id: "test-token-2",
-          mint: "Second3Z8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"
+          mint: "Second3Z8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
         };
         await db.insert(tokens).values(secondToken);
-        
+
         const secondAgentData = {
           ...TEST_AGENT_DATA,
           id: "test-agent-2",
           contractAddress: secondToken.mint,
           name: "Second Test Agent",
-          modelProvider: "gpt-4"
+          modelProvider: "gpt-4",
         };
         await db.insert(agents).values(secondAgentData);
-        
+
         // Query using ORM
         const allAgents = await db.query.agents.findMany();
-        
+
         // Verify results
         expect(Array.isArray(allAgents)).toBe(true);
         expect(allAgents.length).toBe(2);
-        
+
         // Query by model provider
         const claudeAgents = await db.query.agents.findMany({
-          where: eq(agents.modelProvider, "claude")
+          where: eq(agents.modelProvider, "claude"),
         });
-        
+
         expect(claudeAgents.length).toBe(1);
         expect(claudeAgents[0].id).toBe(TEST_AGENT_DATA.id);
-        
+
         const gptAgents = await db.query.agents.findMany({
-          where: eq(agents.modelProvider, "gpt-4")
+          where: eq(agents.modelProvider, "gpt-4"),
         });
-        
+
         expect(gptAgents.length).toBe(1);
         expect(gptAgents[0].id).toBe(secondAgentData.id);
       } catch (error) {
@@ -1079,27 +1108,28 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert an agent
         await db.insert(agents).values(TEST_AGENT_DATA);
-        
+
         // Update values
         const updatedBio = "Updated agent bio";
         const updatedSystemPrompt = "You are an updated test agent";
-        
+
         // Update using ORM
-        await db.update(agents)
+        await db
+          .update(agents)
           .set({
             bio: updatedBio,
-            systemPrompt: updatedSystemPrompt
+            systemPrompt: updatedSystemPrompt,
           })
           .where(eq(agents.id, TEST_AGENT_DATA.id));
-        
+
         // Retrieve the updated agent
         const updatedAgent = await db.query.agents.findFirst({
-          where: eq(agents.id, TEST_AGENT_DATA.id)
+          where: eq(agents.id, TEST_AGENT_DATA.id),
         });
-        
+
         // Verify the update
         expect(updatedAgent).toBeDefined();
         expect(updatedAgent?.bio).toBe(updatedBio);
@@ -1114,31 +1144,32 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert an agent
         await db.insert(agents).values(TEST_AGENT_DATA);
-        
+
         // Soft delete the agent (setting deletedAt)
         const deletedAt = new Date().toISOString();
-        await db.update(agents)
+        await db
+          .update(agents)
           .set({
-            deletedAt: deletedAt
+            deletedAt: deletedAt,
           })
           .where(eq(agents.id, TEST_AGENT_DATA.id));
-        
+
         // Verify it has deletedAt set
         const softDeletedAgent = await db.query.agents.findFirst({
-          where: eq(agents.id, TEST_AGENT_DATA.id)
+          where: eq(agents.id, TEST_AGENT_DATA.id),
         });
-        
+
         expect(softDeletedAgent).toBeDefined();
         expect(softDeletedAgent?.deletedAt).toBe(deletedAt);
-        
+
         // Query excluding soft deleted agents
         const activeAgents = await db.query.agents.findMany({
-          where: sql`${agents.deletedAt} IS NULL`
+          where: sql`${agents.deletedAt} IS NULL`,
         });
-        
+
         expect(activeAgents.length).toBe(0);
       } catch (error) {
         console.error("Test failed with error:", error);
@@ -1152,15 +1183,15 @@ describe("Database Operations", () => {
       try {
         // First insert a token (for reference)
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a message using Drizzle ORM
         const result = await db.insert(messages).values(TEST_MESSAGE_DATA);
-        
+
         // Verify using ORM query
         const insertedMessage = await db.query.messages.findFirst({
-          where: eq(messages.id, TEST_MESSAGE_DATA.id)
+          where: eq(messages.id, TEST_MESSAGE_DATA.id),
         });
-        
+
         expect(insertedMessage).toBeDefined();
         expect(insertedMessage?.id).toBe(TEST_MESSAGE_DATA.id);
         expect(insertedMessage?.author).toBe(TEST_MESSAGE_DATA.author);
@@ -1177,10 +1208,10 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a parent message
         await db.insert(messages).values(TEST_MESSAGE_DATA);
-        
+
         // Insert a reply message
         const replyMessageData = {
           id: "test-message-reply-1",
@@ -1189,32 +1220,33 @@ describe("Database Operations", () => {
           message: "This is a reply message",
           parentId: TEST_MESSAGE_DATA.id,
           likes: 0,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         };
-        
+
         await db.insert(messages).values(replyMessageData);
-        
+
         // Update parent's reply count
-        await db.update(messages)
+        await db
+          .update(messages)
           .set({
-            replyCount: 1
+            replyCount: 1,
           })
           .where(eq(messages.id, TEST_MESSAGE_DATA.id));
-        
+
         // Verify reply was created
         const reply = await db.query.messages.findFirst({
-          where: eq(messages.parentId, TEST_MESSAGE_DATA.id)
+          where: eq(messages.parentId, TEST_MESSAGE_DATA.id),
         });
-        
+
         expect(reply).toBeDefined();
         expect(reply?.id).toBe(replyMessageData.id);
         expect(reply?.parentId).toBe(TEST_MESSAGE_DATA.id);
-        
+
         // Verify parent has reply count updated
         const parent = await db.query.messages.findFirst({
-          where: eq(messages.id, TEST_MESSAGE_DATA.id)
+          where: eq(messages.id, TEST_MESSAGE_DATA.id),
         });
-        
+
         expect(parent).toBeDefined();
         expect(parent?.replyCount).toBe(1);
       } catch (error) {
@@ -1227,25 +1259,26 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a message
         await db.insert(messages).values(TEST_MESSAGE_DATA);
-        
+
         // Update likes
         const updatedLikes = 5;
-        
+
         // Update using ORM
-        await db.update(messages)
+        await db
+          .update(messages)
           .set({
-            likes: updatedLikes
+            likes: updatedLikes,
           })
           .where(eq(messages.id, TEST_MESSAGE_DATA.id));
-        
+
         // Retrieve the updated message
         const updatedMessage = await db.query.messages.findFirst({
-          where: eq(messages.id, TEST_MESSAGE_DATA.id)
+          where: eq(messages.id, TEST_MESSAGE_DATA.id),
         });
-        
+
         // Verify the update
         expect(updatedMessage).toBeDefined();
         expect(updatedMessage?.likes).toBe(updatedLikes);
@@ -1259,23 +1292,22 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a message
         await db.insert(messages).values(TEST_MESSAGE_DATA);
-        
+
         // Verify it exists
         const beforeDelete = await db.query.messages.findFirst({
-          where: eq(messages.id, TEST_MESSAGE_DATA.id)
+          where: eq(messages.id, TEST_MESSAGE_DATA.id),
         });
         expect(beforeDelete).toBeDefined();
-        
+
         // Delete using ORM
-        await db.delete(messages)
-          .where(eq(messages.id, TEST_MESSAGE_DATA.id));
-        
+        await db.delete(messages).where(eq(messages.id, TEST_MESSAGE_DATA.id));
+
         // Verify it's gone
         const afterDelete = await db.query.messages.findFirst({
-          where: eq(messages.id, TEST_MESSAGE_DATA.id)
+          where: eq(messages.id, TEST_MESSAGE_DATA.id),
         });
         expect(afterDelete).toBeUndefined();
       } catch (error) {
@@ -1290,22 +1322,26 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a message
         await db.insert(messages).values(TEST_MESSAGE_DATA);
-        
+
         // Insert a message like using Drizzle ORM
-        const result = await db.insert(messageLikes).values(TEST_MESSAGE_LIKE_DATA);
-        
+        const result = await db
+          .insert(messageLikes)
+          .values(TEST_MESSAGE_LIKE_DATA);
+
         // Verify using ORM query
         const insertedLike = await db.query.messageLikes.findFirst({
-          where: eq(messageLikes.id, TEST_MESSAGE_LIKE_DATA.id)
+          where: eq(messageLikes.id, TEST_MESSAGE_LIKE_DATA.id),
         });
-        
+
         expect(insertedLike).toBeDefined();
         expect(insertedLike?.id).toBe(TEST_MESSAGE_LIKE_DATA.id);
         expect(insertedLike?.messageId).toBe(TEST_MESSAGE_LIKE_DATA.messageId);
-        expect(insertedLike?.userAddress).toBe(TEST_MESSAGE_LIKE_DATA.userAddress);
+        expect(insertedLike?.userAddress).toBe(
+          TEST_MESSAGE_LIKE_DATA.userAddress,
+        );
       } catch (error) {
         console.error("Test failed with error:", error);
         throw error;
@@ -1316,43 +1352,44 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a message
         await db.insert(messages).values(TEST_MESSAGE_DATA);
-        
+
         // Insert two message likes
         await db.insert(messageLikes).values(TEST_MESSAGE_LIKE_DATA);
-        
+
         const secondLikeData = {
           id: "test-message-like-2",
           messageId: TEST_MESSAGE_DATA.id,
           userAddress: "test-user-address-2",
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         };
-        
+
         await db.insert(messageLikes).values(secondLikeData);
-        
+
         // Query using ORM
         const messageLikesResult = await db.query.messageLikes.findMany({
-          where: eq(messageLikes.messageId, TEST_MESSAGE_DATA.id)
+          where: eq(messageLikes.messageId, TEST_MESSAGE_DATA.id),
         });
-        
+
         // Verify results
         expect(Array.isArray(messageLikesResult)).toBe(true);
         expect(messageLikesResult.length).toBe(2);
-        
+
         // Update message like count
-        await db.update(messages)
+        await db
+          .update(messages)
           .set({
-            likes: messageLikesResult.length
+            likes: messageLikesResult.length,
           })
           .where(eq(messages.id, TEST_MESSAGE_DATA.id));
-        
+
         // Verify message has updated like count
         const updatedMessage = await db.query.messages.findFirst({
-          where: eq(messages.id, TEST_MESSAGE_DATA.id)
+          where: eq(messages.id, TEST_MESSAGE_DATA.id),
         });
-        
+
         expect(updatedMessage).toBeDefined();
         expect(updatedMessage?.likes).toBe(2);
       } catch (error) {
@@ -1365,48 +1402,51 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a message
         await db.insert(messages).values(TEST_MESSAGE_DATA);
-        
+
         // Insert a message like
         await db.insert(messageLikes).values(TEST_MESSAGE_LIKE_DATA);
-        
+
         // Update message like count
-        await db.update(messages)
+        await db
+          .update(messages)
           .set({
-            likes: 1
+            likes: 1,
           })
           .where(eq(messages.id, TEST_MESSAGE_DATA.id));
-        
+
         // Verify message like exists
         const beforeDelete = await db.query.messageLikes.findFirst({
-          where: eq(messageLikes.id, TEST_MESSAGE_LIKE_DATA.id)
+          where: eq(messageLikes.id, TEST_MESSAGE_LIKE_DATA.id),
         });
         expect(beforeDelete).toBeDefined();
-        
+
         // Delete using ORM
-        await db.delete(messageLikes)
+        await db
+          .delete(messageLikes)
           .where(eq(messageLikes.id, TEST_MESSAGE_LIKE_DATA.id));
-        
+
         // Verify it's gone
         const afterDelete = await db.query.messageLikes.findFirst({
-          where: eq(messageLikes.id, TEST_MESSAGE_LIKE_DATA.id)
+          where: eq(messageLikes.id, TEST_MESSAGE_LIKE_DATA.id),
         });
         expect(afterDelete).toBeUndefined();
-        
+
         // Update message like count
-        await db.update(messages)
+        await db
+          .update(messages)
           .set({
-            likes: 0
+            likes: 0,
           })
           .where(eq(messages.id, TEST_MESSAGE_DATA.id));
-        
+
         // Verify message has updated like count
         const updatedMessage = await db.query.messages.findFirst({
-          where: eq(messages.id, TEST_MESSAGE_DATA.id)
+          where: eq(messages.id, TEST_MESSAGE_DATA.id),
         });
-        
+
         expect(updatedMessage).toBeDefined();
         expect(updatedMessage?.likes).toBe(0);
       } catch (error) {
@@ -1421,12 +1461,12 @@ describe("Database Operations", () => {
       try {
         // Insert a user using Drizzle ORM
         const result = await db.insert(users).values(TEST_USER_DATA);
-        
+
         // Verify using ORM query
         const insertedUser = await db.query.users.findFirst({
-          where: eq(users.id, TEST_USER_DATA.id)
+          where: eq(users.id, TEST_USER_DATA.id),
         });
-        
+
         expect(insertedUser).toBeDefined();
         expect(insertedUser?.id).toBe(TEST_USER_DATA.id);
         expect(insertedUser?.name).toBe(TEST_USER_DATA.name);
@@ -1442,13 +1482,13 @@ describe("Database Operations", () => {
       try {
         // Insert a user
         await db.insert(users).values(TEST_USER_DATA);
-        
+
         // Try to insert another user with the same address
         const duplicateUser = {
           ...TEST_USER_DATA,
-          id: "test-user-2"
+          id: "test-user-2",
         };
-        
+
         // This should fail due to unique constraint on address
         let error;
         try {
@@ -1456,7 +1496,7 @@ describe("Database Operations", () => {
         } catch (e) {
           error = e;
         }
-        
+
         // Verify it failed
         expect(error).toBeDefined();
       } catch (error) {
@@ -1469,24 +1509,25 @@ describe("Database Operations", () => {
       try {
         // Insert a user
         await db.insert(users).values(TEST_USER_DATA);
-        
+
         // Update values
         const updatedName = "Updated User Name";
         const updatedAvatar = "https://example.com/updated-avatar.png";
-        
+
         // Update using ORM
-        await db.update(users)
+        await db
+          .update(users)
           .set({
             name: updatedName,
-            avatar: updatedAvatar
+            avatar: updatedAvatar,
           })
           .where(eq(users.id, TEST_USER_DATA.id));
-        
+
         // Retrieve the updated user
         const updatedUser = await db.query.users.findFirst({
-          where: eq(users.id, TEST_USER_DATA.id)
+          where: eq(users.id, TEST_USER_DATA.id),
         });
-        
+
         // Verify the update
         expect(updatedUser).toBeDefined();
         expect(updatedUser?.name).toBe(updatedName);
@@ -1501,20 +1542,19 @@ describe("Database Operations", () => {
       try {
         // Insert a user
         await db.insert(users).values(TEST_USER_DATA);
-        
+
         // Verify it exists
         const beforeDelete = await db.query.users.findFirst({
-          where: eq(users.id, TEST_USER_DATA.id)
+          where: eq(users.id, TEST_USER_DATA.id),
         });
         expect(beforeDelete).toBeDefined();
-        
+
         // Delete using ORM
-        await db.delete(users)
-          .where(eq(users.id, TEST_USER_DATA.id));
-        
+        await db.delete(users).where(eq(users.id, TEST_USER_DATA.id));
+
         // Verify it's gone
         const afterDelete = await db.query.users.findFirst({
-          where: eq(users.id, TEST_USER_DATA.id)
+          where: eq(users.id, TEST_USER_DATA.id),
         });
         expect(afterDelete).toBeUndefined();
       } catch (error) {
@@ -1528,17 +1568,21 @@ describe("Database Operations", () => {
     it("should insert a new vanity keypair", async () => {
       try {
         // Insert a vanity keypair using Drizzle ORM
-        const result = await db.insert(vanityKeypairs).values(TEST_VANITY_KEYPAIR_DATA);
-        
+        const result = await db
+          .insert(vanityKeypairs)
+          .values(TEST_VANITY_KEYPAIR_DATA);
+
         // Verify using ORM query
         const insertedKeypair = await db.query.vanityKeypairs.findFirst({
-          where: eq(vanityKeypairs.id, TEST_VANITY_KEYPAIR_DATA.id)
+          where: eq(vanityKeypairs.id, TEST_VANITY_KEYPAIR_DATA.id),
         });
-        
+
         expect(insertedKeypair).toBeDefined();
         expect(insertedKeypair?.id).toBe(TEST_VANITY_KEYPAIR_DATA.id);
         expect(insertedKeypair?.address).toBe(TEST_VANITY_KEYPAIR_DATA.address);
-        expect(insertedKeypair?.secretKey).toBe(TEST_VANITY_KEYPAIR_DATA.secretKey);
+        expect(insertedKeypair?.secretKey).toBe(
+          TEST_VANITY_KEYPAIR_DATA.secretKey,
+        );
         expect(insertedKeypair?.used).toBe(0);
       } catch (error) {
         console.error("Test failed with error:", error);
@@ -1550,22 +1594,22 @@ describe("Database Operations", () => {
       try {
         // Insert a vanity keypair
         await db.insert(vanityKeypairs).values(TEST_VANITY_KEYPAIR_DATA);
-        
+
         // Insert a second vanity keypair that's used
         const usedKeypairData = {
           ...TEST_VANITY_KEYPAIR_DATA,
           id: "test-keypair-2",
           address: "test-vanity-address-2",
-          used: 1
+          used: 1,
         };
-        
+
         await db.insert(vanityKeypairs).values(usedKeypairData);
-        
+
         // Query only unused keypairs
         const unusedKeypairs = await db.query.vanityKeypairs.findMany({
-          where: eq(vanityKeypairs.used, 0)
+          where: eq(vanityKeypairs.used, 0),
         });
-        
+
         // Verify results
         expect(Array.isArray(unusedKeypairs)).toBe(true);
         expect(unusedKeypairs.length).toBe(1);
@@ -1580,19 +1624,20 @@ describe("Database Operations", () => {
       try {
         // Insert a vanity keypair
         await db.insert(vanityKeypairs).values(TEST_VANITY_KEYPAIR_DATA);
-        
+
         // Update to mark as used
-        await db.update(vanityKeypairs)
+        await db
+          .update(vanityKeypairs)
           .set({
-            used: 1
+            used: 1,
           })
           .where(eq(vanityKeypairs.id, TEST_VANITY_KEYPAIR_DATA.id));
-        
+
         // Retrieve the updated keypair
         const updatedKeypair = await db.query.vanityKeypairs.findFirst({
-          where: eq(vanityKeypairs.id, TEST_VANITY_KEYPAIR_DATA.id)
+          where: eq(vanityKeypairs.id, TEST_VANITY_KEYPAIR_DATA.id),
         });
-        
+
         // Verify the update
         expect(updatedKeypair).toBeDefined();
         expect(updatedKeypair?.used).toBe(1);
@@ -1606,20 +1651,21 @@ describe("Database Operations", () => {
       try {
         // Insert a vanity keypair
         await db.insert(vanityKeypairs).values(TEST_VANITY_KEYPAIR_DATA);
-        
+
         // Verify it exists
         const beforeDelete = await db.query.vanityKeypairs.findFirst({
-          where: eq(vanityKeypairs.id, TEST_VANITY_KEYPAIR_DATA.id)
+          where: eq(vanityKeypairs.id, TEST_VANITY_KEYPAIR_DATA.id),
         });
         expect(beforeDelete).toBeDefined();
-        
+
         // Delete using ORM
-        await db.delete(vanityKeypairs)
+        await db
+          .delete(vanityKeypairs)
           .where(eq(vanityKeypairs.id, TEST_VANITY_KEYPAIR_DATA.id));
-        
+
         // Verify it's gone
         const afterDelete = await db.query.vanityKeypairs.findFirst({
-          where: eq(vanityKeypairs.id, TEST_VANITY_KEYPAIR_DATA.id)
+          where: eq(vanityKeypairs.id, TEST_VANITY_KEYPAIR_DATA.id),
         });
         expect(afterDelete).toBeUndefined();
       } catch (error) {
@@ -1634,21 +1680,25 @@ describe("Database Operations", () => {
       try {
         // First insert a token (for reference)
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a media generation using Drizzle ORM
-        const result = await db.insert(mediaGenerations).values(TEST_MEDIA_GENERATION_DATA);
-        
+        const result = await db
+          .insert(mediaGenerations)
+          .values(TEST_MEDIA_GENERATION_DATA);
+
         // Verify using ORM query
         const insertedMedia = await db.query.mediaGenerations.findFirst({
-          where: eq(mediaGenerations.id, TEST_MEDIA_GENERATION_DATA.id)
+          where: eq(mediaGenerations.id, TEST_MEDIA_GENERATION_DATA.id),
         });
-        
+
         expect(insertedMedia).toBeDefined();
         expect(insertedMedia?.id).toBe(TEST_MEDIA_GENERATION_DATA.id);
         expect(insertedMedia?.mint).toBe(TEST_MEDIA_GENERATION_DATA.mint);
         expect(insertedMedia?.type).toBe(TEST_MEDIA_GENERATION_DATA.type);
         expect(insertedMedia?.prompt).toBe(TEST_MEDIA_GENERATION_DATA.prompt);
-        expect(insertedMedia?.mediaUrl).toBe(TEST_MEDIA_GENERATION_DATA.mediaUrl);
+        expect(insertedMedia?.mediaUrl).toBe(
+          TEST_MEDIA_GENERATION_DATA.mediaUrl,
+        );
       } catch (error) {
         console.error("Test failed with error:", error);
         throw error;
@@ -1659,10 +1709,10 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert an image generation
         await db.insert(mediaGenerations).values(TEST_MEDIA_GENERATION_DATA);
-        
+
         // Insert a video generation
         const videoGenerationData = {
           ...TEST_MEDIA_GENERATION_DATA,
@@ -1670,26 +1720,26 @@ describe("Database Operations", () => {
           type: "video",
           numFrames: 30,
           fps: 24,
-          duration: 1250
+          duration: 1250,
         };
-        
+
         await db.insert(mediaGenerations).values(videoGenerationData);
-        
+
         // Query image generations
         const images = await db.query.mediaGenerations.findMany({
-          where: eq(mediaGenerations.type, "image")
+          where: eq(mediaGenerations.type, "image"),
         });
-        
+
         // Verify results
         expect(Array.isArray(images)).toBe(true);
         expect(images.length).toBe(1);
         expect(images[0].id).toBe(TEST_MEDIA_GENERATION_DATA.id);
-        
+
         // Query video generations
         const videos = await db.query.mediaGenerations.findMany({
-          where: eq(mediaGenerations.type, "video")
+          where: eq(mediaGenerations.type, "video"),
         });
-        
+
         expect(videos.length).toBe(1);
         expect(videos[0].id).toBe(videoGenerationData.id);
         expect(videos[0].numFrames).toBe(videoGenerationData.numFrames);
@@ -1704,27 +1754,28 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a media generation
         await db.insert(mediaGenerations).values(TEST_MEDIA_GENERATION_DATA);
-        
+
         // Update daily generation count
         const updatedCount = 5;
         const updatedReset = new Date().toISOString();
-        
+
         // Update using ORM
-        await db.update(mediaGenerations)
+        await db
+          .update(mediaGenerations)
           .set({
             dailyGenerationCount: updatedCount,
-            lastGenerationReset: updatedReset
+            lastGenerationReset: updatedReset,
           })
           .where(eq(mediaGenerations.id, TEST_MEDIA_GENERATION_DATA.id));
-        
+
         // Retrieve the updated media generation
         const updatedMedia = await db.query.mediaGenerations.findFirst({
-          where: eq(mediaGenerations.id, TEST_MEDIA_GENERATION_DATA.id)
+          where: eq(mediaGenerations.id, TEST_MEDIA_GENERATION_DATA.id),
         });
-        
+
         // Verify the update
         expect(updatedMedia).toBeDefined();
         expect(updatedMedia?.dailyGenerationCount).toBe(updatedCount);
@@ -1739,23 +1790,24 @@ describe("Database Operations", () => {
       try {
         // First insert a token
         await db.insert(tokens).values(TEST_TOKEN_DATA);
-        
+
         // Insert a media generation
         await db.insert(mediaGenerations).values(TEST_MEDIA_GENERATION_DATA);
-        
+
         // Verify it exists
         const beforeDelete = await db.query.mediaGenerations.findFirst({
-          where: eq(mediaGenerations.id, TEST_MEDIA_GENERATION_DATA.id)
+          where: eq(mediaGenerations.id, TEST_MEDIA_GENERATION_DATA.id),
         });
         expect(beforeDelete).toBeDefined();
-        
+
         // Delete using ORM
-        await db.delete(mediaGenerations)
+        await db
+          .delete(mediaGenerations)
           .where(eq(mediaGenerations.id, TEST_MEDIA_GENERATION_DATA.id));
-        
+
         // Verify it's gone
         const afterDelete = await db.query.mediaGenerations.findFirst({
-          where: eq(mediaGenerations.id, TEST_MEDIA_GENERATION_DATA.id)
+          where: eq(mediaGenerations.id, TEST_MEDIA_GENERATION_DATA.id),
         });
         expect(afterDelete).toBeUndefined();
       } catch (error) {
@@ -1769,16 +1821,20 @@ describe("Database Operations", () => {
     it("should insert a new personality", async () => {
       try {
         // Insert a personality using Drizzle ORM
-        const result = await db.insert(personalities).values(TEST_PERSONALITY_DATA);
-        
+        const result = await db
+          .insert(personalities)
+          .values(TEST_PERSONALITY_DATA);
+
         // Verify using ORM query - need to get the auto-incremented ID
         const insertedPersonality = await db.query.personalities.findFirst({
-          where: eq(personalities.name, TEST_PERSONALITY_DATA.name)
+          where: eq(personalities.name, TEST_PERSONALITY_DATA.name),
         });
-        
+
         expect(insertedPersonality).toBeDefined();
         expect(insertedPersonality?.name).toBe(TEST_PERSONALITY_DATA.name);
-        expect(insertedPersonality?.description).toBe(TEST_PERSONALITY_DATA.description);
+        expect(insertedPersonality?.description).toBe(
+          TEST_PERSONALITY_DATA.description,
+        );
         expect(insertedPersonality?.id).toBeDefined();
       } catch (error) {
         console.error("Test failed with error:", error);
@@ -1790,24 +1846,24 @@ describe("Database Operations", () => {
       try {
         // Insert a personality
         await db.insert(personalities).values(TEST_PERSONALITY_DATA);
-        
+
         // Insert a second personality
         const secondPersonalityData = {
           name: "Second Test Personality",
-          description: "Another test personality"
+          description: "Another test personality",
         };
-        
+
         await db.insert(personalities).values(secondPersonalityData);
-        
+
         // Query using ORM
         const allPersonalities = await db.query.personalities.findMany();
-        
+
         // Verify results
         expect(Array.isArray(allPersonalities)).toBe(true);
         expect(allPersonalities.length).toBe(2);
-        
+
         // The names should match what we inserted
-        const names = allPersonalities.map(p => p.name);
+        const names = allPersonalities.map((p) => p.name);
         expect(names).toContain(TEST_PERSONALITY_DATA.name);
         expect(names).toContain(secondPersonalityData.name);
       } catch (error) {
@@ -1820,27 +1876,28 @@ describe("Database Operations", () => {
       try {
         // Insert a personality
         await db.insert(personalities).values(TEST_PERSONALITY_DATA);
-        
+
         // Get the inserted personality to get its ID
         const personality = await db.query.personalities.findFirst({
-          where: eq(personalities.name, TEST_PERSONALITY_DATA.name)
+          where: eq(personalities.name, TEST_PERSONALITY_DATA.name),
         });
-        
+
         // Update description
         const updatedDescription = "Updated personality description";
-        
+
         // Update using ORM
-        await db.update(personalities)
+        await db
+          .update(personalities)
           .set({
-            description: updatedDescription
+            description: updatedDescription,
           })
           .where(eq(personalities.id, personality!.id));
-        
+
         // Retrieve the updated personality
         const updatedPersonality = await db.query.personalities.findFirst({
-          where: eq(personalities.id, personality!.id)
+          where: eq(personalities.id, personality!.id),
         });
-        
+
         // Verify the update
         expect(updatedPersonality).toBeDefined();
         expect(updatedPersonality?.description).toBe(updatedDescription);
@@ -1854,33 +1911,34 @@ describe("Database Operations", () => {
       try {
         // Insert a personality
         await db.insert(personalities).values(TEST_PERSONALITY_DATA);
-        
+
         // Get the inserted personality to get its ID
         const personality = await db.query.personalities.findFirst({
-          where: eq(personalities.name, TEST_PERSONALITY_DATA.name)
+          where: eq(personalities.name, TEST_PERSONALITY_DATA.name),
         });
-        
+
         // Soft delete the personality (setting deletedAt)
         const deletedAt = new Date().toISOString();
-        await db.update(personalities)
+        await db
+          .update(personalities)
           .set({
-            deletedAt: deletedAt
+            deletedAt: deletedAt,
           })
           .where(eq(personalities.id, personality!.id));
-        
+
         // Verify it has deletedAt set
         const softDeletedPersonality = await db.query.personalities.findFirst({
-          where: eq(personalities.id, personality!.id)
+          where: eq(personalities.id, personality!.id),
         });
-        
+
         expect(softDeletedPersonality).toBeDefined();
         expect(softDeletedPersonality?.deletedAt).toBe(deletedAt);
-        
+
         // Query excluding soft deleted personalities
         const activePersonalities = await db.query.personalities.findMany({
-          where: sql`${personalities.deletedAt} IS NULL`
+          where: sql`${personalities.deletedAt} IS NULL`,
         });
-        
+
         expect(activePersonalities.length).toBe(0);
       } catch (error) {
         console.error("Test failed with error:", error);
@@ -1893,13 +1951,15 @@ describe("Database Operations", () => {
     it("should insert a new cache price", async () => {
       try {
         // Insert a cache price using Drizzle ORM
-        const result = await db.insert(cachePrices).values(TEST_CACHE_PRICE_DATA);
-        
+        const result = await db
+          .insert(cachePrices)
+          .values(TEST_CACHE_PRICE_DATA);
+
         // Verify using ORM query
         const insertedCache = await db.query.cachePrices.findFirst({
-          where: eq(cachePrices.id, TEST_CACHE_PRICE_DATA.id)
+          where: eq(cachePrices.id, TEST_CACHE_PRICE_DATA.id),
         });
-        
+
         expect(insertedCache).toBeDefined();
         expect(insertedCache?.id).toBe(TEST_CACHE_PRICE_DATA.id);
         expect(insertedCache?.type).toBe(TEST_CACHE_PRICE_DATA.type);
@@ -1915,22 +1975,22 @@ describe("Database Operations", () => {
       try {
         // Insert a cache price
         await db.insert(cachePrices).values(TEST_CACHE_PRICE_DATA);
-        
+
         // Insert an expired cache price
         const expiredCacheData = {
           ...TEST_CACHE_PRICE_DATA,
           id: "test-cache-2",
-          expiresAt: new Date(Date.now() - 3600000).toISOString() // 1 hour ago
+          expiresAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
         };
-        
+
         await db.insert(cachePrices).values(expiredCacheData);
-        
+
         // Query using ORM for non-expired entries
         const now = new Date().toISOString();
         const validCaches = await db.query.cachePrices.findMany({
-          where: sql`${cachePrices.expiresAt} > ${now}`
+          where: sql`${cachePrices.expiresAt} > ${now}`,
         });
-        
+
         // Verify results
         expect(Array.isArray(validCaches)).toBe(true);
         expect(validCaches.length).toBe(1);
@@ -1945,26 +2005,27 @@ describe("Database Operations", () => {
       try {
         // Insert a cache price
         await db.insert(cachePrices).values(TEST_CACHE_PRICE_DATA);
-        
+
         // Update values
         const updatedPrice = "105.75";
         const updatedTimestamp = new Date().toISOString();
         const updatedExpiresAt = new Date(Date.now() + 7200000).toISOString(); // 2 hours from now
-        
+
         // Update using ORM
-        await db.update(cachePrices)
+        await db
+          .update(cachePrices)
           .set({
             price: updatedPrice,
             timestamp: updatedTimestamp,
-            expiresAt: updatedExpiresAt
+            expiresAt: updatedExpiresAt,
           })
           .where(eq(cachePrices.id, TEST_CACHE_PRICE_DATA.id));
-        
+
         // Retrieve the updated cache
         const updatedCache = await db.query.cachePrices.findFirst({
-          where: eq(cachePrices.id, TEST_CACHE_PRICE_DATA.id)
+          where: eq(cachePrices.id, TEST_CACHE_PRICE_DATA.id),
         });
-        
+
         // Verify the update
         expect(updatedCache).toBeDefined();
         expect(updatedCache?.price).toBe(updatedPrice);
@@ -1981,25 +2042,26 @@ describe("Database Operations", () => {
         // Insert an expired cache price
         const expiredCacheData = {
           ...TEST_CACHE_PRICE_DATA,
-          expiresAt: new Date(Date.now() - 3600000).toISOString() // 1 hour ago
+          expiresAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
         };
-        
+
         await db.insert(cachePrices).values(expiredCacheData);
-        
+
         // Verify it exists
         const beforeDelete = await db.query.cachePrices.findFirst({
-          where: eq(cachePrices.id, expiredCacheData.id)
+          where: eq(cachePrices.id, expiredCacheData.id),
         });
         expect(beforeDelete).toBeDefined();
-        
+
         // Delete expired cache entries
         const now = new Date().toISOString();
-        await db.delete(cachePrices)
+        await db
+          .delete(cachePrices)
           .where(sql`${cachePrices.expiresAt} < ${now}`);
-        
+
         // Verify it's gone
         const afterDelete = await db.query.cachePrices.findFirst({
-          where: eq(cachePrices.id, expiredCacheData.id)
+          where: eq(cachePrices.id, expiredCacheData.id),
         });
         expect(afterDelete).toBeUndefined();
       } catch (error) {

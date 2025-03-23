@@ -130,7 +130,7 @@ describe("Media Generation API Endpoints", () => {
           telegram: "test_telegram",
           website: "https://test.com",
         },
-        { "X-API-Key": "test-api-key" }
+        { "X-API-Key": "test-api-key" },
       );
 
       if (
@@ -222,12 +222,9 @@ describe("Media Generation API Endpoints", () => {
     const { response, data } = await fetchWithAuth<{
       success: boolean;
       mediaUrl: string;
-    }>(
-      apiUrl(baseUrl, `/${tokenMint}/generate`),
-      "POST",
-      generationRequest,
-      { Authorization: `Bearer ${authToken}` }
-    );
+    }>(apiUrl(baseUrl, `/${tokenMint}/generate`), "POST", generationRequest, {
+      Authorization: `Bearer ${authToken}`,
+    });
 
     if (response.status === 200) {
       expect(data).toHaveProperty("success");
@@ -337,7 +334,7 @@ describe("Media Generation API Endpoints", () => {
       apiUrl(baseUrl, `/${tokenMint}/generate`),
       "POST",
       invalidRequest,
-      headers
+      headers,
     );
 
     // Should return a validation error
@@ -370,7 +367,7 @@ describe("Media Generation API Endpoints", () => {
       apiUrl(baseUrl, `/${tokenMint}/generate`),
       "POST",
       invalidRequest,
-      headers
+      headers,
     );
 
     // Should return a validation error
@@ -416,12 +413,7 @@ describe("Media Generation API Endpoints", () => {
       generations: any[];
       total: number;
       remaining: any;
-    }>(
-      apiUrl(baseUrl, `/${tokenMint}/history`),
-      "GET",
-      undefined,
-      headers
-    );
+    }>(apiUrl(baseUrl, `/${tokenMint}/history`), "GET", undefined, headers);
 
     if (response.status === 200) {
       expect(data).toHaveProperty("generations");
@@ -479,7 +471,7 @@ describe("Media Generation API Endpoints", () => {
       apiUrl(baseUrl, `/${tokenMint}/history?type=${MediaType.IMAGE}`),
       "GET",
       undefined,
-      headers
+      headers,
     );
 
     if (response.status === 200) {
@@ -567,7 +559,7 @@ describe("Media Generation API Endpoints", () => {
       apiUrl(baseUrl, `/${tokenMint}/generate`),
       "POST",
       videoRequest,
-      headers
+      headers,
     );
 
     if (response.status === 200) {
@@ -629,7 +621,7 @@ describe("Media Generation API Endpoints", () => {
       apiUrl(baseUrl, `/${tokenMint}/generate`),
       "POST",
       audioRequest,
-      headers
+      headers,
     );
 
     if (response.status === 200) {
@@ -686,7 +678,7 @@ describe("Media Generation API Endpoints", () => {
         prompt: "Test prompt for invalid mint",
         type: MediaType.IMAGE,
       },
-      headers
+      headers,
     );
 
     // Should return a validation error for invalid mint address (status could be 400 or 404)
@@ -720,7 +712,7 @@ describe("Media Generation API Endpoints", () => {
         prompt: "Test image of a red circle",
         type: MediaType.IMAGE,
       },
-      headers
+      headers,
     );
 
     // Should return a not found error

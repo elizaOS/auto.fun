@@ -1,6 +1,11 @@
 import { eq, inArray, sql, and, desc } from "drizzle-orm";
 import { Hono } from "hono";
-import { getDB, messageLikes, messages, messages as messagesTable } from "../db";
+import {
+  getDB,
+  messageLikes,
+  messages,
+  messages as messagesTable,
+} from "../db";
 import { Env } from "../env";
 import { logger } from "../logger";
 // Create a router for admin routes
@@ -27,7 +32,7 @@ messagesRouter.get("/messages/:mint", async (c) => {
 
     // Create a timeout promise
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Messages query timed out")), 5000)
+      setTimeout(() => reject(new Error("Messages query timed out")), 5000),
     );
 
     const db = getDB(c.env);
@@ -40,7 +45,10 @@ messagesRouter.get("/messages/:mint", async (c) => {
           .select()
           .from(messagesTable)
           .where(
-            and(eq(messagesTable.tokenMint, mint), sql`${messagesTable.parentId} IS NULL`)
+            and(
+              eq(messagesTable.tokenMint, mint),
+              sql`${messagesTable.parentId} IS NULL`,
+            ),
           );
 
         const totalMessages = totalMessagesQuery.length || 0;
@@ -50,7 +58,10 @@ messagesRouter.get("/messages/:mint", async (c) => {
           .select()
           .from(messagesTable)
           .where(
-            and(eq(messagesTable.tokenMint, mint), sql`${messagesTable.parentId} IS NULL`)
+            and(
+              eq(messagesTable.tokenMint, mint),
+              sql`${messagesTable.parentId} IS NULL`,
+            ),
           )
           .orderBy(desc(messagesTable.timestamp))
           .limit(limit)
@@ -81,7 +92,7 @@ messagesRouter.get("/messages/:mint", async (c) => {
         messagesWithLikes = await addHasLikedToMessages(
           db,
           result.messages,
-          userPublicKey
+          userPublicKey,
         );
       } catch (error) {
         logger.error("Error adding likes info to messages:", error);
@@ -109,7 +120,7 @@ messagesRouter.get("/messages/:mint", async (c) => {
         total: 0,
         error: "Failed to fetch messages",
       },
-      500
+      500,
     );
   }
 });
@@ -135,7 +146,7 @@ messagesRouter.get("/messages/:messageId/replies", async (c) => {
       repliesWithLikes = await addHasLikedToMessages(
         db,
         repliesResult,
-        userPublicKey
+        userPublicKey,
       );
     }
 
@@ -144,7 +155,7 @@ messagesRouter.get("/messages/:messageId/replies", async (c) => {
     logger.error("Error fetching replies:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -183,7 +194,7 @@ messagesRouter.get("/messages/:messageId/thread", async (c) => {
         parentWithLikes = await addHasLikedToMessages(
           db,
           parentResult,
-          userPublicKey
+          userPublicKey,
         );
       }
 
@@ -191,7 +202,7 @@ messagesRouter.get("/messages/:messageId/thread", async (c) => {
         repliesWithLikes = await addHasLikedToMessages(
           db,
           repliesResult,
-          userPublicKey
+          userPublicKey,
         );
       }
     }
@@ -204,7 +215,7 @@ messagesRouter.get("/messages/:messageId/thread", async (c) => {
     logger.error("Error fetching message thread:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -234,7 +245,7 @@ messagesRouter.post("/messages/:mint", async (c) => {
     ) {
       return c.json(
         { error: "Message must be between 1 and 500 characters" },
-        400
+        400,
       );
     }
 
@@ -270,7 +281,7 @@ messagesRouter.post("/messages/:mint", async (c) => {
     logger.error("Error creating message:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -307,8 +318,8 @@ messagesRouter.post("/messages/:messageId/likes", async (c) => {
       .where(
         and(
           eq(messageLikes.messageId, messageId),
-          eq(messageLikes.userAddress, userAddress)
-        )
+          eq(messageLikes.userAddress, userAddress),
+        ),
       )
       .limit(1);
 
@@ -344,7 +355,7 @@ messagesRouter.post("/messages/:messageId/likes", async (c) => {
     logger.error("Error liking message:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -353,7 +364,7 @@ messagesRouter.post("/messages/:messageId/likes", async (c) => {
 async function addHasLikedToMessages(
   db: ReturnType<typeof getDB>,
   messagesList: Array<any>,
-  userAddress: string
+  userAddress: string,
 ): Promise<Array<any>> {
   if (
     !Array.isArray(messagesList) ||
@@ -373,13 +384,13 @@ async function addHasLikedToMessages(
     .where(
       and(
         inArray(messageLikes.messageId, messageIds),
-        eq(messageLikes.userAddress, userAddress)
-      )
+        eq(messageLikes.userAddress, userAddress),
+      ),
     );
 
   // Create a Set of liked message IDs for quick lookup
   const likedMessageIds = new Set(
-    userLikes.map((like: { messageId: string }) => like.messageId)
+    userLikes.map((like: { messageId: string }) => like.messageId),
   );
 
   // Add hasLiked field to each message

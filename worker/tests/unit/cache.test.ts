@@ -11,7 +11,7 @@ describe("CacheService", () => {
   beforeEach(() => {
     // Reset the mock cache
     mockCache = {};
-    
+
     // Create a minimal test environment
     env = {
       NODE_ENV: "test",
@@ -29,10 +29,10 @@ describe("CacheService", () => {
       DB: {} as any,
       WEBSOCKET_DO: {} as any,
     };
-    
+
     // Create a fresh CacheService instance
     cacheService = new CacheService(env);
-    
+
     // Mock the database methods
     const mockDbMethods = {
       select: () => ({
@@ -41,17 +41,17 @@ describe("CacheService", () => {
             orderBy: () => ({
               limit: () => {
                 // For getSolPrice or getTokenPrice or getMetadata
-                const key = mockCache['__current_key'] || '';
-                delete mockCache['__current_key'];
-                
+                const key = mockCache["__current_key"] || "";
+                delete mockCache["__current_key"];
+
                 if (mockCache[key]) {
                   return [{ price: mockCache[key] }];
                 }
                 return [];
-              }
-            })
-          })
-        })
+              },
+            }),
+          }),
+        }),
       }),
       insert: () => ({
         values: (data: any) => {
@@ -60,15 +60,15 @@ describe("CacheService", () => {
             mockCache[data.symbol] = data.price;
           }
           return {
-            onConflictDoUpdate: () => ({})
+            onConflictDoUpdate: () => ({}),
           };
-        }
+        },
       }),
       delete: () => ({
-        where: () => ({})
-      })
+        where: () => ({}),
+      }),
     };
-    
+
     // Replace the database implementation
     (cacheService as any).db = mockDbMethods;
   });
@@ -77,7 +77,7 @@ describe("CacheService", () => {
     it("should return SOL price from cache when available", async () => {
       // Set up test data in the mock cache
       mockCache["SOL"] = "25.5";
-      mockCache['__current_key'] = "SOL";
+      mockCache["__current_key"] = "SOL";
 
       // Call the method
       const result = await cacheService.getSolPrice();
@@ -87,19 +87,19 @@ describe("CacheService", () => {
     });
 
     it("should return null when no price is found in cache", async () => {
-      mockCache['__current_key'] = "SOL";
+      mockCache["__current_key"] = "SOL";
       // Don't set any price in the cache
-      
+
       const result = await cacheService.getSolPrice();
-      
+
       expect(result).toBeNull();
     });
 
     it("should handle database errors gracefully", async () => {
       // First set a valid price
       mockCache["SOL"] = "25.5";
-      mockCache['__current_key'] = "SOL";
-      
+      mockCache["__current_key"] = "SOL";
+
       // Force an error
       const originalSelect = (cacheService as any).db.select;
       (cacheService as any).db.select = () => {
@@ -112,7 +112,7 @@ describe("CacheService", () => {
 
       // Restore the original function
       (cacheService as any).db.select = originalSelect;
-      mockCache['__current_key'] = "SOL";
+      mockCache["__current_key"] = "SOL";
 
       // Verify it works again
       const validResult = await cacheService.getSolPrice();
@@ -126,12 +126,12 @@ describe("CacheService", () => {
 
       // Call the method
       await cacheService.setSolPrice(price);
-      
+
       // Verify the price was stored
       expect(mockCache["SOL"]).toBe(price.toString());
-      
+
       // Verify we can retrieve it
-      mockCache['__current_key'] = "SOL";
+      mockCache["__current_key"] = "SOL";
       const result = await cacheService.getSolPrice();
       expect(result).toBe(price);
     });
@@ -142,23 +142,23 @@ describe("CacheService", () => {
 
       // Call the method
       await cacheService.setSolPrice(price, customTTL);
-      
+
       // Verify the price was stored
       expect(mockCache["SOL"]).toBe(price.toString());
-      
+
       // Verify we can retrieve it
-      mockCache['__current_key'] = "SOL";
+      mockCache["__current_key"] = "SOL";
       const result = await cacheService.getSolPrice();
       expect(result).toBe(price);
 
       // Wait for the TTL to expire
       await new Promise((resolve) => setTimeout(resolve, 1100));
-      
+
       // Simulate TTL expiration by clearing the cache
       delete mockCache["SOL"];
-      
+
       // Price should now be null as TTL has expired
-      mockCache['__current_key'] = "SOL";
+      mockCache["__current_key"] = "SOL";
       const expiredResult = await cacheService.getSolPrice();
       expect(expiredResult).toBeNull();
     });
@@ -168,7 +168,7 @@ describe("CacheService", () => {
     it("should return token price from cache when available", async () => {
       const tokenMint = "ABC123XYZ";
       mockCache[tokenMint] = "0.5";
-      mockCache['__current_key'] = tokenMint;
+      mockCache["__current_key"] = tokenMint;
 
       const result = await cacheService.getTokenPrice(tokenMint);
 
@@ -177,8 +177,8 @@ describe("CacheService", () => {
 
     it("should return null when token price is not in cache", async () => {
       const tokenMint = "NonExistentToken";
-      mockCache['__current_key'] = tokenMint;
-      
+      mockCache["__current_key"] = tokenMint;
+
       const result = await cacheService.getTokenPrice(tokenMint);
 
       expect(result).toBeNull();
@@ -191,10 +191,10 @@ describe("CacheService", () => {
       const price = 0.75;
 
       await cacheService.setTokenPrice(tokenMint, price);
-      
+
       expect(mockCache[tokenMint]).toBe(price.toString());
-      
-      mockCache['__current_key'] = tokenMint;
+
+      mockCache["__current_key"] = tokenMint;
       const result = await cacheService.getTokenPrice(tokenMint);
       expect(result).toBe(price);
     });
@@ -204,9 +204,9 @@ describe("CacheService", () => {
     it("should retrieve metadata from cache", async () => {
       const metadataObj = { name: "Test Object", values: [1, 2, 3] };
       const key = "test-key";
-      
+
       mockCache[key] = JSON.stringify(metadataObj);
-      mockCache['__current_key'] = key;
+      mockCache["__current_key"] = key;
 
       const result = await cacheService.getMetadata(key);
 
@@ -216,10 +216,10 @@ describe("CacheService", () => {
     it("should handle JSON parsing errors", async () => {
       const key = "test-key";
       mockCache[key] = "{invalid:json}";
-      mockCache['__current_key'] = key;
+      mockCache["__current_key"] = key;
 
       const result = await cacheService.getMetadata(key);
-      
+
       expect(result).toBeNull();
     });
   });
@@ -230,10 +230,10 @@ describe("CacheService", () => {
       const metadata = { name: "Test", values: [1, 2, 3] };
 
       await cacheService.setMetadata(key, metadata);
-      
+
       expect(mockCache[key]).toBe(JSON.stringify(metadata));
-      
-      mockCache['__current_key'] = key;
+
+      mockCache["__current_key"] = key;
       const result = await cacheService.getMetadata(key);
       expect(result).toEqual(metadata);
     });
@@ -242,27 +242,26 @@ describe("CacheService", () => {
   describe("cleanupOldCacheEntries", () => {
     it("should remove expired cache entries", async () => {
       const price = 25.0;
-      
+
       // Store a price with a short TTL
       await cacheService.setSolPrice(price, 1);
-      
+
       // Verify it's stored
       expect(mockCache["SOL"]).toBe(price.toString());
-      
+
       // Verify we can get it
-      mockCache['__current_key'] = "SOL";
+      mockCache["__current_key"] = "SOL";
       const result = await cacheService.getSolPrice();
       expect(result).toBe(price);
 
       // Wait for TTL to expire and simulate cleanup
       await new Promise((resolve) => setTimeout(resolve, 1100));
       delete mockCache["SOL"];
-      
+
       // Price should be gone now
-      mockCache['__current_key'] = "SOL";
+      mockCache["__current_key"] = "SOL";
       const expiredResult = await cacheService.getSolPrice();
       expect(expiredResult).toBeNull();
     });
   });
 });
-

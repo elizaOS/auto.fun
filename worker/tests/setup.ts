@@ -8,17 +8,19 @@ import {
 
 export async function setupWorkerTest(): Promise<TestContext> {
   console.log("Setting up worker test with real API calls");
-  
+
   // Create test key pairs first, so we can include the token pubkey in environment
   const { adminKp, userKp, testTokenKp } = createTestKeys();
   const testTokenPubkey = testTokenKp.publicKey.toBase58();
 
   // Check for required environment variables
   const requiredEnvVars = ["API_KEY", "JWT_SECRET"];
-  
+
   for (const name of requiredEnvVars) {
     if (!process.env[name]) {
-      throw new Error(`ERROR: ${name} environment variable is required. Please set it before running tests.`);
+      throw new Error(
+        `ERROR: ${name} environment variable is required. Please set it before running tests.`,
+      );
     }
   }
 
@@ -34,15 +36,18 @@ export async function setupWorkerTest(): Promise<TestContext> {
       PORT: process.env.PORT || "8787",
       API_URL: process.env.API_URL || "http://localhost:8787",
       NODE_ENV: "test",
-      DEVNET_SOLANA_RPC_URL: process.env.DEVNET_SOLANA_RPC_URL || "https://api.devnet.solana.com",
-      PROGRAM_ID: process.env.PROGRAM_ID || "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      DEVNET_SOLANA_RPC_URL:
+        process.env.DEVNET_SOLANA_RPC_URL || "https://api.devnet.solana.com",
+      PROGRAM_ID:
+        process.env.PROGRAM_ID || "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
       MIN_BUFFER: process.env.MIN_BUFFER || "100000000",
       TARGET_BUFFER: process.env.TARGET_BUFFER || "500000000",
       NUM_WORKERS: process.env.NUM_WORKERS || "2",
       INIT_BONDING_CURVE: process.env.INIT_BONDING_CURVE || "true",
       FEE_PERCENTAGE: process.env.FEE_PERCENTAGE || "1",
       SWAP_FEE: process.env.SWAP_FEE || "1.5",
-      TEST_CREATOR_ADDRESS: process.env.TEST_CREATOR_ADDRESS || adminKp.publicKey.toBase58(),
+      TEST_CREATOR_ADDRESS:
+        process.env.TEST_CREATOR_ADDRESS || adminKp.publicKey.toBase58(),
       // Use real API keys from environment
       ADMIN_API_KEY: process.env.ADMIN_API_KEY || process.env.API_KEY,
       API_KEY: process.env.API_KEY,

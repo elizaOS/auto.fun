@@ -34,7 +34,7 @@ authRouter.post("/register", async (c) => {
             createdAt: new Date().toISOString(),
           },
         },
-        200
+        200,
       );
     }
 
@@ -80,7 +80,7 @@ authRouter.post("/register", async (c) => {
     logger.error("Error registering user:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -124,7 +124,7 @@ authRouter.get("/avatar/:address", async (c) => {
     logger.error("Error fetching user avatar:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -190,7 +190,7 @@ authRouter.post("/vanity-keypair", async (c) => {
     logger.error("Error getting vanity keypair:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });

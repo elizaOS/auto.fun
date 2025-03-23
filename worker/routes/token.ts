@@ -37,8 +37,8 @@ tokenRouter.get("/tokens", async (c) => {
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(
         () => reject(new Error("Database query timed out")),
-        timeoutDuration
-      )
+        timeoutDuration,
+      ),
     );
 
     const db = getDB(c.env);
@@ -66,7 +66,7 @@ tokenRouter.get("/tokens", async (c) => {
           tokensQuery = tokensQuery.where(
             sql`(${tokens.name} LIKE ${"%" + search + "%"} OR 
                  ${tokens.ticker} LIKE ${"%" + search + "%"} OR 
-                 ${tokens.mint} LIKE ${"%" + search + "%"})`
+                 ${tokens.mint} LIKE ${"%" + search + "%"})`,
           );
         }
 
@@ -102,21 +102,21 @@ tokenRouter.get("/tokens", async (c) => {
     try {
       // Create a count query with the same conditions but with a shorter timeout
       const countPromise = async () => {
-        let countQuery = db.select({ count: sql`count(*)` }).from(tokens)
+        const countQuery = db.select({ count: sql`count(*)` }).from(tokens);
         let finalQuery: any;
         if (status) {
-            finalQuery = countQuery.where(eq(tokens.status, status));
+          finalQuery = countQuery.where(eq(tokens.status, status));
         } else {
-            finalQuery = countQuery.where(sql`${tokens.status} != 'pending'`);
+          finalQuery = countQuery.where(sql`${tokens.status} != 'pending'`);
         }
         if (creator) {
-            finalQuery = countQuery.where(eq(tokens.creator, creator));
+          finalQuery = countQuery.where(eq(tokens.creator, creator));
         }
         if (search) {
-            finalQuery = countQuery.where(
+          finalQuery = countQuery.where(
             sql`(${tokens.name} LIKE ${"%" + search + "%"} OR 
                  ${tokens.ticker} LIKE ${"%" + search + "%"} OR 
-                 ${tokens.mint} LIKE ${"%" + search + "%"})`
+                 ${tokens.mint} LIKE ${"%" + search + "%"})`,
           );
         }
 
@@ -130,8 +130,8 @@ tokenRouter.get("/tokens", async (c) => {
           new Promise<number>((_, reject) =>
             setTimeout(
               () => reject(new Error("Count query timed out")),
-              timeoutDuration / 2
-            )
+              timeoutDuration / 2,
+            ),
           ),
         ]);
       } catch (error) {
@@ -147,7 +147,7 @@ tokenRouter.get("/tokens", async (c) => {
     const solPrice = await getSOLPrice(c.env);
     const tokensWithMarketData = await bulkUpdatePartialTokens(
       Array.isArray(tokensResult) ? tokensResult : [],
-      c.env
+      c.env,
     );
 
     const totalPages = Math.ceil(total / limit);
@@ -188,7 +188,7 @@ tokenRouter.get("/tokens/:mint", async (c) => {
       .select()
       .from(tokens)
       .where(eq(tokens.mint, mint))
-      .limit(1)
+      .limit(1);
 
     if (!tokenData || tokenData.length === 0) {
       return c.json({ error: "Token not found" }, 404);
@@ -201,7 +201,7 @@ tokenRouter.get("/tokens/:mint", async (c) => {
     logger.error("Error fetching token:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -257,7 +257,7 @@ tokenRouter.get("/tokens/:mint/holders", async (c) => {
         total: 0,
         error: "Database error",
       },
-      500
+      500,
     );
   }
 });
@@ -311,7 +311,7 @@ tokenRouter.get("/tokens/:mint/harvest-tx", async (c) => {
     logger.error("Error creating harvest transaction:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -345,7 +345,7 @@ tokenRouter.post("/new_token", async (c) => {
         } else {
           return c.json(
             { error: "Missing creator field and no authenticated user" },
-            400
+            400,
           );
         }
       }
@@ -357,7 +357,7 @@ tokenRouter.post("/new_token", async (c) => {
 
     const db = getDB(c.env);
 
-    console.log("******* body", body)
+    console.log("******* body", body);
 
     try {
       // Insert token with properties from the schema
@@ -391,14 +391,14 @@ tokenRouter.post("/new_token", async (c) => {
           error: "Database error when creating token",
           details: dbError.message,
         },
-        500
+        500,
       );
     }
   } catch (error) {
     logger.error("Error creating new token:", error);
     return c.json(
       { error: "Failed to create token", details: error.message },
-      500
+      500,
     );
   }
 });
@@ -460,7 +460,7 @@ tokenRouter.get("/swaps/:mint", async (c) => {
         total: 0,
         error: "Failed to fetch swap history",
       },
-      500
+      500,
     );
   }
 });
@@ -503,7 +503,7 @@ tokenRouter.get("/token/:mint/price", async (c) => {
     logger.error(`Error getting token price: ${error}`);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -612,7 +612,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     logger.error(`Error getting token: ${error}`);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -623,7 +623,7 @@ export default tokenRouter;
 tokenRouter.post("/register", async (c) => {
   try {
     const body = await c.req.json();
-    
+
     if (!body.address) {
       return c.json({ error: "Missing required field: address" }, 400);
     }
@@ -648,7 +648,9 @@ tokenRouter.post("/register", async (c) => {
       id: userId,
       name: body.name || null,
       address: body.address,
-      avatar: body.avatar || "https://ipfs.io/ipfs/bafkreig4ob6pq5qy4v6j62krj4zkh2kc2pnv5egqy7f65djqhgqv3x56pq",
+      avatar:
+        body.avatar ||
+        "https://ipfs.io/ipfs/bafkreig4ob6pq5qy4v6j62krj4zkh2kc2pnv5egqy7f65djqhgqv3x56pq",
       createdAt: now,
     });
 
@@ -656,7 +658,9 @@ tokenRouter.post("/register", async (c) => {
       id: userId,
       address: body.address,
       name: body.name || null,
-      avatar: body.avatar || "https://ipfs.io/ipfs/bafkreig4ob6pq5qy4v6j62krj4zkh2kc2pnv5egqy7f65djqhgqv3x56pq",
+      avatar:
+        body.avatar ||
+        "https://ipfs.io/ipfs/bafkreig4ob6pq5qy4v6j62krj4zkh2kc2pnv5egqy7f65djqhgqv3x56pq",
       createdAt: now,
     };
 
@@ -665,7 +669,7 @@ tokenRouter.post("/register", async (c) => {
     logger.error("Error in user registration:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -687,8 +691,9 @@ tokenRouter.get("/avatar/:address", async (c) => {
       .limit(1);
 
     if (!user || user.length === 0) {
-      return c.json({ 
-        avatar: "https://ipfs.io/ipfs/bafkreig4ob6pq5qy4v6j62krj4zkh2kc2pnv5egqy7f65djqhgqv3x56pq" 
+      return c.json({
+        avatar:
+          "https://ipfs.io/ipfs/bafkreig4ob6pq5qy4v6j62krj4zkh2kc2pnv5egqy7f65djqhgqv3x56pq",
       });
     }
 
@@ -697,10 +702,7 @@ tokenRouter.get("/avatar/:address", async (c) => {
     logger.error("Error fetching avatar:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
-
-
-

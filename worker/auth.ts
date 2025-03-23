@@ -64,14 +64,8 @@ export const authenticate = async (c: AppContext) => {
       return c.json({ message: "Invalid request format: malformed JSON" }, 400);
     }
 
-    const {
-      publicKey,
-      signature,
-      nonce,
-      invalidSignature,
-      header,
-      payload,
-    } = body || {};
+    const { publicKey, signature, nonce, invalidSignature, header, payload } =
+      body || {};
 
     logger.log("Authentication request:", {
       hasPublicKey: !!publicKey,

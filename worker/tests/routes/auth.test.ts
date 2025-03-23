@@ -21,7 +21,7 @@ describe("Authentication API Endpoints", () => {
   beforeAll(async () => {
     // Get API key from environment or set a default for tests
     apiKey = process.env.API_KEY || "";
-    
+
     // Create a test user keypair for authentication
     userKeypair = Keypair.generate();
     console.log("Test user pubkey:", userKeypair.publicKey.toBase58());
@@ -55,7 +55,7 @@ describe("Authentication API Endpoints", () => {
 
     const { baseUrl } = ctx.context;
     const publicKey = userKeypair.publicKey.toBase58();
-  
+
     // Format the message properly for signing - this is critical
     const messageText = `Sign this message for authenticating with nonce: ${nonce}`;
     const message = new TextEncoder().encode(messageText);
@@ -63,7 +63,7 @@ describe("Authentication API Endpoints", () => {
     const signature = bs58.encode(signatureBytes);
 
     console.log("Attempting authentication with signature");
-    
+
     // Include both signature and message in the request
     const { response, data } = await fetchWithAuth<{
       token: string;
@@ -80,7 +80,7 @@ describe("Authentication API Endpoints", () => {
     expect(data).toHaveProperty("user");
     expect(data.user).toHaveProperty("address");
     expect(data.user.address).toBe(publicKey);
-    
+
     // Store token for later tests
     authToken = data.token;
     console.log("Authentication completed, token available:", !!authToken);
@@ -99,11 +99,11 @@ describe("Authentication API Endpoints", () => {
     const { response } = await fetchWithAuth<{ error: string }>(
       apiUrl(baseUrl, "/authenticate"),
       "POST",
-      { 
-        publicKey, 
-        signature: invalidSignature, 
+      {
+        publicKey,
+        signature: invalidSignature,
         nonce,
-        message: `Sign this message for authenticating with nonce: ${nonce}`
+        message: `Sign this message for authenticating with nonce: ${nonce}`,
       },
     );
 
@@ -128,16 +128,21 @@ describe("Authentication API Endpoints", () => {
 
   it("should handle auth status and logout endpoints", async () => {
     if (!ctx.context) throw new Error("Test context not initialized");
-    
+
     // Skip test if we don't have a token yet
     if (!authToken) {
-      throw new Error("No auth token available - previous authentication test failed");
+      throw new Error(
+        "No auth token available - previous authentication test failed",
+      );
     }
 
     const { baseUrl } = ctx.context;
-    
-    console.log("Using token for auth status check:", authToken.substring(0, 10) + "...");
-    
+
+    console.log(
+      "Using token for auth status check:",
+      authToken.substring(0, 10) + "...",
+    );
+
     // Check auth status with the token
     const { response, data } = await fetchWithAuth<{ authenticated: boolean }>(
       apiUrl(baseUrl, "/auth-status"),
@@ -149,10 +154,12 @@ describe("Authentication API Endpoints", () => {
     console.log("Auth status response:", response.status, data);
     expect(response.status).toBe(200);
     expect(data).toHaveProperty("authenticated");
-    
+
     // If using test-token, our test auth server doesn't validate it properly
     if (authToken === "test-token") {
-      console.log("Using test-token which may be treated as unauthenticated in our test environment");
+      console.log(
+        "Using test-token which may be treated as unauthenticated in our test environment",
+      );
       // Skip this check for test tokens
     } else {
       expect(data.authenticated).toBe(true);
@@ -177,8 +184,12 @@ describe("Authentication API Endpoints", () => {
       { Authorization: `Bearer ${authToken}` },
     );
 
-    console.log("Post-logout auth status:", postLogoutStatus.response.status, postLogoutStatus.data);
-    
+    console.log(
+      "Post-logout auth status:",
+      postLogoutStatus.response.status,
+      postLogoutStatus.data,
+    );
+
     // After logout, the token should no longer be valid, so authenticated should be false
     expect(postLogoutStatus.data.authenticated).toBe(false);
   });
@@ -186,10 +197,12 @@ describe("Authentication API Endpoints", () => {
   // Additional tests for API key authentication
   it("should handle API key authentication", async () => {
     if (!ctx.context) throw new Error("Test context not initialized");
-    
+
     // Skip test if API_KEY is not available
     if (!apiKey) {
-      throw new Error("API_KEY environment variable is required - cannot test API key authentication");
+      throw new Error(
+        "API_KEY environment variable is required - cannot test API key authentication",
+      );
     }
 
     const { baseUrl } = ctx.context;
@@ -199,7 +212,7 @@ describe("Authentication API Endpoints", () => {
       apiUrl(baseUrl, "/tokens"),
       "GET",
       undefined,
-      { "X-API-Key": apiKey }
+      { "X-API-Key": apiKey },
     );
 
     // Should be authorized with valid API key

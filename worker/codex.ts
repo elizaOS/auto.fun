@@ -81,14 +81,18 @@ export async function fetchCodexTokenEvents(
       );
 
       // Add error handling for missing data
-      if (!response.data || !response.data.data || !response.data.data.getTokenEvents) {
+      if (
+        !response.data ||
+        !response.data.data ||
+        !response.data.data.getTokenEvents
+      ) {
         logger.error("Invalid response from Codex API:", response.data);
-        
+
         // If we have error information in the response, log it
         if (response.data && response.data.errors) {
           logger.error("Codex API errors:", response.data.errors);
         }
-        
+
         // Return what we have so far or empty array
         return allItems.length ? allItems : [];
       }
@@ -159,14 +163,23 @@ export async function fetchCodexTokenPrice(
     );
 
     // Add error handling for missing data
-    if (!response.data || !response.data.data || !response.data.data.getTokens || !response.data.data.getTokens.items || response.data.data.getTokens.items.length === 0) {
-      logger.error(`Token ${tokenAddress} not found or invalid response from Codex API:`, response.data);
-      
+    if (
+      !response.data ||
+      !response.data.data ||
+      !response.data.data.getTokens ||
+      !response.data.data.getTokens.items ||
+      response.data.data.getTokens.items.length === 0
+    ) {
+      logger.error(
+        `Token ${tokenAddress} not found or invalid response from Codex API:`,
+        response.data,
+      );
+
       // If we have error information in the response, log it
       if (response.data && response.data.errors) {
         logger.error("Codex API errors:", response.data.errors);
       }
-      
+
       // Return default values
       return {
         currentPrice: 0,
@@ -393,12 +406,12 @@ async function fetchCodexBarsChunk(
     // Add error handling for missing data
     if (!response.data || !response.data.data || !response.data.data.getBars) {
       logger.error("Invalid response from Codex API:", response.data);
-      
+
       // If we have error information in the response, log it
       if (response.data && response.data.errors) {
         logger.error("Codex API errors:", response.data.errors);
       }
-      
+
       return [];
     }
 

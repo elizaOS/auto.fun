@@ -2,7 +2,6 @@ import { sql } from "drizzle-orm";
 import { drizzle, DrizzleD1Database } from "drizzle-orm/d1";
 import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { Env } from "./env";
-import { logger } from "./logger";
 
 // Token schema
 export const tokens = sqliteTable("tokens", {
@@ -192,7 +191,7 @@ export const agents = sqliteTable("agents", {
   description: text("description"),
   systemPrompt: text("system_prompt").notNull(),
   modelProvider: text("model_provider").default("llama_cloud"),
-  
+
   // Arrays (stored as JSON strings)
   bio: text("bio"), // JSON array
   lore: text("lore"), // JSON array
@@ -203,11 +202,11 @@ export const agents = sqliteTable("agents", {
   styleAll: text("style_all"), // JSON array
   styleChat: text("style_chat"), // JSON array
   stylePost: text("style_post"), // JSON array
-  
+
   // JSON fields
   messageExamples: text("message_examples"), // JSON
   twitterCookie: text("twitter_cookie"), // JSON
-  
+
   // Twitter fields
   twitterUsername: text("twitter_username").notNull(),
   twitterPassword: text("twitter_password").notNull(),
@@ -215,10 +214,10 @@ export const agents = sqliteTable("agents", {
   postFreqMin: integer("post_freq_min").default(90),
   postFreqMax: integer("post_freq_max").default(180),
   pollIntervalSec: integer("poll_interval_sec").default(120),
-  
+
   // Task management
   ecsTaskId: text("ecs_task_id"),
-  
+
   // Timestamps
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
@@ -228,8 +227,23 @@ export const agents = sqliteTable("agents", {
 export function getDB(env: Env) {
   try {
     // For non-test environments, use D1 database
-    const drizzleSchema = { tokens, swaps, fees, tokenHolders, messages, messageLikes, users, personalities, vanityKeypairs, mediaGenerations, cachePrices, agents }
-    return drizzle(env.DB as any, { schema: drizzleSchema }) as DrizzleD1Database<typeof drizzleSchema>;
+    const drizzleSchema = {
+      tokens,
+      swaps,
+      fees,
+      tokenHolders,
+      messages,
+      messageLikes,
+      users,
+      personalities,
+      vanityKeypairs,
+      mediaGenerations,
+      cachePrices,
+      agents,
+    };
+    return drizzle(env.DB as any, {
+      schema: drizzleSchema,
+    }) as DrizzleD1Database<typeof drizzleSchema>;
   } catch (error) {
     console.error("Error initializing DB:", error);
     throw error;
@@ -266,24 +280,6 @@ export type VanityKeypairInsert = typeof schema.vanityKeypairs.$inferInsert;
 
 export type Agent = typeof schema.agents.$inferSelect;
 export type AgentInsert = typeof schema.agents.$inferInsert;
-
-// Import better-sqlite3 only in Node.js environment
-let Database: any;
-let fs: any;
-let betterSqliteInstance: any;
-
-try {
-  // These imports will only work in Node.js environment, not in a worker
-  if (typeof process !== "undefined") {
-    Database = require("better-sqlite3");
-    fs = require("fs");
-  }
-} catch (error) {
-  logger.warn(
-    "better-sqlite3 import failed, this is expected in Cloudflare Workers",
-    error,
-  );
-}
 
 // Schema for all tables
 const schema = {

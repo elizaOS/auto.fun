@@ -57,7 +57,7 @@ const createSolanaConnection = () => {
 describe("Market Cap Module with Real Data", () => {
   let testEnv: Env;
   let connection: Connection;
-  
+
   beforeEach(() => {
     // Set up a fresh test environment with the real wallet key
     testEnv = createTestEnv(true);
@@ -93,16 +93,18 @@ describe("Market Cap Module with Real Data", () => {
       try {
         // Get the price from Pyth
         const pythPrice = await fetchSOLPriceFromPyth();
-        
+
         console.log(`SOL price from Pyth: $${pythPrice}`);
-        
+
         // Verify the result
         expect(typeof pythPrice).toBe("number");
-        
+
         // If Pyth returned 0, it might be due to connectivity issues
         // Rather than failing the test, log a warning
         if (pythPrice === 0) {
-          console.warn("Pyth returned 0 - this might be due to network issues or API changes");
+          console.warn(
+            "Pyth returned 0 - this might be due to network issues or API changes",
+          );
         } else {
           expect(pythPrice).toBeGreaterThan(0);
         }
@@ -124,7 +126,7 @@ describe("Market Cap Module with Real Data", () => {
         console.log(
           `Retrieving token accounts for wallet: ${wallet.publicKey.toString()}`,
         );
-        
+
         const tokenAccounts = await connection.getTokenAccountsByOwner(
           wallet.publicKey,
           {
@@ -153,23 +155,28 @@ describe("Market Cap Module with Real Data", () => {
 
           // Try to get token balance and mint info
           try {
-            const accountInfo = await connection.getAccountInfo(firstTokenAccount.pubkey);
+            const accountInfo = await connection.getAccountInfo(
+              firstTokenAccount.pubkey,
+            );
             const accountData = accountInfo?.data;
-            
+
             // In a real scenario, we'd parse the token account data to get balance
             // For testing purposes, use a sample amount
             const sampleBalance = 10000000;
-            
+
             // Create a real token object based on the first token account
             token = {
               mint: firstTokenAccount.pubkey.toString(),
               currentPrice: 0.005, // Sample price in SOL - in real code this would come from DEX or other price source
-              reserveAmount: sampleBalance
+              reserveAmount: sampleBalance,
             };
 
             console.log(`Using real token with mint: ${token.mint}`);
           } catch (error) {
-            console.warn("Could not get detailed token info, using default values:", error);
+            console.warn(
+              "Could not get detailed token info, using default values:",
+              error,
+            );
           }
         } else {
           console.log("No real tokens found, using default test token");
