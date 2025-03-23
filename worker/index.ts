@@ -4,19 +4,6 @@ import {
 } from "@cloudflare/workers-types/experimental";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { authenticate, authStatus, generateNonce, logout } from "./auth";
-import { createCharacterDetails } from "./character";
-import {
-  agents,
-  getDB,
-  messageLikes,
-  messages,
-  tokenHolders,
-  tokens,
-  users,
-  vanityKeypairs,
-  swaps,
-} from "./db";
 import { cron } from "./cron";
 import { Env } from "./env";
 import { logger } from "./logger";
@@ -27,9 +14,7 @@ import generationRouter from "./routes/generation";
 import messagesRouter from "./routes/messages";
 import tokenRouter from "./routes/token";
 import { uploadToCloudflare } from "./uploader";
-import { bulkUpdatePartialTokens, getRpcUrl, getIoServer } from "./util";
 import { WebSocketDO } from "./websocket";
-import { initSolanaConfig } from "./solana";
 
 const origins = [
   "https://api-dev.autofun.workers.dev",

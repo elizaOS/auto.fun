@@ -1,5 +1,4 @@
 import { useState } from "react";
-import Footer from "../components/footer";
 
 const PrivacyPolicy = () => {
   const [activeSection, setActiveSection] = useState<string | null>(null);
@@ -13,7 +12,7 @@ const PrivacyPolicy = () => {
   };
 
   return (
-    <div className="flex flex-col flex-1 h-[100vh]">
+    <div className="flex flex-col flex-1 min-h-[100vh]">
       <div className="max-w-4xl mx-auto p-6 text-white">
         <h1 className="text-3xl font-bold mb-4">Privacy Policy</h1>
         <p className="text-sm mb-6">Last Updated: January 16, 2025</p>
@@ -51,7 +50,7 @@ const PrivacyPolicy = () => {
         {/* Section 1 */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section1")}
           >
             <span>1. Personal Data Controller</span>
@@ -81,7 +80,7 @@ const PrivacyPolicy = () => {
         {/* Section 2 */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section2")}
           >
             <span>2. Types of Personal Data Collected</span>
@@ -139,7 +138,7 @@ const PrivacyPolicy = () => {
         {/* Section 3 */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section3")}
           >
             <span>3. Information We Automatically Collect</span>
@@ -164,7 +163,7 @@ const PrivacyPolicy = () => {
         {/* Section 4 */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section4")}
           >
             <span>4. Cookies & Similar Technologies</span>
@@ -268,7 +267,7 @@ const PrivacyPolicy = () => {
         {/* Section 5 */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section5")}
           >
             <span>5. Method and Basis of Processing Data</span>
@@ -330,7 +329,7 @@ const PrivacyPolicy = () => {
         {/* Section 6 */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section6")}
           >
             <span>6. How We Use Personal Data</span>
@@ -394,7 +393,7 @@ const PrivacyPolicy = () => {
         {/* Section 7 */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section7")}
           >
             <span>7. How We Share Personal Data</span>
@@ -434,7 +433,7 @@ const PrivacyPolicy = () => {
         {/* Section 8 */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section8")}
           >
             <span>8. Retention of Personal Data</span>
@@ -481,7 +480,7 @@ const PrivacyPolicy = () => {
         {/* Section 9 */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section9")}
           >
             <span>9. Privacy Technology Practices</span>
@@ -525,7 +524,7 @@ const PrivacyPolicy = () => {
         {/* Section 10 */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section10")}
           >
             <span>10. Blockchain Transactions</span>
@@ -549,7 +548,7 @@ const PrivacyPolicy = () => {
         {/* Section 11 */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section11")}
           >
             <span>11. Overseas Disclosure and Your Privacy Rights</span>
@@ -622,7 +621,7 @@ const PrivacyPolicy = () => {
         {/* Section 12 */}
         <div className="mb-4 border-b pb-2">
           <button
-            className="w-full text-left font-semibold flex justify-between items-center"
+            className="w-full text-left font-semibold flex justify-between items-center cursor-pointer"
             onClick={() => toggleSection("section12")}
           >
             <span>12. General</span>
@@ -647,7 +646,6 @@ const PrivacyPolicy = () => {
           )}
         </div>
       </div>
-      <Footer />
     </div>
   );
 };

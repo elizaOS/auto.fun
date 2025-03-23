@@ -8,8 +8,8 @@ export default function BottomBar() {
     { icon: "/nav/question-mark.svg", title: "Support", href: "/support" },
   ];
   return (
-    <nav className="border-t border-t-[#262626] fixed bottom-0 z-30 flex flex-col md:hidden items-center w-full  bg-[#171717] ">
-      <div className="grid grid-cols-4  divide-x divide-[#262626] w-full ">
+    <nav className="border-t border-t-[#262626] fixed bottom-0 z-30 flex flex-col md:hidden items-center w-full bg-[#171717]">
+      <div className="grid grid-cols-4 divide-x divide-[#262626] w-full">
         {mobileNavItems.map((item, index) => (
           <Link
             key={index}

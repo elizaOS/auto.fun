@@ -10,6 +10,7 @@ import { IToken } from "@/types";
 import {
   abbreviateNumber,
   formatNumber,
+  formatNumberSubscript,
   fromNow,
   LAMPORTS_PER_SOL,
   normalizedProgress,
@@ -30,12 +31,15 @@ export default function Page() {
     queryKey: ["token", address],
     queryFn: async () => {
       if (!address) throw new Error("No address passed");
-      return await getToken({ address });
+      const data = (await getToken({ address })) as unknown as {
+        token: IToken;
+      };
+      return data;
     },
-    refetchInterval: 3_000,
+    refetchInterval: 20_000,
   });
 
-  const token = query?.data as IToken;
+  const token = query?.data?.token as IToken;
 
   const solPriceUSD = token?.solPriceUSD;
   const finalTokenPrice = 0.00000045; // Approximated value from the bonding curve configuration
@@ -97,18 +101,18 @@ export default function Page() {
       <div className="max-w-[587px] flex flex-col gap-3">
         <div className="border rounded-md p-4 bg-autofun-background-card flex flex-col gap-3">
           <div className="flex gap-3">
-            <div className="w-36 shrink-0">
-              <SkeletonImage src={token.image} alt="image" />
+            <div className="size-36 shrink-0">
+              <SkeletonImage src={token?.image} alt="image" />
             </div>
             <div className="flex flex-col gap-3">
               {/* Token Info and Time */}
               <div className="flex items-center w-full min-w-0">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="capitalize text-autofun-text-primary text-3xl font-medium font-satoshi leading-normal truncate min-w-0">
-                    {token.name}
+                    {token?.name}
                   </div>
                   <div className="text-autofun-text-secondary text-base font-normal font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0">
-                    ${token.ticker}
+                    ${token?.ticker}
                   </div>
                 </div>
               </div>
@@ -122,7 +126,7 @@ export default function Page() {
                 truncatedEndingComponent={" ... "}
               >
                 <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
-                  {token.description}
+                  {token?.description}
                 </span>
               </ShowMoreText>
             </div>
@@ -200,9 +204,9 @@ export default function Page() {
               <span className="text-base font-dm-mono text-autofun-text-secondary">
                 Price USD
               </span>
-              <span className="text-xl font-dm-mono text-autofun-text-highlight">
-                {token?.marketCapUSD
-                  ? abbreviateNumber(token?.marketCapUSD)
+              <span className="text-xl font-dm-mono text-autofun-text-primary">
+                {token?.tokenPriceUSD
+                  ? formatNumberSubscript(token?.tokenPriceUSD)
                   : null}
               </span>
             </div>
@@ -211,13 +215,15 @@ export default function Page() {
                 Price
               </span>
               <span className="text-xl font-dm-mono text-autofun-text-primary">
-                {token?.price24hAgo ? abbreviateNumber(token?.volume24h) : null}
+                {token?.currentPrice
+                  ? formatNumberSubscript(token?.currentPrice)
+                  : null}
               </span>
             </div>
           </div>
           {/* Bonding Curve */}
           <div className="flex flex-col gap-3.5">
-            <div className="flex justify-between gap-3.5">
+            <div className="flex justify-between gap-3.5 items-center">
               <p className="font-medium font-satoshi">
                 Bonding Curve Progress:{" "}
                 <span className="text-autofun-text-highlight">
@@ -232,14 +238,13 @@ export default function Page() {
             {token?.status !== "migrated" ? (
               <p className="font-satoshi text-base text-autofun-text-secondary whitespace-pre-line break-words">
                 Graduate this coin to Raydium at{" "}
-                {formatNumber(graduationMarketCap, true)}
-                market cap.{"\n"}
+                {formatNumber(graduationMarketCap, true)} market cap.{"\n"}
                 There is{" "}
                 {formatNumber(
                   (token?.reserveLamport - token?.virtualReserves) /
                     LAMPORTS_PER_SOL,
                   true,
-                  true,
+                  true
                 )}{" "}
                 SOL in the bonding curve.
               </p>

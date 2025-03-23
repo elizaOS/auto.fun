@@ -11,7 +11,6 @@ import usePagination from "@/hooks/use-pagination";
 import { useFilter } from "@/hooks/use-filter";
 import { Fragment } from "react/jsx-runtime";
 import Loader from "@/components/loader";
-import Footer from "@/components/footer";
 
 export default function Page() {
   const [activeTab] = useViewMode();
@@ -28,7 +27,7 @@ export default function Page() {
         sortOrder,
       });
     },
-    refetchInterval: 5_000,
+    refetchInterval: 20_000,
     staleTime: 1_000,
   });
 
@@ -94,7 +93,6 @@ export default function Page() {
         )}
         <Pagination pagination={pagination} onPageChange={onPageChange} />
       </div>
-      <Footer />
     </div>
   );
 }
