@@ -2,18 +2,9 @@ import {
   ExecutionContext,
   ScheduledEvent,
 } from "@cloudflare/workers-types/experimental";
-import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
-import {
-  ComputeBudgetProgram,
-  Connection,
-  Keypair,
-  ParsedAccountData,
-  PublicKey,
-  Transaction,
-} from "@solana/web3.js";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+<<<<<<< Updated upstream
 import { authenticate, authStatus, generateNonce, logout } from "./auth";
 import { createCharacterDetails } from "./character";
 import {
@@ -27,50 +18,38 @@ import {
   vanityKeypairs,
   swaps,
 } from "./db";
+=======
+import { cron } from "./cron";
+>>>>>>> Stashed changes
 import { Env } from "./env";
-import generationRoutes from "./generation"; // Import the generation routes
-import adminRouter from "./admin"; // Import the admin routes
 import { logger } from "./logger";
-import { getSOLPrice } from "./mcap";
 import { verifyAuth } from "./middleware";
+import adminRouter from "./routes/admin";
+import authRouter from "./routes/auth";
+import generationRouter from "./routes/generation";
+import messagesRouter from "./routes/messages";
+import tokenRouter from "./routes/token";
 import { uploadToCloudflare } from "./uploader";
+<<<<<<< Updated upstream
 import { bulkUpdatePartialTokens, getRpcUrl, getIoServer } from "./util";
+=======
+>>>>>>> Stashed changes
 import { WebSocketDO } from "./websocket";
 import { initSolanaConfig } from "./solana";
 
-type TTokenStatus =
-  | "pending"
-  | "active"
-  | "withdrawn"
-  | "migrating"
-  | "migrated"
-  | "locked"
-  | "harvested"
-  | "migration_failed";
+const origins = [
+  "https://api-dev.autofun.workers.dev",
+  "https://api.autofun.workers.dev",
+  "https://develop.autofun.pages.dev",
+  "https://autofun.pages.dev",
+  "https://*.autofun.pages.dev",
+  "http://localhost:3000",
+  "http://localhost:3420",
+  "https://auto.fun",
+  "https://dev.auto.fun",
+  "*",
+];
 
-interface IToken {
-  id: string;
-  name: string;
-  ticker: string;
-  mint: string;
-  creator: string;
-  status: TTokenStatus;
-  createdAt: string;
-  tokenPriceUSD: number;
-  marketCapUSD: number;
-  volume24h: number;
-}
-
-interface ITokenHolder {
-  id: string;
-  mint: string;
-  address: string;
-  amount: number;
-  percentage: number;
-  lastUpdated: string;
-}
-
-// Define the app with environment typing
 const app = new Hono<{
   Bindings: Env;
   Variables: {
@@ -78,37 +57,20 @@ const app = new Hono<{
   };
 }>();
 
-// Add CORS middleware before any routes
 app.use(
   "*",
   cors({
-    origin: [
-      "https://api-dev.autofun.workers.dev",
-      "https://api.autofun.workers.dev",
-      "https://develop.autofun.pages.dev",
-      "https://autofun.pages.dev",
-      "https://*.autofun.pages.dev",
-      "http://localhost:3000",
-      "http://localhost:3420",
-      "https://auto.fun",
-      "*",
-    ],
+    origin: origins,
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization", "X-API-Key"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
-  }),
+  })
 );
 
-// Add authentication middleware
 app.use("*", verifyAuth);
 
-/////////////////////////////////////
-// API Endpoint Routes
-/////////////////////////////////////
-
-// Create an API router with the /api prefix
 const api = new Hono<{
   Bindings: Env;
   Variables: {
@@ -116,45 +78,60 @@ const api = new Hono<{
   };
 }>();
 
-// Add CORS middleware to API router as well
 api.use(
   "*",
   cors({
-    origin: [
-      "https://api-dev.autofun.workers.dev",
-      "https://api.autofun.workers.dev",
-      "http://localhost:3000",
-      "https://develop.autofun.pages.dev",
-      "https://autofun.pages.dev",
-      "https://*.autofun.pages.dev",
-      "http://localhost:3420",
-      "https://auto.fun",
-      "*",
-    ],
+    origin: origins,
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization", "X-API-Key"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
-  }),
+  })
 );
 
-// Add authentication middleware
 api.use("*", verifyAuth);
 
-// Mount generation routes
-api.route("/", generationRoutes);
-
-// Mount admin routes
+api.route("/", generationRouter);
 api.route("/", adminRouter);
-console.log("Admin router mounted on API router");
+api.route("/", tokenRouter);
+api.route("/", messagesRouter);
+api.route("/", authRouter);
+
+api.get("/protected-route", async (c) => {
+  // Check for API key in both X-API-Key and Authorization headers
+  let apiKey = c.req.header("X-API-Key");
+  if (!apiKey) {
+    const authHeader = c.req.header("Authorization");
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      apiKey = authHeader.substring(7);
+    }
+  }
+
+  // Allow API_KEY and also test-api-key for test compatibility
+  if (
+    !apiKey ||
+    (apiKey !== c.env.API_KEY &&
+      apiKey !== "test-api-key" &&
+      apiKey !== "invalid-api-key")
+  ) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  // Special case for testing invalid API key
+  if (apiKey === "invalid-api-key") {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  return c.json({
+    success: true,
+    message: "You have access to the protected route",
+  });
+});
 
 // Root paths for health checks
 app.get("/", (c) => c.json({ status: "ok" }));
 
-app.get("/health", (c) => c.json({ status: "healthy" }));
-
-// Add protected route at the root level for tests
 app.get("/protected-route", async (c) => {
   // Check for API key in both X-API-Key and Authorization headers
   let apiKey = c.req.header("X-API-Key");
@@ -188,6 +165,7 @@ app.get("/protected-route", async (c) => {
   });
 });
 
+<<<<<<< Updated upstream
 // WebSocket connections are handled directly in the fetch handler
 
 // Health / Check Endpoint
@@ -1934,6 +1912,8 @@ api.post("/vanity-keypair", async (c) => {
 });
 
 // Upload to Cloudflare endpoint (replaces Pinata upload endpoint)
+=======
+>>>>>>> Stashed changes
 api.post("/upload-cloudflare", async (c) => {
   try {
     // Require authentication
@@ -1955,7 +1935,7 @@ api.post("/upload-cloudflare", async (c) => {
     }
 
     const imageBuffer = Uint8Array.from(atob(imageData), (c) =>
-      c.charCodeAt(0),
+      c.charCodeAt(0)
     ).buffer;
 
     // Upload image to Cloudflare R2
@@ -1980,11 +1960,12 @@ api.post("/upload-cloudflare", async (c) => {
     logger.error("Error uploading to Cloudflare:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
 
+<<<<<<< Updated upstream
 // Get all fees history endpoint
 api.get("/fees", async (c) => {
   try {
@@ -2493,193 +2474,23 @@ api.post("/agents/cleanup-stale", async (c) => {
 });
 
 // WebSocket endpoint
+=======
+>>>>>>> Stashed changes
 api.get("/ws", (c) => {
   // This is just a placeholder - in the test we'll test the WebSocketDO directly
   return c.text(
     "WebSocket connections should be processed through DurableObjects",
-    400,
+    400
   );
 });
 
-// Helper function to update token prices (for scheduled tasks)
-async function updateTokenPrices(env: Env): Promise<void> {
-  try {
-    logger.log("Updating token prices...");
-    const db = getDB(env);
-
-    // Get all active tokens
-    const activeTokens = await db
-      .select()
-      .from(tokens)
-      .where(eq(tokens.status, "active"));
-
-    // Get SOL price once for all tokens
-    const solPrice = await getSOLPrice(env);
-
-    // Update each token with new price data
-    const updatedTokens = await bulkUpdatePartialTokens(activeTokens, env);
-
-    logger.log(`Updated prices for ${updatedTokens.length} tokens`);
-  } catch (error) {
-    logger.error("Error updating token prices:", error);
-  }
-}
-
-// Add the ability to forcibly release a task (for admin/debugging purposes)
-api.post("/agents/:id/force-release", async (c) => {
-  try {
-    const id = c.req.param("id");
-    const adminKey = c.req.header("X-API-Key");
-
-    // Simple admin verification
-    if (adminKey !== c.env.API_KEY) {
-      logger.error("Unauthorized admin attempt", null);
-      return c.json({ error: "Unauthorized" }, 403);
-    }
-
-    const db = getDB(c.env);
-
-    logger.log("Force releasing agent", { agentId: id });
-    const result = await db
-      .update(agents)
-      .set({
-        ecsTaskId: null,
-        updatedAt: new Date().toISOString(),
-      })
-      .where(eq(agents.id, id));
-
-    if (result.rowsAffected === 0) {
-      return c.json({ error: "Agent not found" }, 404);
-    }
-
-    logger.log("Agent force released successfully", {
-      agentId: id,
-    });
-
-    return c.json({ success: true });
-  } catch (error) {
-    logger.error("Failed to force release agent", error);
-    return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
-  }
-});
-
-// Get token and agent data combined
-api.get("/token-agent/:mint", async (c) => {
-  try {
-    const mint = c.req.param("mint");
-
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
-
-    const db = getDB(c.env);
-
-    // Get token data
-    const token = await db
-      .select()
-      .from(tokens)
-      .where(eq(tokens.mint, mint))
-      .limit(1);
-
-    if (!token || token.length === 0) {
-      return c.json({ error: "Token not found" }, 404);
-    }
-
-    // Get associated agent data
-    const agent = await db
-      .select()
-      .from(agents)
-      .where(
-        and(eq(agents.contractAddress, mint), sql`agents.deletedAt IS NULL`),
-      )
-      .limit(1);
-
-    // Get SOL price and update market data
-    const solPrice = await getSOLPrice(c.env);
-
-    // TODO: Calculate market data properly
-    const tokenData = token[0];
-
-    return c.json({
-      token: tokenData,
-      agent: agent.length > 0 ? agent[0] : null,
-    });
-  } catch (error) {
-    logger.error("Error fetching token and agent data:", error);
-    return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
-  }
-});
-
-// Twitter verification endpoint
-api.post("/verify", async (c) => {
-  try {
-    const body = await c.req.json();
-    const { twitterUsername, twitterPassword, twitterEmail } = body;
-
-    if (!twitterUsername || !twitterPassword || !twitterEmail) {
-      logger.error("Missing Twitter credentials");
-      return c.json(
-        {
-          error: "Twitter username, email and password are required",
-        },
-        400,
-      );
-    }
-
-    logger.log("Verifying Twitter credentials", {
-      twitterUsername,
-    });
-
-    // In the real implementation, we would use a Twitter API client
-    // For now, we'll simulate verification by checking format
-
-    // Check email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const isValidEmail = emailRegex.test(twitterEmail);
-
-    // Check password minimum length
-    const hasMinimumPasswordLength = twitterPassword.length >= 8;
-
-    // Simple validation for demo purposes
-    if (!isValidEmail || !hasMinimumPasswordLength) {
-      return c.json(
-        {
-          verified: false,
-          error: "Invalid credentials format",
-        },
-        400,
-      );
-    }
-
-    // In a production environment, we would actually verify with Twitter
-    return c.json({ verified: true });
-  } catch (error) {
-    logger.error("Failed to verify Twitter credentials", error);
-    return c.json(
-      {
-        verified: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      500,
-    );
-  }
-});
-
-// Mount the API router at /api at the module level, not in the fetch handler
 app.route("/api", api);
-console.log("API router mounted at /api");
 
-// Add a catch-all 404 handler for the API router to ensure JSON responses for not found routes
 api.notFound((c) => {
   return c.json({ error: "Route not found" }, 404);
 });
 
+<<<<<<< Updated upstream
 // Add a test protected route for API key tests
 api.get("/protected-route", async (c) => {
   // Check for API key in both X-API-Key and Authorization headers
@@ -2728,6 +2539,9 @@ app.get("/__env", async (c) => {
 });
 
 // Export the app as a fetch handler with special case for WebSocket
+=======
+// Export the worker handler
+>>>>>>> Stashed changes
 export default {
   async fetch(
     request: Request,
@@ -2754,5 +2568,23 @@ export default {
     
     // For all other requests, use the Hono app
     return app.fetch(request, env, ctx);
+<<<<<<< Updated upstream
   }
 };
+=======
+  },
+
+  async scheduled(
+    event: ScheduledEvent,
+    env: Env,
+    ctx: ExecutionContext
+  ): Promise<void> {
+    console.log("Scheduled event triggered:", event.cron);
+    if (event.cron === "*/30 * * * *") {
+      await cron(env);
+    }
+  },
+};
+
+export { WebSocketDO };
+>>>>>>> Stashed changes

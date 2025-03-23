@@ -139,15 +139,27 @@ export async function fetchWithAuth<T = any>(
   try {
     // Make a real request without any fallback to mocks
     const response = await fetch(url, options);
+    
+    // Clone the response before reading its body
+    const responseClone = response.clone();
+    
     let data: T;
-
     try {
-      const text = await response.text();
+      // For debugging, read from the clone
+      const text = await responseClone.text();
       console.log(`Response from ${url}: ${text}`);
+      
+      // Parse the original response
       data = text ? (JSON.parse(text) as T) : ({} as T);
     } catch (e) {
       console.warn(`Error parsing JSON from ${url}: ${e}`);
-      data = {} as T;
+      // Try to read the original response in case of parse errors
+      const originalText = await response.text();
+      try {
+        data = originalText ? (JSON.parse(originalText) as T) : ({} as T);
+      } catch {
+        data = {} as T;
+      }
     }
 
     return { response, data };

@@ -1,7 +1,8 @@
-import { drizzle } from "drizzle-orm/d1";
-import { Env } from "./env";
 import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text, real } from "drizzle-orm/sqlite-core";
+import { drizzle, DrizzleD1Database } from "drizzle-orm/d1";
+import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { Env } from "./env";
+import { logger } from "./logger";
 
 // Token schema
 export const tokens = sqliteTable("tokens", {
@@ -220,221 +221,15 @@ export const cachePrices = sqliteTable("cache_prices", {
   expiresAt: text("expires_at", { mode: "text" }).notNull(), // When this cache entry should expire
 });
 
-const schema = {
-  tokens,
-  swaps,
-  fees,
-  tokenHolders,
-  agents,
-  messages,
-  messageLikes,
-  users,
-  personalities,
-  vanityKeypairs,
-  mediaGenerations,
-  cachePrices,
-};
-
 export function getDB(env: Env) {
   try {
-    // For test environment, always use the mock DB to prevent database errors
-    if (env.NODE_ENV === "test") {
-      console.log(`Using mock DB for test environment`);
-
-      // Define the mock database with test data
-      const mockData = {
-        tokens: [
-          {
-            id: "1",
-            name: "Test Token",
-            ticker: "TEST",
-            mint:
-              env.tokenPubkey || "C2FeoK5Gw5koa9sUaVk413qygwdJxxy5R2VCjQyXeB4Z",
-            creator: "creator-address",
-            status: "active",
-            createdAt: new Date().toISOString(),
-            url: "https://example.com/token-metadata",
-            image: "https://example.com/token-image",
-            description: "A test token for testing purposes",
-            lastUpdated: new Date().toISOString(),
-            tokenPriceUSD: 1.0,
-            marketCapUSD: 1000000,
-            volume24h: 50000,
-          },
-        ],
-        agents: [],
-        tokenHolders: [],
-        users: [],
-        messages: [],
-        messageLikes: [],
-        swaps: [],
-        fees: [],
-        vanityKeypairs: [],
-        personalities: [],
-        mediaGenerations: [],
-      };
-
-      // Create a very simple mock DB object
-      return {
-        tokens: {
-          name: "tokens",
-          id: Symbol("id"),
-          mint: Symbol("mint"),
-        },
-        agents: {
-          name: "agents",
-        },
-        tokenHolders: {
-          name: "tokenHolders",
-        },
-        users: {
-          name: "users",
-        },
-        messages: {
-          name: "messages",
-        },
-        messageLikes: {
-          name: "messageLikes",
-        },
-        swaps: {
-          name: "swaps",
-        },
-        fees: {
-          name: "fees",
-        },
-        vanityKeypairs: {
-          name: "vanityKeypairs",
-        },
-        personalities: {
-          name: "personalities",
-        },
-        mediaGenerations: {
-          name: "mediaGenerations",
-        },
-        select: () => ({
-          from: (table: any) => {
-            const tableName = typeof table === "string" ? table : table.name;
-            return Promise.resolve(mockData[tableName] || []);
-          },
-        }),
-        insert: (table: any) => {
-          const tableName = typeof table === "string" ? table : table.name;
-          return {
-            values: (newData: any) => {
-              const data = { ...newData };
-              if (!data.id) {
-                data.id = crypto.randomUUID();
-              }
-
-              if (!mockData[tableName]) {
-                mockData[tableName] = [];
-              }
-
-              mockData[tableName].push(data);
-              return Promise.resolve({ rowsAffected: 1 });
-            },
-          };
-        },
-        update: (table: any) => {
-          const tableName = typeof table === "string" ? table : table.name;
-          return {
-            set: (updateData: any) => ({
-              where: (condition: any) => {
-                if (!mockData[tableName]) {
-                  return Promise.resolve({ rowsAffected: 0 });
-                }
-
-                // Actually update the records based on the condition
-                let updated = 0;
-
-                // Simple condition handling
-                if (typeof condition === "function") {
-                  // Handle symbolic conditions like db.tokens.id === uniqueId
-                  // In our mock, we'll just update all records since we can't really evaluate the condition
-                  mockData[tableName].forEach((record, idx) => {
-                    mockData[tableName][idx] = { ...record, ...updateData };
-                    updated++;
-                  });
-                } else if (condition && typeof condition === "object") {
-                  // Handle plain object conditions like { id: 'some-id' }
-                  const key = Object.keys(condition)[0];
-                  const value = condition[key];
-
-                  mockData[tableName].forEach((record, idx) => {
-                    if (record[key] === value) {
-                      mockData[tableName][idx] = { ...record, ...updateData };
-                      updated++;
-                    }
-                  });
-                } else {
-                  // Update all records
-                  mockData[tableName].forEach((record, idx) => {
-                    mockData[tableName][idx] = { ...record, ...updateData };
-                    updated++;
-                  });
-                }
-
-                return Promise.resolve({ rowsAffected: updated });
-              },
-            }),
-          };
-        },
-        delete: (table: any) => {
-          const tableName = typeof table === "string" ? table : table.name;
-          return {
-            where: (condition: any) => {
-              if (!mockData[tableName]) {
-                return Promise.resolve({ rowsAffected: 0 });
-              }
-
-              // Actually perform the deletion
-              const originalLength = mockData[tableName].length;
-
-              // Very simple condition handling - just support object conditions
-              if (condition && typeof condition === "object") {
-                const key = Object.keys(condition)[0];
-                const value = condition[key];
-                mockData[tableName] = mockData[tableName].filter(
-                  (record) => record[key] !== value,
-                );
-              }
-
-              const deletedCount = originalLength - mockData[tableName].length;
-              return Promise.resolve({ rowsAffected: deletedCount });
-            },
-          };
-        },
-      };
-    }
-
-    // For development with no DB, use a simpler mock
-    if (env.NODE_ENV === "development" && !env.DB) {
-      console.log(`Creating mock DB for development environment`);
-      return createSimpleMockDB();
-    }
-
-    // For production and properly configured dev environments, use the real DB
-    return drizzle(env.DB as any, { schema });
+    // For non-test environments, use D1 database
+    const drizzleSchema = { tokens, swaps, fees, tokenHolders, agents, messages, messageLikes, users, personalities, vanityKeypairs, mediaGenerations, cachePrices }
+    return drizzle(env.DB as any, { schema: drizzleSchema }) as DrizzleD1Database<typeof drizzleSchema>;
   } catch (error) {
     console.error("Error initializing DB:", error);
-
-    // In case of error, return a dummy DB object that won't crash
-    return createSimpleMockDB();
+    throw error;
   }
-}
-
-// Helper function to create a simple mock DB
-function createSimpleMockDB(): any {
-  return {
-    select: () => ({
-      from: () => Promise.resolve([]),
-    }),
-    insert: () => ({ values: () => Promise.resolve({ rowsAffected: 0 }) }),
-    update: () => ({
-      set: () => ({ where: () => Promise.resolve({ rowsAffected: 0 }) }),
-    }),
-    delete: () => ({ where: () => Promise.resolve({ rowsAffected: 0 }) }),
-  } as any;
 }
 
 // Type definitions for common query results
@@ -467,3 +262,42 @@ export type UserInsert = typeof schema.users.$inferInsert;
 
 export type VanityKeypair = typeof schema.vanityKeypairs.$inferSelect;
 export type VanityKeypairInsert = typeof schema.vanityKeypairs.$inferInsert;
+
+// Import better-sqlite3 only in Node.js environment
+let Database: any;
+let fs: any;
+let betterSqliteInstance: any;
+
+try {
+  // These imports will only work in Node.js environment, not in a worker
+  if (typeof process !== "undefined") {
+    Database = require("better-sqlite3");
+    fs = require("fs");
+  }
+} catch (error) {
+  logger.warn(
+    "better-sqlite3 import failed, this is expected in Cloudflare Workers",
+    error,
+  );
+}
+
+const SQLITE_PATH = "./local-dev.sqlite";
+
+// Schema for all tables
+const schema = {
+  tokens,
+  swaps,
+  fees,
+  tokenHolders,
+  agents,
+  messages,
+  messageLikes,
+  users,
+  personalities,
+  vanityKeypairs,
+  mediaGenerations,
+  cachePrices,
+};
+
+// Export schema for type inference
+export { schema };

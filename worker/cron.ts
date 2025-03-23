@@ -1,77 +1,31 @@
+import { eq } from "drizzle-orm";
+import { getDB, tokens } from "./db";
 import { Env } from "./env";
 import { logger } from "./logger";
-import { updateSOLPrice } from "./mcap";
+import { getSOLPrice } from "./mcap";
+import { bulkUpdatePartialTokens } from "./util";
 
-/**
- * Handle scheduled tasks via Cloudflare Cron triggers
- * This runs according to the schedule defined in wrangler.toml
- */
-export async function handleScheduled(
-  _event: ScheduledEvent,
-  env: Env,
-  _ctx: ExecutionContext,
-): Promise<void> {
-  const scheduler = new CronScheduler(env);
+// Helper function to update token prices (for scheduled tasks)
 
+export async function cron(env: Env): Promise<void> {
   try {
-    // Update SOL price every 10 seconds
-    // The actual frequency is determined by the [triggers] section in wrangler.toml
-    await scheduler.updateSolPrice();
+    logger.log("Updating token prices...");
+    const db = getDB(env);
 
-    // Add more scheduled tasks as needed
-    // - Token price updates
-    // - Cleanup old cache entries
-    // - Refresh market data
+    // Get all active tokens
+    const activeTokens = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.status, "active"));
+
+    // Get SOL price once for all tokens
+    const solPrice = await getSOLPrice(env);
+
+    // Update each token with new price data
+    const updatedTokens = await bulkUpdatePartialTokens(activeTokens, env);
+
+    logger.log(`Updated prices for ${updatedTokens.length} tokens`);
   } catch (error) {
-    logger.error("Error in scheduled tasks:", error);
-  }
-}
-
-/**
- * Class to manage scheduled tasks
- */
-class CronScheduler {
-  private env: Env;
-
-  constructor(env: Env) {
-    this.env = env;
-  }
-
-  /**
-   * Update SOL price in cache, using Pyth as the primary source
-   */
-  async updateSolPrice(): Promise<void> {
-    try {
-      // Use the dedicated update function that uses Pyth
-      const solPrice = await updateSOLPrice(this.env);
-
-      if (solPrice > 0) {
-        logger.log(`[CRON] Updated SOL price: $${solPrice}`);
-      } else {
-        logger.error("[CRON] Failed to get a valid SOL price");
-      }
-    } catch (error) {
-      logger.error("[CRON] Error updating SOL price:", error);
-    }
-  }
-
-  /**
-   * Cleanup old cache entries
-   * Can be implemented to run less frequently (e.g., hourly)
-   */
-  async cleanupOldCacheEntries(): Promise<void> {
-    try {
-      // TODO: Implement a comprehensive cleanup task that runs less frequently
-
-      // One approach is to delete all expired entries:
-      // const db = getDB(this.env);
-      // const now = new Date().toISOString();
-      // await db.delete(cachePrices)
-      //   .where(lt(cachePrices.expiresAt, now));
-
-      logger.log("[CRON] Cleaned up old cache entries");
-    } catch (error) {
-      logger.error("[CRON] Error cleaning up cache:", error);
-    }
+    logger.error("Error updating token prices:", error);
   }
 }

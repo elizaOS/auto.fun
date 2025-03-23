@@ -23,3 +23,35 @@ export interface MediaGeneration {
   dailyGenerationCount?: number;
   lastGenerationReset?: string;
 }
+
+export type TTokenStatus =
+  | "pending"
+  | "active"
+  | "withdrawn"
+  | "migrating"
+  | "migrated"
+  | "locked"
+  | "harvested"
+  | "migration_failed";
+
+export interface IToken {
+  id: string;
+  name: string;
+  ticker: string;
+  mint: string;
+  creator: string;
+  status: TTokenStatus;
+  createdAt: string;
+  tokenPriceUSD: number;
+  marketCapUSD: number;
+  volume24h: number;
+}
+
+export interface ITokenHolder {
+  id: string;
+  mint: string;
+  address: string;
+  amount: number;
+  percentage: number;
+  lastUpdated: string;
+}

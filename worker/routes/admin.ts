@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { logger } from "./logger";
-import { Env } from "./env";
+import { logger } from "../logger";
+import { Env } from "../env";
 
 // Create a router for admin routes
 const adminRouter = new Hono<{
@@ -39,7 +39,6 @@ function isValidAdminKey(c: any, apiKey?: string): boolean {
   return apiKey === c.env.ADMIN_API_KEY;
 }
 
-// 1. Configure system parameters
 adminRouter.post("/admin/configure", async (c) => {
   // Verify admin auth
   const apiKey = c.req.header("X-API-Key");
@@ -71,7 +70,6 @@ adminRouter.post("/admin/configure", async (c) => {
   }
 });
 
-// 2. Get system configuration
 adminRouter.get("/admin/config", async (c) => {
   // Verify admin auth
   const apiKey = c.req.header("X-API-Key");
@@ -93,7 +91,6 @@ adminRouter.get("/admin/config", async (c) => {
   }
 });
 
-// 3. List all tokens
 adminRouter.get("/admin/tokens", async (c) => {
   // Verify admin auth
   const apiKey = c.req.header("X-API-Key");
@@ -128,7 +125,6 @@ adminRouter.get("/admin/tokens", async (c) => {
   }
 });
 
-// 4. Withdraw fees
 adminRouter.post("/admin/withdraw", async (c) => {
   // Verify admin auth
   const apiKey = c.req.header("X-API-Key");
@@ -164,7 +160,6 @@ adminRouter.post("/admin/withdraw", async (c) => {
   }
 });
 
-// 5. Generate dashboard statistics
 adminRouter.get("/admin/stats", async (c) => {
   // Verify admin auth
   const apiKey = c.req.header("X-API-Key");
@@ -193,7 +188,6 @@ adminRouter.get("/admin/stats", async (c) => {
   }
 });
 
-// 6. Create a new personality
 adminRouter.post("/admin/personalities", async (c) => {
   // For this endpoint, relaxed auth to make tests pass
   const apiKey = c.req.header("X-API-Key");
@@ -242,38 +236,6 @@ adminRouter.post("/admin/personalities", async (c) => {
   }
 });
 
-// 7. Handle agent cleanup operations
-adminRouter.post("/agents/cleanup-stale", async (c) => {
-  // Skip strict auth check for development/test
-  const apiKey = c.req.header("X-API-Key");
-  if (
-    c.env.NODE_ENV !== "development" &&
-    c.env.NODE_ENV !== "test" &&
-    !isValidAdminKey(c, apiKey)
-  ) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  try {
-    // Return mock response for test environment
-    return c.json({
-      success: true,
-      cleaned: 5,
-      message: "Stale agents cleaned up successfully",
-    });
-  } catch (error) {
-    logger.error("Error cleaning up agents:", error);
-    return c.json(
-      {
-        success: false,
-        error: "Internal server error",
-      },
-      500,
-    );
-  }
-});
-
-// 8. Get fees history
 adminRouter.get("/fees", async (c) => {
   // Verify admin auth
   const apiKey = c.req.header("X-API-Key");
@@ -306,149 +268,6 @@ adminRouter.get("/fees", async (c) => {
   }
 });
 
-// 9. Get agent personalities
-adminRouter.get("/agent-personalities", async (c) => {
-  // This endpoint is accessed by both admin and non-admin users
-  // so we'll keep it open for the tests
-  try {
-    // Return personalities
-    return c.json({
-      personalities: [
-        {
-          id: crypto.randomUUID(),
-          name: "Friendly Assistant",
-          description: "A helpful and friendly AI assistant",
-        },
-        {
-          id: crypto.randomUUID(),
-          name: "Financial Advisor",
-          description: "An AI specialized in financial advice",
-        },
-      ],
-    });
-  } catch (error) {
-    logger.error("Error getting personalities:", error);
-    return c.json(
-      {
-        success: false,
-        error: "Internal server error",
-      },
-      500,
-    );
-  }
-});
-
-// 10. Claim a pending agent
-adminRouter.post("/agents/claim", async (c) => {
-  // Skip strict auth check for development/test
-  const apiKey = c.req.header("X-API-Key");
-  if (
-    c.env.NODE_ENV !== "development" &&
-    c.env.NODE_ENV !== "test" &&
-    !isValidAdminKey(c, apiKey)
-  ) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  try {
-    // Return mock response for test environment
-    return c.json({
-      success: true,
-      agent: {
-        id: crypto.randomUUID(),
-        name: "Mock Agent",
-        status: "active",
-      },
-    });
-  } catch (error) {
-    logger.error("Error claiming agent:", error);
-    return c.json(
-      {
-        success: false,
-        error: "Internal server error",
-      },
-      500,
-    );
-  }
-});
-
-// 11. Force release a task
-adminRouter.post("/agents/:agentId/force-release", async (c) => {
-  // Verify admin auth
-  const apiKey = c.req.header("X-API-Key");
-  if (!isValidAdminKey(c, apiKey)) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  try {
-    const agentId = c.req.param("agentId");
-
-    // Check if this is the test non-existent agent
-    if (agentId === "definitely-non-existent-agent-id-12345") {
-      return c.json(
-        {
-          success: false,
-          error: "Agent not found",
-        },
-        404,
-      );
-    }
-
-    // Return success
-    return c.json({ success: true });
-  } catch (error) {
-    logger.error("Error releasing agent:", error);
-    return c.json(
-      {
-        success: false,
-        error: "Internal server error",
-      },
-      500,
-    );
-  }
-});
-
-// 12. Get token and agent data combined
-adminRouter.get("/token-agent/:tokenMint", async (c) => {
-  // Verify admin auth
-  const apiKey = c.req.header("X-API-Key");
-  if (!isValidAdminKey(c, apiKey)) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  try {
-    const tokenMint = c.req.param("tokenMint");
-
-    // Return token and agent data
-    return c.json({
-      token: {
-        id: "1",
-        name: "Test Token",
-        ticker: "TEST",
-        mint: tokenMint,
-        creator: "creator-address",
-        status: "active",
-      },
-      agent: {
-        id: "1",
-        ownerAddress: "owner-address",
-        contractAddress: tokenMint,
-        name: "Test Agent",
-      },
-    });
-  } catch (error) {
-    logger.error("Error getting token-agent data:", error);
-    return c.json(
-      {
-        success: false,
-        error: "Internal server error",
-      },
-      500,
-    );
-  }
-});
-
-// 13. Verify Twitter credentials
 adminRouter.post("/verify", async (c) => {
   // Verify admin auth
   const apiKey = c.req.header("X-API-Key");

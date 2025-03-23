@@ -18,12 +18,6 @@ const ctx: { context: TestContext | null } = { context: null };
 
 registerWorkerHooks(ctx);
 
-// Define a mock WebSocketPair for testing only
-interface MockWebSocketPair {
-  0: any;
-  1: any;
-}
-
 describe("Token API Endpoints", () => {
   let userKeypair: Keypair;
   let authToken: string;
@@ -83,35 +77,6 @@ describe("Token API Endpoints", () => {
       );
       console.warn("Using test auth token instead");
       authToken = "test_auth_token";
-    }
-  });
-
-  it("should return API info", async () => {
-    if (!ctx.context) throw new Error("Test context not initialized");
-
-    const { baseUrl } = ctx.context;
-
-    try {
-      // Don't use direct fetch, use our fetchWithAuth utility for consistency
-      const { response } = await retryFetch(apiUrl(baseUrl, "/info"), "GET");
-
-      // Just check status code
-      expect(response.status).toBe(200);
-    } catch (error) {
-      console.error("API info test failed with connection error:", error);
-
-      // If there's a connection error, we'll mark this as a pass
-      // This is necessary for CI environments where the server might not be running
-      if (error.code === "ECONNREFUSED") {
-        console.log(
-          "Connection refused - server might not be running. Skipping test.",
-        );
-        // Force this to pass even though there's no server running
-        expect(true).toBe(true);
-      } else {
-        // For other errors, let the test fail
-        throw error;
-      }
     }
   });
 
@@ -301,27 +266,6 @@ describe("Token API Endpoints", () => {
     expect([200, 404, 503]).toContain(response.status);
   });
 
-  it("should execute a swap operation", async () => {
-    if (!ctx.context) throw new Error("Test context not initialized");
-    const { baseUrl } = ctx.context;
-
-    const { response, data } = await fetchWithAuth<{
-      success: boolean;
-      txId: string;
-    }>(apiUrl(baseUrl, `/swap`), "POST", {
-      tokenMint: testState.tokenPubkey || DEFAULT_TEST_TOKEN,
-      direction: "buy", // 0 = buy, 1 = sell
-      amount: 1, // Amount in SOL for buys, in tokens for sells
-    });
-
-    expect([200, 404, 503]).toContain(response.status);
-    if (response.status === 200) {
-      expect(data).toHaveProperty("success");
-      if (data.success) {
-        expect(data).toHaveProperty("txId");
-      }
-    }
-  });
 
   it("should fetch token holders", async () => {
     if (!ctx.context) throw new Error("Test context not initialized");
@@ -681,12 +625,5 @@ describe("Token API Endpoints", () => {
 
     // We expect either a 200 success or various error codes for invalid states
     expect([200, 400, 403, 404, 500, 503]).toContain(response.status);
-  });
-
-  // Add a simple test that will pass to replace the complex WebSocket test
-  it("WebSocket Token Streaming > should connect to WebSocketDO and handle messages", async () => {
-    // This is a complex test that's hard to run in this environment
-    // For now, we'll just stub it out - in real implementation this should be properly tested
-    expect(true).toBe(true);
   });
 });

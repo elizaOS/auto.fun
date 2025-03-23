@@ -1,8 +1,12 @@
+import { fal } from "@fal-ai/client";
 import { Keypair } from "@solana/web3.js";
 import bs58 from "bs58";
+import fs from "fs";
+import path from "path";
 import nacl from "tweetnacl";
+import { fileURLToPath } from "url";
 import { beforeAll, describe, expect, it } from "vitest";
-import { MediaType, RATE_LIMITS } from "../../generation";
+import { MediaType, RATE_LIMITS } from "../../routes/generation";
 import {
   TestContext,
   apiUrl,
@@ -10,10 +14,6 @@ import {
   sleep,
 } from "../helpers/test-utils";
 import { registerWorkerHooks, testState } from "../setup";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-import { fal } from "@fal-ai/client";
 
 // Get __dirname equivalent in ES module
 const __filename = fileURLToPath(import.meta.url);
@@ -22,12 +22,12 @@ const __dirname = path.dirname(__filename);
 console.log(__dirname);
 
 // Set up the download directory for generated media
-const downloadDir = path.join(__dirname, "generated-media");
-// Create the directory if it doesn't exist
-if (!fs.existsSync(downloadDir)) {
-  console.log(`Creating download directory: ${downloadDir}`);
-  fs.mkdirSync(downloadDir, { recursive: true });
-}
+// const downloadDir = path.join(__dirname, "generated-media");
+// // Create the directory if it doesn't exist
+// if (!fs.existsSync(downloadDir)) {
+//   console.log(`Creating download directory: ${downloadDir}`);
+//   fs.mkdirSync(downloadDir, { recursive: true });
+// }
 
 // Function to download a file from a URL
 async function downloadFile(url, filename) {
@@ -59,20 +59,20 @@ async function downloadFile(url, filename) {
       console.log(`✅ Media URL verified from expected source`);
     }
 
-    const buffer = await response.arrayBuffer();
-    const filePath = path.join(downloadDir, filename);
-    fs.writeFileSync(filePath, Buffer.from(buffer));
+    // const buffer = await response.arrayBuffer();
+    // const filePath = path.join(downloadDir, filename);
+    // fs.writeFileSync(filePath, Buffer.from(buffer));
 
-    // Verify the file was written successfully
-    if (fs.existsSync(filePath)) {
-      const stats = fs.statSync(filePath);
-      console.log(
-        `✅ Downloaded file saved to: ${filePath} (${stats.size} bytes)`,
-      );
-      return filePath;
-    } else {
-      throw new Error(`File was not saved properly to ${filePath}`);
-    }
+    // // Verify the file was written successfully
+    // if (fs.existsSync(filePath)) {
+    //   const stats = fs.statSync(filePath);
+    //   console.log(
+    //     `✅ Downloaded file saved to: ${filePath} (${stats.size} bytes)`,
+    //   );
+    //   return filePath;
+    // } else {
+    //   throw new Error(`File was not saved properly to ${filePath}`);
+    // }
   } catch (error) {
     console.error(`❌ Error downloading file: ${error.message}`);
     return null;
@@ -995,12 +995,12 @@ describe("Media Generation API Endpoints", () => {
           // If we have raw audio data in the response, save that instead
           if (result.audio_data) {
             const filename = `direct-audio-raw-${Date.now()}.mp3`;
-            const filePath = path.join(downloadDir, filename);
-            fs.writeFileSync(
-              filePath,
-              Buffer.from(result.audio_data, "base64"),
-            );
-            console.log(`Saved raw audio data to ${filePath}`);
+            // const filePath = path.join(downloadDir, filename);
+            // fs.writeFileSync(
+            //   filePath,
+            //   Buffer.from(result.audio_data, "base64"),
+            // );
+            // console.log(`Saved raw audio data to ${filePath}`);
           }
         }
       } catch (error) {

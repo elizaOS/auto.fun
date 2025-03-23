@@ -1,14 +1,14 @@
 import { eq, and, gte } from "drizzle-orm";
-import { getDB, mediaGenerations, tokens } from "./db";
-import { Env } from "./env";
+import { getDB, mediaGenerations, tokens } from "../db";
+import { Env } from "../env";
 import { fal } from "@fal-ai/client";
 import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
-import { logger } from "./logger";
-import { verifyAuth } from "./middleware";
+import { logger } from "../logger";
+import { verifyAuth } from "../middleware";
 import crypto from "crypto";
-import { MediaGeneration } from "./types";
+import { MediaGeneration } from "../types";
 
 // Enum for media types
 export enum MediaType {
@@ -422,19 +422,20 @@ app.post("/:mint/generate", async (c) => {
         type: validatedData.type,
         prompt: validatedData.prompt,
         mediaUrl,
-        negativePrompt: validatedData.negative_prompt,
-        numInferenceSteps: validatedData.num_inference_steps,
-        seed: validatedData.seed,
-        // Video specific metadata
-        numFrames: validatedData.num_frames,
-        fps: validatedData.fps,
-        motionBucketId: validatedData.motion_bucket_id,
-        duration: validatedData.duration,
-        // Audio specific metadata
-        durationSeconds: validatedData.duration_seconds,
-        bpm: validatedData.bpm,
-        creator: c.get("user")?.publicKey || null,
         timestamp: new Date().toISOString(),
+        // negativePrompt: validatedData.negative_prompt,
+        // numInferenceSteps: validatedData.num_inference_steps,
+        // seed: validatedData.seed,
+        // Video specific metadata
+        // numFrames: validatedData.num_frames,
+        // fps: validatedData.fps,
+        // motionBucketId: validatedData.motion_bucket_id,
+        // duration: validatedData.duration,
+        // Audio specific metadata
+        // durationSeconds: validatedData.duration_seconds,
+        // bpm: validatedData.bpm,
+        // creator: c.get("user")?.publicKey || null,
+        // timestamp: new Date().toISOString(),
       });
 
       await Promise.race([insertPromise, dbTimeoutPromise]);
@@ -534,7 +535,7 @@ app.get("/:mint/history", async (c) => {
       [MediaType.AUDIO]: 0,
     };
 
-    recentGenerations.forEach((gen: { type: MediaType }) => {
+    recentGenerations.forEach((gen: { type: MediaType | string }) => {
       counts[gen.type as MediaType]++;
     });
 

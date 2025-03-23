@@ -267,4 +267,21 @@ describe("Authentication API Endpoints", () => {
 
     expect(malformedResponse.status).toBe(400);
   });
+
+  it("should require authentication for protected endpoints", async () => {
+    if (!ctx.context) throw new Error("Test context not initialized");
+
+    const { baseUrl } = ctx.context;
+
+    // Test vanity-keypair endpoint without authentication
+    const { response, data } = await fetchWithAuth<{ error: string }>(
+      apiUrl(baseUrl, "/vanity-keypair"),
+      "POST",
+      { address: "validSolanaAddress123456789012345678901234567890" }
+    );
+
+    expect(response.status).toBe(401);
+    expect(data).toHaveProperty("error");
+    expect(data.error).toBe("Authentication required");
+  });
 });

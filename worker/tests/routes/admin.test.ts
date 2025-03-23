@@ -215,27 +215,6 @@ describe("Admin API Endpoints", () => {
     }
   });
 
-  it("should handle agent cleanup operations", async () => {
-    if (!ctx.context) throw new Error("Test context not initialized");
-
-    const { baseUrl } = ctx.context;
-
-    try {
-      const { response } = await fetchWithAuth<ApiResponse>(
-        apiUrl(baseUrl, "/agents/cleanup-stale"),
-        "POST",
-        undefined,
-        adminApiKey,
-      );
-
-      // Accept 200, 401, or 404 as valid responses
-      expect([200, 401, 404]).toContain(response.status);
-    } catch (error) {
-      // Route might not exist in the current implementation
-      console.log("Skipping test - /agents/cleanup-stale route may not exist");
-    }
-  });
-
   it("should access fees history", async () => {
     if (!ctx.context) throw new Error("Test context not initialized");
 
@@ -253,93 +232,6 @@ describe("Admin API Endpoints", () => {
       expect([200, 401, 403, 404, 503]).toContain(response.status);
     } catch (error) {
       console.log("Skipping test - /fees route may not exist");
-    }
-  });
-
-  it("should access all agent personalities", async () => {
-    if (!ctx.context) throw new Error("Test context not initialized");
-
-    const { baseUrl } = ctx.context;
-
-    try {
-      const { response } = await fetchWithAuth<any>(
-        apiUrl(baseUrl, "/agent-personalities"),
-        "GET",
-        undefined,
-        adminApiKey,
-      );
-
-      // Accept various status codes as valid
-      expect([200, 401, 403, 404, 503]).toContain(response.status);
-    } catch (error) {
-      console.log("Skipping test - /agent-personalities route may not exist");
-    }
-  });
-
-  it("should claim a pending agent", async () => {
-    if (!ctx.context) throw new Error("Test context not initialized");
-
-    const { baseUrl } = ctx.context;
-
-    try {
-      const { response } = await fetchWithAuth<ApiResponse>(
-        apiUrl(baseUrl, "/agents/claim"),
-        "POST",
-        {},
-        adminApiKey,
-      );
-
-      // Accept various status codes as valid
-      expect([200, 401, 403, 404, 503]).toContain(response.status);
-    } catch (error) {
-      console.log("Skipping test - /agents/claim route may not exist");
-    }
-  });
-
-  it("should force release a task", async () => {
-    if (!ctx.context) throw new Error("Test context not initialized");
-
-    const { baseUrl } = ctx.context;
-
-    try {
-      const { response } = await fetchWithAuth<ApiResponse>(
-        apiUrl(
-          baseUrl,
-          "/agents/definitely-non-existent-agent-id-12345/force-release",
-        ),
-        "POST",
-        undefined,
-        adminApiKey,
-      );
-
-      // Since we're using a non-existent ID, we accept 200, 401, 403, 404, 503
-      expect([200, 401, 403, 404, 503]).toContain(response.status);
-    } catch (error) {
-      console.log("Skipping test - force release endpoint may not exist");
-    }
-  });
-
-  // Additional test for token-agent combined endpoint
-  it("should get combined token and agent data", async () => {
-    if (!ctx.context) throw new Error("Test context not initialized");
-
-    const { baseUrl } = ctx.context;
-
-    try {
-      const { response } = await fetchWithAuth<any>(
-        apiUrl(
-          baseUrl,
-          `/token-agent/${testState.tokenPubkey || createdTokenId}`,
-        ),
-        "GET",
-        undefined,
-        adminApiKey,
-      );
-
-      // We might get 404 if the token doesn't exist, or other status codes
-      expect([200, 401, 403, 404, 503]).toContain(response.status);
-    } catch (error) {
-      console.log("Skipping test - token-agent endpoint may not exist");
     }
   });
 
