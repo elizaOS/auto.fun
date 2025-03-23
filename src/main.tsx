@@ -1,24 +1,23 @@
-import { StrictMode } from "react";
-import "./index.css";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router";
-import { Routes, Route } from "react-router";
+import { BrowserRouter, Route, Routes } from "react-router";
+import "./index.css";
 import Layout from "./layout/root";
 import Homepage from "./pages";
+import { Create } from "./pages/create";
+import Fees from "./pages/fees";
+import PrivacyPolicy from "./pages/privacy-policy";
 import Support from "./pages/support";
 import TermsOfService from "./pages/terms-of-service";
-import PrivacyPolicy from "./pages/privacy-policy";
-import Fees from "./pages/fees";
 import Token from "./pages/token";
-import { Create } from "./pages/create";
+import { Providers } from "./providers";
 import { queryClient } from "./utils/api";
-import { WalletProvider } from "./providers/wallet";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <WalletProvider autoConnect={false}>
+    <Providers>
+      <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <Routes>
             <Route element={<Layout />}>
@@ -32,7 +31,7 @@ createRoot(document.getElementById("root")!).render(
             </Route>
           </Routes>
         </BrowserRouter>
-      </WalletProvider>
-    </QueryClientProvider>
+      </QueryClientProvider>
+    </Providers>
   </StrictMode>,
 );

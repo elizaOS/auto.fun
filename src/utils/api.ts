@@ -67,7 +67,7 @@ export const getTokens = async ({
   sortOrder: TSortOrder;
 }) => {
   const data = (await fetcher(
-    `/api/tokens?limit=${limit || 12}&page=${
+    `${import.meta.env.VITE_API_URL}/api/tokens?limit=${limit || 12}&page=${
       page || 1
     }&sortBy=${sortBy}&sortOrder=${sortOrder}`,
     "GET",
@@ -83,15 +83,24 @@ export const getTokens = async ({
 };
 
 export const getToken = async ({ address }: { address: string }) => {
-  const data = await fetcher(`/api/tokens/${address}`, "GET");
+  const data = await fetcher(
+    `${import.meta.env.VITE_API_URL}/api/tokens/${address}`,
+    "GET",
+  );
   return data as IToken;
 };
 
 export const getTokenHolders = async ({ address }: { address: string }) => {
-  const data = await fetcher(`/api/tokens/${address}/holders`, "GET");
+  const data = await fetcher(
+    `${import.meta.env.VITE_API_URL}/api/tokens/${address}/holders`,
+    "GET",
+  );
   return data;
 };
 export const getTokenSwapHistory = async ({ address }: { address: string }) => {
-  const data = await fetcher(`/api/swaps/${address}`, "GET");
+  const data = await fetcher(
+    `${import.meta.env.VITE_API_URL}/api/swaps/${address}`,
+    "GET",
+  );
   return data;
 };
