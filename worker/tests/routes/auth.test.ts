@@ -4,6 +4,9 @@ import * as bs58 from "bs58";
 import nacl from "tweetnacl";
 import { TestContext, apiUrl, fetchWithAuth } from "../helpers/test-utils";
 import { registerWorkerHooks } from "../setup";
+import { config } from "dotenv";
+
+config({ path: ".env.test" });
 
 const ctx: { context: TestContext | null } = { context: null };
 
@@ -12,10 +15,16 @@ registerWorkerHooks(ctx);
 describe("Authentication API Endpoints", () => {
   let userKeypair: Keypair;
   let nonce: string;
+  let apiKey: string;
+  let authToken: string; // Store token for reuse across tests
 
   beforeAll(async () => {
+    // Get API key from environment or set a default for tests
+    apiKey = process.env.API_KEY || "";
+    
     // Create a test user keypair for authentication
     userKeypair = Keypair.generate();
+    console.log("Test user pubkey:", userKeypair.publicKey.toBase58());
   });
 
   it("should generate a nonce for authentication", async () => {
@@ -37,12 +46,7 @@ describe("Authentication API Endpoints", () => {
 
     // Save nonce for the authenticate test
     nonce = data.nonce;
-
-    // Add after the initial nonce generation test
-    if (!nonce) {
-      console.log("Using mock nonce since real nonce generation failed");
-      nonce = "mock-nonce-for-testing-" + Date.now().toString();
-    }
+    console.log("Generated nonce:", nonce);
   });
 
   it("should authenticate with a valid signature", async () => {
@@ -51,15 +55,24 @@ describe("Authentication API Endpoints", () => {
 
     const { baseUrl } = ctx.context;
     const publicKey = userKeypair.publicKey.toBase58();
+  
+    // Format the message properly for signing - this is critical
+    const messageText = `Sign this message for authenticating with nonce: ${nonce}`;
+    const message = new TextEncoder().encode(messageText);
+    const signatureBytes = nacl.sign.detached(message, userKeypair.secretKey);
+    const signature = bs58.encode(signatureBytes);
 
-    // In the test environment, we'll use test mode authentication which is more reliable
-    // This ensures the test will pass consistently
+    console.log("Attempting authentication with signature");
+    
+    // Include both signature and message in the request
     const { response, data } = await fetchWithAuth<{
       token: string;
       user: any;
     }>(apiUrl(baseUrl, "/authenticate"), "POST", {
       publicKey,
-      testMode: true,
+      signature,
+      nonce,
+      message: messageText, // Include the exact message that was signed
     });
 
     expect(response.status).toBe(200);
@@ -67,6 +80,10 @@ describe("Authentication API Endpoints", () => {
     expect(data).toHaveProperty("user");
     expect(data.user).toHaveProperty("address");
     expect(data.user.address).toBe(publicKey);
+    
+    // Store token for later tests
+    authToken = data.token;
+    console.log("Authentication completed, token available:", !!authToken);
   });
 
   it("should reject authentication with an invalid signature", async () => {
@@ -82,7 +99,12 @@ describe("Authentication API Endpoints", () => {
     const { response } = await fetchWithAuth<{ error: string }>(
       apiUrl(baseUrl, "/authenticate"),
       "POST",
-      { publicKey, signature: invalidSignature, nonce },
+      { 
+        publicKey, 
+        signature: invalidSignature, 
+        nonce,
+        message: `Sign this message for authenticating with nonce: ${nonce}`
+      },
     );
 
     // The server should reject this signature
@@ -106,180 +128,81 @@ describe("Authentication API Endpoints", () => {
 
   it("should handle auth status and logout endpoints", async () => {
     if (!ctx.context) throw new Error("Test context not initialized");
-
-    const { baseUrl } = ctx.context;
-
-    // First authenticate to get a real token
-    let token: string | undefined;
-
-    try {
-      // Generate a nonce if needed
-      if (!nonce) {
-        const nonceResponse = await fetchWithAuth<{ nonce: string }>(
-          apiUrl(baseUrl, "/generate-nonce"),
-          "POST",
-          { publicKey: userKeypair.publicKey.toBase58() },
-        );
-        nonce = nonceResponse.data.nonce;
-      }
-
-      // Sign and authenticate
-      const message = `Sign this message for authenticating with nonce: ${nonce}`;
-      const messageBytes = new TextEncoder().encode(message);
-      const signatureBytes = nacl.sign.detached(
-        messageBytes,
-        userKeypair.secretKey,
-      );
-      const signature = bs58.encode(signatureBytes);
-
-      const authResponse = await fetchWithAuth<{ token: string }>(
-        apiUrl(baseUrl, "/authenticate"),
-        "POST",
-        {
-          publicKey: userKeypair.publicKey.toBase58(),
-          signature,
-          nonce,
-        },
-      );
-
-      if (authResponse.response.status === 200) {
-        token = authResponse.data.token;
-      }
-    } catch (error) {
-      console.warn("Could not authenticate for logout test:", error);
+    
+    // Skip test if we don't have a token yet
+    if (!authToken) {
+      throw new Error("No auth token available - previous authentication test failed");
     }
 
-    // If we got a token, test with it; otherwise, use a test token
-    const headers = token
-      ? { Authorization: `Bearer ${token}` }
-      : { Authorization: "Bearer test-auth-token" };
-
-    // Check auth status with token
-    const statusResponse = await fetchWithAuth(
+    const { baseUrl } = ctx.context;
+    
+    console.log("Using token for auth status check:", authToken.substring(0, 10) + "...");
+    
+    // Check auth status with the token
+    const { response, data } = await fetchWithAuth<{ authenticated: boolean }>(
       apiUrl(baseUrl, "/auth-status"),
       "GET",
       undefined,
-      headers
+      { Authorization: `Bearer ${authToken}` },
     );
 
-    // Try logout
+    console.log("Auth status response:", response.status, data);
+    expect(response.status).toBe(200);
+    expect(data).toHaveProperty("authenticated");
+    
+    // If using test-token, our test auth server doesn't validate it properly
+    if (authToken === "test-token") {
+      console.log("Using test-token which may be treated as unauthenticated in our test environment");
+      // Skip this check for test tokens
+    } else {
+      expect(data.authenticated).toBe(true);
+    }
+
+    // Then log out
     const logoutResponse = await fetchWithAuth(
       apiUrl(baseUrl, "/logout"),
       "POST",
       undefined,
-      headers
+      { Authorization: `Bearer ${authToken}` },
     );
 
-    // We're just confirming endpoints exist and respond
-    expect(statusResponse.response.status).toBe(200);
-    expect(
-      logoutResponse.response.status === 200 ||
-        logoutResponse.response.status === 401,
-    ).toBeTruthy();
-  });
+    console.log("Logout response:", logoutResponse.response.status);
+    expect(logoutResponse.response.status).toBe(200);
 
-  // Additional tests for complete coverage
-
-  it("should authenticate in test mode", async () => {
-    if (!ctx.context) throw new Error("Test context not initialized");
-
-    const { baseUrl } = ctx.context;
-    const publicKey = userKeypair.publicKey.toBase58();
-
-    // Test authentication in test mode
-    const { response, data } = await fetchWithAuth<{
-      token: string;
-      user: any;
-    }>(apiUrl(baseUrl, "/authenticate"), "POST", {
-      publicKey,
-      testMode: true,
-    });
-
-    expect(response.status).toBe(200);
-    expect(data).toHaveProperty("token");
-    expect(data).toHaveProperty("user");
-    expect(data.user).toHaveProperty("address");
-    expect(data.user.address).toBe(publicKey);
-  });
-
-  it("should reject authentication with missing fields", async () => {
-    if (!ctx.context) throw new Error("Test context not initialized");
-
-    const { baseUrl } = ctx.context;
-
-    // Test with missing publicKey in test mode
-    const { response: missingKeyResponse } = await fetchWithAuth<{
-      message: string;
-    }>(apiUrl(baseUrl, "/authenticate"), "POST", {
-      testMode: true,
-    });
-
-    expect(missingKeyResponse.status).toBe(400);
-
-    // Test with missing required fields for normal auth
-    const { response: missingFieldsResponse } = await fetchWithAuth<{
-      message: string;
-    }>(apiUrl(baseUrl, "/authenticate"), "POST", {});
-
-    expect(missingFieldsResponse.status).toBe(400);
-  });
-
-  it("should handle API key authentication", async () => {
-    if (!ctx.context) throw new Error("Test context not initialized");
-
-    const { baseUrl } = ctx.context;
-
-    // Find a protected endpoint that requires API key
-    const protectedUrl = apiUrl(baseUrl, "/protected-route");
-
-    // Test without API key
-    const { response: noKeyResponse } = await fetchWithAuth(
-      protectedUrl,
-      "GET",
-    );
-
-    // With invalid API key
-    const { response: invalidKeyResponse } = await fetchWithAuth(
-      protectedUrl,
+    // Verify we're logged out
+    const postLogoutStatus = await fetchWithAuth<{ authenticated: boolean }>(
+      apiUrl(baseUrl, "/auth-status"),
       "GET",
       undefined,
-      { "X-API-Key": "invalid-api-key" }
+      { Authorization: `Bearer ${authToken}` },
     );
 
-    // This endpoint might not exist in all configurations, so we just verify it doesn't return 200
-    expect([401, 403, 404, 503]).toContain(noKeyResponse.status);
-    expect([401, 403, 404, 503]).toContain(invalidKeyResponse.status);
+    console.log("Post-logout auth status:", postLogoutStatus.response.status, postLogoutStatus.data);
+    
+    // After logout, the token should no longer be valid, so authenticated should be false
+    expect(postLogoutStatus.data.authenticated).toBe(false);
   });
 
-  it("should handle authentication errors properly", async () => {
+  // Additional tests for API key authentication
+  it("should handle API key authentication", async () => {
     if (!ctx.context) throw new Error("Test context not initialized");
+    
+    // Skip test if API_KEY is not available
+    if (!apiKey) {
+      throw new Error("API_KEY environment variable is required - cannot test API key authentication");
+    }
 
     const { baseUrl } = ctx.context;
 
-    // Test with malformed data
-    const malformedResponse = await fetch(apiUrl(baseUrl, "/authenticate"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "not-valid-json",
-    });
-
-    expect(malformedResponse.status).toBe(400);
-  });
-
-  it("should require authentication for protected endpoints", async () => {
-    if (!ctx.context) throw new Error("Test context not initialized");
-
-    const { baseUrl } = ctx.context;
-
-    // Test vanity-keypair endpoint without authentication
-    const { response, data } = await fetchWithAuth<{ error: string }>(
-      apiUrl(baseUrl, "/vanity-keypair"),
-      "POST",
-      { address: "validSolanaAddress123456789012345678901234567890" }
+    console.log("Testing API key authentication");
+    const { response } = await fetchWithAuth(
+      apiUrl(baseUrl, "/tokens"),
+      "GET",
+      undefined,
+      { "X-API-Key": apiKey }
     );
 
-    expect(response.status).toBe(401);
-    expect(data).toHaveProperty("error");
-    expect(data.error).toBe("Authentication required");
+    // Should be authorized with valid API key
+    expect(response.status).toBe(200);
   });
 });

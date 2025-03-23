@@ -106,20 +106,9 @@ export interface AdminStats {
   totalUsers?: number;
 }
 
-// Agent-related interfaces
-export interface AgentDetails {
-  systemPrompt?: string;
-  bio?: string;
-  postExamples?: string;
-  adjectives?: string;
-  style?: string;
-  topics?: string;
-  [key: string]: any; // Allow for any other properties
-}
-
 /**
  * Fetch with authentication and request body handling
- * Enhanced to directly call API handlers when in unit test mode
+ * Always uses real API calls
  */
 export async function fetchWithAuth<T = any>(
   url: string,
@@ -127,167 +116,71 @@ export async function fetchWithAuth<T = any>(
   body?: any,
   headers: Record<string, string> = {},
 ): Promise<DirectApiResponse<T>> {
-  // Support direct testing of API functions
-  if (process.env.NODE_ENV === "test" && url.includes("localhost")) {
-    // Extract endpoint path from url
-    const endpoint = url.split("/api")[1];
-    if (!endpoint) {
-      throw new Error(`Invalid API URL: ${url}`);
-    }
-
-    // Create a more complete mock context with all required Hono properties
-    const mockContext = {
-      req: {
-        json: () => Promise.resolve(body || {}),
-        header: (name: string) => headers[name] || null,
-        raw: {
-          headers: {
-            get: (name: string) => headers[name] || "127.0.0.1",
-          },
-        },
-      },
-      env: {
-        NODE_ENV: "test",
-        API_KEY: "test-api-key",
-      },
-      set: vi.fn(),
-      get: vi.fn((key) =>
-        key === "user" ? { publicKey: body?.publicKey } : null,
-      ),
-      json: (data: any, status = 200) => ({ data, status }),
-      setCookie: vi.fn(),
-      getCookie: vi.fn((name) =>
-        name === "publicKey" ? body?.publicKey : null,
-      ),
-      header: vi.fn((name) => headers[name] || null),
-    } as unknown as AppContext;
-
-    let response;
-
-    // Call the appropriate handler directly based on the endpoint
-    switch (endpoint) {
-      case "/generate-nonce": {
-        response = await generateNonce(mockContext);
-        break;
-      }
-      case "/authenticate": {
-        response = await authenticate(mockContext);
-        break;
-      }
-      case "/logout": {
-        response = await logout(mockContext);
-        break;
-      }
-      case "/auth-status": {
-        response = await authStatus(mockContext);
-        break;
-      }
-      default:
-        throw new Error(
-          `Endpoint not implemented for direct testing: ${endpoint}`,
-        );
-    }
-
-    return {
-      data: response.data,
-      response: { status: response.status },
-    };
-  }
-
-  // Standard fetch implementation for non-test environments
+  // Standard fetch implementation
   const fetchOptions: RequestInit = {
     method,
     headers: {
       ...headers,
       "Content-Type": "application/json",
     },
-    body: body && method !== "GET" ? JSON.stringify(body) : undefined,
   };
 
-  try {
-    const response = await fetch(url, fetchOptions);
-    
-    // Clone the response before reading its body
-    const responseClone = response.clone();
-    
-    let data: T;
-    try {
-      // For debugging, read from the clone
-      const text = await responseClone.text();
-      console.log(`Response from ${url}: ${text}`);
-      
-      // Parse the original response
-      data = text ? (JSON.parse(text) as T) : ({} as T);
-    } catch (e) {
-      console.warn(`Error parsing JSON from ${url}: ${e}`);
-      // Try to read the original response in case of parse errors
-      const originalText = await response.text();
-      try {
-        data = originalText ? (JSON.parse(originalText) as T) : ({} as T);
-      } catch {
-        data = {} as T;
-      }
-    }
-
-    return { data, response: { status: response.status } };
-  } catch (error) {
-    // Return a fake response for connection errors to prevent test failures
-    console.warn(`Connection error to ${url}: ${error.message}`);
-    return { 
-      data: {} as T, 
-      response: { status: 503 }
-    };
+  if (body && method !== "GET") {
+    fetchOptions.body = JSON.stringify(body);
   }
+
+  // Debug logging
+  console.log(`Fetching ${method} ${url}`);
+  if (body && method !== "GET") {
+    // Don't log sensitive information like signatures
+    const sanitizedBody = { ...body };
+    if (sanitizedBody.signature) sanitizedBody.signature = "***";
+    if (sanitizedBody.privateKey) sanitizedBody.privateKey = "***";
+    console.log("Request body:", sanitizedBody);
+  }
+
+  // No retries - let errors propagate
+  const response = await fetch(url, fetchOptions);
+
+  let data;
+  try {
+    const responseText = await response.text();
+    try {
+      // Try to parse as JSON first
+      data = JSON.parse(responseText);
+      console.log(`Response status: ${response.status}`);
+      // Only log data if not too large
+      if (responseText.length < 500) {
+        console.log("Response data:", data);
+      } else {
+        console.log("Response: [large data]");
+      }
+    } catch (e) {
+      // For non-JSON responses, provide the text
+      console.warn(`Non-JSON response from ${url}: ${responseText}`);
+      data = { message: responseText };
+    }
+  } catch (e) {
+    console.error(`Error reading response from ${url}:`, e);
+    throw e; // Rethrow the error to ensure test failure
+  }
+
+  return {
+    data,
+    response: { status: response.status },
+  };
 }
 
 /**
- * Helper to retry API requests with exponential backoff
+ * Helper for API requests - now simply passes through to fetchWithAuth
+ * No retries are performed - errors will be exposed directly
  */
 export async function retryFetch<T = any>(
   url: string,
   method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
   body?: any,
   headers: Record<string, string> = {},
-  maxRetries = 2,
-  initialDelay = 100,
-  acceptableStatuses: number[] = [200, 201, 400, 401, 403, 404],
 ): Promise<DirectApiResponse<T>> {
-  let lastError: any;
-  let delay = initialDelay;
-
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      const result = await fetchWithAuth<T>(url, method, body, headers);
-
-      // If the response status is in our acceptable list or this is the last retry, return it
-      if (
-        acceptableStatuses.includes(result.response.status) ||
-        attempt === maxRetries - 1
-      ) {
-        return result;
-      }
-
-      // Otherwise, this is an error status we want to retry
-      throw new Error(`Received status ${result.response.status}`);
-    } catch (error) {
-      lastError = error;
-      
-      if (attempt < maxRetries - 1) {
-        console.log(
-          `Attempt ${attempt + 1} failed: ${error.message}. Retrying in ${delay}ms...`,
-        );
-
-        // Wait before next retry
-        await new Promise((resolve) => setTimeout(resolve, delay));
-
-        // Exponential backoff
-        delay *= 2;
-      } else {
-        throw error; // Re-throw on last attempt
-      }
-    }
-  }
-
-  // This should never be reached, but TypeScript requires a return statement
-  throw lastError || new Error("Maximum retries exceeded");
+  // Direct passthrough to fetchWithAuth - no retries
+  return await fetchWithAuth<T>(url, method, body, headers);
 }

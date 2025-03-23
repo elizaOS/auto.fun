@@ -8,6 +8,9 @@ import {
   fetchWithAuth,
 } from "../helpers/test-utils";
 import { registerWorkerHooks, testState } from "../setup";
+import { config } from "dotenv";
+
+config({ path: ".env.test" });
 
 const ctx: { context: TestContext | null } = { context: null };
 

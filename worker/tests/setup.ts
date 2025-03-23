@@ -7,45 +7,56 @@ import {
 } from "./helpers/test-utils";
 
 export async function setupWorkerTest(): Promise<TestContext> {
+  console.log("Setting up worker test with real API calls");
+  
   // Create test key pairs first, so we can include the token pubkey in environment
   const { adminKp, userKp, testTokenKp } = createTestKeys();
   const testTokenPubkey = testTokenKp.publicKey.toBase58();
 
-  // Create a worker instance with more complete configuration
+  // Check for required environment variables
+  const requiredEnvVars = ["API_KEY", "JWT_SECRET"];
+  
+  for (const name of requiredEnvVars) {
+    if (!process.env[name]) {
+      throw new Error(`ERROR: ${name} environment variable is required. Please set it before running tests.`);
+    }
+  }
+
+  // Create a worker instance with real configuration
   const worker = await unstable_dev("worker/index.ts", {
     experimental: { disableExperimentalWarning: true },
     vars: {
-      NETWORK: "devnet",
-      DECIMALS: "9",
-      TOKEN_SUPPLY: "1000000000000000000",
-      VIRTUAL_RESERVES: "1000000000",
-      CURVE_LIMIT: "1000000000000",
-      PORT: "8787",
-      API_URL: "http://localhost:8787",
+      NETWORK: process.env.NETWORK || "devnet",
+      DECIMALS: process.env.DECIMALS || "9",
+      TOKEN_SUPPLY: process.env.TOKEN_SUPPLY || "1000000000000000000",
+      VIRTUAL_RESERVES: process.env.VIRTUAL_RESERVES || "1000000000",
+      CURVE_LIMIT: process.env.CURVE_LIMIT || "1000000000000",
+      PORT: process.env.PORT || "8787",
+      API_URL: process.env.API_URL || "http://localhost:8787",
       NODE_ENV: "test",
-      DEVNET_SOLANA_RPC_URL: "https://api.devnet.solana.com",
-      PROGRAM_ID: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-      MIN_BUFFER: "100000000",
-      TARGET_BUFFER: "500000000",
-      NUM_WORKERS: "2",
-      INIT_BONDING_CURVE: "true",
-      FEE_PERCENTAGE: "1",
-      SWAP_FEE: "1.5",
-      TEST_CREATOR_ADDRESS: "4FRxv5k1iCrE4kdjtywUzAakCaxfDQmpdVLx48kUXQQC",
-      // Add necessary environment variables for authentication
-      ADMIN_API_KEY: "admin-test-key",
-      API_KEY: "test-api-key",
-      USER_API_KEY: "test-api-key",
-      // Add real keys for proper authentication if needed
-      JWT_SECRET: "test-jwt-secret",
-      // Add wallet private key (test key)
-      WALLET_PRIVATE_KEY: JSON.stringify(
-        [...Array(32)].map(() => Math.floor(Math.random() * 256)),
-      ),
-      // Add FAL.AI key for media generation tests
-      FAL_API_KEY: process.env.FAL_API_KEY || "test-fal-api-key",
-      // Add token pubkey for test DB mocking
-      tokenPubkey: testTokenPubkey,
+      DEVNET_SOLANA_RPC_URL: process.env.DEVNET_SOLANA_RPC_URL || "https://api.devnet.solana.com",
+      PROGRAM_ID: process.env.PROGRAM_ID || "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      MIN_BUFFER: process.env.MIN_BUFFER || "100000000",
+      TARGET_BUFFER: process.env.TARGET_BUFFER || "500000000",
+      NUM_WORKERS: process.env.NUM_WORKERS || "2",
+      INIT_BONDING_CURVE: process.env.INIT_BONDING_CURVE || "true",
+      FEE_PERCENTAGE: process.env.FEE_PERCENTAGE || "1",
+      SWAP_FEE: process.env.SWAP_FEE || "1.5",
+      TEST_CREATOR_ADDRESS: process.env.TEST_CREATOR_ADDRESS || adminKp.publicKey.toBase58(),
+      // Use real API keys from environment
+      ADMIN_API_KEY: process.env.ADMIN_API_KEY || process.env.API_KEY,
+      API_KEY: process.env.API_KEY,
+      USER_API_KEY: process.env.USER_API_KEY || process.env.API_KEY,
+      // Use real JWT secret
+      JWT_SECRET: process.env.JWT_SECRET,
+      // Use real wallet private key if available
+      WALLET_PRIVATE_KEY: process.env.WALLET_PRIVATE_KEY,
+      // Use real FAL.AI key for media generation tests
+      FAL_API_KEY: process.env.FAL_API_KEY,
+      // Use real token pubkey if available, otherwise use generated test token
+      tokenPubkey: process.env.TEST_TOKEN_PUBKEY || testTokenPubkey,
+      // Enable test mode for auth
+      ENABLE_TEST_MODE: "true",
     },
     // Use type assertion for test bindings that aren't properly typed
   } as any);

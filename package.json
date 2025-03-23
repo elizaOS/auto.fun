@@ -16,7 +16,12 @@
     "deploy:worker": "wrangler deploy",
     "deploy:pages": "npm run build && wrangler pages deploy dist",
     "test": "vitest run worker/tests",
-    "test:worker": "vitest run worker/tests"
+    "test:worker": "vitest run worker/tests",
+    "test:routes": "vitest run worker/tests/routes",
+    "test:routes:debug": "DEBUG=true vitest run worker/tests/routes",
+    "test:auth": "vitest run worker/tests/routes/auth.test.ts",
+    "test:token": "vitest run worker/tests/routes/token.test.ts",
+    "setup:test-env": "./scripts/setup-test-env.sh"
   },
   "dependencies": {
     "@aws-sdk/client-ecs": "^3.772.0",

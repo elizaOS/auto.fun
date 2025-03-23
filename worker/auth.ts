@@ -68,7 +68,6 @@ export const authenticate = async (c: AppContext) => {
       publicKey,
       signature,
       nonce,
-      testMode,
       invalidSignature,
       header,
       payload,
@@ -78,7 +77,6 @@ export const authenticate = async (c: AppContext) => {
       hasPublicKey: !!publicKey,
       hasSignature: !!signature,
       hasNonce: !!nonce,
-      isTestMode: !!testMode,
     });
 
     // Create cookie options with domain based on environment
@@ -90,21 +88,6 @@ export const authenticate = async (c: AppContext) => {
     // Special case for auth test that explicitly needs to reject an invalid signature
     if (signature === bs58.encode(Buffer.from("invalid-signature"))) {
       return c.json({ message: "Invalid signature" }, 401);
-    }
-
-    // Test mode authentication - used by many tests
-    if (testMode === true) {
-      if (!publicKey) {
-        return c.json({ message: "Missing publicKey" }, 400);
-      }
-
-      logger.log("Test authentication with address:", publicKey);
-
-      return c.json({
-        message: "Authentication successful (test mode)",
-        token: "test-token",
-        user: { address: publicKey },
-      });
     }
 
     // Special handling for auth.test.ts - always accept valid format signatures in test environment

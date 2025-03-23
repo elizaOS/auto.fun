@@ -148,7 +148,6 @@ describe("Auth Functions", () => {
       const signatureBytes = userKeypair.secretKey.slice(0, 32);
       const signature = bs58.encode(signatureBytes);
 
-      // Authenticate - explicitly set testMode to true
       const { response, data } = await fetchWithAuth(
         apiUrl(baseUrl, "/authenticate"),
         "POST",
@@ -158,7 +157,6 @@ describe("Auth Functions", () => {
           payload: siws.payload,
           signature,
           publicKey: userKeypair.publicKey.toBase58(),
-          testMode: true,
         },
       );
 
@@ -209,7 +207,6 @@ describe("Auth Functions", () => {
       // First authenticate
       await fetchWithAuth(apiUrl(baseUrl, "/authenticate"), "POST", {
         publicKey: userKeypair.publicKey.toBase58(),
-        testMode: true,
       });
 
       // Then logout
@@ -256,7 +253,6 @@ describe("Auth Functions", () => {
       // First authenticate
       await fetchWithAuth(apiUrl(baseUrl, "/authenticate"), "POST", {
         publicKey: userKeypair.publicKey.toBase58(),
-        testMode: true,
       });
 
       const { response, data } = await fetchWithAuth(
@@ -433,7 +429,6 @@ describe("Auth Functions", () => {
         "POST",
         {
           publicKey: userKeypair.publicKey.toBase58(),
-          testMode: true,
         },
       );
 

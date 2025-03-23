@@ -2,6 +2,40 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { TEST_NAME, TEST_SYMBOL } from "../../constant";
 import { TestContext, apiUrl } from "../helpers/test-utils";
 import { registerWorkerHooks, testState } from "../setup";
+import { config } from "dotenv";
+
+config({ path: ".env.test" });
+
+// Simple WebSocket connection test to verify the server is running
+const testWebSocketConnection = async (url: string): Promise<boolean> => {
+  return new Promise((resolve) => {
+    try {
+      const ws = new WebSocket(url);
+      
+      ws.onopen = () => {
+        console.log("WebSocket connected successfully");
+        ws.close();
+        resolve(true);
+      };
+      
+      ws.onerror = (error) => {
+        console.error("WebSocket connection error:", error);
+        resolve(false);
+      };
+      
+      // Set a timeout in case the connection hangs
+      setTimeout(() => {
+        if (ws.readyState !== WebSocket.OPEN) {
+          console.warn("WebSocket connection timed out");
+          resolve(false);
+        }
+      }, 5000);
+    } catch (error) {
+      console.error("Error creating WebSocket:", error);
+      resolve(false);
+    }
+  });
+};
 
 // Default test token value to use when testState doesn't have one
 const DEFAULT_TEST_TOKEN = "C2FeoK5Gw5koa9sUaVk413qygwdJxxy5R2VCjQyXeB4Z";

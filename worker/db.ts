@@ -91,45 +91,6 @@ export const tokenHolders = sqliteTable("token_holders", {
   lastUpdated: text("last_updated", { mode: "text" }).notNull(),
 });
 
-// Agent schema
-export const agents = sqliteTable("agents", {
-  id: text("id").primaryKey(),
-  ownerAddress: text("owner_address", { mode: "text" }).notNull(),
-  contractAddress: text("contract_address", { mode: "text" })
-    .notNull()
-    .references(() => tokens.mint),
-  txId: text("tx_id", { mode: "text" }).notNull(),
-  symbol: text("symbol").notNull(),
-  name: text("name").notNull(),
-  description: text("description").notNull(),
-  systemPrompt: text("system_prompt", { mode: "text" }),
-  bio: text("bio"),
-  messageExamples: text("messageExamples"),
-  postExamples: text("postExamples"),
-  adjectives: text("adjectives"),
-  people: text("people"),
-  topics: text("topics"),
-  modelProvider: text("model_provider", { mode: "text" }).default("claude"),
-  styleAll: text("style_all", { mode: "text" }),
-  styleChat: text("style_chat", { mode: "text" }),
-  stylePost: text("style_post", { mode: "text" }),
-  twitterUsername: text("twitter_username", { mode: "text" }),
-  twitterPassword: text("twitter_password", { mode: "text" }),
-  twitterEmail: text("twitter_email", { mode: "text" }),
-  twitterCookie: text("twitter_cookie", { mode: "text" }),
-  postFreqMin: integer("post_freq_min"),
-  postFreqMax: integer("post_freq_max"),
-  pollIntervalSec: integer("poll_interval_sec"),
-  ecsTaskId: text("ecs_task_id", { mode: "text" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).default(
-    sql`CURRENT_TIMESTAMP`,
-  ),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).default(
-    sql`CURRENT_TIMESTAMP`,
-  ),
-  deletedAt: integer("deleted_at", { mode: "timestamp" }),
-});
-
 // Create messages table without self-referencing first
 export const messages = sqliteTable("messages", {
   id: text("id").primaryKey(),
@@ -220,10 +181,54 @@ export const cachePrices = sqliteTable("cache_prices", {
   expiresAt: text("expires_at", { mode: "text" }).notNull(), // When this cache entry should expire
 });
 
+// Agent table schema
+export const agents = sqliteTable("agents", {
+  id: text("id").primaryKey(),
+  ownerAddress: text("owner_address").notNull(),
+  contractAddress: text("contract_address").notNull(),
+  txId: text("tx_id").notNull().unique(),
+  symbol: text("symbol").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  systemPrompt: text("system_prompt").notNull(),
+  modelProvider: text("model_provider").default("llama_cloud"),
+  
+  // Arrays (stored as JSON strings)
+  bio: text("bio"), // JSON array
+  lore: text("lore"), // JSON array
+  postExamples: text("post_examples"), // JSON array
+  adjectives: text("adjectives"), // JSON array
+  people: text("people"), // JSON array
+  topics: text("topics"), // JSON array
+  styleAll: text("style_all"), // JSON array
+  styleChat: text("style_chat"), // JSON array
+  stylePost: text("style_post"), // JSON array
+  
+  // JSON fields
+  messageExamples: text("message_examples"), // JSON
+  twitterCookie: text("twitter_cookie"), // JSON
+  
+  // Twitter fields
+  twitterUsername: text("twitter_username").notNull(),
+  twitterPassword: text("twitter_password").notNull(),
+  twitterEmail: text("twitter_email").notNull(),
+  postFreqMin: integer("post_freq_min").default(90),
+  postFreqMax: integer("post_freq_max").default(180),
+  pollIntervalSec: integer("poll_interval_sec").default(120),
+  
+  // Task management
+  ecsTaskId: text("ecs_task_id"),
+  
+  // Timestamps
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  deletedAt: text("deleted_at"),
+});
+
 export function getDB(env: Env) {
   try {
     // For non-test environments, use D1 database
-    const drizzleSchema = { tokens, swaps, fees, tokenHolders, agents, messages, messageLikes, users, personalities, vanityKeypairs, mediaGenerations, cachePrices }
+    const drizzleSchema = { tokens, swaps, fees, tokenHolders, messages, messageLikes, users, personalities, vanityKeypairs, mediaGenerations, cachePrices, agents }
     return drizzle(env.DB as any, { schema: drizzleSchema }) as DrizzleD1Database<typeof drizzleSchema>;
   } catch (error) {
     console.error("Error initializing DB:", error);
@@ -244,9 +249,6 @@ export type FeeInsert = typeof schema.fees.$inferInsert;
 export type TokenHolder = typeof schema.tokenHolders.$inferSelect;
 export type TokenHolderInsert = typeof schema.tokenHolders.$inferInsert;
 
-export type Agent = typeof schema.agents.$inferSelect;
-export type AgentInsert = typeof schema.agents.$inferInsert;
-
 export type Message = typeof schema.messages.$inferSelect;
 export type MessageInsert = typeof schema.messages.$inferInsert;
 
@@ -261,6 +263,9 @@ export type UserInsert = typeof schema.users.$inferInsert;
 
 export type VanityKeypair = typeof schema.vanityKeypairs.$inferSelect;
 export type VanityKeypairInsert = typeof schema.vanityKeypairs.$inferInsert;
+
+export type Agent = typeof schema.agents.$inferSelect;
+export type AgentInsert = typeof schema.agents.$inferInsert;
 
 // Import better-sqlite3 only in Node.js environment
 let Database: any;
@@ -280,15 +285,12 @@ try {
   );
 }
 
-const SQLITE_PATH = "./local-dev.sqlite";
-
 // Schema for all tables
 const schema = {
   tokens,
   swaps,
   fees,
   tokenHolders,
-  agents,
   messages,
   messageLikes,
   users,
@@ -296,6 +298,7 @@ const schema = {
   vanityKeypairs,
   mediaGenerations,
   cachePrices,
+  agents,
 };
 
 // Export schema for type inference

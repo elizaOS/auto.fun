@@ -14,6 +14,9 @@ import {
   sleep,
 } from "../helpers/test-utils";
 import { registerWorkerHooks, testState } from "../setup";
+import { config } from "dotenv";
+
+config({ path: ".env.test" });
 
 // Get __dirname equivalent in ES module
 const __filename = fileURLToPath(import.meta.url);
@@ -818,7 +821,7 @@ describe("Media Generation API Endpoints", () => {
         // Don't fail the test, just log the error
         expect(true).toBe(true);
       }
-    });
+    }, 15000); // Increase timeout to 15 seconds for image generation
 
     it("should directly generate a video using fal.ai", async () => {
       if (!falApiKey) {
