@@ -80,11 +80,28 @@ export async function fetchCodexTokenEvents(
         },
       );
 
+      // Add error handling for missing data
+      if (!response.data || !response.data.data || !response.data.data.getTokenEvents) {
+        logger.error("Invalid response from Codex API:", response.data);
+        
+        // If we have error information in the response, log it
+        if (response.data && response.data.errors) {
+          logger.error("Codex API errors:", response.data.errors);
+        }
+        
+        // Return what we have so far or empty array
+        return allItems.length ? allItems : [];
+      }
+
       const { items, cursor: newCursor } = response.data.data.getTokenEvents;
       allItems = allItems.concat(items);
       cursor = newCursor;
     } catch (error) {
       logger.error("Error fetching data from Codex API:", error);
+      // Return partial results if we have any, otherwise rethrow
+      if (allItems.length > 0) {
+        return allItems;
+      }
       throw error;
     }
   } while (cursor);
@@ -141,11 +158,26 @@ export async function fetchCodexTokenPrice(
       },
     );
 
-    const token = response.data.data.getTokens.items[0];
-
-    if (!token) {
-      throw new Error(`Token ${tokenAddress} not found in Codex API`);
+    // Add error handling for missing data
+    if (!response.data || !response.data.data || !response.data.data.getTokens || !response.data.data.getTokens.items || response.data.data.getTokens.items.length === 0) {
+      logger.error(`Token ${tokenAddress} not found or invalid response from Codex API:`, response.data);
+      
+      // If we have error information in the response, log it
+      if (response.data && response.data.errors) {
+        logger.error("Codex API errors:", response.data.errors);
+      }
+      
+      // Return default values
+      return {
+        currentPrice: 0,
+        priceUsd: 0,
+        volume24h: 0,
+        liquidity: 0,
+        marketCap: 0,
+      };
     }
+
+    const token = response.data.data.getTokens.items[0];
 
     return {
       currentPrice: parseFloat(token.price || "0"),
@@ -357,6 +389,18 @@ async function fetchCodexBarsChunk(
         },
       },
     );
+
+    // Add error handling for missing data
+    if (!response.data || !response.data.data || !response.data.data.getBars) {
+      logger.error("Invalid response from Codex API:", response.data);
+      
+      // If we have error information in the response, log it
+      if (response.data && response.data.errors) {
+        logger.error("Codex API errors:", response.data.errors);
+      }
+      
+      return [];
+    }
 
     const barsData = response.data.data.getBars as CodexBarsResponse;
 
