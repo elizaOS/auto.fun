@@ -6,6 +6,7 @@ import Button from "./button";
 import { CloseButton, Dialog, DialogPanel } from "@headlessui/react";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import WalletButton from "./wallet-button";
 
 export default function Header() {
   const { pathname } = useLocation();
@@ -37,17 +38,17 @@ export default function Header() {
           </div>
           <div className="flex space-x-4 flex-row justify-between">
             <SearchBar />
-            <Button className="flex items-center text-base font-medium text-white font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border border-[#2FD345] rounded-md">
-              Create Token{" "}
-              <img
-                src="/nav/stars.svg"
-                alt="stars"
-                className="text-[#2FD345]"
-              />
-            </Button>
-            <Button className="px-4 py-2.5 gap-2 h-11 rounded-md">
-              Connect Wallet
-            </Button>
+            <Link to="/create">
+              <Button className="flex items-center text-base font-medium text-white font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border border-[#2FD345] rounded-md">
+                Create Token{" "}
+                <img
+                  src="/nav/stars.svg"
+                  alt="stars"
+                  className="text-[#2FD345]"
+                />
+              </Button>
+            </Link>
+            <WalletButton />
           </div>
         </div>
       </div>
@@ -79,9 +80,7 @@ export default function Header() {
                   <DialogPanel className="pointer-events-auto mt-16 relative w-full max-w-md">
                     <div className="flex w-full h-full flex-col overflow-y-hidden bg-[#171717] py-0 shadow-xl">
                       <div className="relative flex flex-col py-10 px-6 gap-3">
-                        <button className="rounded-lg text-white border max-w-[233px] w-full h-[44px] border-[#2FD345] cursor-pointer">
-                          Connect Wallet
-                        </button>
+                        <WalletButton />
                         <div>
                           {mobileNavItems.map((item, index) => (
                             <Link

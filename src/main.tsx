@@ -11,11 +11,14 @@ import TermsOfService from "./pages/terms-of-service";
 import PrivacyPolicy from "./pages/privacy-policy";
 import Fees from "./pages/fees";
 import Token from "./pages/token";
+import { Create } from "./pages/create";
 import { queryClient } from "./utils/api";
+import { WalletProvider } from "./providers/wallet";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
+      <WalletProvider autoConnect={false}>
       <BrowserRouter>
         <Routes>
           <Route element={<Layout />}>
@@ -25,9 +28,11 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/fees" element={<Fees />} />
             <Route path="/token/:address" element={<Token />} />
+            <Route path="/create" element={<Create />} />
           </Route>
         </Routes>
       </BrowserRouter>
+      </WalletProvider>
     </QueryClientProvider>
   </StrictMode>,
 );

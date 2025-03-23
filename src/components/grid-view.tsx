@@ -55,7 +55,7 @@ export default function GridView({ data }: { data: IToken[] }) {
                       {shortenAddress(token.mint)}
                     </div>
                     <div onClick={(e) => e.stopPropagation()}>
-                      <CopyButton text={token.mint} className="size-4" />
+                      <CopyButton text={token.mint} />
                     </div>
                   </div>
                 </div>
