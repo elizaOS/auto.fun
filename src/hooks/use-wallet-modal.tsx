@@ -3,6 +3,7 @@ import { createContext, useContext } from "react";
 export interface WalletModalContextState {
   visible: boolean;
   setVisible: (open: boolean) => void;
+  hasStoredWallet?: boolean;
 }
 
 const DEFAULT_CONTEXT = {
@@ -10,10 +11,17 @@ const DEFAULT_CONTEXT = {
     console.error(constructMissingProviderErrorMessage("call", "setVisible"));
   },
   visible: false,
+  hasStoredWallet: false,
 };
 Object.defineProperty(DEFAULT_CONTEXT, "visible", {
   get() {
     console.error(constructMissingProviderErrorMessage("read", "visible"));
+    return false;
+  },
+});
+Object.defineProperty(DEFAULT_CONTEXT, "hasStoredWallet", {
+  get() {
+    console.error(constructMissingProviderErrorMessage("read", "hasStoredWallet"));
     return false;
   },
 });

@@ -187,6 +187,7 @@ export const logout = async (c: AppContext) => {
 };
 
 export const authStatus = async (c: AppContext) => {
+  console.log("authStatus");
   try {
     // Check for cookie authentication
     const publicKey = getCookie(c, "publicKey");

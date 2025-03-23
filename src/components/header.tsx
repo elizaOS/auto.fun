@@ -6,7 +6,7 @@ import Button from "./button";
 import { CloseButton, Dialog, DialogPanel } from "@headlessui/react";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
-import WalletButton from "./wallet-button";
+import WalletButton from "@/components/wallet-button";
 
 export default function Header() {
   const { pathname } = useLocation();

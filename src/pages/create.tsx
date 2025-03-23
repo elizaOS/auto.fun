@@ -283,7 +283,7 @@ export const Create = () => {
       };
 
       // Submit to backend API
-      const response = await fetch("/api/create-token", {
+      const response = await fetch(import.meta.env.VITE_API_URL + "/api/create-token", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -524,10 +524,7 @@ export const Create = () => {
       <div className="h-0.5 bg-[#262626]" />
 
       <div className="flex flex-col items-center">
-        <div className="text-white text-base font-normal font-['DM Mono'] uppercase leading-normal tracking-widest mb-2.5">
-          Continue
-        </div>
-        {showWalletPrompt && !publicKey ? (
+        {!publicKey ? (
           <div className="flex flex-col items-center gap-2">
             <p className="text-white mb-2">
               Connect your wallet to launch your token
