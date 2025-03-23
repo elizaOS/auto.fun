@@ -3,7 +3,7 @@ import { Link } from "react-router";
 
 export default function SupportPage() {
   return (
-    <div className="flex flex-col flex-1 h-[100vh]">
+    <div className="flex flex-col flex-1 min-h-[100vh]">
       <div className="max-w-[800px] mx-auto mb-8">
         <h1 className="text-4xl font-bold text-white mb-8">Support</h1>
 

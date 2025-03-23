@@ -11,8 +11,8 @@ export default function Layout() {
       <main className="flex-grow container py-10">
         <Outlet />
         <BreakpointIndicator />
-        <Footer />
       </main>
+      <Footer />
       <div className="block md:hidden">
         <BottomBar />
       </div>

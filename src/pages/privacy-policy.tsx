@@ -1,5 +1,4 @@
 import { useState } from "react";
-import Footer from "../components/footer";
 
 const PrivacyPolicy = () => {
   const [activeSection, setActiveSection] = useState<string | null>(null);
@@ -13,7 +12,7 @@ const PrivacyPolicy = () => {
   };
 
   return (
-    <div className="flex flex-col flex-1 h-[100vh]">
+    <div className="flex flex-col flex-1 min-h-[100vh]">
       <div className="max-w-4xl mx-auto p-6 text-white">
         <h1 className="text-3xl font-bold mb-4">Privacy Policy</h1>
         <p className="text-sm mb-6">Last Updated: January 16, 2025</p>
