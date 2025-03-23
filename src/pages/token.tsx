@@ -223,7 +223,7 @@ export default function Page() {
           </div>
           {/* Bonding Curve */}
           <div className="flex flex-col gap-3.5">
-            <div className="flex justify-between gap-3.5">
+            <div className="flex justify-between gap-3.5 items-center">
               <p className="font-medium font-satoshi">
                 Bonding Curve Progress:{" "}
                 <span className="text-autofun-text-highlight">
