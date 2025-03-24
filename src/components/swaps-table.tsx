@@ -35,7 +35,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
           <TableHead className="text-left">Type</TableHead>
           <TableHead className="text-left">SOL</TableHead>
           <TableHead className="text-left">Token</TableHead>
-          <TableHead className="text-left">Date</TableHead>
+          <TableHead className="text-left w-[150px]">Date</TableHead>
           <TableHead className="text-right">Txn</TableHead>
         </TableRow>
       </TableHeader>

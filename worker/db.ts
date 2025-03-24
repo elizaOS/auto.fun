@@ -1,7 +1,7 @@
-import { drizzle } from "drizzle-orm/d1";
-import { Env } from "./env";
 import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text, real } from "drizzle-orm/sqlite-core";
+import { drizzle, DrizzleD1Database } from "drizzle-orm/d1";
+import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { Env } from "./env";
 
 // Token schema
 export const tokens = sqliteTable("tokens", {
@@ -16,135 +16,97 @@ export const tokens = sqliteTable("tokens", {
   description: text("description"),
   mint: text("mint").notNull().unique(),
   creator: text("creator").notNull(),
-  nftMinted: text("nftMinted"),
-  lockId: text("lockId"),
-  lockedAmount: text("lockedAmount"),
-  lockedAt: text("lockedAt"),
-  harvestedAt: text("harvestedAt"),
+  nftMinted: text("nft_minted", { mode: "text" }),
+  lockId: text("lock_id", { mode: "text" }),
+  lockedAmount: text("locked_amount", { mode: "text" }),
+  lockedAt: text("locked_at", { mode: "text" }),
+  harvestedAt: text("harvested_at", { mode: "text" }),
   status: text("status").notNull().default("active"),
-  createdAt: text("createdAt").notNull(),
-  lastUpdated: text("lastUpdated").notNull(),
-  completedAt: text("completedAt"),
-  withdrawnAt: text("withdrawnAt"),
-  migratedAt: text("migratedAt"),
-  marketId: text("marketId"),
-  baseVault: text("baseVault"),
-  quoteVault: text("quoteVault"),
-  withdrawnAmount: real("withdrawnAmount"),
-  reserveAmount: real("reserveAmount"),
-  reserveLamport: real("reserveLamport"),
-  virtualReserves: real("virtualReserves"),
+  createdAt: text("created_at", { mode: "text" }).notNull(),
+  lastUpdated: text("last_updated", { mode: "text" }).notNull(),
+  completedAt: text("completed_at", { mode: "text" }),
+  withdrawnAt: text("withdrawn_at", { mode: "text" }),
+  migratedAt: text("migrated_at", { mode: "text" }),
+  marketId: text("market_id", { mode: "text" }),
+  baseVault: text("base_vault", { mode: "text" }),
+  quoteVault: text("quote_vault", { mode: "text" }),
+  withdrawnAmount: real("withdrawn_amount"),
+  reserveAmount: real("reserve_amount"),
+  reserveLamport: real("reserve_lamport"),
+  virtualReserves: real("virtual_reserves"),
   liquidity: real("liquidity"),
-  currentPrice: real("currentPrice"),
-  marketCapUSD: real("marketCapUSD"),
-  tokenPriceUSD: real("tokenPriceUSD"),
-  solPriceUSD: real("solPriceUSD"),
-  curveProgress: real("curveProgress"),
-  curveLimit: real("curveLimit"),
-  priceChange24h: real("priceChange24h"),
-  price24hAgo: real("price24hAgo"),
-  volume24h: real("volume24h"),
-  inferenceCount: integer("inferenceCount"),
-  lastVolumeReset: text("lastVolumeReset"),
-  lastPriceUpdate: text("lastPriceUpdate"),
-  holderCount: integer("holderCount"),
-  txId: text("txId"),
+  currentPrice: real("current_price"),
+  marketCapUSD: real("market_cap_usd"),
+  tokenPriceUSD: real("token_price_usd"),
+  solPriceUSD: real("sol_price_usd"),
+  curveProgress: real("curve_progress"),
+  curveLimit: real("curve_limit"),
+  priceChange24h: real("price_change_24h"),
+  price24hAgo: real("price_24h_ago"),
+  volume24h: real("volume_24h"),
+  inferenceCount: integer("inference_count"),
+  lastVolumeReset: text("last_volume_reset"),
+  lastPriceUpdate: text("last_price_update"),
+  holderCount: integer("holder_count"),
+  txId: text("tx_id"),
 });
 
 // Swap schema
 export const swaps = sqliteTable("swaps", {
   id: text("id").primaryKey(),
-  tokenMint: text("tokenMint").notNull(),
+  tokenMint: text("token_mint", { mode: "text" }).notNull(),
   user: text("user").notNull(),
   type: text("type").notNull(),
   direction: integer("direction").notNull(), // 0 = Buy (SOL->Token), 1 = Sell (Token->SOL)
-  amountIn: real("amountIn").notNull(),
-  amountOut: real("amountOut").notNull(),
-  priceImpact: real("priceImpact"),
+  amountIn: real("amount_in"),
+  amountOut: real("amount_out"),
+  priceImpact: real("price_impact"),
   price: real("price").notNull(),
-  txId: text("txId").notNull().unique(),
+  txId: text("tx_id", { mode: "text" }).notNull().unique(),
   timestamp: text("timestamp").notNull(),
 });
 
 // Fees schema
 export const fees = sqliteTable("fees", {
   id: text("id").primaryKey(),
-  tokenMint: text("tokenMint").notNull(),
+  tokenMint: text("token_mint", { mode: "text" }).notNull(),
   user: text("user"),
   direction: integer("direction"),
-  feeAmount: text("feeAmount"),
-  tokenAmount: text("tokenAmount"),
-  solAmount: text("solAmount"),
+  feeAmount: text("fee_amount", { mode: "text" }),
+  tokenAmount: text("token_amount", { mode: "text" }),
+  solAmount: text("sol_amount", { mode: "text" }),
   type: text("type").notNull(), // swap, migration
-  txId: text("txId"),
+  txId: text("tx_id", { mode: "text" }),
   timestamp: text("timestamp").notNull(),
 });
 
 // TokenHolder schema
-export const tokenHolders = sqliteTable("tokenHolders", {
+export const tokenHolders = sqliteTable("token_holders", {
   id: text("id").primaryKey(),
   mint: text("mint").notNull(),
   address: text("address").notNull(),
   amount: real("amount").notNull(),
   percentage: real("percentage").notNull(),
-  lastUpdated: text("lastUpdated").notNull(),
-});
-
-// Agent schema
-export const agents = sqliteTable("agents", {
-  id: text("id").primaryKey(),
-  ownerAddress: text("ownerAddress").notNull(),
-  contractAddress: text("contractAddress")
-    .notNull()
-    .references(() => tokens.mint),
-  txId: text("txId").notNull(),
-  symbol: text("symbol").notNull(),
-  name: text("name").notNull(),
-  description: text("description").notNull(),
-  systemPrompt: text("systemPrompt"),
-  bio: text("bio"),
-  lore: text("lore"),
-  messageExamples: text("messageExamples"),
-  postExamples: text("postExamples"),
-  adjectives: text("adjectives"),
-  people: text("people"),
-  topics: text("topics"),
-  modelProvider: text("modelProvider").default("claude"),
-  styleAll: text("styleAll"),
-  styleChat: text("styleChat"),
-  stylePost: text("stylePost"),
-  twitterUsername: text("twitterUsername"),
-  twitterPassword: text("twitterPassword"),
-  twitterEmail: text("twitterEmail"),
-  twitterCookie: text("twitterCookie"),
-  personalities: text("personalities"),
-  ecsTaskId: text("ecsTaskId"),
-  createdAt: integer("createdAt", { mode: "timestamp" }).default(
-    sql`CURRENT_TIMESTAMP`,
-  ),
-  updatedAt: integer("updatedAt", { mode: "timestamp" }).default(
-    sql`CURRENT_TIMESTAMP`,
-  ),
-  deletedAt: integer("deletedAt", { mode: "timestamp" }),
+  lastUpdated: text("last_updated", { mode: "text" }).notNull(),
 });
 
 // Create messages table without self-referencing first
 export const messages = sqliteTable("messages", {
   id: text("id").primaryKey(),
   author: text("author").notNull(),
-  tokenMint: text("tokenMint").notNull(),
+  tokenMint: text("token_mint", { mode: "text" }).notNull(),
   message: text("message").notNull(),
-  parentId: text("parentId"),
-  replyCount: integer("replyCount").notNull().default(0),
+  parentId: text("parent_id", { mode: "text" }),
+  replyCount: integer("reply_count"),
   likes: integer("likes").notNull().default(0),
   timestamp: text("timestamp").notNull(),
 });
 
 // MessageLike schema
-export const messageLikes = sqliteTable("messageLikes", {
+export const messageLikes = sqliteTable("message_likes", {
   id: text("id").primaryKey(),
-  messageId: text("messageId").notNull(),
-  userAddress: text("userAddress").notNull(),
+  messageId: text("message_id", { mode: "text" }).notNull(),
+  userAddress: text("user_address", { mode: "text" }).notNull(),
   timestamp: text("timestamp").notNull(),
 });
 
@@ -153,13 +115,13 @@ export const personalities = sqliteTable("personalities", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   description: text("description"),
-  createdAt: integer("createdAt", { mode: "timestamp" }).default(
+  createdAt: integer("created_at", { mode: "timestamp" }).default(
     sql`CURRENT_TIMESTAMP`,
   ),
-  updatedAt: integer("updatedAt", { mode: "timestamp" }).default(
+  updatedAt: integer("updated_at", { mode: "timestamp" }).default(
     sql`CURRENT_TIMESTAMP`,
   ),
-  deletedAt: integer("deletedAt", { mode: "timestamp" }),
+  deletedAt: integer("deleted_at", { mode: "timestamp" }),
 });
 
 // User schema
@@ -172,15 +134,15 @@ export const users = sqliteTable("users", {
     .default(
       "https://ipfs.io/ipfs/bafkreig4ob6pq5qy4v6j62krj4zkh2kc2pnv5egqy7f65djqhgqv3x56pq",
     ),
-  createdAt: text("createdAt").notNull(),
+  createdAt: text("created_at", { mode: "text" }).notNull(),
 });
 
 // VanityKeypair schema
-export const vanityKeypairs = sqliteTable("vanityKeypairs", {
+export const vanityKeypairs = sqliteTable("vanity_keypairs", {
   id: text("id").primaryKey(),
   address: text("address").notNull().unique(),
-  secretKey: text("secretKey").notNull(),
-  createdAt: text("createdAt").notNull(),
+  secretKey: text("secret_key", { mode: "text" }).notNull(),
+  createdAt: text("created_at", { mode: "text" }).notNull(),
   used: integer("used").notNull().default(0),
 });
 
@@ -190,8 +152,8 @@ export const mediaGenerations = sqliteTable("media_generations", {
   mint: text("mint").notNull(),
   type: text("type").notNull(), // "image", "video", "audio"
   prompt: text("prompt").notNull(),
-  mediaUrl: text("media_url").notNull(),
-  negativePrompt: text("negative_prompt"),
+  mediaUrl: text("media_url", { mode: "text" }).notNull(),
+  negativePrompt: text("negative_prompt", { mode: "text" }),
   numInferenceSteps: integer("num_inference_steps"),
   seed: integer("seed"),
   // Video specific metadata
@@ -204,6 +166,8 @@ export const mediaGenerations = sqliteTable("media_generations", {
   bpm: integer("bpm"),
   creator: text("creator"),
   timestamp: text("timestamp").notNull(),
+  dailyGenerationCount: integer("daily_generation_count"),
+  lastGenerationReset: text("last_generation_reset", { mode: "text" }),
 });
 
 // Cache table for prices
@@ -213,78 +177,31 @@ export const cachePrices = sqliteTable("cache_prices", {
   symbol: text("symbol").notNull(),
   price: text("price").notNull(), // Store as string to preserve precision
   timestamp: text("timestamp").notNull(),
-  expiresAt: text("expires_at").notNull(), // When this cache entry should expire
+  expiresAt: text("expires_at", { mode: "text" }).notNull(), // When this cache entry should expire
 });
-
-const schema = {
-  tokens,
-  swaps,
-  fees,
-  tokenHolders,
-  agents,
-  messages,
-  messageLikes,
-  users,
-  personalities,
-  vanityKeypairs,
-  mediaGenerations,
-  cachePrices,
-};
 
 export function getDB(env: Env) {
   try {
-    // In development, handle cases where DB isn't properly configured
-    if (env.NODE_ENV === "development" || !env.DB) {
-      // Create a chainable proxy that always returns itself
-      const createChainableProxy = (): Record<string, any> => {
-        return new Proxy({} as any, {
-          get: (_target, prop) => {
-            // Return a function that returns the proxy for method chaining
-            if (typeof prop === "string") {
-              // @ts-ignore
-              return (...args: any[]) => {
-                if (prop === "then") {
-                  // Special handling for Promise then/catch/finally
-                  return Promise.resolve([]);
-                }
-                return createChainableProxy();
-              };
-            }
-            return createChainableProxy();
-          },
-          apply: () => {
-            // Handle function calls by returning the chainable proxy
-            return createChainableProxy();
-          },
-        });
-      };
-
-      return createChainableProxy();
-    }
-
-    return drizzle(env.DATABASE as any, { schema });
-  } catch (error) {
-    console.warn("Database connection failed, using fallback:", error);
-    // Create the same chainable proxy for error cases
-    const createChainableProxy = (): Record<string, any> => {
-      return new Proxy({} as any, {
-        get: (_, prop) => {
-          if (typeof prop === "string") {
-            // @ts-ignore
-            return (...args: any[]) => {
-              if (prop === "then") {
-                return Promise.resolve([]);
-              }
-              return createChainableProxy();
-            };
-          }
-          return createChainableProxy();
-        },
-        apply: () => createChainableProxy(),
-      });
+    // For non-test environments, use D1 database
+    const drizzleSchema = {
+      tokens,
+      swaps,
+      fees,
+      tokenHolders,
+      messages,
+      messageLikes,
+      users,
+      personalities,
+      vanityKeypairs,
+      mediaGenerations,
+      cachePrices,
     };
-
-    return createChainableProxy();
+    return drizzle(env.DB as any, {
+      schema: drizzleSchema,
+    }) as DrizzleD1Database<typeof drizzleSchema>;
+  } catch (error) {
+    console.error("Error initializing DB:", error);
+    throw error;
   }
 }
 
@@ -301,9 +218,6 @@ export type FeeInsert = typeof schema.fees.$inferInsert;
 export type TokenHolder = typeof schema.tokenHolders.$inferSelect;
 export type TokenHolderInsert = typeof schema.tokenHolders.$inferInsert;
 
-export type Agent = typeof schema.agents.$inferSelect;
-export type AgentInsert = typeof schema.agents.$inferInsert;
-
 export type Message = typeof schema.messages.$inferSelect;
 export type MessageInsert = typeof schema.messages.$inferInsert;
 
@@ -318,3 +232,21 @@ export type UserInsert = typeof schema.users.$inferInsert;
 
 export type VanityKeypair = typeof schema.vanityKeypairs.$inferSelect;
 export type VanityKeypairInsert = typeof schema.vanityKeypairs.$inferInsert;
+
+// Schema for all tables
+const schema = {
+  tokens,
+  swaps,
+  fees,
+  tokenHolders,
+  messages,
+  messageLikes,
+  users,
+  personalities,
+  vanityKeypairs,
+  mediaGenerations,
+  cachePrices,
+};
+
+// Export schema for type inference
+export { schema };

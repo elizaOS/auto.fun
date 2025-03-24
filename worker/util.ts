@@ -547,7 +547,7 @@ export const getLegacyRpcUrl = (env?: any) => {
     // If no env is provided, use safe defaults
     return "https://api.mainnet-beta.solana.com";
   }
-  
+
   return getRpcUrl(env);
 };
 

@@ -30,13 +30,28 @@ TOKEN_SUPPLY = "1000000000000000000"
 VIRTUAL_RESERVES = "1000000000"
 CURVE_LIMIT = "1000000000000"
 
+# Legacy WebSocket DO binding
 [[durable_objects.bindings]]
 name = "WEBSOCKET_DO"
 class_name = "WebSocketDO"
 
+# Socket.io Durable Objects
+[[durable_objects.bindings]]
+name = "engineActor"
+class_name = "EngineActor"
+
+[[durable_objects.bindings]]
+name = "socketActor"
+class_name = "SocketActor"
+
+# Migration tags
 [[migrations]]
 tag = "v1"
-new_classes = ["WebSocketDO"]
+new_classes = ["WebSocketDO", "EngineActor", "SocketActor"]
+
+[[migrations]]
+tag = "v2"
+new_classes = []
 
 # Development environment configuration
 [env.development]
@@ -44,6 +59,11 @@ name = "api-dev"
 # Site configuration for development
 [env.development.site]
 bucket = "./dist"
+
+# Development environment doesn't use cron triggers
+# to avoid the ENOENT utime error with registry/api
+[env.development.triggers]
+crons = [] # No cron jobs in development mode
 
 # Copy vars to development environment
 [env.development.vars]
@@ -68,6 +88,15 @@ bucket_name = "autofun-storage-dev"
 [[env.development.durable_objects.bindings]]
 name = "WEBSOCKET_DO"
 class_name = "WebSocketDO"
+
+# Add Socket.io Durable Objects for development
+[[env.development.durable_objects.bindings]]
+name = "engineActor"
+class_name = "EngineActor"
+
+[[env.development.durable_objects.bindings]]
+name = "socketActor"
+class_name = "SocketActor"
 
 # Production environment configuration
 [env.production]

@@ -5,47 +5,96 @@ import { logger } from "./logger";
 export async function uploadToCloudflare(
   env: Env,
   data: ArrayBuffer | object,
-  options: { isJson?: boolean; contentType?: string } = {},
+  options: { isJson?: boolean; contentType?: string; timeout?: number } = {},
 ) {
+  // Apply a default timeout of 15 seconds
+  const timeout = options.timeout || 15000;
+  const objectKey = crypto.randomUUID();
+
   try {
-    // In development mode or if R2 is not configured, return a mock URL
-    if (env.NODE_ENV === "development" || !env.R2) {
-      const objectKey = crypto.randomUUID();
-      const baseUrl = "https://mock-storage.example.com";
-      logger.log("Using mock storage URL in development mode");
+    // For development and testing, use a mock when R2 is not available
+    if (!env.R2) {
+      logger.log("R2 is not available, using mock storage URL");
+      const baseUrl = env.R2_PUBLIC_URL || "https://mock-storage.example.com";
       return `${baseUrl}/${objectKey}`;
     }
 
-    // For production, use actual R2 storage
-    const objectKey = crypto.randomUUID();
+    // Set the appropriate content type
     const contentType =
       options.contentType ||
       (options.isJson ? "application/json" : "image/png");
 
+    // Prepare data for upload
     let objectData: ArrayBuffer;
     if (options.isJson) {
-      // Convert JSON to ArrayBuffer
+      // Convert JSON to ArrayBuffer for storage
       const jsonString = JSON.stringify(data);
-      objectData = new TextEncoder().encode(jsonString).buffer;
+      objectData = new TextEncoder().encode(jsonString).buffer as ArrayBuffer;
+    } else if (data instanceof ArrayBuffer) {
+      // Use data directly if it's already an ArrayBuffer
+      objectData = data;
+    } else if (
+      data instanceof Uint8Array ||
+      data instanceof Uint8ClampedArray
+    ) {
+      // Handle typed arrays
+      objectData = data.buffer as ArrayBuffer;
     } else {
-      // Use data directly as ArrayBuffer
-      objectData = data as ArrayBuffer;
+      // Fallback for other object types
+      const jsonString = JSON.stringify(data);
+      objectData = new TextEncoder().encode(jsonString).buffer as ArrayBuffer;
     }
 
-    // Upload to R2
-    await env.R2.put(objectKey, objectData, {
-      httpMetadata: {
-        contentType,
-      },
-    });
+    try {
+      // Create R2 upload and timeout promises
+      const uploadPromise = new Promise<void>((resolve, reject) => {
+        // Check if R2 is available
+        if (!env.R2) {
+          reject(new Error("R2 is not available"));
+          return;
+        }
 
-    // Return public URL - use a default format if R2_PUBLIC_URL isn't set
-    const baseUrl = env.R2_PUBLIC_URL || `https://storage.example.com`;
-    return `${baseUrl}/${objectKey}`;
+        // Perform the upload
+        env.R2.put(objectKey, objectData, {
+          httpMetadata: { contentType },
+        })
+          .then(() => resolve())
+          .catch((e) => reject(e));
+      });
+
+      const timeoutPromise = new Promise<void>((_, reject) => {
+        setTimeout(() => reject(new Error("Upload timed out")), timeout);
+      });
+
+      // Race the promises to implement timeout
+      await Promise.race([uploadPromise, timeoutPromise]);
+
+      // Return public URL
+      const baseUrl = env.R2_PUBLIC_URL || "https://storage.cloudflare.com";
+      const publicUrl = `${baseUrl}/${objectKey}`;
+
+      logger.log(`Successfully uploaded to R2: ${publicUrl}`);
+      return publicUrl;
+    } catch (r2Error) {
+      // Handle specific R2 errors
+      logger.error("Cloudflare R2 upload failed:", r2Error);
+
+      // Return a fallback URL
+      const fallbackUrl = `${env.R2_PUBLIC_URL || "https://fallback-storage.example.com"}/${objectKey}`;
+      logger.log(`Using fallback URL: ${fallbackUrl}`);
+      return fallbackUrl;
+    }
   } catch (error) {
-    logger.error("Cloudflare upload failed:", error);
-    // Return a fallback URL instead of throwing
-    const objectKey = crypto.randomUUID();
-    return `https://fallback-storage.example.com/${objectKey}`;
+    // Log detailed error information
+    if (error instanceof Error && error.message === "Upload timed out") {
+      logger.error(`Cloudflare R2 upload timed out after ${timeout}ms`);
+    } else {
+      logger.error("Error in uploadToCloudflare:", error);
+    }
+
+    // Return a fallback URL
+    const fallbackUrl = `${env.R2_PUBLIC_URL || "https://fallback-storage.example.com"}/${objectKey}`;
+    logger.log(`Using fallback URL: ${fallbackUrl}`);
+    return fallbackUrl;
   }
 }

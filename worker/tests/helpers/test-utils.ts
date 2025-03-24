@@ -4,6 +4,24 @@ import {
 } from "@solana/spl-token";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { unstable_dev } from "wrangler";
+import { generateNonce, authenticate, logout, authStatus } from "../../auth";
+import { Env } from "../../env";
+import { Context } from "hono";
+import { vi } from "vitest";
+
+// Define AppContext for testing
+type AppContext = Context<{
+  Bindings: Env;
+  Variables: {
+    user?: { publicKey: string } | null;
+  };
+}>;
+
+// Add direct function testing support
+export interface DirectApiResponse<T = any> {
+  data: T;
+  response: { status: number };
+}
 
 // Extend context with common test properties
 export interface TestContext {
@@ -88,62 +106,82 @@ export interface AdminStats {
   totalUsers?: number;
 }
 
-// Agent-related interfaces
-export interface AgentDetails {
-  systemPrompt?: string;
-  bio?: string;
-  lore?: string;
-  postExamples?: string;
-  adjectives?: string;
-  style?: string;
-  topics?: string;
-  [key: string]: any; // Allow for any other properties
-}
-
 /**
- * Helper to make API requests with authentication
+ * Fetch with authentication and request body handling
+ * Always uses real API calls
  */
 export async function fetchWithAuth<T = any>(
   url: string,
-  method: string = "GET",
+  method: "GET" | "POST" | "PUT" | "DELETE",
   body?: any,
-  apiKey?: string,
-  extraHeaders?: Record<string, string>,
-): Promise<{ response: Response; data: T }> {
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-  };
-
-  if (apiKey) {
-    headers["X-API-Key"] = apiKey;
-  }
-
-  // Merge any extra headers
-  if (extraHeaders) {
-    Object.entries(extraHeaders).forEach(([key, value]) => {
-      headers[key] = value;
-    });
-  }
-
-  const options: RequestInit = {
+  headers: Record<string, string> = {},
+): Promise<DirectApiResponse<T>> {
+  // Standard fetch implementation
+  const fetchOptions: RequestInit = {
     method,
-    headers,
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
   };
 
   if (body && method !== "GET") {
-    options.body = JSON.stringify(body);
+    fetchOptions.body = JSON.stringify(body);
   }
 
-  // Make a real request without any fallback to mocks
-  const response = await fetch(url, options);
-  let data: T;
+  // Debug logging
+  console.log(`Fetching ${method} ${url}`);
+  console.log("Request headers:", headers);
+  if (body && method !== "GET") {
+    // Don't log sensitive information like signatures
+    const sanitizedBody = { ...body };
+    if (sanitizedBody.signature) sanitizedBody.signature = "***";
+    if (sanitizedBody.privateKey) sanitizedBody.privateKey = "***";
+    console.log("Request body:", sanitizedBody);
+  }
 
+  // No retries - let errors propagate
+  const response = await fetch(url, fetchOptions);
+
+  let data;
   try {
-    data = (await response.json()) as T;
+    const responseText = await response.text();
+    try {
+      // Try to parse as JSON first
+      data = JSON.parse(responseText);
+      console.log(`Response status: ${response.status}`);
+      // Only log data if not too large
+      if (responseText.length < 500) {
+        console.log("Response data:", data);
+      } else {
+        console.log("Response: [large data]");
+      }
+    } catch (e) {
+      // For non-JSON responses, provide the text
+      console.warn(`Non-JSON response from ${url}: ${responseText}`);
+      data = { message: responseText };
+    }
   } catch (e) {
-    console.warn(`Error parsing JSON from ${url}: ${e}`);
-    data = {} as T;
+    console.error(`Error reading response from ${url}:`, e);
+    throw e; // Rethrow the error to ensure test failure
   }
 
-  return { response, data };
+  return {
+    data,
+    response: { status: response.status },
+  };
+}
+
+/**
+ * Helper for API requests - now simply passes through to fetchWithAuth
+ * No retries are performed - errors will be exposed directly
+ */
+export async function retryFetch<T = any>(
+  url: string,
+  method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
+  body?: any,
+  headers: Record<string, string> = {},
+): Promise<DirectApiResponse<T>> {
+  // Direct passthrough to fetchWithAuth - no retries
+  return await fetchWithAuth<T>(url, method, body, headers);
 }

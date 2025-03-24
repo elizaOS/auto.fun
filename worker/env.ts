@@ -9,7 +9,6 @@ import {
  */
 export interface Env {
   WEBSOCKET_DO: DurableObjectNamespace;
-  DATABASE: D1Database;
   DB: D1Database;
   NETWORK: string;
   DECIMALS: string;
@@ -17,8 +16,10 @@ export interface Env {
   VIRTUAL_RESERVES: string;
   CURVE_LIMIT: string;
   API_KEY: string;
+  USER_API_KEY: string;
   WALLET_PRIVATE_KEY?: string;
   ADMIN_KEY: string;
+  ADMIN_API_KEY: string;
   FEE_PERCENTAGE?: string;
   PRIMARY_LOCK_PERCENTAGE?: string;
   SECONDARY_LOCK_PERCENTAGE?: string;
@@ -29,4 +30,9 @@ export interface Env {
   FAL_API_KEY: string;
   NODE_ENV: string;
   SWAP_FEE: string;
+  // Solana connection
+  RPC_URL?: string;
+  PROGRAM_ID: string;
+  // Test environment properties
+  tokenPubkey?: string; // Used in tests to track the current test token
 }

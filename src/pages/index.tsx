@@ -11,7 +11,6 @@ import usePagination from "@/hooks/use-pagination";
 import { useFilter } from "@/hooks/use-filter";
 import { Fragment } from "react/jsx-runtime";
 import Loader from "@/components/loader";
-import Footer from "@/components/footer";
 
 export default function Page() {
   const [activeTab] = useViewMode();
@@ -48,6 +47,8 @@ export default function Page() {
     total: queryData?.total || 1,
     hasMore: queryData?.hasMore || false,
   } as IPagination;
+
+  console.log(query);
 
   return (
     <div className="w-full min-h-[100vh]">
@@ -94,7 +95,6 @@ export default function Page() {
         )}
         <Pagination pagination={pagination} onPageChange={onPageChange} />
       </div>
-      <Footer />
     </div>
   );
 }

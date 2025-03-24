@@ -1,183 +1,347 @@
-import { DurableObjectState } from "@cloudflare/workers-types/experimental";
+import {
+  createDebugLogger,
+  createEioActor,
+  createSioActor,
+  generateBase64id,
+  setEnabledLoggerNamespace,
+} from "socket.io-serverless/dist/cf";
+import type { DurableObjectNamespace } from "@cloudflare/workers-types";
+import { logger } from "./logger";
+import * as forwardEverything from "./app/forward-everything";
+import type { Server } from "socket.io";
 
-// Define a more specific type for our sessions
-type CFWebSocket = {
-  accept(): void;
-  send(data: string): void;
-  close(code?: number, reason?: string): void;
-  addEventListener(event: string, handler: (event: any) => void): void;
-  readyState: number;
-};
+// Create debug logger
+const debugLogger = createDebugLogger("autofun:websocket");
 
-// Define the WebSocketPair type structure for the Cloudflare environment
-interface CFWebSocketPair {
-  0: any; // client
-  1: any; // server
+// Enable debug logging for socket.io-serverless
+setEnabledLoggerNamespace([
+  "socket.io-serverless:",
+  "autofun:websocket",
+  "autofun:websocket:app",
+]);
+
+// Define the worker binding types
+export interface WorkerBindings extends Record<string, unknown> {
+  engineActor: DurableObjectNamespace;
+  socketActor: DurableObjectNamespace;
+  WEBSOCKET_DO: DurableObjectNamespace;
 }
 
-// WebSocket readyState values
-const WebSocketReadyState = {
-  CONNECTING: 0,
-  OPEN: 1,
-  CLOSING: 2,
-  CLOSED: 3,
-};
+/**
+ * Utility function to create a new Response with CORS headers
+ * This handles the type conversions between Cloudflare Workers types and standard web types
+ */
+function createCorsResponse(
+  originalResponse: any,
+  corsHeaders: Record<string, string>,
+): Response {
+  // Handle body
+  let body: any = null;
 
+  // For non-null bodies, use string or ArrayBuffer
+  if (originalResponse.body) {
+    // For WebSocket responses, keep the original body
+    const contentType = originalResponse.headers.get("content-type");
+    const upgradeHeader = originalResponse.headers.get("upgrade");
+
+    if (upgradeHeader && upgradeHeader.toLowerCase() === "websocket") {
+      // For WebSocket handshakes, use null body (the WebSocket handshake happens at a lower level)
+      body = null;
+    } else {
+      try {
+        // For other responses, use empty string (for simplicity)
+        // Headers are what matter for many responses
+        body = "";
+      } catch (e) {
+        // If we can't clone the body, use empty body
+        body = null;
+      }
+    }
+  }
+
+  // Create new headers
+  const newHeaders: { [key: string]: string } = {};
+
+  // Copy original headers
+  originalResponse.headers.forEach((value: string, key: string) => {
+    newHeaders[key] = value;
+  });
+
+  // Add CORS headers
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    newHeaders[key] = value;
+  });
+
+  // Create and return the new response
+  return new Response(body, {
+    status: originalResponse.status,
+    statusText: originalResponse.statusText,
+    headers: newHeaders,
+  });
+}
+
+/**
+ * Engine.io Actor for handling WebSocket connections
+ */
+export const EngineActor = createEioActor<WorkerBindings>({
+  getSocketActorNamespace(bindings: WorkerBindings) {
+    return bindings.socketActor;
+  },
+});
+
+/**
+ * Socket.io Actor for handling Socket.IO protocol and rooms
+ */
+export const SocketActor = createSioActor<WorkerBindings>({
+  /**
+   * Called when the Socket.IO server is created
+   */
+  async onServerCreated(server: Server) {
+    debugLogger("Socket.IO Server created");
+
+    // Handler when a client connects to the default namespace
+    server.on("connection", (socket) => {
+      debugLogger("Client connected to default namespace:", socket.id);
+      forwardEverything.onConnection(socket);
+    });
+
+    // Add parent namespace with regex to match custom namespaces
+    server.of(forwardEverything.parentNamespace).on("connection", (socket) => {
+      debugLogger(
+        "Client connected to parent namespace:",
+        socket.nsp.name,
+        socket.id,
+      );
+      forwardEverything.onConnection(socket);
+    });
+  },
+
+  /**
+   * Called when namespaces/clients/sockets are restored
+   */
+  async onServerStateRestored(server: any) {
+    for (const [name, namespace] of server._nsps) {
+      debugLogger("Namespace restored:", name);
+      for (const [socketId, socket] of namespace.sockets) {
+        debugLogger("Active client:", socketId, (socket.client as any).id);
+      }
+    }
+  },
+
+  /**
+   * Get the engine actor namespace
+   */
+  getEngineActorNamespace(bindings: WorkerBindings) {
+    return bindings.engineActor;
+  },
+});
+
+/**
+ * Legacy WebSocketDO class for backward compatibility
+ */
 export class WebSocketDO {
-  // @ts-ignore
-  private state: DurableObjectState;
-  private sessions: Map<string, CFWebSocket> = new Map();
-  private rooms: Map<string, Set<string>> = new Map(); // roomName -> Set of sessionIds
+  private state: any;
+  private engineActor: DurableObjectNamespace;
+  private socketActor: DurableObjectNamespace;
 
-  constructor(state: DurableObjectState) {
+  constructor(state: any) {
     this.state = state;
+    // Try to extract the bindings from state
+    this.engineActor = state.bindings?.engineActor;
+    this.socketActor = state.bindings?.socketActor;
+    logger.log("Legacy WebSocketDO created");
+
+    if (!this.engineActor || !this.socketActor) {
+      logger.error(
+        "Socket.IO not configured - missing engineActor or socketActor",
+      );
+    }
   }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
+    logger.log(`WebSocketDO handling: ${path}`);
 
-    // Special internal endpoints for broadcasting to rooms
-    if (path === "/broadcast") {
-      const { room, message } = (await request.json()) as {
-        room: string;
-        message: any;
-      };
-      this.broadcastToRoom(room, message);
-      return new Response("Message broadcasted", { status: 200 });
+    // Add CORS headers to all responses
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept",
+      "Access-Control-Allow-Credentials": "true",
+    };
+
+    // Handle CORS preflight requests
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: corsHeaders,
+      });
     }
 
-    if (path === "/send") {
-      (await request.json()) as { message: any };
-      // This would need the specific session ID, which we'd pass in the request
-      return new Response("Direct message sent", { status: 200 });
-    }
-
-    // Handle WebSocket upgrade
-    const upgradeHeader = request.headers.get("Upgrade");
-    if (!upgradeHeader || upgradeHeader !== "websocket") {
-      return new Response("Expected Upgrade: websocket", { status: 426 });
-    }
-
-    // Create the WebSocket pair, using the WebSocketPair global
-    // @ts-ignore: WebSocketPair is available in the Cloudflare Workers runtime
-    const pair = new WebSocketPair() as CFWebSocketPair;
-    const server = pair[1] as CFWebSocket;
-    const client = pair[0];
-
-    // Get a unique session ID
-    const sessionId = request.headers.get("X-Client-ID") || crypto.randomUUID();
-
-    // Accept the WebSocket connection
-    server.accept();
-
-    // Store the server WebSocket
-    this.sessions.set(sessionId, server);
-
-    // Set up event handlers for the WebSocket
-    server.addEventListener("message", async (event: { data: string }) => {
+    // Handle Socket.IO requests (both polling and WebSocket)
+    if (
+      path.startsWith("/socket.io/") ||
+      (path === "/ws" && request.headers.get("Upgrade") === "websocket")
+    ) {
       try {
-        const data = JSON.parse(event.data);
-        await this.handleMessage(sessionId, data);
-      } catch (error) {
-        console.error("Error handling WebSocket message:", error);
-      }
-    });
+        if (!this.engineActor) {
+          logger.error("Socket.IO not configured - no engineActor available");
+          return new Response("Socket.IO not available", {
+            status: 503,
+            headers: corsHeaders,
+          });
+        }
 
-    server.addEventListener("close", () => {
-      this.handleClose(sessionId);
-    });
+        const doId = this.engineActor.idFromName("singleton");
+        const stub = this.engineActor.get(doId);
 
-    server.addEventListener("error", () => {
-      this.handleClose(sessionId);
-    });
+        // If it's a WebSocket request, convert it to Socket.IO format
+        if (path === "/ws" && request.headers.get("Upgrade") === "websocket") {
+          // Generate session ID for socket.io
+          const sessionId = generateBase64id();
 
-    // Return the client end of the WebSocket to the client
-    return new Response(null, {
-      status: 101,
-      // @ts-ignore - WebSocket is a valid property for Cloudflare Workers Response init
-      webSocket: client,
-    });
-  }
+          // Extract the headers for a new request
+          const headers = new Headers();
+          for (const [key, value] of Object.entries(request.headers)) {
+            headers.set(key, value);
+          }
 
-  private async handleMessage(sessionId: string, data: any): Promise<void> {
-    // Handle messages from clients
-    if (data.type === "subscribe") {
-      const token = data.token;
-      const roomName = `token-${token}`;
-      this.joinRoom(sessionId, roomName);
-      console.log(`Client ${sessionId} subscribed to ${roomName}`);
-    } else if (data.type === "subscribeGlobal") {
-      this.joinRoom(sessionId, "global");
-      console.log(`Client ${sessionId} subscribed to global updates`);
-    } else if (data.type === "unsubscribe") {
-      const token = data.token;
-      const roomName = `token-${token}`;
-      this.leaveRoom(sessionId, roomName);
-      console.log(`Client ${sessionId} unsubscribed from ${roomName}`);
-    }
-  }
+          // Forward to the engine actor following the demo pattern
+          // Using a string URL to avoid type issues
+          const response = await stub.fetch(
+            `https://eioServer.internal/socket.io/?eio_sid=${sessionId}`,
+            {
+              method: request.method,
+              headers: headers,
+            },
+          );
 
-  private handleClose(sessionId: string): void {
-    // Clean up when a client disconnects
-    const session = this.sessions.get(sessionId);
-    if (session) {
-      try {
-        session.close();
-      } catch (err) {
-        // Ignore errors when closing already closed connections
-      }
-      this.sessions.delete(sessionId);
+          return createCorsResponse(response, corsHeaders);
+        }
 
-      // Remove from all rooms
-      for (const [roomName, members] of this.rooms.entries()) {
-        if (members.has(sessionId)) {
-          members.delete(sessionId);
-          if (members.size === 0) {
-            this.rooms.delete(roomName);
+        // For regular Socket.IO requests, handle potential type issues
+        const headers = new Headers();
+        for (const [key, value] of request.headers.entries()) {
+          headers.set(key, value);
+        }
+
+        // Forward with proper handling for body
+        const requestInit: any = {
+          method: request.method,
+          headers: headers,
+        };
+
+        // Only include body for POST/PUT etc.
+        if (
+          request.method !== "GET" &&
+          request.method !== "HEAD" &&
+          request.body
+        ) {
+          const bodyText = await request.clone().text();
+          if (bodyText) {
+            requestInit.body = bodyText;
           }
         }
-      }
 
-      console.log(`Client ${sessionId} disconnected`);
-    }
-  }
-
-  private joinRoom(sessionId: string, roomName: string): void {
-    if (!this.rooms.has(roomName)) {
-      this.rooms.set(roomName, new Set());
-    }
-    this.rooms.get(roomName)?.add(sessionId);
-  }
-
-  private leaveRoom(sessionId: string, roomName: string): void {
-    const room = this.rooms.get(roomName);
-    if (room) {
-      room.delete(sessionId);
-      if (room.size === 0) {
-        this.rooms.delete(roomName);
+        const response = await stub.fetch(url.toString(), requestInit);
+        return createCorsResponse(response, corsHeaders);
+      } catch (error: any) {
+        logger.error("Error forwarding Socket.IO request:", error);
+        return new Response(`Error: ${error.message}`, {
+          status: 500,
+          headers: corsHeaders,
+        });
       }
     }
-  }
 
-  private broadcastToRoom(roomName: string, message: any): void {
-    const room = this.rooms.get(roomName);
-    if (!room) return;
+    // Handle broadcasting to rooms
+    if (path === "/broadcast") {
+      try {
+        const { room, message } = (await request.json()) as {
+          room: string;
+          message: any;
+        };
 
-    const messageStr = JSON.stringify(message);
-
-    for (const sessionId of room) {
-      const session = this.sessions.get(sessionId);
-      if (session && session.readyState === WebSocketReadyState.OPEN) {
-        try {
-          session.send(messageStr);
-        } catch (error) {
-          console.error(
-            `Error sending message to session ${sessionId}:`,
-            error,
-          );
+        // Forward to socket.io implementation
+        if (!this.socketActor) {
+          return new Response("Socket.IO not available", {
+            status: 503,
+            headers: corsHeaders,
+          });
         }
+
+        const doId = this.socketActor.idFromName("singleton");
+        const stub = this.socketActor.get(doId);
+
+        // Forward the broadcast request
+        const response = await stub.fetch(
+          "https://internal/internal/broadcast",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              room,
+              event: message.event,
+              data: message.data,
+            }),
+          },
+        );
+
+        return createCorsResponse(response, corsHeaders);
+      } catch (error: any) {
+        logger.error("Error in broadcast:", error);
+        return new Response(`Error: ${error.message}`, {
+          status: 500,
+          headers: corsHeaders,
+        });
       }
     }
+
+    // Handle direct client messaging
+    if (path === "/send") {
+      try {
+        const { clientId, message } = (await request.json()) as {
+          clientId: string;
+          message: any;
+        };
+
+        // Forward to socket.io implementation
+        if (!this.socketActor) {
+          return new Response("Socket.IO not available", {
+            status: 503,
+            headers: corsHeaders,
+          });
+        }
+
+        const doId = this.socketActor.idFromName("singleton");
+        const stub = this.socketActor.get(doId);
+
+        // Forward the direct message request
+        const response = await stub.fetch("https://internal/internal/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            clientId,
+            event: message.event,
+            data: message.data,
+          }),
+        });
+
+        return createCorsResponse(response, corsHeaders);
+      } catch (error: any) {
+        logger.error("Error in send:", error);
+        return new Response(`Error: ${error.message}`, {
+          status: 500,
+          headers: corsHeaders,
+        });
+      }
+    }
+
+    // Not found
+    return new Response("Not Found", {
+      status: 404,
+      headers: corsHeaders,
+    });
   }
 }
