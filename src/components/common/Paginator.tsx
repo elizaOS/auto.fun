@@ -1,4 +1,3 @@
-// TODO: scroll to top of page when advancing pages
 export const Paginator = ({
   currentPage,
   hasNextPage,
