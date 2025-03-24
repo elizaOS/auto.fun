@@ -1,14 +1,14 @@
-import { useMemo } from "react";
-import { Transaction } from "./page";
-import { useTimeAgo } from "@/app/formatTimeAgo";
-import { env } from "@/utils/env";
 import {
   CellContext,
   createColumnHelper,
-  flexRender,
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { Transaction } from "./page";
+import { useTimeAgo } from "@/app/formatTimeAgo";
+import { env } from "@/utils/env";
+import { useMemo } from "react";
+import { StandardTable } from "./StandardTable";
 
 const TransactionDate = ({ row }: CellContext<Transaction, unknown>) => {
   const timeAgo = useTimeAgo(row.original.timestamp);
@@ -83,8 +83,8 @@ export const TradeTable = ({
   transactions,
   ticker,
 }: {
-  transactions: Transaction[];
   ticker: string;
+  transactions: Transaction[];
 }) => {
   const columns = useMemo(() => createColumns(ticker), [ticker]);
 
@@ -94,39 +94,5 @@ export const TradeTable = ({
     getCoreRowModel: getCoreRowModel(),
   });
 
-  return (
-    <table className="w-full min-w-[600px]">
-      <thead>
-        <tr className="text-[#8C8C8C] uppercase border-b border-neutral-800">
-          {table.getFlatHeaders().map((header) => (
-            <th
-              key={header.id}
-              className="text-left py-3 px-6 last:text-right text-sm tracking-widest"
-            >
-              {flexRender(header.column.columnDef.header, header.getContext())}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody className="text-sm">
-        {table.getRowModel().rows.map((row) => (
-          <tr key={row.id} className="border-b border-[#262626] last:border-0">
-            {row.getVisibleCells().map((cell) => (
-              <td key={cell.id} className="py-3.5 px-6">
-                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-              </td>
-            ))}
-          </tr>
-        ))}
-
-        {transactions.length === 0 && (
-          <tr>
-            <td colSpan={columns.length} className="py-3.5">
-              <div className="flex justify-center">No transactions found</div>
-            </td>
-          </tr>
-        )}
-      </tbody>
-    </table>
-  );
+  return <StandardTable table={table} emptyComponent="No transactions found" />;
 };
