@@ -58,6 +58,12 @@ export async function handleLogEvent(event: {
     const swapeventLog = findLog(logs, "SwapEvent:");
     const newTokenLog = findLog(logs, "NewToken:");
     const completeEventLog = findLog(logs, "curve is completed");
+    let slotTime = new Date();
+    const blockTime = await config.connection.getBlockTime(event.slot);
+    if (blockTime !== null) {
+      slotTime = new Date(blockTime * 1000); // Convert seconds to milliseconds
+    }
+    logger.log(`Processing log event at slot ${event.slot} (${slotTime})`);
 
     // Process "curve complete" events
     if (completeEventLog && mintLog) {
@@ -106,7 +112,7 @@ export async function handleLogEvent(event: {
                   // Update token status to migrating and trigger migration handling
                   await Token.findOneAndUpdate(
                     { mint: mintAddress },
-                    { status: "migrating", lastUpdated: new Date() },
+                    { status: "migrating", lastUpdated: slotTime },
                     { new: true }
                   );
                   await handleMigration(token);
@@ -278,7 +284,7 @@ export async function handleLogEvent(event: {
                 (Number(process.env.CURVE_LIMIT) -
                   Number(process.env.VIRTUAL_RESERVES))) *
               100,
-            lastUpdated: new Date(),
+            lastUpdated: slotTime,
             $inc: {
               volume24h:
                 direction === "1"
@@ -293,7 +299,7 @@ export async function handleLogEvent(event: {
                 Date.now() - (existingToken?.lastPriceUpdate?.getTime() || 0) >
                   24 * 60 * 60 * 1000) && {
                 price24hAgo: tokenPriceUSD,
-                lastPriceUpdate: new Date(),
+                lastPriceUpdate: slotTime,
               }),
             },
           },
@@ -315,6 +321,35 @@ export async function handleLogEvent(event: {
           },
           { new: true }
         );
+
+        // Reset volume if more than 24 hours have passed since last reset.
+        const ONE_HOUR = 60 * 60 * 1000;
+        const ONE_DAY = 24 * ONE_HOUR;
+        const lastVolumeReset = token.lastVolumeReset || new Date(0);
+        if (slotTime.getTime() - lastVolumeReset.getTime() > ONE_DAY) {
+          await Token.findOneAndUpdate(
+            { mint: mintAddress },
+            { volume24h: 0, lastVolumeReset: slotTime }
+          );
+        }
+
+        // Update price24hAgo if needed.
+        const lastPriceUpdate = token.lastPriceUpdate || new Date(0);
+        if (slotTime.getTime() - lastPriceUpdate.getTime() > ONE_HOUR) {
+          await Token.findOneAndUpdate(
+            { mint: mintAddress },
+            {
+              price24hAgo: tokenPriceUSD,
+              lastPriceUpdate: slotTime,
+              priceChange24h: token.price24hAgo
+                ? ((tokenPriceUSD - token.price24hAgo) / token.price24hAgo) *
+                  100
+                : 0,
+            }
+          );
+        }
+
+        // Do we need to update the holder count here as well?
 
         // Emit swap-related events via Socket.IO.
         io.to(`token-${swap.tokenMint}`).emit("newSwap", {
