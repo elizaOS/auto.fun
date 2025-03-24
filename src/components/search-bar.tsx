@@ -20,9 +20,10 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
     queryKey: ["search-tokens", search],
     queryFn: async () => {
       const data = await getSearchTokens({ search });
-      return data;
+      return setSearchResults(data.tokens);
     },
   });
+  
   const handleSearch = useRef(
     debounce((query: string) => {
       setSearch(query);
@@ -31,6 +32,7 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
+    setShowSearchResults(true)
     handleSearch(value);
   };
   
@@ -131,7 +133,7 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
           <div className="text-[#2FD345] text-xs font-normal uppercase leading-none tracking-widest">
             Tokens
           </div>
-          {searchResults.map((token) => (
+          {searchResults.map((token: IToken) => (
             <AgentSearchResult
               key={token.mint}
               id={token.mint}
