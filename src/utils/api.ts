@@ -70,3 +70,10 @@ export const getTokenSwapHistory = async ({ address }: { address: string }) => {
   const data = await fetcher(`/api/swaps/${address}`, "GET");
   return data;
 };
+
+export const getSearchTokens = async ({ search }: { search: string}) => {
+  const data = await fetcher(`/api/tokens?search=${search}`, "GET");
+  return data;
+}
+ 
+
