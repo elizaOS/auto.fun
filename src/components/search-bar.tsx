@@ -10,7 +10,7 @@ import { IToken } from "@/types";
 
 
 export default function SearchBar({ isMobile }: { isMobile: boolean }) {
-  const [searchResults, setSearchResults] = useState<[IToken] | []>([]);
+  const [searchResults, setSearchResults] = useState<IToken[] | []>([]);
   const [search, setSearch] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
@@ -21,7 +21,6 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
     queryFn: async () => {
       const data = await getSearchTokens({ search });
       return data as { tokens: IToken[]}
-
     },
   });
   
@@ -37,12 +36,12 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
     const value = e.target.value;
     setShowSearchResults(true)
     handleSearch(value);
-    setSearchResults(tokens)
   };
   
   useEffect(() => {
     return () => {
       handleSearch.cancel();
+      setSearchResults(tokens)
     };
   }, [handleSearch]);
   
