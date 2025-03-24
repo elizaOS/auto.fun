@@ -297,7 +297,7 @@ const TermsOfService = () => {
         </div>
 
         {/* Section 32 */}
-        <div className="mb-4 border-b pb-2">
+        <div className="mb-12 pb-2">
           <button
             className="w-full text-left font-semibold flex justify-between items-center"
             onClick={() => toggleSection("section32")}
