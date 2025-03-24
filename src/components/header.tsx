@@ -38,17 +38,17 @@ export default function Header() {
           </div>
           <div className="flex w-1/2 space-x-4 flex-row justify-between">
             <SearchBar isMobile={false} />
-            <Button className="flex items-center text-base font-medium text-white font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border border-[#2FD345] rounded-md">
-              Create Token{" "}
-              <img
-                src="/nav/stars.svg"
-                alt="stars"
-                className="text-[#2FD345]"
-              />
-            </Button>
-            <Button className="px-4 py-2.5 gap-2 h-11 rounded-md">
-              Connect Wallet
-            </Button>
+            <Link to="/create">
+              <Button className="flex items-center text-base font-medium text-white font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border border-[#2FD345] rounded-md">
+                Create Token{" "}
+                <img
+                  src="/nav/stars.svg"
+                  alt="stars"
+                  className="text-[#2FD345]"
+                />
+              </Button>
+            </Link>
+            <WalletButton />
           </div>
         </div>
       </div>
