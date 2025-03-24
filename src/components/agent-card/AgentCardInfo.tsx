@@ -284,22 +284,18 @@ export function AgentCardInfo({
       )}
 
       {/* Price Information */}
-      <div className="flex h-[72px] gap-0.5">
-        <div className="flex-1 flex flex-col justify-center items-center gap-2 p-4 bg-[#212121] border border-[#262626] rounded-l-[6px]">
+      <div className="flex h-[72px] gap-0.5 border border-[#262626] rounded-md w-full">
+        <div className="flex-1 flex flex-col justify-center items-center gap-2 p-4 border-r border-[#262626] rounded-l-[6px]">
           <span className={`text-base leading-6 text-[#8C8C8C]`}>
             Price USD
           </span>
-          <span
-            className={`text-xl leading-6 tracking-[2px] uppercase text-white whitespace-nowrap`}
-          >
+          <span className={`text-xl whitespace-nowrap font-medium`}>
             ${formatNumber(tokenPriceUSD, 8)}
           </span>
         </div>
-        <div className="flex-1 flex flex-col justify-center items-center gap-2 p-4 bg-[#212121] border border-[#262626] rounded-r-[6px]">
+        <div className="flex-1 flex flex-col justify-center items-center gap-2 p-4 rounded-r-[6px]">
           <span className={`text-base leading-6 text-[#8C8C8C]`}>Price</span>
-          <span
-            className={`text-xl leading-6 tracking-[2px] uppercase text-white whitespace-nowrap`}
-          >
+          <span className={`text-xl whitespace-nowrap font-medium`}>
             {formatNumber(tokenPriceUSD / solPriceUSD, 6)} SOL
           </span>
         </div>
