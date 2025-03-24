@@ -4,86 +4,58 @@ import CopyButton from "./copy-button";
 import { formatNumber } from "@/utils";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getSearchTokens } from "@/utils/api";
+import { useQuery } from "@tanstack/react-query";
 import { debounce } from "lodash";
 import { IToken } from "@/types";
-import { useQuery } from "@tanstack/react-query";
 
 
+export default function SearchBar({ isMobile }: { isMobile: boolean }) {
+  const [searchResults, setSearchResults] = useState([]);
+  const [search, setSearch] = useState("");
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
-
-export default function SearchBar({isMobile}: {isMobile: boolean}) {
-const [searchResults, setSearchResults] = useState<IToken[]>([]);
-const [searchInput, setSearchInput] = useState("");
-const [showSearchResults, setShowSearchResults] = useState(false);
-const [showMobileSearch, setShowMobileSearch] = useState(false);
-const ref = useRef<HTMLDivElement>(null);
-
-const SearchTokensQuery = (search: string) => {
-  return useQuery({
-    queryKey: ["search-tokens", search], 
+  const query = useQuery({
+    queryKey: ["search-tokens", search],
     queryFn: async () => {
-       const data = await getSearchTokens({ search });
-       return data 
-       }, 
+      const data = await getSearchTokens({ search });
+      return data;
+    },
   });
-};
-
-  // useOutsideClickDetection([ref], () => {
-  //   setShowSearchResults(false);
-  //   setSearchResults([]);
-  // });
-
   const handleSearch = useRef(
-    debounce(async (query: string) => {
-      if (query.trim().length === 0) {
-        setSearchResults([]);
-        setShowSearchResults(false);
-        return;
-      }
-
-      try {
-        const { data } = await SearchTokensQuery(query);
-        setSearchResults(data);
-        setShowSearchResults(true);
-      } catch (error) {
-        console.error("Search failed:", error);
-      }
+    debounce((query: string) => {
+      setSearch(query);
     }, 300),
   ).current;
-
+  
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setSearchInput(value)
     handleSearch(value);
   };
   
-  // Handle key press for enter key
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    const trimmedInput = searchInput.trim();
-    if (e.key === "Enter" && trimmedInput.length > 0) {
-      handleSearch(trimmedInput);
-    }
-  };
+  useEffect(() => {
+    return () => {
+      handleSearch.cancel();
+    };
+  }, [handleSearch]);
   
-useEffect(() => {
-  setShowSearchResults(searchResults?.length > 0);
-}, [searchResults]);
-
-
   useLayoutEffect(
     function hideBodyScrollBar() {
       const { overflow } = window.getComputedStyle(document.body);
-
+  
       if (showMobileSearch) {
         document.body.style.overflow = "hidden";
       }
-
+  
       return () => {
         document.body.style.overflow = overflow;
       };
     },
-    [showMobileSearch],
+    [showMobileSearch]
   );
+  console.log("search result -->", searchResults)
+
 
   if (isMobile) {
     return (
@@ -100,9 +72,8 @@ useEffect(() => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  value={searchInput}
+                  value={search}
                   onChange={handleInputChange}
-                  onKeyDown={handleKeyPress}
                   placeholder="Symbol or Address..."
                   className="w-full h-11 pl-10 pr-3 rounded-lg bg-transparent text-[#d1d1d1] text-sm placeholder:text-sm leading-tight focus:outline-none"
                 />
@@ -117,7 +88,7 @@ useEffect(() => {
                 <div className="text-[#03ff24] text-xs font-normal uppercase leading-none tracking-widest">
                   <Link to="/">Tokens</Link>
                 </div>
-                {searchResults.map((token) => (
+                {searchResults.map((token: IToken) => (
                   <AgentSearchResult
                     key={token.mint}
                     id={token.mint}
@@ -145,9 +116,8 @@ useEffect(() => {
         <Search className="w-6 h-6 text-[#8C8C8C] group-hover:text-[#2FD345]" />
         <input
           type="text"
-          value={searchInput}
+          value={search}
           onChange={handleInputChange}
-          onKeyDown={handleKeyPress}
           placeholder="Symbol or Address..."
           className="flex-1 bg-transparent text-base font-medium text-[#8C8C8C] placeholder-[#8C8C8C] focus:outline-none hover:placeholder-white focus:placeholder-white transition-colors"
         />
@@ -176,8 +146,7 @@ useEffect(() => {
       )}
     </div>
   );
-};
-
+}
 
 const AgentSearchResult = ({
   name,
@@ -225,4 +194,4 @@ const AgentSearchResult = ({
       </div>
     </Link>
   );
-}
+};
