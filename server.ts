@@ -450,7 +450,7 @@ class TokenMonitor {
             io.to(`token-${swap.tokenMint}`).emit('newCandle', latestCandle);
 
             // Emit the updated token data with enriched featured score
-            const enrichedToken = statsManager.enrichTokenWithScore(token);
+            const enrichedToken = statsManager.enrichTokenWithScore(token.toObject());
             io.to(`token-${swap.tokenMint}`).emit('updateToken', enrichedToken);
 
             io.to('global').emit('updateToken', enrichedToken);

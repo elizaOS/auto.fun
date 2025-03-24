@@ -70,7 +70,7 @@ const pinata = new PinataClient({
 async function getTokensWithPagination({
   page = 1,
   limit = 50,
-  sortBy = 'featured',
+  sortBy = 'featuredScore',
   sortOrder = 'desc',
   query = { status: { $ne: 'pending' } }
 } = {}) {
@@ -107,7 +107,7 @@ async function getTokensWithPagination({
   ];
 
   // Apply special weighted sorting if "Featured" sort is specified
-  if (sortBy === 'featured') {
+  if (sortBy === 'featuredScore') {
     const { maxVolume24h, maxHolderCount } = statsManager.getMaxStats();
 
     // Add a weighted score field
