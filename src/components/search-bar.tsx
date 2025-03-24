@@ -59,7 +59,6 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
     },
     [showMobileSearch]
   );
-  console.log("search result -->", searchResults)
 
 
   if (isMobile) {
