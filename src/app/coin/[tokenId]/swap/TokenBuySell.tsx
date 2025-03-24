@@ -14,6 +14,7 @@ import { TradeSettingsModal } from "./TradeSettingsModal";
 import { useWalletModal } from "@/components/common/custom-wallet-multi";
 import { SolanaIcon } from "./SolanaIcon";
 import { Settings, Wallet } from "lucide-react";
+import { LoadingModal } from "@/components/common/LoadingModal";
 
 interface TokenInputProps {
   type: "Selling" | "Buying";
@@ -286,7 +287,7 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
   const { publicKey } = useWallet();
   const { setVisible: setWalletModalVisible } = useWalletModal();
   const { connection } = useConnection();
-  const { executeSwap } = useSwap();
+  const { executeSwap, isExecuting: isSwapExecuting } = useSwap();
   const [tokenBalance, setTokenBalance] = useState<number>(0);
   const [solBalance, setSolBalance] = useState<number>(0);
   const [isBuyMode, setIsBuyMode] = useState(true);
@@ -447,6 +448,8 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
 
   return (
     <div className="bg-[#121212] rounded-[6px] border border-neutral-800 p-4 flex flex-col gap-4">
+      <LoadingModal isOpen={isSwapExecuting}>Executing trade...</LoadingModal>
+
       <TradeSettingsModal
         modalOpen={settingsModalOpen}
         onClose={() => setSettingsModalOpen(false)}

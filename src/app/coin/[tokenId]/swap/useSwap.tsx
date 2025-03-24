@@ -19,6 +19,7 @@ import { Token } from "@/utils/tokens";
 import { associatedAddress } from "@coral-xyz/anchor/dist/cjs/utils/token";
 import { env } from "@/utils/env";
 import { sendTxUsingJito } from "@/utils/jito";
+import { useState } from "react";
 
 // copied from backend
 function convertToBasisPoints(feePercent: number): number {
@@ -240,6 +241,8 @@ interface SwapParams {
 }
 
 export const useSwap = () => {
+  const [isExecuting, setIsExecuting] = useState(false);
+
   const { connection } = useConnection();
   const wallet = useWallet();
   const program = useProgram();
@@ -421,5 +424,16 @@ export const useSwap = () => {
     });
   };
 
-  return { createSwapIx: initialBuyIx, executeSwap };
+  return {
+    createSwapIx: initialBuyIx,
+    executeSwap: async (...params: Parameters<typeof executeSwap>) => {
+      try {
+        setIsExecuting(true);
+        await executeSwap(...params);
+      } finally {
+        setIsExecuting(false);
+      }
+    },
+    isExecuting,
+  };
 };
