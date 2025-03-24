@@ -98,8 +98,8 @@ export default function Page() {
         <TransactionsAndHolders token={token} />
       </div>
       {/* Right Section */}
-      <div className="max-w-[587px] flex flex-col gap-3">
-        <div className="border rounded-md p-4 bg-autofun-background-card flex flex-col gap-3">
+      <div className="w-full xl:max-w-[587px] flex flex-col gap-3">
+      <div className="border rounded-md p-4 bg-autofun-background-card flex flex-col gap-3">
           <div className="flex gap-3">
             <div className="size-36 shrink-0">
               <SkeletonImage src={token?.image} alt="image" />
@@ -107,7 +107,7 @@ export default function Page() {
             <div className="flex flex-col gap-3">
               {/* Token Info and Time */}
               <div className="flex items-center w-full min-w-0">
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-start md:items-center flex-col md:flex-row gap-2 min-w-0">
                   <div className="capitalize text-autofun-text-primary text-3xl font-medium font-satoshi leading-normal truncate min-w-0">
                     {token?.name}
                   </div>
