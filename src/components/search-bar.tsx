@@ -3,8 +3,8 @@ import { Link } from "react-router";
 import CopyButton from "./copy-button";
 import { formatNumber } from "@/utils";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { getSearchTokens } from "@/utils/api";
-import { useQuery } from "@tanstack/react-query";
+// import { getSearchTokens } from "@/utils/api";
+// import { useQuery } from "@tanstack/react-query";
 import { debounce } from "lodash";
 import { IToken } from "@/types";
 
@@ -16,19 +16,40 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const query = useQuery({
-    queryKey: ["search-tokens", search],
-    queryFn: async () => {
-      const data = await getSearchTokens({ search });
-      return data as { tokens: IToken[]}
-    },
-  });
+  // const query = useQuery({
+  //   queryKey: ["search-tokens", search],
+  //   queryFn: async () => {
+  //     const data = await getSearchTokens({ search });
+  //     return data as { tokens: IToken[]}
+  //   },
+  // });
   
-  const tokens = query?.data?.tokens
+  const tokens = [
+    {
+      mint: "9sT3Lx5NmW",
+      name: "Alien Coin",
+      image: "https://png.pngtree.com/png-vector/20190223/ourmid/pngtree-vector-picture-icon-png-image_695350.jpg",
+      inferenceCount: 98,
+      lastUpdated: "2024-10-01",
+      marketCapUSD: 180000,
+      ticker: "TICKET"
+    },
+    {
+      mint: "9sT3Lx5NmW",
+      name: "Alien Coin",
+      image: "https://png.pngtree.com/png-vector/20190223/ourmid/pngtree-vector-picture-icon-png-image_695350.jpg",
+      inferenceCount: 98,
+      lastUpdated: "2024-10-01",
+      marketCapUSD: 180000,
+      ticker: "TICKET"
+    },
+  ] as IToken[];
+  // query?.data?.tokens
 
   const handleSearch = useRef(
     debounce((query: string) => {
       setSearch(query);
+      setSearchResults(tokens)
     }, 300),
   ).current;
   
@@ -41,7 +62,6 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
   useEffect(() => {
     return () => {
       handleSearch.cancel();
-      setSearchResults(tokens)
     };
   }, [handleSearch]);
   
@@ -132,7 +152,7 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
           className="absolute w-full p-3.5 bg-[#171717] rounded-lg border border-[#262626] flex flex-col gap-6 mt-2 max-h-[60vh] overflow-auto z-50 shadow-lg"
           ref={ref}
         >
-          <div className="text-[#2FD345] text-xs font-normal uppercase leading-none tracking-widest">
+          <div className="text-[16px] font-normal leading-none tracking-widest">
             Tokens
           </div>
           {searchResults.map((token: IToken) => (
@@ -168,7 +188,7 @@ const AgentSearchResult = ({
   onNavigate: () => void;
 }) => {
   return (
-    <Link to={`/coin/${id}`} onClick={onNavigate}>
+    <Link to={`/token/${id}`} onClick={onNavigate}>
       <div className="flex items-center gap-4 p-2 hover:bg-[#262626] rounded-md transition-all duration-200 group cursor-pointer">
         <img
           className="w-10 h-10 rounded-lg object-cover"
@@ -176,11 +196,11 @@ const AgentSearchResult = ({
           alt={name}
         />
         <div className="flex flex-col gap-1">
-          <div className="text-white text-sm font-medium group-hover:text-[#2FD345] transition-colors">
+          <div className="text-white text-[16px] font-medium group-hover:text-[#2FD345] transition-colors">
             {name}
-          </div>
-          <div className="text-[#8C8C8C] text-xs uppercase tracking-widest group-hover:text-white/80 transition-colors">
+            <span className="px-2  text-[#8C8C8C] text-[16px] uppercase tracking-widest group-hover:text-white/80 transition-colors">
             ${symbol}
+          </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="text-[#8C8C8C] text-xs group-hover:text-white/70 transition-colors">
@@ -190,9 +210,9 @@ const AgentSearchResult = ({
           </div>
         </div>
         <div className="flex items-center gap-1 ml-auto">
-          <span className="text-[#2FD345] text-xs">MC:</span>
-          <span className="text-[#2FD345] text-xs">
-            ${formatNumber(marketCap, false)}
+          <span className="text-[#8C8C8C] text-sm">MC:</span>
+          <span className="text-[#2FD345] text-sm">
+            {formatNumber(marketCap, false)}
           </span>
         </div>
       </div>
