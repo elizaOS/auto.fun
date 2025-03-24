@@ -53,7 +53,7 @@ export default function Page() {
   return (
     <div className="flex flex-wrap md:flex-wrap-reverse gap-3">
       {/* Left Section */}
-      <div className="w-fit grow flex flex-col gap-3">
+      <div className="w-full lg:w-fit grow flex flex-col gap-3">
         {/* Info */}
         <div className="flex flex-wrap xl:flex-nowrap border rounded-md bg-autofun-background-card p-3 items-center justify-between gap-3 xl:divide-x divide-autofun-stroke-primary">
           <div className="flex flex-col gap-2 items-center w-full">
