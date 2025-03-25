@@ -3,7 +3,7 @@ import { twMerge } from "tailwind-merge";
 import SearchBar from "./search-bar";
 import Button from "./button";
 import { CloseButton, Dialog, DialogPanel } from "@headlessui/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import WalletButton from "@/components/wallet-button";
 
@@ -12,16 +12,22 @@ export default function Header() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const mobileNavItems = [
     { icon: "/nav/stars.svg", title: "Create Token", href: "/create" },
-    // { icon: "/nav/eye.svg", title: "Tokens", href: "/tokens" },
-    // { icon: "/nav/circles.svg", title: "How It Works", href: "/how-it-works" },
+    { icon: "/nav/eye.svg", title: "Tokens", href: "/" },
+    { icon: "/nav/circles.svg", title: "How It Works", href: "/how-it-works" },
+    { icon: "/nav/question-mark.svg", title: "Support", href: "/support" },
   ];
 
   const mobileNavLinks = [
-    { icon: "/nav/question-mark.svg", title: "Support", href: "/support" },
-    { title: "Privacy Policy", href: "/legal/privacy" },
-    { title: "Terms of Service", href: "/legal/terms" },
-    { title: "Fees", href: "/legal/fees" },
+    { title: "Privacy Policy", href: "privacy-policy" },
+    { title: "Terms of Service", href: "/terms-of-service" },
+    { title: "Fees", href: "fees" },
   ];
+
+  useEffect(() => {
+    if (drawerOpen) {
+      setDrawerOpen(false);
+    }
+  }, [pathname]);
 
   return (
     <div>
@@ -31,8 +37,8 @@ export default function Header() {
             <Link to="/" className="mr-6">
               <img className="size-10" src="/logo.png" />
             </Link>
-            {/* <NavLink title="Tokens" href="/" /> */}
-            {/* <HowItWorksDialog /> */}
+            <NavLink title="Tokens" href="/" />
+            <HowItWorksDialog />
           </div>
           <div className="flex w-1/2 space-x-4 flex-row justify-between">
             <SearchBar isMobile={false} />
@@ -74,10 +80,10 @@ export default function Header() {
           >
             <div className="fixed inset-0 overflow-hidden">
               <div className="inset-0 overflow-hidden">
-                <div className="pointer-events-none fixed inset-y-0 flex -right-4 w-[310px]">
-                  <DialogPanel className="pointer-events-auto mt-16 relative w-full max-w-md">
+                <div className="pointer-events-none fixed inset-y-0 flex w-full">
+                  <DialogPanel className="pointer-events-auto mt-[77px] relative w-full max-w-[310px] ml-auto">
                     <div className="flex w-full h-full flex-col overflow-y-hidden bg-[#171717] py-0 shadow-xl">
-                      <div className="relative flex flex-col py-10 px-6 gap-3">
+                      <div className="relative flex flex-col py-4 px-6 gap-3">
                         <WalletButton />
                         <div>
                           {mobileNavItems.map((item, index) => (
