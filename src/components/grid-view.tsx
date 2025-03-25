@@ -17,7 +17,7 @@ export default function GridView({ data }: { data: IToken[] }) {
         <Link
           to={`/token/${token.mint}`}
           key={token.mint}
-          className="bg-autofun-background-card p-4 rounded-lg border flex flex-col gap-3"
+          className="bg-autofun-background-card p-4 border flex flex-col gap-3"
         >
           <div className="flex flex-col gap-3 min-w-0">
             <div className="w-full aspect-square">
@@ -38,7 +38,7 @@ export default function GridView({ data }: { data: IToken[] }) {
                     ${token.ticker}
                   </div>
                 </div>
-                <div className="px-2 py-1 rounded-md border flex ml-auto shrink-0">
+                <div className="px-2 py-1 border flex ml-auto shrink-0">
                   <div className="text-autofun-text-secondary text-xs font-medium font-dm-mono">
                     {fromNow(token.createdAt, true)}
                   </div>

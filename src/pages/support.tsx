@@ -8,7 +8,7 @@ export default function SupportPage() {
 
         <div className="space-y-8">
           {/* Contact Section */}
-          <section className="bg-[#171717] rounded-lg p-6 border border-[#262626]">
+          <section className="bg-[#171717] p-6 border border-[#262626]">
             <h2 className="text-2xl font-medium text-white mb-4">Contact Us</h2>
             <p className="text-[#8C8C8C] mb-4">
               Need help? You can reach us through any of these channels:
@@ -67,7 +67,7 @@ export default function SupportPage() {
           </section>
 
           {/* FAQ Section */}
-          <section className="bg-[#171717] rounded-lg p-6 border border-[#262626]">
+          <section className="bg-[#171717] p-6 border border-[#262626]">
             <h2 className="text-2xl font-medium text-white mb-4">
               Frequently Asked Questions
             </h2>
@@ -105,12 +105,12 @@ export default function SupportPage() {
           </section>
 
           {/* Resources Section */}
-          <section className="bg-[#171717] rounded-lg p-6 border border-[#262626]">
+          <section className="bg-[#171717] p-6 border border-[#262626]">
             <h2 className="text-2xl font-medium text-white mb-4">Resources</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Link
                 to="/terms-of-service"
-                className="p-4 bg-[#212121] rounded-md hover:bg-[#262626] transition-colors"
+                className="p-4 bg-[#212121] hover:bg-[#262626] transition-colors"
               >
                 <h3 className="text-white font-medium mb-2">
                   Terms of Service
@@ -121,7 +121,7 @@ export default function SupportPage() {
               </Link>
               <Link
                 to="/privacy-policy"
-                className="p-4 bg-[#212121] rounded-md hover:bg-[#262626] transition-colors"
+                className="p-4 bg-[#212121] hover:bg-[#262626] transition-colors"
               >
                 <h3 className="text-white font-medium mb-2">Privacy Policy</h3>
                 <p className="text-[#8C8C8C] text-sm">

@@ -43,7 +43,7 @@ const Pagination: React.FC<PaginationProps> = ({
                   isActive
                     ? "outline-autofun-background-action-highlight bg-autofun-background-card text-autofun-text-primary "
                     : "outline-transparent bg-transparent text-autofun-text-secondary ",
-                  "cursor-pointer h-8 px-3 py-2 rounded-md outline outline-offset-[-1px] inline-flex flex-col items-center justify-center gap-2.5 overflow-hidden",
+                  "cursor-pointer h-8 px-3 py-2 outline outline-offset-[-1px] inline-flex flex-col items-center justify-center gap-2.5 overflow-hidden",
                 ])}
                 onClick={() => {
                   if (onPageChange) {

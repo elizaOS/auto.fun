@@ -13,7 +13,7 @@ type TabButtonProps = PropsWithChildren<{
 
 const TabButton = ({ isSelected, onClick, children }: TabButtonProps) => (
   <button
-    className={`px-3 py-2 rounded-lg border border-[#262626] justify-center items-center gap-2 self-start font-satoshi ${
+    className={`px-3 py-2 border border-[#262626] justify-center items-center gap-2 self-start font-satoshi ${
       isSelected ? "bg-[#2e2e2e]" : "bg-neutral-900"
     }`}
     onClick={onClick}
@@ -56,11 +56,11 @@ const WalletAddress = () => {
   if (!walletAddress) return null;
 
   return (
-    <div className="p-4 bg-neutral-900 rounded-md border border-neutral-800 mb-[28px]">
+    <div className="p-4 bg-neutral-900 border border-neutral-800 mb-[28px]">
       <div className="text-white text-base font-normal uppercase leading-normal tracking-widest mb-2">
         wallet
       </div>
-      <div className="px-3 py-2 bg-[#212121] rounded-md border border-neutral-800 flex justify-between items-center gap-4">
+      <div className="px-3 py-2 bg-[#212121] border border-neutral-800 flex justify-between items-center gap-4">
         <div className="text-[#8c8c8c] text-base font-normal leading-normal">
           {walletAddress}
         </div>
@@ -89,11 +89,11 @@ export default function Profile() {
       <SkeletonTheme baseColor="#262626" highlightColor="#404040">
         <div className="flex flex-col flex-1 mt-32 max-w-4xl w-full m-auto">
           <Skeleton width={200} height={40} className="mb-6" />
-          <div className="p-4 bg-neutral-900 rounded-md border border-neutral-800 mb-[28px]">
+          <div className="p-4 bg-neutral-900 border border-neutral-800 mb-[28px]">
             <div className="mb-2">
               <Skeleton width={80} height={24} />
             </div>
-            <div className="px-3 py-2 bg-[#212121] rounded-md border border-neutral-800">
+            <div className="px-3 py-2 bg-[#212121] border border-neutral-800">
               <Skeleton width="100%" height={24} />
             </div>
           </div>
@@ -101,7 +101,7 @@ export default function Profile() {
             <Skeleton width={120} height={40} />
             <Skeleton width={120} height={40} />
           </div>
-          <div className="border border-neutral-800 rounded-lg p-4">
+          <div className="border border-neutral-800 p-4">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="flex items-center gap-4 mb-4 last:mb-0">
                 <Skeleton width={20} height={20} circle />

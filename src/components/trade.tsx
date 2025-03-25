@@ -20,13 +20,13 @@ export default function Trade({ token }: { token: IToken }) {
   );
 
   return (
-    <div className="relative border rounded-md p-4 bg-autofun-background-card">
+    <div className="relative border p-4 bg-autofun-background-card">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col">
           {/* Selling */}
           <div
             className={twMerge([
-              "flex flex-col py-3 px-4 bg-autofun-background-input border rounded-md gap-[18px] transition-colors duration-200",
+              "flex flex-col py-3 px-4 bg-autofun-background-input border gap-[18px] transition-colors duration-200",
               error ? "border-autofun-text-error" : "",
             ])}
           >
@@ -125,7 +125,7 @@ export default function Trade({ token }: { token: IToken }) {
             </div>
           </div>
           {/* Buying */}
-          <div className="flex flex-col py-3 px-4 bg-autofun-background-input border rounded-md gap-[18px]">
+          <div className="flex flex-col py-3 px-4 bg-autofun-background-input border gap-[18px]">
             <span className="text-base font-dm-mono text-autofun-text-primary select-none">
               Buying
             </span>
@@ -178,7 +178,7 @@ const TokenDisplay = ({
   isSolana?: boolean;
 }) => {
   return (
-    <div className="flex items-center gap-2 rounded-lg border bg-autofun-background-card p-2 select-none">
+    <div className="flex items-center gap-2 border bg-autofun-background-card p-2 select-none">
       <SkeletonImage
         src={isSolana ? "/solana.png" : token?.image || ""}
         alt={token?.name || "token"}

@@ -1,7 +1,7 @@
 const FeesContent = () => {
   return (
     <div className="h-[70vh] flex items-center justify-center">
-      <div className="flex w-fit lg:w-[600px] bg-autofun-stroke-primary/40 flex-col h-fit rounded-md">
+      <div className="flex w-fit lg:w-[600px] bg-autofun-stroke-primary/40 flex-col h-fit">
         <div className="flex-1">
           <div className="w-full justify-center">
             <div className="w-full">

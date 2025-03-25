@@ -39,7 +39,7 @@ export default function TokenStatus({ token }: { token: IToken }) {
   return (
     <div
       className={twMerge([
-        "flex items-center justify-center p-2 rounded-xl text-sm font-dm-mono select-none ml-auto",
+        "flex items-center justify-center p-2 text-sm font-dm-mono select-none ml-auto",
         variants[variantStatus[status]],
       ])}
     >

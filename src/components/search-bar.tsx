@@ -103,7 +103,7 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
                   value={search}
                   onChange={handleInputChange}
                   placeholder="Symbol or Address..."
-                  className="w-full h-11 pl-10 pr-3 rounded-lg bg-transparent text-[#d1d1d1] text-sm placeholder:text-sm leading-tight focus:outline-none"
+                  className="w-full h-11 pl-10 pr-3 bg-transparent text-[#d1d1d1] text-sm placeholder:text-sm leading-tight focus:outline-none"
                 />
               </div>
               <X onClick={() => setShowMobileSearch(false)} />
@@ -140,7 +140,7 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
 
   return (
     <div className="relative flex-1">
-      <div className="flex items-center h-11 w-full px-2 gap-2 bg-[#171717] border border-[#262626] rounded-md hover:border-[#2FD345]/50 focus-within:border-[#2FD345]/50 transition-colors">
+      <div className="flex items-center h-11 w-full px-2 gap-2 bg-[#171717] border border-[#262626] hover:border-[#2FD345]/50 focus-within:border-[#2FD345]/50 transition-colors">
         <Search className="w-6 h-6 text-[#8C8C8C] group-hover:text-[#2FD345]" />
         <input
           type="text"
@@ -153,7 +153,7 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
 
       {showSearchResults && (
         <div
-          className="absolute w-full p-3.5 bg-[#171717] rounded-lg border border-[#262626] flex flex-col gap-3 mt-2 max-h-[60vh] overflow-auto z-50 shadow-lg"
+          className="absolute w-full p-3.5 bg-[#171717] border border-[#262626] flex flex-col gap-3 mt-2 max-h-[60vh] overflow-auto z-50 shadow-lg"
           ref={ref}
         >
           <div className="text-[16px] font-normal leading-none tracking-widest">
@@ -193,9 +193,9 @@ const AgentSearchResult = ({
 }) => {
   return (
     <Link to={`/token/${id}`} onClick={onNavigate}>
-      <div className="flex items-center gap-4 p-2 hover:bg-[#262626] rounded-md transition-all duration-200 group cursor-pointer">
+      <div className="flex items-center gap-4 p-2 hover:bg-[#262626] transition-all duration-200 group cursor-pointer">
         <img
-          className="w-10 h-10 rounded-lg object-cover"
+          className="w-10 h-10 object-cover"
           src={imageUrl}
           alt={name}
         />

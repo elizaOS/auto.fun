@@ -52,7 +52,7 @@ export default function Page() {
     <div className="flex flex-wrap gap-3">
       {/* Right Section */}
       <div className="w-full lg:max-w-[450px] flex flex-col gap-3">
-        <div className="border rounded-md p-4 bg-autofun-background-card flex flex-col gap-3">
+        <div className="border p-4 bg-autofun-background-card flex flex-col gap-3">
           <div className="w-full">
             <SkeletonImage src={token?.image} alt="image" />
           </div>
@@ -86,8 +86,8 @@ export default function Page() {
             </ShowMoreText>
           </div>
           {/* Contractaddress */}
-          <div className="flex border rounded-md">
-            <div className="size-10 rounded-l-md inline-flex border-r shrink-0 bg-autofun-background-action-primary">
+          <div className="flex border">
+            <div className="size-10  inline-flex border-r shrink-0 bg-autofun-background-action-primary">
               <span className="text-base font-dm-mono m-auto text-autofun-text-secondary">
                 CA
               </span>
@@ -103,7 +103,7 @@ export default function Page() {
           <div className="flex items-center justify-between gap-0.5">
             <Link to={token?.website} className="w-full" target="_blank">
               <Button
-                className="w-full rounded-none rounded-l-md"
+                className="w-full rounded-none "
                 disabled={!token?.website}
               >
                 <Globe />
@@ -139,7 +139,7 @@ export default function Page() {
             </Link>
             <Link to={token?.website} className="w-full" target="_blank">
               <Button
-                className="w-full rounded-none rounded-r-md px-0"
+                className="w-full rounded-none  px-0"
                 disabled={!token?.website}
               >
                 <SkeletonImage
@@ -153,7 +153,7 @@ export default function Page() {
             </Link>
           </div>
           {/* USD Price & Solana Price */}
-          <div className="flex border rounded-md bg-autofun-background-card py-2 px-3 items-center justify-between gap-3 divide-x divide-autofun-stroke-primary">
+          <div className="flex border bg-autofun-background-card py-2 px-3 items-center justify-between gap-3 divide-x divide-autofun-stroke-primary">
             <div className="flex flex-col gap-1 items-center w-full">
               <span className="text-base font-dm-mono text-autofun-text-secondary">
                 Price USD
@@ -210,7 +210,7 @@ export default function Page() {
       {/* Left Section */}
       <div className="w-full lg:w-fit grow flex flex-col gap-3">
         {/* Info */}
-        <div className="flex flex-wrap xl:flex-nowrap border rounded-md bg-autofun-background-card p-3 items-center justify-between gap-3 xl:divide-x divide-autofun-stroke-primary">
+        <div className="flex flex-wrap xl:flex-nowrap border bg-autofun-background-card p-3 items-center justify-between gap-3 xl:divide-x divide-autofun-stroke-primary">
           <div className="flex flex-col gap-2 items-center w-full">
             <span className="text-base font-dm-mono text-autofun-text-secondary">
               Market Cap
@@ -249,7 +249,7 @@ export default function Page() {
           </div>
         </div>
         {/* Chart */}
-        <div className="border rounded-md p-3 bg-autofun-background-card">
+        <div className="border p-3 bg-autofun-background-card">
           Chart
         </div>
         <TransactionsAndHolders token={token} />

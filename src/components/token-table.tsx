@@ -77,7 +77,7 @@ export const TokenTable = ({ tokens }: { tokens: ProfileToken[] }) => {
   });
 
   return (
-    <div className="border border-[#262626] rounded-md w-full">
+    <div className="border border-[#262626] w-full">
       <table className="w-full">
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
