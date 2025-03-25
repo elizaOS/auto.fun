@@ -537,8 +537,8 @@ export const withdrawTx = async (
 // Get RPC URL based on the environment
 export const getRpcUrl = (env: any) => {
   return env.NETWORK === "devnet"
-    ? env.DEVNET_SOLANA_RPC_URL || "https://api.devnet.solana.com"
-    : env.MAINNET_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+    ? (env.DEVNET_SOLANA_RPC_URL || "https://api.devnet.solana.com")
+    : (env.MAINNET_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com");
 };
 
 // Replace the getLegacyRpcUrl function

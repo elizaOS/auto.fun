@@ -31,15 +31,13 @@ export default function Page() {
     queryKey: ["token", address],
     queryFn: async () => {
       if (!address) throw new Error("No address passed");
-      const data = (await getToken({ address })) as unknown as {
-        token: IToken;
-      };
+      const data = await getToken({ address });
       return data;
     },
     refetchInterval: 20_000,
   });
 
-  const token = query?.data?.token as IToken;
+  const token = query?.data as IToken;
 
   const solPriceUSD = token?.solPriceUSD;
   const finalTokenPrice = 0.00000045; // Approximated value from the bonding curve configuration
@@ -61,9 +59,9 @@ export default function Page() {
               Market Cap
             </span>
             <span className="text-xl font-dm-mono text-autofun-text-highlight">
-              {token?.marketCapUSD
+              {token?.marketCapUSD != null
                 ? abbreviateNumber(token?.marketCapUSD)
-                : null}
+                : '-'}
             </span>
           </div>
           <div className="flex flex-col gap-2 items-center w-full">
@@ -71,7 +69,7 @@ export default function Page() {
               24hr Volume
             </span>
             <span className="text-xl font-dm-mono text-autofun-text-primary">
-              {token?.price24hAgo ? abbreviateNumber(token?.volume24h) : null}
+              {token?.volume24h != null ? abbreviateNumber(token?.volume24h) : '-'}
             </span>
           </div>
           <div className="flex flex-col gap-2 items-center w-full">
@@ -79,7 +77,7 @@ export default function Page() {
               Creator
             </span>
             <span className="text-xl font-dm-mono text-autofun-text-primary">
-              {token?.creator ? shortenAddress(token?.creator) : null}
+              {token?.creator ? shortenAddress(token?.creator) : '-'}
             </span>
           </div>
           <div className="flex flex-col gap-2 items-center w-full">
@@ -87,7 +85,7 @@ export default function Page() {
               Creation Time
             </span>
             <span className="text-xl font-dm-mono text-autofun-text-primary">
-              {token?.createdAt ? fromNow(token?.createdAt) : null}
+              {token?.createdAt ? fromNow(token?.createdAt) : '-'}
             </span>
           </div>
         </div>

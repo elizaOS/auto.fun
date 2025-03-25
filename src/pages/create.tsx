@@ -4,6 +4,13 @@ import { useNavigate } from "react-router";
 import CopyButton from "../components/copy-button";
 import { Icons } from "../components/icons";
 import WalletButton from "../components/wallet-button";
+import { TokenMetadata } from "../../types/form.type";
+import { Keypair } from "@solana/web3.js";
+
+interface CreateTokenResponse {
+  mintPublicKey: string;
+  success: boolean;
+}
 
 const MAX_FILE_SIZE_MB = 5;
 const MAX_INITIAL_SOL = 45;
@@ -264,50 +271,60 @@ export const Create = () => {
     try {
       setIsSubmitting(true);
 
+      // Generate a new keypair for the token mint
+      const mintKeypair = Keypair.generate();
+      const tokenMint = mintKeypair.publicKey.toBase58();
+
       // Convert image to base64 if exists
-      let media_base64 = null;
+      let media_base64: string | null = null;
       if (imageFile) {
-        media_base64 = await new Promise((resolve) => {
+        media_base64 = await new Promise<string>((resolve) => {
           const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
+          reader.onloadend = () => resolve(reader.result as string);
           reader.readAsDataURL(imageFile);
         });
       }
 
-      // Create payload
-      const payload = {
-        ...form,
-        media_base64,
-        wallet: publicKey?.toString(),
+      // Create token metadata
+      const tokenMetadata: TokenMetadata = {
+        name: form.name,
+        symbol: form.symbol,
+        description: form.description,
+        initialSol: parseFloat(form.initial_sol) || 0,
+        links: form.links,
+        imageBase64: media_base64,
+        tokenMint,
+        decimals: 9,
+        supply: 1000000000,
+        freezeAuthority: publicKey?.toBase58() || "",
+        mintAuthority: publicKey?.toBase58() || "",
       };
 
-      // Submit to backend API
-      const response = await fetch(
-        import.meta.env.VITE_API_URL + "/api/create-token",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
+      // Create the token using fetch
+      const response = await fetch(import.meta.env.VITE_API_URL + "/api/create-token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify(tokenMetadata),
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to create token");
+        const errorData = await response.json() as { error: string };
+        throw new Error(errorData.error || "Failed to create token");
       }
 
-      const data = (await response.json()) as { tokenId?: string };
-
-      // Redirect to token page using React Router
-      if (data.tokenId) {
-        navigate(`/token/${data.tokenId}`);
+      const result = await response.json() as CreateTokenResponse;
+      
+      if (result?.mintPublicKey) {
+        // Redirect to token page using the mint public key
+        navigate(`/token/${result.mintPublicKey}`);
       } else {
-        console.error("No token ID returned from API");
+        throw new Error("No mint public key returned from token creation");
       }
     } catch (error) {
       console.error("Error creating token:", error);
-      alert("Failed to create token. Please try again.");
+      alert(error instanceof Error ? error.message : "Failed to create token. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

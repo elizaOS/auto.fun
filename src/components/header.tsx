@@ -32,7 +32,7 @@ export default function Header() {
 
   return (
     <div>
-      <div className="hidden md:block border-b py-6">
+      <div className="hidden md:block py-6">
         <div className="container flex flex-row items-center justify-between">
           <div className="flex items-center">
             <Link to="/" className="mr-6">
@@ -40,7 +40,6 @@ export default function Header() {
             </Link>
             <NavLink title="Tokens" href="/" />
             <HowItWorksDialog />
-            <NavLink title="Support" href="/support" />
           </div>
           <div className="flex w-1/2 space-x-4 flex-row justify-between">
             <SearchBar isMobile={false} />

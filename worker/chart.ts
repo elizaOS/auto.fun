@@ -61,7 +61,7 @@ const MAX_CONCURRENT_UPDATES = 3; // Maximum concurrent holder updates
 // const isValidCpmm = (id: string) => VALID_PROGRAM_ID.has(id)
 
 // Default values for when env is not available
-export const DEFAULT_TOKEN_SUPPLY = "1000000000000";
+export const DEFAULT_TOKEN_SUPPLY = "1000000000000000";
 export const DEFAULT_DECIMALS = 6;
 export const DEFAULT_VIRTUAL_RESERVES = "100000000";
 export const DEFAULT_CURVE_LIMIT = "1000000000";

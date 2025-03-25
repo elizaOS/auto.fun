@@ -1,7 +1,7 @@
 name = "api"
 main = "worker/index.ts"
-compatibility_date = "2024-09-23"
-compatibility_flags = ["nodejs_compat"]
+compatibility_date = "2024-08-21"
+compatibility_flags = [ "nodejs_compat_v2" ]
 
 # Cloudflare Pages configuration
 [site]
@@ -26,28 +26,22 @@ preview_bucket_name = "autofun-storage-dev"
 [vars]
 NETWORK = "mainnet"
 DECIMALS = "9"
-TOKEN_SUPPLY = "1000000000000000000"
-VIRTUAL_RESERVES = "1000000000"
-CURVE_LIMIT = "1000000000000"
-
-# Legacy WebSocket DO binding
-[[durable_objects.bindings]]
-name = "WEBSOCKET_DO"
-class_name = "WebSocketDO"
+TOKEN_SUPPLY = "1000000000000000"
+VIRTUAL_RESERVES = "28000000000"
+CURVE_LIMIT = "11300000000"
+R2_PUBLIC_URL = "https://pub-30f52db29266428495af0c1aea206af1.r2.dev"
+NODE_ENV = "development"
 
 # Socket.io Durable Objects
-[[durable_objects.bindings]]
-name = "engineActor"
-class_name = "EngineActor"
-
-[[durable_objects.bindings]]
-name = "socketActor"
-class_name = "SocketActor"
+[durable_objects]
+bindings = [
+  { name = "WebSocketDO", class_name = "WebSocketDO" }
+]
 
 # Migration tags
 [[migrations]]
 tag = "v1"
-new_classes = ["WebSocketDO", "EngineActor", "SocketActor"]
+new_classes = ["WebSocketDO"]
 
 [[migrations]]
 tag = "v2"
@@ -63,15 +57,17 @@ bucket = "./dist"
 # Development environment doesn't use cron triggers
 # to avoid the ENOENT utime error with registry/api
 [env.development.triggers]
-crons = [] # No cron jobs in development mode
+crons = ["*/1 * * * *"] # Run every 1 minute
 
 # Copy vars to development environment
 [env.development.vars]
 NETWORK = "mainnet"
 DECIMALS = "9"
-TOKEN_SUPPLY = "1000000000000000000"
-VIRTUAL_RESERVES = "1000000000"
+TOKEN_SUPPLY = "1000000000000000"
+VIRTUAL_RESERVES = "28000000000"
 CURVE_LIMIT = "1000000000000"
+R2_PUBLIC_URL = "https://pub-30f52db29266428495af0c1aea206af1.r2.dev"
+NODE_ENV = "development"
 
 # D1 Database for development
 [[env.development.d1_databases]]
@@ -84,19 +80,11 @@ database_id = "00ade209-86ac-46a9-bed5-b74aaaac4ad4"
 binding = "R2"
 bucket_name = "autofun-storage-dev"
 
-# Add Durable Objects configuration for development
-[[env.development.durable_objects.bindings]]
-name = "WEBSOCKET_DO"
-class_name = "WebSocketDO"
-
 # Add Socket.io Durable Objects for development
-[[env.development.durable_objects.bindings]]
-name = "engineActor"
-class_name = "EngineActor"
-
-[[env.development.durable_objects.bindings]]
-name = "socketActor"
-class_name = "SocketActor"
+[env.development.durable_objects]
+bindings = [
+  { name = "WebSocketDO", class_name = "WebSocketDO" }
+]
 
 # Production environment configuration
 [env.production]

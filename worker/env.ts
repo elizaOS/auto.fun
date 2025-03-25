@@ -32,6 +32,8 @@ export interface Env {
   SWAP_FEE: string;
   // Solana connection
   RPC_URL?: string;
+  MAINNET_SOLANA_RPC_URL?: string;
+  DEVNET_SOLANA_RPC_URL?: string;
   PROGRAM_ID: string;
   // Test environment properties
   tokenPubkey?: string; // Used in tests to track the current test token

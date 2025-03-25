@@ -344,10 +344,10 @@ app.post("/:mint/generate", async (c) => {
     // Check rate limits with timeout
     let rateLimit: { allowed: boolean; remaining: number };
     try {
-      rateLimit = (await Promise.race([
+      rateLimit = await Promise.race([
         checkRateLimits(c.env, mint, validatedData.type),
         dbTimeoutPromise,
-      ])) as { allowed: boolean; remaining: number };
+      ]) as { allowed: boolean; remaining: number };
 
       if (!rateLimit.allowed) {
         clearTimeout(endpointTimeout);
