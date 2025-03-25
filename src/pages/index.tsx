@@ -56,7 +56,7 @@ export default function Page() {
       {/* Header Section */}
       <FrontpageHeader />
       {/* Top Navigation */}
-      <div className="flex items-center gap-3 flex-wrap-reverse lg:flex-wrap">
+      <div className="flex justify-between gap-3 flex-wrap-reverse lg:flex-wrap">
         <GridListSwitcher />
         <div className="flex items-center gap-3">
           <Button
