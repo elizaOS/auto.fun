@@ -4,7 +4,7 @@ import { HowItWorksDialog } from "./how-it-works-dialog";
 import SearchBar from "./search-bar";
 import Button from "./button";
 import { CloseButton, Dialog, DialogPanel } from "@headlessui/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import WalletButton from "@/components/wallet-button";
 
@@ -23,6 +23,12 @@ export default function Header() {
     { title: "Terms of Service", href: "/terms-of-service" },
     { title: "Fees", href: "fees" },
   ];
+
+  useEffect(() => {
+    if (drawerOpen) {
+      setDrawerOpen(false);
+    }
+  }, [pathname]);
 
   return (
     <div>
@@ -76,10 +82,10 @@ export default function Header() {
           >
             <div className="fixed inset-0 overflow-hidden">
               <div className="inset-0 overflow-hidden">
-                <div className="pointer-events-none fixed inset-y-0 flex -right-4 w-[310px]">
-                  <DialogPanel className="pointer-events-auto mt-16 relative w-full max-w-md">
+                <div className="pointer-events-none fixed inset-y-0 flex w-full">
+                  <DialogPanel className="pointer-events-auto mt-[77px] relative w-full max-w-[310px] ml-auto">
                     <div className="flex w-full h-full flex-col overflow-y-hidden bg-[#171717] py-0 shadow-xl">
-                      <div className="relative flex flex-col py-10 px-6 gap-3">
+                      <div className="relative flex flex-col py-4 px-6 gap-3">
                         <WalletButton />
                         <div>
                           {mobileNavItems.map((item, index) => (
