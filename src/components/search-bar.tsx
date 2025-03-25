@@ -3,11 +3,9 @@ import { Link } from "react-router";
 import CopyButton from "./copy-button";
 import { formatNumber } from "@/utils";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { getSearchTokens } from "@/utils/api";
-import { useQuery } from "@tanstack/react-query";
 import { debounce } from "lodash";
 import { IToken } from "@/types";
-
+import { useOutsideClickDetection } from "@/hooks/use-outside-clickdetection";
 
 export default function SearchBar({ isMobile }: { isMobile: boolean }) {
   const [searchResults, setSearchResults] = useState<IToken[] | []>([]);
@@ -15,51 +13,77 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-
-  const query = useQuery({
-    queryKey: ["search-tokens", search],
-    queryFn: async () => {
-      const data = await getSearchTokens({ search });
-      return data as { tokens: IToken[]}
-    },
+  useOutsideClickDetection([ref], () => {
+    setShowSearchResults(false);
+    setSearchResults([]);
   });
-  
-  const tokens = query?.data?.tokens
+
+  // const query = useQuery({
+  //   queryKey: ["search-tokens", search],
+  //   queryFn: async () => {
+  //     const data = await getSearchTokens({ search });
+  //     return data as { tokens: IToken[] };
+  //   },
+  // });
+
+  const tokens = [
+    {
+      mint: "9sT3Lx5NmW",
+      name: "Alien Coin",
+      image:
+        "https://png.pngtree.com/png-vector/20190223/ourmid/pngtree-vector-picture-icon-png-image_695350.jpg",
+      inferenceCount: 98,
+      lastUpdated: "2024-10-01",
+      marketCapUSD: 180000,
+      ticker: "TICKET",
+    },
+    {
+      mint: "9sT3Lx5NmW",
+      name: "Alien Coin",
+      image:
+        "https://png.pngtree.com/png-vector/20190223/ourmid/pngtree-vector-picture-icon-png-image_695350.jpg",
+      inferenceCount: 98,
+      lastUpdated: "2024-10-01",
+      marketCapUSD: 180000,
+      ticker: "TICKET",
+    },
+  ] as IToken[];
+
+  // const tokens = query?.data?.tokens as IToken[];
 
   const handleSearch = useRef(
     debounce((query: string) => {
+      setSearchResults(tokens);
       setSearch(query);
-    }, 300),
+    }, 300)
   ).current;
-  
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setShowSearchResults(true)
+    setShowSearchResults(true);
     handleSearch(value);
   };
-  
+
   useEffect(() => {
     return () => {
       handleSearch.cancel();
-      setSearchResults(tokens)
     };
   }, [handleSearch]);
-  
+
   useLayoutEffect(
     function hideBodyScrollBar() {
       const { overflow } = window.getComputedStyle(document.body);
-  
+
       if (showMobileSearch) {
         document.body.style.overflow = "hidden";
       }
-  
+
       return () => {
         document.body.style.overflow = overflow;
       };
     },
     [showMobileSearch]
   );
-
 
   if (isMobile) {
     return (
@@ -86,7 +110,7 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
             </div>
             {showSearchResults && (
               <div
-                className="w-full bg-neutral-900 px-4 rounded-b-lg flex flex-col flex-1 gap-6 mt-[14px] overflow-y-scroll no-scrollbar"
+                className="w-full bg-neutral-900 px-4 rounded-b-lg flex flex-col flex-1 gap-3 mt-[14px] overflow-y-scroll no-scrollbar"
                 ref={ref}
               >
                 <div className="text-[#03ff24] text-xs font-normal uppercase leading-none tracking-widest">
@@ -129,10 +153,10 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
 
       {showSearchResults && (
         <div
-          className="absolute w-full p-3.5 bg-[#171717] rounded-lg border border-[#262626] flex flex-col gap-6 mt-2 max-h-[60vh] overflow-auto z-50 shadow-lg"
+          className="absolute w-full p-3.5 bg-[#171717] rounded-lg border border-[#262626] flex flex-col gap-3 mt-2 max-h-[60vh] overflow-auto z-50 shadow-lg"
           ref={ref}
         >
-          <div className="text-[#2FD345] text-xs font-normal uppercase leading-none tracking-widest">
+          <div className="text-[16px] font-normal leading-none tracking-widest">
             Tokens
           </div>
           {searchResults.map((token: IToken) => (
@@ -168,7 +192,7 @@ const AgentSearchResult = ({
   onNavigate: () => void;
 }) => {
   return (
-    <Link to={`/coin/${id}`} onClick={onNavigate}>
+    <Link to={`/token/${id}`} onClick={onNavigate}>
       <div className="flex items-center gap-4 p-2 hover:bg-[#262626] rounded-md transition-all duration-200 group cursor-pointer">
         <img
           className="w-10 h-10 rounded-lg object-cover"
@@ -176,11 +200,11 @@ const AgentSearchResult = ({
           alt={name}
         />
         <div className="flex flex-col gap-1">
-          <div className="text-white text-sm font-medium group-hover:text-[#2FD345] transition-colors">
+          <div className="text-white text-[16px] font-medium group-hover:text-[#2FD345] transition-colors">
             {name}
-          </div>
-          <div className="text-[#8C8C8C] text-xs uppercase tracking-widest group-hover:text-white/80 transition-colors">
-            ${symbol}
+            <span className="px-2  text-[#8C8C8C] text-[16px] uppercase tracking-widest group-hover:text-white/80 transition-colors">
+              ${symbol}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="text-[#8C8C8C] text-xs group-hover:text-white/70 transition-colors">
@@ -190,9 +214,9 @@ const AgentSearchResult = ({
           </div>
         </div>
         <div className="flex items-center gap-1 ml-auto">
-          <span className="text-[#2FD345] text-xs">MC:</span>
-          <span className="text-[#2FD345] text-xs">
-            ${formatNumber(marketCap, false)}
+          <span className="text-[#8C8C8C] text-sm">MC:</span>
+          <span className="text-[#2FD345] text-sm">
+            {formatNumber(marketCap, false)}
           </span>
         </div>
       </div>
