@@ -736,7 +736,7 @@ const DiceRoller = () => {
 
   return (
     <div
-      className="w-full h-[300px] relative overflow-hidden cursor-pointer mb-6"
+      className="w-full h-[300px] relative overflow-hidden cursor-pointer my-6 xl:mt-0"
       onClick={(_e) => {
         console.log("Outer container clicked");
         // if (window.resetDice) window.resetDice();
