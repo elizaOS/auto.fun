@@ -7,6 +7,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 // import { useQuery } from "@tanstack/react-query";
 import { debounce } from "lodash";
 import { IToken } from "@/types";
+import { useOutsideClickDetection } from "@/hooks/use-outside-clickdetection";
 
 
 export default function SearchBar({ isMobile }: { isMobile: boolean }) {
@@ -15,6 +16,11 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  useOutsideClickDetection([ref], () => {
+    setShowSearchResults(false);
+    setSearchResults([]);
+  });
+
 
   // const query = useQuery({
   //   queryKey: ["search-tokens", search],
@@ -48,8 +54,8 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
 
   const handleSearch = useRef(
     debounce((query: string) => {
-      setSearch(query);
       setSearchResults(tokens)
+      setSearch(query);
     }, 300),
   ).current;
   
