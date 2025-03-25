@@ -139,7 +139,7 @@ export function HowItWorksDialog() {
   return (
     <Dialog open={open} onOpenChange={(op: boolean) => setOpen(op)}>
       <DialogTrigger onClick={() => setOpen(true)} asChild>
-        <button className="flex items-center justify-center px-3 py-2 gap-2 h-9 rounded-md bg-transparent text-autofun-text-secondary hover:text-white transition-colors duration-200">
+        <button className="flex items-center justify-center px-3 py-2 gap-2 h-9 bg-transparent text-autofun-text-secondary hover:text-white transition-colors duration-200">
           <span className="text-base font-normal">How It Works</span>
         </button>
       </DialogTrigger>

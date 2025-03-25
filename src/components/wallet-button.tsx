@@ -335,7 +335,7 @@ const WalletButton = () => {
         </Button>
 
         {menuOpen && (
-          <div className="absolute z-50 right-0 mt-2 bg-[#171717] border border-[#262626] rounded-md shadow-lg overflow-hidden w-48">
+          <div className="absolute z-50 right-0 mt-2 bg-[#171717] border border-[#262626] shadow-lg overflow-hidden w-48">
             <ul className="py-2">
               <li
                 className="px-4 py-2 text-sm text-white hover:bg-[#262626] cursor-pointer flex items-center gap-2"

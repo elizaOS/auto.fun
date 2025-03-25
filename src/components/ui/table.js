@@ -13,7 +13,7 @@ const TableRow = React.forwardRef(({ className, ...props }, ref) => (_jsx("tr", 
 TableRow.displayName = "TableRow";
 const TableHead = React.forwardRef(({ className, ...props }, ref) => (_jsx("th", { ref: ref, className: twMerge("h-5 px-4 text-left whitespace-nowrap align-middle font-dm-mono font-normal text-[14px] leading-[16px] tracking-[2px] uppercase text-autofun-text-info [&:has([role=checkbox])]:pr-0", className), ...props })));
 TableHead.displayName = "TableHead";
-const TableCell = React.forwardRef(({ className, ...props }, ref) => (_jsx("td", { ref: ref, className: twMerge("p-4 align-middle font-dm-mono font-normal text-base leading-5 tracking-normal text-center [&:has([role=checkbox])]:pr-0 bg-autofun-background-card border-autofun-stroke-primary border-t border-b border-x-0 first:rounded-l-[6px] first:border-l last:rounded-r-[6px] last:border-r", className), ...props })));
+const TableCell = React.forwardRef(({ className, ...props }, ref) => (_jsx("td", { ref: ref, className: twMerge("p-4 align-middle font-dm-mono font-normal text-base leading-5 tracking-normal text-center [&:has([role=checkbox])]:pr-0 bg-autofun-background-card border-autofun-stroke-primary border-t border-b border-x-0 first:first:border-l last:last:border-r", className), ...props })));
 TableCell.displayName = "TableCell";
 const TableCaption = React.forwardRef(({ className, ...props }, ref) => (_jsx("caption", { ref: ref, className: twMerge("mt-4 text-sm text-muted-foreground", className), ...props })));
 TableCaption.displayName = "TableCaption";

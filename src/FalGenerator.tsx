@@ -224,7 +224,7 @@ export const FalGenerator = () => {
   };
 
   return (
-    <div className="bg-[#171717] border border-[#262626] rounded-xl p-4 md:p-6 mt-6">
+    <div className="bg-[#171717] border border-[#262626] p-4 md:p-6 mt-6">
       <h2 className="text-white text-xl mb-4">
         Generate {token?.name} Content
       </h2>

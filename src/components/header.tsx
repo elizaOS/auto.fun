@@ -14,7 +14,7 @@ export default function Header() {
   const { publicKey } = useWallet();
   const { isAuthenticated } = useWalletModal();
   const [drawerOpen, setDrawerOpen] = useState(false);
-
+  
   const mobileNavItems = [
     { icon: "/nav/stars.svg", title: "Create Token", href: "/create" },
     { icon: "/nav/eye.svg", title: "Tokens", href: "/" },
@@ -24,10 +24,10 @@ export default function Header() {
 
   // Add profile link if user is authenticated
   if (publicKey && isAuthenticated) {
-    mobileNavItems.push({
-      icon: "/nav/user.svg",
-      title: "Profile",
-      href: "/profile",
+    mobileNavItems.push({ 
+      icon: "/nav/user.svg", 
+      title: "Profile", 
+      href: "/profile"
     });
   }
 
@@ -57,7 +57,7 @@ export default function Header() {
           <div className="flex w-1/2 space-x-4 flex-row justify-between">
             <SearchBar isMobile={false} />
             <Link to="/create">
-              <Button className="flex items-center text-base font-medium text-white font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border border-[#2FD345] rounded-md">
+              <Button className="flex items-center text-base font-medium text-white font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345]">
                 Create Token{" "}
                 <img
                   src="/nav/stars.svg"
@@ -80,7 +80,7 @@ export default function Header() {
             </Link>
           </div>
           <SearchBar isMobile={false} />
-          {drawerOpen ? (
+          {drawerOpen ? ( 
             <CloseButton>
               <X className="size-[30px]" />
             </CloseButton>

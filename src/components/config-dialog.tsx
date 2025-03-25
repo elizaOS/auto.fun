@@ -72,7 +72,7 @@ export default function ConfigDialog({ children }: PropsWithChildren) {
                 </span>
               </div>
               <input
-                className="max-w-[120px] px-3 py-2 bg-[#0a0a0a] rounded-md text-white border outline-none"
+                className="max-w-[120px] px-3 py-2 bg-[#0a0a0a] text-white border outline-none"
                 placeholder="1.0%"
                 min="0"
                 max="100"
@@ -94,7 +94,7 @@ export default function ConfigDialog({ children }: PropsWithChildren) {
               <span className="text-base font-medium font-satoshi text-autofun-text-primary">
                 Speed
               </span>
-              <div className="p-1 rounded-md border flex items-center gap-2">
+              <div className="p-1 border flex items-center gap-2">
                 {(["fast", "turbo", "ultra"] as TTransactionSpeed[]).map(
                   (speedItem: TTransactionSpeed, _) => {
                     const isActive = speedItem === transactionSpeed;
@@ -104,7 +104,7 @@ export default function ConfigDialog({ children }: PropsWithChildren) {
                         className={twMerge([
                           "py-2 px-3 capitalize text-autofun-text-secondary text-sm font-dm-mono select-none cursor-pointer tracking-[-0.4px]",
                           isActive
-                            ? "rounded-md bg-autofun-background-action-highlight text-autofun-background-primary font-medium"
+                            ? "bg-autofun-background-action-highlight text-autofun-background-primary font-medium"
                             : "",
                         ])}
                       >
@@ -126,7 +126,7 @@ export default function ConfigDialog({ children }: PropsWithChildren) {
             <span className="text-base font-medium font-satoshi text-autofun-text-primary">
               Enable front-running protection
             </span>
-            <div className="p-1 rounded-md border flex items-center gap-2">
+            <div className="p-1 border flex items-center gap-2">
               {([true, false] as TMevProtection[]).map(
                 (mevProtectionItem: TMevProtection, _) => {
                   const isActive = mevProtectionItem === mevProtection;
@@ -137,7 +137,7 @@ export default function ConfigDialog({ children }: PropsWithChildren) {
                       className={twMerge([
                         "py-2 px-3 capitalize text-autofun-text-secondary text-sm font-dm-mono select-none cursor-pointer tracking-[-0.4px]",
                         isActive
-                          ? "rounded-md bg-autofun-background-action-highlight text-autofun-background-primary font-medium"
+                          ? "bg-autofun-background-action-highlight text-autofun-background-primary font-medium"
                           : "",
                       ])}
                     >
