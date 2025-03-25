@@ -71,7 +71,7 @@ const FormLabel = ({
 }) => {
   return (
     <div className="flex items-center gap-2">
-      <div className="text-whitem uppercase text-sm font-medium tracking-wider">
+      <div className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
         {label}
       </div>
       {isOptional && <div className="text-[#8c8c8c] text-xs">Optional</div>}
@@ -99,7 +99,7 @@ const FormTextArea = ({
       {label && <FormLabel label={label} />}
       <div className="relative">
         <textarea
-          className="w-full bg-[#0F0F0F] rounded-md h-[300px] px-3 border border-neutral-800 text-white resize-none"
+          className="w-full bg-[#0F0F0F] rounded-md h-[300px] p-3 border border-neutral-800 text-white resize-none"
           style={{ minHeight: `${minRows * 1.5}rem` }}
           maxLength={maxLength}
           {...props}
@@ -708,7 +708,7 @@ export const Create = () => {
         </div>
       </div>
       <form
-        className="flexflex-col w-full max-w-3xl m-auto gap-7 py-8 justify-center"
+        className="flex flex-col w-full max-w-3xl m-auto gap-4 py-8 justify-center"
         onSubmit={handleSubmit}
       >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -862,9 +862,7 @@ export const Create = () => {
         <div className="flex flex-col mt-4 gap-y-6 items-center">
           <div className="border-[1px] border-white/10 w-full"></div>
           {!publicKey ? (
-            <div className="flex flex-col items-center gap-2">
               <WalletButton />
-            </div>
           ) : (
             <button
               type="submit"
