@@ -249,9 +249,7 @@ export default function Page() {
           </div>
         </div>
         {/* Chart */}
-        <div className="border p-3 bg-autofun-background-card">
-          Chart
-        </div>
+        <div className="border p-3 bg-autofun-background-card">Chart</div>
         <TransactionsAndHolders token={token} />
       </div>
     </div>

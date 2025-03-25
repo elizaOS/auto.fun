@@ -194,11 +194,7 @@ const AgentSearchResult = ({
   return (
     <Link to={`/token/${id}`} onClick={onNavigate}>
       <div className="flex items-center gap-4 p-2 hover:bg-[#262626] transition-all duration-200 group cursor-pointer">
-        <img
-          className="w-10 h-10 object-cover"
-          src={imageUrl}
-          alt={name}
-        />
+        <img className="w-10 h-10 object-cover" src={imageUrl} alt={name} />
         <div className="flex flex-col gap-1">
           <div className="text-white text-[16px] font-medium group-hover:text-[#2FD345] transition-colors">
             {name}
