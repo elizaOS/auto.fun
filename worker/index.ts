@@ -570,6 +570,29 @@ app.route("/api", api);
 // Export the WebSocket Durable Object
 export { WebSocketDO };
 
+// Temporary stub implementation to allow migration to delete the class
+export class EngineActor {
+  constructor(state: any, env: Env) {
+    // Empty constructor
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    return new Response("EngineActor stub for migration", { status: 410 });
+  }
+}
+
+export class SocketActor {
+  constructor(state: any, env: Env) {
+    // Empty constructor
+  }
+  
+  async fetch(request: Request): Promise<Response> {
+    return new Response("SocketActor stub for migration", { status: 410 });
+  }
+}
+
+// This is a simplified implementation for local development
+
 export default {
   async fetch(
     request: Request,
