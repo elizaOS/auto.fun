@@ -11,21 +11,21 @@
 // const uploadImage = async (metadata: TokenMetadata) => {
 //   // Determine a safe filename based on token metadata
 //   const safeName = metadata.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
-  
+
 //   // Get the image type from the data URL
 //   const contentType = metadata.image_base64?.match(/^data:([A-Za-z-+/]+);base64,/)?.[1] || '';
-  
+
 //   // Determine file extension from content type
 //   let extension = '.jpg'; // Default
 //   if (contentType.includes('png')) extension = '.png';
 //   else if (contentType.includes('gif')) extension = '.gif';
 //   else if (contentType.includes('svg')) extension = '.svg';
 //   else if (contentType.includes('webp')) extension = '.webp';
-  
+
 //   const filename = `${safeName}${extension}`;
-  
+
 //   console.log(`Uploading image as ${filename} with content type ${contentType}`);
-  
+
 //   const response = await fetch(import.meta.env.VITE_API_URL + "/api/upload", {
 //     method: "POST",
 //     headers: {
@@ -90,7 +90,7 @@
 //     try {
 //       // Wait a few seconds for the transaction to be confirmed
 //       await new Promise(r => setTimeout(r, 4000));
-      
+
 //       // First try direct token creation
 //       try {
 //         console.log(`Creating token record for ${mint}`);
@@ -99,7 +99,7 @@
 //           headers: {
 //             "Content-Type": "application/json",
 //           },
-//           body: JSON.stringify({ 
+//           body: JSON.stringify({
 //             tokenMint: mint,
 //             mint,
 //             name,
@@ -129,7 +129,7 @@
 //       } catch (createError) {
 //         console.error("Error creating token:", createError);
 //       }
-      
+
 //       // If direct creation fails, try the check endpoint
 //       for (let i = 0; i < 3; i++) {
 //         console.log(`Checking for token ${mint}, attempt ${i + 1}`);
@@ -139,10 +139,10 @@
 //             headers: {
 //               "Content-Type": "application/json",
 //             },
-//             body: JSON.stringify({ 
+//             body: JSON.stringify({
 //               tokenMint: mint,
 //               imageUrl,
-//               metadataUrl 
+//               metadataUrl
 //             }),
 //           });
 
@@ -160,7 +160,7 @@
 //         } catch (checkError) {
 //           console.error(`Error checking token (attempt ${i+1}):`, checkError);
 //         }
-        
+
 //         // Wait before trying again
 //         await new Promise(r => setTimeout(r, 3000));
 //       }
@@ -357,7 +357,7 @@
 //       if (!signTransaction) {
 //         throw new Error("Sign transaction method not found");
 //       }
-      
+
 //       // Upload the image and metadata first
 //       const { metadataUrl, imageUrl } = await uploadImage(token_metadata);
 //       console.log("Uploaded metadata URL:", metadataUrl);
@@ -377,4 +377,4 @@
 //   );
 
 //   return { ...mutation, mutateAsync: createTokenAsync, mutate: createToken };
-// } 
+// }

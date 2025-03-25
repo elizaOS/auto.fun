@@ -55,7 +55,7 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
     debounce((query: string) => {
       setSearchResults(tokens);
       setSearch(query);
-    }, 300)
+    }, 300),
   ).current;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,7 +82,7 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
         document.body.style.overflow = overflow;
       };
     },
-    [showMobileSearch]
+    [showMobileSearch],
   );
 
   if (isMobile) {

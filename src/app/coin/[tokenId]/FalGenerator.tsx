@@ -44,7 +44,9 @@ interface GenerationResponse {
 const cn = (...classes: string[]) => classes.filter(Boolean).join(" ");
 
 export const FalGenerator = () => {
-  const [activeType, setActiveType] = useState<"image" | "video" | "audio">("image");
+  const [activeType, setActiveType] = useState<"image" | "video" | "audio">(
+    "image",
+  );
   const [customPrompt, setCustomPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<GenerationResponse | null>(null);
@@ -97,7 +99,7 @@ export const FalGenerator = () => {
       styleModifiers.push(
         "futuristic",
         "technological",
-        "artificial intelligence themed"
+        "artificial intelligence themed",
       );
     }
 
@@ -233,7 +235,7 @@ export const FalGenerator = () => {
             "px-4 py-2 rounded",
             activeType === "image"
               ? "bg-[#22C55E] text-white"
-              : "bg-gray-700 text-gray-300"
+              : "bg-gray-700 text-gray-300",
           )}
           onClick={() => setActiveType("image")}
         >
@@ -245,7 +247,7 @@ export const FalGenerator = () => {
             "px-4 py-2 rounded",
             activeType === "video"
               ? "bg-[#22C55E] text-white"
-              : "bg-gray-700 text-gray-300"
+              : "bg-gray-700 text-gray-300",
           )}
           onClick={() => setActiveType("video")}
         >
@@ -257,7 +259,7 @@ export const FalGenerator = () => {
             "px-4 py-2 rounded",
             activeType === "audio"
               ? "bg-[#22C55E] text-white"
-              : "bg-gray-700 text-gray-300"
+              : "bg-gray-700 text-gray-300",
           )}
           onClick={() => setActiveType("audio")}
         >

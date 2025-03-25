@@ -24,7 +24,7 @@ interface Serlaunchalot extends Idl {
           name: "teamWallet";
           isMut: true;
           isSigner: false;
-        }
+        },
       ];
       args: [
         {
@@ -50,7 +50,7 @@ interface Serlaunchalot extends Idl {
         {
           name: "metadataUrl";
           type: "string";
-        }
+        },
       ];
     },
     {
@@ -75,7 +75,7 @@ interface Serlaunchalot extends Idl {
           name: "teamWallet";
           isMut: true;
           isSigner: false;
-        }
+        },
       ];
       args: [
         {
@@ -85,9 +85,9 @@ interface Serlaunchalot extends Idl {
         {
           name: "amount";
           type: "u64";
-        }
+        },
       ];
-    }
+    },
   ];
   accounts: [
     {
@@ -98,7 +98,7 @@ interface Serlaunchalot extends Idl {
           {
             name: "teamWallet";
             type: "publicKey";
-          }
+          },
         ];
       };
     },
@@ -110,10 +110,10 @@ interface Serlaunchalot extends Idl {
           {
             name: "teamWallet";
             type: "publicKey";
-          }
+          },
         ];
       };
-    }
+    },
   ];
   metadata: {
     name: string;
@@ -137,7 +137,7 @@ export function useProgram() {
       signTransaction: async (tx) => tx,
       signAllTransactions: async (txs) => txs,
     },
-    { commitment: "confirmed" }
+    { commitment: "confirmed" },
   );
 
   // Create and return the program'
@@ -145,6 +145,6 @@ export function useProgram() {
   return new Program<Serlaunchalot>(
     {} as Serlaunchalot, // We'll need the actual IDL here
     new PublicKey(import.meta.env.VITE_PROGRAM_ID),
-    provider
+    provider,
   );
-} 
+}

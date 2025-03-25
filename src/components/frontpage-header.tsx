@@ -1,27 +1,27 @@
-import * as CANNON from 'cannon-es';
-import { useEffect, useRef, useState } from 'react';
-import * as THREE from 'three';
+import * as CANNON from "cannon-es";
+import { useEffect, useRef, useState } from "react";
+import * as THREE from "three";
 
 // Add TypeScript declaration for CANNON to fix the errors
-declare module 'cannon-es' {
+declare module "cannon-es" {
   interface Body {
     userData: any;
   }
-  
+
   interface Vec3 {
     normalize(): Vec3;
     scale(scalar: number): Vec3;
   }
-  
+
   interface Solver {
     iterations: number;
   }
-  
+
   interface ContactEquation {
     getImpactVelocityAlongNormal(): number;
     ni: CANNON.Vec3;
   }
-  
+
   interface ContactEvent {
     bodyA: CANNON.Body;
     bodyB: CANNON.Body;
@@ -37,65 +37,65 @@ declare global {
 }
 
 // Constants for physics
-const DICE_BODY_MATERIAL = 'dice';
-const FLOOR_MATERIAL = 'floor';
-const WALL_MATERIAL = 'wall';
+const DICE_BODY_MATERIAL = "dice";
+const FLOOR_MATERIAL = "floor";
+const WALL_MATERIAL = "wall";
 
 const DiceRoller = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   useEffect(() => {
     if (!containerRef.current) return;
 
     // Get container dimensions
     const containerWidth = containerRef.current.clientWidth;
     const containerHeight = 300; // Fixed height
-    
+
     // Scene setup
     const scene = new THREE.Scene();
     scene.background = null; // Make scene background transparent
-    
+
     // Physics world
     const world = new CANNON.World();
     world.gravity.set(0, -9.8 * 20, 0); // stronger gravity for faster falls
     world.broadphase = new CANNON.NaiveBroadphase();
     world.solver.iterations = 14;
     world.allowSleep = true;
-    
+
     // Setup materials
     const floorMaterial = new CANNON.Material(FLOOR_MATERIAL);
     const wallMaterial = new CANNON.Material(WALL_MATERIAL);
     const diceMaterial = new CANNON.Material(DICE_BODY_MATERIAL);
-    
+
     // Define contact behaviors
     world.addContactMaterial(
       new CANNON.ContactMaterial(floorMaterial, diceMaterial, {
         friction: 0.6,
-        restitution: 0.5
-      })
+        restitution: 0.5,
+      }),
     );
-    
+
     world.addContactMaterial(
       new CANNON.ContactMaterial(wallMaterial, diceMaterial, {
         friction: 0.6,
-        restitution: 0.9
-      })
+        restitution: 0.9,
+      }),
     );
-    
+
     world.addContactMaterial(
       new CANNON.ContactMaterial(diceMaterial, diceMaterial, {
         friction: 0.6,
-        restitution: 0.5
-      })
+        restitution: 0.5,
+      }),
     );
-    
+
     // Calculate dimensions based on aspect ratio
     const aspect = containerWidth / containerHeight;
     const frustumSize = 20; // This will be our base size
     const frustumHeight = frustumSize;
     const frustumWidth = frustumSize * aspect;
-    
+
     // Camera setup - orthographic camera
     const camera = new THREE.OrthographicCamera(
       frustumWidth / -2,
@@ -103,29 +103,29 @@ const DiceRoller = () => {
       frustumHeight / 2,
       frustumHeight / -2,
       0.001,
-      1000
+      1000,
     );
     camera.position.set(0, 50, 0);
     camera.lookAt(0, 0, 0);
-    
+
     // Renderer setup
-    const renderer = new THREE.WebGLRenderer({ 
+    const renderer = new THREE.WebGLRenderer({
       antialias: true,
-      alpha: true // Enable transparency
+      alpha: true, // Enable transparency
     });
     renderer.setSize(containerWidth, containerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
     renderer.setClearColor(0x000000, 0); // Make background transparent
-    
+
     // Add renderer to DOM
-    containerRef.current.innerHTML = '';
+    containerRef.current.innerHTML = "";
     containerRef.current.appendChild(renderer.domElement);
-    
+
     // Lighting
     const ambientLight = new THREE.AmbientLight(0x404040);
     scene.add(ambientLight);
-    
+
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(5, 20, 7.5);
     directionalLight.castShadow = true;
@@ -136,126 +136,128 @@ const DiceRoller = () => {
     directionalLight.shadow.camera.top = 50;
     directionalLight.shadow.camera.bottom = -20;
     scene.add(directionalLight);
-    
+
     // Floor (dice box)
     const floorGeometry = new THREE.BoxGeometry(frustumWidth, 1, frustumHeight);
-    const floorMeshMaterial = new THREE.MeshStandardMaterial({ 
+    const floorMeshMaterial = new THREE.MeshStandardMaterial({
       color: 0x000000,
       roughness: 0.8,
       transparent: true,
-      opacity: 0.2 // Make floor semi-transparent
+      opacity: 0.2, // Make floor semi-transparent
     });
     const floor = new THREE.Mesh(floorGeometry, floorMeshMaterial);
     floor.position.y = -0.5;
     floor.receiveShadow = true;
     scene.add(floor);
-    
+
     // Floor physics body
     const floorBody = new CANNON.Body({
       mass: 0, // static body
-      shape: new CANNON.Box(new CANNON.Vec3(frustumWidth/2, 0.5, frustumHeight/2)),
-      material: floorMaterial
+      shape: new CANNON.Box(
+        new CANNON.Vec3(frustumWidth / 2, 0.5, frustumHeight / 2),
+      ),
+      material: floorMaterial,
     });
     floorBody.position.set(0, -0.5, 0);
     world.addBody(floorBody);
-    
+
     // Walls
-    const wallMeshMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x00ff00,  // Bright green
+    const wallMeshMaterial = new THREE.MeshStandardMaterial({
+      color: 0x00ff00, // Bright green
       roughness: 0.7,
       emissive: 0x00ff00,
-      emissiveIntensity: 0.3
+      emissiveIntensity: 0.3,
     });
-    
+
     // Back wall
     const backWallGeometry = new THREE.BoxGeometry(frustumWidth, 20, 1);
     const backWall = new THREE.Mesh(backWallGeometry, wallMeshMaterial);
-    backWall.position.set(0, 2, -frustumHeight/2);
+    backWall.position.set(0, 2, -frustumHeight / 2);
     backWall.castShadow = true;
     backWall.receiveShadow = true;
     scene.add(backWall);
-    
+
     // Back wall physics body
     const backWallBody = new CANNON.Body({
       mass: 0,
-      shape: new CANNON.Box(new CANNON.Vec3(frustumWidth/2, 20, 0.5)),
-      material: wallMaterial
+      shape: new CANNON.Box(new CANNON.Vec3(frustumWidth / 2, 20, 0.5)),
+      material: wallMaterial,
     });
-    backWallBody.position.set(0, 2, -frustumHeight/2);
+    backWallBody.position.set(0, 2, -frustumHeight / 2);
     world.addBody(backWallBody);
-    
+
     // Front wall
     const frontWall = new THREE.Mesh(backWallGeometry, wallMeshMaterial);
-    frontWall.position.set(0, 2, frustumHeight/2);
+    frontWall.position.set(0, 2, frustumHeight / 2);
     frontWall.castShadow = true;
     frontWall.receiveShadow = true;
     scene.add(frontWall);
-    
+
     // Front wall physics body
     const frontWallBody = new CANNON.Body({
       mass: 0,
-      shape: new CANNON.Box(new CANNON.Vec3(frustumWidth/2, 50, 0.5)),
-      material: wallMaterial
+      shape: new CANNON.Box(new CANNON.Vec3(frustumWidth / 2, 50, 0.5)),
+      material: wallMaterial,
     });
-    frontWallBody.position.set(0, 2, frustumHeight/2);
+    frontWallBody.position.set(0, 2, frustumHeight / 2);
     world.addBody(frontWallBody);
-    
+
     // Left wall
     const sideWallGeometry = new THREE.BoxGeometry(1, 20, frustumHeight);
     const leftWall = new THREE.Mesh(sideWallGeometry, wallMeshMaterial);
-    leftWall.position.set(-frustumWidth/2, 2, 0);
+    leftWall.position.set(-frustumWidth / 2, 2, 0);
     leftWall.castShadow = true;
     leftWall.receiveShadow = true;
     scene.add(leftWall);
-    
+
     // Left wall physics body
     const leftWallBody = new CANNON.Body({
       mass: 0,
-      shape: new CANNON.Box(new CANNON.Vec3(0.5, 20, frustumHeight/2)),
-      material: wallMaterial
+      shape: new CANNON.Box(new CANNON.Vec3(0.5, 20, frustumHeight / 2)),
+      material: wallMaterial,
     });
-    leftWallBody.position.set(-frustumWidth/2, 2, 0);
+    leftWallBody.position.set(-frustumWidth / 2, 2, 0);
     world.addBody(leftWallBody);
-    
+
     // Right wall
     const rightWall = new THREE.Mesh(sideWallGeometry, wallMeshMaterial);
-    rightWall.position.set(frustumWidth/2, 2, 0);
+    rightWall.position.set(frustumWidth / 2, 2, 0);
     rightWall.castShadow = true;
     rightWall.receiveShadow = true;
     scene.add(rightWall);
-    
+
     // Right wall physics body
     const rightWallBody = new CANNON.Body({
       mass: 0,
-      shape: new CANNON.Box(new CANNON.Vec3(0.5, 50, frustumHeight/2)),
-      material: wallMaterial
+      shape: new CANNON.Box(new CANNON.Vec3(0.5, 50, frustumHeight / 2)),
+      material: wallMaterial,
     });
-    rightWallBody.position.set(frustumWidth/2, 2, 0);
+    rightWallBody.position.set(frustumWidth / 2, 2, 0);
     world.addBody(rightWallBody);
-    
+
     // Load textures for dice
     const textureLoader = new THREE.TextureLoader();
-    
+
     const catTextures = [
       // We'll use placeholder images with different colors to distinguish faces
-      'logo.png',
-      'ai16z.jpeg',
-      'degen.jpg',
-      'solanadice.png',
-      'fun.png',
-      'eliza.png'
+      "logo.png",
+      "ai16z.jpeg",
+      "degen.jpg",
+      "solanadice.png",
+      "fun.png",
+      "eliza.png",
     ];
-    
+
     // Add colors to distinguish different faces
     const faceColors = [
-      0xFFFFFF, // red
-      0xFFFFFF, // green
-      0xFFFFFF, // blue
-      0xFFFFFF, // yellow
-      0xFFFFFF, // magenta
-      0xFFFFFF  // cyan
+      0xffffff, // red
+      0xffffff, // green
+      0xffffff, // blue
+      0xffffff, // yellow
+      0xffffff, // magenta
+      0xffffff, // cyan
     ];
-    
+
     // Create materials array for each die face
     const createDieMaterials = () => {
       const materials = [];
@@ -263,35 +265,37 @@ const DiceRoller = () => {
         const texture = textureLoader.load(catTextures[i], () => {
           if (i === 5) setIsLoading(false);
         });
-        materials.push(new THREE.MeshStandardMaterial({ 
-          map: texture,
-          emissive: faceColors[i],
-          roughness: 1.0,
-          metalness: 0.3,
-          emissiveMap: texture,
-          emissiveIntensity: .5
-        }));
+        materials.push(
+          new THREE.MeshStandardMaterial({
+            map: texture,
+            emissive: faceColors[i],
+            roughness: 1.0,
+            metalness: 0.3,
+            emissiveMap: texture,
+            emissiveIntensity: 0.5,
+          }),
+        );
       }
       return materials;
     };
-    
-  const scale = 2;
+
+    const scale = 2;
 
     // Create dice
     const diceGeometry = new THREE.BoxGeometry(scale, scale, scale);
     const dice: THREE.Mesh[] = [];
     const diceBodies: CANNON.Body[] = [];
-    
+
     // Helper function to create a die
     function createDie(position: THREE.Vector3, scale: number = 1) {
       const dieMaterials = createDieMaterials();
       const die = new THREE.Mesh(diceGeometry, dieMaterials);
-      
+
       die.position.copy(position);
       die.scale.set(scale, scale, scale);
       die.castShadow = true;
       die.receiveShadow = true;
-      
+
       // Create physics body
       const halfExtents = new CANNON.Vec3(scale, scale, scale);
       const dieBody = new CANNON.Body({
@@ -300,103 +304,103 @@ const DiceRoller = () => {
         material: diceMaterial,
         allowSleep: true,
       });
-      
+
       // Set initial position and rotation
       dieBody.position.set(position.x, position.y, position.z);
       dieBody.quaternion.setFromEuler(
         Math.random() * Math.PI,
         Math.random() * Math.PI,
-        Math.random() * Math.PI
+        Math.random() * Math.PI,
       );
-      
+
       // Store the mesh with the body for updates
       dieBody.userData = { mesh: die };
-      
+
       // Add to scene and world
       scene.add(die);
       world.addBody(dieBody);
-      
+
       dice.push(die);
       diceBodies.push(dieBody);
-      
+
       return { die, dieBody };
     }
-    
+
     // Create 5 dice with initial positions
     for (let i = 0; i < 5; i++) {
       const position = new THREE.Vector3(
         Math.random() * 50 - 25,
         20 + i * 2,
-        Math.random() * 16 - 8
+        Math.random() * 16 - 8,
       );
       createDie(position, scale);
     }
-    
+
     // Replace the throwDice function with a more energetic version
     function throwDice() {
       for (let i = 0; i < diceBodies.length; i++) {
         const dieBody = diceBodies[i];
-        
+
         // Reset position higher for more energy
         dieBody.position.set(
           Math.random() * 50 - 25,
           20 + i * 2,
-          Math.random() * 16 - 8
+          Math.random() * 16 - 8,
         );
-        
+
         // Reset rotation
         dieBody.quaternion.setFromEuler(
           Math.random() * Math.PI,
           Math.random() * Math.PI,
-          Math.random() * Math.PI
+          Math.random() * Math.PI,
         );
-        
+
         // Clear any existing motion
         dieBody.velocity.set(0, 0, 0);
         dieBody.angularVelocity.set(0, 0, 0);
-        
+
         // Wake up the body
         dieBody.wakeUp();
-        
+
         // Apply stronger random velocity
         const velocity = new CANNON.Vec3(
           (Math.random() - 0.5) * 15, // stronger horizontal movement
-          -10 - Math.random() * 15,   // stronger downward movement
-          (Math.random() - 0.5) * 15  // stronger depth movement
+          -10 - Math.random() * 15, // stronger downward movement
+          (Math.random() - 0.5) * 15, // stronger depth movement
         );
         dieBody.velocity.copy(velocity);
-        
+
         // Apply stronger random angular velocity for more spin
         const angularVelocity = new CANNON.Vec3(
           (Math.random() - 0.5) * 20,
           (Math.random() - 0.5) * 20,
-          (Math.random() - 0.5) * 20
+          (Math.random() - 0.5) * 20,
         );
         dieBody.angularVelocity.copy(angularVelocity);
       }
-      
+
       // Log for debugging
       console.log("Dice thrown with increased energy!");
     }
-    
+
     // Replace the collision handler with a simpler version
     function handleCollisions(event: any) {
       // Simple collision detection using Cannon.js's 'collide' event
       try {
         // In this event, event.body is the body that has a collision
         const impactedBody = event.body;
-        
+
         if (!impactedBody || impactedBody.mass <= 0) return;
-        
+
         // Add random spin whenever a die collides with anything
         const randomX = (Math.random() - 0.5) * 10;
         const randomY = (Math.random() - 0.5) * 10;
         const randomZ = (Math.random() - 0.5) * 10;
-        
+
         impactedBody.angularVelocity.x += randomX;
         impactedBody.angularVelocity.y += randomY;
         impactedBody.angularVelocity.z += randomZ;
-        
+
         // Add a small upward bounce for better movement
         if (impactedBody.velocity.y < 0.5) {
           impactedBody.velocity.y += Math.random() * 2;
@@ -407,109 +411,111 @@ const DiceRoller = () => {
     }
 
     // Add collision event listener to world (use collide event instead of beginContact)
-    world.addEventListener('collide', handleCollisions);
-    
+    world.addEventListener("collide", handleCollisions);
+
     // Replace the debug info part in the animation function
     // Instead of using React state (which causes re-renders), use DOM manipulation
     function animate() {
       requestAnimationFrame(animate);
-      
+
       // Step the physics world
-      world.step(1/60);
-      
+      world.step(1 / 60);
+
       // Update dice positions and rotations
       for (let i = 0; i < diceBodies.length; i++) {
         const dieBody = diceBodies[i];
         const die = dice[i];
-        
+
         die.position.copy(dieBody.position as any);
         die.quaternion.copy(dieBody.quaternion as any);
       }
-      
+
       renderer.render(scene, camera);
     }
-    
+
     // Start animation
     animate();
-    
+
     // Add event listener for the roll button
     const handleReset = () => {
       throwDice();
     };
-    
+
     // Expose reset function to window so the button can access it
     window.resetDice = handleReset;
-    
+
     // Screen press for throwing dice
     const applyForceToAllDice = (event: MouseEvent) => {
       if (isLoading) return;
-      
+
       event.preventDefault();
       console.log("Applying force to dice", event.clientX, event.clientY);
-      
+
       // Force for all dice - simplified approach
       for (const dieBody of diceBodies) {
-        // Wake up the body 
+        // Wake up the body
         dieBody.wakeUp();
-        
+
         // Simple upward force with some randomness
         const forceVector = new CANNON.Vec3(
           (Math.random() - 0.5) * 100,
           Math.random() * 10,
-          (Math.random() - 0.5) * 100
+          (Math.random() - 0.5) * 100,
         );
-        
+
         // Apply direct velocity instead of impulse for more immediate effect
-        dieBody.velocity.set(
-          forceVector.x,
-          forceVector.y,
-          forceVector.z
-        );
-        
+        dieBody.velocity.set(forceVector.x, forceVector.y, forceVector.z);
+
         // Add extreme random spin
         dieBody.angularVelocity.set(
           (Math.random() - 0.5) * 100,
           (Math.random() - 0.5) * 100,
-          (Math.random() - 0.5) * 100
+          (Math.random() - 0.5) * 100,
         );
-        
+
         console.log("Set velocity:", forceVector);
       }
-      
+
       // Add screen shake effect
       const originalCameraPos = camera.position.clone();
       const shakeAmount = 2.0;
-      
+
       camera.position.x += (Math.random() * 2 - 1) * shakeAmount;
       camera.position.z += (Math.random() * 2 - 1) * shakeAmount;
-      
+
       setTimeout(() => {
         camera.position.copy(originalCameraPos);
       }, 200);
-      
+
       // Also trigger a throwDice for guaranteed effect
       throwDice();
     };
-    
+
     // Event listeners - add multiple types of event listeners to ensure it works
-    containerRef.current.addEventListener('mousedown', applyForceToAllDice);
-    containerRef.current.addEventListener('click', applyForceToAllDice);
-    containerRef.current.addEventListener('touchstart', applyForceToAllDice as any);
-    
+    containerRef.current.addEventListener("mousedown", applyForceToAllDice);
+    containerRef.current.addEventListener("click", applyForceToAllDice);
+    containerRef.current.addEventListener(
+      "touchstart",
+      applyForceToAllDice as any,
+    );
+
     // Add direct event handler to the renderer's DOM element
-    renderer.domElement.addEventListener('mousedown', applyForceToAllDice);
-    renderer.domElement.addEventListener('click', applyForceToAllDice);
-    renderer.domElement.addEventListener('touchstart', applyForceToAllDice as any);
-    
+    renderer.domElement.addEventListener("mousedown", applyForceToAllDice);
+    renderer.domElement.addEventListener("click", applyForceToAllDice);
+    renderer.domElement.addEventListener(
+      "touchstart",
+      applyForceToAllDice as any,
+    );
+
     // Add a global window click listener as a last resort
     const globalClickHandler = (e: MouseEvent) => {
       // Only handle if the click is within the bounds of our container
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
         if (
-          e.clientX >= rect.left && 
+          e.clientX >= rect.left &&
           e.clientX <= rect.right &&
-          e.clientY >= rect.top && 
+          e.clientY >= rect.top &&
           e.clientY <= rect.bottom
         ) {
           console.log("Global click handler triggered");
@@ -517,61 +523,70 @@ const DiceRoller = () => {
         }
       }
     };
-    
-    window.addEventListener('click', globalClickHandler);
-    
+
+    window.addEventListener("click", globalClickHandler);
+
     // Handle window resize
     const onWindowResize = () => {
       if (!containerRef.current) return;
-      
+
       const newContainerWidth = containerRef.current.clientWidth;
       const newAspect = newContainerWidth / containerHeight;
       const newFrustumHeight = frustumSize;
       const newFrustumWidth = frustumSize * newAspect;
-      
+
       camera.left = newFrustumWidth / -2;
       camera.right = newFrustumWidth / 2;
       camera.top = newFrustumHeight / 2;
       camera.bottom = newFrustumHeight / -2;
       camera.updateProjectionMatrix();
-      
+
       renderer.setSize(newContainerWidth, containerHeight);
     };
-    
-    window.addEventListener('resize', onWindowResize);
-    
+
+    window.addEventListener("resize", onWindowResize);
+
     // Initial throw
     throwDice();
-    
+
     // Cleanup on unmount
     return () => {
       if (containerRef.current) {
-        containerRef.current.removeEventListener('mousedown', applyForceToAllDice);
-        containerRef.current.removeEventListener('click', applyForceToAllDice);
-        containerRef.current.removeEventListener('touchstart', applyForceToAllDice as any);
+        containerRef.current.removeEventListener(
+          "mousedown",
+          applyForceToAllDice,
+        );
+        containerRef.current.removeEventListener("click", applyForceToAllDice);
+        containerRef.current.removeEventListener(
+          "touchstart",
+          applyForceToAllDice as any,
+        );
       }
-      
+
       // Also remove from renderer element
-      renderer.domElement.removeEventListener('mousedown', applyForceToAllDice);
-      renderer.domElement.removeEventListener('click', applyForceToAllDice);
-      renderer.domElement.removeEventListener('touchstart', applyForceToAllDice as any);
-      
+      renderer.domElement.removeEventListener("mousedown", applyForceToAllDice);
+      renderer.domElement.removeEventListener("click", applyForceToAllDice);
+      renderer.domElement.removeEventListener(
+        "touchstart",
+        applyForceToAllDice as any,
+      );
+
       // Remove global listener
-      window.removeEventListener('click', globalClickHandler);
-      
-      window.removeEventListener('resize', onWindowResize);
-      
+      window.removeEventListener("click", globalClickHandler);
+
+      window.removeEventListener("resize", onWindowResize);
+
       // Remove the reset function from window
       delete window.resetDice;
-      
+
       // Dispose of resources
       renderer.dispose();
     };
   }, []);
-  
+
   return (
-    <div 
-      className="w-full h-[300px] relative overflow-hidden cursor-pointer mb-6" 
+    <div
+      className="w-full h-[300px] relative overflow-hidden cursor-pointer mb-6"
       onClick={(_e) => {
         console.log("Outer container clicked");
         if (window.resetDice) window.resetDice();
@@ -579,31 +594,30 @@ const DiceRoller = () => {
     >
       {/* SVG background placed below the canvas */}
       <div className="absolute inset-0 flex justify-center items-center z-0">
-        <img 
-          src="eyes.svg" 
+        <img
+          src="eyes.svg"
           className="h-full w-auto"
-          style={{ aspectRatio: '3/1' }} /* 3x as wide as its height */
+          style={{ aspectRatio: "3/1" }} /* 3x as wide as its height */
           alt="Eyes background"
         />
-                <img 
-          src="press.svg" 
+        <img
+          src="press.svg"
           className="h-full w-auto"
-          style={{ aspectRatio: '2/1' }} /* 3x as wide as its height */
+          style={{ aspectRatio: "2/1" }} /* 3x as wide as its height */
           alt="Eyes background"
         />
       </div>
-      
-      <div 
-        ref={containerRef} 
+
+      <div
+        ref={containerRef}
         className="w-full h-full absolute top-0 left-0 z-10"
       />
-      
+
       {isLoading && (
         <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-gray-800 bg-opacity-75 text-white text-xl z-20">
           Loading...
         </div>
       )}
-      
     </div>
   );
 };

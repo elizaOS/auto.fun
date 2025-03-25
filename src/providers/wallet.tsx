@@ -1,9 +1,5 @@
 import SkeletonImage from "@/components/skeleton-image";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useWalletModal, WalletModalContext } from "@/hooks/use-wallet-modal";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import type { WalletName } from "@solana/wallet-adapter-base";
@@ -89,7 +85,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
   const handleWalletClick = useCallback(
     async (
       _event: React.MouseEvent<HTMLButtonElement>,
-      walletName: WalletName
+      walletName: WalletName,
     ) => {
       try {
         await select(walletName);
@@ -109,7 +105,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
         console.error("Failed to select wallet:", error);
       }
     },
-    [select, hideModal]
+    [select, hideModal],
   );
 
   return (

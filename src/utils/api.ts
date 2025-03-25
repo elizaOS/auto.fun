@@ -8,7 +8,7 @@ const BASE_URL = import.meta.env.VITE_API_URL;
 const fetcher = async (
   endpoint: string,
   method: "GET" | "POST",
-  body?: object
+  body?: object,
 ) => {
   const query: { method: string; body?: string; headers: object } = {
     method,
@@ -45,7 +45,7 @@ export const getTokens = async ({
     `/api/tokens?limit=${limit || 12}&page=${
       page || 1
     }&sortBy=${sortBy}&sortOrder=${sortOrder}`,
-    "GET"
+    "GET",
   )) as { tokens: IToken[] };
 
   if (data?.tokens?.length > 0) {
@@ -60,7 +60,7 @@ export const getTokens = async ({
 export const getToken = async ({ address }: { address: string }) => {
   const rawData = await fetcher(`/api/tokens/${address}`, "GET");
   const data = rawData as Record<string, any>;
-  
+
   // Transform empty strings to null for optional fields
   const transformedData: IToken = {
     mint: data.mint,
@@ -71,15 +71,18 @@ export const getToken = async ({ address }: { address: string }) => {
     curveProgress: data.curveProgress != null ? Number(data.curveProgress) : 0,
     description: data.description || "",
     image: data.image || "",
-    inferenceCount: data.inferenceCount != null ? Number(data.inferenceCount) : 0,
+    inferenceCount:
+      data.inferenceCount != null ? Number(data.inferenceCount) : 0,
     lastUpdated: data.lastUpdated,
     liquidity: data.liquidity != null ? Number(data.liquidity) : 0,
     marketCapUSD: data.marketCapUSD != null ? Number(data.marketCapUSD) : 0,
     name: data.name,
     price24hAgo: data.price24hAgo != null ? Number(data.price24hAgo) : 0,
-    priceChange24h: data.priceChange24h != null ? Number(data.priceChange24h) : 0,
+    priceChange24h:
+      data.priceChange24h != null ? Number(data.priceChange24h) : 0,
     reserveAmount: data.reserveAmount != null ? Number(data.reserveAmount) : 0,
-    reserveLamport: data.reserveLamport != null ? Number(data.reserveLamport) : 0,
+    reserveLamport:
+      data.reserveLamport != null ? Number(data.reserveLamport) : 0,
     solPriceUSD: data.solPriceUSD != null ? Number(data.solPriceUSD) : 0,
     status: data.status || "active",
     telegram: data.telegram || "",
@@ -88,7 +91,8 @@ export const getToken = async ({ address }: { address: string }) => {
     twitter: data.twitter || "",
     txId: data.txId || "",
     url: data.url || "",
-    virtualReserves: data.virtualReserves != null ? Number(data.virtualReserves) : 0,
+    virtualReserves:
+      data.virtualReserves != null ? Number(data.virtualReserves) : 0,
     volume24h: data.volume24h != null ? Number(data.volume24h) : 0,
     website: data.website || "",
     holderCount: data.holderCount != null ? Number(data.holderCount) : 0,
@@ -109,9 +113,7 @@ export const getTokenSwapHistory = async ({ address }: { address: string }) => {
   return data;
 };
 
-export const getSearchTokens = async ({ search }: { search: string}) => {
+export const getSearchTokens = async ({ search }: { search: string }) => {
   const data = await fetcher(`/api/tokens?search=${search}`, "GET");
   return data;
-}
- 
-
+};

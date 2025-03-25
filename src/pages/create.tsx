@@ -301,21 +301,24 @@ export const Create = () => {
       };
 
       // Create the token using fetch
-      const response = await fetch(import.meta.env.VITE_API_URL + "/api/create-token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        import.meta.env.VITE_API_URL + "/api/create-token",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(tokenMetadata),
         },
-        body: JSON.stringify(tokenMetadata),
-      });
+      );
 
       if (!response.ok) {
-        const errorData = await response.json() as { error: string };
+        const errorData = (await response.json()) as { error: string };
         throw new Error(errorData.error || "Failed to create token");
       }
 
-      const result = await response.json() as CreateTokenResponse;
-      
+      const result = (await response.json()) as CreateTokenResponse;
+
       if (result?.mintPublicKey) {
         // Redirect to token page using the mint public key
         navigate(`/token/${result.mintPublicKey}`);
@@ -324,7 +327,11 @@ export const Create = () => {
       }
     } catch (error) {
       console.error("Error creating token:", error);
-      alert(error instanceof Error ? error.message : "Failed to create token. Please try again.");
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to create token. Please try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }

@@ -82,7 +82,7 @@ export interface ITokenHolder {
   lastUpdated: string | Date;
 }
 
-export const TokenSchema =  z.object({
+export const TokenSchema = z.object({
   name: z.string(),
   url: z.string().optional(),
   ticker: z.string(),

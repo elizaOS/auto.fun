@@ -13,7 +13,6 @@ export const AutoConnectContext = createContext<AutoConnectContextType>({
   setAutoConnect: () => {},
 });
 
-
 export function Providers({ children }: PropsWithChildren) {
   const [autoConnect, setAutoConnect] = useState(false);
 
@@ -26,9 +25,7 @@ export function Providers({ children }: PropsWithChildren) {
   return (
     <UserProvider>
       <AutoConnectContext.Provider value={{ autoConnect, setAutoConnect }}>
-        <WalletProvider autoConnect={autoConnect}>
-            {children}
-        </WalletProvider>
+        <WalletProvider autoConnect={autoConnect}>{children}</WalletProvider>
       </AutoConnectContext.Provider>
     </UserProvider>
   );

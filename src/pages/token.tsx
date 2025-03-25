@@ -61,7 +61,7 @@ export default function Page() {
             <span className="text-xl font-dm-mono text-autofun-text-highlight">
               {token?.marketCapUSD != null
                 ? abbreviateNumber(token?.marketCapUSD)
-                : '-'}
+                : "-"}
             </span>
           </div>
           <div className="flex flex-col gap-2 items-center w-full">
@@ -69,7 +69,9 @@ export default function Page() {
               24hr Volume
             </span>
             <span className="text-xl font-dm-mono text-autofun-text-primary">
-              {token?.volume24h != null ? abbreviateNumber(token?.volume24h) : '-'}
+              {token?.volume24h != null
+                ? abbreviateNumber(token?.volume24h)
+                : "-"}
             </span>
           </div>
           <div className="flex flex-col gap-2 items-center w-full">
@@ -77,7 +79,7 @@ export default function Page() {
               Creator
             </span>
             <span className="text-xl font-dm-mono text-autofun-text-primary">
-              {token?.creator ? shortenAddress(token?.creator) : '-'}
+              {token?.creator ? shortenAddress(token?.creator) : "-"}
             </span>
           </div>
           <div className="flex flex-col gap-2 items-center w-full">
@@ -85,7 +87,7 @@ export default function Page() {
               Creation Time
             </span>
             <span className="text-xl font-dm-mono text-autofun-text-primary">
-              {token?.createdAt ? fromNow(token?.createdAt) : '-'}
+              {token?.createdAt ? fromNow(token?.createdAt) : "-"}
             </span>
           </div>
         </div>
@@ -97,7 +99,7 @@ export default function Page() {
       </div>
       {/* Right Section */}
       <div className="w-full xl:max-w-[587px] flex flex-col gap-3">
-      <div className="border rounded-md p-4 bg-autofun-background-card flex flex-col gap-3">
+        <div className="border rounded-md p-4 bg-autofun-background-card flex flex-col gap-3">
           <div className="flex gap-3">
             <div className="size-36 shrink-0">
               <SkeletonImage src={token?.image} alt="image" />
