@@ -1,32 +1,35 @@
+import { HomepageSortBy } from "@/utils/homepage";
 import { ViewToggle } from "./ViewToggle";
 import { ChevronUp, ChevronDown } from "lucide-react";
+import { PropsWithChildren } from "react";
+
+const SortButton = ({
+  selected,
+  children,
+  onClick,
+}: PropsWithChildren<{ selected: boolean; onClick: () => void }>) => {
+  return (
+    <button
+      className={`px-4 py-2.5 rounded-md border border-neutral-800 font-medium font-satoshi flex gap-2 items-center ${selected ? "bg-[#2e2e2e]" : "hover:bg-neutral-900"}`}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+};
 
 interface ControlsProps {
   view: "grid" | "table";
-  sortBy: string;
-  sortOrder: "asc" | "desc";
+  sortBy: HomepageSortBy;
   onViewChange: (view: "grid" | "table") => void;
-  onSortByChange: (sortBy: string) => void;
-  onSortOrderChange: (order: "asc" | "desc") => void;
+  onSortByChange: (sortBy: HomepageSortBy) => void;
 }
-
-const SORT_OPTIONS = [
-  { value: "featured", label: "All" },
-  { value: "name", label: "Name" },
-  { value: "marketCapUSD", label: "Market Cap" },
-  { value: "volume24h", label: "24h Volume" },
-  { value: "holderCount", label: "Holders" },
-  { value: "curveProgress", label: "Bonding Curve" },
-  { value: "createdAt", label: "Created" },
-] as const;
 
 export function Controls({
   view,
   sortBy,
-  sortOrder,
   onViewChange,
   onSortByChange,
-  onSortOrderChange,
 }: ControlsProps) {
   return (
     <div className="sticky top-0 z-10">
@@ -34,40 +37,34 @@ export function Controls({
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-4 flex-col md:flex-row">
             <ViewToggle view={view} onViewChange={onViewChange} />
-            {/* TODO: Commented because functionality is not implemented yet */}
-            {/* <FilterButtons sortBy={filterBy} onSortChange={onSortChange} /> */}
 
-            <div className="flex items-center gap-2">
-              <select
-                value={sortBy}
-                onChange={(e) => onSortByChange(e.target.value)}
-                className="px-4 py-2 bg-[#171717] border border-[#262626] rounded-lg text-white focus:outline-none focus:border-[#2FD345]/50"
+            <div className="flex items-center gap-3">
+              <SortButton
+                onClick={() => onSortByChange("all")}
+                selected={sortBy === "all"}
               >
-                {SORT_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                All
+              </SortButton>
+              <SortButton
+                onClick={() => onSortByChange("marketCap")}
+                selected={sortBy === "marketCap"}
+              >
+                Market Cap
+              </SortButton>
 
-              <button
+              <SortButton
                 onClick={() =>
-                  onSortOrderChange(sortOrder === "desc" ? "asc" : "desc")
+                  onSortByChange(sortBy === "newest" ? "oldest" : "newest")
                 }
-                className="flex items-center gap-2 px-4 py-2 bg-[#171717] border border-[#262626] rounded-lg text-white hover:border-[#2FD345]/50 transition-all duration-200"
+                selected={sortBy === "newest" || sortBy === "oldest"}
               >
-                {sortOrder === "desc" ? (
-                  <>
-                    Descending
-                    <ChevronDown className="w-4 h-4" />
-                  </>
+                Creation Time
+                {sortBy === "newest" ? (
+                  <ChevronDown className="w-4 h-4" />
                 ) : (
-                  <>
-                    Ascending
-                    <ChevronUp className="w-4 h-4" />
-                  </>
+                  <ChevronUp className="w-4 h-4" />
                 )}
-              </button>
+              </SortButton>
             </div>
           </div>
         </div>

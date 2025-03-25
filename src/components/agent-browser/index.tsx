@@ -1,16 +1,15 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useTokens } from "@/utils/tokens";
 import { Controls } from "./Controls";
 import { GridView } from "./GridView";
 import { Paginator } from "../common/Paginator";
 import { TableView } from "./TableView";
+import { HomepageSortBy, useTokens } from "@/utils/homepage";
 
 export function AgentBrowser() {
   const [view, setView] = useState<"grid" | "table">("grid");
-  const [sortBy, setSortBy] = useState<string>("featured");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState<HomepageSortBy>("all");
   const router = useRouter();
 
   const {
@@ -22,16 +21,12 @@ export function AgentBrowser() {
     isLoading,
     totalPages,
     goToPage,
-  } = useTokens(sortBy, sortOrder);
+  } = useTokens(sortBy);
 
   const handleViewChange = (newView: "grid" | "table") => setView(newView);
 
-  const handleSortByChange = (newSortBy: string) => {
+  const handleSortByChange = (newSortBy: HomepageSortBy) => {
     setSortBy(newSortBy);
-  };
-
-  const handleSortOrderChange = (newOrder: "asc" | "desc") => {
-    setSortOrder(newOrder);
   };
 
   const handleTokenClick = (mint: string) => router.push(`/coin/${mint}`);
@@ -147,10 +142,8 @@ export function AgentBrowser() {
         <Controls
           view={view}
           sortBy={sortBy}
-          sortOrder={sortOrder}
           onViewChange={handleViewChange}
           onSortByChange={handleSortByChange}
-          onSortOrderChange={handleSortOrderChange}
         />
 
         <div className="mt-4">

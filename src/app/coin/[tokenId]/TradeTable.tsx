@@ -4,7 +4,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Transaction } from "./page";
+import { Transaction } from "@/utils/tokenDetails";
 import { useTimeAgo } from "@/app/formatTimeAgo";
 import { env } from "@/utils/env";
 import { useMemo } from "react";

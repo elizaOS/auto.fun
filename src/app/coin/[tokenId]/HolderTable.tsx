@@ -3,7 +3,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Holder } from "./page";
+import { Holder } from "@/utils/tokenDetails";
 import { env } from "@/utils/env";
 import { StandardTable } from "./StandardTable";
 import { PropsWithChildren } from "react";

@@ -5,14 +5,12 @@ import Link from "next/link";
 import { useToken } from "@/utils/tokens";
 import { useParams } from "next/navigation";
 import { TradingChart } from "@/components/TVChart/TradingChart";
-import { usePaginatedLiveData } from "@/utils/paginatedLiveData";
-import { z } from "zod";
 import { getSocket } from "@/utils/socket";
 import { queryClient } from "@/components/providers";
 import { TokenBuySell } from "./swap/TokenBuySell";
 import { RoundedButton } from "@/components/common/button/RoundedButton";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { LAMPORTS_PER_SOL, VersionedTransaction } from "@solana/web3.js";
+import { VersionedTransaction } from "@solana/web3.js";
 import { womboApi } from "@/utils/fetch";
 import { toast } from "react-toastify";
 import { AgentCardInfo } from "@/components/agent-card/AgentCardInfo";
@@ -21,40 +19,7 @@ import { useTimeAgo } from "@/app/formatTimeAgo";
 import { useAgentByMintAddress } from "@/utils/agent";
 import { HolderTable } from "./HolderTable";
 import { TradeTable } from "./TradeTable";
-
-const HolderSchema = z.object({
-  address: z.string(),
-  mint: z.string(),
-  amount: z.number(),
-  percentage: z.number(),
-  createdAt: z.string().datetime(),
-  lastUpdated: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-});
-
-export type Holder = z.infer<typeof HolderSchema>;
-
-const TransactionSchema = z
-  .object({
-    txId: z.string(),
-    timestamp: z.string().datetime(),
-    user: z.string(),
-    direction: z.number().int().min(0).max(1),
-    amountIn: z.number(),
-    amountOut: z.number(),
-  })
-  .transform((tx) => ({
-    txId: tx.txId,
-    timestamp: tx.timestamp,
-    user: tx.user,
-    type: tx.direction === 0 ? ("Buy" as const) : ("Sell" as const),
-    solAmount:
-      (tx.direction === 0 ? tx.amountIn : tx.amountOut) / LAMPORTS_PER_SOL,
-    tokenAmount:
-      tx.direction === 0 ? tx.amountOut / 10 ** 6 : tx.amountIn / 10 ** 6,
-  }));
-
-export type Transaction = z.infer<typeof TransactionSchema>;
+import { useHolders, useTransactions } from "@/utils/tokenDetails";
 
 const Switcher = ({
   enabled,
@@ -102,35 +67,15 @@ export default function TradingInterface() {
   });
   const isLoading = isTokenLoading || isAgentLoading;
 
-  const { items: holders } = usePaginatedLiveData({
-    itemsPerPage: 100,
-    endpoint: `/tokens/${tokenId}/holders`,
-    validationSchema: HolderSchema,
-    getUniqueId: (holder) => holder.address,
-    socketConfig: {
-      subscribeEvent: {
-        event: "subscribe",
-        args: [tokenId],
-      },
-      newDataEvent: "newHolder",
-    },
-    itemsPropertyName: "holders",
-  });
+  useEffect(() => {
+    const socket = getSocket();
 
-  const { items: transactions } = usePaginatedLiveData({
-    itemsPerPage: 100,
-    endpoint: `/swaps/${tokenId}`,
-    validationSchema: TransactionSchema,
-    getUniqueId: (tx) => tx.txId,
-    socketConfig: {
-      subscribeEvent: {
-        event: "subscribe",
-        args: [tokenId],
-      },
-      newDataEvent: "newSwap",
-    },
-    itemsPropertyName: "swaps",
-  });
+    socket.emit("subscribe", tokenId);
+  }, [tokenId]);
+
+  const { items: holders } = useHolders({ tokenId });
+
+  const { items: transactions } = useTransactions({ tokenId });
 
   const filteredTransactions = useMemo(() => {
     return transactions
