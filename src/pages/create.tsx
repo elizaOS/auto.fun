@@ -766,7 +766,7 @@ export const Create = () => {
             label="Link Agent"
             isOptional
             inputTag={
-              <div className="text-[#8c8c8c] p-[11px] text-base font-normal uppercase leading-normal tracking-widest">
+              <div className="text-[#8c8c8c] pointer-events-none p-[11px] text-base font-normal uppercase leading-normal tracking-widest">
                 HTTPS://
               </div>
             }
@@ -852,7 +852,7 @@ export const Create = () => {
                   min="0"
                   max={MAX_INITIAL_SOL}
                   step="0.1"
-                  className="w-27 px-2 py-2 pr-14 bg-[#2e2e2e] text-[#2fd345] text-xl font-medium text-right"
+                  className="w-27 rounded-md py-2 pr-14 bg-[#2e2e2e] text-[#2fd345] text-xl font-medium text-right"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#2fd345] text-xl font-medium">
                   SOL
