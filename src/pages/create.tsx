@@ -1,38 +1,15 @@
 import { useWallet } from "@solana/wallet-adapter-react";
+import { Connection, Keypair } from "@solana/web3.js";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import CopyButton from "../components/copy-button";
 import { Icons } from "../components/icons";
 import WalletButton from "../components/wallet-button";
 import { TokenMetadata } from "../types/form.type";
-import { Connection, ComputeBudgetProgram, Keypair, PublicKey, Transaction } from "@solana/web3.js";
-import { BN } from "bn.js";
-
-// Helper function to convert Uint8Array to hex string
-function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes)
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-}
 
 // Constants
 const MAX_FILE_SIZE_MB = 5;
 const MAX_INITIAL_SOL = 45;
-const SEED_CONFIG = "config";
-
-// Environment config (should be in .env file)
-const env = {
-  decimals: 9,
-  tokenSupply: 1000000000,
-  virtualReserves: 100000000,
-};
-
-interface CreateTokenResponse {
-  token: {
-    mint: string;
-  };
-  success: boolean;
-}
 
 interface UploadResponse {
   success: boolean;
@@ -208,61 +185,61 @@ const FormImageInput = ({
 // Image upload function
 const uploadImage = async (metadata: TokenMetadata) => {
   // Determine a safe filename based on token metadata
-  const safeName = metadata.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
-  
+  const safeName = metadata.name.toLowerCase().replace(/[^a-z0-9]/g, "_");
+
   // Get the image type from the data URL
-  const contentType = metadata.imageBase64?.match(/^data:([A-Za-z-+/]+);base64,/)?.[1] || '';
-  
+  const contentType =
+    metadata.imageBase64?.match(/^data:([A-Za-z-+/]+);base64,/)?.[1] || "";
+
   // Determine file extension from content type
-  let extension = '.jpg'; // Default
-  if (contentType.includes('png')) extension = '.png';
-  else if (contentType.includes('gif')) extension = '.gif';
-  else if (contentType.includes('svg')) extension = '.svg';
-  else if (contentType.includes('webp')) extension = '.webp';
-  
+  let extension = ".jpg"; // Default
+  if (contentType.includes("png")) extension = ".png";
+  else if (contentType.includes("gif")) extension = ".gif";
+  else if (contentType.includes("svg")) extension = ".svg";
+  else if (contentType.includes("webp")) extension = ".webp";
+
   const filename = `${safeName}${extension}`;
-  
-  console.log(`Uploading image as ${filename} with content type ${contentType}`);
-  
+
+  console.log(
+    `Uploading image as ${filename} with content type ${contentType}`,
+  );
+
   // Get auth token from localStorage
-  const authToken = localStorage.getItem('authToken');
-  
+  const authToken = localStorage.getItem("authToken");
+
   // Prepare headers
   const headers: Record<string, string> = {
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   };
-  
+
   if (authToken) {
     headers["Authorization"] = `Bearer ${authToken}`;
   }
 
-  const response = await fetch(
-    import.meta.env.VITE_API_URL + "/api/upload",
-    {
-      method: "POST",
-      headers,
-      credentials: "include",
-      body: JSON.stringify({
-        image: metadata.imageBase64,
-        metadata: {
-          name: metadata.name,
-          symbol: metadata.symbol,
-          description: metadata.description,
-          twitter: metadata.links.twitter,
-          telegram: metadata.links.telegram,
-          website: metadata.links.website,
-          discord: metadata.links.discord,
-          agentLink: metadata.links.agentLink,
-        },
-      }),
-    }
-  );
+  const response = await fetch(import.meta.env.VITE_API_URL + "/api/upload", {
+    method: "POST",
+    headers,
+    credentials: "include",
+    body: JSON.stringify({
+      image: metadata.imageBase64,
+      metadata: {
+        name: metadata.name,
+        symbol: metadata.symbol,
+        description: metadata.description,
+        twitter: metadata.links.twitter,
+        telegram: metadata.links.telegram,
+        website: metadata.links.website,
+        discord: metadata.links.discord,
+        agentLink: metadata.links.agentLink,
+      },
+    }),
+  });
 
   if (!response.ok) {
     throw new Error("Failed to upload image");
   }
 
-  return await response.json() as UploadResponse;
+  return (await response.json()) as UploadResponse;
 };
 
 // Function to wait for token creation
@@ -278,24 +255,24 @@ const waitForTokenCreation = async ({
   agentLink,
   imageUrl,
   metadataUrl,
-  timeout = 80_000
+  timeout = 80_000,
 }: {
-  mint: string,
-  name: string,
-  symbol: string,
-  description: string,
-  twitter: string,
-  telegram: string,
-  website: string,
-  discord: string,
-  agentLink: string,
-  imageUrl: string,
-  metadataUrl: string,
-  timeout?: number,
+  mint: string;
+  name: string;
+  symbol: string;
+  description: string;
+  twitter: string;
+  telegram: string;
+  website: string;
+  discord: string;
+  agentLink: string;
+  imageUrl: string;
+  metadataUrl: string;
+  timeout?: number;
 }) => {
   return new Promise<void>(async (resolve, reject) => {
     let resolved = false;
-    
+
     // Set a timeout to reject if we don't get a response
     const timerId = setTimeout(() => {
       if (!resolved) {
@@ -305,31 +282,31 @@ const waitForTokenCreation = async ({
 
     try {
       // Wait a few seconds for the transaction to be confirmed
-      await new Promise(r => setTimeout(r, 4000));
-      
+      await new Promise((r) => setTimeout(r, 4000));
+
       // Try direct token creation
       try {
         console.log(`Creating token record for ${mint}`);
-        
+
         // Get auth token from localStorage
-        const authToken = localStorage.getItem('authToken');
-        
+        const authToken = localStorage.getItem("authToken");
+
         // Prepare headers
         const headers: Record<string, string> = {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         };
-        
+
         if (authToken) {
           headers["Authorization"] = `Bearer ${authToken}`;
         }
-        
+
         const createResponse = await fetch(
           import.meta.env.VITE_API_URL + "/api/create-token",
           {
             method: "POST",
             headers,
             credentials: "include",
-            body: JSON.stringify({ 
+            body: JSON.stringify({
               tokenMint: mint,
               mint,
               name,
@@ -341,14 +318,19 @@ const waitForTokenCreation = async ({
               discord,
               agentLink,
               imageUrl,
-              metadataUrl
+              metadataUrl,
             }),
-          }
+          },
         );
-        
+
         if (createResponse.ok) {
           const data = await createResponse.json();
-          if (data && typeof data === 'object' && 'success' in data && data.success === true) {
+          if (
+            data &&
+            typeof data === "object" &&
+            "success" in data &&
+            data.success === true
+          ) {
             console.log(`Token ${mint} created via direct API call`);
             clearTimeout(timerId);
             resolved = true;
@@ -359,42 +341,47 @@ const waitForTokenCreation = async ({
       } catch (createError) {
         console.error("Error creating token:", createError);
       }
-      
+
       // If direct creation fails, try the check endpoint
       for (let i = 0; i < 3; i++) {
         if (resolved) break;
-        
+
         console.log(`Checking for token ${mint}, attempt ${i + 1}`);
         try {
           // Get auth token from localStorage
-          const authToken = localStorage.getItem('authToken');
-          
+          const authToken = localStorage.getItem("authToken");
+
           // Prepare headers
           const headers: Record<string, string> = {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
           };
-          
+
           if (authToken) {
             headers["Authorization"] = `Bearer ${authToken}`;
           }
-          
+
           const response = await fetch(
             import.meta.env.VITE_API_URL + "/api/check-token",
             {
               method: "POST",
               headers,
               credentials: "include",
-              body: JSON.stringify({ 
+              body: JSON.stringify({
                 tokenMint: mint,
                 imageUrl,
-                metadataUrl 
+                metadataUrl,
               }),
-            }
+            },
           );
-          
+
           if (response.ok) {
             const data = await response.json();
-            if (data && typeof data === 'object' && 'tokenFound' in data && data.tokenFound === true) {
+            if (
+              data &&
+              typeof data === "object" &&
+              "tokenFound" in data &&
+              data.tokenFound === true
+            ) {
               console.log(`Token ${mint} found via check API`);
               clearTimeout(timerId);
               resolved = true;
@@ -403,13 +390,13 @@ const waitForTokenCreation = async ({
             }
           }
         } catch (checkError) {
-          console.error(`Error checking token (attempt ${i+1}):`, checkError);
+          console.error(`Error checking token (attempt ${i + 1}):`, checkError);
         }
-        
+
         // Wait before trying again
-        await new Promise(r => setTimeout(r, 3000));
+        await new Promise((r) => setTimeout(r, 3000));
       }
-      
+
       // If we got here and haven't resolved, reject
       if (!resolved) {
         clearTimeout(timerId);
@@ -510,7 +497,11 @@ export const Create = () => {
   };
 
   // Create token on-chain
-  const createTokenOnChain = async (tokenMetadata: TokenMetadata, mintKeypair: Keypair, metadataUrl: string) => {
+  const createTokenOnChain = async (
+    _tokenMetadata: TokenMetadata,
+    mintKeypair: Keypair,
+    _metadataUrl: string,
+  ) => {
     if (!signTransaction) {
       throw new Error("Wallet doesn't support signing");
     }
@@ -520,28 +511,32 @@ export const Create = () => {
     }
 
     // Create connection to Solana
-    const connection = new Connection(
+    new Connection(
       import.meta.env.VITE_SOLANA_RPC_URL || "https://api.devnet.solana.com",
-      "confirmed"
+      "confirmed",
     );
 
     // For now, we'll bypass actual on-chain token creation since we need the program IDL
     // Instead, we'll just log the mint address and proceed with backend registration
-    console.log("Would create token with mint address:", mintKeypair.publicKey.toString());
-    
+    console.log(
+      "Would create token with mint address:",
+      mintKeypair.publicKey.toString(),
+    );
+
     try {
       // This will bypass the actual on-chain transaction for now
       // In a real implementation, you would integrate with your Solana program
-      
+
       // Return a placeholder transaction ID
-      const placeholderTxId = "simulated_" + Math.random().toString(36).substring(2, 15);
+      const placeholderTxId =
+        "simulated_" + Math.random().toString(36).substring(2, 15);
       console.log("Simulated transaction ID:", placeholderTxId);
       return placeholderTxId;
     } catch (error) {
       console.error("Error in simulated token creation:", error);
       throw error;
     }
-    
+
     /* Implementation with actual program integration would go here
     For example:
     
@@ -602,7 +597,7 @@ export const Create = () => {
       // First, upload the image to get permanent URLs
       let imageUrl = "";
       let metadataUrl = "";
-      
+
       if (media_base64) {
         try {
           console.log("Uploading image...");
@@ -832,7 +827,11 @@ export const Create = () => {
               value={form.initial_sol}
               onChange={(e) => {
                 const value = e.target.value;
-                if (value === "" || (parseFloat(value) >= 0 && parseFloat(value) <= MAX_INITIAL_SOL)) {
+                if (
+                  value === "" ||
+                  (parseFloat(value) >= 0 &&
+                    parseFloat(value) <= MAX_INITIAL_SOL)
+                ) {
                   handleChange("initial_sol", value);
                 }
               }}

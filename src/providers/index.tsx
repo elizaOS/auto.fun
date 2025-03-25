@@ -1,17 +1,7 @@
-import { createContext, PropsWithChildren, useEffect, useState } from "react";
+import { PropsWithChildren, useEffect, useState } from "react";
 import { WalletProvider } from "./wallet";
 import { UserProvider } from "./user";
-
-// Create a context to share autoConnect state and setter
-interface AutoConnectContextType {
-  autoConnect: boolean;
-  setAutoConnect: (value: boolean) => void;
-}
-
-export const AutoConnectContext = createContext<AutoConnectContextType>({
-  autoConnect: true,
-  setAutoConnect: () => {},
-});
+import { AutoConnectContext } from "../contexts/auto-connect";
 
 export function Providers({ children }: PropsWithChildren) {
   const [autoConnect, setAutoConnect] = useState(false);

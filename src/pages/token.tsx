@@ -50,41 +50,41 @@ export default function Page() {
 
   return (
     <div className="flex flex-wrap gap-3">
-            {/* Right Section */}
-            <div className="w-full lg:max-w-[450px] flex flex-col gap-3">
+      {/* Right Section */}
+      <div className="w-full lg:max-w-[450px] flex flex-col gap-3">
         <div className="border rounded-md p-4 bg-autofun-background-card flex flex-col gap-3">
-            <div className="w-full">
-              <SkeletonImage src={token?.image} alt="image" />
-            </div>
-            <div className="flex flex-col gap-3">
-              {/* Token Info and Time */}
-              <div className="flex items-center w-full min-w-0">
-                <div className="flex items-start md:items-center justify-between w-full min-w-0">
-                  <div className="capitalize text-autofun-text-primary text-3xl font-medium font-satoshi leading-normal truncate min-w-0">
-                    {token?.name}
-                  </div>
-                  <div>
-                    <TokenStatus token={token} />
-                  </div>
+          <div className="w-full">
+            <SkeletonImage src={token?.image} alt="image" />
+          </div>
+          <div className="flex flex-col gap-3">
+            {/* Token Info and Time */}
+            <div className="flex items-center w-full min-w-0">
+              <div className="flex items-start md:items-center justify-between w-full min-w-0">
+                <div className="capitalize text-autofun-text-primary text-3xl font-medium font-satoshi leading-normal truncate min-w-0">
+                  {token?.name}
+                </div>
+                <div>
+                  <TokenStatus token={token} />
                 </div>
               </div>
-                  <div className="text-autofun-text-highlight text-base font-normal font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0">
-                    ${token?.ticker}
-                  </div>
-              <ShowMoreText
-                /* Default options */
-                lines={2}
-                more="Show more"
-                less="Show less"
-                className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight min-h-8"
-                anchorClass="text-autofun-text-primary hover:text-autofun-text-highlight transition-all duration-200"
-                truncatedEndingComponent={" ... "}
-              >
-                <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
-                  {token?.description}
-                </span>
-              </ShowMoreText>
             </div>
+            <div className="text-autofun-text-highlight text-base font-normal font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0">
+              ${token?.ticker}
+            </div>
+            <ShowMoreText
+              /* Default options */
+              lines={2}
+              more="Show more"
+              less="Show less"
+              className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight min-h-8"
+              anchorClass="text-autofun-text-primary hover:text-autofun-text-highlight transition-all duration-200"
+              truncatedEndingComponent={" ... "}
+            >
+              <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
+                {token?.description}
+              </span>
+            </ShowMoreText>
+          </div>
           {/* Contractaddress */}
           <div className="flex border rounded-md">
             <div className="size-10 rounded-l-md inline-flex border-r shrink-0 bg-autofun-background-action-primary">

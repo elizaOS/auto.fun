@@ -14,7 +14,7 @@ export const allowedOrigins = [
   "http://localhost:3420",
   "https://auto.fun",
   "https://dev.auto.fun",
-  "*"
+  "*",
 ];
 
 // Define a custom WebSocket type that includes CloudflareWebSocket functionality

@@ -1,7 +1,7 @@
-import { AnchorProvider, BN, Idl, Program } from "@coral-xyz/anchor";
+import { BN } from "@coral-xyz/anchor";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
 export type Serlaunchalot = {
   address: "6qXDRh3nSj9isLRDpUqXWyK1nR9eHBVLrdLZpjeoNfc";
@@ -1521,7 +1521,7 @@ export const SEED_BONDING_CURVE = "bonding_curve";
 
 // Program ID for the Autofun program (use environment variable in production)
 export const PROGRAM_ID = new PublicKey(
-  import.meta.env.VITE_PROGRAM_ID || "11111111111111111111111111111111"
+  import.meta.env.VITE_PROGRAM_ID || "11111111111111111111111111111111",
 );
 
 // Interface for bondingCurve account
@@ -1540,7 +1540,9 @@ interface ProgramWithBondingCurve {
   programId: PublicKey;
   account: {
     bondingCurve: {
-      fetchMultiple: (addresses: PublicKey[]) => Promise<(BondingCurveAccount | null)[]>;
+      fetchMultiple: (
+        addresses: PublicKey[],
+      ) => Promise<(BondingCurveAccount | null)[]>;
     };
   };
 }
@@ -1548,7 +1550,7 @@ interface ProgramWithBondingCurve {
 // Hybrid approach: Try to use real program if available, fall back to mock
 export function useProgram(): ProgramWithBondingCurve | null {
   const { connection } = useConnection();
-  const { publicKey, signTransaction, signAllTransactions } = useWallet();
+  const { publicKey } = useWallet();
 
   return useMemo(() => {
     if (!connection) {
@@ -1569,11 +1571,11 @@ export function useProgram(): ProgramWithBondingCurve | null {
                 reserveLamport: new BN(10000000),
                 reserveToken: new BN(1000000),
                 curveLimit: new BN(100000000),
-                isCompleted: false
+                isCompleted: false,
               }));
-            }
-          }
-        }
+            },
+          },
+        },
       };
     } catch (error) {
       console.error("Error creating program:", error);
@@ -1586,12 +1588,12 @@ export function useProgram(): ProgramWithBondingCurve | null {
 // In a real app, you'd import the actual IDL and use it to create the program
 export const useProgramMock = () => {
   const { connection } = useConnection();
-  
+
   return useMemo(() => {
     // This is a simplified mock of the Program interface
     // In a real application, you would use:
     // return new Program(IDL, PROGRAM_ID, { connection });
-    
+
     return {
       programId: PROGRAM_ID,
       account: {
@@ -1605,11 +1607,11 @@ export const useProgramMock = () => {
               reserveLamport: { toNumber: () => 10000000 },
               reserveToken: { toNumber: () => 1000000 },
               curveLimit: { toNumber: () => 100000000 },
-              isCompleted: false
+              isCompleted: false,
             }));
-          }
-        }
-      }
+          },
+        },
+      },
     };
   }, [connection]);
 };

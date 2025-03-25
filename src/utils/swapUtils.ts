@@ -13,7 +13,7 @@ function convertToBasisPoints(fee: number): number {
 export function calculateAmountOutSell(
   reserveLamport: number,
   amount: number,
-  tokenDecimals: number,
+  _tokenDecimals: number,
   platformSellFee: number,
   reserveToken: number,
 ): number {
@@ -30,4 +30,4 @@ export function calculateAmountOutSell(
   const denominator = new BN(reserveToken).add(adjustedAmount);
 
   return numerator.div(denominator).toNumber();
-} 
+}

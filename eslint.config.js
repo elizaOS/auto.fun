@@ -24,6 +24,8 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       'no-useless-escape': 'off',
+      'no-control-regex': 'off',
+      'no-async-promise-executor': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/no-unsafe-function-type': 'off',
       'prefer-rest-params': 'off',

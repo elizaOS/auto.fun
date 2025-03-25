@@ -16,4 +16,4 @@ export interface TokenMetadata {
   supply: number;
   freezeAuthority: string;
   mintAuthority: string;
-} 
+}

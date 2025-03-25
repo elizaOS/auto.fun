@@ -45,11 +45,11 @@ const EyeFollower = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  
+
   // Eye parameters
   const pupilRadius = 1.5; // Size of the pupil
   const maxPupilOffset = 5; // Maximum distance pupil can move from center
-  
+
   // Eye anchor positions (as percentages of container)
   const eyeAnchors = [
     { x: 0.115, y: 0.22 }, // Left eye
@@ -58,25 +58,25 @@ const EyeFollower = () => {
 
   useEffect(() => {
     if (!containerRef.current) return;
-    
+
     const updateContainerSize = () => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
       setContainerSize({
         width: rect.width,
-        height: rect.height
+        height: rect.height,
       });
     };
-    
+
     // Initial size calculation
     updateContainerSize();
-    
+
     const handleMouseMove = (e: MouseEvent) => {
       if (!containerRef.current) return;
-      
+
       // Get container bounds
       const rect = containerRef.current.getBoundingClientRect();
-      
+
       // Calculate mouse position relative to container
       setMousePos({
         x: e.clientX - rect.left,
@@ -87,7 +87,7 @@ const EyeFollower = () => {
     // Add event listeners
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("resize", updateContainerSize);
-    
+
     // Clean up on unmount
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
@@ -98,26 +98,24 @@ const EyeFollower = () => {
   // Calculate pupil positions based on mouse position
   const calculatePupilPosition = (anchorX: number, anchorY: number) => {
     if (!containerRef.current) return { x: 0, y: 0 };
-    
+
     // Calculate eye center in pixels
     const eyeCenterX = containerSize.width * anchorX;
     const eyeCenterY = containerSize.height * anchorY;
-    
+
     // Calculate direction vector from eye to mouse
     const dirX = mousePos.x - eyeCenterX;
     const dirY = mousePos.y - eyeCenterY;
-    
+
     // Calculate distance
     const distance = Math.sqrt(dirX * dirX + dirY * dirY);
-    
+
     // Normalize and apply max offset
-    const offsetX = distance > 0 
-      ? (dirX / distance) * Math.min(distance, maxPupilOffset) 
-      : 0;
-    const offsetY = distance > 0 
-      ? (dirY / distance) * Math.min(distance, maxPupilOffset) 
-      : 0;
-    
+    const offsetX =
+      distance > 0 ? (dirX / distance) * Math.min(distance, maxPupilOffset) : 0;
+    const offsetY =
+      distance > 0 ? (dirY / distance) * Math.min(distance, maxPupilOffset) : 0;
+
     return {
       x: eyeCenterX + offsetX,
       y: eyeCenterY + offsetY,
@@ -132,14 +130,14 @@ const EyeFollower = () => {
   };
 
   return (
-    <div 
-      ref={containerRef} 
+    <div
+      ref={containerRef}
       className="w-full h-full relative z-1000"
       style={{ aspectRatio: "3/1" }}
     >
-      <svg 
-        width="100%" 
-        height="100%" 
+      <svg
+        width="100%"
+        height="100%"
         viewBox="0 0 300 100"
         preserveAspectRatio="xMidYMid meet"
       >
@@ -646,19 +644,23 @@ const DiceRoller = () => {
 
       // Update mesh positions and scales
       floor.position.set(0, -0.5, 0);
-      floor.scale.set(newFrustumWidth/frustumWidth, 1, newFrustumHeight/frustumHeight);
-      
+      floor.scale.set(
+        newFrustumWidth / frustumWidth,
+        1,
+        newFrustumHeight / frustumHeight,
+      );
+
       backWall.position.set(0, 2, -newFrustumHeight / 2);
-      backWall.scale.set(newFrustumWidth/frustumWidth, 1, 1);
-      
+      backWall.scale.set(newFrustumWidth / frustumWidth, 1, 1);
+
       frontWall.position.set(0, 2, newFrustumHeight / 2);
-      frontWall.scale.set(newFrustumWidth/frustumWidth, 1, 1);
-      
+      frontWall.scale.set(newFrustumWidth / frustumWidth, 1, 1);
+
       leftWall.position.set(-newFrustumWidth / 2, 2, 0);
-      leftWall.scale.set(1, 1, newFrustumHeight/frustumHeight);
-      
+      leftWall.scale.set(1, 1, newFrustumHeight / frustumHeight);
+
       rightWall.position.set(newFrustumWidth / 2, 2, 0);
-      rightWall.scale.set(1, 1, newFrustumHeight/frustumHeight);
+      rightWall.scale.set(1, 1, newFrustumHeight / frustumHeight);
 
       // Update physics bodies without recreating them
       // Remove old wall bodies first
@@ -671,35 +673,35 @@ const DiceRoller = () => {
       // Floor physics body
       floorBody.position.set(0, -0.5, 0);
       floorBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(newFrustumWidth / 2, 0.5, newFrustumHeight / 2)
+        new CANNON.Vec3(newFrustumWidth / 2, 0.5, newFrustumHeight / 2),
       );
       world.addBody(floorBody);
 
       // Back wall physics body
       backWallBody.position.set(0, 2, -newFrustumHeight / 2);
       backWallBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(newFrustumWidth / 2, 20, 0.5)
+        new CANNON.Vec3(newFrustumWidth / 2, 20, 0.5),
       );
       world.addBody(backWallBody);
 
       // Front wall physics body
       frontWallBody.position.set(0, 2, newFrustumHeight / 2);
       frontWallBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(newFrustumWidth / 2, 50, 0.5)
+        new CANNON.Vec3(newFrustumWidth / 2, 50, 0.5),
       );
       world.addBody(frontWallBody);
 
       // Left wall physics body
       leftWallBody.position.set(-newFrustumWidth / 2, 2, 0);
       leftWallBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(0.5, 20, newFrustumHeight / 2)
+        new CANNON.Vec3(0.5, 20, newFrustumHeight / 2),
       );
       world.addBody(leftWallBody);
 
       // Right wall physics body
       rightWallBody.position.set(newFrustumWidth / 2, 2, 0);
       rightWallBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(0.5, 50, newFrustumHeight / 2)
+        new CANNON.Vec3(0.5, 50, newFrustumHeight / 2),
       );
       world.addBody(rightWallBody);
 
@@ -755,10 +757,10 @@ const DiceRoller = () => {
             <EyeFollower />
           </div>
         </div>
-        
+
         <img
           src="press.svg"
-          className="w-auto ml-4 flex-shrink-0 object-contain hidden xl:block xl:h-full" 
+          className="w-auto ml-4 flex-shrink-0 object-contain hidden xl:block xl:h-full"
           style={{ aspectRatio: "2/1" }}
           alt="Press instruction"
         />

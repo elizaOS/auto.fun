@@ -163,7 +163,7 @@ const useGetProfileTokens = () => {
 
           try {
             const response = await fetch(uri);
-            const json = await response.json() as { image?: string };
+            const json = (await response.json()) as { image?: string };
             image = json.image || null;
           } catch (error) {
             console.error(`Error fetching metadata for token ${name}:`, error);
@@ -248,12 +248,14 @@ const useCreatedTokens = () => {
     if (!response.ok) {
       throw new Error(`Failed to fetch: ${response.statusText}`);
     }
-    const data = await response.json() as { tokens: Array<{ mint: string }> };
+    const data = (await response.json()) as { tokens: Array<{ mint: string }> };
     const tokens = data.tokens;
 
     const tokenAccounts = await getTokenAccounts();
     const createdTokenAccounts = tokenAccounts.filter((account) =>
-      tokens.find((token: { mint: string }) => token.mint === account.mint.toBase58()),
+      tokens.find(
+        (token: { mint: string }) => token.mint === account.mint.toBase58(),
+      ),
     );
     const autofunTokenAccounts =
       await removeNonAutofunTokens(createdTokenAccounts);
@@ -317,4 +319,4 @@ export const useProfile = () => {
   }, [connection, fetchProfile, getCreatedTokens, getOwnedTokens, publicKey]);
 
   return { data, isLoading, isError };
-}; 
+};

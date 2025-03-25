@@ -1,30 +1,6 @@
-import {
-  createContext,
-  PropsWithChildren,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { UserContext, useUser } from "@/contexts/user";
 import { useWalletModal } from "@/hooks/use-wallet-modal";
-
-interface UserContextType {
-  authenticated: boolean;
-  setAuthenticated: (value: boolean) => void;
-  logOut: () => void;
-}
-
-const UserContext = createContext<UserContextType | undefined>(undefined);
-
-export const useUser = () => {
-  const context = useContext(UserContext);
-
-  if (!context) {
-    throw new Error("useUser must be used within UserProvider");
-  }
-
-  return context;
-};
+import { PropsWithChildren, useCallback, useEffect, useState } from "react";
 
 export const UserProvider = ({ children }: PropsWithChildren) => {
   const [authenticated, setAuthenticated] = useState<boolean>(false);
@@ -32,7 +8,7 @@ export const UserProvider = ({ children }: PropsWithChildren) => {
 
   const handleSetAuthenticated = useCallback((value: boolean) => {
     setAuthenticated(value);
-    
+
     if (value === false) {
       localStorage.removeItem("walletConnected");
       localStorage.removeItem("lastWalletName");
@@ -42,36 +18,38 @@ export const UserProvider = ({ children }: PropsWithChildren) => {
 
   const logOut = useCallback(() => {
     setAuthenticated(false);
-    
+
     // Clear wallet data
     localStorage.removeItem("walletConnected");
     localStorage.removeItem("lastWalletName");
     localStorage.removeItem("authToken");
-    
+
     // Also call wallet logout to clear auth tokens
     try {
       walletLogout();
     } catch (error) {
       console.error("Error during wallet logout:", error);
     }
-    
+
     console.log("User logged out via logOut()");
-    
+
     // Refresh authentication status from backend
     try {
       fetch(import.meta.env.VITE_API_URL + "/api/auth-status", {
-        credentials: 'include' // Important for cookies
+        credentials: "include", // Important for cookies
       })
-        .then(response => {
+        .then((response) => {
           if (response.ok) return response.json();
           throw new Error(`Failed to fetch: ${response.status}`);
         })
-        .then(data => console.log("Auth status after logout:", data))
-        .catch(error => console.error("Error fetching auth status after logout:", error));
+        .then((data) => console.log("Auth status after logout:", data))
+        .catch((error) =>
+          console.error("Error fetching auth status after logout:", error),
+        );
     } catch (e) {
       console.error("Failed to check auth status after logout:", e);
     }
-    
+
     // Force reload after a short delay if we're still on the same page
     setTimeout(() => {
       try {

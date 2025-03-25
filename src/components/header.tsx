@@ -14,7 +14,7 @@ export default function Header() {
   const { publicKey } = useWallet();
   const { isAuthenticated } = useWalletModal();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  
+
   const mobileNavItems = [
     { icon: "/nav/stars.svg", title: "Create Token", href: "/create" },
     { icon: "/nav/eye.svg", title: "Tokens", href: "/" },
@@ -24,10 +24,10 @@ export default function Header() {
 
   // Add profile link if user is authenticated
   if (publicKey && isAuthenticated) {
-    mobileNavItems.push({ 
-      icon: "/nav/user.svg", 
-      title: "Profile", 
-      href: "/profile"
+    mobileNavItems.push({
+      icon: "/nav/user.svg",
+      title: "Profile",
+      href: "/profile",
     });
   }
 

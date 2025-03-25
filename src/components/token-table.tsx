@@ -110,4 +110,4 @@ export const TokenTable = ({ tokens }: { tokens: ProfileToken[] }) => {
       </table>
     </div>
   );
-}; 
+};

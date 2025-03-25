@@ -5,4 +5,4 @@ export type ProfileToken = {
   tokensHeld: bigint;
   solValue: number;
   mint: string;
-}; 
+};

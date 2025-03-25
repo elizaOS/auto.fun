@@ -148,7 +148,10 @@ declare global {
   interface Window {
     solana?: {
       isPhantom?: boolean;
-      signMessage?: (message: Uint8Array, encoding: string) => Promise<Uint8Array>;
+      signMessage?: (
+        message: Uint8Array,
+        encoding: string,
+      ) => Promise<Uint8Array>;
       connect: () => Promise<{ publicKey: string }>;
       disconnect?: () => Promise<void>;
       publicKey?: { toBase58: () => string };

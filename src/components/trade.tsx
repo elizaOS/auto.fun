@@ -147,7 +147,7 @@ export default function Trade({ token }: { token: IToken }) {
         <div
           className={twMerge([
             "flex items-center gap-2 h-4 m-2",
-            error ? "block" : "hidden"
+            error ? "block" : "hidden",
           ])}
         >
           <div className="flex items-center gap-2">

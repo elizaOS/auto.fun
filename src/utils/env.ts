@@ -4,18 +4,18 @@
 const decimals = 6;
 
 // Network for Solana (can be 'mainnet-beta', 'testnet', or 'devnet')
-const network = import.meta.env.VITE_SOLANA_NETWORK || 'devnet';
+const network = import.meta.env.VITE_SOLANA_NETWORK || "devnet";
 
 // Solana Explorer URL based on network
 const getExplorerUrl = () => {
   switch (network) {
-    case 'mainnet-beta':
-      return 'https://explorer.solana.com';
-    case 'testnet':
-      return 'https://explorer.solana.com/?cluster=testnet';
-    case 'devnet':
+    case "mainnet-beta":
+      return "https://explorer.solana.com";
+    case "testnet":
+      return "https://explorer.solana.com/?cluster=testnet";
+    case "devnet":
     default:
-      return 'https://explorer.solana.com/?cluster=devnet';
+      return "https://explorer.solana.com/?cluster=devnet";
   }
 };
 

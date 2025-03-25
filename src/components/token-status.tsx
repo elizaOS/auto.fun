@@ -20,7 +20,7 @@ export default function TokenStatus({ token }: { token: IToken }) {
   const variantStatus: Record<IToken["status"], TVariant> = {
     active: "info",
     harvested: "info",
-    locked: "info", 
+    locked: "info",
     migrated: "info",
     migrating: "warning",
     migration_failed: "destructive",

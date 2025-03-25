@@ -26,7 +26,11 @@ const TabButton = ({ isSelected, onClick, children }: TabButtonProps) => (
 
 const ExternalLinkIcon = ({ address }: { address: string }) => {
   return (
-    <a href={env.getWalletUrl(address)} target="_blank" rel="noopener noreferrer">
+    <a
+      href={env.getWalletUrl(address)}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
       <svg
         width="16"
         height="16"
