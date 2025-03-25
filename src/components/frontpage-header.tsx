@@ -191,21 +191,21 @@ const DiceRoller = () => {
       new CANNON.ContactMaterial(floorMaterial, diceMaterial, {
         friction: 0.6,
         restitution: 0.5,
-      }),
+      })
     );
 
     world.addContactMaterial(
       new CANNON.ContactMaterial(wallMaterial, diceMaterial, {
         friction: 0.6,
         restitution: 0.9,
-      }),
+      })
     );
 
     world.addContactMaterial(
       new CANNON.ContactMaterial(diceMaterial, diceMaterial, {
         friction: 0.6,
         restitution: 0.5,
-      }),
+      })
     );
 
     // Calculate dimensions based on aspect ratio
@@ -221,7 +221,7 @@ const DiceRoller = () => {
       frustumHeight / 2,
       frustumHeight / -2,
       0.001,
-      1000,
+      1000
     );
     camera.position.set(0, 50, 0);
     camera.lookAt(0, 0, 0);
@@ -276,7 +276,7 @@ const DiceRoller = () => {
     const floorBody = new CANNON.Body({
       mass: 0, // static body
       shape: new CANNON.Box(
-        new CANNON.Vec3(frustumWidth / 2, 0.5, frustumHeight / 2),
+        new CANNON.Vec3(frustumWidth / 2, 0.5, frustumHeight / 2)
       ),
       material: floorMaterial,
     });
@@ -395,7 +395,7 @@ const DiceRoller = () => {
             metalness: 0.3,
             emissiveMap: texture,
             emissiveIntensity: 0.5,
-          }),
+          })
         );
       }
       return materials;
@@ -432,7 +432,7 @@ const DiceRoller = () => {
       dieBody.quaternion.setFromEuler(
         Math.random() * Math.PI,
         Math.random() * Math.PI,
-        Math.random() * Math.PI,
+        Math.random() * Math.PI
       );
 
       // Store the mesh with the body for updates
@@ -453,7 +453,7 @@ const DiceRoller = () => {
       const position = new THREE.Vector3(
         Math.random() * 50 - 25,
         20 + i * 2,
-        Math.random() * 16 - 8,
+        Math.random() * 16 - 8
       );
       createDie(position, scale);
     }
@@ -467,14 +467,14 @@ const DiceRoller = () => {
         dieBody.position.set(
           Math.random() * 50 - 25,
           20 + i * 2,
-          Math.random() * 16 - 8,
+          Math.random() * 16 - 8
         );
 
         // Reset rotation
         dieBody.quaternion.setFromEuler(
           Math.random() * Math.PI,
           Math.random() * Math.PI,
-          Math.random() * Math.PI,
+          Math.random() * Math.PI
         );
 
         // Clear any existing motion
@@ -488,7 +488,7 @@ const DiceRoller = () => {
         const velocity = new CANNON.Vec3(
           (Math.random() - 0.5) * 15, // stronger horizontal movement
           -10 - Math.random() * 15, // stronger downward movement
-          (Math.random() - 0.5) * 15, // stronger depth movement
+          (Math.random() - 0.5) * 15 // stronger depth movement
         );
         dieBody.velocity.copy(velocity);
 
@@ -496,7 +496,7 @@ const DiceRoller = () => {
         const angularVelocity = new CANNON.Vec3(
           (Math.random() - 0.5) * 20,
           (Math.random() - 0.5) * 20,
-          (Math.random() - 0.5) * 20,
+          (Math.random() - 0.5) * 20
         );
         dieBody.angularVelocity.copy(angularVelocity);
       }
@@ -584,7 +584,7 @@ const DiceRoller = () => {
         const forceVector = new CANNON.Vec3(
           (Math.random() - 0.5) * 200,
           Math.random() * 50,
-          (Math.random() - 0.5) * 200,
+          (Math.random() - 0.5) * 200
         );
 
         // Apply direct velocity instead of impulse for more immediate effect
@@ -594,7 +594,7 @@ const DiceRoller = () => {
         dieBody.angularVelocity.set(
           (Math.random() - 0.5) * 10,
           (Math.random() - 0.5) * 10,
-          (Math.random() - 0.5) * 10,
+          (Math.random() - 0.5) * 10
         );
 
         console.log("Set velocity:", forceVector);
@@ -620,7 +620,7 @@ const DiceRoller = () => {
     containerRef.current.addEventListener("click", applyForceToAllDice);
     containerRef.current.addEventListener(
       "touchstart",
-      applyForceToAllDice as any,
+      applyForceToAllDice as any
     );
 
     // Updated window resize handler
@@ -647,7 +647,7 @@ const DiceRoller = () => {
       floor.scale.set(
         newFrustumWidth / frustumWidth,
         1,
-        newFrustumHeight / frustumHeight,
+        newFrustumHeight / frustumHeight
       );
 
       backWall.position.set(0, 2, -newFrustumHeight / 2);
@@ -673,35 +673,35 @@ const DiceRoller = () => {
       // Floor physics body
       floorBody.position.set(0, -0.5, 0);
       floorBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(newFrustumWidth / 2, 0.5, newFrustumHeight / 2),
+        new CANNON.Vec3(newFrustumWidth / 2, 0.5, newFrustumHeight / 2)
       );
       world.addBody(floorBody);
 
       // Back wall physics body
       backWallBody.position.set(0, 2, -newFrustumHeight / 2);
       backWallBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(newFrustumWidth / 2, 20, 0.5),
+        new CANNON.Vec3(newFrustumWidth / 2, 20, 0.5)
       );
       world.addBody(backWallBody);
 
       // Front wall physics body
       frontWallBody.position.set(0, 2, newFrustumHeight / 2);
       frontWallBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(newFrustumWidth / 2, 50, 0.5),
+        new CANNON.Vec3(newFrustumWidth / 2, 50, 0.5)
       );
       world.addBody(frontWallBody);
 
       // Left wall physics body
       leftWallBody.position.set(-newFrustumWidth / 2, 2, 0);
       leftWallBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(0.5, 20, newFrustumHeight / 2),
+        new CANNON.Vec3(0.5, 20, newFrustumHeight / 2)
       );
       world.addBody(leftWallBody);
 
       // Right wall physics body
       rightWallBody.position.set(newFrustumWidth / 2, 2, 0);
       rightWallBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(0.5, 50, newFrustumHeight / 2),
+        new CANNON.Vec3(0.5, 50, newFrustumHeight / 2)
       );
       world.addBody(rightWallBody);
 
@@ -720,7 +720,7 @@ const DiceRoller = () => {
         containerRef.current.removeEventListener("click", applyForceToAllDice);
         containerRef.current.removeEventListener(
           "touchstart",
-          applyForceToAllDice as any,
+          applyForceToAllDice as any
         );
       }
 
@@ -736,7 +736,7 @@ const DiceRoller = () => {
 
   return (
     <div
-      className="w-full h-[300px] relative overflow-hidden cursor-pointer mb-6"
+      className="w-full h-[300px] relative overflow-hidden cursor-pointer my-6 xl:mt-0"
       onClick={(_e) => {
         console.log("Outer container clicked");
         // if (window.resetDice) window.resetDice();
@@ -760,7 +760,7 @@ const DiceRoller = () => {
 
         <img
           src="press.svg"
-          className="w-auto ml-4 flex-shrink-0 object-contain hidden xl:block xl:h-full"
+          className="w-auto ml-4 flex-shrink-0 object-contain hidden 2xl:block 2xl:h-full"
           style={{ aspectRatio: "2/1" }}
           alt="Press instruction"
         />
@@ -768,11 +768,11 @@ const DiceRoller = () => {
 
       <div
         ref={containerRef}
-        className="w-full h-full absolute top-0 left-0 z-10"
+        className="w-full h-full absolute top-0 left-0 z-0"
       />
 
       {isLoading && (
-        <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-gray-800 bg-opacity-75 text-white text-xl z-20">
+        <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-autofun-background-card bg-opacity-75 text-white text-xl z-20">
           Loading...
         </div>
       )}
