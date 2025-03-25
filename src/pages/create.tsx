@@ -50,7 +50,7 @@ const FormInput = ({
         )}
         <input
           className={`w-full rounded-r-md bg-[#0F0F0F] py-2.5 px-3 border border-neutral-800 text-white ${
-            inputTag ? "pl-5" : ""
+            inputTag ? "pl-2" : ""
           } ${leftIndicator ? "pl-10" : ""}`}
           {...props}
         />
@@ -784,7 +784,7 @@ export const Create = () => {
                 }
                 isOptional
                 inputTag={<Icons.Website />}
-                placeholder="Website"
+                placeholder="Insert a link here"
                 rightIndicator={<CopyButton text={form.links.website || ""} />}
               />
               <FormInput
@@ -795,7 +795,7 @@ export const Create = () => {
                 }
                 isOptional
                 inputTag={<Icons.Twitter />}
-                placeholder="X (Twitter)"
+                placeholder="Insert a link here"
                 rightIndicator={<CopyButton text={form.links.twitter || ""} />}
               />
               <FormInput
@@ -806,7 +806,7 @@ export const Create = () => {
                 }
                 isOptional
                 inputTag={<Icons.Telegram />}
-                placeholder="Telegram"
+                placeholder="Insert a link here"
                 rightIndicator={<CopyButton text={form.links.telegram || ""} />}
               />
               <FormInput
@@ -817,7 +817,7 @@ export const Create = () => {
                 }
                 isOptional
                 inputTag={<Icons.Discord />}
-                placeholder="Discord"
+                placeholder="Insert a link here"
                 rightIndicator={<CopyButton text={form.links.discord || ""} />}
               />
             </div>
