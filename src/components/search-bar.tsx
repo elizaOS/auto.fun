@@ -3,13 +3,9 @@ import { Link } from "react-router";
 import CopyButton from "./copy-button";
 import { formatNumber } from "@/utils";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-// import { getSearchTokens } from "@/utils/api";
-// import { useQuery } from "@tanstack/react-query";
 import { debounce } from "lodash";
 import { IToken } from "@/types";
 import { useOutsideClickDetection } from "@/hooks/use-outside-clickdetection";
-import { getSearchTokens } from "@/utils/api";
-import { useQuery } from "@tanstack/react-query";
 
 export default function SearchBar({ isMobile }: { isMobile: boolean }) {
   const [searchResults, setSearchResults] = useState<IToken[] | []>([]);
