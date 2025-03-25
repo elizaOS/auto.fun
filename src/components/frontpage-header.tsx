@@ -760,7 +760,7 @@ const DiceRoller = () => {
 
         <img
           src="press.svg"
-          className="w-auto ml-4 flex-shrink-0 object-contain hidden xl:block xl:h-full"
+          className="w-auto ml-4 flex-shrink-0 object-contain hidden 2xl:block 2xl:h-full"
           style={{ aspectRatio: "2/1" }}
           alt="Press instruction"
         />
@@ -768,7 +768,7 @@ const DiceRoller = () => {
 
       <div
         ref={containerRef}
-        className="w-full h-full absolute top-0 left-0 z-10"
+        className="w-full h-full absolute top-0 left-0 z-0"
       />
 
       {isLoading && (

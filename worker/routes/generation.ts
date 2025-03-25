@@ -254,6 +254,17 @@ const MediaGenerationRequestSchema = z.object({
   height: z.number().min(512).max(1024).optional().default(512),
 });
 
+// Token metadata generation validation schema
+const TokenMetadataGenerationSchema = z.object({
+  fields: z.array(z.enum(['name', 'symbol', 'description', 'creative'])),
+  existingData: z.object({
+    name: z.string().optional(),
+    symbol: z.string().optional(),
+    description: z.string().optional(),
+    creative: z.string().optional(),
+  }).optional(),
+});
+
 // Generate media endpoint
 app.post("/:mint/generate", async (c) => {
   // Create overall endpoint timeout
@@ -569,6 +580,124 @@ app.get("/:mint/history", async (c) => {
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
       500,
+    );
+  }
+});
+
+// Generate token metadata endpoint
+app.post("/generate-metadata", async (c) => {
+  try {
+    // Parse request body
+    let body;
+    try {
+      body = await c.req.json();
+    } catch (error) {
+      return c.json(
+        {
+          error: "Invalid JSON in request body",
+          details: error instanceof Error ? error.message : "Unknown parsing error",
+        },
+        400,
+      );
+    }
+
+    // Validate request
+    let validatedData;
+    try {
+      validatedData = TokenMetadataGenerationSchema.parse(body);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return c.json(
+          {
+            error: "Validation error",
+            details: error.errors.map((e) => ({
+              path: e.path.join("."),
+              message: e.message,
+              code: e.code,
+            })),
+          },
+          400,
+        );
+      }
+      throw error;
+    }
+
+    // Prepare prompt for Claude
+    const existingData = validatedData.existingData || {};
+    const fieldsToGenerate = validatedData.fields;
+    
+    let prompt = `Generate creative and engaging token metadata for a Solana token. The token should be fun and memorable. Generate the following fields: ${fieldsToGenerate.join(', ')}.\n\n`;
+    
+    if (existingData.name) prompt += `Existing name: ${existingData.name}\n`;
+    if (existingData.symbol) prompt += `Existing symbol: ${existingData.symbol}\n`;
+    if (existingData.description) prompt += `Existing description: ${existingData.description}\n`;
+    if (existingData.creative) prompt += `Existing creative prompt: ${existingData.creative}\n`;
+    
+    prompt += `\nPlease generate the requested fields in a fun and engaging way. The name should be memorable, the symbol should be 3-8 characters, and the description should be compelling. The creative prompt should be detailed for image generation.`;
+
+    // Call Claude API
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': c.env.ANTHROPIC_API_KEY || '',
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-sonnet-20240229',
+        max_tokens: 1000,
+        temperature: 0.9,
+        messages: [{
+          role: 'user',
+          content: prompt
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to generate metadata');
+    }
+
+    const result = await response.json();
+    const generatedText = result.content[0].text;
+
+    // Parse the generated text into fields
+    const metadata: Record<string, string> = {};
+    
+    // Extract name
+    const nameMatch = generatedText.match(/name:?\s*["']?([^"\n]+)["']?/i);
+    if (nameMatch && fieldsToGenerate.includes('name')) {
+      metadata.name = nameMatch[1].trim();
+    }
+    
+    // Extract symbol
+    const symbolMatch = generatedText.match(/symbol:?\s*["']?([^"\n]+)["']?/i);
+    if (symbolMatch && fieldsToGenerate.includes('symbol')) {
+      metadata.symbol = symbolMatch[1].trim().toUpperCase();
+    }
+    
+    // Extract description
+    const descMatch = generatedText.match(/description:?\s*["']?([^"\n]+)["']?/i);
+    if (descMatch && fieldsToGenerate.includes('description')) {
+      metadata.description = descMatch[1].trim();
+    }
+    
+    // Extract creative prompt
+    const creativeMatch = generatedText.match(/creative:?\s*["']?([^"\n]+)["']?/i);
+    if (creativeMatch && fieldsToGenerate.includes('creative')) {
+      metadata.creative = creativeMatch[1].trim();
+    }
+
+    return c.json({
+      success: true,
+      metadata
+    });
+
+  } catch (error) {
+    console.error('Error generating metadata:', error);
+    return c.json(
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+      500
     );
   }
 });

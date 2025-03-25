@@ -1,82 +1,48 @@
-import BondingCurveBar from "@/components/bonding-curve-bar";
-import CopyButton from "@/components/copy-button";
 import SkeletonImage from "@/components/skeleton-image";
 import { IToken } from "@/types";
 import {
   abbreviateNumber,
-  fromNow,
-  normalizedProgress,
-  shortenAddress,
+  fromNow
 } from "@/utils";
 import { Link } from "react-router";
 
 export default function GridView({ data }: { data: IToken[] }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
       {data?.map((token: IToken, _: number) => (
         <Link
           to={`/token/${token.mint}`}
           key={token.mint}
-          className="bg-autofun-background-card p-4 border flex flex-col gap-3"
+          className="bg-autofun-background-card p-0 border flex flex-col gap-3"
         >
-          <div className="flex flex-col gap-3 min-w-0">
-            <div className="w-full aspect-square">
+          <div className="flex flex-col min-w-0 relative">
+            <div className="absolute left-0 bottom-0 p-2 px-3 min-w-0 z-10">
+              <div className="flex justify-end items-end w-full gap-2 min-w-0">
+                {/* <div className="capitalize text-autofun-text-primary text-base font-medium font-satoshi leading-normal truncate min-w-0 drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)]">
+                  {token.name}
+                </div> */}
+                <div className="text-autofun-text-primary text-lg font-bold font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0 drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
+                  ${token.ticker}
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col w-full min-w-0 z-10">
+              <div className="absolute bottom-0 right-0 p-2 px-3 inline-flex justify-start items-center gap-2 min-w-0">
+                <div className="justify-start text-autofun-text-highlight text-xl font-medium font-dm-mono leading-7 truncate drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
+                  {abbreviateNumber(token.marketCapUSD)}
+                </div>
+              </div>
+            </div>
+            <div className="absolute top-0 right-0 p-3 px-4 text-autofun-text-primary text-xs font-medium font-dm-mono z-1 drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
+              {fromNow(token.createdAt, true)}
+            </div>
+            <div className="w-full aspect-square relative">
+              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/90 to-transparent z-[1]"></div>
               <SkeletonImage
                 src={token.image}
                 alt="image"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover z-[-1]"
               />
-            </div>
-            <div className="flex flex-col gap-3 justify-between min-w-0 w-full">
-              {/* Token Info and Time */}
-              <div className="flex items-center w-full min-w-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="capitalize text-autofun-text-primary text-base font-medium font-satoshi leading-normal truncate min-w-0">
-                    {token.name}
-                  </div>
-                  <div className="text-autofun-text-secondary text-base font-normal font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0">
-                    ${token.ticker}
-                  </div>
-                </div>
-                <div className="px-2 py-1 border flex ml-auto shrink-0">
-                  <div className="text-autofun-text-secondary text-xs font-medium font-dm-mono">
-                    {fromNow(token.createdAt, true)}
-                  </div>
-                </div>
-              </div>
-
-              {/* Marketcap & Address */}
-              <div className="flex flex-col w-full min-w-0">
-                <div className="flex items-center justify-between w-full min-w-0">
-                  <div className="text-autofun-text-secondary text-xs font-medium font-satoshi">
-                    Market Cap
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="text-autofun-text-secondary text-xs font-normal font-dm-mono">
-                      {shortenAddress(token.mint)}
-                    </div>
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <CopyButton text={token.mint} />
-                    </div>
-                  </div>
-                </div>
-                <div className="inline-flex justify-start items-center gap-2 min-w-0">
-                  <div className="justify-start text-autofun-text-highlight text-xl font-medium font-dm-mono leading-7 truncate">
-                    {abbreviateNumber(token.marketCapUSD)}
-                  </div>
-                </div>
-              </div>
-
-              {/* Bonding Curve */}
-              <div className="flex items-center gap-2">
-                <div className="text-autofun-text-info text-sm font-medium font-dm-mono">
-                  Bonding Curve Progress
-                </div>
-                <div className="text-autofun-text-highlight text-sm font-normal font-dm-mono">
-                  {normalizedProgress(token.curveProgress)}%
-                </div>
-              </div>
-              <BondingCurveBar progress={token.curveProgress} />
             </div>
           </div>
         </Link>

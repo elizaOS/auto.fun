@@ -44,7 +44,7 @@ export default function Header() {
   }, [pathname]);
 
   return (
-    <div>
+    <>
       <div className="hidden md:block py-6">
         <div className="container flex flex-row items-center justify-between">
           <div className="flex items-center">
@@ -54,7 +54,7 @@ export default function Header() {
             {/* <NavLink title="Tokens" href="/" /> */}
             {/* <HowItWorksDialog /> */}
           </div>
-          <div className="flex w-1/2 space-x-4 flex-row justify-between">
+          <div className="flex space-x-3 flex-row justify-between w-1/2">
             <SearchBar isMobile={false} />
             <Link to="/create">
               <Button className="flex items-center text-base font-medium text-white font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345]">
@@ -149,7 +149,7 @@ export default function Header() {
           </Dialog>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

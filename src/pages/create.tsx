@@ -6,6 +6,7 @@ import CopyButton from "../components/copy-button";
 import { Icons } from "../components/icons";
 import WalletButton from "../components/wallet-button";
 import { TokenMetadata } from "../types/form.type";
+import { DiceButton } from "../components/dice-button";
 
 // Constants
 const MAX_FILE_SIZE_MB = 5;
@@ -15,6 +16,23 @@ interface UploadResponse {
   success: boolean;
   imageUrl: string;
   metadataUrl: string;
+}
+
+interface GenerateMetadataResponse {
+  success: boolean;
+  metadata: {
+    name?: string;
+    symbol?: string;
+    description?: string;
+    creative?: string;
+  };
+}
+
+interface GenerateImageResponse {
+  success: boolean;
+  mediaUrl: string;
+  remainingGenerations: number;
+  resetTime: string;
 }
 
 // Form Components
@@ -416,19 +434,21 @@ export const Create = () => {
   const { publicKey, signTransaction } = useWallet();
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatingField, setGeneratingField] = useState<string | null>(null);
 
   // Simple form state
   const [form, setForm] = useState({
     name: "",
     symbol: "",
     description: "",
+    creative: "",
     initial_sol: "",
     links: {
       twitter: "",
       telegram: "",
       website: "",
       discord: "",
-      agentLink: "",
     },
   });
 
@@ -437,6 +457,7 @@ export const Create = () => {
     name: "",
     symbol: "",
     description: "",
+    creative: "",
     initial_sol: "",
   });
 
@@ -555,6 +576,104 @@ export const Create = () => {
     */
   };
 
+  // Function to generate metadata
+  const generateMetadata = async (fields: string[]) => {
+    try {
+      setIsGenerating(true);
+      setGeneratingField(fields.join(','));
+
+      // Get auth token from localStorage
+      const authToken = localStorage.getItem("authToken");
+
+      // Prepare headers
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      }
+
+      // Call the generate-metadata endpoint
+      const response = await fetch(
+        import.meta.env.VITE_API_URL + "/api/generate-metadata",
+        {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({
+            fields,
+            existingData: {
+              name: form.name,
+              symbol: form.symbol,
+              description: form.description,
+              creative: form.creative,
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to generate metadata");
+      }
+
+      const data = await response.json() as GenerateMetadataResponse;
+      const { metadata } = data;
+
+      // Update form with generated data
+      setForm((prev) => ({
+        ...prev,
+        ...metadata,
+      }));
+
+      // If we generated a creative prompt, also generate an image
+      if (metadata.creative) {
+        // Generate image using the creative prompt
+        const imageResponse = await fetch(
+          import.meta.env.VITE_API_URL + "/api/generate",
+          {
+            method: "POST",
+            headers,
+            credentials: "include",
+            body: JSON.stringify({
+              prompt: metadata.creative,
+              type: "image",
+            }),
+          }
+        );
+
+        if (!imageResponse.ok) {
+          throw new Error("Failed to generate image");
+        }
+
+        const imageData = await imageResponse.json() as GenerateImageResponse;
+        const imageUrl = imageData.mediaUrl;
+
+        // Convert image URL to File object
+        const imageBlob = await fetch(imageUrl).then((r) => r.blob());
+        const imageFile = new File([imageBlob], "generated-image.png", {
+          type: "image/png",
+        });
+        setImageFile(imageFile);
+      }
+    } catch (error) {
+      console.error("Error generating metadata:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to generate metadata. Please try again."
+      );
+    } finally {
+      setIsGenerating(false);
+      setGeneratingField(null);
+    }
+  };
+
+  // Function to generate all fields
+  const generateAll = async () => {
+    await generateMetadata(["name", "symbol", "description", "creative"]);
+  };
+
   // Submit form to backend
   const submitFormToBackend = async () => {
     try {
@@ -585,7 +704,10 @@ export const Create = () => {
         symbol: form.symbol,
         description: form.description,
         initialSol: parseFloat(form.initial_sol) || 0,
-        links: form.links,
+        links: {
+          ...form.links,
+          agentLink: "", // Add empty agentLink
+        },
         imageBase64: media_base64,
         tokenMint,
         decimals: 9,
@@ -634,7 +756,7 @@ export const Create = () => {
           telegram: form.links.telegram,
           website: form.links.website,
           discord: form.links.discord,
-          agentLink: form.links.agentLink,
+          agentLink: "", // Add empty agentLink
           imageUrl,
           metadataUrl,
         });
@@ -652,7 +774,7 @@ export const Create = () => {
       alert(
         error instanceof Error
           ? error.message
-          : "Failed to create token. Please try again.",
+          : "Failed to create token. Please try again."
       );
     } finally {
       setIsSubmitting(false);
@@ -699,64 +821,99 @@ export const Create = () => {
       className="flex flex-col w-full max-w-3xl m-auto gap-7 justify-center"
       onSubmit={handleSubmit}
     >
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <FormInput
-          type="text"
-          value={form.name}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            handleChange("name", e.target.value)
-          }
-          label="Name"
-          maxLength={50}
-          rightIndicator={`${form.name.length}/50`}
-          error={errors.name}
-        />
-
-        <FormInput
-          type="text"
-          value={form.symbol}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            handleChange("symbol", e.target.value)
-          }
-          label="Ticker"
-          leftIndicator="$"
-          maxLength={8}
-          rightIndicator={`${form.symbol.length}/8`}
-          error={errors.symbol}
+      <div className="flex justify-end mb-4">
+        <DiceButton
+          onClick={generateAll}
+          isLoading={isGenerating && generatingField === "name,symbol,description,creative"}
         />
       </div>
 
-      <FormTextArea
-        value={form.description}
-        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-          handleChange("description", e.target.value)
-        }
-        label="Token Description"
-        rightIndicator={`${form.description.length}/2000`}
-        minRows={5}
-        maxLength={2000}
-        error={errors.description}
-      />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="relative">
+          <FormInput
+            type="text"
+            value={form.name}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              handleChange("name", e.target.value)
+            }
+            label="Name"
+            maxLength={50}
+            rightIndicator={`${form.name.length}/50`}
+            error={errors.name}
+          />
+          <div className="absolute right-3 top-8">
+            <DiceButton
+              onClick={() => generateMetadata(["name"])}
+              isLoading={isGenerating && generatingField === "name"}
+            />
+          </div>
+        </div>
+
+        <div className="relative">
+          <FormInput
+            type="text"
+            value={form.symbol}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              handleChange("symbol", e.target.value)
+            }
+            label="Ticker"
+            leftIndicator="$"
+            maxLength={8}
+            rightIndicator={`${form.symbol.length}/8`}
+            error={errors.symbol}
+          />
+          <div className="absolute right-3 top-8">
+            <DiceButton
+              onClick={() => generateMetadata(["symbol"])}
+              isLoading={isGenerating && generatingField === "symbol"}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="relative">
+        <FormTextArea
+          value={form.description}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+            handleChange("description", e.target.value)
+          }
+          label="Description"
+          rightIndicator={`${form.description.length}/2000`}
+          minRows={5}
+          maxLength={2000}
+          error={errors.description}
+        />
+        <div className="absolute right-3 top-8">
+          <DiceButton
+            onClick={() => generateMetadata(["description"])}
+            isLoading={isGenerating && generatingField === "description"}
+          />
+        </div>
+      </div>
+
+      <div className="relative">
+        <FormTextArea
+          value={form.creative}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+            handleChange("creative", e.target.value)
+          }
+          label="Generation Prompt"
+          rightIndicator={`${form.creative.length}/2000`}
+          minRows={5}
+          maxLength={2000}
+          error={errors.creative}
+        />
+        <div className="absolute right-3 top-8">
+          <DiceButton
+            onClick={() => generateMetadata(["creative"])}
+            isLoading={isGenerating && generatingField === "creative"}
+          />
+        </div>
+      </div>
 
       <FormImageInput
         label="Token Image"
         onChange={(file) => setImageFile(file)}
-      />
-
-      <FormInput
-        type="text"
-        value={form.links.agentLink}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-          handleChange("links.agentLink", e.target.value)
-        }
-        label="Link Agent"
-        isOptional
-        inputTag={
-          <div className="text-[#8c8c8c] text-base font-normal uppercase leading-normal tracking-widest">
-            HTTPS://
-          </div>
-        }
-        rightIndicator={<CopyButton text={form.links.agentLink || ""} />}
       />
 
       <div className="flex flex-col gap-3">
@@ -861,7 +1018,7 @@ export const Create = () => {
             className="bg-[#2fd345] py-3 px-6 font-bold border-2 text-black text-[1.8em] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
             disabled={!isFormValid || isSubmitting}
           >
-            {isSubmitting ? "Creating..." : "Launch Token"}
+            {isSubmitting ? "Creating..." : "LET'S GO"}
           </button>
         )}
         {!isFormValid && (

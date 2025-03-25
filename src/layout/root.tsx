@@ -13,9 +13,9 @@ export default function Layout() {
         <BreakpointIndicator />
       </main>
       <Footer />
-      <div className="block md:hidden">
+      {/* <div className="block md:hidden">
         <BottomBar />
-      </div>
+      </div> */}
     </div>
   );
 }
