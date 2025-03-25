@@ -95,7 +95,9 @@ const FormLabel = ({
       <div className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
         {label}
       </div>
-      {isOptional && <div className="text-[#8c8c8c] text-[16px]">(Optional)</div>}
+      {isOptional && (
+        <div className="text-[#8c8c8c] text-[16px]">(Optional)</div>
+      )}
     </div>
   );
 };
@@ -450,6 +452,7 @@ export const Create = () => {
       telegram: "",
       website: "",
       discord: "",
+      agentLink: ""
     },
   });
 
@@ -611,7 +614,7 @@ export const Create = () => {
               creative: form.creative,
             },
           }),
-        },
+        }
       );
 
       if (!response.ok) {
@@ -640,7 +643,7 @@ export const Create = () => {
               prompt: metadata.creative,
               type: "image",
             }),
-          },
+          }
         );
 
         if (!imageResponse.ok) {
@@ -662,7 +665,7 @@ export const Create = () => {
       alert(
         error instanceof Error
           ? error.message
-          : "Failed to generate metadata. Please try again.",
+          : "Failed to generate metadata. Please try again."
       );
     } finally {
       setIsGenerating(false);
@@ -818,123 +821,115 @@ export const Create = () => {
     !errors.initial_sol;
 
   return (
-    <form
-      className="flex flex-col w-full max-w-3xl m-auto gap-7 justify-center"
-      onSubmit={handleSubmit}
-    >
-      <div className="flex justify-end mb-4">
-        <DiceButton
-          onClick={generateAll}
-          isLoading={
-            isGenerating &&
-            generatingField === "name,symbol,description,creative"
-          }
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <div className="relative">
-          <FormInput
-            type="text"
-            value={form.name}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              handleChange("name", e.target.value)
-            }
-            label="Name"
-            maxLength={50}
-            rightIndicator={`${form.name.length}/50`}
-            error={errors.name}
-          />
-          <div className="absolute right-3 top-8">
-            <DiceButton
-              onClick={() => generateMetadata(["name"])}
-              isLoading={isGenerating && generatingField === "name"}
-            />
+    <div className="flex items-center py-10 md:py-0 justify-center min-h-screen">
+      <div className="p-4 bg-autofun-background-card max-w-[800px] rounded-md">
+        <div className="flex flex-col gap-y-4">
+          <div className="text-autofun-background-action-highlight font-medium text-[32px]">
+            Create Token
+          </div>
+          <div className="text-[18px] font-normal text-autofun-text-secondary">
+            Create your token on auto.fun. Set up your token details, add
+            visuals, and connect social channels. You can optionally create or
+            link an existing AI agent to your token. You can also personally
+            allocate a portion of tokens before launch.
           </div>
         </div>
-
-        <div className="relative">
-          <FormInput
-            type="text"
-            value={form.symbol}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              handleChange("symbol", e.target.value)
-            }
-            label="Ticker"
-            leftIndicator="$"
-            maxLength={8}
-            rightIndicator={`${form.symbol.length}/8`}
-            error={errors.symbol}
-          />
-          <div className="absolute right-3 top-8">
+        <form
+          className="flex font-dm-mono flex-col w-full max-w-3xl m-auto gap-4 justify-center"
+          onSubmit={handleSubmit}
+        >
+          <div className="flex justify-end">
             <DiceButton
-              onClick={() => generateMetadata(["symbol"])}
-              isLoading={isGenerating && generatingField === "symbol"}
+              onClick={generateAll}
+              isLoading={
+                isGenerating &&
+                generatingField === "name,symbol,description,creative"
+              }
             />
           </div>
-        </div>
-      </div>
 
-      <div className="relative">
-        <FormTextArea
-          value={form.description}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-            handleChange("description", e.target.value)
-          }
-          label="Description"
-          rightIndicator={`${form.description.length}/2000`}
-          minRows={5}
-          maxLength={2000}
-          error={errors.description}
-        />
-        <div className="absolute right-3 top-8">
-          <DiceButton
-            onClick={() => generateMetadata(["description"])}
-            isLoading={isGenerating && generatingField === "description"}
-          />
-        </div>
-      </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <div className="relative">
+              <FormInput
+                type="text"
+                value={form.name}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  handleChange("name", e.target.value)
+                }
+                label="Name"
+                maxLength={50}
+                rightIndicator={`${form.name.length}/50`}
+                error={errors.name}
+              />
+              <div className="absolute right-3 top-8">
+                <DiceButton
+                  onClick={() => generateMetadata(["name"])}
+                  isLoading={isGenerating && generatingField === "name"}
+                />
+              </div>
+            </div>
 
-      <div className="relative">
-        <FormTextArea
-          value={form.creative}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-            handleChange("creative", e.target.value)
-          }
-          label="Generation Prompt"
-          rightIndicator={`${form.creative.length}/2000`}
-          minRows={5}
-          maxLength={2000}
-          error={errors.creative}
-        />
-        <div className="absolute right-3 top-8">
-          <DiceButton
-            onClick={() => generateMetadata(["creative"])}
-            isLoading={isGenerating && generatingField === "creative"}
-          />
-        </div>
-      </div>
+            <div className="relative">
+              <FormInput
+                type="text"
+                value={form.symbol}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  handleChange("symbol", e.target.value)
+                }
+                label="Ticker"
+                leftIndicator="$"
+                maxLength={8}
+                rightIndicator={`${form.symbol.length}/8`}
+                error={errors.symbol}
+              />
+              <div className="absolute right-3 top-8">
+                <DiceButton
+                  onClick={() => generateMetadata(["symbol"])}
+                  isLoading={isGenerating && generatingField === "symbol"}
+                />
+              </div>
+            </div>
+          </div>
 
-      <FormImageInput
-        label="Token Image"
-        onChange={(file) => setImageFile(file)}
-      />
+          <div className="relative">
+            <FormTextArea
+              value={form.description}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                handleChange("description", e.target.value)
+              }
+              label="Description"
+              rightIndicator={`${form.description.length}/2000`}
+              minRows={5}
+              maxLength={2000}
+              error={errors.description}
+            />
+            <div className="absolute right-3 top-8">
+              <DiceButton
+                onClick={() => generateMetadata(["description"])}
+                isLoading={isGenerating && generatingField === "description"}
+              />
+            </div>
+          </div>
 
-      <div className="flex flex-col gap-3">
-        <FormInput.Label label="add project socials" isOptional />
-        <div className="grid grid-cols-2 gap-x-3 gap-y-6">
-          <FormInput
-            type="text"
-            value={form.links.website}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              handleChange("links.website", e.target.value)
-            }
-            label="Token Description"
-            rightIndicator={`${form.description.length}/2000`}
-            minRows={5}
-            maxLength={2000}
-            error={errors.description}
-          />
+          <div className="relative">
+            <FormTextArea
+              value={form.creative}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                handleChange("creative", e.target.value)
+              }
+              label="Generation Prompt"
+              rightIndicator={`${form.creative.length}/2000`}
+              minRows={5}
+              maxLength={2000}
+              error={errors.creative}
+            />
+            <div className="absolute right-3 top-8">
+              <DiceButton
+                onClick={() => generateMetadata(["creative"])}
+                isLoading={isGenerating && generatingField === "creative"}
+              />
+            </div>
+          </div>
 
           <FormImageInput
             label="Token Image"
@@ -1005,59 +1000,61 @@ export const Create = () => {
                 rightIndicator={<CopyButton text={form.links.discord || ""} />}
               />
             </div>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <FormInput.Label label="buy your coin" isOptional />
-            <div className="flex items-center gap-4">
-              <input
-                type="range"
-                min="0"
-                max={MAX_INITIAL_SOL}
-                step="0.1"
-                value={form.initial_sol || "0"}
-                onChange={(e) => handleChange("initial_sol", e.target.value)}
-                className="flex-1 h-2 bg-[#2e2e2e] appearance-none cursor-pointer accent-[#2fd345]"
-              />
-              <div className="relative">
-                <input
-                  type="number"
-                  value={form.initial_sol}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (
-                      value === "" ||
-                      (parseFloat(value) >= 0 &&
-                        parseFloat(value) <= MAX_INITIAL_SOL)
-                    ) {
-                      handleChange("initial_sol", value);
+            <div className="grid grid-cols-1 gap-x-3 gap-y-6">
+              <div className="flex flex-col gap-3">
+                <FormInput.Label label="buy your coin" isOptional />
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min="0"
+                    max={MAX_INITIAL_SOL}
+                    step="0.1"
+                    value={form.initial_sol || "0"}
+                    onChange={(e) =>
+                      handleChange("initial_sol", e.target.value)
                     }
-                  }}
-                  min="0"
-                  max={MAX_INITIAL_SOL}
-                  step="0.1"
-                  className="w-27 rounded-md py-2 pr-14 bg-[#2e2e2e] text-[#2fd345] text-xl font-medium text-right"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#2fd345] text-xl font-medium">
-                  SOL
-                </span>
+                    className="flex-1 h-2 bg-[#2e2e2e] appearance-none cursor-pointer accent-[#2fd345]"
+                  />
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={form.initial_sol}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (
+                          value === "" ||
+                          (parseFloat(value) >= 0 &&
+                            parseFloat(value) <= MAX_INITIAL_SOL)
+                        ) {
+                          handleChange("initial_sol", value);
+                        }
+                      }}
+                      min="0"
+                      max={MAX_INITIAL_SOL}
+                      step="0.1"
+                      className="w-27 rounded-md py-2 pr-14 bg-[#2e2e2e] text-[#2fd345] text-xl font-medium text-right"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#2fd345] text-xl font-medium">
+                      SOL
+                    </span>
+                  </div>
+                </div>
               </div>
+              <button
+                type="submit"
+                className="bg-[#2fd345] py-3 px-6 font-bold border-2 text-black text-[1.8em] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
+                disabled={!isFormValid || isSubmitting}
+              >
+                {isSubmitting ? "Creating..." : "LET'S GO"}
+              </button>
+              {!isFormValid && (
+                <p className="text-red-500 text-center text-sm m-4">
+                  Please fill in all required fields
+                </p>
+              )}
             </div>
           </div>
-        ) : (
-          <button
-            type="submit"
-            className="bg-[#2fd345] py-3 px-6 font-bold border-2 text-black text-[1.8em] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
-            disabled={!isFormValid || isSubmitting}
-          >
-            {isSubmitting ? "Creating..." : "LET'S GO"}
-          </button>
-        )}
-        {!isFormValid && (
-          <p className="text-red-500 text-sm m-4">
-            Please fill in all required fields
-          </p>
-        )}
+        </form>
       </div>
     </div>
   );
