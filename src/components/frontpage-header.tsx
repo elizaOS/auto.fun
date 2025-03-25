@@ -147,7 +147,7 @@ const DiceRoller = () => {
       color: 0x000000,
       roughness: 0.8,
       transparent: true,
-      opacity: 0.8, // Make floor semi-transparent
+      opacity: 0.0, // Make floor semi-transparent
     });
     const floor = new THREE.Mesh(floorGeometry, floorMeshMaterial);
     floor.position.y = -0.5;
