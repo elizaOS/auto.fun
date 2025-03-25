@@ -710,7 +710,7 @@ export const Create = () => {
           </div>
         </div>
         <form
-          className="flex flex-col w-full max-w-3xl m-auto gap-4 py-8 justify-center"
+          className="flex font-dm-mono flex-col w-full max-w-3xl m-auto gap-4 py-8 justify-center"
           onSubmit={handleSubmit}
         >
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -775,7 +775,7 @@ export const Create = () => {
 
           <div className="flex flex-col gap-3">
             <FormInput.Label label="add project socials" isOptional />
-            <div className="grid grid-cols-2 gap-x-3 gap-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-6">
               <FormInput
                 type="text"
                 value={form.links.website}
