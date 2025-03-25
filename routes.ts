@@ -261,6 +261,31 @@ router.get('/tokens', async (req, res) => {
   }
 });
 
+
+// Get top tokens sorted by volume24h
+router.get("/tokens/top", async (req, res) => {
+  try {
+
+    const {
+      sortBy = 'volume24h',
+      limit = 6
+    } = req.query;
+    
+    const result = await getTokensWithPagination({
+      page: 1,
+      limit,
+      sortBy,
+      sortOrder: 'desc',
+      query: { status: { $ne: 'pending' } }
+    });
+
+    res.json(result.tokens);
+  } catch (error) {
+    logger.error('Error fetching top tokens:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get specific token via mint id
 router.get('/tokens/:mint', async (req, res) => {
   try {
