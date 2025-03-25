@@ -77,7 +77,7 @@ const FormLabel = ({
       <div className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
         {label}
       </div>
-      {isOptional && <div className="text-[#8c8c8c] text-xs">Optional</div>}
+      {isOptional && <div className="text-[#8c8c8c] text-[16px]">(Optional)</div>}
     </div>
   );
 };
