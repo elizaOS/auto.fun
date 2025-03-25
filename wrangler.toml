@@ -38,6 +38,11 @@ bindings = [
   { name = "WebSocketDO", class_name = "WebSocketDO" }
 ]
 
+# Migration tags
+[[migrations]]
+tag = "v1"
+new_classes = ["WebSocketDO"]
+
 # Development environment configuration
 [env.development]
 name = "api-dev"
@@ -76,3 +81,13 @@ bucket_name = "autofun-storage-dev"
 bindings = [
   { name = "WebSocketDO", class_name = "WebSocketDO" }
 ]
+
+# Add migrations for development environment
+[[env.development.migrations]]
+tag = "v1"
+new_classes = ["WebSocketDO"]
+
+# Production environment configuration
+[env.production]
+name = "api"
+# The production database is already defined in the default configuration

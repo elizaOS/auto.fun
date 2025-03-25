@@ -197,8 +197,9 @@ export const WalletProvider = ({
   children,
   autoConnect,
 }: PropsWithChildren<{ autoConnect: boolean }>) => {
+  console.log("import.meta.env.VITE_RPC_URL", import.meta.env.VITE_RPC_URL);
   return (
-    <ConnectionProvider endpoint={import.meta.env.VITE_RPC_URL}>
+    <ConnectionProvider endpoint={import.meta.env.VITE_RPC_URL || "https://api.devnet.solana.com"}>
       <SolanaWalletProvider wallets={[]} autoConnect={autoConnect}>
         <WalletModalProvider>{children}</WalletModalProvider>
       </SolanaWalletProvider>
