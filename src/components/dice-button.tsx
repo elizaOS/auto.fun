@@ -6,7 +6,11 @@ interface DiceButtonProps {
   className?: string;
 }
 
-export const DiceButton = ({ onClick, isLoading, className = "" }: DiceButtonProps) => {
+export const DiceButton = ({
+  onClick,
+  isLoading,
+  className = "",
+}: DiceButtonProps) => {
   return (
     <button
       type="button"
@@ -21,4 +25,4 @@ export const DiceButton = ({ onClick, isLoading, className = "" }: DiceButtonPro
       )}
     </button>
   );
-}; 
+};

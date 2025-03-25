@@ -1,9 +1,6 @@
 import SkeletonImage from "@/components/skeleton-image";
 import { IToken } from "@/types";
-import {
-  abbreviateNumber,
-  fromNow
-} from "@/utils";
+import { abbreviateNumber, fromNow } from "@/utils";
 import { Link } from "react-router";
 
 export default function GridView({ data }: { data: IToken[] }) {

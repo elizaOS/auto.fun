@@ -580,7 +580,7 @@ export const Create = () => {
   const generateMetadata = async (fields: string[]) => {
     try {
       setIsGenerating(true);
-      setGeneratingField(fields.join(','));
+      setGeneratingField(fields.join(","));
 
       // Get auth token from localStorage
       const authToken = localStorage.getItem("authToken");
@@ -610,14 +610,14 @@ export const Create = () => {
               creative: form.creative,
             },
           }),
-        }
+        },
       );
 
       if (!response.ok) {
         throw new Error("Failed to generate metadata");
       }
 
-      const data = await response.json() as GenerateMetadataResponse;
+      const data = (await response.json()) as GenerateMetadataResponse;
       const { metadata } = data;
 
       // Update form with generated data
@@ -639,14 +639,14 @@ export const Create = () => {
               prompt: metadata.creative,
               type: "image",
             }),
-          }
+          },
         );
 
         if (!imageResponse.ok) {
           throw new Error("Failed to generate image");
         }
 
-        const imageData = await imageResponse.json() as GenerateImageResponse;
+        const imageData = (await imageResponse.json()) as GenerateImageResponse;
         const imageUrl = imageData.mediaUrl;
 
         // Convert image URL to File object
@@ -661,7 +661,7 @@ export const Create = () => {
       alert(
         error instanceof Error
           ? error.message
-          : "Failed to generate metadata. Please try again."
+          : "Failed to generate metadata. Please try again.",
       );
     } finally {
       setIsGenerating(false);
@@ -774,7 +774,7 @@ export const Create = () => {
       alert(
         error instanceof Error
           ? error.message
-          : "Failed to create token. Please try again."
+          : "Failed to create token. Please try again.",
       );
     } finally {
       setIsSubmitting(false);
@@ -824,7 +824,10 @@ export const Create = () => {
       <div className="flex justify-end mb-4">
         <DiceButton
           onClick={generateAll}
-          isLoading={isGenerating && generatingField === "name,symbol,description,creative"}
+          isLoading={
+            isGenerating &&
+            generatingField === "name,symbol,description,creative"
+          }
         />
       </div>
 

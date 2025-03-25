@@ -32,5 +32,5 @@ createRoot(document.getElementById("root")!).render(
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
-  </Providers>
+  </Providers>,
 );
