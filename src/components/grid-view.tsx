@@ -1,7 +1,5 @@
 import BondingCurveBar from "@/components/bonding-curve-bar";
-import Button from "@/components/button";
 import CopyButton from "@/components/copy-button";
-import Divider from "@/components/divider";
 import SkeletonImage from "@/components/skeleton-image";
 import { IToken } from "@/types";
 import {
@@ -11,7 +9,6 @@ import {
   shortenAddress,
 } from "@/utils";
 import { Link } from "react-router";
-import ShowMoreText from "./show-more-text";
 
 export default function GridView({ data }: { data: IToken[] }) {
   return (

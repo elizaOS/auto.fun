@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
-import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
+import { useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
 
 // Add TypeScript declaration for CANNON to fix the errors
 declare module 'cannon-es' {
@@ -572,7 +572,7 @@ const DiceRoller = () => {
   return (
     <div 
       className="w-full h-[300px] relative overflow-hidden cursor-pointer mb-6" 
-      onClick={(e) => {
+      onClick={(_e) => {
         console.log("Outer container clicked");
         if (window.resetDice) window.resetDice();
       }}

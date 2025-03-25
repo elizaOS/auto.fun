@@ -139,21 +139,21 @@ export default function Header() {
   );
 }
 
-const NavLink = ({ title, href }: { title: string; href: string }) => {
-  const location = useLocation();
+// const NavLink = ({ title, href }: { title: string; href: string }) => {
+//   const location = useLocation();
 
-  return (
-    <Link to={href} className="px-3 py-2">
-      <div
-        className={twMerge([
-          "text-center justify-center text-base font-medium font-satoshi leading-tight transition-all duration-200",
-          location.pathname === href
-            ? "text-autofun-text-primary"
-            : "text-autofun-text-secondary",
-        ])}
-      >
-        {title}
-      </div>
-    </Link>
-  );
-};
+//   return (
+//     <Link to={href} className="px-3 py-2">
+//       <div
+//         className={twMerge([
+//           "text-center justify-center text-base font-medium font-satoshi leading-tight transition-all duration-200",
+//           location.pathname === href
+//             ? "text-autofun-text-primary"
+//             : "text-autofun-text-secondary",
+//         ])}
+//       >
+//         {title}
+//       </div>
+//     </Link>
+//   );
+// };

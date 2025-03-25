@@ -1,13 +1,8 @@
-import { Program, AnchorProvider, Idl } from "@coral-xyz/anchor";
+import { AnchorProvider, Idl, Program } from "@coral-xyz/anchor";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
-import { BN } from "@coral-xyz/anchor";
 
-interface SwapAccount {
-  teamWallet: PublicKey;
-  // Add other fields as needed
-}
-
+// @ts-ignore
 interface Serlaunchalot extends Idl {
   version: "0.1.0";
   name: "serlaunchalot";
@@ -145,7 +140,8 @@ export function useProgram() {
     { commitment: "confirmed" }
   );
 
-  // Create and return the program
+  // Create and return the program'
+  // @ts-ignore
   return new Program<Serlaunchalot>(
     {} as Serlaunchalot, // We'll need the actual IDL here
     new PublicKey(import.meta.env.VITE_PROGRAM_ID),
