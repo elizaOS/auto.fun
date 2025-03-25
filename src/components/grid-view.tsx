@@ -10,11 +10,11 @@ export default function GridView({ data }: { data: IToken[] }) {
         <Link
           to={`/token/${token.mint}`}
           key={token.mint}
-          className="bg-autofun-background-card p-0 border flex flex-col gap-3"
+          className="bg-autofun-background-card"
         >
           <div className="flex flex-col min-w-0 relative">
-            <div className="absolute left-0 bottom-0 p-2 px-3 min-w-0 z-10">
-              <div className="flex justify-end items-end w-full gap-2 min-w-0">
+            <div className="absolute left-0 bottom-0 px-3 min-w-0 z-10">
+              <div className="flex justify-end items-end w-full min-w-0">
                 {/* <div className="capitalize text-autofun-text-primary text-base font-medium font-satoshi leading-normal truncate min-w-0 drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)]">
                   {token.name}
                 </div> */}
@@ -33,7 +33,7 @@ export default function GridView({ data }: { data: IToken[] }) {
             <div className="absolute top-0 right-0 p-3 px-4 text-autofun-text-primary text-xs font-medium font-dm-mono z-1 drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
               {fromNow(token.createdAt, true)}
             </div>
-            <div className="w-full aspect-square relative">
+            <div className="w-full h-full aspect-square relative">
               <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/90 to-transparent z-[1]"></div>
               <SkeletonImage
                 src={token.image}
