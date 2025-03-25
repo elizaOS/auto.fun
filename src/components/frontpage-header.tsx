@@ -126,8 +126,11 @@ const DiceRoller = () => {
     const ambientLight = new THREE.AmbientLight(0x404040);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(5, 20, 7.5);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 2.0);
+
+    directionalLight.rotation.x = -Math.PI / 4; // 45 degrees pitched down
+    directionalLight.rotation.z = -Math.PI / 8; // 45 degrees pitched right
+    directionalLight.position.set(0, 5, 0);
     directionalLight.castShadow = true;
     directionalLight.shadow.camera.near = 0.5;
     directionalLight.shadow.camera.far = 50;
@@ -135,6 +138,7 @@ const DiceRoller = () => {
     directionalLight.shadow.camera.right = 20;
     directionalLight.shadow.camera.top = 50;
     directionalLight.shadow.camera.bottom = -20;
+    directionalLight.updateMatrix();
     scene.add(directionalLight);
 
     // Floor (dice box)
@@ -143,7 +147,7 @@ const DiceRoller = () => {
       color: 0x000000,
       roughness: 0.8,
       transparent: true,
-      opacity: 0.2, // Make floor semi-transparent
+      opacity: 0.8, // Make floor semi-transparent
     });
     const floor = new THREE.Mesh(floorGeometry, floorMeshMaterial);
     floor.position.y = -0.5;
@@ -438,7 +442,7 @@ const DiceRoller = () => {
 
     // Add event listener for the roll button
     const handleReset = () => {
-      throwDice();
+      // throwDice();
     };
 
     // Expose reset function to window so the button can access it
@@ -446,7 +450,9 @@ const DiceRoller = () => {
 
     // Screen press for throwing dice
     const applyForceToAllDice = (event: MouseEvent) => {
-      if (isLoading) return;
+      console.log("applyForceToAllDice", event);
+      // if (isLoading) return;
+      // console.log("isLoading", isLoading);
 
       event.preventDefault();
       console.log("Applying force to dice", event.clientX, event.clientY);
@@ -458,9 +464,9 @@ const DiceRoller = () => {
 
         // Simple upward force with some randomness
         const forceVector = new CANNON.Vec3(
-          (Math.random() - 0.5) * 100,
-          Math.random() * 10,
-          (Math.random() - 0.5) * 100,
+          (Math.random() - 0.5) * 200,
+          Math.random() * 50,
+          (Math.random() - 0.5) * 200,
         );
 
         // Apply direct velocity instead of impulse for more immediate effect
@@ -468,63 +474,36 @@ const DiceRoller = () => {
 
         // Add extreme random spin
         dieBody.angularVelocity.set(
-          (Math.random() - 0.5) * 100,
-          (Math.random() - 0.5) * 100,
-          (Math.random() - 0.5) * 100,
+          (Math.random() - 0.5) * 10,
+          (Math.random() - 0.5) * 10,
+          (Math.random() - 0.5) * 10,
         );
 
         console.log("Set velocity:", forceVector);
       }
 
       // Add screen shake effect
-      const originalCameraPos = camera.position.clone();
-      const shakeAmount = 2.0;
+      // const originalCameraPos = camera.position.clone();
+      // const shakeAmount = 2.0;
 
-      camera.position.x += (Math.random() * 2 - 1) * shakeAmount;
-      camera.position.z += (Math.random() * 2 - 1) * shakeAmount;
+      // camera.position.x += (Math.random() * 2 - 1) * shakeAmount;
+      // camera.position.z += (Math.random() * 2 - 1) * shakeAmount;
 
-      setTimeout(() => {
-        camera.position.copy(originalCameraPos);
-      }, 200);
+      // setTimeout(() => {
+      //   camera.position.copy(originalCameraPos);
+      // }, 200);
 
       // Also trigger a throwDice for guaranteed effect
-      throwDice();
+      // throwDice();
     };
 
     // Event listeners - add multiple types of event listeners to ensure it works
-    containerRef.current.addEventListener("mousedown", applyForceToAllDice);
+    // containerRef.current.addEventListener("mousedown", applyForceToAllDice);
     containerRef.current.addEventListener("click", applyForceToAllDice);
     containerRef.current.addEventListener(
       "touchstart",
       applyForceToAllDice as any,
     );
-
-    // Add direct event handler to the renderer's DOM element
-    renderer.domElement.addEventListener("mousedown", applyForceToAllDice);
-    renderer.domElement.addEventListener("click", applyForceToAllDice);
-    renderer.domElement.addEventListener(
-      "touchstart",
-      applyForceToAllDice as any,
-    );
-
-    // Add a global window click listener as a last resort
-    const globalClickHandler = (e: MouseEvent) => {
-      // Only handle if the click is within the bounds of our container
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        if (
-          e.clientX >= rect.left &&
-          e.clientX <= rect.right &&
-          e.clientY >= rect.top &&
-          e.clientY <= rect.bottom
-        ) {
-          console.log("Global click handler triggered");
-          throwDice();
-        }
-      }
-    };
-
-    window.addEventListener("click", globalClickHandler);
 
     // Handle window resize
     const onWindowResize = () => {
@@ -552,27 +531,12 @@ const DiceRoller = () => {
     // Cleanup on unmount
     return () => {
       if (containerRef.current) {
-        containerRef.current.removeEventListener(
-          "mousedown",
-          applyForceToAllDice,
-        );
         containerRef.current.removeEventListener("click", applyForceToAllDice);
         containerRef.current.removeEventListener(
           "touchstart",
           applyForceToAllDice as any,
         );
       }
-
-      // Also remove from renderer element
-      renderer.domElement.removeEventListener("mousedown", applyForceToAllDice);
-      renderer.domElement.removeEventListener("click", applyForceToAllDice);
-      renderer.domElement.removeEventListener(
-        "touchstart",
-        applyForceToAllDice as any,
-      );
-
-      // Remove global listener
-      window.removeEventListener("click", globalClickHandler);
 
       window.removeEventListener("resize", onWindowResize);
 
@@ -589,7 +553,7 @@ const DiceRoller = () => {
       className="w-full h-[300px] relative overflow-hidden cursor-pointer mb-6"
       onClick={(_e) => {
         console.log("Outer container clicked");
-        if (window.resetDice) window.resetDice();
+        // if (window.resetDice) window.resetDice();
       }}
     >
       {/* SVG background placed below the canvas */}
