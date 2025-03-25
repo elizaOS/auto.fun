@@ -20,7 +20,7 @@ export default function TokenStatus({ token }: { token: IToken }) {
   const variantStatus: Record<IToken["status"], TVariant> = {
     active: "info",
     harvested: "info",
-    locked: "info",
+    locked: "info", 
     migrated: "info",
     migrating: "warning",
     migration_failed: "destructive",
@@ -39,7 +39,7 @@ export default function TokenStatus({ token }: { token: IToken }) {
   return (
     <div
       className={twMerge([
-        "w-full flex items-center justify-center py-2 rounded-md text-sm font-dm-mono select-none",
+        "flex items-center justify-center p-2 rounded-xl text-sm font-dm-mono select-none ml-auto",
         variants[variantStatus[status]],
       ])}
     >

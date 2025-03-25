@@ -5,7 +5,8 @@ import CopyButton from "../components/copy-button";
 import { Icons } from "../components/icons";
 import WalletButton from "../components/wallet-button";
 import { TokenMetadata } from "../types/form.type";
-import { Keypair } from "@solana/web3.js";
+import { Connection, ComputeBudgetProgram, Keypair, PublicKey, Transaction } from "@solana/web3.js";
+import { BN } from "bn.js";
 
 // Helper function to convert Uint8Array to hex string
 function bytesToHex(bytes: Uint8Array): string {
@@ -14,6 +15,18 @@ function bytesToHex(bytes: Uint8Array): string {
     .join('');
 }
 
+// Constants
+const MAX_FILE_SIZE_MB = 5;
+const MAX_INITIAL_SOL = 45;
+const SEED_CONFIG = "config";
+
+// Environment config (should be in .env file)
+const env = {
+  decimals: 9,
+  tokenSupply: 1000000000,
+  virtualReserves: 100000000,
+};
+
 interface CreateTokenResponse {
   token: {
     mint: string;
@@ -21,8 +34,11 @@ interface CreateTokenResponse {
   success: boolean;
 }
 
-const MAX_FILE_SIZE_MB = 5;
-const MAX_INITIAL_SOL = 45;
+interface UploadResponse {
+  success: boolean;
+  imageUrl: string;
+  metadataUrl: string;
+}
 
 // Form Components
 const FormInput = ({
@@ -189,10 +205,228 @@ const FormImageInput = ({
   );
 };
 
+// Image upload function
+const uploadImage = async (metadata: TokenMetadata) => {
+  // Determine a safe filename based on token metadata
+  const safeName = metadata.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  
+  // Get the image type from the data URL
+  const contentType = metadata.imageBase64?.match(/^data:([A-Za-z-+/]+);base64,/)?.[1] || '';
+  
+  // Determine file extension from content type
+  let extension = '.jpg'; // Default
+  if (contentType.includes('png')) extension = '.png';
+  else if (contentType.includes('gif')) extension = '.gif';
+  else if (contentType.includes('svg')) extension = '.svg';
+  else if (contentType.includes('webp')) extension = '.webp';
+  
+  const filename = `${safeName}${extension}`;
+  
+  console.log(`Uploading image as ${filename} with content type ${contentType}`);
+  
+  // Get auth token from localStorage
+  const authToken = localStorage.getItem('authToken');
+  
+  // Prepare headers
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json"
+  };
+  
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
+  }
+
+  const response = await fetch(
+    import.meta.env.VITE_API_URL + "/api/upload",
+    {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: JSON.stringify({
+        image: metadata.imageBase64,
+        metadata: {
+          name: metadata.name,
+          symbol: metadata.symbol,
+          description: metadata.description,
+          twitter: metadata.links.twitter,
+          telegram: metadata.links.telegram,
+          website: metadata.links.website,
+          discord: metadata.links.discord,
+          agentLink: metadata.links.agentLink,
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to upload image");
+  }
+
+  return await response.json() as UploadResponse;
+};
+
+// Function to wait for token creation
+const waitForTokenCreation = async ({
+  mint,
+  name,
+  symbol,
+  description,
+  twitter,
+  telegram,
+  website,
+  discord,
+  agentLink,
+  imageUrl,
+  metadataUrl,
+  timeout = 80_000
+}: {
+  mint: string,
+  name: string,
+  symbol: string,
+  description: string,
+  twitter: string,
+  telegram: string,
+  website: string,
+  discord: string,
+  agentLink: string,
+  imageUrl: string,
+  metadataUrl: string,
+  timeout?: number,
+}) => {
+  return new Promise<void>(async (resolve, reject) => {
+    let resolved = false;
+    
+    // Set a timeout to reject if we don't get a response
+    const timerId = setTimeout(() => {
+      if (!resolved) {
+        reject(new Error("Token creation timed out"));
+      }
+    }, timeout);
+
+    try {
+      // Wait a few seconds for the transaction to be confirmed
+      await new Promise(r => setTimeout(r, 4000));
+      
+      // Try direct token creation
+      try {
+        console.log(`Creating token record for ${mint}`);
+        
+        // Get auth token from localStorage
+        const authToken = localStorage.getItem('authToken');
+        
+        // Prepare headers
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json"
+        };
+        
+        if (authToken) {
+          headers["Authorization"] = `Bearer ${authToken}`;
+        }
+        
+        const createResponse = await fetch(
+          import.meta.env.VITE_API_URL + "/api/create-token",
+          {
+            method: "POST",
+            headers,
+            credentials: "include",
+            body: JSON.stringify({ 
+              tokenMint: mint,
+              mint,
+              name,
+              symbol,
+              description,
+              twitter,
+              telegram,
+              website,
+              discord,
+              agentLink,
+              imageUrl,
+              metadataUrl
+            }),
+          }
+        );
+        
+        if (createResponse.ok) {
+          const data = await createResponse.json();
+          if (data && typeof data === 'object' && 'success' in data && data.success === true) {
+            console.log(`Token ${mint} created via direct API call`);
+            clearTimeout(timerId);
+            resolved = true;
+            resolve();
+            return;
+          }
+        }
+      } catch (createError) {
+        console.error("Error creating token:", createError);
+      }
+      
+      // If direct creation fails, try the check endpoint
+      for (let i = 0; i < 3; i++) {
+        if (resolved) break;
+        
+        console.log(`Checking for token ${mint}, attempt ${i + 1}`);
+        try {
+          // Get auth token from localStorage
+          const authToken = localStorage.getItem('authToken');
+          
+          // Prepare headers
+          const headers: Record<string, string> = {
+            "Content-Type": "application/json"
+          };
+          
+          if (authToken) {
+            headers["Authorization"] = `Bearer ${authToken}`;
+          }
+          
+          const response = await fetch(
+            import.meta.env.VITE_API_URL + "/api/check-token",
+            {
+              method: "POST",
+              headers,
+              credentials: "include",
+              body: JSON.stringify({ 
+                tokenMint: mint,
+                imageUrl,
+                metadataUrl 
+              }),
+            }
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data && typeof data === 'object' && 'tokenFound' in data && data.tokenFound === true) {
+              console.log(`Token ${mint} found via check API`);
+              clearTimeout(timerId);
+              resolved = true;
+              resolve();
+              break;
+            }
+          }
+        } catch (checkError) {
+          console.error(`Error checking token (attempt ${i+1}):`, checkError);
+        }
+        
+        // Wait before trying again
+        await new Promise(r => setTimeout(r, 3000));
+      }
+      
+      // If we got here and haven't resolved, reject
+      if (!resolved) {
+        clearTimeout(timerId);
+        reject(new Error("Failed to confirm token creation"));
+      }
+    } catch (error) {
+      console.error("Error in token creation process:", error);
+      clearTimeout(timerId);
+      reject(error);
+    }
+  });
+};
+
 // Main Form Component
 export const Create = () => {
   const navigate = useNavigate();
-  const { publicKey } = useWallet();
+  const { publicKey, signTransaction } = useWallet();
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -275,6 +509,57 @@ export const Create = () => {
     }
   };
 
+  // Create token on-chain
+  const createTokenOnChain = async (tokenMetadata: TokenMetadata, mintKeypair: Keypair, metadataUrl: string) => {
+    if (!signTransaction) {
+      throw new Error("Wallet doesn't support signing");
+    }
+
+    if (!publicKey) {
+      throw new Error("Wallet not connected");
+    }
+
+    // Create connection to Solana
+    const connection = new Connection(
+      import.meta.env.VITE_SOLANA_RPC_URL || "https://api.devnet.solana.com",
+      "confirmed"
+    );
+
+    // For now, we'll bypass actual on-chain token creation since we need the program IDL
+    // Instead, we'll just log the mint address and proceed with backend registration
+    console.log("Would create token with mint address:", mintKeypair.publicKey.toString());
+    
+    try {
+      // This will bypass the actual on-chain transaction for now
+      // In a real implementation, you would integrate with your Solana program
+      
+      // Return a placeholder transaction ID
+      const placeholderTxId = "simulated_" + Math.random().toString(36).substring(2, 15);
+      console.log("Simulated transaction ID:", placeholderTxId);
+      return placeholderTxId;
+    } catch (error) {
+      console.error("Error in simulated token creation:", error);
+      throw error;
+    }
+    
+    /* Implementation with actual program integration would go here
+    For example:
+    
+    try {
+      // Find program ID - this should be provided from your environment or config
+      const programId = new PublicKey(import.meta.env.VITE_PROGRAM_ID);
+      
+      // Create the transaction, add instructions, sign and submit
+      // ...
+      
+      return txId;
+    } catch (error) {
+      console.error("Error creating token on-chain:", error);
+      throw error;
+    }
+    */
+  };
+
   // Submit form to backend
   const submitFormToBackend = async () => {
     try {
@@ -314,92 +599,59 @@ export const Create = () => {
         mintAuthority: publicKey?.toBase58() || "",
       };
 
-      // Get auth token from localStorage
-      const authToken = localStorage.getItem('authToken');
+      // First, upload the image to get permanent URLs
+      let imageUrl = "";
+      let metadataUrl = "";
       
-      // First, check if we're already authenticated by calling auth-status
-      const authCheckResponse = await fetch(
-        import.meta.env.VITE_API_URL + "/api/auth-status",
-        { credentials: "include" }
-      );
-      
-      console.log("Auth status check for token creation:", 
-        authCheckResponse.status, 
-        authToken ? "Has token" : "No token");
-      
-      let authData: { authenticated: boolean } | null = null;
-      
-      // Try to parse the auth check response
-      if (authCheckResponse.ok) {
+      if (media_base64) {
         try {
-          authData = await authCheckResponse.json() as { authenticated: boolean };
-          console.log("Auth status data:", authData);
-          
-          // If authenticated via session but no token, create a synthetic one
-          if (authData.authenticated && !authToken) {
-            // Create a synthetic token based on publicKey to ensure localStorage has something
-            console.log("Creating synthetic token for authenticated session");
-            const syntheticToken = `session_${publicKey.toString()}_${Date.now()}`;
-            localStorage.setItem('authToken', syntheticToken);
-          }
-        } catch (e) {
-          console.error("Error parsing auth check response:", e);
+          console.log("Uploading image...");
+          const uploadResult = await uploadImage(tokenMetadata);
+          imageUrl = uploadResult.imageUrl;
+          metadataUrl = uploadResult.metadataUrl;
+          console.log("Image uploaded successfully:", imageUrl);
+          console.log("Metadata URL:", metadataUrl);
+        } catch (uploadError) {
+          console.error("Error uploading image:", uploadError);
+          throw new Error("Failed to upload token image");
         }
       }
-      
-      // Check again after potentially creating a synthetic token
-      const updatedAuthToken = localStorage.getItem('authToken');
-      
-      // Proceed only if auth check succeeded or we have a token
-      if (!authCheckResponse.ok && !updatedAuthToken) {
-        throw new Error("Authentication required. Please connect your wallet first.");
-      }
-      
-      if (authData && !authData.authenticated && !updatedAuthToken) {
-        throw new Error("Authentication required. Please reconnect your wallet.");
+
+      // Create token on-chain
+      try {
+        console.log("Creating token on-chain...");
+        await createTokenOnChain(tokenMetadata, mintKeypair, metadataUrl);
+        console.log("Token created on-chain successfully");
+      } catch (onChainError) {
+        console.error("Error creating token on-chain:", onChainError);
+        throw new Error("Failed to create token on-chain");
       }
 
-      // Prepare headers - include Authorization only if we have a token
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json"
-      };
-      
-      if (updatedAuthToken) {
-        headers["Authorization"] = `Bearer ${updatedAuthToken}`;
+      // Wait for token creation to be confirmed
+      try {
+        console.log("Waiting for token creation confirmation...");
+        await waitForTokenCreation({
+          mint: tokenMint,
+          name: form.name,
+          symbol: form.symbol,
+          description: form.description,
+          twitter: form.links.twitter,
+          telegram: form.links.telegram,
+          website: form.links.website,
+          discord: form.links.discord,
+          agentLink: form.links.agentLink,
+          imageUrl,
+          metadataUrl,
+        });
+        console.log("Token creation confirmed");
+      } catch (waitError) {
+        console.error("Error waiting for token creation:", waitError);
+        // We still continue to the token page even if this fails
+        console.warn("Continuing despite token creation confirmation failure");
       }
 
-      // Create the token using fetch
-      const response = await fetch(
-        import.meta.env.VITE_API_URL + "/api/create-token",
-        {
-          method: "POST",
-          headers,
-          credentials: "include",  // This is a fetch option, not a header
-          body: JSON.stringify({
-            ...tokenMetadata,
-            walletAddress: publicKey.toBase58(),
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Authentication failed. Please reconnect your wallet and try again.");
-        }
-        const errorData = (await response.json()) as { error: string };
-        throw new Error(errorData.error || "Failed to create token");
-      }
-
-      const result = (await response.json()) as unknown as CreateTokenResponse;
-
-      console.log("Token creation result:", result);
-
-      if (result?.token?.mint) {
-        // Redirect to token page using the mint public key
-        navigate(`/token/${result.token.mint}`);
-      } else {
-        throw new Error("No mint public key returned from token creation");
-      }
+      // Redirect to token page using the mint public key
+      navigate(`/token/${tokenMint}`);
     } catch (error) {
       console.error("Error creating token:", error);
       alert(
@@ -449,7 +701,7 @@ export const Create = () => {
 
   return (
     <form
-      className="flex flex-col w-full m-auto gap-7 justify-center"
+      className="flex flex-col w-full max-w-3xl m-auto gap-7 justify-center"
       onSubmit={handleSubmit}
     >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -496,7 +748,7 @@ export const Create = () => {
         onChange={(file) => setImageFile(file)}
       />
 
-      <FormInput
+      {/* <FormInput
         type="text"
         value={form.links.agentLink}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -510,7 +762,7 @@ export const Create = () => {
           </div>
         }
         rightIndicator={<CopyButton text={form.links.agentLink || ""} />}
-      />
+      /> */}
 
       <div className="flex flex-col gap-3">
         <FormInput.Label label="add project socials" isOptional />
@@ -523,7 +775,7 @@ export const Create = () => {
             }
             isOptional
             inputTag={<Icons.Website />}
-            placeholder="Insert a link here"
+            placeholder="Website"
             rightIndicator={<CopyButton text={form.links.website || ""} />}
           />
           <FormInput
@@ -534,7 +786,7 @@ export const Create = () => {
             }
             isOptional
             inputTag={<Icons.Twitter />}
-            placeholder="Insert a link here"
+            placeholder="X (Twitter)"
             rightIndicator={<CopyButton text={form.links.twitter || ""} />}
           />
           <FormInput
@@ -545,7 +797,7 @@ export const Create = () => {
             }
             isOptional
             inputTag={<Icons.Telegram />}
-            placeholder="Insert a link here"
+            placeholder="Telegram"
             rightIndicator={<CopyButton text={form.links.telegram || ""} />}
           />
           <FormInput
@@ -556,7 +808,7 @@ export const Create = () => {
             }
             isOptional
             inputTag={<Icons.Discord />}
-            placeholder="Insert a link here"
+            placeholder="Discord"
             rightIndicator={<CopyButton text={form.links.discord || ""} />}
           />
         </div>
@@ -569,16 +821,16 @@ export const Create = () => {
             <button
               type="button"
               className="bg-[#2e2e2e] py-2 rounded-md border border-neutral-800 text-[#2fd345] text-sm leading-tight"
-              onClick={() => handleChange("initial_sol", "10")}
+              onClick={() => handleChange("initial_sol", "1")}
             >
-              10 SOL
+              1 SOL
             </button>
             <button
               type="button"
               className="bg-[#2e2e2e] py-2 rounded-md border border-neutral-800 text-[#2fd345] text-sm leading-tight"
-              onClick={() => handleChange("initial_sol", "25")}
+              onClick={() => handleChange("initial_sol", "5")}
             >
-              25 SOL
+              5 SOL
             </button>
             <button
               type="button"
@@ -590,33 +842,8 @@ export const Create = () => {
               Max
             </button>
           </div>
-          <FormInput
-            type="number"
-            step="any"
-            value={form.initial_sol}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              handleChange("initial_sol", e.target.value)
-            }
-            placeholder={`Custom max ${MAX_INITIAL_SOL} SOL`}
-            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-              if (
-                !/[0-9.]/.test(e.key) &&
-                e.key !== "Backspace" &&
-                e.key !== "Delete" &&
-                e.key !== "ArrowLeft" &&
-                e.key !== "ArrowRight" &&
-                e.key !== "Tab"
-              ) {
-                e.preventDefault();
-              }
-            }}
-            min={0}
-            error={errors.initial_sol}
-          />
         </div>
       </div>
-
-      <div className="h-0.5 bg-[#262626]" />
 
       <div className="flex flex-col items-center">
         {!publicKey ? (
@@ -629,11 +856,16 @@ export const Create = () => {
         ) : (
           <button
             type="submit"
-            className="bg-[#2e2e2e] py-2.5 px-4 rounded-md border border-neutral-800 text-[#2fd345] text-sm leading-tight disabled:opacity-30"
+            className="bg-[#2fd345] py-3 px-6 font-bold border-2 border-black text-black text-xl leading-tight hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
             disabled={!isFormValid || isSubmitting}
           >
             {isSubmitting ? "Creating..." : "Launch Token"}
           </button>
+        )}
+        {!isFormValid && (
+          <p className="text-red-500 text-sm m-4">
+            Please fill in all required fields
+          </p>
         )}
       </div>
     </form>

@@ -30,7 +30,7 @@ export default function Trade({ token }: { token: IToken }) {
               error ? "border-autofun-text-error" : "",
             ])}
           >
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-base font-dm-mono text-autofun-text-primary select-none">
                 Selling
               </span>
@@ -40,7 +40,8 @@ export default function Trade({ token }: { token: IToken }) {
                   variant="trade"
                   onClick={() => setSellingAmount(0)}
                 >
-                  Reset
+                  <span className="hidden sm:inline">Reset</span>
+                  <span className="sm:hidden">0</span>
                 </Button>
                 {isTokenSelling ? (
                   <Fragment>
