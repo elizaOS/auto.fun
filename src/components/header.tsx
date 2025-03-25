@@ -1,6 +1,5 @@
 import { Link, useLocation } from "react-router";
 import { twMerge } from "tailwind-merge";
-import { HowItWorksDialog } from "./how-it-works-dialog";
 import SearchBar from "./search-bar";
 import Button from "./button";
 import { CloseButton, Dialog, DialogPanel } from "@headlessui/react";
