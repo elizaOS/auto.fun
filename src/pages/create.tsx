@@ -697,7 +697,7 @@ export const Create = () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen">
-      <div className="max-w-[800px] h-fit bg-autofun-background-card border-1 rounded-md border-white/10 p-12">
+      <div className="max-w-[800px] h-fit bg-autofun-background-card border-1 rounded-md border-white/10 p-3">
         <div className="flex flex-col gap-y-4">
           <div className="text-autofun-background-action-highlight font-medium text-[32px]">
             Create Token
@@ -862,7 +862,7 @@ export const Create = () => {
           </div>
 
           <div className="flex flex-col mt-4 gap-y-6 items-center">
-            <div className="border-[1px] border-white/10 w-full"></div>
+            <div className="border-[1px] border-white/5 w-full"></div>
             {!publicKey ? (
               <WalletButton />
             ) : (
@@ -875,7 +875,7 @@ export const Create = () => {
               </button>
             )}
             {!isFormValid && (
-              <p className="text-red-500 text-sm m-4">
+              <p className="text-red-500 text-sm">
                 Please fill in all required fields
               </p>
             )}
