@@ -8,7 +8,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { debounce } from "lodash";
 import { IToken } from "@/types";
 import { useOutsideClickDetection } from "@/hooks/use-outside-clickdetection";
-
+import { getSearchTokens } from "@/utils/api";
+import { useQuery } from "@tanstack/react-query";
 
 export default function SearchBar({ isMobile }: { isMobile: boolean }) {
   const [searchResults, setSearchResults] = useState<IToken[] | []>([]);
@@ -21,71 +22,72 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
     setSearchResults([]);
   });
 
-
   // const query = useQuery({
   //   queryKey: ["search-tokens", search],
   //   queryFn: async () => {
   //     const data = await getSearchTokens({ search });
-  //     return data as { tokens: IToken[]}
+  //     return data as { tokens: IToken[] };
   //   },
   // });
-  
+
   const tokens = [
     {
       mint: "9sT3Lx5NmW",
       name: "Alien Coin",
-      image: "https://png.pngtree.com/png-vector/20190223/ourmid/pngtree-vector-picture-icon-png-image_695350.jpg",
+      image:
+        "https://png.pngtree.com/png-vector/20190223/ourmid/pngtree-vector-picture-icon-png-image_695350.jpg",
       inferenceCount: 98,
       lastUpdated: "2024-10-01",
       marketCapUSD: 180000,
-      ticker: "TICKET"
+      ticker: "TICKET",
     },
     {
       mint: "9sT3Lx5NmW",
       name: "Alien Coin",
-      image: "https://png.pngtree.com/png-vector/20190223/ourmid/pngtree-vector-picture-icon-png-image_695350.jpg",
+      image:
+        "https://png.pngtree.com/png-vector/20190223/ourmid/pngtree-vector-picture-icon-png-image_695350.jpg",
       inferenceCount: 98,
       lastUpdated: "2024-10-01",
       marketCapUSD: 180000,
-      ticker: "TICKET"
+      ticker: "TICKET",
     },
   ] as IToken[];
-  // query?.data?.tokens
+
+  // const tokens = query?.data?.tokens as IToken[];
 
   const handleSearch = useRef(
     debounce((query: string) => {
-      setSearchResults(tokens)
+      setSearchResults(tokens);
       setSearch(query);
-    }, 300),
+    }, 300)
   ).current;
-  
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setShowSearchResults(true)
+    setShowSearchResults(true);
     handleSearch(value);
   };
-  
+
   useEffect(() => {
     return () => {
       handleSearch.cancel();
     };
   }, [handleSearch]);
-  
+
   useLayoutEffect(
     function hideBodyScrollBar() {
       const { overflow } = window.getComputedStyle(document.body);
-  
+
       if (showMobileSearch) {
         document.body.style.overflow = "hidden";
       }
-  
+
       return () => {
         document.body.style.overflow = overflow;
       };
     },
     [showMobileSearch]
   );
-
 
   if (isMobile) {
     return (
@@ -112,7 +114,7 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
             </div>
             {showSearchResults && (
               <div
-                className="w-full bg-neutral-900 px-4 rounded-b-lg flex flex-col flex-1 gap-6 mt-[14px] overflow-y-scroll no-scrollbar"
+                className="w-full bg-neutral-900 px-4 rounded-b-lg flex flex-col flex-1 gap-3 mt-[14px] overflow-y-scroll no-scrollbar"
                 ref={ref}
               >
                 <div className="text-[#03ff24] text-xs font-normal uppercase leading-none tracking-widest">
@@ -155,7 +157,7 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
 
       {showSearchResults && (
         <div
-          className="absolute w-full p-3.5 bg-[#171717] rounded-lg border border-[#262626] flex flex-col gap-6 mt-2 max-h-[60vh] overflow-auto z-50 shadow-lg"
+          className="absolute w-full p-3.5 bg-[#171717] rounded-lg border border-[#262626] flex flex-col gap-3 mt-2 max-h-[60vh] overflow-auto z-50 shadow-lg"
           ref={ref}
         >
           <div className="text-[16px] font-normal leading-none tracking-widest">
@@ -205,8 +207,8 @@ const AgentSearchResult = ({
           <div className="text-white text-[16px] font-medium group-hover:text-[#2FD345] transition-colors">
             {name}
             <span className="px-2  text-[#8C8C8C] text-[16px] uppercase tracking-widest group-hover:text-white/80 transition-colors">
-            ${symbol}
-          </span>
+              ${symbol}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="text-[#8C8C8C] text-xs group-hover:text-white/70 transition-colors">
