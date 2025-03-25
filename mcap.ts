@@ -22,7 +22,7 @@ let lastUpdateTime: Date | null = null;
 
 let cachedSolPrice: number = 0;
 let lastSolPriceFetchTime: number = 0;
-const SOL_PRICE_CACHE_TTL = 5 * 1000; // 5 seconds cache TTL
+const SOL_PRICE_CACHE_TTL = 500; // 500ms cache TTL
 
 export async function getSOLPrice(): Promise<number> {
   const now = Date.now();
