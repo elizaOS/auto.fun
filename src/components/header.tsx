@@ -37,8 +37,8 @@ export default function Header() {
             <Link to="/" className="mr-6">
               <img className="size-10" src="/logo.png" />
             </Link>
-            <NavLink title="Tokens" href="/" />
-            <HowItWorksDialog />
+            {/* <NavLink title="Tokens" href="/" /> */}
+            {/* <HowItWorksDialog /> */}
           </div>
           <div className="flex w-1/2 space-x-4 flex-row justify-between">
             <SearchBar isMobile={false} />
