@@ -17,7 +17,7 @@ export const DiceButton = ({ onClick, isLoading, className = "" }: DiceButtonPro
       {isLoading ? (
         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
       ) : (
-        <Icons.Dice className="w-5 h-5 text-black" />
+        <Icons.Dice />
       )}
     </button>
   );
