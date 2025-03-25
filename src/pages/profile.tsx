@@ -127,13 +127,13 @@ export default function Profile() {
           isSelected={selectedTab === "held"}
           onClick={() => setSelectedTab("held")}
         >
-          Agents Held
+          Autos Held
         </TabButton>
         <TabButton
           isSelected={selectedTab === "created"}
           onClick={() => setSelectedTab("created")}
         >
-          Agents Created
+          Autos Created
         </TabButton>
       </div>
 

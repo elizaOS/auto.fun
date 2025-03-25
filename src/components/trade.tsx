@@ -146,14 +146,16 @@ export default function Trade({ token }: { token: IToken }) {
 
         <div
           className={twMerge([
-            "flex items-center gap-2 h-4 transition-opacity duration-200",
-            error ? "opacity-100" : "opacity-0",
+            "flex items-center gap-2 h-4 m-2",
+            error ? "block" : "hidden"
           ])}
         >
-          <Info className="text-autofun-text-error size-4" />
-          <p className="text-autofun-text-error text-xs font-dm-mono">
-            Insufficient Funds: You have 0.0043 SOL
-          </p>
+          <div className="flex items-center gap-2">
+            <Info className="text-autofun-text-error size-4" />
+            <p className="text-autofun-text-error text-xs font-dm-mono">
+              Insufficient Funds: You have 0.0043 SOL
+            </p>
+          </div>
         </div>
         <Button
           variant="secondary"
@@ -162,9 +164,6 @@ export default function Trade({ token }: { token: IToken }) {
           disabled={isDisabled}
         >
           Swap
-        </Button>
-        <Button variant="secondary" className="font-dm-mono" size="large">
-          Connect
         </Button>
       </div>
     </div>

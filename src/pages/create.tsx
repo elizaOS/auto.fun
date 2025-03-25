@@ -748,7 +748,7 @@ export const Create = () => {
         onChange={(file) => setImageFile(file)}
       />
 
-      {/* <FormInput
+      <FormInput
         type="text"
         value={form.links.agentLink}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -762,7 +762,7 @@ export const Create = () => {
           </div>
         }
         rightIndicator={<CopyButton text={form.links.agentLink || ""} />}
-      /> */}
+      />
 
       <div className="flex flex-col gap-3">
         <FormInput.Label label="add project socials" isOptional />
@@ -816,31 +816,34 @@ export const Create = () => {
 
       <div className="flex flex-col gap-3">
         <FormInput.Label label="buy your coin" isOptional />
-        <div className="grid grid-cols-2 gap-3 items-start">
-          <div className="grid grid-cols-3 gap-3 h-[46px]">
-            <button
-              type="button"
-              className="bg-[#2e2e2e] py-2 rounded-md border border-neutral-800 text-[#2fd345] text-sm leading-tight"
-              onClick={() => handleChange("initial_sol", "1")}
-            >
-              1 SOL
-            </button>
-            <button
-              type="button"
-              className="bg-[#2e2e2e] py-2 rounded-md border border-neutral-800 text-[#2fd345] text-sm leading-tight"
-              onClick={() => handleChange("initial_sol", "5")}
-            >
-              5 SOL
-            </button>
-            <button
-              type="button"
-              className="bg-[#2e2e2e] py-2 rounded-md border border-neutral-800 text-[#2fd345] text-sm leading-tight"
-              onClick={() =>
-                handleChange("initial_sol", MAX_INITIAL_SOL.toString())
-              }
-            >
-              Max
-            </button>
+        <div className="flex items-center gap-4">
+          <input
+            type="range"
+            min="0"
+            max={MAX_INITIAL_SOL}
+            step="0.1"
+            value={form.initial_sol || "0"}
+            onChange={(e) => handleChange("initial_sol", e.target.value)}
+            className="flex-1 h-2 bg-[#2e2e2e] rounded-lg appearance-none cursor-pointer accent-[#2fd345]"
+          />
+          <div className="relative">
+            <input
+              type="number"
+              value={form.initial_sol}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === "" || (parseFloat(value) >= 0 && parseFloat(value) <= MAX_INITIAL_SOL)) {
+                  handleChange("initial_sol", value);
+                }
+              }}
+              min="0"
+              max={MAX_INITIAL_SOL}
+              step="0.1"
+              className="w-27 px-2 py-2 pr-14 bg-[#2e2e2e] rounded-md text-[#2fd345] text-xl font-medium text-right"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#2fd345] text-xl font-medium">
+              SOL
+            </span>
           </div>
         </div>
       </div>
@@ -856,7 +859,7 @@ export const Create = () => {
         ) : (
           <button
             type="submit"
-            className="bg-[#2fd345] py-3 px-6 font-bold border-2 border-black text-black text-xl leading-tight hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
+            className="bg-[#2fd345] py-3 px-6 font-bold border-2 text-black rounded-md text-[1.8em] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
             disabled={!isFormValid || isSubmitting}
           >
             {isSubmitting ? "Creating..." : "Launch Token"}
