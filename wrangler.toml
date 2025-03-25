@@ -41,7 +41,6 @@ bindings = [
 # Migration tags
 [[migrations]]
 tag = "v1"
-new_classes = ["WebSocketDO"]
 
 # Development environment configuration
 [env.development]
@@ -85,7 +84,6 @@ bindings = [
 # Add migrations for development environment
 [[env.development.migrations]]
 tag = "v1"
-new_classes = ["WebSocketDO"]
 
 # Production environment configuration
 [env.production]
