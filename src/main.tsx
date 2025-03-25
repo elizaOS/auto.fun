@@ -13,6 +13,7 @@ import TermsOfService from "./pages/terms-of-service";
 import Token from "./pages/token";
 import { Providers } from "./providers";
 import { queryClient } from "./utils/api";
+import Profile from "./pages/profile";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -24,6 +25,7 @@ createRoot(document.getElementById("root")!).render(
               <Route index element={<Homepage />} />
               <Route path="/support" element={<Support />} />
               <Route path="/terms-of-service" element={<TermsOfService />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/fees" element={<Fees />} />
               <Route path="/token/:address" element={<Token />} />

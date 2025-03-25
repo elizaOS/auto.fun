@@ -7,8 +7,17 @@ import WalletButton from "../components/wallet-button";
 import { TokenMetadata } from "../types/form.type";
 import { Keypair } from "@solana/web3.js";
 
+// Helper function to convert Uint8Array to hex string
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 interface CreateTokenResponse {
-  mintPublicKey: string;
+  token: {
+    mint: string;
+  };
   success: boolean;
 }
 
@@ -271,6 +280,11 @@ export const Create = () => {
     try {
       setIsSubmitting(true);
 
+      // Ensure wallet is connected
+      if (!publicKey) {
+        throw new Error("Wallet not connected");
+      }
+
       // Generate a new keypair for the token mint
       const mintKeypair = Keypair.generate();
       const tokenMint = mintKeypair.publicKey.toBase58();
@@ -300,28 +314,89 @@ export const Create = () => {
         mintAuthority: publicKey?.toBase58() || "",
       };
 
+      // Get auth token from localStorage
+      const authToken = localStorage.getItem('authToken');
+      
+      // First, check if we're already authenticated by calling auth-status
+      const authCheckResponse = await fetch(
+        import.meta.env.VITE_API_URL + "/api/auth-status",
+        { credentials: "include" }
+      );
+      
+      console.log("Auth status check for token creation:", 
+        authCheckResponse.status, 
+        authToken ? "Has token" : "No token");
+      
+      let authData: { authenticated: boolean } | null = null;
+      
+      // Try to parse the auth check response
+      if (authCheckResponse.ok) {
+        try {
+          authData = await authCheckResponse.json() as { authenticated: boolean };
+          console.log("Auth status data:", authData);
+          
+          // If authenticated via session but no token, create a synthetic one
+          if (authData.authenticated && !authToken) {
+            // Create a synthetic token based on publicKey to ensure localStorage has something
+            console.log("Creating synthetic token for authenticated session");
+            const syntheticToken = `session_${publicKey.toString()}_${Date.now()}`;
+            localStorage.setItem('authToken', syntheticToken);
+          }
+        } catch (e) {
+          console.error("Error parsing auth check response:", e);
+        }
+      }
+      
+      // Check again after potentially creating a synthetic token
+      const updatedAuthToken = localStorage.getItem('authToken');
+      
+      // Proceed only if auth check succeeded or we have a token
+      if (!authCheckResponse.ok && !updatedAuthToken) {
+        throw new Error("Authentication required. Please connect your wallet first.");
+      }
+      
+      if (authData && !authData.authenticated && !updatedAuthToken) {
+        throw new Error("Authentication required. Please reconnect your wallet.");
+      }
+
+      // Prepare headers - include Authorization only if we have a token
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json"
+      };
+      
+      if (updatedAuthToken) {
+        headers["Authorization"] = `Bearer ${updatedAuthToken}`;
+      }
+
       // Create the token using fetch
       const response = await fetch(
         import.meta.env.VITE_API_URL + "/api/create-token",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(tokenMetadata),
+          headers,
+          credentials: "include",  // This is a fetch option, not a header
+          body: JSON.stringify({
+            ...tokenMetadata,
+            walletAddress: publicKey.toBase58(),
+          }),
         },
       );
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Authentication failed. Please reconnect your wallet and try again.");
+        }
         const errorData = (await response.json()) as { error: string };
         throw new Error(errorData.error || "Failed to create token");
       }
 
-      const result = (await response.json()) as CreateTokenResponse;
+      const result = (await response.json()) as unknown as CreateTokenResponse;
 
-      if (result?.mintPublicKey) {
+      console.log("Token creation result:", result);
+
+      if (result?.token?.mint) {
         // Redirect to token page using the mint public key
-        navigate(`/token/${result.mintPublicKey}`);
+        navigate(`/token/${result.token.mint}`);
       } else {
         throw new Error("No mint public key returned from token creation");
       }

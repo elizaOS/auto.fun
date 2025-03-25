@@ -41,6 +41,126 @@ const DICE_BODY_MATERIAL = "dice";
 const FLOOR_MATERIAL = "floor";
 const WALL_MATERIAL = "wall";
 
+const EyeFollower = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  
+  // Eye parameters
+  const pupilRadius = 1.5; // Size of the pupil
+  const maxPupilOffset = 5; // Maximum distance pupil can move from center
+  
+  // Eye anchor positions (as percentages of container)
+  const eyeAnchors = [
+    { x: 0.115, y: 0.22 }, // Left eye
+    { x: 0.215, y: 0.22 }, // Right eye
+  ];
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    const updateContainerSize = () => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      setContainerSize({
+        width: rect.width,
+        height: rect.height
+      });
+    };
+    
+    // Initial size calculation
+    updateContainerSize();
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      
+      // Get container bounds
+      const rect = containerRef.current.getBoundingClientRect();
+      
+      // Calculate mouse position relative to container
+      setMousePos({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
+    };
+
+    // Add event listeners
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("resize", updateContainerSize);
+    
+    // Clean up on unmount
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("resize", updateContainerSize);
+    };
+  }, []);
+
+  // Calculate pupil positions based on mouse position
+  const calculatePupilPosition = (anchorX: number, anchorY: number) => {
+    if (!containerRef.current) return { x: 0, y: 0 };
+    
+    // Calculate eye center in pixels
+    const eyeCenterX = containerSize.width * anchorX;
+    const eyeCenterY = containerSize.height * anchorY;
+    
+    // Calculate direction vector from eye to mouse
+    const dirX = mousePos.x - eyeCenterX;
+    const dirY = mousePos.y - eyeCenterY;
+    
+    // Calculate distance
+    const distance = Math.sqrt(dirX * dirX + dirY * dirY);
+    
+    // Normalize and apply max offset
+    const offsetX = distance > 0 
+      ? (dirX / distance) * Math.min(distance, maxPupilOffset) 
+      : 0;
+    const offsetY = distance > 0 
+      ? (dirY / distance) * Math.min(distance, maxPupilOffset) 
+      : 0;
+    
+    return {
+      x: eyeCenterX + offsetX,
+      y: eyeCenterY + offsetY,
+    };
+  };
+
+  // Calculate scale factor based on container width
+  const getScaledPupilRadius = () => {
+    if (containerSize.width === 0) return pupilRadius;
+    const scaleFactor = containerSize.width / 300; // Base size is 300
+    return Math.max(3, pupilRadius * scaleFactor); // Minimum size of 3
+  };
+
+  return (
+    <div 
+      ref={containerRef} 
+      className="w-full h-full relative z-1000"
+      style={{ aspectRatio: "3/1" }}
+    >
+      <svg 
+        width="100%" 
+        height="100%" 
+        viewBox="0 0 300 100"
+        preserveAspectRatio="xMidYMid meet"
+      >
+        {/* Only pupils - positioned dynamically */}
+        {eyeAnchors.map((anchor, idx) => {
+          const pupilPos = calculatePupilPosition(anchor.x, anchor.y);
+          return (
+            <circle
+              key={`pupil-${idx}`}
+              cx={pupilPos.x}
+              cy={pupilPos.y}
+              r={getScaledPupilRadius()}
+              fill="black"
+            />
+          );
+        })}
+      </svg>
+    </div>
+  );
+};
+
 const DiceRoller = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -505,7 +625,7 @@ const DiceRoller = () => {
       applyForceToAllDice as any,
     );
 
-    // Handle window resize
+    // Updated window resize handler
     const onWindowResize = () => {
       if (!containerRef.current) return;
 
@@ -514,13 +634,77 @@ const DiceRoller = () => {
       const newFrustumHeight = frustumSize;
       const newFrustumWidth = frustumSize * newAspect;
 
+      // Update camera
       camera.left = newFrustumWidth / -2;
       camera.right = newFrustumWidth / 2;
       camera.top = newFrustumHeight / 2;
       camera.bottom = newFrustumHeight / -2;
       camera.updateProjectionMatrix();
 
+      // Update renderer size
       renderer.setSize(newContainerWidth, containerHeight);
+
+      // Update mesh positions and scales
+      floor.position.set(0, -0.5, 0);
+      floor.scale.set(newFrustumWidth/frustumWidth, 1, newFrustumHeight/frustumHeight);
+      
+      backWall.position.set(0, 2, -newFrustumHeight / 2);
+      backWall.scale.set(newFrustumWidth/frustumWidth, 1, 1);
+      
+      frontWall.position.set(0, 2, newFrustumHeight / 2);
+      frontWall.scale.set(newFrustumWidth/frustumWidth, 1, 1);
+      
+      leftWall.position.set(-newFrustumWidth / 2, 2, 0);
+      leftWall.scale.set(1, 1, newFrustumHeight/frustumHeight);
+      
+      rightWall.position.set(newFrustumWidth / 2, 2, 0);
+      rightWall.scale.set(1, 1, newFrustumHeight/frustumHeight);
+
+      // Update physics bodies without recreating them
+      // Remove old wall bodies first
+      world.removeBody(floorBody);
+      world.removeBody(leftWallBody);
+      world.removeBody(rightWallBody);
+      world.removeBody(frontWallBody);
+      world.removeBody(backWallBody);
+
+      // Floor physics body
+      floorBody.position.set(0, -0.5, 0);
+      floorBody.shapes[0] = new CANNON.Box(
+        new CANNON.Vec3(newFrustumWidth / 2, 0.5, newFrustumHeight / 2)
+      );
+      world.addBody(floorBody);
+
+      // Back wall physics body
+      backWallBody.position.set(0, 2, -newFrustumHeight / 2);
+      backWallBody.shapes[0] = new CANNON.Box(
+        new CANNON.Vec3(newFrustumWidth / 2, 20, 0.5)
+      );
+      world.addBody(backWallBody);
+
+      // Front wall physics body
+      frontWallBody.position.set(0, 2, newFrustumHeight / 2);
+      frontWallBody.shapes[0] = new CANNON.Box(
+        new CANNON.Vec3(newFrustumWidth / 2, 50, 0.5)
+      );
+      world.addBody(frontWallBody);
+
+      // Left wall physics body
+      leftWallBody.position.set(-newFrustumWidth / 2, 2, 0);
+      leftWallBody.shapes[0] = new CANNON.Box(
+        new CANNON.Vec3(0.5, 20, newFrustumHeight / 2)
+      );
+      world.addBody(leftWallBody);
+
+      // Right wall physics body
+      rightWallBody.position.set(newFrustumWidth / 2, 2, 0);
+      rightWallBody.shapes[0] = new CANNON.Box(
+        new CANNON.Vec3(0.5, 50, newFrustumHeight / 2)
+      );
+      world.addBody(rightWallBody);
+
+      // Reposition and reroll dice for new container size
+      throwDice();
     };
 
     window.addEventListener("resize", onWindowResize);
@@ -558,17 +742,25 @@ const DiceRoller = () => {
     >
       {/* SVG background placed below the canvas */}
       <div className="absolute inset-0 flex justify-center items-center z-0">
-        <img
-          src="eyes.svg"
-          className="h-full w-auto"
-          style={{ aspectRatio: "3/1" }} /* 3x as wide as its height */
-          alt="Eyes background"
-        />
+        {/* Face with eyes overlay - ensure proportions maintained */}
+        <div className="relative h-full flex-shrink-0">
+          <img
+            src="noeyes.svg"
+            className="h-full w-auto object-contain"
+            style={{ aspectRatio: "3/1" }}
+            alt="Face background"
+          />
+          {/* Positioned eyes over the face */}
+          <div className="absolute inset-0 pointer-events-none">
+            <EyeFollower />
+          </div>
+        </div>
+        
         <img
           src="press.svg"
-          className="h-full w-auto"
-          style={{ aspectRatio: "2/1" }} /* 3x as wide as its height */
-          alt="Eyes background"
+          className="w-auto ml-4 flex-shrink-0 object-contain hidden xl:block xl:h-full" 
+          style={{ aspectRatio: "2/1" }}
+          alt="Press instruction"
         />
       </div>
 

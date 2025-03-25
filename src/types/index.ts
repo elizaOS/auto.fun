@@ -141,3 +141,21 @@ export const TokenSchema = z.object({
 });
 
 export type Token = z.infer<typeof TokenSchema>;
+
+// Type definitions for global objects
+
+declare global {
+  interface Window {
+    solana?: {
+      isPhantom?: boolean;
+      signMessage?: (message: Uint8Array, encoding: string) => Promise<Uint8Array>;
+      connect: () => Promise<{ publicKey: string }>;
+      disconnect?: () => Promise<void>;
+      publicKey?: { toBase58: () => string };
+      on?: (event: string, callback: () => void) => void;
+      off?: (event: string, callback: () => void) => void;
+    };
+  }
+}
+
+export {};

@@ -6,16 +6,30 @@ import { CloseButton, Dialog, DialogPanel } from "@headlessui/react";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import WalletButton from "@/components/wallet-button";
+import { useWalletModal } from "@/hooks/use-wallet-modal";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 export default function Header() {
   const { pathname } = useLocation();
+  const { publicKey } = useWallet();
+  const { isAuthenticated } = useWalletModal();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  
   const mobileNavItems = [
     { icon: "/nav/stars.svg", title: "Create Token", href: "/create" },
     { icon: "/nav/eye.svg", title: "Tokens", href: "/" },
     { icon: "/nav/circles.svg", title: "How It Works", href: "/how-it-works" },
     { icon: "/nav/question-mark.svg", title: "Support", href: "/support" },
   ];
+
+  // Add profile link if user is authenticated
+  if (publicKey && isAuthenticated) {
+    mobileNavItems.push({ 
+      icon: "/nav/user.svg", 
+      title: "Profile", 
+      href: "/profile"
+    });
+  }
 
   const mobileNavLinks = [
     { title: "Privacy Policy", href: "privacy-policy" },
