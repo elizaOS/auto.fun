@@ -46,7 +46,7 @@ const FormInput = ({
           <div className="absolute left-3 text-[#8c8c8c]">{leftIndicator}</div>
         )}
         <input
-          className={`w-full bg-[#2e2e2e] py-2.5 px-3 border border-neutral-800 text-white ${
+          className={`w-full rounded-md bg-[#0F0F0F] py-2.5 px-3 border border-neutral-800 text-white ${
             inputTag ? "pl-10" : ""
           } ${leftIndicator ? "pl-10" : ""}`}
           {...props}
@@ -71,7 +71,7 @@ const FormLabel = ({
 }) => {
   return (
     <div className="flex items-center gap-2">
-      <div className="text-white uppercase text-sm font-medium tracking-wider">
+      <div className="text-whitem uppercase text-sm font-medium tracking-wider">
         {label}
       </div>
       {isOptional && <div className="text-[#8c8c8c] text-xs">Optional</div>}
@@ -99,7 +99,7 @@ const FormTextArea = ({
       {label && <FormLabel label={label} />}
       <div className="relative">
         <textarea
-          className="w-full bg-[#2e2e2e] py-2.5 px-3 border border-neutral-800 text-white resize-none"
+          className="w-full bg-[#0F0F0F] rounded-md h-[300px] px-3 border border-neutral-800 text-white resize-none"
           style={{ minHeight: `${minRows * 1.5}rem` }}
           maxLength={maxLength}
           {...props}
@@ -133,7 +133,7 @@ const FormImageInput = ({
 
       if (
         !["image/jpeg", "image/png", "image/gif", "video/mp4"].includes(
-          file.type,
+          file.type
         )
       ) {
         alert("Only JPEG, PNG, GIF, and MP4 files are accepted");
@@ -155,7 +155,7 @@ const FormImageInput = ({
   return (
     <div className="flex flex-col gap-1 w-full">
       <FormLabel label={label} />
-      <div className="relative border border-neutral-800 p-4 bg-[#2e2e2e]">
+      <div className="relative border rounded-md border-neutral-800 p-4 bg-[#0F0F0F]">
         {preview ? (
           <div className="flex justify-center">
             <img
@@ -201,7 +201,7 @@ const uploadImage = async (metadata: TokenMetadata) => {
   const filename = `${safeName}${extension}`;
 
   console.log(
-    `Uploading image as ${filename} with content type ${contentType}`,
+    `Uploading image as ${filename} with content type ${contentType}`
   );
 
   // Get auth token from localStorage
@@ -500,7 +500,7 @@ export const Create = () => {
   const createTokenOnChain = async (
     _tokenMetadata: TokenMetadata,
     mintKeypair: Keypair,
-    _metadataUrl: string,
+    _metadataUrl: string
   ) => {
     if (!signTransaction) {
       throw new Error("Wallet doesn't support signing");
@@ -513,14 +513,14 @@ export const Create = () => {
     // Create connection to Solana
     new Connection(
       import.meta.env.VITE_SOLANA_RPC_URL || "https://api.devnet.solana.com",
-      "confirmed",
+      "confirmed"
     );
 
     // For now, we'll bypass actual on-chain token creation since we need the program IDL
     // Instead, we'll just log the mint address and proceed with backend registration
     console.log(
       "Would create token with mint address:",
-      mintKeypair.publicKey.toString(),
+      mintKeypair.publicKey.toString()
     );
 
     try {
@@ -652,7 +652,7 @@ export const Create = () => {
       alert(
         error instanceof Error
           ? error.message
-          : "Failed to create token. Please try again.",
+          : "Failed to create token. Please try again."
       );
     } finally {
       setIsSubmitting(false);
@@ -695,182 +695,193 @@ export const Create = () => {
     !errors.initial_sol;
 
   return (
-    <form
-      className="flex flex-col w-full max-w-3xl m-auto gap-7 justify-center"
-      onSubmit={handleSubmit}
-    >
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <FormInput
-          type="text"
-          value={form.name}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            handleChange("name", e.target.value)
-          }
-          label="Name"
-          maxLength={50}
-          rightIndicator={`${form.name.length}/50`}
-          error={errors.name}
-        />
-
-        <FormInput
-          type="text"
-          value={form.symbol}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            handleChange("symbol", e.target.value)
-          }
-          label="Ticker"
-          leftIndicator="$"
-          maxLength={8}
-          rightIndicator={`${form.symbol.length}/8`}
-          error={errors.symbol}
-        />
-      </div>
-
-      <FormTextArea
-        value={form.description}
-        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-          handleChange("description", e.target.value)
-        }
-        label="Token Description"
-        rightIndicator={`${form.description.length}/2000`}
-        minRows={5}
-        maxLength={2000}
-        error={errors.description}
-      />
-
-      <FormImageInput
-        label="Token Image"
-        onChange={(file) => setImageFile(file)}
-      />
-
-      <FormInput
-        type="text"
-        value={form.links.agentLink}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-          handleChange("links.agentLink", e.target.value)
-        }
-        label="Link Agent"
-        isOptional
-        inputTag={
-          <div className="text-[#8c8c8c] text-base font-normal uppercase leading-normal tracking-widest">
-            HTTPS://
-          </div>
-        }
-        rightIndicator={<CopyButton text={form.links.agentLink || ""} />}
-      />
-
-      <div className="flex flex-col gap-3">
-        <FormInput.Label label="add project socials" isOptional />
-        <div className="grid grid-cols-2 gap-x-3 gap-y-6">
-          <FormInput
-            type="text"
-            value={form.links.website}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              handleChange("links.website", e.target.value)
-            }
-            isOptional
-            inputTag={<Icons.Website />}
-            placeholder="Website"
-            rightIndicator={<CopyButton text={form.links.website || ""} />}
-          />
-          <FormInput
-            type="text"
-            value={form.links.twitter}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              handleChange("links.twitter", e.target.value)
-            }
-            isOptional
-            inputTag={<Icons.Twitter />}
-            placeholder="X (Twitter)"
-            rightIndicator={<CopyButton text={form.links.twitter || ""} />}
-          />
-          <FormInput
-            type="text"
-            value={form.links.telegram}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              handleChange("links.telegram", e.target.value)
-            }
-            isOptional
-            inputTag={<Icons.Telegram />}
-            placeholder="Telegram"
-            rightIndicator={<CopyButton text={form.links.telegram || ""} />}
-          />
-          <FormInput
-            type="text"
-            value={form.links.discord}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              handleChange("links.discord", e.target.value)
-            }
-            isOptional
-            inputTag={<Icons.Discord />}
-            placeholder="Discord"
-            rightIndicator={<CopyButton text={form.links.discord || ""} />}
-          />
+    <div className="max-w-[800px] bg-autofun-background-card border-1 rounded-md border-white/10 p-12">
+      <div className="flex flex-col gap-y-4">
+        <div className="text-autofun-background-action-highlight font-medium text-[32px]">
+          Create Token
+        </div>
+        <div className="text-[18px] font-normal text-autofun-text-secondary">
+          Create your token on auto.fun. Set up your token details, add visuals,
+          and connect social channels. You can optionally create or link an
+          existing AI agent to your token. You can also personally allocate a
+          portion of tokens before launch.{" "}
         </div>
       </div>
-
-      <div className="flex flex-col gap-3">
-        <FormInput.Label label="buy your coin" isOptional />
-        <div className="flex items-center gap-4">
-          <input
-            type="range"
-            min="0"
-            max={MAX_INITIAL_SOL}
-            step="0.1"
-            value={form.initial_sol || "0"}
-            onChange={(e) => handleChange("initial_sol", e.target.value)}
-            className="flex-1 h-2 bg-[#2e2e2e] appearance-none cursor-pointer accent-[#2fd345]"
+      <form
+        className="flexflex-col w-full max-w-3xl m-auto gap-7 py-8 justify-center"
+        onSubmit={handleSubmit}
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <FormInput
+            type="text"
+            value={form.name}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              handleChange("name", e.target.value)
+            }
+            label="Name"
+            maxLength={50}
+            rightIndicator={`${form.name.length}/50`}
+            error={errors.name}
           />
-          <div className="relative">
+
+          <FormInput
+            type="text"
+            value={form.symbol}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              handleChange("symbol", e.target.value)
+            }
+            label="Ticker"
+            leftIndicator="$"
+            maxLength={8}
+            rightIndicator={`${form.symbol.length}/8`}
+            error={errors.symbol}
+          />
+        </div>
+
+        <FormTextArea
+          value={form.description}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+            handleChange("description", e.target.value)
+          }
+          label="Token Description"
+          rightIndicator={`${form.description.length}/2000`}
+          minRows={5}
+          maxLength={2000}
+          error={errors.description}
+        />
+
+        <FormImageInput
+          label="Token Image"
+          onChange={(file) => setImageFile(file)}
+        />
+
+        <FormInput
+          type="text"
+          value={form.links.agentLink}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            handleChange("links.agentLink", e.target.value)
+          }
+          label="Link Agent"
+          isOptional
+          inputTag={
+            <div className="text-[#8c8c8c] text-base font-normal uppercase leading-normal tracking-widest">
+              HTTPS://
+            </div>
+          }
+          rightIndicator={<CopyButton text={form.links.agentLink || ""} />}
+        />
+
+        <div className="flex flex-col gap-3">
+          <FormInput.Label label="add project socials" isOptional />
+          <div className="grid grid-cols-2 gap-x-3 gap-y-6">
+            <FormInput
+              type="text"
+              value={form.links.website}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                handleChange("links.website", e.target.value)
+              }
+              isOptional
+              inputTag={<Icons.Website />}
+              placeholder="Website"
+              rightIndicator={<CopyButton text={form.links.website || ""} />}
+            />
+            <FormInput
+              type="text"
+              value={form.links.twitter}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                handleChange("links.twitter", e.target.value)
+              }
+              isOptional
+              inputTag={<Icons.Twitter />}
+              placeholder="X (Twitter)"
+              rightIndicator={<CopyButton text={form.links.twitter || ""} />}
+            />
+            <FormInput
+              type="text"
+              value={form.links.telegram}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                handleChange("links.telegram", e.target.value)
+              }
+              isOptional
+              inputTag={<Icons.Telegram />}
+              placeholder="Telegram"
+              rightIndicator={<CopyButton text={form.links.telegram || ""} />}
+            />
+            <FormInput
+              type="text"
+              value={form.links.discord}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                handleChange("links.discord", e.target.value)
+              }
+              isOptional
+              inputTag={<Icons.Discord />}
+              placeholder="Discord"
+              rightIndicator={<CopyButton text={form.links.discord || ""} />}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <FormInput.Label label="buy your coin" isOptional />
+          <div className="flex items-center gap-4">
             <input
-              type="number"
-              value={form.initial_sol}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (
-                  value === "" ||
-                  (parseFloat(value) >= 0 &&
-                    parseFloat(value) <= MAX_INITIAL_SOL)
-                ) {
-                  handleChange("initial_sol", value);
-                }
-              }}
+              type="range"
               min="0"
               max={MAX_INITIAL_SOL}
               step="0.1"
-              className="w-27 px-2 py-2 pr-14 bg-[#2e2e2e] text-[#2fd345] text-xl font-medium text-right"
+              value={form.initial_sol || "0"}
+              onChange={(e) => handleChange("initial_sol", e.target.value)}
+              className="flex-1 h-2 bg-[#2e2e2e] appearance-none cursor-pointer accent-[#2fd345]"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#2fd345] text-xl font-medium">
-              SOL
-            </span>
+            <div className="relative">
+              <input
+                type="number"
+                value={form.initial_sol}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (
+                    value === "" ||
+                    (parseFloat(value) >= 0 &&
+                      parseFloat(value) <= MAX_INITIAL_SOL)
+                  ) {
+                    handleChange("initial_sol", value);
+                  }
+                }}
+                min="0"
+                max={MAX_INITIAL_SOL}
+                step="0.1"
+                className="w-27 px-2 py-2 pr-14 bg-[#2e2e2e] text-[#2fd345] text-xl font-medium text-right"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#2fd345] text-xl font-medium">
+                SOL
+              </span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="flex flex-col items-center">
-        {!publicKey ? (
-          <div className="flex flex-col items-center gap-2">
-            <p className="text-white mb-2">
-              Connect your wallet to launch your token
+        <div className="flex flex-col mt-4 gap-y-6 items-center">
+          <div className="border-[1px] border-white/10 w-full"></div>
+          {!publicKey ? (
+            <div className="flex flex-col items-center gap-2">
+              <WalletButton />
+            </div>
+          ) : (
+            <button
+              type="submit"
+              className="bg-[#2fd345] py-3 px-6 font-bold border-2 text-black text-[1.8em] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
+              disabled={!isFormValid || isSubmitting}
+            >
+              {isSubmitting ? "Creating..." : "Launch Token"}
+            </button>
+          )}
+          {!isFormValid && (
+            <p className="text-red-500 text-sm m-4">
+              Please fill in all required fields
             </p>
-            <WalletButton />
-          </div>
-        ) : (
-          <button
-            type="submit"
-            className="bg-[#2fd345] py-3 px-6 font-bold border-2 text-black text-[1.8em] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
-            disabled={!isFormValid || isSubmitting}
-          >
-            {isSubmitting ? "Creating..." : "Launch Token"}
-          </button>
-        )}
-        {!isFormValid && (
-          <p className="text-red-500 text-sm m-4">
-            Please fill in all required fields
-          </p>
-        )}
-      </div>
-    </form>
+          )}
+        </div>
+      </form>
+    </div>
   );
 };
 
