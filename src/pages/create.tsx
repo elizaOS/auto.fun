@@ -4,7 +4,7 @@ import { useNavigate } from "react-router";
 import CopyButton from "../components/copy-button";
 import { Icons } from "../components/icons";
 import WalletButton from "../components/wallet-button";
-import { TokenMetadata } from "../../types/form.type";
+import { TokenMetadata } from "../types/form.type";
 import { Keypair } from "@solana/web3.js";
 
 interface CreateTokenResponse {

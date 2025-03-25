@@ -2,7 +2,7 @@
 // import { Connection, Keypair, PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
 // import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 // import { BN, Program } from "@coral-xyz/anchor";
-// import { TokenMetadata } from "../../types/form.type";
+// import { TokenMetadata } from "../types/form.type";
 // import { env } from "./env";
 // import { SEED_CONFIG, Serlaunchalot, useProgram } from "./program";
 // import { ComputeBudgetProgram } from "@solana/web3.js";
