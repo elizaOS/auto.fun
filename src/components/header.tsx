@@ -13,15 +13,15 @@ export default function Header() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const mobileNavItems = [
     { icon: "/nav/stars.svg", title: "Create Token", href: "/create" },
-    { icon: "/nav/eye.svg", title: "Tokens", href: "/tokens" },
+    { icon: "/nav/eye.svg", title: "Tokens", href: "/" },
     { icon: "/nav/circles.svg", title: "How It Works", href: "/how-it-works" },
     { icon: "/nav/question-mark.svg", title: "Support", href: "/support" },
   ];
 
   const mobileNavLinks = [
-    { title: "Privacy Policy", href: "/legal/privacy" },
-    { title: "Terms of Service", href: "/legal/terms" },
-    { title: "Fees", href: "/legal/fees" },
+    { title: "Privacy Policy", href: "privacy-policy" },
+    { title: "Terms of Service", href: "/terms-of-service" },
+    { title: "Fees", href: "fees" },
   ];
 
   return (
