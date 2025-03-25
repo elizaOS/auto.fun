@@ -6,6 +6,7 @@ import CopyButton from "../components/copy-button";
 import { Icons } from "../components/icons";
 import WalletButton from "../components/wallet-button";
 import { TokenMetadata } from "../types/form.type";
+import { EmptyState } from "@/components/empty-state";
 
 // Constants
 const MAX_FILE_SIZE_MB = 5;
@@ -99,7 +100,7 @@ const FormTextArea = ({
       {label && <FormLabel label={label} />}
       <div className="relative">
         <textarea
-          className="w-full bg-[#0F0F0F] rounded-md h-[300px] p-3 border border-neutral-800 text-white resize-none"
+          className="w-full bg-[#0F0F0F] rounded-md h-[250px] p-3 border border-neutral-800 text-white resize-none"
           style={{ minHeight: `${minRows * 1.5}rem` }}
           maxLength={maxLength}
           {...props}
@@ -155,7 +156,7 @@ const FormImageInput = ({
   return (
     <div className="flex flex-col gap-1 w-full">
       <FormLabel label={label} />
-      <div className="relative border rounded-md border-neutral-800 p-4 bg-[#0F0F0F]">
+      <div className="relative justify-center border-1 border-dashed rounded-md p-6 cursor-pointer text-center border-[#8c8c8c]">
         {preview ? (
           <div className="flex justify-center">
             <img
@@ -165,10 +166,8 @@ const FormImageInput = ({
             />
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-neutral-600">
-            <p className="text-[#8c8c8c] mb-2">
-              Upload image (max {MAX_FILE_SIZE_MB}MB)
-            </p>
+          <div className="flex flex-col items-center justify-center rounded-md p-6 cursor-pointer text-center">
+            <EmptyState maxSizeMb={MAX_FILE_SIZE_MB} />
           </div>
         )}
         <input
