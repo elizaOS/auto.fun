@@ -330,7 +330,7 @@ export async function updateMigratedTokenMarketData(env?: Env) {
       ({
         NETWORK: "devnet",
         DECIMALS: "6",
-        TOKEN_SUPPLY: "1000000000000",
+        TOKEN_SUPPLY: "1000000000000000",
         VIRTUAL_RESERVES: "100000000",
         CURVE_LIMIT: "1000000000",
       } as Env); // Cast to Env for compatibility

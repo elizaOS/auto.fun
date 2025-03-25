@@ -22,9 +22,9 @@ export default function GridView({ data }: { data: IToken[] }) {
           key={token.mint}
           className="bg-autofun-background-card p-4 rounded-lg border flex flex-col gap-3"
         >
-          <div className="flex items-start gap-3 min-w-0">
-            <div className="size-32 grow shrink-0">
-              <SkeletonImage src={token.image} alt="image" />
+          <div className="flex flex-col gap-3 min-w-0">
+            <div className="w-full aspect-square">
+              <SkeletonImage src={token.image} alt="image" className="w-full h-full object-cover" />
             </div>
             <div className="flex flex-col gap-3 justify-between min-w-0 w-full">
               {/* Token Info and Time */}
@@ -78,30 +78,6 @@ export default function GridView({ data }: { data: IToken[] }) {
               <BondingCurveBar progress={token.curveProgress} />
             </div>
           </div>
-          {/* Description */}
-          <ShowMoreText
-            /* Default options */
-            lines={2}
-            more="Show more"
-            less="Show less"
-            className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight min-h-8"
-            anchorClass="text-autofun-text-primary hover:text-autofun-text-highlight transition-all duration-200"
-            truncatedEndingComponent={" ... "}
-          >
-            <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
-              {token.description}
-            </span>
-          </ShowMoreText>
-          <div className="mt-auto">
-            <Divider />
-          </div>
-          <Button
-            variant="primary"
-            size="large"
-            className="hover:border-autofun-stroke-highlight"
-          >
-            Buy
-          </Button>
         </Link>
       ))}
     </div>

@@ -113,12 +113,13 @@ jobs:
           # Environment variables from wrangler.toml, can be overridden by secrets
           NETWORK: ${{ secrets.NETWORK || 'mainnet' }}
           DECIMALS: ${{ secrets.DECIMALS || '9' }}
-          TOKEN_SUPPLY: ${{ secrets.TOKEN_SUPPLY || '1000000000000000000' }}
-          VIRTUAL_RESERVES: ${{ secrets.VIRTUAL_RESERVES || '1000000000' }}
-          CURVE_LIMIT: ${{ secrets.CURVE_LIMIT || '1000000000000' }}
+          TOKEN_SUPPLY: ${{ secrets.TOKEN_SUPPLY || '1000000000000000' }}
+          VIRTUAL_RESERVES: ${{ secrets.VIRTUAL_RESERVES || '28000000000' }}
+          CURVE_LIMIT: ${{ secrets.CURVE_LIMIT || '113000000000' }}
           PRIMARY_LOCK_PERCENTAGE: ${{ secrets.PRIMARY_LOCK_PERCENTAGE || '90' }}
           SECONDARY_LOCK_PERCENTAGE: ${{ secrets.SECONDARY_LOCK_PERCENTAGE || '10' }}
           FEE_PERCENTAGE: ${{ secrets.FEE_PERCENTAGE || '1' }}
+          SWAP_FEE: ${{ secrets.SWAP_FEE_PERCENTAGE || '1.0' }}
           # Database configuration
           DATABASE_NAME: ${{ env.DATABASE_NAME }}
           DATABASE_ID: ${{ secrets.DATABASE_ID }}

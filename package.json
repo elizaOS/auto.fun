@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "bun@1.2.5",
   "scripts": {
-    "dev": "export NODE_ENV=development && npm run generate && concurrently \"vite\" \"wrangler dev --env development\"",
+    "dev": "export NODE_ENV=development && npm run generate && concurrently \"vite\" \"wrangler dev --env development --test-scheduled\"",
     "build": "tsc && vite build",
     "lint": "prettier --write \"src/**/*.{ts,tsx}\" \"worker/**/*.{ts,tsx}\" && eslint ./src --fix && eslint ./worker --fix",
     "preview": "vite preview",

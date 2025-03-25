@@ -1,14 +1,15 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
-import { monitorSpecificToken } from "../cron";
+import { monitorSpecificToken, cron } from "../cron";
 import { getDB, swaps, tokenHolders, tokens, users } from "../db";
 import { Env } from "../env";
 import { logger } from "../logger";
-import { getSOLPrice } from "../mcap";
+import { calculateTokenMarketData, getSOLPrice } from "../mcap";
 import { bulkUpdatePartialTokens } from "../util";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getWebSocketClient } from "../websocket-client";
 import { updateTokenInDB } from "../cron";
+import { createTestSwap } from "../websocket"; // Import the new functions
 
 // Define the router with environment typing
 const tokenRouter = new Hono<{
@@ -186,7 +187,105 @@ tokenRouter.get("/tokens/:mint", async (c) => {
       return c.json({ error: "Token not found" }, 404);
     }
 
-    return c.json(tokenData[0]);
+    // Only refresh holder data if explicitly requested
+    const refreshHolders = c.req.query("refresh_holders") === "true";
+    if (refreshHolders) {
+      logger.log(`Refreshing holders data for token ${mint}`);
+      await updateHoldersCache(c.env, mint);
+    }
+    
+    // Get fresh SOL price
+    const solPrice = await getSOLPrice(c.env);
+    let token = tokenData[0];
+    
+    // Set default values for critical fields if they're missing
+    const TOKEN_DECIMALS = Number(c.env.DECIMALS || 6);
+    const defaultReserveAmount = 1000000000000; // 1 trillion (default token supply)
+    const defaultReserveLamport = 2800000000; // 2.8 SOL (default reserve)
+    
+    // Make sure reserveAmount and reserveLamport have values
+    token.reserveAmount = token.reserveAmount || defaultReserveAmount;
+    token.reserveLamport = token.reserveLamport || defaultReserveLamport;
+    
+    // Update or set default values for missing fields
+    if (!token.currentPrice && token.reserveAmount && token.reserveLamport) {
+      token.currentPrice = (Number(token.reserveLamport) / 1e9) / 
+        (Number(token.reserveAmount) / Math.pow(10, TOKEN_DECIMALS));
+    }
+    
+    // Calculate tokenPriceUSD in the same way as the old code
+    const tokenPriceInSol = ((token.currentPrice || 0) / Math.pow(10, TOKEN_DECIMALS));
+    token.tokenPriceUSD = (token.currentPrice || 0) > 0 ? 
+        (tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)) : 0;
+    
+    // Update solPriceUSD
+    token.solPriceUSD = solPrice;
+    
+    // Use TOKEN_SUPPLY from env if available, otherwise use reserveAmount
+    const tokenSupply = c.env.TOKEN_SUPPLY 
+        ? Number(c.env.TOKEN_SUPPLY) 
+        : token.reserveAmount;
+    
+    // Calculate marketCapUSD
+    token.marketCapUSD = (tokenSupply / Math.pow(10, TOKEN_DECIMALS)) * token.tokenPriceUSD;
+    
+    // Get virtualReserves and curveLimit from env or set defaults
+    const virtualReserves = c.env.VIRTUAL_RESERVES ? 
+      Number(c.env.VIRTUAL_RESERVES) : 2800000000;
+    const curveLimit = c.env.CURVE_LIMIT ?
+      Number(c.env.CURVE_LIMIT) : 11300000000;
+    
+    // Update virtualReserves and curveLimit
+    token.virtualReserves = token.virtualReserves || virtualReserves;
+    token.curveLimit = token.curveLimit || curveLimit;
+    
+    // Calculate curveProgress using the original formula
+    token.curveProgress = token.status === 'migrated' ? 100 : 
+      ((token.reserveLamport - token.virtualReserves) / 
+        (token.curveLimit - token.virtualReserves)) * 100;
+
+    // Get token holders count
+    const holdersCountQuery = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(tokenHolders)
+      .where(eq(tokenHolders.mint, mint));
+
+    token.holderCount = holdersCountQuery[0]?.count || 0;
+
+    // Get latest swap - most recent transaction
+    const latestSwapQuery = await db
+      .select()
+      .from(swaps)
+      .where(eq(swaps.tokenMint, mint))
+      .orderBy(desc(swaps.timestamp))
+      .limit(1);
+
+    const latestSwap = latestSwapQuery[0] || null;
+
+    // Update token in database if we've calculated new values
+    await db
+      .update(tokens)
+      .set({
+        tokenPriceUSD: token.tokenPriceUSD,
+        currentPrice: token.currentPrice,
+        marketCapUSD: token.marketCapUSD,
+        solPriceUSD: token.solPriceUSD,
+        curveProgress: token.curveProgress,
+        virtualReserves: token.virtualReserves,
+        curveLimit: token.curveLimit,
+        holderCount: token.holderCount,
+        // Only update reserveAmount and reserveLamport if they were null
+        ...(tokenData[0].reserveAmount === null ? { reserveAmount: token.reserveAmount } : {}),
+        ...(tokenData[0].reserveLamport === null ? { reserveLamport: token.reserveLamport } : {}),
+        lastUpdated: new Date().toISOString()
+      })
+      .where(eq(tokens.mint, mint));
+      
+    // Matching the same response as /token/:mint
+    return c.json({
+      ...token,
+      latestSwap,
+    });
   } catch (error) {
     logger.error("Error fetching token:", error);
     return c.json(
@@ -393,68 +492,6 @@ tokenRouter.post("/new_token", async (c) => {
   }
 });
 
-// Get specific token swaps endpoint
-tokenRouter.get("/swaps/:mint", async (c) => {
-  try {
-    const mint = c.req.param("mint");
-
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
-
-    // Parse pagination parameters
-    const limit = parseInt(c.req.query("limit") || "50");
-    const page = parseInt(c.req.query("page") || "1");
-    const offset = (page - 1) * limit;
-
-    // Get the DB connection
-    const db = getDB(c.env);
-
-    // Get real swap data from the database
-    const swapsResult = await db
-      .select()
-      .from(swaps)
-      .where(eq(swaps.tokenMint, mint))
-      .orderBy(desc(swaps.timestamp))
-      .offset(offset)
-      .limit(limit);
-
-    // Get total count for pagination
-    const totalSwapsQuery = (await db
-      .select({ count: sql`count(*)` })
-      .from(swaps)
-      .where(eq(swaps.tokenMint, mint))) as any;
-
-    const totalSwaps = totalSwapsQuery[0]?.count || 0;
-    const totalPages = Math.ceil(totalSwaps / limit);
-
-    // Format directions for better readability
-    const formattedSwaps = swapsResult.map((swap) => ({
-      ...swap,
-      directionText: swap.direction === 0 ? "buy" : "sell",
-    }));
-
-    return c.json({
-      swaps: formattedSwaps,
-      page,
-      totalPages,
-      total: totalSwaps,
-    });
-  } catch (error) {
-    logger.error("Error in swaps history route:", error);
-    return c.json(
-      {
-        swaps: [],
-        page: 1,
-        totalPages: 0,
-        total: 0,
-        error: "Failed to fetch swap history",
-      },
-      500,
-    );
-  }
-});
-
 // Token price endpoint
 tokenRouter.get("/token/:mint/price", async (c) => {
   try {
@@ -522,12 +559,36 @@ tokenRouter.get("/tokens/:mint/price", async (c) => {
     }
 
     const token = tokenData[0];
+    const solPrice = await getSOLPrice(c.env);
+
+    const TOKEN_DECIMALS = Number(c.env.DECIMALS || 6);
+    const tokenPriceInSol = token.currentPrice / Math.pow(10, TOKEN_DECIMALS);
+    const tokenPriceUSD = token.currentPrice > 0 ? 
+        (tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)) : 0;
+
+    // Use TOKEN_SUPPLY from env if available, otherwise use reserveAmount
+    const tokenSupply = c.env.TOKEN_SUPPLY 
+        ? Number(c.env.TOKEN_SUPPLY) 
+        : (token.reserveAmount || 1000000000000); // Default if null
+        
+    const marketCapUSD = (tokenSupply / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD;
+
+    // Calculate curve progress based on the original formula
+    const virtualReserves = c.env.VIRTUAL_RESERVES 
+        ? Number(c.env.VIRTUAL_RESERVES) 
+        : 2800000000;
+    const curveLimit = c.env.CURVE_LIMIT
+        ? Number(c.env.CURVE_LIMIT)
+        : 11300000000;
+
+    token.curveProgress = token.status === 'migrated' ? 100 : 
+        ((token.reserveLamport - virtualReserves) / (curveLimit - virtualReserves)) * 100;
 
     return c.json({
       price: token.currentPrice || 0.001,
       priceUSD: token.tokenPriceUSD || 0.0001,
       marketCap: token.liquidity || 1000,
-      marketCapUSD: token.marketCapUSD || 120,
+      marketCapUSD: marketCapUSD,
       priceChange24h: token.priceChange24h || 0,
       volume24h: token.volume24h || 0,
       timestamp: Date.now(),
@@ -560,17 +621,73 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     // Get token data
     const db = getDB(c.env);
-    const tokenData = await (db
+    const tokenData = await db
       .select()
       .from(tokens)
       .where(eq(tokens.mint, mint))
-      .limit(1) as any);
+      .limit(1);
 
     if (!tokenData || tokenData.length === 0) {
       return c.json({ error: "Token not found", mint }, 404);
     }
 
-    const token = tokenData[0];
+    // Only refresh holder data if explicitly requested
+    // const refreshHolders = c.req.query("refresh_holders") === "true";
+    // if (refreshHolders) {
+      logger.log(`Refreshing holders data for token ${mint}`);
+      await updateHoldersCache(c.env, mint);
+    // }
+    
+    let token = tokenData[0];
+    
+    // Get fresh SOL price
+    const solPrice = await getSOLPrice(c.env);
+    
+    // Set default values for critical fields if they're missing
+    const TOKEN_DECIMALS = Number(c.env.DECIMALS || 6);
+    const defaultReserveAmount = 1000000000000; // 1 trillion (default token supply)
+    const defaultReserveLamport = 2800000000; // 2.8 SOL (default reserve)
+    
+    // Make sure reserveAmount and reserveLamport have values
+    token.reserveAmount = token.reserveAmount || defaultReserveAmount;
+    token.reserveLamport = token.reserveLamport || defaultReserveLamport;
+    
+    // Update or set default values for missing fields
+    if (!token.currentPrice && token.reserveAmount && token.reserveLamport) {
+      token.currentPrice = (Number(token.reserveLamport) / 1e9) / 
+        (Number(token.reserveAmount) / Math.pow(10, TOKEN_DECIMALS));
+    }
+    
+    // Calculate tokenPriceUSD in the same way as the old code
+    const tokenPriceInSol = ((token.currentPrice || 0) / Math.pow(10, TOKEN_DECIMALS));
+    token.tokenPriceUSD = (token.currentPrice || 0) > 0 ? 
+        (tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)) : 0;
+    
+    // Update solPriceUSD
+    token.solPriceUSD = solPrice;
+    
+    // Use TOKEN_SUPPLY from env if available, otherwise use reserveAmount
+    const tokenSupply = c.env.TOKEN_SUPPLY 
+        ? Number(c.env.TOKEN_SUPPLY) 
+        : token.reserveAmount;
+    
+    // Calculate or update marketCapUSD if we have tokenPriceUSD
+    token.marketCapUSD = (tokenSupply / Math.pow(10, TOKEN_DECIMALS)) * token.tokenPriceUSD;
+    
+    // Get virtualReserves and curveLimit from env or set defaults
+    const virtualReserves = c.env.VIRTUAL_RESERVES ? 
+      Number(c.env.VIRTUAL_RESERVES) : 2800000000;
+    const curveLimit = c.env.CURVE_LIMIT ?
+      Number(c.env.CURVE_LIMIT) : 11300000000;
+    
+    // Update virtualReserves and curveLimit
+    token.virtualReserves = token.virtualReserves || virtualReserves;
+    token.curveLimit = token.curveLimit || curveLimit;
+    
+    // Calculate or update curveProgress using the original formula
+    token.curveProgress = token.status === 'migrated' ? 100 : 
+      ((token.reserveLamport - token.virtualReserves) / 
+        (token.curveLimit - token.virtualReserves)) * 100;
 
     // Get token holders count
     const holdersCountQuery = await db
@@ -579,6 +696,7 @@ tokenRouter.get("/token/:mint", async (c) => {
       .where(eq(tokenHolders.mint, mint));
 
     const holdersCount = holdersCountQuery[0]?.count || 0;
+    token.holderCount = holdersCount;
 
     // Get latest swap - most recent transaction
     const latestSwapQuery = await db
@@ -590,10 +708,28 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     const latestSwap = latestSwapQuery[0] || null;
 
+    // Update token in database if we've calculated new values
+    await db
+      .update(tokens)
+      .set({
+        tokenPriceUSD: token.tokenPriceUSD,
+        currentPrice: token.currentPrice,
+        marketCapUSD: token.marketCapUSD,
+        solPriceUSD: token.solPriceUSD,
+        curveProgress: token.curveProgress,
+        virtualReserves: token.virtualReserves,
+        curveLimit: token.curveLimit,
+        holderCount: token.holderCount,
+        // Only update reserveAmount and reserveLamport if they were null
+        ...(tokenData[0].reserveAmount === null ? { reserveAmount: token.reserveAmount } : {}),
+        ...(tokenData[0].reserveLamport === null ? { reserveLamport: token.reserveLamport } : {}),
+        lastUpdated: new Date().toISOString()
+      })
+      .where(eq(tokens.mint, mint));
+      
     // Format response with additional data
     return c.json({
         ...token,
-        holdersCount,
         latestSwap,
     });
   } catch (error) {
@@ -705,7 +841,8 @@ tokenRouter.post("/check-token", async (c) => {
     }
 
     // Get token from request
-    const { tokenMint } = await c.req.json();
+    const body = await c.req.json();
+    const { tokenMint, imageUrl, metadataUrl } = body;
     if (!tokenMint) {
       return c.json({ error: "Token mint address is required" }, 400);
     }
@@ -732,6 +869,33 @@ tokenRouter.post("/check-token", async (c) => {
       .limit(1);
       
     if (existingToken && existingToken.length > 0) {
+      // If we have new image or metadata URLs, update the token
+      if ((imageUrl || metadataUrl) && existingToken[0].image === '' && existingToken[0].url === '') {
+        await db.update(tokens)
+          .set({ 
+            image: imageUrl || '',
+            url: metadataUrl || '',
+            lastUpdated: new Date().toISOString()
+          })
+          .where(eq(tokens.mint, tokenMint));
+        
+        logger.log(`Updated image and metadata URLs for token ${tokenMint}`);
+        
+        // Return the updated token
+        const updatedToken = { 
+          ...existingToken[0], 
+          image: imageUrl || existingToken[0].image, 
+          url: metadataUrl || existingToken[0].url 
+        };
+        
+        return c.json({
+          success: true,
+          tokenFound: true,
+          message: "Token exists and URLs updated",
+          token: updatedToken
+        });
+      }
+      
       logger.log(`Token ${tokenMint} already exists in database`);
       return c.json({
         success: true,
@@ -752,8 +916,8 @@ tokenRouter.post("/check-token", async (c) => {
         mint: tokenMint,
         name: `Token ${tokenMint.slice(0, 8)}`,
         ticker: 'TOKEN',
-        url: '', // Required field
-        image: '', // Required field
+        url: metadataUrl || '', // Use provided URL if available
+        image: imageUrl || '', // Use provided image if available
         creator: user.publicKey || "unknown",
         status: 'active',
         tokenPriceUSD: 0,
@@ -770,6 +934,8 @@ tokenRouter.post("/check-token", async (c) => {
         ticker: 'TOKEN',
         creator: user.publicKey || "unknown",
         status: 'active',
+        url: metadataUrl || '',
+        image: imageUrl || '',
         createdAt: now
       };
       
@@ -843,15 +1009,17 @@ tokenRouter.post("/check-token", async (c) => {
 
 // Add direct token creation endpoint
 tokenRouter.post("/create-token", async (c) => {
+  console.log("****** create-token ******\n")
   try {
     // Require authentication
-    const user = c.get("user");
+    let user = c.get("user");
     if (!user) {
       return c.json({ error: "Authentication required" }, 401);
     }
 
     const body = await c.req.json();
-    const { tokenMint, name, symbol, txId } = body;
+    console.log("****** body ******\n", body)
+    const { tokenMint, name, symbol, txId, description, twitter, telegram, website, discord, agentLink, imageUrl, metadataUrl } = body;
 
     if (!tokenMint) {
       return c.json({ error: "Token mint address is required" }, 400);
@@ -889,8 +1057,13 @@ tokenRouter.post("/create-token", async (c) => {
         mint: tokenMint,
         name: name || `Token ${tokenMint.slice(0, 8)}`,
         ticker: symbol || 'TOKEN',
-        url: '', // Required field
-        image: '', // Required field
+        url: metadataUrl || '', // Use metadataUrl if provided
+        image: imageUrl || '', // Use imageUrl if provided
+        description: description || '',
+        twitter: twitter || '',
+        telegram: telegram || '',
+        website: website || '',
+        discord: discord || '',
         creator: user.publicKey || "unknown",
         status: 'active',
         tokenPriceUSD: 0,
@@ -905,8 +1078,16 @@ tokenRouter.post("/create-token", async (c) => {
         mint: tokenMint,
         name: name || `Token ${tokenMint.slice(0, 8)}`,
         ticker: symbol || 'TOKEN',
+        description: description || '',
+        twitter: twitter || '',
+        telegram: telegram || '',
+        website: website || '',
+        discord: discord || '',
+        agentLink: agentLink || '',
         creator: user.publicKey || "unknown",
         status: 'active',
+        url: metadataUrl || '',
+        image: imageUrl || '',
         createdAt: now
       };
       
@@ -943,6 +1124,1079 @@ tokenRouter.post("/create-token", async (c) => {
       success: false,
       error: "Failed to create token",
       details: error instanceof Error ? error.message : "Unknown error"
+    }, 500);
+  }
+});
+
+// Manual token price update - useful for development mode
+tokenRouter.get("/dev/update-token/:mint", async (c) => {
+  try {
+    // Only allow in development environment
+    if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
+      return c.json({ error: "This endpoint is only available in development" }, 403);
+    }
+
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    const db = getDB(c.env);
+    const tokenData = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    if (!tokenData || tokenData.length === 0) {
+      return c.json({ error: "Token not found" }, 404);
+    }
+
+    // Get fresh SOL price
+    const solPrice = await getSOLPrice(c.env);
+    
+    // Calculate token price in same way as old code
+    const TOKEN_DECIMALS = Number(c.env.DECIMALS || 6);
+    const token = { ...tokenData[0] };
+    
+    // Calculate price if we have the necessary data
+    if (token.reserveAmount && token.reserveLamport) {
+      token.currentPrice = (Number(token.reserveLamport) / 1e9) / 
+        (Number(token.reserveAmount) / Math.pow(10, TOKEN_DECIMALS));
+        
+      const tokenPriceInSol = token.currentPrice / Math.pow(10, TOKEN_DECIMALS);
+      token.tokenPriceUSD = token.currentPrice > 0 ? 
+        (tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)) : 0;
+    }
+    
+    // Use TOKEN_SUPPLY from env if available, otherwise use reserveAmount with a default
+    const tokenSupply = c.env.TOKEN_SUPPLY 
+      ? Number(c.env.TOKEN_SUPPLY) 
+      : (token.reserveAmount || 1000000000000);
+      
+    token.marketCapUSD = token.tokenPriceUSD ? 
+      (tokenSupply / Math.pow(10, TOKEN_DECIMALS)) * token.tokenPriceUSD : 0;
+    
+    // Update solPriceUSD
+    token.solPriceUSD = solPrice;
+    
+    // Get virtualReserves and curveLimit from env or set defaults
+    const virtualReserves = c.env.VIRTUAL_RESERVES ? 
+      Number(c.env.VIRTUAL_RESERVES) : 2800000000;
+    const curveLimit = c.env.CURVE_LIMIT ?
+      Number(c.env.CURVE_LIMIT) : 11300000000;
+    
+    // Update curve progress with the original formula
+    token.curveProgress = token.status === 'migrated' ? 100 : 
+      ((Number(token.reserveLamport || virtualReserves) - virtualReserves) / 
+        (curveLimit - virtualReserves)) * 100;
+    
+    // Update token in database
+    await db
+      .update(tokens)
+      .set({
+        currentPrice: token.currentPrice,
+        tokenPriceUSD: token.tokenPriceUSD,
+        marketCapUSD: token.marketCapUSD,
+        solPriceUSD: token.solPriceUSD,
+        curveProgress: token.curveProgress,
+        virtualReserves: virtualReserves,
+        curveLimit: curveLimit,
+        lastUpdated: new Date().toISOString()
+      })
+      .where(eq(tokens.mint, mint));
+
+    return c.json({
+      success: true,
+      message: "Token prices updated successfully",
+      token
+    });
+  } catch (error) {
+    logger.error("Error updating token prices:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
+
+// Manual cron job trigger - useful for development mode
+tokenRouter.get("/dev/run-cron", async (c) => {
+  try {
+    // Only allow in development environment
+    if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
+      return c.json({ error: "This endpoint is only available in development" }, 403);
+    }
+
+    await cron(c.env);
+    
+    return c.json({
+      success: true,
+      message: "Cron job executed successfully"
+    });
+  } catch (error) {
+    logger.error("Error running cron job:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
+
+// Add an endpoint to fix a specific token's virtualReserves value
+tokenRouter.get("/dev/fix-token/:mint", async (c) => {
+  try {
+    // Only allow in development environment
+    if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
+      return c.json({ error: "This endpoint is only available in development" }, 403);
+    }
+
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    const db = getDB(c.env);
+    const tokenData = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    if (!tokenData || tokenData.length === 0) {
+      return c.json({ error: "Token not found" }, 404);
+    }
+
+    const token = tokenData[0];
+    
+    // Set the correct values for virtualReserves and curveLimit
+    const virtualReserves = 2800000000; // 2.8 billion
+    const curveLimit = 11300000000; // 11.3 billion
+    
+    // Calculate the correct curve progress using the fixed values
+    const curveProgress = token.status === 'migrated' ? 100 : 
+      ((Number(token.reserveLamport || virtualReserves) - virtualReserves) / 
+        (curveLimit - virtualReserves)) * 100;
+    
+    // Update the token in database with correct values
+    await db
+      .update(tokens)
+      .set({
+        virtualReserves: virtualReserves,
+        curveLimit: curveLimit,
+        curveProgress: curveProgress,
+        lastUpdated: new Date().toISOString()
+      })
+      .where(eq(tokens.mint, mint));
+
+    return c.json({
+      success: true,
+      message: "Token values fixed successfully",
+      oldVirtualReserves: token.virtualReserves,
+      newVirtualReserves: virtualReserves,
+      oldCurveLimit: token.curveLimit,
+      newCurveLimit: curveLimit,
+      oldCurveProgress: token.curveProgress,
+      newCurveProgress: curveProgress
+    });
+  } catch (error) {
+    logger.error("Error fixing token values:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
+
+// Update token reserveLamport value for development
+tokenRouter.post("/dev/update-token-data/:mint", async (c) => {
+  try {
+    // Only allow in development environment
+    if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
+      return c.json({ error: "This endpoint is only available in development" }, 403);
+    }
+
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    // Get request body with the reserveLamport value to set
+    const body = await c.req.json();
+    if (!body || typeof body.reserveLamport !== 'number') {
+      return c.json({ error: "Request must include reserveLamport as a number" }, 400);
+    }
+
+    const reserveLamport = body.reserveLamport;
+    
+    const db = getDB(c.env);
+    const tokenData = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    if (!tokenData || tokenData.length === 0) {
+      return c.json({ error: "Token not found" }, 404);
+    }
+
+    const token = tokenData[0];
+    
+    // Set the correct values for virtualReserves and curveLimit
+    const virtualReserves = 2800000000; // 2.8 billion
+    const curveLimit = 11300000000; // 11.3 billion
+    const TOKEN_DECIMALS = Number(c.env.DECIMALS || 6);
+    
+    // Calculate the correct curve progress using the fixed values
+    const curveProgress = token.status === 'migrated' ? 100 : 
+      ((reserveLamport - virtualReserves) / (curveLimit - virtualReserves)) * 100;
+    
+    // Calculate currentPrice
+    const currentPrice = (reserveLamport / 1e9) / 
+      ((token.reserveAmount || 1000000000000) / Math.pow(10, TOKEN_DECIMALS));
+    
+    // Get fresh SOL price
+    const solPrice = await getSOLPrice(c.env);
+    
+    // Calculate tokenPriceUSD in the same way as the old code
+    const tokenPriceInSol = (currentPrice / Math.pow(10, TOKEN_DECIMALS));
+    const tokenPriceUSD = currentPrice > 0 ? 
+      (tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)) : 0;
+    
+    // Calculate marketCapUSD
+    // Use TOKEN_SUPPLY from env if available, otherwise use reserveAmount
+    const tokenSupply = c.env.TOKEN_SUPPLY 
+        ? Number(c.env.TOKEN_SUPPLY) 
+        : (token.reserveAmount || 1000000000000);
+    
+    const marketCapUSD = (tokenSupply / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD;
+    
+    // Update the token in database with the new values
+    await db
+      .update(tokens)
+      .set({
+        reserveLamport,
+        currentPrice,
+        tokenPriceUSD,
+        marketCapUSD,
+        solPriceUSD: solPrice,
+        curveProgress,
+        virtualReserves,
+        curveLimit,
+        lastUpdated: new Date().toISOString()
+      })
+      .where(eq(tokens.mint, mint));
+
+    // Get the updated token for the response
+    const updatedTokenData = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    return c.json({
+      success: true,
+      message: "Token data updated successfully to reflect mainnet state",
+      oldReserveLamport: token.reserveLamport,
+      newReserveLamport: reserveLamport,
+      oldCurveProgress: token.curveProgress,
+      newCurveProgress: curveProgress,
+      token: updatedTokenData[0]
+    });
+  } catch (error) {
+    logger.error("Error updating token data:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
+
+// Add this function to worker/routes/token.ts or worker/cron.ts
+export async function updateHoldersCache(env: Env, mint: string): Promise<number> {
+  try {
+    const connection = new Connection((env.NETWORK === "devnet" ? env.DEVNET_SOLANA_RPC_URL : env.MAINNET_SOLANA_RPC_URL) || "https://api.devnet.solana.com");
+    const db = getDB(env);
+    
+    // Get all token accounts for this mint
+    let largestAccounts;
+    try {
+      largestAccounts = await connection.getTokenLargestAccounts(new PublicKey(mint));
+    } catch (error: any) {
+      // If we get rate limited, wait and retry once
+      if (error.toString().includes('429')) {
+        logger.warn(`Rate limited when fetching token accounts for ${mint}, retrying after delay...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        largestAccounts = await connection.getTokenLargestAccounts(new PublicKey(mint));
+      } else {
+        throw error;
+      }
+    }
+    
+    if (!largestAccounts.value || largestAccounts.value.length === 0) {
+      logger.log(`No accounts found for token ${mint}`);
+      return 0;
+    }
+    
+    // Calculate total supply from all accounts
+    const totalSupply = largestAccounts.value.reduce((sum, account) => 
+      sum + Number(account.amount), 0);
+    
+    // Create an array to store holder records
+    const holders = [];
+    
+    // Process each account - get owner and details
+    for (const account of largestAccounts.value) {
+      if (Number(account.amount) === 0) continue;
+      
+      try {
+        // Add a small delay between requests to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        const accountInfo = await connection.getParsedAccountInfo(account.address);
+        // Skip if account not found
+        if (!accountInfo.value) continue;
+        
+        const parsedData = accountInfo.value.data as any;
+        if (!parsedData.parsed?.info?.owner) continue;
+        
+        const owner = parsedData.parsed.info.owner;
+        
+        holders.push({
+          id: crypto.randomUUID(),
+          mint,
+          address: owner,
+          amount: Number(account.amount),
+          percentage: (Number(account.amount) / totalSupply) * 100,
+          lastUpdated: new Date().toISOString()
+        });
+      } catch (error: any) {
+        logger.error(`Error processing account ${account.address.toString()}:`, error);
+        // Continue with other accounts even if one fails
+        continue;
+      }
+    }
+    
+    // Clear existing holders and insert new ones
+    await db.delete(tokenHolders).where(eq(tokenHolders.mint, mint));
+    
+    if (holders.length > 0) {
+      // Insert in batches to avoid overwhelming the database
+      for (let i = 0; i < holders.length; i += 50) {
+        const batch = holders.slice(i, i + 50);
+        await db.insert(tokenHolders).values(batch);
+      }
+    }
+    
+    // Update token holder count
+    await db.update(tokens)
+      .set({ 
+        holderCount: holders.length,
+        lastUpdated: new Date().toISOString()
+      })
+      .where(eq(tokens.mint, mint));
+    
+    return holders.length;
+  } catch (error) {
+    logger.error(`Error updating holders for token ${mint}:`, error);
+    return 0;
+  }
+}
+
+// Add this to the token router in worker/routes/token.ts
+tokenRouter.get("/dev/update-holders/:mint", async (c) => {
+  try {
+    // Only allow in development environment
+    if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
+      return c.json({ error: "This endpoint is only available in development" }, 403);
+    }
+    
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+    
+    const holderCount = await updateHoldersCache(c.env, mint);
+    
+    return c.json({
+      success: true,
+      message: `Updated holders data for token ${mint}`,
+      holderCount
+    });
+  } catch (error) {
+    logger.error("Error updating holders data:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
+
+// Add regular endpoint to update holders data on demand
+tokenRouter.get("/tokens/:mint/refresh-holders", async (c) => {
+  try {
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+    
+    // Require authentication
+    const user = c.get("user");
+    if (!user) {
+      return c.json({ error: "Authentication required" }, 401);
+    }
+    
+    logger.log(`Refreshing holders data for token ${mint} requested by ${user.publicKey}`);
+    
+    // Update holders for this specific token
+    const holderCount = await updateHoldersCache(c.env, mint);
+    
+    return c.json({
+      success: true,
+      message: `Updated holders data for token ${mint}`,
+      holderCount
+    });
+  } catch (error) {
+    logger.error("Error updating holders data:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
+
+// Add regular endpoint to refresh trade/swap data on demand
+tokenRouter.get("/tokens/:mint/refresh-swaps", async (c) => {
+  try {
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+    
+    // Require authentication
+    const user = c.get("user");
+    if (!user) {
+      return c.json({ error: "Authentication required" }, 401);
+    }
+    
+    logger.log(`Refreshing swap data for token ${mint} requested by ${user.publicKey}`);
+    
+    // In a real implementation, this would fetch the latest swaps
+    // For now, just return the current swap data from the database
+    const db = getDB(c.env);
+    const swapsData = await db
+      .select()
+      .from(swaps)
+      .where(eq(swaps.tokenMint, mint))
+      .orderBy(desc(swaps.timestamp))
+      .limit(10);
+    
+    return c.json({
+      success: true,
+      message: `Retrieved latest swap data for token ${mint}`,
+      swaps: swapsData,
+      count: swapsData.length
+    });
+  } catch (error) {
+    logger.error("Error fetching swap data:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
+
+// Add a debug endpoint to add test holder data
+tokenRouter.get("/dev/add-test-holders/:mint", async (c) => {
+  try {
+    // Only allow in development environment
+    if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
+      return c.json({ error: "This endpoint is only available in development" }, 403);
+    }
+    
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+    
+    logger.log(`Adding test holder data for token ${mint}`);
+    
+    const db = getDB(c.env);
+    
+    // Clear existing holders first
+    await db.delete(tokenHolders).where(eq(tokenHolders.mint, mint));
+    
+    // Create mock holder data
+    const holders = [
+      {
+        id: crypto.randomUUID(),
+        mint,
+        address: "DvmXXp4tSXYwZJhM5HjtEUvQ6SfxwkA7daE1jQgCX1ri", // Example address - replace with your address
+        amount: 500000000000,
+        percentage: 50,
+        lastUpdated: new Date().toISOString()
+      },
+      {
+        id: crypto.randomUUID(),
+        mint,
+        address: "4TSsx3XxMJKzDnQDPvP3YHkHZpPJmJh4xzNtiypvG1Lm",
+        amount: 300000000000,
+        percentage: 30,
+        lastUpdated: new Date().toISOString()
+      },
+      {
+        id: crypto.randomUUID(),
+        mint,
+        address: "8HQUbGPnG4XzfKMrpJG9nNq9h6JU5Q3dkKA49E1JZQke",
+        amount: 200000000000,
+        percentage: 20,
+        lastUpdated: new Date().toISOString()
+      }
+    ];
+    
+    // Insert test holders
+    await db.insert(tokenHolders).values(holders);
+    
+    // Update token holder count
+    await db.update(tokens)
+      .set({ 
+        holderCount: holders.length,
+        lastUpdated: new Date().toISOString()
+      })
+      .where(eq(tokens.mint, mint));
+    
+    // Fetch holders to confirm they were added
+    const savedHolders = await db
+      .select()
+      .from(tokenHolders)
+      .where(eq(tokenHolders.mint, mint))
+      .orderBy(desc(tokenHolders.amount));
+    
+    return c.json({
+      success: true,
+      message: `Added ${holders.length} test holders for token ${mint}`,
+      holderCount: holders.length,
+      holders: savedHolders
+    });
+  } catch (error) {
+    logger.error("Error adding test holders:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
+
+// Add a debug endpoint to check holder data in database
+tokenRouter.get("/dev/check-holders/:mint", async (c) => {
+  try {
+    // Only allow in development environment
+    if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
+      return c.json({ error: "This endpoint is only available in development" }, 403);
+    }
+    
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+    
+    logger.log(`Checking holder data in database for token ${mint}`);
+    
+    const db = getDB(c.env);
+    
+    // Get token to check holderCount
+    const token = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+      
+    // Get all holders from database
+    const holders = await db
+      .select()
+      .from(tokenHolders)
+      .where(eq(tokenHolders.mint, mint))
+      .orderBy(desc(tokenHolders.amount));
+    
+    // Check if token exists
+    if (!token || token.length === 0) {
+      return c.json({ 
+        success: false,
+        message: `Token ${mint} not found in database`,
+        holderCount: 0,
+        holders: []
+      });
+    }
+    
+    return c.json({
+      success: true,
+      token: token[0],
+      tokenHolderCount: token[0].holderCount || 0,
+      actualHolderCount: holders.length,
+      holdersInDB: holders.length,
+      holders: holders
+    });
+  } catch (error) {
+    logger.error("Error checking holder data:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
+
+// Add a debug endpoint to add all test data (holders and swaps)
+tokenRouter.get("/dev/add-all-test-data/:mint", async (c) => {
+  try {
+    // Only allow in development environment
+    if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
+      return c.json({ error: "This endpoint is only available in development" }, 403);
+    }
+    
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+    
+    logger.log(`Adding all test data for token ${mint}`);
+    
+    const db = getDB(c.env);
+    
+    // Get token to make sure it exists
+    const token = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+      
+    if (!token || token.length === 0) {
+      return c.json({ 
+        success: false,
+        message: `Token ${mint} not found in database`,
+      });
+    }
+    
+    // 1. Add test holders data
+    // Clear existing holders first
+    await db.delete(tokenHolders).where(eq(tokenHolders.mint, mint));
+    
+    // Create mock holder data
+    const holders = [
+      {
+        id: crypto.randomUUID(),
+        mint,
+        address: "DvmXXp4tSXYwZJhM5HjtEUvQ6SfxwkA7daE1jQgCX1ri", // Example address
+        amount: 500000000000,
+        percentage: 50,
+        lastUpdated: new Date().toISOString()
+      },
+      {
+        id: crypto.randomUUID(),
+        mint,
+        address: "4TSsx3XxMJKzDnQDPvP3YHkHZpPJmJh4xzNtiypvG1Lm",
+        amount: 300000000000,
+        percentage: 30,
+        lastUpdated: new Date().toISOString()
+      },
+      {
+        id: crypto.randomUUID(),
+        mint,
+        address: "8HQUbGPnG4XzfKMrpJG9nNq9h6JU5Q3dkKA49E1JZQke",
+        amount: 200000000000,
+        percentage: 20,
+        lastUpdated: new Date().toISOString()
+      }
+    ];
+    
+    // Insert test holders
+    await db.insert(tokenHolders).values(holders);
+    
+    // 2. Add test swap data
+    // Clear existing swaps first
+    await db.delete(swaps).where(eq(swaps.tokenMint, mint));
+    
+    // Create mock swap data - 10 swaps over the last few days
+    const now = new Date();
+    const swapRecords = [];
+    
+    // Create 10 swaps with alternating directions (buy/sell)
+    for (let i = 0; i < 10; i++) {
+      const timestamp = new Date(now.getTime() - (i * 3600000)); // 1 hour apart
+      const direction = i % 2; // Alternate between 0 (buy) and 1 (sell)
+      const price = 0.00001 + (Math.random() * 0.00001); // Random price variation
+      
+      swapRecords.push({
+        id: crypto.randomUUID(),
+        tokenMint: mint,
+        user: "DvmXXp4tSXYwZJhM5HjtEUvQ6SfxwkA7daE1jQgCX1ri", // Example user
+        type: direction === 0 ? "buy" : "sell",
+        direction: direction,
+        amountIn: 1000000000 + (Math.random() * 500000000), // Random amount
+        amountOut: 500000000 + (Math.random() * 300000000), // Random amount
+        price: price,
+        txId: `test-tx-${i}-${crypto.randomUUID().slice(0, 8)}`,
+        timestamp: timestamp.toISOString()
+      });
+    }
+    
+    // Insert test swaps
+    await db.insert(swaps).values(swapRecords);
+    
+    // 3. Update token with latest data
+    await db.update(tokens)
+      .set({ 
+        holderCount: holders.length,
+        lastUpdated: now.toISOString()
+      })
+      .where(eq(tokens.mint, mint));
+    
+    return c.json({
+      success: true,
+      message: `Added all test data for token ${mint}`,
+      holderCount: holders.length,
+      swapCount: swapRecords.length
+    });
+  } catch (error) {
+    logger.error("Error adding test data:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
+
+// Add a debug endpoint to check swap data in database
+tokenRouter.get("/dev/check-swaps/:mint", async (c) => {
+  try {
+    // Only allow in development environment
+    if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
+      return c.json({ error: "This endpoint is only available in development" }, 403);
+    }
+    
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+    
+    logger.log(`Checking swap data in database for token ${mint}`);
+    
+    const db = getDB(c.env);
+    
+    // Get all swaps from database
+    const swapsResult = await db
+      .select()
+      .from(swaps)
+      .where(eq(swaps.tokenMint, mint))
+      .orderBy(desc(swaps.timestamp));
+    
+    // Count total swaps
+    const totalSwapsQuery = await db
+      .select({ count: sql`count(*)` })
+      .from(swaps)
+      .where(eq(swaps.tokenMint, mint));
+    
+    const totalSwaps = Number(totalSwapsQuery[0]?.count || 0);
+    
+    return c.json({
+      success: true,
+      mint,
+      totalSwaps,
+      swaps: swapsResult,
+      swapsCount: swapsResult.length,
+      swapsExample: swapsResult.length > 0 ? swapsResult[0] : null
+    });
+  } catch (error) {
+    logger.error("Error checking swap data:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
+
+// Get specific token swaps endpoint
+tokenRouter.get("/swaps/:mint", async (c) => {
+  console.log("******* swaps endpoint called for mint:", c.req.param("mint"));
+  try {
+    const mint = c.req.param("mint");
+
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    // Parse pagination parameters
+    const limit = parseInt(c.req.query("limit") || "50");
+    const page = parseInt(c.req.query("page") || "1");
+    const offset = (page - 1) * limit;
+
+    // Get the DB connection
+    const db = getDB(c.env);
+
+    // Get real swap data from the database
+    const swapsResult = await db
+      .select()
+      .from(swaps)
+      .where(eq(swaps.tokenMint, mint))
+      .orderBy(desc(swaps.timestamp))
+      .offset(offset)
+      .limit(limit);
+
+    console.log(`Found ${swapsResult.length} swaps for mint ${mint}`);
+    if (swapsResult.length > 0) {
+      console.log("Sample swap data:", swapsResult[0]);
+    }
+
+    // Get total count for pagination
+    const totalSwapsQuery = (await db
+      .select({ count: sql`count(*)` })
+      .from(swaps)
+      .where(eq(swaps.tokenMint, mint)));
+
+    const totalSwaps = Number(totalSwapsQuery[0]?.count || 0);
+    const totalPages = Math.ceil(totalSwaps / limit);
+
+    // Format directions for better readability
+    const formattedSwaps = swapsResult.map((swap) => ({
+      ...swap,
+      directionText: swap.direction === 0 ? "buy" : "sell",
+    }));
+
+    const response = {
+      swaps: formattedSwaps,
+      page,
+      totalPages,
+      total: totalSwaps,
+    };
+    
+    console.log(`Returning response with ${formattedSwaps.length} swaps`);
+    return c.json(response);
+  } catch (error) {
+    logger.error("Error in swaps history route:", error);
+    return c.json(
+      {
+        swaps: [],
+        page: 1,
+        totalPages: 0,
+        total: 0,
+        error: "Failed to fetch swap history",
+      },
+      500
+    );
+  }
+});
+
+// Add a new endpoint that matches the frontend path
+tokenRouter.get("/api/swaps/:mint", async (c) => {
+  console.log("******* api/swaps endpoint called for mint:", c.req.param("mint"));
+  try {
+    const mint = c.req.param("mint");
+
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    // Parse pagination parameters
+    const limit = parseInt(c.req.query("limit") || "50");
+    const page = parseInt(c.req.query("page") || "1");
+    const offset = (page - 1) * limit;
+
+    // Get the DB connection
+    const db = getDB(c.env);
+
+    // Get real swap data from the database
+    const swapsResult = await db
+      .select()
+      .from(swaps)
+      .where(eq(swaps.tokenMint, mint))
+      .orderBy(desc(swaps.timestamp))
+      .offset(offset)
+      .limit(limit);
+
+    console.log(`Found ${swapsResult.length} swaps for mint ${mint} in api/swaps endpoint`);
+    if (swapsResult.length > 0) {
+      console.log("Sample swap data:", swapsResult[0]);
+    }
+
+    // If no swaps found and we're in dev mode, create some test data
+    if (swapsResult.length === 0 && (c.env.NODE_ENV === "development" || c.env.NODE_ENV === "test")) {
+      console.log("No swaps found in api/swaps, adding test data");
+      
+      // Create mock swap data with exact fields expected by frontend
+      const now = new Date();
+      const swapRecords = [];
+      
+      // Create 5 test swaps
+      for (let i = 0; i < 5; i++) {
+        const timestamp = new Date(now.getTime() - (i * 3600000)).toISOString(); // 1 hour apart
+        const direction = i % 2; // Alternate between 0 (buy) and 1 (sell)
+        
+        swapRecords.push({
+          id: crypto.randomUUID(),
+          tokenMint: mint,
+          user: "DvmXXp4tSXYwZJhM5HjtEUvQ6SfxwkA7daE1jQgCX1ri", // Example user
+          type: direction === 0 ? "buy" : "sell", // Add type field to fix linter error
+          direction: direction,
+          amountIn: 2000000000 + (Math.random() * 1000000000), // Random amount (2-3 SOL)
+          amountOut: 5000000000 + (Math.random() * 2000000000), // Random amount (5-7 tokens)
+          price: 0.0001 + (Math.random() * 0.0001),
+          txId: `test-tx-${i}-${crypto.randomUUID().slice(0, 8)}`,
+          timestamp: timestamp
+        });
+      }
+      
+      // Insert test swaps
+      try {
+        await db.insert(swaps).values(swapRecords);
+        console.log("Added test swap data in api/swaps endpoint");
+        
+        // Return the newly added data
+        return c.json({
+          swaps: swapRecords.map(swap => ({
+            ...swap,
+            directionText: swap.direction === 0 ? "buy" : "sell",
+          })),
+          page: 1,
+          totalPages: 1,
+          total: swapRecords.length
+        });
+      } catch (err) {
+        console.error("Error adding test swaps:", err);
+      }
+    }
+
+    // Get total count for pagination
+    const totalSwapsQuery = (await db
+      .select({ count: sql`count(*)` })
+      .from(swaps)
+      .where(eq(swaps.tokenMint, mint)));
+
+    const totalSwaps = Number(totalSwapsQuery[0]?.count || 0);
+    const totalPages = Math.ceil(totalSwaps / limit);
+
+    // Format the swaps for the frontend with careful type handling
+    const formattedSwaps = swapsResult.map(swap => {
+      // Create a new object with exactly the expected fields
+      return {
+        txId: typeof swap.txId === 'string' ? swap.txId : '', // Must be string
+        timestamp: typeof swap.timestamp === 'string' ? swap.timestamp : new Date().toISOString(), // Must be string in ISO format
+        user: typeof swap.user === 'string' ? swap.user : '', // Must be string 
+        direction: typeof swap.direction === 'number' ? swap.direction : 0, // Must be 0 or 1
+        amountIn: typeof swap.amountIn === 'number' ? swap.amountIn : 0, // Must be number
+        amountOut: typeof swap.amountOut === 'number' ? swap.amountOut : 0, // Must be number
+        // These extra fields won't affect validation
+        directionText: swap.direction === 0 ? "buy" : "sell",
+      };
+    });
+
+    const response = {
+      swaps: formattedSwaps,
+      page,
+      totalPages,
+      total: totalSwaps,
+    };
+    
+    
+    console.log(`Returning response with ${formattedSwaps.length} swaps from api/swaps endpoint`);
+    return c.json(response);
+  } catch (error) {
+    logger.error("Error in api/swaps history route:", error);
+    return c.json(
+      {
+        swaps: [],
+        page: 1,
+        totalPages: 0,
+        total: 0,
+        error: "Failed to fetch swap history",
+      },
+      500
+    );
+  }
+});
+
+// Debug endpoint for swap data
+tokenRouter.get("/swaps/:mint", async (c) => {
+  console.log("Debug swaps endpoint called for mint:", c.req.param("mint"));
+  try {
+    const mint = c.req.param("mint");
+    
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    const db = getDB(c.env);
+
+    // Get all swap data from the database without pagination
+    const swapsResult = await db
+      .select()
+      .from(swaps)
+      .where(eq(swaps.tokenMint, mint))
+      .orderBy(desc(swaps.timestamp));
+
+    console.log(`DEBUG: Found ${swapsResult.length} swaps for mint ${mint}`);
+    
+    // Format the swaps for the frontend with careful type handling
+    const formattedSwaps = swapsResult.map(swap => ({
+      txId: typeof swap.txId === 'string' ? swap.txId : '',
+      timestamp: typeof swap.timestamp === 'string' ? swap.timestamp : new Date().toISOString(),
+      user: typeof swap.user === 'string' ? swap.user : '',
+      direction: typeof swap.direction === 'number' ? swap.direction : 0,
+      amountIn: typeof swap.amountIn === 'number' ? swap.amountIn : 0,
+      amountOut: typeof swap.amountOut === 'number' ? swap.amountOut : 0,
+    }));
+
+    return c.json({
+      swaps: formattedSwaps,
+      count: formattedSwaps.length,
+      originalSwaps: swapsResult.slice(0, 2) // For debugging, include the first two original records
+    });
+  } catch (error) {
+    logger.error("Error in debug swaps route:", error);
+    return c.json({ error: "Failed to fetch swap data", swaps: [] }, 500);
+  }
+});
+
+// Add debug endpoint for WebSocket status check
+tokenRouter.get("/websocket-status", async (c) => {
+  try {
+    // Only allow in development environment
+    if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
+      return c.json({ error: "This endpoint is only available in development" }, 403);
+    }
+    
+    // Get WebSocket client
+    const wsClient = getWebSocketClient(c.env);
+    
+    // Test emit to global channel
+    const testData = {
+      message: "This is a test message",
+      timestamp: new Date().toISOString()
+    };
+    
+    try {
+      // Emit to global
+      await wsClient.emit("global", "test", testData);
+      
+      // Return success
+      return c.json({
+        success: true,
+        message: "WebSocket test event emitted successfully",
+        socketActorAvailable: !!(c.env as any).socketActor,
+        legacyNamespaceAvailable: !!(c.env as any).WEBSOCKET_DO
+      });
+    } catch (error: any) {
+      return c.json({
+        success: false,
+        message: "Failed to emit WebSocket test event",
+        error: error?.message || "Unknown error",
+        socketActorAvailable: !!(c.env as any).socketActor,
+        legacyNamespaceAvailable: !!(c.env as any).WEBSOCKET_DO
+      }, 500);
+    }
+  } catch (error: any) {
+    logger.error("Error in WebSocket status endpoint:", error);
+    return c.json({ 
+      error: "Error checking WebSocket status", 
+      details: error?.message || "Unknown error" 
     }, 500);
   }
 });

@@ -13,6 +13,7 @@ export const tokens = sqliteTable("tokens", {
   twitter: text("twitter"),
   telegram: text("telegram"),
   website: text("website"),
+  discord: text("discord"),
   description: text("description"),
   mint: text("mint").notNull().unique(),
   creator: text("creator").notNull(),

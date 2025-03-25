@@ -58,8 +58,46 @@ export const getTokens = async ({
 };
 
 export const getToken = async ({ address }: { address: string }) => {
-  const data = await fetcher(`/api/tokens/${address}`, "GET");
-  return data as IToken;
+  const rawData = await fetcher(`/api/tokens/${address}`, "GET");
+  const data = rawData as Record<string, any>;
+  
+  // Transform empty strings to null for optional fields
+  const transformedData: IToken = {
+    mint: data.mint,
+    createdAt: data.createdAt,
+    creator: data.creator,
+    currentPrice: data.currentPrice != null ? Number(data.currentPrice) : 0,
+    curveLimit: data.curveLimit != null ? Number(data.curveLimit) : 0,
+    curveProgress: data.curveProgress != null ? Number(data.curveProgress) : 0,
+    description: data.description || "",
+    image: data.image || "",
+    inferenceCount: data.inferenceCount != null ? Number(data.inferenceCount) : 0,
+    lastUpdated: data.lastUpdated,
+    liquidity: data.liquidity != null ? Number(data.liquidity) : 0,
+    marketCapUSD: data.marketCapUSD != null ? Number(data.marketCapUSD) : 0,
+    name: data.name,
+    price24hAgo: data.price24hAgo != null ? Number(data.price24hAgo) : 0,
+    priceChange24h: data.priceChange24h != null ? Number(data.priceChange24h) : 0,
+    reserveAmount: data.reserveAmount != null ? Number(data.reserveAmount) : 0,
+    reserveLamport: data.reserveLamport != null ? Number(data.reserveLamport) : 0,
+    solPriceUSD: data.solPriceUSD != null ? Number(data.solPriceUSD) : 0,
+    status: data.status || "active",
+    telegram: data.telegram || "",
+    ticker: data.ticker,
+    tokenPriceUSD: data.tokenPriceUSD != null ? Number(data.tokenPriceUSD) : 0,
+    twitter: data.twitter || "",
+    txId: data.txId || "",
+    url: data.url || "",
+    virtualReserves: data.virtualReserves != null ? Number(data.virtualReserves) : 0,
+    volume24h: data.volume24h != null ? Number(data.volume24h) : 0,
+    website: data.website || "",
+    holderCount: data.holderCount != null ? Number(data.holderCount) : 0,
+    lastPriceUpdate: data.lastPriceUpdate || data.lastUpdated,
+    lastVolumeReset: data.lastVolumeReset || data.lastUpdated,
+    hasAgent: Boolean(data.agentLink),
+  };
+
+  return transformedData;
 };
 
 export const getTokenHolders = async ({ address }: { address: string }) => {

@@ -13,12 +13,12 @@ export default function Header() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const mobileNavItems = [
     { icon: "/nav/stars.svg", title: "Create Token", href: "/create" },
-    { icon: "/nav/eye.svg", title: "Tokens", href: "/tokens" },
-    { icon: "/nav/circles.svg", title: "How It Works", href: "/how-it-works" },
-    { icon: "/nav/question-mark.svg", title: "Support", href: "/support" },
+    // { icon: "/nav/eye.svg", title: "Tokens", href: "/tokens" },
+    // { icon: "/nav/circles.svg", title: "How It Works", href: "/how-it-works" },
   ];
 
   const mobileNavLinks = [
+    { icon: "/nav/question-mark.svg", title: "Support", href: "/support" },
     { title: "Privacy Policy", href: "/legal/privacy" },
     { title: "Terms of Service", href: "/legal/terms" },
     { title: "Fees", href: "/legal/fees" },
@@ -26,15 +26,14 @@ export default function Header() {
 
   return (
     <div>
-      <div className="hidden md:block border-b py-6">
+      <div className="hidden md:block py-6">
         <div className="container flex flex-row items-center justify-between">
           <div className="flex items-center">
             <Link to="/" className="mr-6">
               <img className="size-10" src="/logo.png" />
             </Link>
-            <NavLink title="Tokens" href="/" />
-            <HowItWorksDialog />
-            <NavLink title="Support" href="/support" />
+            {/* <NavLink title="Tokens" href="/" /> */}
+            {/* <HowItWorksDialog /> */}
           </div>
           <div className="flex w-1/2 space-x-4 flex-row justify-between">
             <SearchBar isMobile={false} />

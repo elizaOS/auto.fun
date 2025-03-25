@@ -19,6 +19,8 @@ export const Footer = () => {
         <FooterLink href="/terms-of-service" title="Terms of Service" />
         <div className="w-[1px] h-4 bg-autofun-stroke-light" />
         <FooterLink href="/fees" title="Fees" />
+        <div className="w-[1px] h-4 bg-autofun-stroke-light" />
+        <FooterLink title="Support" href="/support" />
         <Link to={"https://x.com/autodotfun"} target="_blank">
           <div className="size-10 p-0 grid place-items-center border rounded-md select-none">
             <div className="m-auto">
