@@ -38,11 +38,6 @@ bindings = [
   { name = "WebSocketDO", class_name = "WebSocketDO" }
 ]
 
-# Migration tags
-[[migrations]]
-tag = "v1"
-new_classes = ["WebSocketDO"]
-
 # Development environment configuration
 [env.development]
 name = "api-dev"
