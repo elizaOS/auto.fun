@@ -696,7 +696,7 @@ export const Create = () => {
     !errors.initial_sol;
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
+    <div className="flex items-center py-10 md:py-0 justify-center min-h-screen">
       <div className="max-w-[800px] h-fit bg-autofun-background-card border-1 rounded-md border-white/10 p-3">
         <div className="flex flex-col gap-y-4">
           <div className="text-autofun-background-action-highlight font-medium text-[32px]">
