@@ -197,13 +197,11 @@ export default function TransactionSignPage() {
             reserveLamport={0}
             virtualReserves={0}
             placeholderTargetMarketCap={87_148}
-            socialLinks={{
-              twitter: formValues.links.twitter,
-              discord: formValues.links.discord,
-              telegram: formValues.links.telegram,
-              website: formValues.links.website,
-              agentLink: formValues.links.agentLink,
-            }}
+            twitter={formValues.links.twitter}
+            discord={formValues.links.discord}
+            telegram={formValues.links.telegram}
+            website={formValues.links.website}
+            agentLink={formValues.links.agentLink}
             agentName={formValues.links.agentLink ?? undefined}
           />
         </div>
