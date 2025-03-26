@@ -16,7 +16,7 @@ export const DiceButton = ({
       type="button"
       onClick={onClick}
       disabled={isLoading}
-      className={`bg-[#2fd345] p-2 rounded-full hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333] ${className}`}
+      className={`opacity-50 hover:opacity-100 ${className}`}
     >
       {isLoading ? (
         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />

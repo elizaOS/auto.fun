@@ -4,10 +4,16 @@ import {
   R2Bucket,
 } from "@cloudflare/workers-types/experimental";
 
+// Define AI interface for Cloudflare AI
+interface Ai {
+  run: (model: string, inputs: any) => Promise<any>;
+}
+
 /**
  * Environment interface for Cloudflare Workers
  */
 export interface Env {
+  ANTHROPIC_API_KEY: string;
   WEBSOCKET_DO: DurableObjectNamespace;
   DB: D1Database;
   NETWORK: string;
@@ -28,6 +34,11 @@ export interface Env {
   R2?: R2Bucket;
   R2_PUBLIC_URL?: string;
   FAL_API_KEY: string;
+  // Cloudflare AI binding
+  AI: Ai;
+  // Cloudflare AI credentials (only needed for external API calls, not when using binding)
+  CLOUDFLARE_ACCOUNT_ID?: string;
+  CLOUDFLARE_API_TOKEN?: string;
   NODE_ENV: string;
   SWAP_FEE: string;
   // Solana connection
@@ -37,4 +48,5 @@ export interface Env {
   PROGRAM_ID: string;
   // Test environment properties
   tokenPubkey?: string; // Used in tests to track the current test token
+  MY_BUCKET: R2Bucket;
 }
