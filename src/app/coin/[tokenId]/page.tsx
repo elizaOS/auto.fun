@@ -146,6 +146,10 @@ export default function TradingInterface() {
   useEffect(() => {
     console.log("subscribe", tokenId);
     socket.emit("subscribe", tokenId);
+
+    return () => {
+      socket.emit("unsubscribe", tokenId);
+    };
   }, [tokenId, socket]);
 
   useEffect(() => {

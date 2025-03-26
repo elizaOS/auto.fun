@@ -136,7 +136,6 @@ export function unsubscribeFromStream(subscriberUID: string) {
           "[unsubscribeBars]: Unsubscribe from streaming. Channel:",
           pairIndex,
         );
-        // socket.emit("SubRemove", { subs: [channelString] });
         channelToSubscription.delete(pairIndex);
         break;
       }

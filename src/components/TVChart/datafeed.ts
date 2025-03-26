@@ -13,9 +13,7 @@ import {
   unsubscribeFromStream,
 } from "@/components/TVChart/streaming";
 import { getChartTable } from "@/utils/getChartTable";
-import { getSocket } from "@/utils/socket";
 
-const socket = getSocket();
 const lastBarsCache = new Map<string, Bar>();
 // const minPrice: Number = 0;
 // const maxPrice: Number = 0;
@@ -155,8 +153,6 @@ export function getDataFeed({
         "[subscribeBars]: Method call with subscriberUID:",
         subscriberUID,
       );
-
-      socket.emit("subscribe", token);
 
       // Ensure we have the last bar from cache
       let lastBar = lastBarsCache.get(symbolInfo.name);
