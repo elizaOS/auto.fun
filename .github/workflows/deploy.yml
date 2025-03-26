@@ -32,6 +32,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     name: Deploy Worker and Pages
+    environment:
+      name: ${{ env.WORKER_ENV == 'production' && 'Production' || 'Development' }}
+      url: ${{ env.WORKER_ENV == 'production' && 'https://autofun.pages.dev' || 'https://autofun-dev.pages.dev' }}
     # needs: test
     steps:
       - name: Checkout code
