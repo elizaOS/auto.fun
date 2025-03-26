@@ -55,127 +55,32 @@ socket.on("newCandle", (data) => {
     if (!subscriptionItem) continue;
 
     const lastBar = subscriptionItem.lastBar;
-    const nextBarTime = getNextBarTime(
-      lastBar.time,
-      +subscriptionItem.resolution,
-    );
 
-    if (bar.time >= nextBarTime) {
-      // This is a new bar
-      const newBar: Bar = {
-        time: bar.time,
-        open: bar.close, // For a new bar, set open to the first price
-        high: bar.close,
-        low: bar.close,
-        close: bar.close,
-        volume: bar.volume || 0,
-      };
-      subscriptionItem.lastBar = newBar;
-    } else {
-      // Update existing bar
-      const updatedBar: Bar = {
-        ...lastBar,
-        high: Math.max(lastBar.high, bar.close),
-        low: Math.min(lastBar.low, bar.close),
-        close: bar.close,
-        volume: (lastBar.volume || 0) + (bar.volume || 0),
-      };
-      subscriptionItem.lastBar = updatedBar;
-    }
+    const newBar: Bar = {
+      time: bar.time,
+      open: bar.open,
+      high: bar.high,
+      low: bar.low,
+      close: bar.close,
+      volume: bar.volume || 0,
+    };
 
-    console.log("[socket] New bar received", subscriptionItem.lastBar);
+    const updatedLastBar: Bar = {
+      ...lastBar,
+      high: Math.max(lastBar.high, bar.close),
+      low: Math.min(lastBar.low, bar.close),
+      close: bar.close,
+      volume: (lastBar.volume || 0) + (bar.volume || 0),
+    };
 
-    // Send data to every subscriber of that symbol
     subscriptionItem.handlers.forEach((handler) =>
-      handler.callback(subscriptionItem.lastBar),
+      handler.callback(updatedLastBar),
     );
+
+    subscriptionItem.lastBar = newBar;
+    subscriptionItem.handlers.forEach((handler) => handler.callback(newBar));
   }
 });
-//     const tradeTime = new Date().getTime();
-
-//     const state = queryClient.getQueryState<Chart>(["charts"]);
-
-//     if (!state || !state.data || !priceUpdates) {
-//         return;
-//     }
-
-//     for (let i = 0; i < priceUpdates.length; i += 2) {
-//         const index = priceUpdates[i];
-//         const price = priceUpdates[i + 1];
-
-//         if (state.data.closes.length < index) {
-//             while (state.data.closes.length < index) state.data.closes.push(0);
-//         }
-
-//         state.data.closes[index] = price;
-//     }
-
-//     for (const pairIndex of channelToSubscription.keys()) {
-//         const subscriptionItem = channelToSubscription.get(pairIndex);
-
-//         if (!subscriptionItem) {
-//             continue;
-//         }
-
-//         const lastBar = subscriptionItem.lastBar;
-//         const resolution = subscriptionItem.resolution;
-//         const nextBarTime = getNextBarTime(lastBar.time, +resolution);
-
-//         let bar: Bar;
-
-//         if (tradeTime >= nextBarTime) {
-//             bar = {
-//                 time: nextBarTime,
-//                 open: state.data.closes[pairIndex],
-//                 high: state.data.closes[pairIndex],
-//                 low: state.data.closes[pairIndex],
-//                 close: state.data.closes[pairIndex],
-//             };
-//             console.log("[socket] Generate new bar", bar);
-//         } else {
-//             bar = {
-//                 ...lastBar,
-//                 high: Math.max(lastBar.high, state.data.closes[pairIndex]),
-//                 low: Math.min(lastBar.low, state.data.closes[pairIndex]),
-//                 close: state.data.closes[pairIndex],
-//             };
-//         }
-//         subscriptionItem.lastBar = bar;
-
-//         // Send data to every subscriber of that symbol
-//         subscriptionItem.handlers.forEach((handler) => handler.callback(bar));
-//     }
-
-//     queryClient.setQueryData<Chart | undefined>(["charts"], (oldData) => {
-//         if (!oldData) {
-//             return oldData;
-//         }
-
-//         const priceData: Chart = {
-//             ...oldData,
-//             time: tradeTime,
-//         };
-
-//         for (let i = 0; i < priceUpdates.length; i += 2) {
-//             const index = priceUpdates[i];
-//             const price = priceUpdates[i + 1];
-
-//             if (priceData.closes.length < index) {
-//                 while (priceData.closes.length < index) priceData.closes.push(0);
-//             }
-
-//             priceData.closes[index] = price;
-//         }
-
-//         return priceData;
-//     });
-// });
-
-// barTime is millisec, resolution is mins
-function getNextBarTime(barTime: number, resolution: number) {
-  const previousSegment = Math.floor(barTime / 1000 / 60 / resolution);
-  return (previousSegment + 1) * 1000 * 60 * resolution;
-}
 
 export function subscribeOnStream(
   symbolInfo: LibrarySymbolInfo,
@@ -231,7 +136,6 @@ export function unsubscribeFromStream(subscriberUID: string) {
           "[unsubscribeBars]: Unsubscribe from streaming. Channel:",
           pairIndex,
         );
-        // socket.emit("SubRemove", { subs: [channelString] });
         channelToSubscription.delete(pairIndex);
         break;
       }
