@@ -244,7 +244,8 @@ class TokenMonitor {
             upsert: true,
             new: true,
           });
-          io.to('global').emit('newToken', tokenData);
+          const enrichedToken = statsManager.enrichTokenWithScore(tokenData.toObject());
+          io.to('global').emit('newToken', enrichedToken);
           logger.log(`New token event processed for ${tokenAddress}`);
         }
 
