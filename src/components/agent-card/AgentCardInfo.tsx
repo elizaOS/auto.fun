@@ -348,7 +348,10 @@ export function AgentCardInfo({
           {status === "migrated" ? (
             <>
               Raydium pool has been seeded. View on Raydium{" "}
-              <a href="#" className="text-[#2FD345] hover:underline">
+              <a
+                href={`https://raydium.io/swap/?inputMint=sol&outputMint=${mint}`}
+                className="text-[#2FD345] hover:underline"
+              >
                 here
               </a>
             </>
