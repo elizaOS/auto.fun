@@ -27,3 +27,5 @@ keys
 test-ledger
 task-definition.json
 trust-policy.json
+test-wallet.json
+program-keyid.json
