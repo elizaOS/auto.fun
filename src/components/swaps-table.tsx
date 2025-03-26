@@ -16,7 +16,7 @@ import { twMerge } from "tailwind-merge";
 import usePause from "@/hooks/use-pause";
 
 export default function SwapsTable({ token }: { token: IToken }) {
-  const [ pause, setPause ] = usePause();
+  const { pause, setPause } = usePause();
   const query = useQuery({
     queryKey: ["swaps", token?.mint],
     queryFn: async () => {
