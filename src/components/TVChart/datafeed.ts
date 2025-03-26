@@ -211,7 +211,6 @@ export function getDataFeed({
         "[unsubscribeBars]: Method call with subscriberUID:",
         subscriberUID,
       );
-      socket.emit("unsubscribe", token);
       unsubscribeFromStream(subscriberUID);
     },
   };
