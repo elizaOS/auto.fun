@@ -173,6 +173,7 @@ const useCreateTokenMutation = createMutation({
             connection,
             program,
             mintKeypair,
+            configAccount,
           )
         : await program.methods
             .launch(
@@ -292,13 +293,11 @@ const launchAndSwapTx = async (
   connection: Connection,
   program: Program<Autofun>,
   mintKeypair: Keypair,
+  configAccount: {
+    teamWallet: PublicKey;
+    initBondingCurve: number;
+  },
 ) => {
-  const [configPda, _] = PublicKey.findProgramAddressSync(
-    [Buffer.from(SEED_CONFIG)],
-    program.programId,
-  );
-  const configAccount = await program.account.config.fetch(configPda);
-
   // Calculate deadline
   const deadline = Math.floor(Date.now() / 1000) + 120; // 2 minutes from now
 
