@@ -800,7 +800,7 @@ const initServer = async () => {
   // keypairGen.startGenerating();
 
   httpServer.listen(port, () => {
-    logger.log(`Serlaunchalot Backend server, API, and socket.io running on port ${port}`);
+    logger.log(`Autofun Backend server, API, and socket.io running on port ${port}`);
   });
 };
 

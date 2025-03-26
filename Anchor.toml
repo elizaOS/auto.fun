@@ -5,20 +5,20 @@ resolution = true
 skip-lint = true
 
 [programs.mainnet]
-serlaunchalot = "6qXDRh3nSj9isLRDpUqXWyK1nR9eHBVLrdLZpjeoNfc"
+autofun = "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ"
 
 [programs.devnet]
-serlaunchalot = "6qXDRh3nSj9isLRDpUqXWyK1nR9eHBVLrdLZpjeoNfc"
+autofun= "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ"
 
 [programs.localnet]
-serlaunchalot = "6qXDRh3nSj9isLRDpUqXWyK1nR9eHBVLrdLZpjeoNfc"
+autofun = "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "https://mainnet.helius-rpc.com/?api-key=156e83be-b359-4f60-8abb-c6a17fd3ff5f"
-wallet = "./deployer.json"
+cluster = "https://devnet.helius-rpc.com/?api-key=7f068738-8b88-4a91-b2a9-99b00f716717"
+wallet = "/Users/cjk/Documents/Github/serlaunchalot/key/uu.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json --bail -t 1000000 tests/**/*.ts"

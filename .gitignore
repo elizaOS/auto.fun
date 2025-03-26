@@ -18,8 +18,8 @@ target/release
 target/sbf-solana-solana
 target/.rustc_info.json
 
-!target/idl/serlaunchalot.json
-!target/types/serlaunchalot.ts
+!target/idl/autofun.json
+!target/types/autofun.ts
 
 key
 keys
@@ -27,3 +27,5 @@ keys
 test-ledger
 task-definition.json
 trust-policy.json
+test-wallet.json
+program-keyid.json

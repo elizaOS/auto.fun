@@ -19,7 +19,7 @@ import { raydiumProgramId } from "./constant";
 import { logger } from "../logger";
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { Serlaunchalot } from "../target/types/serlaunchalot";
+import { Autofun } from "../target/types/autofun";
 import mongoose from "mongoose";
 import { Server } from "socket.io";
 import { createServer } from "http";

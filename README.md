@@ -1,4 +1,4 @@
-# Auto.fun + Serlaunchalot Protocol Backend
+# Auto.fun + Autofun Protocol Backend
 
 WIP
 A decentralized token launch protocol implementing automated bonding curves with Raydium liquidity migration with AI Agents.

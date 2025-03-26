@@ -9,7 +9,7 @@ import {
   setProvider,
   workspace,
 } from "@coral-xyz/anchor";
-import { Serlaunchalot } from "../target/types/serlaunchalot";
+import { Autofun } from "../target/types/autofun";
 
 const getSolanaConnection = () => {
   return new Connection(getRpcUrl());
@@ -34,7 +34,7 @@ const getProgram = () => {
   });
   setProvider(provider);
 
-  return workspace.Serlaunchalot as Program<Serlaunchalot>;
+  return workspace.Autofun as Program<Autofun>;
 };
 
 export const config = {
