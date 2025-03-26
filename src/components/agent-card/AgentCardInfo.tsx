@@ -3,6 +3,7 @@ import { Icon } from "@iconify/react";
 import { useState } from "react";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { PlaceholderImage } from "../common/PlaceholderImage";
+import { Token } from "@/utils/tokens";
 
 const AgentIcon = () => {
   return (
@@ -84,27 +85,31 @@ const WebsiteIcon = () => {
   );
 };
 
-interface AgentCardInfoProps {
-  name: string;
-  ticker: string;
-  image: string;
-  description: string;
-  curveProgress: number;
-  mint: string;
-  tokenPriceUSD?: number;
-  solPriceUSD?: number;
-  socialLinks?: {
-    website?: string;
-    twitter?: string;
-    telegram?: string;
-    discord?: string;
-    agentLink?: string;
-  };
-  agentName?: string;
-  reserveLamport: number;
-  virtualReserves: number;
-  placeholderTargetMarketCap?: number;
+/**
+ * Use partial token so that we can show a "preview" on the token creation with partial data
+ */
+type PartialToken = Pick<
+  Token,
+  | "name"
+  | "ticker"
+  | "image"
+  | "description"
+  | "curveProgress"
+  | "mint"
+  | "website"
+  | "twitter"
+  | "telegram"
+  | "discord"
+  | "agentLink"
+  | "reserveLamport"
+  | "virtualReserves"
+> &
+  Partial<Pick<Token, "tokenPriceUSD" | "solPriceUSD" | "status">>;
+
+interface AgentCardInfoProps extends PartialToken {
   className?: string;
+  placeholderTargetMarketCap?: number;
+  agentName?: string;
 }
 
 export function AgentCardInfo({
@@ -115,13 +120,18 @@ export function AgentCardInfo({
   mint,
   solPriceUSD = 0,
   tokenPriceUSD = 0,
-  socialLinks,
+  discord,
+  telegram,
+  twitter,
+  agentLink,
+  website,
   description,
   agentName,
   reserveLamport,
   virtualReserves,
   placeholderTargetMarketCap,
   className,
+  status,
 }: AgentCardInfoProps) {
   const [copied, setCopied] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
@@ -155,21 +165,21 @@ export function AgentCardInfo({
   const socialLinkData = [
     {
       icon: <WebsiteIcon />,
-      link: socialLinks?.website,
+      link: website,
     },
     {
       icon: <Icon icon="ri:twitter-x-fill" width="24" height="24" />,
-      link: socialLinks?.twitter,
+      link: twitter,
     },
     {
       icon: <Icon icon="ic:baseline-telegram" width="24" height="24" />,
-      link: socialLinks?.telegram,
+      link: telegram,
     },
     {
       icon: <Icon icon="ic:baseline-discord" width="24" height="24" />,
-      link: socialLinks?.discord,
+      link: discord,
     },
-    { icon: <AgentIcon />, link: socialLinks?.agentLink },
+    { icon: <AgentIcon />, link: `https://${agentLink}` },
   ].filter(({ link }) => !!link);
 
   return (
@@ -334,10 +344,14 @@ export function AgentCardInfo({
           />
         </div>
         <p className="font-satoshi text-base leading-5 text-[#8C8C8C] max-w-[390px]">
-          {curveProgress >= 100 ? (
+          {/* TODO: actual raydium link */}
+          {status === "migrated" ? (
             <>
               Raydium pool has been seeded. View on Raydium{" "}
-              <a href="#" className="text-[#2FD345] hover:underline">
+              <a
+                href={`https://raydium.io/swap/?inputMint=sol&outputMint=${mint}`}
+                className="text-[#2FD345] hover:underline"
+              >
                 here
               </a>
             </>
