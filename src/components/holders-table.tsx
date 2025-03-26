@@ -16,23 +16,27 @@ import usePause from "@/hooks/use-pause";
 import PausedIndicator from "./paused-indicator";
 
 export default function HoldersTable({ token }: { token: IToken }) {
-  const { pause, setPause } = usePause();
+  const { paused, setPause } = usePause();
   const query = useQuery({
     queryKey: ["holders", token?.mint],
     queryFn: async () => {
       const data = await getTokenHolders({ address: token?.mint });
       return data as { holders: ITokenHolder[] };
     },
-    enabled: !pause && token?.mint ? true : false,
+    enabled: !paused && token?.mint ? true : false,
     refetchInterval: 2_500,
   });
 
   const data = query?.data?.holders || ([] as ITokenHolder[]);
 
   return (
-    <Table className="border-0 !rounded-0 !border-spacing-y-0">
+    <Table
+      className="border-0 !rounded-0 !border-spacing-y-0"
+      onMouseEnter={() => setPause(true)}
+      onMouseLeave={() => setPause(false)}
+    >
       <TableHeader className="relative">
-        <PausedIndicator />
+        <PausedIndicator show={paused} />
         <TableRow className="bg-transparent">
           <TableHead>Account</TableHead>
           <TableHead className="text-right">Amount</TableHead>
@@ -43,12 +47,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
       <TableBody>
         {data?.map((holder: ITokenHolder) => {
           return (
-            <TableRow
-              onMouseEnter={() => setPause(true)}
-              onMouseLeave={() => setPause(false)}
-              className="hover:bg-white/5"
-              key={holder?.address}
-            >
+            <TableRow className="hover:bg-white/5" key={holder?.address}>
               <TableCell className="text-left">
                 {shortenAddress(holder?.address)}
               </TableCell>
