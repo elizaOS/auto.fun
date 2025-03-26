@@ -49,7 +49,7 @@ export default function Header() {
         <div className="container flex flex-row items-center justify-between">
           <div className="flex items-center">
             <Link to="/" className="mr-6">
-              <img className="size-10" src="/logo.png" />
+              <img className="size-20" src="/logo_wide.svg" />
             </Link>
             {/* <NavLink title="Tokens" href="/" /> */}
             {/* <HowItWorksDialog /> */}
@@ -57,8 +57,8 @@ export default function Header() {
           <div className="flex space-x-3 flex-row justify-between w-1/2">
             <SearchBar isMobile={false} />
             <Link to="/create">
-              <Button className="flex items-center text-base font-medium text-white font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345]">
-                Create Token{" "}
+              <Button className="flex items-center text-base text-autofun-text-highlight font-bold font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345]">
+                New Coin{" "}
                 <img
                   src="/nav/stars.svg"
                   alt="stars"
@@ -76,7 +76,7 @@ export default function Header() {
         <div className="flex items-center mx-4 space-x-4 lg:hidden ">
           <div className="flex flex-row ">
             <Link to="/">
-              <img className="size-10" src="/logo.png" />
+              <img className="size-20" src="/logo_wide.svg" />
             </Link>
           </div>
           <SearchBar isMobile={false} />

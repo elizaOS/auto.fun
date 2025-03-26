@@ -820,9 +820,8 @@ export const Create = () => {
     !errors.initial_sol;
 
   return (
-    <div className="flex items-center py-10 md:py-0 justify-center min-h-screen">
-      <div className="p-4 bg-autofun-background-card max-w-[800px]">
-        <div className="flex flex-col gap-y-4">
+    <div className="flex flex-col items-center py-10 md:py-0 justify-center min-h-screen max-w-[800px] mx-auto">
+              <div className="flex flex-col gap-y-4">
           <div className="text-autofun-background-action-highlight font-medium text-[32px]">
             Create Token
           </div>
@@ -833,6 +832,7 @@ export const Create = () => {
             allocate a portion of tokens before launch.
           </div>
         </div>
+      <div className="p-4 bg-autofun-background-card max-w-[800px]">
         <form
           className="flex font-dm-mono flex-col w-full max-w-3xl m-auto gap-4 justify-center"
           onSubmit={handleSubmit}

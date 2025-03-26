@@ -5,11 +5,11 @@ export const Footer = () => {
   return (
     <div className="flex justify-between w-full container pb-4">
       <div className="justify-start items-center gap-4 flex">
-        <SkeletonImage
+        <img
           height={32}
-          width={32}
-          className="size-8"
-          src="/logo.png"
+          width={64}
+          className="size-24"
+          src="/logo_wide.svg"
           alt="logo"
         />
       </div>

@@ -5,7 +5,7 @@ export default function Loader() {
     <div className="flex items-center justify-center h-[50vh]">
       <div className="flex items-center flex-col gap-3">
         <SkeletonImage
-          src="/logo.png"
+          src="/logo_wide.svg"
           width={128}
           height={128}
           alt="logo"
