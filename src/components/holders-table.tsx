@@ -15,7 +15,7 @@ import { ExternalLink } from "lucide-react";
 import usePause from "@/hooks/use-pause";
 
 export default function HoldersTable({ token }: { token: IToken }) {
-  const { pause, setPause } = usePause();
+  const [pause, setPause] = usePause();
   const query = useQuery({
     queryKey: ["holders", token?.mint],
     queryFn: async () => {
