@@ -12,17 +12,17 @@ import { useQuery } from "@tanstack/react-query";
 import { getTokenHolders } from "@/utils/api";
 import { Link } from "react-router";
 import { ExternalLink } from "lucide-react";
-import usePauseHook from "@/hooks/use-pause-hook";
+import usePause from "@/hooks/use-pause";
 
 export default function HoldersTable({ token }: { token: IToken }) {
-  const { pause, setPause } = usePauseHook();
+  const { pause, setPause } = usePause();
   const query = useQuery({
     queryKey: ["holders", token?.mint],
     queryFn: async () => {
       const data = await getTokenHolders({ address: token?.mint });
       return data as { holders: ITokenHolder[] };
     },
-    enabled: !pause || token?.mint ? true : false,
+    enabled: !pause && token?.mint ? true : false,
     refetchInterval: 2_500,
   });
 
