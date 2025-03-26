@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router";
+import { Link, NavLink, useLocation } from "react-router";
 import { twMerge } from "tailwind-merge";
 import SearchBar from "./search-bar";
 import Button from "./button";
@@ -8,12 +8,14 @@ import { Menu, X } from "lucide-react";
 import WalletButton from "@/components/wallet-button";
 import { useWalletModal } from "@/hooks/use-wallet-modal";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { HowItWorksDialog } from "./how-it-works-dialog";
 
 export default function Header() {
   const { pathname } = useLocation();
   const { publicKey } = useWallet();
   const { isAuthenticated } = useWalletModal();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const location = useLocation();
 
   const mobileNavItems = [
     { icon: "/nav/stars.svg", title: "Create Token", href: "/create" },
@@ -51,8 +53,33 @@ export default function Header() {
             <Link to="/" className="mr-6">
               <img className="size-20" src="/logo_wide.svg" />
             </Link>
-            {/* <NavLink title="Tokens" href="/" /> */}
-            {/* <HowItWorksDialog /> */}
+            <div className="flex text-[16px] flex-row items-center space-x-3">
+              <NavLink
+                className={twMerge([
+                  " hover:text-white",
+                  location.pathname === "/"
+                    ? "text-white"
+                    : "text-autofun-text-secondary",
+                ])}
+                title="Tokens"
+                to="/"
+              >
+                Tokens
+              </NavLink>
+              <HowItWorksDialog />
+              <NavLink
+                className={twMerge([
+                  " hover:text-white",
+                  location.pathname === "/support"
+                    ? "text-white"
+                    : "text-autofun-text-secondary",
+                ])}
+                title="Support"
+                to="/support"
+              >
+                Support
+              </NavLink>
+            </div>
           </div>
           <div className="flex space-x-3 flex-row justify-between w-1/2">
             <SearchBar isMobile={false} />
@@ -152,22 +179,3 @@ export default function Header() {
     </>
   );
 }
-
-// const NavLink = ({ title, href }: { title: string; href: string }) => {
-//   const location = useLocation();
-
-//   return (
-//     <Link to={href} className="px-3 py-2">
-//       <div
-//         className={twMerge([
-//           "text-center justify-center text-base font-medium font-satoshi leading-tight transition-all duration-200",
-//           location.pathname === href
-//             ? "text-autofun-text-primary"
-//             : "text-autofun-text-secondary",
-//         ])}
-//       >
-//         {title}
-//       </div>
-//     </Link>
-//   );
-// };
