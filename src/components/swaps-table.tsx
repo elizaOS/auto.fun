@@ -23,7 +23,6 @@ export default function SwapsTable({ token }: { token: IToken }) {
       const data = await getTokenSwapHistory({ address: token?.mint });
       return data as { swaps: ISwap[] };
     },
-    // pause condition
     enabled: !pause || token?.mint ? true : false,
     refetchInterval: 2_500,
   });
