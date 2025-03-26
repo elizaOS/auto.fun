@@ -2,7 +2,7 @@ import { useState } from "react";
 
 
 
-export default function usePauseHook(value: boolean) {
-    const [pause, setPause] = useState(value);
+export default function usePause() {
+    const [pause, setPause] = useState(false);
     return {pause, setPause}
 }
