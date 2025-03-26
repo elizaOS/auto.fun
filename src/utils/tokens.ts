@@ -1,7 +1,6 @@
 import { createMutation, createQuery } from "react-query-kit";
 import { womboApi } from "./fetch";
 import { z } from "zod";
-import { usePaginatedLiveData } from "./paginatedLiveData";
 import { TokenSchema } from "./tokenSchema";
 import { TokenMetadata } from "../../types/form.type";
 import {
@@ -21,24 +20,16 @@ import { env } from "./env";
 import { getSocket } from "./socket";
 
 export type Token = z.infer<typeof TokenSchema>;
-const HomepageTokenSchema = TokenSchema.and(
-  z.object({ numComments: z.number().default(0) }),
+export const HomepageTokenSchema = TokenSchema.and(
+  z.object({
+    numComments: z.number().default(0),
+  }),
 );
-
-export const useTokens = (sortBy?: string, sortOrder?: "asc" | "desc") => {
-  return usePaginatedLiveData({
-    itemsPerPage: 10,
-    endpoint: "/tokens",
-    validationSchema: HomepageTokenSchema,
-    getUniqueId: (token) => token.mint,
-    socketConfig: {
-      subscribeEvent: "subscribeGlobal",
-      newDataEvent: "newToken",
-    },
-    sortBy,
-    sortOrder,
-  });
-};
+export const HomepageFeaturedSchema = HomepageTokenSchema.and(
+  z.object({
+    featuredScore: z.number(),
+  }),
+);
 
 export const useSearchTokens = createMutation({
   mutationKey: ["search-tokens"],
