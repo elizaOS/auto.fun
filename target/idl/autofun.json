@@ -1,20 +1,14 @@
-/**
- * Program IDL in camelCase format in order to be used in JS/TS.
- *
- * Note that this is only a type helper and is not the actual IDL. The original
- * IDL can be found at `target/idl/serlaunchalot.json`.
- */
-export type Serlaunchalot = {
+{
   "address": "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ",
   "metadata": {
-    "name": "serlaunchalot",
+    "name": "autofun",
     "version": "0.1.0",
     "spec": "0.1.0",
     "description": "Created with Anchor"
   },
   "instructions": [
     {
-      "name": "acceptAuthority",
+      "name": "accept_authority",
       "discriminator": [
         107,
         86,
@@ -27,12 +21,12 @@ export type Serlaunchalot = {
       ],
       "accounts": [
         {
-          "name": "newAdmin",
+          "name": "new_admin",
           "writable": true,
           "signer": true
         },
         {
-          "name": "globalConfig",
+          "name": "global_config",
           "writable": true,
           "pda": {
             "seeds": [
@@ -91,7 +85,7 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "globalVault",
+          "name": "global_vault",
           "writable": true,
           "pda": {
             "seeds": [
@@ -110,13 +104,13 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "globalWsolAccount",
+          "name": "global_wsol_account",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "globalVault"
+                "path": "global_vault"
               },
               {
                 "kind": "const",
@@ -157,7 +151,7 @@ export type Serlaunchalot = {
               },
               {
                 "kind": "account",
-                "path": "nativeMint"
+                "path": "native_mint"
               }
             ],
             "program": {
@@ -200,28 +194,28 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "nativeMint",
+          "name": "native_mint",
           "address": "So11111111111111111111111111111111111111112"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "associatedTokenProgram",
+          "name": "associated_token_program",
           "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         }
       ],
       "args": [
         {
-          "name": "newConfig",
+          "name": "new_config",
           "type": {
             "defined": {
-              "name": "config"
+              "name": "Config"
             }
           }
         }
@@ -241,7 +235,7 @@ export type Serlaunchalot = {
       ],
       "accounts": [
         {
-          "name": "globalConfig",
+          "name": "global_config",
           "writable": true,
           "pda": {
             "seeds": [
@@ -260,7 +254,7 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "globalVault",
+          "name": "global_vault",
           "writable": true,
           "pda": {
             "seeds": [
@@ -289,7 +283,7 @@ export type Serlaunchalot = {
           "signer": true
         },
         {
-          "name": "bondingCurve",
+          "name": "bonding_curve",
           "writable": true,
           "pda": {
             "seeds": [
@@ -319,7 +313,7 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "tokenMetadataAccount",
+          "name": "token_metadata_account",
           "writable": true,
           "pda": {
             "seeds": [
@@ -418,13 +412,13 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "globalTokenAccount",
+          "name": "global_token_account",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "globalVault"
+                "path": "global_vault"
               },
               {
                 "kind": "const",
@@ -508,7 +502,7 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         },
         {
@@ -516,29 +510,29 @@ export type Serlaunchalot = {
           "address": "SysvarRent111111111111111111111111111111111"
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "associatedTokenProgram",
+          "name": "associated_token_program",
           "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         },
         {
-          "name": "mplTokenMetadataProgram",
+          "name": "mpl_token_metadata_program",
           "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
         },
         {
-          "name": "teamWallet",
+          "name": "team_wallet",
           "writable": true
         },
         {
-          "name": "teamWalletAta",
+          "name": "team_wallet_ata",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "teamWallet"
+                "path": "team_wallet"
               },
               {
                 "kind": "const",
@@ -628,11 +622,11 @@ export type Serlaunchalot = {
           "type": "u8"
         },
         {
-          "name": "tokenSupply",
+          "name": "token_supply",
           "type": "u64"
         },
         {
-          "name": "virtualLamportReserves",
+          "name": "virtual_lamport_reserves",
           "type": "u64"
         },
         {
@@ -650,7 +644,7 @@ export type Serlaunchalot = {
       ]
     },
     {
-      "name": "launchAndSwap",
+      "name": "launch_and_swap",
       "discriminator": [
         67,
         201,
@@ -663,7 +657,7 @@ export type Serlaunchalot = {
       ],
       "accounts": [
         {
-          "name": "globalConfig",
+          "name": "global_config",
           "writable": true,
           "pda": {
             "seeds": [
@@ -682,7 +676,7 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "globalVault",
+          "name": "global_vault",
           "writable": true,
           "pda": {
             "seeds": [
@@ -711,7 +705,7 @@ export type Serlaunchalot = {
           "signer": true
         },
         {
-          "name": "bondingCurve",
+          "name": "bonding_curve",
           "writable": true,
           "pda": {
             "seeds": [
@@ -741,7 +735,7 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "tokenMetadataAccount",
+          "name": "token_metadata_account",
           "writable": true,
           "pda": {
             "seeds": [
@@ -840,13 +834,13 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "globalTokenAccount",
+          "name": "global_token_account",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "globalVault"
+                "path": "global_vault"
               },
               {
                 "kind": "const",
@@ -930,17 +924,17 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "teamWallet",
+          "name": "team_wallet",
           "writable": true
         },
         {
-          "name": "teamWalletAta",
+          "name": "team_wallet_ata",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "teamWallet"
+                "path": "team_wallet"
               },
               {
                 "kind": "const",
@@ -1024,7 +1018,7 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "userAta",
+          "name": "user_ata",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1114,7 +1108,7 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         },
         {
@@ -1122,15 +1116,15 @@ export type Serlaunchalot = {
           "address": "SysvarRent111111111111111111111111111111111"
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "associatedTokenProgram",
+          "name": "associated_token_program",
           "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         },
         {
-          "name": "mplTokenMetadataProgram",
+          "name": "mpl_token_metadata_program",
           "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
         }
       ],
@@ -1140,11 +1134,11 @@ export type Serlaunchalot = {
           "type": "u8"
         },
         {
-          "name": "tokenSupply",
+          "name": "token_supply",
           "type": "u64"
         },
         {
-          "name": "virtualLamportReserves",
+          "name": "virtual_lamport_reserves",
           "type": "u64"
         },
         {
@@ -1160,11 +1154,11 @@ export type Serlaunchalot = {
           "type": "string"
         },
         {
-          "name": "swapAmount",
+          "name": "swap_amount",
           "type": "u64"
         },
         {
-          "name": "minimumReceiveAmount",
+          "name": "minimum_receive_amount",
           "type": "u64"
         },
         {
@@ -1175,7 +1169,7 @@ export type Serlaunchalot = {
       "returns": "u64"
     },
     {
-      "name": "nominateAuthority",
+      "name": "nominate_authority",
       "discriminator": [
         148,
         182,
@@ -1193,7 +1187,7 @@ export type Serlaunchalot = {
           "signer": true
         },
         {
-          "name": "globalConfig",
+          "name": "global_config",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1214,7 +1208,7 @@ export type Serlaunchalot = {
       ],
       "args": [
         {
-          "name": "newAdmin",
+          "name": "new_admin",
           "type": "pubkey"
         }
       ]
@@ -1233,7 +1227,7 @@ export type Serlaunchalot = {
       ],
       "accounts": [
         {
-          "name": "globalConfig",
+          "name": "global_config",
           "pda": {
             "seeds": [
               {
@@ -1251,17 +1245,17 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "teamWallet",
+          "name": "team_wallet",
           "writable": true
         },
         {
-          "name": "teamWalletAta",
+          "name": "team_wallet_ata",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "teamWallet"
+                "path": "team_wallet"
               },
               {
                 "kind": "const",
@@ -1302,7 +1296,7 @@ export type Serlaunchalot = {
               },
               {
                 "kind": "account",
-                "path": "tokenMint"
+                "path": "token_mint"
               }
             ],
             "program": {
@@ -1345,7 +1339,7 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "bondingCurve",
+          "name": "bonding_curve",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1369,13 +1363,13 @@ export type Serlaunchalot = {
               },
               {
                 "kind": "account",
-                "path": "tokenMint"
+                "path": "token_mint"
               }
             ]
           }
         },
         {
-          "name": "globalVault",
+          "name": "global_vault",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1394,16 +1388,16 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "tokenMint"
+          "name": "token_mint"
         },
         {
-          "name": "globalAta",
+          "name": "global_ata",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "globalVault"
+                "path": "global_vault"
               },
               {
                 "kind": "const",
@@ -1444,7 +1438,7 @@ export type Serlaunchalot = {
               },
               {
                 "kind": "account",
-                "path": "tokenMint"
+                "path": "token_mint"
               }
             ],
             "program": {
@@ -1487,7 +1481,7 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "userAta",
+          "name": "user_ata",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1534,7 +1528,7 @@ export type Serlaunchalot = {
               },
               {
                 "kind": "account",
-                "path": "tokenMint"
+                "path": "token_mint"
               }
             ],
             "program": {
@@ -1582,15 +1576,15 @@ export type Serlaunchalot = {
           "signer": true
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "associatedTokenProgram",
+          "name": "associated_token_program",
           "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         }
       ],
@@ -1604,7 +1598,7 @@ export type Serlaunchalot = {
           "type": "u8"
         },
         {
-          "name": "minimumReceiveAmount",
+          "name": "minimum_receive_amount",
           "type": "u64"
         },
         {
@@ -1628,7 +1622,7 @@ export type Serlaunchalot = {
       ],
       "accounts": [
         {
-          "name": "globalConfig",
+          "name": "global_config",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1647,7 +1641,7 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "globalVault",
+          "name": "global_vault",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1671,10 +1665,10 @@ export type Serlaunchalot = {
           "signer": true
         },
         {
-          "name": "tokenMint"
+          "name": "token_mint"
         },
         {
-          "name": "bondingCurve",
+          "name": "bonding_curve",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1698,19 +1692,19 @@ export type Serlaunchalot = {
               },
               {
                 "kind": "account",
-                "path": "tokenMint"
+                "path": "token_mint"
               }
             ]
           }
         },
         {
-          "name": "globalVaultAta",
+          "name": "global_vault_ata",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "globalVault"
+                "path": "global_vault"
               },
               {
                 "kind": "const",
@@ -1751,7 +1745,7 @@ export type Serlaunchalot = {
               },
               {
                 "kind": "account",
-                "path": "tokenMint"
+                "path": "token_mint"
               }
             ],
             "program": {
@@ -1794,7 +1788,7 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "adminAta",
+          "name": "admin_ata",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1841,7 +1835,7 @@ export type Serlaunchalot = {
               },
               {
                 "kind": "account",
-                "path": "tokenMint"
+                "path": "token_mint"
               }
             ],
             "program": {
@@ -1884,15 +1878,15 @@ export type Serlaunchalot = {
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "tokenProgram",
+          "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "associatedTokenProgram",
+          "name": "associated_token_program",
           "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         }
       ],
@@ -1901,7 +1895,7 @@ export type Serlaunchalot = {
   ],
   "accounts": [
     {
-      "name": "bondingCurve",
+      "name": "BondingCurve",
       "discriminator": [
         23,
         183,
@@ -1914,7 +1908,7 @@ export type Serlaunchalot = {
       ]
     },
     {
-      "name": "config",
+      "name": "Config",
       "discriminator": [
         155,
         12,
@@ -1929,7 +1923,7 @@ export type Serlaunchalot = {
   ],
   "events": [
     {
-      "name": "completeEvent",
+      "name": "CompleteEvent",
       "discriminator": [
         95,
         114,
@@ -1945,100 +1939,100 @@ export type Serlaunchalot = {
   "errors": [
     {
       "code": 6000,
-      "name": "valueTooSmall",
-      "msg": "valueTooSmall"
+      "name": "ValueTooSmall",
+      "msg": "ValueTooSmall"
     },
     {
       "code": 6001,
-      "name": "valueTooLarge",
-      "msg": "valueTooLarge"
+      "name": "ValueTooLarge",
+      "msg": "ValueTooLarge"
     },
     {
       "code": 6002,
-      "name": "valueInvalid",
-      "msg": "valueInvalid"
+      "name": "ValueInvalid",
+      "msg": "ValueInvalid"
     },
     {
       "code": 6003,
-      "name": "incorrectConfigAccount",
-      "msg": "incorrectConfigAccount"
+      "name": "IncorrectConfigAccount",
+      "msg": "IncorrectConfigAccount"
     },
     {
       "code": 6004,
-      "name": "incorrectAuthority",
-      "msg": "incorrectAuthority"
+      "name": "IncorrectAuthority",
+      "msg": "IncorrectAuthority"
     },
     {
       "code": 6005,
-      "name": "overflowOrUnderflowOccurred",
+      "name": "OverflowOrUnderflowOccurred",
       "msg": "Overflow or underflow occured"
     },
     {
       "code": 6006,
-      "name": "invalidAmount",
+      "name": "InvalidAmount",
       "msg": "Amount is invalid"
     },
     {
       "code": 6007,
-      "name": "incorrectTeamWallet",
+      "name": "IncorrectTeamWallet",
       "msg": "Incorrect team wallet address"
     },
     {
       "code": 6008,
-      "name": "curveNotCompleted",
+      "name": "CurveNotCompleted",
       "msg": "Curve is not completed"
     },
     {
       "code": 6009,
-      "name": "curveAlreadyCompleted",
+      "name": "CurveAlreadyCompleted",
       "msg": "Can not swap after the curve is completed"
     },
     {
       "code": 6010,
-      "name": "mintAuthorityEnabled",
+      "name": "MintAuthorityEnabled",
       "msg": "Mint authority should be revoked"
     },
     {
       "code": 6011,
-      "name": "freezeAuthorityEnabled",
+      "name": "FreezeAuthorityEnabled",
       "msg": "Freeze authority should be revoked"
     },
     {
       "code": 6012,
-      "name": "returnAmountTooSmall",
+      "name": "ReturnAmountTooSmall",
       "msg": "Return amount is too small compared to the minimum received amount"
     },
     {
       "code": 6013,
-      "name": "transactionExpired",
+      "name": "TransactionExpired",
       "msg": "Transaction expired"
     },
     {
       "code": 6014,
-      "name": "decimalOverflow",
+      "name": "DecimalOverflow",
       "msg": "Decimal overflow"
     }
   ],
   "types": [
     {
-      "name": "amountConfig",
+      "name": "AmountConfig",
       "generics": [
         {
           "kind": "type",
-          "name": "t"
+          "name": "T"
         }
       ],
       "type": {
         "kind": "enum",
         "variants": [
           {
-            "name": "range",
+            "name": "Range",
             "fields": [
               {
                 "name": "min",
                 "type": {
                   "option": {
-                    "generic": "t"
+                    "generic": "T"
                   }
                 }
               },
@@ -2046,18 +2040,18 @@ export type Serlaunchalot = {
                 "name": "max",
                 "type": {
                   "option": {
-                    "generic": "t"
+                    "generic": "T"
                   }
                 }
               }
             ]
           },
           {
-            "name": "enum",
+            "name": "Enum",
             "fields": [
               {
                 "vec": {
-                  "generic": "t"
+                  "generic": "T"
                 }
               }
             ]
@@ -2066,12 +2060,12 @@ export type Serlaunchalot = {
       }
     },
     {
-      "name": "bondingCurve",
+      "name": "BondingCurve",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "tokenMint",
+            "name": "token_mint",
             "type": "pubkey"
           },
           {
@@ -2079,30 +2073,30 @@ export type Serlaunchalot = {
             "type": "pubkey"
           },
           {
-            "name": "initLamport",
+            "name": "init_lamport",
             "type": "u64"
           },
           {
-            "name": "reserveLamport",
+            "name": "reserve_lamport",
             "type": "u64"
           },
           {
-            "name": "reserveToken",
+            "name": "reserve_token",
             "type": "u64"
           },
           {
-            "name": "curveLimit",
+            "name": "curve_limit",
             "type": "u64"
           },
           {
-            "name": "isCompleted",
+            "name": "is_completed",
             "type": "bool"
           }
         ]
       }
     },
     {
-      "name": "completeEvent",
+      "name": "CompleteEvent",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2115,14 +2109,14 @@ export type Serlaunchalot = {
             "type": "pubkey"
           },
           {
-            "name": "bondingCurve",
+            "name": "bonding_curve",
             "type": "pubkey"
           }
         ]
       }
     },
     {
-      "name": "config",
+      "name": "Config",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2131,34 +2125,34 @@ export type Serlaunchalot = {
             "type": "pubkey"
           },
           {
-            "name": "pendingAuthority",
+            "name": "pending_authority",
             "type": "pubkey"
           },
           {
-            "name": "teamWallet",
+            "name": "team_wallet",
             "type": "pubkey"
           },
           {
-            "name": "initBondingCurve",
+            "name": "init_bonding_curve",
             "type": "f64"
           },
           {
-            "name": "platformBuyFee",
+            "name": "platform_buy_fee",
             "type": "u128"
           },
           {
-            "name": "platformSellFee",
+            "name": "platform_sell_fee",
             "type": "u128"
           },
           {
-            "name": "curveLimit",
+            "name": "curve_limit",
             "type": "u64"
           },
           {
-            "name": "lamportAmountConfig",
+            "name": "lamport_amount_config",
             "type": {
               "defined": {
-                "name": "amountConfig",
+                "name": "AmountConfig",
                 "generics": [
                   {
                     "kind": "type",
@@ -2169,10 +2163,10 @@ export type Serlaunchalot = {
             }
           },
           {
-            "name": "tokenSupplyConfig",
+            "name": "token_supply_config",
             "type": {
               "defined": {
-                "name": "amountConfig",
+                "name": "AmountConfig",
                 "generics": [
                   {
                     "kind": "type",
@@ -2183,10 +2177,10 @@ export type Serlaunchalot = {
             }
           },
           {
-            "name": "tokenDecimalsConfig",
+            "name": "token_decimals_config",
             "type": {
               "defined": {
-                "name": "amountConfig",
+                "name": "AmountConfig",
                 "generics": [
                   {
                     "kind": "type",
@@ -2200,4 +2194,4 @@ export type Serlaunchalot = {
       }
     }
   ]
-};
+}

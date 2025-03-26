@@ -1,12 +1,12 @@
 [package]
-name = "serlaunchalot"
+name = "autofun"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "serlaunchalot"
+name = "autofun"
 
 [features]
 default = []

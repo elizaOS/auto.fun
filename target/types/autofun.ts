@@ -1,14 +1,20 @@
-{
+/**
+ * Program IDL in camelCase format in order to be used in JS/TS.
+ *
+ * Note that this is only a type helper and is not the actual IDL. The original
+ * IDL can be found at `target/idl/autofun.json`.
+ */
+export type Autofun = {
   "address": "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ",
   "metadata": {
-    "name": "serlaunchalot",
+    "name": "autofun",
     "version": "0.1.0",
     "spec": "0.1.0",
     "description": "Created with Anchor"
   },
   "instructions": [
     {
-      "name": "accept_authority",
+      "name": "acceptAuthority",
       "discriminator": [
         107,
         86,
@@ -21,12 +27,12 @@
       ],
       "accounts": [
         {
-          "name": "new_admin",
+          "name": "newAdmin",
           "writable": true,
           "signer": true
         },
         {
-          "name": "global_config",
+          "name": "globalConfig",
           "writable": true,
           "pda": {
             "seeds": [
@@ -85,7 +91,7 @@
           }
         },
         {
-          "name": "global_vault",
+          "name": "globalVault",
           "writable": true,
           "pda": {
             "seeds": [
@@ -104,13 +110,13 @@
           }
         },
         {
-          "name": "global_wsol_account",
+          "name": "globalWsolAccount",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "global_vault"
+                "path": "globalVault"
               },
               {
                 "kind": "const",
@@ -151,7 +157,7 @@
               },
               {
                 "kind": "account",
-                "path": "native_mint"
+                "path": "nativeMint"
               }
             ],
             "program": {
@@ -194,28 +200,28 @@
           }
         },
         {
-          "name": "native_mint",
+          "name": "nativeMint",
           "address": "So11111111111111111111111111111111111111112"
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "token_program",
+          "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "associated_token_program",
+          "name": "associatedTokenProgram",
           "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         }
       ],
       "args": [
         {
-          "name": "new_config",
+          "name": "newConfig",
           "type": {
             "defined": {
-              "name": "Config"
+              "name": "config"
             }
           }
         }
@@ -235,7 +241,7 @@
       ],
       "accounts": [
         {
-          "name": "global_config",
+          "name": "globalConfig",
           "writable": true,
           "pda": {
             "seeds": [
@@ -254,7 +260,7 @@
           }
         },
         {
-          "name": "global_vault",
+          "name": "globalVault",
           "writable": true,
           "pda": {
             "seeds": [
@@ -283,7 +289,7 @@
           "signer": true
         },
         {
-          "name": "bonding_curve",
+          "name": "bondingCurve",
           "writable": true,
           "pda": {
             "seeds": [
@@ -313,7 +319,7 @@
           }
         },
         {
-          "name": "token_metadata_account",
+          "name": "tokenMetadataAccount",
           "writable": true,
           "pda": {
             "seeds": [
@@ -412,13 +418,13 @@
           }
         },
         {
-          "name": "global_token_account",
+          "name": "globalTokenAccount",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "global_vault"
+                "path": "globalVault"
               },
               {
                 "kind": "const",
@@ -502,7 +508,7 @@
           }
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         },
         {
@@ -510,29 +516,29 @@
           "address": "SysvarRent111111111111111111111111111111111"
         },
         {
-          "name": "token_program",
+          "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "associated_token_program",
+          "name": "associatedTokenProgram",
           "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         },
         {
-          "name": "mpl_token_metadata_program",
+          "name": "mplTokenMetadataProgram",
           "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
         },
         {
-          "name": "team_wallet",
+          "name": "teamWallet",
           "writable": true
         },
         {
-          "name": "team_wallet_ata",
+          "name": "teamWalletAta",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "team_wallet"
+                "path": "teamWallet"
               },
               {
                 "kind": "const",
@@ -622,11 +628,11 @@
           "type": "u8"
         },
         {
-          "name": "token_supply",
+          "name": "tokenSupply",
           "type": "u64"
         },
         {
-          "name": "virtual_lamport_reserves",
+          "name": "virtualLamportReserves",
           "type": "u64"
         },
         {
@@ -644,7 +650,7 @@
       ]
     },
     {
-      "name": "launch_and_swap",
+      "name": "launchAndSwap",
       "discriminator": [
         67,
         201,
@@ -657,7 +663,7 @@
       ],
       "accounts": [
         {
-          "name": "global_config",
+          "name": "globalConfig",
           "writable": true,
           "pda": {
             "seeds": [
@@ -676,7 +682,7 @@
           }
         },
         {
-          "name": "global_vault",
+          "name": "globalVault",
           "writable": true,
           "pda": {
             "seeds": [
@@ -705,7 +711,7 @@
           "signer": true
         },
         {
-          "name": "bonding_curve",
+          "name": "bondingCurve",
           "writable": true,
           "pda": {
             "seeds": [
@@ -735,7 +741,7 @@
           }
         },
         {
-          "name": "token_metadata_account",
+          "name": "tokenMetadataAccount",
           "writable": true,
           "pda": {
             "seeds": [
@@ -834,13 +840,13 @@
           }
         },
         {
-          "name": "global_token_account",
+          "name": "globalTokenAccount",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "global_vault"
+                "path": "globalVault"
               },
               {
                 "kind": "const",
@@ -924,17 +930,17 @@
           }
         },
         {
-          "name": "team_wallet",
+          "name": "teamWallet",
           "writable": true
         },
         {
-          "name": "team_wallet_ata",
+          "name": "teamWalletAta",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "team_wallet"
+                "path": "teamWallet"
               },
               {
                 "kind": "const",
@@ -1018,7 +1024,7 @@
           }
         },
         {
-          "name": "user_ata",
+          "name": "userAta",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1108,7 +1114,7 @@
           }
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         },
         {
@@ -1116,15 +1122,15 @@
           "address": "SysvarRent111111111111111111111111111111111"
         },
         {
-          "name": "token_program",
+          "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "associated_token_program",
+          "name": "associatedTokenProgram",
           "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         },
         {
-          "name": "mpl_token_metadata_program",
+          "name": "mplTokenMetadataProgram",
           "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
         }
       ],
@@ -1134,11 +1140,11 @@
           "type": "u8"
         },
         {
-          "name": "token_supply",
+          "name": "tokenSupply",
           "type": "u64"
         },
         {
-          "name": "virtual_lamport_reserves",
+          "name": "virtualLamportReserves",
           "type": "u64"
         },
         {
@@ -1154,11 +1160,11 @@
           "type": "string"
         },
         {
-          "name": "swap_amount",
+          "name": "swapAmount",
           "type": "u64"
         },
         {
-          "name": "minimum_receive_amount",
+          "name": "minimumReceiveAmount",
           "type": "u64"
         },
         {
@@ -1169,7 +1175,7 @@
       "returns": "u64"
     },
     {
-      "name": "nominate_authority",
+      "name": "nominateAuthority",
       "discriminator": [
         148,
         182,
@@ -1187,7 +1193,7 @@
           "signer": true
         },
         {
-          "name": "global_config",
+          "name": "globalConfig",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1208,7 +1214,7 @@
       ],
       "args": [
         {
-          "name": "new_admin",
+          "name": "newAdmin",
           "type": "pubkey"
         }
       ]
@@ -1227,7 +1233,7 @@
       ],
       "accounts": [
         {
-          "name": "global_config",
+          "name": "globalConfig",
           "pda": {
             "seeds": [
               {
@@ -1245,17 +1251,17 @@
           }
         },
         {
-          "name": "team_wallet",
+          "name": "teamWallet",
           "writable": true
         },
         {
-          "name": "team_wallet_ata",
+          "name": "teamWalletAta",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "team_wallet"
+                "path": "teamWallet"
               },
               {
                 "kind": "const",
@@ -1296,7 +1302,7 @@
               },
               {
                 "kind": "account",
-                "path": "token_mint"
+                "path": "tokenMint"
               }
             ],
             "program": {
@@ -1339,7 +1345,7 @@
           }
         },
         {
-          "name": "bonding_curve",
+          "name": "bondingCurve",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1363,13 +1369,13 @@
               },
               {
                 "kind": "account",
-                "path": "token_mint"
+                "path": "tokenMint"
               }
             ]
           }
         },
         {
-          "name": "global_vault",
+          "name": "globalVault",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1388,16 +1394,16 @@
           }
         },
         {
-          "name": "token_mint"
+          "name": "tokenMint"
         },
         {
-          "name": "global_ata",
+          "name": "globalAta",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "global_vault"
+                "path": "globalVault"
               },
               {
                 "kind": "const",
@@ -1438,7 +1444,7 @@
               },
               {
                 "kind": "account",
-                "path": "token_mint"
+                "path": "tokenMint"
               }
             ],
             "program": {
@@ -1481,7 +1487,7 @@
           }
         },
         {
-          "name": "user_ata",
+          "name": "userAta",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1528,7 +1534,7 @@
               },
               {
                 "kind": "account",
-                "path": "token_mint"
+                "path": "tokenMint"
               }
             ],
             "program": {
@@ -1576,15 +1582,15 @@
           "signer": true
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "token_program",
+          "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "associated_token_program",
+          "name": "associatedTokenProgram",
           "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         }
       ],
@@ -1598,7 +1604,7 @@
           "type": "u8"
         },
         {
-          "name": "minimum_receive_amount",
+          "name": "minimumReceiveAmount",
           "type": "u64"
         },
         {
@@ -1622,7 +1628,7 @@
       ],
       "accounts": [
         {
-          "name": "global_config",
+          "name": "globalConfig",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1641,7 +1647,7 @@
           }
         },
         {
-          "name": "global_vault",
+          "name": "globalVault",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1665,10 +1671,10 @@
           "signer": true
         },
         {
-          "name": "token_mint"
+          "name": "tokenMint"
         },
         {
-          "name": "bonding_curve",
+          "name": "bondingCurve",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1692,19 +1698,19 @@
               },
               {
                 "kind": "account",
-                "path": "token_mint"
+                "path": "tokenMint"
               }
             ]
           }
         },
         {
-          "name": "global_vault_ata",
+          "name": "globalVaultAta",
           "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "account",
-                "path": "global_vault"
+                "path": "globalVault"
               },
               {
                 "kind": "const",
@@ -1745,7 +1751,7 @@
               },
               {
                 "kind": "account",
-                "path": "token_mint"
+                "path": "tokenMint"
               }
             ],
             "program": {
@@ -1788,7 +1794,7 @@
           }
         },
         {
-          "name": "admin_ata",
+          "name": "adminAta",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1835,7 +1841,7 @@
               },
               {
                 "kind": "account",
-                "path": "token_mint"
+                "path": "tokenMint"
               }
             ],
             "program": {
@@ -1878,15 +1884,15 @@
           }
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "token_program",
+          "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "associated_token_program",
+          "name": "associatedTokenProgram",
           "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         }
       ],
@@ -1895,7 +1901,7 @@
   ],
   "accounts": [
     {
-      "name": "BondingCurve",
+      "name": "bondingCurve",
       "discriminator": [
         23,
         183,
@@ -1908,7 +1914,7 @@
       ]
     },
     {
-      "name": "Config",
+      "name": "config",
       "discriminator": [
         155,
         12,
@@ -1923,7 +1929,7 @@
   ],
   "events": [
     {
-      "name": "CompleteEvent",
+      "name": "completeEvent",
       "discriminator": [
         95,
         114,
@@ -1939,100 +1945,100 @@
   "errors": [
     {
       "code": 6000,
-      "name": "ValueTooSmall",
-      "msg": "ValueTooSmall"
+      "name": "valueTooSmall",
+      "msg": "valueTooSmall"
     },
     {
       "code": 6001,
-      "name": "ValueTooLarge",
-      "msg": "ValueTooLarge"
+      "name": "valueTooLarge",
+      "msg": "valueTooLarge"
     },
     {
       "code": 6002,
-      "name": "ValueInvalid",
-      "msg": "ValueInvalid"
+      "name": "valueInvalid",
+      "msg": "valueInvalid"
     },
     {
       "code": 6003,
-      "name": "IncorrectConfigAccount",
-      "msg": "IncorrectConfigAccount"
+      "name": "incorrectConfigAccount",
+      "msg": "incorrectConfigAccount"
     },
     {
       "code": 6004,
-      "name": "IncorrectAuthority",
-      "msg": "IncorrectAuthority"
+      "name": "incorrectAuthority",
+      "msg": "incorrectAuthority"
     },
     {
       "code": 6005,
-      "name": "OverflowOrUnderflowOccurred",
+      "name": "overflowOrUnderflowOccurred",
       "msg": "Overflow or underflow occured"
     },
     {
       "code": 6006,
-      "name": "InvalidAmount",
+      "name": "invalidAmount",
       "msg": "Amount is invalid"
     },
     {
       "code": 6007,
-      "name": "IncorrectTeamWallet",
+      "name": "incorrectTeamWallet",
       "msg": "Incorrect team wallet address"
     },
     {
       "code": 6008,
-      "name": "CurveNotCompleted",
+      "name": "curveNotCompleted",
       "msg": "Curve is not completed"
     },
     {
       "code": 6009,
-      "name": "CurveAlreadyCompleted",
+      "name": "curveAlreadyCompleted",
       "msg": "Can not swap after the curve is completed"
     },
     {
       "code": 6010,
-      "name": "MintAuthorityEnabled",
+      "name": "mintAuthorityEnabled",
       "msg": "Mint authority should be revoked"
     },
     {
       "code": 6011,
-      "name": "FreezeAuthorityEnabled",
+      "name": "freezeAuthorityEnabled",
       "msg": "Freeze authority should be revoked"
     },
     {
       "code": 6012,
-      "name": "ReturnAmountTooSmall",
+      "name": "returnAmountTooSmall",
       "msg": "Return amount is too small compared to the minimum received amount"
     },
     {
       "code": 6013,
-      "name": "TransactionExpired",
+      "name": "transactionExpired",
       "msg": "Transaction expired"
     },
     {
       "code": 6014,
-      "name": "DecimalOverflow",
+      "name": "decimalOverflow",
       "msg": "Decimal overflow"
     }
   ],
   "types": [
     {
-      "name": "AmountConfig",
+      "name": "amountConfig",
       "generics": [
         {
           "kind": "type",
-          "name": "T"
+          "name": "t"
         }
       ],
       "type": {
         "kind": "enum",
         "variants": [
           {
-            "name": "Range",
+            "name": "range",
             "fields": [
               {
                 "name": "min",
                 "type": {
                   "option": {
-                    "generic": "T"
+                    "generic": "t"
                   }
                 }
               },
@@ -2040,18 +2046,18 @@
                 "name": "max",
                 "type": {
                   "option": {
-                    "generic": "T"
+                    "generic": "t"
                   }
                 }
               }
             ]
           },
           {
-            "name": "Enum",
+            "name": "enum",
             "fields": [
               {
                 "vec": {
-                  "generic": "T"
+                  "generic": "t"
                 }
               }
             ]
@@ -2060,12 +2066,12 @@
       }
     },
     {
-      "name": "BondingCurve",
+      "name": "bondingCurve",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "token_mint",
+            "name": "tokenMint",
             "type": "pubkey"
           },
           {
@@ -2073,30 +2079,30 @@
             "type": "pubkey"
           },
           {
-            "name": "init_lamport",
+            "name": "initLamport",
             "type": "u64"
           },
           {
-            "name": "reserve_lamport",
+            "name": "reserveLamport",
             "type": "u64"
           },
           {
-            "name": "reserve_token",
+            "name": "reserveToken",
             "type": "u64"
           },
           {
-            "name": "curve_limit",
+            "name": "curveLimit",
             "type": "u64"
           },
           {
-            "name": "is_completed",
+            "name": "isCompleted",
             "type": "bool"
           }
         ]
       }
     },
     {
-      "name": "CompleteEvent",
+      "name": "completeEvent",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2109,14 +2115,14 @@
             "type": "pubkey"
           },
           {
-            "name": "bonding_curve",
+            "name": "bondingCurve",
             "type": "pubkey"
           }
         ]
       }
     },
     {
-      "name": "Config",
+      "name": "config",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2125,34 +2131,34 @@
             "type": "pubkey"
           },
           {
-            "name": "pending_authority",
+            "name": "pendingAuthority",
             "type": "pubkey"
           },
           {
-            "name": "team_wallet",
+            "name": "teamWallet",
             "type": "pubkey"
           },
           {
-            "name": "init_bonding_curve",
+            "name": "initBondingCurve",
             "type": "f64"
           },
           {
-            "name": "platform_buy_fee",
+            "name": "platformBuyFee",
             "type": "u128"
           },
           {
-            "name": "platform_sell_fee",
+            "name": "platformSellFee",
             "type": "u128"
           },
           {
-            "name": "curve_limit",
+            "name": "curveLimit",
             "type": "u64"
           },
           {
-            "name": "lamport_amount_config",
+            "name": "lamportAmountConfig",
             "type": {
               "defined": {
-                "name": "AmountConfig",
+                "name": "amountConfig",
                 "generics": [
                   {
                     "kind": "type",
@@ -2163,10 +2169,10 @@
             }
           },
           {
-            "name": "token_supply_config",
+            "name": "tokenSupplyConfig",
             "type": {
               "defined": {
-                "name": "AmountConfig",
+                "name": "amountConfig",
                 "generics": [
                   {
                     "kind": "type",
@@ -2177,10 +2183,10 @@
             }
           },
           {
-            "name": "token_decimals_config",
+            "name": "tokenDecimalsConfig",
             "type": {
               "defined": {
-                "name": "AmountConfig",
+                "name": "amountConfig",
                 "generics": [
                   {
                     "kind": "type",
@@ -2194,4 +2200,4 @@
       }
     }
   ]
-}
+};

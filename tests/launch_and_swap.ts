@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program } from "@coral-xyz/anchor";
-import { Serlaunchalot } from "../target/types/serlaunchalot";
+import { Autofun } from "../target/types/autofun";
 import {
   Keypair,
   LAMPORTS_PER_SOL,
@@ -24,7 +24,7 @@ describe("launch_and_swap", () => {
   // Configure the client to use the local cluster.
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
-  const program = anchor.workspace.Serlaunchalot as Program<Serlaunchalot>;
+  const program = anchor.workspace.Autofun as Program<Autofun>;
 
   const adminKp = Keypair.generate();
   const creatorKp = Keypair.generate();

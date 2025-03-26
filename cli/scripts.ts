@@ -6,7 +6,7 @@ import { Keypair, Connection, PublicKey } from "@solana/web3.js";
 
 import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
 
-import { Serlaunchalot } from "../target/types/serlaunchalot";
+import { Autofun } from "../target/types/autofun";
 import {
   createConfigTx,
   launchTokenTx,
@@ -22,7 +22,7 @@ import {
 import { createMarket } from "../lib/create-market";
 
 let solConnection: Connection = null;
-let program: Program<Serlaunchalot> = null;
+let program: Program<Autofun> = null;
 let payer: NodeWallet = null;
 
 /**
@@ -61,7 +61,7 @@ export const setClusterConfig = async (
   );
 
   // Generate the program client from IDL.
-  program = anchor.workspace.Serlaunchalot as Program<Serlaunchalot>;
+  program = anchor.workspace.Autofun as Program<Autofun>;
 
   console.log("ProgramId: ", program.programId.toBase58());
 };

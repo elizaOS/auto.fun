@@ -6,7 +6,7 @@ import {
   PublicKey,
 } from "@solana/web3.js";
 
-import { Serlaunchalot } from "../target/types/serlaunchalot";
+import { Autofun } from "../target/types/autofun";
 import { SEED_BONDING_CURVE, SEED_CONFIG } from "./constant";
 import { VanityKeypair } from "../schemas";
 import { calculateAmountOutSell } from "../tests/utils";
@@ -20,7 +20,7 @@ export const createConfigTx = async (
   newConfig: any,
 
   connection: Connection,
-  program: Program<Serlaunchalot>
+  program: Program<Autofun>
 ) => {
 
   const [configPda, _] = PublicKey.findProgramAddressSync(
@@ -71,7 +71,7 @@ export const launchTokenTx = async (
   user: PublicKey,
 
   connection: Connection,
-  program: Program<Serlaunchalot>
+  program: Program<Autofun>
 ) => {
     // Auth our user (register/login)
     const jwt = await fetch(`${process.env.API_URL}/register`, {
@@ -161,7 +161,7 @@ export const swapTx = async (
   style: number,
   slippageBps: number = 100,
   connection: Connection,
-  program: Program<Serlaunchalot>
+  program: Program<Autofun>
 ) => {
   const [configPda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_CONFIG)],
@@ -223,7 +223,7 @@ export const withdrawTx = async (
   token: PublicKey,
 
   connection: Connection,
-  program: Program<Serlaunchalot>
+  program: Program<Autofun>
 ) => {
 
   const tx = await program.methods
@@ -251,7 +251,7 @@ export const launchAndSwapTx = async (
   swapAmount: number,
   slippageBps: number = 100,
   connection: Connection,
-  program: Program<Serlaunchalot>
+  program: Program<Autofun>
 ) => {
   const [configPda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_CONFIG)],
