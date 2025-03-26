@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS pre_generated_tokens (
   name TEXT NOT NULL,
   ticker TEXT NOT NULL,
   description TEXT NOT NULL,
-  creative TEXT NOT NULL,
+  prompt TEXT NOT NULL,
   image TEXT,
   created_at TEXT NOT NULL,
   used INTEGER NOT NULL DEFAULT 0

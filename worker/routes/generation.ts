@@ -269,13 +269,13 @@ const MediaGenerationRequestSchema = z.object({
 
 // Token metadata generation validation schema
 const TokenMetadataGenerationSchema = z.object({
-  fields: z.array(z.enum(["name", "symbol", "description", "creative"])),
+  fields: z.array(z.enum(["name", "symbol", "description", "prompt"])),
   existingData: z
     .object({
       name: z.string().optional(),
       symbol: z.string().optional(),
       description: z.string().optional(),
-      creative: z.string().optional(),
+      prompt: z.string().optional(),
     })
     .optional(),
 });
@@ -637,22 +637,22 @@ app.post("/generate-metadata", async (c) => {
       messages: [
         { 
           role: "system", 
-          content: "You are a helpful assistant that specializes in creating fun and creative token metadata for crypto projects. Always respond with valid JSON." 
+          content: "You are a helpful assistant that specializes in creating fun and interesting token metadata for crypto projects. Always respond with valid JSON." 
         },
         {
           role: "user",
-          content: `Generate creative and engaging token metadata for a Solana token. The token should be fun and memorable. Return a JSON object with the following fields:
+          content: `Generate prompt and engaging token metadata for a Solana token. The token should be fun and memorable. Return a JSON object with the following fields:
           - name: A memorable name for the token
           - symbol: A 3-8 character symbol for the token
           - description: A compelling description of the token
-          - creative: A detailed prompt for image generation
+          - prompt: A detailed prompt for image generation
           
           Example format:
           {
             "name": "Fun Token Name",
             "symbol": "FUN",
             "description": "A fun and engaging token description",
-            "creative": "A detailed prompt for image generation"
+            "prompt": "A detailed prompt for image generation"
           }`
         },
       ],
@@ -670,7 +670,7 @@ app.post("/generate-metadata", async (c) => {
     }
     
     // Validate required fields
-    if (!metadata.name || !metadata.symbol || !metadata.description || !metadata.creative) {
+    if (!metadata.name || !metadata.symbol || !metadata.description || !metadata.prompt) {
       logger.error("Missing required fields in token metadata:", metadata);
       return c.json({ success: false, error: "Failed to generate complete token metadata" }, 500);
     }
@@ -943,7 +943,7 @@ async function generateTokenOnDemand(env: Env, ctx: { waitUntil: (promise: Promi
     name: string;
     ticker: string;
     description: string;
-    creative: string;
+    prompt: string;
     image?: string;
     createdAt: string;
     used: number;
@@ -958,22 +958,22 @@ async function generateTokenOnDemand(env: Env, ctx: { waitUntil: (promise: Promi
       messages: [
         { 
           role: "system", 
-          content: "You are a helpful assistant that specializes in creating fun and creative token metadata for crypto projects. Always respond with valid JSON." 
+          content: "You are a helpful assistant that specializes in creating fun and prompt token metadata for crypto projects. Always respond with valid JSON." 
         },
         {
           role: "user",
-          content: `Generate creative and engaging token metadata for a Solana token. The token should be fun and memorable. Return a JSON object with the following fields:
+          content: `Generate prompt and engaging token metadata for a Solana token. The token should be fun and memorable. Return a JSON object with the following fields:
           - name: A memorable name for the token
           - symbol: A 3-8 character symbol for the token
           - description: A compelling description of the token
-          - creative: A detailed prompt for image generation
+          - prompt: A detailed prompt for image generation
           
           Example format:
           {
             "name": "Fun Token Name",
             "symbol": "FUN",
             "description": "A fun and engaging token description",
-            "creative": "A detailed prompt for image generation"
+            "prompt": "A detailed prompt for image generation"
           }`
         },
       ],
@@ -1005,14 +1005,14 @@ async function generateTokenOnDemand(env: Env, ctx: { waitUntil: (promise: Promi
       metadata.description = descMatch[1].trim();
     }
     
-    // Extract creative prompt
-    const creativeMatch = generatedText.match(/creative:?\s*["']?([^"\n]+)["']?/i);
+    // Extract prompt prompt
+    const creativeMatch = generatedText.match(/prompt:?\s*["']?([^"\n]+)["']?/i);
     if (creativeMatch) {
-      metadata.creative = creativeMatch[1].trim();
+      metadata.prompt = creativeMatch[1].trim();
     }
     
     // Skip if we're missing any required field
-    if (!metadata.name || !metadata.symbol || !metadata.description || !metadata.creative) {
+    if (!metadata.name || !metadata.symbol || !metadata.description || !metadata.prompt) {
       return { success: false, error: "Failed to generate token metadata" };
     }
     
@@ -1024,7 +1024,7 @@ async function generateTokenOnDemand(env: Env, ctx: { waitUntil: (promise: Promi
     try {
       // Generate image using our existing function
       const imageResult = await generateMedia(env, {
-        prompt: metadata.creative,
+        prompt: metadata.prompt,
         type: MediaType.IMAGE
       });
       
@@ -1046,7 +1046,7 @@ async function generateTokenOnDemand(env: Env, ctx: { waitUntil: (promise: Promi
       name: metadata.name,
       ticker: metadata.symbol,
       description: metadata.description,
-      creative: metadata.creative,
+      prompt: metadata.prompt,
       image: imageUrl,
       createdAt: new Date().toISOString(),
       used: 0
@@ -1062,7 +1062,7 @@ async function generateTokenOnDemand(env: Env, ctx: { waitUntil: (promise: Promi
             name: metadata.name,
             ticker: metadata.symbol,
             description: metadata.description,
-            creative: metadata.creative,
+            prompt: metadata.prompt,
             image: imageUrl,
             createdAt: new Date().toISOString(),
             used: 0
@@ -1215,23 +1215,26 @@ async function generateMetadata(env: Env) {
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant that specializes in creating fun and creative token metadata for crypto projects. Always respond with valid JSON.",
+          content: "You are a helpful assistant that specializes in creating fun and prompt token metadata for crypto projects. Always respond with valid JSON.",
         },
         {
           role: "user",
-          content: `Generate creative and engaging token metadata for a Solana token. The token should be fun and memorable. Return a JSON object with the following fields:
+          content: `Generate prompt and engaging token metadata for a Solana token. The token should be fun and memorable. Return a JSON object with the following fields:
           - name: A memorable name for the token
           - symbol: A 3-8 character symbol for the token
           - description: A compelling description of the token
-          - creative: A detailed prompt for image generation
+          - prompt: A detailed prompt for image generation
           
-          Example format:
+          Use this exact output format. Do not include any other text or formatting.
+          \`\`\`json
           {
             "name": "Fun Token Name",
             "symbol": "FUN",
             "description": "A fun and engaging token description",
-            "creative": "A detailed prompt for image generation"
-          }`,
+            "prompt": "A detailed prompt for image generation"
+          }
+          \`\`\`
+          `,
         },
       ],
       max_tokens: 500,
@@ -1248,7 +1251,7 @@ async function generateMetadata(env: Env) {
     }
 
     // Validate required fields
-    if (!metadata.name || !metadata.symbol || !metadata.description || !metadata.creative) {
+    if (!metadata.name || !metadata.symbol || !metadata.description || !metadata.prompt) {
       logger.error("Missing required fields in token metadata:", metadata);
       return null;
     }
@@ -1280,7 +1283,7 @@ export async function generatePreGeneratedTokens(env: Env, ctx: CFExecutionConte
     
     // Use the flux-1-schnell model via AI binding
     const result = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
-      prompt: metadata.creative,
+      prompt: metadata.prompt,
       steps: 4,
     });
     
@@ -1310,7 +1313,7 @@ export async function generatePreGeneratedTokens(env: Env, ctx: CFExecutionConte
     // Insert into database
     await env.DB.prepare(
       `INSERT INTO pre_generated_tokens (
-        id, name, ticker, description, creative, image, created_at, used
+        id, name, ticker, description, prompt, image, created_at, used
       ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), 0)`
     )
       .bind(
@@ -1318,7 +1321,7 @@ export async function generatePreGeneratedTokens(env: Env, ctx: CFExecutionConte
         metadata.name,
         metadata.symbol,
         metadata.description,
-        metadata.creative,
+        metadata.prompt,
         publicUrl
       )
       .run();
