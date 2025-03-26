@@ -455,10 +455,6 @@ export const TokenBuySell = ({ tokenId }: { tokenId: string }) => {
         onClose={() => setSettingsModalOpen(false)}
       />
 
-      {token.status !== "active" && (
-        <div className="w-full">{getStatusContent(token.status)}</div>
-      )}
-
       {token.status !== "active" && getStatusContent(token.status)}
 
       <div className="flex-1 flex flex-col justify-center gap-6 border-neutral-800 rounded-b-xl min-w-fit">
