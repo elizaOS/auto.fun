@@ -251,7 +251,8 @@ export const launchAndSwapTx = async (
   swapAmount: number,
   slippageBps: number = 100,
   connection: Connection,
-  program: Program<Autofun>
+  program: Program<Autofun>,
+  mintKeypair: Keypair
 ) => {
   const [configPda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_CONFIG)],
@@ -291,7 +292,8 @@ export const launchAndSwapTx = async (
     )
     .accounts({
       teamWallet: configAccount.teamWallet,
-      creator: creator
+      creator: creator,
+      token: mintKeypair.publicKey
     })
     .transaction();
 
