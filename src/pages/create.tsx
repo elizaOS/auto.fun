@@ -7,10 +7,32 @@ import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
 import { EmptyState } from "@/components/empty-state";
 import { DiceButton } from "../components/dice-button";
+import { useWalletModal } from "../hooks/use-wallet-modal";
+import Button from "../components/button";
 
 // Constants
 const MAX_FILE_SIZE_MB = 5;
 const MAX_INITIAL_SOL = 45;
+
+// Wallet Connection Banner
+const WalletConnectionBanner = () => {
+  const { setVisible } = useWalletModal();
+  
+  return (
+    <div className="bg-autofun-background-action-highlight text-autofun-background-primary w-full mb-6 py-4 px-6 flex justify-between items-center">
+      <div className="font-dm-mono font-medium">
+        Connect your wallet to create a token
+      </div>
+      <Button 
+        onClick={() => setVisible(true)} 
+        size="small"
+        className="bg-autofun-background-primary text-autofun-background-action-highlight hover:bg-autofun-background-action-primary hover:text-autofun-background-primary"
+      >
+        Connect Wallet
+      </Button>
+    </div>
+  );
+};
 
 interface UploadResponse {
   success: boolean;
@@ -438,6 +460,7 @@ export const Create = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingField, setGeneratingField] = useState<string | null>(null);
+  const { setVisible } = useWalletModal();
 
   // Simple form state
   const [form, setForm] = useState({
@@ -582,6 +605,12 @@ export const Create = () => {
   // Function to generate metadata
   const generateMetadata = async (fields: string[]) => {
     try {
+      // Check if wallet is connected first
+      if (!publicKey) {
+        setVisible(true);
+        throw new Error("Please connect your wallet to generate metadata");
+      }
+
       setIsGenerating(true);
       setGeneratingField(fields.join(","));
 
@@ -684,7 +713,8 @@ export const Create = () => {
 
       // Ensure wallet is connected
       if (!publicKey) {
-        throw new Error("Wallet not connected");
+        setVisible(true);
+        throw new Error("Please connect your wallet to create a token");
       }
 
       // Generate a new keypair for the token mint
@@ -788,6 +818,13 @@ export const Create = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Check if wallet is connected first
+    if (!publicKey) {
+      setVisible(true);
+      alert("Please connect your wallet to create a token");
+      return;
+    }
+
     // Validate required fields
     const newErrors = { ...errors };
     if (!form.name) newErrors.name = "Name is required";
@@ -821,7 +858,8 @@ export const Create = () => {
 
   return (
     <div className="flex flex-col items-center py-10 md:py-0 justify-center min-h-screen max-w-[800px] mx-auto">
-              <div className="flex flex-col gap-y-4">
+      {!publicKey && <WalletConnectionBanner />}
+      <div className="flex flex-col gap-y-4">
           <div className="text-autofun-background-action-highlight font-medium text-[32px]">
             Create Token
           </div>
@@ -1042,13 +1080,18 @@ export const Create = () => {
               <button
                 type="submit"
                 className="bg-[#2fd345] py-3 px-6 font-bold border-2 text-black text-[1.8em] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
-                disabled={!isFormValid || isSubmitting}
+                disabled={!isFormValid || isSubmitting || !publicKey}
               >
                 {isSubmitting ? "Creating..." : "LET'S GO"}
               </button>
               {!isFormValid && (
                 <p className="text-red-500 text-center text-sm m-4">
                   Please fill in all required fields
+                </p>
+              )}
+              {!publicKey && (
+                <p className="text-red-500 text-center text-sm m-4">
+                  Please connect your wallet to create a token
                 </p>
               )}
             </div>
