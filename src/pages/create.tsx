@@ -5,6 +5,9 @@ import { useNavigate } from "react-router";
 import CopyButton from "../components/copy-button";
 import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
+import { useWalletModal } from "@/hooks/use-wallet-modal";
+
+
 
 // Constants
 const MAX_FILE_SIZE_MB = 5;
@@ -647,6 +650,9 @@ export const Create = () => {
     setPrompt: ((prompt: string) => void) | null;
     onPromptChange: ((prompt: string) => void) | null;
   }>({ setPrompt: null, onPromptChange: null });
+  const { isAuthenticated } = useWalletModal();
+  console.log(isAuthenticated)
+
 
   // Simple form state
   const [form, setForm] = useState({
@@ -1405,9 +1411,9 @@ export const Create = () => {
                 <button
                   type="submit"
                   className="bg-[#2fd345] py-3 px-6 font-bold border-2 text-black text-[1.8em] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
-                  disabled={!isFormValid || isSubmitting}
+                  disabled={!isFormValid || isSubmitting || !isAuthenticated}
                 >
-                  {isSubmitting ? "Creating..." : "LET'S GO"}
+                  {isSubmitting ? "Creating..." : !isAuthenticated ? "CONNECT WALLET" : "LET'S GO"}
                 </button>
               </div>
             </div>
