@@ -82,11 +82,36 @@ tokenRouter.get("/tokens", async (c) => {
           );
         }
 
-        // Apply sorting
-        if (sortOrder.toLowerCase() === "desc") {
-          tokensQuery = tokensQuery.orderBy(desc(sql`${sortBy}`));
+        // Apply sorting - map frontend sort values to actual DB columns
+        // Handle "featured" sort as a special case
+        if (sortBy === "featured") {
+          // For "featured", we'll sort by holderCount or marketCapUSD as a good default
+          if (sortOrder.toLowerCase() === "desc") {
+            tokensQuery = tokensQuery.orderBy(desc(tokens.holderCount));
+          } else {
+            tokensQuery = tokensQuery.orderBy(tokens.holderCount);
+          }
         } else {
-          tokensQuery = tokensQuery.orderBy(sql`${sortBy}`);
+          // For other columns, safely map to actual db columns
+          const validSortColumns = {
+            marketCapUSD: tokens.marketCapUSD,
+            createdAt: tokens.createdAt,
+            holderCount: tokens.holderCount,
+            tokenPriceUSD: tokens.tokenPriceUSD,
+            name: tokens.name,
+            ticker: tokens.ticker,
+            volume24h: tokens.volume24h,
+            curveProgress: tokens.curveProgress,
+          };
+
+          // Use the mapped column or default to createdAt
+          const sortColumn = validSortColumns[sortBy as keyof typeof validSortColumns] || tokens.createdAt;
+          
+          if (sortOrder.toLowerCase() === "desc") {
+            tokensQuery = tokensQuery.orderBy(desc(sortColumn));
+          } else {
+            tokensQuery = tokensQuery.orderBy(sortColumn);
+          }
         }
 
         // Apply pagination
@@ -136,12 +161,6 @@ tokenRouter.get("/tokens", async (c) => {
       logger.error("Token query failed or timed out:", error);
       tokensResult = [];
     }
-    // Update token market data
-    // const solPrice = await getSOLPrice(c.env);
-    // const tokensWithMarketData = await bulkUpdatePartialTokens(
-    //   Array.isArray(tokensResult) ? tokensResult : [],
-    //   c.env,
-    // );
 
     const totalPages = Math.ceil(total / limit);
 

@@ -28,7 +28,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
   const data = query?.data?.swaps || ([] as ISwap[]);
 
   return (
-    <Table className="border-0 !rounded-0 !border-spacing-y-0">
+    <Table className="border-0 !rounded-0 !border-spacing-y-0 relative">
       <TableHeader>
         <TableRow className="bg-transparent">
           <TableHead>Account</TableHead>

@@ -446,7 +446,7 @@ export const WalletModalProvider: FC<WalletModalProviderProps> = ({
 
   // Enhanced authenticate function with debounce to prevent multiple signatures
   const throttledAuthenticate = useCallback(
-    async (siwsMessage: any, signature: string) => {
+    async () => {
       try {
         // If already authenticated or authenticating, don't proceed
         if (isAuthenticated || isAuthenticating) {
@@ -456,7 +456,7 @@ export const WalletModalProvider: FC<WalletModalProviderProps> = ({
 
         console.log("Wallet provider handling authentication");
         try {
-          await authenticate(siwsMessage, signature);
+          await authenticate();
           // The authenticate function updates isAuthenticated internally
           // No need to check return value
           console.log("Authentication completed in throttledAuthenticate");

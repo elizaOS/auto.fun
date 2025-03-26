@@ -1,4 +1,6 @@
+import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { Payload, SIWS } from "@web3auth/sign-in-with-solana";
 import {
   createContext,
   useCallback,
@@ -7,24 +9,6 @@ import {
   useState,
   useRef,
 } from "react";
-
-// Interface for Sign-In With Solana message
-export interface SIWS {
-  payload: {
-    domain: string;
-    address: string;
-    statement: string;
-    uri: string;
-    version: string;
-    chainId: number;
-    nonce: string;
-    issuedAt: string;
-  };
-  verify: (args: {
-    payload: any;
-    signature: any;
-  }) => Promise<{ success: boolean; error?: { type: string } }>;
-}
 
 export interface Header {
   t: string;
@@ -35,7 +19,7 @@ export interface WalletModalContextState {
   visible: boolean;
   setVisible: (open: boolean) => void;
   hasStoredWallet?: boolean;
-  authenticate: (siwsMessage: SIWS, signature: string) => Promise<void>;
+  authenticate: () => Promise<void>;
   isAuthenticating: boolean;
   isAuthenticated: boolean;
   logout: () => void;
@@ -117,7 +101,7 @@ export function useWalletModal(): WalletModalContextState {
 
 // Custom hook to provide authentication functionality
 export function useWalletAuthentication() {
-  const { publicKey } = useWallet();
+  const { publicKey, signMessage } = useWallet();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authToken, setAuthToken] = useState<string | null>(null);
@@ -235,13 +219,13 @@ export function useWalletAuthentication() {
 
   // Authentication method with proper token handling
   const authenticate = useCallback(
-    async (_siwsMessage: SIWS, _sign: string) => {
+    async () => {
       if (!publicKey) {
         throw new Error("Wallet not connected");
       }
 
       // Check if solana provider is available
-      if (!window.solana || typeof window.solana.signMessage !== "function") {
+      if (!signMessage) {
         throw new Error("Wallet adapter doesn't support signMessage method");
       }
 
@@ -268,13 +252,24 @@ export function useWalletAuthentication() {
           throw new Error("Wallet disconnected during authentication");
         }
 
+        const payload = new Payload();
+        payload.domain = window.location.host;
+        payload.address = publicKey.toString();
+        payload.uri = window.location.origin;
+        payload.statement = `Sign this message for authenticating with nonce: ${nonce}`;
+        payload.version = "1";
+        payload.chainId = 1;
+        payload.nonce = nonce;
+
+        const siwsMessage = new SIWS({ payload });
+
         // Create authentication message with nonce
-        const messageText = `Sign this message for authenticating with nonce: ${nonce}`;
-        const message = new TextEncoder().encode(messageText);
+        const messageText = siwsMessage.prepareMessage();
+        const messageEncoded = new TextEncoder().encode(messageText);
 
         // Request signature from wallet
         console.log("Requesting signature from wallet");
-        const signatureBytes = await window.solana.signMessage(message, "utf8");
+        const signatureBytes = await signMessage(messageEncoded);
 
         // Double-check wallet is still connected
         if (!publicKey) {
@@ -282,9 +277,7 @@ export function useWalletAuthentication() {
         }
 
         // Convert to base58 or hex string as required by backend
-        const signatureHex = Array.from(signatureBytes)
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("");
+        const signatureHex = bs58.encode(signatureBytes)
 
         // Send authentication request to backend
         console.log("Sending authentication to backend");
@@ -297,7 +290,9 @@ export function useWalletAuthentication() {
             },
             body: JSON.stringify({
               publicKey: publicKey.toString(),
-              signature: signatureHex,
+              signature: {t: 'sip99', s: signatureHex},
+              payload: siwsMessage.payload,
+              header: {t: 'sip99'},
               nonce,
               message: messageText,
             }),
