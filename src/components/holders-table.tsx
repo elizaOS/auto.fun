@@ -13,6 +13,7 @@ import { getTokenHolders } from "@/utils/api";
 import { Link } from "react-router";
 import { ExternalLink } from "lucide-react";
 import usePause from "@/hooks/use-pause";
+import PausedIndicator from "./paused-indicator";
 
 export default function HoldersTable({ token }: { token: IToken }) {
   const { pause, setPause } = usePause();
@@ -30,7 +31,8 @@ export default function HoldersTable({ token }: { token: IToken }) {
 
   return (
     <Table className="border-0 !rounded-0 !border-spacing-y-0">
-      <TableHeader>
+      <TableHeader className="relative">
+        <PausedIndicator />
         <TableRow className="bg-transparent">
           <TableHead>Account</TableHead>
           <TableHead className="text-right">Amount</TableHead>
