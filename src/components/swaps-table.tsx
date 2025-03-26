@@ -13,15 +13,18 @@ import { getTokenSwapHistory } from "@/utils/api";
 import { Link } from "react-router";
 import { ExternalLink } from "lucide-react";
 import { twMerge } from "tailwind-merge";
+import usePauseHook from "@/hooks/use-pause-hook";
 
 export default function SwapsTable({ token }: { token: IToken }) {
+  const { pause, setPause } = usePauseHook(false);
   const query = useQuery({
     queryKey: ["swaps", token?.mint],
     queryFn: async () => {
       const data = await getTokenSwapHistory({ address: token?.mint });
       return data as { swaps: ISwap[] };
     },
-    enabled: token?.mint ? true : false,
+    // pause condition
+    enabled: !pause || token?.mint ? true : false,
     refetchInterval: 2_500,
   });
 
@@ -42,7 +45,12 @@ export default function SwapsTable({ token }: { token: IToken }) {
       <TableBody>
         {data?.map((swap: ISwap) => {
           return (
-            <TableRow key={swap?.txId}>
+            <TableRow
+              onMouseEnter={() => setPause(true)}
+              onMouseLeave={() => setPause(false)}
+              className="hover:bg-white/5"
+              key={swap?.txId}
+            >
               <TableCell className="text-left">
                 {shortenAddress(swap?.user)}
               </TableCell>
