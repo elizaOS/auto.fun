@@ -10,7 +10,7 @@ import { BN, Program } from "@coral-xyz/anchor";
 import {
   SEED_BONDING_CURVE,
   SEED_CONFIG,
-  Serlaunchalot,
+  Autofun,
   useProgram,
 } from "@/utils/program";
 import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
@@ -82,7 +82,7 @@ const swapIx = async (
   amount: number,
   style: number,
   slippageBps: number = 100,
-  program: Program<Serlaunchalot>,
+  program: Program<Autofun>,
   reserveToken: number,
   reserveLamport: number,
 ) => {
@@ -409,23 +409,7 @@ export const useSwap = () => {
     return { signature, confirmation };
   };
 
-  const initialBuyIx = async (
-    params: Omit<SwapParams, "reserveToken" | "reserveLamport">,
-  ) => {
-    /**
-     * we avoid fetching from the curve here for initial buy since
-     * the curve does not exist yet at time of transaction creation.
-     * so we use env vars instead, since we know they will always initially be the same.
-     */
-    return createSwapIx({
-      ...params,
-      reserveLamport: new BN(env.tokenSupply).div(new BN(env.decimals)),
-      reserveToken: new BN(env.virtualReserves),
-    });
-  };
-
   return {
-    createSwapIx: initialBuyIx,
     executeSwap: async (...params: Parameters<typeof executeSwap>) => {
       try {
         setIsExecuting(true);
