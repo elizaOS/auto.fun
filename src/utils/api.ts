@@ -1,4 +1,4 @@
-import { IToken, TSortBy, TSortOrder } from "@/types";
+import { ChartTable, IToken, TSortBy, TSortOrder } from "@/types";
 import { QueryClient } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient();
@@ -9,26 +9,34 @@ const hostname = window.location.hostname;
 // Set API URL based on the current hostname
 let apiUrl = import.meta.env.VITE_API_URL;
 
-// If no environment variable is set, infer from the current hostname
-if (!apiUrl) {
-  if (hostname === "localhost" || hostname === "127.0.0.1") {
-    // Local development
-    apiUrl = "http://localhost:8787";
-  } else if (hostname === "autofun.pages.dev" || hostname.includes("autofun")) {
-    // Production
-    apiUrl = "https://api.autofun.pages.dev";
-  } else if (
-    hostname === "autofun-dev.pages.dev" ||
-    hostname.includes("autofun-dev")
-  ) {
-    // Development/staging
-    apiUrl = "https://api-dev.autofun.pages.dev";
-  } else {
-    // Default fallback - production
-    apiUrl = "https://api.autofun.pages.dev";
+export const getApiUrl = () => {
+  // If no environment variable is set, infer from the current hostname
+  if (!apiUrl) {
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      // Local development
+      apiUrl = "http://localhost:8787";
+    } else if (
+      hostname === "autofun.pages.dev" ||
+      hostname.includes("autofun")
+    ) {
+      // Production
+      apiUrl = "https://api.autofun.pages.dev";
+    } else if (
+      hostname === "autofun-dev.pages.dev" ||
+      hostname.includes("autofun-dev")
+    ) {
+      // Development/staging
+      apiUrl = "https://api-dev.autofun.pages.dev";
+    } else {
+      // Default fallback - production
+      apiUrl = "https://api.autofun.pages.dev";
+    }
   }
-}
-const BASE_URL = apiUrl;
+
+  return apiUrl;
+};
+
+const BASE_URL = getApiUrl();
 
 const fetcher = async (
   endpoint: string,
@@ -95,3 +103,30 @@ export const getTokenSwapHistory = async ({ address }: { address: string }) => {
   const data = await fetcher(`/api/swaps/${address}`, "GET");
   return data;
 };
+
+export async function getChartTable({
+  pairIndex,
+  from,
+  to,
+  range,
+  token,
+}: {
+  pairIndex: number;
+  from: number;
+  to: number;
+  range: number;
+  token: string;
+}): Promise<ChartTable | undefined> {
+  try {
+    // console.log("GET bars", token, from, to, range, pairIndex)
+    const res = await fetcher(
+      `/api/chart/${pairIndex}/${from}/${to}/${range}/${token}`,
+      "GET"
+    );
+
+    return res as ChartTable;
+  } catch (err) {
+    console.log("tradingchart === getch data error", err);
+    return undefined;
+  }
+}

@@ -79,3 +79,13 @@ export interface ITokenHolder {
   percentage: number;
   lastUpdated: string | Date;
 }
+
+export type ChartTable = {
+  table: {
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    time: number;
+  }[];
+};
