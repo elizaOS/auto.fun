@@ -1,8 +1,9 @@
-import { BN } from "@coral-xyz/anchor";
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { PublicKey } from "@solana/web3.js";
-import { useMemo } from "react";
-
+/**
+ * Program IDL in camelCase format in order to be used in JS/TS.
+ *
+ * Note that this is only a type helper and is not the actual IDL. The original
+ * IDL can be found at `target/idl/autofun.json`.
+ */
 export type Autofun = {
   "address": "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ",
   "metadata": {
@@ -2199,104 +2200,4 @@ export type Autofun = {
       }
     }
   ]
-};
-
-// Seed for the bonding curve PDA
-export const SEED_BONDING_CURVE = "bonding_curve";
-
-// Program ID for the Autofun program (use environment variable in production)
-export const PROGRAM_ID = new PublicKey(
-  import.meta.env.VITE_PROGRAM_ID || "11111111111111111111111111111111",
-);
-
-// Interface for bondingCurve account
-interface BondingCurveAccount {
-  tokenMint: PublicKey;
-  creator: PublicKey;
-  initLamport: BN;
-  reserveLamport: BN;
-  reserveToken: BN;
-  curveLimit: BN;
-  isCompleted: boolean;
-}
-
-// Program interface with bondingCurve account
-interface ProgramWithBondingCurve {
-  programId: PublicKey;
-  account: {
-    bondingCurve: {
-      fetchMultiple: (
-        addresses: PublicKey[],
-      ) => Promise<(BondingCurveAccount | null)[]>;
-    };
-  };
-}
-
-// Hybrid approach: Try to use real program if available, fall back to mock
-export function useProgram(): ProgramWithBondingCurve | null {
-  const { connection } = useConnection();
-  const { publicKey } = useWallet();
-
-  return useMemo(() => {
-    if (!connection) {
-      return null;
-    }
-
-    try {
-      // For mock/development environment, return a mock implementation
-      return {
-        programId: PROGRAM_ID,
-        account: {
-          bondingCurve: {
-            fetchMultiple: async (addresses: PublicKey[]) => {
-              return addresses.map(() => ({
-                tokenMint: new PublicKey("11111111111111111111111111111111"),
-                creator: new PublicKey("11111111111111111111111111111111"),
-                initLamport: new BN(1000000),
-                reserveLamport: new BN(10000000),
-                reserveToken: new BN(1000000),
-                curveLimit: new BN(100000000),
-                isCompleted: false,
-              }));
-            },
-          },
-        },
-      };
-    } catch (error) {
-      console.error("Error creating program:", error);
-      return null;
-    }
-  }, [connection, publicKey]);
-}
-
-// This is a simplified mock since we don't have the full IDL
-// In a real app, you'd import the actual IDL and use it to create the program
-export const useProgramMock = () => {
-  const { connection } = useConnection();
-
-  return useMemo(() => {
-    // This is a simplified mock of the Program interface
-    // In a real application, you would use:
-    // return new Program(IDL, PROGRAM_ID, { connection });
-
-    return {
-      programId: PROGRAM_ID,
-      account: {
-        bondingCurve: {
-          fetchMultiple: async (addresses: PublicKey[]) => {
-            // Mock implementation
-            return addresses.map(() => ({
-              tokenMint: new PublicKey("11111111111111111111111111111111"),
-              creator: new PublicKey("11111111111111111111111111111111"),
-              initLamport: { toNumber: () => 1000000 },
-              reserveLamport: { toNumber: () => 10000000 },
-              reserveToken: { toNumber: () => 1000000 },
-              curveLimit: { toNumber: () => 100000000 },
-              isCompleted: false,
-            }));
-          },
-        },
-      },
-    };
-  }, [connection]);
 };

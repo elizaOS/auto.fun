@@ -106,7 +106,7 @@ const WalletButton = () => {
     try {
       console.log("Attempting authentication with wallet");
       // No need to create SIWS message anymore, the authenticate method will handle it
-      await authenticate({} as any, "");
+      await authenticate();
       console.log("Authentication successful");
       setAuthFailed(false);
     } catch (error) {
