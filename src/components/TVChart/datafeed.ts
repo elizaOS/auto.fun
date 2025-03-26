@@ -17,7 +17,6 @@ import { getSocket } from "@/utils/socket";
 
 const socket = getSocket();
 const lastBarsCache = new Map<string, Bar>();
-const noDataFlags = new Map<string, boolean>();
 // const minPrice: Number = 0;
 // const maxPrice: Number = 0;
 // DatafeedConfiguration implementation
@@ -98,12 +97,6 @@ export function getDataFeed({
       const adjustedFrom = firstDataRequest ? from - FIVE_DAYS : from;
 
       try {
-        // If we already know there's no data for this symbol, return immediately
-        if (noDataFlags.get(symbolInfo.name)) {
-          onHistoryCallback([], { noData: true });
-          return;
-        }
-
         const chartTable = await getChartTable({
           token,
           pairIndex: pairIndex,
@@ -113,16 +106,9 @@ export function getDataFeed({
         });
 
         if (!chartTable || !chartTable.table || chartTable.table.length === 0) {
-          // Set the no-data flag if this is the first request
-          if (firstDataRequest) {
-            noDataFlags.set(symbolInfo.name, true);
-          }
           onHistoryCallback([], { noData: true });
           return;
         }
-
-        // Clear the no-data flag if we got data
-        noDataFlags.set(symbolInfo.name, false);
 
         let bars: Bar[] = [];
         const nextTime =
@@ -165,11 +151,6 @@ export function getDataFeed({
       subscriberUID,
       onResetCacheNeededCallback,
     ) => {
-      // Don't subscribe if we know there's no data
-      if (noDataFlags.get(symbolInfo.name)) {
-        return;
-      }
-
       console.log(
         "[subscribeBars]: Method call with subscriberUID:",
         subscriberUID,
@@ -178,24 +159,45 @@ export function getDataFeed({
       socket.emit("subscribe", token);
 
       // Ensure we have the last bar from cache
-      const lastBar = lastBarsCache.get(symbolInfo.name);
+      let lastBar = lastBarsCache.get(symbolInfo.name);
       if (!lastBar) {
         console.log("[subscribeBars]: No last bar found");
-        // Instead of calling onResetCacheNeededCallback, we should mark as no data
-        noDataFlags.set(symbolInfo.name, true);
-        return;
+        // Instead of creating a bar with zeros, we'll create a placeholder
+        // but we won't actually display it until we get real data
+        lastBar = {
+          time: Math.floor(Date.now() / 1000) * 1000,
+          open: 0,
+          high: 0,
+          low: 0,
+          close: 0,
+          volume: 0,
+        };
+        lastBarsCache.set(symbolInfo.name, lastBar);
       }
 
       subscribeOnStream(
         symbolInfo,
         resolution,
         (bar) => {
-          // Force the chart to update with the new bar
-          onRealtimeCallback(bar);
-          // Update the cache with the latest bar
-          lastBarsCache.set(symbolInfo.name, bar);
-          // Clear the no-data flag since we're receiving data
-          noDataFlags.set(symbolInfo.name, false);
+          // Only update the chart if we have real data (non-zero values)
+          if (bar.close > 0) {
+            // For the first real bar, set all OHLC values to the close price
+            // to avoid the "jump from zero" effect
+            if (lastBar.close === 0) {
+              const firstRealBar = {
+                ...bar,
+                open: bar.close,
+                high: bar.close,
+                low: bar.close,
+              };
+              onRealtimeCallback(firstRealBar);
+              lastBarsCache.set(symbolInfo.name, firstRealBar);
+            } else {
+              // Normal update for subsequent bars
+              onRealtimeCallback(bar);
+              lastBarsCache.set(symbolInfo.name, bar);
+            }
+          }
         },
         subscriberUID,
         onResetCacheNeededCallback,
