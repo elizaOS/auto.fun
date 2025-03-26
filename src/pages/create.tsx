@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import CopyButton from "../components/copy-button";
 import { Icons } from "../components/icons";
-import WalletButton from "../components/wallet-button";
 import { TokenMetadata } from "../types/form.type";
 import { EmptyState } from "@/components/empty-state";
 import { DiceButton } from "../components/dice-button";
@@ -59,7 +58,7 @@ const FormInput = ({
       {label && <FormLabel label={label} isOptional={isOptional} />}
       <div className="relative flex items-center">
         {inputTag && (
-          <div className="bg-[#262626] rounded-l-md flex items-center h-full px-3">
+          <div className="bg-[#262626] flex items-center h-full px-3">
             {inputTag}
           </div>
         )}
@@ -67,7 +66,7 @@ const FormInput = ({
           <div className="absolute left-3 text-[#8c8c8c]">{leftIndicator}</div>
         )}
         <input
-          className={`w-full rounded-r-md bg-[#0F0F0F] py-2.5 px-3 border border-neutral-800 text-white ${
+          className={`w-full bg-[#0F0F0F] py-2.5 px-3 border border-neutral-800 text-white ${
             inputTag ? "pl-2" : ""
           } ${leftIndicator ? "pl-10" : ""}`}
           {...props}
@@ -122,7 +121,7 @@ const FormTextArea = ({
       {label && <FormLabel label={label} />}
       <div className="relative">
         <textarea
-          className="w-full bg-[#0F0F0F] rounded-md h-[250px] p-3 border border-neutral-800 text-white resize-none"
+          className="w-full bg-[#0F0F0F] h-[250px] p-3 border border-neutral-800 text-white resize-none"
           style={{ minHeight: `${minRows * 1.5}rem` }}
           maxLength={maxLength}
           {...props}
@@ -178,7 +177,7 @@ const FormImageInput = ({
   return (
     <div className="flex flex-col gap-1 w-full">
       <FormLabel label={label} />
-      <div className="relative justify-center border-1 border-dashed rounded-md p-6 cursor-pointer text-center border-[#8c8c8c]">
+      <div className="relative justify-center border-1 border-dashed p-6 cursor-pointer text-center border-[#8c8c8c]">
         {preview ? (
           <div className="flex justify-center">
             <img
@@ -188,7 +187,7 @@ const FormImageInput = ({
             />
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center rounded-md p-6 cursor-pointer text-center">
+          <div className="flex flex-col items-center justify-center p-6 cursor-pointer text-center">
             <EmptyState maxSizeMb={MAX_FILE_SIZE_MB} />
           </div>
         )}
@@ -822,7 +821,7 @@ export const Create = () => {
 
   return (
     <div className="flex items-center py-10 md:py-0 justify-center min-h-screen">
-      <div className="p-4 bg-autofun-background-card max-w-[800px] rounded-md">
+      <div className="p-4 bg-autofun-background-card max-w-[800px]">
         <div className="flex flex-col gap-y-4">
           <div className="text-autofun-background-action-highlight font-medium text-[32px]">
             Create Token
@@ -1032,7 +1031,7 @@ export const Create = () => {
                       min="0"
                       max={MAX_INITIAL_SOL}
                       step="0.1"
-                      className="w-27 rounded-md py-2 pr-14 bg-[#2e2e2e] text-[#2fd345] text-xl font-medium text-right"
+                      className="w-27 py-2 pr-14 bg-[#2e2e2e] text-[#2fd345] text-xl font-medium text-right"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#2fd345] text-xl font-medium">
                       SOL
