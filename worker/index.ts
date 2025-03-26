@@ -579,7 +579,7 @@ export default {
   ): Promise<Response> {
     // Initialize pre-generated tokens in the background
     ctx.waitUntil(initializePreGeneratedTokens(env));
-    
+
     const url = new URL(request.url);
 
     // Setup CORS headers for WebSocket requests

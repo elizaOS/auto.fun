@@ -769,7 +769,7 @@ export async function cron(env: Env): Promise<void> {
         logger.error(`Error updating holders for token ${token.mint}:`, err);
       }
     }
-    
+
     // Check and replenish pre-generated tokens if needed
     try {
       logger.log("Checking pre-generated token supply...");

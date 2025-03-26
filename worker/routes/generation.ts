@@ -156,16 +156,16 @@ export async function generateMedia(
       if (!env.AI) {
         throw new Error("Cloudflare AI binding not configured");
       }
-      
+
       // Use the flux-1-schnell model via AI binding
-      const result = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
+      const result = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", {
         prompt: data.prompt,
         steps: 4,
       });
-      
+
       // Create data URL from the base64 image
       const dataURI = `data:image/jpeg;base64,${result.image}`;
-      
+
       // Return in a format compatible with our existing code
       return {
         data: {
@@ -178,7 +178,7 @@ export async function generateMedia(
       };
     } catch (error) {
       console.error("Error in Cloudflare image generation:", error);
-      
+
       // Return a fallback
       const placeholderUrl = `https://placehold.co/600x400?text=${encodeURIComponent(data.prompt)}`;
       return {
@@ -210,7 +210,7 @@ export async function generateMedia(
         }
       },
     });
-    
+
     // Race against timeout
     return await Promise.race([generationPromise, timeoutPromise]);
   } else if (data.type === MediaType.AUDIO) {
@@ -229,7 +229,7 @@ export async function generateMedia(
         }
       },
     });
-    
+
     // Race against timeout
     return await Promise.race([generationPromise, timeoutPromise]);
   }
@@ -394,8 +394,8 @@ app.post("/:mint/generate", async (c) => {
       console.error(`Error checking rate limits: ${error}`);
       return c.json({ error: "Error checking rate limits" }, 500);
     }
-    
-    console.log("FAL_API_KEY is", c.env.FAL_API_KEY)
+
+    console.log("FAL_API_KEY is", c.env.FAL_API_KEY);
 
     let result;
     try {
@@ -633,11 +633,12 @@ app.post("/generate-metadata", async (c) => {
     }
 
     // Generate metadata using Llama
-    const response = await c.env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", { 
+    const response = await c.env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
       messages: [
-        { 
-          role: "system", 
-          content: "You are a helpful assistant that specializes in creating fun and interesting token metadata for crypto projects. Always respond with valid JSON." 
+        {
+          role: "system",
+          content:
+            "You are a helpful assistant that specializes in creating fun and interesting token metadata for crypto projects. Always respond with valid JSON.",
         },
         {
           role: "user",
@@ -653,28 +654,39 @@ app.post("/generate-metadata", async (c) => {
             "symbol": "FUN",
             "description": "A fun and engaging token description",
             "prompt": "A detailed prompt for image generation"
-          }`
+          }`,
         },
       ],
       max_tokens: 500,
       temperature: 0.7,
     });
-    
+
     // Extract and parse the JSON response
     let metadata: Record<string, string>;
     try {
       metadata = JSON.parse(response.response);
     } catch (error) {
       logger.error("Failed to parse token metadata JSON:", error);
-      return c.json({ success: false, error: "Failed to generate valid token metadata" }, 500);
+      return c.json(
+        { success: false, error: "Failed to generate valid token metadata" },
+        500,
+      );
     }
-    
+
     // Validate required fields
-    if (!metadata.name || !metadata.symbol || !metadata.description || !metadata.prompt) {
+    if (
+      !metadata.name ||
+      !metadata.symbol ||
+      !metadata.description ||
+      !metadata.prompt
+    ) {
       logger.error("Missing required fields in token metadata:", metadata);
-      return c.json({ success: false, error: "Failed to generate complete token metadata" }, 500);
+      return c.json(
+        { success: false, error: "Failed to generate complete token metadata" },
+        500,
+      );
     }
-    
+
     // Ensure symbol is uppercase
     metadata.symbol = metadata.symbol.toUpperCase();
 
@@ -701,7 +713,9 @@ app.post("/generate", async (c) => {
     // Create simplified schema for direct generation
     const GenerateRequestSchema = z.object({
       prompt: z.string().min(1).max(2000), // Increased from 500 to 2000 chars
-      type: z.enum([MediaType.IMAGE, MediaType.VIDEO, MediaType.AUDIO]).default(MediaType.IMAGE),
+      type: z
+        .enum([MediaType.IMAGE, MediaType.VIDEO, MediaType.AUDIO])
+        .default(MediaType.IMAGE),
       negative_prompt: z.string().optional(),
       guidance_scale: z.number().min(1).max(20).optional().default(7.5),
       width: z.number().min(512).max(1024).optional().default(1024),
@@ -714,14 +728,17 @@ app.post("/generate", async (c) => {
       validatedData = GenerateRequestSchema.parse(body);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return c.json({
-          error: "Validation error",
-          details: error.errors.map(e => ({
-            path: e.path.join('.'),
-            message: e.message,
-            code: e.code
-          }))
-        }, 400);
+        return c.json(
+          {
+            error: "Validation error",
+            details: error.errors.map((e) => ({
+              path: e.path.join("."),
+              message: e.message,
+              code: e.code,
+            })),
+          },
+          400,
+        );
       }
       throw error;
     }
@@ -732,10 +749,13 @@ app.post("/generate", async (c) => {
 
     // Extract the appropriate URL based on media type
     let mediaUrl: string;
-    
+
     if (validatedData.type === MediaType.VIDEO && result.video?.url) {
       mediaUrl = result.video.url;
-    } else if (validatedData.type === MediaType.AUDIO && result.audio_file?.url) {
+    } else if (
+      validatedData.type === MediaType.AUDIO &&
+      result.audio_file?.url
+    ) {
       mediaUrl = result.audio_file.url;
     } else if (result.data?.images?.length > 0) {
       mediaUrl = result.data.images[0].url;
@@ -752,9 +772,15 @@ app.post("/generate", async (c) => {
     });
   } catch (error) {
     console.error("Error in generate endpoint:", error);
-    return c.json({
-      error: error instanceof Error ? error.message : "Unknown error generating media"
-    }, 500);
+    return c.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unknown error generating media",
+      },
+      500,
+    );
   }
 });
 
@@ -936,7 +962,10 @@ export async function getDailyGenerationCount(
 }
 
 // Function to generate a token on demand
-async function generateTokenOnDemand(env: Env, ctx: { waitUntil: (promise: Promise<any>) => void }): Promise<{
+async function generateTokenOnDemand(
+  env: Env,
+  ctx: { waitUntil: (promise: Promise<any>) => void },
+): Promise<{
   success: boolean;
   token?: {
     id: string;
@@ -952,13 +981,14 @@ async function generateTokenOnDemand(env: Env, ctx: { waitUntil: (promise: Promi
 }> {
   try {
     logger.log("Generating a token on demand...");
-    
+
     // Generate token metadata using Llama
-    const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", { 
+    const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
       messages: [
-        { 
-          role: "system", 
-          content: "You are a helpful assistant that specializes in creating fun and prompt token metadata for crypto projects. Always respond with valid JSON." 
+        {
+          role: "system",
+          content:
+            "You are a helpful assistant that specializes in creating fun and prompt token metadata for crypto projects. Always respond with valid JSON.",
         },
         {
           role: "user",
@@ -974,71 +1004,85 @@ async function generateTokenOnDemand(env: Env, ctx: { waitUntil: (promise: Promi
             "symbol": "FUN",
             "description": "A fun and engaging token description",
             "prompt": "A detailed prompt for image generation"
-          }`
+          }`,
         },
       ],
       max_tokens: 500,
       temperature: 0.7,
     });
-    
+
     // Extract the generated text
     const generatedText = response.response;
-    
+
     // Parse the metadata
     const metadata: Record<string, string> = {};
-    
+
     // Extract name
     const nameMatch = generatedText.match(/name:?\s*["']?([^"\n]+)["']?/i);
     if (nameMatch) {
       metadata.name = nameMatch[1].trim();
     }
-    
+
     // Extract symbol
     const symbolMatch = generatedText.match(/symbol:?\s*["']?([^"\n]+)["']?/i);
     if (symbolMatch) {
       metadata.symbol = symbolMatch[1].trim().toUpperCase();
     }
-    
+
     // Extract description
-    const descMatch = generatedText.match(/description:?\s*["']?([^"\n]+)["']?/i);
+    const descMatch = generatedText.match(
+      /description:?\s*["']?([^"\n]+)["']?/i,
+    );
     if (descMatch) {
       metadata.description = descMatch[1].trim();
     }
-    
+
     // Extract prompt prompt
-    const creativeMatch = generatedText.match(/prompt:?\s*["']?([^"\n]+)["']?/i);
+    const creativeMatch = generatedText.match(
+      /prompt:?\s*["']?([^"\n]+)["']?/i,
+    );
     if (creativeMatch) {
       metadata.prompt = creativeMatch[1].trim();
     }
-    
+
     // Skip if we're missing any required field
-    if (!metadata.name || !metadata.symbol || !metadata.description || !metadata.prompt) {
+    if (
+      !metadata.name ||
+      !metadata.symbol ||
+      !metadata.description ||
+      !metadata.prompt
+    ) {
       return { success: false, error: "Failed to generate token metadata" };
     }
-    
+
     // Ensure symbol is uppercase
     metadata.symbol = metadata.symbol.toUpperCase();
 
     // Generate the image for this token
-    let imageUrl = '';
+    let imageUrl = "";
     try {
       // Generate image using our existing function
       const imageResult = await generateMedia(env, {
         prompt: metadata.prompt,
-        type: MediaType.IMAGE
+        type: MediaType.IMAGE,
       });
-      
-      if (imageResult && 
-          imageResult.data && 
-          imageResult.data.images && 
-          imageResult.data.images.length > 0) {
+
+      if (
+        imageResult &&
+        imageResult.data &&
+        imageResult.data.images &&
+        imageResult.data.images.length > 0
+      ) {
         imageUrl = imageResult.data.images[0].url;
       }
     } catch (imageError) {
-      logger.error(`Error generating image for token ${metadata.name}:`, imageError);
+      logger.error(
+        `Error generating image for token ${metadata.name}:`,
+        imageError,
+      );
       // Continue without image
     }
-    
+
     // Create token object
     const tokenId = crypto.randomUUID();
     const onDemandToken = {
@@ -1049,9 +1093,9 @@ async function generateTokenOnDemand(env: Env, ctx: { waitUntil: (promise: Promi
       prompt: metadata.prompt,
       image: imageUrl,
       createdAt: new Date().toISOString(),
-      used: 0
+      used: 0,
     };
-    
+
     // Store in database for future use (do this in background)
     const db = getDB(env);
     ctx.waitUntil(
@@ -1065,15 +1109,17 @@ async function generateTokenOnDemand(env: Env, ctx: { waitUntil: (promise: Promi
             prompt: metadata.prompt,
             image: imageUrl,
             createdAt: new Date().toISOString(),
-            used: 0
+            used: 0,
           });
-          logger.log(`Generated and saved on-demand token: ${metadata.name} (${metadata.symbol})`);
+          logger.log(
+            `Generated and saved on-demand token: ${metadata.name} (${metadata.symbol})`,
+          );
         } catch (err) {
           logger.error("Error saving on-demand token:", err);
         }
-      })()
+      })(),
     );
-    
+
     return { success: true, token: onDemandToken };
   } catch (error) {
     logger.error("Error generating token on demand:", error);
@@ -1085,7 +1131,7 @@ async function generateTokenOnDemand(env: Env, ctx: { waitUntil: (promise: Promi
 app.get("/pre-generated-token", async (c) => {
   try {
     const db = getDB(c.env);
-    
+
     // Get a random unused token
     const randomToken = await db
       .select()
@@ -1093,32 +1139,37 @@ app.get("/pre-generated-token", async (c) => {
       .where(eq(preGeneratedTokens.used, 0))
       .orderBy(sql`RANDOM()`)
       .limit(1);
-    
+
     if (!randomToken || randomToken.length === 0) {
-      logger.log("No pre-generated tokens available. Generating one on demand...");
-      
+      logger.log(
+        "No pre-generated tokens available. Generating one on demand...",
+      );
+
       // Generate a token on the fly
       const result = await generateTokenOnDemand(c.env, c.executionCtx);
-      
+
       if (!result.success) {
         return c.json({ error: result.error }, 500);
       }
-      
-      return c.json({ 
-        success: true, 
-        token: result.token
+
+      return c.json({
+        success: true,
+        token: result.token,
       });
     }
-    
-    return c.json({ 
-      success: true, 
-      token: randomToken[0] 
+
+    return c.json({
+      success: true,
+      token: randomToken[0],
     });
   } catch (error) {
     logger.error("Error getting pre-generated token:", error);
-    return c.json({ 
-      error: error instanceof Error ? error.message : "Unknown error" 
-    }, 500);
+    return c.json(
+      {
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      500,
+    );
   }
 });
 
@@ -1127,19 +1178,19 @@ app.post("/mark-token-used", async (c) => {
   try {
     const body = await c.req.json();
     const { id, name, ticker } = body;
-    
+
     if (!id) {
       return c.json({ error: "Token ID is required" }, 400);
     }
-    
+
     const db = getDB(c.env);
-    
+
     // Mark the token as used
     await db
       .update(preGeneratedTokens)
       .set({ used: 1 })
       .where(eq(preGeneratedTokens.id, id));
-    
+
     // Delete any other tokens with the same name or ticker
     if (name || ticker) {
       await db
@@ -1147,20 +1198,23 @@ app.post("/mark-token-used", async (c) => {
         .where(
           or(
             name ? eq(preGeneratedTokens.name, name) : undefined,
-            ticker ? eq(preGeneratedTokens.ticker, ticker) : undefined
-          )
+            ticker ? eq(preGeneratedTokens.ticker, ticker) : undefined,
+          ),
         );
     }
-    
-    return c.json({ 
-      success: true, 
-      message: "Token marked as used and duplicates removed" 
+
+    return c.json({
+      success: true,
+      message: "Token marked as used and duplicates removed",
     });
   } catch (error) {
     logger.error("Error marking token as used:", error);
-    return c.json({ 
-      error: error instanceof Error ? error.message : "Unknown error" 
-    }, 500);
+    return c.json(
+      {
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      500,
+    );
   }
 });
 
@@ -1168,7 +1222,7 @@ app.post("/mark-token-used", async (c) => {
 app.post("/reroll-token", async (c) => {
   try {
     const db = getDB(c.env);
-    
+
     // Get a random unused token
     const randomToken = await db
       .select()
@@ -1176,32 +1230,37 @@ app.post("/reroll-token", async (c) => {
       .where(eq(preGeneratedTokens.used, 0))
       .orderBy(sql`RANDOM()`)
       .limit(1);
-    
+
     if (!randomToken || randomToken.length === 0) {
-      logger.log("No pre-generated tokens available for reroll. Generating one on demand...");
-      
+      logger.log(
+        "No pre-generated tokens available for reroll. Generating one on demand...",
+      );
+
       // Generate a token on the fly
       const result = await generateTokenOnDemand(c.env, c.executionCtx);
-      
+
       if (!result.success) {
         return c.json({ error: result.error }, 500);
       }
-      
-      return c.json({ 
-        success: true, 
-        token: result.token
+
+      return c.json({
+        success: true,
+        token: result.token,
       });
     }
-    
-    return c.json({ 
-      success: true, 
-      token: randomToken[0] 
+
+    return c.json({
+      success: true,
+      token: randomToken[0],
     });
   } catch (error) {
     logger.error("Error rerolling token:", error);
-    return c.json({ 
-      error: error instanceof Error ? error.message : "Unknown error" 
-    }, 500);
+    return c.json(
+      {
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      500,
+    );
   }
 });
 
@@ -1215,7 +1274,8 @@ async function generateMetadata(env: Env) {
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant that specializes in creating fun and prompt token metadata for crypto projects. Always respond with valid JSON.",
+          content:
+            "You are a helpful assistant that specializes in creating fun and prompt token metadata for crypto projects. Always respond with valid JSON.",
         },
         {
           role: "user",
@@ -1251,7 +1311,12 @@ async function generateMetadata(env: Env) {
     }
 
     // Validate required fields
-    if (!metadata.name || !metadata.symbol || !metadata.description || !metadata.prompt) {
+    if (
+      !metadata.name ||
+      !metadata.symbol ||
+      !metadata.description ||
+      !metadata.prompt
+    ) {
       logger.error("Missing required fields in token metadata:", metadata);
       return null;
     }
@@ -1267,7 +1332,10 @@ async function generateMetadata(env: Env) {
 }
 
 // Function to generate new pre-generated tokens
-export async function generatePreGeneratedTokens(env: Env, ctx: CFExecutionContext) {
+export async function generatePreGeneratedTokens(
+  env: Env,
+  ctx: CFExecutionContext,
+) {
   try {
     // Generate metadata using Claude
     const metadata = await generateMetadata(env);
@@ -1280,13 +1348,13 @@ export async function generatePreGeneratedTokens(env: Env, ctx: CFExecutionConte
     if (!env.AI) {
       throw new Error("Cloudflare AI binding not configured");
     }
-    
+
     // Use the flux-1-schnell model via AI binding
-    const result = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', {
+    const result = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", {
       prompt: metadata.prompt,
       steps: 4,
     });
-    
+
     // Create data URL from the base64 image
     const dataURI = `data:image/jpeg;base64,${result.image}`;
 
@@ -1314,7 +1382,7 @@ export async function generatePreGeneratedTokens(env: Env, ctx: CFExecutionConte
     await env.DB.prepare(
       `INSERT INTO pre_generated_tokens (
         id, name, ticker, description, prompt, image, created_at, used
-      ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), 0)`
+      ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), 0)`,
     )
       .bind(
         crypto.randomUUID(),
@@ -1322,7 +1390,7 @@ export async function generatePreGeneratedTokens(env: Env, ctx: CFExecutionConte
         metadata.symbol,
         metadata.description,
         metadata.prompt,
-        publicUrl
+        publicUrl,
       )
       .run();
 
@@ -1333,19 +1401,23 @@ export async function generatePreGeneratedTokens(env: Env, ctx: CFExecutionConte
 }
 
 // Check and replenish pre-generated tokens if needed
-export async function checkAndReplenishTokens(env: Env, ctx: CFExecutionContext, threshold: number = 100): Promise<void> {
+export async function checkAndReplenishTokens(
+  env: Env,
+  ctx: CFExecutionContext,
+  threshold: number = 100,
+): Promise<void> {
   try {
     const db = getDB(env);
-    
+
     // Count unused tokens
     const countResult = await db
       .select({ count: sql`count(*)` })
       .from(preGeneratedTokens)
       .where(eq(preGeneratedTokens.used, 0));
-    
+
     const count = Number(countResult[0].count);
     logger.log(`Current unused pre-generated token count: ${count}`);
-    
+
     // If below threshold, generate more
     if (count < threshold) {
       const tokensToGenerate = threshold - count;
@@ -1358,11 +1430,11 @@ export async function checkAndReplenishTokens(env: Env, ctx: CFExecutionContext,
 }
 
 // In the cron handler
-app.get("/cron", async (c: Context<{ Bindings: Env; Variables: {} }>) => {
+app.get("/cron", async (c: Context<{ Bindings: Env; Variables: any }>) => {
   try {
     const env = c.env as Env;
     const count = await env.DB.prepare(
-      "SELECT COUNT(*) as count FROM pre_generated_tokens WHERE used = 0"
+      "SELECT COUNT(*) as count FROM pre_generated_tokens WHERE used = 0",
     ).first<{ count: number }>();
 
     if (count && count.count < threshold) {

@@ -1,10 +1,8 @@
-import { EmptyState } from "@/components/empty-state";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Connection, Keypair } from "@solana/web3.js";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import CopyButton from "../components/copy-button";
-import { DiceButton } from "../components/dice-button";
 import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
 
@@ -16,16 +14,6 @@ interface UploadResponse {
   success: boolean;
   imageUrl: string;
   metadataUrl: string;
-}
-
-interface GenerateMetadataResponse {
-  success: boolean;
-  metadata: {
-    name?: string;
-    symbol?: string;
-    description?: string;
-    creative?: string;
-  };
 }
 
 interface GenerateImageResponse {
@@ -42,7 +30,7 @@ interface PreGeneratedTokenResponse {
     name: string;
     ticker: string;
     description: string;
-    creative: string;
+    prompt: string;
     image?: string;
     createdAt: string;
     used: number;
@@ -151,7 +139,7 @@ const FormTextArea = ({
 
 const FormImageInput = ({
   label,
-  description,
+  // description,
   onChange,
   onPromptChange,
   onGenerate,
@@ -161,31 +149,39 @@ const FormImageInput = ({
   onPromptFunctionsChange,
 }: {
   label: string;
-  description: string;
+  // description: string;
   onChange: (file: File | null) => void;
   onPromptChange: (prompt: string) => void;
   onGenerate: (prompt: string) => void;
   isGenerating: boolean;
   setIsGenerating: (value: boolean) => void;
   setGeneratingField: (value: string | null) => void;
-  onPromptFunctionsChange: (setPrompt: (prompt: string) => void, onPromptChange: (prompt: string) => void) => void;
+  onPromptFunctionsChange: (
+    setPrompt: (prompt: string) => void,
+    onPromptChange: (prompt: string) => void,
+  ) => void;
 }) => {
   const [preview, setPreview] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
-  const [lastGeneratedImage, setLastGeneratedImage] = useState<string | null>(null);
+  const [lastGeneratedImage, setLastGeneratedImage] = useState<string | null>(
+    null,
+  );
   const [lastPrompt, setLastPrompt] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const promptDebounceRef = useRef<number | null>(null);
 
   // Debounced prompt change handler
-  const debouncedPromptChange = useCallback((value: string) => {
-    if (promptDebounceRef.current) {
-      window.clearTimeout(promptDebounceRef.current);
-    }
-    promptDebounceRef.current = window.setTimeout(() => {
-      onPromptChange(value);
-    }, 500);
-  }, [onPromptChange]);
+  const debouncedPromptChange = useCallback(
+    (value: string) => {
+      if (promptDebounceRef.current) {
+        window.clearTimeout(promptDebounceRef.current);
+      }
+      promptDebounceRef.current = window.setTimeout(() => {
+        onPromptChange(value);
+      }, 500);
+    },
+    [onPromptChange],
+  );
 
   // Update lastGeneratedImage only when preview changes
   useEffect(() => {
@@ -199,44 +195,54 @@ const FormImageInput = ({
     onPromptFunctionsChange(setPrompt, onPromptChange);
   }, []); // Empty dependency array since we only want this to run once
 
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    if (file) {
-      if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-        alert(`The uploaded image exceeds the ${MAX_FILE_SIZE_MB}MB limit.`);
-        return;
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0] || null;
+      if (file) {
+        if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+          alert(`The uploaded image exceeds the ${MAX_FILE_SIZE_MB}MB limit.`);
+          return;
+        }
+
+        if (
+          !["image/jpeg", "image/png", "image/gif", "video/mp4"].includes(
+            file.type,
+          )
+        ) {
+          alert("Only JPEG, PNG, GIF, and MP4 files are accepted");
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          setPreview(result);
+          onChange(file);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setPreview(null);
+        onChange(null);
       }
+    },
+    [onChange],
+  );
 
-      if (!["image/jpeg", "image/png", "image/gif", "video/mp4"].includes(file.type)) {
-        alert("Only JPEG, PNG, GIF, and MP4 files are accepted");
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setPreview(result);
-        onChange(file);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setPreview(null);
-      onChange(null);
-    }
-  }, [onChange]);
-
-  const handlePromptChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    setPrompt(value);
-    debouncedPromptChange(value);
-  }, [debouncedPromptChange]);
+  const handlePromptChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const value = e.target.value;
+      setPrompt(value);
+      debouncedPromptChange(value);
+    },
+    [debouncedPromptChange],
+  );
 
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim() || isGenerating) return;
 
     setLastPrompt(prompt);
     onGenerate(prompt);
-    
+
     // Get auth token from localStorage
     const authToken = localStorage.getItem("authToken");
 
@@ -251,28 +257,31 @@ const FormImageInput = ({
 
     try {
       // Generate the image
-      const response = await fetch(import.meta.env.VITE_API_URL + "/api/generate", {
-        method: "POST",
-        headers,
-        credentials: "include",
-        body: JSON.stringify({
-          prompt,
-          type: "image",
-        }),
-      });
+      const response = await fetch(
+        import.meta.env.VITE_API_URL + "/api/generate",
+        {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({
+            prompt,
+            type: "image",
+          }),
+        },
+      );
 
       if (!response.ok) throw new Error("Failed to generate image");
-      
-      const data = await response.json() as GenerateImageResponse;
+
+      const data = (await response.json()) as GenerateImageResponse;
       const imageUrl = data.mediaUrl;
-      
+
       if (imageUrl) {
         // Convert image URL to File object
         const imageBlob = await fetch(imageUrl).then((r) => r.blob());
         const imageFile = new File([imageBlob], "generated-image.png", {
           type: "image/png",
         });
-        
+
         // Set the preview
         setPreview(imageUrl);
         onChange(imageFile);
@@ -417,7 +426,7 @@ const uploadImage = async (metadata: TokenMetadata) => {
   const filename = `${safeName}${extension}`;
 
   console.log(
-    `Uploading image as ${filename} with content type ${contentType}`
+    `Uploading image as ${filename} with content type ${contentType}`,
   );
 
   // Get auth token from localStorage
@@ -536,7 +545,7 @@ const waitForTokenCreation = async ({
               imageUrl,
               metadataUrl,
             }),
-          }
+          },
         );
 
         if (createResponse.ok) {
@@ -587,7 +596,7 @@ const waitForTokenCreation = async ({
                 imageUrl,
                 metadataUrl,
               }),
-            }
+            },
           );
 
           if (response.ok) {
@@ -644,7 +653,7 @@ export const Create = () => {
     name: "",
     symbol: "",
     description: "",
-    creative: "",
+    prompt: "",
     initial_sol: "",
     links: {
       twitter: "",
@@ -660,7 +669,7 @@ export const Create = () => {
     name: "",
     symbol: "",
     description: "",
-    creative: "",
+    prompt: "",
     initial_sol: "",
   });
 
@@ -687,7 +696,7 @@ export const Create = () => {
             method: "GET",
             headers,
             credentials: "include",
-          }
+          },
         );
 
         if (!response.ok) {
@@ -703,12 +712,13 @@ export const Create = () => {
           name: token.name,
           symbol: token.ticker,
           description: token.description,
-          creative: token.creative,
+          prompt: token.prompt,
         }));
 
         // Set the prompt text so it can be reused
-        if (promptFunctions.setPrompt) promptFunctions.setPrompt(token.creative);
-        if (promptFunctions.onPromptChange) promptFunctions.onPromptChange(token.creative);
+        if (promptFunctions.setPrompt) promptFunctions.setPrompt(token.prompt);
+        if (promptFunctions.onPromptChange)
+          promptFunctions.onPromptChange(token.prompt);
 
         // If we have an image URL, use it directly
         if (token.image) {
@@ -718,7 +728,7 @@ export const Create = () => {
           });
           setImageFile(imageFile);
         } else {
-          // If no image, generate one using the creative prompt
+          // If no image, generate one using the prompt
           const imageResponse = await fetch(
             import.meta.env.VITE_API_URL + "/api/generate",
             {
@@ -726,17 +736,18 @@ export const Create = () => {
               headers,
               credentials: "include",
               body: JSON.stringify({
-                prompt: token.creative,
+                prompt: token.prompt,
                 type: "image",
               }),
-            }
+            },
           );
 
           if (!imageResponse.ok) {
             throw new Error("Failed to generate image");
           }
 
-          const imageData = (await imageResponse.json()) as GenerateImageResponse;
+          const imageData =
+            (await imageResponse.json()) as GenerateImageResponse;
           const imageUrl = imageData.mediaUrl;
 
           // Convert image URL to File object
@@ -748,19 +759,16 @@ export const Create = () => {
         }
 
         // Mark the token as used
-        await fetch(
-          import.meta.env.VITE_API_URL + "/api/mark-token-used",
-          {
-            method: "POST",
-            headers,
-            credentials: "include",
-            body: JSON.stringify({
-              id: token.id,
-              name: token.name,
-              ticker: token.ticker,
-            }),
-          }
-        );
+        await fetch(import.meta.env.VITE_API_URL + "/api/mark-token-used", {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({
+            id: token.id,
+            name: token.name,
+            ticker: token.ticker,
+          }),
+        });
       } catch (error) {
         console.error("Error fetching pre-generated token:", error);
         // Don't show an error to the user, just let them start with an empty form
@@ -830,14 +838,14 @@ export const Create = () => {
   const handlePromptChange = (prompt: string) => {
     setForm((prev) => ({
       ...prev,
-      creative: prompt,
+      prompt: prompt,
     }));
 
     // Clear errors immediately when field has a value
     if (prompt) {
       setErrors((prev) => ({
         ...prev,
-        creative: "",
+        prompt: "",
       }));
     }
   };
@@ -846,7 +854,7 @@ export const Create = () => {
   const createTokenOnChain = async (
     _tokenMetadata: TokenMetadata,
     mintKeypair: Keypair,
-    _metadataUrl: string
+    _metadataUrl: string,
   ) => {
     if (!signTransaction) {
       throw new Error("Wallet doesn't support signing");
@@ -859,14 +867,14 @@ export const Create = () => {
     // Create connection to Solana
     new Connection(
       import.meta.env.VITE_SOLANA_RPC_URL || "https://api.devnet.solana.com",
-      "confirmed"
+      "confirmed",
     );
 
     // For now, we'll bypass actual on-chain token creation since we need the program IDL
     // Instead, we'll just log the mint address and proceed with backend registration
     console.log(
       "Would create token with mint address:",
-      mintKeypair.publicKey.toString()
+      mintKeypair.publicKey.toString(),
     );
 
     try {
@@ -902,97 +910,97 @@ export const Create = () => {
   };
 
   // Function to generate all fields
-  const generateAll = useCallback(async (
-    setPrompt?: ((prompt: string) => void) | null,
-    onPromptChange?: ((prompt: string) => void) | null
-  ) => {
-    try {
-      setIsGenerating(true);
-      setGeneratingField("name,symbol,description,creative");
+  const generateAll = useCallback(
+    async (
+      setPrompt?: ((prompt: string) => void) | null,
+      onPromptChange?: ((prompt: string) => void) | null,
+    ) => {
+      try {
+        setIsGenerating(true);
+        setGeneratingField("name,symbol,description,prompt");
 
-      // Get auth token from localStorage
-      const authToken = localStorage.getItem("authToken");
+        // Get auth token from localStorage
+        const authToken = localStorage.getItem("authToken");
 
-      // Prepare headers
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
+        // Prepare headers
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
 
-      if (authToken) {
-        headers["Authorization"] = `Bearer ${authToken}`;
-      }
-
-      // Get a pre-generated token
-      const response = await fetch(
-        import.meta.env.VITE_API_URL + "/api/pre-generated-token",
-        {
-          method: "GET",
-          headers,
-          credentials: "include",
+        if (authToken) {
+          headers["Authorization"] = `Bearer ${authToken}`;
         }
-      );
 
-      if (!response.ok) {
-        throw new Error("Failed to get pre-generated token");
-      }
-
-      const data = (await response.json()) as PreGeneratedTokenResponse;
-      const { token } = data;
-
-      // Update form with generated data
-      setForm((prev) => ({
-        ...prev,
-        name: token.name,
-        symbol: token.ticker,
-        description: token.description,
-        creative: token.creative,
-      }));
-
-      // Set the prompt text so it can be reused
-      if (setPrompt) setPrompt(token.creative);
-      if (onPromptChange) onPromptChange(token.creative);
-
-      // If we have an image URL, use it directly
-      if (token.image) {
-        const imageBlob = await fetch(token.image).then((r) => r.blob());
-        const imageFile = new File([imageBlob], "generated-image.png", {
-          type: "image/png",
-        });
-        setImageFile(imageFile);
-      } else {
-        // If no image, generate one using the creative prompt
-        const imageResponse = await fetch(
-          import.meta.env.VITE_API_URL + "/api/generate",
+        // Get a pre-generated token
+        const response = await fetch(
+          import.meta.env.VITE_API_URL + "/api/pre-generated-token",
           {
-            method: "POST",
+            method: "GET",
             headers,
             credentials: "include",
-            body: JSON.stringify({
-              prompt: token.creative,
-              type: "image",
-            }),
-          }
+          },
         );
 
-        if (!imageResponse.ok) {
-          throw new Error("Failed to generate image");
+        if (!response.ok) {
+          throw new Error("Failed to get pre-generated token");
         }
 
-        const imageData = (await imageResponse.json()) as GenerateImageResponse;
-        const imageUrl = imageData.mediaUrl;
+        const data = (await response.json()) as PreGeneratedTokenResponse;
+        const { token } = data;
 
-        // Convert image URL to File object
-        const imageBlob = await fetch(imageUrl).then((r) => r.blob());
-        const imageFile = new File([imageBlob], "generated-image.png", {
-          type: "image/png",
-        });
-        setImageFile(imageFile);
-      }
+        // Update form with generated data
+        setForm((prev) => ({
+          ...prev,
+          name: token.name,
+          symbol: token.ticker,
+          description: token.description,
+          prompt: token.prompt,
+        }));
 
-      // Mark the token as used
-      await fetch(
-        import.meta.env.VITE_API_URL + "/api/mark-token-used",
-        {
+        // Set the prompt text so it can be reused
+        if (setPrompt) setPrompt(token.prompt);
+        if (onPromptChange) onPromptChange(token.prompt);
+
+        // If we have an image URL, use it directly
+        if (token.image) {
+          const imageBlob = await fetch(token.image).then((r) => r.blob());
+          const imageFile = new File([imageBlob], "generated-image.png", {
+            type: "image/png",
+          });
+          setImageFile(imageFile);
+        } else {
+          // If no image, generate one using the prompt
+          const imageResponse = await fetch(
+            import.meta.env.VITE_API_URL + "/api/generate",
+            {
+              method: "POST",
+              headers,
+              credentials: "include",
+              body: JSON.stringify({
+                prompt: token.prompt,
+                type: "image",
+              }),
+            },
+          );
+
+          if (!imageResponse.ok) {
+            throw new Error("Failed to generate image");
+          }
+
+          const imageData =
+            (await imageResponse.json()) as GenerateImageResponse;
+          const imageUrl = imageData.mediaUrl;
+
+          // Convert image URL to File object
+          const imageBlob = await fetch(imageUrl).then((r) => r.blob());
+          const imageFile = new File([imageBlob], "generated-image.png", {
+            type: "image/png",
+          });
+          setImageFile(imageFile);
+        }
+
+        // Mark the token as used
+        await fetch(import.meta.env.VITE_API_URL + "/api/mark-token-used", {
           method: "POST",
           headers,
           credentials: "include",
@@ -1001,20 +1009,21 @@ export const Create = () => {
             name: token.name,
             ticker: token.ticker,
           }),
-        }
-      );
-    } catch (error) {
-      console.error("Error generating metadata:", error);
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Failed to generate metadata. Please try again."
-      );
-    } finally {
-      setIsGenerating(false);
-      setGeneratingField(null);
-    }
-  }, [setIsGenerating, setGeneratingField]);
+        });
+      } catch (error) {
+        console.error("Error generating metadata:", error);
+        alert(
+          error instanceof Error
+            ? error.message
+            : "Failed to generate metadata. Please try again.",
+        );
+      } finally {
+        setIsGenerating(false);
+        setGeneratingField(null);
+      }
+    },
+    [setIsGenerating, setGeneratingField],
+  );
 
   // Submit form to backend
   const submitFormToBackend = async () => {
@@ -1116,7 +1125,7 @@ export const Create = () => {
       alert(
         error instanceof Error
           ? error.message
-          : "Failed to create token. Please try again."
+          : "Failed to create token. Please try again.",
       );
     } finally {
       setIsSubmitting(false);
@@ -1172,18 +1181,23 @@ export const Create = () => {
               </div>
               <button
                 type="button"
-                onClick={() => generateAll(promptFunctions.setPrompt, promptFunctions.onPromptChange)}
+                onClick={() =>
+                  generateAll(
+                    promptFunctions.setPrompt,
+                    promptFunctions.onPromptChange,
+                  )
+                }
                 disabled={
                   isGenerating &&
-                  generatingField === "name,symbol,description,creative"
+                  generatingField === "name,symbol,description,prompt"
                 }
                 className="flex items-center gap-2 text-[#2fd345] px-6 py-3 rounded-lg font-bold text-lg transition-colors"
               >
                 {isGenerating &&
-                generatingField === "name,symbol,description,creative" ? (
+                generatingField === "name,symbol,description,prompt" ? (
                   <>
-                  <span>Rolling</span>
-                  <div className="w-5 h-5 border-2 border-[#2fd345] border-t-transparent rounded-full animate-spin" />
+                    <span>Rolling</span>
+                    <div className="w-5 h-5 border-2 border-[#2fd345] border-t-transparent rounded-full animate-spin" />
                   </>
                 ) : (
                   <>
@@ -1204,7 +1218,6 @@ export const Create = () => {
 
           {/* Two-column layout for form fields and image */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-
             {/* Left column - Form fields */}
             <div className="flex flex-col gap-3">
               <FormInput
@@ -1305,19 +1318,19 @@ export const Create = () => {
               </div>
             </div>
 
-                        {/* Right column - Image */}
+            {/* Right column - Image */}
             <div className="flex flex-col gap-3">
               <FormImageInput
                 label="Token Image"
-                description="Upload or generate an image for your token"
+                // description="Upload or generate an image for your token"
                 onChange={(file) => setImageFile(file)}
                 onPromptChange={handlePromptChange}
                 onGenerate={(prompt) => {
                   setIsGenerating(true);
-                  setGeneratingField("creative");
+                  setGeneratingField("prompt");
                   handlePromptChange(prompt);
                 }}
-                isGenerating={isGenerating && generatingField === "creative"}
+                isGenerating={isGenerating && generatingField === "prompt"}
                 setIsGenerating={setIsGenerating}
                 setGeneratingField={setGeneratingField}
                 onPromptFunctionsChange={(setPrompt, onPromptChange) => {
@@ -1343,67 +1356,67 @@ export const Create = () => {
             rightIndicator={<CopyButton text={form.links.agentLink || ""} />}
           /> */}
 
-<div className="m-12">
-          <div className="flex flex-col max-w-sm w-full mx-auto bg-autofun-background-card p-8">
-            <div className="grid grid-cols-1 gap-x-3 gap-y-6">
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
-                    {"buy your coin"}
+          <div className="m-12">
+            <div className="flex flex-col max-w-sm w-full mx-auto bg-autofun-background-card p-8">
+              <div className="grid grid-cols-1 gap-x-3 gap-y-6">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
+                      {"buy your coin"}
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <input
-                    type="range"
-                    min="0"
-                    max={MAX_INITIAL_SOL}
-                    step="0.1"
-                    value={form.initial_sol || "0"}
-                    onChange={(e) =>
-                      handleChange("initial_sol", e.target.value)
-                    }
-                    className="flex-1 h-2 bg-[#2e2e2e] appearance-none cursor-pointer accent-[#2fd345]"
-                  />
-                  <div className="relative">
+                  <div className="flex items-center gap-4">
                     <input
-                      type="number"
-                      value={form.initial_sol || 0} 
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (
-                          value === "" ||
-                          (parseFloat(value) >= 0 &&
-                            parseFloat(value) <= MAX_INITIAL_SOL)
-                        ) {
-                          handleChange("initial_sol", value);
-                        }
-                      }}
+                      type="range"
                       min="0"
                       max={MAX_INITIAL_SOL}
                       step="0.1"
-                      className="w-27 py-2 pr-14 bg-[#2e2e2e] text-[#2fd345] text-xl font-medium text-right"
+                      value={form.initial_sol || "0"}
+                      onChange={(e) =>
+                        handleChange("initial_sol", e.target.value)
+                      }
+                      className="flex-1 h-2 bg-[#2e2e2e] appearance-none cursor-pointer accent-[#2fd345]"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#2fd345] text-xl font-medium">
-                      SOL
-                    </span>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={form.initial_sol || 0}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (
+                            value === "" ||
+                            (parseFloat(value) >= 0 &&
+                              parseFloat(value) <= MAX_INITIAL_SOL)
+                          ) {
+                            handleChange("initial_sol", value);
+                          }
+                        }}
+                        min="0"
+                        max={MAX_INITIAL_SOL}
+                        step="0.1"
+                        className="w-27 py-2 pr-14 bg-[#2e2e2e] text-[#2fd345] text-xl font-medium text-right"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#2fd345] text-xl font-medium">
+                        SOL
+                      </span>
+                    </div>
                   </div>
                 </div>
+                <button
+                  type="submit"
+                  className="bg-[#2fd345] py-3 px-6 font-bold border-2 text-black text-[1.8em] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
+                  disabled={!isFormValid || isSubmitting}
+                >
+                  {isSubmitting ? "Creating..." : "LET'S GO"}
+                </button>
               </div>
-              <button
-                type="submit"
-                className="bg-[#2fd345] py-3 px-6 font-bold border-2 text-black text-[1.8em] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
-                disabled={!isFormValid || isSubmitting}
-              >
-                {isSubmitting ? "Creating..." : "LET'S GO"}
-              </button>
             </div>
+            {!isFormValid && (
+              <p className="text-red-500 text-center text-sm m-4">
+                Please fill in all required fields
+              </p>
+            )}
           </div>
-              {!isFormValid && (
-                <p className="text-red-500 text-center text-sm m-4">
-                  Please fill in all required fields
-                </p>
-              )}
-              </div>
         </form>
       </div>
     </div>

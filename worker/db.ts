@@ -187,7 +187,7 @@ export const preGeneratedTokens = sqliteTable("pre_generated_tokens", {
   name: text("name").notNull(),
   ticker: text("ticker").notNull(),
   description: text("description").notNull(),
-  creative: text("creative").notNull(),
+  prompt: text("prompt").notNull(),
   image: text("image"),
   createdAt: text("created_at", { mode: "text" }).notNull(),
   used: integer("used").notNull().default(0),
@@ -248,7 +248,8 @@ export type VanityKeypair = typeof schema.vanityKeypairs.$inferSelect;
 export type VanityKeypairInsert = typeof schema.vanityKeypairs.$inferInsert;
 
 export type PreGeneratedToken = typeof schema.preGeneratedTokens.$inferSelect;
-export type PreGeneratedTokenInsert = typeof schema.preGeneratedTokens.$inferInsert;
+export type PreGeneratedTokenInsert =
+  typeof schema.preGeneratedTokens.$inferInsert;
 
 // Schema for all tables
 const schema = {

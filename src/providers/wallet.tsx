@@ -445,35 +445,32 @@ export const WalletModalProvider: FC<WalletModalProviderProps> = ({
   }, [isAuthenticated, setAuthenticated]);
 
   // Enhanced authenticate function with debounce to prevent multiple signatures
-  const throttledAuthenticate = useCallback(
-    async () => {
-      try {
-        // If already authenticated or authenticating, don't proceed
-        if (isAuthenticated || isAuthenticating) {
-          console.log("Authentication already in progress or completed");
-          return;
-        }
+  const throttledAuthenticate = useCallback(async () => {
+    try {
+      // If already authenticated or authenticating, don't proceed
+      if (isAuthenticated || isAuthenticating) {
+        console.log("Authentication already in progress or completed");
+        return;
+      }
 
-        console.log("Wallet provider handling authentication");
-        try {
-          await authenticate();
-          // The authenticate function updates isAuthenticated internally
-          // No need to check return value
-          console.log("Authentication completed in throttledAuthenticate");
-        } catch (error) {
-          console.error("Authentication error in provider:", error);
-          // Ensure user state is reset on authentication failure
-          setAuthenticated(false);
-          throw error;
-        }
+      console.log("Wallet provider handling authentication");
+      try {
+        await authenticate();
+        // The authenticate function updates isAuthenticated internally
+        // No need to check return value
+        console.log("Authentication completed in throttledAuthenticate");
       } catch (error) {
-        console.error("Error in throttledAuthenticate:", error);
+        console.error("Authentication error in provider:", error);
+        // Ensure user state is reset on authentication failure
         setAuthenticated(false);
         throw error;
       }
-    },
-    [authenticate, isAuthenticated, isAuthenticating, setAuthenticated],
-  );
+    } catch (error) {
+      console.error("Error in throttledAuthenticate:", error);
+      setAuthenticated(false);
+      throw error;
+    }
+  }, [authenticate, isAuthenticated, isAuthenticating, setAuthenticated]);
 
   return (
     <WalletModalContext.Provider

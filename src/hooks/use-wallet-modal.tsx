@@ -218,152 +218,146 @@ export function useWalletAuthentication() {
   }, [publicKey]);
 
   // Authentication method with proper token handling
-  const authenticate = useCallback(
-    async () => {
+  const authenticate = useCallback(async () => {
+    if (!publicKey) {
+      throw new Error("Wallet not connected");
+    }
+
+    // Check if solana provider is available
+    if (!signMessage) {
+      throw new Error("Wallet adapter doesn't support signMessage method");
+    }
+
+    // Guard against multiple concurrent authentication attempts
+    if (authInProgressRef.current || isAuthenticating) {
+      console.log(
+        "Authentication already in progress, skipping duplicate call",
+      );
+      return;
+    }
+
+    setIsAuthenticating(true);
+    authInProgressRef.current = true;
+
+    try {
+      console.log("Starting wallet authentication process");
+
+      // Try to get a nonce first
+      const nonce = await generateNonce();
+      console.log("Generated nonce:", nonce);
+
+      // Make sure wallet is still connected before continuing
       if (!publicKey) {
-        throw new Error("Wallet not connected");
+        throw new Error("Wallet disconnected during authentication");
       }
 
-      // Check if solana provider is available
-      if (!signMessage) {
-        throw new Error("Wallet adapter doesn't support signMessage method");
+      const payload = new Payload();
+      payload.domain = window.location.host;
+      payload.address = publicKey.toString();
+      payload.uri = window.location.origin;
+      payload.statement = `Sign this message for authenticating with nonce: ${nonce}`;
+      payload.version = "1";
+      payload.chainId = 1;
+      payload.nonce = nonce;
+
+      const siwsMessage = new SIWS({ payload });
+
+      // Create authentication message with nonce
+      const messageText = siwsMessage.prepareMessage();
+      const messageEncoded = new TextEncoder().encode(messageText);
+
+      // Request signature from wallet
+      console.log("Requesting signature from wallet");
+      const signatureBytes = await signMessage(messageEncoded);
+
+      // Double-check wallet is still connected
+      if (!publicKey) {
+        throw new Error("Wallet disconnected after signing");
       }
 
-      // Guard against multiple concurrent authentication attempts
-      if (authInProgressRef.current || isAuthenticating) {
-        console.log(
-          "Authentication already in progress, skipping duplicate call",
-        );
-        return;
-      }
+      // Convert to base58 or hex string as required by backend
+      const signatureHex = bs58.encode(signatureBytes);
 
-      setIsAuthenticating(true);
-      authInProgressRef.current = true;
-
-      try {
-        console.log("Starting wallet authentication process");
-
-        // Try to get a nonce first
-        const nonce = await generateNonce();
-        console.log("Generated nonce:", nonce);
-
-        // Make sure wallet is still connected before continuing
-        if (!publicKey) {
-          throw new Error("Wallet disconnected during authentication");
-        }
-
-        const payload = new Payload();
-        payload.domain = window.location.host;
-        payload.address = publicKey.toString();
-        payload.uri = window.location.origin;
-        payload.statement = `Sign this message for authenticating with nonce: ${nonce}`;
-        payload.version = "1";
-        payload.chainId = 1;
-        payload.nonce = nonce;
-
-        const siwsMessage = new SIWS({ payload });
-
-        // Create authentication message with nonce
-        const messageText = siwsMessage.prepareMessage();
-        const messageEncoded = new TextEncoder().encode(messageText);
-
-        // Request signature from wallet
-        console.log("Requesting signature from wallet");
-        const signatureBytes = await signMessage(messageEncoded);
-
-        // Double-check wallet is still connected
-        if (!publicKey) {
-          throw new Error("Wallet disconnected after signing");
-        }
-
-        // Convert to base58 or hex string as required by backend
-        const signatureHex = bs58.encode(signatureBytes)
-
-        // Send authentication request to backend
-        console.log("Sending authentication to backend");
-        const authResponse = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/authenticate`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              publicKey: publicKey.toString(),
-              signature: {t: 'sip99', s: signatureHex},
-              payload: siwsMessage.payload,
-              header: {t: 'sip99'},
-              nonce,
-              message: messageText,
-            }),
-            credentials: "include", // Important for cookies
+      // Send authentication request to backend
+      console.log("Sending authentication to backend");
+      const authResponse = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/authenticate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        );
+          body: JSON.stringify({
+            publicKey: publicKey.toString(),
+            signature: { t: "sip99", s: signatureHex },
+            payload: siwsMessage.payload,
+            header: { t: "sip99" },
+            nonce,
+            message: messageText,
+          }),
+          credentials: "include", // Important for cookies
+        },
+      );
 
-        if (!authResponse.ok) {
-          throw new Error(`Authentication failed: ${authResponse.status}`);
-        }
-
-        // Parse response
-        const authData = (await authResponse.json()) as { token?: string };
-        console.log("Auth response data:", authData);
-
-        if (authData.token) {
-          // Store the auth token
-          localStorage.setItem("authToken", authData.token);
-          setAuthToken(authData.token);
-          console.log("Authentication successful, token stored");
-        } else {
-          console.warn("Authentication successful but no token received");
-
-          // If no token but authentication succeeded, verify we're authenticated
-          // by checking the auth status
-          try {
-            const authCheckResponse = await fetch(
-              `${import.meta.env.VITE_API_URL}/api/auth-status`,
-              { credentials: "include" },
-            );
-
-            if (authCheckResponse.ok) {
-              const statusData = (await authCheckResponse.json()) as {
-                authenticated: boolean;
-              };
-              if (statusData.authenticated) {
-                console.log("Confirmed authenticated via session/cookies");
-
-                // Create a synthetic token based on publicKey to ensure localStorage has something
-                const syntheticToken = `session_${publicKey.toString()}_${Date.now()}`;
-                localStorage.setItem("authToken", syntheticToken);
-                setAuthToken(syntheticToken);
-                console.log("Created and stored synthetic session token");
-              }
-            }
-          } catch (e) {
-            console.error(
-              "Error checking auth status after authentication:",
-              e,
-            );
-          }
-        }
-
-        // Update authentication status
-        setIsAuthenticated(true);
-
-        // Store wallet connection state for future visits
-        localStorage.setItem("walletConnected", "true");
-      } catch (error) {
-        console.error("Authentication error:", error);
-        setIsAuthenticated(false);
-        localStorage.removeItem("authToken");
-        setAuthToken(null);
-        throw error;
-      } finally {
-        setIsAuthenticating(false);
-        authInProgressRef.current = false;
+      if (!authResponse.ok) {
+        throw new Error(`Authentication failed: ${authResponse.status}`);
       }
-    },
-    [publicKey, generateNonce],
-  );
+
+      // Parse response
+      const authData = (await authResponse.json()) as { token?: string };
+      console.log("Auth response data:", authData);
+
+      if (authData.token) {
+        // Store the auth token
+        localStorage.setItem("authToken", authData.token);
+        setAuthToken(authData.token);
+        console.log("Authentication successful, token stored");
+      } else {
+        console.warn("Authentication successful but no token received");
+
+        // If no token but authentication succeeded, verify we're authenticated
+        // by checking the auth status
+        try {
+          const authCheckResponse = await fetch(
+            `${import.meta.env.VITE_API_URL}/api/auth-status`,
+            { credentials: "include" },
+          );
+
+          if (authCheckResponse.ok) {
+            const statusData = (await authCheckResponse.json()) as {
+              authenticated: boolean;
+            };
+            if (statusData.authenticated) {
+              console.log("Confirmed authenticated via session/cookies");
+
+              // Create a synthetic token based on publicKey to ensure localStorage has something
+              const syntheticToken = `session_${publicKey.toString()}_${Date.now()}`;
+              localStorage.setItem("authToken", syntheticToken);
+              setAuthToken(syntheticToken);
+              console.log("Created and stored synthetic session token");
+            }
+          }
+        } catch (e) {
+          console.error("Error checking auth status after authentication:", e);
+        }
+      }
+
+      // Update authentication status
+      setIsAuthenticated(true);
+
+      // Store wallet connection state for future visits
+      localStorage.setItem("walletConnected", "true");
+    } catch (error) {
+      console.error("Authentication error:", error);
+      setIsAuthenticated(false);
+      localStorage.removeItem("authToken");
+      setAuthToken(null);
+      throw error;
+    } finally {
+      setIsAuthenticating(false);
+      authInProgressRef.current = false;
+    }
+  }, [publicKey, generateNonce]);
 
   // Add a logout function to clear auth tokens
   const logout = useCallback(() => {
