@@ -8,17 +8,17 @@ import {
   ComputeBudgetProgram,
   Connection,
   Keypair,
+  LAMPORTS_PER_SOL,
   PublicKey,
   Transaction,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { SEED_CONFIG, Serlaunchalot, useProgram } from "./program";
+import { SEED_CONFIG, Autofun, useProgram } from "./program";
 import { useCallback } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { BN, Program } from "@coral-xyz/anchor";
 import { env } from "./env";
 import { getSocket } from "./socket";
-import { useSwap } from "@/app/coin/[tokenId]/swap/useSwap";
 
 export type Token = z.infer<typeof TokenSchema>;
 const HomepageTokenSchema = TokenSchema.and(
@@ -117,15 +117,13 @@ const useCreateTokenMutation = createMutation({
     connection,
     signTransaction,
     token_metadata,
-    createSwapIx,
   }: {
     token_metadata: TokenMetadata;
-    program: Program<Serlaunchalot>;
+    program: Program<Autofun>;
     connection: Connection;
     signTransaction: <T extends Transaction | VersionedTransaction>(
       transaction: T,
     ) => Promise<T>;
-    createSwapIx: ReturnType<typeof useSwap>["createSwapIx"];
   }) => {
     const provider = window.solana;
 
@@ -160,33 +158,40 @@ const useCreateTokenMutation = createMutation({
     });
 
     const metadataUrl = await uploadToPinata(token_metadata);
-
-    const tx = await program.methods
-      .launch(
-        Number(env.decimals),
-        new BN(Number(env.tokenSupply)),
-        new BN(Number(env.virtualReserves)),
-        token_metadata.name,
-        token_metadata.symbol,
-        metadataUrl,
-      )
-      .accounts({
-        creator: userPublicKey,
-        token: mintKeypair.publicKey,
-        teamWallet: configAccount.teamWallet,
-      })
-      .transaction();
+    const tx =
+      token_metadata.initial_sol > 0
+        ? await launchAndSwapTx(
+            userPublicKey,
+            Number(env.decimals),
+            Number(env.tokenSupply),
+            Number(env.virtualReserves),
+            token_metadata.name,
+            token_metadata.symbol,
+            metadataUrl,
+            token_metadata.initial_sol * LAMPORTS_PER_SOL,
+            100,
+            connection,
+            program,
+            mintKeypair,
+            configAccount,
+          )
+        : await program.methods
+            .launch(
+              Number(env.decimals),
+              new BN(Number(env.tokenSupply)),
+              new BN(Number(env.virtualReserves)),
+              token_metadata.name,
+              token_metadata.symbol,
+              metadataUrl,
+            )
+            .accounts({
+              creator: userPublicKey,
+              token: mintKeypair.publicKey,
+              teamWallet: configAccount.teamWallet,
+            })
+            .transaction();
 
     tx.instructions = [modifyComputeUnits, addPriorityFee, ...tx.instructions];
-
-    if (token_metadata.initial_sol > 0) {
-      const swapIx = await createSwapIx({
-        style: "buy",
-        amount: token_metadata.initial_sol,
-        tokenAddress: mintKeypair.publicKey.toBase58(),
-      });
-      tx.instructions.push(...(Array.isArray(swapIx) ? swapIx : [swapIx]));
-    }
 
     tx.feePayer = userPublicKey;
     const { blockhash, lastValidBlockHeight } =
@@ -223,7 +228,6 @@ export function useCreateToken() {
   const { connection } = useConnection();
   const mutation = useCreateTokenMutation();
   const { signTransaction } = useWallet();
-  const { createSwapIx } = useSwap();
 
   const createToken = useCallback(
     async (token_metadata: TokenMetadata) => {
@@ -244,10 +248,9 @@ export function useCreateToken() {
         signTransaction,
         connection,
         program,
-        createSwapIx,
       });
     },
-    [connection, mutation, program, signTransaction, createSwapIx],
+    [connection, mutation, program, signTransaction],
   );
 
   const createTokenAsync = useCallback(
@@ -269,11 +272,73 @@ export function useCreateToken() {
         signTransaction,
         connection,
         program,
-        createSwapIx,
       });
     },
-    [connection, mutation, program, signTransaction, createSwapIx],
+    [connection, mutation, program, signTransaction],
   );
 
   return { ...mutation, mutateAsync: createTokenAsync, mutate: createToken };
 }
+
+const launchAndSwapTx = async (
+  creator: PublicKey,
+  decimals: number,
+  tokenSupply: number,
+  virtualLamportReserves: number,
+  name: string,
+  symbol: string,
+  uri: string,
+  swapAmount: number,
+  slippageBps: number = 100,
+  connection: Connection,
+  program: Program<Autofun>,
+  mintKeypair: Keypair,
+  configAccount: {
+    teamWallet: PublicKey;
+    initBondingCurve: number;
+  },
+) => {
+  // Calculate deadline
+  const deadline = Math.floor(Date.now() / 1000) + 120; // 2 minutes from now
+
+  // Calculate minimum receive amount based on bonding curve formula
+  // This is an estimate and should be calculated more precisely based on the bonding curve
+  const initBondingCurvePercentage = configAccount.initBondingCurve;
+  const initBondingCurveAmount =
+    (tokenSupply * initBondingCurvePercentage) / 100;
+
+  // Calculate expected output using constant product formula: dy = (y * dx) / (x + dx)
+  // where x = reserveToken, y = reserveLamport, dx = swapAmount
+  const numerator = virtualLamportReserves * swapAmount;
+  const denominator = initBondingCurveAmount + swapAmount;
+  const expectedOutput = Math.floor(numerator / denominator);
+
+  // Apply slippage to expected output
+  const minOutput = Math.floor(
+    (expectedOutput * (10000 - slippageBps)) / 10000,
+  );
+
+  const tx = await program.methods
+    .launchAndSwap(
+      decimals,
+      new BN(tokenSupply),
+      new BN(virtualLamportReserves),
+      name,
+      symbol,
+      uri,
+      new BN(swapAmount),
+      new BN(minOutput),
+      new BN(deadline),
+    )
+    .accounts({
+      teamWallet: configAccount.teamWallet,
+      creator: creator,
+      token: mintKeypair.publicKey,
+    })
+    .transaction();
+
+  tx.feePayer = creator;
+  tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+
+  return tx;
+};
