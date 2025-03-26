@@ -651,7 +651,7 @@ export const Create = () => {
     onPromptChange: ((prompt: string) => void) | null;
   }>({ setPrompt: null, onPromptChange: null });
   const { isAuthenticated } = useWalletModal();
-  console.log(isAuthenticated)
+
 
 
   // Simple form state
