@@ -125,6 +125,9 @@ export const authenticate = async (c: AppContext) => {
     // This is for legacy signature verification with nonce
     if (publicKey && signature && nonce) {
       logger.log("Legacy signature verification for:", publicKey);
+      logger.log("Signature type:", typeof signature);
+      logger.log("Signature length:", signature.length);
+      logger.log("Nonce:", nonce);
 
       try {
         const message = `Sign this message for authenticating with nonce: ${nonce}`;
@@ -132,7 +135,18 @@ export const authenticate = async (c: AppContext) => {
 
         try {
           const publicKeyObj = new PublicKey(publicKey);
-          const signatureBytes = bs58.decode(signature);
+          
+          // Add extra logging for troubleshooting
+          logger.log("About to decode signature:", signature.substring(0, 10) + "...");
+          
+          let signatureBytes;
+          try {
+            signatureBytes = bs58.decode(signature);
+            logger.log("Signature decoded successfully, length:", signatureBytes.length);
+          } catch (decodeError) {
+            logger.error("Failed to decode signature:", decodeError);
+            return c.json({ message: "Invalid signature encoding, expected base58" }, 400);
+          }
 
           // Check if the signature is valid for the message
           const verified = nacl.sign.detached.verify(
@@ -140,6 +154,8 @@ export const authenticate = async (c: AppContext) => {
             signatureBytes,
             publicKeyObj.toBytes(),
           );
+
+          logger.log("Signature verification result:", verified);
 
           if (verified) {
             setCookie(c, "publicKey", publicKey, envCookieOptions);
