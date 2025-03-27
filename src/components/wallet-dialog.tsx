@@ -10,15 +10,8 @@ import type { FC, ReactNode } from "react";
 import { useMemo } from "react";
 import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 import { Payload, SIWS } from "@web3auth/sign-in-with-solana";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-  useRef,
-} from "react";
 import useAuthentication from "@/hooks/use-authentication";
+import { useLocalStorage } from "@uidotdev/usehooks";
 
 export interface WalletModalProviderProps {
   children: ReactNode;
@@ -41,6 +34,8 @@ export const WalletModal: FC<WalletModalProps> = () => {
     signMessage,
     wallet: connectedWallet,
   } = useWallet();
+  // @ts-ignore
+  const [walletName, setWalletName] = useLocalStorage<string>("walletName", "");
   const { visible, setVisible } = useWalletModal();
   const { setAuthToken } = useAuthentication();
 
@@ -75,8 +70,6 @@ export const WalletModal: FC<WalletModalProps> = () => {
 
       /** Nonce generation */
       let nonce = String(Math.floor(new Date().getTime() / 1000.0));
-
-      console.log(nonce);
 
       if (!publicKey) {
         throw new Error("Wallet disconnected during authentication");
@@ -205,6 +198,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
                 <WalletListItem
                   key={wallet.adapter.name}
                   handleClick={() => {
+                    setWalletName(wallet.adapter.name);
                     select(wallet.adapter.name);
                     mutation.mutate({ wallet });
                   }}

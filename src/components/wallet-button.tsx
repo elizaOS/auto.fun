@@ -53,7 +53,7 @@ const WalletButton = () => {
 
   const buttonText = connecting
     ? "Connecting..."
-    : connected
+    : isAuthenticated
       ? "Disconnect Wallet"
       : "Connect Wallet";
 
