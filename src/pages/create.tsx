@@ -1,6 +1,6 @@
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Connection, Keypair } from "@solana/web3.js";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import CopyButton from "../components/copy-button";
 import { Icons } from "../components/icons";
@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/empty-state";
 import { DiceButton } from "../components/dice-button";
 import { useWalletModal } from "../hooks/use-wallet-modal";
 import Button from "../components/button";
+import CoinDrop from "../components/coindrop";
 
 // Constants
 const MAX_FILE_SIZE_MB = 5;
@@ -461,6 +462,8 @@ export const Create = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingField, setGeneratingField] = useState<string | null>(null);
   const { setVisible } = useWalletModal();
+  // Add state to control when to show the coin drop effect
+  const [showCoinDrop, setShowCoinDrop] = useState(false);
 
   // Simple form state
   const [form, setForm] = useState({
@@ -486,6 +489,21 @@ export const Create = () => {
     creative: "",
     initial_sol: "",
   });
+
+  // Add keyboard event listener for spacebar to trigger coin drop for debugging
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code === "Space" && !event.repeat) {
+        event.preventDefault();
+        setShowCoinDrop(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   // Handle input changes
   const handleChange = (field: string, value: string) => {
@@ -710,6 +728,9 @@ export const Create = () => {
   const submitFormToBackend = async () => {
     try {
       setIsSubmitting(true);
+      
+      // Trigger coin drop effect
+      setShowCoinDrop(true);
 
       // Ensure wallet is connected
       if (!publicKey) {
@@ -800,10 +821,15 @@ export const Create = () => {
         console.warn("Continuing despite token creation confirmation failure");
       }
 
-      // Redirect to token page using the mint public key
-      navigate(`/token/${tokenMint}`);
+      // Let the coin drop animation play for a bit before redirecting
+      setTimeout(() => {
+        // Redirect to token page using the mint public key
+        navigate(`/token/${tokenMint}`);
+      }, 3000);
     } catch (error) {
       console.error("Error creating token:", error);
+      // Hide coin drop on error
+      setShowCoinDrop(false);
       alert(
         error instanceof Error
           ? error.message
@@ -858,6 +884,8 @@ export const Create = () => {
 
   return (
     <div className="flex flex-col items-center py-10 md:py-0 justify-center min-h-screen max-w-[800px] mx-auto">
+      {showCoinDrop && <CoinDrop />}
+      
       {!publicKey && <WalletConnectionBanner />}
       <div className="flex flex-col gap-y-4">
           <div className="text-autofun-background-action-highlight font-medium text-[32px]">
