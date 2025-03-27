@@ -148,6 +148,7 @@ const FormImageInput = ({
   setIsGenerating,
   setGeneratingField,
   onPromptFunctionsChange,
+  onPreviewChange,
 }: {
   label: string;
   // description: string;
@@ -161,6 +162,7 @@ const FormImageInput = ({
     setPrompt: (prompt: string) => void,
     onPromptChange: (prompt: string) => void,
   ) => void;
+  onPreviewChange?: (previewUrl: string | null) => void;
 }) => {
   const [preview, setPreview] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
@@ -188,8 +190,13 @@ const FormImageInput = ({
   useEffect(() => {
     if (preview) {
       setLastGeneratedImage(preview);
+      if (onPreviewChange) {
+        onPreviewChange(preview);
+      }
+    } else if (onPreviewChange) {
+      onPreviewChange(null);
     }
-  }, [preview]);
+  }, [preview, onPreviewChange]);
 
   // Pass prompt functions to parent only once on mount
   useEffect(() => {
@@ -645,6 +652,7 @@ export const Create = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingField, setGeneratingField] = useState<string | null>(null);
   const [showCoinDrop, setShowCoinDrop] = useState(false);
+  const [coinDropImageUrl, setCoinDropImageUrl] = useState<string | null>(null);
   const [promptFunctions, setPromptFunctions] = useState<{
     setPrompt: ((prompt: string) => void) | null;
     onPromptChange: ((prompt: string) => void) | null;
@@ -779,6 +787,17 @@ export const Create = () => {
 
     fetchPreGeneratedToken();
   }, [promptFunctions.setPrompt, promptFunctions.onPromptChange]);
+
+  // When imageFile changes, create a temporary URL for CoinDrop
+  useEffect(() => {
+    if (imageFile) {
+      const tempUrl = URL.createObjectURL(imageFile);
+      setCoinDropImageUrl(tempUrl);
+      return () => {
+        URL.revokeObjectURL(tempUrl);
+      };
+    }
+  }, [imageFile]);
 
   // Handle input changes
   const handleChange = (field: string, value: string) => {
@@ -1027,6 +1046,11 @@ export const Create = () => {
     [setIsGenerating, setGeneratingField],
   );
 
+  // Update coinDropImageUrl directly when we have a preview URL
+  const handlePreviewChange = useCallback((previewUrl: string | null) => {
+    setCoinDropImageUrl(previewUrl);
+  }, []);
+
   // Submit form to backend
   const submitFormToBackend = async () => {
     try {
@@ -1072,6 +1096,8 @@ export const Create = () => {
       // First, upload the image to get permanent URLs
       let imageUrl = "";
       let metadataUrl = "";
+      
+      // Show coin drop with the image we have
       setShowCoinDrop(true);
 
       if (media_base64) {
@@ -1080,6 +1106,12 @@ export const Create = () => {
           const uploadResult = await uploadImage(tokenMetadata);
           imageUrl = uploadResult.imageUrl;
           metadataUrl = uploadResult.metadataUrl;
+          
+          // Update the coin drop image to use the final uploaded URL
+          if (imageUrl) {
+            setCoinDropImageUrl(imageUrl);
+          }
+          
           console.log("Image uploaded successfully:", imageUrl);
           console.log("Metadata URL:", metadataUrl);
         } catch (uploadError) {
@@ -1172,7 +1204,7 @@ export const Create = () => {
 
   return (
     <div className="flex flex-col items-center justify-center">
-      {showCoinDrop && <CoinDrop />}
+      {showCoinDrop && <CoinDrop imageUrl={coinDropImageUrl || undefined} />}
       <div className="p-4 w-full max-w-6xl">
         <form
           className="flex font-dm-mono flex-col w-full m-auto gap-4 justify-center"
@@ -1340,6 +1372,7 @@ export const Create = () => {
                 onPromptFunctionsChange={(setPrompt, onPromptChange) => {
                   setPromptFunctions({ setPrompt, onPromptChange });
                 }}
+                onPreviewChange={handlePreviewChange}
               />
             </div>
           </div>

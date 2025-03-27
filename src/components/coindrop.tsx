@@ -44,7 +44,11 @@ const COIN_BODY_MATERIAL = "coin";
 const FLOOR_MATERIAL = "floor";
 const WALL_MATERIAL = "wall";
 
-const CoinDrop = () => {
+interface CoinDropProps {
+  imageUrl?: string;
+}
+
+const CoinDrop = ({ imageUrl }: CoinDropProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   // Track how many coins have been dropped
@@ -153,11 +157,17 @@ const CoinDrop = () => {
     containerRef.current.appendChild(renderer.domElement);
 
     // Lighting - optimized for overhead view
-    const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+    const ambientLight = new THREE.AmbientLight(0x404040, 1);
+    // rotate the ambient light down to the floor
+    ambientLight.position.y = boxHeightRef.current * 0.8;
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 2.0);
-    directionalLight.position.set(0, boxHeightRef.current * 0.8, 0);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    directionalLight.position.set(5, 5, -5);
+    // look at the center of the scene
+    directionalLight.lookAt(0, 0, 0);
+    // update matrix
+    directionalLight.updateMatrix();
     directionalLight.castShadow = true;
     directionalLight.shadow.camera.near = 0.5;
     directionalLight.shadow.camera.far = boxHeightRef.current * 2;
@@ -165,6 +175,11 @@ const CoinDrop = () => {
     directionalLight.shadow.camera.right = boxWidthRef.current / 2;
     directionalLight.shadow.camera.top = boxDepthRef.current / 2;
     directionalLight.shadow.camera.bottom = -boxDepthRef.current / 2;
+
+    
+
+
+
     scene.add(directionalLight);
 
     // Floor - invisible but matching window size exactly
@@ -257,7 +272,7 @@ const CoinDrop = () => {
 
     // Load textures for coins
     const textureLoader = new THREE.TextureLoader();
-    const coinTexture = textureLoader.load("logo.png", () => {
+    const coinTexture = textureLoader.load(imageUrl || "logo.png", () => {
       setIsLoading(false);
       console.log("Texture loaded, starting coin creation");
       // Start coin creation once texture is loaded
@@ -277,12 +292,12 @@ const CoinDrop = () => {
     // Create materials for the coin - gold color with the logo
     const coinMeshMaterial = new THREE.MeshStandardMaterial({
       map: coinTexture,
-      metalness: 0.5,
-      roughness: 0.8,
+      metalness: 0.8,
+      roughness: 0.1,
       color: 0xFFFFFF, // Gold color
-      emissiveMap: coinTexture,
-      emissive: 0xFFFFFF, // Add emissive to make them more visible
-      emissiveIntensity: 0.6
+      // emissiveMap: coinTexture,
+      // emissive: 0xFFFFFF, // Add emissive to make them more visible
+      // emissiveIntensity: 0.6
     });
 
     // Create instanced mesh for efficient rendering
