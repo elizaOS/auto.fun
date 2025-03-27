@@ -2,17 +2,15 @@ import SkeletonImage from "@/components/skeleton-image";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useWalletModal } from "@/hooks/use-wallet-modal";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { WalletReadyState } from "@solana/wallet-adapter-base";
+import { WalletName, WalletReadyState } from "@solana/wallet-adapter-base";
 import type { Wallet } from "@solana/wallet-adapter-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useMutation } from "@tanstack/react-query";
 import type { FC, ReactNode } from "react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 import { Payload, SIWS } from "@web3auth/sign-in-with-solana";
 import useAuthentication from "@/hooks/use-authentication";
-import { useLocalStorage } from "@uidotdev/usehooks";
-import { sleep } from "@/utils";
 
 export interface WalletModalProviderProps {
   children: ReactNode;
@@ -152,6 +150,13 @@ export const WalletModal: FC<WalletModalProps> = () => {
     },
   });
 
+  const handleWalletClick = useCallback(
+    (wallet: Wallet) => {
+      select(wallet.adapter.name);
+    },
+    [select]
+  );
+
   return (
     <Dialog onOpenChange={(op: boolean) => setVisible(op)} open={visible}>
       <VisuallyHidden>
@@ -202,6 +207,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
                   key={wallet.adapter.name}
                   handleClick={async () => {
                     select(wallet.adapter.name);
+                    handleWalletClick(wallet);
                     mutation.mutate({ wallet });
                   }}
                   wallet={wallet}
