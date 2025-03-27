@@ -6,13 +6,13 @@ import { CloseButton, Dialog, DialogPanel } from "@headlessui/react";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import WalletButton from "@/components/wallet-button";
-import { useWalletModal } from "@/hooks/use-wallet-modal";
 import { useWallet } from "@solana/wallet-adapter-react";
+import useAuthentication from "@/hooks/use-authentication";
 
 export default function Header() {
   const { pathname } = useLocation();
   const { publicKey } = useWallet();
-  const { isAuthenticated } = useWalletModal();
+  const { isAuthenticated } = useAuthentication();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const mobileNavItems = [
