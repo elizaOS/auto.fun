@@ -1651,6 +1651,31 @@ export async function updateHoldersCache(
       })
       .where(eq(tokens.mint, mint));
 
+    // Emit WebSocket event to notify of holder update
+    try {
+      // Get updated token data
+      const tokenData = await db
+        .select()
+        .from(tokens)
+        .where(eq(tokens.mint, mint))
+        .limit(1);
+
+      if (tokenData && tokenData.length > 0) {
+        // Emit event with updated holder count
+        await processTokenUpdateEvent(env, {
+          ...tokenData[0],
+          event: "holdersUpdated",
+          holderCount: holders.length,
+          timestamp: new Date().toISOString(),
+        });
+        
+        logger.log(`Emitted holder update event for token ${mint}`);
+      }
+    } catch (wsError) {
+      // Don't fail if WebSocket fails
+      logger.error(`WebSocket error when emitting holder update: ${wsError}`);
+    }
+
     return holders.length;
   } catch (error) {
     logger.error(`Error updating holders for token ${mint}:`, error);
@@ -1752,6 +1777,19 @@ tokenRouter.get("/tokens/:mint/refresh-swaps", async (c) => {
       .where(eq(swaps.tokenMint, mint))
       .orderBy(desc(swaps.timestamp))
       .limit(10);
+
+    // Emit WebSocket events for the 3 most recent swaps (if available)
+    // This helps refresh clients with the latest data
+    try {
+      const recentSwaps = swapsData.slice(0, 3);
+      for (const swap of recentSwaps) {
+        await processSwapEvent(c.env, swap, false); // Only emit to token-specific room
+      }
+      logger.log(`Emitted ${recentSwaps.length} recent swaps for token ${mint}`);
+    } catch (wsError) {
+      // Don't fail if WebSocket emission fails
+      logger.error(`WebSocket error when emitting swaps: ${wsError}`);
+    }
 
     return c.json({
       success: true,
@@ -2397,6 +2435,158 @@ tokenRouter.get("/websocket-status", async (c) => {
         details: error?.message || "Unknown error",
       },
       500,
+    );
+  }
+});
+
+// Function to process a swap and emit WebSocket events
+export async function processSwapEvent(
+  env: Env,
+  swap: any,
+  shouldEmitGlobal: boolean = true
+): Promise<void> {
+  try {
+    // Get WebSocket client
+    const wsClient = getWebSocketClient(env);
+    
+    // Emit to token-specific room
+    await wsClient.emit(`token-${swap.tokenMint}`, "newSwap", swap);
+    logger.log(`Emitted swap event for token ${swap.tokenMint}`);
+    
+    // Optionally emit to global room for activity feed
+    if (shouldEmitGlobal) {
+      await wsClient.emit("global", "newSwap", swap);
+      logger.log("Emitted swap event to global feed");
+    }
+    
+    return;
+  } catch (error) {
+    logger.error("Error processing swap event:", error);
+    throw error;
+  }
+}
+
+// Add endpoint to create a test swap for WebSocket testing
+tokenRouter.post("/dev/create-test-swap/:mint", async (c) => {
+  try {
+    // Only allow in development environment
+    if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
+      return c.json(
+        { error: "This endpoint is only available in development" },
+        403
+      );
+    }
+
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    const { userAddress } = await c.req.json() as { userAddress?: string };
+    
+    // Create a test swap
+    const testSwap = createTestSwap(mint, userAddress);
+    
+    // Get DB connection
+    const db = getDB(c.env);
+    
+    // Save the test swap to the database
+    await db.insert(swaps).values(testSwap);
+    
+    // Emit WebSocket events
+    await processSwapEvent(c.env, testSwap);
+
+    return c.json({
+      success: true,
+      message: "Test swap created and WebSocket event emitted",
+      swap: testSwap
+    });
+  } catch (error) {
+    logger.error("Error creating test swap:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
+
+// Function to process a token update and emit WebSocket events
+export async function processTokenUpdateEvent(
+  env: Env,
+  tokenData: any,
+  shouldEmitGlobal: boolean = false
+): Promise<void> {
+  try {
+    // Get WebSocket client
+    const wsClient = getWebSocketClient(env);
+    
+    // Always emit to token-specific room
+    await wsClient.emit(`token-${tokenData.mint}`, "updateToken", tokenData);
+    logger.log(`Emitted token update event for ${tokenData.mint}`);
+    
+    // Optionally emit to global room for activity feed
+    if (shouldEmitGlobal) {
+      await wsClient.emit("global", "updateToken", {
+        ...tokenData,
+        timestamp: new Date(),
+      });
+      logger.log("Emitted token update event to global feed");
+    }
+    
+    return;
+  } catch (error) {
+    logger.error("Error processing token update event:", error);
+    // Don't throw to avoid breaking other functionality
+  }
+}
+
+// Add a dev endpoint to test token update WebSocket events
+tokenRouter.get("/dev/emit-token-update/:mint", async (c) => {
+  try {
+    // Only allow in development environment
+    if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
+      return c.json(
+        { error: "This endpoint is only available in development" },
+        403
+      );
+    }
+
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+    
+    // Get token data from database
+    const db = getDB(c.env);
+    const tokenData = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    if (!tokenData || tokenData.length === 0) {
+      return c.json({ error: "Token not found" }, 404);
+    }
+
+    // Add timestamp for the event
+    const tokenWithTimestamp = {
+      ...tokenData[0],
+      timestamp: new Date().toISOString(),
+    };
+    
+    // Emit token update event via WebSocket
+    await processTokenUpdateEvent(c.env, tokenWithTimestamp, true);
+    
+    return c.json({
+      success: true,
+      message: "Token update event emitted successfully",
+      token: tokenWithTimestamp
+    });
+  } catch (error) {
+    logger.error("Error emitting token update event:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
     );
   }
 });

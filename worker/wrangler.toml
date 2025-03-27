@@ -1,6 +1,7 @@
 name = "autofun-worker"
 main = "index.ts"
 compatibility_date = "2024-01-01"
+account_id = "95d5ca589c39bf4189b080cfc8417c8e"
 
 [[r2_buckets]]
 binding = "MY_BUCKET"
