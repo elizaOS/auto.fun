@@ -94,9 +94,9 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
 
     // Physics world - EXACTLY like header but with optimizations
     const world = new CANNON.World();
-    world.gravity.set(0, -9.8 * 40, 0); // strong gravity for faster falls
+    world.gravity.set(0, -9.8 * 100, 0); // strong gravity for faster falls
     world.broadphase = new CANNON.NaiveBroadphase();
-    world.solver.iterations = 10; // Lower for better performance with many objects
+    world.solver.iterations = 5; // Lower for better performance with many objects
     world.allowSleep = true; // Very important for performance
 
     // Setup materials
@@ -157,9 +157,9 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
     containerRef.current.appendChild(renderer.domElement);
 
     // Lighting - optimized for overhead view
-    const ambientLight = new THREE.AmbientLight(0x404040, 1);
+    const ambientLight = new THREE.AmbientLight(0xFFFFFF, 1);
     // rotate the ambient light down to the floor
-    ambientLight.position.y = boxHeightRef.current * 0.8;
+    ambientLight.position.y = 5
     scene.add(ambientLight);
 
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
@@ -168,7 +168,7 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
     directionalLight.lookAt(0, 0, 0);
     // update matrix
     directionalLight.updateMatrix();
-    directionalLight.castShadow = true;
+    directionalLight.castShadow = false;
     directionalLight.shadow.camera.near = 0.5;
     directionalLight.shadow.camera.far = boxHeightRef.current * 2;
     directionalLight.shadow.camera.left = -boxWidthRef.current / 2;
@@ -289,15 +289,235 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
       false          // openEnded
     );
 
+    // create a roughness map from sobel edge detection
+    const createRoughnessMap = (texture: THREE.Texture): Promise<THREE.Texture | null> => {
+      // Create a canvas to process the texture
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // If we can't get a 2d context, return null
+      if (!ctx) {
+        console.error("Could not get 2D context for roughness map");
+        return Promise.resolve(null);
+      }
+      
+      // Create an image to draw the texture
+      const image = new Image();
+      
+      // Return a new promise that resolves with the roughness texture
+      return new Promise((resolve) => {
+        image.onload = () => {
+          // Set canvas size to match image
+          canvas.width = image.width;
+          canvas.height = image.height;
+          
+          // Draw the image to canvas
+          ctx.drawImage(image, 0, 0);
+          
+          // Get image data for processing
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imageData.data;
+          
+          // Create output array for the edge detection result
+          const output = new Uint8ClampedArray(data.length);
+          
+          // Sobel kernels for edge detection
+          const sobelX = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+          const sobelY = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
+          
+          // Apply Sobel filter
+          for (let y = 1; y < canvas.height - 1; y++) {
+            for (let x = 1; x < canvas.width - 1; x++) {
+              let gx = 0;
+              let gy = 0;
+              
+              // Apply convolution
+              for (let ky = -1; ky <= 1; ky++) {
+                for (let kx = -1; kx <= 1; kx++) {
+                  const idx = ((y + ky) * canvas.width + (x + kx)) * 4;
+                  const kernelIdx = (ky + 1) * 3 + (kx + 1);
+                  
+                  // Use average of RGB for grayscale
+                  const val = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+                  
+                  gx += val * sobelX[kernelIdx];
+                  gy += val * sobelY[kernelIdx];
+                }
+              }
+              
+              // Calculate gradient magnitude
+              const g = Math.sqrt(gx * gx + gy * gy);
+              
+              // Calculate index in the output array
+              const outIdx = (y * canvas.width + x) * 4;
+              
+              // Normalize and set edge intensity for roughness (invert for proper roughness effect)
+              const edgeValue = 255 - Math.min(g, 255);
+              
+              // Set RGB to edge value for roughness map
+              output[outIdx] = edgeValue;
+              output[outIdx + 1] = edgeValue;
+              output[outIdx + 2] = edgeValue;
+              output[outIdx + 3] = 255; // Full alpha
+            }
+          }
+          
+          // Create new image data with edge detection results
+          const outputImageData = new ImageData(output, canvas.width, canvas.height);
+          ctx.putImageData(outputImageData, 0, 0);
+          
+          // Create a Three.js texture from the canvas
+          const roughnessTexture = new THREE.CanvasTexture(canvas);
+          roughnessTexture.needsUpdate = true;
+          
+          // Resolve the promise with the generated texture
+          resolve(roughnessTexture);
+        };
+        
+        // Set the image source to the texture's image
+        if (texture.image) {
+          image.src = texture.image instanceof HTMLImageElement 
+            ? texture.image.src 
+            : URL.createObjectURL(new Blob([texture.image.data], { type: 'image/png' }));
+        } else {
+          // If texture image isn't available, resolve with null
+          resolve(null);
+        }
+      });
+    };
+
     // Create materials for the coin - gold color with the logo
     const coinMeshMaterial = new THREE.MeshStandardMaterial({
       map: coinTexture,
       metalness: 0.8,
       roughness: 0.1,
       color: 0xFFFFFF, // Gold color
-      // emissiveMap: coinTexture,
-      // emissive: 0xFFFFFF, // Add emissive to make them more visible
-      // emissiveIntensity: 0.6
+      emissiveMap: coinTexture,
+      emissive: 0xFFFFFF, // Add emissive to make them more visible
+      emissiveIntensity: 0.6,
+      envMap: new THREE.CubeTextureLoader().load(
+        [
+          "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_09_1k.hdr",
+        ]
+      ),
+    });
+
+    // Create a fake normal map from the coin texture
+    const createNormalMap = (texture: THREE.Texture): Promise<THREE.Texture | null> => {
+      // Create a canvas to process the texture
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // If we can't get a 2d context, return null
+      if (!ctx) {
+        console.error("Could not get 2D context for normal map");
+        return Promise.resolve(null);
+      }
+      
+      // Create an image to draw the texture
+      const image = new Image();
+      
+      // Return a new promise that resolves with the normal texture
+      return new Promise((resolve) => {
+        image.onload = () => {
+          // Set canvas size to match image
+          canvas.width = image.width;
+          canvas.height = image.height;
+          
+          // Draw the image to canvas
+          ctx.drawImage(image, 0, 0);
+          
+          // Get image data for processing
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imageData.data;
+          
+          // Create output array for the normal map
+          const output = new Uint8ClampedArray(data.length);
+          
+          // Sobel kernels for edge detection
+          const sobelX = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+          const sobelY = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
+          
+          // Apply Sobel filter to generate normal map
+          for (let y = 1; y < canvas.height - 1; y++) {
+            for (let x = 1; x < canvas.width - 1; x++) {
+              let gx = 0;
+              let gy = 0;
+              
+              // Apply convolution
+              for (let ky = -1; ky <= 1; ky++) {
+                for (let kx = -1; kx <= 1; kx++) {
+                  const idx = ((y + ky) * canvas.width + (x + kx)) * 4;
+                  const kernelIdx = (ky + 1) * 3 + (kx + 1);
+                  
+                  // Use average of RGB for grayscale
+                  const val = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+                  
+                  gx += val * sobelX[kernelIdx];
+                  gy += val * sobelY[kernelIdx];
+                }
+              }
+              
+              // Calculate index in the output array
+              const outIdx = (y * canvas.width + x) * 4;
+              
+              // Normal maps store XYZ normals in RGB channels
+              // Convert gradients to normal map by normalizing
+              // For normal maps: R=X, G=Y, B=Z
+              // Scale X and Y (red and green) by strength factor
+              const strength = 3.0; // Adjust strength of the normal effect
+              
+              // Calculate normal vector components
+              // R: X normal component (128 is neutral/flat)
+              output[outIdx] = Math.max(0, Math.min(255, 128 + gx * strength));
+              // G: Y normal component (128 is neutral/flat)
+              output[outIdx + 1] = Math.max(0, Math.min(255, 128 + gy * strength));
+              // B: Z normal component (always positive for coin surface, higher value = more raised)
+              output[outIdx + 2] = 255; // Full blue for maximum Z value
+              // Alpha channel
+              output[outIdx + 3] = 255;
+            }
+          }
+          
+          // Create new image data with normal map
+          const outputImageData = new ImageData(output, canvas.width, canvas.height);
+          ctx.putImageData(outputImageData, 0, 0);
+          
+          // Create a Three.js texture from the canvas
+          const normalTexture = new THREE.CanvasTexture(canvas);
+          normalTexture.needsUpdate = true;
+          
+          // Resolve the promise with the generated texture
+          resolve(normalTexture);
+        };
+        
+        // Set the image source to the texture's image
+        if (texture.image) {
+          image.src = texture.image instanceof HTMLImageElement 
+            ? texture.image.src 
+            : URL.createObjectURL(new Blob([texture.image.data], { type: 'image/png' }));
+        } else {
+          // If texture image isn't available, resolve with null
+          resolve(null);
+        }
+      });
+    };
+
+    // Apply roughness map after texture loads
+    createRoughnessMap(coinTexture).then(roughnessMap => {
+      if (roughnessMap) {
+        coinMeshMaterial.roughnessMap = roughnessMap;
+        coinMeshMaterial.needsUpdate = true;
+      }
+    });
+    
+    // Apply normal map after texture loads
+    createNormalMap(coinTexture).then(normalMap => {
+      if (normalMap) {
+        coinMeshMaterial.normalMap = normalMap;
+        coinMeshMaterial.normalScale.set(0.5, 0.5); // Adjust normal intensity
+        coinMeshMaterial.needsUpdate = true;
+      }
     });
 
     // Create instanced mesh for efficient rendering
