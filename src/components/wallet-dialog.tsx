@@ -2,7 +2,7 @@ import SkeletonImage from "@/components/skeleton-image";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useWalletModal } from "@/hooks/use-wallet-modal";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { WalletName, WalletReadyState } from "@solana/wallet-adapter-base";
+import { WalletReadyState } from "@solana/wallet-adapter-base";
 import type { Wallet } from "@solana/wallet-adapter-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useMutation } from "@tanstack/react-query";
