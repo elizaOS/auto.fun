@@ -874,7 +874,6 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
     const fixedTimeStep = 1 / 60; // 60 FPS physics
     
     // Add to the animation loop to log active coins periodically
-    let lastReportTime = 0;
     function animate(time = 0) {
       requestAnimationFrame(animate);
       
