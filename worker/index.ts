@@ -13,6 +13,7 @@ import authRouter from "./routes/auth";
 import generationRouter from "./routes/generation";
 import messagesRouter from "./routes/messages";
 import tokenRouter from "./routes/token";
+import swapRouter from './routes/swap'
 import { uploadToCloudflare } from "./uploader";
 import { WebSocketDO, allowedOrigins, createTestSwap } from "./websocket";
 import { getWebSocketClient } from "./websocket-client";
@@ -294,6 +295,7 @@ api.route("/", adminRouter);
 api.route("/", tokenRouter);
 api.route("/", messagesRouter);
 api.route("/", authRouter);
+api.route('/', swapRouter);
 
 // Root paths for health checks
 app.get("/", (c) => c.json({ status: "ok" }));
