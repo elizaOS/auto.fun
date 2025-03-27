@@ -1,4 +1,4 @@
-import { IToken, TSortBy, TSortOrder } from "@/types";
+import { ChartTable, IToken, TSortBy, TSortOrder } from "@/types";
 import { QueryClient } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient();
@@ -117,3 +117,30 @@ export const getSearchTokens = async ({ search }: { search: string }) => {
   const data = await fetcher(`/api/tokens?search=${search}`, "GET");
   return data;
 };
+
+export const getChartTable = async ({
+  pairIndex,
+  from,
+  to,
+  range,
+  token,
+}: {
+  pairIndex: number;
+  from: number;
+  to: number;
+  range: number;
+  token: string;
+}): Promise<ChartTable | undefined> => {
+  try {
+    // console.log("GET bars", token, from, to, range, pairIndex)
+    const res = await fetcher(
+      `/api/chart/${pairIndex}/${from}/${to}/${range}/${token}`,
+      "GET"
+    );
+
+    return res as ChartTable;
+  } catch (err) {
+    console.log("tradingchart === getch data error", err);
+    return undefined;
+  }
+}

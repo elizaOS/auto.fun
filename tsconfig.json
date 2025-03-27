@@ -16,7 +16,8 @@
     "jsx": "react-jsx",
     "types": ["@cloudflare/workers-types", "node"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@/libraries/*": ["./public/libraries/*"]
     },
     "declaration": true,
     "emitDeclarationOnly": true,

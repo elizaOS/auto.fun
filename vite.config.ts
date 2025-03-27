@@ -27,6 +27,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      "@/libraries": fileURLToPath(new URL("./public/libraries", import.meta.url)),
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
