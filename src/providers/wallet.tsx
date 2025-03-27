@@ -4,11 +4,7 @@ import {
   WalletProvider,
 } from "@solana/wallet-adapter-react";
 
-import {
-  WalletModalProvider,
-  WalletDisconnectButton,
-  WalletMultiButton,
-} from "@solana/wallet-adapter-react-ui";
+import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 
 import("@solana/wallet-adapter-react-ui/styles.css");
 
@@ -18,11 +14,7 @@ export const Wallet = ({ children }: PropsWithChildren) => {
       endpoint={import.meta.env.VITE_RPC_URL || "https://api.devnet.solana.com"}
     >
       <WalletProvider wallets={[]} autoConnect>
-        <WalletModalProvider>
-          <WalletMultiButton />
-          <WalletDisconnectButton />
-          {children}
-        </WalletModalProvider>
+        <WalletModalProvider>{children}</WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
   );
