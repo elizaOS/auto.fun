@@ -64,6 +64,7 @@
     "bs58": "^6.0.0",
     "buffer": "^6.0.3",
     "cannon-es": "^0.20.0",
+    "canvas-confetti": "^1.9.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "crypto-browserify": "^3.12.1",
