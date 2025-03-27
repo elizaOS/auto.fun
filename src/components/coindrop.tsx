@@ -81,7 +81,7 @@ const CoinDrop = () => {
     boxHeightRef.current = containerHeight; // Tall box to give room for coins
     
     // Set coin size based on window size
-    coinRadiusRef.current = containerWidth * 0.05;
+    coinRadiusRef.current = containerWidth * 0.04;
     coinThicknessRef.current = coinRadiusRef.current * 0.1;
 
     // Scene setup
