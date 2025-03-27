@@ -50,3 +50,62 @@ body {
     margin: 0;
   }
 }
+
+/* Add wallet dropdown styles */
+.wallet-dropdown {
+  position: relative;
+}
+
+.wallet-dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 50;
+  min-width: 200px;
+  background-color: #171717;
+  border: 1px solid #262626;
+  border-radius: 6px;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.wallet-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.wallet-dropdown-item:hover {
+  background-color: #262626;
+}
+
+.wallet-dropdown-item svg {
+  color: #8c8c8c;
+}
+
+/* Add wallet button styles */
+.wallet-button {
+  background-color: #171717;
+  border: 1px solid #262626;
+  border-radius: 6px;
+  color: white;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.wallet-button:hover {
+  background-color: #262626;
+}
+
+.wallet-button img {
+  width: 20px;
+  height: 20px;
+}

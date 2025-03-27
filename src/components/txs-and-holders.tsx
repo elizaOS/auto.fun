@@ -8,7 +8,7 @@ export default function TransactionsAndHolders({ token }: { token: IToken }) {
   const [mode, setMode] = useState<"transactions" | "holders">("transactions");
 
   return (
-    <div className="border rounded-md bg-autofun-background-card">
+    <div className="border md:overflow-x-hidden xs:max-w-fit md:max-w-full bg-autofun-background-card">
       <div className="flex items-center p-3">
         <Button
           size="small"

@@ -3,43 +3,26 @@ import SkeletonImage from "./skeleton-image";
 
 export const Footer = () => {
   return (
-    <div className="hidden xl:flex justify-between w-full">
+    <div className="flex justify-between w-full container pb-4">
       <div className="justify-start items-center gap-4 flex">
-        <SkeletonImage
+        <img
           height={32}
-          width={32}
-          className="size-8"
-          src="/logo.png"
+          width={64}
+          className="size-24"
+          src="/logo_wide.svg"
           alt="logo"
         />
       </div>
       <div className="flex items-center gap-2.5">
-        <Link
-          to="/privacy-policy"
-          className="text-autofun-text-secondary font-medium hover:text-white transition-colors duration-200 font-dm-mono text-base"
-        >
-          Privacy Policy
-        </Link>
-        <div className="w-[1px] h-4 bg-[#707070]" />
-        <Link
-          to="/terms-of-service"
-          className="text-autofun-text-secondary font-medium hover:text-white transition-colors duration-200 font-dm-mono text-base"
-        >
-          Terms of Service
-        </Link>
-        <div className="w-[1px] h-4 bg-[#707070]" />
-        <Link
-          to="/fees"
-          className="text-autofun-text-secondary font-medium hover:text-white transition-colors duration-200 font-dm-mono text-base"
-        >
-          Fees
-        </Link>
-        <div className="w-[1px] h-4 bg-[#707070]" />
-        <p className="font-dm-mono font-medium text-autofun-text-secondary text-base">
-          © {new Date().getFullYear()} Auto.fun
-        </p>
+        <FooterLink href="/privacy-policy" title="Privacy" />
+        <div className="w-[1px] h-4 bg-autofun-stroke-light" />
+        <FooterLink href="/terms-of-service" title="Terms" />
+        <div className="w-[1px] h-4 bg-autofun-stroke-light" />
+        <FooterLink href="/fees" title="Fees" />
+        <div className="w-[1px] h-4 bg-autofun-stroke-light" />
+        <FooterLink title="Support" href="/support" />
         <Link to={"https://x.com/autodotfun"} target="_blank">
-          <div className="size-10 p-0 grid place-items-center border rounded-md">
+          <div className="size-10 p-0 grid place-items-center border select-none">
             <div className="m-auto">
               <SkeletonImage
                 src="/x-gray.svg"
@@ -53,6 +36,17 @@ export const Footer = () => {
         </Link>
       </div>
     </div>
+  );
+};
+
+const FooterLink = ({ title, href }: { title: string; href: string }) => {
+  return (
+    <Link
+      to={href}
+      className="text-autofun-text-secondary font-medium hover:text-white transition-colors duration-200 select-none font-dm-mono text-sm"
+    >
+      {title}
+    </Link>
   );
 };
 

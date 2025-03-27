@@ -13,36 +13,44 @@ import { getTokenSwapHistory } from "@/utils/api";
 import { Link } from "react-router";
 import { ExternalLink } from "lucide-react";
 import { twMerge } from "tailwind-merge";
+import usePause from "@/hooks/use-pause";
+import PausedIndicator from "./paused-indicator";
 
 export default function SwapsTable({ token }: { token: IToken }) {
+  const { paused, setPause } = usePause();
   const query = useQuery({
     queryKey: ["swaps", token?.mint],
     queryFn: async () => {
       const data = await getTokenSwapHistory({ address: token?.mint });
       return data as { swaps: ISwap[] };
     },
-    enabled: token?.mint ? true : false,
+    enabled: !paused && token?.mint ? true : false,
     refetchInterval: 2_500,
   });
 
   const data = query?.data?.swaps || ([] as ISwap[]);
 
   return (
-    <Table className="border-0 !rounded-0 !border-spacing-y-0">
+    <Table
+      className="border-0 !rounded-0 !border-spacing-y-0"
+      onMouseEnter={() => setPause(true)}
+      onMouseLeave={() => setPause(false)}
+    >
+      <PausedIndicator show={paused} />
       <TableHeader>
         <TableRow className="bg-transparent">
           <TableHead>Account</TableHead>
           <TableHead className="text-left">Type</TableHead>
           <TableHead className="text-left">SOL</TableHead>
           <TableHead className="text-left">Token</TableHead>
-          <TableHead className="text-left">Date</TableHead>
+          <TableHead className="text-left w-[150px]">Date</TableHead>
           <TableHead className="text-right">Txn</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {data?.map((swap: ISwap) => {
           return (
-            <TableRow key={swap?.txId}>
+            <TableRow className="hover:bg-white/5" key={swap?.txId}>
               <TableCell className="text-left">
                 {shortenAddress(swap?.user)}
               </TableCell>

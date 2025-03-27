@@ -1,17 +1,17 @@
 import Button from "@/components/button";
-import { useQuery } from "@tanstack/react-query";
+import FrontpageHeader from "@/components/frontpage-header";
 import GridListSwitcher from "@/components/grid-list-switcher";
-import { TableView } from "@/components/table-view";
-import { useViewMode } from "@/hooks/use-view-mode";
 import GridView from "@/components/grid-view";
-import { getTokens } from "@/utils/api";
-import { IPagination, IToken } from "@/types";
-import Pagination from "@/components/pagination";
-import usePagination from "@/hooks/use-pagination";
-import { useFilter } from "@/hooks/use-filter";
-import { Fragment } from "react/jsx-runtime";
 import Loader from "@/components/loader";
-import Footer from "@/components/footer";
+import Pagination from "@/components/pagination";
+import { TableView } from "@/components/table-view";
+import { useFilter } from "@/hooks/use-filter";
+import usePagination from "@/hooks/use-pagination";
+import { useViewMode } from "@/hooks/use-view-mode";
+import { IPagination, IToken } from "@/types";
+import { getTokens } from "@/utils/api";
+import { useQuery } from "@tanstack/react-query";
+import { Fragment } from "react/jsx-runtime";
 
 export default function Page() {
   const [activeTab] = useViewMode();
@@ -49,12 +49,16 @@ export default function Page() {
     hasMore: queryData?.hasMore || false,
   } as IPagination;
 
+  console.log(query);
+
   return (
     <div className="w-full min-h-[100vh]">
+      {/* Header Section */}
+      <FrontpageHeader />
       {/* Top Navigation */}
-      <div className="flex items-center gap-3 flex-wrap-reverse lg:flex-wrap">
+      <div className="flex justify-between gap-2 flex-wrap-reverse lg:flex-wrap">
         <GridListSwitcher />
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Button
             variant={sortBy === "featured" ? "primary" : "outline"}
             onClick={() => setSortBy("featured")}
@@ -75,7 +79,6 @@ export default function Page() {
           </Button>
         </div>
       </div>
-
       <div className="flex flex-col flex-1 min-h-[80vh]">
         {!query?.isLoading ? (
           <Fragment>
@@ -94,7 +97,6 @@ export default function Page() {
         )}
         <Pagination pagination={pagination} onPageChange={onPageChange} />
       </div>
-      <Footer />
     </div>
   );
 }

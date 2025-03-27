@@ -1,0 +1,8 @@
+name = "autofun-worker"
+main = "index.ts"
+compatibility_date = "2024-01-01"
+
+[[r2_buckets]]
+binding = "MY_BUCKET"
+bucket_name = "autofun-images"
+preview_bucket_name = "autofun-images-dev" 

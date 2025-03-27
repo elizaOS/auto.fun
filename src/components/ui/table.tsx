@@ -95,7 +95,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={twMerge(
-      "p-4 align-middle font-dm-mono font-normal text-base leading-5 tracking-normal text-center [&:has([role=checkbox])]:pr-0 bg-autofun-background-card border-autofun-stroke-primary border-t border-b border-x-0 first:rounded-l-[6px] first:border-l last:rounded-r-[6px] last:border-r",
+      "p-4 align-middle font-dm-mono font-normal text-base leading-5 tracking-normal text-center [&:has([role=checkbox])]:pr-0 bg-autofun-background-card border-autofun-stroke-primary border-t border-b border-x-0 first:first:border-l last:last:border-r",
       className,
     )}
     {...props}

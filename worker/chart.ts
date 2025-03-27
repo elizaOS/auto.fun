@@ -12,7 +12,6 @@ import { fees, getDB, swaps, Token, tokens } from "./db";
 import { Env } from "./env";
 import { logger } from "./logger";
 import { getSOLPrice } from "./mcap";
-import { createMigrationService } from "./migration";
 import { initSolanaConfig } from "./solana";
 import {
   createNewTokenData,
@@ -62,7 +61,7 @@ const MAX_CONCURRENT_UPDATES = 3; // Maximum concurrent holder updates
 // const isValidCpmm = (id: string) => VALID_PROGRAM_ID.has(id)
 
 // Default values for when env is not available
-export const DEFAULT_TOKEN_SUPPLY = "1000000000000";
+export const DEFAULT_TOKEN_SUPPLY = "1000000000000000";
 export const DEFAULT_DECIMALS = 6;
 export const DEFAULT_VIRTUAL_RESERVES = "100000000";
 export const DEFAULT_CURVE_LIMIT = "1000000000";
@@ -282,7 +281,7 @@ export class TokenMonitor {
                       })
                       .where(eq(tokens.mint, mintAddress));
 
-                    await this.handleMigration(token);
+                    // await this.handleMigration(token);
                   }
                 } else {
                   if (i === maxRetries - 1) {
@@ -667,17 +666,6 @@ export class TokenMonitor {
       "confirmed",
     );
   }
-
-  private async handleMigration(token: Token) {
-    // Use the adapter to create a compatible MigrationService
-    const migrationService = createMigrationService(
-      this.solanaConfig.connection,
-      this.solanaConfig.programId,
-      this.wallet,
-      this.env,
-    );
-    await migrationService.migrateToken(token);
-  }
 }
 
 export async function getLatestCandle(env: Env, tokenMint: string, swap: any) {
@@ -771,19 +759,19 @@ export async function fetchPriceChartData(
       .filter(
         (swap: {
           price: number;
-          timestamp: number;
+          timestamp: string;
           direction: number;
-          amountIn: number;
-          amountOut: number;
+          amountIn: number | null;
+          amountOut: number | null;
         }) => swap.price != null && swap.timestamp != null,
       ) // Type guard to ensure price and timestamp are not null
       .map(
         (swap: {
           price: number;
-          timestamp: number;
+          timestamp: string;
           direction: number;
-          amountIn: number;
-          amountOut: number;
+          amountIn: number | null;
+          amountOut: number | null;
         }) => ({
           price: swap.price,
           timestamp: new Date(swap.timestamp), // Create a new Date object from the string
@@ -791,8 +779,8 @@ export async function fetchPriceChartData(
           // If direction is 1 (sell), amountOut is SOL
           volume:
             swap.direction === 0
-              ? swap.amountIn / 1e9 // Convert from lamports to SOL
-              : swap.amountOut / 1e9,
+              ? (swap.amountIn || 0) / 1e9 // Convert from lamports to SOL
+              : (swap.amountOut || 0) / 1e9,
         }),
       );
 
@@ -1098,7 +1086,7 @@ interface Candle {
  * @param rangeMinutes Time range in minutes
  * @returns Grouped candle data
  */
-function groupCandlesByRange(
+export function groupCandlesByRange(
   candles: Candle[],
   rangeMinutes: number,
 ): Candle[] {

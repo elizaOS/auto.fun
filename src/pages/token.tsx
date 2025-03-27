@@ -36,9 +36,7 @@ export default function Page() {
     queryKey: ["token", address],
     queryFn: async () => {
       if (!address) throw new Error("No address passed");
-      const data = (await getToken({ address })) as unknown as {
-        token: IToken;
-      };
+      const data = await getToken({ address });
       return data;
     },
     refetchInterval: 20_000,
@@ -52,7 +50,7 @@ export default function Page() {
     };
   }, [address]);
 
-  const token = query?.data?.token as IToken;
+  const token = query?.data as IToken;
 
   const solPriceUSD = token?.solPriceUSD;
   const finalTokenPrice = 0.00000045; // Approximated value from the bonding curve configuration
@@ -64,88 +62,45 @@ export default function Page() {
   }
 
   return (
-    <div className="flex flex-wrap md:flex-wrap-reverse gap-3">
-      {/* Left Section */}
-      <div className="w-fit grow flex flex-col gap-3">
-        {/* Info */}
-        <div className="flex flex-wrap xl:flex-nowrap border rounded-md bg-autofun-background-card p-3 items-center justify-between gap-3 xl:divide-x divide-autofun-stroke-primary">
-          <div className="flex flex-col gap-2 items-center w-full">
-            <span className="text-base font-dm-mono text-autofun-text-secondary">
-              Market Cap
-            </span>
-            <span className="text-xl font-dm-mono text-autofun-text-highlight">
-              {token?.marketCapUSD
-                ? abbreviateNumber(token?.marketCapUSD)
-                : null}
-            </span>
-          </div>
-          <div className="flex flex-col gap-2 items-center w-full">
-            <span className="text-base font-dm-mono text-autofun-text-secondary">
-              24hr Volume
-            </span>
-            <span className="text-xl font-dm-mono text-autofun-text-primary">
-              {token?.price24hAgo ? abbreviateNumber(token?.volume24h) : null}
-            </span>
-          </div>
-          <div className="flex flex-col gap-2 items-center w-full">
-            <span className="text-base font-dm-mono text-autofun-text-secondary">
-              Creator
-            </span>
-            <span className="text-xl font-dm-mono text-autofun-text-primary">
-              {token?.creator ? shortenAddress(token?.creator) : null}
-            </span>
-          </div>
-          <div className="flex flex-col gap-2 items-center w-full">
-            <span className="text-base font-dm-mono text-autofun-text-secondary">
-              Creation Time
-            </span>
-            <span className="text-xl font-dm-mono text-autofun-text-primary">
-              {token?.createdAt ? fromNow(token?.createdAt) : null}
-            </span>
-          </div>
-        </div>
-        <div className="border rounded-md bg-autofun-background-card h-[50vh] overflow-hidden">
-          <TradingViewChart name={token.name} token={token.mint} />
-        </div>
-        <TransactionsAndHolders token={token} />
-      </div>
+    <div className="flex flex-wrap gap-3">
       {/* Right Section */}
-      <div className="max-w-[587px] flex flex-col gap-3">
-        <div className="border rounded-md p-4 bg-autofun-background-card flex flex-col gap-3">
-          <div className="flex gap-3">
-            <div className="size-36 shrink-0">
-              <SkeletonImage src={token?.image} alt="image" />
-            </div>
-            <div className="flex flex-col gap-3">
-              {/* Token Info and Time */}
-              <div className="flex items-center w-full min-w-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="capitalize text-autofun-text-primary text-3xl font-medium font-satoshi leading-normal truncate min-w-0">
-                    {token?.name}
-                  </div>
-                  <div className="text-autofun-text-secondary text-base font-normal font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0">
-                    ${token?.ticker}
-                  </div>
+      <div className="w-full lg:max-w-[450px] flex flex-col gap-3">
+        <div className="border p-4 bg-autofun-background-card flex flex-col gap-3">
+          <div className="w-full">
+            <SkeletonImage src={token?.image} alt="image" />
+          </div>
+          <div className="flex flex-col gap-3">
+            {/* Token Info and Time */}
+            <div className="flex items-center w-full min-w-0">
+              <div className="flex items-start md:items-center justify-between w-full min-w-0">
+                <div className="capitalize text-autofun-text-primary text-3xl font-medium font-satoshi leading-normal truncate min-w-0">
+                  {token?.name}
+                </div>
+                <div>
+                  <TokenStatus token={token} />
                 </div>
               </div>
-              <ShowMoreText
-                /* Default options */
-                lines={2}
-                more="Show more"
-                less="Show less"
-                className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight min-h-8"
-                anchorClass="text-autofun-text-primary hover:text-autofun-text-highlight transition-all duration-200"
-                truncatedEndingComponent={" ... "}
-              >
-                <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
-                  {token?.description}
-                </span>
-              </ShowMoreText>
             </div>
+            <div className="text-autofun-text-highlight text-base font-normal font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0">
+              ${token?.ticker}
+            </div>
+            <ShowMoreText
+              /* Default options */
+              lines={2}
+              more="Show more"
+              less="Show less"
+              className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight min-h-8"
+              anchorClass="text-autofun-text-primary hover:text-autofun-text-highlight transition-all duration-200"
+              truncatedEndingComponent={" ... "}
+            >
+              <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
+                {token?.description}
+              </span>
+            </ShowMoreText>
           </div>
           {/* Contractaddress */}
-          <div className="flex border rounded-md">
-            <div className="size-10 rounded-l-md inline-flex border-r shrink-0 bg-autofun-background-action-primary">
+          <div className="flex border">
+            <div className="size-10  inline-flex border-r shrink-0 bg-autofun-background-action-primary">
               <span className="text-base font-dm-mono m-auto text-autofun-text-secondary">
                 CA
               </span>
@@ -161,7 +116,7 @@ export default function Page() {
           <div className="flex items-center justify-between gap-0.5">
             <Link to={token?.website} className="w-full" target="_blank">
               <Button
-                className="w-full rounded-none rounded-l-md"
+                className="w-full rounded-none "
                 disabled={!token?.website}
               >
                 <Globe />
@@ -197,7 +152,7 @@ export default function Page() {
             </Link>
             <Link to={token?.website} className="w-full" target="_blank">
               <Button
-                className="w-full rounded-none rounded-r-md px-0"
+                className="w-full rounded-none  px-0"
                 disabled={!token?.website}
               >
                 <SkeletonImage
@@ -211,7 +166,7 @@ export default function Page() {
             </Link>
           </div>
           {/* USD Price & Solana Price */}
-          <div className="flex border rounded-md bg-autofun-background-card py-2 px-3 items-center justify-between gap-3 divide-x divide-autofun-stroke-primary">
+          <div className="flex border bg-autofun-background-card py-2 px-3 items-center justify-between gap-3 divide-x divide-autofun-stroke-primary">
             <div className="flex flex-col gap-1 items-center w-full">
               <span className="text-base font-dm-mono text-autofun-text-secondary">
                 Price USD
@@ -235,7 +190,7 @@ export default function Page() {
           </div>
           {/* Bonding Curve */}
           <div className="flex flex-col gap-3.5">
-            <div className="flex justify-between gap-3.5">
+            <div className="flex justify-between gap-3.5 items-center">
               <p className="font-medium font-satoshi">
                 Bonding Curve Progress:{" "}
                 <span className="text-autofun-text-highlight">
@@ -248,7 +203,7 @@ export default function Page() {
             </div>
             <BondingCurveBar progress={token?.curveProgress} />
             {token?.status !== "migrated" ? (
-              <p className="font-satoshi text-base text-autofun-text-secondary whitespace-pre-line break-words">
+              <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words">
                 Graduate this coin to Raydium at{" "}
                 {formatNumber(graduationMarketCap, true)} market cap.{"\n"}
                 There is{" "}
@@ -256,16 +211,61 @@ export default function Page() {
                   (token?.reserveLamport - token?.virtualReserves) /
                     LAMPORTS_PER_SOL,
                   true,
-                  true
+                  true,
                 )}{" "}
                 SOL in the bonding curve.
               </p>
             ) : null}
-
-            <TokenStatus token={token} />
           </div>
         </div>
         <Trade token={token} />
+      </div>
+      {/* Left Section */}
+      <div className="w-full lg:w-fit grow flex flex-col gap-3">
+        {/* Info */}
+        <div className="flex flex-wrap xl:flex-nowrap border bg-autofun-background-card p-3 items-center justify-between gap-3 xl:divide-x divide-autofun-stroke-primary">
+          <div className="flex flex-col gap-2 items-center w-full">
+            <span className="text-base font-dm-mono text-autofun-text-secondary">
+              Market Cap
+            </span>
+            <span className="text-xl font-dm-mono text-autofun-text-highlight">
+              {token?.marketCapUSD != null
+                ? abbreviateNumber(token?.marketCapUSD)
+                : "-"}
+            </span>
+          </div>
+          <div className="flex flex-col gap-2 items-center w-full">
+            <span className="text-base font-dm-mono text-autofun-text-secondary">
+              24hr Volume
+            </span>
+            <span className="text-xl font-dm-mono text-autofun-text-primary">
+              {token?.volume24h != null
+                ? abbreviateNumber(token?.volume24h)
+                : "-"}
+            </span>
+          </div>
+          <div className="flex flex-col gap-2 items-center w-full">
+            <span className="text-base font-dm-mono text-autofun-text-secondary">
+              Creator
+            </span>
+            <span className="text-xl font-dm-mono text-autofun-text-primary">
+              {token?.creator ? shortenAddress(token?.creator) : "-"}
+            </span>
+          </div>
+          <div className="flex flex-col gap-2 items-center w-full">
+            <span className="text-base font-dm-mono text-autofun-text-secondary">
+              Creation Time
+            </span>
+            <span className="text-xl font-dm-mono text-autofun-text-primary">
+              {token?.createdAt ? fromNow(token?.createdAt) : "-"}
+            </span>
+          </div>
+        </div>
+        {/* Chart */}
+        <div className="border bg-autofun-background-card h-[50vh]">
+          <TradingViewChart name={token.name} token={token.mint} />
+        </div>
+        <TransactionsAndHolders token={token} />
       </div>
     </div>
   );

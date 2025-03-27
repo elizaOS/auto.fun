@@ -1,5 +1,17 @@
 -- Migration file for D1 database
 
+-- Add pre_generated_tokens table
+CREATE TABLE IF NOT EXISTS pre_generated_tokens (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  ticker TEXT NOT NULL,
+  description TEXT NOT NULL,
+  prompt TEXT NOT NULL,
+  image TEXT,
+  created_at TEXT NOT NULL,
+  used INTEGER NOT NULL DEFAULT 0
+);
+
 -- Create users table
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
@@ -143,40 +155,6 @@ CREATE TABLE IF NOT EXISTS personalities (
   deleted_at INTEGER
 );
 
--- Create agents table
-CREATE TABLE IF NOT EXISTS agents (
-  id TEXT PRIMARY KEY,
-  owner_address TEXT NOT NULL,
-  contract_address TEXT NOT NULL,
-  tx_id TEXT NOT NULL UNIQUE,
-  symbol TEXT NOT NULL,
-  name TEXT NOT NULL,
-  description TEXT,
-  system_prompt TEXT NOT NULL,
-  model_provider TEXT DEFAULT 'llama_cloud',
-  bio TEXT,
-  lore TEXT,
-  post_examples TEXT,
-  adjectives TEXT,
-  people TEXT,
-  topics TEXT,
-  style_all TEXT,
-  style_chat TEXT,
-  style_post TEXT,
-  message_examples TEXT,
-  twitter_cookie TEXT,
-  twitter_username TEXT NOT NULL,
-  twitter_password TEXT NOT NULL,
-  twitter_email TEXT NOT NULL,
-  post_freq_min INTEGER DEFAULT 90,
-  post_freq_max INTEGER DEFAULT 180,
-  poll_interval_sec INTEGER DEFAULT 120,
-  ecs_task_id TEXT,
-  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-  updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
-  deleted_at INTEGER
-);
-
 -- Create media generations table
 CREATE TABLE IF NOT EXISTS media_generations (
   id TEXT PRIMARY KEY,
@@ -200,6 +178,16 @@ CREATE TABLE IF NOT EXISTS media_generations (
   FOREIGN KEY (mint) REFERENCES tokens(mint)
 );
 
+-- Create cache prices table
+CREATE TABLE IF NOT EXISTS cache_prices (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  price TEXT NOT NULL,
+  timestamp INTEGER NOT NULL DEFAULT (unixepoch()),
+  expires_at INTEGER NOT NULL
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_tokens_creator ON tokens(creator);
 CREATE INDEX IF NOT EXISTS idx_tokens_status ON tokens(status);
@@ -218,6 +206,6 @@ CREATE INDEX IF NOT EXISTS idx_message_likes_user ON message_likes(user_address)
 CREATE INDEX IF NOT EXISTS idx_token_holders_mint ON token_holders(mint);
 CREATE INDEX IF NOT EXISTS idx_token_holders_amount ON token_holders(amount);
 
-CREATE INDEX IF NOT EXISTS idx_agents_owner ON agents(owner_address);
-CREATE INDEX IF NOT EXISTS idx_agents_contract ON agents(contract_address);
-CREATE INDEX IF NOT EXISTS idx_agents_task ON agents(ecs_task_id); 
+CREATE INDEX IF NOT EXISTS idx_cache_prices_type ON cache_prices(type);
+CREATE INDEX IF NOT EXISTS idx_cache_prices_symbol ON cache_prices(symbol);
+CREATE INDEX IF NOT EXISTS idx_cache_prices_expires ON cache_prices(expires_at); 

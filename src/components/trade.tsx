@@ -11,26 +11,26 @@ export default function Trade({ token }: { token: IToken }) {
   const solanaPrice = token?.solPriceUSD || 0;
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
-    undefined
+    undefined,
   );
   const [error] = useState<string | undefined>("");
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status
+    token?.status,
   );
 
   return (
-    <div className="relative border rounded-md p-4 bg-autofun-background-card">
+    <div className="relative border p-4 bg-autofun-background-card">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col">
           {/* Selling */}
           <div
             className={twMerge([
-              "flex flex-col py-3 px-4 bg-autofun-background-input border rounded-md gap-[18px] transition-colors duration-200",
+              "flex flex-col py-3 px-4 bg-autofun-background-input border gap-[18px] transition-colors duration-200",
               error ? "border-autofun-text-error" : "",
             ])}
           >
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-base font-dm-mono text-autofun-text-primary select-none">
                 Selling
               </span>
@@ -40,7 +40,8 @@ export default function Trade({ token }: { token: IToken }) {
                   variant="trade"
                   onClick={() => setSellingAmount(0)}
                 >
-                  Reset
+                  <span className="hidden sm:inline">Reset</span>
+                  <span className="sm:hidden">0</span>
                 </Button>
                 {isTokenSelling ? (
                   <Fragment>
@@ -108,7 +109,7 @@ export default function Trade({ token }: { token: IToken }) {
                   : token?.tokenPriceUSD
                     ? formatNumber(
                         Number(sellingAmount || 0) * token?.tokenPriceUSD,
-                        true
+                        true,
                       )
                     : formatNumber(0)}
               </span>
@@ -124,7 +125,7 @@ export default function Trade({ token }: { token: IToken }) {
             </div>
           </div>
           {/* Buying */}
-          <div className="flex flex-col py-3 px-4 bg-autofun-background-input border rounded-md gap-[18px]">
+          <div className="flex flex-col py-3 px-4 bg-autofun-background-input border gap-[18px]">
             <span className="text-base font-dm-mono text-autofun-text-primary select-none">
               Buying
             </span>
@@ -145,14 +146,16 @@ export default function Trade({ token }: { token: IToken }) {
 
         <div
           className={twMerge([
-            "flex items-center gap-2 h-4 transition-opacity duration-200",
-            error ? "opacity-100" : "opacity-0",
+            "flex items-center gap-2 h-4 m-2",
+            error ? "block" : "hidden",
           ])}
         >
-          <Info className="text-autofun-text-error size-4" />
-          <p className="text-autofun-text-error text-xs font-dm-mono">
-            Insufficient Funds: You have 0.0043 SOL
-          </p>
+          <div className="flex items-center gap-2">
+            <Info className="text-autofun-text-error size-4" />
+            <p className="text-autofun-text-error text-xs font-dm-mono">
+              Insufficient Funds: You have 0.0043 SOL
+            </p>
+          </div>
         </div>
         <Button
           variant="secondary"
@@ -161,9 +164,6 @@ export default function Trade({ token }: { token: IToken }) {
           disabled={isDisabled}
         >
           Swap
-        </Button>
-        <Button variant="secondary" className="font-dm-mono" size="large">
-          Connect
         </Button>
       </div>
     </div>
@@ -178,7 +178,7 @@ const TokenDisplay = ({
   isSolana?: boolean;
 }) => {
   return (
-    <div className="flex items-center gap-2 rounded-lg border bg-autofun-background-card p-2 select-none">
+    <div className="flex items-center gap-2 border bg-autofun-background-card p-2 select-none">
       <SkeletonImage
         src={isSolana ? "/solana.png" : token?.image || ""}
         alt={token?.name || "token"}

@@ -43,7 +43,7 @@ export function TableView({ data }: { data: IToken[] }) {
             >
               <TableCell>
                 <div className="flex items-center gap-4">
-                  <div className="relative size-[50px] rounded-lg bg-[#262626] overflow-hidden">
+                  <div className="relative size-[50px] bg-[#262626] overflow-hidden">
                     {token.image ? (
                       <SkeletonImage
                         src={token.image}
@@ -70,7 +70,7 @@ export function TableView({ data }: { data: IToken[] }) {
                         {shortenAddress(token.mint)}
                       </div>
                       <div onClick={(e) => e.stopPropagation()}>
-                        <CopyButton text={token.mint} className="size-4" />
+                        <CopyButton text={token.mint} />
                       </div>
                     </div>
                   </div>

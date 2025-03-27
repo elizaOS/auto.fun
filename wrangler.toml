@@ -1,7 +1,11 @@
 name = "api"
 main = "worker/index.ts"
-compatibility_date = "2024-09-23"
-compatibility_flags = ["nodejs_compat"]
+compatibility_date = "2024-08-21"
+compatibility_flags = [ "nodejs_compat_v2" ]
+
+# Add AI Binding - fix to object format
+[ai]
+binding = "AI"
 
 # Cloudflare Pages configuration
 [site]
@@ -26,17 +30,21 @@ preview_bucket_name = "autofun-storage-dev"
 [vars]
 NETWORK = "mainnet"
 DECIMALS = "9"
-TOKEN_SUPPLY = "1000000000000000000"
-VIRTUAL_RESERVES = "1000000000"
-CURVE_LIMIT = "1000000000000"
+TOKEN_SUPPLY = "1000000000000000"
+VIRTUAL_RESERVES = "28000000000"
+CURVE_LIMIT = "11300000000"
+R2_PUBLIC_URL = "https://pub-30f52db29266428495af0c1aea206af1.r2.dev"
+NODE_ENV = "development"
 
-[[durable_objects.bindings]]
-name = "WEBSOCKET_DO"
-class_name = "WebSocketDO"
+# Socket.io Durable Objects
+[durable_objects]
+bindings = [
+  { name = "WebSocketDO", class_name = "WebSocketDO" }
+]
 
+# Migration tags
 [[migrations]]
 tag = "v1"
-new_classes = ["WebSocketDO"]
 
 # Development environment configuration
 [env.development]
@@ -45,13 +53,24 @@ name = "api-dev"
 [env.development.site]
 bucket = "./dist"
 
+# Add AI binding for development - fix to object format
+[env.development.ai]
+binding = "AI"
+
+# Development environment doesn't use cron triggers
+# to avoid the ENOENT utime error with registry/api
+[env.development.triggers]
+crons = ["*/1 * * * *"] # Run every 1 minute
+
 # Copy vars to development environment
 [env.development.vars]
 NETWORK = "mainnet"
 DECIMALS = "9"
-TOKEN_SUPPLY = "1000000000000000000"
-VIRTUAL_RESERVES = "1000000000"
+TOKEN_SUPPLY = "1000000000000000"
+VIRTUAL_RESERVES = "28000000000"
 CURVE_LIMIT = "1000000000000"
+R2_PUBLIC_URL = "https://pub-30f52db29266428495af0c1aea206af1.r2.dev"
+NODE_ENV = "development"
 
 # D1 Database for development
 [[env.development.d1_databases]]
@@ -64,12 +83,22 @@ database_id = "00ade209-86ac-46a9-bed5-b74aaaac4ad4"
 binding = "R2"
 bucket_name = "autofun-storage-dev"
 
-# Add Durable Objects configuration for development
-[[env.development.durable_objects.bindings]]
-name = "WEBSOCKET_DO"
-class_name = "WebSocketDO"
+# Add Socket.io Durable Objects for development
+[env.development.durable_objects]
+bindings = [
+  { name = "WebSocketDO", class_name = "WebSocketDO" }
+]
+
+# Add migrations for development environment
+[[env.development.migrations]]
+tag = "v1"
 
 # Production environment configuration
 [env.production]
 name = "api"
+
+# Add AI binding for production - fix to object format
+[env.production.ai]
+binding = "AI"
+
 # The production database is already defined in the default configuration

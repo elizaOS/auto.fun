@@ -17,7 +17,7 @@ import {
   TransactionInstruction,
 } from "@solana/web3.js";
 import { eq } from "drizzle-orm";
-import { Autodotfun } from "./target/types/autodotfun";
+import { Autofun } from "./target/types/autofun";
 import { calculateAmountOutBuy, calculateAmountOutSell } from "./tests/utils";
 import { CacheService } from "./cache";
 import { SEED_BONDING_CURVE, SEED_CONFIG } from "./constant";
@@ -304,7 +304,7 @@ export const createConfigTx = async (
   newConfig: any,
 
   connection: Connection,
-  program: Program<Autodotfun>,
+  program: Program<Autofun>,
 ) => {
   const [configPda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_CONFIG)],
@@ -354,7 +354,7 @@ export const launchTokenTx = async (
   user: PublicKey,
 
   connection: Connection,
-  program: Program<Autodotfun>,
+  program: Program<Autofun>,
   env?: any,
 ) => {
   // Auth our user (register/login)
@@ -449,7 +449,7 @@ export const swapTx = async (
   style: number,
   slippageBps: number = 100,
   connection: Connection,
-  program: Program<Autodotfun>,
+  program: Program<Autofun>,
 ) => {
   const [configPda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_CONFIG)],
@@ -518,7 +518,7 @@ export const withdrawTx = async (
   token: PublicKey,
 
   connection: Connection,
-  program: Program<Autodotfun>,
+  program: Program<Autofun>,
 ) => {
   const tx = await program.methods
     .withdraw()
@@ -547,7 +547,7 @@ export const getLegacyRpcUrl = (env?: any) => {
     // If no env is provided, use safe defaults
     return "https://api.mainnet-beta.solana.com";
   }
-  
+
   return getRpcUrl(env);
 };
 

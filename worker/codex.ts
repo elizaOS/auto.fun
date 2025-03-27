@@ -32,7 +32,7 @@ export async function fetchCodexTokenEvents(
   startTimestamp: number,
   endTimestamp: number,
   networkId: number = 1399811149,
-  env?: any
+  env?: any,
 ): Promise<CodexTokenEvent[]> {
   const apiUrl = "https://graph.codex.io/graphql";
   let allItems: CodexTokenEvent[] = [];
@@ -80,11 +80,32 @@ export async function fetchCodexTokenEvents(
         },
       );
 
+      // Add error handling for missing data
+      if (
+        !response.data ||
+        !response.data.data ||
+        !response.data.data.getTokenEvents
+      ) {
+        logger.error("Invalid response from Codex API:", response.data);
+
+        // If we have error information in the response, log it
+        if (response.data && response.data.errors) {
+          logger.error("Codex API errors:", response.data.errors);
+        }
+
+        // Return what we have so far or empty array
+        return allItems.length ? allItems : [];
+      }
+
       const { items, cursor: newCursor } = response.data.data.getTokenEvents;
       allItems = allItems.concat(items);
       cursor = newCursor;
     } catch (error) {
       logger.error("Error fetching data from Codex API:", error);
+      // Return partial results if we have any, otherwise rethrow
+      if (allItems.length > 0) {
+        return allItems;
+      }
       throw error;
     }
   } while (cursor);
@@ -102,7 +123,7 @@ export async function fetchCodexTokenEvents(
 export async function fetchCodexTokenPrice(
   tokenAddress: string,
   networkId: number = 1399811149,
-  env?: any
+  env?: any,
 ): Promise<{
   currentPrice: number;
   priceUsd: number;
@@ -141,11 +162,35 @@ export async function fetchCodexTokenPrice(
       },
     );
 
-    const token = response.data.data.getTokens.items[0];
+    // Add error handling for missing data
+    if (
+      !response.data ||
+      !response.data.data ||
+      !response.data.data.getTokens ||
+      !response.data.data.getTokens.items ||
+      response.data.data.getTokens.items.length === 0
+    ) {
+      logger.error(
+        `Token ${tokenAddress} not found or invalid response from Codex API:`,
+        response.data,
+      );
 
-    if (!token) {
-      throw new Error(`Token ${tokenAddress} not found in Codex API`);
+      // If we have error information in the response, log it
+      if (response.data && response.data.errors) {
+        logger.error("Codex API errors:", response.data.errors);
+      }
+
+      // Return default values
+      return {
+        currentPrice: 0,
+        priceUsd: 0,
+        volume24h: 0,
+        liquidity: 0,
+        marketCap: 0,
+      };
     }
+
+    const token = response.data.data.getTokens.items[0];
 
     return {
       currentPrice: parseFloat(token.price || "0"),
@@ -240,7 +285,7 @@ export async function fetchCodexBars(
   resolution: CodexBarResolution = "1",
   networkId: number = 1399811149,
   quoteToken: string = "token1",
-  env?: any
+  env?: any,
 ): Promise<CandleData[]> {
   const apiUrl = "https://graph.codex.io/graphql";
 
@@ -265,9 +310,7 @@ export async function fetchCodexBars(
   }
 
   // If the time range is less than 1000 intervals, fetch all in one request
-  if (
-    Math.floor((endTimestamp - startTimestamp) / timeInterval) <= 1000
-  ) {
+  if (Math.floor((endTimestamp - startTimestamp) / timeInterval) <= 1000) {
     return fetchCodexBarsChunk(
       apiUrl,
       symbol,
@@ -276,7 +319,7 @@ export async function fetchCodexBars(
       resolution,
       quoteToken,
       timeInterval,
-      env
+      env,
     );
   } else {
     // Otherwise, fetch in chunks of 1000 intervals each
@@ -286,10 +329,7 @@ export async function fetchCodexBars(
 
     // Process each time chunk sequentially
     while (currentStart < endTimestamp) {
-      const chunkEnd = Math.min(
-        currentStart + maxChunkSize,
-        endTimestamp
-      );
+      const chunkEnd = Math.min(currentStart + maxChunkSize, endTimestamp);
       const barsChunk = await fetchCodexBarsChunk(
         apiUrl,
         symbol,
@@ -298,7 +338,7 @@ export async function fetchCodexBars(
         resolution,
         quoteToken,
         timeInterval,
-        env
+        env,
       ).catch((error) => {
         logger.error(
           `Error fetching chunk from ${new Date(currentStart * 1000).toISOString()} to ${new Date(chunkEnd * 1000).toISOString()}:`,
@@ -330,7 +370,7 @@ async function fetchCodexBarsChunk(
   resolution: CodexBarResolution,
   quoteToken: string,
   timeInterval: number,
-  env?: any
+  env?: any,
 ): Promise<CandleData[]> {
   try {
     const query = `query {
@@ -362,6 +402,18 @@ async function fetchCodexBarsChunk(
         },
       },
     );
+
+    // Add error handling for missing data
+    if (!response.data || !response.data.data || !response.data.data.getBars) {
+      logger.error("Invalid response from Codex API:", response.data);
+
+      // If we have error information in the response, log it
+      if (response.data && response.data.errors) {
+        logger.error("Codex API errors:", response.data.errors);
+      }
+
+      return [];
+    }
 
     const barsData = response.data.data.getBars as CodexBarsResponse;
 

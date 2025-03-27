@@ -3,45 +3,12 @@ import { QueryClient } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient();
 
-// Determine the API URL with proper fallbacks
-const hostname = window.location.hostname;
-
-// Set API URL based on the current hostname
-let apiUrl = import.meta.env.VITE_API_URL;
-
-export const getApiUrl = () => {
-  // If no environment variable is set, infer from the current hostname
-  if (!apiUrl) {
-    if (hostname === "localhost" || hostname === "127.0.0.1") {
-      // Local development
-      apiUrl = "http://localhost:8787";
-    } else if (
-      hostname === "autofun.pages.dev" ||
-      hostname.includes("autofun")
-    ) {
-      // Production
-      apiUrl = "https://api.autofun.pages.dev";
-    } else if (
-      hostname === "autofun-dev.pages.dev" ||
-      hostname.includes("autofun-dev")
-    ) {
-      // Development/staging
-      apiUrl = "https://api-dev.autofun.pages.dev";
-    } else {
-      // Default fallback - production
-      apiUrl = "https://api.autofun.pages.dev";
-    }
-  }
-
-  return apiUrl;
-};
-
-const BASE_URL = getApiUrl();
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 const fetcher = async (
   endpoint: string,
   method: "GET" | "POST",
-  body?: object
+  body?: object,
 ) => {
   const query: { method: string; body?: string; headers: object } = {
     method,
@@ -78,7 +45,7 @@ export const getTokens = async ({
     `/api/tokens?limit=${limit || 12}&page=${
       page || 1
     }&sortBy=${sortBy}&sortOrder=${sortOrder}`,
-    "GET"
+    "GET",
   )) as { tokens: IToken[] };
 
   if (data?.tokens?.length > 0) {
@@ -91,8 +58,50 @@ export const getTokens = async ({
 };
 
 export const getToken = async ({ address }: { address: string }) => {
-  const data = await fetcher(`/api/tokens/${address}`, "GET");
-  return data as IToken;
+  const rawData = await fetcher(`/api/tokens/${address}`, "GET");
+  const data = rawData as Record<string, any>;
+
+  // Transform empty strings to null for optional fields
+  const transformedData: IToken = {
+    mint: data.mint,
+    createdAt: data.createdAt,
+    creator: data.creator,
+    currentPrice: data.currentPrice != null ? Number(data.currentPrice) : 0,
+    curveLimit: data.curveLimit != null ? Number(data.curveLimit) : 0,
+    curveProgress: data.curveProgress != null ? Number(data.curveProgress) : 0,
+    description: data.description || "",
+    image: data.image || "",
+    inferenceCount:
+      data.inferenceCount != null ? Number(data.inferenceCount) : 0,
+    lastUpdated: data.lastUpdated,
+    liquidity: data.liquidity != null ? Number(data.liquidity) : 0,
+    marketCapUSD: data.marketCapUSD != null ? Number(data.marketCapUSD) : 0,
+    name: data.name,
+    price24hAgo: data.price24hAgo != null ? Number(data.price24hAgo) : 0,
+    priceChange24h:
+      data.priceChange24h != null ? Number(data.priceChange24h) : 0,
+    reserveAmount: data.reserveAmount != null ? Number(data.reserveAmount) : 0,
+    reserveLamport:
+      data.reserveLamport != null ? Number(data.reserveLamport) : 0,
+    solPriceUSD: data.solPriceUSD != null ? Number(data.solPriceUSD) : 0,
+    status: data.status || "active",
+    telegram: data.telegram || "",
+    ticker: data.ticker,
+    tokenPriceUSD: data.tokenPriceUSD != null ? Number(data.tokenPriceUSD) : 0,
+    twitter: data.twitter || "",
+    txId: data.txId || "",
+    url: data.url || "",
+    virtualReserves:
+      data.virtualReserves != null ? Number(data.virtualReserves) : 0,
+    volume24h: data.volume24h != null ? Number(data.volume24h) : 0,
+    website: data.website || "",
+    holderCount: data.holderCount != null ? Number(data.holderCount) : 0,
+    lastPriceUpdate: data.lastPriceUpdate || data.lastUpdated,
+    lastVolumeReset: data.lastVolumeReset || data.lastUpdated,
+    hasAgent: Boolean(data.agentLink),
+  };
+
+  return transformedData;
 };
 
 export const getTokenHolders = async ({ address }: { address: string }) => {
@@ -104,7 +113,12 @@ export const getTokenSwapHistory = async ({ address }: { address: string }) => {
   return data;
 };
 
-export async function getChartTable({
+export const getSearchTokens = async ({ search }: { search: string }) => {
+  const data = await fetcher(`/api/tokens?search=${search}`, "GET");
+  return data;
+};
+
+export const getChartTable = async ({
   pairIndex,
   from,
   to,
@@ -116,7 +130,7 @@ export async function getChartTable({
   to: number;
   range: number;
   token: string;
-}): Promise<ChartTable | undefined> {
+}): Promise<ChartTable | undefined> => {
   try {
     // console.log("GET bars", token, from, to, range, pairIndex)
     const res = await fetcher(
