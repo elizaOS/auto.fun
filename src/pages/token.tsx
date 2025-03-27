@@ -21,6 +21,11 @@ import { useQuery } from "@tanstack/react-query";
 import { InfoCircle } from "iconsax-react";
 import { Globe } from "lucide-react";
 import { Link, useParams } from "react-router";
+import { TradingViewChart } from "@/components/trading-view-chart";
+import { useEffect } from "react";
+import { getSocket } from "@/utils/socket";
+
+const socket = getSocket()
 
 export default function Page() {
   const params = useParams();
@@ -35,6 +40,14 @@ export default function Page() {
     },
     refetchInterval: 20_000,
   });
+
+  useEffect(() => {
+    socket.emit("subscribe", address);
+
+    return () => {
+      socket.emit("unsubscribe", address);
+    };
+  }, [address]);
 
   const token = query?.data as IToken;
 
@@ -238,7 +251,9 @@ export default function Page() {
           </div>
         </div>
         {/* Chart */}
-        <div className="border p-3 bg-autofun-background-card">Chart</div>
+        <div className="border bg-autofun-background-card h-[50vh]">
+          <TradingViewChart name={token.name} token={token.mint} />
+        </div>
         <TransactionsAndHolders token={token} />
       </div>
     </div>

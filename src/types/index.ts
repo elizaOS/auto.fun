@@ -82,6 +82,15 @@ export interface ITokenHolder {
   lastUpdated: string | Date;
 }
 
+export type ChartTable = {
+  table: {
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    time: number;
+  }[];
+};
 export const TokenSchema = z.object({
   name: z.string(),
   url: z.string().optional(),
