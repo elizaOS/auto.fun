@@ -24,15 +24,16 @@ import { Link, useParams } from "react-router";
 import { TradingViewChart } from "@/components/trading-view-chart";
 import { useEffect, useState } from "react";
 import { getSocket } from "@/utils/socket";
+import { twMerge } from "tailwind-merge";
 
-const socket = getSocket()
+const socket = getSocket();
 
 export default function Page() {
   const params = useParams();
   const address = params?.address;
 
-  type ISection = "Trading" | "Community" | "Admin";
-  const [setSection, section] = useState<ISection>("Trading")
+  type ITabs = "Trading" | "Community" | "Admin";
+  const [tab, setTab] = useState<ITabs>("Trading");
 
   const query = useQuery({
     queryKey: ["token", address],
@@ -63,7 +64,7 @@ export default function Page() {
     return <Loader />;
   }
 
-  const admin = true
+  const admin = true;
 
   return (
     <div className="flex flex-wrap gap-3">
@@ -88,9 +89,9 @@ export default function Page() {
             <div className="text-autofun-text-highlight text-base font-normal font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0">
               ${token?.ticker}
             </div>
-              <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
-                {token?.description}
-              </span>
+            <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
+              {token?.description}
+            </span>
           </div>
           {/* Contractaddress */}
           <div className="flex border">
@@ -205,7 +206,7 @@ export default function Page() {
                   (token?.reserveLamport - token?.virtualReserves) /
                     LAMPORTS_PER_SOL,
                   true,
-                  true,
+                  true
                 )}{" "}
                 SOL in the bonding curve.
               </p>
@@ -257,13 +258,20 @@ export default function Page() {
         </div>
         {/* Chart */}
         <div className="flex flex-row ">
-            <Button className="bg-white/15">Trading</Button>
-            <Button>Community</Button>
-            {admin && <Button>Admin</Button> }
-
-          </div>
+          <Button onClick={() => setTab("Trading")} className={twMerge(tab === "Trading" ? "bg-autofun-stroke-highlight/80" : "bg-white/15")}>
+            Trading
+          </Button>
+          <Button onClick={() => setTab("Community")}>Community</Button>
+          {admin && <Button onClick={() => setTab("Admin")}>Admin</Button>}
+        </div>
         <div className="border bg-autofun-background-card h-[50vh]">
-          <TradingViewChart name={token.name} token={token.mint} />
+          {tab === "Trading" ? (
+            <TradingViewChart name={token.name} token={token.mint} />
+          ) : tab === "Community" ? (
+            <div>community</div>
+          ) : tab === "Admin" ? (
+            <div>Admin</div>
+          ) : null}
         </div>
         <TransactionsAndHolders token={token} />
       </div>
