@@ -18,6 +18,7 @@ import { uploadToCloudflare } from "./uploader";
 import { WebSocketDO, allowedOrigins, createTestSwap } from "./websocket";
 import { getWebSocketClient } from "./websocket-client";
 import { initializePreGeneratedTokens } from "./init";
+import { processSwapEvent } from "./routes/token";
 
 // Define CloudflareWebSocket type for local development
 interface CloudflareWebSocket extends WebSocket {
@@ -509,14 +510,8 @@ api.get("/emit-test-swap/:tokenId", async (c) => {
     // Create test swap data
     const swap = createTestSwap(tokenId);
 
-    // Get WebSocket client
-    const wsClient = getWebSocketClient(c.env);
-
-    // Emit to token room
-    await wsClient.emit(`token-${tokenId}`, "newSwap", swap);
-
-    // Also emit globally
-    await wsClient.emit("global", "newSwap", swap);
+    // Process and emit the swap event
+    await processSwapEvent(c.env, swap);
 
     return c.json({
       success: true,

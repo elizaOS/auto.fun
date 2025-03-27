@@ -1,4 +1,3 @@
-import { QueryClientProvider } from "@tanstack/react-query";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router";
 import "./index.css";
@@ -11,26 +10,21 @@ import Profile from "./pages/profile";
 import Support from "./pages/support";
 import TermsOfService from "./pages/terms-of-service";
 import Token from "./pages/token";
-import { Providers } from "./providers";
-import { queryClient } from "./utils/api";
-
+import Loading from "./pages/loading";
 createRoot(document.getElementById("root")!).render(
-  <Providers>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route index element={<Homepage />} />
-            <Route path="/support" element={<Support />} />
-            <Route path="/terms-of-service" element={<TermsOfService />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-            <Route path="/fees" element={<Fees />} />
-            <Route path="/token/:address" element={<Token />} />
-            <Route path="/create" element={<Create />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </QueryClientProvider>
-  </Providers>,
+  <BrowserRouter>
+    <Routes>
+      <Route element={<Layout />}>
+        <Route index element={<Homepage />} />
+        <Route path="/support" element={<Support />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/fees" element={<Fees />} />
+        <Route path="/token/:address" element={<Token />} />
+        <Route path="/create" element={<Create />} />
+        <Route path="/loading" element={<Loading />} />
+      </Route>
+    </Routes>
+  </BrowserRouter>
 );

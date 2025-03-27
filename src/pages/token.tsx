@@ -21,7 +21,6 @@ import { useQuery } from "@tanstack/react-query";
 import { InfoCircle } from "iconsax-react";
 import { Globe } from "lucide-react";
 import { Link, useParams } from "react-router";
-import ShowMoreText from "@/components/show-more-text";
 import { TradingViewChart } from "@/components/trading-view-chart";
 import { useEffect } from "react";
 import { getSocket } from "@/utils/socket";
@@ -84,19 +83,9 @@ export default function Page() {
             <div className="text-autofun-text-highlight text-base font-normal font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0">
               ${token?.ticker}
             </div>
-            <ShowMoreText
-              /* Default options */
-              lines={2}
-              more="Show more"
-              less="Show less"
-              className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight min-h-8"
-              anchorClass="text-autofun-text-primary hover:text-autofun-text-highlight transition-all duration-200"
-              truncatedEndingComponent={" ... "}
-            >
               <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
                 {token?.description}
               </span>
-            </ShowMoreText>
           </div>
           {/* Contractaddress */}
           <div className="flex border">
