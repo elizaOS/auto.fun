@@ -5,7 +5,7 @@ export default function PageNotFound() {
   return (
     <div className="mt-44 flex justify-center items-center ml-auto">
       <div className="flex flex-col space-y-12 text-center text-autofun-background-action-highlight w-full font-dm-mono">
-        <div className="text-4xl md:text-7xl lg:text-8xl space-y-8">
+        <div className="text-4xl md:text-6xl lg:text-7xl space-y-8">
           <h1>page not found</h1>
           <p className="text-white text-base md:text-1xl lg:text-2xl font-semibold">
             Oops! The page you're looking for doesn't exist.
