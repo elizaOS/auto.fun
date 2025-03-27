@@ -2,6 +2,8 @@ import * as CANNON from "cannon-es";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { InstancedMesh } from "three";
+// @ts-ignore
+import confetti from 'canvas-confetti';
 
 // Add TypeScript declaration for CANNON to fix the errors
 declare module "cannon-es" {
@@ -88,15 +90,114 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
     coinRadiusRef.current = containerWidth * 0.04;
     coinThicknessRef.current = coinRadiusRef.current * 0.1;
 
+    // Create fireworks-like confetti effect
+    const createConfettiFireworks = () => {
+      const duration = 5 * 1000; // 5 seconds
+      const animationEnd = Date.now() + duration;
+      
+      // Helper function to create a specific firework burst
+      const fireConfettiBurst = (originX: number, originY: number, type: 'circle' | 'cannon' | 'burst') => {
+        // Define different types of confetti bursts
+        const burstTypes = {
+          'circle': {
+            particleCount: 100,
+            angle: 0,
+            spread: 360,
+            origin: { x: originX, y: originY },
+            colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'],
+            startVelocity: 30,
+            ticks: 60,
+            gravity: 1,
+            drift: 0,
+            scalar: 1.2,
+            zIndex: 1000,
+          },
+          'cannon': {
+            particleCount: 80,
+            angle: 60,
+            spread: 55,
+            origin: { x: originX, y: originY },
+            colors: ['#FFD700', '#FFA500', '#ff0000', '#00ff00'],
+            startVelocity: 45,
+            ticks: 50,
+            gravity: 1,
+            zIndex: 1000,
+          },
+          'burst': {
+            particleCount: 60,
+            angle: 90,
+            spread: 100,
+            origin: { x: originX, y: originY },
+            colors: ['#ffffff', '#f0f0f0', '#e0e0e0', '#d0d0d0', '#ffcc00'],
+            ticks: 100,
+            gravity: 0.8,
+            decay: 0.94,
+            startVelocity: 30,
+            zIndex: 1000,
+          }
+        };
+        
+        // Fire the specified burst type
+        confetti(burstTypes[type]);
+      };
+      
+      // Fire random bursts on an interval
+      const burstInterval = setInterval(() => {
+        const timeLeft = animationEnd - Date.now();
+        
+        // Stop launching confetti after 5 seconds
+        if (timeLeft <= 0) {
+          return clearInterval(burstInterval);
+        }
+        
+        // Launch multiple bursts per interval
+        const numberOfBursts = Math.floor(Math.random() * 3) + 1;
+        
+        for (let i = 0; i < numberOfBursts; i++) {
+          // Random position
+          const x = Math.random();
+          // Keep y position in upper half of screen for better effect
+          const y = Math.random() * 0.5; 
+          
+          // Randomly choose burst type
+          const burstTypes = ['circle', 'cannon', 'burst'] as const;
+          const randomType = burstTypes[Math.floor(Math.random() * burstTypes.length)];
+          
+          // Fire the burst
+          fireConfettiBurst(x, y, randomType);
+        }
+        
+      }, 200); // More frequent bursts for spectacular effect
+      
+      // Special "finale" effect at the end
+      setTimeout(() => {
+        // Create a grand finale with multiple bursts at once
+        for (let i = 0; i < 10; i++) {
+          setTimeout(() => {
+            const x = Math.random();
+            const y = Math.random() * 0.5;
+            const burstTypes = ['circle', 'cannon', 'burst'] as const;
+            const randomType = burstTypes[Math.floor(Math.random() * burstTypes.length)];
+            fireConfettiBurst(x, y, randomType);
+          }, i * 100); // Spread out finale over 1 second
+        }
+      }, 4000); // Start finale 1 second before the end
+      
+      // Return cleanup function
+      return () => {
+        clearInterval(burstInterval);
+      };
+    };
+
     // Scene setup
     const scene = new THREE.Scene();
     scene.background = null; // Make scene background transparent
 
-    // Physics world - EXACTLY like header but with optimizations
+    // Physics world - updated to be more similar to dice physics
     const world = new CANNON.World();
-    world.gravity.set(0, -9.8 * 100, 0); // strong gravity for faster falls
+    world.gravity.set(0, -9.8 * 40, 0); // Less extreme gravity for more natural bounces
     world.broadphase = new CANNON.NaiveBroadphase();
-    world.solver.iterations = 5; // Lower for better performance with many objects
+    world.solver.iterations = 10; // Increased like dice for better collision resolution
     world.allowSleep = true; // Very important for performance
 
     // Setup materials
@@ -104,11 +205,11 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
     const wallMaterial = new CANNON.Material(WALL_MATERIAL);
     const coinMaterial = new CANNON.Material(COIN_BODY_MATERIAL);
 
-    // Define contact behaviors - EXACTLY like header
+    // Define contact behaviors - make more bouncy like the dice in header
     world.addContactMaterial(
       new CANNON.ContactMaterial(floorMaterial, coinMaterial, {
         friction: 0.6,
-        restitution: 0.5,
+        restitution: 0.8, // Increased bounciness
       })
     );
 
@@ -122,7 +223,7 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
     world.addContactMaterial(
       new CANNON.ContactMaterial(coinMaterial, coinMaterial, {
         friction: 0.6,
-        restitution: 0.4, // Slightly less bouncy for better stacking
+        restitution: 0.7, // Increased for better bouncing between coins
       })
     );
 
@@ -277,6 +378,8 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
       console.log("Texture loaded, starting coin creation");
       // Start coin creation once texture is loaded
       startCoinCreation();
+      // Start the confetti fireworks effect
+      createConfettiFireworks();
     });
 
     // Create coin geometry using the radius from ref
@@ -284,7 +387,7 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
       coinRadiusRef.current,    // radiusTop
       coinRadiusRef.current,    // radiusBottom
       coinThicknessRef.current, // height
-      24,            // radiusSegments - reduced for performance
+      32,            // radiusSegments - reduced for performance
       1,             // heightSegments
       false          // openEnded
     );
@@ -582,10 +685,10 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
         shape: coinShape,
         material: coinMaterial,
         allowSleep: true, // Critical for performance
-        sleepSpeedLimit: 0.1, // Sleep more easily for performance
-        sleepTimeLimit: 0.1,  // Sleep more quickly for performance
-        linearDamping: 0.4,   // Help coins settle faster
-        angularDamping: 0.4   // Help coins settle faster
+        sleepSpeedLimit: 0.5, // Increased - only sleep when more settled
+        sleepTimeLimit: 0.2,  // Increased - stay awake a bit longer
+        linearDamping: 0.2,   // Reduced - less damping for more bouncy movement
+        angularDamping: 0.2   // Reduced - maintain spin longer
       });
 
       // Set position and rotation
@@ -594,16 +697,16 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
       
       // Add initial velocity for more natural falling
       coinBody.velocity.set(
-        (Math.random() - 0.5) * 5, // Some horizontal movement
-        -5 - Math.random() * 10,   // Downward velocity
-        (Math.random() - 0.5) * 5  // Some depth movement
+        (Math.random() - 0.5) * 8,  // More horizontal movement
+        -20 - Math.random() * 30,   // Much stronger downward velocity
+        (Math.random() - 0.5) * 8   // More depth movement
       );
       
-      // Add initial angular velocity for natural spinning
+      // Add initial angular velocity for more dramatic spinning
       coinBody.angularVelocity.set(
-        (Math.random() - 0.5) * 10,
-        (Math.random() - 0.5) * 10,
-        (Math.random() - 0.5) * 10
+        (Math.random() - 0.5) * 25, // Much stronger spin
+        (Math.random() - 0.5) * 25, // Much stronger spin
+        (Math.random() - 0.5) * 25  // Much stronger spin
       );
 
       // Store the instance index with the body for updates
@@ -621,7 +724,7 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
       return coinBody;
     }
 
-    // Collision handler for more realistic physics
+    // Collision handler for more realistic physics - similar to dice in frontpage-header
     function handleCollisions(event: CANNON.ContactEvent) {
       try {
         // In this event, we need to get the body that collided
@@ -633,14 +736,44 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
 
         if (!coinBody) return;
 
-        // Only add effects for significant collisions to reduce computation
+        // Get normal vector from contact
+        const normal = event.contact.ni;
+        
+        // Get impact velocity (how hard the collision was)
         const impactVelocity = event.contact.getImpactVelocityAlongNormal();
-        if (impactVelocity > 2) {
-          // Add minor random spin
-          const intensity = Math.min(impactVelocity / 10, 1); // Scale with impact, but limit
-          coinBody.angularVelocity.x += (Math.random() - 0.5) * 5 * intensity;
-          coinBody.angularVelocity.y += (Math.random() - 0.5) * 5 * intensity;
-          coinBody.angularVelocity.z += (Math.random() - 0.5) * 5 * intensity;
+        
+        // Add larger random spin on any collision, like in the dice code
+        const randomX = (Math.random() - 0.5) * 15; // Increased from 5*intensity
+        const randomY = (Math.random() - 0.5) * 15;
+        const randomZ = (Math.random() - 0.5) * 15;
+        
+        coinBody.angularVelocity.x += randomX;
+        coinBody.angularVelocity.y += randomY;
+        coinBody.angularVelocity.z += randomZ;
+        
+        // Add upward bounce if the coin is nearly settled
+        // This matches the dice behavior which adds upward velocity
+        if (coinBody.velocity.y < 0.5 && impactVelocity > 0.5) {
+          // Add a small upward bounce for better movement
+          coinBody.velocity.y += Math.random() * 3;
+          
+          // Also add a small random horizontal movement for more interesting collisions
+          coinBody.velocity.x += (Math.random() - 0.5) * 2;
+          coinBody.velocity.z += (Math.random() - 0.5) * 2;
+        }
+        
+        // For coin-to-coin collisions, make them more energetic
+        const otherBody = coinBody === bodyA ? bodyB : bodyA;
+        if (otherBody.mass > 0) {
+          // This is a coin-to-coin collision
+          // Get the direction of impact
+          const impulseDir = normal.scale(Math.min(impactVelocity * 0.2, 2));
+          
+          // Apply opposite impulses to make collision more dramatic
+          otherBody.velocity.x += impulseDir.x;
+          otherBody.velocity.z += impulseDir.z;
+          // Add a bit of upward velocity for coin-to-coin collisions
+          otherBody.velocity.y += Math.abs(impulseDir.y) + Math.random() * 1.5;
         }
       } catch (error) {
         console.error("Error in collision handler:", error);
