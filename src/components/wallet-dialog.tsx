@@ -5,8 +5,20 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { WalletReadyState } from "@solana/wallet-adapter-base";
 import type { Wallet } from "@solana/wallet-adapter-react";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useMutation } from "@tanstack/react-query";
 import type { FC, ReactNode } from "react";
 import { useMemo } from "react";
+import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
+import { Payload, SIWS } from "@web3auth/sign-in-with-solana";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  useRef,
+} from "react";
+import useAuthentication from "@/hooks/use-authentication";
 
 export interface WalletModalProviderProps {
   children: ReactNode;
@@ -20,9 +32,17 @@ export interface WalletModalProps {
 }
 
 export const WalletModal: FC<WalletModalProps> = () => {
-  const { wallets, connecting } = useWallet();
+  const {
+    wallets,
+    connecting,
+    select,
+    connect,
+    publicKey,
+    signMessage,
+    wallet: connectedWallet,
+  } = useWallet();
   const { visible, setVisible } = useWalletModal();
-  console.log({ visible });
+  const { setAuthToken } = useAuthentication();
 
   const [installedWallets] = useMemo(() => {
     const installed: Wallet[] = [];
@@ -38,6 +58,103 @@ export const WalletModal: FC<WalletModalProps> = () => {
 
     return installed.length ? [installed, notInstalled] : [notInstalled, []];
   }, [wallets]);
+
+  const mutation = useMutation({
+    mutationKey: ["connect-wallet"],
+    mutationFn: async ({ wallet }: { wallet: Wallet }) => {
+      console.log(wallet);
+      connectedWallet?.adapter.name === wallet.adapter.name
+        ? await connect()
+        : select(wallet.adapter.name);
+
+      await connect();
+
+      if (!publicKey) {
+        throw new Error("Wallet not connected");
+      }
+
+      /** Nonce generation */
+      let nonce = String(Math.floor(new Date().getTime() / 1000.0));
+
+      console.log(nonce);
+
+      if (!publicKey) {
+        throw new Error("Wallet disconnected during authentication");
+      }
+
+      if (!signMessage) throw new Error("signMessage method not available");
+
+      const payload = new Payload();
+      payload.domain = window.location.host;
+      payload.address = publicKey.toString();
+      payload.uri = window.location.origin;
+      payload.statement = `Sign this message for authenticating with nonce: ${nonce}`;
+      payload.version = "1";
+      payload.chainId = 1;
+      payload.nonce = nonce;
+
+      const siwsMessage = new SIWS({ payload });
+
+      const messageText = siwsMessage.prepareMessage();
+      const messageEncoded = new TextEncoder().encode(messageText);
+
+      const signatureBytes = await signMessage(messageEncoded);
+
+      const signatureHex = bs58.encode(signatureBytes);
+
+      const authResponse = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/authenticate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            publicKey: publicKey.toString(),
+            signature: { t: "sip99", s: signatureHex },
+            payload: siwsMessage.payload,
+            header: { t: "sip99" },
+            nonce,
+            message: messageText,
+          }),
+          credentials: "include", // Important for cookies
+        }
+      );
+
+      if (!authResponse.ok) {
+        throw new Error(`Authentication failed: ${authResponse.status}`);
+      }
+
+      const authData = (await authResponse.json()) as { token?: string };
+
+      if (authData.token) {
+        setAuthToken(authData.token);
+      } else {
+        console.warn("Authentication successful but no token received");
+
+        const authCheckResponse = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/auth-status`,
+          { credentials: "include" }
+        );
+
+        if (authCheckResponse.ok) {
+          const statusData = (await authCheckResponse.json()) as {
+            authenticated: boolean;
+          };
+          if (statusData.authenticated) {
+            const syntheticToken = `session_${publicKey.toString()}_${Date.now()}`;
+            setAuthToken(syntheticToken);
+          }
+        }
+      }
+
+      return true;
+    },
+    onSuccess: () => {
+      /** After everything has succeeded we close the modal */
+      setVisible(false);
+    },
+  });
 
   return (
     <Dialog onOpenChange={(op: boolean) => setVisible(op)} open={visible}>
@@ -87,10 +204,10 @@ export const WalletModal: FC<WalletModalProps> = () => {
               {installedWallets.map((wallet) => (
                 <WalletListItem
                   key={wallet.adapter.name}
-                  handleClick={() => {}}
-                  //   handleClick={(event) => {
-                  //     // handleWalletClick(event, wallet.adapter.name)
-                  //   }
+                  handleClick={() => {
+                    select(wallet.adapter.name);
+                    mutation.mutate({ wallet });
+                  }}
                   wallet={wallet}
                 />
               ))}

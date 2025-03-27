@@ -5,11 +5,13 @@ import { shortenAddress } from "@/utils";
 import { ChevronDown, Copy, LogOut, User } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useWalletModal } from "@/hooks/use-wallet-modal";
+import useAuthentication from "@/hooks/use-authentication";
 
 const WalletButton = () => {
   const navigate = useNavigate();
   const { publicKey, connecting, connected, wallet } = useWallet();
   const { setVisible } = useWalletModal();
+  const { isAuthenticated, signOut } = useAuthentication();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -55,10 +57,10 @@ const WalletButton = () => {
       ? "Disconnect Wallet"
       : "Connect Wallet";
 
-  if (connected && wallet) {
+  if (isAuthenticated) {
     return (
       <div className="relative" ref={dropdownRef}>
-        <Button size="large" className="px-2">
+        <Button size="large" className="px-2" onClick={() => setMenuOpen(true)}>
           <div className="flex items-center gap-2.5 justify-between m-auto">
             <span className="font-satoshi font-medium">
               {wallet?.adapter?.publicKey?.toString()
@@ -66,7 +68,7 @@ const WalletButton = () => {
                 : null}
             </span>
 
-            {wallet.adapter.icon ? (
+            {wallet?.adapter.icon ? (
               <img
                 src={wallet?.adapter?.icon}
                 height={18}
@@ -98,7 +100,7 @@ const WalletButton = () => {
 
               <li
                 className="px-4 py-2 text-sm text-white hover:bg-[#262626] cursor-pointer flex items-center gap-2"
-                // onClick={handleDisconnect}
+                onClick={signOut}
               >
                 <LogOut size={16} />
                 Disconnect
