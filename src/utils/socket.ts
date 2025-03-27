@@ -1,5 +1,3 @@
-import { getApiUrl } from "./api";
-
 // Custom WebSocket wrapper to maintain Socket.io-like API
 class SocketWrapper {
   private ws: WebSocket | null = null;
@@ -136,7 +134,7 @@ let socket: Socket | null = null;
 
 export const getSocket = (): Socket => {
   if (!socket) {
-    socket = new SocketWrapper(getApiUrl());
+    socket = new SocketWrapper(import.meta.env.VITE_API_URL);
   }
   return socket;
 };
