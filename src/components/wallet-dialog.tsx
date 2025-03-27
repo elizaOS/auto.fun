@@ -12,6 +12,7 @@ import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 import { Payload, SIWS } from "@web3auth/sign-in-with-solana";
 import useAuthentication from "@/hooks/use-authentication";
 import { useLocalStorage } from "@uidotdev/usehooks";
+import { sleep } from "@/utils";
 
 export interface WalletModalProviderProps {
   children: ReactNode;
@@ -34,8 +35,6 @@ export const WalletModal: FC<WalletModalProps> = () => {
     signMessage,
     wallet: connectedWallet,
   } = useWallet();
-  // @ts-ignore
-  const [walletName, setWalletName] = useLocalStorage<string>("walletName", "");
   const { visible, setVisible } = useWalletModal();
   const { setAuthToken } = useAuthentication();
 
@@ -57,7 +56,6 @@ export const WalletModal: FC<WalletModalProps> = () => {
   const mutation = useMutation({
     mutationKey: ["connect-wallet"],
     mutationFn: async ({ wallet }: { wallet: Wallet }) => {
-      console.log(wallet);
       connectedWallet?.adapter.name === wallet.adapter.name
         ? await connect()
         : select(wallet.adapter.name);
@@ -147,6 +145,11 @@ export const WalletModal: FC<WalletModalProps> = () => {
       /** After everything has succeeded we close the modal */
       setVisible(false);
     },
+    onError: (e) => {
+      // TODO - Replace for proper toaster again
+      //   alert(e.message);
+      console.error(e);
+    },
   });
 
   return (
@@ -197,8 +200,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
               {installedWallets.map((wallet) => (
                 <WalletListItem
                   key={wallet.adapter.name}
-                  handleClick={() => {
-                    setWalletName(wallet.adapter.name);
+                  handleClick={async () => {
                     select(wallet.adapter.name);
                     mutation.mutate({ wallet });
                   }}
