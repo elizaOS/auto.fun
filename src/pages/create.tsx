@@ -1,39 +1,15 @@
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Connection, Keypair } from "@solana/web3.js";
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import CopyButton from "../components/copy-button";
 import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
-import { EmptyState } from "@/components/empty-state";
-import { DiceButton } from "../components/dice-button";
-import { useWalletModal } from "../hooks/use-wallet-modal";
-import Button from "../components/button";
-import CoinDrop from "../components/coindrop";
+import CoinDrop from "@/components/coindrop";
 
 // Constants
 const MAX_FILE_SIZE_MB = 5;
 const MAX_INITIAL_SOL = 45;
-
-// Wallet Connection Banner
-const WalletConnectionBanner = () => {
-  const { setVisible } = useWalletModal();
-  
-  return (
-    <div className="bg-autofun-background-action-highlight text-autofun-background-primary w-full mb-6 py-4 px-6 flex justify-between items-center">
-      <div className="font-dm-mono font-medium">
-        Connect your wallet to create a token
-      </div>
-      <Button 
-        onClick={() => setVisible(true)} 
-        size="small"
-        className="bg-autofun-background-primary text-autofun-background-action-highlight hover:bg-autofun-background-action-primary hover:text-autofun-background-primary"
-      >
-        Connect Wallet
-      </Button>
-    </div>
-  );
-};
 
 interface UploadResponse {
   success: boolean;
@@ -41,21 +17,25 @@ interface UploadResponse {
   metadataUrl: string;
 }
 
-interface GenerateMetadataResponse {
-  success: boolean;
-  metadata: {
-    name?: string;
-    symbol?: string;
-    description?: string;
-    creative?: string;
-  };
-}
-
 interface GenerateImageResponse {
   success: boolean;
   mediaUrl: string;
   remainingGenerations: number;
   resetTime: string;
+}
+
+interface PreGeneratedTokenResponse {
+  success: boolean;
+  token: {
+    id: string;
+    name: string;
+    ticker: string;
+    description: string;
+    prompt: string;
+    image?: string;
+    createdAt: string;
+    used: number;
+  };
 }
 
 // Form Components
@@ -66,6 +46,8 @@ const FormInput = ({
   leftIndicator,
   rightIndicator,
   inputTag,
+  onClick,
+  isLoading,
   ...props
 }: {
   label?: string;
@@ -74,11 +56,25 @@ const FormInput = ({
   leftIndicator?: React.ReactNode;
   rightIndicator?: React.ReactNode;
   inputTag?: React.ReactNode;
+  onClick?: () => void;
+  isLoading?: boolean;
   [key: string]: any;
 }) => {
   return (
     <div className="flex flex-col gap-1 w-full">
-      {label && <FormLabel label={label} isOptional={isOptional} />}
+      <div className="flex items-center justify-between gap-2">
+        {label && (
+          <div className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
+            {label}
+          </div>
+        )}
+        {/* {onClick && (
+        <DiceButton
+          onClick={onClick}
+          isLoading={isLoading}
+        />
+      )} */}
+      </div>
       <div className="relative flex items-center">
         {inputTag && (
           <div className="bg-[#262626] flex items-center h-full px-3">
@@ -105,27 +101,6 @@ const FormInput = ({
   );
 };
 
-const FormLabel = ({
-  label,
-  isOptional,
-}: {
-  label: string;
-  isOptional?: boolean;
-}) => {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
-        {label}
-      </div>
-      {isOptional && (
-        <div className="text-[#8c8c8c] text-[16px]">(Optional)</div>
-      )}
-    </div>
-  );
-};
-
-FormInput.Label = FormLabel;
-
 const FormTextArea = ({
   label,
   rightIndicator,
@@ -141,7 +116,11 @@ const FormTextArea = ({
 }) => {
   return (
     <div className="flex flex-col gap-1 w-full">
-      {label && <FormLabel label={label} />}
+      <div className="flex items-center gap-2">
+        <div className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
+          {label}
+        </div>
+      </div>
       <div className="relative">
         <textarea
           className="w-full bg-[#0F0F0F] h-[250px] p-3 border border-neutral-800 text-white resize-none"
@@ -161,65 +140,269 @@ const FormTextArea = ({
 
 const FormImageInput = ({
   label,
+  // description,
   onChange,
+  onPromptChange,
+  onGenerate,
+  isGenerating,
+  setIsGenerating,
+  setGeneratingField,
+  onPromptFunctionsChange,
 }: {
   label: string;
+  // description: string;
   onChange: (file: File | null) => void;
+  onPromptChange: (prompt: string) => void;
+  onGenerate: (prompt: string) => void;
+  isGenerating: boolean;
+  setIsGenerating: (value: boolean) => void;
+  setGeneratingField: (value: string | null) => void;
+  onPromptFunctionsChange: (
+    setPrompt: (prompt: string) => void,
+    onPromptChange: (prompt: string) => void,
+  ) => void;
 }) => {
   const [preview, setPreview] = useState<string | null>(null);
+  const [prompt, setPrompt] = useState("");
+  const [lastGeneratedImage, setLastGeneratedImage] = useState<string | null>(
+    null,
+  );
+  const [lastPrompt, setLastPrompt] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const promptDebounceRef = useRef<number | null>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    if (file) {
-      if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-        alert(`The uploaded image exceeds the ${MAX_FILE_SIZE_MB}MB limit.`);
-        return;
+  // Debounced prompt change handler
+  const debouncedPromptChange = useCallback(
+    (value: string) => {
+      if (promptDebounceRef.current) {
+        window.clearTimeout(promptDebounceRef.current);
       }
+      promptDebounceRef.current = window.setTimeout(() => {
+        onPromptChange(value);
+      }, 500);
+    },
+    [onPromptChange],
+  );
 
-      if (
-        !["image/jpeg", "image/png", "image/gif", "video/mp4"].includes(
-          file.type
-        )
-      ) {
-        alert("Only JPEG, PNG, GIF, and MP4 files are accepted");
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-      onChange(file);
-    } else {
-      setPreview(null);
-      onChange(null);
+  // Update lastGeneratedImage only when preview changes
+  useEffect(() => {
+    if (preview) {
+      setLastGeneratedImage(preview);
     }
-  };
+  }, [preview]);
+
+  // Pass prompt functions to parent only once on mount
+  useEffect(() => {
+    onPromptFunctionsChange(setPrompt, onPromptChange);
+  }, []); // Empty dependency array since we only want this to run once
+
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0] || null;
+      if (file) {
+        if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+          alert(`The uploaded image exceeds the ${MAX_FILE_SIZE_MB}MB limit.`);
+          return;
+        }
+
+        if (
+          !["image/jpeg", "image/png", "image/gif", "video/mp4"].includes(
+            file.type,
+          )
+        ) {
+          alert("Only JPEG, PNG, GIF, and MP4 files are accepted");
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          setPreview(result);
+          onChange(file);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setPreview(null);
+        onChange(null);
+      }
+    },
+    [onChange],
+  );
+
+  const handlePromptChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const value = e.target.value;
+      setPrompt(value);
+      debouncedPromptChange(value);
+    },
+    [debouncedPromptChange],
+  );
+
+  const handleGenerate = useCallback(async () => {
+    if (!prompt.trim() || isGenerating) return;
+
+    setLastPrompt(prompt);
+    onGenerate(prompt);
+
+    // Get auth token from localStorage
+    const authToken = localStorage.getItem("authToken");
+
+    // Prepare headers
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    if (authToken) {
+      headers["Authorization"] = `Bearer ${authToken}`;
+    }
+
+    try {
+      // Generate the image
+      const response = await fetch(
+        import.meta.env.VITE_API_URL + "/api/generate",
+        {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({
+            prompt,
+            type: "image",
+          }),
+        },
+      );
+
+      if (!response.ok) throw new Error("Failed to generate image");
+
+      const data = (await response.json()) as GenerateImageResponse;
+      const imageUrl = data.mediaUrl;
+
+      if (imageUrl) {
+        // Convert image URL to File object
+        const imageBlob = await fetch(imageUrl).then((r) => r.blob());
+        const imageFile = new File([imageBlob], "generated-image.png", {
+          type: "image/png",
+        });
+
+        // Set the preview
+        setPreview(imageUrl);
+        onChange(imageFile);
+      }
+    } catch (err) {
+      console.error("Error generating image:", err);
+      alert("Failed to generate image. Please try again.");
+    } finally {
+      // Make sure to reset the generating state
+      setIsGenerating(false);
+      setGeneratingField(null);
+    }
+  }, [prompt, onChange, setIsGenerating, setGeneratingField, isGenerating]);
+
+  const handleReroll = useCallback(() => {
+    setPreview(null);
+    onChange(null);
+    setPrompt(lastPrompt);
+    onPromptChange(lastPrompt);
+  }, [lastPrompt, onChange, onPromptChange]);
+
+  const handleCancel = useCallback(() => {
+    setIsGenerating(false);
+    setGeneratingField(null);
+    setPreview(lastGeneratedImage);
+    onChange(null);
+  }, [lastGeneratedImage, onChange, setIsGenerating, setGeneratingField]);
+
+  const handleUploadClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (promptDebounceRef.current) {
+        window.clearTimeout(promptDebounceRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="flex flex-col gap-1 w-full">
-      <FormLabel label={label} />
-      <div className="relative justify-center border-1 border-dashed p-6 cursor-pointer text-center border-[#8c8c8c]">
-        {preview ? (
-          <div className="flex justify-center">
+      <div className="flex items-center justify-between">
+        <div className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
+          {label}
+        </div>
+      </div>
+
+      {/* Image Preview Area - Now Square */}
+      <div className="relative mt-1 aspect-square text-center border-[#8c8c8c] flex items-center justify-center">
+        {isGenerating ? (
+          <div className="flex flex-col items-center justify-center">
+            <div className="w-10 h-10 border-4 border-[#2fd345] border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-white">Generating your image...</p>
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="mt-4 text-[#2fd345] px-4 py-2 rounded-lg font-bold transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : preview ? (
+          <div className="relative group w-full h-full flex items-center justify-center">
             <img
               src={preview}
               alt="Token preview"
-              className="max-h-40 object-contain"
+              className="w-full h-full object-contain"
             />
+            <button
+              type="button"
+              onClick={handleReroll}
+              className="absolute top-2 right-2 w-8 h-8 bg-black/50 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              ×
+            </button>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center p-6 cursor-pointer text-center">
-            <EmptyState maxSizeMb={MAX_FILE_SIZE_MB} />
+          <div className="flex flex-col items-center justify-center w-full h-full">
+            <div className="flex flex-col gap-4 w-full h-full">
+              <div className="flex-1 flex flex-col">
+                <textarea
+                  value={prompt}
+                  onChange={handlePromptChange}
+                  className="w-full h-full bg-[#0F0F0F] p-3 border border-neutral-800 text-white resize-none"
+                  placeholder="Describe the image you want to generate..."
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={!prompt.trim() || isGenerating}
+                  className="flex-1 bg-[#2fd345] text-black px-6 py-2.5 font-bold hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
+                >
+                  {isGenerating ? (
+                    <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto" />
+                  ) : (
+                    "Generate Image"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleUploadClick}
+                  className="bg-[#2fd345] text-black px-6 py-2.5 font-bold hover:bg-[#27b938] transition-colors"
+                >
+                  Upload
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,video/mp4"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+              </div>
+            </div>
           </div>
         )}
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/gif,video/mp4"
-          className="absolute inset-0 opacity-0 cursor-pointer"
-          onChange={handleFileChange}
-        />
       </div>
     </div>
   );
@@ -244,7 +427,7 @@ const uploadImage = async (metadata: TokenMetadata) => {
   const filename = `${safeName}${extension}`;
 
   console.log(
-    `Uploading image as ${filename} with content type ${contentType}`
+    `Uploading image as ${filename} with content type ${contentType}`,
   );
 
   // Get auth token from localStorage
@@ -363,7 +546,7 @@ const waitForTokenCreation = async ({
               imageUrl,
               metadataUrl,
             }),
-          }
+          },
         );
 
         if (createResponse.ok) {
@@ -414,7 +597,7 @@ const waitForTokenCreation = async ({
                 imageUrl,
                 metadataUrl,
               }),
-            }
+            },
           );
 
           if (response.ok) {
@@ -461,23 +644,25 @@ export const Create = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingField, setGeneratingField] = useState<string | null>(null);
-  const { setVisible } = useWalletModal();
-  // Add state to control when to show the coin drop effect
   const [showCoinDrop, setShowCoinDrop] = useState(false);
+  const [promptFunctions, setPromptFunctions] = useState<{
+    setPrompt: ((prompt: string) => void) | null;
+    onPromptChange: ((prompt: string) => void) | null;
+  }>({ setPrompt: null, onPromptChange: null });
 
   // Simple form state
   const [form, setForm] = useState({
     name: "",
     symbol: "",
     description: "",
-    creative: "",
+    prompt: "",
     initial_sol: "",
     links: {
       twitter: "",
       telegram: "",
       website: "",
       discord: "",
-      agentLink: ""
+      agentLink: "",
     },
   });
 
@@ -486,24 +671,114 @@ export const Create = () => {
     name: "",
     symbol: "",
     description: "",
-    creative: "",
+    prompt: "",
     initial_sol: "",
   });
 
-  // Add keyboard event listener for spacebar to trigger coin drop for debugging
+  // Fetch pre-generated token on mount
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.code === "Space" && !event.repeat) {
-        event.preventDefault();
-        setShowCoinDrop(true);
+    const fetchPreGeneratedToken = async () => {
+      try {
+        // Get auth token from localStorage
+        const authToken = localStorage.getItem("authToken");
+
+        // Prepare headers
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+
+        if (authToken) {
+          headers["Authorization"] = `Bearer ${authToken}`;
+        }
+
+        // Get a pre-generated token
+        const response = await fetch(
+          import.meta.env.VITE_API_URL + "/api/pre-generated-token",
+          {
+            method: "GET",
+            headers,
+            credentials: "include",
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to get pre-generated token");
+        }
+
+        const data = (await response.json()) as PreGeneratedTokenResponse;
+        const { token } = data;
+
+        // Update form with generated data
+        setForm((prev) => ({
+          ...prev,
+          name: token.name,
+          symbol: token.ticker,
+          description: token.description,
+          prompt: token.prompt,
+        }));
+
+        // Set the prompt text so it can be reused
+        if (promptFunctions.setPrompt) promptFunctions.setPrompt(token.prompt);
+        if (promptFunctions.onPromptChange)
+          promptFunctions.onPromptChange(token.prompt);
+
+        // If we have an image URL, use it directly
+        if (token.image) {
+          const imageBlob = await fetch(token.image).then((r) => r.blob());
+          const imageFile = new File([imageBlob], "generated-image.png", {
+            type: "image/png",
+          });
+          setImageFile(imageFile);
+        } else {
+          // If no image, generate one using the prompt
+          const imageResponse = await fetch(
+            import.meta.env.VITE_API_URL + "/api/generate",
+            {
+              method: "POST",
+              headers,
+              credentials: "include",
+              body: JSON.stringify({
+                prompt: token.prompt,
+                type: "image",
+              }),
+            },
+          );
+
+          if (!imageResponse.ok) {
+            throw new Error("Failed to generate image");
+          }
+
+          const imageData =
+            (await imageResponse.json()) as GenerateImageResponse;
+          const imageUrl = imageData.mediaUrl;
+
+          // Convert image URL to File object
+          const imageBlob = await fetch(imageUrl).then((r) => r.blob());
+          const imageFile = new File([imageBlob], "generated-image.png", {
+            type: "image/png",
+          });
+          setImageFile(imageFile);
+        }
+
+        // Mark the token as used
+        await fetch(import.meta.env.VITE_API_URL + "/api/mark-token-used", {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({
+            id: token.id,
+            name: token.name,
+            ticker: token.ticker,
+          }),
+        });
+      } catch (error) {
+        console.error("Error fetching pre-generated token:", error);
+        // Don't show an error to the user, just let them start with an empty form
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
+    fetchPreGeneratedToken();
+  }, [promptFunctions.setPrompt, promptFunctions.onPromptChange]);
 
   // Handle input changes
   const handleChange = (field: string, value: string) => {
@@ -561,11 +836,27 @@ export const Create = () => {
     }
   };
 
+  // Update the handleChange function to handle prompt changes specially
+  const handlePromptChange = (prompt: string) => {
+    setForm((prev) => ({
+      ...prev,
+      prompt: prompt,
+    }));
+
+    // Clear errors immediately when field has a value
+    if (prompt) {
+      setErrors((prev) => ({
+        ...prev,
+        prompt: "",
+      }));
+    }
+  };
+
   // Create token on-chain
   const createTokenOnChain = async (
     _tokenMetadata: TokenMetadata,
     mintKeypair: Keypair,
-    _metadataUrl: string
+    _metadataUrl: string,
   ) => {
     if (!signTransaction) {
       throw new Error("Wallet doesn't support signing");
@@ -578,14 +869,14 @@ export const Create = () => {
     // Create connection to Solana
     new Connection(
       import.meta.env.VITE_SOLANA_RPC_URL || "https://api.devnet.solana.com",
-      "confirmed"
+      "confirmed",
     );
 
     // For now, we'll bypass actual on-chain token creation since we need the program IDL
     // Instead, we'll just log the mint address and proceed with backend registration
     console.log(
       "Would create token with mint address:",
-      mintKeypair.publicKey.toString()
+      mintKeypair.publicKey.toString(),
     );
 
     try {
@@ -620,122 +911,130 @@ export const Create = () => {
     */
   };
 
-  // Function to generate metadata
-  const generateMetadata = async (fields: string[]) => {
-    try {
-      // Check if wallet is connected first
-      if (!publicKey) {
-        setVisible(true);
-        throw new Error("Please connect your wallet to generate metadata");
-      }
+  // Function to generate all fields
+  const generateAll = useCallback(
+    async (
+      setPrompt?: ((prompt: string) => void) | null,
+      onPromptChange?: ((prompt: string) => void) | null,
+    ) => {
+      try {
+        setIsGenerating(true);
+        setGeneratingField("name,symbol,description,prompt");
 
-      setIsGenerating(true);
-      setGeneratingField(fields.join(","));
+        // Get auth token from localStorage
+        const authToken = localStorage.getItem("authToken");
 
-      // Get auth token from localStorage
-      const authToken = localStorage.getItem("authToken");
+        // Prepare headers
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
 
-      // Prepare headers
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
+        if (authToken) {
+          headers["Authorization"] = `Bearer ${authToken}`;
+        }
 
-      if (authToken) {
-        headers["Authorization"] = `Bearer ${authToken}`;
-      }
+        // Get a pre-generated token
+        const response = await fetch(
+          import.meta.env.VITE_API_URL + "/api/pre-generated-token",
+          {
+            method: "GET",
+            headers,
+            credentials: "include",
+          },
+        );
 
-      // Call the generate-metadata endpoint
-      const response = await fetch(
-        import.meta.env.VITE_API_URL + "/api/generate-metadata",
-        {
+        if (!response.ok) {
+          throw new Error("Failed to get pre-generated token");
+        }
+
+        const data = (await response.json()) as PreGeneratedTokenResponse;
+        const { token } = data;
+
+        // Update form with generated data
+        setForm((prev) => ({
+          ...prev,
+          name: token.name,
+          symbol: token.ticker,
+          description: token.description,
+          prompt: token.prompt,
+        }));
+
+        // Set the prompt text so it can be reused
+        if (setPrompt) setPrompt(token.prompt);
+        if (onPromptChange) onPromptChange(token.prompt);
+
+        // If we have an image URL, use it directly
+        if (token.image) {
+          const imageBlob = await fetch(token.image).then((r) => r.blob());
+          const imageFile = new File([imageBlob], "generated-image.png", {
+            type: "image/png",
+          });
+          setImageFile(imageFile);
+        } else {
+          // If no image, generate one using the prompt
+          const imageResponse = await fetch(
+            import.meta.env.VITE_API_URL + "/api/generate",
+            {
+              method: "POST",
+              headers,
+              credentials: "include",
+              body: JSON.stringify({
+                prompt: token.prompt,
+                type: "image",
+              }),
+            },
+          );
+
+          if (!imageResponse.ok) {
+            throw new Error("Failed to generate image");
+          }
+
+          const imageData =
+            (await imageResponse.json()) as GenerateImageResponse;
+          const imageUrl = imageData.mediaUrl;
+
+          // Convert image URL to File object
+          const imageBlob = await fetch(imageUrl).then((r) => r.blob());
+          const imageFile = new File([imageBlob], "generated-image.png", {
+            type: "image/png",
+          });
+          setImageFile(imageFile);
+        }
+
+        // Mark the token as used
+        await fetch(import.meta.env.VITE_API_URL + "/api/mark-token-used", {
           method: "POST",
           headers,
           credentials: "include",
           body: JSON.stringify({
-            fields,
-            existingData: {
-              name: form.name,
-              symbol: form.symbol,
-              description: form.description,
-              creative: form.creative,
-            },
+            id: token.id,
+            name: token.name,
+            ticker: token.ticker,
           }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to generate metadata");
-      }
-
-      const data = (await response.json()) as GenerateMetadataResponse;
-      const { metadata } = data;
-
-      // Update form with generated data
-      setForm((prev) => ({
-        ...prev,
-        ...metadata,
-      }));
-
-      // If we generated a creative prompt, also generate an image
-      if (metadata.creative) {
-        // Generate image using the creative prompt
-        const imageResponse = await fetch(
-          import.meta.env.VITE_API_URL + "/api/generate",
-          {
-            method: "POST",
-            headers,
-            credentials: "include",
-            body: JSON.stringify({
-              prompt: metadata.creative,
-              type: "image",
-            }),
-          }
-        );
-
-        if (!imageResponse.ok) {
-          throw new Error("Failed to generate image");
-        }
-
-        const imageData = (await imageResponse.json()) as GenerateImageResponse;
-        const imageUrl = imageData.mediaUrl;
-
-        // Convert image URL to File object
-        const imageBlob = await fetch(imageUrl).then((r) => r.blob());
-        const imageFile = new File([imageBlob], "generated-image.png", {
-          type: "image/png",
         });
-        setImageFile(imageFile);
+      } catch (error) {
+        console.error("Error generating metadata:", error);
+        alert(
+          error instanceof Error
+            ? error.message
+            : "Failed to generate metadata. Please try again.",
+        );
+      } finally {
+        setIsGenerating(false);
+        setGeneratingField(null);
       }
-    } catch (error) {
-      console.error("Error generating metadata:", error);
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Failed to generate metadata. Please try again."
-      );
-    } finally {
-      setIsGenerating(false);
-      setGeneratingField(null);
-    }
-  };
-
-  // Function to generate all fields
-  const generateAll = async () => {
-    await generateMetadata(["name", "symbol", "description", "creative"]);
-  };
+    },
+    [setIsGenerating, setGeneratingField],
+  );
 
   // Submit form to backend
   const submitFormToBackend = async () => {
     try {
       setIsSubmitting(true);
-      
-      // Trigger coin drop effect
-      setShowCoinDrop(true);
 
       // Ensure wallet is connected
       if (!publicKey) {
-        setVisible(true);
-        throw new Error("Please connect your wallet to create a token");
+        throw new Error("Wallet not connected");
       }
 
       // Generate a new keypair for the token mint
@@ -773,6 +1072,7 @@ export const Create = () => {
       // First, upload the image to get permanent URLs
       let imageUrl = "";
       let metadataUrl = "";
+      setShowCoinDrop(true);
 
       if (media_base64) {
         try {
@@ -821,19 +1121,14 @@ export const Create = () => {
         console.warn("Continuing despite token creation confirmation failure");
       }
 
-      // Let the coin drop animation play for a bit before redirecting
-      setTimeout(() => {
-        // Redirect to token page using the mint public key
-        navigate(`/token/${tokenMint}`);
-      }, 3000);
+      // Redirect to token page using the mint public key
+      navigate(`/token/${tokenMint}`);
     } catch (error) {
       console.error("Error creating token:", error);
-      // Hide coin drop on error
-      setShowCoinDrop(false);
       alert(
         error instanceof Error
           ? error.message
-          : "Failed to create token. Please try again."
+          : "Failed to create token. Please try again.",
       );
     } finally {
       setIsSubmitting(false);
@@ -843,13 +1138,6 @@ export const Create = () => {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Check if wallet is connected first
-    if (!publicKey) {
-      setVisible(true);
-      alert("Please connect your wallet to create a token");
-      return;
-    }
 
     // Validate required fields
     const newErrors = { ...errors };
@@ -883,38 +1171,59 @@ export const Create = () => {
     !errors.initial_sol;
 
   return (
-    <div className="flex flex-col items-center py-10 md:py-0 justify-center min-h-screen max-w-[800px] mx-auto">
+    <div className="flex flex-col items-center justify-center">
       {showCoinDrop && <CoinDrop />}
-      
-      {!publicKey && <WalletConnectionBanner />}
-      <div className="flex flex-col gap-y-4">
-          <div className="text-autofun-background-action-highlight font-medium text-[32px]">
-            Create Token
-          </div>
-          <div className="text-[18px] font-normal text-autofun-text-secondary">
-            Create your token on auto.fun. Set up your token details, add
-            visuals, and connect social channels. You can optionally create or
-            link an existing AI agent to your token. You can also personally
-            allocate a portion of tokens before launch.
-          </div>
-        </div>
-      <div className="p-4 bg-autofun-background-card max-w-[800px]">
+      <div className="p-4 w-full max-w-6xl">
         <form
-          className="flex font-dm-mono flex-col w-full max-w-3xl m-auto gap-4 justify-center"
+          className="flex font-dm-mono flex-col w-full m-auto gap-4 justify-center"
           onSubmit={handleSubmit}
         >
-          <div className="flex justify-end">
-            <DiceButton
-              onClick={generateAll}
-              isLoading={
-                isGenerating &&
-                generatingField === "name,symbol,description,creative"
-              }
-            />
+          <div className="flex flex-col gap-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-autofun-background-action-highlight font-medium text-[32px]">
+                Create Token
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  generateAll(
+                    promptFunctions.setPrompt,
+                    promptFunctions.onPromptChange,
+                  )
+                }
+                disabled={
+                  isGenerating &&
+                  generatingField === "name,symbol,description,prompt"
+                }
+                className="flex items-center gap-2 text-[#2fd345] px-6 py-3 rounded-lg font-bold text-lg transition-colors"
+              >
+                {isGenerating &&
+                generatingField === "name,symbol,description,prompt" ? (
+                  <>
+                    <span>Rolling</span>
+                    <div className="w-5 h-5 border-2 border-[#2fd345] border-t-transparent rounded-full animate-spin" />
+                  </>
+                ) : (
+                  <>
+                    <span>Reroll</span>
+                    <Icons.Dice />
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="text-[18px] font-normal text-autofun-text-secondary">
+              Create your token on auto.fun. Set up your token details, add
+              visuals, and connect social channels. You can optionally create or
+              link an existing AI agent to your token. You can also personally
+              allocate a portion of tokens before launch.
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <div className="relative">
+          {/* Two-column layout for form fields and image */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {/* Left column - Form fields */}
+            <div className="flex flex-col gap-3">
               <FormInput
                 type="text"
                 value={form.name}
@@ -925,16 +1234,10 @@ export const Create = () => {
                 maxLength={50}
                 rightIndicator={`${form.name.length}/50`}
                 error={errors.name}
+                onClick={() => generateAll()}
+                isLoading={isGenerating && generatingField === "name"}
               />
-              <div className="absolute right-3 top-8">
-                <DiceButton
-                  onClick={() => generateMetadata(["name"])}
-                  isLoading={isGenerating && generatingField === "name"}
-                />
-              </div>
-            </div>
 
-            <div className="relative">
               <FormInput
                 type="text"
                 value={form.symbol}
@@ -946,62 +1249,102 @@ export const Create = () => {
                 maxLength={8}
                 rightIndicator={`${form.symbol.length}/8`}
                 error={errors.symbol}
+                onClick={() => generateAll()}
+                isLoading={isGenerating && generatingField === "symbol"}
               />
-              <div className="absolute right-3 top-8">
-                <DiceButton
-                  onClick={() => generateMetadata(["symbol"])}
-                  isLoading={isGenerating && generatingField === "symbol"}
+
+              <FormTextArea
+                value={form.description}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  handleChange("description", e.target.value)
+                }
+                label="Description"
+                rightIndicator={`${form.description.length}/2000`}
+                minRows={3}
+                maxLength={2000}
+                error={errors.description}
+                onClick={() => generateAll()}
+                isLoading={isGenerating && generatingField === "description"}
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3">
+                <FormInput
+                  type="text"
+                  value={form.links.website}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    handleChange("links.website", e.target.value)
+                  }
+                  isOptional
+                  inputTag={<Icons.Website />}
+                  placeholder="Website"
+                  rightIndicator={
+                    <CopyButton text={form.links.website || ""} />
+                  }
+                />
+                <FormInput
+                  type="text"
+                  value={form.links.twitter}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    handleChange("links.twitter", e.target.value)
+                  }
+                  isOptional
+                  inputTag={<Icons.Twitter />}
+                  placeholder="X (Twitter)"
+                  rightIndicator={
+                    <CopyButton text={form.links.twitter || ""} />
+                  }
+                />
+                <FormInput
+                  type="text"
+                  value={form.links.telegram}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    handleChange("links.telegram", e.target.value)
+                  }
+                  isOptional
+                  inputTag={<Icons.Telegram />}
+                  placeholder="Telegram"
+                  rightIndicator={
+                    <CopyButton text={form.links.telegram || ""} />
+                  }
+                />
+                <FormInput
+                  type="text"
+                  value={form.links.discord}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    handleChange("links.discord", e.target.value)
+                  }
+                  isOptional
+                  inputTag={<Icons.Discord />}
+                  placeholder="Discord"
+                  rightIndicator={
+                    <CopyButton text={form.links.discord || ""} />
+                  }
                 />
               </div>
             </div>
-          </div>
 
-          <div className="relative">
-            <FormTextArea
-              value={form.description}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                handleChange("description", e.target.value)
-              }
-              label="Description"
-              rightIndicator={`${form.description.length}/2000`}
-              minRows={5}
-              maxLength={2000}
-              error={errors.description}
-            />
-            <div className="absolute right-3 top-8">
-              <DiceButton
-                onClick={() => generateMetadata(["description"])}
-                isLoading={isGenerating && generatingField === "description"}
+            {/* Right column - Image */}
+            <div className="flex flex-col gap-3">
+              <FormImageInput
+                label="Token Image"
+                // description="Upload or generate an image for your token"
+                onChange={(file) => setImageFile(file)}
+                onPromptChange={handlePromptChange}
+                onGenerate={(prompt) => {
+                  setIsGenerating(true);
+                  setGeneratingField("prompt");
+                  handlePromptChange(prompt);
+                }}
+                isGenerating={isGenerating && generatingField === "prompt"}
+                setIsGenerating={setIsGenerating}
+                setGeneratingField={setGeneratingField}
+                onPromptFunctionsChange={(setPrompt, onPromptChange) => {
+                  setPromptFunctions({ setPrompt, onPromptChange });
+                }}
               />
             </div>
           </div>
 
-          <div className="relative">
-            <FormTextArea
-              value={form.creative}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                handleChange("creative", e.target.value)
-              }
-              label="Generation Prompt"
-              rightIndicator={`${form.creative.length}/2000`}
-              minRows={5}
-              maxLength={2000}
-              error={errors.creative}
-            />
-            <div className="absolute right-3 top-8">
-              <DiceButton
-                onClick={() => generateMetadata(["creative"])}
-                isLoading={isGenerating && generatingField === "creative"}
-              />
-            </div>
-          </div>
-
-          <FormImageInput
-            label="Token Image"
-            onChange={(file) => setImageFile(file)}
-          />
-
-          <FormInput
+          {/* <FormInput
             type="text"
             value={form.links.agentLink}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -1015,114 +1358,68 @@ export const Create = () => {
               </div>
             }
             rightIndicator={<CopyButton text={form.links.agentLink || ""} />}
-          />
+          /> */}
 
-          <div className="flex flex-col gap-3">
-            <FormInput.Label label="add project socials" isOptional />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-6">
-              <FormInput
-                type="text"
-                value={form.links.website}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  handleChange("links.website", e.target.value)
-                }
-                isOptional
-                inputTag={<Icons.Website />}
-                placeholder="Insert a link here"
-                rightIndicator={<CopyButton text={form.links.website || ""} />}
-              />
-              <FormInput
-                type="text"
-                value={form.links.twitter}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  handleChange("links.twitter", e.target.value)
-                }
-                isOptional
-                inputTag={<Icons.Twitter />}
-                placeholder="Insert a link here"
-                rightIndicator={<CopyButton text={form.links.twitter || ""} />}
-              />
-              <FormInput
-                type="text"
-                value={form.links.telegram}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  handleChange("links.telegram", e.target.value)
-                }
-                isOptional
-                inputTag={<Icons.Telegram />}
-                placeholder="Insert a link here"
-                rightIndicator={<CopyButton text={form.links.telegram || ""} />}
-              />
-              <FormInput
-                type="text"
-                value={form.links.discord}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  handleChange("links.discord", e.target.value)
-                }
-                isOptional
-                inputTag={<Icons.Discord />}
-                placeholder="Insert a link here"
-                rightIndicator={<CopyButton text={form.links.discord || ""} />}
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-x-3 gap-y-6">
-              <div className="flex flex-col gap-3">
-                <FormInput.Label label="buy your coin" isOptional />
-                <div className="flex items-center gap-4">
-                  <input
-                    type="range"
-                    min="0"
-                    max={MAX_INITIAL_SOL}
-                    step="0.1"
-                    value={form.initial_sol || "0"}
-                    onChange={(e) =>
-                      handleChange("initial_sol", e.target.value)
-                    }
-                    className="flex-1 h-2 bg-[#2e2e2e] appearance-none cursor-pointer accent-[#2fd345]"
-                  />
-                  <div className="relative">
+          <div className="m-12">
+            <div className="flex flex-col max-w-sm w-full mx-auto bg-autofun-background-card p-8">
+              <div className="grid grid-cols-1 gap-x-3 gap-y-6">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
+                      {"buy your coin"}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
                     <input
-                      type="number"
-                      value={form.initial_sol}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (
-                          value === "" ||
-                          (parseFloat(value) >= 0 &&
-                            parseFloat(value) <= MAX_INITIAL_SOL)
-                        ) {
-                          handleChange("initial_sol", value);
-                        }
-                      }}
+                      type="range"
                       min="0"
                       max={MAX_INITIAL_SOL}
                       step="0.1"
-                      className="w-27 py-2 pr-14 bg-[#2e2e2e] text-[#2fd345] text-xl font-medium text-right"
+                      value={form.initial_sol || "0"}
+                      onChange={(e) =>
+                        handleChange("initial_sol", e.target.value)
+                      }
+                      className="flex-1 h-2 bg-[#2e2e2e] appearance-none cursor-pointer accent-[#2fd345]"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#2fd345] text-xl font-medium">
-                      SOL
-                    </span>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={form.initial_sol || 0}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (
+                            value === "" ||
+                            (parseFloat(value) >= 0 &&
+                              parseFloat(value) <= MAX_INITIAL_SOL)
+                          ) {
+                            handleChange("initial_sol", value);
+                          }
+                        }}
+                        min="0"
+                        max={MAX_INITIAL_SOL}
+                        step="0.1"
+                        className="w-27 py-2 pr-14 bg-[#2e2e2e] text-[#2fd345] text-xl font-medium text-right"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#2fd345] text-xl font-medium">
+                        SOL
+                      </span>
+                    </div>
                   </div>
                 </div>
+                <button
+                  type="submit"
+                  className="bg-[#2fd345] py-3 px-6 font-bold border-2 text-black text-[1.8em] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
+                  disabled={!isFormValid || isSubmitting}
+                >
+                  {isSubmitting ? "Creating..." : "LET'S GO"}
+                </button>
               </div>
-              <button
-                type="submit"
-                className="bg-[#2fd345] py-3 px-6 font-bold border-2 text-black text-[1.8em] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
-                disabled={!isFormValid || isSubmitting || !publicKey}
-              >
-                {isSubmitting ? "Creating..." : "LET'S GO"}
-              </button>
-              {!isFormValid && (
-                <p className="text-red-500 text-center text-sm m-4">
-                  Please fill in all required fields
-                </p>
-              )}
-              {!publicKey && (
-                <p className="text-red-500 text-center text-sm m-4">
-                  Please connect your wallet to create a token
-                </p>
-              )}
             </div>
+            {!isFormValid && (
+              <p className="text-red-500 text-center text-sm m-4">
+                Please fill in all required fields
+              </p>
+            )}
           </div>
         </form>
       </div>

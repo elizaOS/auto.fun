@@ -16,6 +16,7 @@ import tokenRouter from "./routes/token";
 import { uploadToCloudflare } from "./uploader";
 import { WebSocketDO, allowedOrigins, createTestSwap } from "./websocket";
 import { getWebSocketClient } from "./websocket-client";
+import { initializePreGeneratedTokens } from "./init";
 
 // Define CloudflareWebSocket type for local development
 interface CloudflareWebSocket extends WebSocket {
@@ -576,6 +577,9 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<Response> {
+    // Initialize pre-generated tokens in the background
+    ctx.waitUntil(initializePreGeneratedTokens(env));
+
     const url = new URL(request.url);
 
     // Setup CORS headers for WebSocket requests

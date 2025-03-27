@@ -7,6 +7,7 @@ import { bulkUpdatePartialTokens } from "./util";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getWebSocketClient } from "./websocket-client";
 import { updateHoldersCache } from "./routes/token";
+import { checkAndReplenishTokens } from "./routes/generation";
 import {
   ExecutionContext,
   ScheduledEvent,
@@ -767,6 +768,14 @@ export async function cron(env: Env): Promise<void> {
       } catch (err) {
         logger.error(`Error updating holders for token ${token.mint}:`, err);
       }
+    }
+
+    // Check and replenish pre-generated tokens if needed
+    try {
+      logger.log("Checking pre-generated token supply...");
+      await checkAndReplenishTokens(env);
+    } catch (err) {
+      logger.error("Error replenishing pre-generated tokens:", err);
     }
   } catch (error) {
     logger.error("Error in cron job:", error);

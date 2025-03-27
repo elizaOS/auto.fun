@@ -1,21 +1,11 @@
-import { createContext, useContext } from "react";
+import { create } from "zustand";
 
-export interface UserContextType {
+export interface UserState {
   authenticated: boolean;
   setAuthenticated: (value: boolean) => void;
-  logOut: () => void;
 }
 
-export const UserContext = createContext<UserContextType | undefined>(
-  undefined,
-);
-
-export const useUser = () => {
-  const context = useContext(UserContext);
-
-  if (!context) {
-    throw new Error("useUser must be used within UserProvider");
-  }
-
-  return context;
-};
+export const useUser = create<UserState>((set) => ({
+  authenticated: false,
+  setAuthenticated: (value: boolean) => set({ authenticated: value }),
+}));

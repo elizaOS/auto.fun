@@ -181,6 +181,18 @@ export const cachePrices = sqliteTable("cache_prices", {
   expiresAt: text("expires_at", { mode: "text" }).notNull(), // When this cache entry should expire
 });
 
+// Pre-generated tokens table
+export const preGeneratedTokens = sqliteTable("pre_generated_tokens", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  ticker: text("ticker").notNull(),
+  description: text("description").notNull(),
+  prompt: text("prompt").notNull(),
+  image: text("image"),
+  createdAt: text("created_at", { mode: "text" }).notNull(),
+  used: integer("used").notNull().default(0),
+});
+
 export function getDB(env: Env) {
   try {
     // For non-test environments, use D1 database
@@ -196,6 +208,7 @@ export function getDB(env: Env) {
       vanityKeypairs,
       mediaGenerations,
       cachePrices,
+      preGeneratedTokens,
     };
     return drizzle(env.DB as any, {
       schema: drizzleSchema,
@@ -234,6 +247,10 @@ export type UserInsert = typeof schema.users.$inferInsert;
 export type VanityKeypair = typeof schema.vanityKeypairs.$inferSelect;
 export type VanityKeypairInsert = typeof schema.vanityKeypairs.$inferInsert;
 
+export type PreGeneratedToken = typeof schema.preGeneratedTokens.$inferSelect;
+export type PreGeneratedTokenInsert =
+  typeof schema.preGeneratedTokens.$inferInsert;
+
 // Schema for all tables
 const schema = {
   tokens,
@@ -247,6 +264,7 @@ const schema = {
   vanityKeypairs,
   mediaGenerations,
   cachePrices,
+  preGeneratedTokens,
 };
 
 // Export schema for type inference

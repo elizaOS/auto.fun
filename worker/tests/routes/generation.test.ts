@@ -99,7 +99,7 @@ describe("Media Generation API Endpoints", () => {
     // Try to get the FAL API key from .dev.vars
     try {
       const devVars = fs.readFileSync(".dev.vars", "utf8");
-      const match = devVars.match(/FAL_AI_API_KEY=([^\n]+)/);
+      const match = devVars.match(/FAL_API_KEY=([^\n]+)/);
       falApiKey = match ? match[1] : null;
       console.log("Found FAL API key:", falApiKey ? "Yes (hidden)" : "No");
     } catch (e) {

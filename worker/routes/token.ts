@@ -105,8 +105,10 @@ tokenRouter.get("/tokens", async (c) => {
           };
 
           // Use the mapped column or default to createdAt
-          const sortColumn = validSortColumns[sortBy as keyof typeof validSortColumns] || tokens.createdAt;
-          
+          const sortColumn =
+            validSortColumns[sortBy as keyof typeof validSortColumns] ||
+            tokens.createdAt;
+
           if (sortOrder.toLowerCase() === "desc") {
             tokensQuery = tokensQuery.orderBy(desc(sortColumn));
           } else {
