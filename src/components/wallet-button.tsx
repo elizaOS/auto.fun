@@ -9,7 +9,7 @@ import useAuthentication from "@/hooks/use-authentication";
 
 const WalletButton = () => {
   const navigate = useNavigate();
-  const { publicKey, connecting, connected, wallet } = useWallet();
+  const { publicKey, connecting, wallet } = useWallet();
   const { setVisible } = useWalletModal();
   const { isAuthenticated, signOut } = useAuthentication();
 
