@@ -22,7 +22,7 @@ import { InfoCircle } from "iconsax-react";
 import { Globe } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { TradingViewChart } from "@/components/trading-view-chart";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { getSocket } from "@/utils/socket";
 
 const socket = getSocket()
@@ -30,6 +30,9 @@ const socket = getSocket()
 export default function Page() {
   const params = useParams();
   const address = params?.address;
+
+  type ISection = "Trading" | "Community" | "Admin";
+  const [setSection, section] = useState<ISection>("Trading")
 
   const query = useQuery({
     queryKey: ["token", address],
@@ -59,6 +62,8 @@ export default function Page() {
   if (query?.isLoading) {
     return <Loader />;
   }
+
+  const admin = true
 
   return (
     <div className="flex flex-wrap gap-3">
@@ -251,6 +256,12 @@ export default function Page() {
           </div>
         </div>
         {/* Chart */}
+        <div className="flex flex-row ">
+            <Button className="bg-white/15">Trading</Button>
+            <Button>Community</Button>
+            {admin && <Button>Admin</Button> }
+
+          </div>
         <div className="border bg-autofun-background-card h-[50vh]">
           <TradingViewChart name={token.name} token={token.mint} />
         </div>
