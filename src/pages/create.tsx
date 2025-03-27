@@ -1243,13 +1243,6 @@ export const Create = () => {
                 )}
               </button>
             </div>
-
-            <div className="text-[18px] font-normal text-autofun-text-secondary">
-              Create your token on auto.fun. Set up your token details, add
-              visuals, and connect social channels. You can optionally create or
-              link an existing AI agent to your token. You can also personally
-              allocate a portion of tokens before launch.
-            </div>
           </div>
 
           {/* Two-column layout for form fields and image */}
