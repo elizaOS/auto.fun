@@ -634,33 +634,38 @@ export default {
           url.searchParams.get("clientId") || crypto.randomUUID();
 
         try {
-          // Use MessageChannel for local development to simulate WebSocketPair
-          // Note: In a real Cloudflare Worker, WebSocketPair would be provided by the runtime
-          const clientWebSocket = new WebSocket("ws://localhost");
-          const serverWebSocket = Object.assign(
-            new WebSocket("ws://localhost"),
-            {
-              accept: () => {},
-              readyState: WebSocket.OPEN,
-            },
-          ) as CloudflareWebSocket;
-
+          // Create a proper WebSocketPair for local development
+          const pair = new WebSocketPair();
+          const server = pair[1];
+          const client = pair[0];
+          
+          // Accept the connection
+          server.accept();
+          
           // Store in our singleton for tracking
-          wsStore.addClient(clientId, serverWebSocket);
-
-          // Handle incoming messages
-          request.headers.get("Sec-WebSocket-Key");
-
-          // Create WebSocket response
+          wsStore.addClient(clientId, server);
+          
+          // Set up message handler
+          server.addEventListener("message", (event) => {
+            try {
+              const message = JSON.parse(event.data);
+              wsStore.handleMessage(clientId, message);
+            } catch (error) {
+              logger.error(`Error handling WebSocket message: ${error}`);
+            }
+          });
+          
+          // Set up close handler
+          server.addEventListener("close", () => {
+            wsStore.removeClient(clientId);
+          });
+          
+          // Return the client socket
           return new Response(null, {
             status: 101,
-            headers: {
-              Upgrade: "websocket",
-              Connection: "Upgrade",
-              "Sec-WebSocket-Accept": "validSecWebSocketAcceptValue",
-              ...corsHeaders,
-            },
-          });
+            // Use non-standard Cloudflare-specific property
+            webSocket: client,
+          } as ResponseInit & { webSocket: CloudflareWebSocket });
         } catch (error) {
           logger.error("Error creating WebSocket in local development:", error);
           return new Response(

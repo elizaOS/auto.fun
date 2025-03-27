@@ -10,7 +10,9 @@ import usePagination from "@/hooks/use-pagination";
 import { useViewMode } from "@/hooks/use-view-mode";
 import { IPagination, IToken } from "@/types";
 import { getTokens } from "@/utils/api";
+import { getSocket } from "@/utils/socket";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Fragment } from "react/jsx-runtime";
 
 export default function Page() {
@@ -31,6 +33,10 @@ export default function Page() {
     refetchInterval: 20_000,
     staleTime: 1_000,
   });
+
+  useEffect(() => {
+    getSocket().emit('subscribeGlobal')
+  }, [])
 
   const queryData = query?.data as {
     tokens: IToken[];

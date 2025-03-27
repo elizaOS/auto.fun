@@ -9,6 +9,8 @@ class SocketWrapper {
   private maxReconnectInterval = 5000;
   private reconnecting = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  // Queue for messages that need to be sent when connection is established
+  private messageQueue: Array<{event: string, data?: unknown}> = [];
 
   constructor(url: string) {
     this.url = url;
@@ -19,7 +21,7 @@ class SocketWrapper {
     /**
      * TODO: update as necessary once backend socket implementation is finalized
      */
-    const wsUrl = this.url.replace(/^http/, 'ws');
+    const wsUrl = this.url.replace(/^http/, 'ws') + '/ws';
     this.ws = new WebSocket(wsUrl);
 
     this.ws.onopen = () => {
@@ -27,6 +29,11 @@ class SocketWrapper {
       this.reconnectAttempts = 0;
       this.reconnecting = false;
       this.emit('connect', {});
+      
+      // Process any queued messages
+      if (this.messageQueue.length > 0) {
+        this.processQueue();
+      }
     };
 
     this.ws.onmessage = (event) => {
@@ -102,12 +109,24 @@ class SocketWrapper {
     return this;
   };
 
-  emit = (event: string, data: unknown): this => {
-    console.log('emit called')
+  private processQueue = (): void => {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.messageQueue.forEach(msg => {
+        this.ws?.send(JSON.stringify(msg));
+      });
+      this.messageQueue = [];
+    }
+  };
+
+  emit = (event: string, data?: unknown): this => {
+    console.log('emit called', event);
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      console.log('sending data for event:', event);
       this.ws.send(JSON.stringify({ event, data }));
     } else {
-      console.log('socket not connected')
+      console.log('socket not connected, queueing event:', event);
+      // Queue the message to send once connected
+      this.messageQueue.push({ event, data });
     }
     return this;
   };
