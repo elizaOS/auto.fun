@@ -11,6 +11,7 @@ import { useCallback, useMemo } from "react";
 import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 import { Payload, SIWS } from "@web3auth/sign-in-with-solana";
 import useAuthentication from "@/hooks/use-authentication";
+import { env } from "@/utils/env";
 
 export interface WalletModalProviderProps {
   children: ReactNode;
@@ -92,7 +93,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
       const signatureHex = bs58.encode(signatureBytes);
 
       const authResponse = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/authenticate`,
+        `${env.apiUrl}/api/authenticate`,
         {
           method: "POST",
           headers: {
@@ -122,7 +123,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
         console.warn("Authentication successful but no token received");
 
         const authCheckResponse = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/auth-status`,
+          `${env.apiUrl}/api/auth-status`,
           { credentials: "include" }
         );
 
