@@ -55,7 +55,7 @@ export default function Loader() {
                   height: "100%",
                   width: "256px",
                   objectFit: "cover",
-                  objectPosition: "-.5% 0"
+                  objectPosition: "-3% 0"
                 }}
               />
             </div>
@@ -98,7 +98,7 @@ export default function Loader() {
                   height: "100%",
                   width: "256px",
                   objectFit: "cover",
-                  objectPosition: "0% 0"
+                  objectPosition: "-3% 0"
                 }}
               />
             </div>
