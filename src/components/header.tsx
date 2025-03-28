@@ -1,4 +1,4 @@
-import { Link, NavLink, useLocation } from "react-router";
+import { Link, useLocation } from "react-router";
 import { twMerge } from "tailwind-merge";
 import SearchBar from "./search-bar";
 import Button from "./button";
@@ -15,7 +15,6 @@ export default function Header() {
   const { publicKey } = useWallet();
   const { isAuthenticated } = useAuthentication();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const location = useLocation();
 
   const mobileNavItems = [
     { icon: "/nav/stars.svg", title: "Create Token", href: "/create" },
