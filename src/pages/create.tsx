@@ -1,12 +1,12 @@
 import CoinDrop from "@/components/coindrop";
+import useAuthentication from "@/hooks/use-authentication";
+import { useCreateToken } from "@/hooks/use-create-token";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Connection, Keypair } from "@solana/web3.js";
+import { Keypair } from "@solana/web3.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
-import useAuthentication from "@/hooks/use-authentication";
-import { useCreateToken } from "@/hooks/use-create-token";
 
 const MAX_INITIAL_SOL = 45;
 
@@ -458,6 +458,10 @@ const FormImageInput = ({
                 </button>
             )}
             
+            {/* Gradient overlays for better text contrast */}
+            <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black to-transparent opacity-60 z-[5]"></div>
+            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black to-transparent opacity-60 z-[5]"></div>
+            
             {/* Name overlay - top left */}
             {onNameChange && (
               <div className="absolute top-4 left-4 z-10">
@@ -466,11 +470,12 @@ const FormImageInput = ({
                   value={nameValue || ''}
                   onChange={(e) => onNameChange(e.target.value)}
                   placeholder="Token Name"
+                  maxLength={128}
                   onFocus={() => setNameInputFocused(true)}
                   onBlur={() => setNameInputFocused(false)}
                   className={`bg-transparent text-white text-xl font-bold border-b ${
                     nameInputFocused ? 'border-white' : 'border-gray-500'
-                  } focus:outline-none px-1 py-0.5 max-w-[80%]`}
+                  } focus:outline-none px-1 py-0.5 w-[280px] max-w-[95%]`}
                 />
               </div>
             )}
@@ -485,6 +490,7 @@ const FormImageInput = ({
                     value={tickerValue || ''}
                     onChange={(e) => onTickerChange(e.target.value.toUpperCase())}
                     placeholder="TICKER"
+                    maxLength={16}
                     onFocus={() => setTickerInputFocused(true)}
                     onBlur={() => setTickerInputFocused(false)}
                     className={`bg-transparent text-white text-lg font-semibold border-b ${
