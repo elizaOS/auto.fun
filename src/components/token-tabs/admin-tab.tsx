@@ -66,7 +66,7 @@ export default function AdminTab() {
   return (
     <div className="grid grid-cols-2 w-full h-full">
       <div className="justify-items-center grid col-span-2">
-        <div className="flex w-2/3 mt-12 flex-col gap-3 ">
+        <div className="flex w-4/5 md:w-2/3 mt-12 flex-col gap-3 ">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3">
             <div className="grid md:col-span-2 mb-2 text-center uppercase font-dm-mono text-xl">
               Add project socials here
@@ -118,21 +118,23 @@ export default function AdminTab() {
           </div>
         </div>
       </div>
-      <div className="grid col-span-2 justify-items-center w-full uppercase font-dm-mono text-xl">
-        token description
-        <textarea
-          value={form.description}
-          className="w-2/3 text-[17px] h-[300px] bg-[#0F0F0F] p-3 border border-neutral-800 text-white resize-none"
-          placeholder="Describe your token..."
-        />
-      </div>
-      <div className="grid col-span-2 items-center justify-items-center w-full uppercase text-center font-dm-mono text-xl">
-        <button
-          type="submit"
-          className="cursor-pointer text-white bg-transparent gap-x-3 border-2 hover:bg-autofun-background-action-highlight border-autofun-background-action-highlight flex px-8 py-2 flex-row w-fit items-center justify-items-center"
-        >
-          Save
-        </button>
+      <div className="grid mt-6 md:mt-0 col-span-2 justify-items-center w-full uppercase font-dm-mono text-xl">
+        <div className="grid col-span-2 items-center justify-items-center w-full uppercase text-center font-dm-mono text-xl">
+          <h1 className="mb-2">Token Description</h1>
+          <textarea
+            value={form.description}
+            className="w-4/5 md:w-2/3 text-[17px] h-[220px] bg-[#0F0F0F] p-3 border border-neutral-800 text-white resize-none"
+            placeholder="Describe your token..."
+          />
+        </div>
+        <div className="grid col-span-2 mb-4 items-center justify-items-center w-full  ">
+          <button
+            type="submit"
+            className="cursor-pointer text-white bg-transparent gap-x-3 border-2 hover:bg-autofun-background-action-highlight border-autofun-background-action-highlight flex px-8 py-1 mt-2 flex-row w-fit items-center justify-items-center"
+          >
+            Save
+          </button>
+        </div>
       </div>
     </div>
   );
