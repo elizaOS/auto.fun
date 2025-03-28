@@ -1,4 +1,4 @@
-import { PropsWithChildren, useEffect } from "react";
+import { PropsWithChildren } from "react";
 import {
   ConnectionProvider,
   WalletProvider,
@@ -8,10 +8,6 @@ import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { env } from "@/utils/env";
 
 export const Wallet = ({ children }: PropsWithChildren) => {
-  useEffect(() => {
-    console.log(env.rpcUrl)
-  }, [])
-
   return (
     <ConnectionProvider
       endpoint={env.rpcUrl || "https://api.devnet.solana.com"}
