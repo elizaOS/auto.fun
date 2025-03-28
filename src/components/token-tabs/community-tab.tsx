@@ -35,16 +35,21 @@ export default function CommunityTab() {
       <div className="grid grid-cols-3 p-6 gap-4">
         {communityTab === "Image" ? (
           <>
-            <div className="grid col-span-3">Image prompt</div>
-            <div className="grid col-span-3 bg-red-500 md:col-span-2">
+            <div className="grid col-span-3 font-dm-mono text-autofun-background-action-highlight text-xl">Create a token community image by using the prompt</div>
+            <div className="grid col-span-3 md:col-span-2">
               <textarea
-                className="w-full font-dm-mono bg-[#0F0F0F] h-full p-3 border border-neutral-800 text-white resize-none"
+                className="w-full font-dm-mono bg-[#0F0F0F] h-[300px] p-3 border border-neutral-800 text-white resize-none"
                 maxLength={200}
                 placeholder="Make me an image that looks like a dog in a wheelchair"
               />
+                 <button
+                    className="bg-[#2fd345] cursor-pointer p-3 font-bold border-2 text-black text-[9px] md:text-[15px] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
+                  >
+                    Generate Image
+                  </button>
             </div>
             <div className="grid col-span-1">
-              <div className="space-y-2">
+              <div className="bg-black/20 p-4 space-y-2">
                 <h1 className="mb-4 text-xl text-autofun-background-action-highlight font-dm-mono">
                   Agents
                 </h1>
@@ -57,7 +62,7 @@ export default function CommunityTab() {
                       key={index}
                     />
                   ))}
-                <div className="items-center flex flex-row gap-x-1 text-white mt-4 text-base cursor-pointer">
+                <div className="items-center w-fit hover:text-autofun-background-action-highlight flex flex-row gap-x-1 text-white mt-4 text-base cursor-pointer">
                   <Plus size={20} />
                   Add Agent
                 </div>
@@ -73,7 +78,7 @@ export default function CommunityTab() {
             </div>
           </>
         ) : communityTab === "Audio" ? (
-          <div>audio page</div>
+          <div>Audio generator page coming soon!</div>
         ) : null}
       </div>
     </>
@@ -82,13 +87,13 @@ export default function CommunityTab() {
 
 function AgentProfile({ image, name }: { image: string; name: string }) {
   return (
-    <div className="flex cursor-pointer hover:bg-white/15 hover:text-[#FFF200] flex-row space-x-3">
+    <div className="flex cursor-pointer hover:bg-white/15 hover:text-[#FFF200] flex-row space-x-3 transition-colors duration-200 ease-in-out">
       <img
         src={image}
         alt="agent-profile-image"
-        className="h-[28px] w-[28px]"
+        className="h-[28px] w-[28px] transition-transform duration-300 ease-in-out hover:scale-110"
       />
-      <h1 className="">{name}</h1>
+      <h1 className="transition-colors duration-300 ease-in-out">{name}</h1>
     </div>
   );
 }

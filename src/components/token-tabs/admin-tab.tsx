@@ -122,14 +122,14 @@ export default function AdminTab() {
         token description
         <textarea
           value={form.description}
-          className="w-2/3 h-full bg-[#0F0F0F] p-3 border border-neutral-800 text-white resize-none"
+          className="w-2/3 text-[17px] h-[300px] bg-[#0F0F0F] p-3 border border-neutral-800 text-white resize-none"
           placeholder="Describe your token..."
         />
       </div>
       <div className="grid col-span-2 items-center justify-items-center w-full uppercase text-center font-dm-mono text-xl">
         <button
           type="submit"
-          className="cursor-pointer text-white bg-transparent gap-x-3 border-2 border-autofun-background-action-highlight flex px-8 py-2 flex-row w-fit items-center justify-items-center"
+          className="cursor-pointer text-white bg-transparent gap-x-3 border-2 hover:bg-autofun-background-action-highlight border-autofun-background-action-highlight flex px-8 py-2 flex-row w-fit items-center justify-items-center"
         >
           Save
         </button>
