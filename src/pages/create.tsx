@@ -6,6 +6,7 @@ import { useNavigate } from "react-router";
 import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
 import useAuthentication from "@/hooks/use-authentication";
+import { useCreateToken } from "@/hooks/use-create-token";
 
 const MAX_INITIAL_SOL = 45;
 
@@ -451,7 +452,7 @@ const FormImageInput = ({
                 <button
                   type="button"
                   onClick={handleRemoveImage}
-                  className="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-700 transition-colors"
+                  className="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-700 transition-all"
                 >
                   ✕
                 </button>
@@ -772,6 +773,7 @@ const waitForTokenCreation = async ({
 export const Create = () => {
   const navigate = useNavigate();
   const { publicKey, signTransaction } = useWallet();
+  const { mutateAsync: createTokenOnChainAsync } = useCreateToken();
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -1050,30 +1052,20 @@ export const Create = () => {
       throw new Error("Wallet not connected");
     }
 
-    // Create connection to Solana
-    new Connection(
-      import.meta.env.VITE_SOLANA_RPC_URL || "https://api.devnet.solana.com",
-      "confirmed",
-    );
-
-    // For now, we'll bypass actual on-chain token creation since we need the program IDL
-    // Instead, we'll just log the mint address and proceed with backend registration
-    console.log(
-      "Would create token with mint address:",
-      mintKeypair.publicKey.toString(),
-    );
-
     try {
-      // This will bypass the actual on-chain transaction for now
-      // In a real implementation, you would integrate with your Solana program
-
-      // Return a placeholder transaction ID
-      const placeholderTxId =
-        "simulated_" + Math.random().toString(36).substring(2, 15);
-      console.log("Simulated transaction ID:", placeholderTxId);
-      return placeholderTxId;
+      // Use the useCreateToken hook to create the token on-chain
+      await createTokenOnChainAsync({
+        tokenMetadata: _tokenMetadata,
+        metadataUrl: _metadataUrl,
+        mintKeypair
+      });
+      
+      // Return the mint address as transaction ID
+      const txId = mintKeypair.publicKey.toString();
+      console.log("Token created on-chain with mint address:", txId);
+      return txId;
     } catch (error) {
-      console.error("Error in simulated token creation:", error);
+      console.error("Error in token creation:", error);
       throw error;
     }
   };
@@ -1286,7 +1278,8 @@ export const Create = () => {
     setIsGenerating,
     setGeneratingField,
     previewSetterRef,
-    hasCreatedUrlFromImage
+    hasCreatedUrlFromImage,
+    createTokenOnChainAsync
   ]);
 
   // Import token from address

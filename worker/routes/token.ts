@@ -194,6 +194,8 @@ tokenRouter.get("/tokens/:mint", async (c) => {
       return c.json({ error: "Invalid mint address" }, 400);
     }
 
+    console.log("GETTING DB")
+
     // In test environment, return real errors instead of mocked responses
     const db = getDB(c.env);
 
@@ -215,9 +217,15 @@ tokenRouter.get("/tokens/:mint", async (c) => {
       await updateHoldersCache(c.env, mint);
     }
 
+    console.log(tokenData);
+
+    console.log("got this far")
+
     // Get fresh SOL price
     const solPrice = await getSOLPrice(c.env);
     const token = tokenData[0];
+
+    console.log(token);
 
     // Set default values for critical fields if they're missing
     const TOKEN_DECIMALS = Number(c.env.DECIMALS || 6);
@@ -235,6 +243,8 @@ tokenRouter.get("/tokens/:mint", async (c) => {
         1e9 /
         (Number(token.reserveAmount) / Math.pow(10, TOKEN_DECIMALS));
     }
+
+    console.log(token);
 
     // Calculate tokenPriceUSD in the same way as the old code
     const tokenPriceInSol =
@@ -291,6 +301,8 @@ tokenRouter.get("/tokens/:mint", async (c) => {
       .where(eq(swaps.tokenMint, mint))
       .orderBy(desc(swaps.timestamp))
       .limit(1);
+
+      console.log
 
     const latestSwap = latestSwapQuery[0] || null;
 
