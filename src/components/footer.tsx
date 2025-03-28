@@ -3,17 +3,12 @@ import SkeletonImage from "./skeleton-image";
 
 export const Footer = () => {
   return (
-    <div className="flex justify-between w-full container pb-4">
-      <div className="justify-start items-center gap-4 flex">
-        <img
-          height={32}
-          width={64}
-          className="size-24"
+      <div className="flex items-center gap-2.5 mx-auto">
+      <img
+          className="size-16"
           src="/logo_wide.svg"
           alt="logo"
         />
-      </div>
-      <div className="flex items-center gap-2.5">
         <FooterLink href="/privacy-policy" title="Privacy" />
         <div className="w-[1px] h-4 bg-autofun-stroke-light" />
         <FooterLink href="/terms-of-service" title="Terms" />
@@ -35,7 +30,6 @@ export const Footer = () => {
           </div>
         </Link>
       </div>
-    </div>
   );
 };
 
