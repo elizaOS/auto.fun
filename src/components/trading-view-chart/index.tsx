@@ -7,7 +7,7 @@ interface TradingChartProps {
 }
 
 export const TradingViewChart: React.FC<TradingChartProps> = ({ name, token }) => {
-  const status = useScript("/libraries/datafeeds/udf/dist/bundle.js", {
+  const status = useScript("/udf.js", {
     removeOnUnmount: false,
   });
 

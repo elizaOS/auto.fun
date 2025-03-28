@@ -19,235 +19,9 @@ import { WebSocketDO, allowedOrigins, createTestSwap } from "./websocket";
 import { getWebSocketClient } from "./websocket-client";
 import { initializePreGeneratedTokens } from "./init";
 import { processSwapEvent } from "./routes/token";
-
-// Define CloudflareWebSocket type for local development
-interface CloudflareWebSocket extends WebSocket {
-  accept(): void;
-}
-
-// Define WebSocketPair for local development
-interface WebSocketPair {
-  0: CloudflareWebSocket;
-  1: CloudflareWebSocket;
-}
-
-// Create a simple in-memory implementation for local development
-class InMemoryWebSocketStore {
-  private static instance: InMemoryWebSocketStore;
-  private clients: Map<string, CloudflareWebSocket> = new Map();
-  private rooms: Map<string, Set<string>> = new Map();
-  private clientRooms: Map<string, Set<string>> = new Map();
-
-  private constructor() {}
-
-  static getInstance(): InMemoryWebSocketStore {
-    if (!this.instance) {
-      this.instance = new InMemoryWebSocketStore();
-    }
-    return this.instance;
-  }
-
-  addClient(clientId: string, ws: CloudflareWebSocket): void {
-    this.clients.set(clientId, ws);
-    this.clientRooms.set(clientId, new Set());
-    logger.log(`[LocalDev] Client ${clientId} connected`);
-  }
-
-  removeClient(clientId: string): void {
-    // Remove from all rooms
-    const roomsForClient = this.clientRooms.get(clientId) || new Set();
-    for (const room of roomsForClient) {
-      this.leaveRoom(clientId, room);
-    }
-
-    this.clients.delete(clientId);
-    this.clientRooms.delete(clientId);
-    logger.log(`[LocalDev] Client ${clientId} disconnected`);
-  }
-
-  joinRoom(clientId: string, room: string): void {
-    // Add room if it doesn't exist
-    if (!this.rooms.has(room)) {
-      this.rooms.set(room, new Set());
-    }
-
-    // Add client to room
-    this.rooms.get(room)?.add(clientId);
-
-    // Add room to client
-    if (!this.clientRooms.has(clientId)) {
-      this.clientRooms.set(clientId, new Set());
-    }
-    this.clientRooms.get(clientId)?.add(room);
-
-    logger.log(`[LocalDev] Client ${clientId} joined room ${room}`);
-
-    // Send confirmation
-    const client = this.clients.get(clientId);
-    if (client && client.readyState === WebSocket.OPEN) {
-      const event = room.startsWith("token-") ? "subscribed" : "joined";
-      client.send(
-        JSON.stringify({
-          event,
-          data: { room },
-        }),
-      );
-    }
-  }
-
-  leaveRoom(clientId: string, room: string): void {
-    // Remove client from room
-    this.rooms.get(room)?.delete(clientId);
-
-    // If room is empty, delete it
-    if (this.rooms.get(room)?.size === 0) {
-      this.rooms.delete(room);
-    }
-
-    // Remove room from client
-    this.clientRooms.get(clientId)?.delete(room);
-
-    logger.log(`[LocalDev] Client ${clientId} left room ${room}`);
-
-    // Send confirmation
-    const client = this.clients.get(clientId);
-    if (client && client.readyState === WebSocket.OPEN) {
-      const event = room.startsWith("token-") ? "unsubscribed" : "left";
-      client.send(
-        JSON.stringify({
-          event,
-          data: { room },
-        }),
-      );
-    }
-  }
-
-  broadcast(
-    room: string,
-    event: string,
-    data: any,
-    excludeClientId?: string,
-  ): void {
-    const clients = this.rooms.get(room);
-    if (!clients || clients.size === 0) {
-      logger.log(`[LocalDev] No clients in room ${room}`);
-      return;
-    }
-
-    const message = JSON.stringify({ event, data });
-
-    for (const clientId of clients) {
-      if (excludeClientId && clientId === excludeClientId) continue;
-
-      const client = this.clients.get(clientId);
-      if (client && client.readyState === WebSocket.OPEN) {
-        client.send(message);
-      }
-    }
-
-    logger.log(
-      `[LocalDev] Broadcasted ${event} to ${clients.size} clients in room ${room}`,
-    );
-  }
-
-  sendToClient(clientId: string, event: string, data: any): boolean {
-    const client = this.clients.get(clientId);
-    if (!client || client.readyState !== WebSocket.OPEN) {
-      return false;
-    }
-
-    client.send(JSON.stringify({ event, data }));
-    return true;
-  }
-
-  handleMessage(clientId: string, message: any): void {
-    if (!message || !message.event) return;
-
-    const { event, data } = message;
-
-    switch (event) {
-      case "join":
-        if (data?.room) {
-          this.joinRoom(clientId, data.room);
-        }
-        break;
-
-      case "leave":
-        if (data?.room) {
-          this.leaveRoom(clientId, data.room);
-        }
-        break;
-
-      case "subscribe":
-        if (data) {
-          this.joinRoom(clientId, `token-${data}`);
-        }
-        break;
-
-      case "unsubscribe":
-        if (data) {
-          this.leaveRoom(clientId, `token-${data}`);
-        }
-        break;
-
-      case "subscribeGlobal":
-        this.joinRoom(clientId, "global");
-        break;
-
-      case "unsubscribeGlobal":
-        this.leaveRoom(clientId, "global");
-        break;
-    }
-  }
-}
-
-// Create a function to create a WebSocketPair in local development
-function createLocalWebSocketPair(): WebSocketPair {
-  // This is a simplified implementation for local development
-  // In a real Cloudflare Worker, WebSocketPair is provided by the runtime
-
-  // Create client/server pair with MessageChannel
-  const channel = new MessageChannel();
-  const clientPort = channel.port1;
-  const serverPort = channel.port2;
-
-  // Create client socket
-  const clientSocket = {
-    send: (data: string) => serverPort.postMessage(data),
-    close: () => clientPort.close(),
-    addEventListener: (event: string, handler: (event: any) => void) => {
-      clientPort.addEventListener("message", (e) => {
-        if (event === "message") {
-          handler({ data: e.data });
-        }
-      });
-      clientPort.start();
-    },
-    readyState: WebSocket.OPEN,
-    accept: () => {},
-  } as unknown as CloudflareWebSocket;
-
-  // Create server socket
-  const serverSocket = {
-    send: (data: string) => clientPort.postMessage(data),
-    close: () => serverPort.close(),
-    addEventListener: (event: string, handler: (event: any) => void) => {
-      serverPort.addEventListener("message", (e) => {
-        if (event === "message") {
-          handler({ data: e.data });
-        }
-      });
-      serverPort.start();
-    },
-    readyState: WebSocket.OPEN,
-    accept: () => {},
-  } as unknown as CloudflareWebSocket;
-
-  return {
-    0: clientSocket,
-    1: serverSocket,
-  };
-}
+import { getDB, preGeneratedTokens } from "./db";
+import { sql } from "drizzle-orm";
+import type { R2ObjectBody } from "@cloudflare/workers-types";
 
 const app = new Hono<{
   Bindings: Env;
@@ -456,16 +230,140 @@ api.get("/direct-file/:key", async (c) => {
       return c.json({ error: "R2 is not available" }, 500);
     }
 
-    // Get the object from R2
-    const object = await c.env.R2.get(key);
+    // First, let's try to find the file in the pre-generated tokens table
+    let fullStorageKey: string | null = null;
+    
+    try {
+      const db = getDB(c.env);
+      
+      // Search for tokens where the image URL contains the requested filename
+      const tokens = await db
+        .select()
+        .from(preGeneratedTokens)
+        .where(sql`image LIKE ${'%' + key + '%'}`);
+      
+      logger.log(`Found ${tokens.length} tokens with image URLs containing ${key}`);
+      
+      if (tokens.length > 0) {
+        // Extract the full storage path from the image URL
+        const imageUrl = tokens[0].image;
+        
+        if (imageUrl) {
+          // Extract the key part from the full URL
+          // Format could be like: https://example.r2.dev/pre-generated/token-name.png
+          // or http://localhost:8787/api/direct-file/abc123-token-name.png
+          
+          // Try to extract the last part of the path
+          const urlParts = imageUrl.split('/');
+          const lastPart = urlParts[urlParts.length - 1];
+          
+          // If the URL points to direct-file, we need to retrieve the original key
+          if (imageUrl.includes('/api/direct-file/')) {
+            // Try to find the actual file by listing objects
+            const listed = await c.env.R2.list({ prefix: "", delimiter: "/" });
+            
+            // Look for a key containing the lastPart
+            const matchingKey = listed.objects.find(obj => 
+              obj.key.includes(lastPart) || 
+              obj.key.toLowerCase().includes(lastPart.toLowerCase())
+            )?.key;
+            
+            if (matchingKey) {
+              fullStorageKey = matchingKey;
+              logger.log(`Found storage key from listing: ${fullStorageKey}`);
+            }
+          } else if (imageUrl.includes('r2.dev')) {
+            // This is a direct R2 URL, extract the path after the domain
+            const pathMatch = imageUrl.match(/r2\.dev\/(.*?)(?:\?|$)/);
+            if (pathMatch && pathMatch[1]) {
+              fullStorageKey = pathMatch[1];
+              logger.log(`Extracted R2 path: ${fullStorageKey}`);
+            }
+          } else if (imageUrl.includes('pre-generated/')) {
+            // If the URL contains pre-generated/, use that path
+            const pathMatch = imageUrl.match(/pre-generated\/(.*?)(?:\?|$)/);
+            if (pathMatch && pathMatch[1]) {
+              fullStorageKey = `pre-generated/${pathMatch[1]}`;
+              logger.log(`Using pre-generated path: ${fullStorageKey}`);
+            }
+          }
+        }
+      }
+    } catch (dbError) {
+      logger.error("Error querying database:", dbError);
+      // Continue with fallback search even if DB lookup fails
+    }
+    
+    // If we found the key in the database, retrieve it directly
+    if (fullStorageKey) {
+      const object = await c.env.R2.get(fullStorageKey);
+      if (object) {
+        logger.log(`Successfully retrieved file using database key: ${fullStorageKey}`);
+        // Get the content type from the object's metadata
+        const contentType = object.httpMetadata?.contentType || "application/octet-stream";
+        
+        // Read the object's body
+        const data = await object.arrayBuffer();
+        
+        // Return the object with the correct content type
+        return new Response(data, {
+          headers: {
+            "Content-Type": contentType,
+            "Content-Length": object.size.toString(),
+            "Cache-Control": "public, max-age=31536000",
+            "Access-Control-Allow-Origin": "*",
+          },
+        });
+      }
+    }
+
+    // Fallback to the direct key search with different prefixes
+    const possiblePrefixes = [
+      "", // No prefix
+      "pre-generated/",
+      `pre-generated/${key.split('.')[0]}.`, // Try filename without extension
+    ];
+    
+    let object: R2ObjectBody | null = null;
+    
+    // Try each possible prefix
+    for (const prefix of possiblePrefixes) {
+      const fullKey = prefix + key;
+      logger.log(`Trying to fetch file with key: ${fullKey}`);
+      const result = await c.env.R2.get(fullKey);
+      if (result) {
+        object = result;
+        logger.log(`Found file with key: ${fullKey}`);
+        break;
+      }
+    }
+
+    // If no object found, try listing objects to find a match
+    if (!object) {
+      // List objects to find a match
+      const listed = await c.env.R2.list({ prefix: "", delimiter: "/" });
+      
+      // Look for a key containing the filename
+      const matchingKey = listed.objects.find(obj => 
+        obj.key.includes(key) || 
+        obj.key.toLowerCase().includes(key.toLowerCase())
+      )?.key;
+      
+      if (matchingKey) {
+        logger.log(`Found file with similar name: ${matchingKey}`);
+        const result = await c.env.R2.get(matchingKey);
+        if (result) {
+          object = result;
+        }
+      }
+    }
 
     if (!object) {
-      return c.json({ error: "Object not found" }, 404);
+      return c.json({ error: "File not found", searched: key }, 404);
     }
 
     // Get the content type from the object's metadata
-    const contentType =
-      object.httpMetadata?.contentType || "application/octet-stream";
+    const contentType = object.httpMetadata?.contentType || "application/octet-stream";
 
     // Log the content type for debugging
     logger.log(`Serving file ${key} with content type: ${contentType}`);
@@ -600,15 +498,16 @@ export default {
       url.pathname === "/ws" &&
       request.headers.get("Upgrade") === "websocket"
     ) {
-      // Forward to the WebSocket Durable Object if available
-      if ((env as any).WEBSOCKET_DO) {
+      // Forward to the WebSocket Durable Object
+      if (env.WEBSOCKET_DO) {
         try {
           // Get the singleton instance
-          const doId = (env as any).WEBSOCKET_DO.idFromName("singleton");
-          const webSocketDO = (env as any).WEBSOCKET_DO.get(doId);
+          const doId = env.WEBSOCKET_DO.idFromName("singleton");
+          const webSocketDO = env.WEBSOCKET_DO.get(doId);
 
-          // Forward the request to the Durable Object
-          return await webSocketDO.fetch(request);
+          // Forward the request directly - Durable Objects can handle WebSocket connections
+          // @ts-ignore - Types are compatible at runtime
+          return webSocketDO.fetch(request);
         } catch (error) {
           logger.error("Error forwarding WebSocket request:", error);
           return new Response("WebSocket error", {
@@ -617,19 +516,12 @@ export default {
           });
         }
       } else {
-        // For local development, use the in-memory implementation
-        logger.log(
-          "Using in-memory WebSocket implementation for local development",
-        );
-
-        const wsStore = InMemoryWebSocketStore.getInstance();
-
-        // Extract client ID from URL
-        const clientId =
-          url.searchParams.get("clientId") || crypto.randomUUID();
-
+        // For local development when Durable Objects aren't available
+        logger.log("Using simplified WebSocket implementation for local development");
+        
         try {
-          // Create a proper WebSocketPair for local development
+          // Create a new WebSocketPair
+          // @ts-ignore - WebSocketPair may be available in Miniflare
           const pair = new WebSocketPair();
           const server = pair[1];
           const client = pair[0];
@@ -637,39 +529,66 @@ export default {
           // Accept the connection
           server.accept();
           
-          // Store in our singleton for tracking
-          wsStore.addClient(clientId, server);
+          // Send a welcome message
+          server.send(JSON.stringify({
+            event: "connected",
+            data: { message: "Connected to development WebSocket server" }
+          }));
           
-          // Set up message handler
+          // Set up a simple echo handler
           server.addEventListener("message", (event) => {
             try {
-              const message = JSON.parse(event.data);
-              wsStore.handleMessage(clientId, message);
+              // Log the received message
+              logger.log(`Received WebSocket message: ${event.data}`);
+              
+              // Parse the message to handle basic functionality
+              try {
+                const message = JSON.parse(event.data);
+                
+                // Handle subscription events
+                if (message.event === "subscribeGlobal") {
+                  // Acknowledge subscription
+                  server.send(JSON.stringify({
+                    event: "joined",
+                    data: { room: "global" }
+                  }));
+                } else if (message.event === "subscribe" && message.data) {
+                  // Acknowledge token subscription
+                  server.send(JSON.stringify({
+                    event: "subscribed",
+                    data: { room: `token-${message.data}` }
+                  }));
+                }
+                
+                // Echo the message back
+                server.send(JSON.stringify({
+                  event: "echo",
+                  data: message
+                }));
+              } catch (parseError) {
+                // If not valid JSON, just echo back as text
+                server.send(JSON.stringify({
+                  event: "echo",
+                  data: { text: event.data }
+                }));
+              }
             } catch (error) {
               logger.error(`Error handling WebSocket message: ${error}`);
             }
           });
           
-          // Set up close handler
-          server.addEventListener("close", () => {
-            wsStore.removeClient(clientId);
-          });
-          
-          // Return the client socket
+          // Return the client WebSocket
           return new Response(null, {
             status: 101,
-            // Use non-standard Cloudflare-specific property
-            webSocket: client,
-          } as ResponseInit & { webSocket: CloudflareWebSocket });
+            // @ts-ignore - webSocket is non-standard but supported in Cloudflare Workers/Miniflare
+            webSocket: client
+          });
         } catch (error) {
-          logger.error("Error creating WebSocket in local development:", error);
-          return new Response(
-            "Failed to create WebSocket in local development",
-            {
-              status: 500,
-              headers: corsHeaders,
-            },
-          );
+          logger.error("Error creating local WebSocket:", error);
+          return new Response(`WebSocket creation failed: ${error instanceof Error ? error.message : "Unknown error"}`, {
+            status: 500,
+            headers: corsHeaders
+          });
         }
       }
     }

@@ -1379,55 +1379,83 @@ export async function generatePreGeneratedTokens(
       return;
     }
 
-    // Generate image using Cloudflare AI binding
-    if (!env.AI) {
-      throw new Error("Cloudflare AI binding not configured");
-    }
-
-    // Use the flux-1-schnell model via AI binding
-    const result = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", {
+    // Generate image using the same generateMedia function we use elsewhere
+    const imageResult = await generateMedia(env, {
       prompt: metadata.prompt,
-      steps: 4,
+      type: MediaType.IMAGE,
     });
 
-    // Create data URL from the base64 image
-    const dataURI = `data:image/jpeg;base64,${result.image}`;
-
-    // Download the image
-    const imageResponse = await fetch(dataURI);
-    const imageArrayBuffer = await imageResponse.arrayBuffer();
-
-    // Store in R2
-    if (!env.R2) {
-      throw new Error("R2 bucket not configured");
+    if (!imageResult?.data?.images?.length) {
+      throw new Error("Failed to generate image");
     }
 
-    const key = `pre-generated/${metadata.name.toLowerCase().replace(/\s+/g, "-")}.png`;
-    await env.R2.put(key, imageArrayBuffer, {
-      httpMetadata: {
-        contentType: "image/png",
-        cacheControl: "public, max-age=31536000",
-      },
-    });
+    const imageDataUrl = imageResult.data.images[0].url;
+    
+    // Prepare the upload request in the same format as the /upload endpoint expects
+    const requestData = {
+      image: imageDataUrl,
+      metadata: {
+        name: metadata.name,
+        symbol: metadata.symbol,
+        description: metadata.description,
+      }
+    };
 
-    // Get the public URL
-    const publicUrl = `${env.R2_PUBLIC_URL}/${key}`;
+    // Create a mock request context for the upload
+    // We'll fetch from our own API to leverage all the existing upload logic
+    let uploadResult;
+    try {
+      // Determine the API URL based on the environment
+      let apiUrl: string;
+      if (env.NODE_ENV === 'production') {
+        // In production, use the same host
+        apiUrl = "https://api.auto.fun";
+      } else {
+        // In development, use localhost
+        apiUrl = "http://localhost:8787";
+      }
+      
+      // Use fetch to call our own /upload endpoint
+      const response = await fetch(`${apiUrl}/api/upload`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // Include auth headers to pass authentication check
+          "Authorization": `Bearer ${env.USER_API_KEY || env.API_KEY || ""}`,
+        },
+        body: JSON.stringify(requestData),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Upload failed with status: ${response.status}`);
+      }
+      
+      uploadResult = await response.json();
+      
+      if (!uploadResult.success || !uploadResult.imageUrl) {
+        throw new Error("Upload response did not contain success or imageUrl");
+      }
+    } catch (uploadError) {
+      console.error("Error uploading via API:", uploadError);
+      throw uploadError;
+    }
+
+    // Get the URL returned from the upload endpoint
+    const imageUrl = uploadResult.imageUrl;
+    const metadataUrl = uploadResult.metadataUrl || "";
 
     // Insert into database
-    await env.DB.prepare(
-      `INSERT INTO pre_generated_tokens (
-        id, name, ticker, description, prompt, image, created_at, used
-      ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), 0)`,
-    )
-      .bind(
-        crypto.randomUUID(),
-        metadata.name,
-        metadata.symbol,
-        metadata.description,
-        metadata.prompt,
-        publicUrl,
-      )
-      .run();
+    const db = getDB(env);
+    await db.insert(preGeneratedTokens).values({
+      id: crypto.randomUUID(),
+      name: metadata.name,
+      ticker: metadata.symbol,
+      description: metadata.description,
+      prompt: metadata.prompt,
+      image: imageUrl,
+      createdAt: new Date().toISOString(),
+      used: 0,
+    });
 
     console.log(`Generated token: ** ${metadata.name} (** ${metadata.symbol})`);
   } catch (error) {

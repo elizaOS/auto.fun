@@ -1635,7 +1635,7 @@ export const Create = () => {
             // Extract the filename from the R2 URL
             const filename = imageUrl.split('/').pop();
             // Use local endpoint instead
-            imageUrl = `${import.meta.env.VITE_API_URL}/api/image/${filename}`;
+            imageUrl = `${import.meta.env.VITE_API_URL}/api/direct-file/${filename}`;
           }
           
           const imageBlob = await fetch(imageUrl).then((r) => r.blob());
@@ -1996,7 +1996,7 @@ export const Create = () => {
               // Extract the filename from the R2 URL
               const filename = imageUrl.split('/').pop();
               // Use local endpoint instead
-              imageUrl = `${import.meta.env.VITE_API_URL}/api/image/${filename}`;
+              imageUrl = `${import.meta.env.VITE_API_URL}/api/direct-file/${filename}`;
             }
             
             const imageBlob = await fetch(imageUrl).then(r => r.blob());

@@ -84,14 +84,19 @@ export const formatNumberSubscript = (num: number): string => {
     sign = "-";
     num = Math.abs(num);
   }
+  
+  // Round to 9 decimal places
+  num = Number(num.toFixed(8));
+  
   if (num >= 1) {
     return sign + num.toString();
   }
+  
   const expStr = num.toExponential();
   const [mantissa, exponentStr] = expStr.split("e");
   const exponent = parseInt(exponentStr, 10);
   const totalZeros = -exponent - 1;
-  const mantissaDigits = mantissa.replace(".", "");
+  const mantissaDigits = mantissa.replace(".", "").slice(0, 9); // Limit mantissa digits
 
   if (totalZeros > 1) {
     return sign + "0.0" + toSubscript(totalZeros - 1) + mantissaDigits;

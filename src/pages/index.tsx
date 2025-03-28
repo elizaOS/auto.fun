@@ -62,7 +62,7 @@ export default function Page() {
       {/* Header Section */}
       <FrontpageHeader tokens={tokens} />
       {/* Top Navigation */}
-      <div className="flex justify-between gap-2 flex-wrap-reverse lg:flex-wrap">
+      <div className="flex justify-between gap-2 flex-wrap-reverse md:flex-wrap">
         <GridListSwitcher />
         <div className="flex items-center gap-2">
           {/* <Button

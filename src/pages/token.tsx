@@ -155,7 +155,7 @@ export default function Page() {
             </Link>
           </div>
           {/* USD Price & Solana Price */}
-          <div className="flex border bg-autofun-background-card py-2 px-3 items-center justify-between gap-3 divide-x divide-autofun-stroke-primary">
+          <div className="flex border bg-autofun-background-card py-2 px-3 items-center justify-between divide-x divide-autofun-stroke-primary">
             <div className="flex flex-col gap-1 items-center w-full">
               <span className="text-base font-dm-mono text-autofun-text-secondary">
                 Price USD
@@ -210,12 +210,13 @@ export default function Page() {
         <Trade token={token} />
       </div>
       {/* Left Section */}
-      <div className="w-full lg:w-fit grow flex flex-col gap-3">
+      <div className="grow flex flex-col gap-3">
         {/* Info */}
-        <div className="flex flex-wrap xl:flex-nowrap border bg-autofun-background-card p-3 items-center justify-between gap-3 xl:divide-x divide-autofun-stroke-primary">
+        <div className="flex py-2 flex-wrap lg:flex-nowrap border bg-autofun-background-card items-center justify-between gap-3 lg:divide-x divide-autofun-stroke-primary">
           <div className="flex flex-col gap-2 items-center w-full">
             <span className="text-base font-dm-mono text-autofun-text-secondary">
-              Market Cap
+              <span className="lg:hidden">MCap</span>
+              <span className="hidden lg:inline">Market Cap</span>
             </span>
             <span className="text-xl font-dm-mono text-autofun-text-highlight">
               {token?.marketCapUSD != null
@@ -225,7 +226,8 @@ export default function Page() {
           </div>
           <div className="flex flex-col gap-2 items-center w-full">
             <span className="text-base font-dm-mono text-autofun-text-secondary">
-              24hr Volume
+              <span className="lg:hidden">24hr</span>
+              <span className="hidden lg:inline">24hr Volume</span>
             </span>
             <span className="text-xl font-dm-mono text-autofun-text-primary">
               {token?.volume24h != null
@@ -243,10 +245,10 @@ export default function Page() {
           </div>
           <div className="flex flex-col gap-2 items-center w-full">
             <span className="text-base font-dm-mono text-autofun-text-secondary">
-              Creation Time
+              Time
             </span>
-            <span className="text-xl font-dm-mono text-autofun-text-primary">
-              {token?.createdAt ? fromNow(token?.createdAt) : "-"}
+            <span className="text-lg lg:text-xl font-dm-mono text-autofun-text-primary">
+              {token?.createdAt ? fromNow(token?.createdAt).replace("ago", "").trim() : "-"}
             </span>
           </div>
         </div>
