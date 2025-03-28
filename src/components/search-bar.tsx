@@ -96,7 +96,7 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
         {showMobileSearch && (
           <div className="fixed inset-0 bg-neutral-900 flex flex-col">
             <div className="flex items-center">
-              <div className="relative flex-1 py-5">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
@@ -139,7 +139,7 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
   }
 
   return (
-    <div className="relative flex-1">
+    <div className="relative flex-1 md:min-w-72 lg:min-w-96">
       <div className="flex items-center h-11 w-full px-2 gap-2 bg-[#171717] border border-[#262626] hover:border-[#2FD345]/50 focus-within:border-[#2FD345]/50 transition-colors">
         <Search className="w-6 h-6 text-[#8C8C8C] group-hover:text-[#2FD345]" />
         <input

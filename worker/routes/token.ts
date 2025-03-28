@@ -331,6 +331,506 @@ tokenRouter.get("/tokens/:mint", async (c) => {
   }
 });
 
+// Add search-token endpoint
+tokenRouter.post("/search-token", async (c) => {
+  try {
+    // Parse the request body
+    const body = await c.req.json();
+    const { mint, requestor } = body;
+
+    if (!mint || typeof mint !== "string") {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    if (!requestor || typeof requestor !== "string") {
+      return c.json({ error: "Missing or invalid requestor" }, 400);
+    }
+
+    // Validate mint address format
+    let mintPublicKey;
+    try {
+      mintPublicKey = new PublicKey(mint);
+      logger.log(`[search-token] Valid public key format: ${mintPublicKey.toString()}`);
+    } catch (error) {
+      return c.json({ error: "Invalid Solana public key format" }, 400);
+    }
+
+    logger.log(`[search-token] Searching for token ${mint} requested by ${requestor}`);
+
+    // Use the mainnet Helius RPC
+    const heliusRpcUrl = "https://mainnet.helius-rpc.com/?api-key=7f068738-8b88-4a91-b2a9-99b00f716717";
+    
+    try {
+      // Create a connection to the Solana blockchain
+      logger.log(`[search-token] Creating connection to Helius mainnet: ${heliusRpcUrl}`);
+      const connection = new Connection(heliusRpcUrl, "confirmed");
+
+      // First get direct token account info to verify it exists
+      logger.log(`[search-token] Fetching token account info for mint: ${mint}`);
+      const tokenInfo = await connection.getAccountInfo(mintPublicKey);
+      
+      if (!tokenInfo) {
+        logger.error(`[search-token] Token account not found for mint: ${mint}`);
+        return c.json({ 
+          error: "Token account not found on mainnet. The address may not be a valid token mint." 
+        }, 404);
+      }
+      
+      logger.log(`[search-token] Token account exists, data length: ${tokenInfo.data.length} bytes`);
+      
+      // Get metadata PDA for this mint
+      logger.log(`[search-token] Calculating metadata PDA for mint: ${mint}`);
+      const metadataPDA = await getMetadataPDA(mint);
+      logger.log(`[search-token] Metadata PDA: ${metadataPDA.toString()}`);
+      
+      // Fetch the metadata account info
+      logger.log(`[search-token] Fetching metadata account info`);
+      const metadataAccount = await connection.getAccountInfo(metadataPDA);
+      
+      logger.log(`[search-token] Metadata account found: ${metadataAccount !== null}`);
+      
+      if (!metadataAccount) {
+        logger.error(`[search-token] No metadata found for token: ${mint}`);
+        return c.json({ 
+          error: "No metadata found for this token. It might not be a valid SPL token with metadata." 
+        }, 404);
+      }
+      
+      logger.log(`[search-token] Metadata account data length: ${metadataAccount.data.length} bytes`);
+      
+      // Log basic info about the metadata (helps debugging)
+      if (metadataAccount.data.length > 0) {
+        logger.log(`[search-token] First few bytes of metadata: ${metadataAccount.data.slice(0, 10).toString('hex')}`);
+      }
+      
+      // Try to decode the metadata
+      let tokenName = "Unknown";
+      let tokenSymbol = "???";
+      let tokenDescription: string | null = null;
+      let tokenImage: string | null = null;
+      let updateAuthority: string | null = null;
+      let creators: Array<{address: string, verified: boolean, share: number}> | null = null;
+      let ownerAddress: string | null = null;
+      
+      try {
+        // Attempt to decode the metadata using the decodeMetadata function
+        const decoded = decodeMetadata(metadataAccount.data);
+        logger.log(`[search-token] Decoded metadata: ${JSON.stringify(decoded, null, 2)}`);
+        
+        // Clean up name and symbol by removing trailing whitespace and non-printable characters
+        tokenName = decoded.data.name.replace(/[\u0000-\u001F\u007F-\u009F\s]+$/g, '').trim();
+        tokenSymbol = decoded.data.symbol.replace(/[\u0000-\u001F\u007F-\u009F\s]+$/g, '').trim();
+        
+        // Fix the URI if it's malformed
+        let uri = decoded.data.uri || '';
+        
+        // Clean up any non-printable characters and extra whitespace
+        uri = uri.replace(/[\u0000-\u001F\u007F-\u009F]+/g, '').trim();
+        
+        // Fix common URI issues
+        if (uri.startsWith('tps://')) {
+          uri = 'https://' + uri.substring(6);
+        }
+        
+        // Remove any trailing non-URL characters
+        // This handles cases where the URI has trailing binary data like in the example
+        uri = uri.replace(/[^\w\s./:?&=%-]+$/, '');
+        
+        // Log the cleaned URI
+        logger.log(`[search-token] Cleaned URI: ${uri}`);
+        
+        if (uri) {
+          // Try to fetch the external metadata URI to get description and image
+          try {
+            // Check if it's an IPFS URI and convert if needed
+            if (uri.includes('ipfs/')) {
+              const ipfsHash = uri.split('ipfs/')[1].split('?')[0].split('#')[0];
+              // Try multiple IPFS gateways
+              const ipfsGateways = [
+                `https://ipfs.io/ipfs/${ipfsHash}`,
+                `https://gateway.pinata.cloud/ipfs/${ipfsHash}`,
+                `https://dweb.link/ipfs/${ipfsHash}`,
+                `https://cloudflare-ipfs.com/ipfs/${ipfsHash}`,
+                uri // Original as fallback
+              ];
+              
+              // Try each gateway until one works
+              let metadataJson: string | null = null;
+              let metadataFetchSuccess = false;
+              
+              for (const gateway of ipfsGateways) {
+                try {
+                  logger.log(`[search-token] Trying IPFS gateway: ${gateway}`);
+                  const fetchResult = await fetchMetadataUri(gateway);
+                  if (fetchResult) {
+                    metadataJson = fetchResult;
+                    metadataFetchSuccess = true;
+                    logger.log(`[search-token] Successfully fetched metadata from: ${gateway}`);
+                    break;
+                  }
+                } catch (err) {
+                  logger.error(`[search-token] Failed to fetch from gateway ${gateway}:`, err);
+                  continue;
+                }
+              }
+              
+              if (metadataJson) {
+                try {
+                  // Log the raw metadata string to see exactly what we're working with
+                  logger.log(`[search-token] Raw metadata JSON: ${metadataJson}`);
+                  
+                  try {
+                    // Explicitly parse the raw JSON to look for the image field
+                    const rawJson = JSON.parse(metadataJson);
+                    logger.log(`[search-token] Directly checking if raw JSON has image field: ${!!rawJson.image}`);
+                    
+                    if (rawJson.image) {
+                      logger.log(`[search-token] Found image in raw JSON: ${rawJson.image}`);
+                      
+                      // Directly set the tokenImage from the raw JSON
+                      tokenImage = rawJson.image;
+                      
+                      // Log that we set it
+                      logger.log(`[search-token] Set tokenImage directly from raw JSON to: ${tokenImage}`);
+                    }
+                    
+                    // Also use the clean symbol from metadata JSON if available
+                    if (rawJson.symbol) {
+                      logger.log(`[search-token] Found clean symbol in raw JSON: ${rawJson.symbol}`);
+                      tokenSymbol = rawJson.symbol;
+                    }
+                    
+                    // Use the description from metadata JSON if available
+                    if (rawJson.description) {
+                      logger.log(`[search-token] Found description in raw JSON: ${rawJson.description}`);
+                      tokenDescription = rawJson.description;
+                    }
+                  } catch (rawJsonError) {
+                    logger.error(`[search-token] Error parsing raw JSON for image field:`, rawJsonError);
+                  }
+                } catch (metadataError) {
+                  logger.error(`[search-token] Error parsing metadata JSON:`, metadataError);
+                }
+                
+                // If we still don't have an image, try alternative sources
+                if (!tokenImage) {
+                  logger.log(`[search-token] No image found in metadata, trying direct sources`);
+                  
+                  // Try to create a direct image URL based on mint address
+                  const possibleDirectImageUrls = [
+                    // Try Jupiter/Jup.ag image
+                    `https://jup.ag/token-list/token-logos/${mint}.png`,
+                    // Try Solana token list
+                    `https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/${mint}/logo.png`,
+                    // Add more potential image sources here
+                  ];
+                  
+                  for (const imgUrl of possibleDirectImageUrls) {
+                    try {
+                      logger.log(`[search-token] Trying direct image URL: ${imgUrl}`);
+                      const response = await fetch(imgUrl, { method: 'HEAD' });
+                      if (response.ok) {
+                        tokenImage = imgUrl;
+                        logger.log(`[search-token] Found direct image at: ${imgUrl}`);
+                        break;
+                      }
+                    } catch (imgErr) {
+                      logger.error(`[search-token] Failed to check image at ${imgUrl}:`, imgErr);
+                      continue;
+                    }
+                  }
+                  
+                  // If we still don't have an image, use a placeholder
+                  if (!tokenImage) {
+                    logger.log(`[search-token] No image sources found, using placeholder`);
+                    tokenImage = `https://api.dicebear.com/7.x/identicon/svg?seed=${mint}`;
+                  }
+                }
+              } else {
+                logger.warn(`[search-token] No metadata found for token: ${mint}`);
+              }
+            } else {
+              // Direct URL - try to fetch normally
+              const metadataJson = await fetchMetadataUri(uri);
+              if (metadataJson) {
+                try {
+                  // Log the raw metadata string first to see what we're working with
+                  logger.log(`[search-token] Raw metadata (first 200 chars): ${metadataJson.substring(0, 200)}...`);
+                  
+                  const metadataObj = JSON.parse(metadataJson);
+                  const metadataKeys = Object.keys(metadataObj);
+                  logger.log(`[search-token] Parsed metadata object keys: ${metadataKeys.join(', ')}`);
+                  
+                  // Extract description and other metadata
+                  tokenDescription = metadataObj.description || "";
+                  
+                  // Specifically look for the image property
+                  if (metadataObj.image) {
+                    tokenImage = metadataObj.image;
+                    logger.log(`[search-token] Found image URL in metadata: ${tokenImage}`);
+                    
+                    // If the URL starts with https://, it's likely valid
+                    if (tokenImage && tokenImage.startsWith('https://')) {
+                      logger.log(`[search-token] Using HTTPS image URL from metadata`);
+                    }
+                    // Fix IPFS URLs if needed
+                    else if (tokenImage && tokenImage.startsWith('ipfs://')) {
+                      const ipfsHash = tokenImage.substring(7);
+                      tokenImage = `https://ipfs.io/ipfs/${ipfsHash}`;
+                      logger.log(`[search-token] Converted IPFS image URL to: ${tokenImage}`);
+                    }
+                  } else {
+                    logger.log(`[search-token] No 'image' property found in metadata`);
+                  }
+                  
+                  // Log what we extracted
+                  logger.log(`[search-token] Extraction results: description=${tokenDescription?.substring(0, 30)}..., imageUrl=${tokenImage}`);
+                  
+                  // If we still don't have an image, try alternative sources
+                  if (!tokenImage) {
+                    logger.log(`[search-token] No image found in metadata, trying direct sources`);
+                    
+                    // Try to create a direct image URL based on mint address
+                    const possibleDirectImageUrls = [
+                      // Try Jupiter/Jup.ag image
+                      `https://jup.ag/token-list/token-logos/${mint}.png`,
+                      // Try Solana token list
+                      `https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/${mint}/logo.png`,
+                      // Add more potential image sources here
+                    ];
+                    
+                    for (const imgUrl of possibleDirectImageUrls) {
+                      try {
+                        logger.log(`[search-token] Trying direct image URL: ${imgUrl}`);
+                        const response = await fetch(imgUrl, { method: 'HEAD' });
+                        if (response.ok) {
+                          tokenImage = imgUrl;
+                          logger.log(`[search-token] Found direct image at: ${imgUrl}`);
+                          break;
+                        }
+                      } catch (imgErr) {
+                        logger.error(`[search-token] Failed to check image at ${imgUrl}:`, imgErr);
+                        continue;
+                      }
+                    }
+                    
+                    // If we still don't have an image, use a placeholder
+                    if (!tokenImage) {
+                      logger.log(`[search-token] No image sources found, using placeholder`);
+                      tokenImage = `https://api.dicebear.com/7.x/identicon/svg?seed=${mint}`;
+                    }
+                  }
+                } catch (parseError) {
+                  logger.error(`[search-token] Error parsing metadata JSON:`, parseError);
+                  
+                  // Use a placeholder image even if parsing fails
+                  tokenImage = `https://api.dicebear.com/7.x/identicon/svg?seed=${mint}`;
+                }
+              } else {
+                // If no metadata was fetched, use a placeholder image
+                logger.log(`[search-token] No metadata fetched, using placeholder image`);
+                tokenImage = `https://api.dicebear.com/7.x/identicon/svg?seed=${mint}`;
+              }
+            }
+          } catch (uriError) {
+            logger.error(`[search-token] Error fetching metadata URI:`, uriError);
+            // Add a fallback for image even if URI fetch fails
+            if (!tokenImage) {
+              logger.log(`[search-token] Using fallback image from identicon`);
+              tokenImage = `https://api.dicebear.com/7.x/identicon/svg?seed=${mint}`;
+            }
+          }
+        } else {
+          // If no URI at all, use a placeholder 
+          logger.log(`[search-token] No URI available, using placeholder image`);
+          tokenImage = `https://api.dicebear.com/7.x/identicon/svg?seed=${mint}`;
+        }
+        
+        updateAuthority = decoded.updateAuthority;
+        creators = decoded.data.creators || [];
+        ownerAddress = decoded.data.ownerAddress;
+      } catch (decodeError) {
+        logger.error(`[search-token] Error decoding metadata:`, decodeError);
+        // Fall back to using simple values if decoding fails
+        tokenName = "Token " + mint.slice(0, 6);
+        tokenSymbol = mint.slice(0, 4).toUpperCase();
+      }
+      
+      // Check if the requestor is the update authority or a creator
+      // Note: We're still checking this, but now we'll always return token data with isCreator flag
+      const isCreator = 
+        (updateAuthority && updateAuthority === requestor) || 
+        (creators && creators.some(creator => creator.address === requestor && creator.verified));
+      
+      const creatorAddresses = Array.isArray(creators) 
+        ? creators.map(creator => creator.address) 
+        : [];
+        
+      // Return the token data with parsed metadata
+      logger.log(`[search-token] Symbol value before construction: "${tokenSymbol}"`);
+      
+      const tokenMetadata = {
+        name: tokenName,
+        symbol: tokenSymbol,
+        description: tokenDescription || `Token imported from address ${mint}`,
+        mint: mint,
+        updateAuthority: updateAuthority || "Unknown",
+        creator: creatorAddresses.length > 0 ? creatorAddresses[0] : "Unknown",
+        creators: creatorAddresses,
+        isCreator: isCreator, // This flag indicates if the requestor has permission
+        image: tokenImage || `https://api.dicebear.com/7.x/identicon/svg?seed=${mint}`, // Always ensure an image URL
+        ownerAddress: ownerAddress || "Unknown",
+        needsWalletSwitch: !isCreator // Flag to indicate if wallet switch is needed
+      };
+      
+      // Log the final image URL we're returning
+      logger.log(`[search-token] Final image URL in response: ${tokenMetadata.image}`);
+      
+      logger.log(`[search-token] Final tokenMetadata: ${JSON.stringify({
+        name: tokenMetadata.name,
+        symbol: tokenMetadata.symbol,
+        image: tokenMetadata.image,
+        isCreator: tokenMetadata.isCreator,
+        needsWalletSwitch: tokenMetadata.needsWalletSwitch
+      }, null, 2)}`);
+      
+      logger.log(`[search-token] Successfully retrieved token metadata for: ${mint}, isCreator: ${isCreator}`);
+      return c.json(tokenMetadata);
+      
+    } catch (error) {
+      logger.error(`[search-token] Error searching for token:`, error);
+      return c.json({ 
+        error: `Failed to fetch token metadata: ${error instanceof Error ? error.message : "Unknown error"}` 
+      }, 500);
+    }
+  } catch (error) {
+    logger.error(`[search-token] Unexpected error:`, error);
+    return c.json({ 
+      error: error instanceof Error ? error.message : "Unknown error occurred" 
+    }, 500);
+  }
+});
+
+// Helper function to get the Metadata PDA for a mint
+async function getMetadataPDA(mint: string): Promise<PublicKey> {
+  const METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+  const [metadataPDA] = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("metadata"),
+      METADATA_PROGRAM_ID.toBuffer(),
+      new PublicKey(mint).toBuffer(),
+    ],
+    METADATA_PROGRAM_ID
+  );
+  return metadataPDA;
+}
+
+// Helper function to decode metadata from buffer
+function decodeMetadata(buffer: Buffer): any {
+  // This is a simplified implementation
+  // In production, use the Metaplex JS SDK which has proper decoding functions
+  
+  // For now, we'll use a placeholder that extracts common fields
+  // The actual implementation would use proper BorshDeserialize logic
+  
+  // Sample structure for demonstration purposes:
+  return {
+    updateAuthority: new PublicKey(buffer.slice(1, 33)).toString(),
+    mint: new PublicKey(buffer.slice(33, 65)).toString(),
+    data: {
+      name: buffer.slice(69, 105).toString('utf8').replace(/\0/g, ''),
+      symbol: buffer.slice(105, 121).toString('utf8').replace(/\0/g, ''),
+      uri: buffer.slice(121, 377).toString('utf8').replace(/\0/g, ''),
+      creators: extractCreators(buffer.slice(377, buffer.length))
+    }
+  };
+}
+
+// Helper function to extract creators array from buffer
+function extractCreators(buffer: Buffer): Array<{address: string, verified: boolean, share: number}> | null {
+  // This is placeholder logic
+  // In production, use proper Borsh deserialization from Metaplex SDK
+  
+  // For simplicity, we'll just try to extract the first creator if it exists
+  try {
+    if (buffer.length > 34) {
+      return [{
+        address: new PublicKey(buffer.slice(2, 34)).toString(),
+        verified: Boolean(buffer[34]),
+        share: buffer[35]
+      }];
+    }
+  } catch (e) {
+    console.error("Error extracting creators:", e);
+  }
+  return null;
+}
+
+// Helper function to fetch metadata URI content
+async function fetchMetadataUri(uri: string): Promise<string | null> {
+  try {
+    // Clean the URI
+    const cleanUri = uri.trim();
+    if (!cleanUri) return null;
+    
+    // If URI contains invalid characters that would break a URL
+    if (/[\u0000-\u001F\u007F-\u009F]/.test(cleanUri)) {
+      logger.error(`[fetchMetadataUri] URI contains invalid characters: ${cleanUri}`);
+      return null;
+    }
+    
+    // Handle different URI types
+    const arweavePrefix = "https://arweave.net/";
+    const ipfsPrefix = "ipfs://";
+    
+    let fetchUri = cleanUri;
+    
+    // Convert IPFS URI to HTTP URL if needed
+    if (cleanUri.startsWith(ipfsPrefix)) {
+      fetchUri = `https://ipfs.io/ipfs/${cleanUri.substring(ipfsPrefix.length)}`;
+    }
+    
+    // Add a timeout to prevent hanging on slow responses
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    
+    try {
+      // Fetch the metadata JSON
+      const response = await fetch(fetchUri, { 
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json, text/plain, */*',
+          'User-Agent': 'auto-fun-metadata-service'
+        }
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+      
+      // Get the response as text first to avoid JSON parsing errors
+      const text = await response.text();
+      
+      // Try to parse it as JSON to validate
+      try {
+        JSON.parse(text);
+        return text;
+      } catch (jsonError) {
+        logger.error(`[fetchMetadataUri] Invalid JSON in response: ${jsonError}`);
+        return null;
+      }
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      throw fetchError;
+    }
+  } catch (error) {
+    logger.error(`[fetchMetadataUri] Error fetching URI: ${uri}`, error);
+    return null;
+  }
+}
+
 // Get token holders endpoint
 tokenRouter.get("/tokens/:mint/holders", async (c) => {
   try {
@@ -830,9 +1330,6 @@ tokenRouter.post("/register", async (c) => {
       id: userId,
       name: body.name || null,
       address: body.address,
-      avatar:
-        body.avatar ||
-        "https://ipfs.io/ipfs/bafkreig4ob6pq5qy4v6j62krj4zkh2kc2pnv5egqy7f65djqhgqv3x56pq",
       createdAt: now,
     });
 
@@ -840,48 +1337,12 @@ tokenRouter.post("/register", async (c) => {
       id: userId,
       address: body.address,
       name: body.name || null,
-      avatar:
-        body.avatar ||
-        "https://ipfs.io/ipfs/bafkreig4ob6pq5qy4v6j62krj4zkh2kc2pnv5egqy7f65djqhgqv3x56pq",
       createdAt: now,
     };
 
     return c.json({ user: newUser });
   } catch (error) {
     logger.error("Error in user registration:", error);
-    return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
-  }
-});
-
-// Avatar endpoint
-tokenRouter.get("/avatar/:address", async (c) => {
-  try {
-    const address = c.req.param("address");
-
-    if (!address) {
-      return c.json({ error: "Missing address parameter" }, 400);
-    }
-
-    const db = getDB(c.env);
-    const user = await db
-      .select()
-      .from(users)
-      .where(eq(users.address, address))
-      .limit(1);
-
-    if (!user || user.length === 0) {
-      return c.json({
-        avatar:
-          "https://ipfs.io/ipfs/bafkreig4ob6pq5qy4v6j62krj4zkh2kc2pnv5egqy7f65djqhgqv3x56pq",
-      });
-    }
-
-    return c.json({ avatar: user[0].avatar });
-  } catch (error) {
-    logger.error("Error fetching avatar:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
       500,

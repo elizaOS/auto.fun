@@ -30,7 +30,6 @@ authRouter.post("/register", async (c) => {
             id: "mock-user-id",
             address,
             name: "Test User",
-            avatar: "https://example.com/avatar.png",
             createdAt: new Date().toISOString(),
           },
         },
@@ -61,9 +60,6 @@ authRouter.post("/register", async (c) => {
         id: crypto.randomUUID(),
         name: body.name || "",
         address: body.address,
-        avatar:
-          body.avatar ||
-          "https://ipfs.io/ipfs/bafkreig4ob6pq5qy4v6j62krj4zkh2kc2pnv5egqy7f65djqhgqv3x56pq",
         createdAt: new Date().toISOString(),
       };
 
@@ -78,50 +74,6 @@ authRouter.post("/register", async (c) => {
     return c.json({ user });
   } catch (error) {
     logger.error("Error registering user:", error);
-    return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
-  }
-});
-
-authRouter.get("/avatar/:address", async (c) => {
-  try {
-    const address = c.req.param("address");
-
-    // For test addresses that start with 'mock-', don't apply strict validation
-    if (
-      !address ||
-      (!address.startsWith("mock-") &&
-        (address.length < 32 || address.length > 44))
-    ) {
-      return c.json({ error: "Invalid address" }, 400);
-    }
-
-    const db = getDB(c.env);
-
-    // For test addresses, return a default avatar
-    if (address.startsWith("mock-")) {
-      return c.json({
-        avatar:
-          "https://ipfs.io/ipfs/bafkreig4ob6pq5qy4v6j62krj4zkh2kc2pnv5egqy7f65djqhgqv3x56pq",
-        note: "Default avatar for test address",
-      });
-    }
-
-    const user = await db
-      .select()
-      .from(users)
-      .where(eq(users.address, address))
-      .limit(1);
-
-    if (user.length === 0) {
-      return c.json({ error: "User not found" }, 404);
-    }
-
-    return c.json({ avatar: user[0].avatar });
-  } catch (error) {
-    logger.error("Error fetching user avatar:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
       500,

@@ -16,7 +16,6 @@ export default function useAuthentication() {
 
   const signOut = () => {
     setAuthToken(null);
-    disconnect();
   };
 
   useEffect(() => {

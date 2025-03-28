@@ -676,18 +676,6 @@ describe("Token API Endpoints", () => {
     expect(data.user.address).toBe(userKeypair.publicKey.toString());
   });
 
-  it("should get user avatar", async () => {
-    if (!ctx.context) throw new Error("Test context not initialized");
-    const { baseUrl } = ctx.context;
-
-    const { response, data } = await fetchWithAuth<{
-      avatar: string;
-    }>(apiUrl(baseUrl, `/avatar/${userKeypair.publicKey.toString()}`), "GET");
-
-    expect(response.status).toBe(200);
-    expect(data).toHaveProperty("avatar");
-  });
-
   it("should create and like a message for a token", async () => {
     if (!ctx.context) throw new Error("Test context not initialized");
     if (!testState.tokenPubkey) throw new Error("Token pubkey not available");

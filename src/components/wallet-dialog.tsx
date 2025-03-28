@@ -55,107 +55,168 @@ export const WalletModal: FC<WalletModalProps> = () => {
   const mutation = useMutation({
     mutationKey: ["connect-wallet"],
     mutationFn: async ({ wallet }: { wallet: Wallet }) => {
-      connectedWallet?.adapter.name === wallet.adapter.name
-        ? await connect()
-        : select(wallet.adapter.name);
-
-      await connect();
-
-      if (!publicKey) {
-        throw new Error("Wallet not connected");
-      }
-
-      /** Nonce generation */
-      let nonce = String(Math.floor(new Date().getTime() / 1000.0));
-
-      if (!publicKey) {
-        throw new Error("Wallet disconnected during authentication");
-      }
-
-      if (!signMessage) throw new Error("signMessage method not available");
-
-      const payload = new Payload();
-      payload.domain = window.location.host;
-      payload.address = publicKey.toString();
-      payload.uri = window.location.origin;
-      payload.statement = `Sign this message for authenticating with nonce: ${nonce}`;
-      payload.version = "1";
-      payload.chainId = 1;
-      payload.nonce = nonce;
-
-      const siwsMessage = new SIWS({ payload });
-
-      const messageText = siwsMessage.prepareMessage();
-      const messageEncoded = new TextEncoder().encode(messageText);
-
-      const signatureBytes = await signMessage(messageEncoded);
-
-      const signatureHex = bs58.encode(signatureBytes);
-
-      const authResponse = await fetch(
-        `${env.apiUrl}/api/authenticate`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            publicKey: publicKey.toString(),
-            signature: { t: "sip99", s: signatureHex },
-            payload: siwsMessage.payload,
-            header: { t: "sip99" },
-            nonce,
-            message: messageText,
-          }),
-          credentials: "include", // Important for cookies
+      try {
+        console.log("Starting wallet connection process");
+        console.log("Current wallet:", connectedWallet);
+        console.log("Selected wallet:", wallet);
+        
+        if (!wallet) {
+          console.error("No wallet provided to connect");
+          throw new Error("No wallet provided");
         }
-      );
+        
+        // Different handling based on current wallet state
+        if (!connectedWallet) {
+          console.log("No wallet currently connected, doing full selection process");
+          
+          // First select the wallet
+          console.log("Selecting wallet:", wallet.adapter.name);
+          await select(wallet.adapter.name);
+          
+          // Wait longer for selection to complete when starting from null
+          await new Promise(resolve => setTimeout(resolve, 800));
+          
+          try {
+            // Then try to connect
+            console.log("Connecting to wallet...");
+            await connect();
+          } catch (connectError: any) {
+            console.error("Connect error:", connectError);
+            
+            // If we get a WalletNotSelectedError, try again with a longer delay
+            if (connectError.name === "WalletNotSelectedError") {
+              console.log("Got WalletNotSelectedError, retrying selection with longer delay");
+              await select(wallet.adapter.name);
+              await new Promise(resolve => setTimeout(resolve, 1200));
+              await connect();
+            } else {
+              throw connectError;
+            }
+          }
+        } else if (connectedWallet.adapter.name === wallet.adapter.name) {
+          // Already connected to this wallet
+          console.log("Already connected to this wallet, continuing");
+        } else {
+          // Connected to a different wallet, need to select and connect to the new one
+          console.log("Connected to a different wallet, switching");
+          await select(wallet.adapter.name);
+          await new Promise(resolve => setTimeout(resolve, 300));
+          await connect();
+        }
+        
+        // Wait for the public key to be available
+        let retries = 0;
+        while (!publicKey && retries < 5) {
+          console.log("Waiting for publicKey, attempt:", retries + 1);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          retries++;
+        }
+        
+        if (!publicKey) {
+          console.error("Failed to get publicKey after connection");
+          throw new Error("Wallet connected but no public key available");
+        }
+        
+        console.log("Successfully connected with publicKey:", publicKey.toString());
+        
+        /** Nonce generation */
+        let nonce = String(Math.floor(new Date().getTime() / 1000.0));
 
-      if (!authResponse.ok) {
-        throw new Error(`Authentication failed: ${authResponse.status}`);
-      }
+        if (!signMessage) throw new Error("signMessage method not available");
 
-      const authData = (await authResponse.json()) as { token?: string };
+        const payload = new Payload();
+        payload.domain = window.location.host;
+        payload.address = publicKey.toString();
+        payload.uri = window.location.origin;
+        payload.statement = `Sign this message for authenticating with nonce: ${nonce}`;
+        payload.version = "1";
+        payload.chainId = 1;
+        payload.nonce = nonce;
 
-      if (authData.token) {
-        setAuthToken(authData.token);
-      } else {
-        console.warn("Authentication successful but no token received");
+        const siwsMessage = new SIWS({ payload });
 
-        const authCheckResponse = await fetch(
-          `${env.apiUrl}/api/auth-status`,
-          { credentials: "include" }
+        const messageText = siwsMessage.prepareMessage();
+        const messageEncoded = new TextEncoder().encode(messageText);
+
+        console.log("Requesting signature...");
+        const signatureBytes = await signMessage(messageEncoded);
+
+        const signatureHex = bs58.encode(signatureBytes);
+        console.log("Signature received");
+
+        console.log("Authenticating with server...");
+        const authResponse = await fetch(
+          `${env.apiUrl}/api/authenticate`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              publicKey: publicKey.toString(),
+              signature: { t: "sip99", s: signatureHex },
+              payload: siwsMessage.payload,
+              header: { t: "sip99" },
+              nonce,
+              message: messageText,
+            }),
+            credentials: "include", // Important for cookies
+          }
         );
 
-        if (authCheckResponse.ok) {
-          const statusData = (await authCheckResponse.json()) as {
-            authenticated: boolean;
-          };
-          if (statusData.authenticated) {
-            const syntheticToken = `session_${publicKey.toString()}_${Date.now()}`;
-            setAuthToken(syntheticToken);
+        if (!authResponse.ok) {
+          throw new Error(`Authentication failed: ${authResponse.status}`);
+        }
+
+        const authData = (await authResponse.json()) as { token?: string };
+        console.log("Auth data received:", authData);
+
+        if (authData.token) {
+          setAuthToken(authData.token);
+          console.log("Auth token set");
+        } else {
+          console.warn("Authentication successful but no token received");
+
+          const authCheckResponse = await fetch(
+            `${env.apiUrl}/api/auth-status`,
+            { credentials: "include" }
+          );
+
+          if (authCheckResponse.ok) {
+            const statusData = (await authCheckResponse.json()) as {
+              authenticated: boolean;
+            };
+            if (statusData.authenticated) {
+              const syntheticToken = `session_${publicKey.toString()}_${Date.now()}`;
+              setAuthToken(syntheticToken);
+              console.log("Synthetic token set");
+            }
           }
         }
-      }
 
-      return true;
+        return true;
+      } catch (error) {
+        console.error("Mutation error:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       /** After everything has succeeded we close the modal */
+      console.log("Connection successful, closing modal");
       setVisible(false);
     },
     onError: (e) => {
       // TODO - Replace for proper toaster again
-      //   alert(e.message);
-      console.error(e);
+      console.error("Connection error:", e);
     },
   });
 
   const handleWalletClick = useCallback(
     (wallet: Wallet) => {
-      select(wallet.adapter.name);
+      console.log("Wallet clicked:", wallet.adapter.name);
+      mutation.mutate({ wallet });
     },
-    [select]
+    [mutation]
   );
 
   return (
@@ -206,11 +267,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
               {installedWallets.map((wallet) => (
                 <WalletListItem
                   key={wallet.adapter.name}
-                  handleClick={async () => {
-                    select(wallet.adapter.name);
-                    handleWalletClick(wallet);
-                    mutation.mutate({ wallet });
-                  }}
+                  handleClick={() => handleWalletClick(wallet)}
                   wallet={wallet}
                 />
               ))}

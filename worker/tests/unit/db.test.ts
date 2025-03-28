@@ -145,7 +145,6 @@ const TEST_USER_DATA = {
   id: "test-user-1",
   name: "Test User",
   address: "test-user-address",
-  avatar: "https://example.com/avatar.png",
   createdAt: new Date().toISOString(),
 };
 
@@ -375,7 +374,6 @@ describe("Database Operations", () => {
         id TEXT PRIMARY KEY,
         name TEXT,
         address TEXT NOT NULL UNIQUE,
-        avatar TEXT NOT NULL DEFAULT 'https://ipfs.io/ipfs/bafkreig4ob6pq5qy4v6j62krj4zkh2kc2pnv5egqy7f65djqhgqv3x56pq',
         created_at TEXT NOT NULL
       )
     `);
@@ -1279,7 +1277,6 @@ describe("Database Operations", () => {
         expect(insertedUser?.id).toBe(TEST_USER_DATA.id);
         expect(insertedUser?.name).toBe(TEST_USER_DATA.name);
         expect(insertedUser?.address).toBe(TEST_USER_DATA.address);
-        expect(insertedUser?.avatar).toBe(TEST_USER_DATA.avatar);
       } catch (error) {
         console.error("Test failed with error:", error);
         throw error;
@@ -1320,14 +1317,12 @@ describe("Database Operations", () => {
 
         // Update values
         const updatedName = "Updated User Name";
-        const updatedAvatar = "https://example.com/updated-avatar.png";
 
         // Update using ORM
         await db
           .update(users)
           .set({
             name: updatedName,
-            avatar: updatedAvatar,
           })
           .where(eq(users.id, TEST_USER_DATA.id));
 
@@ -1339,7 +1334,6 @@ describe("Database Operations", () => {
         // Verify the update
         expect(updatedUser).toBeDefined();
         expect(updatedUser?.name).toBe(updatedName);
-        expect(updatedUser?.avatar).toBe(updatedAvatar);
       } catch (error) {
         console.error("Test failed with error:", error);
         throw error;

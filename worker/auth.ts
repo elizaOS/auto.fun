@@ -6,6 +6,8 @@ import { Env } from "./env";
 import bs58 from "bs58";
 import { PublicKey } from "@solana/web3.js";
 import nacl from "tweetnacl";
+import { getDB, users } from "./db";
+import { eq } from "drizzle-orm";
 
 // Extend Context type for user info
 declare module "hono" {
@@ -212,13 +214,39 @@ export const logout = async (c: AppContext) => {
 export const authStatus = async (c: AppContext) => {
   console.log("authStatus");
   try {
+    console.log("authStatus try");
     // Check for cookie authentication
     const publicKey = getCookie(c, "publicKey");
     const authToken = getCookie(c, "auth_token");
 
+    console.log("publicKey", publicKey);
+    console.log("authToken", authToken);
+
     // For auth status, require both cookies to be present
     if (publicKey && authToken) {
-      return c.json({ authenticated: true });
+      // Get user data from database
+      console.log("authStatus try 2");
+      const db = getDB(c.env);
+      console.log("db", db);
+      const dbUser = await db
+        .select()
+        .from(users)
+        .where(eq(users.address, publicKey))
+        .limit(1);
+
+      console.log("dbUser", dbUser);
+
+      if (dbUser.length > 0) {
+        console.log("dbUser found");
+        return c.json({ 
+          authenticated: true,
+          user: {
+            points: dbUser[0].points,
+          }
+        });
+      }
+      console.log("dbUser not found");
+      return c.json({ authenticated: true, points: 0 });
     }
 
     // Special case for test environment only - accept token in Authorization header
@@ -229,7 +257,12 @@ export const authStatus = async (c: AppContext) => {
 
         // Special handling for test environment
         if (token === "valid-token") {
-          return c.json({ authenticated: true });
+          return c.json({ 
+            authenticated: true,
+            user: {
+              points: 0
+            }
+          });
         }
       }
     }

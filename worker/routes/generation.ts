@@ -611,10 +611,24 @@ app.post("/generate-metadata", async (c) => {
       );
     }
 
-    // Validate request
+    // Define schema with optional prompt
+    const GenerateMetadataSchema = z.object({
+      fields: z.array(z.enum(["name", "symbol", "description", "prompt"])),
+      existingData: z
+        .object({
+          name: z.string().optional(),
+          symbol: z.string().optional(),
+          description: z.string().optional(),
+          prompt: z.string().optional(),
+        })
+        .optional(),
+      prompt: z.string().optional(),
+    });
+
+    // Validate with detailed error handling
     let validatedData;
     try {
-      validatedData = TokenMetadataGenerationSchema.parse(body);
+      validatedData = GenerateMetadataSchema.parse(body);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return c.json(
@@ -632,21 +646,32 @@ app.post("/generate-metadata", async (c) => {
       throw error;
     }
 
+    // Customize AI prompt based on user input
+    let userInstructions = "";
+    if (validatedData.prompt) {
+      userInstructions = `The token should be based on this concept: "${validatedData.prompt}". 
+      Make sure the token name, symbol, description and image prompt directly incorporate elements from this concept.
+      For example, if the concept is "a halloween token about arnold schwarzenegger", the token might be named "Spooky Schwartz" with symbol "SPKS" and an image prompt that describes a muscular halloween figure resembling Arnold.
+      Be creative but stay faithful to the concept.`;
+    }
+
     // Generate metadata using Llama
     const response = await c.env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
       messages: [
         {
           role: "system",
           content:
-            "You are a helpful assistant that specializes in creating fun and interesting token metadata for crypto projects. Always respond with valid JSON.",
+            "You are a helpful assistant that specializes in creating fun and interesting token metadata for crypto projects. Be creative and incorporate the user's concept directly into your response. Always respond with valid JSON and nothing else.",
         },
         {
           role: "user",
-          content: `Generate prompt and engaging token metadata for a Solana token. The token should be fun and memorable. Return a JSON object with the following fields:
-          - name: A memorable name for the token
+          content: `Generate prompt and engaging token metadata for a Solana token. The token should be fun and memorable. ${userInstructions} 
+          
+          Return ONLY a JSON object with the following fields:
+          - name: A memorable name for the token that clearly reflects the concept
           - symbol: A 3-8 character symbol for the token
-          - description: A compelling description of the token
-          - prompt: A detailed prompt for image generation
+          - description: A compelling description of the token that incorporates the concept
+          - prompt: A detailed prompt for image generation that will create a visual representation of the concept
           
           Example format:
           {
@@ -654,7 +679,9 @@ app.post("/generate-metadata", async (c) => {
             "symbol": "FUN",
             "description": "A fun and engaging token description",
             "prompt": "A detailed prompt for image generation"
-          }`,
+          }
+          
+          Only provide the JSON object. Do not include any other text, explanation, or formatting.`,
         },
       ],
       max_tokens: 500,
@@ -664,7 +691,15 @@ app.post("/generate-metadata", async (c) => {
     // Extract and parse the JSON response
     let metadata: Record<string, string>;
     try {
-      metadata = JSON.parse(response.response);
+      const jsonStartIndex = response.response.indexOf('{');
+      const jsonEndIndex = response.response.lastIndexOf('}') + 1;
+      
+      if (jsonStartIndex === -1 || jsonEndIndex === -1) {
+        throw new Error("Could not find valid JSON in the response");
+      }
+      
+      const jsonString = response.response.substring(jsonStartIndex, jsonEndIndex);
+      metadata = JSON.parse(jsonString);
     } catch (error) {
       logger.error("Failed to parse token metadata JSON:", error);
       return c.json(

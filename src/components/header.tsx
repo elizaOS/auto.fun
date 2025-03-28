@@ -46,17 +46,17 @@ export default function Header() {
 
   return (
     <>
-      <div className="hidden md:block py-6">
-        <div className="container flex flex-row items-center justify-between">
+      <div className="hidden md:block p-6 w-full">
+        <div className="flex flex-row items-center justify-between w-full">
           <div className="flex items-center">
             <Link to="/" className="mr-6">
               <img className="size-20" src="/logo_wide.svg" />
             </Link>
           </div>
-          <div className="flex space-x-3 flex-row justify-between w-1/2">
+          <div className="flex space-x-3 flex-row">
             <SearchBar isMobile={false} />
             <Link to="/create">
-              <Button className="flex items-center text-base text-autofun-text-highlight font-bold font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345]">
+              <Button className="flex items-center text-base text-autofun-text-highlight font-bold font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345] min-w-34">
                 New Coin{" "}
                 <img
                   src="/nav/stars.svg"

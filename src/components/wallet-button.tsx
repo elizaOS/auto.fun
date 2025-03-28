@@ -2,16 +2,19 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useRef, useState } from "react";
 import Button from "./button";
 import { shortenAddress } from "@/utils";
-import { ChevronDown, Copy, LogOut, User } from "lucide-react";
+import { ChevronDown, Copy, LogOut, User, Trophy } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useWalletModal } from "@/hooks/use-wallet-modal";
 import useAuthentication from "@/hooks/use-authentication";
+import { useUser } from "@/hooks/use-user";
 
 const WalletButton = () => {
   const navigate = useNavigate();
   const { publicKey, connecting, wallet } = useWallet();
   const { setVisible } = useWalletModal();
   const { isAuthenticated, signOut } = useAuthentication();
+  const { user } = useUser();
+  console.log(user);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -60,7 +63,7 @@ const WalletButton = () => {
   if (isAuthenticated) {
     return (
       <div className="relative" ref={dropdownRef}>
-        <Button size="large" className="px-2" onClick={() => setMenuOpen(true)}>
+        <Button size="large" className="px-2" onClick={() => setMenuOpen(!menuOpen)}>
           <div className="flex items-center gap-2.5 justify-between m-auto">
             <span className="font-satoshi font-medium">
               {wallet?.adapter?.publicKey?.toString()
@@ -83,6 +86,12 @@ const WalletButton = () => {
         {menuOpen && (
           <div className="absolute z-50 right-0 mt-2 bg-[#171717] border border-[#262626] shadow-lg overflow-hidden w-48">
             <ul className="py-2">
+              {/* {user && ( */}
+                <li className="px-4 py-2 text-sm text-white flex items-center gap-2">
+                  <Trophy size={16} />
+                  <span>{0} points</span>
+                </li>
+              {/* )} */}
               <li
                 className="px-4 py-2 text-sm text-white hover:bg-[#262626] cursor-pointer flex items-center gap-2"
                 onClick={handleCopyAddress}

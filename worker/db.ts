@@ -130,11 +130,7 @@ export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
   name: text("name"),
   address: text("address").notNull().unique(),
-  avatar: text("avatar")
-    .notNull()
-    .default(
-      "https://ipfs.io/ipfs/bafkreig4ob6pq5qy4v6j62krj4zkh2kc2pnv5egqy7f65djqhgqv3x56pq",
-    ),
+  points: integer("points").notNull().default(0),
   createdAt: text("created_at", { mode: "text" }).notNull(),
 });
 
