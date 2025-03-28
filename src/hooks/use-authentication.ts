@@ -1,3 +1,4 @@
+import { env } from "@/utils/env";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useLocalStorage } from "@uidotdev/usehooks";
 import { useEffect } from "react";
@@ -23,7 +24,7 @@ export default function useAuthentication() {
       checkStatusCalled = true;
       const checkStatus = async () => {
         const authCheckResponse = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/auth-status`,
+          `${env.apiUrl}/api/auth-status`,
           { credentials: "include" }
         );
 

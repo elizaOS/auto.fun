@@ -1,3 +1,5 @@
+import { env } from "./env";
+
 // Custom WebSocket wrapper to maintain Socket.io-like API
 class SocketWrapper {
   private ws: WebSocket | null = null;
@@ -153,7 +155,7 @@ let socket: Socket | null = null;
 
 export const getSocket = (): Socket => {
   if (!socket) {
-    socket = new SocketWrapper(import.meta.env.VITE_API_URL);
+    socket = new SocketWrapper(env.apiUrl);
   }
   return socket;
 };

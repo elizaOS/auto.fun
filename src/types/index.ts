@@ -1,3 +1,4 @@
+import { PublicKey } from "@solana/web3.js";
 import { z } from "zod";
 
 export type TSortBy =
@@ -163,7 +164,7 @@ declare global {
       ) => Promise<Uint8Array>;
       connect: () => Promise<{ publicKey: string }>;
       disconnect?: () => Promise<void>;
-      publicKey?: { toBase58: () => string };
+      publicKey?: PublicKey;
       on?: (event: string, callback: () => void) => void;
       off?: (event: string, callback: () => void) => void;
     };

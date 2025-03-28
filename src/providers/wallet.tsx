@@ -5,11 +5,12 @@ import {
 } from "@solana/wallet-adapter-react";
 
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import { env } from "@/utils/env";
 
 export const Wallet = ({ children }: PropsWithChildren) => {
   return (
     <ConnectionProvider
-      endpoint={import.meta.env.VITE_RPC_URL || "https://api.devnet.solana.com"}
+      endpoint={env.rpcUrl || "https://api.devnet.solana.com"}
     >
       <WalletProvider wallets={[]} autoConnect>
         <WalletModalProvider>{children}</WalletModalProvider>
