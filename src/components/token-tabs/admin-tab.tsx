@@ -64,17 +64,13 @@ export default function AdminTab() {
   };
 
   return (
-    <div className="grid grid-cols-1 w-full bg-yellow-500 h-full">
-      <div className="bg-red-500 flex justify-items-center items-center">
-        <textarea
-          value={form.description}
-          className="w-2/3 h-full bg-[#0F0F0F] p-3 border border-neutral-800 text-white resize-none"
-          placeholder="Describe the image you want to generate..."
-        />
-      </div>
-      <div className="items-center justify-items-center">
-        <div className="flex w-2/3 tems-center justify-center flex-col gap-3 h-full">
+    <div className="grid grid-cols-2 w-full h-full">
+      <div className="justify-items-center grid col-span-2">
+        <div className="flex w-2/3 mt-12 flex-col gap-3 ">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3">
+            <div className="grid md:col-span-2 mb-2 text-center uppercase font-dm-mono text-xl">
+              Add project socials here
+            </div>
             <FormInput
               type="text"
               value={form.links.website}
@@ -121,6 +117,22 @@ export default function AdminTab() {
             />
           </div>
         </div>
+      </div>
+      <div className="grid col-span-2 justify-items-center w-full uppercase font-dm-mono text-xl">
+        token description
+        <textarea
+          value={form.description}
+          className="w-2/3 h-full bg-[#0F0F0F] p-3 border border-neutral-800 text-white resize-none"
+          placeholder="Describe your token..."
+        />
+      </div>
+      <div className="grid col-span-2 items-center justify-items-center w-full uppercase text-center font-dm-mono text-xl">
+        <button
+          type="submit"
+          className="cursor-pointer text-white bg-transparent gap-x-3 border-2 border-autofun-background-action-highlight flex px-8 py-2 flex-row w-fit items-center justify-items-center"
+        >
+          Save
+        </button>
       </div>
     </div>
   );
