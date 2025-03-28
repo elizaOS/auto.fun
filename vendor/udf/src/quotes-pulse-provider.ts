@@ -1,7 +1,7 @@
 import {
 	QuoteData,
 	QuotesCallback,
-} from '../../../charting_library/datafeed-api';
+} from '../../../public/libraries/charting_library/datafeed-api';
 
 import {
 	getErrorMessage,

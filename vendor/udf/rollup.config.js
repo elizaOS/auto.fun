@@ -12,7 +12,7 @@ export default [
 		output: {
 			name: 'Datafeeds',
 			format: 'umd',
-			file: 'dist/bundle.js',
+			file: '../../public/udf.js',
 		},
 		plugins: [
 			nodeResolve(),

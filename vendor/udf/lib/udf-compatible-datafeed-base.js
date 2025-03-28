@@ -141,9 +141,11 @@ export class UDFCompatibleDatafeedBase {
             this._send('search', params)
                 .then((response) => {
                 if (response.s !== undefined) {
-                    logMessage(`UdfCompatibleDatafeed: search symbols error=${response.errmsg}`);
-                    onResult([]);
-                    return;
+                    if ('errmsg' in response) {
+                        logMessage(`UdfCompatibleDatafeed: search symbols error=${response.errmsg}`);
+                        onResult([]);
+                        return;
+                    }
                 }
                 onResult(response);
             })
@@ -182,39 +184,45 @@ export class UDFCompatibleDatafeedBase {
             }
             this._send('symbols', params)
                 .then((response) => {
-                var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1;
+                var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5;
                 if (response.s !== undefined) {
                     onError('unknown_symbol');
                 }
                 else {
-                    const symbol = response.name;
-                    const listedExchange = (_a = response.listed_exchange) !== null && _a !== void 0 ? _a : response['exchange-listed'];
-                    const tradedExchange = (_b = response.exchange) !== null && _b !== void 0 ? _b : response['exchange-traded'];
+                    const resolveSymbolResponse = response;
+                    const symbol = resolveSymbolResponse.name;
+                    const listedExchange = (_a = resolveSymbolResponse.listed_exchange) !== null && _a !== void 0 ? _a : resolveSymbolResponse['exchange-listed'];
+                    const tradedExchange = (_b = resolveSymbolResponse.exchange) !== null && _b !== void 0 ? _b : resolveSymbolResponse['exchange-traded'];
                     const result = {
                         ...response,
                         name: symbol,
                         base_name: [listedExchange + ':' + symbol],
                         listed_exchange: listedExchange,
                         exchange: tradedExchange,
-                        ticker: response.ticker,
-                        currency_code: (_c = response.currency_code) !== null && _c !== void 0 ? _c : response['currency-code'],
-                        original_currency_code: (_d = response.original_currency_code) !== null && _d !== void 0 ? _d : response['original-currency-code'],
-                        unit_id: (_e = response.unit_id) !== null && _e !== void 0 ? _e : response['unit-id'],
-                        original_unit_id: (_f = response.original_unit_id) !== null && _f !== void 0 ? _f : response['original-unit-id'],
-                        unit_conversion_types: (_g = response.unit_conversion_types) !== null && _g !== void 0 ? _g : response['unit-conversion-types'],
-                        has_intraday: (_j = (_h = response.has_intraday) !== null && _h !== void 0 ? _h : response['has-intraday']) !== null && _j !== void 0 ? _j : false,
-                        visible_plots_set: (_k = response.visible_plots_set) !== null && _k !== void 0 ? _k : response['visible-plots-set'],
-                        minmov: (_m = (_l = response.minmovement) !== null && _l !== void 0 ? _l : response.minmov) !== null && _m !== void 0 ? _m : 0,
-                        minmove2: (_o = response.minmovement2) !== null && _o !== void 0 ? _o : response.minmove2,
-                        session: (_p = response.session) !== null && _p !== void 0 ? _p : response['session-regular'],
-                        session_holidays: (_q = response.session_holidays) !== null && _q !== void 0 ? _q : response['session-holidays'],
-                        supported_resolutions: (_t = (_s = (_r = response.supported_resolutions) !== null && _r !== void 0 ? _r : response['supported-resolutions']) !== null && _s !== void 0 ? _s : this._configuration.supported_resolutions) !== null && _t !== void 0 ? _t : [],
-                        has_daily: (_v = (_u = response.has_daily) !== null && _u !== void 0 ? _u : response['has-daily']) !== null && _v !== void 0 ? _v : true,
-                        intraday_multipliers: (_x = (_w = response.intraday_multipliers) !== null && _w !== void 0 ? _w : response['intraday-multipliers']) !== null && _x !== void 0 ? _x : ['1', '5', '15', '30', '60'],
-                        has_weekly_and_monthly: (_y = response.has_weekly_and_monthly) !== null && _y !== void 0 ? _y : response['has-weekly-and-monthly'],
-                        has_empty_bars: (_z = response.has_empty_bars) !== null && _z !== void 0 ? _z : response['has-empty-bars'],
-                        volume_precision: (_0 = response.volume_precision) !== null && _0 !== void 0 ? _0 : response['volume-precision'],
-                        format: (_1 = response.format) !== null && _1 !== void 0 ? _1 : 'price',
+                        ticker: resolveSymbolResponse.ticker,
+                        currency_code: (_c = resolveSymbolResponse.currency_code) !== null && _c !== void 0 ? _c : resolveSymbolResponse['currency-code'],
+                        original_currency_code: (_d = resolveSymbolResponse.original_currency_code) !== null && _d !== void 0 ? _d : resolveSymbolResponse['original-currency-code'],
+                        unit_id: (_e = resolveSymbolResponse.unit_id) !== null && _e !== void 0 ? _e : resolveSymbolResponse['unit-id'],
+                        original_unit_id: (_f = resolveSymbolResponse.original_unit_id) !== null && _f !== void 0 ? _f : resolveSymbolResponse['original-unit-id'],
+                        unit_conversion_types: (_g = resolveSymbolResponse.unit_conversion_types) !== null && _g !== void 0 ? _g : resolveSymbolResponse['unit-conversion-types'],
+                        has_intraday: (_j = (_h = resolveSymbolResponse.has_intraday) !== null && _h !== void 0 ? _h : resolveSymbolResponse['has-intraday']) !== null && _j !== void 0 ? _j : false,
+                        visible_plots_set: (_k = resolveSymbolResponse.visible_plots_set) !== null && _k !== void 0 ? _k : resolveSymbolResponse['visible-plots-set'],
+                        minmov: (_m = (_l = resolveSymbolResponse.minmovement) !== null && _l !== void 0 ? _l : resolveSymbolResponse.minmov) !== null && _m !== void 0 ? _m : 0,
+                        minmove2: (_o = resolveSymbolResponse.minmovement2) !== null && _o !== void 0 ? _o : resolveSymbolResponse.minmove2,
+                        session: (_p = resolveSymbolResponse.session) !== null && _p !== void 0 ? _p : resolveSymbolResponse['session-regular'],
+                        session_holidays: (_q = resolveSymbolResponse.session_holidays) !== null && _q !== void 0 ? _q : resolveSymbolResponse['session-holidays'],
+                        supported_resolutions: (_t = (_s = (_r = resolveSymbolResponse.supported_resolutions) !== null && _r !== void 0 ? _r : resolveSymbolResponse['supported-resolutions']) !== null && _s !== void 0 ? _s : this._configuration.supported_resolutions) !== null && _t !== void 0 ? _t : [],
+                        has_daily: (_v = (_u = resolveSymbolResponse.has_daily) !== null && _u !== void 0 ? _u : resolveSymbolResponse['has-daily']) !== null && _v !== void 0 ? _v : true,
+                        intraday_multipliers: (_x = (_w = resolveSymbolResponse.intraday_multipliers) !== null && _w !== void 0 ? _w : resolveSymbolResponse['intraday-multipliers']) !== null && _x !== void 0 ? _x : ['1', '5', '15', '30', '60'],
+                        has_weekly_and_monthly: (_y = resolveSymbolResponse.has_weekly_and_monthly) !== null && _y !== void 0 ? _y : resolveSymbolResponse['has-weekly-and-monthly'],
+                        has_empty_bars: (_z = resolveSymbolResponse.has_empty_bars) !== null && _z !== void 0 ? _z : resolveSymbolResponse['has-empty-bars'],
+                        volume_precision: (_0 = resolveSymbolResponse.volume_precision) !== null && _0 !== void 0 ? _0 : resolveSymbolResponse['volume-precision'],
+                        format: (_1 = resolveSymbolResponse.format) !== null && _1 !== void 0 ? _1 : 'price',
+                        // Add missing properties with default values or extract from `resolveSymbolResponse`
+                        description: (_2 = resolveSymbolResponse.description) !== null && _2 !== void 0 ? _2 : 'No description provided',
+                        type: (_3 = resolveSymbolResponse.type) !== null && _3 !== void 0 ? _3 : 'stock',
+                        timezone: ((_4 = resolveSymbolResponse.timezone) !== null && _4 !== void 0 ? _4 : 'UTC'),
+                        pricescale: (_5 = resolveSymbolResponse.pricescale) !== null && _5 !== void 0 ? _5 : 100,
                     };
                     onResultReady(result);
                 }

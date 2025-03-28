@@ -216,7 +216,7 @@ export async function createNewTokenData(
       : 100000000;
 
     // Get curve limit from env if available, otherwise use default
-    const curveLimit = env?.CURVE_LIMIT ? Number(env.CURVE_LIMIT) : 1000000000;
+    const curveLimit = env?.CURVE_LIMIT ? Number(env.CURVE_LIMIT) : 113000000000;
 
     const tokenData: Partial<Token> = {
       id: tokenAddress, // Use mint as primary key

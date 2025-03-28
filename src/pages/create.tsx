@@ -6,8 +6,6 @@ import { useNavigate } from "react-router";
 import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
 
-// Constants
-const MAX_FILE_SIZE_MB = 5;
 const MAX_INITIAL_SOL = 45;
 
 // Tab types
@@ -159,7 +157,6 @@ const FormImageInput = ({
   // description,
   onChange,
   onPromptChange,
-  onGenerate,
   isGenerating,
   setIsGenerating,
   setGeneratingField,
@@ -172,7 +169,6 @@ const FormImageInput = ({
   // description: string;
   onChange: (file: File | null) => void;
   onPromptChange: (prompt: string) => void;
-  onGenerate: (prompt: string) => void;
   isGenerating: boolean;
   setIsGenerating: (value: boolean) => void;
   setGeneratingField: (value: string | null) => void;
@@ -189,8 +185,6 @@ const FormImageInput = ({
   const [lastGeneratedImage, setLastGeneratedImage] = useState<string | null>(
     null,
   );
-  const [lastPrompt, setLastPrompt] = useState<string>("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const promptDebounceRef = useRef<number | null>(null);
   const hasDirectlySetPreview = useRef<boolean>(false);
 
@@ -253,39 +247,6 @@ const FormImageInput = ({
     onPromptFunctionsChange(setPrompt, onPromptChange);
   }, []); // Empty dependency array since we only want this to run once
 
-  const handleFileChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0] || null;
-      if (file) {
-        if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-          alert(`The uploaded image exceeds the ${MAX_FILE_SIZE_MB}MB limit.`);
-          return;
-        }
-
-        if (
-          !["image/jpeg", "image/png", "image/gif", "video/mp4"].includes(
-            file.type,
-          )
-        ) {
-          alert("Only JPEG, PNG, GIF, and MP4 files are accepted");
-          return;
-        }
-
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const result = reader.result as string;
-          setPreview(result);
-          onChange(file);
-        };
-        reader.readAsDataURL(file);
-      } else {
-        setPreview(null);
-        onChange(null);
-      }
-    },
-    [onChange],
-  );
-
   const handlePromptChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const value = e.target.value;
@@ -295,82 +256,12 @@ const FormImageInput = ({
     [debouncedPromptChange],
   );
 
-  const handleGenerate = useCallback(async () => {
-    if (!prompt.trim() || isGenerating) return;
-
-    setLastPrompt(prompt);
-    onGenerate(prompt);
-
-    // Get auth token from localStorage
-    const authToken = localStorage.getItem("authToken");
-
-    // Prepare headers
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (authToken) {
-      headers["Authorization"] = `Bearer ${authToken}`;
-    }
-
-    try {
-      // Generate the image
-      const response = await fetch(
-        import.meta.env.VITE_API_URL + "/api/generate",
-        {
-          method: "POST",
-          headers,
-          credentials: "include",
-          body: JSON.stringify({
-            prompt,
-            type: "image",
-          }),
-        },
-      );
-
-      if (!response.ok) throw new Error("Failed to generate image");
-
-      const data = (await response.json()) as GenerateImageResponse;
-      const imageUrl = data.mediaUrl;
-
-      if (imageUrl) {
-        // Convert image URL to File object
-        const imageBlob = await fetch(imageUrl).then((r) => r.blob());
-        const imageFile = new File([imageBlob], "generated-image.png", {
-          type: "image/png",
-        });
-
-        // Set the preview
-        setPreview(imageUrl);
-        onChange(imageFile);
-      }
-    } catch (err) {
-      console.error("Error generating image:", err);
-      alert("Failed to generate image. Please try again.");
-    } finally {
-      // Make sure to reset the generating state
-      setIsGenerating(false);
-      setGeneratingField(null);
-    }
-  }, [prompt, onChange, setIsGenerating, setGeneratingField, isGenerating]);
-
-  const handleReroll = useCallback(() => {
-    setPreview(null);
-    onChange(null);
-    setPrompt(lastPrompt);
-    onPromptChange(lastPrompt);
-  }, [lastPrompt, onChange, onPromptChange]);
-
   const handleCancel = useCallback(() => {
     setIsGenerating(false);
     setGeneratingField(null);
     setPreview(lastGeneratedImage);
     onChange(null);
   }, [lastGeneratedImage, onChange, setIsGenerating, setGeneratingField]);
-
-  const handleUploadClick = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -410,13 +301,6 @@ const FormImageInput = ({
               alt="Token preview"
               className="w-full h-full object-contain"
             />
-            <button
-              type="button"
-              onClick={handleReroll}
-              className="absolute top-2 right-2 w-8 h-8 bg-black/50 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              ×
-            </button>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center w-full h-full">
@@ -719,9 +603,6 @@ export const Create = () => {
     userPrompt: "",
     importAddress: "",
   });
-
-  // Ref to track if we've already auto-generated
-  const hasAutoGenerated = useRef(false);
 
   // Store a reference to the FormImageInput's setPreview function
   const previewSetterRef = useRef<((preview: string | null) => void) | null>(null);
@@ -1942,11 +1823,6 @@ export const Create = () => {
                 // description="Upload or generate an image for your token"
                 onChange={(file) => setImageFile(file)}
                 onPromptChange={handlePromptChange}
-                onGenerate={(prompt) => {
-                  setIsGenerating(true);
-                  setGeneratingField("prompt");
-                  handlePromptChange(prompt);
-                }}
                 isGenerating={isGenerating && generatingField === "prompt"}
                 setIsGenerating={setIsGenerating}
                 setGeneratingField={setGeneratingField}

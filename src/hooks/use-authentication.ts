@@ -6,7 +6,7 @@ import { useEffect } from "react";
 let checkStatusCalled = false;
 
 export default function useAuthentication() {
-  const { connected, disconnect } = useWallet();
+  const { connected } = useWallet();
   const [authToken, setAuthToken] = useLocalStorage<string | null>(
     "authToken",
     null

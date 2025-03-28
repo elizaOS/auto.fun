@@ -1,5 +1,5 @@
 import { UdfQuotesResponse, IQuotesProvider } from './iquotes-provider';
-import { QuoteData } from '../../../charting_library/datafeed-api';
+import { QuoteData } from '../../../public/libraries/charting_library/datafeed-api';
 
 import {
 	getErrorMessage,

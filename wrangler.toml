@@ -29,7 +29,7 @@ preview_bucket_name = "autofun-storage-dev"
 
 [vars]
 NETWORK = "mainnet"
-DECIMALS = "9"
+DECIMALS = "6"
 TOKEN_SUPPLY = "1000000000000000"
 VIRTUAL_RESERVES = "28000000000"
 CURVE_LIMIT = "11300000000"
@@ -65,10 +65,10 @@ crons = ["*/1 * * * *"] # Run every 1 minute
 # Copy vars to development environment
 [env.development.vars]
 NETWORK = "mainnet"
-DECIMALS = "9"
+DECIMALS = "6"
 TOKEN_SUPPLY = "1000000000000000"
 VIRTUAL_RESERVES = "28000000000"
-CURVE_LIMIT = "1000000000000"
+CURVE_LIMIT = "11300000000"
 R2_PUBLIC_URL = "https://pub-30f52db29266428495af0c1aea206af1.r2.dev"
 NODE_ENV = "development"
 

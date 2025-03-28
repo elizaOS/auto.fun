@@ -34,10 +34,10 @@ export async function setupWorkerTest(): Promise<TestContext> {
     experimental: { disableExperimentalWarning: true },
     vars: {
       NETWORK: process.env.NETWORK || "devnet",
-      DECIMALS: process.env.DECIMALS || "9",
+      DECIMALS: process.env.DECIMALS || "6",
       TOKEN_SUPPLY: process.env.TOKEN_SUPPLY || "1000000000000000",
-      VIRTUAL_RESERVES: process.env.VIRTUAL_RESERVES || "1000000000",
-      CURVE_LIMIT: process.env.CURVE_LIMIT || "1000000000000",
+      VIRTUAL_RESERVES: process.env.VIRTUAL_RESERVES || "28000000000",
+      CURVE_LIMIT: process.env.CURVE_LIMIT || "113000000000",
       PORT: process.env.PORT || "8787",
       API_URL: process.env.API_URL || "http://localhost:8787",
       NODE_ENV: "test",
@@ -49,8 +49,8 @@ export async function setupWorkerTest(): Promise<TestContext> {
       TARGET_BUFFER: process.env.TARGET_BUFFER || "500000000",
       NUM_WORKERS: process.env.NUM_WORKERS || "2",
       INIT_BONDING_CURVE: process.env.INIT_BONDING_CURVE || "true",
-      FEE_PERCENTAGE: process.env.FEE_PERCENTAGE || "1",
-      SWAP_FEE: process.env.SWAP_FEE || "1.5",
+      FEE_PERCENTAGE: process.env.FEE_PERCENTAGE || "100",
+      SWAP_FEE: process.env.SWAP_FEE || "100",
       TEST_CREATOR_ADDRESS:
         process.env.TEST_CREATOR_ADDRESS || adminKp.publicKey.toBase58(),
       // Use real API keys from environment

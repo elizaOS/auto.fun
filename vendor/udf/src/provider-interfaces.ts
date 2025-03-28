@@ -1,4 +1,4 @@
-import { Bar, HistoryMetadata, LibrarySymbolInfo, PeriodParams, ResolutionString, SubscribeBarsCallback, SymbolResolveExtension } from '../../../charting_library/datafeed-api';
+import { Bar, HistoryMetadata, LibrarySymbolInfo, PeriodParams, ResolutionString, SubscribeBarsCallback, SymbolResolveExtension } from '../../../public/libraries/charting_library/datafeed-api';
 
 export interface IDataPulseProvider {
 	subscribeBars(symbolInfo: LibrarySymbolInfo, resolution: ResolutionString, newDataCallback: SubscribeBarsCallback, listenerGuid: string): void;

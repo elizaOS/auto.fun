@@ -27,7 +27,6 @@ dist-ssr
 *.sln
 *.sw?
 
-bun.lock
 .env
 .wrangler
 .dev.vars

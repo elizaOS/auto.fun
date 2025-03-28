@@ -27,8 +27,6 @@ export interface Env {
   ADMIN_KEY: string;
   ADMIN_API_KEY: string;
   FEE_PERCENTAGE?: string;
-  PRIMARY_LOCK_PERCENTAGE?: string;
-  SECONDARY_LOCK_PERCENTAGE?: string;
   CODEX_API_KEY?: string;
   // Cloudflare R2 storage
   R2?: R2Bucket;
@@ -45,9 +43,7 @@ export interface Env {
   RPC_URL?: string;
   MAINNET_SOLANA_RPC_URL?: string;
   DEVNET_SOLANA_RPC_URL?: string;
-  HELIUS_RPC_URL?: string; // Helius API endpoint for enhanced Solana data
   PROGRAM_ID: string;
   // Test environment properties
   tokenPubkey?: string; // Used in tests to track the current test token
-  MY_BUCKET: R2Bucket;
 }
