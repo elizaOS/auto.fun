@@ -445,7 +445,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     const floorGeometry = new THREE.BoxGeometry(frustumWidth, 1, frustumHeight);
     const floorMeshMaterial = new THREE.MeshStandardMaterial({
       color: 0x000000,
-      roughness: 0.8,
+      roughness: 0.0,
       transparent: true,
       opacity: 0.0, // Make floor semi-transparent
     });
@@ -467,9 +467,12 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
     // Walls
     const wallMeshMaterial = new THREE.MeshStandardMaterial({
-      color: 0x00ff00, // Bright green
+      color: 0x000000, // Bright green
       roughness: 0.7,
-      emissive: 0x00ff00,
+      emissive: 0x000000,
+      // fully transparent
+      transparent: true,
+      opacity: 0.0,
       emissiveIntensity: 0.3,
     });
 

@@ -119,14 +119,6 @@ export default function AdminTab() {
         </div>
       </div>
       <div className="grid mt-6 md:mt-0 col-span-2 justify-items-center w-full uppercase font-dm-mono text-xl">
-        <div className="grid col-span-2 items-center justify-items-center w-full uppercase text-center font-dm-mono text-xl">
-          <h1 className="mb-2">Token Description</h1>
-          <textarea
-            value={form.description}
-            className="w-4/5 md:w-2/3 text-[17px] h-[220px] bg-[#0F0F0F] p-3 border border-neutral-800 text-white resize-none"
-            placeholder="Describe your token..."
-          />
-        </div>
         <div className="grid col-span-2 mb-4 items-center justify-items-center w-full  ">
           <button
             type="submit"

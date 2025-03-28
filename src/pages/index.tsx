@@ -58,7 +58,7 @@ export default function Page() {
   console.log(query);
 
   return (
-    <div className="w-full min-h-[100vh]">
+    <div className="w-full min-h-[50vh]">
       {/* Header Section */}
       <FrontpageHeader tokens={tokens} />
       {/* Top Navigation */}
@@ -85,7 +85,7 @@ export default function Page() {
           </Button>
         </div>
       </div>
-      <div className="flex flex-col flex-1 min-h-[80vh]">
+      <div className="flex flex-col flex-1">
         {!query?.isLoading ? (
           <Fragment>
             {activeTab === "grid" ? (

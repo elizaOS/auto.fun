@@ -91,7 +91,7 @@ const WalletButton = () => {
           <div className="absolute z-50 right-0 mt-2 bg-[#171717] border border-[#262626] shadow-lg overflow-hidden w-48">
             <ul className="py-2">
               {/* {user && ( */}
-              <li className="px-4 py-2 text-sm text-white flex items-center gap-2">
+              <li className="opacity-50 px-4 py-2 text-sm text-white flex items-center gap-2">
                 <Trophy size={16} />
                 <span>{0} points</span>
               </li>
