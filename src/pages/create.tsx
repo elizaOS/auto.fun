@@ -439,7 +439,7 @@ const FormImageInput = ({
             </button>
           </div>
         ) : preview || imageUrl ? (
-          <div className="relative w-full h-full flex items-center justify-center">
+          <div className="relative group w-full h-full flex items-center justify-center">
             <img
               src={preview || imageUrl || ''}
               alt="Token preview"
@@ -448,7 +448,6 @@ const FormImageInput = ({
             
             {/* Image hover overlay with X button - only for Manual mode */}
             {activeTab === FormTab.MANUAL && (
-              <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                 <button
                   type="button"
                   onClick={handleRemoveImage}
@@ -456,15 +455,6 @@ const FormImageInput = ({
                 >
                   ✕
                 </button>
-                
-                <button
-                  type="button"
-                  onClick={triggerFileInput}
-                  className="bg-[#2fd345] text-black px-4 py-2 rounded-lg"
-                >
-                  Change
-                </button>
-              </div>
             )}
             
             {/* Name overlay - top left */}
