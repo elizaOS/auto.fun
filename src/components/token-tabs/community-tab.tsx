@@ -36,14 +36,14 @@ export default function CommunityTab() {
         {communityTab === "Image" ? (
           <>
             <div className="grid col-span-3 font-dm-mono text-autofun-background-action-highlight text-xl">Create a token community image by using the prompt</div>
-            <div className="grid col-span-3 md:col-span-2">
+            <div className="grid col-span-3 md:col-span-2 justify-items-center">
               <textarea
                 className="w-full font-dm-mono bg-[#0F0F0F] h-[300px] p-3 border border-neutral-800 text-white resize-none"
                 maxLength={200}
                 placeholder="Make me an image that looks like a dog in a wheelchair"
               />
                  <button
-                    className="bg-[#2fd345] cursor-pointer p-3 font-bold border-2 text-black text-[9px] md:text-[15px] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
+                    className="bg-[#2fd345] cursor-pointer w-fit items-center p-3 mt-2 font-bold border-2 text-black text-[12px] md:text-[15px] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
                   >
                     Generate Image
                   </button>
@@ -69,7 +69,7 @@ export default function CommunityTab() {
                 <div className="place-items-center flex flex-row gap-x-1 text-white mt-4 text-base cursor-pointer">
                   <Link
                     to="/"
-                    className="bg-[#2fd345] p-3 font-bold border-2 text-black text-[9px] md:text-[15px] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
+                    className="bg-[#2fd345] p-3 font-bold border-2 text-black text-[12px] md:text-[15px] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
                   >
                     Connect X account
                   </Link>
