@@ -1,11 +1,13 @@
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Connection, Keypair } from "@solana/web3.js";
+import { Keypair } from "@solana/web3.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import CopyButton from "../components/copy-button";
 import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
 import CoinDrop from "@/components/coindrop";
+import { useCreateToken } from "@/hooks/use-create-token";
+import { env } from "@/utils/env";
 
 // Constants
 const MAX_FILE_SIZE_MB = 5;
@@ -266,7 +268,7 @@ const FormImageInput = ({
     try {
       // Generate the image
       const response = await fetch(
-        import.meta.env.VITE_API_URL + "/api/generate",
+        env.apiUrl + "/api/generate",
         {
           method: "POST",
           headers,
@@ -449,7 +451,7 @@ const uploadImage = async (metadata: TokenMetadata) => {
     headers["Authorization"] = `Bearer ${authToken}`;
   }
 
-  const response = await fetch(import.meta.env.VITE_API_URL + "/api/upload", {
+  const response = await fetch(env.apiUrl + "/api/upload", {
     method: "POST",
     headers,
     credentials: "include",
@@ -534,7 +536,7 @@ const waitForTokenCreation = async ({
         }
 
         const createResponse = await fetch(
-          import.meta.env.VITE_API_URL + "/api/create-token",
+          env.apiUrl + "/api/create-token",
           {
             method: "POST",
             headers,
@@ -594,7 +596,7 @@ const waitForTokenCreation = async ({
           }
 
           const response = await fetch(
-            import.meta.env.VITE_API_URL + "/api/check-token",
+            env.apiUrl + "/api/check-token",
             {
               method: "POST",
               headers,
@@ -645,8 +647,9 @@ const waitForTokenCreation = async ({
 
 // Main Form Component
 export const Create = () => {
+  const {mutateAsync: createTokenOnChainAsync} = useCreateToken();
   const navigate = useNavigate();
-  const { publicKey, signTransaction } = useWallet();
+  const { publicKey } = useWallet();
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -701,7 +704,7 @@ export const Create = () => {
 
         // Get a pre-generated token
         const response = await fetch(
-          import.meta.env.VITE_API_URL + "/api/pre-generated-token",
+          env.apiUrl + "/api/pre-generated-token",
           {
             method: "GET",
             headers,
@@ -740,7 +743,7 @@ export const Create = () => {
         } else {
           // If no image, generate one using the prompt
           const imageResponse = await fetch(
-            import.meta.env.VITE_API_URL + "/api/generate",
+            env.apiUrl + "/api/generate",
             {
               method: "POST",
               headers,
@@ -769,7 +772,7 @@ export const Create = () => {
         }
 
         // Mark the token as used
-        await fetch(import.meta.env.VITE_API_URL + "/api/mark-token-used", {
+        await fetch(env.apiUrl + "/api/mark-token-used", {
           method: "POST",
           headers,
           credentials: "include",
@@ -873,61 +876,16 @@ export const Create = () => {
 
   // Create token on-chain
   const createTokenOnChain = async (
-    _tokenMetadata: TokenMetadata,
-    mintKeypair: Keypair,
-    _metadataUrl: string,
+    tokenMetadata: TokenMetadata,
+    metadataUrl: string,
+    mintKeypair: Keypair
   ) => {
-    if (!signTransaction) {
-      throw new Error("Wallet doesn't support signing");
-    }
-
-    if (!publicKey) {
-      throw new Error("Wallet not connected");
-    }
-
-    // Create connection to Solana
-    new Connection(
-      import.meta.env.VITE_SOLANA_RPC_URL || "https://api.devnet.solana.com",
-      "confirmed",
-    );
-
-    // For now, we'll bypass actual on-chain token creation since we need the program IDL
-    // Instead, we'll just log the mint address and proceed with backend registration
-    console.log(
-      "Would create token with mint address:",
-      mintKeypair.publicKey.toString(),
-    );
-
     try {
-      // This will bypass the actual on-chain transaction for now
-      // In a real implementation, you would integrate with your Solana program
-
-      // Return a placeholder transaction ID
-      const placeholderTxId =
-        "simulated_" + Math.random().toString(36).substring(2, 15);
-      console.log("Simulated transaction ID:", placeholderTxId);
-      return placeholderTxId;
+      await createTokenOnChainAsync({tokenMetadata, metadataUrl, mintKeypair});
     } catch (error) {
-      console.error("Error in simulated token creation:", error);
+      console.error("Error in token creation:", error);
       throw error;
     }
-
-    /* Implementation with actual program integration would go here
-    For example:
-    
-    try {
-      // Find program ID - this should be provided from your environment or config
-      const programId = new PublicKey(import.meta.env.VITE_PROGRAM_ID);
-      
-      // Create the transaction, add instructions, sign and submit
-      // ...
-      
-      return txId;
-    } catch (error) {
-      console.error("Error creating token on-chain:", error);
-      throw error;
-    }
-    */
   };
 
   // Function to generate all fields
@@ -954,7 +912,7 @@ export const Create = () => {
 
         // Get a pre-generated token
         const response = await fetch(
-          import.meta.env.VITE_API_URL + "/api/pre-generated-token",
+          env.apiUrl + "/api/pre-generated-token",
           {
             method: "GET",
             headers,
@@ -992,7 +950,7 @@ export const Create = () => {
         } else {
           // If no image, generate one using the prompt
           const imageResponse = await fetch(
-            import.meta.env.VITE_API_URL + "/api/generate",
+            env.apiUrl + "/api/generate",
             {
               method: "POST",
               headers,
@@ -1021,7 +979,7 @@ export const Create = () => {
         }
 
         // Mark the token as used
-        await fetch(import.meta.env.VITE_API_URL + "/api/mark-token-used", {
+        await fetch(env.apiUrl + "/api/mark-token-used", {
           method: "POST",
           headers,
           credentials: "include",
@@ -1123,7 +1081,7 @@ export const Create = () => {
       // Create token on-chain
       try {
         console.log("Creating token on-chain...");
-        await createTokenOnChain(tokenMetadata, mintKeypair, metadataUrl);
+        await createTokenOnChain(tokenMetadata, metadataUrl, mintKeypair);
         console.log("Token created on-chain successfully");
       } catch (onChainError) {
         console.error("Error creating token on-chain:", onChainError);
