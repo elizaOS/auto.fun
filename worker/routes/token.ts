@@ -331,384 +331,271 @@ tokenRouter.get("/tokens/:mint", async (c) => {
   }
 });
 
-// Add search-token endpoint
+// Direct token search endpoint - SPL-2022 token support
 tokenRouter.post("/search-token", async (c) => {
-  try {
-    // Parse the request body
-    const body = await c.req.json();
-    const { mint, requestor } = body;
+  const body = await c.req.json();
+  const { mint, requestor } = body;
 
-    if (!mint || typeof mint !== "string") {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
+  if (!mint || typeof mint !== "string") {
+    return c.json({ error: "Invalid mint address" }, 400);
+  }
 
-    if (!requestor || typeof requestor !== "string") {
-      return c.json({ error: "Missing or invalid requestor" }, 400);
-    }
+  if (!requestor || typeof requestor !== "string") {
+    return c.json({ error: "Missing or invalid requestor" }, 400);
+  }
 
-    // Validate mint address format
-    let mintPublicKey;
-    try {
-      mintPublicKey = new PublicKey(mint);
-      logger.log(`[search-token] Valid public key format: ${mintPublicKey.toString()}`);
-    } catch (error) {
-      return c.json({ error: "Invalid Solana public key format" }, 400);
-    }
+  // Validate mint address
+  const mintPublicKey = new PublicKey(mint);
+  logger.log(`[search-token] Searching for token ${mint}`);
 
-    logger.log(`[search-token] Searching for token ${mint} requested by ${requestor}`);
+  // Create connection to Solana
+  const connection = new Connection(c.env.MAINNET_SOLANA_RPC_URL as string, "confirmed");
 
-    // Use the mainnet Helius RPC
-    const heliusRpcUrl = "https://mainnet.helius-rpc.com/?api-key=7f068738-8b88-4a91-b2a9-99b00f716717";
+  // Check if token exists and determine its type
+  const tokenInfo = await connection.getAccountInfo(mintPublicKey);
+  if (!tokenInfo) {
+    return c.json({ error: "Token not found on chain" }, 404);
+  }
+
+  // Check program ID to verify this is an SPL token
+  const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+  const TOKEN_2022_PROGRAM_ID = new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
+  
+  const isSplToken = tokenInfo.owner.equals(TOKEN_PROGRAM_ID);
+  const isSPL2022 = tokenInfo.owner.equals(TOKEN_2022_PROGRAM_ID);
+  
+  if (!isSplToken && !isSPL2022) {
+    return c.json({ 
+      error: "Not a valid SPL token. Owner: " + tokenInfo.owner.toString() 
+    }, 400);
+  }
+  
+  logger.log(`[search-token] Token owner: ${tokenInfo.owner.toString()}`);
+  logger.log(`[search-token] Token is SPL-2022: ${isSPL2022}`);
+  
+  // Get mint info - decimals and authorities
+  const mintInfo = await connection.getParsedAccountInfo(mintPublicKey);
+  logger.log(`[search-token] Mint info: ${JSON.stringify(mintInfo.value?.data)}`);
+  
+  // Extract basic token info
+  const parsedData = (mintInfo.value?.data as any)?.parsed;
+  const decimals = parsedData?.info?.decimals || 9;
+  const mintAuthority = parsedData?.info?.mintAuthority || null;
+  
+  logger.log(`[search-token] Decimals: ${decimals}`);
+  logger.log(`[search-token] Mint authority: ${mintAuthority}`);
+  
+  // Initialize variables for token data
+  let tokenName = "";
+  let tokenSymbol = "";
+  let uri = "";
+  let imageUrl = "";
+  let description = "";
+  let updateAuthority: string | null = null;
+  let foundMetadata = false;
+  
+  // For SPL-2022 tokens, check for token metadata extension first
+  if (isSPL2022 && parsedData?.info?.extensions) {
+    logger.log(`[search-token] Checking SPL-2022 extensions for metadata`);
     
-    try {
-      // Create a connection to the Solana blockchain
-      logger.log(`[search-token] Creating connection to Helius mainnet: ${heliusRpcUrl}`);
-      const connection = new Connection(heliusRpcUrl, "confirmed");
-
-      // First get direct token account info to verify it exists
-      logger.log(`[search-token] Fetching token account info for mint: ${mint}`);
-      const tokenInfo = await connection.getAccountInfo(mintPublicKey);
+    // Find the tokenMetadata extension if it exists
+    const metadataExt = parsedData.info.extensions.find(
+      (ext: any) => ext.extension === "tokenMetadata"
+    );
+    
+    if (metadataExt && metadataExt.state) {
+      logger.log(`[search-token] Found tokenMetadata extension: ${JSON.stringify(metadataExt.state)}`);
       
-      if (!tokenInfo) {
-        logger.error(`[search-token] Token account not found for mint: ${mint}`);
-        return c.json({ 
-          error: "Token account not found on mainnet. The address may not be a valid token mint." 
-        }, 404);
-      }
+      // Extract metadata directly from the extension
+      tokenName = metadataExt.state.name || "";
+      tokenSymbol = metadataExt.state.symbol || "";
+      uri = metadataExt.state.uri || "";
+      updateAuthority = metadataExt.state.updateAuthority || null;
       
-      logger.log(`[search-token] Token account exists, data length: ${tokenInfo.data.length} bytes`);
+      logger.log(`[search-token] SPL-2022 metadata - Name: ${tokenName}, Symbol: ${tokenSymbol}`);
+      logger.log(`[search-token] SPL-2022 metadata - URI: ${uri}`);
+      logger.log(`[search-token] SPL-2022 metadata - Update Authority: ${updateAuthority}`);
       
-      // Get metadata PDA for this mint
-      logger.log(`[search-token] Calculating metadata PDA for mint: ${mint}`);
-      const metadataPDA = await getMetadataPDA(mint);
-      logger.log(`[search-token] Metadata PDA: ${metadataPDA.toString()}`);
+      foundMetadata = true;
       
-      // Fetch the metadata account info
-      logger.log(`[search-token] Fetching metadata account info`);
-      const metadataAccount = await connection.getAccountInfo(metadataPDA);
-      
-      logger.log(`[search-token] Metadata account found: ${metadataAccount !== null}`);
-      
-      if (!metadataAccount) {
-        logger.error(`[search-token] No metadata found for token: ${mint}`);
-        return c.json({ 
-          error: "No metadata found for this token. It might not be a valid SPL token with metadata." 
-        }, 404);
-      }
-      
-      logger.log(`[search-token] Metadata account data length: ${metadataAccount.data.length} bytes`);
-      
-      // Log basic info about the metadata (helps debugging)
-      if (metadataAccount.data.length > 0) {
-        logger.log(`[search-token] First few bytes of metadata: ${metadataAccount.data.slice(0, 10).toString('hex')}`);
-      }
-      
-      // Try to decode the metadata
-      let tokenName = "Unknown";
-      let tokenSymbol = "???";
-      let tokenDescription: string | null = null;
-      let tokenImage: string | null = null;
-      let updateAuthority: string | null = null;
-      let creators: Array<{address: string, verified: boolean, share: number}> | null = null;
-      let ownerAddress: string | null = null;
-      
-      try {
-        // Attempt to decode the metadata using the decodeMetadata function
-        const decoded = decodeMetadata(metadataAccount.data);
-        logger.log(`[search-token] Decoded metadata: ${JSON.stringify(decoded, null, 2)}`);
+      // Now fetch additional metadata from the URI if available
+      if (uri) {
+        logger.log(`[search-token] Fetching metadata from URI: ${uri}`);
+        const uriResponse = await fetch(uri);
         
-        // Clean up name and symbol by removing trailing whitespace and non-printable characters
-        tokenName = decoded.data.name.replace(/[\u0000-\u001F\u007F-\u009F\s]+$/g, '').trim();
-        tokenSymbol = decoded.data.symbol.replace(/[\u0000-\u001F\u007F-\u009F\s]+$/g, '').trim();
-        
-        // Fix the URI if it's malformed
-        let uri = decoded.data.uri || '';
-        
-        // Clean up any non-printable characters and extra whitespace
-        uri = uri.replace(/[\u0000-\u001F\u007F-\u009F]+/g, '').trim();
-        
-        // Fix common URI issues
-        if (uri.startsWith('tps://')) {
-          uri = 'https://' + uri.substring(6);
-        }
-        
-        // Remove any trailing non-URL characters
-        // This handles cases where the URI has trailing binary data like in the example
-        uri = uri.replace(/[^\w\s./:?&=%-]+$/, '');
-        
-        // Log the cleaned URI
-        logger.log(`[search-token] Cleaned URI: ${uri}`);
-        
-        if (uri) {
-          // Try to fetch the external metadata URI to get description and image
+        if (uriResponse.ok) {
+          const uriText = await uriResponse.text();
+          logger.log(`[search-token] URI response: ${uriText}`);
+          
           try {
-            // Check if it's an IPFS URI and convert if needed
-            if (uri.includes('ipfs/')) {
-              const ipfsHash = uri.split('ipfs/')[1].split('?')[0].split('#')[0];
-              // Try multiple IPFS gateways
-              const ipfsGateways = [
-                `https://ipfs.io/ipfs/${ipfsHash}`,
-                `https://gateway.pinata.cloud/ipfs/${ipfsHash}`,
-                `https://dweb.link/ipfs/${ipfsHash}`,
-                `https://cloudflare-ipfs.com/ipfs/${ipfsHash}`,
-                uri // Original as fallback
-              ];
-              
-              // Try each gateway until one works
-              let metadataJson: string | null = null;
-              let metadataFetchSuccess = false;
-              
-              for (const gateway of ipfsGateways) {
-                try {
-                  logger.log(`[search-token] Trying IPFS gateway: ${gateway}`);
-                  const fetchResult = await fetchMetadataUri(gateway);
-                  if (fetchResult) {
-                    metadataJson = fetchResult;
-                    metadataFetchSuccess = true;
-                    logger.log(`[search-token] Successfully fetched metadata from: ${gateway}`);
-                    break;
-                  }
-                } catch (err) {
-                  logger.error(`[search-token] Failed to fetch from gateway ${gateway}:`, err);
-                  continue;
-                }
-              }
-              
-              if (metadataJson) {
-                try {
-                  // Log the raw metadata string to see exactly what we're working with
-                  logger.log(`[search-token] Raw metadata JSON: ${metadataJson}`);
-                  
-                  try {
-                    // Explicitly parse the raw JSON to look for the image field
-                    const rawJson = JSON.parse(metadataJson);
-                    logger.log(`[search-token] Directly checking if raw JSON has image field: ${!!rawJson.image}`);
-                    
-                    if (rawJson.image) {
-                      logger.log(`[search-token] Found image in raw JSON: ${rawJson.image}`);
-                      
-                      // Directly set the tokenImage from the raw JSON
-                      tokenImage = rawJson.image;
-                      
-                      // Log that we set it
-                      logger.log(`[search-token] Set tokenImage directly from raw JSON to: ${tokenImage}`);
-                    }
-                    
-                    // Also use the clean symbol from metadata JSON if available
-                    if (rawJson.symbol) {
-                      logger.log(`[search-token] Found clean symbol in raw JSON: ${rawJson.symbol}`);
-                      tokenSymbol = rawJson.symbol;
-                    }
-                    
-                    // Use the description from metadata JSON if available
-                    if (rawJson.description) {
-                      logger.log(`[search-token] Found description in raw JSON: ${rawJson.description}`);
-                      tokenDescription = rawJson.description;
-                    }
-                  } catch (rawJsonError) {
-                    logger.error(`[search-token] Error parsing raw JSON for image field:`, rawJsonError);
-                  }
-                } catch (metadataError) {
-                  logger.error(`[search-token] Error parsing metadata JSON:`, metadataError);
-                }
-                
-                // If we still don't have an image, try alternative sources
-                if (!tokenImage) {
-                  logger.log(`[search-token] No image found in metadata, trying direct sources`);
-                  
-                  // Try to create a direct image URL based on mint address
-                  const possibleDirectImageUrls = [
-                    // Try Jupiter/Jup.ag image
-                    `https://jup.ag/token-list/token-logos/${mint}.png`,
-                    // Try Solana token list
-                    `https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/${mint}/logo.png`,
-                    // Add more potential image sources here
-                  ];
-                  
-                  for (const imgUrl of possibleDirectImageUrls) {
-                    try {
-                      logger.log(`[search-token] Trying direct image URL: ${imgUrl}`);
-                      const response = await fetch(imgUrl, { method: 'HEAD' });
-                      if (response.ok) {
-                        tokenImage = imgUrl;
-                        logger.log(`[search-token] Found direct image at: ${imgUrl}`);
-                        break;
-                      }
-                    } catch (imgErr) {
-                      logger.error(`[search-token] Failed to check image at ${imgUrl}:`, imgErr);
-                      continue;
-                    }
-                  }
-                  
-                  // If we still don't have an image, use a placeholder
-                  if (!tokenImage) {
-                    logger.log(`[search-token] No image sources found, using placeholder`);
-                    tokenImage = `https://api.dicebear.com/7.x/identicon/svg?seed=${mint}`;
-                  }
-                }
-              } else {
-                logger.warn(`[search-token] No metadata found for token: ${mint}`);
-              }
-            } else {
-              // Direct URL - try to fetch normally
-              const metadataJson = await fetchMetadataUri(uri);
-              if (metadataJson) {
-                try {
-                  // Log the raw metadata string first to see what we're working with
-                  logger.log(`[search-token] Raw metadata (first 200 chars): ${metadataJson.substring(0, 200)}...`);
-                  
-                  const metadataObj = JSON.parse(metadataJson);
-                  const metadataKeys = Object.keys(metadataObj);
-                  logger.log(`[search-token] Parsed metadata object keys: ${metadataKeys.join(', ')}`);
-                  
-                  // Extract description and other metadata
-                  tokenDescription = metadataObj.description || "";
-                  
-                  // Specifically look for the image property
-                  if (metadataObj.image) {
-                    tokenImage = metadataObj.image;
-                    logger.log(`[search-token] Found image URL in metadata: ${tokenImage}`);
-                    
-                    // If the URL starts with https://, it's likely valid
-                    if (tokenImage && tokenImage.startsWith('https://')) {
-                      logger.log(`[search-token] Using HTTPS image URL from metadata`);
-                    }
-                    // Fix IPFS URLs if needed
-                    else if (tokenImage && tokenImage.startsWith('ipfs://')) {
-                      const ipfsHash = tokenImage.substring(7);
-                      tokenImage = `https://ipfs.io/ipfs/${ipfsHash}`;
-                      logger.log(`[search-token] Converted IPFS image URL to: ${tokenImage}`);
-                    }
-                  } else {
-                    logger.log(`[search-token] No 'image' property found in metadata`);
-                  }
-                  
-                  // Log what we extracted
-                  logger.log(`[search-token] Extraction results: description=${tokenDescription?.substring(0, 30)}..., imageUrl=${tokenImage}`);
-                  
-                  // If we still don't have an image, try alternative sources
-                  if (!tokenImage) {
-                    logger.log(`[search-token] No image found in metadata, trying direct sources`);
-                    
-                    // Try to create a direct image URL based on mint address
-                    const possibleDirectImageUrls = [
-                      // Try Jupiter/Jup.ag image
-                      `https://jup.ag/token-list/token-logos/${mint}.png`,
-                      // Try Solana token list
-                      `https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/${mint}/logo.png`,
-                      // Add more potential image sources here
-                    ];
-                    
-                    for (const imgUrl of possibleDirectImageUrls) {
-                      try {
-                        logger.log(`[search-token] Trying direct image URL: ${imgUrl}`);
-                        const response = await fetch(imgUrl, { method: 'HEAD' });
-                        if (response.ok) {
-                          tokenImage = imgUrl;
-                          logger.log(`[search-token] Found direct image at: ${imgUrl}`);
-                          break;
-                        }
-                      } catch (imgErr) {
-                        logger.error(`[search-token] Failed to check image at ${imgUrl}:`, imgErr);
-                        continue;
-                      }
-                    }
-                    
-                    // If we still don't have an image, use a placeholder
-                    if (!tokenImage) {
-                      logger.log(`[search-token] No image sources found, using placeholder`);
-                      tokenImage = `https://api.dicebear.com/7.x/identicon/svg?seed=${mint}`;
-                    }
-                  }
-                } catch (parseError) {
-                  logger.error(`[search-token] Error parsing metadata JSON:`, parseError);
-                  
-                  // Use a placeholder image even if parsing fails
-                  tokenImage = `https://api.dicebear.com/7.x/identicon/svg?seed=${mint}`;
-                }
-              } else {
-                // If no metadata was fetched, use a placeholder image
-                logger.log(`[search-token] No metadata fetched, using placeholder image`);
-                tokenImage = `https://api.dicebear.com/7.x/identicon/svg?seed=${mint}`;
-              }
+            const uriData = JSON.parse(uriText);
+            logger.log(`[search-token] Parsed URI data: ${JSON.stringify(uriData)}`);
+            
+            // Extract image and description if available
+            if (uriData.image) {
+              imageUrl = uriData.image;
+              logger.log(`[search-token] Found image URL in URI: ${imageUrl}`);
             }
-          } catch (uriError) {
-            logger.error(`[search-token] Error fetching metadata URI:`, uriError);
-            // Add a fallback for image even if URI fetch fails
-            if (!tokenImage) {
-              logger.log(`[search-token] Using fallback image from identicon`);
-              tokenImage = `https://api.dicebear.com/7.x/identicon/svg?seed=${mint}`;
+            
+            if (uriData.description) {
+              description = uriData.description;
+              logger.log(`[search-token] Found description in URI: ${description}`);
             }
+          } catch (parseError) {
+            logger.error(`[search-token] Error parsing URI JSON: ${parseError}`);
           }
         } else {
-          // If no URI at all, use a placeholder 
-          logger.log(`[search-token] No URI available, using placeholder image`);
-          tokenImage = `https://api.dicebear.com/7.x/identicon/svg?seed=${mint}`;
+          logger.error(`[search-token] Failed to fetch URI: ${uriResponse.status} ${uriResponse.statusText}`);
         }
-        
-        updateAuthority = decoded.updateAuthority;
-        creators = decoded.data.creators || [];
-        ownerAddress = decoded.data.ownerAddress;
-      } catch (decodeError) {
-        logger.error(`[search-token] Error decoding metadata:`, decodeError);
-        // Fall back to using simple values if decoding fails
-        tokenName = "Token " + mint.slice(0, 6);
-        tokenSymbol = mint.slice(0, 4).toUpperCase();
       }
-      
-      // Check if the requestor is the update authority or a creator
-      // Note: We're still checking this, but now we'll always return token data with isCreator flag
-      const isCreator = 
-        (updateAuthority && updateAuthority === requestor) || 
-        (creators && creators.some(creator => creator.address === requestor && creator.verified));
-      
-      const creatorAddresses = Array.isArray(creators) 
-        ? creators.map(creator => creator.address) 
-        : [];
-        
-      // Return the token data with parsed metadata
-      logger.log(`[search-token] Symbol value before construction: "${tokenSymbol}"`);
-      
-      const tokenMetadata = {
-        name: tokenName,
-        symbol: tokenSymbol,
-        description: tokenDescription || `Token imported from address ${mint}`,
-        mint: mint,
-        updateAuthority: updateAuthority || "Unknown",
-        creator: creatorAddresses.length > 0 ? creatorAddresses[0] : "Unknown",
-        creators: creatorAddresses,
-        isCreator: isCreator, // This flag indicates if the requestor has permission
-        image: tokenImage || `https://api.dicebear.com/7.x/identicon/svg?seed=${mint}`, // Always ensure an image URL
-        ownerAddress: ownerAddress || "Unknown",
-        needsWalletSwitch: !isCreator // Flag to indicate if wallet switch is needed
-      };
-      
-      // Log the final image URL we're returning
-      logger.log(`[search-token] Final image URL in response: ${tokenMetadata.image}`);
-      
-      logger.log(`[search-token] Final tokenMetadata: ${JSON.stringify({
-        name: tokenMetadata.name,
-        symbol: tokenMetadata.symbol,
-        image: tokenMetadata.image,
-        isCreator: tokenMetadata.isCreator,
-        needsWalletSwitch: tokenMetadata.needsWalletSwitch
-      }, null, 2)}`);
-      
-      logger.log(`[search-token] Successfully retrieved token metadata for: ${mint}, isCreator: ${isCreator}`);
-      return c.json(tokenMetadata);
-      
-    } catch (error) {
-      logger.error(`[search-token] Error searching for token:`, error);
-      return c.json({ 
-        error: `Failed to fetch token metadata: ${error instanceof Error ? error.message : "Unknown error"}` 
-      }, 500);
+    } else {
+      logger.log(`[search-token] No tokenMetadata extension found in SPL-2022 token`);
     }
-  } catch (error) {
-    logger.error(`[search-token] Unexpected error:`, error);
-    return c.json({ 
-      error: error instanceof Error ? error.message : "Unknown error occurred" 
-    }, 500);
   }
+  
+  // Only try to get Metaplex metadata if we didn't find it in SPL-2022 extensions
+  if (!foundMetadata) {
+    // Get metadata PDA
+    const METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+    const [metadataAddress] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        METADATA_PROGRAM_ID.toBuffer(),
+        mintPublicKey.toBuffer(),
+      ],
+      METADATA_PROGRAM_ID
+    );
+    
+    logger.log(`[search-token] Metadata address: ${metadataAddress.toString()}`);
+    
+    // Get metadata account data - direct read from chain with no fallbacks
+    const metadataAccount = await connection.getAccountInfo(metadataAddress);
+    if (!metadataAccount || metadataAccount.data.length === 0) {
+      // For SPL-2022 tokens, we already checked extensions so this is just a warning
+      // For regular SPL tokens, this is an error
+      if (isSPL2022) {
+        logger.warn(`[search-token] No Metaplex metadata found for SPL-2022 token: ${mint}`);
+      } else {
+        logger.error(`[search-token] No metadata found for token: ${mint}`);
+        return c.json({ error: "No metadata found for this token" }, 404);
+      }
+    } else {
+      // We found Metaplex metadata
+      logger.log(`[search-token] Metadata account found, data length: ${metadataAccount.data.length} bytes`);
+      logger.log(`[search-token] Raw metadata (hex): ${Buffer.from(metadataAccount.data).toString('hex')}`);
+      
+      // Direct metadata extraction
+      updateAuthority = new PublicKey(metadataAccount.data.slice(1, 33)).toString();
+      logger.log(`[search-token] Update authority: ${updateAuthority}`);
+      
+      // Calculate offsets for variable-length fields
+      let offset = 1 + 32 + 32; // Skip version byte + update authority + mint
+      
+      // Extract name length and value
+      const nameLength = metadataAccount.data[offset];
+      offset += 1;
+      const nameData = metadataAccount.data.slice(offset, offset + nameLength);
+      tokenName = nameData.toString('utf8').replace(/\0/g, '').trim();
+      logger.log(`[search-token] Token name: ${tokenName} (${nameLength} bytes)`);
+      offset += nameLength;
+      
+      // Extract symbol - needs to account for padding between fields
+      offset += 3; // Skip padding bytes before length
+      const symbolLength = metadataAccount.data[offset];
+      offset += 1;
+      const symbolData = metadataAccount.data.slice(offset, offset + symbolLength);
+      tokenSymbol = symbolData.toString('utf8').replace(/\0/g, '').trim();
+      logger.log(`[search-token] Token symbol: ${tokenSymbol} (${symbolLength} bytes)`);
+      offset += symbolLength;
+      
+      // Extract URI
+      offset += 3; // Skip padding bytes before length
+      const uriLength = metadataAccount.data[offset];
+      offset += 1;
+      const uriData = metadataAccount.data.slice(offset, offset + uriLength);
+      uri = uriData.toString('utf8').replace(/\0/g, '').trim();
+      logger.log(`[search-token] Metadata URI: ${uri} (${uriLength} bytes)`);
+      
+      foundMetadata = true;
+      
+      // Now fetch additional metadata from the URI if available
+      if (uri) {
+        logger.log(`[search-token] Fetching metadata from URI: ${uri}`);
+        const uriResponse = await fetch(uri);
+        
+        if (uriResponse.ok) {
+          const uriText = await uriResponse.text();
+          logger.log(`[search-token] URI response: ${uriText}`);
+          
+          try {
+            const uriData = JSON.parse(uriText);
+            logger.log(`[search-token] Parsed URI data: ${JSON.stringify(uriData)}`);
+            
+            // Extract image and description if available
+            if (uriData.image) {
+              imageUrl = uriData.image;
+              logger.log(`[search-token] Found image URL in URI: ${imageUrl}`);
+            }
+            
+            if (uriData.description) {
+              description = uriData.description;
+              logger.log(`[search-token] Found description in URI: ${description}`);
+            }
+          } catch (parseError) {
+            logger.error(`[search-token] Error parsing URI JSON: ${parseError}`);
+          }
+        } else {
+          logger.error(`[search-token] Failed to fetch URI: ${uriResponse.status} ${uriResponse.statusText}`);
+        }
+      }
+    }
+  }
+  
+  // If we still didn't find metadata from either source, throw error
+  if (!foundMetadata && !isSPL2022) {
+    return c.json({ error: "No metadata found for this token" }, 404);
+  }
+  
+  // For SPL-2022 tokens, we still consider them valid even without metadata
+  // since they might not use the tokenMetadata extension
+  
+  // Determine if requestor is the creator/authority
+  const isCreator = 
+    (updateAuthority === requestor) || 
+    (mintAuthority === requestor);
+  
+  logger.log(`[search-token] Is requestor the creator? ${isCreator}`);
+  logger.log(`[search-token] Request wallet: ${requestor}`);
+  logger.log(`[search-token] Update authority: ${updateAuthority}`);
+  
+  // If we don't have names yet (possible for SPL-2022 without tokenMetadata), use defaults
+  if (!tokenName) {
+    tokenName = `Token ${mint.slice(0, 8)}`;
+  }
+  if (!tokenSymbol) {
+    tokenSymbol = mint.slice(0, 4).toUpperCase();
+  }
+  
+  // Return the token data
+  const tokenData = {
+    name: tokenName,
+    symbol: tokenSymbol,
+    description: description || `Token ${tokenName} (${tokenSymbol})`,
+    mint: mint,
+    updateAuthority: updateAuthority,
+    mintAuthority: mintAuthority || null,
+    creator: updateAuthority || mintAuthority || null,
+    isCreator: isCreator,
+    metadataUri: uri,
+    image: imageUrl,
+    tokenType: isSPL2022 ? "spl-2022" : "spl-token",
+    decimals: decimals,
+    needsWalletSwitch: !isCreator
+  };
+  
+  logger.log(`[search-token] Final token data: ${JSON.stringify(tokenData)}`);
+  
+  return c.json(tokenData);
 });
 
 // Helper function to get the Metadata PDA for a mint
@@ -725,25 +612,102 @@ async function getMetadataPDA(mint: string): Promise<PublicKey> {
   return metadataPDA;
 }
 
-// Helper function to decode metadata from buffer
+// Fix metadata decoding for Metaplex tokens
 function decodeMetadata(buffer: Buffer): any {
-  // This is a simplified implementation
-  // In production, use the Metaplex JS SDK which has proper decoding functions
-  
-  // For now, we'll use a placeholder that extracts common fields
-  // The actual implementation would use proper BorshDeserialize logic
-  
-  // Sample structure for demonstration purposes:
-  return {
-    updateAuthority: new PublicKey(buffer.slice(1, 33)).toString(),
-    mint: new PublicKey(buffer.slice(33, 65)).toString(),
-    data: {
-      name: buffer.slice(69, 105).toString('utf8').replace(/\0/g, ''),
-      symbol: buffer.slice(105, 121).toString('utf8').replace(/\0/g, ''),
-      uri: buffer.slice(121, 377).toString('utf8').replace(/\0/g, ''),
-      creators: extractCreators(buffer.slice(377, buffer.length))
+  // This is a proper implementation for decoding Metaplex metadata
+  try {
+    // Skip the first byte (version)
+    const start = 1;
+
+    // Read key fields
+    const updateAuthorityStart = start;
+    const updateAuthorityEnd = updateAuthorityStart + 32;
+    const updateAuthority = new PublicKey(buffer.slice(updateAuthorityStart, updateAuthorityEnd)).toString();
+
+    const mintStart = updateAuthorityEnd;
+    const mintEnd = mintStart + 32;
+    const mint = new PublicKey(buffer.slice(mintStart, mintEnd)).toString();
+
+    // Read data
+    let cursor = mintEnd;
+    
+    // Skip name length prefix (4 bytes) and read name
+    cursor += 4;
+    const nameLen = buffer.readUInt32LE(mintEnd);
+    const name = buffer.slice(cursor, cursor + nameLen).toString('utf8').replace(/\0/g, '');
+    cursor += nameLen;
+    
+    // Skip symbol length prefix (4 bytes) and read symbol
+    cursor += 4;
+    const symbolLen = buffer.readUInt32LE(cursor - 4);
+    const symbol = buffer.slice(cursor, cursor + symbolLen).toString('utf8').replace(/\0/g, '');
+    cursor += symbolLen;
+    
+    // Skip uri length prefix (4 bytes) and read uri
+    cursor += 4;
+    const uriLen = buffer.readUInt32LE(cursor - 4);
+    const uri = buffer.slice(cursor, cursor + uriLen).toString('utf8').replace(/\0/g, '');
+    cursor += uriLen;
+    
+    // Read fee
+    const fee = buffer.readUInt16LE(cursor);
+    cursor += 2;
+    
+    // Check for creators
+    let creators: Array<{address: string, verified: boolean, share: number}> | null = null;
+    if (cursor < buffer.length) {
+      const hasCreators = buffer[cursor];
+      cursor += 1;
+      
+      if (hasCreators) {
+        const creatorCount = buffer[cursor];
+        cursor += 1;
+        
+        creators = [];
+        for (let i = 0; i < creatorCount; i++) {
+          const creatorAddress = new PublicKey(buffer.slice(cursor, cursor + 32)).toString();
+          cursor += 32;
+          
+          const verified = Boolean(buffer[cursor]);
+          cursor += 1;
+          
+          const share = buffer[cursor];
+          cursor += 1;
+          
+          creators.push({
+            address: creatorAddress,
+            verified,
+            share,
+          });
+        }
+      }
     }
-  };
+    
+  return {
+      updateAuthority,
+      mint,
+    data: {
+        name,
+        symbol,
+        uri,
+        sellerFeeBasisPoints: fee,
+        creators,
+      }
+    };
+  } catch (e) {
+    console.error("Error decoding metadata:", e);
+    // Return basic structure with as much as we could decode
+    return {
+      updateAuthority: "Unknown",
+      mint: "Unknown",
+      data: {
+        name: "Unknown",
+        symbol: "Unknown",
+        uri: "",
+        creators: null
+      }
+    };
+  }
 }
 
 // Helper function to extract creators array from buffer

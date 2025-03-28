@@ -1,6 +1,7 @@
 import * as CANNON from "cannon-es";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { IToken } from "@/types";
 
 // Add TypeScript declaration for CANNON to fix the errors
 declare module "cannon-es" {
@@ -159,12 +160,180 @@ const EyeFollower = () => {
   );
 };
 
-const DiceRoller = () => {
+interface DiceRollerProps {
+  tokens?: IToken[];
+}
+
+const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [dicePositions, setDicePositions] = useState<THREE.Vector3[]>([]);
+  const [diceInitialized, setDiceInitialized] = useState(false);
+  
+  // Store selected tokens and their addresses for navigation
+  const [selectedTokens, setSelectedTokens] = useState<{address: string, image: string}[]>([]);
+
+  // Track scene objects in refs so they can be accessed in event handlers
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const diceRef = useRef<THREE.Mesh[]>([]);
+  const diceBodiesRef = useRef<CANNON.Body[]>([]);
+  const cameraRef = useRef<THREE.OrthographicCamera | null>(null);
+  const worldRef = useRef<CANNON.World | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!tokens.length) return;
+    
+    // Randomly select up to 5 tokens
+    const shuffled = [...tokens].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, Math.min(5, tokens.length)).map(token => ({
+      address: token.mint || "",
+      image: token.image || "header/placeholder/logo.jpg" // Fallback if no image
+    }));
+    
+    setSelectedTokens(selected);
+
+    // Initialize random dice positions
+    const positions: THREE.Vector3[] = [];
+    for (let i = 0; i < Math.min(5, tokens.length); i++) {
+      positions.push(
+        new THREE.Vector3(
+          Math.random() * 50 - 25,
+          20 + i * 2,
+          Math.random() * 16 - 8
+        )
+      );
+    }
+    setDicePositions(positions);
+  }, [tokens]);
+
+  // Function to throw dice with physics
+  const throwDice = () => {
+    if (!diceBodiesRef.current.length) return;
+    
+    console.log("Throwing dice", diceBodiesRef.current.length);
+    
+    for (let i = 0; i < diceBodiesRef.current.length; i++) {
+      const dieBody = diceBodiesRef.current[i];
+      
+      // Reset position higher for more energy
+      dieBody.position.set(
+        Math.random() * 50 - 25,
+        20 + i * 2,
+        Math.random() * 16 - 8
+      );
+
+      // Reset rotation
+      dieBody.quaternion.setFromEuler(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+
+      // Clear any existing motion
+      dieBody.velocity.set(0, 0, 0);
+      dieBody.angularVelocity.set(0, 0, 0);
+
+      // Wake up the body
+      dieBody.wakeUp();
+
+      // Apply random velocity
+      const velocity = new CANNON.Vec3(
+        (Math.random() - 0.5) * 15,
+        -10 - Math.random() * 15,
+        (Math.random() - 0.5) * 15
+      );
+      dieBody.velocity.copy(velocity);
+
+      // Apply spin
+      const angularVelocity = new CANNON.Vec3(
+        (Math.random() - 0.5) * 20,
+        (Math.random() - 0.5) * 20,
+        (Math.random() - 0.5) * 20
+      );
+      dieBody.angularVelocity.copy(angularVelocity);
+    }
+    
+    console.log("Dice thrown with increased energy!");
+  };
+  
+  // Handle clicking anywhere on the container
+  const handleContainerClick = (event: React.MouseEvent) => {
+    console.log("Container clicked");
+    if (isLoading) return;
+    
+    // Get container bounds for raycaster
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect || !cameraRef.current || !sceneRef.current) return;
+    
+    // Calculate normalized mouse position
+    const mouse = new THREE.Vector2(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1
+    );
+    
+    // Setup raycaster
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, cameraRef.current);
+    
+    // Check for intersections with dice
+    const intersects = raycaster.intersectObjects(diceRef.current);
+    
+    if (intersects.length > 0) {
+      // Get the clicked die
+      const clickedDie = intersects[0].object as THREE.Mesh;
+      
+      // Get the token address from the die's userData
+      const tokenAddress = clickedDie.userData?.tokenAddress;
+      
+      if (tokenAddress) {
+        // Navigate to token page using vanilla JS approach
+        console.log("Navigating to token:", tokenAddress);
+        window.location.href = `/token/${tokenAddress}`;
+      }
+    } else {
+      // If no die was clicked, apply force to all dice
+      console.log("No die clicked, applying force to all");
+      applyForceToAllDice(event.nativeEvent);
+    }
+  };
+  
+  // Apply force to all dice when clicking background
+  const applyForceToAllDice = (event: MouseEvent) => {
+    console.log("Applying force to dice", event.clientX, event.clientY);
+    
+    if (!diceBodiesRef.current.length) {
+      console.log("No dice bodies available");
+      return;
+    }
+    
+    // Force for all dice
+    for (const dieBody of diceBodiesRef.current) {
+      // Wake up the body
+      dieBody.wakeUp();
+
+      // Apply random force
+      const forceVector = new CANNON.Vec3(
+        (Math.random() - 0.5) * 200,
+        Math.random() * 50,
+        (Math.random() - 0.5) * 200
+      );
+
+      // Apply direct velocity for immediate effect
+      dieBody.velocity.set(forceVector.x, forceVector.y, forceVector.z);
+
+      // Add random spin
+      dieBody.angularVelocity.set(
+        (Math.random() - 0.5) * 10,
+        (Math.random() - 0.5) * 10,
+        (Math.random() - 0.5) * 10
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (!containerRef.current || !selectedTokens.length || !dicePositions.length) return;
+    
+    console.log("Initializing dice physics scene");
 
     // Get container dimensions
     const containerWidth = containerRef.current.clientWidth;
@@ -172,10 +341,12 @@ const DiceRoller = () => {
 
     // Scene setup
     const scene = new THREE.Scene();
+    sceneRef.current = scene;
     scene.background = null; // Make scene background transparent
 
     // Physics world
     const world = new CANNON.World();
+    worldRef.current = world;
     world.gravity.set(0, -9.8 * 20, 0); // stronger gravity for faster falls
     world.broadphase = new CANNON.NaiveBroadphase();
     world.solver.iterations = 14;
@@ -223,6 +394,7 @@ const DiceRoller = () => {
       0.001,
       1000,
     );
+    cameraRef.current = camera;
     camera.position.set(0, 50, 0);
     camera.lookAt(0, 0, 0);
 
@@ -360,45 +532,42 @@ const DiceRoller = () => {
     // Load textures for dice
     const textureLoader = new THREE.TextureLoader();
 
-    const diceTextures = [
-      // We'll use placeholder images with different colors to distinguish faces
-      "header/placeholder/logo.jpg",
-      "header/placeholder/ai16z.jpg",
-      "header/placeholder/degen.jpg",
-      "header/placeholder/solanadice.jpg",
-      "header/placeholder/fun.jpg",
-      "header/placeholder/eliza.jpg",
-    ];
+    // Use default placeholder if we don't have enough tokens
+    const fallbackTexture = "header/placeholder/logo.jpg";
 
-    // Add colors to distinguish different faces
-    const faceColors = [
-      0xffffff, // red
-      0xffffff, // green
-      0xffffff, // blue
-      0xffffff, // yellow
-      0xffffff, // magenta
-      0xffffff, // cyan
-    ];
-
-    // Create materials array for each die face
-    const createDieMaterials = () => {
-      const materials = [];
-      for (let i = 0; i < 6; i++) {
-        const texture = textureLoader.load(diceTextures[i], () => {
-          if (i === 5) setIsLoading(false);
+    // Helper function to create materials for a die with the same texture on all sides
+    const createDieMaterialsWithSameTexture = (tokenImage: string) => {
+      return new Promise<THREE.MeshStandardMaterial[]>((resolve) => {
+        const texture = textureLoader.load(tokenImage, () => {
+          setIsLoading(false);
+        }, undefined, (error) => {
+          console.error("Error loading texture:", error);
+          // Load fallback texture if the token image fails
+          const fallback = textureLoader.load(fallbackTexture, () => {
+            setIsLoading(false);
+          });
+          resolve(Array(6).fill(new THREE.MeshStandardMaterial({
+            map: fallback,
+            roughness: 1.0,
+            metalness: 0.3,
+            emissiveMap: fallback,
+            emissiveIntensity: 0.5,
+          })));
         });
-        materials.push(
+
+        // Create 6 sides with the same material
+        const materials = Array(6).fill(null).map(() => 
           new THREE.MeshStandardMaterial({
             map: texture,
-            emissive: faceColors[i],
             roughness: 1.0,
             metalness: 0.3,
             emissiveMap: texture,
             emissiveIntensity: 0.5,
-          }),
+          })
         );
-      }
-      return materials;
+        
+        resolve(materials);
+      });
     };
 
     const scale = 2;
@@ -409,14 +578,18 @@ const DiceRoller = () => {
     const diceBodies: CANNON.Body[] = [];
 
     // Helper function to create a die
-    function createDie(position: THREE.Vector3, scale: number = 1) {
-      const dieMaterials = createDieMaterials();
+    async function createDie(position: THREE.Vector3, scale: number = 1, tokenIndex: number) {
+      const tokenData = selectedTokens[tokenIndex] || { address: "", image: fallbackTexture };
+      const dieMaterials = await createDieMaterialsWithSameTexture(tokenData.image);
       const die = new THREE.Mesh(diceGeometry, dieMaterials);
 
       die.position.copy(position);
       die.scale.set(scale, scale, scale);
       die.castShadow = true;
       die.receiveShadow = true;
+      
+      // Store token address as a custom property
+      die.userData = { tokenAddress: tokenData.address };
 
       // Create physics body
       const halfExtents = new CANNON.Vec3(scale, scale, scale);
@@ -435,8 +608,11 @@ const DiceRoller = () => {
         Math.random() * Math.PI,
       );
 
-      // Store the mesh with the body for updates
-      dieBody.userData = { mesh: die };
+      // Store the mesh and token data with the body for updates
+      dieBody.userData = { 
+        mesh: die,
+        tokenAddress: tokenData.address
+      };
 
       // Add to scene and world
       scene.add(die);
@@ -448,62 +624,44 @@ const DiceRoller = () => {
       return { die, dieBody };
     }
 
-    // Create 5 dice with initial positions
-    for (let i = 0; i < 5; i++) {
-      const position = new THREE.Vector3(
-        Math.random() * 50 - 25,
-        20 + i * 2,
-        Math.random() * 16 - 8,
-      );
-      createDie(position, scale);
-    }
-
-    // Replace the throwDice function with a more energetic version
-    function throwDice() {
-      for (let i = 0; i < diceBodies.length; i++) {
-        const dieBody = diceBodies[i];
-
-        // Reset position higher for more energy
-        dieBody.position.set(
+    // Create dice with token images
+    const createAllDice = async () => {
+      // Clear any existing dice
+      diceRef.current = [];
+      diceBodiesRef.current = [];
+      
+      const numDice = Math.min(5, selectedTokens.length);
+      
+      for (let i = 0; i < numDice; i++) {
+        const position = dicePositions[i] || new THREE.Vector3(
           Math.random() * 50 - 25,
           20 + i * 2,
-          Math.random() * 16 - 8,
+          Math.random() * 16 - 8
         );
-
-        // Reset rotation
-        dieBody.quaternion.setFromEuler(
-          Math.random() * Math.PI,
-          Math.random() * Math.PI,
-          Math.random() * Math.PI,
-        );
-
-        // Clear any existing motion
-        dieBody.velocity.set(0, 0, 0);
-        dieBody.angularVelocity.set(0, 0, 0);
-
-        // Wake up the body
-        dieBody.wakeUp();
-
-        // Apply stronger random velocity
-        const velocity = new CANNON.Vec3(
-          (Math.random() - 0.5) * 15, // stronger horizontal movement
-          -10 - Math.random() * 15, // stronger downward movement
-          (Math.random() - 0.5) * 15, // stronger depth movement
-        );
-        dieBody.velocity.copy(velocity);
-
-        // Apply stronger random angular velocity for more spin
-        const angularVelocity = new CANNON.Vec3(
-          (Math.random() - 0.5) * 20,
-          (Math.random() - 0.5) * 20,
-          (Math.random() - 0.5) * 20,
-        );
-        dieBody.angularVelocity.copy(angularVelocity);
+        const { die, dieBody } = await createDie(position, scale, i);
+        diceRef.current.push(die);
+        diceBodiesRef.current.push(dieBody);
       }
+      
+      // If we have fewer than 5 tokens, fill remaining slots with empty dice
+      if (numDice < 5) {
+        for (let i = numDice; i < 5; i++) {
+          const position = new THREE.Vector3(
+            Math.random() * 50 - 25,
+            20 + i * 2,
+            Math.random() * 16 - 8
+          );
+          const { die, dieBody } = await createDie(position, scale, i % numDice);
+          diceRef.current.push(die);
+          diceBodiesRef.current.push(dieBody);
+        }
+      }
+      
+      setDiceInitialized(true);
+    };
 
-      // Log for debugging
-      console.log("Dice thrown with increased energy!");
-    }
+    // Create all dice
+    createAllDice();
 
     // Replace the collision handler with a simpler version
     function handleCollisions(event: any) {
@@ -535,8 +693,7 @@ const DiceRoller = () => {
     // Add collision event listener to world (use collide event instead of beginContact)
     world.addEventListener("collide", handleCollisions);
 
-    // Replace the debug info part in the animation function
-    // Instead of using React state (which causes re-renders), use DOM manipulation
+    // Animation function
     function animate() {
       requestAnimationFrame(animate);
 
@@ -558,70 +715,8 @@ const DiceRoller = () => {
     // Start animation
     animate();
 
-    // Add event listener for the roll button
-    const handleReset = () => {
-      // throwDice();
-    };
-
     // Expose reset function to window so the button can access it
-    window.resetDice = handleReset;
-
-    // Screen press for throwing dice
-    const applyForceToAllDice = (event: MouseEvent) => {
-      console.log("applyForceToAllDice", event);
-      // if (isLoading) return;
-      // console.log("isLoading", isLoading);
-
-      event.preventDefault();
-      console.log("Applying force to dice", event.clientX, event.clientY);
-
-      // Force for all dice - simplified approach
-      for (const dieBody of diceBodies) {
-        // Wake up the body
-        dieBody.wakeUp();
-
-        // Simple upward force with some randomness
-        const forceVector = new CANNON.Vec3(
-          (Math.random() - 0.5) * 200,
-          Math.random() * 50,
-          (Math.random() - 0.5) * 200,
-        );
-
-        // Apply direct velocity instead of impulse for more immediate effect
-        dieBody.velocity.set(forceVector.x, forceVector.y, forceVector.z);
-
-        // Add extreme random spin
-        dieBody.angularVelocity.set(
-          (Math.random() - 0.5) * 10,
-          (Math.random() - 0.5) * 10,
-          (Math.random() - 0.5) * 10,
-        );
-
-        console.log("Set velocity:", forceVector);
-      }
-
-      // Add screen shake effect
-      // const originalCameraPos = camera.position.clone();
-      // const shakeAmount = 2.0;
-
-      // camera.position.x += (Math.random() * 2 - 1) * shakeAmount;
-      // camera.position.z += (Math.random() * 2 - 1) * shakeAmount;
-
-      // setTimeout(() => {
-      //   camera.position.copy(originalCameraPos);
-      // }, 200);
-
-      // Also trigger a throwDice for guaranteed effect
-      // throwDice();
-    };
-
-    // Event listeners - add multiple types of event listeners to ensure it works
-    // containerRef.current.addEventListener("mousedown", applyForceToAllDice);
-    containerRef.current.addEventListener("click", applyForceToAllDice);
-    containerRef.current.addEventListener(
-      "touchstart",
-      applyForceToAllDice as any,
-    );
+    window.resetDice = throwDice;
 
     // Updated window resize handler
     const onWindowResize = () => {
@@ -716,14 +811,6 @@ const DiceRoller = () => {
 
     // Cleanup on unmount
     return () => {
-      if (containerRef.current) {
-        containerRef.current.removeEventListener("click", applyForceToAllDice);
-        containerRef.current.removeEventListener(
-          "touchstart",
-          applyForceToAllDice as any,
-        );
-      }
-
       window.removeEventListener("resize", onWindowResize);
 
       // Remove the reset function from window
@@ -732,15 +819,12 @@ const DiceRoller = () => {
       // Dispose of resources
       renderer.dispose();
     };
-  }, []);
+  }, [selectedTokens, dicePositions]);
 
   return (
     <div
       className="w-full h-[300px] relative overflow-hidden cursor-pointer my-6 xl:mt-0"
-      onClick={(_e) => {
-        console.log("Outer container clicked");
-        // if (window.resetDice) window.resetDice();
-      }}
+      onClick={handleContainerClick}
     >
       {/* SVG background placed below the canvas */}
       <div className="absolute inset-0 flex justify-center items-center z-0">
@@ -780,4 +864,8 @@ const DiceRoller = () => {
   );
 };
 
-export default DiceRoller;
+const FrontpageHeader = ({ tokens = [] }: { tokens?: IToken[] }) => {
+  return <DiceRoller tokens={tokens} />;
+};
+
+export default FrontpageHeader;

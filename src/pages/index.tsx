@@ -60,7 +60,7 @@ export default function Page() {
   return (
     <div className="w-full min-h-[100vh]">
       {/* Header Section */}
-      <FrontpageHeader />
+      <FrontpageHeader tokens={tokens} />
       {/* Top Navigation */}
       <div className="flex justify-between gap-2 flex-wrap-reverse lg:flex-wrap">
         <GridListSwitcher />
