@@ -360,14 +360,14 @@ const DiceRoller = () => {
     // Load textures for dice
     const textureLoader = new THREE.TextureLoader();
 
-    const catTextures = [
+    const diceTextures = [
       // We'll use placeholder images with different colors to distinguish faces
-      "logo.png",
-      "ai16z.jpeg",
-      "degen.jpg",
-      "solanadice.png",
-      "fun.png",
-      "eliza.png",
+      "header/placeholder/logo.jpg",
+      "header/placeholder/ai16z.jpg",
+      "header/placeholder/degen.jpg",
+      "header/placeholder/solanadice.jpg",
+      "header/placeholder/fun.jpg",
+      "header/placeholder/eliza.jpg",
     ];
 
     // Add colors to distinguish different faces
@@ -384,7 +384,7 @@ const DiceRoller = () => {
     const createDieMaterials = () => {
       const materials = [];
       for (let i = 0; i < 6; i++) {
-        const texture = textureLoader.load(catTextures[i], () => {
+        const texture = textureLoader.load(diceTextures[i], () => {
           if (i === 5) setIsLoading(false);
         });
         materials.push(
