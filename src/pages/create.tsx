@@ -39,7 +39,7 @@ interface PreGeneratedTokenResponse {
 }
 
 // Form Components
-const FormInput = ({
+export const FormInput = ({
   label,
   isOptional,
   error,
@@ -101,7 +101,7 @@ const FormInput = ({
   );
 };
 
-const FormTextArea = ({
+export const FormTextArea = ({
   label,
   rightIndicator,
   minRows = 3,

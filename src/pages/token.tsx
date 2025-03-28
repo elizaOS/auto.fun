@@ -25,6 +25,8 @@ import { TradingViewChart } from "@/components/trading-view-chart";
 import { useEffect, useState } from "react";
 import { getSocket } from "@/utils/socket";
 import { twMerge } from "tailwind-merge";
+import CommunityTab from "@/components/token-tabs/community-tab";
+import AdminTab from "@/components/token-tabs/admin-tab";
 
 const socket = getSocket();
 
@@ -34,6 +36,7 @@ export default function Page() {
 
   type ITabs = "Trading" | "Community" | "Admin";
   const [tab, setTab] = useState<ITabs>("Trading");
+  console.log(tab)
 
   const query = useQuery({
     queryKey: ["token", address],
@@ -257,18 +260,18 @@ export default function Page() {
           </div>
         </div>
         {/* Chart */}
-        <div className="flex flex-row ">
+        <div className="flex flex-row">
           <Button onClick={() => setTab("Trading")} className={twMerge( tab === "Trading" ? "bg-autofun-stroke-highlight/80" : "bg-white/15" )} > Trading </Button>
           <Button onClick={() => setTab("Community")} className={twMerge( tab === "Community" ? "bg-autofun-stroke-highlight/80" : "bg-white/15" )} > Community </Button>
-          {admin &&  <Button onClick={() => setTab("Admin")} className={twMerge(tab === "Admin" ? "bg-autofun-stroke-highlight/80": "bg-white/15")}>Admin</Button>}
+          {admin && <Button onClick={() => setTab("Admin")} className={twMerge(tab === "Admin" ? "bg-autofun-stroke-highlight/80": "bg-white/15")}>Admin</Button>}
         </div>
         <div className="border bg-autofun-background-card h-[50vh]">
           {tab === "Trading" ? (
             <TradingViewChart name={token.name} token={token.mint} />
           ) : tab === "Community" ? (
-            <div>community</div>
+            <CommunityTab />
           ) : tab === "Admin" ? (
-            <div>Admin</div>
+            <AdminTab />
           ) : null}
         </div>
         <TransactionsAndHolders token={token} />
