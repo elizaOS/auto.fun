@@ -3,33 +3,29 @@ import SkeletonImage from "./skeleton-image";
 
 export const Footer = () => {
   return (
-      <div className="flex items-center gap-2.5 mx-auto">
-      <img
-          className="size-16"
-          src="/logo_wide.svg"
-          alt="logo"
-        />
-        <FooterLink href="/privacy-policy" title="Privacy" />
-        <div className="w-[1px] h-4 bg-autofun-stroke-light" />
-        <FooterLink href="/terms-of-service" title="Terms" />
-        <div className="w-[1px] h-4 bg-autofun-stroke-light" />
-        <FooterLink href="/fees" title="Fees" />
-        <div className="w-[1px] h-4 bg-autofun-stroke-light" />
-        <FooterLink title="Support" href="/support" />
-        <Link to={"https://x.com/autodotfun"} target="_blank">
-          <div className="size-10 p-0 grid place-items-center border select-none">
-            <div className="m-auto">
-              <SkeletonImage
-                src="/x-gray.svg"
-                height={22}
-                width={24}
-                alt="twitter_icon"
-                className="object-contain"
-              />
-            </div>
+    <div className="flex items-center gap-2.5 mx-auto">
+      <img className="size-16" src="/logo_wide.svg" alt="logo" />
+      <FooterLink href="/privacy-policy" title="Privacy" />
+      <div className="w-[1px] h-4 bg-autofun-stroke-light" />
+      <FooterLink href="/terms-of-service" title="Terms" />
+      <div className="w-[1px] h-4 bg-autofun-stroke-light" />
+      <FooterLink href="/fees" title="Fees" />
+      <div className="w-[1px] h-4 bg-autofun-stroke-light" />
+      <FooterLink title="Support" href="/support" />
+      <Link to={"https://x.com/autodotfun"} target="_blank">
+        <div className="size-10 p-0 grid place-items-center border select-none">
+          <div className="m-auto">
+            <SkeletonImage
+              src="/x-gray.svg"
+              height={22}
+              width={24}
+              alt="twitter_icon"
+              className="object-contain"
+            />
           </div>
-        </Link>
-      </div>
+        </div>
+      </Link>
+    </div>
   );
 };
 

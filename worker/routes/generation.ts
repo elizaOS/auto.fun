@@ -691,14 +691,17 @@ app.post("/generate-metadata", async (c) => {
     // Extract and parse the JSON response
     let metadata: Record<string, string>;
     try {
-      const jsonStartIndex = response.response.indexOf('{');
-      const jsonEndIndex = response.response.lastIndexOf('}') + 1;
-      
+      const jsonStartIndex = response.response.indexOf("{");
+      const jsonEndIndex = response.response.lastIndexOf("}") + 1;
+
       if (jsonStartIndex === -1 || jsonEndIndex === -1) {
         throw new Error("Could not find valid JSON in the response");
       }
-      
-      const jsonString = response.response.substring(jsonStartIndex, jsonEndIndex);
+
+      const jsonString = response.response.substring(
+        jsonStartIndex,
+        jsonEndIndex,
+      );
       metadata = JSON.parse(jsonString);
     } catch (error) {
       logger.error("Failed to parse token metadata JSON:", error);
@@ -1390,7 +1393,7 @@ export async function generatePreGeneratedTokens(
     }
 
     const imageDataUrl = imageResult.data.images[0].url;
-    
+
     // Prepare the upload request in the same format as the /upload endpoint expects
     const requestData = {
       image: imageDataUrl,
@@ -1398,7 +1401,7 @@ export async function generatePreGeneratedTokens(
         name: metadata.name,
         symbol: metadata.symbol,
         description: metadata.description,
-      }
+      },
     };
 
     // Create a mock request context for the upload
@@ -1407,31 +1410,31 @@ export async function generatePreGeneratedTokens(
     try {
       // Determine the API URL based on the environment
       let apiUrl: string;
-      if (env.NODE_ENV === 'production') {
+      if (env.NODE_ENV === "production") {
         // In production, use the same host
         apiUrl = "https://api.auto.fun";
       } else {
         // In development, use localhost
         apiUrl = "http://localhost:8787";
       }
-      
+
       // Use fetch to call our own /upload endpoint
       const response = await fetch(`${apiUrl}/api/upload`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           // Include auth headers to pass authentication check
-          "Authorization": `Bearer ${env.USER_API_KEY || env.API_KEY || ""}`,
+          Authorization: `Bearer ${env.USER_API_KEY || env.API_KEY || ""}`,
         },
         body: JSON.stringify(requestData),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Upload failed with status: ${response.status}`);
       }
-      
+
       uploadResult = await response.json();
-      
+
       if (!uploadResult.success || !uploadResult.imageUrl) {
         throw new Error("Upload response did not contain success or imageUrl");
       }

@@ -12,7 +12,7 @@ class SocketWrapper {
   private reconnecting = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   // Queue for messages that need to be sent when connection is established
-  private messageQueue: Array<{event: string, data?: unknown}> = [];
+  private messageQueue: Array<{ event: string; data?: unknown }> = [];
 
   constructor(url: string) {
     this.url = url;
@@ -23,15 +23,15 @@ class SocketWrapper {
     /**
      * TODO: update as necessary once backend socket implementation is finalized
      */
-    const wsUrl = this.url.replace(/^http/, 'ws') + '/ws';
+    const wsUrl = this.url.replace(/^http/, "ws") + "/ws";
     this.ws = new WebSocket(wsUrl);
 
     this.ws.onopen = () => {
       // Reset reconnection state on successful connection
       this.reconnectAttempts = 0;
       this.reconnecting = false;
-      this.emit('connect', {});
-      
+      this.emit("connect", {});
+
       // Process any queued messages
       if (this.messageQueue.length > 0) {
         this.processQueue();
@@ -43,16 +43,19 @@ class SocketWrapper {
         const { event: eventName, data } = JSON.parse(event.data);
         this.triggerEvent(eventName, data);
       } catch (error) {
-        console.error('Failed to parse WebSocket message:', error);
+        console.error("Failed to parse WebSocket message:", error);
       }
     };
 
     this.ws.onclose = (event) => {
       // Don't attempt to reconnect if disconnect() was called
       if (this.ws === null) return;
-      
-      this.triggerEvent('disconnect', { reason: 'io server disconnect', code: event.code });
-      
+
+      this.triggerEvent("disconnect", {
+        reason: "io server disconnect",
+        code: event.code,
+      });
+
       // Attempt to reconnect unless this was a normal closure
       if (event.code !== 1000) {
         this.attemptReconnect();
@@ -60,36 +63,36 @@ class SocketWrapper {
     };
 
     this.ws.onerror = (error) => {
-      this.triggerEvent('error', error);
+      this.triggerEvent("error", error);
     };
   }
 
   private attemptReconnect(): void {
     if (this.reconnecting) return;
-    
+
     this.reconnecting = true;
-    this.triggerEvent('reconnecting', { attempt: this.reconnectAttempts + 1 });
-    
+    this.triggerEvent("reconnecting", { attempt: this.reconnectAttempts + 1 });
+
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       // Calculate delay with exponential backoff, but cap at maxReconnectInterval
       const delay = Math.min(
         this.reconnectInterval * Math.pow(1.5, this.reconnectAttempts),
-        this.maxReconnectInterval
+        this.maxReconnectInterval,
       );
-      
+
       this.reconnectTimer = setTimeout(() => {
         this.reconnectAttempts++;
         this.connect();
       }, delay);
     } else {
-      this.triggerEvent('reconnect_failed', {});
+      this.triggerEvent("reconnect_failed", {});
       this.reconnecting = false;
     }
   }
 
   private triggerEvent(event: string, data: unknown): void {
     const handlers = this.eventHandlers[event] || [];
-    handlers.forEach(handler => handler(data));
+    handlers.forEach((handler) => handler(data));
   }
 
   on = (event: string, callback: (data: unknown) => void): this => {
@@ -105,7 +108,7 @@ class SocketWrapper {
       delete this.eventHandlers[event];
     } else if (this.eventHandlers[event]) {
       this.eventHandlers[event] = this.eventHandlers[event].filter(
-        handler => handler !== callback
+        (handler) => handler !== callback,
       );
     }
     return this;
@@ -113,7 +116,7 @@ class SocketWrapper {
 
   private processQueue = (): void => {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.messageQueue.forEach(msg => {
+      this.messageQueue.forEach((msg) => {
         this.ws?.send(JSON.stringify(msg));
       });
       this.messageQueue = [];
@@ -121,12 +124,12 @@ class SocketWrapper {
   };
 
   emit = (event: string, data?: unknown): this => {
-    console.log('emit called', event);
+    console.log("emit called", event);
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      console.log('sending data for event:', event);
+      console.log("sending data for event:", event);
       this.ws.send(JSON.stringify({ event, data }));
     } else {
-      console.log('socket not connected, queueing event:', event);
+      console.log("socket not connected, queueing event:", event);
       // Queue the message to send once connected
       this.messageQueue.push({ event, data });
     }
@@ -138,7 +141,7 @@ class SocketWrapper {
       this.ws.close();
       this.ws = null;
     }
-    
+
     // Clear any pending reconnection attempts
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);

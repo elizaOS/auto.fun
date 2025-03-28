@@ -13,7 +13,7 @@ import authRouter from "./routes/auth";
 import generationRouter from "./routes/generation";
 import messagesRouter from "./routes/messages";
 import tokenRouter from "./routes/token";
-import swapRouter from './routes/swap'
+import swapRouter from "./routes/swap";
 import { uploadToCloudflare } from "./uploader";
 import { WebSocketDO, allowedOrigins, createTestSwap } from "./websocket";
 import { getWebSocketClient } from "./websocket-client";
@@ -70,7 +70,7 @@ api.route("/", adminRouter);
 api.route("/", tokenRouter);
 api.route("/", messagesRouter);
 api.route("/", authRouter);
-api.route('/', swapRouter);
+api.route("/", swapRouter);
 
 // Root paths for health checks
 app.get("/", (c) => c.json({ status: "ok" }));
@@ -232,54 +232,57 @@ api.get("/direct-file/:key", async (c) => {
 
     // First, let's try to find the file in the pre-generated tokens table
     let fullStorageKey: string | null = null;
-    
+
     try {
       const db = getDB(c.env);
-      
+
       // Search for tokens where the image URL contains the requested filename
       const tokens = await db
         .select()
         .from(preGeneratedTokens)
-        .where(sql`image LIKE ${'%' + key + '%'}`);
-      
-      logger.log(`Found ${tokens.length} tokens with image URLs containing ${key}`);
-      
+        .where(sql`image LIKE ${"%" + key + "%"}`);
+
+      logger.log(
+        `Found ${tokens.length} tokens with image URLs containing ${key}`,
+      );
+
       if (tokens.length > 0) {
         // Extract the full storage path from the image URL
         const imageUrl = tokens[0].image;
-        
+
         if (imageUrl) {
           // Extract the key part from the full URL
           // Format could be like: https://example.r2.dev/pre-generated/token-name.png
           // or http://localhost:8787/api/direct-file/abc123-token-name.png
-          
+
           // Try to extract the last part of the path
-          const urlParts = imageUrl.split('/');
+          const urlParts = imageUrl.split("/");
           const lastPart = urlParts[urlParts.length - 1];
-          
+
           // If the URL points to direct-file, we need to retrieve the original key
-          if (imageUrl.includes('/api/direct-file/')) {
+          if (imageUrl.includes("/api/direct-file/")) {
             // Try to find the actual file by listing objects
             const listed = await c.env.R2.list({ prefix: "", delimiter: "/" });
-            
+
             // Look for a key containing the lastPart
-            const matchingKey = listed.objects.find(obj => 
-              obj.key.includes(lastPart) || 
-              obj.key.toLowerCase().includes(lastPart.toLowerCase())
+            const matchingKey = listed.objects.find(
+              (obj) =>
+                obj.key.includes(lastPart) ||
+                obj.key.toLowerCase().includes(lastPart.toLowerCase()),
             )?.key;
-            
+
             if (matchingKey) {
               fullStorageKey = matchingKey;
               logger.log(`Found storage key from listing: ${fullStorageKey}`);
             }
-          } else if (imageUrl.includes('r2.dev')) {
+          } else if (imageUrl.includes("r2.dev")) {
             // This is a direct R2 URL, extract the path after the domain
             const pathMatch = imageUrl.match(/r2\.dev\/(.*?)(?:\?|$)/);
             if (pathMatch && pathMatch[1]) {
               fullStorageKey = pathMatch[1];
               logger.log(`Extracted R2 path: ${fullStorageKey}`);
             }
-          } else if (imageUrl.includes('pre-generated/')) {
+          } else if (imageUrl.includes("pre-generated/")) {
             // If the URL contains pre-generated/, use that path
             const pathMatch = imageUrl.match(/pre-generated\/(.*?)(?:\?|$)/);
             if (pathMatch && pathMatch[1]) {
@@ -293,18 +296,21 @@ api.get("/direct-file/:key", async (c) => {
       logger.error("Error querying database:", dbError);
       // Continue with fallback search even if DB lookup fails
     }
-    
+
     // If we found the key in the database, retrieve it directly
     if (fullStorageKey) {
       const object = await c.env.R2.get(fullStorageKey);
       if (object) {
-        logger.log(`Successfully retrieved file using database key: ${fullStorageKey}`);
+        logger.log(
+          `Successfully retrieved file using database key: ${fullStorageKey}`,
+        );
         // Get the content type from the object's metadata
-        const contentType = object.httpMetadata?.contentType || "application/octet-stream";
-        
+        const contentType =
+          object.httpMetadata?.contentType || "application/octet-stream";
+
         // Read the object's body
         const data = await object.arrayBuffer();
-        
+
         // Return the object with the correct content type
         return new Response(data, {
           headers: {
@@ -321,11 +327,11 @@ api.get("/direct-file/:key", async (c) => {
     const possiblePrefixes = [
       "", // No prefix
       "pre-generated/",
-      `pre-generated/${key.split('.')[0]}.`, // Try filename without extension
+      `pre-generated/${key.split(".")[0]}.`, // Try filename without extension
     ];
-    
+
     let object: R2ObjectBody | null = null;
-    
+
     // Try each possible prefix
     for (const prefix of possiblePrefixes) {
       const fullKey = prefix + key;
@@ -342,13 +348,14 @@ api.get("/direct-file/:key", async (c) => {
     if (!object) {
       // List objects to find a match
       const listed = await c.env.R2.list({ prefix: "", delimiter: "/" });
-      
+
       // Look for a key containing the filename
-      const matchingKey = listed.objects.find(obj => 
-        obj.key.includes(key) || 
-        obj.key.toLowerCase().includes(key.toLowerCase())
+      const matchingKey = listed.objects.find(
+        (obj) =>
+          obj.key.includes(key) ||
+          obj.key.toLowerCase().includes(key.toLowerCase()),
       )?.key;
-      
+
       if (matchingKey) {
         logger.log(`Found file with similar name: ${matchingKey}`);
         const result = await c.env.R2.get(matchingKey);
@@ -363,7 +370,8 @@ api.get("/direct-file/:key", async (c) => {
     }
 
     // Get the content type from the object's metadata
-    const contentType = object.httpMetadata?.contentType || "application/octet-stream";
+    const contentType =
+      object.httpMetadata?.contentType || "application/octet-stream";
 
     // Log the content type for debugging
     logger.log(`Serving file ${key} with content type: ${contentType}`);
@@ -517,78 +525,93 @@ export default {
         }
       } else {
         // For local development when Durable Objects aren't available
-        logger.log("Using simplified WebSocket implementation for local development");
-        
+        logger.log(
+          "Using simplified WebSocket implementation for local development",
+        );
+
         try {
           // Create a new WebSocketPair
           // @ts-ignore - WebSocketPair may be available in Miniflare
           const pair = new WebSocketPair();
           const server = pair[1];
           const client = pair[0];
-          
+
           // Accept the connection
           server.accept();
-          
+
           // Send a welcome message
-          server.send(JSON.stringify({
-            event: "connected",
-            data: { message: "Connected to development WebSocket server" }
-          }));
-          
+          server.send(
+            JSON.stringify({
+              event: "connected",
+              data: { message: "Connected to development WebSocket server" },
+            }),
+          );
+
           // Set up a simple echo handler
           server.addEventListener("message", (event) => {
             try {
               // Log the received message
               logger.log(`Received WebSocket message: ${event.data}`);
-              
+
               // Parse the message to handle basic functionality
               try {
                 const message = JSON.parse(event.data);
-                
+
                 // Handle subscription events
                 if (message.event === "subscribeGlobal") {
                   // Acknowledge subscription
-                  server.send(JSON.stringify({
-                    event: "joined",
-                    data: { room: "global" }
-                  }));
+                  server.send(
+                    JSON.stringify({
+                      event: "joined",
+                      data: { room: "global" },
+                    }),
+                  );
                 } else if (message.event === "subscribe" && message.data) {
                   // Acknowledge token subscription
-                  server.send(JSON.stringify({
-                    event: "subscribed",
-                    data: { room: `token-${message.data}` }
-                  }));
+                  server.send(
+                    JSON.stringify({
+                      event: "subscribed",
+                      data: { room: `token-${message.data}` },
+                    }),
+                  );
                 }
-                
+
                 // Echo the message back
-                server.send(JSON.stringify({
-                  event: "echo",
-                  data: message
-                }));
+                server.send(
+                  JSON.stringify({
+                    event: "echo",
+                    data: message,
+                  }),
+                );
               } catch (parseError) {
                 // If not valid JSON, just echo back as text
-                server.send(JSON.stringify({
-                  event: "echo",
-                  data: { text: event.data }
-                }));
+                server.send(
+                  JSON.stringify({
+                    event: "echo",
+                    data: { text: event.data },
+                  }),
+                );
               }
             } catch (error) {
               logger.error(`Error handling WebSocket message: ${error}`);
             }
           });
-          
+
           // Return the client WebSocket
           return new Response(null, {
             status: 101,
             // @ts-ignore - webSocket is non-standard but supported in Cloudflare Workers/Miniflare
-            webSocket: client
+            webSocket: client,
           });
         } catch (error) {
           logger.error("Error creating local WebSocket:", error);
-          return new Response(`WebSocket creation failed: ${error instanceof Error ? error.message : "Unknown error"}`, {
-            status: 500,
-            headers: corsHeaders
-          });
+          return new Response(
+            `WebSocket creation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+            {
+              status: 500,
+              headers: corsHeaders,
+            },
+          );
         }
       }
     }

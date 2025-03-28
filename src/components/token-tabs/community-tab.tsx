@@ -16,7 +16,7 @@ export default function CommunityTab() {
           className={twMerge(
             communityTab === "Image"
               ? "bg-autofun-stroke-highlight/80"
-              : "bg-white/15"
+              : "bg-white/15",
           )}
         >
           Image generator
@@ -26,7 +26,7 @@ export default function CommunityTab() {
           className={twMerge(
             communityTab === "Audio"
               ? "bg-autofun-stroke-highlight/80"
-              : "bg-white/15"
+              : "bg-white/15",
           )}
         >
           Audio generator
@@ -35,18 +35,18 @@ export default function CommunityTab() {
       <div className="grid grid-cols-3 p-6 gap-4">
         {communityTab === "Image" ? (
           <>
-            <div className="grid col-span-3 font-dm-mono text-autofun-background-action-highlight text-xl">Create a token community image by using the prompt</div>
+            <div className="grid col-span-3 font-dm-mono text-autofun-background-action-highlight text-xl">
+              Create a token community image by using the prompt
+            </div>
             <div className="grid col-span-3 md:col-span-2 justify-items-center">
               <textarea
                 className="w-full font-dm-mono bg-[#0F0F0F] h-[300px] p-3 border border-neutral-800 text-white resize-none"
                 maxLength={200}
                 placeholder="Make me an image that looks like a dog in a wheelchair"
               />
-                 <button
-                    className="bg-[#2fd345] cursor-pointer w-fit items-center p-3 mt-2 font-bold border-2 text-black text-[12px] md:text-[15px] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
-                  >
-                    Generate Image
-                  </button>
+              <button className="bg-[#2fd345] cursor-pointer w-fit items-center p-3 mt-2 font-bold border-2 text-black text-[12px] md:text-[15px] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]">
+                Generate Image
+              </button>
             </div>
             <div className="grid col-span-3 md:col-span-1">
               <div className="bg-black/20 p-4 space-y-2">

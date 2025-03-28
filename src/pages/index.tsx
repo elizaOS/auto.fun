@@ -35,8 +35,8 @@ export default function Page() {
   });
 
   useEffect(() => {
-    getSocket().emit('subscribeGlobal')
-  }, [])
+    getSocket().emit("subscribeGlobal");
+  }, []);
 
   const queryData = query?.data as {
     tokens: IToken[];

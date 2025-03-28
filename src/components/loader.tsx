@@ -2,12 +2,12 @@ import { useEffect, useState, CSSProperties } from "react";
 
 export default function Loader() {
   const [rotation, setRotation] = useState(0);
-  
+
   useEffect(() => {
     const interval = setInterval(() => {
-      setRotation(prev => (prev + 90));
+      setRotation((prev) => prev + 90);
     }, 1000);
-    
+
     return () => clearInterval(interval);
   }, []);
 
@@ -15,7 +15,7 @@ export default function Loader() {
     width: "128px",
     height: "128px",
     perspective: "1000px",
-    marginTop: "20px"
+    marginTop: "20px",
   };
 
   const cubeStyle: CSSProperties = {
@@ -24,7 +24,7 @@ export default function Loader() {
     position: "relative",
     transformStyle: "preserve-3d",
     transition: "transform 0.5s ease",
-    transform: `rotateY(${rotation}deg)`
+    transform: `rotateY(${rotation}deg)`,
   };
 
   const faceStyle: CSSProperties = {
@@ -35,7 +35,7 @@ export default function Loader() {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    overflow: "hidden"
+    overflow: "hidden",
   };
 
   return (
@@ -44,10 +44,12 @@ export default function Loader() {
         <div style={containerStyle}>
           <div style={cubeStyle}>
             {/* Front face - left half */}
-            <div style={{
-              ...faceStyle,
-              transform: "rotateY(0deg) translateZ(64px)"
-            }}>
+            <div
+              style={{
+                ...faceStyle,
+                transform: "rotateY(0deg) translateZ(64px)",
+              }}
+            >
               <img
                 src="/logo_wide.svg"
                 alt="logo front"
@@ -55,22 +57,26 @@ export default function Loader() {
                   height: "100%",
                   width: "256px",
                   objectFit: "cover",
-                  objectPosition: "-3% 0"
+                  objectPosition: "-3% 0",
                 }}
               />
             </div>
-            
+
             {/* Right face - right half */}
-            <div style={{
-              ...faceStyle,
-              transform: "rotateY(90deg) translateZ(64px)"
-            }}>
-              <div style={{
-                height: "100%",
-                width: "100%",
-                overflow: "hidden",
-                position: "relative"
-              }}>
+            <div
+              style={{
+                ...faceStyle,
+                transform: "rotateY(90deg) translateZ(64px)",
+              }}
+            >
+              <div
+                style={{
+                  height: "100%",
+                  width: "100%",
+                  overflow: "hidden",
+                  position: "relative",
+                }}
+              >
                 <img
                   src="/logo_wide.svg"
                   alt="logo right"
@@ -80,17 +86,19 @@ export default function Loader() {
                     width: "256px",
                     right: 0,
                     objectFit: "cover",
-                    objectPosition: "100% 0"
+                    objectPosition: "100% 0",
                   }}
                 />
               </div>
             </div>
-            
+
             {/* Back face - left half (same as front) */}
-            <div style={{
-              ...faceStyle,
-              transform: "rotateY(180deg) translateZ(64px)"
-            }}>
+            <div
+              style={{
+                ...faceStyle,
+                transform: "rotateY(180deg) translateZ(64px)",
+              }}
+            >
               <img
                 src="/logo_wide.svg"
                 alt="logo back"
@@ -98,22 +106,26 @@ export default function Loader() {
                   height: "100%",
                   width: "256px",
                   objectFit: "cover",
-                  objectPosition: "-3% 0"
+                  objectPosition: "-3% 0",
                 }}
               />
             </div>
-            
+
             {/* Left face - right half (same as right) */}
-            <div style={{
-              ...faceStyle,
-              transform: "rotateY(270deg) translateZ(64px)"
-            }}>
-              <div style={{
-                height: "100%",
-                width: "100%",
-                overflow: "hidden",
-                position: "relative"
-              }}>
+            <div
+              style={{
+                ...faceStyle,
+                transform: "rotateY(270deg) translateZ(64px)",
+              }}
+            >
+              <div
+                style={{
+                  height: "100%",
+                  width: "100%",
+                  overflow: "hidden",
+                  position: "relative",
+                }}
+              >
                 <img
                   src="/logo_wide.svg"
                   alt="logo left"
@@ -123,7 +135,7 @@ export default function Loader() {
                     width: "256px",
                     right: 0,
                     objectFit: "cover",
-                    objectPosition: "100% 0"
+                    objectPosition: "100% 0",
                   }}
                 />
               </div>

@@ -6,10 +6,7 @@ import type {
   ResolutionString,
 } from "@/libraries/charting_library";
 
-import {
-  subscribeOnStream,
-  unsubscribeFromStream,
-} from "./streaming";
+import { subscribeOnStream, unsubscribeFromStream } from "./streaming";
 import { getChartTable } from "@/utils/api";
 
 const lastBarsCache = new Map<string, Bar>();

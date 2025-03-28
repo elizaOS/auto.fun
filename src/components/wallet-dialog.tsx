@@ -59,35 +59,39 @@ export const WalletModal: FC<WalletModalProps> = () => {
         console.log("Starting wallet connection process");
         console.log("Current wallet:", connectedWallet);
         console.log("Selected wallet:", wallet);
-        
+
         if (!wallet) {
           console.error("No wallet provided to connect");
           throw new Error("No wallet provided");
         }
-        
+
         // Different handling based on current wallet state
         if (!connectedWallet) {
-          console.log("No wallet currently connected, doing full selection process");
-          
+          console.log(
+            "No wallet currently connected, doing full selection process",
+          );
+
           // First select the wallet
           console.log("Selecting wallet:", wallet.adapter.name);
           await select(wallet.adapter.name);
-          
+
           // Wait longer for selection to complete when starting from null
-          await new Promise(resolve => setTimeout(resolve, 800));
-          
+          await new Promise((resolve) => setTimeout(resolve, 800));
+
           try {
             // Then try to connect
             console.log("Connecting to wallet...");
             await connect();
           } catch (connectError: any) {
             console.error("Connect error:", connectError);
-            
+
             // If we get a WalletNotSelectedError, try again with a longer delay
             if (connectError.name === "WalletNotSelectedError") {
-              console.log("Got WalletNotSelectedError, retrying selection with longer delay");
+              console.log(
+                "Got WalletNotSelectedError, retrying selection with longer delay",
+              );
               await select(wallet.adapter.name);
-              await new Promise(resolve => setTimeout(resolve, 1200));
+              await new Promise((resolve) => setTimeout(resolve, 1200));
               await connect();
             } else {
               throw connectError;
@@ -100,27 +104,30 @@ export const WalletModal: FC<WalletModalProps> = () => {
           // Connected to a different wallet, need to select and connect to the new one
           console.log("Connected to a different wallet, switching");
           await select(wallet.adapter.name);
-          await new Promise(resolve => setTimeout(resolve, 300));
+          await new Promise((resolve) => setTimeout(resolve, 300));
           await connect();
         }
-        
+
         // Wait for the public key to be available
         let retries = 0;
         while (!publicKey && retries < 5) {
           console.log("Waiting for publicKey, attempt:", retries + 1);
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise((resolve) => setTimeout(resolve, 500));
           retries++;
         }
-        
+
         if (!publicKey) {
           console.error("Failed to get publicKey after connection");
           throw new Error("Wallet connected but no public key available");
         }
-        
-        console.log("Successfully connected with publicKey:", publicKey.toString());
-        
+
+        console.log(
+          "Successfully connected with publicKey:",
+          publicKey.toString(),
+        );
+
         /** Nonce generation */
-        let nonce = String(Math.floor(new Date().getTime() / 1000.0));
+        const nonce = String(Math.floor(new Date().getTime() / 1000.0));
 
         if (!signMessage) throw new Error("signMessage method not available");
 
@@ -145,24 +152,21 @@ export const WalletModal: FC<WalletModalProps> = () => {
         console.log("Signature received");
 
         console.log("Authenticating with server...");
-        const authResponse = await fetch(
-          `${env.apiUrl}/api/authenticate`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              publicKey: publicKey.toString(),
-              signature: { t: "sip99", s: signatureHex },
-              payload: siwsMessage.payload,
-              header: { t: "sip99" },
-              nonce,
-              message: messageText,
-            }),
-            credentials: "include", // Important for cookies
-          }
-        );
+        const authResponse = await fetch(`${env.apiUrl}/api/authenticate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            publicKey: publicKey.toString(),
+            signature: { t: "sip99", s: signatureHex },
+            payload: siwsMessage.payload,
+            header: { t: "sip99" },
+            nonce,
+            message: messageText,
+          }),
+          credentials: "include", // Important for cookies
+        });
 
         if (!authResponse.ok) {
           throw new Error(`Authentication failed: ${authResponse.status}`);
@@ -179,7 +183,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
 
           const authCheckResponse = await fetch(
             `${env.apiUrl}/api/auth-status`,
-            { credentials: "include" }
+            { credentials: "include" },
           );
 
           if (authCheckResponse.ok) {
@@ -216,7 +220,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
       console.log("Wallet clicked:", wallet.adapter.name);
       mutation.mutate({ wallet });
     },
-    [mutation]
+    [mutation],
   );
 
   return (

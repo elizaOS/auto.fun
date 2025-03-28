@@ -5,12 +5,12 @@ import { Icons } from "../icons";
 
 export default function AdminTab() {
   // Error state
-  const [errors, setErrors] = useState({
-    name: "",
-    symbol: "",
-    description: "",
-    prompt: "",
-  });
+  // const [errors, setErrors] = useState({
+  //   name: "",
+  //   symbol: "",
+  //   description: "",
+  //   prompt: "",
+  // });
 
   // Simple form state
   const [form, setForm] = useState({
@@ -48,19 +48,19 @@ export default function AdminTab() {
     }
 
     // Clear errors immediately when field has a value
-    if (field === "name" || field === "symbol" || field === "description") {
-      if (value) {
-        setErrors((prev) => ({
-          ...prev,
-          [field]: "",
-        }));
-      } else {
-        setErrors((prev) => ({
-          ...prev,
-          [field]: `${field.charAt(0).toUpperCase() + field.slice(1)} is required`,
-        }));
-      }
-    }
+    // if (field === "name" || field === "symbol" || field === "description") {
+    //   if (value) {
+    //     setErrors((prev) => ({
+    //       ...prev,
+    //       [field]: "",
+    //     }));
+    //   } else {
+    //     setErrors((prev) => ({
+    //       ...prev,
+    //       [field]: `${field.charAt(0).toUpperCase() + field.slice(1)} is required`,
+    //     }));
+    //   }
+    // }
   };
 
   return (

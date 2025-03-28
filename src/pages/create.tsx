@@ -319,23 +319,23 @@ const FormImageInput = ({
       const files = e.target.files;
       if (files && files.length > 0) {
         const file = files[0];
-        
+
         // Check if file is an image
-        if (!file.type.startsWith('image/')) {
-          alert('Please select an image file');
+        if (!file.type.startsWith("image/")) {
+          alert("Please select an image file");
           return;
         }
-        
+
         // Check file size (limit to 5MB)
         if (file.size > 5 * 1024 * 1024) {
-          alert('File is too large. Please select an image less than 5MB.');
+          alert("File is too large. Please select an image less than 5MB.");
           return;
         }
-        
+
         // Create a preview URL
         const previewUrl = URL.createObjectURL(file);
         setPreview(previewUrl);
-        
+
         // Pass the file to parent
         onChange(file);
       }
@@ -348,26 +348,26 @@ const FormImageInput = ({
     (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
       e.stopPropagation();
-      
+
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         const file = e.dataTransfer.files[0];
-        
+
         // Check if file is an image
-        if (!file.type.startsWith('image/')) {
-          alert('Please drop an image file');
+        if (!file.type.startsWith("image/")) {
+          alert("Please drop an image file");
           return;
         }
-        
+
         // Check file size (limit to 5MB)
         if (file.size > 5 * 1024 * 1024) {
-          alert('File is too large. Please select an image less than 5MB.');
+          alert("File is too large. Please select an image less than 5MB.");
           return;
         }
-        
+
         // Create a preview URL
         const previewUrl = URL.createObjectURL(file);
         setPreview(previewUrl);
-        
+
         // Pass the file to parent
         onChange(file);
       }
@@ -394,7 +394,7 @@ const FormImageInput = ({
       setPreview(null);
       onChange(null);
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
     }
   }, [activeTab, onChange]);
@@ -422,7 +422,7 @@ const FormImageInput = ({
       </div>
 
       {/* Image Preview Area - Square */}
-      <div 
+      <div
         className="relative mt-1 aspect-square text-center border border-neutral-800 flex items-center justify-center"
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -442,44 +442,44 @@ const FormImageInput = ({
         ) : preview || imageUrl ? (
           <div className="relative group w-full h-full flex items-center justify-center">
             <img
-              src={preview || imageUrl || ''}
+              src={preview || imageUrl || ""}
               alt="Token preview"
               className="w-full h-full object-contain"
             />
-            
+
             {/* Image hover overlay with X button - only for Manual mode */}
             {activeTab === FormTab.MANUAL && (
-                <button
-                  type="button"
-                  onClick={handleRemoveImage}
-                  className="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-700 transition-all"
-                >
-                  ✕
-                </button>
+              <button
+                type="button"
+                onClick={handleRemoveImage}
+                className="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-700 transition-all"
+              >
+                ✕
+              </button>
             )}
-            
+
             {/* Gradient overlays for better text contrast */}
             <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black to-transparent opacity-60 z-[5]"></div>
             <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black to-transparent opacity-60 z-[5]"></div>
-            
+
             {/* Name overlay - top left */}
             {onNameChange && (
               <div className="absolute top-4 left-4 z-10">
                 <input
                   type="text"
-                  value={nameValue || ''}
+                  value={nameValue || ""}
                   onChange={(e) => onNameChange(e.target.value)}
                   placeholder="Token Name"
                   maxLength={128}
                   onFocus={() => setNameInputFocused(true)}
                   onBlur={() => setNameInputFocused(false)}
                   className={`bg-transparent text-white text-xl font-bold border-b ${
-                    nameInputFocused ? 'border-white' : 'border-gray-500'
+                    nameInputFocused ? "border-white" : "border-gray-500"
                   } focus:outline-none px-1 py-0.5 w-[280px] max-w-[95%]`}
                 />
               </div>
             )}
-            
+
             {/* Ticker overlay - bottom left */}
             {onTickerChange && (
               <div className="absolute bottom-4 left-4 z-10">
@@ -487,14 +487,16 @@ const FormImageInput = ({
                   <span className="text-white text-opacity-80 mr-1">$</span>
                   <input
                     type="text"
-                    value={tickerValue || ''}
-                    onChange={(e) => onTickerChange(e.target.value.toUpperCase())}
+                    value={tickerValue || ""}
+                    onChange={(e) =>
+                      onTickerChange(e.target.value.toUpperCase())
+                    }
                     placeholder="TICKER"
                     maxLength={16}
                     onFocus={() => setTickerInputFocused(true)}
                     onBlur={() => setTickerInputFocused(false)}
                     className={`bg-transparent text-white text-lg font-semibold border-b ${
-                      tickerInputFocused ? 'border-white' : 'border-gray-500'
+                      tickerInputFocused ? "border-white" : "border-gray-500"
                     } focus:outline-none px-1 py-0.5 max-w-[60%]`}
                   />
                 </div>
@@ -505,7 +507,7 @@ const FormImageInput = ({
           <div className="flex flex-col items-center justify-center w-full h-full">
             {activeTab === FormTab.MANUAL ? (
               // Manual mode - File upload UI
-              <div 
+              <div
                 className="flex flex-col items-center justify-center w-full h-full cursor-pointer"
                 onClick={triggerFileInput}
               >
@@ -518,13 +520,17 @@ const FormImageInput = ({
                 />
                 <div className="border-2 border-dashed border-neutral-700 rounded-lg p-8 flex flex-col items-center justify-center w-4/5 h-4/5">
                   {/* Placeholder logo when empty */}
-                  <img 
-                    src="/create/dicelogo.svg" 
-                    alt="Logo" 
+                  <img
+                    src="/create/dicelogo.svg"
+                    alt="Logo"
                     className="w-24 h-24 mb-4 opacity-30"
                   />
-                  <p className="text-neutral-300 text-center mb-2">Click or drag and drop an image here</p>
-                  <p className="text-neutral-500 text-sm text-center">PNG, JPG, GIF, SVG, WEBP (Max 5MB)</p>
+                  <p className="text-neutral-300 text-center mb-2">
+                    Click or drag and drop an image here
+                  </p>
+                  <p className="text-neutral-500 text-sm text-center">
+                    PNG, JPG, GIF, SVG, WEBP (Max 5MB)
+                  </p>
                 </div>
               </div>
             ) : (
@@ -791,13 +797,15 @@ export const Create = () => {
     onPromptChange: ((prompt: string) => void) | null;
   }>({ setPrompt: null, onPromptChange: null });
   const { isAuthenticated } = useAuthentication();
-  const [generateUp, setGenerateUp] = useState(false);
 
   // Import-related state
   const [isImporting, setIsImporting] = useState(false);
-  const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error' | 'warning', message: string } | null>(null);
+  const [importStatus, setImportStatus] = useState<{
+    type: "success" | "error" | "warning";
+    message: string;
+  } | null>(null);
   const [hasStoredToken, setHasStoredToken] = useState(false);
-  
+
   // Tab state - initialize from localStorage or default to AUTO
   const [activeTab, setActiveTab] = useState<FormTab>(() => {
     const savedTab = localStorage.getItem(TAB_STATE_KEY);
@@ -844,7 +852,9 @@ export const Create = () => {
   });
 
   // Add state to track token ID for deletion when creating
-  const [currentPreGeneratedTokenId, setCurrentPreGeneratedTokenId] = useState<string | null>(null);
+  const [currentPreGeneratedTokenId, setCurrentPreGeneratedTokenId] = useState<
+    string | null
+  >(null);
 
   const [buyValue, setBuyValue] = useState(form.initial_sol || 0);
 
@@ -860,7 +870,9 @@ export const Create = () => {
   });
 
   // Store a reference to the FormImageInput's setPreview function
-  const previewSetterRef = useRef<((preview: string | null) => void) | null>(null);
+  const previewSetterRef = useRef<((preview: string | null) => void) | null>(
+    null,
+  );
 
   // Create ref to track image URL creation to prevent infinite loops
   const hasCreatedUrlFromImage = useRef<boolean>(false);
@@ -871,27 +883,27 @@ export const Create = () => {
   // Update the form from the appropriate mode-specific form when switching tabs
   useEffect(() => {
     if (activeTab === FormTab.AUTO) {
-      setForm(prev => ({
+      setForm((prev) => ({
         ...prev,
         name: autoForm.name,
         symbol: autoForm.symbol,
         description: autoForm.description,
         prompt: autoForm.prompt,
       }));
-      
+
       // Set the image from auto form if available
       if (autoForm.imageUrl && previewSetterRef.current) {
         previewSetterRef.current(autoForm.imageUrl);
         setCoinDropImageUrl(autoForm.imageUrl);
       }
     } else if (activeTab === FormTab.MANUAL) {
-      setForm(prev => ({
+      setForm((prev) => ({
         ...prev,
         name: manualForm.name,
         symbol: manualForm.symbol,
         description: manualForm.description,
       }));
-      
+
       // Set the image file if available
       if (manualForm.imageFile) {
         setImageFile(manualForm.imageFile);
@@ -902,7 +914,7 @@ export const Create = () => {
   // Update mode-specific state when main form changes
   useEffect(() => {
     if (activeTab === FormTab.AUTO) {
-      setAutoForm(prev => ({
+      setAutoForm((prev) => ({
         ...prev,
         name: form.name,
         symbol: form.symbol,
@@ -910,7 +922,7 @@ export const Create = () => {
         prompt: form.prompt,
       }));
     } else if (activeTab === FormTab.MANUAL) {
-      setManualForm(prev => ({
+      setManualForm((prev) => ({
         ...prev,
         name: form.name,
         symbol: form.symbol,
@@ -923,7 +935,7 @@ export const Create = () => {
   const handleTabChange = (tab: FormTab) => {
     // Save current form values to appropriate mode-specific state
     if (activeTab === FormTab.AUTO && tab !== FormTab.AUTO) {
-      setAutoForm(prev => ({
+      setAutoForm((prev) => ({
         ...prev,
         name: form.name,
         symbol: form.symbol,
@@ -931,7 +943,7 @@ export const Create = () => {
         prompt: form.prompt,
       }));
     } else if (activeTab === FormTab.MANUAL && tab !== FormTab.MANUAL) {
-      setManualForm(prev => ({
+      setManualForm((prev) => ({
         ...prev,
         name: form.name,
         symbol: form.symbol,
@@ -939,7 +951,7 @@ export const Create = () => {
         imageFile: imageFile,
       }));
     }
-    
+
     // When switching to Manual mode, clear the image if coming from Auto
     if (tab === FormTab.MANUAL && activeTab === FormTab.AUTO) {
       // Clear the imageFile state
@@ -949,17 +961,17 @@ export const Create = () => {
         previewSetterRef.current(null);
       }
     }
-    
+
     setActiveTab(tab);
-    
+
     // Save tab to localStorage
     localStorage.setItem(TAB_STATE_KEY, tab);
-    
+
     // Reset token generation status when switching away from AUTO
     if (tab !== FormTab.AUTO) {
       setHasGeneratedToken(false);
     }
-    
+
     // Clear errors
     setErrors({
       name: "",
@@ -1063,9 +1075,9 @@ export const Create = () => {
       await createTokenOnChainAsync({
         tokenMetadata: _tokenMetadata,
         metadataUrl: _metadataUrl,
-        mintKeypair
+        mintKeypair,
       });
-      
+
       // Return the mint address as transaction ID
       const txId = mintKeypair.publicKey.toString();
       console.log("Token created on-chain with mint address:", txId);
@@ -1096,7 +1108,7 @@ export const Create = () => {
 
     try {
       console.log("Generating token from prompt:", userPrompt);
-      
+
       // Get auth token from localStorage
       const authToken = localStorage.getItem("authToken");
 
@@ -1121,7 +1133,7 @@ export const Create = () => {
             prompt: userPrompt,
             fields: ["name", "symbol", "description", "prompt"],
           }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -1129,13 +1141,13 @@ export const Create = () => {
       }
 
       const data = (await response.json()) as GenerateMetadataResponse;
-      
+
       if (!data.success || !data.metadata) {
         throw new Error("Invalid response from the metadata generation API");
       }
-      
+
       console.log("Successfully generated metadata:", data.metadata);
-      
+
       // Update form with generated data
       console.log("Updating form with generated metadata");
       setForm((prev) => ({
@@ -1145,9 +1157,9 @@ export const Create = () => {
         description: data.metadata.description,
         prompt: data.metadata.prompt,
       }));
-      
+
       // Also update autoForm
-      setAutoForm(prev => ({
+      setAutoForm((prev) => ({
         ...prev,
         name: data.metadata.name,
         symbol: data.metadata.symbol,
@@ -1158,26 +1170,35 @@ export const Create = () => {
 
       // Set the prompt text so it can be reused
       if (promptFunctions.setPrompt) {
-        console.log("Setting promptFunctions.setPrompt with:", data.metadata.prompt);
+        console.log(
+          "Setting promptFunctions.setPrompt with:",
+          data.metadata.prompt,
+        );
         promptFunctions.setPrompt(data.metadata.prompt);
       } else {
         console.warn("promptFunctions.setPrompt is not available");
       }
-      
+
       if (promptFunctions.onPromptChange) {
-        console.log("Calling promptFunctions.onPromptChange with:", data.metadata.prompt);
+        console.log(
+          "Calling promptFunctions.onPromptChange with:",
+          data.metadata.prompt,
+        );
         promptFunctions.onPromptChange(data.metadata.prompt);
       } else {
         console.warn("promptFunctions.onPromptChange is not available");
       }
 
       // Step 2: Generate image with the generated prompt
-      console.log("Requesting image generation with prompt:", data.metadata.prompt);
-      
+      console.log(
+        "Requesting image generation with prompt:",
+        data.metadata.prompt,
+      );
+
       // Temporarily set the generating state
       setIsGenerating(true);
       setGeneratingField("prompt");
-      
+
       const imageResponse = await fetch(
         import.meta.env.VITE_API_URL + "/api/generate",
         {
@@ -1188,55 +1209,59 @@ export const Create = () => {
             prompt: data.metadata.prompt,
             type: "image",
           }),
-        }
+        },
       );
 
       if (!imageResponse.ok) {
-        console.error("Image generation API returned an error:", await imageResponse.text());
+        console.error(
+          "Image generation API returned an error:",
+          await imageResponse.text(),
+        );
         throw new Error("Failed to generate image for token");
       }
 
-      const imageData =
-        (await imageResponse.json()) as GenerateImageResponse;
-      
-      
+      const imageData = (await imageResponse.json()) as GenerateImageResponse;
+
       if (!imageData.success || !imageData.mediaUrl) {
         console.error("Invalid image data:", imageData);
         throw new Error("Image generation API returned invalid data");
       }
-      
+
       console.log("Successfully generated image URL:", imageData.mediaUrl);
-      
+
       // Convert image URL to File object
       try {
         console.log("Fetching image blob from URL");
         const imageBlob = await fetch(imageData.mediaUrl).then((r) => {
-          if (!r.ok) throw new Error(`Failed to fetch image: ${r.status} ${r.statusText}`);
+          if (!r.ok)
+            throw new Error(
+              `Failed to fetch image: ${r.status} ${r.statusText}`,
+            );
           return r.blob();
         });
-        
+
         console.log("Creating File object from blob");
         const imageFile = new File([imageBlob], "generated-image.png", {
           type: "image/png",
         });
-        
+
         console.log("Setting imageFile state");
         // Reset the flag before setting the new image file
         hasCreatedUrlFromImage.current = false;
         setImageFile(imageFile);
-        
+
         // Also create a preview URL for display
         console.log("Creating object URL for display");
         const previewUrl = URL.createObjectURL(imageBlob);
         console.log("Setting coinDropImageUrl:", previewUrl);
         setCoinDropImageUrl(previewUrl);
-        
+
         // Update autoForm with the image URL
-        setAutoForm(prev => ({
+        setAutoForm((prev) => ({
           ...prev,
-          imageUrl: previewUrl
+          imageUrl: previewUrl,
         }));
-        
+
         // Directly update the preview in FormImageInput
         if (previewSetterRef.current) {
           console.log("Directly setting preview in FormImageInput");
@@ -1257,8 +1282,9 @@ export const Create = () => {
       // Set hasGeneratedToken to true after successful generation
       setHasGeneratedToken(true);
 
-      console.log("=== Token generation from prompt completed successfully ===");
-
+      console.log(
+        "=== Token generation from prompt completed successfully ===",
+      );
     } catch (error) {
       console.error("Error generating from prompt:", error);
       // Reset generating state in case of error
@@ -1267,25 +1293,25 @@ export const Create = () => {
       alert(
         error instanceof Error
           ? error.message
-          : "Failed to generate token from prompt. Please try again."
+          : "Failed to generate token from prompt. Please try again.",
       );
     } finally {
       setIsProcessingPrompt(false);
     }
   }, [
-    userPrompt, 
-    setErrors, 
-    setIsProcessingPrompt, 
+    userPrompt,
+    setErrors,
+    setIsProcessingPrompt,
     setForm,
     setAutoForm,
-    promptFunctions, 
+    promptFunctions,
     setImageFile,
     setCoinDropImageUrl,
     setIsGenerating,
     setGeneratingField,
     previewSetterRef,
     hasCreatedUrlFromImage,
-    createTokenOnChainAsync
+    createTokenOnChainAsync,
   ]);
 
   // Import token from address
@@ -1335,40 +1361,47 @@ export const Create = () => {
             credentials: "include",
             body: JSON.stringify({
               mint: form.importAddress,
-              requestor: publicKey ? publicKey.toString() : ""
+              requestor: publicKey ? publicKey.toString() : "",
             }),
-          }
+          },
         );
 
         // Check if the request was successful
         if (!response.ok) {
           // First try to parse error from response
           try {
-            const errorData = await response.json() as { error?: string };
+            const errorData = (await response.json()) as { error?: string };
             if (errorData.error) {
               throw new Error(errorData.error);
             }
           } catch (parseError) {
             // If we can't parse the error, show a more friendly message
             if (response.status === 404) {
-              throw new Error("The token doesn't exist or doesn't have metadata.");
+              throw new Error(
+                "The token doesn't exist or doesn't have metadata.",
+              );
             } else {
-              throw new Error(`Server error (${response.status}): Unable to retrieve token data.`);
+              throw new Error(
+                `Server error (${response.status}): Unable to retrieve token data.`,
+              );
             }
           }
         }
-        
-        const tokenData = await response.json() as TokenSearchData;
+
+        const tokenData = (await response.json()) as TokenSearchData;
 
         // For now, we'll skip the creator verification check as requested
-        
+
         // Create token entry in database before redirecting
         try {
-          console.log("Creating token entry for imported token:", form.importAddress);
-          
+          console.log(
+            "Creating token entry for imported token:",
+            form.importAddress,
+          );
+
           // Show the coin drop animation while creating
           setShowCoinDrop(true);
-          
+
           // Create token record via API
           const createResponse = await fetch(
             import.meta.env.VITE_API_URL + "/api/create-token",
@@ -1390,22 +1423,23 @@ export const Create = () => {
                 imageUrl: tokenData.image || "",
                 metadataUrl: tokenData.metadataUri || "",
                 // Include the import flag to indicate this is an imported token
-                imported: true
+                imported: true,
               }),
             },
           );
 
           if (!createResponse.ok) {
-            const errorData = await createResponse.json() as { error?: string };
+            const errorData = (await createResponse.json()) as {
+              error?: string;
+            };
             throw new Error(errorData.error || "Failed to create token entry");
           }
-          
+
           // Now redirect to token page
           navigate(`/token/${form.importAddress}`);
-          
         } catch (createError) {
           console.error("Error creating token entry:", createError);
-          
+
           // If creating fails, try checking if the token exists already
           try {
             // Try the check endpoint as a fallback
@@ -1420,39 +1454,46 @@ export const Create = () => {
                 }),
               },
             );
-            
+
             if (checkResponse.ok) {
               const data = await checkResponse.json();
-              if (data && typeof data === "object" && "tokenFound" in data && data.tokenFound === true) {
+              if (
+                data &&
+                typeof data === "object" &&
+                "tokenFound" in data &&
+                data.tokenFound === true
+              ) {
                 // Token exists, we can redirect
                 navigate(`/token/${form.importAddress}`);
                 return;
               }
             }
-            
-            throw new Error("Token creation failed and token was not found in database");
+
+            throw new Error(
+              "Token creation failed and token was not found in database",
+            );
           } catch (checkError) {
             console.error("Error checking token:", checkError);
             throw createError; // Re-throw the original error
           }
         }
-        
       } catch (fetchError) {
         console.error("API Error:", fetchError);
-        
+
         setImportStatus({
-          type: 'error',
-          message: fetchError instanceof Error 
-            ? fetchError.message
-            : 'Failed to import token'
+          type: "error",
+          message:
+            fetchError instanceof Error
+              ? fetchError.message
+              : "Failed to import token",
         });
       }
-      
     } catch (error) {
       console.error("Error importing token:", error);
       setImportStatus({
-        type: 'error',
-        message: error instanceof Error ? error.message : 'Failed to import token',
+        type: "error",
+        message:
+          error instanceof Error ? error.message : "Failed to import token",
       });
     } finally {
       setIsImporting(false);
@@ -1464,72 +1505,39 @@ export const Create = () => {
     if (!address || address.trim().length < 32 || address.trim().length > 44) {
       return false;
     }
-    
+
     // Check if it's valid base58 (Solana addresses use base58)
     const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
     return base58Regex.test(address.trim());
   };
 
   // Handle paste in the import address field
-  const handleImportAddressPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    const pastedText = e.clipboardData.getData('text');
-    
+  const handleImportAddressPaste = (
+    e: React.ClipboardEvent<HTMLInputElement>,
+  ) => {
+    const pastedText = e.clipboardData.getData("text");
+
     if (!isValidTokenAddress(pastedText)) {
       // Prevent default paste if invalid
       e.preventDefault();
-      
+
       setErrors((prev) => ({
         ...prev,
-        importAddress: "Invalid token address format. Please check and try again.",
+        importAddress:
+          "Invalid token address format. Please check and try again.",
       }));
-      
+
       return false;
     }
-    
+
     // Clear any previous errors when pasting valid address
     setErrors((prev) => ({
       ...prev,
       importAddress: "",
     }));
-    
+
     return true;
   };
-
-  // Function to clear imported token data
-  const clearImportedToken = useCallback(() => {
-    // Remove from localStorage
-    localStorage.removeItem('import_token_data');
-    setHasStoredToken(false);
-    
-    // Reset form
-    setForm(prev => ({
-      ...prev,
-      name: "",
-      symbol: "",
-      description: "",
-      importAddress: "",
-      links: {
-        twitter: "",
-        telegram: "",
-        website: "",
-        discord: "",
-        agentLink: prev.links.agentLink,
-      }
-    }));
-    
-    // Clear image
-    setImageFile(null);
-    setCoinDropImageUrl(null);
-    if (previewSetterRef.current) {
-      previewSetterRef.current(null);
-    }
-    
-    // Clear status
-    setImportStatus(null);
-    
-    // Switch back to Import tab
-    setActiveTab(FormTab.IMPORT);
-  }, [setForm, setImageFile, setCoinDropImageUrl, previewSetterRef]);
 
   // Check if form is valid
   const isFormValid =
@@ -1584,7 +1592,7 @@ export const Create = () => {
 
         const data = (await response.json()) as PreGeneratedTokenResponse;
         const { token } = data;
-        
+
         // Store token ID for later use when creating
         if (token.id) {
           setCurrentPreGeneratedTokenId(token.id);
@@ -1598,17 +1606,17 @@ export const Create = () => {
           description: token.description,
           prompt: token.prompt,
         }));
-        
+
         // Update auto form
-        setAutoForm(prev => ({
+        setAutoForm((prev) => ({
           ...prev,
           name: token.name,
           symbol: token.ticker,
           description: token.description,
           prompt: token.prompt,
-          concept: token.prompt
+          concept: token.prompt,
         }));
-        
+
         // Set user prompt
         setUserPrompt(token.prompt);
 
@@ -1620,27 +1628,27 @@ export const Create = () => {
         if (token.image) {
           // Transform R2 URLs to use local endpoint if needed
           let imageUrl = token.image;
-          if (imageUrl.includes('r2.dev')) {
+          if (imageUrl.includes("r2.dev")) {
             // Extract the filename from the R2 URL
-            const filename = imageUrl.split('/').pop();
+            const filename = imageUrl.split("/").pop();
             // Use local endpoint instead
             imageUrl = `${import.meta.env.VITE_API_URL}/api/direct-file/${filename}`;
           }
-          
+
           const imageBlob = await fetch(imageUrl).then((r) => r.blob());
           const imageFile = new File([imageBlob], "generated-image.png", {
             type: "image/png",
           });
           setImageFile(imageFile);
-          
+
           // Create a preview URL
           const previewUrl = URL.createObjectURL(imageBlob);
           setCoinDropImageUrl(previewUrl);
-          setAutoForm(prev => ({
+          setAutoForm((prev) => ({
             ...prev,
-            imageUrl: previewUrl
+            imageUrl: previewUrl,
           }));
-          
+
           // Update preview in FormImageInput
           if (previewSetterRef.current) {
             previewSetterRef.current(previewUrl);
@@ -1674,21 +1682,21 @@ export const Create = () => {
             type: "image/png",
           });
           setImageFile(imageFile);
-          
+
           // Create a preview URL
           const previewUrl = URL.createObjectURL(imageBlob);
           setCoinDropImageUrl(previewUrl);
-          setAutoForm(prev => ({
+          setAutoForm((prev) => ({
             ...prev,
-            imageUrl: previewUrl
+            imageUrl: previewUrl,
           }));
-          
+
           // Update preview in FormImageInput
           if (previewSetterRef.current) {
             previewSetterRef.current(previewUrl);
           }
         }
-        
+
         // Set token as generated
         setHasGeneratedToken(true);
       } catch (error) {
@@ -1717,18 +1725,22 @@ export const Create = () => {
       }
 
       // Check if we're working with imported token data
-      const storedTokenData = localStorage.getItem('import_token_data');
+      const storedTokenData = localStorage.getItem("import_token_data");
       if (storedTokenData) {
         try {
           const tokenData = JSON.parse(storedTokenData);
-          
+
           // Check if the current wallet has permission to create this token
-          const isCreatorNow = 
-            (tokenData.updateAuthority && tokenData.updateAuthority === publicKey.toString()) || 
-            (tokenData.creators && tokenData.creators.includes(publicKey.toString()));
-          
+          const isCreatorNow =
+            (tokenData.updateAuthority &&
+              tokenData.updateAuthority === publicKey.toString()) ||
+            (tokenData.creators &&
+              tokenData.creators.includes(publicKey.toString()));
+
           if (!isCreatorNow) {
-            throw new Error("You need to connect with the token's creator wallet to register it");
+            throw new Error(
+              "You need to connect with the token's creator wallet to register it",
+            );
           }
         } catch (error) {
           console.error("Error checking token ownership:", error);
@@ -1773,7 +1785,7 @@ export const Create = () => {
       // First, upload the image to get permanent URLs
       let imageUrl = "";
       let metadataUrl = "";
-      
+
       // Show coin drop with the image we have
       setShowCoinDrop(true);
 
@@ -1783,12 +1795,12 @@ export const Create = () => {
           const uploadResult = await uploadImage(tokenMetadata);
           imageUrl = uploadResult.imageUrl;
           metadataUrl = uploadResult.metadataUrl;
-          
+
           // Update the coin drop image to use the final uploaded URL
           if (imageUrl) {
             setCoinDropImageUrl(imageUrl);
           }
-          
+
           console.log("Image uploaded successfully:", imageUrl);
           console.log("Metadata URL:", metadataUrl);
         } catch (uploadError) {
@@ -1810,8 +1822,11 @@ export const Create = () => {
       // If we have a pre-generated token ID, mark it as used and remove duplicates
       if (currentPreGeneratedTokenId && activeTab === FormTab.AUTO) {
         try {
-          console.log("Marking pre-generated token as used:", currentPreGeneratedTokenId);
-          
+          console.log(
+            "Marking pre-generated token as used:",
+            currentPreGeneratedTokenId,
+          );
+
           // Get auth token from localStorage
           const authToken = localStorage.getItem("authToken");
 
@@ -1823,7 +1838,7 @@ export const Create = () => {
           if (authToken) {
             headers["Authorization"] = `Bearer ${authToken}`;
           }
-          
+
           // Mark the token as used and delete any other tokens with the same name or ticker
           await fetch(import.meta.env.VITE_API_URL + "/api/mark-token-used", {
             method: "POST",
@@ -1833,11 +1848,13 @@ export const Create = () => {
               id: currentPreGeneratedTokenId,
               name: form.name,
               ticker: form.symbol,
-              concept: activeTab === FormTab.AUTO ? userPrompt : null
+              concept: activeTab === FormTab.AUTO ? userPrompt : null,
             }),
           });
-          
-          console.log("Successfully marked token as used and removed duplicates");
+
+          console.log(
+            "Successfully marked token as used and removed duplicates",
+          );
         } catch (error) {
           console.error("Error marking pre-generated token as used:", error);
           // Continue with token creation even if this fails
@@ -1868,7 +1885,7 @@ export const Create = () => {
       }
 
       // Clear imported token data from localStorage if it exists
-      localStorage.removeItem('import_token_data');
+      localStorage.removeItem("import_token_data");
       setHasStoredToken(false);
 
       // Redirect to token page using the mint public key
@@ -1917,19 +1934,19 @@ export const Create = () => {
         try {
           setIsGenerating(true);
           setGeneratingField("name,symbol,description,prompt");
-          
+
           // Get auth token from localStorage
           const authToken = localStorage.getItem("authToken");
-          
+
           // Prepare headers
           const headers: Record<string, string> = {
             "Content-Type": "application/json",
           };
-          
+
           if (authToken) {
             headers["Authorization"] = `Bearer ${authToken}`;
           }
-          
+
           // Get a pre-generated token
           const response = await fetch(
             import.meta.env.VITE_API_URL + "/api/pre-generated-token",
@@ -1939,80 +1956,81 @@ export const Create = () => {
               credentials: "include",
             },
           );
-          
+
           if (!response.ok) {
             throw new Error("Failed to get pre-generated token");
           }
-          
+
           const data = (await response.json()) as PreGeneratedTokenResponse;
           const { token } = data;
-          
+
           // Store token ID for later use when creating
           if (token.id) {
             setCurrentPreGeneratedTokenId(token.id);
           }
-          
+
           // Set user prompt with the concept
           setUserPrompt(token.prompt);
-          
+
           // Update forms with generated data
-          setForm(prev => ({
-            ...prev,
-            name: token.name,
-            symbol: token.ticker,
-            description: token.description,
-            prompt: token.prompt
-          }));
-          
-          setAutoForm(prev => ({
+          setForm((prev) => ({
             ...prev,
             name: token.name,
             symbol: token.ticker,
             description: token.description,
             prompt: token.prompt,
-            concept: token.prompt
           }));
-          
+
+          setAutoForm((prev) => ({
+            ...prev,
+            name: token.name,
+            symbol: token.ticker,
+            description: token.description,
+            prompt: token.prompt,
+            concept: token.prompt,
+          }));
+
           // Set prompt functions
-          if (promptFunctions.setPrompt) promptFunctions.setPrompt(token.prompt);
-          if (promptFunctions.onPromptChange) promptFunctions.onPromptChange(token.prompt);
-          
+          if (promptFunctions.setPrompt)
+            promptFunctions.setPrompt(token.prompt);
+          if (promptFunctions.onPromptChange)
+            promptFunctions.onPromptChange(token.prompt);
+
           // If token has an image, load it
           if (token.image) {
             // Transform R2 URLs to use local endpoint if needed
             let imageUrl = token.image;
-            if (imageUrl.includes('r2.dev')) {
+            if (imageUrl.includes("r2.dev")) {
               // Extract the filename from the R2 URL
-              const filename = imageUrl.split('/').pop();
+              const filename = imageUrl.split("/").pop();
               // Use local endpoint instead
               imageUrl = `${import.meta.env.VITE_API_URL}/api/direct-file/${filename}`;
             }
-            
-            const imageBlob = await fetch(imageUrl).then(r => r.blob());
+
+            const imageBlob = await fetch(imageUrl).then((r) => r.blob());
             const imageFile = new File([imageBlob], "pre-generated-image.png", {
-              type: "image/png"
+              type: "image/png",
             });
-            
+
             // Set image file
             setImageFile(imageFile);
-            
+
             // Create preview URL
             const previewUrl = URL.createObjectURL(imageBlob);
             setCoinDropImageUrl(previewUrl);
-            setAutoForm(prev => ({
+            setAutoForm((prev) => ({
               ...prev,
-              imageUrl: previewUrl
+              imageUrl: previewUrl,
             }));
-            
+
             // Update preview in FormImageInput
             if (previewSetterRef.current) {
               previewSetterRef.current(previewUrl);
             }
           }
-          
+
           // Set the token as generated since we loaded it from pre-generated
           setHasGeneratedToken(true);
-          
         } catch (error) {
           console.error("Error loading pre-generated token:", error);
         } finally {
@@ -2021,9 +2039,14 @@ export const Create = () => {
         }
       }
     };
-    
+
     loadPreGeneratedToken();
-  }, [activeTab, promptFunctions.setPrompt, promptFunctions.onPromptChange, hasGeneratedToken]);
+  }, [
+    activeTab,
+    promptFunctions.setPrompt,
+    promptFunctions.onPromptChange,
+    hasGeneratedToken,
+  ]);
 
   // When switching tabs, ensure image state is properly separated
   useEffect(() => {
@@ -2047,9 +2070,9 @@ export const Create = () => {
   // Update manualForm when imageFile changes in Manual mode
   useEffect(() => {
     if (activeTab === FormTab.MANUAL && imageFile) {
-      setManualForm(prev => ({
+      setManualForm((prev) => ({
         ...prev,
-        imageFile: imageFile
+        imageFile: imageFile,
       }));
     }
   }, [imageFile, activeTab]);
@@ -2065,8 +2088,16 @@ export const Create = () => {
           {/* Tabs Navigation */}
           <div className="logo flex items-center flex-col md:flex-row gap-8 mx-auto">
             <div className="logo flex items-center gap-4 md:ml-8">
-              <img src="/create/dicelogo.svg" alt="Coin Machine" className="w-32 h-32" />
-              <img src="/create/coinmachine.svg" alt="Coin Machine" className="w-64 h-32" />
+              <img
+                src="/create/dicelogo.svg"
+                alt="Coin Machine"
+                className="w-32 h-32"
+              />
+              <img
+                src="/create/coinmachine.svg"
+                alt="Coin Machine"
+                className="w-64 h-32"
+              />
             </div>
             <div className="flex text-lg">
               <button
@@ -2108,61 +2139,61 @@ export const Create = () => {
           {/* Auto Tab Content */}
           {activeTab === FormTab.AUTO && (
             <>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={userPrompt}
-                    onChange={(e) => setUserPrompt(e.target.value)}
-                    placeholder="Enter a concept like 'a halloween token about arnold schwarzenegger'"
-                    className="flex-1 my-2 p-0 border-b border-b-[#2fd345] text-white bg-transparent focus:outline-none focus:border-b-white"
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={userPrompt}
+                  onChange={(e) => setUserPrompt(e.target.value)}
+                  placeholder="Enter a concept like 'a halloween token about arnold schwarzenegger'"
+                  className="flex-1 my-2 p-0 border-b border-b-[#2fd345] text-white bg-transparent focus:outline-none focus:border-b-white"
+                />
+                <button
+                  type="button"
+                  onClick={generateFromPrompt}
+                  disabled={isProcessingPrompt || !userPrompt.trim()}
+                  className="p-0 transition-colors disabled:opacity-50"
+                >
+                  <img
+                    src={
+                      isProcessingPrompt
+                        ? "/create/generating.svg"
+                        : "/create/generateup.svg"
+                    }
+                    alt="Generate"
+                    className="h-14 w-32 mb-2"
+                    onMouseDown={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      if (!isProcessingPrompt) {
+                        img.src = "/create/generatedown.svg";
+                      }
+                    }}
+                    onMouseUp={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      if (!isProcessingPrompt) {
+                        img.src = "/create/generateup.svg";
+                      }
+                    }}
+                    onDragStart={(e) => {
+                      e.preventDefault();
+                      const img = e.target as HTMLImageElement;
+                      if (!isProcessingPrompt) {
+                        img.src = "/create/generateup.svg";
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      e.preventDefault();
+                      const img = e.target as HTMLImageElement;
+                      if (!isProcessingPrompt) {
+                        img.src = "/create/generateup.svg";
+                      }
+                    }}
                   />
-                  <button
-                    type="button"
-                    onClick={generateFromPrompt}
-                    disabled={isProcessingPrompt || !userPrompt.trim()}
-                    className="p-0 transition-colors disabled:opacity-50"
-                  >
-                      <img 
-                        src={isProcessingPrompt ? "/create/generating.svg" : "/create/generateup.svg"}
-                        alt="Generate" 
-                        className="h-14 w-32 mb-2"
-                        onMouseDown={(e) => {
-                          const img = e.target as HTMLImageElement;
-                          if (!isProcessingPrompt) {
-                            img.src = "/create/generatedown.svg";
-                          }
-                          // add a mouse event to set generateUp to true on any mouse up
-                          e.target.addEventListener("mouseup", () => {
-                            setGenerateUp(true);
-                          });
-                        }}
-                        onMouseUp={(e) => {
-                          const img = e.target as HTMLImageElement;
-                          if (!isProcessingPrompt) {
-                            img.src = "/create/generateup.svg";
-                          }
-                        }}
-                        onDragStart={(e) => {
-                          e.preventDefault();
-                          const img = e.target as HTMLImageElement;
-                          if (!isProcessingPrompt) {
-                            img.src = "/create/generateup.svg";
-                          }
-                        }}
-                        onMouseOut={(e) => {
-                          e.preventDefault();
-                          const img = e.target as HTMLImageElement;
-                          if (!isProcessingPrompt) {
-                            img.src = "/create/generateup.svg";
-                          }
-                        }}
-                      />
-                  </button>
-                </div>
-                {errors.userPrompt && (
-                  <div className="text-red-500 text-sm">{errors.userPrompt}</div>
-                )}
-                </>
+                </button>
+              </div>
+              {errors.userPrompt && (
+                <div className="text-red-500 text-sm">{errors.userPrompt}</div>
+              )}
+            </>
           )}
 
           {/* Import Tab Content */}
@@ -2174,7 +2205,9 @@ export const Create = () => {
                     <input
                       type="text"
                       value={form.importAddress || ""}
-                      onChange={(e) => handleChange("importAddress", e.target.value)}
+                      onChange={(e) =>
+                        handleChange("importAddress", e.target.value)
+                      }
                       onPaste={handleImportAddressPaste}
                       placeholder="Enter any Solana token address (mint)"
                       className="flex-1 my-2 p-0 border-b border-b-[#2fd345] text-white bg-transparent focus:outline-none focus:border-b-white"
@@ -2182,22 +2215,26 @@ export const Create = () => {
                     <button
                       type="button"
                       onClick={importTokenFromAddress}
-                      disabled={isImporting || !form.importAddress?.trim() || !isValidTokenAddress(form.importAddress)}
+                      disabled={
+                        isImporting ||
+                        !form.importAddress?.trim() ||
+                        !isValidTokenAddress(form.importAddress)
+                      }
                       className="p-0 transition-colors disabled:opacity-50"
                     >
-                      <img 
-                        src={isImporting ? "/create/importing.svg" : "/create/importup.svg"}
-                        alt="Import" 
+                      <img
+                        src={
+                          isImporting
+                            ? "/create/importing.svg"
+                            : "/create/importup.svg"
+                        }
+                        alt="Import"
                         className="h-14 w-32 mb-2"
                         onMouseDown={(e) => {
                           const img = e.target as HTMLImageElement;
                           if (!isImporting) {
                             img.src = "/create/importdown.svg";
                           }
-                          // add a mouse event to set generateUp to true on any mouse up
-                          e.target.addEventListener("mouseup", () => {
-                            setGenerateUp(true);
-                          });
                         }}
                         onMouseUp={(e) => {
                           const img = e.target as HTMLImageElement;
@@ -2223,13 +2260,17 @@ export const Create = () => {
                     </button>
                   </div>
                   {errors.importAddress && (
-                    <div className="text-red-500 text-sm">{errors.importAddress}</div>
+                    <div className="text-red-500 text-sm">
+                      {errors.importAddress}
+                    </div>
                   )}
                   {importStatus && (
-                    <div className={`flex items-center gap-2 text-sm ${importStatus.type === 'error' ? 'text-red-500' : importStatus.type === 'warning' ? 'text-yellow-500' : 'text-green-500'}`}>
-                      {importStatus.type === 'success' ? (
+                    <div
+                      className={`flex items-center gap-2 text-sm ${importStatus.type === "error" ? "text-red-500" : importStatus.type === "warning" ? "text-yellow-500" : "text-green-500"}`}
+                    >
+                      {importStatus.type === "success" ? (
                         <Icons.Check className="w-4 h-4" />
-                      ) : importStatus.type === 'warning' ? (
+                      ) : importStatus.type === "warning" ? (
                         <Icons.Warning className="w-4 h-4" />
                       ) : (
                         <Icons.XCircle className="w-4 h-4" />
@@ -2243,8 +2284,8 @@ export const Create = () => {
           )}
 
           {/* Two-column layout for form fields and image (conditionally shown based on tab) */}
-          {(activeTab === FormTab.MANUAL || 
-            (activeTab === FormTab.AUTO && hasGeneratedToken) || 
+          {(activeTab === FormTab.MANUAL ||
+            (activeTab === FormTab.AUTO && hasGeneratedToken) ||
             (activeTab === FormTab.IMPORT && hasStoredToken)) && (
             <div className="grid gap-4">
               {/* Form fields - REMOVE THE NAME AND TICKER INPUTS, KEEP ONLY DESCRIPTION */}
@@ -2255,9 +2296,9 @@ export const Create = () => {
                   onChange={(file) => {
                     if (activeTab === FormTab.MANUAL) {
                       setImageFile(file);
-                      setManualForm(prev => ({
+                      setManualForm((prev) => ({
                         ...prev,
-                        imageFile: file
+                        imageFile: file,
                       }));
                     }
                   }}
@@ -2269,7 +2310,9 @@ export const Create = () => {
                     setPromptFunctions({ setPrompt, onPromptChange });
                   }}
                   onPreviewChange={handlePreviewChange}
-                  imageUrl={activeTab === FormTab.AUTO ? autoForm.imageUrl : undefined}
+                  imageUrl={
+                    activeTab === FormTab.AUTO ? autoForm.imageUrl : undefined
+                  }
                   onDirectPreviewSet={(setter) => {
                     previewSetterRef.current = setter;
                   }}
@@ -2294,7 +2337,7 @@ export const Create = () => {
                 onClick={() => generateAll()}
                 isLoading={isGenerating && generatingField === "description"}
               />
-              
+
               <div className="flex flex-row gap-3 justify-end uppercase">
                 <span className="text-white text-xl font-medium">Buy</span>
                 <div className="relative">
@@ -2303,47 +2346,52 @@ export const Create = () => {
                     value={buyValue}
                     onChange={(e) => {
                       let value = e.target.value.replace(" SOL", "");
-                      
+
                       // Only allow numbers and decimal point
-                      value = value.replace(/[^\d.]/g, '');
-                      
+                      value = value.replace(/[^\d.]/g, "");
+
                       // Ensure only one decimal point
                       const decimalCount = (value.match(/\./g) || []).length;
                       if (decimalCount > 1) {
-                        value = value.replace(/\.+$/, '');
+                        value = value.replace(/\.+$/, "");
                       }
-                      
+
                       // Split into whole and decimal parts
-                      const parts = value.split('.');
+                      const parts = value.split(".");
                       let wholePart = parts[0];
-                      let decimalPart = parts[1] || '';
-                      
+                      let decimalPart = parts[1] || "";
+
                       // Limit whole part to 2 digits
                       if (wholePart.length > 2) {
                         wholePart = wholePart.slice(0, 2);
                       }
-                      
+
                       // Limit decimal part to 2 digits
                       if (decimalPart.length > 2) {
                         decimalPart = decimalPart.slice(0, 2);
                       }
-                      
+
                       // Reconstruct the value
-                      value = decimalPart ? `${wholePart}.${decimalPart}` : wholePart;
-                      
+                      value = decimalPart
+                        ? `${wholePart}.${decimalPart}`
+                        : wholePart;
+
                       // Ensure total length is max 5 (including decimal point)
                       if (value.length > 5) {
                         value = value.slice(0, 5);
                       }
-                      
+
                       // Parse the value and check if it's within range
                       const numValue = parseFloat(value);
-                      if (value === '' || (numValue >= 0 && numValue <= MAX_INITIAL_SOL)) {
+                      if (
+                        value === "" ||
+                        (numValue >= 0 && numValue <= MAX_INITIAL_SOL)
+                      ) {
                         handleChange("initial_sol", value);
                         setBuyValue(value);
                       }
                     }}
-                    min="0" 
+                    min="0"
                     max={MAX_INITIAL_SOL}
                     step="0.01"
                     className="w-26 pr-10 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white"
@@ -2357,8 +2405,8 @@ export const Create = () => {
           )}
 
           {/* Launch Button - Only shown if form is valid or in appropriate tabs */}
-          {(activeTab === FormTab.MANUAL || 
-            (activeTab === FormTab.AUTO && hasGeneratedToken) || 
+          {(activeTab === FormTab.MANUAL ||
+            (activeTab === FormTab.AUTO && hasGeneratedToken) ||
             (activeTab === FormTab.IMPORT && hasStoredToken)) && (
             <div className="grid grid-cols-1 gap-x-3 gap-y-6">
               <button
@@ -2366,15 +2414,19 @@ export const Create = () => {
                 className="p-0 transition-colors disabled:opacity-50"
                 disabled={!isFormValid || isSubmitting || !isAuthenticated}
               >
-                <img 
-                  src={isSubmitting ? "/create/launching.svg" : "/create/launchup.svg"}
-                  alt="Launch" 
+                <img
+                  src={
+                    isSubmitting
+                      ? "/create/launching.svg"
+                      : "/create/launchup.svg"
+                  }
+                  alt="Launch"
                   className="h-32 w-72 mx-auto pr-4"
                   onMouseDown={(e) => {
                     const img = e.target as HTMLImageElement;
                     if (!isSubmitting) {
                       img.src = "/create/launchdown.svg";
-                    }else {
+                    } else {
                       img.src = "/create/launching.svg";
                     }
                   }}
@@ -2388,7 +2440,7 @@ export const Create = () => {
                   }}
                 />
               </button>
-              
+
               {!isFormValid && (
                 <p className="text-red-500 text-center text-sm m-4">
                   Please fill in all required fields

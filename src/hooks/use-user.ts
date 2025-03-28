@@ -26,11 +26,12 @@ export function useUser() {
 
       setIsLoading(true);
       try {
-        const response = await fetch(`${env.apiUrl}/api/auth-status`,
-            { credentials: "include" });
+        const response = await fetch(`${env.apiUrl}/api/auth-status`, {
+          credentials: "include",
+        });
         console.log("response", response);
         if (response.ok) {
-          const data = await response.json() as AuthStatus;
+          const data = (await response.json()) as AuthStatus;
           console.log("data", data);
           if (data.isAuthenticated && data.user) {
             console.log("data", data);
@@ -51,4 +52,4 @@ export function useUser() {
   }, [publicKey]);
 
   return { user, isLoading };
-} 
+}

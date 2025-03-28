@@ -9,7 +9,7 @@ export default function useAuthentication() {
   const { connected } = useWallet();
   const [authToken, setAuthToken] = useLocalStorage<string | null>(
     "authToken",
-    null
+    null,
   );
 
   const isAuthenticated = authToken && connected;
@@ -22,10 +22,9 @@ export default function useAuthentication() {
     if (!checkStatusCalled) {
       checkStatusCalled = true;
       const checkStatus = async () => {
-        const authCheckResponse = await fetch(
-          `${env.apiUrl}/api/auth-status`,
-          { credentials: "include" }
-        );
+        const authCheckResponse = await fetch(`${env.apiUrl}/api/auth-status`, {
+          credentials: "include",
+        });
 
         if (authCheckResponse.ok) {
           const statusData = (await authCheckResponse.json()) as {

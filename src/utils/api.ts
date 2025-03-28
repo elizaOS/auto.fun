@@ -134,7 +134,7 @@ export const getChartTable = async ({
     // console.log("GET bars", token, from, to, range, pairIndex)
     const res = await fetcher(
       `/api/chart/${pairIndex}/${from}/${to}/${range}/${token}`,
-      "GET"
+      "GET",
     );
 
     return res as ChartTable;
@@ -142,4 +142,4 @@ export const getChartTable = async ({
     console.log("tradingchart === getch data error", err);
     return undefined;
   }
-}
+};

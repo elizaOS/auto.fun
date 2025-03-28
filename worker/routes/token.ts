@@ -194,7 +194,7 @@ tokenRouter.get("/tokens/:mint", async (c) => {
       return c.json({ error: "Invalid mint address" }, 400);
     }
 
-    console.log("GETTING DB")
+    console.log("GETTING DB");
 
     // In test environment, return real errors instead of mocked responses
     const db = getDB(c.env);
@@ -217,15 +217,9 @@ tokenRouter.get("/tokens/:mint", async (c) => {
       await updateHoldersCache(c.env, mint);
     }
 
-    console.log(tokenData);
-
-    console.log("got this far")
-
     // Get fresh SOL price
     const solPrice = await getSOLPrice(c.env);
     const token = tokenData[0];
-
-    console.log(token);
 
     // Set default values for critical fields if they're missing
     const TOKEN_DECIMALS = Number(c.env.DECIMALS || 6);
@@ -302,8 +296,6 @@ tokenRouter.get("/tokens/:mint", async (c) => {
       .orderBy(desc(swaps.timestamp))
       .limit(1);
 
-      console.log
-
     const latestSwap = latestSwapQuery[0] || null;
 
     // Update token in database if we've calculated new values
@@ -361,7 +353,10 @@ tokenRouter.post("/search-token", async (c) => {
   logger.log(`[search-token] Searching for token ${mint}`);
 
   // Create connection to Solana
-  const connection = new Connection(c.env.MAINNET_SOLANA_RPC_URL as string, "confirmed");
+  const connection = new Connection(
+    c.env.MAINNET_SOLANA_RPC_URL as string,
+    "confirmed",
+  );
 
   // Check if token exists and determine its type
   const tokenInfo = await connection.getAccountInfo(mintPublicKey);
@@ -370,33 +365,42 @@ tokenRouter.post("/search-token", async (c) => {
   }
 
   // Check program ID to verify this is an SPL token
-  const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
-  const TOKEN_2022_PROGRAM_ID = new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
-  
+  const TOKEN_PROGRAM_ID = new PublicKey(
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+  );
+  const TOKEN_2022_PROGRAM_ID = new PublicKey(
+    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+  );
+
   const isSplToken = tokenInfo.owner.equals(TOKEN_PROGRAM_ID);
   const isSPL2022 = tokenInfo.owner.equals(TOKEN_2022_PROGRAM_ID);
-  
+
   if (!isSplToken && !isSPL2022) {
-    return c.json({ 
-      error: "Not a valid SPL token. Owner: " + tokenInfo.owner.toString() 
-    }, 400);
+    return c.json(
+      {
+        error: "Not a valid SPL token. Owner: " + tokenInfo.owner.toString(),
+      },
+      400,
+    );
   }
-  
+
   logger.log(`[search-token] Token owner: ${tokenInfo.owner.toString()}`);
   logger.log(`[search-token] Token is SPL-2022: ${isSPL2022}`);
-  
+
   // Get mint info - decimals and authorities
   const mintInfo = await connection.getParsedAccountInfo(mintPublicKey);
-  logger.log(`[search-token] Mint info: ${JSON.stringify(mintInfo.value?.data)}`);
-  
+  logger.log(
+    `[search-token] Mint info: ${JSON.stringify(mintInfo.value?.data)}`,
+  );
+
   // Extract basic token info
   const parsedData = (mintInfo.value?.data as any)?.parsed;
   const decimals = parsedData?.info?.decimals || 9;
   const mintAuthority = parsedData?.info?.mintAuthority || null;
-  
+
   logger.log(`[search-token] Decimals: ${decimals}`);
   logger.log(`[search-token] Mint authority: ${mintAuthority}`);
-  
+
   // Initialize variables for token data
   let tokenName = "";
   let tokenSymbol = "";
@@ -405,181 +409,223 @@ tokenRouter.post("/search-token", async (c) => {
   let description = "";
   let updateAuthority: string | null = null;
   let foundMetadata = false;
-  
+
   // For SPL-2022 tokens, check for token metadata extension first
   if (isSPL2022 && parsedData?.info?.extensions) {
     logger.log(`[search-token] Checking SPL-2022 extensions for metadata`);
-    
+
     // Find the tokenMetadata extension if it exists
     const metadataExt = parsedData.info.extensions.find(
-      (ext: any) => ext.extension === "tokenMetadata"
+      (ext: any) => ext.extension === "tokenMetadata",
     );
-    
+
     if (metadataExt && metadataExt.state) {
-      logger.log(`[search-token] Found tokenMetadata extension: ${JSON.stringify(metadataExt.state)}`);
-      
+      logger.log(
+        `[search-token] Found tokenMetadata extension: ${JSON.stringify(metadataExt.state)}`,
+      );
+
       // Extract metadata directly from the extension
       tokenName = metadataExt.state.name || "";
       tokenSymbol = metadataExt.state.symbol || "";
       uri = metadataExt.state.uri || "";
       updateAuthority = metadataExt.state.updateAuthority || null;
-      
-      logger.log(`[search-token] SPL-2022 metadata - Name: ${tokenName}, Symbol: ${tokenSymbol}`);
+
+      logger.log(
+        `[search-token] SPL-2022 metadata - Name: ${tokenName}, Symbol: ${tokenSymbol}`,
+      );
       logger.log(`[search-token] SPL-2022 metadata - URI: ${uri}`);
-      logger.log(`[search-token] SPL-2022 metadata - Update Authority: ${updateAuthority}`);
-      
+      logger.log(
+        `[search-token] SPL-2022 metadata - Update Authority: ${updateAuthority}`,
+      );
+
       foundMetadata = true;
-      
+
       // Now fetch additional metadata from the URI if available
       if (uri) {
         logger.log(`[search-token] Fetching metadata from URI: ${uri}`);
         const uriResponse = await fetch(uri);
-        
+
         if (uriResponse.ok) {
           const uriText = await uriResponse.text();
           logger.log(`[search-token] URI response: ${uriText}`);
-          
+
           try {
             const uriData = JSON.parse(uriText);
-            logger.log(`[search-token] Parsed URI data: ${JSON.stringify(uriData)}`);
-            
+            logger.log(
+              `[search-token] Parsed URI data: ${JSON.stringify(uriData)}`,
+            );
+
             // Extract image and description if available
             if (uriData.image) {
               imageUrl = uriData.image;
               logger.log(`[search-token] Found image URL in URI: ${imageUrl}`);
             }
-            
+
             if (uriData.description) {
               description = uriData.description;
-              logger.log(`[search-token] Found description in URI: ${description}`);
+              logger.log(
+                `[search-token] Found description in URI: ${description}`,
+              );
             }
           } catch (parseError) {
-            logger.error(`[search-token] Error parsing URI JSON: ${parseError}`);
+            logger.error(
+              `[search-token] Error parsing URI JSON: ${parseError}`,
+            );
           }
         } else {
-          logger.error(`[search-token] Failed to fetch URI: ${uriResponse.status} ${uriResponse.statusText}`);
+          logger.error(
+            `[search-token] Failed to fetch URI: ${uriResponse.status} ${uriResponse.statusText}`,
+          );
         }
       }
     } else {
-      logger.log(`[search-token] No tokenMetadata extension found in SPL-2022 token`);
+      logger.log(
+        `[search-token] No tokenMetadata extension found in SPL-2022 token`,
+      );
     }
   }
-  
+
   // Only try to get Metaplex metadata if we didn't find it in SPL-2022 extensions
   if (!foundMetadata) {
     // Get metadata PDA
-    const METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+    const METADATA_PROGRAM_ID = new PublicKey(
+      "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
+    );
     const [metadataAddress] = PublicKey.findProgramAddressSync(
       [
         Buffer.from("metadata"),
         METADATA_PROGRAM_ID.toBuffer(),
         mintPublicKey.toBuffer(),
       ],
-      METADATA_PROGRAM_ID
+      METADATA_PROGRAM_ID,
     );
-    
-    logger.log(`[search-token] Metadata address: ${metadataAddress.toString()}`);
-    
+
+    logger.log(
+      `[search-token] Metadata address: ${metadataAddress.toString()}`,
+    );
+
     // Get metadata account data - direct read from chain with no fallbacks
     const metadataAccount = await connection.getAccountInfo(metadataAddress);
     if (!metadataAccount || metadataAccount.data.length === 0) {
       // For SPL-2022 tokens, we already checked extensions so this is just a warning
       // For regular SPL tokens, this is an error
       if (isSPL2022) {
-        logger.warn(`[search-token] No Metaplex metadata found for SPL-2022 token: ${mint}`);
+        logger.warn(
+          `[search-token] No Metaplex metadata found for SPL-2022 token: ${mint}`,
+        );
       } else {
         logger.error(`[search-token] No metadata found for token: ${mint}`);
         return c.json({ error: "No metadata found for this token" }, 404);
       }
     } else {
       // We found Metaplex metadata
-      logger.log(`[search-token] Metadata account found, data length: ${metadataAccount.data.length} bytes`);
-      logger.log(`[search-token] Raw metadata (hex): ${Buffer.from(metadataAccount.data).toString('hex')}`);
-      
+      logger.log(
+        `[search-token] Metadata account found, data length: ${metadataAccount.data.length} bytes`,
+      );
+      logger.log(
+        `[search-token] Raw metadata (hex): ${Buffer.from(metadataAccount.data).toString("hex")}`,
+      );
+
       // Direct metadata extraction
-      updateAuthority = new PublicKey(metadataAccount.data.slice(1, 33)).toString();
+      updateAuthority = new PublicKey(
+        metadataAccount.data.slice(1, 33),
+      ).toString();
       logger.log(`[search-token] Update authority: ${updateAuthority}`);
-      
+
       // Calculate offsets for variable-length fields
       let offset = 1 + 32 + 32; // Skip version byte + update authority + mint
-      
+
       // Extract name length and value
       const nameLength = metadataAccount.data[offset];
       offset += 1;
       const nameData = metadataAccount.data.slice(offset, offset + nameLength);
-      tokenName = nameData.toString('utf8').replace(/\0/g, '').trim();
-      logger.log(`[search-token] Token name: ${tokenName} (${nameLength} bytes)`);
+      tokenName = nameData.toString("utf8").replace(/\0/g, "").trim();
+      logger.log(
+        `[search-token] Token name: ${tokenName} (${nameLength} bytes)`,
+      );
       offset += nameLength;
-      
+
       // Extract symbol - needs to account for padding between fields
       offset += 3; // Skip padding bytes before length
       const symbolLength = metadataAccount.data[offset];
       offset += 1;
-      const symbolData = metadataAccount.data.slice(offset, offset + symbolLength);
-      tokenSymbol = symbolData.toString('utf8').replace(/\0/g, '').trim();
-      logger.log(`[search-token] Token symbol: ${tokenSymbol} (${symbolLength} bytes)`);
+      const symbolData = metadataAccount.data.slice(
+        offset,
+        offset + symbolLength,
+      );
+      tokenSymbol = symbolData.toString("utf8").replace(/\0/g, "").trim();
+      logger.log(
+        `[search-token] Token symbol: ${tokenSymbol} (${symbolLength} bytes)`,
+      );
       offset += symbolLength;
-      
+
       // Extract URI
       offset += 3; // Skip padding bytes before length
       const uriLength = metadataAccount.data[offset];
       offset += 1;
       const uriData = metadataAccount.data.slice(offset, offset + uriLength);
-      uri = uriData.toString('utf8').replace(/\0/g, '').trim();
+      uri = uriData.toString("utf8").replace(/\0/g, "").trim();
       logger.log(`[search-token] Metadata URI: ${uri} (${uriLength} bytes)`);
-      
+
       foundMetadata = true;
-      
+
       // Now fetch additional metadata from the URI if available
       if (uri) {
         logger.log(`[search-token] Fetching metadata from URI: ${uri}`);
         const uriResponse = await fetch(uri);
-        
+
         if (uriResponse.ok) {
           const uriText = await uriResponse.text();
           logger.log(`[search-token] URI response: ${uriText}`);
-          
+
           try {
             const uriData = JSON.parse(uriText);
-            logger.log(`[search-token] Parsed URI data: ${JSON.stringify(uriData)}`);
-            
+            logger.log(
+              `[search-token] Parsed URI data: ${JSON.stringify(uriData)}`,
+            );
+
             // Extract image and description if available
             if (uriData.image) {
               imageUrl = uriData.image;
               logger.log(`[search-token] Found image URL in URI: ${imageUrl}`);
             }
-            
+
             if (uriData.description) {
               description = uriData.description;
-              logger.log(`[search-token] Found description in URI: ${description}`);
+              logger.log(
+                `[search-token] Found description in URI: ${description}`,
+              );
             }
           } catch (parseError) {
-            logger.error(`[search-token] Error parsing URI JSON: ${parseError}`);
+            logger.error(
+              `[search-token] Error parsing URI JSON: ${parseError}`,
+            );
           }
         } else {
-          logger.error(`[search-token] Failed to fetch URI: ${uriResponse.status} ${uriResponse.statusText}`);
+          logger.error(
+            `[search-token] Failed to fetch URI: ${uriResponse.status} ${uriResponse.statusText}`,
+          );
         }
       }
     }
   }
-  
+
   // If we still didn't find metadata from either source, throw error
   if (!foundMetadata && !isSPL2022) {
     return c.json({ error: "No metadata found for this token" }, 404);
   }
-  
+
   // For SPL-2022 tokens, we still consider them valid even without metadata
   // since they might not use the tokenMetadata extension
-  
+
   // Determine if requestor is the creator/authority
-  const isCreator = 
-    (updateAuthority === requestor) || 
-    (mintAuthority === requestor);
-  
+  const isCreator =
+    updateAuthority === requestor || mintAuthority === requestor;
+
   logger.log(`[search-token] Is requestor the creator? ${isCreator}`);
   logger.log(`[search-token] Request wallet: ${requestor}`);
   logger.log(`[search-token] Update authority: ${updateAuthority}`);
-  
+
   // If we don't have names yet (possible for SPL-2022 without tokenMetadata), use defaults
   if (!tokenName) {
     tokenName = `Token ${mint.slice(0, 8)}`;
@@ -587,7 +633,7 @@ tokenRouter.post("/search-token", async (c) => {
   if (!tokenSymbol) {
     tokenSymbol = mint.slice(0, 4).toUpperCase();
   }
-  
+
   // Return the token data
   const tokenData = {
     name: tokenName,
@@ -602,24 +648,26 @@ tokenRouter.post("/search-token", async (c) => {
     image: imageUrl,
     tokenType: isSPL2022 ? "spl-2022" : "spl-token",
     decimals: decimals,
-    needsWalletSwitch: !isCreator
+    needsWalletSwitch: !isCreator,
   };
-  
+
   logger.log(`[search-token] Final token data: ${JSON.stringify(tokenData)}`);
-  
+
   return c.json(tokenData);
 });
 
 // Helper function to get the Metadata PDA for a mint
 async function getMetadataPDA(mint: string): Promise<PublicKey> {
-  const METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+  const METADATA_PROGRAM_ID = new PublicKey(
+    "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
+  );
   const [metadataPDA] = PublicKey.findProgramAddressSync(
     [
       Buffer.from("metadata"),
       METADATA_PROGRAM_ID.toBuffer(),
       new PublicKey(mint).toBuffer(),
     ],
-    METADATA_PROGRAM_ID
+    METADATA_PROGRAM_ID,
   );
   return metadataPDA;
 }
@@ -634,7 +682,9 @@ function decodeMetadata(buffer: Buffer): any {
     // Read key fields
     const updateAuthorityStart = start;
     const updateAuthorityEnd = updateAuthorityStart + 32;
-    const updateAuthority = new PublicKey(buffer.slice(updateAuthorityStart, updateAuthorityEnd)).toString();
+    const updateAuthority = new PublicKey(
+      buffer.slice(updateAuthorityStart, updateAuthorityEnd),
+    ).toString();
 
     const mintStart = updateAuthorityEnd;
     const mintEnd = mintStart + 32;
@@ -642,50 +692,65 @@ function decodeMetadata(buffer: Buffer): any {
 
     // Read data
     let cursor = mintEnd;
-    
+
     // Skip name length prefix (4 bytes) and read name
     cursor += 4;
     const nameLen = buffer.readUInt32LE(mintEnd);
-    const name = buffer.slice(cursor, cursor + nameLen).toString('utf8').replace(/\0/g, '');
+    const name = buffer
+      .slice(cursor, cursor + nameLen)
+      .toString("utf8")
+      .replace(/\0/g, "");
     cursor += nameLen;
-    
+
     // Skip symbol length prefix (4 bytes) and read symbol
     cursor += 4;
     const symbolLen = buffer.readUInt32LE(cursor - 4);
-    const symbol = buffer.slice(cursor, cursor + symbolLen).toString('utf8').replace(/\0/g, '');
+    const symbol = buffer
+      .slice(cursor, cursor + symbolLen)
+      .toString("utf8")
+      .replace(/\0/g, "");
     cursor += symbolLen;
-    
+
     // Skip uri length prefix (4 bytes) and read uri
     cursor += 4;
     const uriLen = buffer.readUInt32LE(cursor - 4);
-    const uri = buffer.slice(cursor, cursor + uriLen).toString('utf8').replace(/\0/g, '');
+    const uri = buffer
+      .slice(cursor, cursor + uriLen)
+      .toString("utf8")
+      .replace(/\0/g, "");
     cursor += uriLen;
-    
+
     // Read fee
     const fee = buffer.readUInt16LE(cursor);
     cursor += 2;
-    
+
     // Check for creators
-    let creators: Array<{address: string, verified: boolean, share: number}> | null = null;
+    let creators: Array<{
+      address: string;
+      verified: boolean;
+      share: number;
+    }> | null = null;
     if (cursor < buffer.length) {
       const hasCreators = buffer[cursor];
       cursor += 1;
-      
+
       if (hasCreators) {
         const creatorCount = buffer[cursor];
         cursor += 1;
-        
+
         creators = [];
         for (let i = 0; i < creatorCount; i++) {
-          const creatorAddress = new PublicKey(buffer.slice(cursor, cursor + 32)).toString();
+          const creatorAddress = new PublicKey(
+            buffer.slice(cursor, cursor + 32),
+          ).toString();
           cursor += 32;
-          
+
           const verified = Boolean(buffer[cursor]);
           cursor += 1;
-          
+
           const share = buffer[cursor];
           cursor += 1;
-          
+
           creators.push({
             address: creatorAddress,
             verified,
@@ -694,17 +759,17 @@ function decodeMetadata(buffer: Buffer): any {
         }
       }
     }
-    
-  return {
+
+    return {
       updateAuthority,
       mint,
-    data: {
+      data: {
         name,
         symbol,
         uri,
         sellerFeeBasisPoints: fee,
         creators,
-      }
+      },
     };
   } catch (e) {
     console.error("Error decoding metadata:", e);
@@ -716,25 +781,29 @@ function decodeMetadata(buffer: Buffer): any {
         name: "Unknown",
         symbol: "Unknown",
         uri: "",
-        creators: null
-      }
+        creators: null,
+      },
     };
   }
 }
 
 // Helper function to extract creators array from buffer
-function extractCreators(buffer: Buffer): Array<{address: string, verified: boolean, share: number}> | null {
+function extractCreators(
+  buffer: Buffer,
+): Array<{ address: string; verified: boolean; share: number }> | null {
   // This is placeholder logic
   // In production, use proper Borsh deserialization from Metaplex SDK
-  
+
   // For simplicity, we'll just try to extract the first creator if it exists
   try {
     if (buffer.length > 34) {
-      return [{
-        address: new PublicKey(buffer.slice(2, 34)).toString(),
-        verified: Boolean(buffer[34]),
-        share: buffer[35]
-      }];
+      return [
+        {
+          address: new PublicKey(buffer.slice(2, 34)).toString(),
+          verified: Boolean(buffer[34]),
+          share: buffer[35],
+        },
+      ];
     }
   } catch (e) {
     console.error("Error extracting creators:", e);
@@ -748,53 +817,57 @@ async function fetchMetadataUri(uri: string): Promise<string | null> {
     // Clean the URI
     const cleanUri = uri.trim();
     if (!cleanUri) return null;
-    
+
     // If URI contains invalid characters that would break a URL
     if (/[\u0000-\u001F\u007F-\u009F]/.test(cleanUri)) {
-      logger.error(`[fetchMetadataUri] URI contains invalid characters: ${cleanUri}`);
+      logger.error(
+        `[fetchMetadataUri] URI contains invalid characters: ${cleanUri}`,
+      );
       return null;
     }
-    
+
     // Handle different URI types
     const arweavePrefix = "https://arweave.net/";
     const ipfsPrefix = "ipfs://";
-    
+
     let fetchUri = cleanUri;
-    
+
     // Convert IPFS URI to HTTP URL if needed
     if (cleanUri.startsWith(ipfsPrefix)) {
       fetchUri = `https://ipfs.io/ipfs/${cleanUri.substring(ipfsPrefix.length)}`;
     }
-    
+
     // Add a timeout to prevent hanging on slow responses
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-    
+
     try {
       // Fetch the metadata JSON
-      const response = await fetch(fetchUri, { 
+      const response = await fetch(fetchUri, {
         signal: controller.signal,
         headers: {
-          'Accept': 'application/json, text/plain, */*',
-          'User-Agent': 'auto-fun-metadata-service'
-        }
+          Accept: "application/json, text/plain, */*",
+          "User-Agent": "auto-fun-metadata-service",
+        },
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error: ${response.status}`);
       }
-      
+
       // Get the response as text first to avoid JSON parsing errors
       const text = await response.text();
-      
+
       // Try to parse it as JSON to validate
       try {
         JSON.parse(text);
         return text;
       } catch (jsonError) {
-        logger.error(`[fetchMetadataUri] Invalid JSON in response: ${jsonError}`);
+        logger.error(
+          `[fetchMetadataUri] Invalid JSON in response: ${jsonError}`,
+        );
         return null;
       }
     } catch (fetchError) {
@@ -2105,7 +2178,7 @@ export async function updateHoldersCache(
           holderCount: holders.length,
           timestamp: new Date().toISOString(),
         });
-        
+
         logger.log(`Emitted holder update event for token ${mint}`);
       }
     } catch (wsError) {
@@ -2222,7 +2295,9 @@ tokenRouter.get("/tokens/:mint/refresh-swaps", async (c) => {
       for (const swap of recentSwaps) {
         await processSwapEvent(c.env, swap, false); // Only emit to token-specific room
       }
-      logger.log(`Emitted ${recentSwaps.length} recent swaps for token ${mint}`);
+      logger.log(
+        `Emitted ${recentSwaps.length} recent swaps for token ${mint}`,
+      );
     } catch (wsError) {
       // Don't fail if WebSocket emission fails
       logger.error(`WebSocket error when emitting swaps: ${wsError}`);
@@ -2880,22 +2955,22 @@ tokenRouter.get("/websocket-status", async (c) => {
 export async function processSwapEvent(
   env: Env,
   swap: any,
-  shouldEmitGlobal: boolean = true
+  shouldEmitGlobal: boolean = true,
 ): Promise<void> {
   try {
     // Get WebSocket client
     const wsClient = getWebSocketClient(env);
-    
+
     // Emit to token-specific room
     await wsClient.emit(`token-${swap.tokenMint}`, "newSwap", swap);
     logger.log(`Emitted swap event for token ${swap.tokenMint}`);
-    
+
     // Optionally emit to global room for activity feed
     if (shouldEmitGlobal) {
       await wsClient.emit("global", "newSwap", swap);
       logger.log("Emitted swap event to global feed");
     }
-    
+
     return;
   } catch (error) {
     logger.error("Error processing swap event:", error);
@@ -2910,7 +2985,7 @@ tokenRouter.post("/dev/create-test-swap/:mint", async (c) => {
     if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
       return c.json(
         { error: "This endpoint is only available in development" },
-        403
+        403,
       );
     }
 
@@ -2919,30 +2994,30 @@ tokenRouter.post("/dev/create-test-swap/:mint", async (c) => {
       return c.json({ error: "Invalid mint address" }, 400);
     }
 
-    const { userAddress } = await c.req.json() as { userAddress?: string };
-    
+    const { userAddress } = (await c.req.json()) as { userAddress?: string };
+
     // Create a test swap
     const testSwap = createTestSwap(mint, userAddress);
-    
+
     // Get DB connection
     const db = getDB(c.env);
-    
+
     // Save the test swap to the database
     await db.insert(swaps).values(testSwap);
-    
+
     // Emit WebSocket events
     await processSwapEvent(c.env, testSwap);
 
     return c.json({
       success: true,
       message: "Test swap created and WebSocket event emitted",
-      swap: testSwap
+      swap: testSwap,
     });
   } catch (error) {
     logger.error("Error creating test swap:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -2951,16 +3026,16 @@ tokenRouter.post("/dev/create-test-swap/:mint", async (c) => {
 export async function processTokenUpdateEvent(
   env: Env,
   tokenData: any,
-  shouldEmitGlobal: boolean = false
+  shouldEmitGlobal: boolean = false,
 ): Promise<void> {
   try {
     // Get WebSocket client
     const wsClient = getWebSocketClient(env);
-    
+
     // Always emit to token-specific room
     await wsClient.emit(`token-${tokenData.mint}`, "updateToken", tokenData);
     logger.log(`Emitted token update event for ${tokenData.mint}`);
-    
+
     // Optionally emit to global room for activity feed
     if (shouldEmitGlobal) {
       await wsClient.emit("global", "updateToken", {
@@ -2969,7 +3044,7 @@ export async function processTokenUpdateEvent(
       });
       logger.log("Emitted token update event to global feed");
     }
-    
+
     return;
   } catch (error) {
     logger.error("Error processing token update event:", error);
@@ -2984,7 +3059,7 @@ tokenRouter.get("/dev/emit-token-update/:mint", async (c) => {
     if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
       return c.json(
         { error: "This endpoint is only available in development" },
-        403
+        403,
       );
     }
 
@@ -2992,7 +3067,7 @@ tokenRouter.get("/dev/emit-token-update/:mint", async (c) => {
     if (!mint || mint.length < 32 || mint.length > 44) {
       return c.json({ error: "Invalid mint address" }, 400);
     }
-    
+
     // Get token data from database
     const db = getDB(c.env);
     const tokenData = await db
@@ -3010,20 +3085,20 @@ tokenRouter.get("/dev/emit-token-update/:mint", async (c) => {
       ...tokenData[0],
       timestamp: new Date().toISOString(),
     };
-    
+
     // Emit token update event via WebSocket
     await processTokenUpdateEvent(c.env, tokenWithTimestamp, true);
-    
+
     return c.json({
       success: true,
       message: "Token update event emitted successfully",
-      token: tokenWithTimestamp
+      token: tokenWithTimestamp,
     });
   } catch (error) {
     logger.error("Error emitting token update event:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });

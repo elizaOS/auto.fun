@@ -137,17 +137,26 @@ export const authenticate = async (c: AppContext) => {
 
         try {
           const publicKeyObj = new PublicKey(publicKey);
-          
+
           // Add extra logging for troubleshooting
-          logger.log("About to decode signature:", signature.substring(0, 10) + "...");
-          
+          logger.log(
+            "About to decode signature:",
+            signature.substring(0, 10) + "...",
+          );
+
           let signatureBytes;
           try {
             signatureBytes = bs58.decode(signature);
-            logger.log("Signature decoded successfully, length:", signatureBytes.length);
+            logger.log(
+              "Signature decoded successfully, length:",
+              signatureBytes.length,
+            );
           } catch (decodeError) {
             logger.error("Failed to decode signature:", decodeError);
-            return c.json({ message: "Invalid signature encoding, expected base58" }, 400);
+            return c.json(
+              { message: "Invalid signature encoding, expected base58" },
+              400,
+            );
           }
 
           // Check if the signature is valid for the message
@@ -238,11 +247,11 @@ export const authStatus = async (c: AppContext) => {
 
       if (dbUser.length > 0) {
         console.log("dbUser found");
-        return c.json({ 
+        return c.json({
           authenticated: true,
           user: {
             points: dbUser[0].points,
-          }
+          },
         });
       }
       console.log("dbUser not found");
@@ -257,11 +266,11 @@ export const authStatus = async (c: AppContext) => {
 
         // Special handling for test environment
         if (token === "valid-token") {
-          return c.json({ 
+          return c.json({
             authenticated: true,
             user: {
-              points: 0
-            }
+              points: 0,
+            },
           });
         }
       }

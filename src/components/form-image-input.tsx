@@ -137,18 +137,15 @@ export const FormImageInput = ({
 
     try {
       // Generate the image
-      const response = await fetch(
-        env.apiUrl + "/api/generate",
-        {
-          method: "POST",
-          headers,
-          credentials: "include",
-          body: JSON.stringify({
-            prompt,
-            type: "image",
-          }),
-        },
-      );
+      const response = await fetch(env.apiUrl + "/api/generate", {
+        method: "POST",
+        headers,
+        credentials: "include",
+        body: JSON.stringify({
+          prompt,
+          type: "image",
+        }),
+      });
 
       if (!response.ok) throw new Error("Failed to generate image");
 
@@ -285,4 +282,4 @@ export const FormImageInput = ({
       </div>
     </div>
   );
-}; 
+};

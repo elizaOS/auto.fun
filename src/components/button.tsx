@@ -47,7 +47,12 @@ const Button: React.FC<ButtonProps> = ({
   );
 
   return (
-    <button type="button" disabled={disabled || isLoading} className={classes} {...props}>
+    <button
+      type="button"
+      disabled={disabled || isLoading}
+      className={classes}
+      {...props}
+    >
       {isLoading ? (
         <Loader2 className="animate-spin w-5 h-5 mx-auto" />
       ) : (

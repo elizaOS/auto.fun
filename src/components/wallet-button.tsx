@@ -63,7 +63,11 @@ const WalletButton = () => {
   if (isAuthenticated) {
     return (
       <div className="relative" ref={dropdownRef}>
-        <Button size="large" className="px-2" onClick={() => setMenuOpen(!menuOpen)}>
+        <Button
+          size="large"
+          className="px-2"
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
           <div className="flex items-center gap-2.5 justify-between m-auto">
             <span className="font-satoshi font-medium">
               {wallet?.adapter?.publicKey?.toString()
@@ -87,10 +91,10 @@ const WalletButton = () => {
           <div className="absolute z-50 right-0 mt-2 bg-[#171717] border border-[#262626] shadow-lg overflow-hidden w-48">
             <ul className="py-2">
               {/* {user && ( */}
-                <li className="px-4 py-2 text-sm text-white flex items-center gap-2">
-                  <Trophy size={16} />
-                  <span>{0} points</span>
-                </li>
+              <li className="px-4 py-2 text-sm text-white flex items-center gap-2">
+                <Trophy size={16} />
+                <span>{0} points</span>
+              </li>
               {/* )} */}
               <li
                 className="px-4 py-2 text-sm text-white hover:bg-[#262626] cursor-pointer flex items-center gap-2"
@@ -135,4 +139,3 @@ const WalletButton = () => {
 };
 
 export default WalletButton;
-

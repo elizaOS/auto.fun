@@ -5,8 +5,8 @@ import "react-loading-skeleton/dist/skeleton.css";
 export default function Profile() {
   return (
     <>
-    <Loader />
-    <CoinDrop imageUrl="/example.png" />
+      <Loader />
+      <CoinDrop imageUrl="/example.png" />
     </>
   );
 }

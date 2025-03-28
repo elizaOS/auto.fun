@@ -6,15 +6,18 @@ interface TradingChartProps {
   token: string;
 }
 
-export const TradingViewChart: React.FC<TradingChartProps> = ({ name, token }) => {
+export const TradingViewChart: React.FC<TradingChartProps> = ({
+  name,
+  token,
+}) => {
   const status = useScript("/udf.js", {
     removeOnUnmount: false,
   });
 
   return (
     <>
-      {status === 'ready' && (
-          <TVChartContainer name={name} pairIndex={10} token={token} />
+      {status === "ready" && (
+        <TVChartContainer name={name} pairIndex={10} token={token} />
       )}
     </>
   );

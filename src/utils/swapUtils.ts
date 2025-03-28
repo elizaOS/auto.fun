@@ -1,8 +1,4 @@
-import {
-  Connection,
-  Keypair,
-  PublicKey,
-} from "@solana/web3.js";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { Autofun } from "./program";
 import { BN, Program } from "@coral-xyz/anchor";
 
@@ -54,7 +50,7 @@ export const launchAndSwapTx = async (
   configAccount: {
     teamWallet: PublicKey;
     initBondingCurve: number;
-  }
+  },
 ) => {
   // Calculate deadline
   const deadline = Math.floor(Date.now() / 1000) + 120; // 2 minutes from now
@@ -73,7 +69,7 @@ export const launchAndSwapTx = async (
 
   // Apply slippage to expected output
   const minOutput = Math.floor(
-    (expectedOutput * (10000 - slippageBps)) / 10000
+    (expectedOutput * (10000 - slippageBps)) / 10000,
   );
 
   const tx = await program.methods
@@ -86,7 +82,7 @@ export const launchAndSwapTx = async (
       uri,
       new BN(swapAmount),
       new BN(minOutput),
-      new BN(deadline)
+      new BN(deadline),
     )
     .accounts({
       teamWallet: configAccount.teamWallet,
@@ -100,4 +96,3 @@ export const launchAndSwapTx = async (
 
   return tx;
 };
-

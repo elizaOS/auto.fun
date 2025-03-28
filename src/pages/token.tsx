@@ -208,7 +208,7 @@ export default function Page() {
                   (token?.reserveLamport - token?.virtualReserves) /
                     LAMPORTS_PER_SOL,
                   true,
-                  true
+                  true,
                 )}{" "}
                 SOL in the bonding curve.
               </p>
@@ -256,15 +256,48 @@ export default function Page() {
               Time
             </span>
             <span className="text-lg lg:text-xl font-dm-mono text-autofun-text-primary">
-              {token?.createdAt ? fromNow(token?.createdAt).replace("ago", "").trim() : "-"}
+              {token?.createdAt
+                ? fromNow(token?.createdAt).replace("ago", "").trim()
+                : "-"}
             </span>
           </div>
         </div>
         {/* Tabs */}
         <div className="flex flex-row">
-          <Button onClick={() => setTab("Trading")} className={twMerge( tab === "Trading" ? "bg-autofun-stroke-highlight/80" : "bg-white/15" )} > Trading </Button>
-          <Button onClick={() => setTab("Community")} className={twMerge( tab === "Community" ? "bg-autofun-stroke-highlight/80" : "bg-white/15" )} > Community </Button>
-          {admin && <Button onClick={() => setTab("Admin")} className={twMerge(tab === "Admin" ? "bg-autofun-stroke-highlight/80": "bg-white/15")}>Admin</Button>}
+          <Button
+            onClick={() => setTab("Trading")}
+            className={twMerge(
+              tab === "Trading"
+                ? "bg-autofun-stroke-highlight/80"
+                : "bg-white/15",
+            )}
+          >
+            {" "}
+            Trading{" "}
+          </Button>
+          <Button
+            onClick={() => setTab("Community")}
+            className={twMerge(
+              tab === "Community"
+                ? "bg-autofun-stroke-highlight/80"
+                : "bg-white/15",
+            )}
+          >
+            {" "}
+            Community{" "}
+          </Button>
+          {admin && (
+            <Button
+              onClick={() => setTab("Admin")}
+              className={twMerge(
+                tab === "Admin"
+                  ? "bg-autofun-stroke-highlight/80"
+                  : "bg-white/15",
+              )}
+            >
+              Admin
+            </Button>
+          )}
         </div>
         <div className="border bg-autofun-background-card h-full md:h-[50vh]">
           {tab === "Trading" ? (

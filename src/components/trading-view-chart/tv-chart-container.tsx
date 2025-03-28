@@ -5,11 +5,7 @@ import {
   ResolutionString,
   widget,
 } from "@/libraries/charting_library";
-import {
-  chartOverrides,
-  disabledFeatures,
-  enabledFeatures,
-} from "./constants";
+import { chartOverrides, disabledFeatures, enabledFeatures } from "./constants";
 import { getDataFeed } from "./datafeed";
 import { twMerge } from "tailwind-merge";
 
@@ -27,8 +23,7 @@ export const TVChartContainer = ({
   pairIndex,
   token,
 }: TVChartContainerProps) => {
-  const chartContainerRef =
-    useRef<HTMLDivElement>(null);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
   const tvWidgetRef = useRef<IChartingLibraryWidget | null>(null);
 
   useEffect(() => {

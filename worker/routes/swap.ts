@@ -27,7 +27,7 @@ router.get("/chart/:pairIndex/:start/:end/:range/:token", async (c) => {
       params.start * 1000,
       params.end * 1000,
       params.range,
-      params.token
+      params.token,
     );
     return c.json({ table: data });
   } catch (error) {

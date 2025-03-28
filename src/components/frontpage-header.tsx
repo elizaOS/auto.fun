@@ -168,10 +168,12 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [dicePositions, setDicePositions] = useState<THREE.Vector3[]>([]);
-  const [diceInitialized, setDiceInitialized] = useState(false);
-  
+  // const [diceInitialized, setDiceInitialized] = useState(false);
+
   // Store selected tokens and their addresses for navigation
-  const [selectedTokens, setSelectedTokens] = useState<{address: string, image: string}[]>([]);
+  const [selectedTokens, setSelectedTokens] = useState<
+    { address: string; image: string }[]
+  >([]);
 
   // Track scene objects in refs so they can be accessed in event handlers
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -182,14 +184,16 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
   useEffect(() => {
     if (!tokens.length) return;
-    
+
     // Randomly select up to 5 tokens
     const shuffled = [...tokens].sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, Math.min(5, tokens.length)).map(token => ({
-      address: token.mint || "",
-      image: token.image || "header/placeholder/logo.jpg" // Fallback if no image
-    }));
-    
+    const selected = shuffled
+      .slice(0, Math.min(5, tokens.length))
+      .map((token) => ({
+        address: token.mint || "",
+        image: token.image || "header/placeholder/logo.jpg", // Fallback if no image
+      }));
+
     setSelectedTokens(selected);
 
     // Initialize random dice positions
@@ -199,8 +203,8 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         new THREE.Vector3(
           Math.random() * 50 - 25,
           20 + i * 2,
-          Math.random() * 16 - 8
-        )
+          Math.random() * 16 - 8,
+        ),
       );
     }
     setDicePositions(positions);
@@ -209,24 +213,24 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   // Function to throw dice with physics
   const throwDice = () => {
     if (!diceBodiesRef.current.length) return;
-    
+
     console.log("Throwing dice", diceBodiesRef.current.length);
-    
+
     for (let i = 0; i < diceBodiesRef.current.length; i++) {
       const dieBody = diceBodiesRef.current[i];
-      
+
       // Reset position higher for more energy
       dieBody.position.set(
         Math.random() * 50 - 25,
         20 + i * 2,
-        Math.random() * 16 - 8
+        Math.random() * 16 - 8,
       );
 
       // Reset rotation
       dieBody.quaternion.setFromEuler(
         Math.random() * Math.PI,
         Math.random() * Math.PI,
-        Math.random() * Math.PI
+        Math.random() * Math.PI,
       );
 
       // Clear any existing motion
@@ -240,7 +244,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       const velocity = new CANNON.Vec3(
         (Math.random() - 0.5) * 15,
         -10 - Math.random() * 15,
-        (Math.random() - 0.5) * 15
+        (Math.random() - 0.5) * 15,
       );
       dieBody.velocity.copy(velocity);
 
@@ -248,43 +252,43 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       const angularVelocity = new CANNON.Vec3(
         (Math.random() - 0.5) * 20,
         (Math.random() - 0.5) * 20,
-        (Math.random() - 0.5) * 20
+        (Math.random() - 0.5) * 20,
       );
       dieBody.angularVelocity.copy(angularVelocity);
     }
-    
+
     console.log("Dice thrown with increased energy!");
   };
-  
+
   // Handle clicking anywhere on the container
   const handleContainerClick = (event: React.MouseEvent) => {
     console.log("Container clicked");
     if (isLoading) return;
-    
+
     // Get container bounds for raycaster
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect || !cameraRef.current || !sceneRef.current) return;
-    
+
     // Calculate normalized mouse position
     const mouse = new THREE.Vector2(
       ((event.clientX - rect.left) / rect.width) * 2 - 1,
-      -((event.clientY - rect.top) / rect.height) * 2 + 1
+      -((event.clientY - rect.top) / rect.height) * 2 + 1,
     );
-    
+
     // Setup raycaster
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, cameraRef.current);
-    
+
     // Check for intersections with dice
     const intersects = raycaster.intersectObjects(diceRef.current);
-    
+
     if (intersects.length > 0) {
       // Get the clicked die
       const clickedDie = intersects[0].object as THREE.Mesh;
-      
+
       // Get the token address from the die's userData
       const tokenAddress = clickedDie.userData?.tokenAddress;
-      
+
       if (tokenAddress) {
         // Navigate to token page using vanilla JS approach
         console.log("Navigating to token:", tokenAddress);
@@ -296,16 +300,16 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       applyForceToAllDice(event.nativeEvent);
     }
   };
-  
+
   // Apply force to all dice when clicking background
   const applyForceToAllDice = (event: MouseEvent) => {
     console.log("Applying force to dice", event.clientX, event.clientY);
-    
+
     if (!diceBodiesRef.current.length) {
       console.log("No dice bodies available");
       return;
     }
-    
+
     // Force for all dice
     for (const dieBody of diceBodiesRef.current) {
       // Wake up the body
@@ -315,7 +319,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       const forceVector = new CANNON.Vec3(
         (Math.random() - 0.5) * 200,
         Math.random() * 50,
-        (Math.random() - 0.5) * 200
+        (Math.random() - 0.5) * 200,
       );
 
       // Apply direct velocity for immediate effect
@@ -325,14 +329,19 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       dieBody.angularVelocity.set(
         (Math.random() - 0.5) * 10,
         (Math.random() - 0.5) * 10,
-        (Math.random() - 0.5) * 10
+        (Math.random() - 0.5) * 10,
       );
     }
   };
 
   useEffect(() => {
-    if (!containerRef.current || !selectedTokens.length || !dicePositions.length) return;
-    
+    if (
+      !containerRef.current ||
+      !selectedTokens.length ||
+      !dicePositions.length
+    )
+      return;
+
     console.log("Initializing dice physics scene");
 
     // Get container dimensions
@@ -538,34 +547,46 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     // Helper function to create materials for a die with the same texture on all sides
     const createDieMaterialsWithSameTexture = (tokenImage: string) => {
       return new Promise<THREE.MeshStandardMaterial[]>((resolve) => {
-        const texture = textureLoader.load(tokenImage, () => {
-          setIsLoading(false);
-        }, undefined, (error) => {
-          console.error("Error loading texture:", error);
-          // Load fallback texture if the token image fails
-          const fallback = textureLoader.load(fallbackTexture, () => {
+        const texture = textureLoader.load(
+          tokenImage,
+          () => {
             setIsLoading(false);
-          });
-          resolve(Array(6).fill(new THREE.MeshStandardMaterial({
-            map: fallback,
-            roughness: 1.0,
-            metalness: 0.3,
-            emissiveMap: fallback,
-            emissiveIntensity: 0.5,
-          })));
-        });
+          },
+          undefined,
+          (error) => {
+            console.error("Error loading texture:", error);
+            // Load fallback texture if the token image fails
+            const fallback = textureLoader.load(fallbackTexture, () => {
+              setIsLoading(false);
+            });
+            resolve(
+              Array(6).fill(
+                new THREE.MeshStandardMaterial({
+                  map: fallback,
+                  roughness: 1.0,
+                  metalness: 0.3,
+                  emissiveMap: fallback,
+                  emissiveIntensity: 0.5,
+                }),
+              ),
+            );
+          },
+        );
 
         // Create 6 sides with the same material
-        const materials = Array(6).fill(null).map(() => 
-          new THREE.MeshStandardMaterial({
-            map: texture,
-            roughness: 1.0,
-            metalness: 0.3,
-            emissiveMap: texture,
-            emissiveIntensity: 0.5,
-          })
-        );
-        
+        const materials = Array(6)
+          .fill(null)
+          .map(
+            () =>
+              new THREE.MeshStandardMaterial({
+                map: texture,
+                roughness: 1.0,
+                metalness: 0.3,
+                emissiveMap: texture,
+                emissiveIntensity: 0.5,
+              }),
+          );
+
         resolve(materials);
       });
     };
@@ -578,16 +599,25 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     const diceBodies: CANNON.Body[] = [];
 
     // Helper function to create a die
-    async function createDie(position: THREE.Vector3, scale: number = 1, tokenIndex: number) {
-      const tokenData = selectedTokens[tokenIndex] || { address: "", image: fallbackTexture };
-      const dieMaterials = await createDieMaterialsWithSameTexture(tokenData.image);
+    async function createDie(
+      position: THREE.Vector3,
+      scale: number = 1,
+      tokenIndex: number,
+    ) {
+      const tokenData = selectedTokens[tokenIndex] || {
+        address: "",
+        image: fallbackTexture,
+      };
+      const dieMaterials = await createDieMaterialsWithSameTexture(
+        tokenData.image,
+      );
       const die = new THREE.Mesh(diceGeometry, dieMaterials);
 
       die.position.copy(position);
       die.scale.set(scale, scale, scale);
       die.castShadow = true;
       die.receiveShadow = true;
-      
+
       // Store token address as a custom property
       die.userData = { tokenAddress: tokenData.address };
 
@@ -609,9 +639,9 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       );
 
       // Store the mesh and token data with the body for updates
-      dieBody.userData = { 
+      dieBody.userData = {
         mesh: die,
-        tokenAddress: tokenData.address
+        tokenAddress: tokenData.address,
       };
 
       // Add to scene and world
@@ -629,35 +659,41 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       // Clear any existing dice
       diceRef.current = [];
       diceBodiesRef.current = [];
-      
+
       const numDice = Math.min(5, selectedTokens.length);
-      
+
       for (let i = 0; i < numDice; i++) {
-        const position = dicePositions[i] || new THREE.Vector3(
-          Math.random() * 50 - 25,
-          20 + i * 2,
-          Math.random() * 16 - 8
-        );
+        const position =
+          dicePositions[i] ||
+          new THREE.Vector3(
+            Math.random() * 50 - 25,
+            20 + i * 2,
+            Math.random() * 16 - 8,
+          );
         const { die, dieBody } = await createDie(position, scale, i);
         diceRef.current.push(die);
         diceBodiesRef.current.push(dieBody);
       }
-      
+
       // If we have fewer than 5 tokens, fill remaining slots with empty dice
       if (numDice < 5) {
         for (let i = numDice; i < 5; i++) {
           const position = new THREE.Vector3(
             Math.random() * 50 - 25,
             20 + i * 2,
-            Math.random() * 16 - 8
+            Math.random() * 16 - 8,
           );
-          const { die, dieBody } = await createDie(position, scale, i % numDice);
+          const { die, dieBody } = await createDie(
+            position,
+            scale,
+            i % numDice,
+          );
           diceRef.current.push(die);
           diceBodiesRef.current.push(dieBody);
         }
       }
-      
-      setDiceInitialized(true);
+
+      // setDiceInitialized(true);
     };
 
     // Create all dice
