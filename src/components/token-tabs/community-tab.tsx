@@ -48,7 +48,7 @@ export default function CommunityTab() {
                     Generate Image
                   </button>
             </div>
-            <div className="grid col-span-1">
+            <div className="grid col-span-3 md:col-span-1">
               <div className="bg-black/20 p-4 space-y-2">
                 <h1 className="mb-4 text-xl text-autofun-background-action-highlight font-dm-mono">
                   Agents

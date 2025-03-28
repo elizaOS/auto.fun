@@ -264,7 +264,7 @@ export default function Page() {
           <Button onClick={() => setTab("Community")} className={twMerge( tab === "Community" ? "bg-autofun-stroke-highlight/80" : "bg-white/15" )} > Community </Button>
           {admin && <Button onClick={() => setTab("Admin")} className={twMerge(tab === "Admin" ? "bg-autofun-stroke-highlight/80": "bg-white/15")}>Admin</Button>}
         </div>
-        <div className="border bg-autofun-background-card h-[50vh]">
+        <div className="border bg-autofun-background-card h-full md:h-[50vh]">
           {tab === "Trading" ? (
             <TradingViewChart name={token.name} token={token.mint} />
           ) : tab === "Community" ? (
