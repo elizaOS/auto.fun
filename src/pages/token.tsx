@@ -22,14 +22,20 @@ import { InfoCircle } from "iconsax-react";
 import { Globe } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { TradingViewChart } from "@/components/trading-view-chart";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { getSocket } from "@/utils/socket";
+import { twMerge } from "tailwind-merge";
+import CommunityTab from "@/components/token-tabs/community-tab";
+import AdminTab from "@/components/token-tabs/admin-tab";
 
-const socket = getSocket()
+const socket = getSocket();
 
 export default function Page() {
   const params = useParams();
   const address = params?.address;
+
+  type ITabs = "Trading" | "Community" | "Admin";
+  const [tab, setTab] = useState<ITabs>("Trading");
 
   const query = useQuery({
     queryKey: ["token", address],
@@ -60,6 +66,8 @@ export default function Page() {
     return <Loader />;
   }
 
+  const admin = true;
+
   return (
     <div className="flex flex-wrap gap-3">
       {/* Right Section */}
@@ -83,9 +91,9 @@ export default function Page() {
             <div className="text-autofun-text-highlight text-base font-normal font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0">
               ${token?.ticker}
             </div>
-              <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
-                {token?.description}
-              </span>
+            <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
+              {token?.description}
+            </span>
           </div>
           {/* Contractaddress */}
           <div className="flex border">
@@ -200,7 +208,7 @@ export default function Page() {
                   (token?.reserveLamport - token?.virtualReserves) /
                     LAMPORTS_PER_SOL,
                   true,
-                  true,
+                  true
                 )}{" "}
                 SOL in the bonding curve.
               </p>
@@ -252,9 +260,20 @@ export default function Page() {
             </span>
           </div>
         </div>
-        {/* Chart */}
-        <div className="border bg-autofun-background-card h-[50vh]">
-          <TradingViewChart name={token.name} token={token.mint} />
+        {/* Tabs */}
+        <div className="flex flex-row">
+          <Button onClick={() => setTab("Trading")} className={twMerge( tab === "Trading" ? "bg-autofun-stroke-highlight/80" : "bg-white/15" )} > Trading </Button>
+          <Button onClick={() => setTab("Community")} className={twMerge( tab === "Community" ? "bg-autofun-stroke-highlight/80" : "bg-white/15" )} > Community </Button>
+          {admin && <Button onClick={() => setTab("Admin")} className={twMerge(tab === "Admin" ? "bg-autofun-stroke-highlight/80": "bg-white/15")}>Admin</Button>}
+        </div>
+        <div className="border bg-autofun-background-card h-full md:h-[50vh]">
+          {tab === "Trading" ? (
+            <TradingViewChart name={token.name} token={token.mint} />
+          ) : tab === "Community" ? (
+            <CommunityTab />
+          ) : tab === "Admin" ? (
+            <AdminTab />
+          ) : null}
         </div>
         <TransactionsAndHolders token={token} />
       </div>
