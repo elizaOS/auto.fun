@@ -158,28 +158,13 @@ export const FormTextArea = ({
   return (
     <div className="flex flex-col gap-1 w-full">
       <div className="flex items-center gap-2">
-        <div className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
-          {label}
-        </div>
-        {onClick && !isLoading && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault(); // Prevent any form submission
-              if (onClick) onClick();
-            }}
-            className="text-[#2fd345] text-sm hover:underline"
-          >
-            Generate
-          </button>
-        )}
         {isLoading && (
           <div className="w-4 h-4 border-2 border-[#2fd345] border-t-transparent rounded-full animate-spin"></div>
         )}
       </div>
       <div className="relative">
         <textarea
-          className="w-full bg-[#0F0F0F] h-[250px] p-3 border border-neutral-800 text-white resize-none"
+          className="w-full bg-[#0F0F0F] h-[100px] p-3 border border-neutral-800 text-white resize-none"
           style={{ minHeight: `${minRows * 1.5}rem` }}
           maxLength={maxLength}
           {...props}
@@ -414,12 +399,7 @@ const FormImageInput = ({
   }
 
   return (
-    <div className="flex flex-col gap-1 w-full">
-      <div className="flex items-center justify-between">
-        <div className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
-          {label}
-        </div>
-      </div>
+    <div className="flex flex-col w-full">
 
       {/* Image Preview Area - Square */}
       <div
@@ -2080,23 +2060,23 @@ export const Create = () => {
   return (
     <div className="flex flex-col items-center justify-center">
       {showCoinDrop && <CoinDrop imageUrl={coinDropImageUrl || undefined} />}
-      <div className="p-4 w-full max-w-6xl">
+      <div className="py-4 px-auto w-full max-w-2xl">
         <form
-          className="flex font-dm-mono flex-col w-full m-auto gap-4 justify-center"
+          className="flex font-dm-mono flex-col w-full m-auto gap-1 justify-center"
           onSubmit={handleSubmit}
         >
           {/* Tabs Navigation */}
-          <div className="logo flex items-center flex-col md:flex-row gap-8 mx-auto">
-            <div className="logo flex items-center gap-4 md:ml-8">
+          <div className="logo flex items-center flex-col md:flex-row gap-8 mx-auto w-full px-6 mb-2">
+            <div className="logo flex items-center gap-4 md:mr-auto">
               <img
                 src="/create/dicelogo.svg"
                 alt="Coin Machine"
-                className="w-32 h-32"
+                className="w-24 h-24"
               />
               <img
                 src="/create/coinmachine.svg"
                 alt="Coin Machine"
-                className="w-64 h-32"
+                className="w-48 h-24"
               />
             </div>
             <div className="flex text-lg">
@@ -2139,7 +2119,7 @@ export const Create = () => {
           {/* Auto Tab Content */}
           {activeTab === FormTab.AUTO && (
             <>
-              <div className="flex gap-2">
+              <div className="flex">
                 <input
                   type="text"
                   value={userPrompt}
@@ -2198,10 +2178,10 @@ export const Create = () => {
 
           {/* Import Tab Content */}
           {activeTab === FormTab.IMPORT && (
-            <div className="mb-6">
+            <div className="my-12">
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
-                  <div className="flex flex-row gap-2">
+                  <div className="flex flex-row">
                     <input
                       type="text"
                       value={form.importAddress || ""}
@@ -2330,8 +2310,7 @@ export const Create = () => {
                   handleChange("description", e.target.value)
                 }
                 label="Description"
-                rightIndicator={`${form.description.length}/2000`}
-                minRows={2}
+                minRows={1}
                 maxLength={2000}
                 error={errors.description}
                 onClick={() => generateAll()}

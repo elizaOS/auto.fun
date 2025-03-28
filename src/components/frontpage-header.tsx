@@ -292,7 +292,8 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       if (tokenAddress) {
         // Navigate to token page using vanilla JS approach
         console.log("Navigating to token:", tokenAddress);
-        window.location.href = `/token/${tokenAddress}`;
+        // window.location.href = `/token/${tokenAddress}`;
+        applyForceToAllDice(event.nativeEvent);
       }
     } else {
       // If no die was clicked, apply force to all dice
@@ -422,10 +423,10 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     containerRef.current.appendChild(renderer.domElement);
 
     // Lighting
-    const ambientLight = new THREE.AmbientLight(0x404040);
+    const ambientLight = new THREE.AmbientLight(0x000000);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 2.0);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 3.0);
 
     directionalLight.rotation.x = -Math.PI / 4; // 45 degrees pitched down
     directionalLight.rotation.z = -Math.PI / 8; // 45 degrees pitched right
@@ -549,14 +550,16 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       return new Promise<THREE.MeshStandardMaterial[]>((resolve) => {
         const texture = textureLoader.load(
           tokenImage,
-          () => {
+          (texture) => {
+            texture.colorSpace = THREE.SRGBColorSpace;
             setIsLoading(false);
           },
           undefined,
           (error) => {
             console.error("Error loading texture:", error);
             // Load fallback texture if the token image fails
-            const fallback = textureLoader.load(fallbackTexture, () => {
+            const fallback = textureLoader.load(fallbackTexture, (fallbackTex) => {
+              fallbackTex.colorSpace = THREE.SRGBColorSpace;
               setIsLoading(false);
             });
             resolve(
@@ -566,7 +569,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
                   roughness: 1.0,
                   metalness: 0.3,
                   emissiveMap: fallback,
-                  emissiveIntensity: 0.5,
+                  emissiveIntensity: 0.3,
                 }),
               ),
             );
@@ -580,10 +583,10 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
             () =>
               new THREE.MeshStandardMaterial({
                 map: texture,
-                roughness: 1.0,
-                metalness: 0.3,
+                roughness: 0.75,
+                metalness: 0.2,
                 emissiveMap: texture,
-                emissiveIntensity: 0.5,
+                emissiveIntensity: 0.3,
               }),
           );
 
@@ -591,7 +594,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       });
     };
 
-    const scale = 2;
+    const scale = 2.25
 
     // Create dice
     const diceGeometry = new THREE.BoxGeometry(scale, scale, scale);
@@ -622,7 +625,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       die.userData = { tokenAddress: tokenData.address };
 
       // Create physics body
-      const halfExtents = new CANNON.Vec3(scale, scale, scale);
+      const halfExtents = new CANNON.Vec3(scale + 0.5, scale + 0.25, scale + 0.25);
       const dieBody = new CANNON.Body({
         mass: 10000, // heavier for better physics
         shape: new CANNON.Box(halfExtents),

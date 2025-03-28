@@ -54,17 +54,21 @@ export default function Header() {
             </Link>
           </div>
           <div className="flex space-x-3 flex-row">
-            <SearchBar isMobile={false} />
-            <Link to="/create">
-              <Button className="flex items-center text-base text-autofun-text-highlight font-bold font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345] min-w-34">
-                New Coin{" "}
-                <img
-                  src="/nav/stars.svg"
-                  alt="stars"
-                  className="text-[#2FD345]"
-                />
-              </Button>
-            </Link>
+            {pathname !== "/create" && (
+              <>
+                <SearchBar isMobile={false} />
+                <Link to="/create">
+                  <Button className="flex items-center text-base text-autofun-text-highlight font-bold font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345] min-w-34">
+                    New Coin{" "}
+                    <img
+                      src="/nav/stars.svg"
+                      alt="stars"
+                      className="text-[#2FD345]"
+                    />
+                  </Button>
+                </Link>
+              </>
+            )}
             <WalletButton />
           </div>
         </div>

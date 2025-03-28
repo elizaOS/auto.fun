@@ -547,6 +547,9 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
 
         // Set the image source to the texture's image
         if (texture.image) {
+          // Set colorspace to SRGB before loading
+          texture.colorSpace = THREE.SRGBColorSpace;
+          
           image.src =
             texture.image instanceof HTMLImageElement
               ? texture.image.src
