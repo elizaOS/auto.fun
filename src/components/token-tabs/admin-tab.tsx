@@ -64,8 +64,8 @@ export default function AdminTab() {
   };
 
   return (
-    <div className="grid grid-cols-1 w-full">
-      <div className="bg-red-500 justify-items-center items-center">
+    <div className="grid grid-cols-1 w-full bg-yellow-500 h-full">
+      <div className="bg-red-500 flex justify-items-center items-center">
         <textarea
           value={form.description}
           className="w-2/3 h-full bg-[#0F0F0F] p-3 border border-neutral-800 text-white resize-none"
@@ -73,7 +73,7 @@ export default function AdminTab() {
         />
       </div>
       <div className="items-center justify-items-center">
-        <div className="flex w-2/3 flex-col gap-3">
+        <div className="flex w-2/3 tems-center justify-center flex-col gap-3 h-full">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3">
             <FormInput
               type="text"

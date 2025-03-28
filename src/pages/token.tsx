@@ -36,7 +36,6 @@ export default function Page() {
 
   type ITabs = "Trading" | "Community" | "Admin";
   const [tab, setTab] = useState<ITabs>("Trading");
-  console.log(tab)
 
   const query = useQuery({
     queryKey: ["token", address],
