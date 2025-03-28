@@ -13,7 +13,7 @@ import {
   import { useMutation } from "@tanstack/react-query";
   import { TokenMetadata } from "@/types/form.type";
 import { Autofun, SEED_CONFIG, useProgram } from "@/utils/program";
-import { launchAndSwapTx } from "@/utils/tokens";
+import { launchAndSwapTx } from "@/utils/swapUtils";
 import { env } from "@/utils/env";
 
 const useCreateTokenMutation = () => {
