@@ -258,11 +258,9 @@ export default function Page() {
         </div>
         {/* Chart */}
         <div className="flex flex-row ">
-          <Button onClick={() => setTab("Trading")} className={twMerge(tab === "Trading" ? "bg-autofun-stroke-highlight/80" : "bg-white/15")}>
-            Trading
-          </Button>
-          <Button onClick={() => setTab("Community")}>Community</Button>
-          {admin && <Button onClick={() => setTab("Admin")}>Admin</Button>}
+          <Button onClick={() => setTab("Trading")} className={twMerge( tab === "Trading" ? "bg-autofun-stroke-highlight/80" : "bg-white/15" )} > Trading </Button>
+          <Button onClick={() => setTab("Community")} className={twMerge( tab === "Community" ? "bg-autofun-stroke-highlight/80" : "bg-white/15" )} > Community </Button>
+          {admin &&  <Button onClick={() => setTab("Admin")} className={twMerge(tab === "Admin" ? "bg-autofun-stroke-highlight/80": "bg-white/15")}>Admin</Button>}
         </div>
         <div className="border bg-autofun-background-card h-[50vh]">
           {tab === "Trading" ? (
