@@ -27,32 +27,36 @@ let lastUpdateTime: Date | null = null;
  * Prioritizes cache, then Pyth, then fallback APIs
  */
 export async function getSOLPrice(env?: Env): Promise<number> {
+  console.log("getting sol price");
   // If env is provided, try to get price from cache first
   if (env) {
     const cacheService = new CacheService(env);
     const cachedPrice = await cacheService.getSolPrice();
-
+    console.log("cachedPrice", cachedPrice);
     if (cachedPrice !== null) {
       return cachedPrice;
     }
   }
 
   // Try Pyth Network first (most accurate source)
-  try {
-    const price = await fetchSOLPriceFromPyth();
+  // try {
+  //   console.log("fetching sol price from pyth");
+  //   const price = await fetchSOLPriceFromPyth();
 
-    // Cache the result if env is provided
-    if (env && price > 0) {
-      const cacheService = new CacheService(env);
-      await cacheService.setSolPrice(price);
-    }
+  //   console.log("price", price);
 
-    if (price > 0) {
-      return price;
-    }
-  } catch (error) {
-    logger.error("Error fetching SOL price from Pyth:", error);
-  }
+  //   // Cache the result if env is provided
+  //   if (env && price > 0) {
+  //     const cacheService = new CacheService(env);
+  //     await cacheService.setSolPrice(price);
+  //   }
+
+  //   if (price > 0) {
+  //     return price;
+  //   }
+  // } catch (error) {
+  //   logger.error("Error fetching SOL price from Pyth:", error);
+  // }
 
   // If Pyth fails, try CoinGecko
   try {
