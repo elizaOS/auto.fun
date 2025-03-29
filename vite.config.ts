@@ -32,7 +32,6 @@ export default defineConfig({
     },
   },
   define: {
-    // Define environment variables that will be replaced at build time
     "import.meta.env.VITE_API_URL": JSON.stringify(
       process.env.NODE_ENV === "production" 
       ? (process.env.VITE_API_URL || "http://localhost:8787") 

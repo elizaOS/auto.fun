@@ -40,7 +40,7 @@ export const RATE_LIMITS = {
 export async function checkRateLimits(
   env: Env,
   mint: string,
-  type: MediaType
+  type: MediaType,
 ): Promise<{ allowed: boolean; remaining: number }> {
   // Special handling for test environments
   if (env.NODE_ENV === "test") {
@@ -61,7 +61,7 @@ export async function checkRateLimits(
   const db = getDB(env);
 
   const cutoffTime = new Date(
-    Date.now() - RATE_LIMITS[type].COOLDOWN_PERIOD_MS
+    Date.now() - RATE_LIMITS[type].COOLDOWN_PERIOD_MS,
   ).toISOString();
 
   // Create a timeout for the database query
@@ -69,8 +69,8 @@ export async function checkRateLimits(
   const dbTimeoutPromise = new Promise<never>((_, reject) =>
     setTimeout(
       () => reject(new Error("Rate limits check timed out")),
-      dbTimeout
-    )
+      dbTimeout,
+    ),
   );
 
   try {
@@ -82,8 +82,8 @@ export async function checkRateLimits(
         and(
           eq(mediaGenerations.mint, mint),
           eq(mediaGenerations.type, type),
-          gte(mediaGenerations.timestamp, cutoffTime)
-        )
+          gte(mediaGenerations.timestamp, cutoffTime),
+        ),
       );
 
     // Race the query against the timeout
@@ -128,7 +128,7 @@ export async function generateMedia(
     guidance_scale?: number;
     width?: number;
     height?: number;
-  }
+  },
 ) {
   // Set default timeout - shorter for tests
   const timeout = process.env.NODE_ENV === "test" ? 3000 : 30000;
@@ -144,8 +144,8 @@ export async function generateMedia(
   const timeoutPromise = new Promise((_, reject) =>
     setTimeout(
       () => reject(new Error(`Media generation timed out after ${timeout}ms`)),
-      timeout
-    )
+      timeout,
+    ),
   );
 
   let generationPromise;
@@ -310,7 +310,7 @@ app.post("/:mint/generate", async (c) => {
           details:
             error instanceof Error ? error.message : "Unknown parsing error",
         },
-        400
+        400,
       );
     }
 
@@ -330,7 +330,7 @@ app.post("/:mint/generate", async (c) => {
               code: e.code,
             })),
           },
-          400
+          400,
         );
       }
       throw error;
@@ -341,8 +341,8 @@ app.post("/:mint/generate", async (c) => {
     const dbTimeoutPromise = new Promise((_, reject) =>
       setTimeout(
         () => reject(new Error("Database operation timed out")),
-        dbTimeout
-      )
+        dbTimeout,
+      ),
     );
 
     const db = getDB(c.env);
@@ -387,7 +387,7 @@ app.post("/:mint/generate", async (c) => {
               RATE_LIMITS[validatedData.type].MAX_GENERATIONS_PER_DAY
             } ${validatedData.type}s per day`,
           },
-          429
+          429,
         );
       }
     } catch (error) {
@@ -471,7 +471,7 @@ app.post("/:mint/generate", async (c) => {
       mediaUrl,
       remainingGenerations: rateLimit.remaining - 1,
       resetTime: new Date(
-        Date.now() + RATE_LIMITS[validatedData.type].COOLDOWN_PERIOD_MS
+        Date.now() + RATE_LIMITS[validatedData.type].COOLDOWN_PERIOD_MS,
       ).toISOString(),
     });
   } catch (error) {
@@ -484,7 +484,7 @@ app.post("/:mint/generate", async (c) => {
 
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -523,12 +523,12 @@ app.get("/:mint/history", async (c) => {
     if (!token || token.length === 0) {
       return c.json(
         { error: "Not authorized to view generation history for this token" },
-        403
+        403,
       );
     }
 
     const cutoffTime = new Date(
-      Date.now() - RATE_LIMITS[type || MediaType.IMAGE].COOLDOWN_PERIOD_MS
+      Date.now() - RATE_LIMITS[type || MediaType.IMAGE].COOLDOWN_PERIOD_MS,
     ).toISOString();
 
     // Build query conditions
@@ -576,7 +576,7 @@ app.get("/:mint/history", async (c) => {
               counts[MediaType.AUDIO],
           },
       resetTime: new Date(
-        Date.now() + RATE_LIMITS[type || MediaType.IMAGE].COOLDOWN_PERIOD_MS
+        Date.now() + RATE_LIMITS[type || MediaType.IMAGE].COOLDOWN_PERIOD_MS,
       ).toISOString(),
     });
   } catch (error) {
@@ -588,7 +588,7 @@ app.get("/:mint/history", async (c) => {
 
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -608,7 +608,7 @@ app.post("/generate-metadata", async (c) => {
           details:
             error instanceof Error ? error.message : "Unknown parsing error",
         },
-        400
+        400,
       );
     }
 
@@ -641,7 +641,7 @@ app.post("/generate-metadata", async (c) => {
               code: e.code,
             })),
           },
-          400
+          400,
         );
       }
       throw error;
@@ -701,14 +701,14 @@ app.post("/generate-metadata", async (c) => {
 
       const jsonString = response.response.substring(
         jsonStartIndex,
-        jsonEndIndex
+        jsonEndIndex,
       );
       metadata = JSON.parse(jsonString);
     } catch (error) {
       logger.error("Failed to parse token metadata JSON:", error);
       return c.json(
         { success: false, error: "Failed to generate valid token metadata" },
-        500
+        500,
       );
     }
 
@@ -722,7 +722,7 @@ app.post("/generate-metadata", async (c) => {
       logger.error("Missing required fields in token metadata:", metadata);
       return c.json(
         { success: false, error: "Failed to generate complete token metadata" },
-        500
+        500,
       );
     }
 
@@ -737,7 +737,7 @@ app.post("/generate-metadata", async (c) => {
     console.error("Error generating metadata:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -776,7 +776,7 @@ app.post("/generate", async (c) => {
               code: e.code,
             })),
           },
-          400
+          400,
         );
       }
       throw error;
@@ -818,7 +818,7 @@ app.post("/generate", async (c) => {
             ? error.message
             : "Unknown error generating media",
       },
-      500
+      500,
     );
   }
 });
@@ -831,7 +831,7 @@ export async function generateImage(
   mint: string,
   prompt: string,
   negativePrompt?: string,
-  creator?: string
+  creator?: string,
 ): Promise<MediaGeneration> {
   try {
     // In test mode, return a test image
@@ -890,7 +890,7 @@ export async function generateVideo(
   mint: string,
   prompt: string,
   negativePrompt?: string,
-  creator?: string
+  creator?: string,
 ): Promise<MediaGeneration> {
   try {
     // In test mode, return a test video
@@ -956,7 +956,7 @@ export async function getDailyGenerationCount(
   env: Env,
   db: any,
   mint: string,
-  creator: string
+  creator: string,
 ): Promise<number> {
   try {
     // In test mode, return a low count
@@ -969,7 +969,7 @@ export async function getDailyGenerationCount(
     const today = new Date(
       now.getFullYear(),
       now.getMonth(),
-      now.getDate()
+      now.getDate(),
     ).toISOString();
 
     // Find the last generation for this creator and token
@@ -1003,7 +1003,7 @@ export async function getDailyGenerationCount(
 // Function to generate a token on demand
 async function generateTokenOnDemand(
   env: Env,
-  ctx: { waitUntil: (promise: Promise<any>) => void }
+  ctx: { waitUntil: (promise: Promise<any>) => void },
 ): Promise<{
   success: boolean;
   token?: {
@@ -1070,7 +1070,7 @@ async function generateTokenOnDemand(
 
     // Extract description
     const descMatch = generatedText.match(
-      /description:?\s*["']?([^"\n]+)["']?/i
+      /description:?\s*["']?([^"\n]+)["']?/i,
     );
     if (descMatch) {
       metadata.description = descMatch[1].trim();
@@ -1078,7 +1078,7 @@ async function generateTokenOnDemand(
 
     // Extract prompt prompt
     const creativeMatch = generatedText.match(
-      /prompt:?\s*["']?([^"\n]+)["']?/i
+      /prompt:?\s*["']?([^"\n]+)["']?/i,
     );
     if (creativeMatch) {
       metadata.prompt = creativeMatch[1].trim();
@@ -1117,7 +1117,7 @@ async function generateTokenOnDemand(
     } catch (imageError) {
       logger.error(
         `Error generating image for token ${metadata.name}:`,
-        imageError
+        imageError,
       );
       // Continue without image
     }
@@ -1151,12 +1151,12 @@ async function generateTokenOnDemand(
             used: 0,
           });
           logger.log(
-            `Generated and saved on-demand token: ${metadata.name} (${metadata.symbol})`
+            `Generated and saved on-demand token: ${metadata.name} (${metadata.symbol})`,
           );
         } catch (err) {
           logger.error("Error saving on-demand token:", err);
         }
-      })()
+      })(),
     );
 
     return { success: true, token: onDemandToken };
@@ -1199,7 +1199,7 @@ async function generateTokenOnDemand(
           } catch (err) {
             logger.error("Error saving fallback token:", err);
           }
-        })()
+        })(),
       );
 
       return { success: true, token: fallbackToken };
@@ -1224,7 +1224,7 @@ app.get("/pre-generated-token", async (c) => {
 
     if (!randomToken || randomToken.length === 0) {
       logger.log(
-        "No pre-generated tokens available. Generating one on demand..."
+        "No pre-generated tokens available. Generating one on demand...",
       );
 
       // Generate a token on the fly
@@ -1250,7 +1250,7 @@ app.get("/pre-generated-token", async (c) => {
       {
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      500
+      500,
     );
   }
 });
@@ -1280,8 +1280,8 @@ app.post("/mark-token-used", async (c) => {
         .where(
           or(
             name ? eq(preGeneratedTokens.name, name) : undefined,
-            ticker ? eq(preGeneratedTokens.ticker, ticker) : undefined
-          )
+            ticker ? eq(preGeneratedTokens.ticker, ticker) : undefined,
+          ),
         );
     }
 
@@ -1295,7 +1295,7 @@ app.post("/mark-token-used", async (c) => {
       {
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      500
+      500,
     );
   }
 });
@@ -1315,7 +1315,7 @@ app.post("/reroll-token", async (c) => {
 
     if (!randomToken || randomToken.length === 0) {
       logger.log(
-        "No pre-generated tokens available for reroll. Generating one on demand..."
+        "No pre-generated tokens available for reroll. Generating one on demand...",
       );
 
       // Generate a token on the fly
@@ -1341,7 +1341,7 @@ app.post("/reroll-token", async (c) => {
       {
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      500
+      500,
     );
   }
 });
@@ -1451,7 +1451,7 @@ export async function generatePreGeneratedTokens(env: Env) {
     if (!matches || matches.length !== 3) {
       logger.warn(
         "Invalid image format:",
-        imageDataUrl.substring(0, 50) + "..."
+        imageDataUrl.substring(0, 50) + "...",
       );
       throw new Error("Invalid image format. Expected data URL format.");
     }
@@ -1476,7 +1476,7 @@ export async function generatePreGeneratedTokens(env: Env) {
 
     // Convert base64 to buffer
     const imageBuffer = Uint8Array.from(atob(imageData), (c) =>
-      c.charCodeAt(0)
+      c.charCodeAt(0),
     ).buffer;
 
     // Upload image to Cloudflare R2
@@ -1524,7 +1524,7 @@ export async function generatePreGeneratedTokens(env: Env) {
 // Check and replenish pre-generated tokens if needed
 export async function checkAndReplenishTokens(
   env: Env,
-  threshold: number = 100
+  threshold: number = parseInt(process.env.PREGENERATED_TOKENS_COUNT || "3"),
 ): Promise<void> {
   try {
     console.log("Checking and replenishing pre-generated tokens...");
@@ -1544,7 +1544,7 @@ export async function checkAndReplenishTokens(
       if (count < threshold) {
         const tokensToGenerate = threshold - count;
         logger.log(
-          `Generating ${tokensToGenerate} new pre-generated tokens...`
+          `Generating ${tokensToGenerate} new pre-generated tokens...`,
         );
         await generatePreGeneratedTokens(env);
       } else {

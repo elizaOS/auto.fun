@@ -720,6 +720,16 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
     coinInstancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     coinInstancedMesh.castShadow = true;
     coinInstancedMesh.receiveShadow = true;
+
+    // Initialize all instances to be offscreen
+    const offscreenMatrix = new THREE.Matrix4();
+    const offscreenPosition = new THREE.Vector3(10000, 10000, 10000);
+    offscreenMatrix.setPosition(offscreenPosition);
+    for (let i = 0; i < MAX_COINS; i++) {
+      coinInstancedMesh.setMatrixAt(i, offscreenMatrix);
+    }
+    coinInstancedMesh.instanceMatrix.needsUpdate = true;
+
     scene.add(coinInstancedMesh);
 
     // Store the instanced mesh in the ref

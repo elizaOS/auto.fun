@@ -81,7 +81,9 @@ export const FormImageInput = ({
       const file = e.target.files?.[0] || null;
       if (file) {
         if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-          toast.error(`The uploaded image exceeds the ${MAX_FILE_SIZE_MB}MB limit.`);
+          toast.error(
+            `The uploaded image exceeds the ${MAX_FILE_SIZE_MB}MB limit.`,
+          );
           return;
         }
 

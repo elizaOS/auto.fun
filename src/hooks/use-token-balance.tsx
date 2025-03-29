@@ -13,7 +13,7 @@ const RPC_URL =
 
 const fetchTokenBalance = async (
   walletAddress: string,
-  contractAddress: "So11111111111111111111111111111111111111111" | string
+  contractAddress: "So11111111111111111111111111111111111111111" | string,
 ): Promise<TokenBalance> => {
   // If the contract address is for native SOL
   if (contractAddress === "So11111111111111111111111111111111111111111") {
@@ -82,7 +82,7 @@ const fetchTokenBalance = async (
 
 const useTokenBalance = (
   walletAddress: string,
-  contractAddress: "So11111111111111111111111111111111111111111" | string
+  contractAddress: "So11111111111111111111111111111111111111111" | string,
 ) => {
   return useQuery<TokenBalance, Error>({
     queryKey: ["tokenBalance", walletAddress, contractAddress],
