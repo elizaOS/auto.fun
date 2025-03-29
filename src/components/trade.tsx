@@ -115,7 +115,11 @@ export default function Trade({ token }: { token: IToken }) {
                       )
                     : formatNumber(0)}
               </span>
-              <Balance token={token} isSolana={!isTokenSelling} />
+              <Balance
+                token={token}
+                isSolana={!isTokenSelling}
+                setSellingAmount={setSellingAmount}
+              />
             </div>
           </div>
           <div className="h-[10px] z-20 relative">
@@ -196,9 +200,11 @@ const TokenDisplay = ({
 const Balance = ({
   token,
   isSolana,
+  setSellingAmount,
 }: {
   token?: IToken;
   isSolana?: boolean;
+  setSellingAmount?: any;
 }) => {
   const wallet = useWallet();
   const balance = useTokenBalance(
@@ -206,7 +212,17 @@ const Balance = ({
     isSolana ? "So11111111111111111111111111111111111111111" : token?.mint || ""
   );
   return (
-    <div className="flex items-center gap-2 select-none">
+    <div
+      className={twMerge([
+        "flex items-center gap-2 select-none",
+        setSellingAmount ? "cursor-pointer" : "",
+      ])}
+      onClick={() => {
+        if (balance?.data?.formattedBalance && setSellingAmount) {
+          setSellingAmount(balance?.data?.formattedBalance);
+        }
+      }}
+    >
       <Wallet className="text-autofun-text-secondary size-[18px]" />
       <span className="text-sm font-dm-mono text-autofun-text-secondary uppercase">
         {balance.data?.formattedBalance} {isSolana ? "SOL" : token?.ticker}
