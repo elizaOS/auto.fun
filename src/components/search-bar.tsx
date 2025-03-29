@@ -6,6 +6,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { debounce } from "lodash";
 import { IToken } from "@/types";
 import { useOutsideClickDetection } from "@/hooks/use-outside-clickdetection";
+import { getSearchTokens } from "@/utils/api";
+import { useQuery } from "@tanstack/react-query";
 
 export default function SearchBar({ isMobile }: { isMobile: boolean }) {
   const [searchResults, setSearchResults] = useState<IToken[] | []>([]);
@@ -18,44 +20,21 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
     setSearchResults([]);
   });
 
-  // const query = useQuery({
-  //   queryKey: ["search-tokens", search],
-  //   queryFn: async () => {
-  //     const data = await getSearchTokens({ search });
-  //     return data as { tokens: IToken[] };
-  //   },
-  // });
-
-  const tokens = [
-    {
-      mint: "9sT3Lx5NmW",
-      name: "Alien Coin",
-      image:
-        "https://png.pngtree.com/png-vector/20190223/ourmid/pngtree-vector-picture-icon-png-image_695350.jpg",
-      inferenceCount: 98,
-      lastUpdated: "2024-10-01",
-      marketCapUSD: 180000,
-      ticker: "TICKET",
+  const query = useQuery({
+    queryKey: ["search-tokens", search],
+    queryFn: async () => {
+      const data = await getSearchTokens({ search });
+      return data as { tokens: IToken[] };
     },
-    {
-      mint: "9sT3Lx5NmW",
-      name: "Alien Coin",
-      image:
-        "https://png.pngtree.com/png-vector/20190223/ourmid/pngtree-vector-picture-icon-png-image_695350.jpg",
-      inferenceCount: 98,
-      lastUpdated: "2024-10-01",
-      marketCapUSD: 180000,
-      ticker: "TICKET",
-    },
-  ] as IToken[];
+  });
 
-  // const tokens = query?.data?.tokens as IToken[];
+  const tokens = query?.data?.tokens as IToken[];
 
   const handleSearch = useRef(
     debounce((query: string) => {
       setSearchResults(tokens);
       setSearch(query);
-    }, 300),
+    }, 300)
   ).current;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,7 +61,7 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
         document.body.style.overflow = overflow;
       };
     },
-    [showMobileSearch],
+    [showMobileSearch]
   );
 
   if (isMobile) {
@@ -103,7 +82,7 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
                   value={search}
                   onChange={handleInputChange}
                   placeholder="Symbol or Address..."
-                  className="w-full h-11 pl-10 pr-3 bg-transparent text-[#d1d1d1] text-sm placeholder:text-sm leading-tight focus:outline-none"
+                  className="w-full h-11 pl-10 pr-3 select-none bg-transparent text-[#d1d1d1] text-sm placeholder:text-sm leading-tight focus:outline-none"
                 />
               </div>
               <X onClick={() => setShowMobileSearch(false)} />
@@ -147,7 +126,7 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
           value={search}
           onChange={handleInputChange}
           placeholder="Symbol or Address..."
-          className="flex-1 bg-transparent text-base font-medium text-[#8C8C8C] placeholder-[#8C8C8C] focus:outline-none hover:placeholder-white focus:placeholder-white transition-colors"
+          className="flex-1 select-none bg-transparent text-base font-medium text-[#8C8C8C] placeholder-[#8C8C8C] focus:outline-none hover:placeholder-white focus:placeholder-white transition-colors"
         />
       </div>
 
