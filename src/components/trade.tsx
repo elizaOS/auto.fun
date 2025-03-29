@@ -1,6 +1,6 @@
 import { IToken } from "@/types";
-import { formatNumber } from "@/utils";
-import { ArrowUpDown, Cog, Info, Wallet } from "lucide-react";
+import { formatNumber, sleep } from "@/utils";
+import { ArrowUpDown, Cog, Info, Loader2, Wallet } from "lucide-react";
 import { Fragment, useState } from "react";
 import { twMerge } from "tailwind-merge";
 import Button from "./button";
@@ -8,6 +8,8 @@ import ConfigDialog from "./config-dialog";
 import SkeletonImage from "./skeleton-image";
 import useTokenBalance from "@/hooks/use-token-balance";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "react-toastify";
 
 export default function Trade({ token }: { token: IToken }) {
   const solanaPrice = token?.solPriceUSD || 0;
@@ -31,6 +33,13 @@ export default function Trade({ token }: { token: IToken }) {
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
     token?.status
   );
+
+  const swapMutation = useMutation({
+    mutationFn: async () => sleep(1500),
+    mutationKey: ["swap", isTokenSelling, token.mint],
+    onSuccess: () => toast.success(`Successfully swapped.`),
+    onError: () => toast.error("Something bad happened.."),
+  });
 
   return (
     <div className="relative border p-4 bg-autofun-background-card">
@@ -179,9 +188,16 @@ export default function Trade({ token }: { token: IToken }) {
           variant="secondary"
           className="font-dm-mono"
           size="large"
-          disabled={isDisabled || insufficientBalance}
+          disabled={
+            isDisabled || insufficientBalance || swapMutation?.isPending
+          }
+          onClick={() => swapMutation.mutate()}
         >
-          Swap
+          {swapMutation?.isPending ? (
+            <Loader2 className="size-5 animate-spin" />
+          ) : (
+            "Swap"
+          )}
         </Button>
       </div>
     </div>
