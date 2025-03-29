@@ -25,6 +25,8 @@ export default function Trade({ token }: { token: IToken }) {
       : token?.mint || ""
   );
 
+  console.log("balance", balance);
+
   const insufficientBalance =
     (sellingAmount || 0) > (balance?.data?.formattedBalance || 0);
 

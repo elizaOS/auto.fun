@@ -6,7 +6,10 @@ export interface TokenBalance {
   formattedBalance: number;
 }
 
-const HELIUS_RPC_URL = import.meta.env.VITE_RPC_URL;
+const RPC_URL =
+  (import.meta.env.network === "devnet"
+    ? import.meta.env.VITE_DEVNET_RPC_URL
+    : import.meta.env.VITE_MAINNET_RPC_URL) || import.meta.env.VITE_RPC_URL;
 
 const fetchTokenBalance = async (
   walletAddress: string,
@@ -14,7 +17,7 @@ const fetchTokenBalance = async (
 ): Promise<TokenBalance> => {
   // If the contract address is for native SOL
   if (contractAddress === "So11111111111111111111111111111111111111111") {
-    const response = await fetch(HELIUS_RPC_URL, {
+    const response = await fetch(RPC_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -38,7 +41,7 @@ const fetchTokenBalance = async (
     };
   } else {
     // Fetch SPL token balance using getTokenAccountsByOwner with a mint filter
-    const response = await fetch(HELIUS_RPC_URL, {
+    const response = await fetch(RPC_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

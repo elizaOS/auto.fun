@@ -1346,9 +1346,6 @@ app.post("/reroll-token", async (c) => {
   }
 });
 
-// Constants
-const threshold = 20; // Minimum number of pre-generated tokens to maintain
-
 // Function to generate metadata using Claude
 async function generateMetadata(env: Env) {
   try {
