@@ -7,8 +7,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
+import { env } from "@/utils/env";
 
 const MAX_INITIAL_SOL = 45;
+// Use the token supply and virtual reserves from environment or fallback to defaults
+const TOKEN_SUPPLY = Number(env.tokenSupply) || 1000000000000000;
+const VIRTUAL_RESERVES = Number(env.virtualReserves) || 2800000000;
+const DECIMALS = Number(env.decimals) || 6;
 
 // Tab types
 enum FormTab {
@@ -837,6 +842,10 @@ export const Create = () => {
   >(null);
 
   const [buyValue, setBuyValue] = useState(form.initial_sol || 0);
+  // Add state for input mode: "sol" or "percentage"
+  const [buyInputMode, setBuyInputMode] = useState<"sol" | "percentage">("sol");
+  // Add state for percentage value
+  const [percentageValue, setPercentageValue] = useState("5");
 
   // Error state
   const [errors, setErrors] = useState({
@@ -847,6 +856,7 @@ export const Create = () => {
     initial_sol: "",
     userPrompt: "",
     importAddress: "",
+    percentage: "",
   });
 
   // Store a reference to the FormImageInput's setPreview function
@@ -911,6 +921,34 @@ export const Create = () => {
     }
   }, [form, activeTab]);
 
+  // Keep SOL and percentage values in sync
+  useEffect(() => {
+    // Update buyValue when form.initial_sol changes
+    if (form.initial_sol !== buyValue.toString()) {
+      setBuyValue(form.initial_sol);
+    }
+    
+    // If in percentage mode, calculate percentage from SOL value
+    if (buyInputMode === "percentage") {
+      const solValue = parseFloat(form.initial_sol);
+      if (!isNaN(solValue)) {
+        // Calculate tokens this SOL would buy using the bonding curve
+        const tokenAmount = calculateTokensFromSol(solValue);
+        
+        // Calculate what percentage of total supply that represents
+        const percentOfSupply = calculatePercentage(tokenAmount);
+        
+        // Format and cap at 100%
+        const formattedPercent = Math.min(percentOfSupply, 100).toFixed(2);
+        
+        // Only update if value changed significantly (avoid infinite loop)
+        if (Math.abs(parseFloat(formattedPercent) - parseFloat(percentageValue)) > 0.01) {
+          setPercentageValue(formattedPercent);
+        }
+      }
+    }
+  }, [form.initial_sol, buyInputMode]);
+
   // Handle tab switching
   const handleTabChange = (tab: FormTab) => {
     // Save current form values to appropriate mode-specific state
@@ -961,6 +999,7 @@ export const Create = () => {
       initial_sol: "",
       userPrompt: "",
       importAddress: "",
+      percentage: "",
     });
   };
 
@@ -2057,6 +2096,43 @@ export const Create = () => {
     }
   }, [imageFile, activeTab]);
 
+  // Helper function to calculate token amount based on SOL input using bonding curve formula
+  const calculateTokensFromSol = (solAmount: number): number => {
+    // Convert SOL to lamports
+    const lamports = solAmount * 1e9;
+    
+    // Using constant product formula: (dx * y) / (x + dx)
+    // where x is virtual reserves, y is token supply, dx is input SOL amount
+    const tokenAmount = (lamports * TOKEN_SUPPLY) / (VIRTUAL_RESERVES + lamports);
+    
+    return tokenAmount;
+  };
+
+  // Helper function to calculate percentage of total supply for a given token amount
+  const calculatePercentage = (tokenAmount: number): number => {
+    return (tokenAmount / TOKEN_SUPPLY) * 100;
+  };
+
+  // Helper function to calculate SOL amount needed to get a certain percentage of supply
+  const calculateSolFromPercentage = (percentage: number): number => {
+    // Calculate target token amount based on percentage
+    const targetTokenAmount = (percentage / 100) * TOKEN_SUPPLY;
+    
+    // Reverse the bonding curve formula: (x * y) / (y - dy) - x
+    // where x is virtual reserves, y is token supply, dy is target token amount
+    const lamportsNeeded = (VIRTUAL_RESERVES * targetTokenAmount) / (TOKEN_SUPPLY - targetTokenAmount) - VIRTUAL_RESERVES;
+    
+    // Convert lamports to SOL
+    const solNeeded = lamportsNeeded / 1e9;
+    
+    // Handle edge cases
+    if (isNaN(solNeeded) || !isFinite(solNeeded) || solNeeded < 0) {
+      return MAX_INITIAL_SOL;
+    }
+    
+    return solNeeded;
+  };
+
   return (
     <div className="flex flex-col items-center justify-center">
       {showCoinDrop && <CoinDrop imageUrl={coinDropImageUrl || undefined} />}
@@ -2318,66 +2394,221 @@ export const Create = () => {
               />
 
               <div className="flex flex-row gap-3 justify-end uppercase">
-                <span className="text-white text-xl font-medium">Buy</span>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={buyValue}
-                    onChange={(e) => {
-                      let value = e.target.value.replace(" SOL", "");
-
-                      // Only allow numbers and decimal point
-                      value = value.replace(/[^\d.]/g, "");
-
-                      // Ensure only one decimal point
-                      const decimalCount = (value.match(/\./g) || []).length;
-                      if (decimalCount > 1) {
-                        value = value.replace(/\.+$/, "");
-                      }
-
-                      // Split into whole and decimal parts
-                      const parts = value.split(".");
-                      let wholePart = parts[0];
-                      let decimalPart = parts[1] || "";
-
-                      // Limit whole part to 2 digits
-                      if (wholePart.length > 2) {
-                        wholePart = wholePart.slice(0, 2);
-                      }
-
-                      // Limit decimal part to 2 digits
-                      if (decimalPart.length > 2) {
-                        decimalPart = decimalPart.slice(0, 2);
-                      }
-
-                      // Reconstruct the value
-                      value = decimalPart
-                        ? `${wholePart}.${decimalPart}`
-                        : wholePart;
-
-                      // Ensure total length is max 5 (including decimal point)
-                      if (value.length > 5) {
-                        value = value.slice(0, 5);
-                      }
-
-                      // Parse the value and check if it's within range
-                      const numValue = parseFloat(value);
-                      if (
-                        value === "" ||
-                        (numValue >= 0 && numValue <= MAX_INITIAL_SOL)
-                      ) {
-                        handleChange("initial_sol", value);
-                        setBuyValue(value);
-                      }
-                    }}
-                    min="0"
-                    max={MAX_INITIAL_SOL}
-                    step="0.01"
-                    className="w-26 pr-10 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white"
-                  />
-                  <span className="absolute right-0 text-white text-xl font-medium">
-                    SOL
+                <span className="text-white text-xl font-medium relative group">
+                  Buy
+                  <span className="inline-block ml-1 cursor-help">
+                    <Icons.Info className="h-4 w-4 text-[#8c8c8c] hover:text-white" />
+                    <div className="absolute hidden group-hover:block right-0 bottom-8 w-72 p-3 text-xs normal-case bg-black border border-neutral-800 rounded-md shadow-lg z-10">
+                      <p className="text-white mb-2">
+                        Choose how much of the token you want to buy on launch:
+                      </p>
+                      <p className="text-neutral-400 mb-1">
+                        • <b>SOL</b>: Amount of SOL to invest
+                      </p>
+                      <p className="text-neutral-400 mb-2">
+                        • <b>%</b>: Percentage of token supply to acquire
+                      </p>
+                      <div className="border-t border-neutral-800 pt-2 mt-1">
+                        <p className="text-neutral-400 text-xs">
+                          Total token supply: {TOKEN_SUPPLY.toLocaleString()} tokens
+                        </p>
+                        <p className="text-neutral-400 text-xs mt-1">
+                          Pricing follows a bonding curve, your percentage increases with more SOL.
+                        </p>
+                      </div>
+                    </div>
                   </span>
+                </span>
+                <div className="flex flex-col items-end">
+                  <div className="flex mb-2">
+                    <button 
+                      type="button"
+                      className={`px-3 py-1 text-sm rounded-l-md ${buyInputMode === "sol" 
+                        ? "bg-[#2fd345] text-black font-bold" 
+                        : "bg-[#1A1A1A] text-white hover:bg-[#2A2A2A]"}`}
+                      onClick={() => {
+                        // When switching to SOL, keep the current SOL value
+                        setBuyInputMode("sol");
+                      }}
+                    >
+                      SOL
+                    </button>
+                    <button 
+                      type="button"
+                      className={`px-3 py-1 text-sm rounded-r-md ${buyInputMode === "percentage" 
+                        ? "bg-[#2fd345] text-black font-bold" 
+                        : "bg-[#1A1A1A] text-white hover:bg-[#2A2A2A]"}`}
+                      onClick={() => {
+                        // When switching to percentage, calculate equivalent percentage
+                        setBuyInputMode("percentage");
+                        const solValue = parseFloat(buyValue as string);
+                        if (!isNaN(solValue)) {
+                          // Calculate tokens this SOL would buy using the bonding curve
+                          const tokenAmount = calculateTokensFromSol(solValue);
+                          
+                          // Calculate what percentage of total supply that represents
+                          const percentOfSupply = calculatePercentage(tokenAmount);
+                          
+                          // Format and cap at 100%
+                          const formattedPercent = Math.min(percentOfSupply, 100).toFixed(2);
+                          setPercentageValue(formattedPercent);
+                        }
+                      }}
+                    >
+                      %
+                    </button>
+                  </div>
+                  
+                  {buyInputMode === "sol" ? (
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={buyValue}
+                        onChange={(e) => {
+                          let value = e.target.value.replace(" SOL", "");
+
+                          // Only allow numbers and decimal point
+                          value = value.replace(/[^\d.]/g, "");
+
+                          // Ensure only one decimal point
+                          const decimalCount = (value.match(/\./g) || []).length;
+                          if (decimalCount > 1) {
+                            value = value.replace(/\.+$/, "");
+                          }
+
+                          // Split into whole and decimal parts
+                          const parts = value.split(".");
+                          let wholePart = parts[0];
+                          let decimalPart = parts[1] || "";
+
+                          // Limit whole part to 2 digits
+                          if (wholePart.length > 2) {
+                            wholePart = wholePart.slice(0, 2);
+                          }
+
+                          // Limit decimal part to 2 digits
+                          if (decimalPart.length > 2) {
+                            decimalPart = decimalPart.slice(0, 2);
+                          }
+
+                          // Reconstruct the value
+                          value = decimalPart
+                            ? `${wholePart}.${decimalPart}`
+                            : wholePart;
+
+                          // Ensure total length is max 5 (including decimal point)
+                          if (value.length > 5) {
+                            value = value.slice(0, 5);
+                          }
+
+                          // Parse the value and check if it's within range
+                          const numValue = parseFloat(value);
+                          if (
+                            value === "" ||
+                            (numValue >= 0 && numValue <= MAX_INITIAL_SOL)
+                          ) {
+                            handleChange("initial_sol", value);
+                            setBuyValue(value);
+                          }
+                        }}
+                        min="0"
+                        max={MAX_INITIAL_SOL}
+                        step="0.01"
+                        className="w-26 pr-10 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white"
+                      />
+                      <span className="absolute right-0 text-white text-xl font-medium">
+                        SOL
+                      </span>
+                      {parseFloat(buyValue as string) > 0 && (
+                        <div className="absolute right-0 top-10 text-right text-xs text-neutral-400">
+                          ≈ {calculatePercentage(calculateTokensFromSol(parseFloat(buyValue as string))).toFixed(4)}% of supply
+                          <div className="mt-1">
+                            ≈ {(calculateTokensFromSol(parseFloat(buyValue as string)) / (10 ** DECIMALS)).toLocaleString(undefined, {maximumFractionDigits: 2})} tokens
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={percentageValue}
+                        onChange={(e) => {
+                          let value = e.target.value.replace(" %", "");
+
+                          // Only allow numbers and decimal point
+                          value = value.replace(/[^\d.]/g, "");
+
+                          // Ensure only one decimal point
+                          const decimalCount = (value.match(/\./g) || []).length;
+                          if (decimalCount > 1) {
+                            value = value.replace(/\.+$/, "");
+                          }
+
+                          // Split into whole and decimal parts
+                          const parts = value.split(".");
+                          let wholePart = parts[0];
+                          let decimalPart = parts[1] || "";
+
+                          // Limit whole part to 2 digits (max 99%)
+                          if (wholePart.length > 2) {
+                            wholePart = wholePart.slice(0, 2);
+                          }
+
+                          // Limit decimal part to 2 digits
+                          if (decimalPart.length > 2) {
+                            decimalPart = decimalPart.slice(0, 2);
+                          }
+
+                          // Reconstruct the value
+                          value = decimalPart
+                            ? `${wholePart}.${decimalPart}`
+                            : wholePart;
+
+                          // Ensure total length is max 5 (including decimal point)
+                          if (value.length > 5) {
+                            value = value.slice(0, 5);
+                          }
+
+                          // Parse the value and check if it's within range (0-100%)
+                          const numValue = parseFloat(value);
+                          if (
+                            value === "" ||
+                            (numValue >= 0 && numValue <= 100)
+                          ) {
+                            setPercentageValue(value);
+                            
+                            // Calculate SOL needed to get this percentage using the bonding curve
+                            if (numValue > 0) {
+                              const solNeeded = calculateSolFromPercentage(numValue);
+                              
+                              // Cap at MAX_INITIAL_SOL and format
+                              const cappedSol = Math.min(solNeeded, MAX_INITIAL_SOL).toFixed(2);
+                              handleChange("initial_sol", cappedSol);
+                            } else {
+                              // Handle 0% case
+                              handleChange("initial_sol", "0");
+                            }
+                          }
+                        }}
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        className="w-26 pr-8 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white"
+                      />
+                      <span className="absolute right-0 text-white text-xl font-medium">
+                        %
+                      </span>
+                      {parseFloat(percentageValue) > 0 && (
+                        <div className="absolute right-0 top-10 text-right text-xs text-neutral-400">
+                          ≈ {parseFloat(form.initial_sol).toFixed(2)} SOL
+                          <div className="mt-1">
+                            ≈ {((parseFloat(percentageValue) / 100) * TOKEN_SUPPLY / (10 ** DECIMALS)).toLocaleString(undefined, {maximumFractionDigits: 2})} tokens
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
