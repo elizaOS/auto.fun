@@ -2565,57 +2565,45 @@ export const Create = () => {
                           value={buyValue}
                           onChange={(e) => {
                             let value = e.target.value.replace(" SOL", "");
-
-                            // Only allow numbers and decimal point
                             value = value.replace(/[^\d.]/g, "");
-
-                            // Ensure only one decimal point
                             const decimalCount = (value.match(/\./g) || [])
                               .length;
                             if (decimalCount > 1) {
                               value = value.replace(/\.+$/, "");
                             }
-
-                            // Split into whole and decimal parts
                             const parts = value.split(".");
                             let wholePart = parts[0];
                             let decimalPart = parts[1] || "";
-
-                            // Limit whole part to 2 digits
                             if (wholePart.length > 2) {
                               wholePart = wholePart.slice(0, 2);
                             }
-
-                            // Limit decimal part to 2 digits
                             if (decimalPart.length > 2) {
                               decimalPart = decimalPart.slice(0, 2);
                             }
-
-                            // Reconstruct the value
                             value = decimalPart
                               ? `${wholePart}.${decimalPart}`
                               : wholePart;
-
-                            // Ensure total length is max 5 (including decimal point)
                             if (value.length > 5) {
                               value = value.slice(0, 5);
                             }
-
-                            // Parse the value and check if it's within range
                             const numValue = parseFloat(value);
                             if (
-                              value === "" ||
-                              (numValue >= 0 && numValue <= MAX_INITIAL_SOL)
+                              value !== "" &&
+                              !isNaN(numValue) &&
+                              numValue > 45
                             ) {
-                              handleChange("initial_sol", value);
-                              setBuyValue(value);
+                              value = "45";
                             }
+
+                            handleChange("initial_sol", value);
+                            setBuyValue(value);
                           }}
                           min="0"
-                          max={MAX_INITIAL_SOL}
+                          max="45"
                           step="0.01"
                           className="w-26 pr-10 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white"
                         />
+
                         <span className="absolute right-0 text-white text-xl font-medium">
                           SOL
                         </span>
