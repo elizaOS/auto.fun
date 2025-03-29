@@ -126,12 +126,7 @@ jobs:
           DATABASE_ID: ${{ secrets.DATABASE_ID }}
           DATABASE_NAME_DEV: ${{ env.DATABASE_NAME_DEV }}
           DATABASE_ID_DEV: ${{ secrets.DATABASE_ID_DEV || '00ade209-86ac-46a9-bed5-b74aaaac4ad4' }}
-          # API URL for the worker
-          API_URL: ${{ env.WORKER_ENV == 'production' && 'https://api.autofun.pages.dev' || 'https://api-dev.autofun.pages.dev' }}
-          # Additional secrets
-          API_KEY: ${{ secrets.API_KEY }}
           WALLET_PRIVATE_KEY: ${{ secrets.WALLET_PRIVATE_KEY }}
-          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
 
       # Deploy to Pages
@@ -151,13 +146,10 @@ jobs:
       - name: Set Cloudflare Pages environment variables
         if: success()
         run: |
-          echo "Setting environment variables for Cloudflare Pages project: ${{ env.PROJECT_NAME || 'autofun' }}"
-          API_URL="${{ env.WORKER_ENV == 'production' && 'https://api.autofun.pages.dev' || 'https://api-dev.autofun.pages.dev' }}"
-          
+          echo "Setting environment variables for Cloudflare Pages project: ${{ env.PROJECT_NAME || 'autofun' }}"          
           # Using wrangler to set environment variables for Pages project
           # Note: This step is skipped for now because it's not working correctly
           # We'll add environment variables manually in the Cloudflare dashboard
-          echo "API URL for the environment: $API_URL"
           echo "Please set this manually in Cloudflare Pages dashboard for ${{ env.PROJECT_NAME || 'autofun' }}"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}

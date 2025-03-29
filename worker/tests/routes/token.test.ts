@@ -34,13 +34,6 @@ describe("Token API Endpoints", () => {
 
     const { baseUrl } = ctx.context;
 
-    // Set API key from environment - CRITICAL FOR AUTHENTICATION
-    apiKey = process.env.API_KEY || "test-api-key";
-    console.log(
-      "Using API key for authentication:",
-      apiKey ? "Available" : "Not available",
-    );
-
     // Create a test user keypair for authentication
     userKeypair = Keypair.generate();
     const publicKey = userKeypair.publicKey.toBase58();
@@ -55,7 +48,7 @@ describe("Token API Endpoints", () => {
           address: publicKey,
           name: "Test User",
         },
-        { "X-API-Key": apiKey },
+        {},
       );
       console.log("User registration status:", registerResponse.status);
     } catch (err) {
@@ -297,9 +290,7 @@ describe("Token API Endpoints", () => {
       success?: boolean;
       token?: any;
       error?: string;
-    }>(apiUrl(baseUrl, "/new_token"), "POST", tokenData, {
-      "X-API-Key": apiKey,
-    });
+    }>(apiUrl(baseUrl, "/new_token"), "POST", tokenData, {});
 
     console.log(
       "Token creation response:",
@@ -349,9 +340,7 @@ describe("Token API Endpoints", () => {
             success?: boolean;
             token?: any;
             error?: string;
-          }>(apiUrl(baseUrl, "/new_token"), "POST", directTxData, {
-            "X-API-Key": apiKey,
-          });
+          }>(apiUrl(baseUrl, "/new_token"), "POST", directTxData, {});
 
         if (simpleTxResp.status === 200) {
           console.log("Token creation succeeded with simple tx_id");
@@ -394,9 +383,7 @@ describe("Token API Endpoints", () => {
               success?: boolean;
               token?: any;
               error?: string;
-            }>(apiUrl(baseUrl, "/new_token"), "POST", finalAttempt, {
-              "X-API-Key": apiKey,
-            });
+            }>(apiUrl(baseUrl, "/new_token"), "POST", finalAttempt, {});
 
           if (finalResp.status === 200) {
             console.log("Token creation succeeded with final attempt");
@@ -600,7 +587,6 @@ describe("Token API Endpoints", () => {
   it("should create a new message for a token", async () => {
     if (!ctx.context) throw new Error("Test context not initialized");
     if (!testState.tokenPubkey) throw new Error("Token pubkey not available");
-    if (!apiKey) throw new Error("API key not available - required for auth");
 
     const { baseUrl } = ctx.context;
 
@@ -618,7 +604,7 @@ describe("Token API Endpoints", () => {
     }
 
     // Use API key for authentication
-    const headers = { "X-API-Key": apiKey };
+    const headers = {};
 
     // Create a message
     const messageData = {
@@ -679,7 +665,6 @@ describe("Token API Endpoints", () => {
   it("should create and like a message for a token", async () => {
     if (!ctx.context) throw new Error("Test context not initialized");
     if (!testState.tokenPubkey) throw new Error("Token pubkey not available");
-    if (!apiKey) throw new Error("API key not available - required for auth");
 
     const { baseUrl } = ctx.context;
 
@@ -697,7 +682,7 @@ describe("Token API Endpoints", () => {
     }
 
     // Use API key for authentication
-    const headers = { "X-API-Key": apiKey };
+    const headers = {};
 
     // Create a message
     const messageRequest = {
@@ -746,7 +731,6 @@ describe("Token API Endpoints", () => {
   it("should handle harvest transaction request", async () => {
     if (!ctx.context) throw new Error("Test context not initialized");
     if (!testState.tokenPubkey) throw new Error("Token pubkey not available");
-    if (!apiKey) throw new Error("API key not available - required for auth");
 
     const { baseUrl } = ctx.context;
 
@@ -767,7 +751,7 @@ describe("Token API Endpoints", () => {
     const owner = userKeypair.publicKey.toBase58();
 
     // Use API key for authentication
-    const headers = { "X-API-Key": apiKey };
+    const headers = {};
 
     console.log(
       `Fetching GET ${apiUrl(baseUrl, `/tokens/${testState.tokenPubkey}/harvest-tx?owner=${owner}`)}`,

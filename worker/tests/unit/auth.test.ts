@@ -1,20 +1,18 @@
-import { beforeAll, describe, expect, it, afterEach, vi } from "vitest";
 import { Keypair } from "@solana/web3.js";
 import bs58 from "bs58";
-import * as nacl from "tweetnacl";
-import { TextEncoder } from "util";
 import { config } from "dotenv";
 import { Hono } from "hono";
+import * as nacl from "tweetnacl";
+import { TextEncoder } from "util";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { authenticate, generateNonce } from "../../auth";
 import { Env } from "../../env";
-import { authenticate, authStatus, generateNonce, logout } from "../../auth";
-import { apiKeyAuth } from "../../middleware";
 
 config({ path: ".env.test" });
 
 // Test environment setup with partial implementation of Env interface
 const testEnv: Partial<Env> = {
   NODE_ENV: "test",
-  API_KEY: process.env.API_KEY || "test-api-key",
 };
 
 // Create a proper mock for the Cloudflare ExecutionContext
@@ -99,9 +97,6 @@ api.post("/logout", async (c) => {
   }
   return c.json({ message: "Logout successful" });
 });
-
-api.get("/tokens", apiKeyAuth, (c) => c.json({ success: true }));
-
 // Mount the api sub-app under /api
 testApp.route("/api", api);
 
@@ -254,26 +249,6 @@ describe("Authentication Functions", () => {
 
       const authStatusData = await authStatusResponse.json();
       expect(authStatusData).toHaveProperty("authenticated", false);
-    });
-  });
-
-  describe("API Key Authentication", () => {
-    it("should allow access with valid API key", async () => {
-      const apiKey = process.env.API_KEY || "test-api-key";
-
-      const response = await makeRequest("/api/tokens", "GET", undefined, {
-        "X-API-Key": apiKey,
-      });
-
-      expect(response.status).toBe(200);
-    });
-
-    it("should deny access with invalid API key", async () => {
-      const response = await makeRequest("/api/tokens", "GET", undefined, {
-        "X-API-Key": "invalid-api-key",
-      });
-
-      expect(response.status).toBe(401);
     });
   });
 });

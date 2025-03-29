@@ -55,19 +55,3 @@ export const requireAuth: MiddlewareHandler<{
   }
   await next();
 };
-
-export const apiKeyAuth: MiddlewareHandler<{
-  Bindings: Env;
-}> = async (c, next) => {
-  const apiKey = c.req.header("x-api-key");
-
-  if (!apiKey || apiKey !== c.env.API_KEY) {
-    logger.log(
-      "Invalid API key attempt:",
-      c.req.raw.headers.get("cf-connecting-ip"),
-    );
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  await next();
-};

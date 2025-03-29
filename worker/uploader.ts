@@ -67,7 +67,7 @@ export async function uploadToCloudflare(
     // For development and testing, use a local URL when R2 is available via Miniflare
     if (isLocalDev) {
       // We're in local development mode with Miniflare
-      const localDevBaseUrl = "http://localhost:8787/api/direct-file";
+      const localDevBaseUrl = "http://localhost:8787/api/image";
 
       // Prepare data for upload
       let objectData: ArrayBuffer;
@@ -102,7 +102,7 @@ export async function uploadToCloudflare(
         });
       }
 
-      // Generate local dev URL that uses our direct-file endpoint
+      // Generate local dev URL that uses our image endpoint
       const localUrl = `${localDevBaseUrl}/${objectKey}`;
       logger.log(`Successfully uploaded to local R2 (Miniflare): ${localUrl}`);
 

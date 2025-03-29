@@ -14,16 +14,14 @@ describe("CacheService", () => {
 
     // Create a minimal test environment
     env = {
+      AI: {} as any,
+      PROGRAM_ID: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
       NODE_ENV: "test",
       NETWORK: "devnet",
       DECIMALS: "6",
       TOKEN_SUPPLY: "1000000000000000",
       VIRTUAL_RESERVES: "28000000000",
       CURVE_LIMIT: "113000000000",
-      API_KEY: "test-api-key",
-      USER_API_KEY: "test-user-api-key",
-      ADMIN_KEY: "test-admin-key",
-      ADMIN_API_KEY: "test-admin-api-key",
       FAL_API_KEY: "test-fal-api-key",
       SWAP_FEE: "100",
       DB: {} as any,

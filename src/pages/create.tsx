@@ -1673,7 +1673,7 @@ export const Create = () => {
             // Extract the filename from the R2 URL
             const filename = imageUrl.split("/").pop();
             // Use local endpoint instead
-            imageUrl = `${import.meta.env.VITE_API_URL}/api/direct-file/${filename}`;
+            imageUrl = `${import.meta.env.VITE_API_URL}/api/image/${filename}`;
           }
 
           const imageBlob = await fetch(imageUrl).then((r) => r.blob());
@@ -1987,7 +1987,7 @@ export const Create = () => {
           metadataUrl,
         });
         console.log("Token creation confirmed");
-        
+
         // Trigger confetti to celebrate successful minting
         if (window.createConfettiFireworks) {
           window.createConfettiFireworks();
@@ -2118,7 +2118,7 @@ export const Create = () => {
               // Extract the filename from the R2 URL
               const filename = imageUrl.split("/").pop();
               // Use local endpoint instead
-              imageUrl = `${import.meta.env.VITE_API_URL}/api/direct-file/${filename}`;
+              imageUrl = `${import.meta.env.VITE_API_URL}/api/image/${filename}`;
             }
 
             const imageBlob = await fetch(imageUrl).then((r) => r.blob());

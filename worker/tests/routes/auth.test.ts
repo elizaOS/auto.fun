@@ -15,9 +15,6 @@ describe("Authentication API Endpoints", () => {
   let authHelper: AuthHelper;
 
   beforeAll(async () => {
-    // Get API key from environment or set a default for tests
-    apiKey = process.env.API_KEY || "";
-
     if (!ctx.context) throw new Error("Test context not initialized");
     authHelper = new AuthHelper(ctx.context.baseUrl);
 
@@ -109,31 +106,6 @@ describe("Authentication API Endpoints", () => {
     // Verify auth status after logout
     const isAuthenticated = await authHelper.checkAuthStatus();
     expect(isAuthenticated).toBe(false);
-  });
-
-  // Additional tests for API key authentication
-  it("should handle API key authentication", async () => {
-    if (!ctx.context) throw new Error("Test context not initialized");
-
-    // Skip test if API_KEY is not available
-    if (!apiKey) {
-      throw new Error(
-        "API_KEY environment variable is required - cannot test API key authentication",
-      );
-    }
-
-    const { baseUrl } = ctx.context;
-
-    console.log("Testing API key authentication");
-    const { response } = await fetchWithAuth(
-      apiUrl(baseUrl, "/tokens"),
-      "GET",
-      undefined,
-      { "X-API-Key": apiKey },
-    );
-
-    // Should be authorized with valid API key
-    expect(response.status).toBe(200);
   });
 
   // Test the reuse of authentication across multiple requests

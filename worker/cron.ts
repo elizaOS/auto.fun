@@ -386,9 +386,9 @@ export async function monitorSpecificToken(
   try {
     const wsClient = getWebSocketClient(env);
     const connection = new Connection(
-      (env.NETWORK === "devnet"
+      env.NETWORK === "devnet"
         ? env.DEVNET_SOLANA_RPC_URL
-        : env.MAINNET_SOLANA_RPC_URL) || "https://api.mainnet-beta.solana.com",
+        : env.MAINNET_SOLANA_RPC_URL,
     );
 
     // Validate programId first since we'll always need this
@@ -640,9 +640,9 @@ export async function monitorTokenEvents(env: Env): Promise<void> {
 
     // Create connection to Solana
     const connection = new Connection(
-      (env.NETWORK === "devnet"
+      env.NETWORK === "devnet"
         ? env.DEVNET_SOLANA_RPC_URL
-        : env.MAINNET_SOLANA_RPC_URL) || "https://api.mainnet-beta.solana.com",
+        : env.MAINNET_SOLANA_RPC_URL,
     );
 
     // Validate program ID is a proper base58 string before creating PublicKey
@@ -731,7 +731,7 @@ export async function monitorTokenEvents(env: Env): Promise<void> {
   }
 }
 
-export async function cron(env: Env): Promise<void> {
+export async function cron(env: Env, ctx: ExecutionContext): Promise<void> {
   try {
     logger.log("Running scheduled tasks...");
 

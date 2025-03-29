@@ -1,15 +1,22 @@
+import { Connection, PublicKey } from "@solana/web3.js";
 import { desc, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
-import { monitorSpecificToken, cron } from "../cron";
-import { getDB, swaps, tokenHolders, tokens, users } from "../db";
+import { monitorSpecificToken } from "../cron";
+import {
+  getDB,
+  Swap,
+  swaps,
+  TokenHolder,
+  tokenHolders,
+  tokens,
+  users,
+} from "../db";
 import { Env } from "../env";
 import { logger } from "../logger";
-import { calculateTokenMarketData, getSOLPrice } from "../mcap";
-import { bulkUpdatePartialTokens, getRpcUrl } from "../util";
-import { Connection, PublicKey } from "@solana/web3.js";
-import { getWebSocketClient } from "../websocket-client";
-import { updateTokenInDB } from "../cron";
+import { getSOLPrice } from "../mcap";
+import { getRpcUrl } from "../util";
 import { createTestSwap } from "../websocket"; // Import the new functions
+import { getWebSocketClient } from "../websocket-client";
 
 // Define the router with environment typing
 const tokenRouter = new Hono<{
@@ -987,93 +994,6 @@ tokenRouter.get("/tokens/:mint/harvest-tx", async (c) => {
   }
 });
 
-// Create new token endpoint
-tokenRouter.post("/new_token", async (c) => {
-  try {
-    // API key verification
-    const apiKey = c.req.header("X-API-Key");
-    if (apiKey !== c.env.API_KEY && apiKey !== "test-api-key") {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const body = await c.req.json();
-
-    // Validate input
-    if (!body.name || !body.symbol) {
-      return c.json({ error: "Missing required fields: name, symbol" }, 400);
-    }
-
-    // Get creator from auth if not provided
-    let creator = body.creator;
-    if (!creator) {
-      const user = c.get("user");
-      if (user && user.publicKey) {
-        creator = user.publicKey;
-      } else {
-        // For development/test, use a placeholder creator
-        if (c.env.NODE_ENV === "development" || c.env.NODE_ENV === "test") {
-          creator = "test-creator-" + crypto.randomUUID().slice(0, 8);
-        } else {
-          return c.json(
-            { error: "Missing creator field and no authenticated user" },
-            400,
-          );
-        }
-      }
-    }
-
-    // Create a basic token record
-    const tokenId = crypto.randomUUID();
-    const now = new Date().toISOString();
-
-    const db = getDB(c.env);
-
-    console.log("******* body", body);
-
-    try {
-      // Insert token with properties from the schema
-      await db.insert(tokens).values({
-        id: tokenId,
-        name: body.name,
-        ticker: body.symbol,
-        url: body.url || "https://example.com",
-        image: body.image || "https://example.com/default.png",
-        mint: body.mint,
-        creator,
-        createdAt: now,
-        lastUpdated: now,
-        txId: body.txId,
-      });
-
-      return c.json({
-        success: true,
-        token: {
-          id: tokenId,
-          name: body.name,
-          symbol: body.symbol,
-          mint: body.mint,
-          creator,
-        },
-      });
-    } catch (dbError: any) {
-      logger.error("Database error creating token:", dbError);
-      return c.json(
-        {
-          error: "Database error when creating token",
-          details: dbError.message,
-        },
-        500,
-      );
-    }
-  } catch (error: any) {
-    logger.error("Error creating new token:", error);
-    return c.json(
-      { error: "Failed to create token", details: error.message },
-      500,
-    );
-  }
-});
-
 // Token price endpoint
 tokenRouter.get("/token/:mint/price", async (c) => {
   try {
@@ -1837,32 +1757,6 @@ tokenRouter.get("/dev/update-token/:mint", async (c) => {
   }
 });
 
-// Manual cron job trigger - useful for development mode
-tokenRouter.get("/dev/run-cron", async (c) => {
-  try {
-    // Only allow in development environment
-    if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
-      return c.json(
-        { error: "This endpoint is only available in development" },
-        403,
-      );
-    }
-
-    await cron(c.env);
-
-    return c.json({
-      success: true,
-      message: "Cron job executed successfully",
-    });
-  } catch (error) {
-    logger.error("Error running cron job:", error);
-    return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
-  }
-});
-
 // Add an endpoint to fix a specific token's virtualReserves value
 tokenRouter.get("/dev/fix-token/:mint", async (c) => {
   try {
@@ -2053,7 +1947,6 @@ tokenRouter.post("/dev/update-token-data/:mint", async (c) => {
   }
 });
 
-// Add this function to worker/routes/token.ts or worker/cron.ts
 export async function updateHoldersCache(
   env: Env,
   mint: string,
@@ -2099,7 +1992,7 @@ export async function updateHoldersCache(
     );
 
     // Create an array to store holder records
-    const holders = [];
+    const holders: TokenHolder[] = [];
 
     // Process each account - get owner and details
     for (const account of largestAccounts.value) {
@@ -2536,7 +2429,7 @@ tokenRouter.get("/dev/add-all-test-data/:mint", async (c) => {
 
     // Create mock swap data - 10 swaps over the last few days
     const now = new Date();
-    const swapRecords = [];
+    const swapRecords: Swap[] = [];
 
     // Create 10 swaps with alternating directions (buy/sell)
     for (let i = 0; i < 10; i++) {
@@ -2552,6 +2445,7 @@ tokenRouter.get("/dev/add-all-test-data/:mint", async (c) => {
         direction: direction,
         amountIn: 1000000000 + Math.random() * 500000000, // Random amount
         amountOut: 500000000 + Math.random() * 300000000, // Random amount
+        priceImpact: 0, // TBD
         price: price,
         txId: `test-tx-${i}-${crypto.randomUUID().slice(0, 8)}`,
         timestamp: timestamp.toISOString(),
@@ -2754,7 +2648,7 @@ tokenRouter.get("/api/swaps/:mint", async (c) => {
 
       // Create mock swap data with exact fields expected by frontend
       const now = new Date();
-      const swapRecords = [];
+      const swapRecords: Swap[] = [];
 
       // Create 5 test swaps
       for (let i = 0; i < 5; i++) {
@@ -2764,6 +2658,7 @@ tokenRouter.get("/api/swaps/:mint", async (c) => {
         swapRecords.push({
           id: crypto.randomUUID(),
           tokenMint: mint,
+          priceImpact: 0,
           user: "DvmXXp4tSXYwZJhM5HjtEUvQ6SfxwkA7daE1jQgCX1ri", // Example user
           type: direction === 0 ? "buy" : "sell", // Add type field to fix linter error
           direction: direction,

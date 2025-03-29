@@ -338,20 +338,3 @@ export const requireAuth = async (
   // }
   await next();
 };
-
-export const apiKeyAuth = async (
-  c: Context<{ Bindings: Env }>,
-  next: Function,
-) => {
-  const apiKey = c.req.header("x-api-key");
-
-  if (!apiKey || apiKey !== c.env.API_KEY) {
-    logger.log(
-      "Invalid API key attempt:",
-      c.req.raw.headers.get("cf-connecting-ip"),
-    );
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  await next();
-};
