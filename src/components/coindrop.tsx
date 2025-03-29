@@ -720,16 +720,8 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
     coinInstancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     coinInstancedMesh.castShadow = true;
     coinInstancedMesh.receiveShadow = true;
-
-    // Initialize all instances to be offscreen
-    const offscreenMatrix = new THREE.Matrix4();
-    const offscreenPosition = new THREE.Vector3(10000, 10000, 10000);
-    offscreenMatrix.setPosition(offscreenPosition);
-    for (let i = 0; i < MAX_COINS; i++) {
-      coinInstancedMesh.setMatrixAt(i, offscreenMatrix);
-    }
-    coinInstancedMesh.instanceMatrix.needsUpdate = true;
-
+    // Disable frustum culling so offscreen coins are still rendered
+    coinInstancedMesh.frustumCulled = false;
     scene.add(coinInstancedMesh);
 
     // Store the instanced mesh in the ref
@@ -738,6 +730,14 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
     // Create a temporary matrix and dummy object for updates
     const matrix = new THREE.Matrix4();
     const dummyObject = new THREE.Object3D();
+    
+    // Pre-position all instances far off screen initially
+    for (let i = 0; i < MAX_COINS; i++) {
+      dummyObject.position.set(-2000, 0, 0);
+      dummyObject.updateMatrix();
+      coinInstancedMesh.setMatrixAt(i, dummyObject.matrix);
+    }
+    coinInstancedMesh.instanceMatrix.needsUpdate = true;
 
     // Function to create and drop a single coin
     function createCoin() {
