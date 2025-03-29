@@ -2520,6 +2520,7 @@ export const Create = () => {
                 }
                 label="Description"
                 minRows={1}
+                placeholder="Description"
                 maxLength={2000}
                 error={errors.description}
                 onClick={() => generateAll()}
