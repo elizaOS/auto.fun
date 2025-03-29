@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
+import useTokenBalance from "@/hooks/use-token-balance";
 
 const MAX_INITIAL_SOL = 45;
 // Use the token supply and virtual reserves from environment or fallback to defaults
@@ -797,7 +798,6 @@ export const Create = () => {
   });
   const [userPrompt, setUserPrompt] = useState("");
   const [isProcessingPrompt, setIsProcessingPrompt] = useState(false);
-  const hasEnoughSolana = false;
 
   // Effect to clear import token data if not in import tab
   useEffect(() => {
@@ -926,7 +926,14 @@ export const Create = () => {
   >(null);
 
   const [buyValue, setBuyValue] = useState(form.initial_sol || 0);
+  const wallet = useWallet();
+  const balance = useTokenBalance(
+    wallet.publicKey?.toBase58() || "",
+    "So11111111111111111111111111111111111111111"
+  );
 
+  const insufficientBalance =
+    Number(buyValue) > Number(balance?.data?.formattedBalance || 0);
   // Error state
   const [errors, setErrors] = useState({
     name: "",
@@ -2645,11 +2652,16 @@ export const Create = () => {
           {(activeTab === FormTab.MANUAL ||
             (activeTab === FormTab.AUTO && hasGeneratedToken) ||
             (activeTab === FormTab.IMPORT && hasStoredToken)) && (
-            <div className="grid grid-cols-1 gap-x-3 gap-y-6 mx-auto">
+            <div className="flex flex-col items-center gap-3">
               <button
                 type="submit"
                 className="p-0 transition-colors cursor-pointer disabled:opacity-50 select-none"
-                disabled={!isFormValid || isSubmitting || !isAuthenticated}
+                disabled={
+                  !isFormValid ||
+                  isSubmitting ||
+                  !isAuthenticated ||
+                  insufficientBalance
+                }
               >
                 <img
                   src={
@@ -2658,7 +2670,7 @@ export const Create = () => {
                       : "/create/launchup.svg"
                   }
                   alt="Launch"
-                  className="h-32 pr-4 select-none pointer-events-none"
+                  className="h-32 pr-4 mb-4 select-none pointer-events-none"
                   onMouseDown={(e) => {
                     const img = e.target as HTMLImageElement;
                     if (!isSubmitting) {
@@ -2679,17 +2691,17 @@ export const Create = () => {
               </button>
 
               {!isFormValid && (
-                <p className="text-red-500 text-center text-sm m-4">
+                <p className="text-red-500 text-center text-sm">
                   Please fill in all required fields
                 </p>
               )}
-              {!hasEnoughSolana ? (
-                <p className="text-red-500 text-center text-sm m-4">
+              {insufficientBalance ? (
+                <p className="text-red-500 text-center text-sm">
                   You don't have enough SOL.
                 </p>
               ) : null}
               {!isAuthenticated && (
-                <p className="text-red-500 text-center text-sm m-4">
+                <p className="text-red-500 text-center text-sm">
                   Please connect your wallet to create a token
                 </p>
               )}
