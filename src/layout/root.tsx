@@ -17,7 +17,7 @@ export default function Layout() {
           <main className="flex-grow container pb-10">
             <Outlet />
             <BreakpointIndicator />
-            <ToastContainer position="bottom-right" />
+            <ToastContainer position="bottom-right" theme="dark" />
           </main>
           <Footer />
           {/* <div className="block md:hidden">

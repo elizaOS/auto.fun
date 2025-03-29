@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { env } from "@/utils/env";
+import { toast } from "react-toastify";
 
 const MAX_FILE_SIZE_MB = 5;
 
@@ -80,7 +81,7 @@ export const FormImageInput = ({
       const file = e.target.files?.[0] || null;
       if (file) {
         if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-          alert(`The uploaded image exceeds the ${MAX_FILE_SIZE_MB}MB limit.`);
+          toast.error(`The uploaded image exceeds the ${MAX_FILE_SIZE_MB}MB limit.`);
           return;
         }
 
@@ -89,7 +90,7 @@ export const FormImageInput = ({
             file.type,
           )
         ) {
-          alert("Only JPEG, PNG, GIF, and MP4 files are accepted");
+          toast.error("Only JPEG, PNG, GIF, and MP4 files are accepted");
           return;
         }
 
@@ -165,7 +166,7 @@ export const FormImageInput = ({
       }
     } catch (err) {
       console.error("Error generating image:", err);
-      alert("Failed to generate image. Please try again.");
+      toast.error("Failed to generate image. Please try again.");
     } finally {
       // Make sure to reset the generating state
       setIsGenerating(false);

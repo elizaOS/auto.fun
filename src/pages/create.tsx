@@ -10,6 +10,7 @@ import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
 import { EmptyState } from "@/components/empty-state";
 import useTokenBalance from "@/hooks/use-token-balance";
+import { toast } from "react-toastify";
 
 const MAX_INITIAL_SOL = 45;
 // Use the token supply and virtual reserves from environment or fallback to defaults
@@ -311,13 +312,15 @@ const FormImageInput = ({
 
         // Check if file is an image
         if (!file.type.startsWith("image/")) {
-          alert("Please select an image file");
+          toast.error("Please select an image file");
           return;
         }
 
         // Check file size (limit to 5MB)
         if (file.size > 5 * 1024 * 1024) {
-          alert("File is too large. Please select an image less than 5MB.");
+          toast.error(
+            "File is too large. Please select an image less than 5MB."
+          );
           return;
         }
 
@@ -343,13 +346,15 @@ const FormImageInput = ({
 
         // Check if file is an image
         if (!file.type.startsWith("image/")) {
-          alert("Please drop an image file");
+          toast.error("Please drop an image file");
           return;
         }
 
         // Check file size (limit to 5MB)
         if (file.size > 5 * 1024 * 1024) {
-          alert("File is too large. Please select an image less than 5MB.");
+          toast.error(
+            "File is too large. Please select an image less than 5MB."
+          );
           return;
         }
 
@@ -503,7 +508,7 @@ const FormImageInput = ({
                 />
                 <div className="border-2 border-dashed border-neutral-700 rounded-lg p-8 flex flex-col items-center justify-center w-4/5 h-4/5">
                   {/* Placeholder logo when empty */}
-                  <EmptyState maxSizeMb={5}/>
+                  <EmptyState maxSizeMb={5} />
                   <p className="text-neutral-300 text-center mb-2">
                     Click or drag and drop an image here
                   </p>
@@ -1371,7 +1376,7 @@ export const Create = () => {
       // Reset generating state in case of error
       setIsGenerating(false);
       setGeneratingField(null);
-      alert(
+      toast.error(
         error instanceof Error
           ? error.message
           : "Failed to generate token from prompt. Please try again."
@@ -1744,7 +1749,7 @@ export const Create = () => {
         setHasGeneratedToken(true);
       } catch (error) {
         console.error("Error generating metadata:", error);
-        alert(
+        toast.error(
           error instanceof Error
             ? error.message
             : "Failed to generate metadata. Please try again."
@@ -1998,7 +2003,7 @@ export const Create = () => {
       navigate(`/token/${tokenMint}`);
     } catch (error) {
       console.error("Error creating token:", error);
-      alert(
+      toast.error(
         error instanceof Error
           ? error.message
           : "Failed to create token. Please try again."
