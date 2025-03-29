@@ -104,6 +104,9 @@
   "resolutions": {
     "@solana/spl-token": "^0.4.13"
   },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.38.0"
+  },
   "overrides": {
     "@solana/spl-token": "^0.4.13"
   },
