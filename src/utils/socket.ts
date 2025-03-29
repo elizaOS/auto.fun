@@ -11,6 +11,8 @@ class SocketWrapper {
   private maxReconnectInterval = 5000;
   private reconnecting = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private connectionPromise: Promise<void> | null = null;
+  private connectionResolve: (() => void) | null = null;
   // Queue for messages that need to be sent when connection is established
   private messageQueue: Array<{ event: string; data?: unknown }> = [];
 
@@ -23,6 +25,15 @@ class SocketWrapper {
     /**
      * TODO: update as necessary once backend socket implementation is finalized
      */
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      return; // Already connected
+    }
+    
+    // Create a connection promise that will be resolved when the connection is open
+    this.connectionPromise = new Promise<void>((resolve) => {
+      this.connectionResolve = resolve;
+    });
+    
     const wsUrl = this.url.replace(/^http/, "ws") + "/ws";
     this.ws = new WebSocket(wsUrl);
 
@@ -30,11 +41,16 @@ class SocketWrapper {
       // Reset reconnection state on successful connection
       this.reconnectAttempts = 0;
       this.reconnecting = false;
-      this.emit("connect", {});
+      this.triggerEvent("connect", {});
 
       // Process any queued messages
       if (this.messageQueue.length > 0) {
         this.processQueue();
+      }
+      
+      if (this.connectionResolve) {
+        this.connectionResolve();
+        this.connectionResolve = null;
       }
     };
 
@@ -123,15 +139,28 @@ class SocketWrapper {
     }
   };
 
-  emit = (event: string, data?: unknown): this => {
-    console.log("emit called", event);
+  emit = async (event: string, data?: unknown): Promise<this> => {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      console.log("sending data for event:", event);
       this.ws.send(JSON.stringify({ event, data }));
+    } else if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
+      // Wait for the connection to open before sending the message
+      if (this.connectionPromise) {
+        try {
+          await this.connectionPromise;
+          // Now the connection should be open, try to send again
+          return this.emit(event, data);
+        } catch (error) {
+          // If there's an error waiting for the connection, queue the message
+          this.messageQueue.push({ event, data });
+        }
+      } else {
+        // No connection promise, queue the message
+        this.messageQueue.push({ event, data });
+      }
     } else {
-      console.log("socket not connected, queueing event:", event);
-      // Queue the message to send once connected
+      // Socket is closed or closing, reconnect and queue the message
       this.messageQueue.push({ event, data });
+      this.connect();
     }
     return this;
   };
@@ -148,6 +177,8 @@ class SocketWrapper {
       this.reconnectTimer = null;
     }
     this.reconnecting = false;
+    this.connectionPromise = null;
+    this.connectionResolve = null;
   };
 }
 
