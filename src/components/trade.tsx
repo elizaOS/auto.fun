@@ -6,17 +6,30 @@ import { twMerge } from "tailwind-merge";
 import Button from "./button";
 import ConfigDialog from "./config-dialog";
 import SkeletonImage from "./skeleton-image";
+import useTokenBalance from "@/hooks/use-token-balance";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 export default function Trade({ token }: { token: IToken }) {
   const solanaPrice = token?.solPriceUSD || 0;
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
-    undefined,
+    undefined
   );
+  const wallet = useWallet();
+  const balance = useTokenBalance(
+    wallet.publicKey?.toBase58() || "",
+    !isTokenSelling
+      ? "So11111111111111111111111111111111111111111"
+      : token?.mint || ""
+  );
+
+  const insufficientBalance =
+    (sellingAmount || 0) > (balance?.data?.formattedBalance || 0);
+
   const [error] = useState<string | undefined>("");
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status,
+    token?.status
   );
 
   return (
@@ -109,11 +122,15 @@ export default function Trade({ token }: { token: IToken }) {
                   : token?.tokenPriceUSD
                     ? formatNumber(
                         Number(sellingAmount || 0) * token?.tokenPriceUSD,
-                        true,
+                        true
                       )
                     : formatNumber(0)}
               </span>
-              <Balance token={token} isSolana={!isTokenSelling} />
+              <Balance
+                token={token}
+                isSolana={!isTokenSelling}
+                setSellingAmount={setSellingAmount}
+              />
             </div>
           </div>
           <div className="h-[10px] z-20 relative">
@@ -146,14 +163,15 @@ export default function Trade({ token }: { token: IToken }) {
 
         <div
           className={twMerge([
-            "flex items-center gap-2 h-4 m-2",
-            error ? "block" : "hidden",
+            "flex items-center gap-2 h-4 m-2 select-none",
+            insufficientBalance ? "block" : "hidden",
           ])}
         >
           <div className="flex items-center gap-2">
-            <Info className="text-autofun-text-error size-4" />
-            <p className="text-autofun-text-error text-xs font-dm-mono">
-              Insufficient Funds: You have 0.0043 SOL
+            <Info className="text-red-600 size-4" />
+            <p className="text-red-600 text-xs font-dm-mono">
+              Insufficient Funds: You have {balance?.data?.formattedBalance}{" "}
+              {isTokenSelling ? token?.ticker : "SOL"}
             </p>
           </div>
         </div>
@@ -161,7 +179,7 @@ export default function Trade({ token }: { token: IToken }) {
           variant="secondary"
           className="font-dm-mono"
           size="large"
-          disabled={isDisabled}
+          disabled={isDisabled || insufficientBalance}
         >
           Swap
         </Button>
@@ -194,15 +212,32 @@ const TokenDisplay = ({
 const Balance = ({
   token,
   isSolana,
+  setSellingAmount,
 }: {
   token?: IToken;
   isSolana?: boolean;
+  setSellingAmount?: any;
 }) => {
+  const wallet = useWallet();
+  const balance = useTokenBalance(
+    wallet.publicKey?.toBase58() || "",
+    isSolana ? "So11111111111111111111111111111111111111111" : token?.mint || ""
+  );
   return (
-    <div className="flex items-center gap-2 select-none">
+    <div
+      className={twMerge([
+        "flex items-center gap-2 select-none",
+        setSellingAmount ? "cursor-pointer" : "",
+      ])}
+      onClick={() => {
+        if (balance?.data?.formattedBalance && setSellingAmount) {
+          setSellingAmount(balance?.data?.formattedBalance);
+        }
+      }}
+    >
       <Wallet className="text-autofun-text-secondary size-[18px]" />
       <span className="text-sm font-dm-mono text-autofun-text-secondary uppercase">
-        0.00 {isSolana ? "SOL" : token?.ticker}
+        {balance.data?.formattedBalance} {isSolana ? "SOL" : token?.ticker}
       </span>
     </div>
   );

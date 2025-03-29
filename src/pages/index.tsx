@@ -55,8 +55,6 @@ export default function Page() {
     hasMore: queryData?.hasMore || false,
   } as IPagination;
 
-  console.log(query);
-
   return (
     <div className="w-full min-h-[50vh]">
       {/* Header Section */}
@@ -65,12 +63,12 @@ export default function Page() {
       <div className="flex justify-between gap-2 flex-wrap-reverse md:flex-wrap">
         <GridListSwitcher />
         <div className="flex items-center gap-2">
-          {/* <Button
+          <Button
             variant={sortBy === "featured" ? "primary" : "outline"}
             onClick={() => setSortBy("featured")}
           >
             All
-          </Button> */}
+          </Button>
           <Button
             variant={sortBy === "marketCapUSD" ? "primary" : "outline"}
             onClick={() => setSortBy("marketCapUSD")}

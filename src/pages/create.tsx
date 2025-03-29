@@ -9,6 +9,7 @@ import { useNavigate } from "react-router";
 import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
 import { EmptyState } from "@/components/empty-state";
+import useTokenBalance from "@/hooks/use-token-balance";
 
 const MAX_INITIAL_SOL = 45;
 // Use the token supply and virtual reserves from environment or fallback to defaults
@@ -215,7 +216,7 @@ const FormImageInput = ({
   setGeneratingField: (value: string | null) => void;
   onPromptFunctionsChange: (
     setPrompt: (prompt: string) => void,
-    onPromptChange: (prompt: string) => void,
+    onPromptChange: (prompt: string) => void
   ) => void;
   onPreviewChange?: (previewUrl: string | null) => void;
   imageUrl?: string | null;
@@ -229,7 +230,7 @@ const FormImageInput = ({
   const [preview, setPreview] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
   const [lastGeneratedImage, setLastGeneratedImage] = useState<string | null>(
-    null,
+    null
   );
   const promptDebounceRef = useRef<number | null>(null);
   const hasDirectlySetPreview = useRef<boolean>(false);
@@ -265,7 +266,7 @@ const FormImageInput = ({
         onPromptChange(value);
       }, 500);
     },
-    [onPromptChange],
+    [onPromptChange]
   );
 
   // Update lastGeneratedImage only when preview changes
@@ -291,7 +292,7 @@ const FormImageInput = ({
       setPrompt(value);
       debouncedPromptChange(value);
     },
-    [debouncedPromptChange],
+    [debouncedPromptChange]
   );
 
   const handleCancel = useCallback(() => {
@@ -328,7 +329,7 @@ const FormImageInput = ({
         onChange(file);
       }
     },
-    [onChange],
+    [onChange]
   );
 
   // Handle drag & drop
@@ -360,7 +361,7 @@ const FormImageInput = ({
         onChange(file);
       }
     },
-    [onChange],
+    [onChange]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -547,7 +548,7 @@ const uploadImage = async (metadata: TokenMetadata) => {
   const filename = `${safeName}${extension}`;
 
   console.log(
-    `Uploading image as ${filename} with content type ${contentType}`,
+    `Uploading image as ${filename} with content type ${contentType}`
   );
 
   // Get auth token from localStorage
@@ -666,7 +667,7 @@ const waitForTokenCreation = async ({
               imageUrl,
               metadataUrl,
             }),
-          },
+          }
         );
 
         if (createResponse.ok) {
@@ -717,7 +718,7 @@ const waitForTokenCreation = async ({
                 imageUrl,
                 metadataUrl,
               }),
-            },
+            }
           );
 
           if (response.ok) {
@@ -919,7 +920,14 @@ export const Create = () => {
   >(null);
 
   const [buyValue, setBuyValue] = useState(form.initial_sol || 0);
+  const wallet = useWallet();
+  const balance = useTokenBalance(
+    wallet.publicKey?.toBase58() || "",
+    "So11111111111111111111111111111111111111111"
+  );
 
+  const insufficientBalance =
+    Number(buyValue) > Number(balance?.data?.formattedBalance || 0);
   // Error state
   const [errors, setErrors] = useState({
     name: "",
@@ -934,7 +942,7 @@ export const Create = () => {
 
   // Store a reference to the FormImageInput's setPreview function
   const previewSetterRef = useRef<((preview: string | null) => void) | null>(
-    null,
+    null
   );
 
   // Create ref to track image URL creation to prevent infinite loops
@@ -1138,7 +1146,7 @@ export const Create = () => {
   const createTokenOnChain = async (
     _tokenMetadata: TokenMetadata,
     mintKeypair: Keypair,
-    _metadataUrl: string,
+    _metadataUrl: string
   ) => {
     if (!signTransaction) {
       throw new Error("Wallet doesn't support signing");
@@ -1206,7 +1214,7 @@ export const Create = () => {
             prompt: userPrompt,
             fields: ["name", "symbol", "description", "prompt"],
           }),
-        },
+        }
       );
 
       if (!response.ok) {
@@ -1245,7 +1253,7 @@ export const Create = () => {
       if (promptFunctions.setPrompt) {
         console.log(
           "Setting promptFunctions.setPrompt with:",
-          data.metadata.prompt,
+          data.metadata.prompt
         );
         promptFunctions.setPrompt(data.metadata.prompt);
       } else {
@@ -1255,7 +1263,7 @@ export const Create = () => {
       if (promptFunctions.onPromptChange) {
         console.log(
           "Calling promptFunctions.onPromptChange with:",
-          data.metadata.prompt,
+          data.metadata.prompt
         );
         promptFunctions.onPromptChange(data.metadata.prompt);
       } else {
@@ -1265,7 +1273,7 @@ export const Create = () => {
       // Step 2: Generate image with the generated prompt
       console.log(
         "Requesting image generation with prompt:",
-        data.metadata.prompt,
+        data.metadata.prompt
       );
 
       // Temporarily set the generating state
@@ -1282,13 +1290,13 @@ export const Create = () => {
             prompt: data.metadata.prompt,
             type: "image",
           }),
-        },
+        }
       );
 
       if (!imageResponse.ok) {
         console.error(
           "Image generation API returned an error:",
-          await imageResponse.text(),
+          await imageResponse.text()
         );
         throw new Error("Failed to generate image for token");
       }
@@ -1308,7 +1316,7 @@ export const Create = () => {
         const imageBlob = await fetch(imageData.mediaUrl).then((r) => {
           if (!r.ok)
             throw new Error(
-              `Failed to fetch image: ${r.status} ${r.statusText}`,
+              `Failed to fetch image: ${r.status} ${r.statusText}`
             );
           return r.blob();
         });
@@ -1356,7 +1364,7 @@ export const Create = () => {
       setHasGeneratedToken(true);
 
       console.log(
-        "=== Token generation from prompt completed successfully ===",
+        "=== Token generation from prompt completed successfully ==="
       );
     } catch (error) {
       console.error("Error generating from prompt:", error);
@@ -1366,7 +1374,7 @@ export const Create = () => {
       alert(
         error instanceof Error
           ? error.message
-          : "Failed to generate token from prompt. Please try again.",
+          : "Failed to generate token from prompt. Please try again."
       );
     } finally {
       setIsProcessingPrompt(false);
@@ -1436,7 +1444,7 @@ export const Create = () => {
               mint: form.importAddress,
               requestor: publicKey ? publicKey.toString() : "",
             }),
-          },
+          }
         );
 
         // Check if the request was successful
@@ -1451,11 +1459,11 @@ export const Create = () => {
             // If we can't parse the error, show a more friendly message
             if (response.status === 404) {
               throw new Error(
-                "The token doesn't exist or doesn't have metadata.",
+                "The token doesn't exist or doesn't have metadata."
               );
             } else {
               throw new Error(
-                `Server error (${response.status}): Unable to retrieve token data.`,
+                `Server error (${response.status}): Unable to retrieve token data.`
               );
             }
           }
@@ -1548,7 +1556,7 @@ export const Create = () => {
 
   // Handle paste in the import address field
   const handleImportAddressPaste = (
-    e: React.ClipboardEvent<HTMLInputElement>,
+    e: React.ClipboardEvent<HTMLInputElement>
   ) => {
     const pastedText = e.clipboardData.getData("text");
 
@@ -1593,7 +1601,7 @@ export const Create = () => {
   const generateAll = useCallback(
     async (
       setPrompt?: ((prompt: string) => void) | null,
-      onPromptChange?: ((prompt: string) => void) | null,
+      onPromptChange?: ((prompt: string) => void) | null
     ) => {
       try {
         setIsGenerating(true);
@@ -1618,7 +1626,7 @@ export const Create = () => {
             method: "GET",
             headers,
             credentials: "include",
-          },
+          }
         );
 
         if (!response.ok) {
@@ -1700,7 +1708,7 @@ export const Create = () => {
                 prompt: token.prompt,
                 type: "image",
               }),
-            },
+            }
           );
 
           if (!imageResponse.ok) {
@@ -1739,14 +1747,14 @@ export const Create = () => {
         alert(
           error instanceof Error
             ? error.message
-            : "Failed to generate metadata. Please try again.",
+            : "Failed to generate metadata. Please try again."
         );
       } finally {
         setIsGenerating(false);
         setGeneratingField(null);
       }
     },
-    [setIsGenerating, setGeneratingField],
+    [setIsGenerating, setGeneratingField]
   );
 
   // Submit form to backend
@@ -1774,14 +1782,14 @@ export const Create = () => {
 
           if (!isCreatorNow) {
             throw new Error(
-              "You need to connect with the token's creator wallet to register it",
+              "You need to connect with the token's creator wallet to register it"
             );
           }
 
           // For imported tokens, create a token entry in the database
           console.log(
             "Creating token entry for imported token:",
-            tokenData.mint,
+            tokenData.mint
           );
 
           // Show coin drop animation
@@ -1822,7 +1830,7 @@ export const Create = () => {
                 // Include the import flag to indicate this is an imported token
                 imported: true,
               }),
-            },
+            }
           );
 
           if (!createResponse.ok) {
@@ -1922,7 +1930,7 @@ export const Create = () => {
         try {
           console.log(
             "Marking pre-generated token as used:",
-            currentPreGeneratedTokenId,
+            currentPreGeneratedTokenId
           );
 
           // Get auth token from localStorage
@@ -1951,7 +1959,7 @@ export const Create = () => {
           });
 
           console.log(
-            "Successfully marked token as used and removed duplicates",
+            "Successfully marked token as used and removed duplicates"
           );
         } catch (error) {
           console.error("Error marking pre-generated token as used:", error);
@@ -1993,7 +2001,7 @@ export const Create = () => {
       alert(
         error instanceof Error
           ? error.message
-          : "Failed to create token. Please try again.",
+          : "Failed to create token. Please try again."
       );
     } finally {
       setIsSubmitting(false);
@@ -2052,7 +2060,7 @@ export const Create = () => {
               method: "GET",
               headers,
               credentials: "include",
-            },
+            }
           );
 
           if (!response.ok) {
@@ -2218,7 +2226,7 @@ export const Create = () => {
             <div className="flex text-lg">
               <button
                 type="button"
-                className={`mr-6 py-1 border-b-2 font-medium transition-colors ${
+                className={`mr-6 py-1 border-b-2 font-medium transition-colors cursor-pointer select-none ${
                   activeTab === FormTab.AUTO
                     ? "border-[#03FF24] text-[#03FF24] font-bold"
                     : "border-transparent text-neutral-400 hover:text-white"
@@ -2229,7 +2237,7 @@ export const Create = () => {
               </button>
               <button
                 type="button"
-                className={`mr-6 py-1 border-b-2 font-medium transition-colors ${
+                className={`mr-6 py-1 border-b-2 font-medium transition-colors cursor-pointer select-none ${
                   activeTab === FormTab.MANUAL
                     ? "border-[#03FF24] text-[#03FF24] font-bold"
                     : "border-transparent text-neutral-400 hover:text-white"
@@ -2240,7 +2248,7 @@ export const Create = () => {
               </button>
               <button
                 type="button"
-                className={`py-1 border-b-2 font-medium transition-colors ${
+                className={`py-1 border-b-2 font-medium transition-colors cursor-pointer select-none ${
                   activeTab === FormTab.IMPORT
                     ? "border-[#03FF24] text-[#03FF24] font-bold"
                     : "border-transparent text-neutral-400 hover:text-white"
@@ -2314,7 +2322,7 @@ export const Create = () => {
 
           {/* Import Tab Content */}
           {activeTab === FormTab.IMPORT && (
-            <div className="my-12">
+            <div>
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
                   <div className="flex flex-row">
@@ -2506,6 +2514,7 @@ export const Create = () => {
                 }
                 label="Description"
                 minRows={1}
+                placeholder="Description"
                 maxLength={2000}
                 error={errors.description}
                 onClick={() => generateAll()}
@@ -2551,57 +2560,45 @@ export const Create = () => {
                           value={buyValue}
                           onChange={(e) => {
                             let value = e.target.value.replace(" SOL", "");
-
-                            // Only allow numbers and decimal point
                             value = value.replace(/[^\d.]/g, "");
-
-                            // Ensure only one decimal point
                             const decimalCount = (value.match(/\./g) || [])
                               .length;
                             if (decimalCount > 1) {
                               value = value.replace(/\.+$/, "");
                             }
-
-                            // Split into whole and decimal parts
                             const parts = value.split(".");
                             let wholePart = parts[0];
                             let decimalPart = parts[1] || "";
-
-                            // Limit whole part to 2 digits
                             if (wholePart.length > 2) {
                               wholePart = wholePart.slice(0, 2);
                             }
-
-                            // Limit decimal part to 2 digits
                             if (decimalPart.length > 2) {
                               decimalPart = decimalPart.slice(0, 2);
                             }
-
-                            // Reconstruct the value
                             value = decimalPart
                               ? `${wholePart}.${decimalPart}`
                               : wholePart;
-
-                            // Ensure total length is max 5 (including decimal point)
                             if (value.length > 5) {
                               value = value.slice(0, 5);
                             }
-
-                            // Parse the value and check if it's within range
                             const numValue = parseFloat(value);
                             if (
-                              value === "" ||
-                              (numValue >= 0 && numValue <= MAX_INITIAL_SOL)
+                              value !== "" &&
+                              !isNaN(numValue) &&
+                              numValue > 45
                             ) {
-                              handleChange("initial_sol", value);
-                              setBuyValue(value);
+                              value = "45";
                             }
+
+                            handleChange("initial_sol", value);
+                            setBuyValue(value);
                           }}
                           min="0"
-                          max={MAX_INITIAL_SOL}
+                          max="45"
                           step="0.01"
                           className="w-26 pr-10 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white"
                         />
+
                         <span className="absolute right-0 text-white text-xl font-medium">
                           SOL
                         </span>
@@ -2612,7 +2609,7 @@ export const Create = () => {
                     <div className="text-right text-xs text-neutral-400">
                       ≈{" "}
                       {calculatePercentage(
-                        calculateTokensFromSol(parseFloat(buyValue as string)),
+                        calculateTokensFromSol(parseFloat(buyValue as string))
                       ).toFixed(2)}{" "}
                       % of supply
                       {/* <div className="mt-1">
@@ -2638,11 +2635,16 @@ export const Create = () => {
           {(activeTab === FormTab.MANUAL ||
             (activeTab === FormTab.AUTO && hasGeneratedToken) ||
             (activeTab === FormTab.IMPORT && hasStoredToken)) && (
-            <div className="grid grid-cols-1 gap-x-3 gap-y-6 mx-auto">
+            <div className="flex flex-col items-center gap-3">
               <button
                 type="submit"
-                className="p-0 transition-colors disabled:opacity-50"
-                disabled={!isFormValid || isSubmitting || !isAuthenticated}
+                className="p-0 transition-colors cursor-pointer disabled:opacity-50 select-none"
+                disabled={
+                  !isFormValid ||
+                  isSubmitting ||
+                  !isAuthenticated ||
+                  insufficientBalance
+                }
               >
                 <img
                   src={
@@ -2651,7 +2653,7 @@ export const Create = () => {
                       : "/create/launchup.svg"
                   }
                   alt="Launch"
-                  className="h-32 pr-4"
+                  className="h-32 pr-4 mb-4 select-none pointer-events-none"
                   onMouseDown={(e) => {
                     const img = e.target as HTMLImageElement;
                     if (!isSubmitting) {
@@ -2672,12 +2674,17 @@ export const Create = () => {
               </button>
 
               {!isFormValid && (
-                <p className="text-red-500 text-center text-sm m-4">
+                <p className="text-red-500 text-center text-sm">
                   Please fill in all required fields
                 </p>
               )}
+              {insufficientBalance ? (
+                <p className="text-red-500 text-center text-sm">
+                  You don't have enough SOL.
+                </p>
+              ) : null}
               {!isAuthenticated && (
-                <p className="text-red-500 text-center text-sm m-4">
+                <p className="text-red-500 text-center text-sm">
                   Please connect your wallet to create a token
                 </p>
               )}

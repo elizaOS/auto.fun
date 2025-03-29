@@ -6,6 +6,7 @@ import { Providers } from "@/providers";
 import { queryClient } from "@/utils/api";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Outlet } from "react-router";
+import { ToastContainer } from "react-toastify";
 
 export default function Layout() {
   return (
@@ -16,6 +17,7 @@ export default function Layout() {
           <main className="flex-grow container pb-10">
             <Outlet />
             <BreakpointIndicator />
+            <ToastContainer position="bottom-right" />
           </main>
           <Footer />
           {/* <div className="block md:hidden">
