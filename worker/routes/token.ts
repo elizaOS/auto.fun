@@ -5,7 +5,7 @@ import { getDB, swaps, tokenHolders, tokens, users } from "../db";
 import { Env } from "../env";
 import { logger } from "../logger";
 import { calculateTokenMarketData, getSOLPrice } from "../mcap";
-import { bulkUpdatePartialTokens } from "../util";
+import { bulkUpdatePartialTokens, getRpcUrl } from "../util";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getWebSocketClient } from "../websocket-client";
 import { updateTokenInDB } from "../cron";
@@ -352,9 +352,9 @@ tokenRouter.post("/search-token", async (c) => {
   const mintPublicKey = new PublicKey(mint);
   logger.log(`[search-token] Searching for token ${mint}`);
 
-  // Create connection to Solana
+  // Create connection to Solana - use utility function that provides fallback
   const connection = new Connection(
-    c.env.MAINNET_SOLANA_RPC_URL as string,
+    getRpcUrl(c.env),
     "confirmed",
   );
 
