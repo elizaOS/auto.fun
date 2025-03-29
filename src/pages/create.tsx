@@ -1842,6 +1842,11 @@ export const Create = () => {
           localStorage.removeItem("import_token_data");
           setHasStoredToken(false);
 
+          // Trigger confetti to celebrate successful registration
+          if (window.createConfettiFireworks) {
+            window.createConfettiFireworks();
+          }
+
           // Redirect to token page
           navigate(`/token/${tokenData.mint}`);
           return;
@@ -1982,6 +1987,11 @@ export const Create = () => {
           metadataUrl,
         });
         console.log("Token creation confirmed");
+        
+        // Trigger confetti to celebrate successful minting
+        if (window.createConfettiFireworks) {
+          window.createConfettiFireworks();
+        }
       } catch (waitError) {
         console.error("Error waiting for token creation:", waitError);
         // We still continue to the token page even if this fails

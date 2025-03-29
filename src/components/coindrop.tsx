@@ -38,6 +38,7 @@ declare global {
     debugDropCoins?: () => void;
     pauseCoins?: () => void;
     resumeCoins?: () => void;
+    createConfettiFireworks?: () => void;
   }
 }
 
@@ -49,6 +50,120 @@ const WALL_MATERIAL = "wall";
 interface CoinDropProps {
   imageUrl?: string;
 }
+
+// Create fireworks-like confetti effect
+const createConfettiFireworks = () => {
+  const duration = 5 * 1000; // 5 seconds
+  const animationEnd = Date.now() + duration;
+
+  // Helper function to create a specific firework burst
+  const fireConfettiBurst = (
+    originX: number,
+    originY: number,
+    type: "circle" | "cannon" | "burst",
+  ) => {
+    // Define different types of confetti bursts
+    const burstTypes = {
+      circle: {
+        particleCount: 100,
+        angle: 0,
+        spread: 360,
+        origin: { x: originX, y: originY },
+        colors: [
+          "#ff0000",
+          "#00ff00",
+          "#0000ff",
+          "#ffff00",
+          "#ff00ff",
+          "#00ffff",
+        ],
+        startVelocity: 30,
+        ticks: 60,
+        gravity: 1,
+        drift: 0,
+        scalar: 1.2,
+        zIndex: 1000,
+      },
+      cannon: {
+        particleCount: 80,
+        angle: 60,
+        spread: 55,
+        origin: { x: originX, y: originY },
+        colors: ["#FFD700", "#FFA500", "#ff0000", "#00ff00"],
+        startVelocity: 45,
+        ticks: 50,
+        gravity: 1,
+        zIndex: 1000,
+      },
+      burst: {
+        particleCount: 60,
+        angle: 90,
+        spread: 100,
+        origin: { x: originX, y: originY },
+        colors: ["#ffffff", "#f0f0f0", "#e0e0e0", "#d0d0d0", "#ffcc00"],
+        ticks: 100,
+        gravity: 0.8,
+        decay: 0.94,
+        startVelocity: 30,
+        zIndex: 1000,
+      },
+    };
+
+    // Fire the specified burst type
+    confetti(burstTypes[type]);
+  };
+
+  // Fire random bursts on an interval
+  const burstInterval = setInterval(() => {
+    const timeLeft = animationEnd - Date.now();
+
+    // Stop launching confetti after 5 seconds
+    if (timeLeft <= 0) {
+      return clearInterval(burstInterval);
+    }
+
+    // Launch multiple bursts per interval
+    const numberOfBursts = Math.floor(Math.random() * 3) + 1;
+
+    for (let i = 0; i < numberOfBursts; i++) {
+      // Random position
+      const x = Math.random();
+      // Keep y position in upper half of screen for better effect
+      const y = Math.random() * 0.5;
+
+      // Randomly choose burst type
+      const burstTypes = ["circle", "cannon", "burst"] as const;
+      const randomType =
+        burstTypes[Math.floor(Math.random() * burstTypes.length)];
+
+      // Fire the burst
+      fireConfettiBurst(x, y, randomType);
+    }
+  }, 200); // More frequent bursts for spectacular effect
+
+  // Special "finale" effect at the end
+  setTimeout(() => {
+    // Create a grand finale with multiple bursts at once
+    for (let i = 0; i < 10; i++) {
+      setTimeout(() => {
+        const x = Math.random();
+        const y = Math.random() * 0.5;
+        const burstTypes = ["circle", "cannon", "burst"] as const;
+        const randomType =
+          burstTypes[Math.floor(Math.random() * burstTypes.length)];
+        fireConfettiBurst(x, y, randomType);
+      }, i * 100); // Spread out finale over 1 second
+    }
+  }, 4000); // Start finale 1 second before the end
+
+  // Return cleanup function
+  return () => {
+    clearInterval(burstInterval);
+  };
+};
+
+// Expose the function globally
+window.createConfettiFireworks = createConfettiFireworks;
 
 const CoinDrop = ({ imageUrl }: CoinDropProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -89,117 +204,6 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
     // Set coin size based on window size
     coinRadiusRef.current = containerWidth * 0.04;
     coinThicknessRef.current = coinRadiusRef.current * 0.1;
-
-    // Create fireworks-like confetti effect
-    const createConfettiFireworks = () => {
-      const duration = 5 * 1000; // 5 seconds
-      const animationEnd = Date.now() + duration;
-
-      // Helper function to create a specific firework burst
-      const fireConfettiBurst = (
-        originX: number,
-        originY: number,
-        type: "circle" | "cannon" | "burst",
-      ) => {
-        // Define different types of confetti bursts
-        const burstTypes = {
-          circle: {
-            particleCount: 100,
-            angle: 0,
-            spread: 360,
-            origin: { x: originX, y: originY },
-            colors: [
-              "#ff0000",
-              "#00ff00",
-              "#0000ff",
-              "#ffff00",
-              "#ff00ff",
-              "#00ffff",
-            ],
-            startVelocity: 30,
-            ticks: 60,
-            gravity: 1,
-            drift: 0,
-            scalar: 1.2,
-            zIndex: 1000,
-          },
-          cannon: {
-            particleCount: 80,
-            angle: 60,
-            spread: 55,
-            origin: { x: originX, y: originY },
-            colors: ["#FFD700", "#FFA500", "#ff0000", "#00ff00"],
-            startVelocity: 45,
-            ticks: 50,
-            gravity: 1,
-            zIndex: 1000,
-          },
-          burst: {
-            particleCount: 60,
-            angle: 90,
-            spread: 100,
-            origin: { x: originX, y: originY },
-            colors: ["#ffffff", "#f0f0f0", "#e0e0e0", "#d0d0d0", "#ffcc00"],
-            ticks: 100,
-            gravity: 0.8,
-            decay: 0.94,
-            startVelocity: 30,
-            zIndex: 1000,
-          },
-        };
-
-        // Fire the specified burst type
-        confetti(burstTypes[type]);
-      };
-
-      // Fire random bursts on an interval
-      const burstInterval = setInterval(() => {
-        const timeLeft = animationEnd - Date.now();
-
-        // Stop launching confetti after 5 seconds
-        if (timeLeft <= 0) {
-          return clearInterval(burstInterval);
-        }
-
-        // Launch multiple bursts per interval
-        const numberOfBursts = Math.floor(Math.random() * 3) + 1;
-
-        for (let i = 0; i < numberOfBursts; i++) {
-          // Random position
-          const x = Math.random();
-          // Keep y position in upper half of screen for better effect
-          const y = Math.random() * 0.5;
-
-          // Randomly choose burst type
-          const burstTypes = ["circle", "cannon", "burst"] as const;
-          const randomType =
-            burstTypes[Math.floor(Math.random() * burstTypes.length)];
-
-          // Fire the burst
-          fireConfettiBurst(x, y, randomType);
-        }
-      }, 200); // More frequent bursts for spectacular effect
-
-      // Special "finale" effect at the end
-      setTimeout(() => {
-        // Create a grand finale with multiple bursts at once
-        for (let i = 0; i < 10; i++) {
-          setTimeout(() => {
-            const x = Math.random();
-            const y = Math.random() * 0.5;
-            const burstTypes = ["circle", "cannon", "burst"] as const;
-            const randomType =
-              burstTypes[Math.floor(Math.random() * burstTypes.length)];
-            fireConfettiBurst(x, y, randomType);
-          }, i * 100); // Spread out finale over 1 second
-        }
-      }, 4000); // Start finale 1 second before the end
-
-      // Return cleanup function
-      return () => {
-        clearInterval(burstInterval);
-      };
-    };
 
     // Scene setup
     const scene = new THREE.Scene();
@@ -440,8 +444,8 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
       console.log("Texture loaded, starting coin creation");
       // Start coin creation once texture is loaded
       startCoinCreation();
-      // Start the confetti fireworks effect
-      createConfettiFireworks();
+
+      // Removed: createConfettiFireworks() - this will now be called externally
     });
 
     // Create coin geometry using the radius from ref
@@ -915,46 +919,6 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
       }, batchInterval);
     }
 
-    // Function to toggle physics simulation pause
-    function togglePause() {
-      isPausedRef.current = !isPausedRef.current;
-      console.log(isPausedRef.current ? "Physics paused" : "Physics resumed");
-    }
-
-    // Function to handle space bar press
-    function handleKeyPress(event: KeyboardEvent) {
-      if (event.code === "Space") {
-        event.preventDefault();
-        togglePause();
-      } else if (event.code === "KeyD") {
-        event.preventDefault();
-        console.log("Manual drop triggered with D key");
-        if (window.debugDropCoins) {
-          window.debugDropCoins();
-        }
-      }
-    }
-
-    // Add event listener for keyboard
-    window.addEventListener("keydown", handleKeyPress);
-
-    // Expose functions to window for debugging
-    window.debugDropCoins = () => {
-      console.log("DEBUG: Manually dropping 100 coins for testing");
-      // Create 100 coins at once for debugging
-      for (let i = 0; i < 100; i++) {
-        createCoin();
-      }
-    };
-
-    window.pauseCoins = () => {
-      isPausedRef.current = true;
-    };
-
-    window.resumeCoins = () => {
-      isPausedRef.current = false;
-    };
-
     // Animation loop
     let lastTime = 0;
     const fixedTimeStep = 1 / 60; // 60 FPS physics
@@ -1055,13 +1019,8 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
         clearInterval(coinCreationIntervalRef.current);
       }
 
-      window.removeEventListener("keydown", handleKeyPress);
       window.removeEventListener("resize", onWindowResize);
       world.removeEventListener("collide", handleCollisions);
-
-      delete window.debugDropCoins;
-      delete window.pauseCoins;
-      delete window.resumeCoins;
 
       // Clean up THREE.js resources
       scene.remove(coinInstanceRef.current as InstancedMesh);
