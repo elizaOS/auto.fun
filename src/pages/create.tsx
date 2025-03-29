@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
+import { EmptyState } from "@/components/empty-state";
 import useTokenBalance from "@/hooks/use-token-balance";
 
 const MAX_INITIAL_SOL = 45;
@@ -502,16 +503,9 @@ const FormImageInput = ({
                 />
                 <div className="border-2 border-dashed border-neutral-700 rounded-lg p-8 flex flex-col items-center justify-center w-4/5 h-4/5">
                   {/* Placeholder logo when empty */}
-                  <img
-                    src="/create/dicelogo.svg"
-                    alt="Logo"
-                    className="w-24 h-24 mb-4 opacity-30"
-                  />
+                  <EmptyState maxSizeMb={5}/>
                   <p className="text-neutral-300 text-center mb-2">
                     Click or drag and drop an image here
-                  </p>
-                  <p className="text-neutral-500 text-sm text-center">
-                    PNG, JPG, GIF, SVG, WEBP (Max 5MB)
                   </p>
                 </div>
               </div>
