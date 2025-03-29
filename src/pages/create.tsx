@@ -2647,7 +2647,7 @@ export const Create = () => {
             <div className="grid grid-cols-1 gap-x-3 gap-y-6 mx-auto">
               <button
                 type="submit"
-                className="p-0 transition-colors disabled:opacity-50"
+                className="p-0 transition-colors cursor-pointer disabled:opacity-50 select-none"
                 disabled={!isFormValid || isSubmitting || !isAuthenticated}
               >
                 <img
@@ -2657,7 +2657,7 @@ export const Create = () => {
                       : "/create/launchup.svg"
                   }
                   alt="Launch"
-                  className="h-32 pr-4"
+                  className="h-32 pr-4 select-none pointer-events-none"
                   onMouseDown={(e) => {
                     const img = e.target as HTMLImageElement;
                     if (!isSubmitting) {
