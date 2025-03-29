@@ -15,6 +15,17 @@ export default function Trade({ token }: { token: IToken }) {
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
     undefined
   );
+  const wallet = useWallet();
+  const balance = useTokenBalance(
+    wallet.publicKey?.toBase58() || "",
+    !isTokenSelling
+      ? "So11111111111111111111111111111111111111111"
+      : token?.mint || ""
+  );
+
+  const insufficientBalance =
+    (sellingAmount || 0) > (balance?.data?.formattedBalance || 0);
+
   const [error] = useState<string | undefined>("");
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
@@ -152,14 +163,15 @@ export default function Trade({ token }: { token: IToken }) {
 
         <div
           className={twMerge([
-            "flex items-center gap-2 h-4 m-2",
-            error ? "block" : "hidden",
+            "flex items-center gap-2 h-4 m-2 select-none",
+            insufficientBalance ? "block" : "hidden",
           ])}
         >
           <div className="flex items-center gap-2">
-            <Info className="text-autofun-text-error size-4" />
-            <p className="text-autofun-text-error text-xs font-dm-mono">
-              Insufficient Funds: You have 0.0043 SOL
+            <Info className="text-red-600 size-4" />
+            <p className="text-red-600 text-xs font-dm-mono">
+              Insufficient Funds: You have {balance?.data?.formattedBalance}{" "}
+              {isTokenSelling ? token?.ticker : "SOL"}
             </p>
           </div>
         </div>
@@ -167,7 +179,7 @@ export default function Trade({ token }: { token: IToken }) {
           variant="secondary"
           className="font-dm-mono"
           size="large"
-          disabled={isDisabled}
+          disabled={isDisabled || insufficientBalance}
         >
           Swap
         </Button>
