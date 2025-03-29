@@ -353,10 +353,7 @@ tokenRouter.post("/search-token", async (c) => {
   logger.log(`[search-token] Searching for token ${mint}`);
 
   // Create connection to Solana - use utility function that provides fallback
-  const connection = new Connection(
-    getRpcUrl(c.env),
-    "confirmed",
-  );
+  const connection = new Connection(getRpcUrl(c.env), "confirmed");
 
   // Check if token exists and determine its type
   const tokenInfo = await connection.getAccountInfo(mintPublicKey);

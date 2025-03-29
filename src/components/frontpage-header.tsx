@@ -467,7 +467,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
     // Walls
     const wallMeshMaterial = new THREE.MeshStandardMaterial({
-      color: 0x03FF24, // Bright green
+      color: 0x03ff24, // Bright green
       roughness: 0.7,
       // emissive: 0x000000,
       // fully transparent
@@ -561,10 +561,13 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
           (error) => {
             console.error("Error loading texture:", error);
             // Load fallback texture if the token image fails
-            const fallback = textureLoader.load(fallbackTexture, (fallbackTex) => {
-              fallbackTex.colorSpace = THREE.SRGBColorSpace;
-              setIsLoading(false);
-            });
+            const fallback = textureLoader.load(
+              fallbackTexture,
+              (fallbackTex) => {
+                fallbackTex.colorSpace = THREE.SRGBColorSpace;
+                setIsLoading(false);
+              },
+            );
             resolve(
               Array(6).fill(
                 new THREE.MeshStandardMaterial({
@@ -597,7 +600,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       });
     };
 
-    const scale = 2.25
+    const scale = 2.25;
 
     // Create dice
     const diceGeometry = new THREE.BoxGeometry(scale, scale, scale);
@@ -628,7 +631,11 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       die.userData = { tokenAddress: tokenData.address };
 
       // Create physics body
-      const halfExtents = new CANNON.Vec3(scale + 0.5, scale + 0.25, scale + 0.25);
+      const halfExtents = new CANNON.Vec3(
+        scale + 0.5,
+        scale + 0.25,
+        scale + 0.25,
+      );
       const dieBody = new CANNON.Body({
         mass: 10000, // heavier for better physics
         shape: new CANNON.Box(halfExtents),

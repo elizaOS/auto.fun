@@ -321,7 +321,7 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
 
     // Walls - invisible, match window edges exactly
     const wallMeshMaterial = new THREE.MeshStandardMaterial({
-      color: 0x03FF24, // Bright green
+      color: 0x03ff24, // Bright green
       roughness: 1.0,
       transparent: true,
       opacity: 0, // Less visible for debugging
@@ -549,7 +549,7 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
         if (texture.image) {
           // Set colorspace to SRGB before loading
           texture.colorSpace = THREE.SRGBColorSpace;
-          
+
           image.src =
             texture.image instanceof HTMLImageElement
               ? texture.image.src

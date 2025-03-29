@@ -28,12 +28,12 @@ class SocketWrapper {
     if (this.ws?.readyState === WebSocket.OPEN) {
       return; // Already connected
     }
-    
+
     // Create a connection promise that will be resolved when the connection is open
     this.connectionPromise = new Promise<void>((resolve) => {
       this.connectionResolve = resolve;
     });
-    
+
     const wsUrl = this.url.replace(/^http/, "ws") + "/ws";
     this.ws = new WebSocket(wsUrl);
 
@@ -47,7 +47,7 @@ class SocketWrapper {
       if (this.messageQueue.length > 0) {
         this.processQueue();
       }
-      
+
       if (this.connectionResolve) {
         this.connectionResolve();
         this.connectionResolve = null;

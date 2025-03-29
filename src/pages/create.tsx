@@ -193,7 +193,6 @@ export const FormTextArea = ({
 };
 
 const FormImageInput = ({
-  label,
   onChange,
   onPromptChange,
   isGenerating,
@@ -209,7 +208,6 @@ const FormImageInput = ({
   tickerValue,
   onTickerChange,
 }: {
-  label: string;
   onChange: (file: File | null) => void;
   onPromptChange: (prompt: string) => void;
   isGenerating: boolean;
@@ -405,7 +403,6 @@ const FormImageInput = ({
 
   return (
     <div className="flex flex-col w-full">
-
       {/* Image Preview Area - Square */}
       <div
         className="relative mt-1 aspect-square text-center border border-neutral-800 flex items-center justify-center"
@@ -817,24 +814,26 @@ export const Create = () => {
       if (storedTokenData) {
         try {
           const tokenData = JSON.parse(storedTokenData) as TokenSearchData;
-          
+
           // Check if the current wallet is authorized to create this token
-          const isCreatorWallet = 
-            (tokenData.updateAuthority && 
-             tokenData.updateAuthority === publicKey.toString()) ||
-            (tokenData.creators && 
-             tokenData.creators.includes(publicKey.toString()));
+          const isCreatorWallet =
+            (tokenData.updateAuthority &&
+              tokenData.updateAuthority === publicKey.toString()) ||
+            (tokenData.creators &&
+              tokenData.creators.includes(publicKey.toString()));
 
           // Update import status based on wallet authorization
           if (!isCreatorWallet) {
             setImportStatus({
               type: "warning",
-              message: "Please connect with the token's creator wallet to register it.",
+              message:
+                "Please connect with the token's creator wallet to register it.",
             });
           } else {
             setImportStatus({
               type: "success",
-              message: "You are connected with the creator wallet. You can now register this token.",
+              message:
+                "You are connected with the creator wallet. You can now register this token.",
             });
           }
         } catch (error) {
@@ -852,7 +851,7 @@ export const Create = () => {
         try {
           const tokenData = JSON.parse(storedTokenData) as TokenSearchData;
           setHasStoredToken(true);
-          
+
           // Populate the form with token data
           setForm((prev) => ({
             ...prev,
@@ -867,12 +866,12 @@ export const Create = () => {
               discord: tokenData.discord || "",
             },
           }));
-          
+
           // Set the image preview if available - use a small timeout to ensure the ref is set
           if (tokenData.image) {
             // Set image URL directly to handle refresh cases
             setCoinDropImageUrl(tokenData.image || null);
-            
+
             // Use a small timeout to ensure the ref is available after render
             setTimeout(() => {
               if (previewSetterRef.current) {
@@ -1012,22 +1011,25 @@ export const Create = () => {
     if (form.initial_sol !== buyValue.toString()) {
       setBuyValue(form.initial_sol);
     }
-    
+
     // If in percentage mode, calculate percentage from SOL value
     if (buyInputMode === "percentage") {
       const solValue = parseFloat(form.initial_sol);
       if (!isNaN(solValue)) {
         // Calculate tokens this SOL would buy using the bonding curve
         const tokenAmount = calculateTokensFromSol(solValue);
-        
+
         // Calculate what percentage of total supply that represents
         const percentOfSupply = calculatePercentage(tokenAmount);
-        
+
         // Format and cap at 100%
         const formattedPercent = Math.min(percentOfSupply, 100).toFixed(2);
-        
+
         // Only update if value changed significantly (avoid infinite loop)
-        if (Math.abs(parseFloat(formattedPercent) - parseFloat(percentageValue)) > 0.01) {
+        if (
+          Math.abs(parseFloat(formattedPercent) - parseFloat(percentageValue)) >
+          0.01
+        ) {
           setPercentageValue(formattedPercent);
         }
       }
@@ -1180,17 +1182,17 @@ export const Create = () => {
       throw new Error("Wallet not connected");
     }
 
-      // Use the useCreateToken hook to create the token on-chain
-      await createTokenOnChainAsync({
-        tokenMetadata: _tokenMetadata,
-        metadataUrl: _metadataUrl,
-        mintKeypair,
-      });
+    // Use the useCreateToken hook to create the token on-chain
+    await createTokenOnChainAsync({
+      tokenMetadata: _tokenMetadata,
+      metadataUrl: _metadataUrl,
+      mintKeypair,
+    });
 
-      // Return the mint address as transaction ID
-      const txId = mintKeypair.publicKey.toString();
-      console.log("Token created on-chain with mint address:", txId);
-      return txId;
+    // Return the mint address as transaction ID
+    const txId = mintKeypair.publicKey.toString();
+    console.log("Token created on-chain with mint address:", txId);
+    return txId;
   };
 
   // Generate token based on user prompt
@@ -1494,7 +1496,7 @@ export const Create = () => {
         }
 
         const tokenData = (await response.json()) as TokenSearchData;
-        
+
         // Store token data in localStorage for later use
         localStorage.setItem("import_token_data", JSON.stringify(tokenData));
         setHasStoredToken(true);
@@ -1523,23 +1525,25 @@ export const Create = () => {
         }
 
         // Check if the current wallet is authorized to create this token
-        const isCreatorWallet = 
-          (tokenData.updateAuthority && 
-           tokenData.updateAuthority === publicKey.toString()) ||
-          (tokenData.creators && 
-           tokenData.creators.includes(publicKey.toString()));
+        const isCreatorWallet =
+          (tokenData.updateAuthority &&
+            tokenData.updateAuthority === publicKey.toString()) ||
+          (tokenData.creators &&
+            tokenData.creators.includes(publicKey.toString()));
 
         if (!isCreatorWallet) {
           // Show a message that they need to switch wallets
           setImportStatus({
             type: "warning",
-            message: "Please connect with the token's creator wallet to register it. The form below has been populated with the token data.",
+            message:
+              "Please connect with the token's creator wallet to register it. The form below has been populated with the token data.",
           });
         } else {
           // Success message - ready to register
           setImportStatus({
             type: "success",
-            message: "Token data loaded successfully. You can now register this token.",
+            message:
+              "Token data loaded successfully. You can now register this token.",
           });
         }
       } catch (fetchError) {
@@ -1804,14 +1808,14 @@ export const Create = () => {
 
           if (!isCreatorNow) {
             throw new Error(
-              "You need to connect with the token's creator wallet to register it"
+              "You need to connect with the token's creator wallet to register it",
             );
           }
 
           // For imported tokens, create a token entry in the database
           console.log(
             "Creating token entry for imported token:",
-            tokenData.mint
+            tokenData.mint,
           );
 
           // Show coin drop animation
@@ -1852,7 +1856,7 @@ export const Create = () => {
                 // Include the import flag to indicate this is an imported token
                 imported: true,
               }),
-            }
+            },
           );
 
           if (!createResponse.ok) {
@@ -2209,11 +2213,12 @@ export const Create = () => {
   const calculateTokensFromSol = (solAmount: number): number => {
     // Convert SOL to lamports
     const lamports = solAmount * 1e9;
-    
+
     // Using constant product formula: (dx * y) / (x + dx)
     // where x is virtual reserves, y is token supply, dx is input SOL amount
-    const tokenAmount = (lamports * TOKEN_SUPPLY) / (VIRTUAL_RESERVES + lamports);
-    
+    const tokenAmount =
+      (lamports * TOKEN_SUPPLY) / (VIRTUAL_RESERVES + lamports);
+
     return tokenAmount;
   };
 
@@ -2226,19 +2231,22 @@ export const Create = () => {
   const calculateSolFromPercentage = (percentage: number): number => {
     // Calculate target token amount based on percentage
     const targetTokenAmount = (percentage / 100) * TOKEN_SUPPLY;
-    
+
     // Reverse the bonding curve formula: (x * y) / (y - dy) - x
     // where x is virtual reserves, y is token supply, dy is target token amount
-    const lamportsNeeded = (VIRTUAL_RESERVES * targetTokenAmount) / (TOKEN_SUPPLY - targetTokenAmount) - VIRTUAL_RESERVES;
-    
+    const lamportsNeeded =
+      (VIRTUAL_RESERVES * targetTokenAmount) /
+        (TOKEN_SUPPLY - targetTokenAmount) -
+      VIRTUAL_RESERVES;
+
     // Convert lamports to SOL
     const solNeeded = lamportsNeeded / 1e9;
-    
+
     // Handle edge cases
     if (isNaN(solNeeded) || !isFinite(solNeeded) || solNeeded < 0) {
       return MAX_INITIAL_SOL;
     }
-    
+
     return solNeeded;
   };
 
@@ -2429,15 +2437,15 @@ export const Create = () => {
                       {errors.importAddress}
                     </div>
                   )}
-                  
+
                   {/* Enhanced import status with clearer guidance */}
                   {importStatus && (
                     <div
                       className={`p-3 border rounded-md mb-4 ${
-                        importStatus.type === "error" 
-                          ? "border-red-500 bg-red-950/20 text-red-400" 
-                          : importStatus.type === "warning" 
-                            ? "border-yellow-500 bg-yellow-950/20 text-yellow-400" 
+                        importStatus.type === "error"
+                          ? "border-red-500 bg-red-950/20 text-red-400"
+                          : importStatus.type === "warning"
+                            ? "border-yellow-500 bg-yellow-950/20 text-yellow-400"
                             : "border-green-500 bg-green-950/20 text-[#03FF24]"
                       }`}
                     >
@@ -2449,35 +2457,53 @@ export const Create = () => {
                         ) : (
                           <Icons.XCircle className="w-5 h-5 flex-shrink-0" />
                         )}
-                        <span className="font-medium">{importStatus.message}</span>
+                        <span className="font-medium">
+                          {importStatus.message}
+                        </span>
                       </div>
-                      
+
                       {/* Additional guidance for different status types */}
                       {importStatus.type === "warning" && (
                         <div className="mt-2 ml-7 text-sm text-yellow-300/80">
-                          <p>The token details have been loaded below. Please connect with the token's creator wallet to register it.</p>
+                          <p>
+                            The token details have been loaded below. Please
+                            connect with the token's creator wallet to register
+                            it.
+                          </p>
                           {publicKey && (
                             <p className="mt-1">
-                              Current wallet: <span className="font-mono">{publicKey.toString().slice(0, 4) + '...' + publicKey.toString().slice(-4)}</span>
+                              Current wallet:{" "}
+                              <span className="font-mono">
+                                {publicKey.toString().slice(0, 4) +
+                                  "..." +
+                                  publicKey.toString().slice(-4)}
+                              </span>
                             </p>
                           )}
                         </div>
                       )}
-                      
+
                       {importStatus.type === "success" && (
                         <div className="mt-2 ml-7 text-sm text-green-300/80">
-                          <p>You're connected with the correct wallet. Review the token details below and click "Launch" to register this token.</p>
+                          <p>
+                            You're connected with the correct wallet. Review the
+                            token details below and click "Launch" to register
+                            this token.
+                          </p>
                         </div>
                       )}
                     </div>
                   )}
-                  
+
                   {/* Remove this section as it's redundant with the form below */}
                   {hasStoredToken && !importStatus && (
                     <div className="mt-4 p-3 border border-neutral-700 rounded-md bg-black/30">
-                      <h3 className="text-white font-medium mb-2">Imported Token Details</h3>
+                      <h3 className="text-white font-medium mb-2">
+                        Imported Token Details
+                      </h3>
                       <p className="text-neutral-400 text-sm mb-4">
-                        These details have been loaded from the token's metadata.
+                        These details have been loaded from the token's
+                        metadata.
                       </p>
                     </div>
                   )}
@@ -2495,7 +2521,6 @@ export const Create = () => {
               <div className="flex flex-col gap-3">
                 {/* Image with overlay inputs for name/ticker */}
                 <FormImageInput
-                  label="Token Image"
                   onChange={(file) => {
                     if (activeTab === FormTab.MANUAL) {
                       setImageFile(file);
@@ -2514,8 +2539,8 @@ export const Create = () => {
                   }}
                   onPreviewChange={handlePreviewChange}
                   imageUrl={
-                    activeTab === FormTab.AUTO 
-                      ? autoForm.imageUrl 
+                    activeTab === FormTab.AUTO
+                      ? autoForm.imageUrl
                       : activeTab === FormTab.IMPORT && hasStoredToken
                         ? coinDropImageUrl
                         : undefined
@@ -2553,7 +2578,8 @@ export const Create = () => {
                       <Icons.Info className="h-4 w-4 text-[#8c8c8c] hover:text-white" />
                       <div className="absolute hidden group-hover:block right-0 bottom-8 w-72 p-3 text-xs normal-case bg-black border border-neutral-800 rounded-md shadow-lg z-10">
                         <p className="text-white mb-2">
-                          Choose how much of the token you want to buy on launch:
+                          Choose how much of the token you want to buy on
+                          launch:
                         </p>
                         <p className="text-neutral-400 mb-1">
                           • <b>SOL</b>: Amount of SOL to invest
@@ -2563,10 +2589,12 @@ export const Create = () => {
                         </p>
                         <div className="border-t border-neutral-800 pt-2 mt-1">
                           <p className="text-neutral-400 text-xs">
-                            Total token supply: {TOKEN_SUPPLY.toLocaleString()} tokens
+                            Total token supply: {TOKEN_SUPPLY.toLocaleString()}{" "}
+                            tokens
                           </p>
                           <p className="text-neutral-400 text-xs mt-1">
-                            Pricing follows a bonding curve, your percentage increases with more SOL.
+                            Pricing follows a bonding curve, your percentage
+                            increases with more SOL.
                           </p>
                         </div>
                       </div>
@@ -2574,11 +2602,13 @@ export const Create = () => {
                   </span>
                   <div className="flex flex-col items-end">
                     <div className="flex mb-2">
-                      <button 
+                      <button
                         type="button"
-                        className={`px-3 py-1 text-sm rounded-l-md ${buyInputMode === "sol" 
-                          ? "bg-[#03FF24] text-black font-bold" 
-                          : "bg-[#1A1A1A] text-white hover:bg-[#2A2A2A]"}`}
+                        className={`px-3 py-1 text-sm rounded-l-md ${
+                          buyInputMode === "sol"
+                            ? "bg-[#03FF24] text-black font-bold"
+                            : "bg-[#1A1A1A] text-white hover:bg-[#2A2A2A]"
+                        }`}
                         onClick={() => {
                           // When switching to SOL, keep the current SOL value
                           setBuyInputMode("sol");
@@ -2586,24 +2616,31 @@ export const Create = () => {
                       >
                         SOL
                       </button>
-                      <button 
+                      <button
                         type="button"
-                        className={`px-3 py-1 text-sm rounded-r-md ${buyInputMode === "percentage" 
-                          ? "bg-[#03FF24] text-black font-bold" 
-                          : "bg-[#1A1A1A] text-white hover:bg-[#2A2A2A]"}`}
+                        className={`px-3 py-1 text-sm rounded-r-md ${
+                          buyInputMode === "percentage"
+                            ? "bg-[#03FF24] text-black font-bold"
+                            : "bg-[#1A1A1A] text-white hover:bg-[#2A2A2A]"
+                        }`}
                         onClick={() => {
                           // When switching to percentage, calculate equivalent percentage
                           setBuyInputMode("percentage");
                           const solValue = parseFloat(buyValue as string);
                           if (!isNaN(solValue)) {
                             // Calculate tokens this SOL would buy using the bonding curve
-                            const tokenAmount = calculateTokensFromSol(solValue);
-                            
+                            const tokenAmount =
+                              calculateTokensFromSol(solValue);
+
                             // Calculate what percentage of total supply that represents
-                            const percentOfSupply = calculatePercentage(tokenAmount);
-                            
+                            const percentOfSupply =
+                              calculatePercentage(tokenAmount);
+
                             // Format and cap at 100%
-                            const formattedPercent = Math.min(percentOfSupply, 100).toFixed(2);
+                            const formattedPercent = Math.min(
+                              percentOfSupply,
+                              100,
+                            ).toFixed(2);
                             setPercentageValue(formattedPercent);
                           }
                         }}
@@ -2611,7 +2648,7 @@ export const Create = () => {
                         %
                       </button>
                     </div>
-                    
+
                     {buyInputMode === "sol" ? (
                       <div className="relative">
                         <input
@@ -2624,7 +2661,8 @@ export const Create = () => {
                             value = value.replace(/[^\d.]/g, "");
 
                             // Ensure only one decimal point
-                            const decimalCount = (value.match(/\./g) || []).length;
+                            const decimalCount = (value.match(/\./g) || [])
+                              .length;
                             if (decimalCount > 1) {
                               value = value.replace(/\.+$/, "");
                             }
@@ -2674,9 +2712,24 @@ export const Create = () => {
                         </span>
                         {parseFloat(buyValue as string) > 0 && (
                           <div className="absolute right-0 top-10 text-right text-xs text-neutral-400">
-                            ≈ {calculatePercentage(calculateTokensFromSol(parseFloat(buyValue as string))).toFixed(4)}% of supply
+                            ≈{" "}
+                            {calculatePercentage(
+                              calculateTokensFromSol(
+                                parseFloat(buyValue as string),
+                              ),
+                            ).toFixed(4)}
+                            % of supply
                             <div className="mt-1">
-                              ≈ {(calculateTokensFromSol(parseFloat(buyValue as string)) / (10 ** DECIMALS)).toLocaleString(undefined, {maximumFractionDigits: 2})} tokens
+                              ≈{" "}
+                              {(
+                                calculateTokensFromSol(
+                                  parseFloat(buyValue as string),
+                                ) /
+                                10 ** DECIMALS
+                              ).toLocaleString(undefined, {
+                                maximumFractionDigits: 2,
+                              })}{" "}
+                              tokens
                             </div>
                           </div>
                         )}
@@ -2693,7 +2746,8 @@ export const Create = () => {
                             value = value.replace(/[^\d.]/g, "");
 
                             // Ensure only one decimal point
-                            const decimalCount = (value.match(/\./g) || []).length;
+                            const decimalCount = (value.match(/\./g) || [])
+                              .length;
                             if (decimalCount > 1) {
                               value = value.replace(/\.+$/, "");
                             }
@@ -2730,13 +2784,17 @@ export const Create = () => {
                               (numValue >= 0 && numValue <= 100)
                             ) {
                               setPercentageValue(value);
-                              
+
                               // Calculate SOL needed to get this percentage using the bonding curve
                               if (numValue > 0) {
-                                const solNeeded = calculateSolFromPercentage(numValue);
-                                
+                                const solNeeded =
+                                  calculateSolFromPercentage(numValue);
+
                                 // Cap at MAX_INITIAL_SOL and format
-                                const cappedSol = Math.min(solNeeded, MAX_INITIAL_SOL).toFixed(2);
+                                const cappedSol = Math.min(
+                                  solNeeded,
+                                  MAX_INITIAL_SOL,
+                                ).toFixed(2);
                                 handleChange("initial_sol", cappedSol);
                               } else {
                                 // Handle 0% case
@@ -2756,7 +2814,15 @@ export const Create = () => {
                           <div className="absolute right-0 top-10 text-right text-xs text-neutral-400">
                             ≈ {parseFloat(form.initial_sol).toFixed(2)} SOL
                             <div className="mt-1">
-                              ≈ {((parseFloat(percentageValue) / 100) * TOKEN_SUPPLY / (10 ** DECIMALS)).toLocaleString(undefined, {maximumFractionDigits: 2})} tokens
+                              ≈{" "}
+                              {(
+                                ((parseFloat(percentageValue) / 100) *
+                                  TOKEN_SUPPLY) /
+                                10 ** DECIMALS
+                              ).toLocaleString(undefined, {
+                                maximumFractionDigits: 2,
+                              })}{" "}
+                              tokens
                             </div>
                           </div>
                         )}
