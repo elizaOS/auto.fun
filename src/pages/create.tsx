@@ -2232,7 +2232,7 @@ export const Create = () => {
             <div className="flex text-lg">
               <button
                 type="button"
-                className={`mr-6 py-1 border-b-2 font-medium transition-colors ${
+                className={`mr-6 py-1 border-b-2 font-medium transition-colors cursor-pointer select-none ${
                   activeTab === FormTab.AUTO
                     ? "border-[#03FF24] text-[#03FF24] font-bold"
                     : "border-transparent text-neutral-400 hover:text-white"
@@ -2243,7 +2243,7 @@ export const Create = () => {
               </button>
               <button
                 type="button"
-                className={`mr-6 py-1 border-b-2 font-medium transition-colors ${
+                className={`mr-6 py-1 border-b-2 font-medium transition-colors cursor-pointer select-none ${
                   activeTab === FormTab.MANUAL
                     ? "border-[#03FF24] text-[#03FF24] font-bold"
                     : "border-transparent text-neutral-400 hover:text-white"
@@ -2254,7 +2254,7 @@ export const Create = () => {
               </button>
               <button
                 type="button"
-                className={`py-1 border-b-2 font-medium transition-colors ${
+                className={`py-1 border-b-2 font-medium transition-colors cursor-pointer select-none ${
                   activeTab === FormTab.IMPORT
                     ? "border-[#03FF24] text-[#03FF24] font-bold"
                     : "border-transparent text-neutral-400 hover:text-white"
