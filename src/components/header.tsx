@@ -113,7 +113,7 @@ export default function Header() {
                               to={item.href}
                             >
                               <img
-                                className="hover:text-green-400"
+                                className="hover:text-[#03FF24]"
                                 src={item.icon}
                                 height={20}
                                 width={20}

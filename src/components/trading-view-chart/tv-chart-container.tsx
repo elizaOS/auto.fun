@@ -106,7 +106,7 @@ export const TVChartContainer = ({
           "mainSeriesProperties.candleStyle.wickDownColor": "#ef5350",
 
           // Price Line
-          "mainSeriesProperties.priceLineColor": "#2fd345",
+          "mainSeriesProperties.priceLineColor": "#03FF24",
 
           // Volume
           "volume.show": true,

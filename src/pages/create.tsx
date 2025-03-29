@@ -159,7 +159,7 @@ export const FormTextArea = ({
     <div className="flex flex-col gap-1 w-full">
       <div className="flex items-center gap-2">
         {isLoading && (
-          <div className="w-4 h-4 border-2 border-[#2fd345] border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-4 h-4 border-2 border-[#03FF24] border-t-transparent rounded-full animate-spin"></div>
         )}
       </div>
       <div className="relative">
@@ -409,12 +409,12 @@ const FormImageInput = ({
       >
         {isGenerating ? (
           <div className="flex flex-col items-center justify-center">
-            <div className="w-10 h-10 border-4 border-[#2fd345] border-t-transparent rounded-full animate-spin mb-4"></div>
+            <div className="w-10 h-10 border-4 border-[#03FF24] border-t-transparent rounded-full animate-spin mb-4"></div>
             <p className="text-white">Generating your image...</p>
             <button
               type="button"
               onClick={handleCancel}
-              className="mt-4 text-[#2fd345] px-4 py-2 rounded-lg font-bold transition-colors"
+              className="mt-4 text-[#03FF24] px-4 py-2 rounded-lg font-bold transition-colors"
             >
               Cancel
             </button>
@@ -2084,7 +2084,7 @@ export const Create = () => {
                 type="button"
                 className={`mr-6 py-1 border-b-2 font-medium transition-colors ${
                   activeTab === FormTab.AUTO
-                    ? "border-[#2fd345] text-[#2fd345] font-bold"
+                    ? "border-[#03FF24] text-[#03FF24] font-bold"
                     : "border-transparent text-neutral-400 hover:text-white"
                 }`}
                 onClick={() => handleTabChange(FormTab.AUTO)}
@@ -2095,7 +2095,7 @@ export const Create = () => {
                 type="button"
                 className={`mr-6 py-1 border-b-2 font-medium transition-colors ${
                   activeTab === FormTab.MANUAL
-                    ? "border-[#2fd345] text-[#2fd345] font-bold"
+                    ? "border-[#03FF24] text-[#03FF24] font-bold"
                     : "border-transparent text-neutral-400 hover:text-white"
                 }`}
                 onClick={() => handleTabChange(FormTab.MANUAL)}
@@ -2106,7 +2106,7 @@ export const Create = () => {
                 type="button"
                 className={`py-1 border-b-2 font-medium transition-colors ${
                   activeTab === FormTab.IMPORT
-                    ? "border-[#2fd345] text-[#2fd345] font-bold"
+                    ? "border-[#03FF24] text-[#03FF24] font-bold"
                     : "border-transparent text-neutral-400 hover:text-white"
                 }`}
                 onClick={() => handleTabChange(FormTab.IMPORT)}
@@ -2125,7 +2125,7 @@ export const Create = () => {
                   value={userPrompt}
                   onChange={(e) => setUserPrompt(e.target.value)}
                   placeholder="Enter a concept like 'a halloween token about arnold schwarzenegger'"
-                  className="flex-1 my-2 p-0 border-b border-b-[#2fd345] text-white bg-transparent focus:outline-none focus:border-b-white"
+                  className="flex-1 my-2 p-0 border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
                 />
                 <button
                   type="button"
@@ -2190,7 +2190,7 @@ export const Create = () => {
                       }
                       onPaste={handleImportAddressPaste}
                       placeholder="Enter any Solana token address (mint)"
-                      className="flex-1 my-2 p-0 border-b border-b-[#2fd345] text-white bg-transparent focus:outline-none focus:border-b-white"
+                      className="flex-1 my-2 p-0 border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
                     />
                     <button
                       type="button"
@@ -2246,7 +2246,7 @@ export const Create = () => {
                   )}
                   {importStatus && (
                     <div
-                      className={`flex items-center gap-2 text-sm ${importStatus.type === "error" ? "text-red-500" : importStatus.type === "warning" ? "text-yellow-500" : "text-green-500"}`}
+                      className={`flex items-center gap-2 text-sm ${importStatus.type === "error" ? "text-red-500" : importStatus.type === "warning" ? "text-yellow-500" : "text-[#03FF24]"}`}
                     >
                       {importStatus.type === "success" ? (
                         <Icons.Check className="w-4 h-4" />

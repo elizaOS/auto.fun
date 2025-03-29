@@ -212,12 +212,12 @@ export const FormImageInput = ({
       <div className="relative mt-1 aspect-square text-center border-[#8c8c8c] flex items-center justify-center">
         {isGenerating ? (
           <div className="flex flex-col items-center justify-center">
-            <div className="w-10 h-10 border-4 border-[#2fd345] border-t-transparent rounded-full animate-spin mb-4"></div>
+            <div className="w-10 h-10 border-4 border-[#03FF24] border-t-transparent rounded-full animate-spin mb-4"></div>
             <p className="text-white">Generating your image...</p>
             <button
               type="button"
               onClick={handleCancel}
-              className="mt-4 text-[#2fd345] px-4 py-2 rounded-lg font-bold transition-colors"
+              className="mt-4 text-[#03FF24] px-4 py-2 rounded-lg font-bold transition-colors"
             >
               Cancel
             </button>
@@ -253,7 +253,7 @@ export const FormImageInput = ({
                   type="button"
                   onClick={handleGenerate}
                   disabled={!prompt.trim() || isGenerating}
-                  className="flex-1 bg-[#2fd345] text-black px-6 py-2.5 font-bold hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
+                  className="flex-1 bg-[#03FF24] text-black px-6 py-2.5 font-bold hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
                 >
                   {isGenerating ? (
                     <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto" />
@@ -264,7 +264,7 @@ export const FormImageInput = ({
                 <button
                   type="button"
                   onClick={handleUploadClick}
-                  className="bg-[#2fd345] text-black px-6 py-2.5 font-bold hover:bg-[#27b938] transition-colors"
+                  className="bg-[#03FF24] text-black px-6 py-2.5 font-bold hover:bg-[#27b938] transition-colors"
                 >
                   Upload
                 </button>

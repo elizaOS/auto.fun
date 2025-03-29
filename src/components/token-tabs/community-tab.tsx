@@ -44,7 +44,7 @@ export default function CommunityTab() {
                 maxLength={200}
                 placeholder="Make me an image that looks like a dog in a wheelchair"
               />
-              <button className="bg-[#2fd345] cursor-pointer w-fit items-center p-3 mt-2 font-bold border-2 text-black text-[12px] md:text-[15px] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]">
+              <button className="bg-[#03FF24] cursor-pointer w-fit items-center p-3 mt-2 font-bold border-2 text-black text-[12px] md:text-[15px] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]">
                 Generate Image
               </button>
             </div>
@@ -69,7 +69,7 @@ export default function CommunityTab() {
                 <div className="place-items-center flex flex-row gap-x-1 text-white mt-4 text-base cursor-pointer">
                   <Link
                     to="/"
-                    className="bg-[#2fd345] p-3 font-bold border-2 text-black text-[12px] md:text-[15px] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
+                    className="bg-[#03FF24] p-3 font-bold border-2 text-black text-[12px] md:text-[15px] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
                   >
                     Connect X account
                   </Link>

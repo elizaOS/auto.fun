@@ -467,13 +467,13 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
     // Walls
     const wallMeshMaterial = new THREE.MeshStandardMaterial({
-      color: 0x000000, // Bright green
+      color: 0x03FF24, // Bright green
       roughness: 0.7,
-      emissive: 0x000000,
+      // emissive: 0x000000,
       // fully transparent
-      transparent: true,
-      opacity: 0.0,
-      emissiveIntensity: 0.3,
+      // transparent: true,
+      // opacity: 0.0,
+      // emissiveIntensity: 0.3,
     });
 
     // Back wall

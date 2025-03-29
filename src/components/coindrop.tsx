@@ -321,10 +321,10 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
 
     // Walls - invisible, match window edges exactly
     const wallMeshMaterial = new THREE.MeshStandardMaterial({
-      color: 0x00ff00, // Bright green
+      color: 0x03FF24, // Bright green
       roughness: 1.0,
       transparent: true,
-      opacity: 1.0, // Less visible for debugging
+      opacity: 0, // Less visible for debugging
     });
 
     // Back wall (top of screen)
