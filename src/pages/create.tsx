@@ -2328,7 +2328,7 @@ export const Create = () => {
 
           {/* Import Tab Content */}
           {activeTab === FormTab.IMPORT && (
-            <div className="my-12">
+            <div>
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
                   <div className="flex flex-row">
