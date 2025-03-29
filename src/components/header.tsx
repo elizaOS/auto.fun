@@ -48,9 +48,12 @@ export default function Header() {
     <>
       <div className="hidden md:block p-6 w-full">
         <div className="flex flex-row items-center justify-between w-full">
-          <div className="flex items-center">
+          <div className="flex items-center select-none">
             <Link to="/" className="mr-6">
-              <img className="size-20" src="/logo_wide.svg" />
+              <img
+                className="size-20 pointer-events-none"
+                src="/logo_wide.svg"
+              />
             </Link>
           </div>
           <div className="flex space-x-3 flex-row">
