@@ -214,7 +214,7 @@ const FormImageInput = ({
   setGeneratingField: (value: string | null) => void;
   onPromptFunctionsChange: (
     setPrompt: (prompt: string) => void,
-    onPromptChange: (prompt: string) => void,
+    onPromptChange: (prompt: string) => void
   ) => void;
   onPreviewChange?: (previewUrl: string | null) => void;
   imageUrl?: string | null;
@@ -228,7 +228,7 @@ const FormImageInput = ({
   const [preview, setPreview] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
   const [lastGeneratedImage, setLastGeneratedImage] = useState<string | null>(
-    null,
+    null
   );
   const promptDebounceRef = useRef<number | null>(null);
   const hasDirectlySetPreview = useRef<boolean>(false);
@@ -264,7 +264,7 @@ const FormImageInput = ({
         onPromptChange(value);
       }, 500);
     },
-    [onPromptChange],
+    [onPromptChange]
   );
 
   // Update lastGeneratedImage only when preview changes
@@ -290,7 +290,7 @@ const FormImageInput = ({
       setPrompt(value);
       debouncedPromptChange(value);
     },
-    [debouncedPromptChange],
+    [debouncedPromptChange]
   );
 
   const handleCancel = useCallback(() => {
@@ -327,7 +327,7 @@ const FormImageInput = ({
         onChange(file);
       }
     },
-    [onChange],
+    [onChange]
   );
 
   // Handle drag & drop
@@ -359,7 +359,7 @@ const FormImageInput = ({
         onChange(file);
       }
     },
-    [onChange],
+    [onChange]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -553,7 +553,7 @@ const uploadImage = async (metadata: TokenMetadata) => {
   const filename = `${safeName}${extension}`;
 
   console.log(
-    `Uploading image as ${filename} with content type ${contentType}`,
+    `Uploading image as ${filename} with content type ${contentType}`
   );
 
   // Get auth token from localStorage
@@ -672,7 +672,7 @@ const waitForTokenCreation = async ({
               imageUrl,
               metadataUrl,
             }),
-          },
+          }
         );
 
         if (createResponse.ok) {
@@ -723,7 +723,7 @@ const waitForTokenCreation = async ({
                 imageUrl,
                 metadataUrl,
               }),
-            },
+            }
           );
 
           if (response.ok) {
@@ -797,6 +797,7 @@ export const Create = () => {
   });
   const [userPrompt, setUserPrompt] = useState("");
   const [isProcessingPrompt, setIsProcessingPrompt] = useState(false);
+  const hasEnoughSolana = false;
 
   // Effect to clear import token data if not in import tab
   useEffect(() => {
@@ -940,7 +941,7 @@ export const Create = () => {
 
   // Store a reference to the FormImageInput's setPreview function
   const previewSetterRef = useRef<((preview: string | null) => void) | null>(
-    null,
+    null
   );
 
   // Create ref to track image URL creation to prevent infinite loops
@@ -1144,7 +1145,7 @@ export const Create = () => {
   const createTokenOnChain = async (
     _tokenMetadata: TokenMetadata,
     mintKeypair: Keypair,
-    _metadataUrl: string,
+    _metadataUrl: string
   ) => {
     if (!signTransaction) {
       throw new Error("Wallet doesn't support signing");
@@ -1212,7 +1213,7 @@ export const Create = () => {
             prompt: userPrompt,
             fields: ["name", "symbol", "description", "prompt"],
           }),
-        },
+        }
       );
 
       if (!response.ok) {
@@ -1251,7 +1252,7 @@ export const Create = () => {
       if (promptFunctions.setPrompt) {
         console.log(
           "Setting promptFunctions.setPrompt with:",
-          data.metadata.prompt,
+          data.metadata.prompt
         );
         promptFunctions.setPrompt(data.metadata.prompt);
       } else {
@@ -1261,7 +1262,7 @@ export const Create = () => {
       if (promptFunctions.onPromptChange) {
         console.log(
           "Calling promptFunctions.onPromptChange with:",
-          data.metadata.prompt,
+          data.metadata.prompt
         );
         promptFunctions.onPromptChange(data.metadata.prompt);
       } else {
@@ -1271,7 +1272,7 @@ export const Create = () => {
       // Step 2: Generate image with the generated prompt
       console.log(
         "Requesting image generation with prompt:",
-        data.metadata.prompt,
+        data.metadata.prompt
       );
 
       // Temporarily set the generating state
@@ -1288,13 +1289,13 @@ export const Create = () => {
             prompt: data.metadata.prompt,
             type: "image",
           }),
-        },
+        }
       );
 
       if (!imageResponse.ok) {
         console.error(
           "Image generation API returned an error:",
-          await imageResponse.text(),
+          await imageResponse.text()
         );
         throw new Error("Failed to generate image for token");
       }
@@ -1314,7 +1315,7 @@ export const Create = () => {
         const imageBlob = await fetch(imageData.mediaUrl).then((r) => {
           if (!r.ok)
             throw new Error(
-              `Failed to fetch image: ${r.status} ${r.statusText}`,
+              `Failed to fetch image: ${r.status} ${r.statusText}`
             );
           return r.blob();
         });
@@ -1362,7 +1363,7 @@ export const Create = () => {
       setHasGeneratedToken(true);
 
       console.log(
-        "=== Token generation from prompt completed successfully ===",
+        "=== Token generation from prompt completed successfully ==="
       );
     } catch (error) {
       console.error("Error generating from prompt:", error);
@@ -1372,7 +1373,7 @@ export const Create = () => {
       alert(
         error instanceof Error
           ? error.message
-          : "Failed to generate token from prompt. Please try again.",
+          : "Failed to generate token from prompt. Please try again."
       );
     } finally {
       setIsProcessingPrompt(false);
@@ -1442,7 +1443,7 @@ export const Create = () => {
               mint: form.importAddress,
               requestor: publicKey ? publicKey.toString() : "",
             }),
-          },
+          }
         );
 
         // Check if the request was successful
@@ -1457,11 +1458,11 @@ export const Create = () => {
             // If we can't parse the error, show a more friendly message
             if (response.status === 404) {
               throw new Error(
-                "The token doesn't exist or doesn't have metadata.",
+                "The token doesn't exist or doesn't have metadata."
               );
             } else {
               throw new Error(
-                `Server error (${response.status}): Unable to retrieve token data.`,
+                `Server error (${response.status}): Unable to retrieve token data.`
               );
             }
           }
@@ -1554,7 +1555,7 @@ export const Create = () => {
 
   // Handle paste in the import address field
   const handleImportAddressPaste = (
-    e: React.ClipboardEvent<HTMLInputElement>,
+    e: React.ClipboardEvent<HTMLInputElement>
   ) => {
     const pastedText = e.clipboardData.getData("text");
 
@@ -1599,7 +1600,7 @@ export const Create = () => {
   const generateAll = useCallback(
     async (
       setPrompt?: ((prompt: string) => void) | null,
-      onPromptChange?: ((prompt: string) => void) | null,
+      onPromptChange?: ((prompt: string) => void) | null
     ) => {
       try {
         setIsGenerating(true);
@@ -1624,7 +1625,7 @@ export const Create = () => {
             method: "GET",
             headers,
             credentials: "include",
-          },
+          }
         );
 
         if (!response.ok) {
@@ -1706,7 +1707,7 @@ export const Create = () => {
                 prompt: token.prompt,
                 type: "image",
               }),
-            },
+            }
           );
 
           if (!imageResponse.ok) {
@@ -1745,14 +1746,14 @@ export const Create = () => {
         alert(
           error instanceof Error
             ? error.message
-            : "Failed to generate metadata. Please try again.",
+            : "Failed to generate metadata. Please try again."
         );
       } finally {
         setIsGenerating(false);
         setGeneratingField(null);
       }
     },
-    [setIsGenerating, setGeneratingField],
+    [setIsGenerating, setGeneratingField]
   );
 
   // Submit form to backend
@@ -1780,14 +1781,14 @@ export const Create = () => {
 
           if (!isCreatorNow) {
             throw new Error(
-              "You need to connect with the token's creator wallet to register it",
+              "You need to connect with the token's creator wallet to register it"
             );
           }
 
           // For imported tokens, create a token entry in the database
           console.log(
             "Creating token entry for imported token:",
-            tokenData.mint,
+            tokenData.mint
           );
 
           // Show coin drop animation
@@ -1828,7 +1829,7 @@ export const Create = () => {
                 // Include the import flag to indicate this is an imported token
                 imported: true,
               }),
-            },
+            }
           );
 
           if (!createResponse.ok) {
@@ -1928,7 +1929,7 @@ export const Create = () => {
         try {
           console.log(
             "Marking pre-generated token as used:",
-            currentPreGeneratedTokenId,
+            currentPreGeneratedTokenId
           );
 
           // Get auth token from localStorage
@@ -1957,7 +1958,7 @@ export const Create = () => {
           });
 
           console.log(
-            "Successfully marked token as used and removed duplicates",
+            "Successfully marked token as used and removed duplicates"
           );
         } catch (error) {
           console.error("Error marking pre-generated token as used:", error);
@@ -1999,7 +2000,7 @@ export const Create = () => {
       alert(
         error instanceof Error
           ? error.message
-          : "Failed to create token. Please try again.",
+          : "Failed to create token. Please try again."
       );
     } finally {
       setIsSubmitting(false);
@@ -2058,7 +2059,7 @@ export const Create = () => {
               method: "GET",
               headers,
               credentials: "include",
-            },
+            }
           );
 
           if (!response.ok) {
@@ -2618,7 +2619,7 @@ export const Create = () => {
                     <div className="text-right text-xs text-neutral-400">
                       ≈{" "}
                       {calculatePercentage(
-                        calculateTokensFromSol(parseFloat(buyValue as string)),
+                        calculateTokensFromSol(parseFloat(buyValue as string))
                       ).toFixed(2)}{" "}
                       % of supply
                       {/* <div className="mt-1">
@@ -2682,6 +2683,11 @@ export const Create = () => {
                   Please fill in all required fields
                 </p>
               )}
+              {!hasEnoughSolana ? (
+                <p className="text-red-500 text-center text-sm m-4">
+                  You don't have enough SOL.
+                </p>
+              ) : null}
               {!isAuthenticated && (
                 <p className="text-red-500 text-center text-sm m-4">
                   Please connect your wallet to create a token

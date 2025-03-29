@@ -6,17 +6,19 @@ import { twMerge } from "tailwind-merge";
 import Button from "./button";
 import ConfigDialog from "./config-dialog";
 import SkeletonImage from "./skeleton-image";
+import useTokenBalance from "@/hooks/use-token-balance";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 export default function Trade({ token }: { token: IToken }) {
   const solanaPrice = token?.solPriceUSD || 0;
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
-    undefined,
+    undefined
   );
   const [error] = useState<string | undefined>("");
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status,
+    token?.status
   );
 
   return (
@@ -109,7 +111,7 @@ export default function Trade({ token }: { token: IToken }) {
                   : token?.tokenPriceUSD
                     ? formatNumber(
                         Number(sellingAmount || 0) * token?.tokenPriceUSD,
-                        true,
+                        true
                       )
                     : formatNumber(0)}
               </span>
@@ -198,11 +200,16 @@ const Balance = ({
   token?: IToken;
   isSolana?: boolean;
 }) => {
+  const wallet = useWallet();
+  const balance = useTokenBalance(
+    wallet.publicKey?.toBase58() || "",
+    isSolana ? "So11111111111111111111111111111111111111111" : token?.mint || ""
+  );
   return (
     <div className="flex items-center gap-2 select-none">
       <Wallet className="text-autofun-text-secondary size-[18px]" />
       <span className="text-sm font-dm-mono text-autofun-text-secondary uppercase">
-        0.00 {isSolana ? "SOL" : token?.ticker}
+        {balance.data?.formattedBalance} {isSolana ? "SOL" : token?.ticker}
       </span>
     </div>
   );
