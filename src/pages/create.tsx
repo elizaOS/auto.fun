@@ -802,6 +802,91 @@ export const Create = () => {
   const [userPrompt, setUserPrompt] = useState("");
   const [isProcessingPrompt, setIsProcessingPrompt] = useState(false);
 
+  // Effect to clear import token data if not in import tab
+  useEffect(() => {
+    if (activeTab !== FormTab.IMPORT) {
+      localStorage.removeItem("import_token_data");
+      setHasStoredToken(false);
+    }
+  }, [activeTab]);
+
+  // Effect to check imported token data and wallet authorization when wallet changes
+  useEffect(() => {
+    if (activeTab === FormTab.IMPORT && publicKey) {
+      const storedTokenData = localStorage.getItem("import_token_data");
+      if (storedTokenData) {
+        try {
+          const tokenData = JSON.parse(storedTokenData) as TokenSearchData;
+          
+          // Check if the current wallet is authorized to create this token
+          const isCreatorWallet = 
+            (tokenData.updateAuthority && 
+             tokenData.updateAuthority === publicKey.toString()) ||
+            (tokenData.creators && 
+             tokenData.creators.includes(publicKey.toString()));
+
+          // Update import status based on wallet authorization
+          if (!isCreatorWallet) {
+            setImportStatus({
+              type: "warning",
+              message: "Please connect with the token's creator wallet to register it.",
+            });
+          } else {
+            setImportStatus({
+              type: "success",
+              message: "You are connected with the creator wallet. You can now register this token.",
+            });
+          }
+        } catch (error) {
+          console.error("Error parsing stored token data:", error);
+        }
+      }
+    }
+  }, [activeTab, publicKey]);
+
+  // Effect to populate form with token data if it exists
+  useEffect(() => {
+    if (activeTab === FormTab.IMPORT) {
+      const storedTokenData = localStorage.getItem("import_token_data");
+      if (storedTokenData) {
+        try {
+          const tokenData = JSON.parse(storedTokenData) as TokenSearchData;
+          setHasStoredToken(true);
+          
+          // Populate the form with token data
+          setForm((prev) => ({
+            ...prev,
+            name: tokenData.name || tokenData.mint.slice(0, 8),
+            symbol: tokenData.symbol || "TOKEN",
+            description: tokenData.description || "Imported token",
+            links: {
+              ...prev.links,
+              twitter: tokenData.twitter || "",
+              telegram: tokenData.telegram || "",
+              website: tokenData.website || "",
+              discord: tokenData.discord || "",
+            },
+          }));
+          
+          // Set the image preview if available - use a small timeout to ensure the ref is set
+          if (tokenData.image) {
+            // Set image URL directly to handle refresh cases
+            setCoinDropImageUrl(tokenData.image || null);
+            
+            // Use a small timeout to ensure the ref is available after render
+            setTimeout(() => {
+              if (previewSetterRef.current) {
+                previewSetterRef.current(tokenData.image || null);
+              }
+            }, 100);
+          }
+        } catch (error) {
+          console.error("Error parsing stored token data:", error);
+        }
+      }
+    }
+  }, [activeTab]);
+
   // Simple form state
   const [form, setForm] = useState({
     name: "",
@@ -968,6 +1053,12 @@ export const Create = () => {
         description: form.description,
         imageFile: imageFile,
       }));
+    }
+
+    // When switching to AUTO or MANUAL, clear any imported token data
+    if (tab === FormTab.AUTO || tab === FormTab.MANUAL) {
+      localStorage.removeItem("import_token_data");
+      setHasStoredToken(false);
     }
 
     // When switching to Manual mode, clear the image if coming from Auto
@@ -1408,93 +1499,53 @@ export const Create = () => {
         }
 
         const tokenData = (await response.json()) as TokenSearchData;
+        
+        // Store token data in localStorage for later use
+        localStorage.setItem("import_token_data", JSON.stringify(tokenData));
+        setHasStoredToken(true);
 
-        // For now, we'll skip the creator verification check as requested
+        // Populate the form with token data
+        setForm((prev) => ({
+          ...prev,
+          name: tokenData.name || form.importAddress.slice(0, 8),
+          symbol: tokenData.symbol || "TOKEN",
+          description: tokenData.description || "Imported token",
+          links: {
+            ...prev.links,
+            twitter: tokenData.twitter || "",
+            telegram: tokenData.telegram || "",
+            website: tokenData.website || "",
+            discord: tokenData.discord || "",
+          },
+        }));
 
-        // Create token entry in database before redirecting
-        try {
-          console.log(
-            "Creating token entry for imported token:",
-            form.importAddress,
-          );
-
-          // Show the coin drop animation while creating
-          setShowCoinDrop(true);
-
-          // Create token record via API
-          const createResponse = await fetch(
-            import.meta.env.VITE_API_URL + "/api/create-token",
-            {
-              method: "POST",
-              headers,
-              credentials: "include",
-              body: JSON.stringify({
-                tokenMint: form.importAddress,
-                mint: form.importAddress,
-                name: tokenData.name || form.importAddress.slice(0, 8),
-                symbol: tokenData.symbol || "TOKEN",
-                description: tokenData.description || "Imported token",
-                twitter: tokenData.twitter || "",
-                telegram: tokenData.telegram || "",
-                website: tokenData.website || "",
-                discord: tokenData.discord || "",
-                agentLink: "",
-                imageUrl: tokenData.image || "",
-                metadataUrl: tokenData.metadataUri || "",
-                // Include the import flag to indicate this is an imported token
-                imported: true,
-              }),
-            },
-          );
-
-          if (!createResponse.ok) {
-            const errorData = (await createResponse.json()) as {
-              error?: string;
-            };
-            throw new Error(errorData.error || "Failed to create token entry");
+        // Set token image if available
+        if (tokenData.image) {
+          if (previewSetterRef.current) {
+            previewSetterRef.current(tokenData.image);
           }
+          setCoinDropImageUrl(tokenData.image);
+        }
 
-          // Now redirect to token page
-          navigate(`/token/${form.importAddress}`);
-        } catch (createError) {
-          console.error("Error creating token entry:", createError);
+        // Check if the current wallet is authorized to create this token
+        const isCreatorWallet = 
+          (tokenData.updateAuthority && 
+           tokenData.updateAuthority === publicKey.toString()) ||
+          (tokenData.creators && 
+           tokenData.creators.includes(publicKey.toString()));
 
-          // If creating fails, try checking if the token exists already
-          try {
-            // Try the check endpoint as a fallback
-            const checkResponse = await fetch(
-              import.meta.env.VITE_API_URL + "/api/check-token",
-              {
-                method: "POST",
-                headers,
-                credentials: "include",
-                body: JSON.stringify({
-                  tokenMint: form.importAddress,
-                }),
-              },
-            );
-
-            if (checkResponse.ok) {
-              const data = await checkResponse.json();
-              if (
-                data &&
-                typeof data === "object" &&
-                "tokenFound" in data &&
-                data.tokenFound === true
-              ) {
-                // Token exists, we can redirect
-                navigate(`/token/${form.importAddress}`);
-                return;
-              }
-            }
-
-            throw new Error(
-              "Token creation failed and token was not found in database",
-            );
-          } catch (checkError) {
-            console.error("Error checking token:", checkError);
-            throw createError; // Re-throw the original error
-          }
+        if (!isCreatorWallet) {
+          // Show a message that they need to switch wallets
+          setImportStatus({
+            type: "warning",
+            message: "Please connect with the token's creator wallet to register it. The form below has been populated with the token data.",
+          });
+        } else {
+          // Success message - ready to register
+          setImportStatus({
+            type: "success",
+            message: "Token data loaded successfully. You can now register this token.",
+          });
         }
       } catch (fetchError) {
         console.error("API Error:", fetchError);
@@ -1743,9 +1794,9 @@ export const Create = () => {
         throw new Error("Wallet not connected");
       }
 
-      // Check if we're working with imported token data
+      // Check if we're working with imported token data - ONLY do this check for IMPORT tab
       const storedTokenData = localStorage.getItem("import_token_data");
-      if (storedTokenData) {
+      if (storedTokenData && activeTab === FormTab.IMPORT) {
         try {
           const tokenData = JSON.parse(storedTokenData);
 
@@ -1758,17 +1809,80 @@ export const Create = () => {
 
           if (!isCreatorNow) {
             throw new Error(
-              "You need to connect with the token's creator wallet to register it",
+              "You need to connect with the token's creator wallet to register it"
             );
           }
+
+          // For imported tokens, create a token entry in the database
+          console.log(
+            "Creating token entry for imported token:",
+            tokenData.mint
+          );
+
+          // Show coin drop animation
+          setShowCoinDrop(true);
+
+          // Get auth token from localStorage
+          const authToken = localStorage.getItem("authToken");
+
+          // Prepare headers
+          const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+          };
+
+          if (authToken) {
+            headers["Authorization"] = `Bearer ${authToken}`;
+          }
+
+          // Create token record via API
+          const createResponse = await fetch(
+            import.meta.env.VITE_API_URL + "/api/create-token",
+            {
+              method: "POST",
+              headers,
+              credentials: "include",
+              body: JSON.stringify({
+                tokenMint: tokenData.mint,
+                mint: tokenData.mint,
+                name: form.name,
+                symbol: form.symbol,
+                description: form.description,
+                twitter: form.links.twitter,
+                telegram: form.links.telegram,
+                website: form.links.website,
+                discord: form.links.discord,
+                agentLink: "",
+                imageUrl: tokenData.image || "",
+                metadataUrl: tokenData.metadataUri || "",
+                // Include the import flag to indicate this is an imported token
+                imported: true,
+              }),
+            }
+          );
+
+          if (!createResponse.ok) {
+            const errorData = (await createResponse.json()) as {
+              error?: string;
+            };
+            throw new Error(errorData.error || "Failed to create token entry");
+          }
+
+          // Clear imported token data from localStorage
+          localStorage.removeItem("import_token_data");
+          setHasStoredToken(false);
+
+          // Redirect to token page
+          navigate(`/token/${tokenData.mint}`);
+          return;
         } catch (error) {
-          console.error("Error checking token ownership:", error);
+          console.error("Error handling imported token:", error);
           if (error instanceof Error) {
             throw error; // Re-throw if it's a permission error
           }
         }
       }
 
+      // For AUTO and MANUAL tabs, we proceed with the regular token creation flow
       // Generate a new keypair for the token mint
       const mintKeypair = Keypair.generate();
       const tokenMint = mintKeypair.publicKey.toBase58();
@@ -2320,18 +2434,56 @@ export const Create = () => {
                       {errors.importAddress}
                     </div>
                   )}
+                  
+                  {/* Enhanced import status with clearer guidance */}
                   {importStatus && (
                     <div
-                      className={`flex items-center gap-2 text-sm ${importStatus.type === "error" ? "text-red-500" : importStatus.type === "warning" ? "text-yellow-500" : "text-green-500"}`}
+                      className={`p-3 border rounded-md mb-4 ${
+                        importStatus.type === "error" 
+                          ? "border-red-500 bg-red-950/20 text-red-400" 
+                          : importStatus.type === "warning" 
+                            ? "border-yellow-500 bg-yellow-950/20 text-yellow-400" 
+                            : "border-green-500 bg-green-950/20 text-green-400"
+                      }`}
                     >
-                      {importStatus.type === "success" ? (
-                        <Icons.Check className="w-4 h-4" />
-                      ) : importStatus.type === "warning" ? (
-                        <Icons.Warning className="w-4 h-4" />
-                      ) : (
-                        <Icons.XCircle className="w-4 h-4" />
+                      <div className="flex items-center gap-2 text-sm">
+                        {importStatus.type === "success" ? (
+                          <Icons.Check className="w-5 h-5 flex-shrink-0" />
+                        ) : importStatus.type === "warning" ? (
+                          <Icons.Warning className="w-5 h-5 flex-shrink-0" />
+                        ) : (
+                          <Icons.XCircle className="w-5 h-5 flex-shrink-0" />
+                        )}
+                        <span className="font-medium">{importStatus.message}</span>
+                      </div>
+                      
+                      {/* Additional guidance for different status types */}
+                      {importStatus.type === "warning" && (
+                        <div className="mt-2 ml-7 text-sm text-yellow-300/80">
+                          <p>The token details have been loaded below. Please connect with the token's creator wallet to register it.</p>
+                          {publicKey && (
+                            <p className="mt-1">
+                              Current wallet: <span className="font-mono">{publicKey.toString().slice(0, 4) + '...' + publicKey.toString().slice(-4)}</span>
+                            </p>
+                          )}
+                        </div>
                       )}
-                      {importStatus.message}
+                      
+                      {importStatus.type === "success" && (
+                        <div className="mt-2 ml-7 text-sm text-green-300/80">
+                          <p>You're connected with the correct wallet. Review the token details below and click "Launch" to register this token.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Remove this section as it's redundant with the form below */}
+                  {hasStoredToken && !importStatus && (
+                    <div className="mt-4 p-3 border border-neutral-700 rounded-md bg-black/30">
+                      <h3 className="text-white font-medium mb-2">Imported Token Details</h3>
+                      <p className="text-neutral-400 text-sm mb-4">
+                        These details have been loaded from the token's metadata.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -2367,7 +2519,11 @@ export const Create = () => {
                   }}
                   onPreviewChange={handlePreviewChange}
                   imageUrl={
-                    activeTab === FormTab.AUTO ? autoForm.imageUrl : undefined
+                    activeTab === FormTab.AUTO 
+                      ? autoForm.imageUrl 
+                      : activeTab === FormTab.IMPORT && hasStoredToken
+                        ? coinDropImageUrl
+                        : undefined
                   }
                   onDirectPreviewSet={(setter) => {
                     previewSetterRef.current = setter;
@@ -2393,224 +2549,227 @@ export const Create = () => {
                 isLoading={isGenerating && generatingField === "description"}
               />
 
-              <div className="flex flex-row gap-3 justify-end uppercase">
-                <span className="text-white text-xl font-medium relative group">
-                  Buy
-                  <span className="inline-block ml-1 cursor-help">
-                    <Icons.Info className="h-4 w-4 text-[#8c8c8c] hover:text-white" />
-                    <div className="absolute hidden group-hover:block right-0 bottom-8 w-72 p-3 text-xs normal-case bg-black border border-neutral-800 rounded-md shadow-lg z-10">
-                      <p className="text-white mb-2">
-                        Choose how much of the token you want to buy on launch:
-                      </p>
-                      <p className="text-neutral-400 mb-1">
-                        • <b>SOL</b>: Amount of SOL to invest
-                      </p>
-                      <p className="text-neutral-400 mb-2">
-                        • <b>%</b>: Percentage of token supply to acquire
-                      </p>
-                      <div className="border-t border-neutral-800 pt-2 mt-1">
-                        <p className="text-neutral-400 text-xs">
-                          Total token supply: {TOKEN_SUPPLY.toLocaleString()} tokens
+              {/* Hide Buy section when in IMPORT tab */}
+              {activeTab !== FormTab.IMPORT && (
+                <div className="flex flex-row gap-3 justify-end uppercase">
+                  <span className="text-white text-xl font-medium relative group">
+                    Buy
+                    <span className="inline-block ml-1 cursor-help">
+                      <Icons.Info className="h-4 w-4 text-[#8c8c8c] hover:text-white" />
+                      <div className="absolute hidden group-hover:block right-0 bottom-8 w-72 p-3 text-xs normal-case bg-black border border-neutral-800 rounded-md shadow-lg z-10">
+                        <p className="text-white mb-2">
+                          Choose how much of the token you want to buy on launch:
                         </p>
-                        <p className="text-neutral-400 text-xs mt-1">
-                          Pricing follows a bonding curve, your percentage increases with more SOL.
+                        <p className="text-neutral-400 mb-1">
+                          • <b>SOL</b>: Amount of SOL to invest
                         </p>
+                        <p className="text-neutral-400 mb-2">
+                          • <b>%</b>: Percentage of token supply to acquire
+                        </p>
+                        <div className="border-t border-neutral-800 pt-2 mt-1">
+                          <p className="text-neutral-400 text-xs">
+                            Total token supply: {TOKEN_SUPPLY.toLocaleString()} tokens
+                          </p>
+                          <p className="text-neutral-400 text-xs mt-1">
+                            Pricing follows a bonding curve, your percentage increases with more SOL.
+                          </p>
+                        </div>
                       </div>
-                    </div>
+                    </span>
                   </span>
-                </span>
-                <div className="flex flex-col items-end">
-                  <div className="flex mb-2">
-                    <button 
-                      type="button"
-                      className={`px-3 py-1 text-sm rounded-l-md ${buyInputMode === "sol" 
-                        ? "bg-[#2fd345] text-black font-bold" 
-                        : "bg-[#1A1A1A] text-white hover:bg-[#2A2A2A]"}`}
-                      onClick={() => {
-                        // When switching to SOL, keep the current SOL value
-                        setBuyInputMode("sol");
-                      }}
-                    >
-                      SOL
-                    </button>
-                    <button 
-                      type="button"
-                      className={`px-3 py-1 text-sm rounded-r-md ${buyInputMode === "percentage" 
-                        ? "bg-[#2fd345] text-black font-bold" 
-                        : "bg-[#1A1A1A] text-white hover:bg-[#2A2A2A]"}`}
-                      onClick={() => {
-                        // When switching to percentage, calculate equivalent percentage
-                        setBuyInputMode("percentage");
-                        const solValue = parseFloat(buyValue as string);
-                        if (!isNaN(solValue)) {
-                          // Calculate tokens this SOL would buy using the bonding curve
-                          const tokenAmount = calculateTokensFromSol(solValue);
-                          
-                          // Calculate what percentage of total supply that represents
-                          const percentOfSupply = calculatePercentage(tokenAmount);
-                          
-                          // Format and cap at 100%
-                          const formattedPercent = Math.min(percentOfSupply, 100).toFixed(2);
-                          setPercentageValue(formattedPercent);
-                        }
-                      }}
-                    >
-                      %
-                    </button>
-                  </div>
-                  
-                  {buyInputMode === "sol" ? (
-                    <div className="relative">
-                      <input
-                        type="number"
-                        value={buyValue}
-                        onChange={(e) => {
-                          let value = e.target.value.replace(" SOL", "");
-
-                          // Only allow numbers and decimal point
-                          value = value.replace(/[^\d.]/g, "");
-
-                          // Ensure only one decimal point
-                          const decimalCount = (value.match(/\./g) || []).length;
-                          if (decimalCount > 1) {
-                            value = value.replace(/\.+$/, "");
-                          }
-
-                          // Split into whole and decimal parts
-                          const parts = value.split(".");
-                          let wholePart = parts[0];
-                          let decimalPart = parts[1] || "";
-
-                          // Limit whole part to 2 digits
-                          if (wholePart.length > 2) {
-                            wholePart = wholePart.slice(0, 2);
-                          }
-
-                          // Limit decimal part to 2 digits
-                          if (decimalPart.length > 2) {
-                            decimalPart = decimalPart.slice(0, 2);
-                          }
-
-                          // Reconstruct the value
-                          value = decimalPart
-                            ? `${wholePart}.${decimalPart}`
-                            : wholePart;
-
-                          // Ensure total length is max 5 (including decimal point)
-                          if (value.length > 5) {
-                            value = value.slice(0, 5);
-                          }
-
-                          // Parse the value and check if it's within range
-                          const numValue = parseFloat(value);
-                          if (
-                            value === "" ||
-                            (numValue >= 0 && numValue <= MAX_INITIAL_SOL)
-                          ) {
-                            handleChange("initial_sol", value);
-                            setBuyValue(value);
-                          }
+                  <div className="flex flex-col items-end">
+                    <div className="flex mb-2">
+                      <button 
+                        type="button"
+                        className={`px-3 py-1 text-sm rounded-l-md ${buyInputMode === "sol" 
+                          ? "bg-[#2fd345] text-black font-bold" 
+                          : "bg-[#1A1A1A] text-white hover:bg-[#2A2A2A]"}`}
+                        onClick={() => {
+                          // When switching to SOL, keep the current SOL value
+                          setBuyInputMode("sol");
                         }}
-                        min="0"
-                        max={MAX_INITIAL_SOL}
-                        step="0.01"
-                        className="w-26 pr-10 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white"
-                      />
-                      <span className="absolute right-0 text-white text-xl font-medium">
+                      >
                         SOL
-                      </span>
-                      {parseFloat(buyValue as string) > 0 && (
-                        <div className="absolute right-0 top-10 text-right text-xs text-neutral-400">
-                          ≈ {calculatePercentage(calculateTokensFromSol(parseFloat(buyValue as string))).toFixed(4)}% of supply
-                          <div className="mt-1">
-                            ≈ {(calculateTokensFromSol(parseFloat(buyValue as string)) / (10 ** DECIMALS)).toLocaleString(undefined, {maximumFractionDigits: 2})} tokens
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      <input
-                        type="number"
-                        value={percentageValue}
-                        onChange={(e) => {
-                          let value = e.target.value.replace(" %", "");
-
-                          // Only allow numbers and decimal point
-                          value = value.replace(/[^\d.]/g, "");
-
-                          // Ensure only one decimal point
-                          const decimalCount = (value.match(/\./g) || []).length;
-                          if (decimalCount > 1) {
-                            value = value.replace(/\.+$/, "");
-                          }
-
-                          // Split into whole and decimal parts
-                          const parts = value.split(".");
-                          let wholePart = parts[0];
-                          let decimalPart = parts[1] || "";
-
-                          // Limit whole part to 2 digits (max 99%)
-                          if (wholePart.length > 2) {
-                            wholePart = wholePart.slice(0, 2);
-                          }
-
-                          // Limit decimal part to 2 digits
-                          if (decimalPart.length > 2) {
-                            decimalPart = decimalPart.slice(0, 2);
-                          }
-
-                          // Reconstruct the value
-                          value = decimalPart
-                            ? `${wholePart}.${decimalPart}`
-                            : wholePart;
-
-                          // Ensure total length is max 5 (including decimal point)
-                          if (value.length > 5) {
-                            value = value.slice(0, 5);
-                          }
-
-                          // Parse the value and check if it's within range (0-100%)
-                          const numValue = parseFloat(value);
-                          if (
-                            value === "" ||
-                            (numValue >= 0 && numValue <= 100)
-                          ) {
-                            setPercentageValue(value);
+                      </button>
+                      <button 
+                        type="button"
+                        className={`px-3 py-1 text-sm rounded-r-md ${buyInputMode === "percentage" 
+                          ? "bg-[#2fd345] text-black font-bold" 
+                          : "bg-[#1A1A1A] text-white hover:bg-[#2A2A2A]"}`}
+                        onClick={() => {
+                          // When switching to percentage, calculate equivalent percentage
+                          setBuyInputMode("percentage");
+                          const solValue = parseFloat(buyValue as string);
+                          if (!isNaN(solValue)) {
+                            // Calculate tokens this SOL would buy using the bonding curve
+                            const tokenAmount = calculateTokensFromSol(solValue);
                             
-                            // Calculate SOL needed to get this percentage using the bonding curve
-                            if (numValue > 0) {
-                              const solNeeded = calculateSolFromPercentage(numValue);
-                              
-                              // Cap at MAX_INITIAL_SOL and format
-                              const cappedSol = Math.min(solNeeded, MAX_INITIAL_SOL).toFixed(2);
-                              handleChange("initial_sol", cappedSol);
-                            } else {
-                              // Handle 0% case
-                              handleChange("initial_sol", "0");
-                            }
+                            // Calculate what percentage of total supply that represents
+                            const percentOfSupply = calculatePercentage(tokenAmount);
+                            
+                            // Format and cap at 100%
+                            const formattedPercent = Math.min(percentOfSupply, 100).toFixed(2);
+                            setPercentageValue(formattedPercent);
                           }
                         }}
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        className="w-26 pr-8 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white"
-                      />
-                      <span className="absolute right-0 text-white text-xl font-medium">
+                      >
                         %
-                      </span>
-                      {parseFloat(percentageValue) > 0 && (
-                        <div className="absolute right-0 top-10 text-right text-xs text-neutral-400">
-                          ≈ {parseFloat(form.initial_sol).toFixed(2)} SOL
-                          <div className="mt-1">
-                            ≈ {((parseFloat(percentageValue) / 100) * TOKEN_SUPPLY / (10 ** DECIMALS)).toLocaleString(undefined, {maximumFractionDigits: 2})} tokens
-                          </div>
-                        </div>
-                      )}
+                      </button>
                     </div>
-                  )}
+                    
+                    {buyInputMode === "sol" ? (
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={buyValue}
+                          onChange={(e) => {
+                            let value = e.target.value.replace(" SOL", "");
+
+                            // Only allow numbers and decimal point
+                            value = value.replace(/[^\d.]/g, "");
+
+                            // Ensure only one decimal point
+                            const decimalCount = (value.match(/\./g) || []).length;
+                            if (decimalCount > 1) {
+                              value = value.replace(/\.+$/, "");
+                            }
+
+                            // Split into whole and decimal parts
+                            const parts = value.split(".");
+                            let wholePart = parts[0];
+                            let decimalPart = parts[1] || "";
+
+                            // Limit whole part to 2 digits
+                            if (wholePart.length > 2) {
+                              wholePart = wholePart.slice(0, 2);
+                            }
+
+                            // Limit decimal part to 2 digits
+                            if (decimalPart.length > 2) {
+                              decimalPart = decimalPart.slice(0, 2);
+                            }
+
+                            // Reconstruct the value
+                            value = decimalPart
+                              ? `${wholePart}.${decimalPart}`
+                              : wholePart;
+
+                            // Ensure total length is max 5 (including decimal point)
+                            if (value.length > 5) {
+                              value = value.slice(0, 5);
+                            }
+
+                            // Parse the value and check if it's within range
+                            const numValue = parseFloat(value);
+                            if (
+                              value === "" ||
+                              (numValue >= 0 && numValue <= MAX_INITIAL_SOL)
+                            ) {
+                              handleChange("initial_sol", value);
+                              setBuyValue(value);
+                            }
+                          }}
+                          min="0"
+                          max={MAX_INITIAL_SOL}
+                          step="0.01"
+                          className="w-26 pr-10 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white"
+                        />
+                        <span className="absolute right-0 text-white text-xl font-medium">
+                          SOL
+                        </span>
+                        {parseFloat(buyValue as string) > 0 && (
+                          <div className="absolute right-0 top-10 text-right text-xs text-neutral-400">
+                            ≈ {calculatePercentage(calculateTokensFromSol(parseFloat(buyValue as string))).toFixed(4)}% of supply
+                            <div className="mt-1">
+                              ≈ {(calculateTokensFromSol(parseFloat(buyValue as string)) / (10 ** DECIMALS)).toLocaleString(undefined, {maximumFractionDigits: 2})} tokens
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={percentageValue}
+                          onChange={(e) => {
+                            let value = e.target.value.replace(" %", "");
+
+                            // Only allow numbers and decimal point
+                            value = value.replace(/[^\d.]/g, "");
+
+                            // Ensure only one decimal point
+                            const decimalCount = (value.match(/\./g) || []).length;
+                            if (decimalCount > 1) {
+                              value = value.replace(/\.+$/, "");
+                            }
+
+                            // Split into whole and decimal parts
+                            const parts = value.split(".");
+                            let wholePart = parts[0];
+                            let decimalPart = parts[1] || "";
+
+                            // Limit whole part to 2 digits (max 99%)
+                            if (wholePart.length > 2) {
+                              wholePart = wholePart.slice(0, 2);
+                            }
+
+                            // Limit decimal part to 2 digits
+                            if (decimalPart.length > 2) {
+                              decimalPart = decimalPart.slice(0, 2);
+                            }
+
+                            // Reconstruct the value
+                            value = decimalPart
+                              ? `${wholePart}.${decimalPart}`
+                              : wholePart;
+
+                            // Ensure total length is max 5 (including decimal point)
+                            if (value.length > 5) {
+                              value = value.slice(0, 5);
+                            }
+
+                            // Parse the value and check if it's within range (0-100%)
+                            const numValue = parseFloat(value);
+                            if (
+                              value === "" ||
+                              (numValue >= 0 && numValue <= 100)
+                            ) {
+                              setPercentageValue(value);
+                              
+                              // Calculate SOL needed to get this percentage using the bonding curve
+                              if (numValue > 0) {
+                                const solNeeded = calculateSolFromPercentage(numValue);
+                                
+                                // Cap at MAX_INITIAL_SOL and format
+                                const cappedSol = Math.min(solNeeded, MAX_INITIAL_SOL).toFixed(2);
+                                handleChange("initial_sol", cappedSol);
+                              } else {
+                                // Handle 0% case
+                                handleChange("initial_sol", "0");
+                              }
+                            }
+                          }}
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          className="w-26 pr-8 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white"
+                        />
+                        <span className="absolute right-0 text-white text-xl font-medium">
+                          %
+                        </span>
+                        {parseFloat(percentageValue) > 0 && (
+                          <div className="absolute right-0 top-10 text-right text-xs text-neutral-400">
+                            ≈ {parseFloat(form.initial_sol).toFixed(2)} SOL
+                            <div className="mt-1">
+                              ≈ {((parseFloat(percentageValue) / 100) * TOKEN_SUPPLY / (10 ** DECIMALS)).toLocaleString(undefined, {maximumFractionDigits: 2})} tokens
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
