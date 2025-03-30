@@ -53,6 +53,7 @@ export default function Header() {
               <img
                 className="size-20 pointer-events-none"
                 src="/logo_wide.svg"
+                alt="logo"
               />
             </Link>
           </div>
