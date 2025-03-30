@@ -64,70 +64,63 @@ export default function AdminTab() {
   };
 
   return (
-    <div className="grid grid-cols-2 w-full h-full">
-      <div className="justify-items-center grid col-span-2">
-        <div className="flex w-4/5 md:w-2/3 mt-12 flex-col gap-3 ">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3">
-            <div className="grid md:col-span-2 mb-2 text-center uppercase font-dm-mono text-xl">
-              Add project socials here
-            </div>
-            <FormInput
-              type="text"
-              value={form.links.website}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                handleChange("links.website", e.target.value)
-              }
-              isOptional
-              inputTag={<Icons.Website />}
-              placeholder="Website"
-              rightIndicator={<CopyButton text={""} />}
-            />
-            <FormInput
-              type="text"
-              value={form.links.twitter}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                handleChange("links.twitter", e.target.value)
-              }
-              isOptional
-              inputTag={<Icons.Twitter />}
-              placeholder="X (Twitter)"
-              rightIndicator={<CopyButton text={form.links.twitter || ""} />}
-            />
-            <FormInput
-              type="text"
-              value={form.links.telegram}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                handleChange("links.telegram", e.target.value)
-              }
-              isOptional
-              inputTag={<Icons.Telegram />}
-              placeholder="Telegram"
-              rightIndicator={<CopyButton text={form.links.telegram || ""} />}
-            />
-            <FormInput
-              type="text"
-              value={form.links.discord}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                handleChange("links.discord", e.target.value)
-              }
-              isOptional
-              inputTag={<Icons.Discord />}
-              placeholder="Discord"
-              rightIndicator={<CopyButton text={form.links.discord || ""} />}
-            />
-          </div>
-        </div>
+    <div className="flex flex-col gap-4 p-4">
+      <div className="font-dm-mono text-autofun-background-action-highlight text-xl">
+        Socials
       </div>
-      <div className="grid mt-6 md:mt-0 col-span-2 justify-items-center w-full uppercase font-dm-mono text-xl">
-        <div className="grid col-span-2 mb-4 items-center justify-items-center w-full  ">
-          <button
-            type="submit"
-            className="cursor-pointer text-white bg-transparent gap-x-3 border-2 hover:bg-autofun-background-action-highlight border-autofun-background-action-highlight flex px-8 py-1 mt-2 flex-row w-fit items-center justify-items-center"
-          >
-            Save
-          </button>
-        </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormInput
+          type="text"
+          value={form.links.website}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            handleChange("links.website", e.target.value)
+          }
+          isOptional
+          inputTag={<Icons.Website />}
+          placeholder="Website"
+          rightIndicator={<CopyButton text={""} />}
+        />
+        <FormInput
+          type="text"
+          value={form.links.twitter}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            handleChange("links.twitter", e.target.value)
+          }
+          isOptional
+          inputTag={<Icons.Twitter />}
+          placeholder="X (Twitter)"
+          rightIndicator={<CopyButton text={form.links.twitter || ""} />}
+        />
+        <FormInput
+          type="text"
+          value={form.links.telegram}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            handleChange("links.telegram", e.target.value)
+          }
+          isOptional
+          inputTag={<Icons.Telegram />}
+          placeholder="Telegram"
+          rightIndicator={<CopyButton text={form.links.telegram || ""} />}
+        />
+        <FormInput
+          type="text"
+          value={form.links.discord}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            handleChange("links.discord", e.target.value)
+          }
+          isOptional
+          inputTag={<Icons.Discord />}
+          placeholder="Discord"
+          rightIndicator={<CopyButton text={form.links.discord || ""} />}
+        />
       </div>
+      <button
+        type="submit"
+        className="cursor-pointer text-white bg-transparent gap-x-3 border-2 hover:bg-autofun-background-action-highlight border-autofun-background-action-highlight flex px-8 py-1 mt-2 flex-row w-fit items-center justify-items-center"
+      >
+        Save
+      </button>
     </div>
   );
 }
