@@ -166,7 +166,7 @@ jobs:
             echo "Frontend URL: https://autofun.pages.dev"
           else
             echo "API URL: https://api-dev.autofun.pages.dev"
-            echo "Frontend URL: https://autofun-dev.pages.dev"
+            echo "Frontend URL: https://develop.autofun.pages.dev"
           fi
           
       - name: Notify on Failure

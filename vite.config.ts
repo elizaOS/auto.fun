@@ -52,13 +52,13 @@ export default defineConfig({
       process.env.NODE_ENV || "development"
     ),
     "import.meta.env.VITE_TOKEN_SUPPLY": JSON.stringify(
-      process.env.VITE_TOKEN_SUPPLY || 100000000000000
+      process.env.VITE_TOKEN_SUPPLY || "100000000000000"
     ),
     "import.meta.env.VITE_DECIMALS": JSON.stringify(
-      process.env.VITE_DECIMALS || 6
+      process.env.VITE_DECIMALS || "6"
     ),
     "import.meta.env.VITE_VIRTUAL_RESERVES": JSON.stringify(
-      process.env.VITE_VIRTUAL_RESERVES || 2800000000
+      process.env.VITE_VIRTUAL_RESERVES || "2800000000"
     ),
     "import.meta.env.VITE_SOLANA_NETWORK": JSON.stringify(
       process.env.VITE_SOLANA_NETWORK || "mainnet"
