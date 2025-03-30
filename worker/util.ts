@@ -8,7 +8,6 @@ import {
 import {
   ComputeBudgetProgram,
   Connection,
-  Keypair,
   ParsedAccountData,
   PublicKey,
   SystemProgram,
@@ -17,14 +16,14 @@ import {
   TransactionInstruction,
 } from "@solana/web3.js";
 import { eq } from "drizzle-orm";
-import { Autofun } from "./target/types/autofun";
-import { calculateAmountOutBuy, calculateAmountOutSell } from "./tests/utils";
 import { CacheService } from "./cache";
 import { SEED_BONDING_CURVE, SEED_CONFIG } from "./constant";
 import { getDB, Token, tokenHolders, tokens } from "./db";
 import { Env } from "./env";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
 import { initSolanaConfig } from "./solana";
+import { Autofun } from "./target/types/autofun";
+import { calculateAmountOutBuy, calculateAmountOutSell } from "./tests/utils";
 import { getWebSocketClient } from "./websocket-client";
 
 // Type definition for token metadata from JSON
@@ -439,19 +438,11 @@ export const withdrawTx = async (
 
 // Get RPC URL based on the environment
 export const getRpcUrl = (env: any) => {
-  return env.NETWORK === "devnet"
-    ? env.DEVNET_SOLANA_RPC_URL || "https://api.devnet.solana.com"
-    : env.MAINNET_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
-};
-
-// Replace the getLegacyRpcUrl function
-export const getLegacyRpcUrl = (env?: any) => {
-  if (!env) {
-    // If no env is provided, use safe defaults
-    return "https://api.mainnet-beta.solana.com";
-  }
-
-  return getRpcUrl(env);
+  return (
+    (env.NETWORK === "devnet"
+      ? env.DEVNET_SOLANA_RPC_URL
+      : env.MAINNET_SOLANA_RPC_URL) || env.VITE_RPC_URL
+  );
 };
 
 // Generate a logger that works with Cloudflare Workers

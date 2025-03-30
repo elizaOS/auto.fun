@@ -3,11 +3,8 @@ import { env } from "./env";
 
 // Use Helius RPC URL from environment variables
 export const getRpcUrl = (): string => {
-  // Use the MAINNET_RPC_URL from environment or fallback to hardcoded value
-  // (Only for development - should use env in production)
   return (
-    env.mainnetRpcUrl ||
-    "https://mainnet.helius-rpc.com/?api-key=28741947-d621-41a0-95db-bbd1b57ccf8a"
+    env.rpcUrl
   );
 };
 

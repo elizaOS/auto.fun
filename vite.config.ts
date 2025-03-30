@@ -7,6 +7,10 @@ import { nodePolyfills } from "vite-plugin-node-polyfills";
 import { fileURLToPath, URL } from "url";
 import Sitemap from 'vite-plugin-sitemap'
 
+import { config } from "dotenv";
+
+config();
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -50,6 +54,27 @@ export default defineConfig({
     ),
     "import.meta.env.APP_ENV": JSON.stringify(
       process.env.NODE_ENV || "development"
+    ),
+    "import.meta.env.VITE_TOKEN_SUPPLY": JSON.stringify(
+      process.env.VITE_TOKEN_SUPPLY || "100000000000000"
+    ),
+    "import.meta.env.VITE_DECIMALS": JSON.stringify(
+      process.env.VITE_DECIMALS || "6"
+    ),
+    "import.meta.env.VITE_VIRTUAL_RESERVES": JSON.stringify(
+      process.env.VITE_VIRTUAL_RESERVES || "2800000000"
+    ),
+    "import.meta.env.VITE_SOLANA_NETWORK": JSON.stringify(
+      process.env.VITE_SOLANA_NETWORK || "mainnet"
+    ),
+    "import.meta.env.VITE_RPC_URL": JSON.stringify(
+      (process.env.VITE_SOLANA_NETWORK === "mainnet" ? process.env.VITE_MAINNET_RPC_URL : process.env.VITE_DEVNET_RPC_URL) || process.env.VITE_RPC_URL
+    ),
+    "import.meta.env.VITE_DEVNET_RPC_URL": JSON.stringify(
+      process.env.VITE_DEVNET_RPC_URL || process.env.VITE_RPC_URL
+    ),
+    "import.meta.env.VITE_MAINNET_RPC_URL": JSON.stringify(
+      process.env.VITE_MAINNET_RPC_URL || process.env.VITE_RPC_URL
     ),
     global: "window",
   },

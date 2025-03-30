@@ -2344,6 +2344,34 @@ export const Create = () => {
                     onChange={(e) =>
                       handleChange("importAddress", e.target.value)
                     }
+                    alt="Generate"
+                    className="h-14 mb-2"
+                    onMouseDown={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      if (!isProcessingPrompt) {
+                        img.src = "/create/generatedown.svg";
+                      }
+                    }}
+                    onMouseUp={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      if (!isProcessingPrompt) {
+                        img.src = "/create/generateup.svg";
+                      }
+                    }}
+                    onDragStart={(e) => {
+                      e.preventDefault();
+                      const img = e.target as HTMLImageElement;
+                      if (!isProcessingPrompt) {
+                        img.src = "/create/generateup.svg";
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      e.preventDefault();
+                      const img = e.target as HTMLImageElement;
+                      if (!isProcessingPrompt) {
+                        img.src = "/create/generateup.svg";
+                      }
+                    }}
                     onPaste={handleImportAddressPaste}
                     placeholder="Enter any Solana token address (mint)"
                     className="flex-1 truncate my-2 p-0 border-b-2 pb-2.5 border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
@@ -2682,6 +2710,28 @@ export const Create = () => {
                   } else {
                     img.src = "/create/launching.svg";
                   }
+                  alt="Launch"
+                  className="h-32 pr-4 mb-4 select-none pointer-events-none"
+                  onMouseDown={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    img.src = "/create/launchdown.svg";
+                  }}
+                  // onMouseUp={(e) => {
+                  //   const img = e.target as HTMLImageElement;
+                  //     img.src = "/create/launchup.svg";
+                  // }}
+                  // onDragStart={(e) => {
+                  //   e.preventDefault();
+                  //   const img = e.target as HTMLImageElement;
+                  //     img.src = "/create/launchup.svg";
+                  // }}
+                  // onMouseOut={(e) => {
+                  //   e.preventDefault();
+                  //   const img = e.target as HTMLImageElement;
+                  //     img.src = "/create/launchup.svg";
+                  // }}
+                />
+              </button>
                 }}
                 onMouseUp={(e) => {
                   const img = e.target as HTMLImageElement;

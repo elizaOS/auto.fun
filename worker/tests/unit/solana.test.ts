@@ -35,7 +35,6 @@ console.log("=====================================\n");
 vi.mock("../../util", () => {
   return {
     getRpcUrl: () => REAL_RPC_URL,
-    getLegacyRpcUrl: () => REAL_RPC_URL,
   };
 });
 

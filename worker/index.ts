@@ -13,7 +13,7 @@ import { logger } from "./logger";
 import { verifyAuth } from "./middleware";
 import authRouter from "./routes/auth";
 import generationRouter, {
-  generatePreGeneratedTokens,
+  checkAndReplenishTokens,
 } from "./routes/generation";
 import messagesRouter from "./routes/messages";
 import swapRouter from "./routes/swap";
@@ -21,6 +21,7 @@ import tokenRouter, { processSwapEvent } from "./routes/token";
 import { uploadToCloudflare } from "./uploader";
 import { WebSocketDO, allowedOrigins, createTestSwap } from "./websocket";
 import { getWebSocketClient } from "./websocket-client";
+import { getSOLPrice } from "./mcap";
 
 const app = new Hono<{
   Bindings: Env;
@@ -444,6 +445,16 @@ api.post("/broadcast", async (c) => {
   }
 });
 
+api.get("/sol-price", async (c) => {
+  try {
+    const price = await getSOLPrice(c.env);
+    return c.json({ price });
+  } catch (error) {
+    console.error("Error fetching SOL price:", error);
+    return c.json({ error: "Failed to fetch SOL price" }, 500);
+  }
+});
+
 api.notFound((c) => {
   return c.json({ error: "Route not found" }, 404);
 });
@@ -460,7 +471,7 @@ export default {
     ctx: ExecutionContext,
   ): Promise<Response> {
     // Initialize pre-generated tokens in the background
-    ctx.waitUntil(generatePreGeneratedTokens(env));
+    ctx.waitUntil(checkAndReplenishTokens(env));
 
     const url = new URL(request.url);
 
