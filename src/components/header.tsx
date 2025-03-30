@@ -59,7 +59,7 @@ export default function Header() {
           <div className="flex space-x-3 flex-row">
             {pathname !== "/create" && (
               <>
-                <SearchBar isMobile={false} />
+                <SearchBar />
                 <Link to="/create">
                   <Button className="flex items-center text-base text-autofun-text-highlight font-bold font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345] min-w-34">
                     New Coin{" "}
@@ -78,21 +78,27 @@ export default function Header() {
       </div>
 
       {/* mobile menu */}
-      <div className="sticky block md:hidden bg-[#171717] border-b py-4">
+      <div className="sticky block md:hidden bg-[#171717] border-b py-4 z-50">
         <div className="flex items-center mx-4 space-x-4 lg:hidden ">
-          <div className="flex flex-row ">
-            <Link to="/">
-              <img className="size-20" src="/logo_wide.svg" />
-            </Link>
+          <Link to="/" className="shrink-0">
+            <img className="h-fit" src="/logo_wide.svg" />
+          </Link>
+
+          <div className="flex-1">
+            <SearchBar />
           </div>
-          <SearchBar isMobile={false} />
-          {drawerOpen ? (
-            <CloseButton>
-              <X className="size-[30px]" />
-            </CloseButton>
-          ) : (
-            <Menu className="size-[30px]" onClick={() => setDrawerOpen(true)} />
-          )}
+          <div className="shrink-0">
+            {drawerOpen ? (
+              <CloseButton>
+                <X className="size-[30px]" />
+              </CloseButton>
+            ) : (
+              <Menu
+                className="size-[30px]"
+                onClick={() => setDrawerOpen(true)}
+              />
+            )}
+          </div>
           <Dialog
             open={drawerOpen}
             onClose={() => setDrawerOpen(false)}
