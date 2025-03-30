@@ -46,7 +46,7 @@ export default function Header() {
 
   return (
     <>
-      <div className="hidden md:block py-6 w-full container">
+      <div className="hidden md:block py-6 w-full container z-50">
         <div className="flex flex-row items-center justify-between w-full">
           <div className="flex items-center select-none">
             <Link to="/" className="mr-6">
