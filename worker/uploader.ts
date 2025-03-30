@@ -61,7 +61,8 @@ export async function uploadToCloudflare(
   );
 
   // Check if we're running in local development via Miniflare
-  const isLocalDev = env.LOCAL_DEV === "true";
+  const isLocalDev = env.NODE_ENV === "development";
+
   try {
     // For development and testing, use a local URL when R2 is available via Miniflare
     if (isLocalDev) {

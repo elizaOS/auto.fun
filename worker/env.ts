@@ -20,7 +20,6 @@ export interface Env {
   DECIMALS: string;
   TOKEN_SUPPLY: string;
   VIRTUAL_RESERVES: string;
-  LOCAL_DEV: string;
   CURVE_LIMIT: string;
   WALLET_PRIVATE_KEY: string;
   FEE_PERCENTAGE: string;

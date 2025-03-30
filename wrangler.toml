@@ -72,7 +72,7 @@ TOKEN_SUPPLY = "100000000000000"
 VIRTUAL_RESERVES = "280000000"
 CURVE_LIMIT = "11300000000"
 R2_PUBLIC_URL = "https://pub-30f52db29266428495af0c1aea206af1.r2.dev"
-NODE_ENV = "development"
+NODE_ENV = "production"
 MAINNET_FRONTEND_URL="https://api.autofun.workers.dev"
 DEVNET_FRONTEND_URL="https://api-dev.autofun.workers.dev"
 
