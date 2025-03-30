@@ -115,6 +115,7 @@ export default function Page() {
               <Button
                 className="w-full rounded-none "
                 disabled={!token?.website}
+                aria-label="website"
               >
                 <Globe />
               </Button>
@@ -123,6 +124,7 @@ export default function Page() {
               <Button
                 className="w-full rounded-none"
                 disabled={!token?.twitter}
+                aria-label="twitter"
               >
                 <SkeletonImage
                   src="/x.svg"
@@ -137,6 +139,7 @@ export default function Page() {
               <Button
                 className="w-full rounded-none py-0 flex"
                 disabled={!token?.telegram}
+                aria-label="telegram"
               >
                 <SkeletonImage
                   src="/telegram.svg"
@@ -147,10 +150,11 @@ export default function Page() {
                 />
               </Button>
             </Link>
-            <Link to={token?.website} className="w-full" target="_blank">
+            <Link to={token?.discord} className="w-full" target="_blank">
               <Button
                 className="w-full rounded-none  px-0"
-                disabled={!token?.website}
+                disabled={!token?.discord}
+                aria-label="discord"
               >
                 <SkeletonImage
                   src="/discord.svg"

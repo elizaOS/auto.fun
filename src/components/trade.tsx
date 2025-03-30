@@ -103,7 +103,7 @@ export default function Trade({ token }: { token: IToken }) {
                   </Fragment>
                 )}
                 <ConfigDialog>
-                  <Button size="small" variant="trade">
+                  <Button size="small" variant="trade" aria-label="config dialog">
                     <Cog />
                   </Button>
                 </ConfigDialog>
