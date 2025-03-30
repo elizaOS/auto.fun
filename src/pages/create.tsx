@@ -2281,7 +2281,7 @@ export const Create = () => {
                 value={userPrompt}
                 onChange={(e) => setUserPrompt(e.target.value)}
                 placeholder="Enter a concept like 'a halloween token about arnold schwarzenegger'"
-                className="flex-1 my-2 p-0 border-b-2 pb-2.5 border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
+                className="flex-1 truncate my-2 p-0 border-b-2 pb-2.5 border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
               />
               <button
                 type="button"
@@ -2296,7 +2296,7 @@ export const Create = () => {
                       : "/create/generateup.svg"
                   }
                   alt="Generate"
-                  className="h-14 w-32 mb-2"
+                  className="w-40 mb-2"
                   onMouseDown={(e) => {
                     const img = e.target as HTMLImageElement;
                     if (!isProcessingPrompt) {
@@ -2346,7 +2346,7 @@ export const Create = () => {
                     }
                     onPaste={handleImportAddressPaste}
                     placeholder="Enter any Solana token address (mint)"
-                    className="flex-1 my-2 p-0 border-b-2 pb-2.5 border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
+                    className="flex-1 truncate my-2 p-0 border-b-2 pb-2.5 border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
                   />
                   <button
                     type="button"
@@ -2365,7 +2365,7 @@ export const Create = () => {
                           : "/create/importup.svg"
                       }
                       alt="Import"
-                      className="h-14 w-32 mb-2"
+                      className="w-40 mb-2"
                       onMouseDown={(e) => {
                         const img = e.target as HTMLImageElement;
                         if (!isImporting) {
