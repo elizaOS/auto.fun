@@ -5,13 +5,13 @@ resolution = true
 skip-lint = true
 
 [programs.mainnet]
-serlaunchalot = "6qXDRh3nSj9isLRDpUqXWyK1nR9eHBVLrdLZpjeoNfc"
+autodotfun = "6qXDRh3nSj9isLRDpUqXWyK1nR9eHBVLrdLZpjeoNfc"
 
 [programs.devnet]
-serlaunchalot = "6qXDRh3nSj9isLRDpUqXWyK1nR9eHBVLrdLZpjeoNfc"
+autodotfun = "6qXDRh3nSj9isLRDpUqXWyK1nR9eHBVLrdLZpjeoNfc"
 
 [programs.localnet]
-serlaunchalot = "6qXDRh3nSj9isLRDpUqXWyK1nR9eHBVLrdLZpjeoNfc"
+autodotfun = "6qXDRh3nSj9isLRDpUqXWyK1nR9eHBVLrdLZpjeoNfc"
 
 [registry]
 url = "https://api.apr.dev"

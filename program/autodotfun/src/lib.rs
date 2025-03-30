@@ -13,7 +13,7 @@ use state::Config;
 declare_id!("6qXDRh3nSj9isLRDpUqXWyK1nR9eHBVLrdLZpjeoNfc");
 
 #[program]
-pub mod serlaunchalot {
+pub mod autodotfun {
     use super::*;
 
     //  called by admin to set global config
