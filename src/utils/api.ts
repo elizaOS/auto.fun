@@ -9,24 +9,47 @@ const fetcher = async (
   method: "GET" | "POST",
   body?: object,
 ) => {
-  const query: { method: string; body?: string; headers: object } = {
-    method,
-    headers: {
-      accept: "application/json",
-    },
-  };
+  try {
+    const query: {
+      method: string;
+      body?: string;
+      headers: object;
+      credentials: RequestCredentials;
+    } = {
+      method,
+      headers: {
+        accept: "application/json",
+      },
+      credentials: "include",
+    };
 
-  if (body) {
-    query.body = JSON.stringify(body);
+    if (body) {
+      query.body = JSON.stringify(body);
+    }
+
+    console.log(`API Request: ${method} ${env.apiUrl}${endpoint}`);
+    const response = await fetch(`${env.apiUrl}${endpoint}`, query as object);
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        console.warn(`Authentication required for ${endpoint}`);
+        throw new Error(
+          "Authentication required. Please sign in to access this data.",
+        );
+      }
+
+      const errorText = await response.text();
+      console.error(`API Error (${response.status}): ${errorText}`);
+      throw new Error(`${response.statusText}: ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log(`API Response: ${endpoint} - Status: ${response.status}`);
+    return result;
+  } catch (error) {
+    console.error(`API Request Failed: ${endpoint}`, error);
+    throw error;
   }
-
-  const response = await fetch(`${env.apiUrl}${endpoint}`, query as object);
-
-  if (!response.ok) {
-    throw new Error(response.statusText);
-  }
-
-  return await response.json();
 };
 
 export const getTokens = async ({
@@ -56,60 +79,117 @@ export const getTokens = async ({
   return data;
 };
 
-export const getToken = async ({ address }: { address: string }) => {
-  const rawData = await fetcher(`/api/tokens/${address}`, "GET");
-  const data = rawData as Record<string, any>;
+export const getToken = async ({
+  address,
+  bypassCache = false,
+}: {
+  address: string;
+  bypassCache?: boolean;
+}) => {
+  const endpoint = `/api/tokens/${address}`;
 
-  // Transform empty strings to null for optional fields
-  const transformedData: IToken = {
-    mint: data.mint,
-    createdAt: data.createdAt,
-    creator: data.creator,
-    currentPrice: data.currentPrice != null ? Number(data.currentPrice) : 0,
-    curveLimit: data.curveLimit != null ? Number(data.curveLimit) : 0,
-    curveProgress: data.curveProgress != null ? Number(data.curveProgress) : 0,
-    description: data.description || "",
-    image: data.image || "",
-    inferenceCount:
-      data.inferenceCount != null ? Number(data.inferenceCount) : 0,
-    lastUpdated: data.lastUpdated,
-    liquidity: data.liquidity != null ? Number(data.liquidity) : 0,
-    marketCapUSD: data.marketCapUSD != null ? Number(data.marketCapUSD) : 0,
-    name: data.name,
-    price24hAgo: data.price24hAgo != null ? Number(data.price24hAgo) : 0,
-    priceChange24h:
-      data.priceChange24h != null ? Number(data.priceChange24h) : 0,
-    reserveAmount: data.reserveAmount != null ? Number(data.reserveAmount) : 0,
-    reserveLamport:
-      data.reserveLamport != null ? Number(data.reserveLamport) : 0,
-    solPriceUSD: data.solPriceUSD != null ? Number(data.solPriceUSD) : 0,
-    status: data.status || "active",
-    telegram: data.telegram || "",
-    ticker: data.ticker,
-    tokenPriceUSD: data.tokenPriceUSD != null ? Number(data.tokenPriceUSD) : 0,
-    twitter: data.twitter || "",
-    txId: data.txId || "",
-    url: data.url || "",
-    virtualReserves:
-      data.virtualReserves != null ? Number(data.virtualReserves) : 0,
-    volume24h: data.volume24h != null ? Number(data.volume24h) : 0,
-    website: data.website || "",
-    holderCount: data.holderCount != null ? Number(data.holderCount) : 0,
-    lastPriceUpdate: data.lastPriceUpdate || data.lastUpdated,
-    lastVolumeReset: data.lastVolumeReset || data.lastUpdated,
-    hasAgent: Boolean(data.agentLink),
-  };
+  try {
+    console.log(
+      `Fetching token data for ${address} (bypass_cache: ${bypassCache})`,
+    );
+    const rawData = await fetcher(endpoint, "GET");
+    const data = rawData as Record<string, any>;
 
-  return transformedData;
+    const transformedData: IToken = {
+      mint: data.mint,
+      createdAt: data.createdAt,
+      creator: data.creator,
+      currentPrice: data.currentPrice != null ? Number(data.currentPrice) : 0,
+      curveLimit: data.curveLimit != null ? Number(data.curveLimit) : 0,
+      curveProgress:
+        data.curveProgress != null ? Number(data.curveProgress) : 0,
+      description: data.description || "",
+      image: data.image || "",
+      inferenceCount:
+        data.inferenceCount != null ? Number(data.inferenceCount) : 0,
+      lastUpdated: data.lastUpdated,
+      liquidity: data.liquidity != null ? Number(data.liquidity) : 0,
+      marketCapUSD: data.marketCapUSD != null ? Number(data.marketCapUSD) : 0,
+      name: data.name,
+      price24hAgo: data.price24hAgo != null ? Number(data.price24hAgo) : 0,
+      priceChange24h:
+        data.priceChange24h != null ? Number(data.priceChange24h) : 0,
+      reserveAmount:
+        data.reserveAmount != null ? Number(data.reserveAmount) : 0,
+      reserveLamport:
+        data.reserveLamport != null ? Number(data.reserveLamport) : 0,
+      solPriceUSD: data.solPriceUSD != null ? Number(data.solPriceUSD) : 0,
+      status: data.status || "active",
+      telegram: data.telegram || "",
+      ticker: data.ticker,
+      tokenPriceUSD:
+        data.tokenPriceUSD != null ? Number(data.tokenPriceUSD) : 0,
+      twitter: data.twitter || "",
+      txId: data.txId || "",
+      url: data.url || "",
+      virtualReserves:
+        data.virtualReserves != null ? Number(data.virtualReserves) : 0,
+      volume24h: data.volume24h != null ? Number(data.volume24h) : 0,
+      website: data.website || "",
+      holderCount: data.holderCount != null ? Number(data.holderCount) : 0,
+      lastPriceUpdate: data.lastPriceUpdate || data.lastUpdated,
+      lastVolumeReset: data.lastVolumeReset || data.lastUpdated,
+      hasAgent: Boolean(data.agentLink),
+    };
+
+    return transformedData;
+  } catch (error) {
+    console.error(`Error fetching token data: ${error}`);
+    throw error;
+  }
 };
 
-export const getTokenHolders = async ({ address }: { address: string }) => {
-  const data = await fetcher(`/api/tokens/${address}/holders`, "GET");
-  return data;
+export const getTokenHolders = async ({
+  address,
+  bypassCache = false,
+}: {
+  address: string;
+  bypassCache?: boolean;
+}) => {
+  try {
+    const endpoint = `/api/tokens/${address}/holders`;
+    console.log(
+      `Fetching holders for ${address} (bypass_cache: ${bypassCache})`,
+    );
+    const data = await fetcher(endpoint, "GET");
+    return data;
+  } catch (error) {
+    console.error(`Error fetching holders: ${error}`);
+    return { holders: [], page: 1, totalPages: 0, total: 0 };
+  }
 };
-export const getTokenSwapHistory = async ({ address }: { address: string }) => {
-  const data = await fetcher(`/api/swaps/${address}`, "GET");
-  return data;
+
+export const refreshTokenHolders = async ({ address }: { address: string }) => {
+  try {
+    const data = await fetcher(`/api/tokens/${address}/refresh-holders`, "GET");
+    return data;
+  } catch (error) {
+    console.error(`Error refreshing token holders: ${error}`);
+    throw error;
+  }
+};
+
+export const getTokenSwapHistory = async ({
+  address,
+  bypassCache = false,
+}: {
+  address: string;
+  bypassCache?: boolean;
+}) => {
+  try {
+    const endpoint = `/api/swaps/${address}`;
+    console.log(`Fetching swaps for ${address} (bypass_cache: ${bypassCache})`);
+    const data = await fetcher(endpoint, "GET");
+    return data;
+  } catch (error) {
+    console.error(`Error fetching swaps: ${error}`);
+    return { swaps: [], page: 1, totalPages: 0, total: 0 };
+  }
 };
 
 export const getSearchTokens = async ({ search }: { search: string }) => {
@@ -131,7 +211,6 @@ export const getChartTable = async ({
   token: string;
 }): Promise<ChartTable | undefined> => {
   try {
-    // console.log("GET bars", token, from, to, range, pairIndex)
     const res = await fetcher(
       `/api/chart/${pairIndex}/${from}/${to}/${range}/${token}`,
       "GET",
