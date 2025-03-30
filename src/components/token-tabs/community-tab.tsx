@@ -1,8 +1,5 @@
-import { Plus } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router";
 import Button from "../button";
-import { twMerge } from "tailwind-merge";
 import SkeletonImage from "../skeleton-image";
 import { Badge } from "../ui/badge";
 
@@ -33,7 +30,11 @@ export default function CommunityTab() {
             <div className="font-dm-mono text-autofun-background-action-highlight text-xl">
               Input
             </div>
-
+            <p className="text-sm text-autofun-text-secondary font-dm-mono max-w-3xl w-fit">
+              I think we should be adding a proper description here of what you
+              can actually do with this prompt, otherwise it might be too
+              unclear for the end user.
+            </p>
             <div className="flex flex-col md:flex-row gap-4 w-full">
               <div className="flex flex-col gap-4 w-full grow">
                 <textarea
@@ -42,7 +43,7 @@ export default function CommunityTab() {
                   placeholder="Make me an image that looks like a dog in a wheelchair"
                 />
                 <div>
-                  <Button>Generate Image</Button>
+                  <Button variant="secondary">Generate Image</Button>
                 </div>
               </div>
 
@@ -93,7 +94,9 @@ export default function CommunityTab() {
                 className="xl:w-1/2 mx-auto"
               />
               <div className="w-full flex items-center justify-end">
-                <Button size="small">Share on X</Button>
+                <Button size="small" variant="secondary">
+                  Share on X
+                </Button>
               </div>
             </div>
           </div>
@@ -101,19 +104,6 @@ export default function CommunityTab() {
           <div>Audio generator page coming soon!</div>
         ) : null}
       </div>
-    </div>
-  );
-}
-
-function AgentProfile({ image, name }: { image: string; name: string }) {
-  return (
-    <div className="flex cursor-pointer hover:bg-white/15 hover:text-[#FFF200] flex-row space-x-3 transition-colors duration-200 ease-in-out">
-      <img
-        src={image}
-        alt="agent-profile-image"
-        className="h-[28px] w-[28px] transition-transform duration-300 ease-in-out hover:scale-110"
-      />
-      <h1 className="transition-colors duration-300 ease-in-out">{name}</h1>
     </div>
   );
 }
