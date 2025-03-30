@@ -26,6 +26,29 @@ export const TVChartContainer = ({
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const tvWidgetRef = useRef<IChartingLibraryWidget | null>(null);
 
+  // Function to handle chart refresh events
+  const handleChartRefresh = (event: CustomEvent) => {
+    const { tokenMint } = event.detail;
+    
+    // Only refresh if this is our token
+    if (tokenMint === token && tvWidgetRef.current) {
+      console.log(`Refreshing chart data for ${token}`);
+      
+      // Reset the data on the chart
+      const chart = tvWidgetRef.current.activeChart();
+      chart.resetData();
+    }
+  };
+
+  useEffect(() => {
+    // Listen for chart refresh events
+    document.addEventListener('refresh-chart-data', handleChartRefresh as EventListener);
+    
+    return () => {
+      document.removeEventListener('refresh-chart-data', handleChartRefresh as EventListener);
+    };
+  }, [token]);
+
   useEffect(() => {
     if (!chartContainerRef.current) {
       return () => {};
@@ -138,7 +161,7 @@ export const TVChartContainer = ({
         }
       };
     }
-  }, [name, pairIndex]);
+  }, [name, pairIndex, token]);
 
   return (
     <div className="relative h-full w-full bg-[#171717] rounded-xl overflow-hidden">

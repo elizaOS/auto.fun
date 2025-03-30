@@ -7,7 +7,7 @@ import type {
 } from "@/libraries/charting_library";
 
 import { subscribeOnStream, unsubscribeFromStream } from "./streaming";
-import { getChartTable } from "@/utils/api";
+import { fetchTokenChartData } from "@/utils/blockchain";
 
 const lastBarsCache = new Map<string, Bar>();
 const configurationData: DatafeedConfiguration = {
@@ -86,30 +86,31 @@ export function getDataFeed({
       const adjustedFrom = firstDataRequest ? from - FIVE_DAYS : from;
 
       try {
-        const chartTable = await getChartTable({
+        console.log(`[getBars]: Fetching chart data from blockchain for ${token}, resolution: ${resolution}`);
+        
+        const chartData = await fetchTokenChartData(
           token,
-          pairIndex: pairIndex,
-          from: adjustedFrom,
+          adjustedFrom,
           to,
-          range: +resolution,
-        });
+          +resolution
+        );
 
-        if (!chartTable || !chartTable.table || chartTable.table.length === 0) {
+        if (!chartData || !chartData.table || chartData.table.length === 0) {
+          console.log("[getBars]: No data returned from blockchain");
           onHistoryCallback([], { noData: true });
           return;
         }
 
         let bars: Bar[] = [];
-        const nextTime =
-          chartTable.table[0]?.time <= adjustedFrom
-            ? null
-            : chartTable.table[0]?.time;
+        const nextTime = chartData.nextTime;
 
-        chartTable.table.forEach((bar: Bar) => {
+        chartData.table.forEach((bar: Bar) => {
           if (bar.time >= adjustedFrom && bar.time < to) {
             bars = [...bars, { ...bar, time: bar.time * 1000 }];
           }
         });
+
+        console.log(`[getBars]: Processed ${bars.length} bars from blockchain data`);
 
         if (!bars.length) {
           // Don't set noDataFlags here as this might be a temporary gap in data
@@ -128,7 +129,7 @@ export function getDataFeed({
           nextTime,
         });
       } catch (error) {
-        console.log("[getBars]: Get error", error);
+        console.log("[getBars]: Error fetching blockchain chart data", error);
         onErrorCallback(error as string);
       }
     },

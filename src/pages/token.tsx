@@ -17,6 +17,7 @@ import {
   shortenAddress,
 } from "@/utils";
 import { getToken } from "@/utils/api";
+import { fetchTokenMarketMetrics } from "@/utils/blockchain";
 import { useQuery } from "@tanstack/react-query";
 import { InfoCircle } from "iconsax-react";
 import { Globe } from "lucide-react";
@@ -27,24 +28,83 @@ import { getSocket } from "@/utils/socket";
 import { twMerge } from "tailwind-merge";
 import CommunityTab from "@/components/token-tabs/community-tab";
 import AdminTab from "@/components/token-tabs/admin-tab";
+import { useSolPriceContext } from "@/providers/sol-price-provider";
+import { toast } from "react-toastify";
 
 const socket = getSocket();
 
 export default function Page() {
   const params = useParams();
   const address = params?.address;
+  const { solPrice: contextSolPrice } = useSolPriceContext();
 
   type ITabs = "Trading" | "Community" | "Admin";
   const [tab, setTab] = useState<ITabs>("Trading");
 
-  const query = useQuery({
+  // Fetch token details from API
+  const tokenQuery = useQuery({
     queryKey: ["token", address],
     queryFn: async () => {
       if (!address) throw new Error("No address passed");
-      const data = await getToken({ address });
-      return data;
+      try {
+        // Fetch token data from API
+        console.log(`Token page: Fetching token data for ${address}`);
+        return await getToken({ address });
+      } catch (error) {
+        console.error(`Token page: Error fetching token data:`, error);
+        throw error;
+      }
     },
     refetchInterval: 20_000,
+  });
+
+  // Fetch token market metrics from blockchain
+  const metricsQuery = useQuery({
+    queryKey: ["blockchain-metrics", address],
+    queryFn: async () => {
+      if (!address) throw new Error("No address passed");
+      try {
+        console.log(`Token page: Fetching blockchain metrics for ${address}`);
+        // Add loading toast for better user feedback
+        toast.info("Fetching real-time blockchain data...", {
+          position: "bottom-right",
+          autoClose: 3000
+        });
+        
+        const metrics = await fetchTokenMarketMetrics(address);
+        console.log(`Token page: Received blockchain metrics:`, metrics);
+        
+        // Validate the data - if all values are 0, it might indicate an issue
+        const hasValidData = metrics.marketCapUSD > 0 || 
+                            metrics.currentPrice > 0 || 
+                            metrics.volume24h > 0;
+                            
+        if (!hasValidData) {
+          console.warn(`Token page: Blockchain metrics may be invalid - all key values are 0`);
+          toast.warning("Unable to fetch real-time data from blockchain. Using cached values.", {
+            position: "bottom-right",
+            autoClose: 5000
+          });
+        } else {
+          toast.success("Real-time blockchain data loaded successfully!", {
+            position: "bottom-right",
+            autoClose: 3000
+          });
+        }
+        
+        return metrics;
+      } catch (error) {
+        console.error(`Token page: Error fetching blockchain metrics:`, error);
+        toast.error("Error fetching real-time blockchain data. Using cached values.", {
+          position: "bottom-right",
+          autoClose: 5000
+        });
+        return null;
+      }
+    },
+    enabled: !!address,
+    refetchInterval: 30_000, // Longer interval for blockchain queries
+    staleTime: 60000, // Data stays fresh for 1 minute
   });
 
   useEffect(() => {
@@ -55,15 +115,89 @@ export default function Page() {
     };
   }, [address]);
 
-  const token = query?.data as IToken;
+  const token = tokenQuery?.data as IToken;
+  const metrics = metricsQuery?.data;
 
-  const solPriceUSD = token?.solPriceUSD;
-  const finalTokenPrice = 0.00000045; // Approximated value from the bonding curve configuration
-  const finalTokenUSDPrice = finalTokenPrice * solPriceUSD;
+  // Use real blockchain data if available, otherwise fall back to API data
+  const solPriceUSD = metrics?.solPriceUSD || contextSolPrice || token?.solPriceUSD || 0;
+  const currentPrice = metrics?.currentPrice || token?.currentPrice || 0;
+  const tokenPriceUSD = metrics?.tokenPriceUSD || token?.tokenPriceUSD || 0;
+  const marketCapUSD = metrics?.marketCapUSD || token?.marketCapUSD || 0;
+  const volume24h = metrics?.volume24h || token?.volume24h || 0;
+  const holderCount = metrics?.holderCount || token?.holderCount || 0;
+
+  // For bonding curve calculations, still use token data
+  const finalTokenPrice = currentPrice || 0;
+  const finalTokenUSDPrice = tokenPriceUSD || (finalTokenPrice * solPriceUSD);
   const graduationMarketCap = finalTokenUSDPrice * 1_000_000_000;
+  
+  // Calculate negative reserve status
+  const negativeReserve = token && 
+    (token.reserveLamport - token.virtualReserves) < 0 ? 
+    (token.reserveLamport - token.virtualReserves) / LAMPORTS_PER_SOL : 
+    null;
 
-  if (query?.isLoading) {
+  // Add debug logging
+  console.log("Token data from API:", {
+    mint: token?.mint,
+    name: token?.name,
+    currentPrice: token?.currentPrice,
+    tokenPriceUSD: token?.tokenPriceUSD,
+    solPriceUSD: token?.solPriceUSD,
+    marketCapUSD: token?.marketCapUSD,
+    volume24h: token?.volume24h,
+    holderCount: token?.holderCount,
+    status: token?.status,
+    // Add more detailed token data
+    reserveAmount: token?.reserveAmount,
+    reserveLamport: token?.reserveLamport,
+    virtualReserves: token?.virtualReserves,
+    curveProgress: token?.curveProgress,
+    negativeReserve
+  });
+  
+  console.log("Blockchain metrics:", metrics);
+  
+  console.log("Using calculated values:", {
+    solPriceFromContext: contextSolPrice,
+    finalSolPrice: solPriceUSD,
+    finalTokenPrice,
+    finalTokenUSDPrice,
+    graduationMarketCap,
+    metricsAvailable: !!metrics,
+    metricsLoading: metricsQuery.isLoading,
+    metricsError: metricsQuery.isError
+  });
+
+  // If the blockchain fetch failed or returned default values, add a warning
+  useEffect(() => {
+    if (metricsQuery.isSuccess && metrics) {
+      const allZeros = !metrics.marketCapUSD && !metrics.currentPrice && !metrics.volume24h;
+      if (allZeros) {
+        console.warn(`WARNING: Blockchain metrics returned all zeros for token ${token?.mint}. This might indicate an error in data retrieval.`);
+      }
+    }
+  }, [metricsQuery.isSuccess, metrics, token?.mint]);
+
+  if (tokenQuery?.isLoading) {
     return <Loader />;
+  }
+
+  if (tokenQuery?.isError) {
+    return (
+      <div className="flex flex-col gap-4 items-center justify-center h-[50vh]">
+        <h2 className="text-2xl font-bold text-autofun-text-primary">Error Loading Token</h2>
+        <p className="text-autofun-text-secondary">The token data could not be loaded.</p>
+        <div className="flex gap-2">
+          <Link to="/">
+            <Button>Back to Home</Button>
+          </Link>
+          <Link to={`https://solscan.io/token/${address}`} target="_blank">
+            <Button variant="secondary">View on Solscan</Button>
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   const admin = true;
@@ -94,6 +228,13 @@ export default function Page() {
             <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
               {token?.description}
             </span>
+            <div className="flex justify-end">
+              <Link to={`https://solscan.io/token/${token?.mint}`} target="_blank">
+                <Button size="small" variant="ghost" className="text-xs">
+                  View on Solscan &rarr;
+                </Button>
+              </Link>
+            </div>
           </div>
           {/* Contractaddress */}
           <div className="flex border">
@@ -149,7 +290,7 @@ export default function Page() {
             </Link>
             <Link to={token?.website} className="w-full" target="_blank">
               <Button
-                className="w-full rounded-none  px-0"
+                className="w-full rounded-none px-0"
                 disabled={!token?.website}
               >
                 <SkeletonImage
@@ -169,9 +310,14 @@ export default function Page() {
                 Price USD
               </span>
               <span className="text-xl font-dm-mono text-autofun-text-primary">
-                {token?.tokenPriceUSD
-                  ? formatNumberSubscript(token?.tokenPriceUSD)
-                  : null}
+                {tokenPriceUSD ? 
+                  formatNumberSubscript(tokenPriceUSD)
+                  : "$0.00"}
+                {metricsQuery.isLoading && 
+                  <span className="text-xs text-autofun-text-secondary ml-1">
+                    loading...
+                  </span>
+                }
               </span>
             </div>
             <div className="flex flex-col gap-1 items-center w-full">
@@ -179,9 +325,14 @@ export default function Page() {
                 Price
               </span>
               <span className="text-xl font-dm-mono text-autofun-text-primary">
-                {token?.currentPrice
-                  ? formatNumberSubscript(token?.currentPrice)
-                  : null}
+                {currentPrice ?
+                  formatNumberSubscript(currentPrice)
+                  : "0.00000000"}
+                {metricsQuery.isLoading && 
+                  <span className="text-xs text-autofun-text-secondary ml-1">
+                    loading...
+                  </span>
+                }
               </span>
             </div>
           </div>
@@ -227,9 +378,21 @@ export default function Page() {
               <span className="hidden lg:inline">Market Cap</span>
             </span>
             <span className="text-xl font-dm-mono text-autofun-text-highlight">
-              {token?.marketCapUSD != null
-                ? abbreviateNumber(token?.marketCapUSD)
+              {marketCapUSD > 0
+                ? abbreviateNumber(marketCapUSD)
                 : "-"}
+              {metricsQuery.isLoading && 
+                <span className="text-xs text-autofun-text-secondary ml-1">
+                  loading...
+                </span>
+              }
+              {!marketCapUSD && !metricsQuery.isLoading && 
+                <span className="text-xs text-autofun-text-secondary ml-1">
+                  <Link to={`https://solscan.io/token/${token?.mint}`} target="_blank" className="hover:underline">
+                    View on Solscan
+                  </Link>
+                </span>
+              }
             </span>
           </div>
           <div className="flex flex-col gap-2 items-center w-full">
@@ -238,9 +401,21 @@ export default function Page() {
               <span className="hidden lg:inline">24hr Volume</span>
             </span>
             <span className="text-xl font-dm-mono text-autofun-text-primary">
-              {token?.volume24h != null
-                ? abbreviateNumber(token?.volume24h)
+              {volume24h > 0
+                ? abbreviateNumber(volume24h)
                 : "-"}
+              {metricsQuery.isLoading && 
+                <span className="text-xs text-autofun-text-secondary ml-1">
+                  loading...
+                </span>
+              }
+              {!volume24h && !metricsQuery.isLoading && 
+                <span className="text-xs text-autofun-text-secondary ml-1">
+                  <Link to={`https://solscan.io/token/${token?.mint}#trade`} target="_blank" className="hover:underline">
+                    View trades
+                  </Link>
+                </span>
+              }
             </span>
           </div>
           <div className="flex flex-col gap-2 items-center w-full">
@@ -248,7 +423,11 @@ export default function Page() {
               Creator
             </span>
             <span className="text-xl font-dm-mono text-autofun-text-primary">
-              {token?.creator ? shortenAddress(token?.creator) : "-"}
+              {token?.creator ? (
+                <Link to={`https://solscan.io/account/${token?.creator}`} target="_blank" className="hover:text-autofun-text-highlight">
+                  {shortenAddress(token?.creator)}
+                </Link>
+              ) : "-"}
             </span>
           </div>
           <div className="flex flex-col gap-2 items-center w-full">
