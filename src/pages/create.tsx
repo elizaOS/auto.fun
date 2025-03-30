@@ -2319,7 +2319,7 @@ export const Create = () => {
                         : "/create/generateup.svg"
                     }
                     alt="Generate"
-                    className="h-14 w-32 mb-2"
+                    className="h-14 mb-2"
                     onMouseDown={(e) => {
                       const img = e.target as HTMLImageElement;
                       if (!isProcessingPrompt) {
@@ -2701,20 +2701,22 @@ export const Create = () => {
                   className="h-32 pr-4 mb-4 select-none pointer-events-none"
                   onMouseDown={(e) => {
                     const img = e.target as HTMLImageElement;
-                    if (!isSubmitting) {
                       img.src = "/create/launchdown.svg";
-                    } else {
-                      img.src = "/create/launching.svg";
-                    }
                   }}
-                  onMouseUp={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    if (!isSubmitting) {
-                      img.src = "/create/launchup.svg";
-                    } else {
-                      img.src = "/create/launchup.svg";
-                    }
-                  }}
+                  // onMouseUp={(e) => {
+                  //   const img = e.target as HTMLImageElement;
+                  //     img.src = "/create/launchup.svg";
+                  // }}
+                  // onDragStart={(e) => {
+                  //   e.preventDefault();
+                  //   const img = e.target as HTMLImageElement;
+                  //     img.src = "/create/launchup.svg";
+                  // }}
+                  // onMouseOut={(e) => {
+                  //   e.preventDefault();
+                  //   const img = e.target as HTMLImageElement;
+                  //     img.src = "/create/launchup.svg";
+                  // }}
                 />
               </button>
 
