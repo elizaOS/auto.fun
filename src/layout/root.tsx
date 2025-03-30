@@ -5,10 +5,17 @@ import { WalletModal } from "@/components/wallet-dialog";
 import { Providers } from "@/providers";
 import { queryClient } from "@/utils/api";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Outlet } from "react-router";
+import { useEffect } from "react";
+import { Outlet, useLocation } from "react-router";
 import { ToastContainer } from "react-toastify";
 
 export default function Layout() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  
   return (
     <QueryClientProvider client={queryClient}>
       <Providers>
