@@ -273,7 +273,7 @@ export default function Trade({ token }: { token: IToken }) {
           </div>
         </div>
         <Button
-          variant="secondary"
+          variant="tab"
           className="font-dm-mono"
           size="large"
           disabled={
