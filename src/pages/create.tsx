@@ -11,6 +11,7 @@ import { TokenMetadata } from "../types/form.type";
 import { EmptyState } from "@/components/empty-state";
 import useTokenBalance from "@/hooks/use-token-balance";
 import { toast } from "react-toastify";
+import { useSolPriceContext } from "@/providers/sol-price-provider";
 
 const MAX_INITIAL_SOL = 45;
 // Use the token supply and virtual reserves from environment or fallback to defaults
@@ -930,9 +931,18 @@ export const Create = () => {
     wallet.publicKey?.toBase58() || "",
     "So11111111111111111111111111111111111111111",
   );
+  const { solPrice } = useSolPriceContext();
+
+  // Calculate max SOL the user can spend (leave 0.05 SOL for transaction fees)
+  const maxUserSol = balance?.data?.formattedBalance ? Math.max(0, balance.data.formattedBalance - 0.05) : 0;
+  // Use the smaller of MAX_INITIAL_SOL or the user's max available SOL
+  const maxInputSol = Math.min(MAX_INITIAL_SOL, maxUserSol);
+  
+  // Calculate dollar value based on SOL price
+  const solValueUsd = solPrice && buyValue ? (Number(buyValue) * solPrice).toFixed(2) : "0.00";
 
   const insufficientBalance =
-    Number(buyValue) > Number(balance?.data?.formattedBalance || 0);
+    Number(buyValue) > Number(balance?.data?.formattedBalance || 0) - 0.05;
   // Error state
   const [errors, setErrors] = useState({
     name: "",
@@ -2032,6 +2042,12 @@ export const Create = () => {
     if (!form.name) newErrors.name = "Name is required";
     if (!form.symbol) newErrors.symbol = "Symbol is required";
     if (!form.description) newErrors.description = "Description is required";
+    
+    // Validate SOL balance
+    if (insufficientBalance) {
+      newErrors.initial_sol = "Insufficient SOL balance (need 0.05 SOL for fees)";
+      toast.error("You don't have enough SOL to create this token");
+    }
 
     // Check if there are any errors
     if (
@@ -2600,16 +2616,16 @@ export const Create = () => {
                             if (
                               value !== "" &&
                               !isNaN(numValue) &&
-                              numValue > 45
+                              numValue > maxInputSol
                             ) {
-                              value = "45";
+                              value = maxInputSol.toString();
                             }
 
                             handleChange("initial_sol", value);
                             setBuyValue(value);
                           }}
                           min="0"
-                          max="45"
+                          max={maxInputSol.toString()}
                           step="0.01"
                           className="w-26 pr-10 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white"
                         />
@@ -2618,6 +2634,11 @@ export const Create = () => {
                           SOL
                         </span>
                       </div>
+                      {solPrice && Number(buyValue) > 0 && (
+                        <div className="text-right text-xs text-neutral-400 mt-1">
+                          ≈ ${solValueUsd} USD
+                        </div>
+                      )}
                     </div>
                   </div>
                   {parseFloat(buyValue as string) > 0 && (
@@ -2627,20 +2648,23 @@ export const Create = () => {
                         calculateTokensFromSol(parseFloat(buyValue as string)),
                       ).toFixed(2)}{" "}
                       % of supply
-                      {/* <div className="mt-1">
-                              ≈{" "}
-                              {(
-                                calculateTokensFromSol(
-                                  parseFloat(buyValue as string),
-                                ) /
-                                10 ** DECIMALS
-                              ).toLocaleString(undefined, {
-                                maximumFractionDigits: 2,
-                              })}{" "}
-                              tokens
-                            </div> */}
                     </div>
                   )}
+                  
+                  {/* Balance information */}
+                  <div className="mt-2 text-right text-xs text-neutral-400">
+                    Your balance: {balance?.data?.formattedBalance?.toFixed(2) || "0.00"} SOL
+                    {insufficientBalance && (
+                      <div className="text-red-500 mt-1">
+                        Insufficient SOL balance (need 0.05 SOL for fees)
+                      </div>
+                    )}
+                    {Number(buyValue) === maxInputSol && maxInputSol < MAX_INITIAL_SOL && (
+                      <div className="text-yellow-500 mt-1">
+                        Maximum amount based on your balance
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -2693,11 +2717,16 @@ export const Create = () => {
                   Please fill in all required fields
                 </p>
               )}
-              {insufficientBalance ? (
+              {insufficientBalance && (
                 <p className="text-red-500 text-center text-sm">
-                  You don't have enough SOL.
+                  You need at least {(Number(buyValue) + 0.05).toFixed(2)} SOL ({Number(buyValue).toFixed(2)} SOL for token + 0.05 SOL for fees)
+                  {solPrice && (
+                    <span className="block mt-1">
+                      ≈ ${(Number(buyValue) * solPrice + 0.05 * solPrice).toFixed(2)} USD
+                    </span>
+                  )}
                 </p>
-              ) : null}
+              )}
               {!isAuthenticated && (
                 <p className="text-red-500 text-center text-sm">
                   Please connect your wallet to create a token
