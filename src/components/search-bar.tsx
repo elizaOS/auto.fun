@@ -50,7 +50,7 @@ export default function SearchBar() {
 
   return (
     <div className="relative">
-      <div className="flex max-w-72 lg:max-w-96 items-center h-11 w-full px-2 gap-2 bg-[#171717] border border-[#262626] hover:border-[#2FD345]/50 focus-within:border-[#2FD345]/50 transition-colors">
+      <div className="flex w-full md:max-w-72 lg:max-w-96 items-center h-11 px-2 gap-2 bg-[#171717] border border-[#262626] hover:border-[#2FD345]/50 focus-within:border-[#2FD345]/50 transition-colors">
         <Search className="w-6 h-6 text-[#8C8C8C] group-hover:text-[#2FD345] shrink-0" />
         <input
           type="text"
