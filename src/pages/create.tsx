@@ -2705,17 +2705,17 @@ export const Create = () => {
                   }}
                   onMouseUp={(e) => {
                     const img = e.target as HTMLImageElement;
-                      img.src = "/create/launchup.svg";
+                    img.src = "/create/launchup.svg";
                   }}
                   onDragStart={(e) => {
                     e.preventDefault();
                     const img = e.target as HTMLImageElement;
-                      img.src = "/create/launchup.svg";
+                    img.src = "/create/launchup.svg";
                   }}
                   onMouseOut={(e) => {
                     e.preventDefault();
                     const img = e.target as HTMLImageElement;
-                      img.src = "/create/launchup.svg";
+                    img.src = "/create/launchup.svg";
                   }}
                 />
               </button>
