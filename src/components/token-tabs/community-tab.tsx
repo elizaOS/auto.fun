@@ -22,12 +22,13 @@ export default function CommunityTab() {
           Image generator
         </Button>
         <Button
-          onClick={() => setCommunityTab("Audio")}
+          // onClick={() => setCommunityTab("Audio")}
           className={twMerge(
             communityTab === "Audio"
               ? "bg-autofun-stroke-highlight/80"
               : "bg-white/15"
           )}
+          disabled
         >
           Audio generator
         </Button>
