@@ -110,6 +110,14 @@ body {
   height: 20px;
 }
 
+input:focus-visible {
+  outline: none;
+}
+
+textarea:focus-visible {
+  outline: none;
+}
+
 :root {
   /* Base background colors */
   --toastify-color-light: #171717; /* autofun.background.card */
