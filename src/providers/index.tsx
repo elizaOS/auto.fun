@@ -5,9 +5,7 @@ import { SolPriceProvider } from "./sol-price-provider";
 export function Providers({ children }: PropsWithChildren) {
   return (
     <Wallet>
-      <SolPriceProvider>
-        {children}
-      </SolPriceProvider>
+      <SolPriceProvider>{children}</SolPriceProvider>
     </Wallet>
   );
 }

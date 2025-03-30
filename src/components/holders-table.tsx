@@ -1,4 +1,3 @@
-import { IToken, ITokenHolder } from "@/types";
 import {
   Table,
   TableBody,
@@ -7,25 +6,32 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table-raw";
-import { shortenAddress } from "@/utils";
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router";
-import { ExternalLink, RefreshCw } from "lucide-react";
 import usePause from "@/hooks/use-pause";
-import PausedIndicator from "./paused-indicator";
+import { IToken } from "@/types";
+import { shortenAddress } from "@/utils";
 import { fetchTokenHolders, TokenHolder } from "@/utils/blockchain";
+import { useQuery } from "@tanstack/react-query";
+import { ExternalLink, RefreshCw } from "lucide-react";
+import { Link } from "react-router";
+import PausedIndicator from "./paused-indicator";
 
 export default function HoldersTable({ token }: { token: IToken }) {
   const { paused, setPause } = usePause();
-  console.log(`HoldersTable: Rendering for token ${token?.ticker} (${token?.mint})`);
-  
+  console.log(
+    `HoldersTable: Rendering for token ${token?.ticker} (${token?.mint})`,
+  );
+
   const query = useQuery({
     queryKey: ["blockchain-holders", token?.mint],
     queryFn: async () => {
-      console.log(`HoldersTable: Fetching holders directly from blockchain for ${token?.mint}`);
+      console.log(
+        `HoldersTable: Fetching holders directly from blockchain for ${token?.mint}`,
+      );
       try {
         const result = await fetchTokenHolders(token?.mint);
-        console.log(`HoldersTable: Retrieved ${result.total} holders from blockchain`);
+        console.log(
+          `HoldersTable: Retrieved ${result.total} holders from blockchain`,
+        );
         return result;
       } catch (error) {
         console.error(`HoldersTable: Error fetching holders data:`, error);
@@ -39,7 +45,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
 
   const isLoading = query.isLoading;
   const data = query?.data?.holders || [];
-  const totalHolders = query?.data?.total || 0;
+  // const totalHolders = query?.data?.total || 0;
 
   return (
     <Table
@@ -62,7 +68,9 @@ export default function HoldersTable({ token }: { token: IToken }) {
             <TableCell colSpan={4} className="text-center py-8">
               <div className="flex flex-col items-center gap-2">
                 <RefreshCw className="animate-spin size-5 text-autofun-text-secondary" />
-                <p className="text-autofun-text-secondary">Fetching holders from blockchain...</p>
+                <p className="text-autofun-text-secondary">
+                  Fetching holders from blockchain...
+                </p>
               </div>
             </TableCell>
           </TableRow>
@@ -71,12 +79,20 @@ export default function HoldersTable({ token }: { token: IToken }) {
             return (
               <TableRow className="hover:bg-white/5" key={holder?.address}>
                 <TableCell className="text-left">
-                  <Link to={`https://solscan.io/account/${holder?.address}`} target="_blank" className="hover:text-autofun-text-highlight">
+                  <Link
+                    to={`https://solscan.io/account/${holder?.address}`}
+                    target="_blank"
+                    className="hover:text-autofun-text-highlight"
+                  >
                     {shortenAddress(holder?.address)}
                   </Link>
                 </TableCell>
-                <TableCell className="text-right">{holder?.amount.toLocaleString()}</TableCell>
-                <TableCell className="text-right">{holder?.percentage}%</TableCell>
+                <TableCell className="text-right">
+                  {holder?.amount.toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  {holder?.percentage}%
+                </TableCell>
                 <TableCell>
                   <Link
                     to={`https://solscan.io/account/${holder?.address}`}
@@ -90,11 +106,19 @@ export default function HoldersTable({ token }: { token: IToken }) {
           })
         ) : (
           <TableRow>
-            <TableCell colSpan={4} className="text-center py-8 text-autofun-text-secondary">
+            <TableCell
+              colSpan={4}
+              className="text-center py-8 text-autofun-text-secondary"
+            >
               <div className="flex flex-col items-center gap-2">
                 <p>No holders data available from blockchain.</p>
-                <Link to={`https://solscan.io/token/${token?.mint}#holders`} target="_blank" className="text-autofun-text-highlight hover:underline flex items-center gap-1">
-                  View all token holders on Solscan <ExternalLink className="size-4" />
+                <Link
+                  to={`https://solscan.io/token/${token?.mint}#holders`}
+                  target="_blank"
+                  className="text-autofun-text-highlight hover:underline flex items-center gap-1"
+                >
+                  View all token holders on Solscan{" "}
+                  <ExternalLink className="size-4" />
                 </Link>
               </div>
             </TableCell>

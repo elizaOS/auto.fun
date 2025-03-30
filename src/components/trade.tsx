@@ -10,7 +10,7 @@ import useTokenBalance from "@/hooks/use-token-balance";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "react-toastify";
-import { useSolPriceContext } from "@/providers/sol-price-provider";
+import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { fetchTokenMarketMetrics } from "@/utils/blockchain";
 
 export default function Trade({ token }: { token: IToken }) {
@@ -19,7 +19,7 @@ export default function Trade({ token }: { token: IToken }) {
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
     undefined,
   );
-  
+
   // Fetch real-time blockchain metrics for this token
   const metricsQuery = useQuery({
     queryKey: ["blockchain-metrics", token?.mint],
@@ -37,20 +37,21 @@ export default function Trade({ token }: { token: IToken }) {
     refetchInterval: 30_000, // Longer interval for blockchain queries
     staleTime: 60000, // Data stays fresh for 1 minute
   });
-  
+
   // Use blockchain data if available, otherwise fall back to token data
   const metrics = metricsQuery?.data;
-  const solanaPrice = metrics?.solPriceUSD || contextSolPrice || token?.solPriceUSD || 0;
+  const solanaPrice =
+    metrics?.solPriceUSD || contextSolPrice || token?.solPriceUSD || 0;
   const currentPrice = metrics?.currentPrice || token?.currentPrice || 0;
   const tokenPriceUSD = metrics?.tokenPriceUSD || token?.tokenPriceUSD || 0;
-  
-  console.log("Trade component using prices:", { 
-    solanaPrice, 
-    currentPrice, 
+
+  console.log("Trade component using prices:", {
+    solanaPrice,
+    currentPrice,
     tokenPriceUSD,
-    metricsAvailable: !!metrics
+    metricsAvailable: !!metrics,
   });
-  
+
   const wallet = useWallet();
   const balance = useTokenBalance(
     wallet.publicKey?.toBase58() || "",
@@ -76,7 +77,7 @@ export default function Trade({ token }: { token: IToken }) {
     onSuccess: () => toast.success(`Successfully swapped.`),
     onError: () => toast.error("Something bad happened.."),
   });
-  
+
   // Set percentage buttons to use real balance
   const handlePercentage = (percentage: number) => {
     if (balance?.data?.formattedBalance) {
@@ -110,22 +111,22 @@ export default function Trade({ token }: { token: IToken }) {
                 </Button>
                 {isTokenSelling ? (
                   <Fragment>
-                    <Button 
-                      size="small" 
+                    <Button
+                      size="small"
                       variant="trade"
                       onClick={() => handlePercentage(25)}
                     >
                       25%
                     </Button>
-                    <Button 
-                      size="small" 
+                    <Button
+                      size="small"
                       variant="trade"
                       onClick={() => handlePercentage(50)}
                     >
                       50%
                     </Button>
-                    <Button 
-                      size="small" 
+                    <Button
+                      size="small"
                       variant="trade"
                       onClick={() => handlePercentage(100)}
                     >
@@ -215,8 +216,8 @@ export default function Trade({ token }: { token: IToken }) {
                 {sellingAmount && currentPrice && !isTokenSelling
                   ? (Number(sellingAmount) / currentPrice).toFixed(2)
                   : sellingAmount && isTokenSelling
-                  ? (Number(sellingAmount) * currentPrice).toFixed(4)
-                  : "0.00"}
+                    ? (Number(sellingAmount) * currentPrice).toFixed(4)
+                    : "0.00"}
               </span>
               <TokenDisplay token={token} isSolana={isTokenSelling} />
             </div>
@@ -224,17 +225,15 @@ export default function Trade({ token }: { token: IToken }) {
               <span className="text-sm font-dm-mono text-autofun-text-secondary select-none">
                 {sellingAmount && solanaPrice && !isTokenSelling
                   ? formatNumber(
-                      (Number(sellingAmount) / currentPrice) * 
-                      tokenPriceUSD, 
-                      true
+                      (Number(sellingAmount) / currentPrice) * tokenPriceUSD,
+                      true,
                     )
                   : sellingAmount && isTokenSelling && tokenPriceUSD
-                  ? formatNumber(
-                      (Number(sellingAmount) * currentPrice) * 
-                      solanaPrice, 
-                      true
-                    )
-                  : "$0.00"}
+                    ? formatNumber(
+                        Number(sellingAmount) * currentPrice * solanaPrice,
+                        true,
+                      )
+                    : "$0.00"}
               </span>
               <Balance token={token} isSolana={isTokenSelling} />
             </div>
@@ -250,7 +249,8 @@ export default function Trade({ token }: { token: IToken }) {
           <div className="flex items-center gap-2">
             <Info className="text-red-600 size-4" />
             <p className="text-red-600 text-xs font-dm-mono">
-              Insufficient Funds: You have {balance?.data?.formattedBalance?.toFixed(4) || "0"}{" "}
+              Insufficient Funds: You have{" "}
+              {balance?.data?.formattedBalance?.toFixed(4) || "0"}{" "}
               {isTokenSelling ? token?.ticker : "SOL"}
             </p>
           </div>

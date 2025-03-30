@@ -25,7 +25,7 @@ const fetchSolPrice = async (): Promise<number> => {
     try {
       const response = await fetch(`${env.apiUrl}/api/sol-price`);
       if (response.ok) {
-        const data = await response.json() as SolPriceResponse;
+        const data = (await response.json()) as SolPriceResponse;
         if (data && data.price) {
           return Number(data.price);
         }
@@ -37,9 +37,9 @@ const fetchSolPrice = async (): Promise<number> => {
     // If API fails, try CoinGecko
     try {
       const response = await fetch(
-        "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd"
+        "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd",
       );
-      const data = await response.json() as CoinGeckoResponse;
+      const data = (await response.json()) as CoinGeckoResponse;
       if (data && data.solana && data.solana.usd) {
         return Number(data.solana.usd);
       }
@@ -50,9 +50,9 @@ const fetchSolPrice = async (): Promise<number> => {
     // If CoinGecko fails, try Binance
     try {
       const response = await fetch(
-        "https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT"
+        "https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT",
       );
-      const data = await response.json() as BinanceResponse;
+      const data = (await response.json()) as BinanceResponse;
       if (data && data.price) {
         return Number(data.price);
       }
@@ -79,4 +79,4 @@ export function useSolPrice() {
     refetchInterval: 60000, // Refresh every minute
     staleTime: 30000, // Consider data stale after 30 seconds
   });
-} 
+}

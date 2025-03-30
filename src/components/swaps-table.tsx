@@ -1,4 +1,3 @@
-import { IToken } from "@/types";
 import {
   Table,
   TableBody,
@@ -7,29 +6,34 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table-raw";
-import { formatNumber, fromNow, shortenAddress } from "@/utils";
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router";
-import { ExternalLink, RefreshCw } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 import usePause from "@/hooks/use-pause";
-import PausedIndicator from "./paused-indicator";
-import { useSolPriceContext } from "@/providers/sol-price-provider";
+import { IToken } from "@/types";
+import { fromNow, shortenAddress } from "@/utils";
 import { fetchTokenTransactions, TokenTransaction } from "@/utils/blockchain";
+import { useQuery } from "@tanstack/react-query";
+import { ExternalLink, RefreshCw } from "lucide-react";
+import { Link } from "react-router";
+import { twMerge } from "tailwind-merge";
+import PausedIndicator from "./paused-indicator";
 
 export default function SwapsTable({ token }: { token: IToken }) {
   const { paused, setPause } = usePause();
-  const { solPrice } = useSolPriceContext();
-  
-  console.log(`SwapsTable: Rendering for token ${token?.ticker} (${token?.mint})`);
-  
+
+  console.log(
+    `SwapsTable: Rendering for token ${token?.ticker} (${token?.mint})`,
+  );
+
   const query = useQuery({
     queryKey: ["blockchain-swaps", token?.mint],
     queryFn: async () => {
-      console.log(`SwapsTable: Fetching swaps directly from blockchain for ${token?.mint}`);
+      console.log(
+        `SwapsTable: Fetching swaps directly from blockchain for ${token?.mint}`,
+      );
       try {
         const result = await fetchTokenTransactions(token?.mint);
-        console.log(`SwapsTable: Retrieved ${result.total} transactions from blockchain`);
+        console.log(
+          `SwapsTable: Retrieved ${result.total} transactions from blockchain`,
+        );
         return result;
       } catch (error) {
         console.error(`SwapsTable: Error fetching transactions data:`, error);
@@ -46,10 +50,11 @@ export default function SwapsTable({ token }: { token: IToken }) {
 
   // Helper to format swap amounts based on type
   const formatSwapAmount = (amount: number | string, isToken: boolean) => {
-    const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-    
+    const numericAmount =
+      typeof amount === "string" ? parseFloat(amount) : amount;
+
     if (isNaN(numericAmount)) return "0";
-    
+
     if (isToken) {
       // Format token amount
       if (numericAmount >= 1000000) {
@@ -88,7 +93,9 @@ export default function SwapsTable({ token }: { token: IToken }) {
             <TableCell colSpan={6} className="text-center py-8">
               <div className="flex flex-col items-center gap-2">
                 <RefreshCw className="animate-spin size-5 text-autofun-text-secondary" />
-                <p className="text-autofun-text-secondary">Fetching transactions from blockchain...</p>
+                <p className="text-autofun-text-secondary">
+                  Fetching transactions from blockchain...
+                </p>
               </div>
             </TableCell>
           </TableRow>
@@ -98,7 +105,11 @@ export default function SwapsTable({ token }: { token: IToken }) {
             return (
               <TableRow className="hover:bg-white/5" key={swap?.txId}>
                 <TableCell className="text-left">
-                  <Link to={`https://solscan.io/account/${swap?.user}`} target="_blank" className="hover:text-autofun-text-highlight">
+                  <Link
+                    to={`https://solscan.io/account/${swap?.user}`}
+                    target="_blank"
+                    className="hover:text-autofun-text-highlight"
+                  >
                     {shortenAddress(swap?.user)}
                   </Link>
                 </TableCell>
@@ -132,10 +143,17 @@ export default function SwapsTable({ token }: { token: IToken }) {
           })
         ) : (
           <TableRow>
-            <TableCell colSpan={6} className="text-center py-8 text-autofun-text-secondary">
+            <TableCell
+              colSpan={6}
+              className="text-center py-8 text-autofun-text-secondary"
+            >
               <div className="flex flex-col items-center gap-2">
                 <p>No transaction data available from blockchain.</p>
-                <Link to={`https://solscan.io/token/${token?.mint}#trades`} target="_blank" className="text-autofun-text-highlight hover:underline flex items-center gap-1">
+                <Link
+                  to={`https://solscan.io/token/${token?.mint}#trades`}
+                  target="_blank"
+                  className="text-autofun-text-highlight hover:underline flex items-center gap-1"
+                >
                   View all trades on Solscan <ExternalLink className="size-4" />
                 </Link>
               </div>

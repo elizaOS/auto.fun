@@ -730,7 +730,7 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
     // Create a temporary matrix and dummy object for updates
     const matrix = new THREE.Matrix4();
     const dummyObject = new THREE.Object3D();
-    
+
     // Pre-position all instances far off screen initially
     for (let i = 0; i < MAX_COINS; i++) {
       dummyObject.position.set(-2000, 0, 0);

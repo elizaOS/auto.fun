@@ -11,7 +11,7 @@ import { TokenMetadata } from "../types/form.type";
 import { EmptyState } from "@/components/empty-state";
 import useTokenBalance from "@/hooks/use-token-balance";
 import { toast } from "react-toastify";
-import { useSolPriceContext } from "@/providers/sol-price-provider";
+import { useSolPriceContext } from "@/providers/use-sol-price-context";
 
 const MAX_INITIAL_SOL = 45;
 // Use the token supply and virtual reserves from environment or fallback to defaults
@@ -934,12 +934,15 @@ export const Create = () => {
   const { solPrice } = useSolPriceContext();
 
   // Calculate max SOL the user can spend (leave 0.05 SOL for transaction fees)
-  const maxUserSol = balance?.data?.formattedBalance ? Math.max(0, balance.data.formattedBalance - 0.05) : 0;
+  const maxUserSol = balance?.data?.formattedBalance
+    ? Math.max(0, balance.data.formattedBalance - 0.05)
+    : 0;
   // Use the smaller of MAX_INITIAL_SOL or the user's max available SOL
   const maxInputSol = Math.min(MAX_INITIAL_SOL, maxUserSol);
-  
+
   // Calculate dollar value based on SOL price
-  const solValueUsd = solPrice && buyValue ? (Number(buyValue) * solPrice).toFixed(2) : "0.00";
+  const solValueUsd =
+    solPrice && buyValue ? (Number(buyValue) * solPrice).toFixed(2) : "0.00";
 
   const insufficientBalance =
     Number(buyValue) > Number(balance?.data?.formattedBalance || 0) - 0.05;
@@ -2042,10 +2045,11 @@ export const Create = () => {
     if (!form.name) newErrors.name = "Name is required";
     if (!form.symbol) newErrors.symbol = "Symbol is required";
     if (!form.description) newErrors.description = "Description is required";
-    
+
     // Validate SOL balance
     if (insufficientBalance) {
-      newErrors.initial_sol = "Insufficient SOL balance (need 0.05 SOL for fees)";
+      newErrors.initial_sol =
+        "Insufficient SOL balance (need 0.05 SOL for fees)";
       toast.error("You don't have enough SOL to create this token");
     }
 
@@ -2650,20 +2654,22 @@ export const Create = () => {
                       % of supply
                     </div>
                   )}
-                  
+
                   {/* Balance information */}
                   <div className="mt-2 text-right text-xs text-neutral-400">
-                    Your balance: {balance?.data?.formattedBalance?.toFixed(2) || "0.00"} SOL
+                    Your balance:{" "}
+                    {balance?.data?.formattedBalance?.toFixed(2) || "0.00"} SOL
                     {insufficientBalance && (
                       <div className="text-red-500 mt-1">
                         Insufficient SOL balance (need 0.05 SOL for fees)
                       </div>
                     )}
-                    {Number(buyValue) === maxInputSol && maxInputSol < MAX_INITIAL_SOL && (
-                      <div className="text-yellow-500 mt-1">
-                        Maximum amount based on your balance
-                      </div>
-                    )}
+                    {Number(buyValue) === maxInputSol &&
+                      maxInputSol < MAX_INITIAL_SOL && (
+                        <div className="text-yellow-500 mt-1">
+                          Maximum amount based on your balance
+                        </div>
+                      )}
                   </div>
                 </div>
               )}
@@ -2719,10 +2725,16 @@ export const Create = () => {
               )}
               {insufficientBalance && (
                 <p className="text-red-500 text-center text-sm">
-                  You need at least {(Number(buyValue) + 0.05).toFixed(2)} SOL ({Number(buyValue).toFixed(2)} SOL for token + 0.05 SOL for fees)
+                  You need at least {(Number(buyValue) + 0.05).toFixed(2)} SOL (
+                  {Number(buyValue).toFixed(2)} SOL for token + 0.05 SOL for
+                  fees)
                   {solPrice && (
                     <span className="block mt-1">
-                      ≈ ${(Number(buyValue) * solPrice + 0.05 * solPrice).toFixed(2)} USD
+                      ≈ $
+                      {(Number(buyValue) * solPrice + 0.05 * solPrice).toFixed(
+                        2,
+                      )}{" "}
+                      USD
                     </span>
                   )}
                 </p>

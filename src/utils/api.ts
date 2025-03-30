@@ -10,12 +10,17 @@ const fetcher = async (
   body?: object,
 ) => {
   try {
-    const query: { method: string; body?: string; headers: object; credentials: RequestCredentials } = {
+    const query: {
+      method: string;
+      body?: string;
+      headers: object;
+      credentials: RequestCredentials;
+    } = {
       method,
       headers: {
         accept: "application/json",
       },
-      credentials: 'include'
+      credentials: "include",
     };
 
     if (body) {
@@ -28,7 +33,9 @@ const fetcher = async (
     if (!response.ok) {
       if (response.status === 401) {
         console.warn(`Authentication required for ${endpoint}`);
-        throw new Error('Authentication required. Please sign in to access this data.');
+        throw new Error(
+          "Authentication required. Please sign in to access this data.",
+        );
       }
 
       const errorText = await response.text();
@@ -72,17 +79,19 @@ export const getTokens = async ({
   return data;
 };
 
-export const getToken = async ({ 
+export const getToken = async ({
   address,
-  bypassCache = false
-}: { 
+  bypassCache = false,
+}: {
   address: string;
   bypassCache?: boolean;
 }) => {
   const endpoint = `/api/tokens/${address}`;
-  
+
   try {
-    console.log(`Fetching token data for ${address} (bypass_cache: ${bypassCache})`);
+    console.log(
+      `Fetching token data for ${address} (bypass_cache: ${bypassCache})`,
+    );
     const rawData = await fetcher(endpoint, "GET");
     const data = rawData as Record<string, any>;
 
@@ -92,7 +101,8 @@ export const getToken = async ({
       creator: data.creator,
       currentPrice: data.currentPrice != null ? Number(data.currentPrice) : 0,
       curveLimit: data.curveLimit != null ? Number(data.curveLimit) : 0,
-      curveProgress: data.curveProgress != null ? Number(data.curveProgress) : 0,
+      curveProgress:
+        data.curveProgress != null ? Number(data.curveProgress) : 0,
       description: data.description || "",
       image: data.image || "",
       inferenceCount:
@@ -104,14 +114,16 @@ export const getToken = async ({
       price24hAgo: data.price24hAgo != null ? Number(data.price24hAgo) : 0,
       priceChange24h:
         data.priceChange24h != null ? Number(data.priceChange24h) : 0,
-      reserveAmount: data.reserveAmount != null ? Number(data.reserveAmount) : 0,
+      reserveAmount:
+        data.reserveAmount != null ? Number(data.reserveAmount) : 0,
       reserveLamport:
         data.reserveLamport != null ? Number(data.reserveLamport) : 0,
       solPriceUSD: data.solPriceUSD != null ? Number(data.solPriceUSD) : 0,
       status: data.status || "active",
       telegram: data.telegram || "",
       ticker: data.ticker,
-      tokenPriceUSD: data.tokenPriceUSD != null ? Number(data.tokenPriceUSD) : 0,
+      tokenPriceUSD:
+        data.tokenPriceUSD != null ? Number(data.tokenPriceUSD) : 0,
       twitter: data.twitter || "",
       txId: data.txId || "",
       url: data.url || "",
@@ -132,16 +144,18 @@ export const getToken = async ({
   }
 };
 
-export const getTokenHolders = async ({ 
+export const getTokenHolders = async ({
   address,
-  bypassCache = false
-}: { 
+  bypassCache = false,
+}: {
   address: string;
   bypassCache?: boolean;
 }) => {
   try {
     const endpoint = `/api/tokens/${address}/holders`;
-    console.log(`Fetching holders for ${address} (bypass_cache: ${bypassCache})`);
+    console.log(
+      `Fetching holders for ${address} (bypass_cache: ${bypassCache})`,
+    );
     const data = await fetcher(endpoint, "GET");
     return data;
   } catch (error) {
@@ -160,10 +174,10 @@ export const refreshTokenHolders = async ({ address }: { address: string }) => {
   }
 };
 
-export const getTokenSwapHistory = async ({ 
-  address, 
-  bypassCache = false 
-}: { 
+export const getTokenSwapHistory = async ({
+  address,
+  bypassCache = false,
+}: {
   address: string;
   bypassCache?: boolean;
 }) => {

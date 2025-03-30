@@ -51,4 +51,4 @@ apiRouter.get("/sol-price", async (c) => {
  */
 apiRouter.get("/auth-status", async (c) => {
   // ... existing code
-}); 
+});

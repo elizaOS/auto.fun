@@ -1,12 +1,11 @@
-import { IToken, ISwap, ITokenHolder } from "@/types";
-import { useState } from "react";
-import Button from "./button";
-import SwapsTable from "./swaps-table";
-import HoldersTable from "./holders-table";
-import { toast } from "react-toastify";
-import { Loader2, RefreshCw } from "lucide-react";
-import { getTokenHolders, getTokenSwapHistory } from "@/utils/api";
+import { IToken } from "@/types";
 import { queryClient } from "@/utils/api";
+import { Loader2, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { toast } from "react-toastify";
+import Button from "./button";
+import HoldersTable from "./holders-table";
+import SwapsTable from "./swaps-table";
 
 export default function TransactionsAndHolders({ token }: { token: IToken }) {
   const [mode, setMode] = useState<"transactions" | "holders">("transactions");
@@ -14,31 +13,45 @@ export default function TransactionsAndHolders({ token }: { token: IToken }) {
 
   const refreshData = async () => {
     if (isRefreshing) return;
-    
+
     try {
       setIsRefreshing(true);
       toast.info("Refreshing blockchain data...");
-      
+
       // To refresh data, we'll invalidate and refetch the blockchain queries
-      queryClient.invalidateQueries({ queryKey: ["blockchain-swaps", token.mint] });
-      queryClient.invalidateQueries({ queryKey: ["blockchain-holders", token.mint] });
-      
+      queryClient.invalidateQueries({
+        queryKey: ["blockchain-swaps", token.mint],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["blockchain-holders", token.mint],
+      });
+
       // Also invalidate market metrics data
-      queryClient.invalidateQueries({ queryKey: ["blockchain-metrics", token.mint] });
-      
+      queryClient.invalidateQueries({
+        queryKey: ["blockchain-metrics", token.mint],
+      });
+
       // Also invalidate any chart data that might be cached
       // This will force the chart to fetch fresh data on next render
-      document.dispatchEvent(new CustomEvent('refresh-chart-data', { 
-        detail: { tokenMint: token.mint }
-      }));
-      
+      document.dispatchEvent(
+        new CustomEvent("refresh-chart-data", {
+          detail: { tokenMint: token.mint },
+        }),
+      );
+
       // Force immediate refetch
       await Promise.all([
-        queryClient.refetchQueries({ queryKey: ["blockchain-swaps", token.mint] }),
-        queryClient.refetchQueries({ queryKey: ["blockchain-holders", token.mint] }),
-        queryClient.refetchQueries({ queryKey: ["blockchain-metrics", token.mint] })
+        queryClient.refetchQueries({
+          queryKey: ["blockchain-swaps", token.mint],
+        }),
+        queryClient.refetchQueries({
+          queryKey: ["blockchain-holders", token.mint],
+        }),
+        queryClient.refetchQueries({
+          queryKey: ["blockchain-metrics", token.mint],
+        }),
       ]);
-      
+
       toast.success("Blockchain data refreshed");
     } catch (error) {
       console.error("Error refreshing blockchain data:", error);

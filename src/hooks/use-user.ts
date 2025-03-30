@@ -40,7 +40,7 @@ export function useUser() {
             console.log("data", data);
             setUser({
               ...data.user,
-              solBalance: solBalanceQuery.data
+              solBalance: solBalanceQuery.data,
             });
           } else {
             setUser(null);

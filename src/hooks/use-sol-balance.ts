@@ -8,7 +8,7 @@ const RPC_URL =
 
 const fetchSolBalance = async (walletAddress: string): Promise<number> => {
   if (!walletAddress) return 0;
-  
+
   try {
     const response = await fetch(RPC_URL, {
       method: "POST",
@@ -37,11 +37,11 @@ const fetchSolBalance = async (walletAddress: string): Promise<number> => {
 export function useSolBalance() {
   const { publicKey } = useWallet();
   const walletAddress = publicKey?.toBase58() || "";
-  
+
   return useQuery({
     queryKey: ["solBalance", walletAddress],
     queryFn: () => fetchSolBalance(walletAddress),
     enabled: Boolean(walletAddress),
     refetchInterval: 30000, // Refresh every 30 seconds
   });
-} 
+}

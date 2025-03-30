@@ -86,13 +86,15 @@ export function getDataFeed({
       const adjustedFrom = firstDataRequest ? from - FIVE_DAYS : from;
 
       try {
-        console.log(`[getBars]: Fetching chart data from blockchain for ${token}, resolution: ${resolution}`);
-        
+        console.log(
+          `[getBars]: Fetching chart data from blockchain for ${token}, resolution: ${resolution}`,
+        );
+
         const chartData = await fetchTokenChartData(
           token,
           adjustedFrom,
           to,
-          +resolution
+          +resolution,
         );
 
         if (!chartData || !chartData.table || chartData.table.length === 0) {
@@ -110,7 +112,9 @@ export function getDataFeed({
           }
         });
 
-        console.log(`[getBars]: Processed ${bars.length} bars from blockchain data`);
+        console.log(
+          `[getBars]: Processed ${bars.length} bars from blockchain data`,
+        );
 
         if (!bars.length) {
           // Don't set noDataFlags here as this might be a temporary gap in data

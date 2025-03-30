@@ -2,12 +2,20 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useRef, useState } from "react";
 import Button from "./button";
 import { shortenAddress } from "@/utils";
-import { ChevronDown, Copy, DollarSign, LogOut, User, Trophy, Wallet } from "lucide-react";
+import {
+  ChevronDown,
+  Copy,
+  DollarSign,
+  LogOut,
+  User,
+  Trophy,
+  Wallet,
+} from "lucide-react";
 import { useNavigate } from "react-router";
 import { useWalletModal } from "@/hooks/use-wallet-modal";
 import useAuthentication from "@/hooks/use-authentication";
 import { useUser } from "@/hooks/use-user";
-import { useSolPriceContext } from "@/providers/sol-price-provider";
+import { useSolPriceContext } from "@/providers/use-sol-price-context";
 
 const WalletButton = () => {
   const navigate = useNavigate();
@@ -97,7 +105,9 @@ const WalletButton = () => {
               </li>
               <li className="opacity-50 px-4 py-2 text-sm text-white flex items-center gap-2">
                 <Wallet size={16} />
-                <span>{user?.solBalance ? user.solBalance.toFixed(2) : "0.00"} SOL</span>
+                <span>
+                  {user?.solBalance ? user.solBalance.toFixed(2) : "0.00"} SOL
+                </span>
               </li>
               <li className="opacity-50 px-4 py-2 text-sm text-white flex items-center gap-2">
                 <DollarSign size={16} />
