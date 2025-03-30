@@ -7,6 +7,10 @@ import { nodePolyfills } from "vite-plugin-node-polyfills";
 import { fileURLToPath, URL } from "url";
 import Sitemap from 'vite-plugin-sitemap'
 
+import { config } from "dotenv";
+
+config();
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [

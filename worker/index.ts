@@ -21,6 +21,7 @@ import tokenRouter, { processSwapEvent } from "./routes/token";
 import { uploadToCloudflare } from "./uploader";
 import { WebSocketDO, allowedOrigins, createTestSwap } from "./websocket";
 import { getWebSocketClient } from "./websocket-client";
+import { getSOLPrice } from "./mcap";
 
 const app = new Hono<{
   Bindings: Env;
@@ -441,6 +442,16 @@ api.post("/broadcast", async (c) => {
       },
       500,
     );
+  }
+});
+
+api.get("/sol-price", async (c) => {
+  try {
+    const price = await getSOLPrice(c.env);
+    return c.json({ price });
+  } catch (error) {
+    console.error("Error fetching SOL price:", error);
+    return c.json({ error: "Failed to fetch SOL price" }, 500);
   }
 });
 
