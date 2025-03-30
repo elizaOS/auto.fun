@@ -218,7 +218,7 @@ const FormImageInput = ({
   setGeneratingField: (value: string | null) => void;
   onPromptFunctionsChange: (
     setPrompt: (prompt: string) => void,
-    onPromptChange: (prompt: string) => void,
+    onPromptChange: (prompt: string) => void
   ) => void;
   onPreviewChange?: (previewUrl: string | null) => void;
   imageUrl?: string | null;
@@ -232,7 +232,7 @@ const FormImageInput = ({
   const [preview, setPreview] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
   const [lastGeneratedImage, setLastGeneratedImage] = useState<string | null>(
-    null,
+    null
   );
   const promptDebounceRef = useRef<number | null>(null);
   const hasDirectlySetPreview = useRef<boolean>(false);
@@ -268,7 +268,7 @@ const FormImageInput = ({
         onPromptChange(value);
       }, 500);
     },
-    [onPromptChange],
+    [onPromptChange]
   );
 
   // Update lastGeneratedImage only when preview changes
@@ -294,7 +294,7 @@ const FormImageInput = ({
       setPrompt(value);
       debouncedPromptChange(value);
     },
-    [debouncedPromptChange],
+    [debouncedPromptChange]
   );
 
   const handleCancel = useCallback(() => {
@@ -320,7 +320,7 @@ const FormImageInput = ({
         // Check file size (limit to 5MB)
         if (file.size > 5 * 1024 * 1024) {
           toast.error(
-            "File is too large. Please select an image less than 5MB.",
+            "File is too large. Please select an image less than 5MB."
           );
           return;
         }
@@ -333,7 +333,7 @@ const FormImageInput = ({
         onChange(file);
       }
     },
-    [onChange],
+    [onChange]
   );
 
   // Handle drag & drop
@@ -354,7 +354,7 @@ const FormImageInput = ({
         // Check file size (limit to 5MB)
         if (file.size > 5 * 1024 * 1024) {
           toast.error(
-            "File is too large. Please select an image less than 5MB.",
+            "File is too large. Please select an image less than 5MB."
           );
           return;
         }
@@ -367,7 +367,7 @@ const FormImageInput = ({
         onChange(file);
       }
     },
-    [onChange],
+    [onChange]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -497,7 +497,7 @@ const FormImageInput = ({
             {activeTab === FormTab.MANUAL ? (
               // Manual mode - File upload UI
               <div
-                className="flex flex-col items-center justify-center w-full h-full cursor-pointer"
+                className="flex flex-col items-center justify-center w-full h-full cursor-pointer bg-[url(/empty-state-bg.svg)] bg-cover"
                 onClick={triggerFileInput}
               >
                 <input
@@ -507,12 +507,9 @@ const FormImageInput = ({
                   onChange={handleFileChange}
                   className="hidden"
                 />
-                <div className="border-2 border-dashed border-neutral-700 rounded-lg p-8 flex flex-col items-center justify-center w-4/5 h-4/5">
+                <div className="p-8 flex flex-col items-center justify-center w-4/5 h-4/5">
                   {/* Placeholder logo when empty */}
                   <EmptyState maxSizeMb={5} />
-                  <p className="text-neutral-300 text-center mb-2">
-                    Click or drag and drop an image here
-                  </p>
                 </div>
               </div>
             ) : (
@@ -554,7 +551,7 @@ const uploadImage = async (metadata: TokenMetadata) => {
   const filename = `${safeName}${extension}`;
 
   console.log(
-    `Uploading image as ${filename} with content type ${contentType}`,
+    `Uploading image as ${filename} with content type ${contentType}`
   );
 
   // Get auth token from localStorage
@@ -673,7 +670,7 @@ const waitForTokenCreation = async ({
               imageUrl,
               metadataUrl,
             }),
-          },
+          }
         );
 
         if (createResponse.ok) {
@@ -724,7 +721,7 @@ const waitForTokenCreation = async ({
                 imageUrl,
                 metadataUrl,
               }),
-            },
+            }
           );
 
           if (response.ok) {
@@ -929,7 +926,7 @@ export const Create = () => {
   const wallet = useWallet();
   const balance = useTokenBalance(
     wallet.publicKey?.toBase58() || "",
-    "So11111111111111111111111111111111111111111",
+    "So11111111111111111111111111111111111111111"
   );
   const { solPrice } = useSolPriceContext();
 
@@ -960,7 +957,7 @@ export const Create = () => {
 
   // Store a reference to the FormImageInput's setPreview function
   const previewSetterRef = useRef<((preview: string | null) => void) | null>(
-    null,
+    null
   );
 
   // Create ref to track image URL creation to prevent infinite loops
@@ -1164,7 +1161,7 @@ export const Create = () => {
   const createTokenOnChain = async (
     _tokenMetadata: TokenMetadata,
     mintKeypair: Keypair,
-    _metadataUrl: string,
+    _metadataUrl: string
   ) => {
     if (!signTransaction) {
       throw new Error("Wallet doesn't support signing");
@@ -1232,7 +1229,7 @@ export const Create = () => {
             prompt: userPrompt,
             fields: ["name", "symbol", "description", "prompt"],
           }),
-        },
+        }
       );
 
       if (!response.ok) {
@@ -1271,7 +1268,7 @@ export const Create = () => {
       if (promptFunctions.setPrompt) {
         console.log(
           "Setting promptFunctions.setPrompt with:",
-          data.metadata.prompt,
+          data.metadata.prompt
         );
         promptFunctions.setPrompt(data.metadata.prompt);
       } else {
@@ -1281,7 +1278,7 @@ export const Create = () => {
       if (promptFunctions.onPromptChange) {
         console.log(
           "Calling promptFunctions.onPromptChange with:",
-          data.metadata.prompt,
+          data.metadata.prompt
         );
         promptFunctions.onPromptChange(data.metadata.prompt);
       } else {
@@ -1291,7 +1288,7 @@ export const Create = () => {
       // Step 2: Generate image with the generated prompt
       console.log(
         "Requesting image generation with prompt:",
-        data.metadata.prompt,
+        data.metadata.prompt
       );
 
       // Temporarily set the generating state
@@ -1308,13 +1305,13 @@ export const Create = () => {
             prompt: data.metadata.prompt,
             type: "image",
           }),
-        },
+        }
       );
 
       if (!imageResponse.ok) {
         console.error(
           "Image generation API returned an error:",
-          await imageResponse.text(),
+          await imageResponse.text()
         );
         throw new Error("Failed to generate image for token");
       }
@@ -1334,7 +1331,7 @@ export const Create = () => {
         const imageBlob = await fetch(imageData.mediaUrl).then((r) => {
           if (!r.ok)
             throw new Error(
-              `Failed to fetch image: ${r.status} ${r.statusText}`,
+              `Failed to fetch image: ${r.status} ${r.statusText}`
             );
           return r.blob();
         });
@@ -1382,7 +1379,7 @@ export const Create = () => {
       setHasGeneratedToken(true);
 
       console.log(
-        "=== Token generation from prompt completed successfully ===",
+        "=== Token generation from prompt completed successfully ==="
       );
     } catch (error) {
       console.error("Error generating from prompt:", error);
@@ -1392,7 +1389,7 @@ export const Create = () => {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to generate token from prompt. Please try again.",
+          : "Failed to generate token from prompt. Please try again."
       );
     } finally {
       setIsProcessingPrompt(false);
@@ -1462,7 +1459,7 @@ export const Create = () => {
               mint: form.importAddress,
               requestor: publicKey ? publicKey.toString() : "",
             }),
-          },
+          }
         );
 
         // Check if the request was successful
@@ -1477,11 +1474,11 @@ export const Create = () => {
             // If we can't parse the error, show a more friendly message
             if (response.status === 404) {
               throw new Error(
-                "The token doesn't exist or doesn't have metadata.",
+                "The token doesn't exist or doesn't have metadata."
               );
             } else {
               throw new Error(
-                `Server error (${response.status}): Unable to retrieve token data.`,
+                `Server error (${response.status}): Unable to retrieve token data.`
               );
             }
           }
@@ -1574,7 +1571,7 @@ export const Create = () => {
 
   // Handle paste in the import address field
   const handleImportAddressPaste = (
-    e: React.ClipboardEvent<HTMLInputElement>,
+    e: React.ClipboardEvent<HTMLInputElement>
   ) => {
     const pastedText = e.clipboardData.getData("text");
 
@@ -1619,7 +1616,7 @@ export const Create = () => {
   const generateAll = useCallback(
     async (
       setPrompt?: ((prompt: string) => void) | null,
-      onPromptChange?: ((prompt: string) => void) | null,
+      onPromptChange?: ((prompt: string) => void) | null
     ) => {
       try {
         setIsGenerating(true);
@@ -1644,7 +1641,7 @@ export const Create = () => {
             method: "GET",
             headers,
             credentials: "include",
-          },
+          }
         );
 
         if (!response.ok) {
@@ -1726,7 +1723,7 @@ export const Create = () => {
                 prompt: token.prompt,
                 type: "image",
               }),
-            },
+            }
           );
 
           if (!imageResponse.ok) {
@@ -1765,14 +1762,14 @@ export const Create = () => {
         toast.error(
           error instanceof Error
             ? error.message
-            : "Failed to generate metadata. Please try again.",
+            : "Failed to generate metadata. Please try again."
         );
       } finally {
         setIsGenerating(false);
         setGeneratingField(null);
       }
     },
-    [setIsGenerating, setGeneratingField],
+    [setIsGenerating, setGeneratingField]
   );
 
   // Submit form to backend
@@ -1800,14 +1797,14 @@ export const Create = () => {
 
           if (!isCreatorNow) {
             throw new Error(
-              "You need to connect with the token's creator wallet to register it",
+              "You need to connect with the token's creator wallet to register it"
             );
           }
 
           // For imported tokens, create a token entry in the database
           console.log(
             "Creating token entry for imported token:",
-            tokenData.mint,
+            tokenData.mint
           );
 
           // Show coin drop animation
@@ -1848,7 +1845,7 @@ export const Create = () => {
                 // Include the import flag to indicate this is an imported token
                 imported: true,
               }),
-            },
+            }
           );
 
           if (!createResponse.ok) {
@@ -1953,7 +1950,7 @@ export const Create = () => {
         try {
           console.log(
             "Marking pre-generated token as used:",
-            currentPreGeneratedTokenId,
+            currentPreGeneratedTokenId
           );
 
           // Get auth token from localStorage
@@ -1982,7 +1979,7 @@ export const Create = () => {
           });
 
           console.log(
-            "Successfully marked token as used and removed duplicates",
+            "Successfully marked token as used and removed duplicates"
           );
         } catch (error) {
           console.error("Error marking pre-generated token as used:", error);
@@ -2029,7 +2026,7 @@ export const Create = () => {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to create token. Please try again.",
+          : "Failed to create token. Please try again."
       );
     } finally {
       setIsSubmitting(false);
@@ -2095,7 +2092,7 @@ export const Create = () => {
               method: "GET",
               headers,
               credentials: "include",
-            },
+            }
           );
 
           if (!response.ok) {
@@ -2239,515 +2236,510 @@ export const Create = () => {
   return (
     <div className="flex flex-col items-center justify-center">
       {showCoinDrop && <CoinDrop imageUrl={coinDropImageUrl || undefined} />}
-      <div className="py-4 px-auto w-full max-w-2xl">
-        <form
-          className="flex font-dm-mono flex-col w-full m-auto gap-1 justify-center"
-          onSubmit={handleSubmit}
-        >
-          {/* Tabs Navigation */}
-          <div className="logo flex items-center flex-col md:flex-row gap-8 mx-auto w-full px-6 mb-2">
-            <div className="logo flex items-center gap-4 md:mr-auto">
-              <img
-                src="/create/dicelogo.svg"
-                alt="Coin Machine"
-                className="w-24 h-24"
-              />
-              <img
-                src="/create/coinmachine.svg"
-                alt="Coin Machine"
-                className="w-48 h-24"
-              />
-            </div>
-            <div className="flex text-lg">
-              <button
-                type="button"
-                className={`mr-6 py-1 border-b-2 font-medium transition-colors cursor-pointer select-none ${
-                  activeTab === FormTab.AUTO
-                    ? "border-[#03FF24] text-[#03FF24] font-bold"
-                    : "border-transparent text-neutral-400 hover:text-white"
-                }`}
-                onClick={() => handleTabChange(FormTab.AUTO)}
-              >
-                Auto
-              </button>
-              <button
-                type="button"
-                className={`mr-6 py-1 border-b-2 font-medium transition-colors cursor-pointer select-none ${
-                  activeTab === FormTab.MANUAL
-                    ? "border-[#03FF24] text-[#03FF24] font-bold"
-                    : "border-transparent text-neutral-400 hover:text-white"
-                }`}
-                onClick={() => handleTabChange(FormTab.MANUAL)}
-              >
-                Manual
-              </button>
-              <button
-                type="button"
-                className={`py-1 border-b-2 font-medium transition-colors cursor-pointer select-none ${
-                  activeTab === FormTab.IMPORT
-                    ? "border-[#03FF24] text-[#03FF24] font-bold"
-                    : "border-transparent text-neutral-400 hover:text-white"
-                }`}
-                onClick={() => handleTabChange(FormTab.IMPORT)}
-              >
-                Import
-              </button>
-            </div>
+
+      <form
+        className="py-4 px-auto w-full max-w-2xl flex font-dm-mono flex-col m-auto gap-1 justify-center"
+        onSubmit={handleSubmit}
+      >
+        {/* Tabs Navigation */}
+        <div className="flex items-center md:justify-between flex-col md:flex-row gap-8 mx-auto w-full px-6 mb-2">
+          <div className="flex items-center gap-4 flex-1">
+            <img
+              src="/create/dicelogo.svg"
+              alt="Coin Machine"
+              className="w-24 h-24"
+            />
+            <img
+              src="/create/coinmachine.svg"
+              alt="Coin Machine"
+              className="w-48 h-24"
+            />
           </div>
+          <div className="flex justify-between items-center text-lg">
+            <button
+              type="button"
+              className={`mr-6 py-1 border-b-2 font-medium transition-colors cursor-pointer select-none ${
+                activeTab === FormTab.AUTO
+                  ? "border-[#03FF24] text-[#03FF24] font-bold"
+                  : "border-transparent text-neutral-400 hover:text-white"
+              }`}
+              onClick={() => handleTabChange(FormTab.AUTO)}
+            >
+              Auto
+            </button>
+            <button
+              type="button"
+              className={`mr-6 py-1 border-b-2 font-medium transition-colors cursor-pointer select-none ${
+                activeTab === FormTab.MANUAL
+                  ? "border-[#03FF24] text-[#03FF24] font-bold"
+                  : "border-transparent text-neutral-400 hover:text-white"
+              }`}
+              onClick={() => handleTabChange(FormTab.MANUAL)}
+            >
+              Manual
+            </button>
+            <button
+              type="button"
+              className={`py-1 border-b-2 font-medium transition-colors cursor-pointer select-none ${
+                activeTab === FormTab.IMPORT
+                  ? "border-[#03FF24] text-[#03FF24] font-bold"
+                  : "border-transparent text-neutral-400 hover:text-white"
+              }`}
+              onClick={() => handleTabChange(FormTab.IMPORT)}
+            >
+              Import
+            </button>
+          </div>
+        </div>
 
-          {/* Auto Tab Content */}
-          {activeTab === FormTab.AUTO && (
-            <>
-              <div className="flex">
-                <input
-                  type="text"
-                  value={userPrompt}
-                  onChange={(e) => setUserPrompt(e.target.value)}
-                  placeholder="Enter a concept like 'a halloween token about arnold schwarzenegger'"
-                  className="flex-1 my-2 p-0 border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
-                />
-                <button
-                  type="button"
-                  onClick={generateFromPrompt}
-                  disabled={isProcessingPrompt || !userPrompt.trim()}
-                  className="p-0 transition-colors disabled:opacity-50"
-                >
-                  <img
-                    src={
-                      isProcessingPrompt
-                        ? "/create/generating.svg"
-                        : "/create/generateup.svg"
-                    }
-                    alt="Generate"
-                    className="h-14 w-32 mb-2"
-                    onMouseDown={(e) => {
-                      const img = e.target as HTMLImageElement;
-                      if (!isProcessingPrompt) {
-                        img.src = "/create/generatedown.svg";
-                      }
-                    }}
-                    onMouseUp={(e) => {
-                      const img = e.target as HTMLImageElement;
-                      if (!isProcessingPrompt) {
-                        img.src = "/create/generateup.svg";
-                      }
-                    }}
-                    onDragStart={(e) => {
-                      e.preventDefault();
-                      const img = e.target as HTMLImageElement;
-                      if (!isProcessingPrompt) {
-                        img.src = "/create/generateup.svg";
-                      }
-                    }}
-                    onMouseOut={(e) => {
-                      e.preventDefault();
-                      const img = e.target as HTMLImageElement;
-                      if (!isProcessingPrompt) {
-                        img.src = "/create/generateup.svg";
-                      }
-                    }}
-                  />
-                </button>
-              </div>
-              {errors.userPrompt && (
-                <div className="text-red-500 text-sm">{errors.userPrompt}</div>
-              )}
-            </>
-          )}
-
-          {/* Import Tab Content */}
-          {activeTab === FormTab.IMPORT && (
-            <div>
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-2">
-                  <div className="flex flex-row">
-                    <input
-                      type="text"
-                      value={form.importAddress || ""}
-                      onChange={(e) =>
-                        handleChange("importAddress", e.target.value)
-                      }
-                      onPaste={handleImportAddressPaste}
-                      placeholder="Enter any Solana token address (mint)"
-                      className="flex-1 my-2 p-0 border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
-                    />
-                    <button
-                      type="button"
-                      onClick={importTokenFromAddress}
-                      disabled={
-                        isImporting ||
-                        !form.importAddress?.trim() ||
-                        !isValidTokenAddress(form.importAddress)
-                      }
-                      className="p-0 transition-colors disabled:opacity-50"
-                    >
-                      <img
-                        src={
-                          isImporting
-                            ? "/create/importing.svg"
-                            : "/create/importup.svg"
-                        }
-                        alt="Import"
-                        className="h-14 w-32 mb-2"
-                        onMouseDown={(e) => {
-                          const img = e.target as HTMLImageElement;
-                          if (!isImporting) {
-                            img.src = "/create/importdown.svg";
-                          }
-                        }}
-                        onMouseUp={(e) => {
-                          const img = e.target as HTMLImageElement;
-                          if (!isImporting) {
-                            img.src = "/create/importup.svg";
-                          }
-                        }}
-                        onDragStart={(e) => {
-                          e.preventDefault();
-                          const img = e.target as HTMLImageElement;
-                          if (!isImporting) {
-                            img.src = "/create/importup.svg";
-                          }
-                        }}
-                        onMouseOut={(e) => {
-                          e.preventDefault();
-                          const img = e.target as HTMLImageElement;
-                          if (!isImporting) {
-                            img.src = "/create/importup.svg";
-                          }
-                        }}
-                      />
-                    </button>
-                  </div>
-                  {errors.importAddress && (
-                    <div className="text-red-500 text-sm">
-                      {errors.importAddress}
-                    </div>
-                  )}
-
-                  {/* Enhanced import status with clearer guidance */}
-                  {importStatus && (
-                    <div
-                      className={`p-3 border rounded-md mb-4 ${
-                        importStatus.type === "error"
-                          ? "border-red-500 bg-red-950/20 text-red-400"
-                          : importStatus.type === "warning"
-                            ? "border-yellow-500 bg-yellow-950/20 text-yellow-400"
-                            : "border-green-500 bg-green-950/20 text-[#03FF24]"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 text-sm">
-                        {importStatus.type === "success" ? (
-                          <Icons.Check className="w-5 h-5 flex-shrink-0" />
-                        ) : importStatus.type === "warning" ? (
-                          <Icons.Warning className="w-5 h-5 flex-shrink-0" />
-                        ) : (
-                          <Icons.XCircle className="w-5 h-5 flex-shrink-0" />
-                        )}
-                        <span className="font-medium">
-                          {importStatus.message}
-                        </span>
-                      </div>
-
-                      {/* Additional guidance for different status types */}
-                      {importStatus.type === "warning" && (
-                        <div className="mt-2 ml-7 text-sm text-yellow-300/80">
-                          <p>
-                            The token details have been loaded below. Please
-                            connect with the token's creator wallet to register
-                            it.
-                          </p>
-                          {publicKey && (
-                            <p className="mt-1">
-                              Current wallet:{" "}
-                              <span className="font-mono">
-                                {publicKey.toString().slice(0, 4) +
-                                  "..." +
-                                  publicKey.toString().slice(-4)}
-                              </span>
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      {importStatus.type === "success" && (
-                        <div className="mt-2 ml-7 text-sm text-green-300/80">
-                          <p>
-                            You're connected with the correct wallet. Review the
-                            token details below and click "Launch" to register
-                            this token.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Remove this section as it's redundant with the form below */}
-                  {hasStoredToken && !importStatus && (
-                    <div className="mt-4 p-3 border border-neutral-700 rounded-md bg-black/30">
-                      <h3 className="text-white font-medium mb-2">
-                        Imported Token Details
-                      </h3>
-                      <p className="text-neutral-400 text-sm mb-4">
-                        These details have been loaded from the token's
-                        metadata.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Two-column layout for form fields and image (conditionally shown based on tab) */}
-          {(activeTab === FormTab.MANUAL ||
-            (activeTab === FormTab.AUTO && hasGeneratedToken) ||
-            (activeTab === FormTab.IMPORT && hasStoredToken)) && (
-            <div className="grid gap-4">
-              {/* Form fields - REMOVE THE NAME AND TICKER INPUTS, KEEP ONLY DESCRIPTION */}
-              <div className="flex flex-col gap-3">
-                {/* Image with overlay inputs for name/ticker */}
-                <FormImageInput
-                  onChange={(file) => {
-                    if (activeTab === FormTab.MANUAL) {
-                      setImageFile(file);
-                      setManualForm((prev) => ({
-                        ...prev,
-                        imageFile: file,
-                      }));
-                    }
-                  }}
-                  onPromptChange={handlePromptChange}
-                  isGenerating={isGenerating && generatingField === "prompt"}
-                  setIsGenerating={setIsGenerating}
-                  setGeneratingField={setGeneratingField}
-                  onPromptFunctionsChange={(setPrompt, onPromptChange) => {
-                    setPromptFunctions({ setPrompt, onPromptChange });
-                  }}
-                  onPreviewChange={handlePreviewChange}
-                  imageUrl={
-                    activeTab === FormTab.AUTO
-                      ? autoForm.imageUrl
-                      : activeTab === FormTab.IMPORT && hasStoredToken
-                        ? coinDropImageUrl
-                        : undefined
-                  }
-                  onDirectPreviewSet={(setter) => {
-                    previewSetterRef.current = setter;
-                  }}
-                  activeTab={activeTab}
-                  nameValue={form.name}
-                  onNameChange={(value) => handleChange("name", value)}
-                  tickerValue={form.symbol}
-                  onTickerChange={(value) => handleChange("symbol", value)}
-                />
-              </div>
-
-              <FormTextArea
-                value={form.description}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                  handleChange("description", e.target.value)
-                }
-                label="Description"
-                minRows={1}
-                placeholder="Description"
-                maxLength={2000}
-                error={errors.description}
-                onClick={() => generateAll()}
-                isLoading={isGenerating && generatingField === "description"}
+        {/* Auto Tab Content */}
+        {activeTab === FormTab.AUTO && (
+          <>
+            <div className="flex">
+              <input
+                type="text"
+                value={userPrompt}
+                onChange={(e) => setUserPrompt(e.target.value)}
+                placeholder="Enter a concept like 'a halloween token about arnold schwarzenegger'"
+                className="flex-1 my-2 p-0 border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
               />
-
-              {/* Hide Buy section when in IMPORT tab */}
-              {activeTab !== FormTab.IMPORT && (
-                <div className="flex flex-col gap-3 justify-end uppercase">
-                  <div className="flex flex-row gap-3 justify-end uppercase">
-                    <span className="text-white text-xl font-medium relative group">
-                      Buy
-                      <span className="inline-block ml-1 cursor-help">
-                        <Icons.Info className="h-4 w-4 text-[#8c8c8c] hover:text-white" />
-                        <div className="absolute hidden group-hover:block right-0 bottom-8 p-3 text-xs normal-case bg-black border border-neutral-800 rounded-md shadow-lg z-10">
-                          <p className="text-white mb-2">
-                            Choose how much of the token you want to buy on
-                            launch:
-                          </p>
-                          <p className="text-neutral-400 mb-1">
-                            • <b>SOL</b>: Amount of SOL to invest
-                          </p>
-                          <p className="text-neutral-400 mb-2">
-                            • <b>%</b>: Percentage of token supply to acquire
-                          </p>
-                          <div className="border-t border-neutral-800 pt-2 mt-1">
-                            <p className="text-neutral-400 text-xs">
-                              Total token supply:{" "}
-                              {TOKEN_SUPPLY.toLocaleString()} tokens
-                            </p>
-                            <p className="text-neutral-400 text-xs mt-1">
-                              Pricing follows a bonding curve, your percentage
-                              increases with more SOL.
-                            </p>
-                          </div>
-                        </div>
-                      </span>
-                    </span>
-                    <div className="flex flex-col items-end">
-                      <div className="relative">
-                        <input
-                          type="number"
-                          value={buyValue}
-                          onChange={(e) => {
-                            let value = e.target.value.replace(" SOL", "");
-                            value = value.replace(/[^\d.]/g, "");
-                            const decimalCount = (value.match(/\./g) || [])
-                              .length;
-                            if (decimalCount > 1) {
-                              value = value.replace(/\.+$/, "");
-                            }
-                            const parts = value.split(".");
-                            let wholePart = parts[0];
-                            let decimalPart = parts[1] || "";
-                            if (wholePart.length > 2) {
-                              wholePart = wholePart.slice(0, 2);
-                            }
-                            if (decimalPart.length > 2) {
-                              decimalPart = decimalPart.slice(0, 2);
-                            }
-                            value = decimalPart
-                              ? `${wholePart}.${decimalPart}`
-                              : wholePart;
-                            if (value.length > 5) {
-                              value = value.slice(0, 5);
-                            }
-                            const numValue = parseFloat(value);
-                            if (
-                              value !== "" &&
-                              !isNaN(numValue) &&
-                              numValue > maxInputSol
-                            ) {
-                              value = maxInputSol.toString();
-                            }
-
-                            handleChange("initial_sol", value);
-                            setBuyValue(value);
-                          }}
-                          min="0"
-                          max={maxInputSol.toString()}
-                          step="0.01"
-                          className="w-26 pr-10 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white"
-                        />
-
-                        <span className="absolute right-0 text-white text-xl font-medium">
-                          SOL
-                        </span>
-                      </div>
-                      {/* {solPrice && Number(buyValue) > 0 && (
-                        <div className="text-right text-xs text-neutral-400 mt-1">
-                          ≈ ${solValueUsd} USD
-                        </div>
-                      )} */}
-                    </div>
-                  </div>
-                  {parseFloat(buyValue as string) > 0 && (
-                    <div className="text-right text-xs text-neutral-400">
-                      ≈{" "}
-                      {calculatePercentage(
-                        calculateTokensFromSol(parseFloat(buyValue as string)),
-                      ).toFixed(2)}{" "}
-                      % of supply
-                    </div>
-                  )}
-
-                  {/* Balance information */}
-                  <div className="mt-2 text-right text-xs text-neutral-400">
-                    {/* Your balance:{" "}
-                    {balance?.data?.formattedBalance?.toFixed(2) || "0.00"} SOL */}
-                    {insufficientBalance && (
-                      <div className="text-red-500 mt-1">
-                        Insufficient SOL balance (need 0.05 SOL for fees)
-                      </div>
-                    )}
-                    {Number(buyValue) === maxInputSol &&
-                      maxInputSol < MAX_INITIAL_SOL && (
-                        <div className="text-yellow-500 mt-1">
-                          Maximum amount based on your balance
-                        </div>
-                      )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Launch Button - Only shown if form is valid or in appropriate tabs */}
-          {(activeTab === FormTab.MANUAL ||
-            (activeTab === FormTab.AUTO && hasGeneratedToken) ||
-            (activeTab === FormTab.IMPORT && hasStoredToken)) && (
-            <div className="flex flex-col items-center gap-3">
               <button
-                type="submit"
-                className="p-0 transition-colors cursor-pointer disabled:opacity-50 select-none"
-                disabled={
-                  !isFormValid ||
-                  isSubmitting ||
-                  !isAuthenticated ||
-                  insufficientBalance
-                }
+                type="button"
+                onClick={generateFromPrompt}
+                disabled={isProcessingPrompt || !userPrompt.trim()}
+                className="p-0 transition-colors disabled:opacity-50"
               >
                 <img
                   src={
-                    isSubmitting
-                      ? "/create/launching.svg"
-                      : "/create/launchup.svg"
+                    isProcessingPrompt
+                      ? "/create/generating.svg"
+                      : "/create/generateup.svg"
                   }
-                  alt="Launch"
-                  className="h-32 pr-4 mb-4 select-none pointer-events-none"
+                  alt="Generate"
+                  className="h-14 w-32 mb-2"
                   onMouseDown={(e) => {
                     const img = e.target as HTMLImageElement;
-                    if (!isSubmitting) {
-                      img.src = "/create/launchdown.svg";
-                    } else {
-                      img.src = "/create/launching.svg";
+                    if (!isProcessingPrompt) {
+                      img.src = "/create/generatedown.svg";
                     }
                   }}
                   onMouseUp={(e) => {
                     const img = e.target as HTMLImageElement;
-                    if (!isSubmitting) {
-                      img.src = "/create/launchup.svg";
-                    } else {
-                      img.src = "/create/launchup.svg";
+                    if (!isProcessingPrompt) {
+                      img.src = "/create/generateup.svg";
+                    }
+                  }}
+                  onDragStart={(e) => {
+                    e.preventDefault();
+                    const img = e.target as HTMLImageElement;
+                    if (!isProcessingPrompt) {
+                      img.src = "/create/generateup.svg";
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    e.preventDefault();
+                    const img = e.target as HTMLImageElement;
+                    if (!isProcessingPrompt) {
+                      img.src = "/create/generateup.svg";
                     }
                   }}
                 />
               </button>
-
-              {!isFormValid && (
-                <p className="text-red-500 text-center text-sm">
-                  Please fill in all required fields
-                </p>
-              )}
-              {insufficientBalance && (
-                <p className="text-red-500 text-center text-sm">
-                  You need at least {(Number(buyValue) + 0.05).toFixed(2)} SOL (
-                  {Number(buyValue).toFixed(2)} SOL for token + 0.05 SOL for
-                  fees)
-                  {solPrice && (
-                    <span className="block mt-1">
-                      ≈ $
-                      {(Number(buyValue) * solPrice + 0.05 * solPrice).toFixed(
-                        2,
-                      )}{" "}
-                      USD
-                    </span>
-                  )}
-                </p>
-              )}
-              {!isAuthenticated && (
-                <p className="text-red-500 text-center text-sm">
-                  Please connect your wallet to create a token
-                </p>
-              )}
             </div>
-          )}
-        </form>
-      </div>
+            {errors.userPrompt && (
+              <div className="text-red-500 text-sm">{errors.userPrompt}</div>
+            )}
+          </>
+        )}
+
+        {/* Import Tab Content */}
+        {activeTab === FormTab.IMPORT && (
+          <div>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-row">
+                  <input
+                    type="text"
+                    value={form.importAddress || ""}
+                    onChange={(e) =>
+                      handleChange("importAddress", e.target.value)
+                    }
+                    onPaste={handleImportAddressPaste}
+                    placeholder="Enter any Solana token address (mint)"
+                    className="flex-1 my-2 p-0 border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={importTokenFromAddress}
+                    disabled={
+                      isImporting ||
+                      !form.importAddress?.trim() ||
+                      !isValidTokenAddress(form.importAddress)
+                    }
+                    className="p-0 transition-colors disabled:opacity-50"
+                  >
+                    <img
+                      src={
+                        isImporting
+                          ? "/create/importing.svg"
+                          : "/create/importup.svg"
+                      }
+                      alt="Import"
+                      className="h-14 w-32 mb-2"
+                      onMouseDown={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        if (!isImporting) {
+                          img.src = "/create/importdown.svg";
+                        }
+                      }}
+                      onMouseUp={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        if (!isImporting) {
+                          img.src = "/create/importup.svg";
+                        }
+                      }}
+                      onDragStart={(e) => {
+                        e.preventDefault();
+                        const img = e.target as HTMLImageElement;
+                        if (!isImporting) {
+                          img.src = "/create/importup.svg";
+                        }
+                      }}
+                      onMouseOut={(e) => {
+                        e.preventDefault();
+                        const img = e.target as HTMLImageElement;
+                        if (!isImporting) {
+                          img.src = "/create/importup.svg";
+                        }
+                      }}
+                    />
+                  </button>
+                </div>
+                {errors.importAddress && (
+                  <div className="text-red-500 text-sm">
+                    {errors.importAddress}
+                  </div>
+                )}
+
+                {/* Enhanced import status with clearer guidance */}
+                {importStatus && (
+                  <div
+                    className={`p-3 border rounded-md mb-4 ${
+                      importStatus.type === "error"
+                        ? "border-red-500 bg-red-950/20 text-red-400"
+                        : importStatus.type === "warning"
+                          ? "border-yellow-500 bg-yellow-950/20 text-yellow-400"
+                          : "border-green-500 bg-green-950/20 text-[#03FF24]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 text-sm">
+                      {importStatus.type === "success" ? (
+                        <Icons.Check className="w-5 h-5 flex-shrink-0" />
+                      ) : importStatus.type === "warning" ? (
+                        <Icons.Warning className="w-5 h-5 flex-shrink-0" />
+                      ) : (
+                        <Icons.XCircle className="w-5 h-5 flex-shrink-0" />
+                      )}
+                      <span className="font-medium">
+                        {importStatus.message}
+                      </span>
+                    </div>
+
+                    {/* Additional guidance for different status types */}
+                    {importStatus.type === "warning" && (
+                      <div className="mt-2 ml-7 text-sm text-yellow-300/80">
+                        <p>
+                          The token details have been loaded below. Please
+                          connect with the token's creator wallet to register
+                          it.
+                        </p>
+                        {publicKey && (
+                          <p className="mt-1">
+                            Current wallet:{" "}
+                            <span className="font-mono">
+                              {publicKey.toString().slice(0, 4) +
+                                "..." +
+                                publicKey.toString().slice(-4)}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {importStatus.type === "success" && (
+                      <div className="mt-2 ml-7 text-sm text-green-300/80">
+                        <p>
+                          You're connected with the correct wallet. Review the
+                          token details below and click "Launch" to register
+                          this token.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Remove this section as it's redundant with the form below */}
+                {hasStoredToken && !importStatus && (
+                  <div className="mt-4 p-3 border border-neutral-700 rounded-md bg-black/30">
+                    <h3 className="text-white font-medium mb-2">
+                      Imported Token Details
+                    </h3>
+                    <p className="text-neutral-400 text-sm mb-4">
+                      These details have been loaded from the token's metadata.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Two-column layout for form fields and image (conditionally shown based on tab) */}
+        {(activeTab === FormTab.MANUAL ||
+          (activeTab === FormTab.AUTO && hasGeneratedToken) ||
+          (activeTab === FormTab.IMPORT && hasStoredToken)) && (
+          <div className="grid gap-4">
+            {/* Form fields - REMOVE THE NAME AND TICKER INPUTS, KEEP ONLY DESCRIPTION */}
+            <div className="flex flex-col gap-3">
+              {/* Image with overlay inputs for name/ticker */}
+              <FormImageInput
+                onChange={(file) => {
+                  if (activeTab === FormTab.MANUAL) {
+                    setImageFile(file);
+                    setManualForm((prev) => ({
+                      ...prev,
+                      imageFile: file,
+                    }));
+                  }
+                }}
+                onPromptChange={handlePromptChange}
+                isGenerating={isGenerating && generatingField === "prompt"}
+                setIsGenerating={setIsGenerating}
+                setGeneratingField={setGeneratingField}
+                onPromptFunctionsChange={(setPrompt, onPromptChange) => {
+                  setPromptFunctions({ setPrompt, onPromptChange });
+                }}
+                onPreviewChange={handlePreviewChange}
+                imageUrl={
+                  activeTab === FormTab.AUTO
+                    ? autoForm.imageUrl
+                    : activeTab === FormTab.IMPORT && hasStoredToken
+                      ? coinDropImageUrl
+                      : undefined
+                }
+                onDirectPreviewSet={(setter) => {
+                  previewSetterRef.current = setter;
+                }}
+                activeTab={activeTab}
+                nameValue={form.name}
+                onNameChange={(value) => handleChange("name", value)}
+                tickerValue={form.symbol}
+                onTickerChange={(value) => handleChange("symbol", value)}
+              />
+            </div>
+
+            <FormTextArea
+              value={form.description}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                handleChange("description", e.target.value)
+              }
+              label="Description"
+              minRows={1}
+              placeholder="Description"
+              maxLength={2000}
+              error={errors.description}
+              onClick={() => generateAll()}
+              isLoading={isGenerating && generatingField === "description"}
+            />
+
+            {/* Hide Buy section when in IMPORT tab */}
+            {activeTab !== FormTab.IMPORT && (
+              <div className="flex flex-col gap-3 justify-end uppercase">
+                <div className="flex flex-row gap-3 justify-end uppercase">
+                  <span className="text-white text-xl font-medium relative group">
+                    Buy
+                    <span className="inline-block ml-1 cursor-help">
+                      <Icons.Info className="h-4 w-4 text-[#8c8c8c] hover:text-white" />
+                      <div className="absolute hidden group-hover:block right-0 bottom-8 p-3 text-xs normal-case bg-black border border-neutral-800 rounded-md shadow-lg z-10">
+                        <p className="text-white mb-2">
+                          Choose how much of the token you want to buy on
+                          launch:
+                        </p>
+                        <p className="text-neutral-400 mb-1">
+                          • <b>SOL</b>: Amount of SOL to invest
+                        </p>
+                        <p className="text-neutral-400 mb-2">
+                          • <b>%</b>: Percentage of token supply to acquire
+                        </p>
+                        <div className="border-t border-neutral-800 pt-2 mt-1">
+                          <p className="text-neutral-400 text-xs">
+                            Total token supply: {TOKEN_SUPPLY.toLocaleString()}{" "}
+                            tokens
+                          </p>
+                          <p className="text-neutral-400 text-xs mt-1">
+                            Pricing follows a bonding curve, your percentage
+                            increases with more SOL.
+                          </p>
+                        </div>
+                      </div>
+                    </span>
+                  </span>
+                  <div className="flex flex-col items-end">
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={buyValue}
+                        onChange={(e) => {
+                          let value = e.target.value.replace(" SOL", "");
+                          value = value.replace(/[^\d.]/g, "");
+                          const decimalCount = (value.match(/\./g) || [])
+                            .length;
+                          if (decimalCount > 1) {
+                            value = value.replace(/\.+$/, "");
+                          }
+                          const parts = value.split(".");
+                          let wholePart = parts[0];
+                          let decimalPart = parts[1] || "";
+                          if (wholePart.length > 2) {
+                            wholePart = wholePart.slice(0, 2);
+                          }
+                          if (decimalPart.length > 2) {
+                            decimalPart = decimalPart.slice(0, 2);
+                          }
+                          value = decimalPart
+                            ? `${wholePart}.${decimalPart}`
+                            : wholePart;
+                          if (value.length > 5) {
+                            value = value.slice(0, 5);
+                          }
+                          const numValue = parseFloat(value);
+                          if (
+                            value !== "" &&
+                            !isNaN(numValue) &&
+                            numValue > maxInputSol
+                          ) {
+                            value = maxInputSol.toString();
+                          }
+
+                          handleChange("initial_sol", value);
+                          setBuyValue(value);
+                        }}
+                        min="0"
+                        max={maxInputSol.toString()}
+                        step="0.01"
+                        className="w-26 pr-10 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white"
+                      />
+
+                      <span className="absolute right-0 text-white text-xl font-medium">
+                        SOL
+                      </span>
+                    </div>
+                    {/* {solPrice && Number(buyValue) > 0 && (
+                        <div className="text-right text-xs text-neutral-400 mt-1">
+                          ≈ ${solValueUsd} USD
+                        </div>
+                      )} */}
+                  </div>
+                </div>
+                {parseFloat(buyValue as string) > 0 && (
+                  <div className="text-right text-xs text-neutral-400">
+                    ≈{" "}
+                    {calculatePercentage(
+                      calculateTokensFromSol(parseFloat(buyValue as string))
+                    ).toFixed(2)}{" "}
+                    % of supply
+                  </div>
+                )}
+
+                {/* Balance information */}
+                <div className="mt-2 text-right text-xs text-neutral-400">
+                  {/* Your balance:{" "}
+                    {balance?.data?.formattedBalance?.toFixed(2) || "0.00"} SOL */}
+                  {insufficientBalance && (
+                    <div className="text-red-500 mt-1">
+                      Insufficient SOL balance (need 0.05 SOL for fees)
+                    </div>
+                  )}
+                  {Number(buyValue) === maxInputSol &&
+                    maxInputSol < MAX_INITIAL_SOL && (
+                      <div className="text-yellow-500 mt-1">
+                        Maximum amount based on your balance
+                      </div>
+                    )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Launch Button - Only shown if form is valid or in appropriate tabs */}
+        {(activeTab === FormTab.MANUAL ||
+          (activeTab === FormTab.AUTO && hasGeneratedToken) ||
+          (activeTab === FormTab.IMPORT && hasStoredToken)) && (
+          <div className="flex flex-col items-center gap-3">
+            <button
+              type="submit"
+              className="p-0 transition-colors cursor-pointer disabled:opacity-50 select-none"
+              disabled={
+                !isFormValid ||
+                isSubmitting ||
+                !isAuthenticated ||
+                insufficientBalance
+              }
+            >
+              <img
+                src={
+                  isSubmitting
+                    ? "/create/launching.svg"
+                    : "/create/launchup.svg"
+                }
+                alt="Launch"
+                className="h-32 pr-4 mb-4 select-none pointer-events-none"
+                onMouseDown={(e) => {
+                  const img = e.target as HTMLImageElement;
+                  if (!isSubmitting) {
+                    img.src = "/create/launchdown.svg";
+                  } else {
+                    img.src = "/create/launching.svg";
+                  }
+                }}
+                onMouseUp={(e) => {
+                  const img = e.target as HTMLImageElement;
+                  if (!isSubmitting) {
+                    img.src = "/create/launchup.svg";
+                  } else {
+                    img.src = "/create/launchup.svg";
+                  }
+                }}
+              />
+            </button>
+
+            {!isFormValid && (
+              <p className="text-red-500 text-center text-sm">
+                Please fill in all required fields
+              </p>
+            )}
+            {insufficientBalance && (
+              <p className="text-red-500 text-center text-sm">
+                You need at least {(Number(buyValue) + 0.05).toFixed(2)} SOL (
+                {Number(buyValue).toFixed(2)} SOL for token + 0.05 SOL for fees)
+                {solPrice && (
+                  <span className="block mt-1">
+                    ≈ $
+                    {(Number(buyValue) * solPrice + 0.05 * solPrice).toFixed(2)}{" "}
+                    USD
+                  </span>
+                )}
+              </p>
+            )}
+            {!isAuthenticated && (
+              <p className="text-red-500 text-center text-sm">
+                Please connect your wallet to create a token
+              </p>
+            )}
+          </div>
+        )}
+      </form>
     </div>
   );
 };
