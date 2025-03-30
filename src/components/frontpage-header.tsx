@@ -190,7 +190,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   useEffect(() => {
     // Skip token processing if we've already done initial setup and the scene is initialized
     if (tokensProcessedRef.current && sceneInitializedRef.current) return;
-    
+
     if (!tokens.length) return;
 
     // Randomly select up to 5 tokens
@@ -216,7 +216,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       );
     }
     dicePositionsRef.current = positions;
-    
+
     // Mark tokens as processed
     tokensProcessedRef.current = true;
   }, [tokens]);
@@ -349,7 +349,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   useEffect(() => {
     // Skip if already initialized or if we don't have the required elements
     if (
-      sceneInitializedRef.current || 
+      sceneInitializedRef.current ||
       !containerRef.current ||
       !selectedTokens.length ||
       !dicePositionsRef.current.length
@@ -358,7 +358,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
     // Mark as initialized to prevent re-initialization
     sceneInitializedRef.current = true;
-    
+
     console.log("Initializing dice physics scene");
 
     // Get container dimensions
@@ -797,7 +797,8 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
       // Debounce resize updates
       resizeTimeout = window.setTimeout(() => {
-        const newContainerWidth = containerRef.current?.clientWidth || containerWidth;
+        const newContainerWidth =
+          containerRef.current?.clientWidth || containerWidth;
         const newAspect = newContainerWidth / containerHeight;
         const newFrustumHeight = frustumSize;
         const newFrustumWidth = frustumSize * newAspect;
@@ -890,12 +891,12 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       // Reset initialization flags on unmount
       sceneInitializedRef.current = false;
       tokensProcessedRef.current = false;
-      
+
       // Clear any pending resize timeout
       if (resizeTimeout) {
         window.clearTimeout(resizeTimeout);
       }
-      
+
       window.removeEventListener("resize", onWindowResize);
 
       // Remove the reset function from window
