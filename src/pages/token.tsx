@@ -212,7 +212,7 @@ export default function Page() {
                   (token?.reserveLamport - token?.virtualReserves) /
                     LAMPORTS_PER_SOL,
                   true,
-                  true,
+                  true
                 )}{" "}
                 SOL in the bonding curve.
               </p>
@@ -269,35 +269,21 @@ export default function Page() {
         {/* Tabs */}
         <div className="flex flex-row">
           <Button
+            variant={tab === "Trading" ? "tab" : "primary"}
             onClick={() => setTab("Trading")}
-            className={twMerge(
-              tab === "Trading"
-                ? "bg-autofun-stroke-highlight/80"
-                : "bg-white/15",
-            )}
           >
-            {" "}
-            Trading{" "}
+            Trading
           </Button>
           <Button
+            variant={tab === "Community" ? "tab" : "primary"}
             onClick={() => setTab("Community")}
-            className={twMerge(
-              tab === "Community"
-                ? "bg-autofun-stroke-highlight/80"
-                : "bg-white/15",
-            )}
           >
-            {" "}
-            Community{" "}
+            Community
           </Button>
           {admin && (
             <Button
+              variant={tab === "Admin" ? "tab" : "primary"}
               onClick={() => setTab("Admin")}
-              className={twMerge(
-                tab === "Admin"
-                  ? "bg-autofun-stroke-highlight/80"
-                  : "bg-white/15",
-              )}
             >
               Admin
             </Button>

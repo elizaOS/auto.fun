@@ -3,7 +3,7 @@ import React from "react";
 import { twMerge } from "tailwind-merge";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "outline" | "trade" | "ghost";
+  variant?: "primary" | "secondary" | "outline" | "trade" | "ghost" | "tab";
   isLoading?: boolean;
   size?: "default" | "large" | "small";
 }
@@ -16,6 +16,7 @@ const variantClasses = {
     "bg-autofun-background-action-primary border text-autofun-text-highlight",
   trade:
     "bg-autofun-background-card border text-autofun-text-primary px-3 font-dm-mono font-medium",
+  tab: "bg-autofun-background-highlight border border-transparent text-autofun-background-card font-medium",
 };
 
 const sizeClasses = {
@@ -43,7 +44,7 @@ const Button: React.FC<ButtonProps> = ({
     sizeClasses[size],
     variantClasses[variant],
     (disabled || isLoading) && disabledClasses,
-    className,
+    className
   );
 
   return (

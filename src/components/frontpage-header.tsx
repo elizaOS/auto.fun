@@ -546,7 +546,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
           },
           undefined,
           (error) => {
-            console.error("Error loading texture:", error);
+            console.warn("Error loading texture:", error);
             // Load fallback texture if the token image fails
             const fallback = textureLoader.load(
               fallbackTexture,
@@ -722,7 +722,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
           impactedBody.velocity.y += Math.random() * 2;
         }
       } catch (error) {
-        console.error("Error in collision handler:", error);
+        console.warn("Error in collision handler:", error);
       }
     }
 
