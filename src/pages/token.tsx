@@ -315,7 +315,8 @@ export default function Page() {
               <Button
                 className="w-full rounded-none  px-0"
                 disabled={!token?.discord}
-                aria-label="discord">
+                aria-label="discord"
+              >
                 <SkeletonImage
                   src="/discord.svg"
                   height={24}
