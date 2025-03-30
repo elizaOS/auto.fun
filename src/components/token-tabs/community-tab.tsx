@@ -12,25 +12,17 @@ export default function CommunityTab() {
     <div className="p-4 flex flex-col gap-4">
       <div className="flex flex-row">
         <Button
+          variant={communityTab === "Image" ? "tab" : "primary"}
           onClick={() => setCommunityTab("Image")}
-          className={twMerge(
-            communityTab === "Image"
-              ? "bg-autofun-stroke-highlight/80"
-              : "bg-white/15"
-          )}
         >
-          Image generator
+          Image
         </Button>
         <Button
+          variant={communityTab === "Audio" ? "tab" : "primary"}
           // onClick={() => setCommunityTab("Audio")}
-          className={twMerge(
-            communityTab === "Audio"
-              ? "bg-autofun-stroke-highlight/80"
-              : "bg-white/15"
-          )}
           disabled
         >
-          Audio generator
+          Audio
         </Button>
       </div>
       <div className="flex gap-4">
