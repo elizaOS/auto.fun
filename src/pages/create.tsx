@@ -2711,25 +2711,25 @@ export const Create = () => {
                     img.src = "/create/launching.svg";
                   }
                   alt="Launch"
-                  className="h-32 pr-4 mb-4 select-none pointer-events-none"
+                  className="h-32 pr-4 mb-4 select-none"
                   onMouseDown={(e) => {
                     const img = e.target as HTMLImageElement;
                     img.src = "/create/launchdown.svg";
                   }}
-                  // onMouseUp={(e) => {
-                  //   const img = e.target as HTMLImageElement;
-                  //     img.src = "/create/launchup.svg";
-                  // }}
-                  // onDragStart={(e) => {
-                  //   e.preventDefault();
-                  //   const img = e.target as HTMLImageElement;
-                  //     img.src = "/create/launchup.svg";
-                  // }}
-                  // onMouseOut={(e) => {
-                  //   e.preventDefault();
-                  //   const img = e.target as HTMLImageElement;
-                  //     img.src = "/create/launchup.svg";
-                  // }}
+                  onMouseUp={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    img.src = "/create/launchup.svg";
+                  }}
+                  onDragStart={(e) => {
+                    e.preventDefault();
+                    const img = e.target as HTMLImageElement;
+                    img.src = "/create/launchup.svg";
+                  }}
+                  onMouseOut={(e) => {
+                    e.preventDefault();
+                    const img = e.target as HTMLImageElement;
+                    img.src = "/create/launchup.svg";
+                  }}
                 />
               </button>
                 }}

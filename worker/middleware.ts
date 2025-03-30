@@ -14,24 +14,6 @@ export const verifyAuth: MiddlewareHandler<{
       // Both cookies present, user is authenticated
       c.set("user", { publicKey });
       logger.log("User authenticated via cookies", { publicKey });
-    } else if (c.env.NODE_ENV === "test") {
-      // For test compatibility, check Authorization header only in test environment
-      const authHeader = c.req.header("Authorization");
-      if (authHeader && authHeader.startsWith("Bearer ")) {
-        const token = authHeader.substring(7);
-        if (token === "valid-token") {
-          // In test mode only, accept the Authorization header
-          c.set("user", { publicKey: "test_user" });
-          logger.log(
-            "Test user authenticated via Authorization header in verifyAuth middleware",
-          );
-        } else {
-          c.set("user", null);
-        }
-      } else {
-        logger.log("No valid authentication found in verifyAuth");
-        c.set("user", null);
-      }
     } else {
       // No valid authentication for production
       logger.log("No authentication cookie found");

@@ -12,9 +12,7 @@ import { Env } from "./env";
 import { logger } from "./logger";
 import { verifyAuth } from "./middleware";
 import authRouter from "./routes/auth";
-import generationRouter, {
-  checkAndReplenishTokens,
-} from "./routes/generation";
+import generationRouter, { checkAndReplenishTokens } from "./routes/generation";
 import messagesRouter from "./routes/messages";
 import swapRouter from "./routes/swap";
 import tokenRouter, { processSwapEvent } from "./routes/token";
