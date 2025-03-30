@@ -441,7 +441,7 @@ export const getRpcUrl = (env: any) => {
   return (
     (env.NETWORK === "devnet"
       ? env.DEVNET_SOLANA_RPC_URL
-      : env.MAINNET_SOLANA_RPC_URL) || env.VITE_SOLANA_RPC_URL
+      : env.MAINNET_SOLANA_RPC_URL) || env.VITE_RPC_URL
   );
 };
 
