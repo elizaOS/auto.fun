@@ -176,7 +176,7 @@ export default function Trade({ token }: { token: IToken }) {
             </div>
             <div className="flex justify-between gap-3">
               <input
-                className="text-4xl font-dm-mono text-autofun-text-secondary w-3/4 outline-none"
+                className="text-4xl truncate font-dm-mono text-autofun-text-secondary w-3/4 outline-none"
                 min={0}
                 type="number"
                 onChange={({ target }) =>
@@ -189,8 +189,8 @@ export default function Trade({ token }: { token: IToken }) {
                 <TokenDisplay token={token} isSolana={!isTokenSelling} />
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary select-none">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-dm-mono truncate text-autofun-text-secondary select-none">
                 {!isTokenSelling
                   ? formatNumber(Number(sellingAmount || 0) * solanaPrice, true)
                   : tokenPriceUSD
@@ -221,17 +221,25 @@ export default function Trade({ token }: { token: IToken }) {
               Buying
             </span>
             <div className="flex justify-between gap-3">
-              <span className="text-4xl font-dm-mono text-autofun-text-secondary select-none">
-                {sellingAmount && currentPrice && !isTokenSelling
-                  ? (Number(sellingAmount) / currentPrice).toFixed(2)
-                  : sellingAmount && isTokenSelling
-                    ? (Number(sellingAmount) * currentPrice).toFixed(4)
-                    : "0.00"}
-              </span>
+              <input
+                className="text-4xl truncate font-dm-mono text-autofun-text-secondary w-3/4 outline-none"
+                min={0}
+                type="number"
+                readOnly
+                value={
+                  sellingAmount && currentPrice && !isTokenSelling
+                    ? (Number(sellingAmount) / currentPrice).toFixed(2)
+                    : sellingAmount && isTokenSelling
+                      ? (Number(sellingAmount) * currentPrice).toFixed(4)
+                      : "0.00"
+                }
+                placeholder="0"
+              />
+
               <TokenDisplay token={token} isSolana={isTokenSelling} />
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary select-none">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-dm-mono truncate text-autofun-text-secondary select-none">
                 {sellingAmount && solanaPrice && !isTokenSelling
                   ? formatNumber(
                       (Number(sellingAmount) / currentPrice) * tokenPriceUSD,
@@ -326,7 +334,7 @@ const Balance = ({
   return (
     <div
       className={twMerge([
-        "flex items-center gap-2 select-none",
+        "flex items-center gap-2 select-none shrink-0",
         setSellingAmount ? "cursor-pointer" : "",
       ])}
       onClick={() => {
