@@ -1,6 +1,7 @@
 import { useEffect, useState, CSSProperties } from "react";
+import { twMerge } from "tailwind-merge";
 
-export default function Loader() {
+export default function Loader({ className }: { className?: string }) {
   const [rotation, setRotation] = useState(0);
 
   useEffect(() => {
@@ -39,7 +40,12 @@ export default function Loader() {
   };
 
   return (
-    <div className="flex items-center justify-center h-[50vh]">
+    <div
+      className={twMerge([
+        "flex items-center justify-center h-[50vh]",
+        className ? className : "",
+      ])}
+    >
       <div className="flex items-center flex-col gap-3">
         <div style={containerStyle}>
           <div style={cubeStyle}>
