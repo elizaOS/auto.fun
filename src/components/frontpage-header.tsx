@@ -564,7 +564,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
           },
           undefined,
           (error) => {
-            console.error("Error loading texture:", error);
+            console.warn("Error loading texture:", error);
             // Load fallback texture if the token image fails
             const fallback = textureLoader.load(
               fallbackTexture,
@@ -740,7 +740,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
           impactedBody.velocity.y += Math.random() * 2;
         }
       } catch (error) {
-        console.error("Error in collision handler:", error);
+        console.warn("Error in collision handler:", error);
       }
     }
 
@@ -779,10 +779,32 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     const onWindowResize = () => {
       if (!containerRef.current) return;
 
-      // Clear previous timeout if it exists
       if (resizeTimeout) {
         window.clearTimeout(resizeTimeout);
       }
+
+      const newContainerWidth = containerRef.current.clientWidth;
+      const newAspect = newContainerWidth / containerHeight;
+      const newFrustumHeight = frustumSize;
+      const newFrustumWidth = frustumSize * newAspect;
+
+      // Update camera
+      camera.left = newFrustumWidth / -2;
+      camera.right = newFrustumWidth / 2;
+      camera.top = newFrustumHeight / 2;
+      camera.bottom = newFrustumHeight / -2;
+      camera.updateProjectionMatrix();
+
+      // Update renderer size
+      renderer.setSize(newContainerWidth, containerHeight);
+
+      // Update mesh positions and scales
+      floor.position.set(0, -0.5, 0);
+      floor.scale.set(
+        newFrustumWidth / frustumWidth,
+        1,
+        newFrustumHeight / frustumHeight,
+      );
 
       // Debounce resize updates
       resizeTimeout = window.setTimeout(() => {
@@ -864,7 +886,6 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
           new CANNON.Vec3(0.5, 50, newFrustumHeight / 2),
         );
         world.addBody(rightWallBody);
-
         // Do NOT reposition and reroll dice when resizing
         // Removed: throwDice();
       }, 100); // Debounce for 100ms

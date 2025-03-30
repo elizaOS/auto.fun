@@ -49,10 +49,11 @@ export default function Header() {
       <div className="hidden md:block w-full container z-50">
         <div className="flex flex-row items-center justify-between w-full">
           <div className="flex items-center select-none">
-            <Link to="/" className="mr-6">
+            <Link to="/" className="mr-6" aria-label="Auto.fun frontpage">
               <img
                 className="size-20 pointer-events-none"
                 src="/logo_wide.svg"
+                alt="logo"
               />
             </Link>
           </div>
@@ -80,8 +81,8 @@ export default function Header() {
       {/* mobile menu */}
       <div className="sticky block md:hidden bg-[#171717] border-b py-4 z-50">
         <div className="flex items-center mx-4 space-x-4 lg:hidden ">
-          <Link to="/" className="shrink-0">
-            <img className="h-11 w-auto" src="/logo_wide.svg" />
+          <Link to="/" className="shrink-0" aria-label="Auto.fun frontpage">
+            <img className="h-11 w-auto" src="/logo_wide.svg" alt="logo" />
           </Link>
           <div className="flex-1">
             <SearchBar />
