@@ -19,7 +19,7 @@ import {
 import { getToken } from "@/utils/api";
 import { fetchTokenMarketMetrics } from "@/utils/blockchain";
 import { useQuery } from "@tanstack/react-query";
-import { Info as InfoCircle } from "lucide-react";
+import { ExternalLink, Info as InfoCircle } from "lucide-react";
 import { Globe } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { TradingViewChart } from "@/components/trading-view-chart";
@@ -249,8 +249,8 @@ export default function Page() {
                 to={`https://solscan.io/token/${token?.mint}`}
                 target="_blank"
               >
-                <Button size="small" variant="ghost" className="text-xs">
-                  View on Solscan &rarr;
+                <Button size="small" variant="ghost">
+                  View on Solscan <ExternalLink className="size-4 ml-1" />
                 </Button>
               </Link>
             </div>
