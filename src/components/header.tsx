@@ -81,9 +81,8 @@ export default function Header() {
       <div className="sticky block md:hidden bg-[#171717] border-b py-4 z-50">
         <div className="flex items-center mx-4 space-x-4 lg:hidden ">
           <Link to="/" className="shrink-0">
-            <img className="h-fit" src="/logo_wide.svg" />
+            <img className="h-11 w-auto" src="/logo_wide.svg" />
           </Link>
-
           <div className="flex-1">
             <SearchBar />
           </div>
