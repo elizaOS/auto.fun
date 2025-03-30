@@ -2299,7 +2299,7 @@ export const Create = () => {
                         : "/create/generateup.svg"
                     }
                     alt="Generate"
-                    className="h-14 mb-2"
+                    className="h-14 w-32 mb-2"
                     onMouseDown={(e) => {
                       const img = e.target as HTMLImageElement;
                       if (!isProcessingPrompt) {
