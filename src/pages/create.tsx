@@ -2701,7 +2701,7 @@ export const Create = () => {
                   className="h-32 pr-4 mb-4 select-none pointer-events-none"
                   onMouseDown={(e) => {
                     const img = e.target as HTMLImageElement;
-                      img.src = "/create/launchdown.svg";
+                    img.src = "/create/launchdown.svg";
                   }}
                   // onMouseUp={(e) => {
                   //   const img = e.target as HTMLImageElement;

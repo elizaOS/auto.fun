@@ -1,21 +1,22 @@
-import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { getRpcUrl, getLegacyRpcUrl } from "./util";
-import { mplTokenMetadata } from "@metaplex-foundation/mpl-token-metadata";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
-import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { Env } from "./env";
+import { getRpcUrl } from "./util";
 
 // Initialize the Solana configuration with the provided environment
 export function initSolanaConfig(env?: Env) {
   // Set up network and RPC URL
-  const network = env?.NETWORK || "mainnet";
-  const rpcUrl = env ? getRpcUrl(env) : "https://api.mainnet-beta.solana.com";
+  const network = env?.NETWORK;
+  const rpcUrl = getRpcUrl(env);
 
   // Create UMI instance
   const umi = createUmi(rpcUrl);
 
   // Set up program ID based on network
-  const programId = network === "55QFMmfMVYNmxMWL5XY6FytSpa1Z5BZsYnbC8ATXzQYC";
+  const programId =
+    network === "mainnet"
+      ? "55QFMmfMVYNmxMWL5XY6FytSpa1Z5BZsYnbC8ATXzQYC"
+      : "55QFMmfMVYNmxMWL5XY6FytSpa1Z5BZsYnbC8ATXzQYC";
 
   // Create wallet if private key is available
   let wallet: Keypair | undefined;

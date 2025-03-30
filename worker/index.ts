@@ -13,7 +13,7 @@ import { logger } from "./logger";
 import { verifyAuth } from "./middleware";
 import authRouter from "./routes/auth";
 import generationRouter, {
-  generatePreGeneratedTokens,
+  checkAndReplenishTokens,
 } from "./routes/generation";
 import messagesRouter from "./routes/messages";
 import swapRouter from "./routes/swap";
@@ -471,7 +471,7 @@ export default {
     ctx: ExecutionContext,
   ): Promise<Response> {
     // Initialize pre-generated tokens in the background
-    ctx.waitUntil(generatePreGeneratedTokens(env));
+    ctx.waitUntil(checkAndReplenishTokens(env));
 
     const url = new URL(request.url);
 

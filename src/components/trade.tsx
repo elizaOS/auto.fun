@@ -17,7 +17,7 @@ export default function Trade({ token }: { token: IToken }) {
   const { solPrice: contextSolPrice } = useSolPriceContext();
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
-    undefined
+    undefined,
   );
 
   // Fetch real-time blockchain metrics for this token
@@ -57,7 +57,7 @@ export default function Trade({ token }: { token: IToken }) {
     wallet.publicKey?.toBase58() || "",
     !isTokenSelling
       ? "So11111111111111111111111111111111111111111"
-      : token?.mint || ""
+      : token?.mint || "",
   );
 
   const insufficientBalance =
@@ -66,7 +66,7 @@ export default function Trade({ token }: { token: IToken }) {
   const [error] = useState<string | undefined>("");
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status
+    token?.status,
   );
 
   const swapMutation = useMutation({
@@ -196,7 +196,7 @@ export default function Trade({ token }: { token: IToken }) {
                   : tokenPriceUSD
                     ? formatNumber(
                         Number(sellingAmount || 0) * tokenPriceUSD,
-                        true
+                        true,
                       )
                     : formatNumber(0)}
               </span>
@@ -235,12 +235,12 @@ export default function Trade({ token }: { token: IToken }) {
                 {sellingAmount && solanaPrice && !isTokenSelling
                   ? formatNumber(
                       (Number(sellingAmount) / currentPrice) * tokenPriceUSD,
-                      true
+                      true,
                     )
                   : sellingAmount && isTokenSelling && tokenPriceUSD
                     ? formatNumber(
                         Number(sellingAmount) * currentPrice * solanaPrice,
-                        true
+                        true,
                       )
                     : "$0.00"}
               </span>
@@ -321,7 +321,9 @@ const Balance = ({
   const wallet = useWallet();
   const balance = useTokenBalance(
     wallet.publicKey?.toBase58() || "",
-    isSolana ? "So11111111111111111111111111111111111111111" : token?.mint || ""
+    isSolana
+      ? "So11111111111111111111111111111111111111111"
+      : token?.mint || "",
   );
   return (
     <div

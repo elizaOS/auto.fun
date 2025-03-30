@@ -2,9 +2,7 @@ import { Raydium, TxVersion } from "@raydium-io/raydium-sdk-v2";
 import { Connection, Keypair } from "@solana/web3.js";
 import { Env } from "./env";
 import { logger } from "./logger";
-import { getLegacyRpcUrl, getRpcUrl } from "./util";
-
-type Cluster = "mainnet" | "devnet";
+import { getRpcUrl } from "./util";
 
 const getOwner = (env: Env) => {
   if (env.WALLET_PRIVATE_KEY) {
@@ -16,7 +14,6 @@ const getOwner = (env: Env) => {
 };
 
 // Use the legacy getter for initialization
-export const connection = new Connection(getLegacyRpcUrl());
 export const txVersion = TxVersion.V0; // or TxVersion.LEGACY
 
 export interface InitSdkOptions {
@@ -30,7 +27,7 @@ export const initSdk = async ({ loadToken = true, env }: InitSdkOptions) => {
     const cluster = env?.NETWORK || "mainnet";
 
     // Get connection based on env if provided
-    const sdkConnection = env ? new Connection(getRpcUrl(env)) : connection;
+    const sdkConnection = new Connection(getRpcUrl(env));
 
     // Create a new instance each time since we're passing potentially different config
     const raydium = await Raydium.load({
