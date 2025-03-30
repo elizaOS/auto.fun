@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Link } from "react-router";
 import Button from "../button";
 import { twMerge } from "tailwind-merge";
+import SkeletonImage from "../skeleton-image";
+import { Badge } from "../ui/badge";
 
 export default function CommunityTab() {
   type ICommunityTabs = "Image" | "Audio";
@@ -29,7 +31,7 @@ export default function CommunityTab() {
         {communityTab === "Image" ? (
           <div className="flex flex-col gap-4 w-full">
             <div className="font-dm-mono text-autofun-background-action-highlight text-xl">
-              Create a token community image by using the prompt
+              Input
             </div>
 
             <div className="flex flex-col md:flex-row gap-4 w-full">
@@ -39,12 +41,12 @@ export default function CommunityTab() {
                   maxLength={200}
                   placeholder="Make me an image that looks like a dog in a wheelchair"
                 />
-                <button className="bg-[#03FF24] cursor-pointer mx-auto w-fit items-center p-3 mt-2 font-bold border-2 text-black text-[12px] md:text-[15px] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]">
-                  Generate Image
-                </button>
+                <div>
+                  <Button>Generate Image</Button>
+                </div>
               </div>
 
-              <div className="bg-black/20 p-4 space-y-2 w-full md:w-3/6 border h-fit">
+              {/* <div className="bg-black/20 p-4 space-y-2 w-full md:w-3/6 border h-fit">
                 <h1 className="mb-4 text-xl text-autofun-background-action-highlight font-dm-mono">
                   Agents
                 </h1>
@@ -69,6 +71,29 @@ export default function CommunityTab() {
                     Connect X account
                   </Link>
                 </div>
+              </div> */}
+            </div>
+
+            <div className="flex flex-col gap-4 border p-4">
+              <div className="flex items-center gap-2.5">
+                <div className="font-dm-mono text-autofun-background-action-highlight text-xl">
+                  Result
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Badge variant="default">Processing</Badge>
+                  <Badge variant="success">Processed</Badge>
+                  <Badge variant="destructive">Failed</Badge>
+                </div>
+              </div>
+              <SkeletonImage
+                src="/DEMO.png"
+                width={1024}
+                height={1024}
+                alt="generated_image"
+                className="xl:w-1/2 mx-auto"
+              />
+              <div className="w-full flex items-center justify-end">
+                <Button size="small">Share on X</Button>
               </div>
             </div>
           </div>

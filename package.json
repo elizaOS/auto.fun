@@ -67,6 +67,7 @@
     "buffer": "^6.0.3",
     "cannon-es": "^0.20.0",
     "canvas-confetti": "^1.9.3",
+    "class-variance-authority": "^0.7.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "crypto-browserify": "^3.12.1",
