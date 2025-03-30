@@ -18,7 +18,7 @@ import {
 } from "@/utils";
 import { getToken } from "@/utils/api";
 import { useQuery } from "@tanstack/react-query";
-import { InfoCircle } from "iconsax-react";
+import { Info as InfoCircle } from "lucide-react";
 import { Globe } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { TradingViewChart } from "@/components/trading-view-chart";

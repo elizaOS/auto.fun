@@ -74,7 +74,6 @@
     "drizzle-orm": "^0.41.0",
     "fetch-retry": "^6.0.0",
     "hono": "^4.7.5",
-    "iconsax-react": "^0.0.8",
     "lodash": "^4.17.21",
     "lucide-react": "^0.483.0",
     "nanoid": "^5.1.5",
