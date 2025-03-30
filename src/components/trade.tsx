@@ -15,17 +15,15 @@ export default function Trade({ token }: { token: IToken }) {
   const solanaPrice = token?.solPriceUSD || 0;
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
-    undefined,
+    undefined
   );
   const wallet = useWallet();
   const balance = useTokenBalance(
     wallet.publicKey?.toBase58() || "",
     !isTokenSelling
       ? "So11111111111111111111111111111111111111111"
-      : token?.mint || "",
+      : token?.mint || ""
   );
-
-  console.log("balance", balance);
 
   const insufficientBalance =
     (sellingAmount || 0) > (balance?.data?.formattedBalance || 0);
@@ -33,7 +31,7 @@ export default function Trade({ token }: { token: IToken }) {
   const [error] = useState<string | undefined>("");
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status,
+    token?.status
   );
 
   const swapMutation = useMutation({
@@ -133,7 +131,7 @@ export default function Trade({ token }: { token: IToken }) {
                   : token?.tokenPriceUSD
                     ? formatNumber(
                         Number(sellingAmount || 0) * token?.tokenPriceUSD,
-                        true,
+                        true
                       )
                     : formatNumber(0)}
               </span>
@@ -191,7 +189,11 @@ export default function Trade({ token }: { token: IToken }) {
           className="font-dm-mono"
           size="large"
           disabled={
-            isDisabled || insufficientBalance || swapMutation?.isPending
+            isDisabled ||
+            insufficientBalance ||
+            swapMutation?.isPending ||
+            !sellingAmount ||
+            sellingAmount === 0
           }
           onClick={() => swapMutation.mutate()}
         >
@@ -239,9 +241,7 @@ const Balance = ({
   const wallet = useWallet();
   const balance = useTokenBalance(
     wallet.publicKey?.toBase58() || "",
-    isSolana
-      ? "So11111111111111111111111111111111111111111"
-      : token?.mint || "",
+    isSolana ? "So11111111111111111111111111111111111111111" : token?.mint || ""
   );
   return (
     <div

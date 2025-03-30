@@ -9,47 +9,50 @@ export default function CommunityTab() {
   const [communityTab, setCommunityTab] = useState<ICommunityTabs>("Image");
 
   return (
-    <>
+    <div className="p-4 flex flex-col gap-4">
       <div className="flex flex-row">
         <Button
           onClick={() => setCommunityTab("Image")}
           className={twMerge(
             communityTab === "Image"
               ? "bg-autofun-stroke-highlight/80"
-              : "bg-white/15",
+              : "bg-white/15"
           )}
         >
           Image generator
         </Button>
         <Button
-          onClick={() => setCommunityTab("Audio")}
+          // onClick={() => setCommunityTab("Audio")}
           className={twMerge(
             communityTab === "Audio"
               ? "bg-autofun-stroke-highlight/80"
-              : "bg-white/15",
+              : "bg-white/15"
           )}
+          disabled
         >
           Audio generator
         </Button>
       </div>
-      <div className="grid grid-cols-3 p-6 gap-4">
+      <div className="flex gap-4">
         {communityTab === "Image" ? (
-          <>
-            <div className="grid col-span-3 font-dm-mono text-autofun-background-action-highlight text-xl">
+          <div className="flex flex-col gap-4 w-full">
+            <div className="font-dm-mono text-autofun-background-action-highlight text-xl">
               Create a token community image by using the prompt
             </div>
-            <div className="grid col-span-3 md:col-span-2 justify-items-center">
-              <textarea
-                className="w-full font-dm-mono bg-[#0F0F0F] h-[300px] p-3 border border-neutral-800 text-white resize-none"
-                maxLength={200}
-                placeholder="Make me an image that looks like a dog in a wheelchair"
-              />
-              <button className="bg-[#03FF24] cursor-pointer w-fit items-center p-3 mt-2 font-bold border-2 text-black text-[12px] md:text-[15px] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]">
-                Generate Image
-              </button>
-            </div>
-            <div className="grid col-span-3 md:col-span-1">
-              <div className="bg-black/20 p-4 space-y-2">
+
+            <div className="flex flex-col md:flex-row gap-4 w-full">
+              <div className="flex flex-col gap-4 w-full grow">
+                <textarea
+                  className="w-full font-dm-mono bg-[#0F0F0F] h-[300px] p-3 border border-neutral-800 text-white resize-none"
+                  maxLength={200}
+                  placeholder="Make me an image that looks like a dog in a wheelchair"
+                />
+                <button className="bg-[#03FF24] cursor-pointer mx-auto w-fit items-center p-3 mt-2 font-bold border-2 text-black text-[12px] md:text-[15px] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]">
+                  Generate Image
+                </button>
+              </div>
+
+              <div className="bg-black/20 p-4 space-y-2 w-full md:w-3/6 border h-fit">
                 <h1 className="mb-4 text-xl text-autofun-background-action-highlight font-dm-mono">
                   Agents
                 </h1>
@@ -76,12 +79,12 @@ export default function CommunityTab() {
                 </div>
               </div>
             </div>
-          </>
+          </div>
         ) : communityTab === "Audio" ? (
           <div>Audio generator page coming soon!</div>
         ) : null}
       </div>
-    </>
+    </div>
   );
 }
 

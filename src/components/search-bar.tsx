@@ -9,11 +9,10 @@ import { useOutsideClickDetection } from "@/hooks/use-outside-clickdetection";
 import { getSearchTokens } from "@/utils/api";
 import { useQuery } from "@tanstack/react-query";
 
-export default function SearchBar({ isMobile }: { isMobile: boolean }) {
+export default function SearchBar() {
   const [searchResults, setSearchResults] = useState<IToken[] | []>([]);
   const [search, setSearch] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [showMobileSearch, setShowMobileSearch] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClickDetection([ref], () => {
     setShowSearchResults(false);
@@ -34,7 +33,7 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
     debounce((query: string) => {
       setSearchResults(tokens);
       setSearch(query);
-    }, 300),
+    }, 300)
   ).current;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,78 +48,10 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
     };
   }, [handleSearch]);
 
-  useLayoutEffect(
-    function hideBodyScrollBar() {
-      const { overflow } = window.getComputedStyle(document.body);
-
-      if (showMobileSearch) {
-        document.body.style.overflow = "hidden";
-      }
-
-      return () => {
-        document.body.style.overflow = overflow;
-      };
-    },
-    [showMobileSearch],
-  );
-
-  if (isMobile) {
-    return (
-      <div>
-        <Search
-          className="cursor-pointer"
-          onClick={() => setShowMobileSearch(true)}
-        />
-
-        {showMobileSearch && (
-          <div className="fixed inset-0 bg-neutral-900 flex flex-col">
-            <div className="flex items-center">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={handleInputChange}
-                  placeholder="Symbol or Address..."
-                  className="w-full h-11 pl-10 pr-3 select-none bg-transparent text-[#d1d1d1] text-sm placeholder:text-sm leading-tight focus:outline-none"
-                />
-              </div>
-              <X onClick={() => setShowMobileSearch(false)} />
-            </div>
-            {showSearchResults && (
-              <div
-                className="w-full bg-neutral-900 px-4 rounded-b-lg flex flex-col flex-1 gap-3 mt-[14px] overflow-y-scroll no-scrollbar"
-                ref={ref}
-              >
-                <div className="text-[#03ff24] text-xs font-normal uppercase leading-none tracking-widest">
-                  <Link to="/">Tokens</Link>
-                </div>
-                {searchResults.map((token: IToken) => (
-                  <AgentSearchResult
-                    key={token.mint}
-                    id={token.mint}
-                    marketCap={token.marketCapUSD}
-                    name={token.name}
-                    symbol={token.ticker}
-                    imageUrl={token.image}
-                    onNavigate={() => {
-                      setShowSearchResults(false);
-                      setShowMobileSearch(false);
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }
-
   return (
-    <div className="relative flex-1 md:min-w-72 lg:min-w-96">
-      <div className="flex items-center h-11 w-full px-2 gap-2 bg-[#171717] border border-[#262626] hover:border-[#2FD345]/50 focus-within:border-[#2FD345]/50 transition-colors">
-        <Search className="w-6 h-6 text-[#8C8C8C] group-hover:text-[#2FD345]" />
+    <div className="relative">
+      <div className="flex max-w-50 md:max-w-72 lg:max-w-96 items-center h-11 w-full px-2 gap-2 bg-[#171717] border border-[#262626] hover:border-[#2FD345]/50 focus-within:border-[#2FD345]/50 transition-colors">
+        <Search className="w-6 h-6 text-[#8C8C8C] group-hover:text-[#2FD345] shrink-0" />
         <input
           type="text"
           value={search}
@@ -132,7 +63,7 @@ export default function SearchBar({ isMobile }: { isMobile: boolean }) {
 
       {showSearchResults && (
         <div
-          className="absolute w-full p-3.5 bg-[#171717] border border-[#262626] flex flex-col gap-3 mt-2 max-h-[60vh] overflow-auto z-50 shadow-lg"
+          className="absolute w-full p-3.5 bg-[#171717] border border-[#262626] flex flex-col gap-3 mt-2 max-h-[60vh] overflow-auto shadow-lg"
           ref={ref}
         >
           <div className="text-[16px] font-normal leading-none tracking-widest">
