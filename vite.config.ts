@@ -57,11 +57,20 @@ export default defineConfig({
     "import.meta.env.VITE_DECIMALS": JSON.stringify(
       process.env.VITE_DECIMALS || 6
     ),
+    "import.meta.env.VITE_VIRTUAL_RESERVES": JSON.stringify(
+      process.env.VITE_VIRTUAL_RESERVES || 2800000000
+    ),
     "import.meta.env.VITE_SOLANA_NETWORK": JSON.stringify(
       process.env.VITE_SOLANA_NETWORK || "mainnet"
     ),
     "import.meta.env.VITE_SOLANA_RPC_URL": JSON.stringify(
       (process.env.VITE_SOLANA_NETWORK === "mainnet" ? process.env.VITE_MAINNET_RPC_URL : process.env.VITE_DEVNET_RPC_URL) || process.env.VITE_SOLANA_RPC_URL
+    ),
+    "import.meta.env.VITE_DEVNET_RPC_URL": JSON.stringify(
+      process.env.VITE_DEVNET_RPC_URL || "https://api.devnet.solana.com"
+    ),
+    "import.meta.env.VITE_MAINNET_RPC_URL": JSON.stringify(
+      process.env.VITE_MAINNET_RPC_URL || "https://api.mainnet-beta.solana.com"
     ),
     global: "window",
   },
