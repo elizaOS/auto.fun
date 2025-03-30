@@ -462,7 +462,7 @@ const FormImageInput = ({
                   maxLength={128}
                   onFocus={() => setNameInputFocused(true)}
                   onBlur={() => setNameInputFocused(false)}
-                  className={`bg-transparent text-white text-xl font-bold border-b ${
+                  className={`bg-transparent text-white text-xl font-bold border-b-2 ${
                     nameInputFocused ? "border-white" : "border-gray-500"
                   } focus:outline-none px-1 py-0.5 w-[280px] max-w-[95%]`}
                 />
@@ -484,7 +484,7 @@ const FormImageInput = ({
                     maxLength={16}
                     onFocus={() => setTickerInputFocused(true)}
                     onBlur={() => setTickerInputFocused(false)}
-                    className={`bg-transparent text-white text-lg font-semibold border-b ${
+                    className={`bg-transparent text-white text-lg font-semibold border-b-2 ${
                       tickerInputFocused ? "border-white" : "border-gray-500"
                     } focus:outline-none px-1 py-0.5 max-w-[60%]`}
                   />
