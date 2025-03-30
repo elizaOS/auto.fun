@@ -112,7 +112,7 @@ jobs:
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           command: deploy --config wrangler.toml --env ${{ env.WORKER_ENV }}
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}'100' }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           # Database configuration
           DATABASE_NAME: ${{ env.DATABASE_NAME }}
           DATABASE_ID: ${{ secrets.DATABASE_ID }}
