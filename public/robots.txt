@@ -1,0 +1,5 @@
+User-agent: *
+Disallow:
+
+# Optional: add your sitemap URL here
+Sitemap: https://auto.fun/sitemap.xml

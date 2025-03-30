@@ -49,7 +49,7 @@ export default function Header() {
       <div className="hidden md:block w-full container z-50">
         <div className="flex flex-row items-center justify-between w-full">
           <div className="flex items-center select-none">
-            <Link to="/" className="mr-6">
+            <Link to="/" className="mr-6" aria-label="Auto.fun frontpage">
               <img
                 className="size-20 pointer-events-none"
                 src="/logo_wide.svg"

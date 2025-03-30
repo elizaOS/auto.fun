@@ -29,6 +29,7 @@ const ExternalLinkIcon = ({ address }: { address: string }) => {
       href={env.getWalletUrl(address)}
       target="_blank"
       rel="noopener noreferrer"
+      aria-label="visit profile"
     >
       <svg
         width="16"
