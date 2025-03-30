@@ -32,10 +32,8 @@ export function useUser() {
         const response = await fetch(`${env.apiUrl}/api/auth-status`, {
           credentials: "include",
         });
-        console.log("response", response);
         if (response.ok) {
           const data = (await response.json()) as AuthStatus;
-          console.log("data", data);
           if (data.isAuthenticated && data.user) {
             console.log("data", data);
             setUser({

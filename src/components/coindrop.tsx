@@ -441,7 +441,6 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
     const textureLoader = new THREE.TextureLoader();
     const coinTexture = textureLoader.load(imageUrl || "logo.png", () => {
       setIsLoading(false);
-      console.log("Texture loaded, starting coin creation");
       // Start coin creation once texture is loaded
       startCoinCreation();
 
@@ -742,7 +741,6 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
     // Function to create and drop a single coin
     function createCoin() {
       if (coinCountRef.current >= MAX_COINS) {
-        console.log("Maximum number of coins reached");
         return null;
       }
 

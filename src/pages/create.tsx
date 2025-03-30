@@ -2638,11 +2638,11 @@ export const Create = () => {
                           SOL
                         </span>
                       </div>
-                      {solPrice && Number(buyValue) > 0 && (
+                      {/* {solPrice && Number(buyValue) > 0 && (
                         <div className="text-right text-xs text-neutral-400 mt-1">
                           ≈ ${solValueUsd} USD
                         </div>
-                      )}
+                      )} */}
                     </div>
                   </div>
                   {parseFloat(buyValue as string) > 0 && (
@@ -2657,8 +2657,8 @@ export const Create = () => {
 
                   {/* Balance information */}
                   <div className="mt-2 text-right text-xs text-neutral-400">
-                    Your balance:{" "}
-                    {balance?.data?.formattedBalance?.toFixed(2) || "0.00"} SOL
+                    {/* Your balance:{" "}
+                    {balance?.data?.formattedBalance?.toFixed(2) || "0.00"} SOL */}
                     {insufficientBalance && (
                       <div className="text-red-500 mt-1">
                         Insufficient SOL balance (need 0.05 SOL for fees)
