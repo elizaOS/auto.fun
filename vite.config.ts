@@ -52,8 +52,8 @@ export default defineConfig({
   define: {
     "import.meta.env.VITE_API_URL": JSON.stringify(
       isDev
-        ? process.env.VITE_DEV_API_URL || process.env.VITE_API_URL || "http://localhost:8787"
-        : process.env.VITE_API_URL || "http://localhost:8787"
+        ? (process.env.VITE_DEV_API_URL || process.env.VITE_API_URL || "https://api-dev.autofun.workers.dev")
+        :  (process.env.VITE_API_URL || "https://api.autofun.workers.dev")
     ),
     "import.meta.env.APP_ENV": JSON.stringify(
       process.env.NODE_ENV || "development"
