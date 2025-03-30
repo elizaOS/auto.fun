@@ -1,5 +1,5 @@
 import * as CANNON from "cannon-es";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { IToken } from "@/types";
 

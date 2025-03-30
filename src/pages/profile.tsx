@@ -3,8 +3,6 @@ import { useProfile } from "../utils/profileUtils";
 import { TokenTable } from "../components/token-table";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { env } from "../utils/env";
-import Skeleton, { SkeletonTheme } from "react-loading-skeleton";
-import "react-loading-skeleton/dist/skeleton.css";
 import Loader from "@/components/loader";
 
 type TabButtonProps = PropsWithChildren<{
