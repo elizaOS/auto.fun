@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 
 const BreakpointIndicator = () => {
-  if (window.location.hostname !== "localhost") return;
   const getBreakpoint = (width: number) => {
     if (width >= 1536) return "2xl";
     if (width >= 1280) return "xl";
@@ -12,7 +11,7 @@ const BreakpointIndicator = () => {
   };
 
   const [breakpoint, setBreakpoint] = useState(
-    getBreakpoint(window.innerWidth)
+    getBreakpoint(window.innerWidth),
   );
 
   useEffect(() => {
@@ -22,6 +21,8 @@ const BreakpointIndicator = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  if (window.location.hostname !== "localhost") return;
 
   return (
     <div className="select-none fixed bottom-4 left-4 bg-autofun-background-card text-white p-2 rounded border">

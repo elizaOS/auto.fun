@@ -31,7 +31,7 @@ export const abbreviateNumber = (num: number): string => {
 export const formatNumber = (
   num: number,
   showDecimals?: boolean,
-  hideDollarSign?: boolean
+  hideDollarSign?: boolean,
 ) => {
   const formatted = Intl.NumberFormat("en-US", {
     style: "currency",
@@ -48,7 +48,7 @@ export const formatNumber = (
 
 export const fromNow = (
   date: string | Date | number,
-  hideAgo?: boolean
+  hideAgo?: boolean,
 ): string => {
   const now = String(moment(date).fromNow());
   if (hideAgo) {

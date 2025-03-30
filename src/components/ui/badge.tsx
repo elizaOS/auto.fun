@@ -11,15 +11,14 @@ const badgeVariants = cva(
           "animate-pulse bg-autofun-background-card text-autofun-text-primary",
         success:
           "bg-autofun-background-highlight border-transparent text-autofun-background-card font-medium",
-        destructive:
-          "border-red-500 bg-autofun-background-card text-red-500",
+        destructive: "border-red-500 bg-autofun-background-card text-red-500",
         outline: "text-foreground",
       },
     },
     defaultVariants: {
       variant: "default",
     },
-  }
+  },
 );
 
 export interface BadgeProps

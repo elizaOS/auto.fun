@@ -33,7 +33,7 @@ export default function SearchBar() {
     debounce((query: string) => {
       setSearchResults(tokens);
       setSearch(query);
-    }, 300)
+    }, 300),
   ).current;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
