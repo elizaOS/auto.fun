@@ -412,7 +412,7 @@ const FormImageInput = ({
     <div className="flex flex-col w-full">
       {/* Image Preview Area - Square */}
       <div
-        className="relative mt-1 aspect-square text-center border border-neutral-800 flex items-center justify-center"
+        className="relative mt-1 aspect-square text-center flex items-center justify-center"
         onDrop={handleDrop}
         onDragOver={handleDragOver}
       >
@@ -2281,7 +2281,7 @@ export const Create = () => {
                 value={userPrompt}
                 onChange={(e) => setUserPrompt(e.target.value)}
                 placeholder="Enter a concept like 'a halloween token about arnold schwarzenegger'"
-                className="flex-1 my-2 p-0 border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
+                className="flex-1 my-2 p-0 border-b-2 pb-2.5 border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
               />
               <button
                 type="button"
@@ -2346,7 +2346,7 @@ export const Create = () => {
                     }
                     onPaste={handleImportAddressPaste}
                     placeholder="Enter any Solana token address (mint)"
-                    className="flex-1 my-2 p-0 border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
+                    className="flex-1 my-2 p-0 border-b-2 pb-2.5 border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
                   />
                   <button
                     type="button"
