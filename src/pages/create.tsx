@@ -2242,8 +2242,8 @@ export const Create = () => {
         onSubmit={handleSubmit}
       >
         {/* Tabs Navigation */}
-        <div className="flex items-center md:justify-between flex-col md:flex-row gap-8 mx-auto w-full px-6 mb-2">
-          <div className="flex items-center gap-4 flex-1">
+        <div className="flex items-center md:justify-between flex-col md:flex-row gap-8 mx-auto w-full mb-2">
+          <div className="flex shrink-0 items-center gap-4">
             <img
               src="/create/dicelogo.svg"
               alt="Coin Machine"
@@ -2255,40 +2255,20 @@ export const Create = () => {
               className="w-48 h-24"
             />
           </div>
-          <div className="flex justify-between items-center text-lg">
-            <button
-              type="button"
-              className={`mr-6 py-1 border-b-2 font-medium transition-colors cursor-pointer select-none ${
-                activeTab === FormTab.AUTO
-                  ? "border-[#03FF24] text-[#03FF24] font-bold"
-                  : "border-transparent text-neutral-400 hover:text-white"
-              }`}
-              onClick={() => handleTabChange(FormTab.AUTO)}
-            >
-              Auto
-            </button>
-            <button
-              type="button"
-              className={`mr-6 py-1 border-b-2 font-medium transition-colors cursor-pointer select-none ${
-                activeTab === FormTab.MANUAL
-                  ? "border-[#03FF24] text-[#03FF24] font-bold"
-                  : "border-transparent text-neutral-400 hover:text-white"
-              }`}
-              onClick={() => handleTabChange(FormTab.MANUAL)}
-            >
-              Manual
-            </button>
-            <button
-              type="button"
-              className={`py-1 border-b-2 font-medium transition-colors cursor-pointer select-none ${
-                activeTab === FormTab.IMPORT
-                  ? "border-[#03FF24] text-[#03FF24] font-bold"
-                  : "border-transparent text-neutral-400 hover:text-white"
-              }`}
-              onClick={() => handleTabChange(FormTab.IMPORT)}
-            >
-              Import
-            </button>
+          <div className="flex justify-between items-center text-lg w-full shrink">
+            {Object.values(FormTab).map((tab, _) => (
+              <button
+                type="button"
+                className={`uppercase font-satoshi font-medium transition-colors duration-200 cursor-pointer select-none ${
+                  activeTab === tab
+                    ? "border-[#03FF24] text-[#03FF24] font-bold"
+                    : "border-transparent text-neutral-400 hover:text-white"
+                }`}
+                onClick={() => handleTabChange(tab)}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
         </div>
 
