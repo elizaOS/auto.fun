@@ -1,126 +1,143 @@
+import { useForm, Controller } from "react-hook-form";
 import { FormInput } from "@/pages/create";
 import CopyButton from "../copy-button";
-import { useState } from "react";
 import { Icons } from "../icons";
+import { isFromDomain } from "@/utils";
+
+type FormData = {
+  links: {
+    website: string;
+    twitter: string;
+    telegram: string;
+    discord: string;
+    agentLink: string;
+  };
+};
 
 export default function AdminTab() {
-  // Error state
-  // const [errors, setErrors] = useState({
-  //   name: "",
-  //   symbol: "",
-  //   description: "",
-  //   prompt: "",
-  // });
-
-  // Simple form state
-  const [form, setForm] = useState({
-    description: "",
-    links: {
-      twitter: "",
-      telegram: "",
-      website: "",
-      discord: "",
-      agentLink: "",
+  const { control, handleSubmit } = useForm<FormData>({
+    defaultValues: {
+      links: {
+        website: "",
+        twitter: "",
+        telegram: "",
+        discord: "",
+        agentLink: "",
+      },
     },
   });
 
-  const handleChange = (field: string, value: string) => {
-    // Handle nested fields (for links)
-    if (field.includes(".")) {
-      const [parent, child] = field.split(".");
-      setForm((prev) => {
-        if (parent === "links") {
-          return {
-            ...prev,
-            links: {
-              ...prev.links,
-              [child]: value,
-            },
-          };
-        }
-        return prev;
-      });
-    } else {
-      setForm((prev) => ({
-        ...prev,
-        [field]: value,
-      }));
-    }
-
-    // Clear errors immediately when field has a value
-    // if (field === "name" || field === "symbol" || field === "description") {
-    //   if (value) {
-    //     setErrors((prev) => ({
-    //       ...prev,
-    //       [field]: "",
-    //     }));
-    //   } else {
-    //     setErrors((prev) => ({
-    //       ...prev,
-    //       [field]: `${field.charAt(0).toUpperCase() + field.slice(1)} is required`,
-    //     }));
-    //   }
-    // }
+  const onSubmit = (data: FormData) => {
+    console.log("Submitted data:", data);
   };
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 p-4">
       <div className="font-dm-mono text-autofun-background-action-highlight text-xl">
         Socials
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormInput
-          type="text"
-          value={form.links.website}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            handleChange("links.website", e.target.value)
-          }
-          isOptional
-          inputTag={<Icons.Website />}
-          placeholder="Website"
-          rightIndicator={<CopyButton text={""} />}
+        {/* Website Field */}
+        <Controller
+          control={control}
+          name="links.website"
+          render={({ field }) => (
+            <FormInput
+              type="text"
+              {...field}
+              isOptional
+              inputTag={<Icons.Website />}
+              placeholder="Website"
+              rightIndicator={<CopyButton text={field.value || ""} />}
+            />
+          )}
         />
-        <FormInput
-          type="text"
-          value={form.links.twitter}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            handleChange("links.twitter", e.target.value)
-          }
-          isOptional
-          inputTag={<Icons.Twitter />}
-          placeholder="X (Twitter)"
-          rightIndicator={<CopyButton text={form.links.twitter || ""} />}
+
+        {/* Twitter Field with custom domain validation for x.com */}
+        <Controller
+          control={control}
+          name="links.twitter"
+          rules={{
+            validate: (value: string) =>
+              !value || isFromDomain(value, "x.com") || "Invalid X URL",
+          }}
+          render={({ field, fieldState: { error } }) => (
+            <div className="flex flex-col gap-1">
+              <FormInput
+                type="text"
+                {...field}
+                isOptional
+                inputTag={<Icons.Twitter />}
+                placeholder="X (Twitter)"
+                rightIndicator={<CopyButton text={field.value || ""} />}
+              />
+              {error && (
+                <span className="text-red-500 text-sm">{error.message}</span>
+              )}
+            </div>
+          )}
         />
-        <FormInput
-          type="text"
-          value={form.links.telegram}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            handleChange("links.telegram", e.target.value)
-          }
-          isOptional
-          inputTag={<Icons.Telegram />}
-          placeholder="Telegram"
-          rightIndicator={<CopyButton text={form.links.telegram || ""} />}
+
+        {/* Telegram Field with custom domain validation for t.me */}
+        <Controller
+          control={control}
+          name="links.telegram"
+          rules={{
+            validate: (value: string) =>
+              !value || isFromDomain(value, "t.me") || "Invalid Telegram URL",
+          }}
+          render={({ field, fieldState: { error } }) => (
+            <div className="flex flex-col gap-1">
+              <FormInput
+                type="text"
+                {...field}
+                isOptional
+                inputTag={<Icons.Telegram />}
+                placeholder="Telegram"
+                rightIndicator={<CopyButton text={field.value || ""} />}
+              />
+              {error && (
+                <span className="text-red-500 text-sm">{error.message}</span>
+              )}
+            </div>
+          )}
         />
-        <FormInput
-          type="text"
-          value={form.links.discord}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            handleChange("links.discord", e.target.value)
-          }
-          isOptional
-          inputTag={<Icons.Discord />}
-          placeholder="Discord"
-          rightIndicator={<CopyButton text={form.links.discord || ""} />}
+
+        {/* Discord Field with custom domain validation for discord.gg */}
+        <Controller
+          control={control}
+          name="links.discord"
+          rules={{
+            validate: (value: string) =>
+              !value ||
+              isFromDomain(value, "discord.gg") ||
+              "Invalid Discord URL",
+          }}
+          render={({ field, fieldState: { error } }) => (
+            <div className="flex flex-col gap-1">
+              <FormInput
+                type="text"
+                {...field}
+                isOptional
+                inputTag={<Icons.Discord />}
+                placeholder="Discord"
+                rightIndicator={<CopyButton text={field.value || ""} />}
+              />
+              {error && (
+                <span className="text-red-500 text-sm">{error.message}</span>
+              )}
+            </div>
+          )}
         />
       </div>
+
       <button
         type="submit"
         className="cursor-pointer text-white bg-transparent gap-x-3 border-2 hover:bg-autofun-background-action-highlight border-autofun-background-action-highlight flex px-8 py-1 mt-2 flex-row w-fit items-center justify-items-center"
       >
         Save
       </button>
-    </div>
+    </form>
   );
 }
