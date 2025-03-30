@@ -203,8 +203,8 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         new THREE.Vector3(
           Math.random() * 50 - 25,
           20 + i * 2,
-          Math.random() * 16 - 8
-        )
+          Math.random() * 16 - 8,
+        ),
       );
     }
     setDicePositions(positions);
@@ -221,14 +221,14 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       dieBody.position.set(
         Math.random() * 50 - 25,
         20 + i * 2,
-        Math.random() * 16 - 8
+        Math.random() * 16 - 8,
       );
 
       // Reset rotation
       dieBody.quaternion.setFromEuler(
         Math.random() * Math.PI,
         Math.random() * Math.PI,
-        Math.random() * Math.PI
+        Math.random() * Math.PI,
       );
 
       // Clear any existing motion
@@ -242,7 +242,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       const velocity = new CANNON.Vec3(
         (Math.random() - 0.5) * 15,
         -10 - Math.random() * 15,
-        (Math.random() - 0.5) * 15
+        (Math.random() - 0.5) * 15,
       );
       dieBody.velocity.copy(velocity);
 
@@ -250,7 +250,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       const angularVelocity = new CANNON.Vec3(
         (Math.random() - 0.5) * 20,
         (Math.random() - 0.5) * 20,
-        (Math.random() - 0.5) * 20
+        (Math.random() - 0.5) * 20,
       );
       dieBody.angularVelocity.copy(angularVelocity);
     }
@@ -267,7 +267,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     // Calculate normalized mouse position
     const mouse = new THREE.Vector2(
       ((event.clientX - rect.left) / rect.width) * 2 - 1,
-      -((event.clientY - rect.top) / rect.height) * 2 + 1
+      -((event.clientY - rect.top) / rect.height) * 2 + 1,
     );
 
     // Setup raycaster
@@ -309,7 +309,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       const forceVector = new CANNON.Vec3(
         (Math.random() - 0.5) * 200,
         Math.random() * 50,
-        (Math.random() - 0.5) * 200
+        (Math.random() - 0.5) * 200,
       );
 
       // Apply direct velocity for immediate effect
@@ -319,7 +319,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       dieBody.angularVelocity.set(
         (Math.random() - 0.5) * 10,
         (Math.random() - 0.5) * 10,
-        (Math.random() - 0.5) * 10
+        (Math.random() - 0.5) * 10,
       );
     }
   };
@@ -359,21 +359,21 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       new CANNON.ContactMaterial(floorMaterial, diceMaterial, {
         friction: 0.6,
         restitution: 0.5,
-      })
+      }),
     );
 
     world.addContactMaterial(
       new CANNON.ContactMaterial(wallMaterial, diceMaterial, {
         friction: 0.6,
         restitution: 0.9,
-      })
+      }),
     );
 
     world.addContactMaterial(
       new CANNON.ContactMaterial(diceMaterial, diceMaterial, {
         friction: 0.6,
         restitution: 0.5,
-      })
+      }),
     );
 
     // Calculate dimensions based on aspect ratio
@@ -389,7 +389,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       frustumHeight / 2,
       frustumHeight / -2,
       0.001,
-      1000
+      1000,
     );
     cameraRef.current = camera;
     camera.position.set(0, 50, 0);
@@ -445,7 +445,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     const floorBody = new CANNON.Body({
       mass: 0, // static body
       shape: new CANNON.Box(
-        new CANNON.Vec3(frustumWidth / 2, 0.5, frustumHeight / 2)
+        new CANNON.Vec3(frustumWidth / 2, 0.5, frustumHeight / 2),
       ),
       material: floorMaterial,
     });
@@ -553,7 +553,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
               (fallbackTex) => {
                 fallbackTex.colorSpace = THREE.SRGBColorSpace;
                 setIsLoading(false);
-              }
+              },
             );
             resolve(
               Array(6).fill(
@@ -563,10 +563,10 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
                   metalness: 0.3,
                   emissiveMap: fallback,
                   emissiveIntensity: 0.3,
-                })
-              )
+                }),
+              ),
             );
-          }
+          },
         );
 
         // Create 6 sides with the same material
@@ -580,7 +580,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
                 metalness: 0.2,
                 emissiveMap: texture,
                 emissiveIntensity: 0.3,
-              })
+              }),
           );
 
         resolve(materials);
@@ -598,14 +598,14 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     async function createDie(
       position: THREE.Vector3,
       scale: number = 1,
-      tokenIndex: number
+      tokenIndex: number,
     ) {
       const tokenData = selectedTokens[tokenIndex] || {
         address: "",
         image: fallbackTexture,
       };
       const dieMaterials = await createDieMaterialsWithSameTexture(
-        tokenData.image
+        tokenData.image,
       );
       const die = new THREE.Mesh(diceGeometry, dieMaterials);
 
@@ -621,7 +621,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       const halfExtents = new CANNON.Vec3(
         scale + 0.5,
         scale + 0.25,
-        scale + 0.25
+        scale + 0.25,
       );
       const dieBody = new CANNON.Body({
         mass: 10000, // heavier for better physics
@@ -635,7 +635,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       dieBody.quaternion.setFromEuler(
         Math.random() * Math.PI,
         Math.random() * Math.PI,
-        Math.random() * Math.PI
+        Math.random() * Math.PI,
       );
 
       // Store the mesh and token data with the body for updates
@@ -668,7 +668,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
           new THREE.Vector3(
             Math.random() * 50 - 25,
             20 + i * 2,
-            Math.random() * 16 - 8
+            Math.random() * 16 - 8,
           );
         const { die, dieBody } = await createDie(position, scale, i);
         diceRef.current.push(die);
@@ -681,12 +681,12 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
           const position = new THREE.Vector3(
             Math.random() * 50 - 25,
             20 + i * 2,
-            Math.random() * 16 - 8
+            Math.random() * 16 - 8,
           );
           const { die, dieBody } = await createDie(
             position,
             scale,
-            i % numDice
+            i % numDice,
           );
           diceRef.current.push(die);
           diceBodiesRef.current.push(dieBody);
@@ -778,7 +778,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       floor.scale.set(
         newFrustumWidth / frustumWidth,
         1,
-        newFrustumHeight / frustumHeight
+        newFrustumHeight / frustumHeight,
       );
 
       backWall.position.set(0, 2, -newFrustumHeight / 2);
@@ -804,35 +804,35 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       // Floor physics body
       floorBody.position.set(0, -0.5, 0);
       floorBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(newFrustumWidth / 2, 0.5, newFrustumHeight / 2)
+        new CANNON.Vec3(newFrustumWidth / 2, 0.5, newFrustumHeight / 2),
       );
       world.addBody(floorBody);
 
       // Back wall physics body
       backWallBody.position.set(0, 2, -newFrustumHeight / 2);
       backWallBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(newFrustumWidth / 2, 20, 0.5)
+        new CANNON.Vec3(newFrustumWidth / 2, 20, 0.5),
       );
       world.addBody(backWallBody);
 
       // Front wall physics body
       frontWallBody.position.set(0, 2, newFrustumHeight / 2);
       frontWallBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(newFrustumWidth / 2, 50, 0.5)
+        new CANNON.Vec3(newFrustumWidth / 2, 50, 0.5),
       );
       world.addBody(frontWallBody);
 
       // Left wall physics body
       leftWallBody.position.set(-newFrustumWidth / 2, 2, 0);
       leftWallBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(0.5, 20, newFrustumHeight / 2)
+        new CANNON.Vec3(0.5, 20, newFrustumHeight / 2),
       );
       world.addBody(leftWallBody);
 
       // Right wall physics body
       rightWallBody.position.set(newFrustumWidth / 2, 2, 0);
       rightWallBody.shapes[0] = new CANNON.Box(
-        new CANNON.Vec3(0.5, 50, newFrustumHeight / 2)
+        new CANNON.Vec3(0.5, 50, newFrustumHeight / 2),
       );
       world.addBody(rightWallBody);
 

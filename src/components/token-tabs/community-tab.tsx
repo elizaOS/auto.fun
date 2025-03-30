@@ -16,7 +16,7 @@ export default function CommunityTab() {
           className={twMerge(
             communityTab === "Image"
               ? "bg-autofun-stroke-highlight/80"
-              : "bg-white/15"
+              : "bg-white/15",
           )}
         >
           Image generator
@@ -26,7 +26,7 @@ export default function CommunityTab() {
           className={twMerge(
             communityTab === "Audio"
               ? "bg-autofun-stroke-highlight/80"
-              : "bg-white/15"
+              : "bg-white/15",
           )}
           disabled
         >

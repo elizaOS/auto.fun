@@ -89,6 +89,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
             }
           }
         } else if (connectedWallet.adapter.name === wallet.adapter.name) {
+          // do nothing
         } else {
           await select(wallet.adapter.name);
           await new Promise((resolve) => setTimeout(resolve, 300));
