@@ -218,7 +218,7 @@ export default function Page() {
         <Trade token={token} />
       </div>
       {/* Left Section */}
-      <div className="grow flex flex-col gap-3">
+      <div className="grow flex flex-col gap-3 w-full md:w-auto">
         {/* Info */}
         <div className="flex py-2 flex-wrap lg:flex-nowrap border bg-autofun-background-card items-center justify-between gap-3 lg:divide-x divide-autofun-stroke-primary">
           <div className="flex flex-col gap-2 items-center w-full">
@@ -299,7 +299,7 @@ export default function Page() {
             </Button>
           )}
         </div>
-        <div className="border bg-autofun-background-card h-full md:h-[50vh]">
+        <div className="border bg-autofun-background-card">
           {tab === "Trading" ? (
             <TradingViewChart name={token.name} token={token.mint} />
           ) : tab === "Community" ? (

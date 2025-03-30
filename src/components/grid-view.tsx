@@ -13,7 +13,7 @@ export default function GridView({ data }: { data: IToken[] }) {
           className="bg-autofun-background-card"
         >
           <div className="flex flex-col min-w-0 relative">
-            <div className="absolute left-0 bottom-0 px-3 min-w-0 z-10">
+            <div className="absolute left-0 bottom-0 p-2 px-3 min-w-0 z-10">
               <div className="flex justify-end items-end w-full min-w-0">
                 {/* <div className="capitalize text-autofun-text-primary text-base font-medium font-satoshi leading-normal truncate min-w-0 drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)]">
                   {token.name}

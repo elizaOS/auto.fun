@@ -139,7 +139,7 @@ export const getChartTable = async ({
 
     return res as ChartTable;
   } catch (err) {
-    console.log("tradingchart === getch data error", err);
+    console.error(err);
     return undefined;
   }
 };

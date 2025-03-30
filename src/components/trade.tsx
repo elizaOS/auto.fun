@@ -25,8 +25,6 @@ export default function Trade({ token }: { token: IToken }) {
       : token?.mint || "",
   );
 
-  console.log("balance", balance);
-
   const insufficientBalance =
     (sellingAmount || 0) > (balance?.data?.formattedBalance || 0);
 
@@ -191,7 +189,11 @@ export default function Trade({ token }: { token: IToken }) {
           className="font-dm-mono"
           size="large"
           disabled={
-            isDisabled || insufficientBalance || swapMutation?.isPending
+            isDisabled ||
+            insufficientBalance ||
+            swapMutation?.isPending ||
+            !sellingAmount ||
+            sellingAmount === 0
           }
           onClick={() => swapMutation.mutate()}
         >

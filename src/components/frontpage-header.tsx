@@ -225,8 +225,6 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   const throwDice = () => {
     if (!diceBodiesRef.current.length) return;
 
-    console.log("Throwing dice", diceBodiesRef.current.length);
-
     for (let i = 0; i < diceBodiesRef.current.length; i++) {
       const dieBody = diceBodiesRef.current[i];
 
@@ -267,13 +265,10 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       );
       dieBody.angularVelocity.copy(angularVelocity);
     }
-
-    console.log("Dice thrown with increased energy!");
   };
 
   // Handle clicking anywhere on the container
   const handleContainerClick = (event: React.MouseEvent) => {
-    console.log("Container clicked");
     if (isLoading) return;
 
     // Get container bounds for raycaster
@@ -301,24 +296,18 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       const tokenAddress = clickedDie.userData?.tokenAddress;
 
       if (tokenAddress) {
-        // Navigate to token page using vanilla JS approach
-        console.log("Navigating to token:", tokenAddress);
         // window.location.href = `/token/${tokenAddress}`;
         applyForceToAllDice(event.nativeEvent);
       }
     } else {
-      // If no die was clicked, apply force to all dice
-      console.log("No die clicked, applying force to all");
       applyForceToAllDice(event.nativeEvent);
     }
   };
 
   // Apply force to all dice when clicking background
+  // @ts-ignore
   const applyForceToAllDice = (event: MouseEvent) => {
-    console.log("Applying force to dice", event.clientX, event.clientY);
-
     if (!diceBodiesRef.current.length) {
-      console.log("No dice bodies available");
       return;
     }
 
