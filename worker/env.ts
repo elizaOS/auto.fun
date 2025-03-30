@@ -3,6 +3,7 @@ import {
   DurableObjectNamespace,
   R2Bucket,
 } from "@cloudflare/workers-types/experimental";
+import { KVNamespace } from "@cloudflare/workers-types";
 
 // Define AI interface for Cloudflare AI
 interface Ai {
@@ -41,4 +42,16 @@ export interface Env {
   PROGRAM_ID: string;
   // Test environment properties
   tokenPubkey: string; // Used in tests to track the current test token
+  // Redis
+  REDIS: KVNamespace;
+  // Frontend URL
+  DEVNET_FRONTEND_URL: string;
+  MAINNET_FRONTEND_URL: string;
+  // Twitter API
+  TWITTER_BEARER_TOKEN: string;
+  TWITTER_CLIENT_ID: string;
+  TWITTER_API_KEY: string;
+  TWITTER_API_SECRET: string;
+  TWITTER_ACCESS_TOKEN_SECRET: string;
+  TWITTER_ACCESS_TOKEN: string;
 }

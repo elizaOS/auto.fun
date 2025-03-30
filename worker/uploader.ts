@@ -111,7 +111,7 @@ export async function uploadToCloudflare(
 
       return localUrl;
     }
-    
+
     // Prepare data for upload
     let objectData: ArrayBuffer;
     if (options.isJson) {
