@@ -25,7 +25,6 @@ export async function setupWorkerTest(): Promise<TestContext> {
       VIRTUAL_RESERVES: process.env.VIRTUAL_RESERVES || "28000000000",
       CURVE_LIMIT: process.env.CURVE_LIMIT || "113000000000",
       PORT: process.env.PORT || "8787",
-      API_URL: process.env.API_URL || "http://localhost:8787",
       NODE_ENV: "test",
       DEVNET_SOLANA_RPC_URL:
         process.env.DEVNET_SOLANA_RPC_URL || "https://api.devnet.solana.com",
