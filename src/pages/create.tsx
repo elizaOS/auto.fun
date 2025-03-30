@@ -2345,7 +2345,6 @@ export const Create = () => {
                       handleChange("importAddress", e.target.value)
                     }
                     alt="Generate"
-                    className="h-14 mb-2"
                     onMouseDown={(e) => {
                       const img = e.target as HTMLImageElement;
                       if (!isProcessingPrompt) {
@@ -2710,36 +2709,20 @@ export const Create = () => {
                   } else {
                     img.src = "/create/launching.svg";
                   }
-                  alt="Launch"
-                  className="h-32 pr-4 mb-4 select-none"
-                  onMouseDown={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    img.src = "/create/launchdown.svg";
-                  }}
-                  onMouseUp={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    img.src = "/create/launchup.svg";
-                  }}
-                  onDragStart={(e) => {
-                    e.preventDefault();
-                    const img = e.target as HTMLImageElement;
-                    img.src = "/create/launchup.svg";
-                  }}
-                  onMouseOut={(e) => {
-                    e.preventDefault();
-                    const img = e.target as HTMLImageElement;
-                    img.src = "/create/launchup.svg";
-                  }}
-                />
-              </button>
                 }}
                 onMouseUp={(e) => {
                   const img = e.target as HTMLImageElement;
-                  if (!isSubmitting) {
-                    img.src = "/create/launchup.svg";
-                  } else {
-                    img.src = "/create/launchup.svg";
-                  }
+                  img.src = "/create/launchup.svg";
+                }}
+                onDragStart={(e) => {
+                  e.preventDefault();
+                  const img = e.target as HTMLImageElement;
+                  img.src = "/create/launchup.svg";
+                }}
+                onMouseOut={(e) => {
+                  e.preventDefault();
+                  const img = e.target as HTMLImageElement;
+                  img.src = "/create/launchup.svg";
                 }}
               />
             </button>
