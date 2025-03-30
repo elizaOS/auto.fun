@@ -299,7 +299,7 @@ export default function Page() {
             </Button>
           )}
         </div>
-        <div className="border bg-autofun-background-card h-full md:h-[50vh]">
+        <div className="border bg-autofun-background-card">
           {tab === "Trading" ? (
             <TradingViewChart name={token.name} token={token.mint} />
           ) : tab === "Community" ? (
