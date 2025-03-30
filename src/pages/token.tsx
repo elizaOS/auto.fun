@@ -19,7 +19,7 @@ import {
 import { getToken } from "@/utils/api";
 import { fetchTokenMarketMetrics } from "@/utils/blockchain";
 import { useQuery } from "@tanstack/react-query";
-import { InfoCircle } from "iconsax-react";
+import { Info as InfoCircle } from "lucide-react";
 import { Globe } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { TradingViewChart } from "@/components/trading-view-chart";
@@ -276,6 +276,7 @@ export default function Page() {
               <Button
                 className="w-full rounded-none "
                 disabled={!token?.website}
+                aria-label="website"
               >
                 <Globe />
               </Button>
@@ -284,6 +285,7 @@ export default function Page() {
               <Button
                 className="w-full rounded-none"
                 disabled={!token?.twitter}
+                aria-label="twitter"
               >
                 <SkeletonImage
                   src="/x.svg"
@@ -298,6 +300,7 @@ export default function Page() {
               <Button
                 className="w-full rounded-none py-0 flex"
                 disabled={!token?.telegram}
+                aria-label="telegram"
               >
                 <SkeletonImage
                   src="/telegram.svg"
@@ -308,11 +311,11 @@ export default function Page() {
                 />
               </Button>
             </Link>
-            <Link to={token?.website} className="w-full" target="_blank">
+            <Link to={token?.discord} className="w-full" target="_blank">
               <Button
-                className="w-full rounded-none px-0"
-                disabled={!token?.website}
-              >
+                className="w-full rounded-none  px-0"
+                disabled={!token?.discord}
+                aria-label="discord">
                 <SkeletonImage
                   src="/discord.svg"
                   height={24}
@@ -472,35 +475,21 @@ export default function Page() {
         {/* Tabs */}
         <div className="flex flex-row">
           <Button
+            variant={tab === "Trading" ? "tab" : "primary"}
             onClick={() => setTab("Trading")}
-            className={twMerge(
-              tab === "Trading"
-                ? "bg-autofun-stroke-highlight/80"
-                : "bg-white/15",
-            )}
           >
-            {" "}
-            Trading{" "}
+            Trading
           </Button>
           <Button
+            variant={tab === "Community" ? "tab" : "primary"}
             onClick={() => setTab("Community")}
-            className={twMerge(
-              tab === "Community"
-                ? "bg-autofun-stroke-highlight/80"
-                : "bg-white/15",
-            )}
           >
-            {" "}
-            Community{" "}
+            Community
           </Button>
           {admin && (
             <Button
+              variant={tab === "Admin" ? "tab" : "primary"}
               onClick={() => setTab("Admin")}
-              className={twMerge(
-                tab === "Admin"
-                  ? "bg-autofun-stroke-highlight/80"
-                  : "bg-white/15",
-              )}
             >
               Admin
             </Button>

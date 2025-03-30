@@ -43,6 +43,7 @@ export interface IToken {
   ticker: string;
   tokenPriceUSD: number;
   twitter: string;
+  discord: string;
   txId: string;
   url: string;
   virtualReserves: number;

@@ -1,8 +1,7 @@
-import { Plus } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router";
 import Button from "../button";
-import { twMerge } from "tailwind-merge";
+import SkeletonImage from "../skeleton-image";
+import { Badge } from "../ui/badge";
 
 export default function CommunityTab() {
   type ICommunityTabs = "Image" | "Audio";
@@ -12,34 +11,30 @@ export default function CommunityTab() {
     <div className="p-4 flex flex-col gap-4">
       <div className="flex flex-row">
         <Button
+          variant={communityTab === "Image" ? "tab" : "primary"}
           onClick={() => setCommunityTab("Image")}
-          className={twMerge(
-            communityTab === "Image"
-              ? "bg-autofun-stroke-highlight/80"
-              : "bg-white/15",
-          )}
         >
-          Image generator
+          Image
         </Button>
         <Button
+          variant={communityTab === "Audio" ? "tab" : "primary"}
           // onClick={() => setCommunityTab("Audio")}
-          className={twMerge(
-            communityTab === "Audio"
-              ? "bg-autofun-stroke-highlight/80"
-              : "bg-white/15",
-          )}
           disabled
         >
-          Audio generator
+          Audio
         </Button>
       </div>
       <div className="flex gap-4">
         {communityTab === "Image" ? (
           <div className="flex flex-col gap-4 w-full">
             <div className="font-dm-mono text-autofun-background-action-highlight text-xl">
-              Create a token community image by using the prompt
+              Input
             </div>
-
+            <p className="text-sm text-autofun-text-secondary font-dm-mono max-w-3xl w-fit">
+              I think we should be adding a proper description here of what you
+              can actually do with this prompt, otherwise it might be too
+              unclear for the end user.
+            </p>
             <div className="flex flex-col md:flex-row gap-4 w-full">
               <div className="flex flex-col gap-4 w-full grow">
                 <textarea
@@ -47,12 +42,12 @@ export default function CommunityTab() {
                   maxLength={200}
                   placeholder="Make me an image that looks like a dog in a wheelchair"
                 />
-                <button className="bg-[#03FF24] cursor-pointer mx-auto w-fit items-center p-3 mt-2 font-bold border-2 text-black text-[12px] md:text-[15px] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]">
-                  Generate Image
-                </button>
+                <div>
+                  <Button variant="secondary">Generate Image</Button>
+                </div>
               </div>
 
-              <div className="bg-black/20 p-4 space-y-2 w-full md:w-3/6 border h-fit">
+              {/* <div className="bg-black/20 p-4 space-y-2 w-full md:w-3/6 border h-fit">
                 <h1 className="mb-4 text-xl text-autofun-background-action-highlight font-dm-mono">
                   Agents
                 </h1>
@@ -77,6 +72,31 @@ export default function CommunityTab() {
                     Connect X account
                   </Link>
                 </div>
+              </div> */}
+            </div>
+
+            <div className="flex flex-col gap-4 border p-4">
+              <div className="flex items-center gap-2.5">
+                <div className="font-dm-mono text-autofun-background-action-highlight text-xl">
+                  Result
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Badge variant="default">Processing</Badge>
+                  <Badge variant="success">Processed</Badge>
+                  <Badge variant="destructive">Failed</Badge>
+                </div>
+              </div>
+              <SkeletonImage
+                src="/DEMO.png"
+                width={1024}
+                height={1024}
+                alt="generated_image"
+                className="xl:w-1/2 mx-auto"
+              />
+              <div className="w-full flex items-center justify-end">
+                <Button size="small" variant="secondary">
+                  Share on X
+                </Button>
               </div>
             </div>
           </div>
@@ -84,19 +104,6 @@ export default function CommunityTab() {
           <div>Audio generator page coming soon!</div>
         ) : null}
       </div>
-    </div>
-  );
-}
-
-function AgentProfile({ image, name }: { image: string; name: string }) {
-  return (
-    <div className="flex cursor-pointer hover:bg-white/15 hover:text-[#FFF200] flex-row space-x-3 transition-colors duration-200 ease-in-out">
-      <img
-        src={image}
-        alt="agent-profile-image"
-        className="h-[28px] w-[28px] transition-transform duration-300 ease-in-out hover:scale-110"
-      />
-      <h1 className="transition-colors duration-300 ease-in-out">{name}</h1>
     </div>
   );
 }

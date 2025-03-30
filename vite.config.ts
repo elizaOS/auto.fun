@@ -5,13 +5,20 @@ import preact from "@preact/preset-vite";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 /** @ts-ignore */
 import { fileURLToPath, URL } from "url";
+import Sitemap from 'vite-plugin-sitemap'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     preact(),
     tailwindcss(),
-    viteCompression(),
+    viteCompression({
+      verbose: true,
+      disable: false,
+      algorithm: "brotliCompress",
+      ext: ".br",
+    }),
+    Sitemap(),
     nodePolyfills({
       // Whether to polyfill `node:` protocol imports.
       protocolImports: true,
@@ -27,25 +34,31 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@/libraries": fileURLToPath(new URL("./public/libraries", import.meta.url)),
+      "@/libraries": fileURLToPath(
+        new URL("./public/libraries", import.meta.url)
+      ),
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
   define: {
     "import.meta.env.VITE_API_URL": JSON.stringify(
-      process.env.NODE_ENV === "production" 
-      ? (process.env.VITE_API_URL || "http://localhost:8787") 
-      : (process.env.VITE_DEV_API_URL || process.env.VITE_API_URL || "http://localhost:8787")
+      process.env.NODE_ENV === "production"
+        ? process.env.VITE_API_URL || "http://localhost:8787"
+        : process.env.VITE_DEV_API_URL ||
+            process.env.VITE_API_URL ||
+            "http://localhost:8787"
     ),
-    "import.meta.env.APP_ENV": JSON.stringify(process.env.NODE_ENV || "development"),
+    "import.meta.env.APP_ENV": JSON.stringify(
+      process.env.NODE_ENV || "development"
+    ),
     global: "window",
   },
   // Explicitly include node built-ins for browser compatibility
   optimizeDeps: {
     esbuildOptions: {
       define: {
-        global: 'globalThis'
+        global: "globalThis",
       },
-    }
+    },
   },
 });

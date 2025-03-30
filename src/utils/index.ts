@@ -112,3 +112,14 @@ export const sleep = (ms: number) => {
     }, ms);
   });
 };
+
+export const isFromDomain = (url: string, domain: string): boolean => {
+  try {
+    const parsedUrl = new URL(url);
+    return (
+      parsedUrl.hostname === domain || parsedUrl.hostname.endsWith(`.${domain}`)
+    );
+  } catch (error) {
+    return false;
+  }
+};

@@ -1,6 +1,5 @@
-import { Grid1 } from "iconsax-react";
 import Button from "./button";
-import { List } from "lucide-react";
+import { Grid, List } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { useViewMode } from "@/hooks/use-view-mode";
 
@@ -14,8 +13,9 @@ export default function GridListSwitcher() {
           activeTab === "grid" ? "" : "bg-transparent",
         ])}
         onClick={() => setActiveTab("grid")}
+        aria-label="grid"
       >
-        <Grid1 color="#eee" size={24} />
+        <Grid color="#eee" size={24} />
       </Button>
       <Button
         className={twMerge([
@@ -23,6 +23,7 @@ export default function GridListSwitcher() {
           activeTab === "list" ? "" : "bg-transparent",
         ])}
         onClick={() => setActiveTab("list")}
+        aria-label="list"
       >
         <List className="size-6" />
       </Button>
