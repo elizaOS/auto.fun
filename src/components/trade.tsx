@@ -8,15 +8,49 @@ import ConfigDialog from "./config-dialog";
 import SkeletonImage from "./skeleton-image";
 import useTokenBalance from "@/hooks/use-token-balance";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "react-toastify";
+import { useSolPriceContext } from "@/providers/sol-price-provider";
+import { fetchTokenMarketMetrics } from "@/utils/blockchain";
 
 export default function Trade({ token }: { token: IToken }) {
-  const solanaPrice = token?.solPriceUSD || 0;
+  const { solPrice: contextSolPrice } = useSolPriceContext();
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
     undefined,
   );
+  
+  // Fetch real-time blockchain metrics for this token
+  const metricsQuery = useQuery({
+    queryKey: ["blockchain-metrics", token?.mint],
+    queryFn: async () => {
+      if (!token?.mint) return null;
+      try {
+        console.log(`Trade: Fetching blockchain metrics for ${token.mint}`);
+        return await fetchTokenMarketMetrics(token.mint);
+      } catch (error) {
+        console.error(`Trade: Error fetching blockchain metrics:`, error);
+        return null;
+      }
+    },
+    enabled: !!token?.mint,
+    refetchInterval: 30_000, // Longer interval for blockchain queries
+    staleTime: 60000, // Data stays fresh for 1 minute
+  });
+  
+  // Use blockchain data if available, otherwise fall back to token data
+  const metrics = metricsQuery?.data;
+  const solanaPrice = metrics?.solPriceUSD || contextSolPrice || token?.solPriceUSD || 0;
+  const currentPrice = metrics?.currentPrice || token?.currentPrice || 0;
+  const tokenPriceUSD = metrics?.tokenPriceUSD || token?.tokenPriceUSD || 0;
+  
+  console.log("Trade component using prices:", { 
+    solanaPrice, 
+    currentPrice, 
+    tokenPriceUSD,
+    metricsAvailable: !!metrics
+  });
+  
   const wallet = useWallet();
   const balance = useTokenBalance(
     wallet.publicKey?.toBase58() || "",
@@ -42,6 +76,13 @@ export default function Trade({ token }: { token: IToken }) {
     onSuccess: () => toast.success(`Successfully swapped.`),
     onError: () => toast.error("Something bad happened.."),
   });
+  
+  // Set percentage buttons to use real balance
+  const handlePercentage = (percentage: number) => {
+    if (balance?.data?.formattedBalance) {
+      setSellingAmount(balance.data.formattedBalance * (percentage / 100));
+    }
+  };
 
   return (
     <div className="relative border p-4 bg-autofun-background-card">
@@ -69,13 +110,25 @@ export default function Trade({ token }: { token: IToken }) {
                 </Button>
                 {isTokenSelling ? (
                   <Fragment>
-                    <Button size="small" variant="trade">
+                    <Button 
+                      size="small" 
+                      variant="trade"
+                      onClick={() => handlePercentage(25)}
+                    >
                       25%
                     </Button>
-                    <Button size="small" variant="trade">
+                    <Button 
+                      size="small" 
+                      variant="trade"
+                      onClick={() => handlePercentage(50)}
+                    >
                       50%
                     </Button>
-                    <Button size="small" variant="trade">
+                    <Button 
+                      size="small" 
+                      variant="trade"
+                      onClick={() => handlePercentage(100)}
+                    >
                       100%
                     </Button>
                   </Fragment>
@@ -130,9 +183,9 @@ export default function Trade({ token }: { token: IToken }) {
               <span className="text-sm font-dm-mono text-autofun-text-secondary select-none">
                 {!isTokenSelling
                   ? formatNumber(Number(sellingAmount || 0) * solanaPrice, true)
-                  : token?.tokenPriceUSD
+                  : tokenPriceUSD
                     ? formatNumber(
-                        Number(sellingAmount || 0) * token?.tokenPriceUSD,
+                        Number(sellingAmount || 0) * tokenPriceUSD,
                         true,
                       )
                     : formatNumber(0)}
@@ -159,13 +212,29 @@ export default function Trade({ token }: { token: IToken }) {
             </span>
             <div className="flex justify-between gap-3">
               <span className="text-4xl font-dm-mono text-autofun-text-secondary select-none">
-                0.00
+                {sellingAmount && currentPrice && !isTokenSelling
+                  ? (Number(sellingAmount) / currentPrice).toFixed(2)
+                  : sellingAmount && isTokenSelling
+                  ? (Number(sellingAmount) * currentPrice).toFixed(4)
+                  : "0.00"}
               </span>
               <TokenDisplay token={token} isSolana={isTokenSelling} />
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm font-dm-mono text-autofun-text-secondary select-none">
-                $0
+                {sellingAmount && solanaPrice && !isTokenSelling
+                  ? formatNumber(
+                      (Number(sellingAmount) / currentPrice) * 
+                      tokenPriceUSD, 
+                      true
+                    )
+                  : sellingAmount && isTokenSelling && tokenPriceUSD
+                  ? formatNumber(
+                      (Number(sellingAmount) * currentPrice) * 
+                      solanaPrice, 
+                      true
+                    )
+                  : "$0.00"}
               </span>
               <Balance token={token} isSolana={isTokenSelling} />
             </div>
@@ -181,7 +250,7 @@ export default function Trade({ token }: { token: IToken }) {
           <div className="flex items-center gap-2">
             <Info className="text-red-600 size-4" />
             <p className="text-red-600 text-xs font-dm-mono">
-              Insufficient Funds: You have {balance?.data?.formattedBalance}{" "}
+              Insufficient Funds: You have {balance?.data?.formattedBalance?.toFixed(4) || "0"}{" "}
               {isTokenSelling ? token?.ticker : "SOL"}
             </p>
           </div>

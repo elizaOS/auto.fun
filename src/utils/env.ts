@@ -10,6 +10,7 @@ const unparsedEnv = {
   decimals: import.meta.env.VITE_DECIMALS,
   solanaNetwork: import.meta.env.VITE_SOLANA_NETWORK,
   apiUrl: import.meta.env.VITE_API_URL,
+  mainnetRpcUrl: import.meta.env.VITE_MAINNET_RPC_URL,
 } as const;
 
 const envSchema = z.object({
@@ -19,6 +20,7 @@ const envSchema = z.object({
   tokenSupply: z.string().min(1),
   decimals: z.string().min(1),
   apiUrl: z.string().min(1),
+  mainnetRpcUrl: z.string().optional(),
 });
 
 const parsedEnv = envSchema.parse(unparsedEnv);
