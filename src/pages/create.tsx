@@ -941,8 +941,8 @@ export const Create = () => {
   const maxInputSol = Math.min(MAX_INITIAL_SOL, maxUserSol);
 
   // Calculate dollar value based on SOL price
-  const solValueUsd =
-    solPrice && buyValue ? (Number(buyValue) * solPrice).toFixed(2) : "0.00";
+  // const solValueUsd =
+  //   solPrice && buyValue ? (Number(buyValue) * solPrice).toFixed(2) : "0.00";
 
   const insufficientBalance =
     Number(buyValue) > Number(balance?.data?.formattedBalance || 0) - 0.05;

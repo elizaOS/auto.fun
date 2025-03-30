@@ -1,5 +1,5 @@
 import { IToken } from "@/types";
-import { formatNumber, sleep } from "@/utils";
+import { formatNumber } from "@/utils";
 import { ArrowUpDown, Cog, Info, Loader2, Wallet } from "lucide-react";
 import { Fragment, useState } from "react";
 import { twMerge } from "tailwind-merge";

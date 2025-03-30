@@ -127,6 +127,7 @@ export const getToken = async ({
       twitter: data.twitter || "",
       txId: data.txId || "",
       url: data.url || "",
+      discord: data?.discord,
       virtualReserves:
         data.virtualReserves != null ? Number(data.virtualReserves) : 0,
       volume24h: data.volume24h != null ? Number(data.volume24h) : 0,
