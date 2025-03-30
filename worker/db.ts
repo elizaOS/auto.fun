@@ -52,6 +52,14 @@ export const tokens = sqliteTable("tokens", {
   txId: text("tx_id"),
 });
 
+// Table for tracking tokens users have hidden/removed from their wallet view
+export const hiddenTokens = sqliteTable("hidden_tokens", {
+  id: text("id").primaryKey(),
+  mint: text("mint").notNull(),
+  userAddress: text("user_address").notNull(),
+  createdAt: text("created_at", { mode: "text" }).notNull(),
+});
+
 // Swap schema
 export const swaps = sqliteTable("swaps", {
   id: text("id").primaryKey(),
@@ -205,6 +213,7 @@ export function getDB(env: Env) {
       mediaGenerations,
       cachePrices,
       preGeneratedTokens,
+      hiddenTokens,
     };
     return drizzle(env.DB as any, {
       schema: drizzleSchema,
@@ -261,6 +270,7 @@ const schema = {
   mediaGenerations,
   cachePrices,
   preGeneratedTokens,
+  hiddenTokens,
 };
 
 // Export schema for type inference

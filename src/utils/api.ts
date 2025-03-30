@@ -9,11 +9,13 @@ const fetcher = async (
   method: "GET" | "POST",
   body?: object,
 ) => {
-  const query: { method: string; body?: string; headers: object } = {
+  const query: { method: string; body?: string; headers: object; credentials: RequestCredentials } = {
     method,
     headers: {
       accept: "application/json",
+      "Content-Type": "application/json",
     },
+    credentials: 'include', // Include credentials (cookies) with every request
   };
 
   if (body) {
@@ -141,5 +143,27 @@ export const getChartTable = async ({
   } catch (err) {
     console.log("tradingchart === getch data error", err);
     return undefined;
+  }
+};
+
+export const removeTokenFromWallet = async (mintAddress: string) => {
+  try {
+    const response = await fetch(`${env.apiUrl}/api/tokens/${mintAddress}/remove-from-wallet`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include' // Important for auth cookies
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to remove token from wallet: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error removing token from wallet:', error);
+    throw error;
   }
 };

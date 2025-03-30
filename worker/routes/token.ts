@@ -1,5 +1,5 @@
 import { Connection, PublicKey } from "@solana/web3.js";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, sql, and, asc } from "drizzle-orm";
 import { Hono } from "hono";
 import { monitorSpecificToken } from "../cron";
 import {
@@ -10,6 +10,7 @@ import {
   tokenHolders,
   tokens,
   users,
+  hiddenTokens,
 } from "../db";
 import { Env } from "../env";
 import { logger } from "../logger";
@@ -29,38 +30,34 @@ const tokenRouter = new Hono<{
 // Get paginated tokens
 tokenRouter.get("/tokens", async (c) => {
   try {
-    const queryParams = c.req.query();
-
-    const limit = parseInt(queryParams.limit as string) || 50;
-    const page = parseInt(queryParams.page as string) || 1;
-    const skip = (page - 1) * limit;
-
-    // Get search, status, creator params for filtering
-    const search = queryParams.search as string;
-    const status = queryParams.status as string;
-    const creator = queryParams.creator as string;
-    const sortBy = (queryParams.sortBy as string) || "createdAt";
-    const sortOrder = (queryParams.sortOrder as string) || "desc";
-
-    // Use a shorter timeout for test environments
-    const timeoutDuration = c.env.NODE_ENV === "test" ? 2000 : 5000;
-
-    // Create a timeout promise to prevent hanging
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(
-        () => reject(new Error("Database query timed out")),
-        timeoutDuration,
-      ),
+    // Get query parameters
+    const page = parseInt(c.req.query("page") || "1", 10);
+    const limit = Math.min(
+      parseInt(c.req.query("limit") || "12", 10),
+      100, // Maximum 100 tokens per page
     );
+    const offset = (page - 1) * limit;
 
-    const countTimeoutPromise = new Promise<number>((_, reject) =>
-      setTimeout(
-        () => reject(new Error("Count query timed out")),
-        timeoutDuration / 2,
-      ),
-    );
+    const sortBy = c.req.query("sortBy") || "createdAt";
+    const sortOrder = c.req.query("sortOrder") || "desc";
+    const status = c.req.query("status");
+    const creator = c.req.query("creator");
+    const search = c.req.query("search");
 
     const db = getDB(c.env);
+    
+    // Get authenticated user if available
+    const user = c.get("user");
+    const userAddress = user?.publicKey;
+
+    // Create a timeout for query
+    const QUERY_TIMEOUT = 5000; // 5 seconds
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Query timeout")), QUERY_TIMEOUT),
+    );
+    const countTimeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Count query timeout")), QUERY_TIMEOUT),
+    );
 
     // Prepare a basic query
     const tokenQuery = async () => {
@@ -88,48 +85,51 @@ tokenRouter.get("/tokens", async (c) => {
                  ${tokens.mint} LIKE ${"%" + search + "%"})`,
           );
         }
-
-        // Apply sorting - map frontend sort values to actual DB columns
-        // Handle "featured" sort as a special case
-        if (sortBy === "featured") {
-          // For "featured", we'll sort by holderCount or marketCapUSD as a good default
-          if (sortOrder.toLowerCase() === "desc") {
-            tokensQuery = tokensQuery.orderBy(desc(tokens.holderCount));
-          } else {
-            tokensQuery = tokensQuery.orderBy(tokens.holderCount);
-          }
-        } else {
-          // For other columns, safely map to actual db columns
-          const validSortColumns = {
-            marketCapUSD: tokens.marketCapUSD,
-            createdAt: tokens.createdAt,
-            holderCount: tokens.holderCount,
-            tokenPriceUSD: tokens.tokenPriceUSD,
-            name: tokens.name,
-            ticker: tokens.ticker,
-            volume24h: tokens.volume24h,
-            curveProgress: tokens.curveProgress,
-          };
-
-          // Use the mapped column or default to createdAt
-          const sortColumn =
-            validSortColumns[sortBy as keyof typeof validSortColumns] ||
-            tokens.createdAt;
-
-          if (sortOrder.toLowerCase() === "desc") {
-            tokensQuery = tokensQuery.orderBy(desc(sortColumn));
-          } else {
-            tokensQuery = tokensQuery.orderBy(sortColumn);
-          }
+        
+        // Apply sorting
+        if (sortBy === "createdAt") {
+          tokensQuery = tokensQuery.orderBy(
+            sortOrder === "asc" ? asc(tokens.createdAt) : desc(tokens.createdAt),
+          );
+        } else if (sortBy === "marketCapUSD") {
+          tokensQuery = tokensQuery.orderBy(
+            sortOrder === "asc"
+              ? asc(tokens.marketCapUSD)
+              : desc(tokens.marketCapUSD),
+          );
+        } else if (sortBy === "currentPrice") {
+          tokensQuery = tokensQuery.orderBy(
+            sortOrder === "asc"
+              ? asc(tokens.currentPrice)
+              : desc(tokens.currentPrice),
+          );
+        } else if (sortBy === "volume24h") {
+          tokensQuery = tokensQuery.orderBy(
+            sortOrder === "asc" ? asc(tokens.volume24h) : desc(tokens.volume24h),
+          );
         }
 
-        // Apply pagination
-        tokensQuery = tokensQuery.limit(limit).offset(skip);
+        tokensQuery = tokensQuery.limit(limit).offset(offset);
 
-        // Execute the query
-        return await tokensQuery;
+        // Execute query
+        let results = await tokensQuery;
+        
+        // If we have an authenticated user, filter out hidden tokens post-query
+        if (userAddress) {
+          const hiddenTokensForUser = await db
+            .select()
+            .from(hiddenTokens)
+            .where(eq(hiddenTokens.userAddress, userAddress));
+            
+          if (hiddenTokensForUser.length > 0) {
+            const hiddenMintsSet = new Set(hiddenTokensForUser.map(ht => ht.mint));
+            results = results.filter(token => !hiddenMintsSet.has(token.mint));
+          }
+        }
+        
+        return results;
       } catch (error) {
-        logger.error("Error in token query:", error);
+        logger.error("Query execution error:", error);
         return [];
       }
     };
@@ -2991,6 +2991,85 @@ tokenRouter.get("/dev/emit-token-update/:mint", async (c) => {
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
       500,
+    );
+  }
+});
+
+// Add this new endpoint to handle removing tokens from a user's view
+tokenRouter.post("/tokens/:mint/remove-from-wallet", async (c) => {
+  try {
+    // Require authentication
+    const user = c.get("user");
+    if (!user) {
+      return c.json({ error: "Authentication required" }, 401);
+    }
+
+    const mint = c.req.param("mint");
+    if (!mint) {
+      return c.json({ error: "Token mint address is required" }, 400);
+    }
+
+    logger.log(`Removing token ${mint} from wallet view for user ${user.publicKey}`);
+
+    // Validate mint format (basic check)
+    if (mint.length < 30 || mint.length > 50) {
+      return c.json({ error: "Invalid token mint address format" }, 400);
+    }
+
+    const db = getDB(c.env);
+
+    // Check if token exists
+    const existingToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    if (!existingToken || existingToken.length === 0) {
+      return c.json({ error: "Token not found" }, 404);
+    }
+
+    // Check if token is already hidden for this user
+    const alreadyHidden = await db
+      .select()
+      .from(hiddenTokens)
+      .where(
+        and(
+          eq(hiddenTokens.mint, mint),
+          eq(hiddenTokens.userAddress, user.publicKey)
+        )
+      )
+      .limit(1);
+
+    if (alreadyHidden && alreadyHidden.length > 0) {
+      return c.json({ 
+        success: true, 
+        message: "Token was already removed from wallet view" 
+      });
+    }
+
+    // Add token to hidden tokens for this user
+    const now = new Date().toISOString();
+    const hiddenTokenId = crypto.randomUUID();
+
+    await db.insert(hiddenTokens).values({
+      id: hiddenTokenId,
+      mint: mint,
+      userAddress: user.publicKey,
+      createdAt: now,
+    });
+
+    return c.json({
+      success: true,
+      message: "Token successfully removed from wallet view"
+    });
+  } catch (error) {
+    logger.error("Error removing token from wallet:", error);
+    return c.json(
+      {
+        error: error instanceof Error ? error.message : "Unknown error removing token",
+      },
+      500
     );
   }
 });

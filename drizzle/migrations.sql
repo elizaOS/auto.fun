@@ -188,6 +188,15 @@ CREATE TABLE IF NOT EXISTS cache_prices (
   expires_at INTEGER NOT NULL
 );
 
+-- Create hidden tokens table
+CREATE TABLE IF NOT EXISTS hidden_tokens (
+  id TEXT PRIMARY KEY,
+  mint TEXT NOT NULL,
+  user_address TEXT NOT NULL,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  FOREIGN KEY (mint) REFERENCES tokens(mint)
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_tokens_creator ON tokens(creator);
 CREATE INDEX IF NOT EXISTS idx_tokens_status ON tokens(status);

@@ -294,6 +294,8 @@ export const useProfile = () => {
 
   const fetchProfile = useCallback(async () => {
     try {
+      // Note: The server already filters out hidden tokens in the API response
+      // so we don't need to filter them again here
       const tokensHeld = await getOwnedTokens();
       const tokensCreated = await getCreatedTokens();
 
