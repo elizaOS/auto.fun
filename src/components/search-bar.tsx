@@ -1,8 +1,8 @@
-import { Search, X } from "lucide-react";
+import { Search } from "lucide-react";
 import { Link } from "react-router";
 import CopyButton from "./copy-button";
 import { formatNumber } from "@/utils";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { debounce } from "lodash";
 import { IToken } from "@/types";
 import { useOutsideClickDetection } from "@/hooks/use-outside-clickdetection";
