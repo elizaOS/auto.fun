@@ -11,8 +11,6 @@ import { config } from "dotenv";
 
 config();
 
-// Helper to determine if we're in development mode
-const isDev = process.env.NODE_ENV !== "production";
 // Helper to determine if we're using devnet (default to true for development)
 const isDevnet = (process.env.VITE_SOLANA_NETWORK || "devnet") === "devnet";
 
@@ -51,7 +49,7 @@ export default defineConfig({
   },
   define: {
     "import.meta.env.VITE_API_URL": JSON.stringify(
-      isDev
+      isDevnet
         ? (process.env.VITE_DEV_API_URL || process.env.VITE_API_URL || "https://api-dev.autofun.workers.dev")
         :  (process.env.VITE_API_URL || "https://api.autofun.workers.dev")
     ),

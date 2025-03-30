@@ -111,16 +111,7 @@ export async function uploadToCloudflare(
 
       return localUrl;
     }
-
-    // For non-local development, upload to the actual R2 bucket
-    if (!env.R2) {
-      logger.log("R2 is not available, using mock storage URL");
-      const baseUrl = env.R2_PUBLIC_URL || "https://mock-storage.example.com";
-      const publicUrl = `${baseUrl}/${objectKey}`;
-      logUploadedFile(env, objectKey, publicUrl);
-      return publicUrl;
-    }
-
+    
     // Prepare data for upload
     let objectData: ArrayBuffer;
     if (options.isJson) {
