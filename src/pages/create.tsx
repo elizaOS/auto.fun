@@ -10,9 +10,9 @@ import { useNavigate } from "react-router";
 import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
 import { EmptyState } from "@/components/empty-state";
-import useTokenBalance from "@/hooks/use-token-balance";
 import { toast } from "react-toastify";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
+import { useSolBalance } from "@/hooks/use-token-balance";
 
 const MAX_INITIAL_SOL = 45;
 // Use the token supply and virtual reserves from environment or fallback to defaults
@@ -942,18 +942,15 @@ export const Create = () => {
   const [buyValue, setBuyValue] = useState(form.initialSol || 0);
   const wallet = useWallet();
   console.log("wallet", wallet);
-  const balance = useTokenBalance(
-    wallet.publicKey?.toBase58() || "",
-    "So11111111111111111111111111111111111111111",
-  );
+  const balance = useSolBalance()
 
   console.log("balance", balance);
 
   const { solPrice } = useSolPriceContext();
 
   // Calculate max SOL the user can spend (leave 0.05 SOL for transaction fees)
-  const maxUserSol = balance?.data?.formattedBalance
-    ? Math.max(0, balance.data.formattedBalance - 0.05)
+  const maxUserSol = balance
+    ? Math.max(0, balance - 0.05)
     : 0;
   // Use the smaller of MAX_INITIAL_SOL or the user's max available SOL
   const maxInputSol = Math.min(MAX_INITIAL_SOL, maxUserSol);
@@ -963,7 +960,7 @@ export const Create = () => {
   //   solPrice && buyValue ? (Number(buyValue) * solPrice).toFixed(2) : "0.00";
 
   console.log("buyValue", buyValue);
-  console.log("balance", balance?.data?.formattedBalance);
+  console.log("balance", balance);
 
   // Log development mode and active tab for debugging
   console.log("VITE_SOLANA_NETWORK:", env.solanaNetwork);
@@ -973,7 +970,7 @@ export const Create = () => {
   const insufficientBalance =
     activeTab === FormTab.IMPORT
       ? false
-      : Number(buyValue) > Number(balance?.data?.formattedBalance || 0) - 0.05;
+      : Number(buyValue) > Number(balance || 0) - 0.05;
 
   console.log("Insufficient balance:", insufficientBalance);
 

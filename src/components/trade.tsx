@@ -8,8 +8,7 @@ import ConfigDialog from "./config-dialog";
 import SkeletonImage from "./skeleton-image";
 import { useSwap } from "@/hooks/use-swap";
 import Loader from "./loader";
-import useTokenBalance from "@/hooks/use-token-balance";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useTokenBalance } from "@/hooks/use-token-balance";
 import { useQuery } from "@tanstack/react-query";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { fetchTokenMarketMetrics } from "@/utils/blockchain";
@@ -53,16 +52,11 @@ export default function Trade({ token }: { token: IToken }) {
     metricsAvailable: !!metrics,
   });
 
-  const wallet = useWallet();
-  const balance = useTokenBalance(
-    wallet.publicKey?.toBase58() || "",
-    !isTokenSelling
-      ? "So11111111111111111111111111111111111111111"
-      : token?.mint || "",
-  );
+  const {solBalance, tokenBalance} = useTokenBalance({ tokenId: token.mint });
+  const balance = isTokenSelling ? tokenBalance : solBalance
 
   const insufficientBalance =
-    (sellingAmount || 0) > (balance?.data?.formattedBalance || 0);
+    (sellingAmount || 0) > balance
 
   const [error] = useState<string | undefined>("");
 
@@ -74,8 +68,8 @@ export default function Trade({ token }: { token: IToken }) {
 
   // Set percentage buttons to use real balance
   const handlePercentage = (percentage: number) => {
-    if (balance?.data?.formattedBalance) {
-      setSellingAmount(balance.data.formattedBalance * (percentage / 100));
+    if (balance) {
+      setSellingAmount(balance * (percentage / 100));
     }
   };
 
@@ -194,6 +188,7 @@ export default function Trade({ token }: { token: IToken }) {
                 token={token}
                 isSolana={!isTokenSelling}
                 setSellingAmount={setSellingAmount}
+                balance={isTokenSelling ? tokenBalance : solBalance} 
               />
             </div>
           </div>
@@ -242,7 +237,7 @@ export default function Trade({ token }: { token: IToken }) {
                       )
                     : "$0.00"}
               </span>
-              <Balance token={token} isSolana={isTokenSelling} />
+              <Balance token={token} isSolana={isTokenSelling} balance={isTokenSelling ? solBalance : tokenBalance} />
             </div>
           </div>
         </div>
@@ -257,7 +252,7 @@ export default function Trade({ token }: { token: IToken }) {
             <Info className="text-red-600 size-4" />
             <p className="text-red-600 text-xs font-dm-mono">
               Insufficient Funds: You have{" "}
-              {balance?.data?.formattedBalance?.toFixed(4) || "0"}{" "}
+              {balance.toFixed(4) || "0"}{" "}
               {isTokenSelling ? token?.ticker : "SOL"}
             </p>
           </div>
@@ -321,18 +316,15 @@ const Balance = ({
   token,
   isSolana,
   setSellingAmount,
+  balance
 }: {
   token?: IToken;
   isSolana?: boolean;
   setSellingAmount?: any;
+  balance: number
 }) => {
-  const wallet = useWallet();
-  const balance = useTokenBalance(
-    wallet.publicKey?.toBase58() || "",
-    isSolana
-      ? "So11111111111111111111111111111111111111111"
-      : token?.mint || "",
-  );
+  const formattedBalance = isSolana ? formatNumber(balance, true, true) : formatNumber(balance, undefined, true)
+
   return (
     <div
       className={twMerge([
@@ -340,14 +332,14 @@ const Balance = ({
         setSellingAmount ? "cursor-pointer" : "",
       ])}
       onClick={() => {
-        if (balance?.data?.formattedBalance && setSellingAmount) {
-          setSellingAmount(balance?.data?.formattedBalance);
+        if (balance && setSellingAmount) {
+          setSellingAmount(balance);
         }
       }}
     >
       <Wallet className="text-autofun-text-secondary size-[18px]" />
       <span className="text-sm font-dm-mono text-autofun-text-secondary uppercase">
-        {balance.data?.formattedBalance} {isSolana ? "SOL" : token?.ticker}
+        {formattedBalance} {isSolana ? "SOL" : token?.ticker}
       </span>
     </div>
   );
