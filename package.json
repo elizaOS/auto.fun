@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "packageManager": "bun@1.2.6",
+  "packageManager": "^bun@1.2.5",
   "scripts": {
     "preinstall": "npx only-allow bun",
     "postinstall": "cd vendor/udf && bun install",
