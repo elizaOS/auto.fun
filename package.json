@@ -62,6 +62,7 @@
     "@uidotdev/usehooks": "^2.4.1",
     "@web3auth/sign-in-with-solana": "^4.0.0",
     "agent-twitter-client": "0.0.18",
+    "auto.fun": "file:",
     "axios": "^1.8.4",
     "better-sqlite3": "^11.9.1",
     "bn.js": "^5.2.1",
