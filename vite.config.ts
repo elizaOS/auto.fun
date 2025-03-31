@@ -3,7 +3,6 @@ import tailwindcss from "@tailwindcss/vite";
 import viteCompression from "vite-plugin-compression";
 import preact from "@preact/preset-vite";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
-/** @ts-ignore */
 import { fileURLToPath, URL } from "url";
 import Sitemap from 'vite-plugin-sitemap'
 
@@ -11,7 +10,6 @@ import { config } from "dotenv";
 
 config();
 
-// Helper to determine if we're using devnet (default to true for development)
 const isDevnet = (process.env.VITE_SOLANA_NETWORK || "devnet") === "devnet";
 
 // https://vite.dev/config/
