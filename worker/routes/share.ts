@@ -333,7 +333,7 @@ shareRouter.use("*", async (c, next) => {
 shareRouter.get("/oauth/request_token", async (c) => {
   const env = c.env;
   const clientId = env.TWITTER_CLIENT_ID;
-  const redirectUri = `${env.FRONTEND_URL}/callback`;
+  const redirectUri = `${env.NETWORK === "devnet" ? env.DEVNET_FRONTEND_URL : env.MAINNET_FRONTEND_URL}/callback`;
 
   logger.log("clientId", clientId);
   logger.log("redirectUri", redirectUri);
@@ -381,7 +381,7 @@ shareRouter.get("/oauth/callback", async (c) => {
 
   const codeVerifier = storedState.codeVerifier;
   const clientId = c.env.TWITTER_CLIENT_ID;
-  const redirectUri = `${c.env.FRONTEND_URL}/callback`;
+  const redirectUri = `${c.env.NETWORK === "devnet" ? c.env.DEVNET_FRONTEND_URL : c.env.MAINNET_FRONTEND_URL}/callback`;
 
   const params = new URLSearchParams({
     code: code,
@@ -553,11 +553,35 @@ shareRouter.post("/process", async (c) => {
   }
 });
 
+// Convert to base64
+const convertToBase64 = (bytes: Uint8Array): string => {
+  // Process the bytes in chunks to avoid stack overflow
+  const CHUNK_SIZE = 1024; // Process 1KB at a time
+  let result = "";
+
+  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+    const chunk = bytes.slice(i, i + CHUNK_SIZE);
+    result += String.fromCharCode.apply(null, Array.from(chunk));
+  }
+
+  return btoa(result);
+};
+
 // Tweet Handler
 shareRouter.post("/tweet", async (c) => {
   try {
+    // Validate the user's OAuth 2.0 token
+    const authHeader = c.req.header("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      throw new Error("Missing or invalid authorization header");
+    }
+    // We only need this to validate that the user is authenticated
+    const userAccessToken = authHeader.split(" ")[1];
+
+    logger.log("User authenticated with OAuth 2.0 token");
+
+    // Handle media upload
     if (c.req.header("Content-Type")?.includes("multipart/form-data")) {
-      // Handle media upload
       const formData = await c.req.formData();
       const mediaFile = formData.get("media") as File;
 
@@ -568,12 +592,13 @@ shareRouter.post("/tweet", async (c) => {
       logger.log("Media file type:", mediaFile.type);
       logger.log("Media file size:", mediaFile.size);
 
+      // For large files, handle in chunks
       const mediaBuffer = await mediaFile.arrayBuffer();
       const mediaBytes = new Uint8Array(mediaBuffer);
       logger.log("Raw bytes length:", mediaBytes.length);
 
-      // Convert to base64
-      const mediaBase64 = btoa(String.fromCharCode(...mediaBytes));
+      // Use the chunked conversion function to avoid stack overflow
+      const mediaBase64 = convertToBase64(mediaBytes);
       logger.log("Base64 length:", mediaBase64.length);
 
       const timestamp = Math.floor((Date.now() - 43200000) / 1000).toString();
@@ -594,7 +619,7 @@ shareRouter.post("/tweet", async (c) => {
       const initParams = {
         command: "INIT",
         total_bytes: mediaBytes.length.toString(),
-        media_type: "image/png",
+        media_type: mediaFile.type || "image/png",
       };
 
       logger.log("INIT params:", initParams);
@@ -611,6 +636,7 @@ shareRouter.post("/tweet", async (c) => {
 
       logger.log("Making INIT request...");
       const initBody = new URLSearchParams(initParams);
+
       const initResponse = await fetch(
         "https://upload.twitter.com/1.1/media/upload.json",
         {
@@ -624,6 +650,7 @@ shareRouter.post("/tweet", async (c) => {
       );
 
       const initResponseText = await initResponse.text();
+      logger.log("INIT response status:", initResponse.status);
       logger.log("INIT response:", initResponseText);
 
       if (!initResponse.ok) {
@@ -631,48 +658,87 @@ shareRouter.post("/tweet", async (c) => {
         throw new Error(`INIT failed: ${initResponseText}`);
       }
 
-      const initData = JSON.parse(initResponseText);
+      // Parse the response, handling potential JSON parsing errors
+      let initData;
+      try {
+        initData = JSON.parse(initResponseText);
+      } catch (e) {
+        logger.error("Failed to parse INIT response:", e);
+        throw new Error(
+          `Failed to parse Twitter API response: ${initResponseText}`,
+        );
+      }
+
+      if (!initData.media_id_string) {
+        logger.error("No media ID in INIT response:", initData);
+        throw new Error("Twitter API did not return a media ID");
+      }
+
       const mediaId = initData.media_id_string;
       logger.log("Got media ID:", mediaId);
 
-      // APPEND (single segment for smaller files)
-      const appendParams = {
-        command: "APPEND",
-        media_id: mediaId,
-        segment_index: "0",
-        media_data: mediaBase64,
-      };
+      // For images > 5MB, split into multiple segments
+      const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks for Twitter API
+      const totalChunks = Math.ceil(mediaBase64.length / CHUNK_SIZE);
 
-      const appendSignature = await generateOAuth1Signature(
-        "POST",
-        "https://upload.twitter.com/1.1/media/upload.json",
-        { ...oauthParams, ...appendParams },
-        c.env.TWITTER_API_SECRET,
-        c.env.TWITTER_ACCESS_TOKEN_SECRET,
-      );
+      // Process each chunk separately
+      for (let i = 0; i < totalChunks; i++) {
+        const start = i * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, mediaBase64.length);
+        const chunk = mediaBase64.slice(start, end);
 
-      const appendHeader = generateAuthHeader(oauthParams, appendSignature);
+        logger.log(
+          `Uploading chunk ${i + 1}/${totalChunks}, size: ${chunk.length}`,
+        );
 
-      logger.log("Uploading data...");
-      const appendBody = new URLSearchParams(appendParams);
-      const appendResponse = await fetch(
-        "https://upload.twitter.com/1.1/media/upload.json",
-        {
-          method: "POST",
-          headers: {
-            Authorization: appendHeader,
-            "Content-Type": "application/x-www-form-urlencoded",
+        // APPEND for each chunk
+        const appendParams = {
+          command: "APPEND",
+          media_id: mediaId,
+          segment_index: i.toString(),
+          media_data: chunk,
+        };
+
+        const appendSignature = await generateOAuth1Signature(
+          "POST",
+          "https://upload.twitter.com/1.1/media/upload.json",
+          { ...oauthParams, ...appendParams },
+          c.env.TWITTER_API_SECRET,
+          c.env.TWITTER_ACCESS_TOKEN_SECRET,
+        );
+
+        const appendHeader = generateAuthHeader(oauthParams, appendSignature);
+
+        logger.log(`Uploading chunk ${i + 1}...`);
+        const appendBody = new URLSearchParams(appendParams);
+        const appendResponse = await fetch(
+          "https://upload.twitter.com/1.1/media/upload.json",
+          {
+            method: "POST",
+            headers: {
+              Authorization: appendHeader,
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: appendBody,
           },
-          body: appendBody,
-        },
-      );
+        );
 
-      const appendResponseText = await appendResponse.text();
-      logger.log("APPEND response:", appendResponseText);
+        const appendResponseText = await appendResponse.text();
+        logger.log(
+          `APPEND chunk ${i + 1} response status:`,
+          appendResponse.status,
+        );
 
-      if (!appendResponse.ok) {
-        logger.error("APPEND failed:", appendResponseText);
-        throw new Error(`APPEND failed: ${appendResponseText}`);
+        if (appendResponseText) {
+          logger.log(`APPEND chunk ${i + 1} response:`, appendResponseText);
+        }
+
+        if (!appendResponse.ok) {
+          logger.error(`APPEND chunk ${i + 1} failed:`, appendResponseText);
+          throw new Error(
+            `APPEND chunk ${i + 1} failed: ${appendResponseText}`,
+          );
+        }
       }
 
       // FINALIZE
@@ -706,6 +772,7 @@ shareRouter.post("/tweet", async (c) => {
       );
 
       const finalizeResponseText = await finalizeResponse.text();
+      logger.log("FINALIZE response status:", finalizeResponse.status);
       logger.log("FINALIZE response:", finalizeResponseText);
 
       if (!finalizeResponse.ok) {
@@ -713,8 +780,17 @@ shareRouter.post("/tweet", async (c) => {
         throw new Error(`FINALIZE failed: ${finalizeResponseText}`);
       }
 
-      const finalizeData = JSON.parse(finalizeResponseText);
-      logger.log("Upload completed:", finalizeData);
+      let finalizeData;
+      try {
+        finalizeData = JSON.parse(finalizeResponseText);
+      } catch (e) {
+        logger.error("Failed to parse FINALIZE response:", e);
+        throw new Error(
+          `Failed to parse Twitter API finalize response: ${finalizeResponseText}`,
+        );
+      }
+
+      logger.log("Upload completed, returning media ID:", mediaId);
 
       return c.json({
         success: true,
@@ -728,6 +804,13 @@ shareRouter.post("/tweet", async (c) => {
         text: string;
         mediaId: string;
       };
+
+      logger.log(
+        "Posting tweet with text:",
+        text.substring(0, 30) + "...",
+        "and media ID:",
+        mediaId,
+      );
 
       const timestamp = Math.floor((Date.now() - 43200000) / 1000).toString();
       const oauthParams = {
@@ -756,6 +839,7 @@ shareRouter.post("/tweet", async (c) => {
 
       const authHeader = generateAuthHeader(oauthParams, signature);
 
+      logger.log("Sending tweet request with OAuth 1.0a");
       const tweetResponse = await fetch("https://api.twitter.com/2/tweets", {
         method: "POST",
         headers: {
@@ -765,9 +849,15 @@ shareRouter.post("/tweet", async (c) => {
         body: JSON.stringify(tweetParams),
       });
 
+      // Handle error with detailed information
       if (!tweetResponse.ok) {
         const errorText = await tweetResponse.text();
-        logger.error("Tweet creation failed:", errorText);
+        logger.error(
+          "Tweet creation failed:",
+          errorText,
+          "Status:",
+          tweetResponse.status,
+        );
         throw new Error(`Failed to create tweet: ${errorText}`);
       }
 

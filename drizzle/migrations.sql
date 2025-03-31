@@ -1,5 +1,19 @@
 -- Migration file for D1 database
 
+CREATE TABLE IF NOT EXISTS oauth_verifiers (
+  id TEXT PRIMARY KEY,
+  state TEXT NOT NULL,
+  code_verifier TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS access_tokens (
+  id TEXT PRIMARY KEY,
+  access_token TEXT NOT NULL,
+  refresh_token TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);
+
 -- Add pre_generated_tokens table
 CREATE TABLE IF NOT EXISTS pre_generated_tokens (
   id TEXT PRIMARY KEY,
@@ -188,6 +202,19 @@ CREATE TABLE IF NOT EXISTS cache_prices (
   expires_at INTEGER NOT NULL
 );
 
+-- Create token_agents table
+CREATE TABLE IF NOT EXISTS token_agents (
+  id TEXT PRIMARY KEY,
+  token_mint TEXT NOT NULL,
+  owner_address TEXT NOT NULL,
+  twitter_user_name TEXT NOT NULL,
+  twitter_image_url TEXT NOT NULL,
+  official INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  FOREIGN KEY (token_mint) REFERENCES tokens(mint),
+  UNIQUE(token_mint, twitter_user_name)
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_tokens_creator ON tokens(creator);
 CREATE INDEX IF NOT EXISTS idx_tokens_status ON tokens(status);
@@ -208,4 +235,9 @@ CREATE INDEX IF NOT EXISTS idx_token_holders_amount ON token_holders(amount);
 
 CREATE INDEX IF NOT EXISTS idx_cache_prices_type ON cache_prices(type);
 CREATE INDEX IF NOT EXISTS idx_cache_prices_symbol ON cache_prices(symbol);
-CREATE INDEX IF NOT EXISTS idx_cache_prices_expires ON cache_prices(expires_at); 
+CREATE INDEX IF NOT EXISTS idx_cache_prices_expires ON cache_prices(expires_at);
+
+-- Create indexes for token_agents
+CREATE INDEX IF NOT EXISTS idx_token_agents_mint ON token_agents(token_mint);
+CREATE INDEX IF NOT EXISTS idx_token_agents_owner ON token_agents(owner_address);
+CREATE INDEX IF NOT EXISTS idx_token_agents_official ON token_agents(official); 

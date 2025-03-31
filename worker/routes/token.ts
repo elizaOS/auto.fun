@@ -1,6 +1,7 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import { desc, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
+import { getCookie } from "hono/cookie";
 import { monitorSpecificToken } from "../cron";
 import {
   getDB,
@@ -2988,6 +2989,194 @@ tokenRouter.get("/dev/emit-token-update/:mint", async (c) => {
     });
   } catch (error) {
     logger.error("Error emitting token update event:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500,
+    );
+  }
+});
+
+// Add token update endpoint for social links
+tokenRouter.post("/tokens/:mint/update", async (c) => {
+  try {
+    // Get auth headers and extract from cookies
+    const authHeader = c.req.header("Authorization") || "none";
+    const publicKeyCookie = getCookie(c, "publicKey");
+    const authTokenCookie = getCookie(c, "auth_token");
+
+    logger.log("Token update request received");
+    logger.log("Authorization header:", authHeader);
+    logger.log("Auth cookie present:", !!authTokenCookie);
+    logger.log("PublicKey cookie:", publicKeyCookie);
+
+    // Require authentication
+    const user = c.get("user");
+
+    if (!user) {
+      logger.error("Authentication required - no user in context");
+
+      // For development purposes, if in dev mode and there's a publicKey in the body, use that
+      if (c.env.NODE_ENV === "development") {
+        try {
+          const body = await c.req.json();
+          if (body._devWalletOverride && c.env.NODE_ENV === "development") {
+            logger.log(
+              "DEVELOPMENT: Using wallet override:",
+              body._devWalletOverride,
+            );
+            c.set("user", { publicKey: body._devWalletOverride });
+          } else {
+            return c.json({ error: "Authentication required" }, 401);
+          }
+        } catch (e) {
+          logger.error("Failed to parse request body for dev override");
+          return c.json({ error: "Authentication required" }, 401);
+        }
+      } else {
+        return c.json({ error: "Authentication required" }, 401);
+      }
+    }
+
+    // At this point user should be available - get it again after potential override
+    const authenticatedUser = c.get("user");
+    if (!authenticatedUser) {
+      return c.json({ error: "Authentication failed" }, 401);
+    }
+
+    // User is available, continue with the request
+    logger.log("Authenticated user:", authenticatedUser.publicKey);
+
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    // Get request body with updated token metadata
+    let body;
+    try {
+      body = await c.req.json();
+      logger.log("Request body:", body);
+    } catch (e) {
+      logger.error("Failed to parse request body:", e);
+      return c.json({ error: "Invalid request body" }, 400);
+    }
+
+    // Get DB connection
+    const db = getDB(c.env);
+
+    // Get the token to check permissions
+    const tokenData = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    if (!tokenData || tokenData.length === 0) {
+      logger.error(`Token not found: ${mint}`);
+      return c.json({ error: "Token not found" }, 404);
+    }
+
+    // Log for debugging auth issues
+    logger.log(`Update attempt for token ${mint}`);
+    logger.log(`User wallet: ${authenticatedUser.publicKey}`);
+    logger.log(`Token creator: ${tokenData[0].creator}`);
+
+    // Try multiple ways to compare addresses
+    let isCreator = false;
+
+    try {
+      // Try normalized comparison with PublicKey objects
+      const normalizedWallet = new PublicKey(
+        authenticatedUser.publicKey,
+      ).toString();
+      const normalizedCreator = new PublicKey(tokenData[0].creator).toString();
+
+      logger.log("Normalized wallet:", normalizedWallet);
+      logger.log("Normalized creator:", normalizedCreator);
+
+      isCreator = normalizedWallet === normalizedCreator;
+      logger.log("Exact match after normalization:", isCreator);
+
+      if (!isCreator) {
+        // Case-insensitive as fallback
+        const caseMatch =
+          authenticatedUser.publicKey.toLowerCase() ===
+          tokenData[0].creator.toLowerCase();
+        logger.log("Case-insensitive match:", caseMatch);
+        isCreator = caseMatch;
+      }
+    } catch (error) {
+      logger.error("Error normalizing addresses:", error);
+
+      // Fallback to simple comparison
+      isCreator = authenticatedUser.publicKey === tokenData[0].creator;
+      logger.log("Simple equality check:", isCreator);
+    }
+
+    // Special dev override if enabled
+    if (c.env.NODE_ENV === "development" && body._forceAdmin === true) {
+      logger.log("DEVELOPMENT: Admin access override enabled");
+      isCreator = true;
+    }
+
+    // Check if user is the token creator
+    if (!isCreator) {
+      logger.error("User is not authorized to update this token");
+      return c.json(
+        {
+          error: "Only the token creator can update token information",
+          userAddress: authenticatedUser.publicKey,
+          creatorAddress: tokenData[0].creator,
+        },
+        403,
+      );
+    }
+
+    // At this point, user is authenticated and authorized
+    logger.log("User is authorized to update token");
+
+    // Update token with the new social links
+    await db
+      .update(tokens)
+      .set({
+        website: body.website ?? tokenData[0].website,
+        twitter: body.twitter ?? tokenData[0].twitter,
+        telegram: body.telegram ?? tokenData[0].telegram,
+        discord: body.discord ?? tokenData[0].discord,
+        lastUpdated: new Date().toISOString(),
+      })
+      .where(eq(tokens.mint, mint));
+
+    logger.log("Token updated successfully");
+
+    // Get the updated token data
+    const updatedToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    // Emit WebSocket event for token update if needed
+    try {
+      await processTokenUpdateEvent(c.env, {
+        ...updatedToken[0],
+        event: "tokenUpdated",
+        timestamp: new Date().toISOString(),
+      });
+
+      logger.log(`Emitted token update event for ${mint}`);
+    } catch (wsError) {
+      // Don't fail if WebSocket fails
+      logger.error(`WebSocket error when emitting token update: ${wsError}`);
+    }
+
+    return c.json({
+      success: true,
+      message: "Token information updated successfully",
+      token: updatedToken[0],
+    });
+  } catch (error) {
+    logger.error("Error updating token:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
       500,

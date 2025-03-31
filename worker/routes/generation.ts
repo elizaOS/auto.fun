@@ -1556,4 +1556,289 @@ export async function checkAndReplenishTokens(
   }
 }
 
+// Fix the enhance-and-generate endpoint to properly handle image generation and return results
+app.post("/enhance-and-generate", async (c) => {
+  try {
+    // Verify user is authenticated with a wallet
+    const user = c.get("user");
+    if (!user || !user.publicKey) {
+      return c.json(
+        {
+          success: false,
+          error:
+            "Authentication required. Please connect your wallet to generate images.",
+        },
+        401,
+      );
+    }
+
+    console.log(`Enhance-and-generate request from user: ${user.publicKey}`);
+
+    // Parse request body
+    let body;
+    try {
+      body = await c.req.json();
+      console.log(
+        "Request body:",
+        JSON.stringify(body).substring(0, 200) + "...",
+      );
+    } catch (error) {
+      return c.json(
+        {
+          success: false,
+          error: "Invalid JSON in request body",
+          details:
+            error instanceof Error ? error.message : "Unknown parsing error",
+        },
+        400,
+      );
+    }
+
+    // Define schema for token-specific generation
+    const EnhanceAndGenerateSchema = z.object({
+      userPrompt: z.string().min(1).max(500),
+      tokenMint: z.string().min(32).max(44),
+      tokenMetadata: z.object({
+        name: z.string(),
+        symbol: z.string(),
+        description: z.string().optional(),
+        prompt: z.string().optional(),
+      }),
+    });
+
+    // Validate with detailed error handling
+    let validatedData;
+    try {
+      validatedData = EnhanceAndGenerateSchema.parse(body);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return c.json(
+          {
+            success: false,
+            error: "Validation error",
+            details: error.errors.map((e) => ({
+              path: e.path.join("."),
+              message: e.message,
+              code: e.code,
+            })),
+          },
+          400,
+        );
+      }
+      throw error;
+    }
+
+    // Extract data
+    const { userPrompt, tokenMint, tokenMetadata } = validatedData;
+
+    // Check if token exists in database
+    const db = getDB(c.env);
+    const existingToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, tokenMint))
+      .limit(1);
+
+    if (!existingToken || existingToken.length === 0) {
+      // For development, allow generation even if token doesn't exist in DB
+      if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
+        return c.json(
+          {
+            success: false,
+            error:
+              "Token not found. Please provide a valid token mint address.",
+          },
+          404,
+        );
+      }
+      console.log("Token not found in DB, but proceeding in development mode");
+    }
+
+    // Check rate limits for the user on this token
+    const rateLimit = await checkRateLimits(c.env, tokenMint, MediaType.IMAGE);
+    if (!rateLimit.allowed) {
+      return c.json(
+        {
+          success: false,
+          error: "Rate limit exceeded. Please try again later.",
+          limit: RATE_LIMITS[MediaType.IMAGE].MAX_GENERATIONS_PER_DAY,
+          cooldown: RATE_LIMITS[MediaType.IMAGE].COOLDOWN_PERIOD_MS,
+          message: `You can generate up to ${
+            RATE_LIMITS[MediaType.IMAGE].MAX_GENERATIONS_PER_DAY
+          } images per day.`,
+          remaining: rateLimit.remaining,
+        },
+        429,
+      );
+    }
+
+    // Use AI to enhance the prompt
+    console.log("Enhancing prompt with token metadata");
+    const enhancedPrompt = await generateEnhancedPrompt(
+      c.env,
+      userPrompt,
+      tokenMetadata,
+    );
+
+    if (!enhancedPrompt) {
+      return c.json(
+        {
+          success: false,
+          error: "Failed to enhance the prompt. Please try again.",
+        },
+        500,
+      );
+    }
+
+    logger.log(`Enhanced prompt: ${enhancedPrompt}`);
+
+    // Generate the image with the enhanced prompt
+    console.log("Generating image with enhanced prompt");
+    const result = await generateMedia(c.env, {
+      prompt: enhancedPrompt,
+      type: MediaType.IMAGE,
+    });
+
+    console.log(
+      "Image generation result:",
+      JSON.stringify(result).substring(0, 200) + "...",
+    );
+
+    // Extract the image URL, handling different result formats
+    let mediaUrl = "";
+
+    if (result && typeof result === "object") {
+      // Handle the Cloudflare Worker AI result format
+      if (result.data?.images && result.data.images.length > 0) {
+        mediaUrl = result.data.images[0].url;
+      }
+      // Handle other potential formats
+      else if (result.image) {
+        mediaUrl = result.image;
+      } else if (result.url) {
+        mediaUrl = result.url;
+      }
+      // Last resort - if the result itself is a string URL
+      else if (typeof result === "string") {
+        mediaUrl = result;
+      }
+    }
+
+    // For testing or development, use a placeholder if no image was generated
+    if (!mediaUrl) {
+      if (c.env.NODE_ENV === "development" || c.env.NODE_ENV === "test") {
+        mediaUrl = `https://placehold.co/600x400?text=${encodeURIComponent(enhancedPrompt.substring(0, 30))}`;
+        console.log("Using placeholder image URL:", mediaUrl);
+      } else {
+        return c.json(
+          {
+            success: false,
+            error: "Failed to generate image. Please try again.",
+          },
+          500,
+        );
+      }
+    }
+
+    // Save generation to database
+    const generationId = crypto.randomUUID();
+    try {
+      await db.insert(mediaGenerations).values({
+        id: generationId,
+        mint: tokenMint,
+        type: MediaType.IMAGE,
+        prompt: enhancedPrompt,
+        mediaUrl,
+        creator: user.publicKey,
+        timestamp: new Date().toISOString(),
+      });
+      console.log(`Generation saved to database with ID: ${generationId}`);
+    } catch (dbError) {
+      // Log but continue - don't fail the request just because we couldn't save to DB
+      console.error("Error saving generation to database:", dbError);
+    }
+
+    // Return successful response
+    return c.json({
+      success: true,
+      mediaUrl,
+      enhancedPrompt,
+      originalPrompt: userPrompt,
+      generationId,
+      remainingGenerations: rateLimit.remaining - 1,
+      resetTime: new Date(
+        Date.now() + RATE_LIMITS[MediaType.IMAGE].COOLDOWN_PERIOD_MS,
+      ).toISOString(),
+    });
+  } catch (error) {
+    logger.error("Error in enhance-and-generate endpoint:", error);
+    return c.json(
+      {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unknown error generating media",
+      },
+      500,
+    );
+  }
+});
+
+// Helper function to generate an enhanced prompt using the token metadata
+async function generateEnhancedPrompt(
+  env: Env,
+  userPrompt: string,
+  tokenMetadata: {
+    name: string;
+    symbol: string;
+    description?: string;
+    prompt?: string;
+  },
+): Promise<string> {
+  try {
+    // Use Llama to enhance the prompt
+    const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an AI specialized in creating detailed image generation prompts. Your task is to combine a user's input with token metadata to create a comprehensive, detailed prompt that will produce a high-quality, coherent image.",
+        },
+        {
+          role: "user",
+          content: `Enhance this prompt for image generation by combining it with the token metadata. Create a single, coherent image prompt that incorporates both the user's ideas and the token's identity.
+
+Token Metadata:
+- Name: ${tokenMetadata.name}
+- Symbol: ${tokenMetadata.symbol}
+- Description: ${tokenMetadata.description || ""}
+- Original token prompt: ${tokenMetadata.prompt || ""}
+
+User's prompt: "${userPrompt}"
+
+Return only the enhanced prompt, nothing else. The prompt should be detailed and descriptive, focusing on visual elements that would create a compelling image.`,
+        },
+      ],
+      max_tokens: 500,
+      temperature: 0.7,
+    });
+
+    // Extract just the prompt text from the response
+    let enhancedPrompt = response.response.trim();
+
+    // If the prompt is too long, truncate it to 500 characters
+    if (enhancedPrompt.length > 500) {
+      enhancedPrompt = enhancedPrompt.substring(0, 500);
+    }
+
+    return enhancedPrompt;
+  } catch (error) {
+    logger.error("Error generating enhanced prompt:", error);
+
+    // Return a fallback that combines the inputs directly
+    return `${tokenMetadata.name} (${tokenMetadata.symbol}): ${userPrompt}`;
+  }
+}
+
 export default app;

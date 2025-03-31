@@ -10,7 +10,8 @@ import Profile from "./pages/profile";
 import Support from "./pages/support";
 import TermsOfService from "./pages/terms-of-service";
 import Token from "./pages/token";
-import Loading from "./pages/loading";
+import Testing from "./pages/testing";
+import CallbackPage from "./pages/callback";
 import PageNotFound from "./pages/not-found";
 createRoot(document.getElementById("root")!).render(
   <BrowserRouter>
@@ -24,7 +25,8 @@ createRoot(document.getElementById("root")!).render(
         <Route path="/fees" element={<Fees />} />
         <Route path="/token/:address" element={<Token />} />
         <Route path="/create" element={<Create />} />
-        <Route path="/loading" element={<Loading />} />
+        <Route path="/testing" element={<Testing />} />
+        <Route path="/callback" element={<CallbackPage />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

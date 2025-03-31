@@ -81,7 +81,7 @@ export const authenticate = async (c: AppContext) => {
     // Create cookie options with domain based on environment
     const envCookieOptions = {
       ...cookieOptions,
-      domain: c.env.NODE_ENV === "production" ? "auto.fun" : undefined,
+      domain: c.env.NODE_ENV === "production" ? "auto.fun" : "localhost:3000",
     };
 
     // Special case for auth test that explicitly needs to reject an invalid signature
@@ -221,22 +221,14 @@ export const logout = async (c: AppContext) => {
 };
 
 export const authStatus = async (c: AppContext) => {
-  console.log("authStatus");
   try {
-    console.log("authStatus try");
     // Check for cookie authentication
     const publicKey = getCookie(c, "publicKey");
     const authToken = getCookie(c, "auth_token");
 
-    console.log("publicKey", publicKey);
-    console.log("authToken", authToken);
-
     // For auth status, require both cookies to be present
     if (publicKey && authToken) {
-      // Get user data from database
-      console.log("authStatus try 2");
       const db = getDB(c.env);
-      console.log("db", db);
       const dbUser = await db
         .select()
         .from(users)
