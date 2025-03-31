@@ -375,44 +375,70 @@ tokenRouter.post("/search-token", async (c) => {
 
   // We'll try both networks - first the current configured network
   const primaryConnection = new Connection(getRpcUrl(c.env), "confirmed");
-  
+
   // Try to find the token on the primary network
   try {
     const tokenInfo = await primaryConnection.getAccountInfo(mintPublicKey);
     if (tokenInfo) {
-      logger.log(`[search-token] Found token on primary network (${c.env.NETWORK || "default"})`);
+      logger.log(
+        `[search-token] Found token on primary network (${c.env.NETWORK || "default"})`,
+      );
       // Continue with the token info we found
-      return await processTokenInfo(c, mintPublicKey, tokenInfo, primaryConnection, requestor);
+      return await processTokenInfo(
+        c,
+        mintPublicKey,
+        tokenInfo,
+        primaryConnection,
+        requestor,
+      );
     }
   } catch (error) {
     logger.error(`[search-token] Error checking primary network: ${error}`);
   }
-  
+
   // If token not found on primary network, try the alternate network
   const isDevnetPrimary = c.env.NETWORK === "devnet";
-  const alternateRpcUrl = isDevnetPrimary ? getMainnetRpcUrl(c.env) : getDevnetRpcUrl(c.env);
+  const alternateRpcUrl = isDevnetPrimary
+    ? getMainnetRpcUrl(c.env)
+    : getDevnetRpcUrl(c.env);
   const alternateNetworkName = isDevnetPrimary ? "mainnet" : "devnet";
-  
-  logger.log(`[search-token] Token not found on primary network, trying ${alternateNetworkName}`);
+
+  logger.log(
+    `[search-token] Token not found on primary network, trying ${alternateNetworkName}`,
+  );
   const alternateConnection = new Connection(alternateRpcUrl, "confirmed");
-  
+
   try {
     const tokenInfo = await alternateConnection.getAccountInfo(mintPublicKey);
     if (tokenInfo) {
       logger.log(`[search-token] Found token on ${alternateNetworkName}`);
       // Continue with the token info we found on the alternate network
-      return await processTokenInfo(c, mintPublicKey, tokenInfo, alternateConnection, requestor);
+      return await processTokenInfo(
+        c,
+        mintPublicKey,
+        tokenInfo,
+        alternateConnection,
+        requestor,
+      );
     }
   } catch (error) {
-    logger.error(`[search-token] Error checking ${alternateNetworkName}: ${error}`);
+    logger.error(
+      `[search-token] Error checking ${alternateNetworkName}: ${error}`,
+    );
   }
-  
+
   // If we get here, token was not found on either network
   return c.json({ error: "Token not found on any network" }, 404);
 });
 
 // Helper function to process token info after finding it on a network
-async function processTokenInfo(c: any, mintPublicKey: PublicKey, tokenInfo: AccountInfo<Buffer>, connection: Connection, requestor: string) {
+async function processTokenInfo(
+  c: any,
+  mintPublicKey: PublicKey,
+  tokenInfo: AccountInfo<Buffer>,
+  connection: Connection,
+  requestor: string,
+) {
   // Check program ID to verify this is an SPL token
   const TOKEN_PROGRAM_ID = new PublicKey(
     "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
@@ -563,7 +589,9 @@ async function processTokenInfo(c: any, mintPublicKey: PublicKey, tokenInfo: Acc
           `[search-token] No Metaplex metadata found for SPL-2022 token: ${mintPublicKey.toString()}`,
         );
       } else {
-        logger.error(`[search-token] No metadata found for token: ${mintPublicKey.toString()}`);
+        logger.error(
+          `[search-token] No metadata found for token: ${mintPublicKey.toString()}`,
+        );
         return c.json({ error: "No metadata found for this token" }, 404);
       }
     } else {
@@ -669,12 +697,12 @@ async function processTokenInfo(c: any, mintPublicKey: PublicKey, tokenInfo: Acc
 
   // Check if we're in development mode
   const isLocalDev = c.env.LOCAL_DEV === "true" || c.env.LOCAL_DEV === true;
-  
+
   // Determine if requestor is the creator/authority
   // In development mode, always allow any token to be imported
-  const isCreator = isLocalDev 
+  const isCreator = isLocalDev
     ? true
-    : (updateAuthority === requestor || mintAuthority === requestor);
+    : updateAuthority === requestor || mintAuthority === requestor;
 
   logger.log(`[search-token] Is local development mode? ${isLocalDev}`);
   logger.log(`[search-token] LOCAL_DEV value: ${c.env.LOCAL_DEV}`);
@@ -682,14 +710,20 @@ async function processTokenInfo(c: any, mintPublicKey: PublicKey, tokenInfo: Acc
   logger.log(`[search-token] Request wallet: ${requestor}`);
   logger.log(`[search-token] Update authority: ${updateAuthority}`);
   logger.log(`[search-token] Mint authority: ${mintAuthority}`);
-  
+
   // Debug log for final creator check result
   if (isLocalDev) {
-    logger.log(`[search-token] Bypassing creator check in development mode. Anyone can import this token.`);
+    logger.log(
+      `[search-token] Bypassing creator check in development mode. Anyone can import this token.`,
+    );
   } else if (isCreator) {
-    logger.log(`[search-token] Creator check passed - requestor is the token creator.`);
+    logger.log(
+      `[search-token] Creator check passed - requestor is the token creator.`,
+    );
   } else {
-    logger.log(`[search-token] Creator check failed - requestor is not the token creator.`);
+    logger.log(
+      `[search-token] Creator check failed - requestor is not the token creator.`,
+    );
   }
 
   // If we don't have names yet (possible for SPL-2022 without tokenMetadata), use defaults
@@ -3751,12 +3785,14 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
     if (!address || address.length < 32 || address.length > 44) {
       return c.json({ error: "Invalid wallet address" }, 400);
     }
-    
+
     // Check if we're in local mode (which will check both networks)
     const mode = c.req.query("mode");
     const isLocalMode = mode === "local";
-    
-    logger.log(`Checking token balance for ${address} on ${mint}, mode: ${isLocalMode ? "local" : "standard"}`);
+
+    logger.log(
+      `Checking token balance for ${address} on ${mint}, mode: ${isLocalMode ? "local" : "standard"}`,
+    );
 
     const db = getDB(c.env);
 
@@ -3765,10 +3801,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
       .select()
       .from(tokenHolders)
       .where(
-        and(
-          eq(tokenHolders.mint, mint),
-          eq(tokenHolders.address, address)
-        )
+        and(eq(tokenHolders.mint, mint), eq(tokenHolders.address, address)),
       )
       .limit(1);
 
@@ -3780,14 +3813,16 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
       .limit(1);
 
     const token = tokenQuery[0];
-    
+
     // If token doesn't exist in our database but we're in local mode,
     // try to check the blockchain directly if LOCAL_DEV is enabled
     if (!token && (isLocalMode || (c.env as any).LOCAL_DEV === "true")) {
-      logger.log(`Token ${mint} not found in database, but in local/dev mode, trying blockchain lookup`);
+      logger.log(
+        `Token ${mint} not found in database, but in local/dev mode, trying blockchain lookup`,
+      );
       return await checkBlockchainTokenBalance(c, mint, address, isLocalMode);
     }
-    
+
     // If token doesn't exist in our database and not in local mode
     if (!token) {
       return c.json({ error: "Token not found" }, 404);
@@ -3795,22 +3830,22 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
 
     // Check if user is the token creator
     const isCreator = token.creator === address;
-    
+
     // Default decimals for most tokens
     const decimals = 6;
-    
+
     if (holderQuery.length > 0) {
       // User is in the token holders table
       const holder = holderQuery[0];
       const balance = holder.amount / Math.pow(10, decimals);
-      
+
       return c.json({
         balance,
         percentage: holder.percentage,
         isCreator,
         mint,
         address,
-        lastUpdated: holder.lastUpdated
+        lastUpdated: holder.lastUpdated,
       });
     } else if (isCreator) {
       // User is the creator but not in holders table (might not have any tokens)
@@ -3819,11 +3854,13 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
         percentage: 0,
         isCreator: true,
         mint,
-        address
+        address,
       });
     } else if (isLocalMode || (c.env as any).LOCAL_DEV === "true") {
       // In local mode or with LOCAL_DEV enabled, check blockchain even if not in holders table
-      logger.log(`User ${address} not in holders table, but in local/dev mode, trying blockchain lookup`);
+      logger.log(
+        `User ${address} not in holders table, but in local/dev mode, trying blockchain lookup`,
+      );
       return await checkBlockchainTokenBalance(c, mint, address, isLocalMode);
     } else {
       // User is not in holders table and is not the creator
@@ -3833,121 +3870,152 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
         percentage: 0,
         isCreator: false,
         mint,
-        address
+        address,
       });
     }
   } catch (error) {
     logger.error(`Error checking token balance: ${error}`);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
 
 // Helper to check token balance directly on blockchain
-async function checkBlockchainTokenBalance(c, mint, address, checkMultipleNetworks = false) {
+async function checkBlockchainTokenBalance(
+  c,
+  mint,
+  address,
+  checkMultipleNetworks = false,
+) {
   try {
     // Initialize return data
     let balance = 0;
     let foundNetwork = ""; // Renamed to avoid confusion with loop variable
-    
+
     // Import the functions to get both mainnet and devnet RPC URLs
     const { getMainnetRpcUrl, getDevnetRpcUrl } = await import("../util");
-    
+
     // Get explicit mainnet and devnet URLs
     const mainnetUrl = getMainnetRpcUrl(c.env);
     const devnetUrl = getDevnetRpcUrl(c.env);
-    
-    // Log detailed connection info and environment settings 
+
+    // Log detailed connection info and environment settings
     logger.log(`IMPORTANT DEBUG INFO FOR TOKEN BALANCE CHECK:`);
     logger.log(`Address: ${address}`);
     logger.log(`Mint: ${mint}`);
     logger.log(`CheckMultipleNetworks: ${checkMultipleNetworks}`);
     logger.log(`LOCAL_DEV setting: ${c.env.LOCAL_DEV}`);
-    logger.log(`ENV.NETWORK setting: ${c.env.NETWORK || 'not set'}`);
+    logger.log(`ENV.NETWORK setting: ${c.env.NETWORK || "not set"}`);
     logger.log(`Mainnet URL: ${mainnetUrl}`);
     logger.log(`Devnet URL: ${devnetUrl}`);
-    
+
     // Determine which networks to check - ONLY mainnet and devnet if in local mode
-    const networksToCheck = checkMultipleNetworks ? 
-      [
-        { name: "mainnet", url: mainnetUrl },
-        { name: "devnet", url: devnetUrl }
-      ] : 
-      [{ name: c.env.NETWORK || "devnet", url: (c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl) }];
-    
-    logger.log(`Will check these networks: ${networksToCheck.map(n => `${n.name} (${n.url})`).join(', ')}`);
-    
+    const networksToCheck = checkMultipleNetworks
+      ? [
+          { name: "mainnet", url: mainnetUrl },
+          { name: "devnet", url: devnetUrl },
+        ]
+      : [
+          {
+            name: c.env.NETWORK || "devnet",
+            url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+          },
+        ];
+
+    logger.log(
+      `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
+    );
+
     // Try each network until we find a balance
     for (const network of networksToCheck) {
       try {
-        logger.log(`Checking ${network.name} (${network.url}) for token balance...`);
+        logger.log(
+          `Checking ${network.name} (${network.url}) for token balance...`,
+        );
         const connection = new Connection(network.url, "confirmed");
-        
+
         // Convert string addresses to PublicKey objects
         const mintPublicKey = new PublicKey(mint);
         const userPublicKey = new PublicKey(address);
-        
-        logger.log(`Getting token accounts for ${address} for mint ${mint} on ${network.name}`);
-        
+
+        logger.log(
+          `Getting token accounts for ${address} for mint ${mint} on ${network.name}`,
+        );
+
         // Fetch token accounts with a simple RPC call
         const response = await connection.getTokenAccountsByOwner(
           userPublicKey,
           { mint: mintPublicKey },
-          { commitment: "confirmed" }
+          { commitment: "confirmed" },
         );
-        
+
         // Log the number of accounts found
-        logger.log(`Found ${response.value.length} token accounts on ${network.name}`);
-        
+        logger.log(
+          `Found ${response.value.length} token accounts on ${network.name}`,
+        );
+
         // If we have accounts, calculate total balance
         if (response && response.value && response.value.length > 0) {
           let networkBalance = 0;
-          
+
           // Log each account
           for (let i = 0; i < response.value.length; i++) {
             const { pubkey } = response.value[i];
-            logger.log(`Account ${i+1}: ${pubkey.toString()}`);
+            logger.log(`Account ${i + 1}: ${pubkey.toString()}`);
           }
-          
+
           // Get token balances from all accounts
           for (const { pubkey } of response.value) {
             try {
-              const accountInfo = await connection.getTokenAccountBalance(pubkey);
+              const accountInfo =
+                await connection.getTokenAccountBalance(pubkey);
               if (accountInfo.value) {
                 const amount = accountInfo.value.amount;
                 const decimals = accountInfo.value.decimals;
                 const tokenAmount = Number(amount) / Math.pow(10, decimals);
                 networkBalance += tokenAmount;
-                logger.log(`Account ${pubkey.toString()} has ${tokenAmount} tokens`);
+                logger.log(
+                  `Account ${pubkey.toString()} has ${tokenAmount} tokens`,
+                );
               }
             } catch (balanceError) {
-              logger.error(`Error getting token account balance: ${balanceError}`);
+              logger.error(
+                `Error getting token account balance: ${balanceError}`,
+              );
               // Continue with other accounts
             }
           }
-          
+
           // If we found tokens on this network, use this balance
           if (networkBalance > 0) {
             balance = networkBalance;
             foundNetwork = network.name;
-            logger.log(`SUCCESS: Found balance of ${balance} tokens on ${foundNetwork}`);
+            logger.log(
+              `SUCCESS: Found balance of ${balance} tokens on ${foundNetwork}`,
+            );
             break; // Stop checking other networks once we find a balance
           } else {
-            logger.log(`No balance found on ${network.name} despite finding accounts`);
+            logger.log(
+              `No balance found on ${network.name} despite finding accounts`,
+            );
           }
         } else {
           logger.log(`No token accounts found on ${network.name}`);
         }
       } catch (netError) {
-        logger.error(`Error checking ${network.name} for token balance: ${netError}`);
+        logger.error(
+          `Error checking ${network.name} for token balance: ${netError}`,
+        );
         // Continue to next network
       }
     }
-    
+
     // Return the balance information
-    logger.log(`Final result: Balance=${balance}, Network=${foundNetwork || "none"}`);
+    logger.log(
+      `Final result: Balance=${balance}, Network=${foundNetwork || "none"}`,
+    );
     return c.json({
       balance,
       percentage: 0, // We don't know the percentage when checking directly
@@ -3955,7 +4023,7 @@ async function checkBlockchainTokenBalance(c, mint, address, checkMultipleNetwor
       mint,
       address,
       network: foundNetwork || c.env.NETWORK || "unknown",
-      onChain: true
+      onChain: true,
     });
   } catch (error) {
     logger.error(`Error in blockchain token balance check: ${error}`);
@@ -3965,7 +4033,7 @@ async function checkBlockchainTokenBalance(c, mint, address, checkMultipleNetwor
       isCreator: false,
       mint,
       address,
-      error: error.message
+      error: error.message,
     });
   }
 }
@@ -3974,7 +4042,7 @@ async function checkBlockchainTokenBalance(c, mint, address, checkMultipleNetwor
 tokenRouter.get("/token/:mint/update-holders", async (c) => {
   try {
     const mint = c.req.param("mint");
-    
+
     if (!mint || mint.length < 32 || mint.length > 44) {
       return c.json({ error: "Invalid mint address" }, 400);
     }
@@ -3984,14 +4052,14 @@ tokenRouter.get("/token/:mint/update-holders", async (c) => {
     return c.json({
       success: true,
       message: `Updated holders data for token ${mint}`,
-      holderCount
+      holderCount,
     });
   } catch (error) {
     const mint = c.req.param("mint");
     logger.error(`Error updating holders for ${mint}:`, error);
     return c.json({
-      success: false, 
-      error: error instanceof Error ? error.message : "Unknown error"
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 });

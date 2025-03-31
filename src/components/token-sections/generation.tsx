@@ -53,7 +53,7 @@ export default function CommunityTab() {
   const [shareError, setShareError] = useState<string | null>(null);
   const [twitterCredentials, setTwitterCredentials] =
     useState<TwitterCredentials | null>(null);
-  
+
   // Balance checking state
   const [tokenBalance, setTokenBalance] = useState<number | null>(null);
   const [isCheckingBalance, setIsCheckingBalance] = useState(false);
@@ -77,7 +77,7 @@ export default function CommunityTab() {
 
   // Extract token mint from URL if not found in params
   const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(
-    null
+    null,
   );
 
   // Effect to detect token mint from various sources
@@ -127,12 +127,12 @@ export default function CommunityTab() {
         // Fetch Token Info
         console.log(`Fetching token info for ${tokenMint}...`);
         const infoResponse = await fetch(
-          `${API_BASE_URL}/api/token/${tokenMint}`
+          `${API_BASE_URL}/api/token/${tokenMint}`,
         );
         console.log("Token info response:", infoResponse);
         if (!infoResponse.ok) {
           throw new Error(
-            `Failed to fetch token info: ${infoResponse.statusText}`
+            `Failed to fetch token info: ${infoResponse.statusText}`,
           );
         }
         const infoData = (await infoResponse.json()) as TokenInfoResponse;
@@ -162,13 +162,13 @@ export default function CommunityTab() {
     if (storedCredentials) {
       try {
         const parsedCredentials = JSON.parse(
-          storedCredentials
+          storedCredentials,
         ) as TwitterCredentials;
 
         // Check if token is expired
         if (parsedCredentials.expiresAt < Date.now()) {
           console.log(
-            "Twitter token has expired, user needs to re-authenticate"
+            "Twitter token has expired, user needs to re-authenticate",
           );
         } else {
           setTwitterCredentials(parsedCredentials);
@@ -208,12 +208,12 @@ export default function CommunityTab() {
             // --- Regenerate Text & Open Modal on Callback ---
             setTimeout(() => {
               console.log(
-                "Regenerating share text and opening modal after authentication"
+                "Regenerating share text and opening modal after authentication",
               );
 
               // Regenerate the share text using stored pieces
               const regeneratedText = generateShareText(
-                { name: share.tokenName, symbol: share.tokenSymbol } // Use stored token info
+                { name: share.tokenName, symbol: share.tokenSymbol }, // Use stored token info
               );
               setModalShareText(regeneratedText);
 
@@ -233,7 +233,7 @@ export default function CommunityTab() {
         } catch (error) {
           console.error("Failed to process pending share", error);
           setShareError(
-            error instanceof Error ? error.message : "Failed to process share"
+            error instanceof Error ? error.message : "Failed to process share",
           );
         }
       } else {
@@ -278,7 +278,7 @@ export default function CommunityTab() {
     // Check if we have a token mint
     if (!tokenMint) {
       toast.error(
-        "No token found. Please navigate to a token page to generate images"
+        "No token found. Please navigate to a token page to generate images",
       );
       return;
     }
@@ -290,7 +290,7 @@ export default function CommunityTab() {
 
     try {
       console.log(
-        `Generating image for token ${tokenMint} with prompt: ${userPrompt}`
+        `Generating image for token ${tokenMint} with prompt: ${userPrompt}`,
       );
 
       // In a real implementation, we would fetch the token metadata if not available
@@ -308,7 +308,7 @@ export default function CommunityTab() {
         console.error("No auth token found");
         // Try to generate without auth token for testing
         toast.warning(
-          "No auth token found, trying to generate without authentication"
+          "No auth token found, trying to generate without authentication",
         );
       }
 
@@ -358,20 +358,25 @@ export default function CommunityTab() {
           if (contentType && contentType.includes("application/json")) {
             errorData = await response.json();
             errorMessage = errorData.error || errorMessage;
-            
+
             // Special handling for token ownership requirement errors
             if (errorData.type === "OWNERSHIP_REQUIREMENT") {
               const minimumRequired = errorData.minimumRequired || 1000;
-              const currentAmount = errorData.message?.match(/You currently have ([\d.]+)/)?.[1] || "0";
-              
+              const currentAmount =
+                errorData.message?.match(/You currently have ([\d.]+)/)?.[1] ||
+                "0";
+
               // Show a more helpful message with a link to buy tokens
               const buyTokensUrl = `/token/${tokenMint}?action=buy`;
-              
+
               toast.error(
                 <div>
-                  <p>You need at least {minimumRequired} tokens to use this feature.</p>
+                  <p>
+                    You need at least {minimumRequired} tokens to use this
+                    feature.
+                  </p>
                   <p>You currently have {currentAmount} tokens.</p>
-                  <a 
+                  <a
                     href={buyTokensUrl}
                     className="underline text-blue-500 hover:text-blue-700"
                     onClick={(e) => {
@@ -385,9 +390,11 @@ export default function CommunityTab() {
                 {
                   autoClose: 10000, // Show for 10 seconds
                   closeOnClick: false,
-                }
+                },
               );
-              throw new Error(`Insufficient token balance. You need at least ${minimumRequired} tokens.`);
+              throw new Error(
+                `Insufficient token balance. You need at least ${minimumRequired} tokens.`,
+              );
             }
           } else {
             // If not JSON, try to get text
@@ -432,7 +439,7 @@ export default function CommunityTab() {
           setGeneratedImage(data.mediaUrl);
           console.log(
             "Using data URL directly:",
-            data.mediaUrl.substring(0, 50) + "..."
+            data.mediaUrl.substring(0, 50) + "...",
           );
         } else {
           // It's a URL, make sure it's absolute
@@ -452,7 +459,7 @@ export default function CommunityTab() {
 
         if (data.remainingGenerations !== undefined) {
           toast.success(
-            `Image generated successfully! You have ${data.remainingGenerations} generations left today.`
+            `Image generated successfully! You have ${data.remainingGenerations} generations left today.`,
           );
         } else {
           toast.success("Image generated successfully!");
@@ -460,14 +467,14 @@ export default function CommunityTab() {
       } else {
         console.error("Invalid response:", data);
         throw new Error(
-          data.error || "Failed to generate image: No media URL returned"
+          data.error || "Failed to generate image: No media URL returned",
         );
       }
     } catch (error) {
       console.error("Error generating image:", error);
       setProcessingStatus("failed");
       toast.error(
-        error instanceof Error ? error.message : "Failed to generate image"
+        error instanceof Error ? error.message : "Failed to generate image",
       );
     } finally {
       setIsGenerating(false);
@@ -489,7 +496,7 @@ export default function CommunityTab() {
   ];
 
   const generateShareText = (
-    currentTokenInfo: { name: string; symbol: string } | null
+    currentTokenInfo: { name: string; symbol: string } | null,
   ): string => {
     console.log("currentTokenInfo", currentTokenInfo);
     const name = currentTokenInfo?.name || "this token";
@@ -539,13 +546,13 @@ export default function CommunityTab() {
 
       console.log(
         "Starting image share process, generated text:",
-        shareText.substring(0, 50)
+        shareText.substring(0, 50),
       );
       console.log("Image data type:", typeof generatedImage);
 
       if (twitterCredentials && twitterCredentials.expiresAt > Date.now()) {
         console.log(
-          "User already authenticated with Twitter. Opening share modal..."
+          "User already authenticated with Twitter. Opening share modal...",
         );
         // --- Open Modal Directly ---
         setModalShareText(shareText); // Use generated text
@@ -553,7 +560,7 @@ export default function CommunityTab() {
         // --- End Open Modal Directly ---
       } else {
         console.log(
-          "User not authenticated with Twitter, storing pending share and origin"
+          "User not authenticated with Twitter, storing pending share and origin",
         );
         // Store the pending share and redirect to auth
         const pendingShare: PendingShare = {
@@ -584,7 +591,7 @@ export default function CommunityTab() {
       console.error("Share failed", error);
       setShareError(error instanceof Error ? error.message : "Share failed");
       toast.error(
-        `Share initiation failed: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Share initiation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     } finally {
       setIsSharing(false); // Stop loading state as we are either showing modal or redirecting
@@ -595,7 +602,7 @@ export default function CommunityTab() {
   const handleShareOnX = async (
     text: string,
     imageData: string,
-    creds: TwitterCredentials
+    creds: TwitterCredentials,
   ) => {
     // This function is now primarily for the actual posting logic
     // It will be called by `confirmAndPostShare`
@@ -603,7 +610,7 @@ export default function CommunityTab() {
       // Double-check if credentials expired
       if (creds.expiresAt < Date.now()) {
         throw new Error(
-          "Twitter authentication expired. Please connect again."
+          "Twitter authentication expired. Please connect again.",
         );
       }
 
@@ -626,7 +633,7 @@ export default function CommunityTab() {
       console.error("Twitter share failed:", error);
       setShareError(error instanceof Error ? error.message : "Share failed");
       toast.error(
-        `Failed to share: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to share: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
       throw error; // Re-throw to allow the caller to handle loading state
     }
@@ -655,16 +662,16 @@ export default function CommunityTab() {
   // Upload image to Twitter
   const uploadImage = async (
     imageData: string,
-    accessToken: string
+    accessToken: string,
   ): Promise<string> => {
     try {
       console.log(
         "Uploading image to Twitter with image data type:",
-        typeof imageData
+        typeof imageData,
       );
       console.log(
         "Image data starts with:",
-        imageData.substring(0, 50) + "..."
+        imageData.substring(0, 50) + "...",
       );
 
       let blob;
@@ -703,7 +710,7 @@ export default function CommunityTab() {
 
       console.log(
         "Sending image to API:",
-        `${import.meta.env.VITE_API_URL}/api/share/tweet`
+        `${import.meta.env.VITE_API_URL}/api/share/tweet`,
       );
 
       // Send the upload request
@@ -715,14 +722,14 @@ export default function CommunityTab() {
             Authorization: `Bearer ${accessToken}`,
           },
           body: formData,
-        }
+        },
       );
 
       if (!uploadResponse.ok) {
         const errorText = await uploadResponse.text();
         console.error(
           "Image upload failed with status:",
-          uploadResponse.status
+          uploadResponse.status,
         );
         console.error("Error response body:", errorText);
         // Attempt to parse JSON error if possible
@@ -760,7 +767,7 @@ export default function CommunityTab() {
   const postTweet = async (
     text: string,
     mediaId: string,
-    accessToken: string
+    accessToken: string,
   ) => {
     try {
       console.log("Posting tweet with text:", text);
@@ -778,7 +785,7 @@ export default function CommunityTab() {
             text,
             mediaId,
           }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -837,32 +844,34 @@ export default function CommunityTab() {
 
     try {
       setIsCheckingBalance(true);
-      
+
       // Get wallet mode setting from environment
       const userWalletMode = import.meta.env.VITE_USER_WALLET_MODE || "default";
       const isLocalMode = userWalletMode === "local";
-      
-      console.log(`Checking token balance in ${isLocalMode ? "local" : "standard"} mode`);
-      
+
+      console.log(
+        `Checking token balance in ${isLocalMode ? "local" : "standard"} mode`,
+      );
+
       // Get stored auth token if available
       const authToken = localStorage.getItem("authToken");
-      
+
       // First try to get balance from API (which uses the database)
       try {
         const response = await fetch(
-          `${API_BASE_URL}/api/token/${tokenMint}/check-balance?address=${publicKey.toString()}${isLocalMode ? '&mode=local' : ''}`,
+          `${API_BASE_URL}/api/token/${tokenMint}/check-balance?address=${publicKey.toString()}${isLocalMode ? "&mode=local" : ""}`,
           {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
-              ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {})
+              ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
             },
             credentials: "include",
-          }
+          },
         );
-        
+
         if (response.ok) {
-          const data = await response.json() as { balance?: number };
+          const data = (await response.json()) as { balance?: number };
           if (data.balance !== undefined) {
             const formattedBalance = Number(data.balance);
             setTokenBalance(formattedBalance);
@@ -874,39 +883,50 @@ export default function CommunityTab() {
         console.error("API balance check failed:", apiError);
         // Continue to fallback method if API fails
       }
-      
+
       // Fallback: Check balance on-chain on both networks if in local mode
       // Get network information from environment variables
-      const devnetRpcUrl = import.meta.env.VITE_DEVNET_RPC_URL || "https://api.devnet.solana.com";
-      const mainnetRpcUrl = import.meta.env.VITE_MAINNET_RPC_URL || "https://api.mainnet-beta.solana.com";
-      const defaultRpcUrl = import.meta.env.VITE_RPC_URL || "https://api.devnet.solana.com";
-      
+      const devnetRpcUrl =
+        import.meta.env.VITE_DEVNET_RPC_URL || "https://api.devnet.solana.com";
+      const mainnetRpcUrl =
+        import.meta.env.VITE_MAINNET_RPC_URL ||
+        "https://api.mainnet-beta.solana.com";
+      const defaultRpcUrl =
+        import.meta.env.VITE_RPC_URL || "https://api.devnet.solana.com";
+
       // Decide which networks to check
-      const networksToCheck = isLocalMode 
+      const networksToCheck = isLocalMode
         ? [
             { name: "devnet", url: devnetRpcUrl },
-            { name: "mainnet", url: mainnetRpcUrl }
-          ] 
-        : [{ name: import.meta.env.VITE_SOLANA_NETWORK || "devnet", url: defaultRpcUrl }];
-      
+            { name: "mainnet", url: mainnetRpcUrl },
+          ]
+        : [
+            {
+              name: import.meta.env.VITE_SOLANA_NETWORK || "devnet",
+              url: defaultRpcUrl,
+            },
+          ];
+
       let totalBalance = 0;
       let foundOnNetwork = "";
-      
+
       // Check each network we decided to look at
       for (const network of networksToCheck) {
         try {
-          console.log(`Checking token balance on ${network.name} (${network.url})`);
+          console.log(
+            `Checking token balance on ${network.name} (${network.url})`,
+          );
           const connection = new Connection(network.url);
-          
+
           // Get token accounts owned by user for this mint
           const tokenAccounts = await connection.getTokenAccountsByOwner(
             publicKey,
             { mint: new PublicKey(tokenMint) },
-            { commitment: "confirmed" }
+            { commitment: "confirmed" },
           );
-          
+
           let networkBalance = 0;
-          
+
           // Sum up balances from all accounts on this network
           for (const { pubkey } of tokenAccounts.value) {
             const accountInfo = await connection.getTokenAccountBalance(pubkey);
@@ -916,33 +936,40 @@ export default function CommunityTab() {
               networkBalance += amount / Math.pow(10, decimals);
             }
           }
-          
+
           // If we found a balance on this network
           if (networkBalance > 0) {
             totalBalance = networkBalance; // Use this balance
             foundOnNetwork = network.name;
-            console.log(`Found balance of ${networkBalance} tokens on ${network.name}`);
+            console.log(
+              `Found balance of ${networkBalance} tokens on ${network.name}`,
+            );
             break; // Stop checking other networks
           }
         } catch (networkError) {
           console.error(`Error checking ${network.name}:`, networkError);
         }
       }
-      
+
       setTokenBalance(totalBalance);
       setHasEnoughTokens(totalBalance >= 1000);
-      
+
       // Show appropriate toast message
       if (totalBalance > 0) {
         if (foundOnNetwork) {
-          toast.success(`You have ${totalBalance.toFixed(2)} tokens on ${foundOnNetwork}${totalBalance >= 1000 ? ' - enough to generate content!' : ''}`);
+          toast.success(
+            `You have ${totalBalance.toFixed(2)} tokens on ${foundOnNetwork}${totalBalance >= 1000 ? " - enough to generate content!" : ""}`,
+          );
         } else {
-          toast.success(`You have ${totalBalance.toFixed(2)} tokens${totalBalance >= 1000 ? ' - enough to generate content!' : ''}`);
+          toast.success(
+            `You have ${totalBalance.toFixed(2)} tokens${totalBalance >= 1000 ? " - enough to generate content!" : ""}`,
+          );
         }
       } else {
-        toast.warning(`You have 0 tokens. You need at least 1,000 to generate content.`);
+        toast.warning(
+          `You have 0 tokens. You need at least 1,000 to generate content.`,
+        );
       }
-      
     } catch (error) {
       console.error("Error checking token balance:", error);
       toast.error("Failed to check token balance");
@@ -1024,8 +1051,9 @@ export default function CommunityTab() {
                     <div className="text-sm text-autofun-text-secondary mb-4">
                       <div className="flex items-center">
                         <p>
-                          Note: You need to hold at least 1,000 tokens to generate content. 
-                          Token creators can generate content regardless of their token holdings.
+                          Note: You need to hold at least 1,000 tokens to
+                          generate content. Token creators can generate content
+                          regardless of their token holdings.
                         </p>
                       </div>
                     </div>
@@ -1035,22 +1063,22 @@ export default function CommunityTab() {
                       <Wallet className="text-autofun-text-highlight mr-2 size-5" />
                       <div className="flex-1">
                         <span className="text-autofun-text-primary text-sm">
-                          {tokenBalance !== null 
+                          {tokenBalance !== null
                             ? `Your Balance: ${tokenBalance.toFixed(2)} tokens ${
-                                hasEnoughTokens 
-                                  ? '✅ Eligible to generate' 
-                                  : '❌ Need at least 1,000 tokens'
+                                hasEnoughTokens
+                                  ? "✅ Eligible to generate"
+                                  : "❌ Need at least 1,000 tokens"
                               }`
-                            : 'Check your token balance'}
+                            : "Check your token balance"}
                         </span>
                       </div>
-                      <Button 
-                        size="small" 
+                      <Button
+                        size="small"
                         variant="secondary"
                         onClick={checkTokenBalance}
                         disabled={isCheckingBalance || !publicKey}
                       >
-                        {isCheckingBalance ? 'Checking...' : 'Check Balance'}
+                        {isCheckingBalance ? "Checking..." : "Check Balance"}
                       </Button>
                     </div>
 

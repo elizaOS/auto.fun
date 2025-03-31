@@ -438,21 +438,25 @@ export const withdrawTx = async (
 
 // Get RPC URL based on the environment
 export const getRpcUrl = (env: any) => {
-  const result = (env.NETWORK === "devnet"
-    ? env.DEVNET_SOLANA_RPC_URL
-    : env.MAINNET_SOLANA_RPC_URL) || env.VITE_RPC_URL;
-    
-  logger.log(`getRpcUrl called with NETWORK=${env.NETWORK}, returning: ${result}`);
+  const result =
+    (env.NETWORK === "devnet"
+      ? env.DEVNET_SOLANA_RPC_URL
+      : env.MAINNET_SOLANA_RPC_URL) || env.VITE_RPC_URL;
+
+  logger.log(
+    `getRpcUrl called with NETWORK=${env.NETWORK}, returning: ${result}`,
+  );
   return result;
 };
 
 // Get mainnet RPC URL regardless of environment setting
 export const getMainnetRpcUrl = (env: any) => {
   // Use explicit mainnet RPC URLs with fallbacks to ensure we have a valid URL
-  const mainnetUrl = env.MAINNET_SOLANA_RPC_URL || 
-                    env.VITE_MAINNET_RPC_URL || 
-                    "https://api.mainnet-beta.solana.com";
-  
+  const mainnetUrl =
+    env.MAINNET_SOLANA_RPC_URL ||
+    env.VITE_MAINNET_RPC_URL ||
+    "https://api.mainnet-beta.solana.com";
+
   logger.log(`getMainnetRpcUrl returning: ${mainnetUrl}`);
   return mainnetUrl;
 };
@@ -460,10 +464,11 @@ export const getMainnetRpcUrl = (env: any) => {
 // Get devnet RPC URL regardless of environment setting
 export const getDevnetRpcUrl = (env: any) => {
   // Use explicit devnet RPC URLs with fallbacks to ensure we have a valid URL
-  const devnetUrl = env.DEVNET_SOLANA_RPC_URL || 
-                   env.VITE_DEVNET_RPC_URL || 
-                   "https://api.devnet.solana.com";
-  
+  const devnetUrl =
+    env.DEVNET_SOLANA_RPC_URL ||
+    env.VITE_DEVNET_RPC_URL ||
+    "https://api.devnet.solana.com";
+
   logger.log(`getDevnetRpcUrl returning: ${devnetUrl}`);
   return devnetUrl;
 };

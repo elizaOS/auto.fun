@@ -1,5 +1,11 @@
 import { eq, and, gte, or } from "drizzle-orm";
-import { getDB, mediaGenerations, tokens, preGeneratedTokens, tokenHolders } from "../db";
+import {
+  getDB,
+  mediaGenerations,
+  tokens,
+  preGeneratedTokens,
+  tokenHolders,
+} from "../db";
 import { Env } from "../env";
 import { fal } from "@fal-ai/client";
 import { sql } from "drizzle-orm";
@@ -50,7 +56,7 @@ export async function checkRateLimits(
   env: Env,
   mint: string,
   type: MediaType,
-  publicKey?: string
+  publicKey?: string,
 ): Promise<{ allowed: boolean; remaining: number; message?: string }> {
   // Special handling for test environments
   if (env.NODE_ENV === "test") {
@@ -112,8 +118,8 @@ export async function checkRateLimits(
       if (!ownershipResult.allowed) {
         return {
           allowed: false,
-          remaining, 
-          message: ownershipResult.message
+          remaining,
+          message: ownershipResult.message,
         };
       }
     }
@@ -139,7 +145,7 @@ export async function checkRateLimits(
 export async function checkTokenOwnership(
   env: Env,
   mint: string,
-  publicKey: string
+  publicKey: string,
 ): Promise<{ allowed: boolean; message?: string }> {
   try {
     // Special handling for test environments
@@ -148,15 +154,15 @@ export async function checkTokenOwnership(
       if (publicKey.endsWith("TEST") || publicKey.endsWith("ADMIN")) {
         return { allowed: true };
       }
-      
+
       // Test address to simulate not having enough tokens
       if (publicKey.endsWith("NOTOKEN")) {
-        return { 
+        return {
           allowed: false,
-          message: `You need at least ${TOKEN_OWNERSHIP.DEFAULT_MINIMUM} tokens to use this feature.`
+          message: `You need at least ${TOKEN_OWNERSHIP.DEFAULT_MINIMUM} tokens to use this feature.`,
         };
       }
-      
+
       // Default to allowing in test mode
       return { allowed: true };
     }
@@ -171,7 +177,7 @@ export async function checkTokenOwnership(
 
     // Access the database
     const db = getDB(env);
-    
+
     try {
       // First check if user is the token creator (creators always have access)
       const tokenQuery = await db
@@ -179,47 +185,54 @@ export async function checkTokenOwnership(
         .from(tokens)
         .where(eq(tokens.mint, mint))
         .limit(1);
-      
+
       if (tokenQuery.length > 0 && tokenQuery[0].creator === publicKey) {
         // User is the token creator, allow generating
         return { allowed: true };
       }
-      
+
       // If not the creator, check if user is a token holder with enough tokens
       const holderQuery = await db
         .select()
         .from(tokenHolders)
         .where(
-          and(
-            eq(tokenHolders.mint, mint),
-            eq(tokenHolders.address, publicKey)
-          )
+          and(eq(tokenHolders.mint, mint), eq(tokenHolders.address, publicKey)),
         )
         .limit(1);
-      
+
       // If user is not in the token holders table or doesn't have enough tokens
       if (holderQuery.length === 0) {
         // User is not a token holder, check the blockchain directly as fallback
-        return await checkBlockchainTokenBalance(env, mint, publicKey, minimumRequired);
+        return await checkBlockchainTokenBalance(
+          env,
+          mint,
+          publicKey,
+          minimumRequired,
+        );
       }
-      
+
       // User is in token holders table, check if they have enough tokens
       const holder = holderQuery[0];
       const decimals = 6; // Most tokens use 6 decimals in Solana
       const holdingAmount = holder.amount / Math.pow(10, decimals);
-      
+
       if (holdingAmount >= minimumRequired) {
         return { allowed: true };
       } else {
-        return { 
+        return {
           allowed: false,
-          message: `You need at least ${minimumRequired} tokens to use this feature. You currently have ${holdingAmount.toFixed(2)}.`
+          message: `You need at least ${minimumRequired} tokens to use this feature. You currently have ${holdingAmount.toFixed(2)}.`,
         };
       }
     } catch (dbError) {
       logger.error(`Database error checking token ownership: ${dbError}`);
       // Fall back to checking the blockchain directly if database check fails
-      return await checkBlockchainTokenBalance(env, mint, publicKey, minimumRequired);
+      return await checkBlockchainTokenBalance(
+        env,
+        mint,
+        publicKey,
+        minimumRequired,
+      );
     }
   } catch (error) {
     logger.error(`Error in token ownership check: ${error}`);
@@ -236,33 +249,33 @@ async function checkBlockchainTokenBalance(
   env: Env,
   mint: string,
   publicKey: string,
-  minimumRequired: number
+  minimumRequired: number,
 ): Promise<{ allowed: boolean; message?: string }> {
   try {
     // Connect to Solana
     const connection = new Connection(getRpcUrl(env), "confirmed");
-    
+
     // Convert string addresses to PublicKey objects
     const mintPublicKey = new PublicKey(mint);
     const userPublicKey = new PublicKey(publicKey);
-    
+
     // Fetch token accounts with a simple RPC call
     const response = await connection.getTokenAccountsByOwner(
       userPublicKey,
       { mint: mintPublicKey },
-      { commitment: "confirmed" }
+      { commitment: "confirmed" },
     );
-    
+
     // Calculate total token amount
     let totalAmount = 0;
-    
+
     // Get token balances from all accounts
     const tokenAccountInfos = await Promise.all(
-      response.value.map(({ pubkey }) => 
-        connection.getTokenAccountBalance(pubkey)
-      )
+      response.value.map(({ pubkey }) =>
+        connection.getTokenAccountBalance(pubkey),
+      ),
     );
-    
+
     // Sum up all token balances
     for (const info of tokenAccountInfos) {
       if (info.value) {
@@ -271,20 +284,22 @@ async function checkBlockchainTokenBalance(
         totalAmount += Number(amount) / Math.pow(10, decimals);
       }
     }
-    
+
     // Determine if user has enough tokens
     if (totalAmount >= minimumRequired) {
       return { allowed: true };
     } else {
-      return { 
+      return {
         allowed: false,
-        message: `You need at least ${minimumRequired} tokens to use this feature. You currently have ${totalAmount.toFixed(2)}.`
+        message: `You need at least ${minimumRequired} tokens to use this feature. You currently have ${totalAmount.toFixed(2)}.`,
       };
     }
   } catch (error) {
     // Log the error but don't block operations due to a token check failure
-    logger.error(`Error checking blockchain token balance for user ${publicKey}: ${error}`);
-    
+    logger.error(
+      `Error checking blockchain token balance for user ${publicKey}: ${error}`,
+    );
+
     // Default to allowing if we can't check the balance
     // You may want to change this to false in production
     return { allowed: true };
@@ -467,11 +482,11 @@ app.post("/:mint/generate", async (c) => {
   // Create overall endpoint timeout
   const endpointTimeout = 120000; // 120 seconds timeout for entire endpoint
   let endpointTimeoutId: NodeJS.Timeout | number = 0; // Initialize with placeholder
-  
+
   // Create a function to clear timeout on exit
   const clearTimeoutSafe = (timeoutId: NodeJS.Timeout | number) => {
     if (timeoutId) {
-      if (typeof timeoutId === "number" && typeof window !== 'undefined') {
+      if (typeof timeoutId === "number" && typeof window !== "undefined") {
         // Clear timeout for browser
         window.clearTimeout(timeoutId);
       } else {
@@ -569,7 +584,10 @@ app.post("/:mint/generate", async (c) => {
       if (!rateLimit.allowed) {
         clearTimeoutSafe(endpointTimeoutId);
         // Check if failure is due to token ownership requirement
-        if (rateLimit.message && rateLimit.message.includes("tokens to use this feature")) {
+        if (
+          rateLimit.message &&
+          rateLimit.message.includes("tokens to use this feature")
+        ) {
           return c.json(
             {
               error: "Insufficient token balance",
@@ -577,7 +595,7 @@ app.post("/:mint/generate", async (c) => {
               type: "OWNERSHIP_REQUIREMENT",
               minimumRequired: TOKEN_OWNERSHIP.DEFAULT_MINIMUM,
             },
-            403
+            403,
           );
         }
         // Otherwise it's a standard rate limit error
@@ -1764,10 +1782,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
   try {
     const user = c.get("user");
     if (!user) {
-      return c.json(
-        { success: false, error: "Authentication required" },
-        401,
-      );
+      return c.json({ success: false, error: "Authentication required" }, 401);
     }
 
     // Verify and parse required fields
@@ -1823,10 +1838,18 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
     }
 
     // Check rate limits for the user on this token
-    const rateLimit = await checkRateLimits(c.env, tokenMint, MediaType.IMAGE, user.publicKey);
+    const rateLimit = await checkRateLimits(
+      c.env,
+      tokenMint,
+      MediaType.IMAGE,
+      user.publicKey,
+    );
     if (!rateLimit.allowed) {
       // Check if failure is due to token ownership requirement
-      if (rateLimit.message && rateLimit.message.includes("tokens to use this feature")) {
+      if (
+        rateLimit.message &&
+        rateLimit.message.includes("tokens to use this feature")
+      ) {
         return c.json(
           {
             success: false,
@@ -1835,7 +1858,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
             type: "OWNERSHIP_REQUIREMENT",
             minimumRequired: TOKEN_OWNERSHIP.DEFAULT_MINIMUM,
           },
-          403
+          403,
         );
       }
       // Otherwise it's a standard rate limit error
