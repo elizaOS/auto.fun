@@ -6,10 +6,11 @@ import { twMerge } from "tailwind-merge";
 import Button from "./button";
 import ConfigDialog from "./config-dialog";
 import SkeletonImage from "./skeleton-image";
+import { useSwap } from "@/hooks/use-swap";
+import Loader from "./loader";
 import useTokenBalance from "@/hooks/use-token-balance";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { useQuery } from "@tanstack/react-query";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { fetchTokenMarketMetrics } from "@/utils/blockchain";
 
@@ -65,23 +66,11 @@ export default function Trade({ token }: { token: IToken }) {
 
   const [error] = useState<string | undefined>("");
 
+  const {executeSwap, isExecuting: isExecutingSwap} = useSwap();
+
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
     token?.status,
   );
-
-  const swapMutation = useMutation({
-    mutationFn: async () => {
-      const isBonded = false;
-      if (isBonded) {
-        // hihi
-      } else {
-        // hihi
-      }
-    },
-    mutationKey: ["swap", isTokenSelling, token.mint],
-    onSuccess: () => toast.success(`Successfully swapped.`),
-    onError: () => toast.error("Something bad happened.."),
-  });
 
   // Set percentage buttons to use real balance
   const handlePercentage = (percentage: number) => {
@@ -92,6 +81,7 @@ export default function Trade({ token }: { token: IToken }) {
 
   return (
     <div className="relative border p-4 bg-autofun-background-card">
+      {isExecutingSwap && <Loader />}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col">
           {/* Selling */}
@@ -279,13 +269,20 @@ export default function Trade({ token }: { token: IToken }) {
           disabled={
             isDisabled ||
             insufficientBalance ||
-            swapMutation?.isPending ||
+            isExecutingSwap ||
             !sellingAmount ||
             sellingAmount === 0
           }
-          onClick={() => swapMutation.mutate()}
+          onClick={sellingAmount
+            ? () => executeSwap({
+                amount: sellingAmount,
+                style: isTokenSelling ? "sell" : "buy",
+                tokenAddress: token.mint,
+                token,
+              })
+            : undefined}
         >
-          {swapMutation?.isPending ? (
+          {isExecutingSwap ? (
             <Loader2 className="size-5 animate-spin" />
           ) : (
             "Swap"
