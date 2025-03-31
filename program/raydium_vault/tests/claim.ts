@@ -145,15 +145,15 @@ describe("raydium_vault", () => {
                 userPosition: user_position,
                 lockingProgram: locking_program,
                 lockedAuthority: locked_authority,
-                feeNftOwner: fee_nft_owner, // move to autofun contract
-                feeNftAccount: fee_nft_account, // move to autofun contract
+                feeNftOwner: fee_nft_owner, // move to raydium_vault contract
+                feeNftAccount: fee_nft_account, // move to raydium_vault contract
                 lockedLiquidity: locked_liquidity,
                 cpmmProgram: cpmm_program,
                 cpAuthority: cp_authority,
                 poolState: pool_state,
                 lpMint: lp_mint,
-                recipientToken0Account: recv_token0_account, // move to autofun contract
-                recipientToken1Account: recv_token1_account, // move to autofun contract
+                recipientToken0Account: recv_token0_account, // move to raydium_vault contract
+                recipientToken1Account: recv_token1_account, // move to raydium_vault contract
                 token0Vault: token0_vault,
                 token1Vault: token1_vault,
                 vault0Mint: vault0_mint,

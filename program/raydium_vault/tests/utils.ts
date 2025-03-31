@@ -12,8 +12,8 @@ anchor.setProvider(provider);
 export const connection = provider.connection;
 export const fixedPoint = parseFloat("1000000000");
 export const vaultConfigSeed = "raydium_vault_config";
-export const positionSeed = "raydium_vault_position";
-export const claimerInfoSeed = "raydium_vault_claimer_info";
+export const positionSeed = "raydium_position";
+export const claimerInfoSeed = "raydium_claimer_info";
 export const nftFaucetSeed = "raydium_vault_nft_seed";
 
 /// USDC

@@ -5,7 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-raydium_vault = "6yMEAL2c1uTrJYRnrcguWMfDa1bsBZF1xfBJdACnzrp3"
+raydium_vault = "D3JRxfEhXafUXwyG45yXAfQ8yfSEYpqEpzJUaiWmJXEi"
 
 [registry]
 url = "https://api.devnet.solana.com"
