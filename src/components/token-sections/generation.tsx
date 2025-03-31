@@ -10,7 +10,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || ""; // Ensure fallback
 
 // Additional imports for balance checking
 import { Connection, PublicKey } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+// import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 // Storage keys for Twitter auth
 const STORAGE_KEY = "twitter-oauth-token";
