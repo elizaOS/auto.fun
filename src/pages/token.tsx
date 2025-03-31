@@ -133,8 +133,8 @@ export default function Page() {
   // const holderCount = metrics?.holderCount || token?.holderCount || 0;
 
   // For bonding curve calculations, still use token data
-  const finalTokenPrice = currentPrice || 0;
-  const finalTokenUSDPrice = tokenPriceUSD || finalTokenPrice * solPriceUSD;
+  const finalTokenPrice = 0.00000045; // Approximated final value from the bonding curve configuration (This can only be estimated)
+  const finalTokenUSDPrice = finalTokenPrice * solPriceUSD;
   const graduationMarketCap = finalTokenUSDPrice * 1_000_000_000;
 
   // Calculate negative reserve status
