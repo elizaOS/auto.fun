@@ -101,21 +101,21 @@ export default defineConfig({
     global: "window",
   },
   build: {
+    minify: "terser",
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+      format: {
+        comments: false,
+      },
+    },
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes("node_modules")) {
-            const parts = id.split("node_modules/")[1].split("/");
-            const pkgName = parts[0];
-            // Example: Group react packages into one chunk
-            if (["react", "react-dom", "preact"].includes(pkgName)) {
-              return "react-vendor";
-            }
-            // Optionally, group utility libraries together
-            if (["lodash", "date-fns"].includes(pkgName)) {
-              return "utilities";
-            }
-            return pkgName;
+            return id.toString().split("node_modules/")[1].split("/")[0];
           }
         },
       },
