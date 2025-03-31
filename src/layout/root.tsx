@@ -2,12 +2,15 @@ import BreakpointIndicator from "@/components/breakpoint-indicator";
 import Footer from "@/components/footer";
 import Header from "@/components/header";
 import { WalletModal } from "@/components/wallet-dialog";
+import { useAutoCronTrigger_development } from "@/hooks/use-cron";
 import { Providers } from "@/providers";
 import { queryClient } from "@/utils/api";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Outlet } from "react-router";
 
 export default function Layout() {
+  useAutoCronTrigger_development()
+
   return (
     <QueryClientProvider client={queryClient}>
       <Providers>

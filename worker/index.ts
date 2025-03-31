@@ -620,6 +620,8 @@ export default {
     return app.fetch(request, env, ctx);
   },
 
+  // Will not trigger automatically in local development,
+  // need to call /api/dev/run-cron manually
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     // Run frequent monitoring for token events if it's the right trigger
     // We should run this more frequently than the regular price updates

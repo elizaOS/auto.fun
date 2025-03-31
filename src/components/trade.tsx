@@ -6,6 +6,8 @@ import { twMerge } from "tailwind-merge";
 import Button from "./button";
 import ConfigDialog from "./config-dialog";
 import SkeletonImage from "./skeleton-image";
+import { useSwap } from "@/hooks/use-swap";
+import Loader from "./loader";
 
 export default function Trade({ token }: { token: IToken }) {
   const solanaPrice = token?.solPriceUSD || 0;
@@ -15,12 +17,15 @@ export default function Trade({ token }: { token: IToken }) {
   );
   const [error] = useState<string | undefined>("");
 
+  const {executeSwap, isExecuting: isExecutingSwap} = useSwap();
+
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
     token?.status,
   );
 
   return (
     <div className="relative border p-4 bg-autofun-background-card">
+      {isExecutingSwap && <Loader />}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col">
           {/* Selling */}
@@ -162,6 +167,16 @@ export default function Trade({ token }: { token: IToken }) {
           className="font-dm-mono"
           size="large"
           disabled={isDisabled}
+          onClick={() =>
+            sellingAmount
+              ? executeSwap({
+                  amount: sellingAmount,
+                  style: isTokenSelling ? "sell" : "buy",
+                  tokenAddress: token.mint,
+                  token,
+                })
+              : undefined
+          }
         >
           Swap
         </Button>

@@ -29,6 +29,12 @@ const fetcher = async (
   return await response.json();
 };
 
+export const runCron = () => {
+  if (!import.meta.env.DEV) throw new Error('Cannot manually trigger crons in production')
+
+  return fetcher('/api/dev/run-cron', 'GET')
+}
+
 export const getTokens = async ({
   page,
   limit,
