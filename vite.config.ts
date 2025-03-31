@@ -4,7 +4,7 @@ import viteCompression from "vite-plugin-compression";
 import preact from "@preact/preset-vite";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import { fileURLToPath, URL } from "url";
-import Sitemap from 'vite-plugin-sitemap'
+import Sitemap from "vite-plugin-sitemap";
 
 import { config } from "dotenv";
 
@@ -48,8 +48,10 @@ export default defineConfig({
   define: {
     "import.meta.env.VITE_API_URL": JSON.stringify(
       isDevnet
-        ? (process.env.VITE_DEV_API_URL || process.env.VITE_API_URL || "https://api-dev.autofun.workers.dev")
-        :  (process.env.VITE_API_URL || "https://api.autofun.workers.dev")
+        ? process.env.VITE_DEV_API_URL ||
+            process.env.VITE_API_URL ||
+            "https://api-dev.autofun.workers.dev"
+        : process.env.VITE_API_URL || "https://api.autofun.workers.dev"
     ),
     "import.meta.env.APP_ENV": JSON.stringify(
       process.env.NODE_ENV || "development"
@@ -58,16 +60,20 @@ export default defineConfig({
       process.env.VITE_SOLANA_NETWORK || "devnet"
     ),
     "import.meta.env.VITE_DEVNET_RPC_URL": JSON.stringify(
-      process.env.VITE_DEVNET_RPC_URL || "https://devnet.helius-rpc.com/?api-key=7f068738-8b88-4a91-b2a9-99b00f716717"
+      process.env.VITE_DEVNET_RPC_URL ||
+        "https://devnet.helius-rpc.com/?api-key=7f068738-8b88-4a91-b2a9-99b00f716717"
     ),
     "import.meta.env.VITE_MAINNET_RPC_URL": JSON.stringify(
-      process.env.VITE_MAINNET_RPC_URL || "https://mainnet.helius-rpc.com/?api-key=7f068738-8b88-4a91-b2a9-99b00f716717"
+      process.env.VITE_MAINNET_RPC_URL ||
+        "https://mainnet.helius-rpc.com/?api-key=7f068738-8b88-4a91-b2a9-99b00f716717"
     ),
     "import.meta.env.VITE_RPC_URL": JSON.stringify(
-      process.env.VITE_RPC_URL || 
-      (isDevnet 
-        ? process.env.VITE_DEVNET_RPC_URL || "https://devnet.helius-rpc.com/?api-key=7f068738-8b88-4a91-b2a9-99b00f716717"
-        : process.env.VITE_MAINNET_RPC_URL || "https://mainnet.helius-rpc.com/?api-key=7f068738-8b88-4a91-b2a9-99b00f716717")
+      process.env.VITE_RPC_URL ||
+        (isDevnet
+          ? process.env.VITE_DEVNET_RPC_URL ||
+            "https://devnet.helius-rpc.com/?api-key=7f068738-8b88-4a91-b2a9-99b00f716717"
+          : process.env.VITE_MAINNET_RPC_URL ||
+            "https://mainnet.helius-rpc.com/?api-key=7f068738-8b88-4a91-b2a9-99b00f716717")
     ),
     "import.meta.env.VITE_VIRTUAL_RESERVES": JSON.stringify(
       process.env.VITE_VIRTUAL_RESERVES || "2800000000"
@@ -79,13 +85,16 @@ export default defineConfig({
       process.env.VITE_DECIMALS || "6"
     ),
     "import.meta.env.VITE_BONDING_CURVE_ADDRESS": JSON.stringify(
-      process.env.VITE_BONDING_CURVE_ADDRESS || "HzkWnuoMSJRNhyHYrXVPgpyWaPn795bLJNBsfgXF326x"
+      process.env.VITE_BONDING_CURVE_ADDRESS ||
+        "HzkWnuoMSJRNhyHYrXVPgpyWaPn795bLJNBsfgXF326x"
     ),
     "import.meta.env.VITE_DEV_ADDRESS": JSON.stringify(
-      process.env.VITE_DEV_ADDRESS || "6X498a5ujz5zZ5d5LJXqdR28dzDgmLisaAL6Qdq18N9p"
+      process.env.VITE_DEV_ADDRESS ||
+        "6X498a5ujz5zZ5d5LJXqdR28dzDgmLisaAL6Qdq18N9p"
     ),
     "import.meta.env.VITE_RAYDIUM_ADDRESS": JSON.stringify(
-      process.env.VITE_RAYDIUM_ADDRESS || "GpMZbSM2GgvTKHJirzeGfMFoaZ8UR2X7F4v8vHTvxFbL"
+      process.env.VITE_RAYDIUM_ADDRESS ||
+        "GpMZbSM2GgvTKHJirzeGfMFoaZ8UR2X7F4v8vHTvxFbL"
     ),
     global: "window",
   },

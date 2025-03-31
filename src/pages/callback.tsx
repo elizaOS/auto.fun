@@ -1,3 +1,4 @@
+import { env } from "@/utils/env";
 import { useEffect, useState } from "react";
 
 // Storage keys
@@ -56,27 +57,17 @@ export default function CallbackPage() {
         return;
       }
 
-      // Check environment variables
-      const apiUrl = import.meta.env.VITE_API_URL;
-      if (!apiUrl) {
-        console.error("VITE_API_URL is not defined in environment");
-        setError(
-          "API URL is not configured. Check your environment variables.",
-        );
-        return;
-      }
-
-      setDebugInfo((prev) => ({ ...prev, apiUrl }));
+      setDebugInfo((prev) => ({ ...prev, apiUrl: env.apiUrl }));
 
       if (code && state) {
         try {
           console.log(
             "Making callback request to:",
-            `${apiUrl}/api/share/oauth/callback`,
+            `${env.apiUrl}/api/share/oauth/callback`,
           );
 
           const response = await fetch(
-            `${apiUrl}/api/share/oauth/callback?code=${code}&state=${state}`,
+            `${env.apiUrl}/api/share/oauth/callback?code=${code}&state=${state}`,
             { credentials: "include" },
           );
 

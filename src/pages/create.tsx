@@ -567,7 +567,7 @@ const uploadImage = async (metadata: TokenMetadata) => {
     headers["Authorization"] = `Bearer ${authToken}`;
   }
 
-  const response = await fetch(import.meta.env.VITE_API_URL + "/api/upload", {
+  const response = await fetch(env.apiUrl + "/api/upload", {
     method: "POST",
     headers,
     credentials: "include",
@@ -657,28 +657,25 @@ const waitForTokenCreation = async ({
           headers["Authorization"] = `Bearer ${authToken}`;
         }
 
-        const createResponse = await fetch(
-          import.meta.env.VITE_API_URL + "/api/create-token",
-          {
-            method: "POST",
-            headers,
-            credentials: "include",
-            body: JSON.stringify({
-              tokenMint: mint,
-              mint,
-              name,
-              symbol,
-              description,
-              twitter,
-              telegram,
-              website,
-              discord,
-              agentLink,
-              imageUrl,
-              metadataUrl,
-            }),
-          },
-        );
+        const createResponse = await fetch(env.apiUrl + "/api/create-token", {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({
+            tokenMint: mint,
+            mint,
+            name,
+            symbol,
+            description,
+            twitter,
+            telegram,
+            website,
+            discord,
+            agentLink,
+            imageUrl,
+            metadataUrl,
+          }),
+        });
 
         if (createResponse.ok) {
           const data = await createResponse.json();
@@ -717,19 +714,16 @@ const waitForTokenCreation = async ({
             headers["Authorization"] = `Bearer ${authToken}`;
           }
 
-          const response = await fetch(
-            import.meta.env.VITE_API_URL + "/api/check-token",
-            {
-              method: "POST",
-              headers,
-              credentials: "include",
-              body: JSON.stringify({
-                tokenMint: mint,
-                imageUrl,
-                metadataUrl,
-              }),
-            },
-          );
+          const response = await fetch(env.apiUrl + "/api/check-token", {
+            method: "POST",
+            headers,
+            credentials: "include",
+            body: JSON.stringify({
+              tokenMint: mint,
+              imageUrl,
+              metadataUrl,
+            }),
+          });
 
           if (response.ok) {
             const data = await response.json();
@@ -769,20 +763,23 @@ const waitForTokenCreation = async ({
 
 // Main Form Component
 export const Create = () => {
+  // Define things for our page
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuthentication();
   const { publicKey, signTransaction } = useWallet();
-  const { mutateAsync: createTokenOnChainAsync } = useCreateToken();
+
+  // State for image upload
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [showCoinDrop, setShowCoinDrop] = useState(false);
+  const [coinDropImageUrl, setCoinDropImageUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingField, setGeneratingField] = useState<string | null>(null);
-  const [showCoinDrop, setShowCoinDrop] = useState(false);
-  const [coinDropImageUrl, setCoinDropImageUrl] = useState<string | null>(null);
   const [promptFunctions, setPromptFunctions] = useState<{
     setPrompt: ((prompt: string) => void) | null;
     onPromptChange: ((prompt: string) => void) | null;
   }>({ setPrompt: null, onPromptChange: null });
-  const { isAuthenticated } = useAuthentication();
+  const { mutateAsync: createTokenOnChainAsync } = useCreateToken();
 
   // Import-related state
   const [isImporting, setIsImporting] = useState(false);
@@ -820,11 +817,14 @@ export const Create = () => {
           const tokenData = JSON.parse(storedTokenData) as TokenSearchData;
 
           // Check if the current wallet is authorized to create this token
+          // In dev mode, always allow any wallet to register
           const isCreatorWallet =
-            (tokenData.updateAuthority &&
-              tokenData.updateAuthority === publicKey.toString()) ||
-            (tokenData.creators &&
-              tokenData.creators.includes(publicKey.toString()));
+            tokenData.isCreator !== undefined
+              ? tokenData.isCreator
+              : (tokenData.updateAuthority &&
+                  tokenData.updateAuthority === publicKey.toString()) ||
+                (tokenData.creators &&
+                  tokenData.creators.includes(publicKey.toString()));
 
           // Update import status based on wallet authorization
           if (!isCreatorWallet) {
@@ -834,10 +834,20 @@ export const Create = () => {
                 "Please connect with the token's creator wallet to register it.",
             });
           } else {
+            // Success message - different in dev mode if not the creator
+            const message =
+              !tokenData.isCreator &&
+              !(
+                tokenData.updateAuthority === publicKey.toString() ||
+                (tokenData.creators &&
+                  tokenData.creators.includes(publicKey.toString()))
+              )
+                ? "Development Mode: You can register this token without being the creator wallet."
+                : "You are connected with the creator wallet. You can now register this token.";
+
             setImportStatus({
               type: "success",
-              message:
-                "You are connected with the creator wallet. You can now register this token.",
+              message,
             });
           }
         } catch (error) {
@@ -955,8 +965,30 @@ export const Create = () => {
   console.log("buyValue", buyValue);
   console.log("balance", balance?.data?.formattedBalance);
 
+  // Log development mode and active tab for debugging
+  console.log("VITE_SOLANA_NETWORK:", env.solanaNetwork);
+  console.log("Active tab:", activeTab);
+
+  // Skip balance check for imported tokens in development mode
   const insufficientBalance =
-    Number(buyValue) > Number(balance?.data?.formattedBalance || 0) - 0.05;
+    activeTab === FormTab.IMPORT
+      ? false
+      : Number(buyValue) > Number(balance?.data?.formattedBalance || 0) - 0.05;
+
+  console.log("Insufficient balance:", insufficientBalance);
+
+  // Show a message in the console for developers when bypassing balance check
+  if (activeTab === FormTab.IMPORT) {
+    const source =
+      env.solanaNetwork === "devnet"
+        ? "VITE_SOLANA_NETWORK=devnet"
+        : "LOCAL_DEV=true";
+    console.log(
+      `%c[DEV MODE via ${source}] SOL balance check bypassed for imported tokens in development mode`,
+      "color: green; font-weight: bold",
+    );
+  }
+
   // Error state
   const [errors, setErrors] = useState({
     name: "",
@@ -1233,18 +1265,15 @@ export const Create = () => {
 
       // Step 1: Generate metadata with user's prompt
       console.log("Requesting metadata generation...");
-      const response = await fetch(
-        import.meta.env.VITE_API_URL + "/api/generate-metadata",
-        {
-          method: "POST",
-          headers,
-          credentials: "include",
-          body: JSON.stringify({
-            prompt: userPrompt,
-            fields: ["name", "symbol", "description", "prompt"],
-          }),
-        },
-      );
+      const response = await fetch(env.apiUrl + "/api/generate-metadata", {
+        method: "POST",
+        headers,
+        credentials: "include",
+        body: JSON.stringify({
+          prompt: userPrompt,
+          fields: ["name", "symbol", "description", "prompt"],
+        }),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to generate metadata from prompt");
@@ -1309,18 +1338,15 @@ export const Create = () => {
       setIsGenerating(true);
       setGeneratingField("prompt");
 
-      const imageResponse = await fetch(
-        import.meta.env.VITE_API_URL + "/api/generate",
-        {
-          method: "POST",
-          headers,
-          credentials: "include",
-          body: JSON.stringify({
-            prompt: data.metadata.prompt,
-            type: "image",
-          }),
-        },
-      );
+      const imageResponse = await fetch(env.apiUrl + "/api/generate", {
+        method: "POST",
+        headers,
+        credentials: "include",
+        body: JSON.stringify({
+          prompt: data.metadata.prompt,
+          type: "image",
+        }),
+      });
 
       if (!imageResponse.ok) {
         console.error(
@@ -1463,18 +1489,15 @@ export const Create = () => {
 
       try {
         // Fetch token data from a special search endpoint that can find any token
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/search-token`,
-          {
-            method: "POST",
-            headers,
-            credentials: "include",
-            body: JSON.stringify({
-              mint: form.importAddress,
-              requestor: publicKey ? publicKey.toString() : "",
-            }),
-          },
-        );
+        const response = await fetch(`${env.apiUrl}/api/search-token`, {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({
+            mint: form.importAddress,
+            requestor: publicKey ? publicKey.toString() : "",
+          }),
+        });
 
         // Check if the request was successful
         if (!response.ok) {
@@ -1529,10 +1552,12 @@ export const Create = () => {
 
         // Check if the current wallet is authorized to create this token
         const isCreatorWallet =
-          (tokenData.updateAuthority &&
-            tokenData.updateAuthority === publicKey.toString()) ||
-          (tokenData.creators &&
-            tokenData.creators.includes(publicKey.toString()));
+          tokenData.isCreator !== undefined
+            ? tokenData.isCreator
+            : (tokenData.updateAuthority &&
+                tokenData.updateAuthority === publicKey.toString()) ||
+              (tokenData.creators &&
+                tokenData.creators.includes(publicKey.toString()));
 
         if (!isCreatorWallet) {
           // Show a message that they need to switch wallets
@@ -1543,10 +1568,13 @@ export const Create = () => {
           });
         } else {
           // Success message - ready to register
+          const message = !isCreatorWallet
+            ? "Development Mode: You can register this token without being the creator wallet."
+            : "Token data loaded successfully. You can now register this token.";
+
           setImportStatus({
             type: "success",
-            message:
-              "Token data loaded successfully. You can now register this token.",
+            message,
           });
         }
       } catch (fetchError) {
@@ -1649,14 +1677,11 @@ export const Create = () => {
         }
 
         // Get a pre-generated token
-        const response = await fetch(
-          import.meta.env.VITE_API_URL + "/api/pre-generated-token",
-          {
-            method: "GET",
-            headers,
-            credentials: "include",
-          },
-        );
+        const response = await fetch(env.apiUrl + "/api/pre-generated-token", {
+          method: "GET",
+          headers,
+          credentials: "include",
+        });
 
         if (!response.ok) {
           throw new Error("Failed to get pre-generated token");
@@ -1704,7 +1729,7 @@ export const Create = () => {
             // Extract the filename from the R2 URL
             const filename = imageUrl.split("/").pop();
             // Use local endpoint instead
-            imageUrl = `${import.meta.env.VITE_API_URL}/api/image/${filename}`;
+            imageUrl = `${env.apiUrl}/api/image/${filename}`;
           }
 
           const imageBlob = await fetch(imageUrl).then((r) => r.blob());
@@ -1727,18 +1752,15 @@ export const Create = () => {
           }
         } else {
           // If no image, generate one using the prompt
-          const imageResponse = await fetch(
-            import.meta.env.VITE_API_URL + "/api/generate",
-            {
-              method: "POST",
-              headers,
-              credentials: "include",
-              body: JSON.stringify({
-                prompt: token.prompt,
-                type: "image",
-              }),
-            },
-          );
+          const imageResponse = await fetch(env.apiUrl + "/api/generate", {
+            method: "POST",
+            headers,
+            credentials: "include",
+            body: JSON.stringify({
+              prompt: token.prompt,
+              type: "image",
+            }),
+          });
 
           if (!imageResponse.ok) {
             throw new Error("Failed to generate image");
@@ -1802,12 +1824,20 @@ export const Create = () => {
         try {
           const tokenData = JSON.parse(storedTokenData);
 
+          console.log("Processing imported token:", tokenData);
+          console.log("Current wallet:", publicKey?.toString());
+
           // Check if the current wallet has permission to create this token
+          // In dev mode, skip this check and allow any wallet to register
           const isCreatorNow =
             (tokenData.updateAuthority &&
               tokenData.updateAuthority === publicKey.toString()) ||
             (tokenData.creators &&
               tokenData.creators.includes(publicKey.toString()));
+
+          console.log("Creator wallet check result:", isCreatorNow);
+          console.log("Token update authority:", tokenData.updateAuthority);
+          console.log("Token creators:", tokenData.creators);
 
           if (!isCreatorNow) {
             throw new Error(
@@ -1837,30 +1867,27 @@ export const Create = () => {
           }
 
           // Create token record via API
-          const createResponse = await fetch(
-            import.meta.env.VITE_API_URL + "/api/create-token",
-            {
-              method: "POST",
-              headers,
-              credentials: "include",
-              body: JSON.stringify({
-                tokenMint: tokenData.mint,
-                mint: tokenData.mint,
-                name: form.name,
-                symbol: form.symbol,
-                description: form.description,
-                twitter: form.links.twitter,
-                telegram: form.links.telegram,
-                website: form.links.website,
-                discord: form.links.discord,
-                agentLink: "",
-                imageUrl: tokenData.image || "",
-                metadataUrl: tokenData.metadataUri || "",
-                // Include the import flag to indicate this is an imported token
-                imported: true,
-              }),
-            },
-          );
+          const createResponse = await fetch(env.apiUrl + "/api/create-token", {
+            method: "POST",
+            headers,
+            credentials: "include",
+            body: JSON.stringify({
+              tokenMint: tokenData.mint,
+              mint: tokenData.mint,
+              name: form.name,
+              symbol: form.symbol,
+              description: form.description,
+              twitter: form.links.twitter,
+              telegram: form.links.telegram,
+              website: form.links.website,
+              discord: form.links.discord,
+              agentLink: "",
+              imageUrl: tokenData.image || "",
+              metadataUrl: tokenData.metadataUri || "",
+              // Include the import flag to indicate this is an imported token
+              imported: true,
+            }),
+          });
 
           if (!createResponse.ok) {
             const errorData = (await createResponse.json()) as {
@@ -1980,7 +2007,7 @@ export const Create = () => {
           }
 
           // Mark the token as used and delete any other tokens with the same name or ticker
-          await fetch(import.meta.env.VITE_API_URL + "/api/mark-token-used", {
+          await fetch(env.apiUrl + "/api/mark-token-used", {
             method: "POST",
             headers,
             credentials: "include",
@@ -2057,8 +2084,8 @@ export const Create = () => {
     if (!form.symbol) newErrors.symbol = "Symbol is required";
     if (!form.description) newErrors.description = "Description is required";
 
-    // Validate SOL balance
-    if (insufficientBalance) {
+    // Validate SOL balance - skip this check for imported tokens in dev mode
+    if (insufficientBalance && !(activeTab === FormTab.IMPORT)) {
       newErrors.initialSol =
         "Insufficient SOL balance (need 0.05 SOL for fees)";
       toast.error("You don't have enough SOL to create this token");
@@ -2101,7 +2128,7 @@ export const Create = () => {
 
           // Get a pre-generated token
           const response = await fetch(
-            import.meta.env.VITE_API_URL + "/api/pre-generated-token",
+            env.apiUrl + "/api/pre-generated-token",
             {
               method: "GET",
               headers,
@@ -2156,7 +2183,7 @@ export const Create = () => {
               // Extract the filename from the R2 URL
               const filename = imageUrl.split("/").pop();
               // Use local endpoint instead
-              imageUrl = `${import.meta.env.VITE_API_URL}/api/image/${filename}`;
+              imageUrl = `${env.apiUrl}/api/image/${filename}`;
             }
 
             const imageBlob = await fetch(imageUrl).then((r) => r.blob());

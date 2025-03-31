@@ -1,3 +1,4 @@
+import { env } from "@/utils/env";
 import { useQuery } from "@tanstack/react-query";
 
 export interface TokenBalance {
@@ -6,11 +7,7 @@ export interface TokenBalance {
   formattedBalance: number;
 }
 
-const RPC_URL =
-  (import.meta.env.network === "devnet"
-    ? import.meta.env.VITE_DEVNET_RPC_URL
-    : import.meta.env.VITE_MAINNET_RPC_URL) || import.meta.env.VITE_RPC_URL;
-
+const RPC_URL = env.rpcUrl;
 const fetchTokenBalance = async (
   walletAddress: string,
   contractAddress: "So11111111111111111111111111111111111111111" | string,

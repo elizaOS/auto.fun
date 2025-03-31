@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Badge } from "../ui/badge";
+import Button from "../button";
+import { env } from "@/utils/env";
 
 // --- API Base URL ---
-const API_BASE_URL = import.meta.env.VITE_API_URL || ""; // Ensure fallback
+const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
 
 // Storage keys for Twitter auth
 const STORAGE_KEY = "twitter-oauth-token";
@@ -75,17 +77,6 @@ export default function CommunityTab() {
       console.log("Extracted token mint from pathname:", pathMatch[1]);
       setDetectedTokenMint(pathMatch[1]);
       return;
-    }
-
-    // If still not found, check if we might be in a token context from parent component
-    // This would be implemented in a real app by checking context or props
-    console.log("Could not detect token mint from URL or path");
-
-    // For testing, allow image generation with mock token
-    if (import.meta.env.DEV) {
-      const mockMint = "TokenDevPLACEHOLDERxxxxxxxxxxxxxxxxxxxxx";
-      console.log("Using mock token mint for development:", mockMint);
-      setDetectedTokenMint(mockMint);
     }
   }, [urlTokenMint, location.pathname]);
 
@@ -242,7 +233,7 @@ export default function CommunityTab() {
         console.log("Stored origin path for redirect:", currentPath);
 
         // Redirect to OAuth
-        const apiUrl = import.meta.env.VITE_API_URL;
+        const apiUrl = env.apiUrl;
         if (!apiUrl) {
           throw new Error("API URL is not configured");
         }
@@ -542,17 +533,16 @@ export default function CommunityTab() {
         </div>
       )}
 
-      <div className="flex justify-center">
-        <button
-          onClick={connectTwitter}
-          className="max-w-[350px] bg-[#03FF24] p-3 font-bold border-2 text-black text-[12px] md:text-[15px] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
-          disabled={
-            isConnectingAgent || !tokenMint || isAgentsLoading || !!agentsError
-          }
-        >
-          {isConnectingAgent ? "Connecting..." : "Connect X account"}
-        </button>
-      </div>
+      <Button
+        onClick={connectTwitter}
+        disabled={
+          isConnectingAgent || !tokenMint || isAgentsLoading || !!agentsError
+        }
+        className="mx-auto"
+        variant="tab"
+      >
+        {isConnectingAgent ? "Connecting..." : "Connect X account"}
+      </Button>
     </div>
   );
 }

@@ -1,10 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { env } from "@/utils/env";
 
-const RPC_URL =
-  (import.meta.env.network === "devnet"
-    ? import.meta.env.VITE_DEVNET_RPC_URL
-    : import.meta.env.VITE_MAINNET_RPC_URL) || import.meta.env.VITE_RPC_URL;
+const RPC_URL = env.rpcUrl;
 
 const fetchSolBalance = async (walletAddress: string): Promise<number> => {
   if (!walletAddress) return 0;

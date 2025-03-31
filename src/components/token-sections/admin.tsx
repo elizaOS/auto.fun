@@ -1,5 +1,6 @@
 import { FormInput } from "@/pages/create";
 import { isFromDomain } from "@/utils";
+import { env } from "@/utils/env";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { useEffect, useState } from "react";
@@ -107,9 +108,7 @@ export default function AdminTab() {
       setIsLoading(true);
       try {
         console.log(`Fetching token data for mint: ${mint}`);
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/token/${mint}`,
-        );
+        const response = await fetch(`${env.apiUrl}/api/token/${mint}`);
 
         console.log("Token data response status:", response.status);
 
@@ -219,15 +218,12 @@ export default function AdminTab() {
         discord: data.links.discord,
       };
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/token/${mint}/update`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify(payload),
-          credentials: "include", // Important to include credentials for auth cookies
-        },
-      );
+      const response = await fetch(`${env.apiUrl}/api/token/${mint}/update`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+        credentials: "include", // Important to include credentials for auth cookies
+      });
 
       console.log("Update response status:", response.status);
 
