@@ -70,10 +70,10 @@ export default defineConfig({
         : process.env.VITE_MAINNET_RPC_URL || "https://mainnet.helius-rpc.com/?api-key=7f068738-8b88-4a91-b2a9-99b00f716717")
     ),
     "import.meta.env.VITE_VIRTUAL_RESERVES": JSON.stringify(
-      process.env.VITE_VIRTUAL_RESERVES || (isDevnet ? "280000000" : "2800000000")
+      process.env.VITE_VIRTUAL_RESERVES || "2800000000"
     ),
     "import.meta.env.VITE_TOKEN_SUPPLY": JSON.stringify(
-      process.env.VITE_TOKEN_SUPPLY || (isDevnet ? "100000000000000" : "1000000000000000")
+      process.env.VITE_TOKEN_SUPPLY || "1000000000000000"
     ),
     "import.meta.env.VITE_DECIMALS": JSON.stringify(
       process.env.VITE_DECIMALS || "6"
