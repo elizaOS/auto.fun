@@ -1,5 +1,5 @@
 import { eq, and, gte, or } from "drizzle-orm";
-import { getDB, mediaGenerations, tokens, preGeneratedTokens } from "../db";
+import { getDB, mediaGenerations, tokens, preGeneratedTokens, tokenHolders } from "../db";
 import { Env } from "../env";
 import { fal } from "@fal-ai/client";
 import { sql } from "drizzle-orm";
@@ -12,6 +12,9 @@ import { MediaGeneration } from "../types";
 import type { ExecutionContext as CFExecutionContext } from "@cloudflare/workers-types/experimental";
 import type { Context } from "hono";
 import { uploadToCloudflare } from "../uploader";
+import { Connection, PublicKey } from "@solana/web3.js";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { getRpcUrl } from "../util";
 
 // Enum for media types
 export enum MediaType {
@@ -36,12 +39,19 @@ export const RATE_LIMITS = {
   },
 };
 
+// Token ownership requirements for generation
+export const TOKEN_OWNERSHIP = {
+  DEFAULT_MINIMUM: 1000, // Default minimum token amount required
+  ENABLED: true, // Flag to enable/disable the feature
+};
+
 // Helper to check rate limits
 export async function checkRateLimits(
   env: Env,
   mint: string,
   type: MediaType,
-): Promise<{ allowed: boolean; remaining: number }> {
+  publicKey?: string
+): Promise<{ allowed: boolean; remaining: number; message?: string }> {
   // Special handling for test environments
   if (env.NODE_ENV === "test") {
     // In test mode, we want to test different rate limit scenarios
@@ -95,6 +105,19 @@ export async function checkRateLimits(
     const count = Number(recentGenerationsCount[0].count);
     const remaining = RATE_LIMITS[type].MAX_GENERATIONS_PER_DAY - count;
 
+    // If token ownership validation is enabled and user wallet is provided
+    if (TOKEN_OWNERSHIP.ENABLED && publicKey) {
+      // Check if user owns enough tokens
+      const ownershipResult = await checkTokenOwnership(env, mint, publicKey);
+      if (!ownershipResult.allowed) {
+        return {
+          allowed: false,
+          remaining, 
+          message: ownershipResult.message
+        };
+      }
+    }
+
     return {
       allowed: count < RATE_LIMITS[type].MAX_GENERATIONS_PER_DAY,
       remaining,
@@ -107,6 +130,164 @@ export async function checkRateLimits(
       allowed: true,
       remaining: 0,
     };
+  }
+}
+
+/**
+ * Checks if a user owns the required minimum amount of tokens for generating content
+ */
+export async function checkTokenOwnership(
+  env: Env,
+  mint: string,
+  publicKey: string
+): Promise<{ allowed: boolean; message?: string }> {
+  try {
+    // Special handling for test environments
+    if (env.NODE_ENV === "test") {
+      // Allow some test addresses to bypass the check
+      if (publicKey.endsWith("TEST") || publicKey.endsWith("ADMIN")) {
+        return { allowed: true };
+      }
+      
+      // Test address to simulate not having enough tokens
+      if (publicKey.endsWith("NOTOKEN")) {
+        return { 
+          allowed: false,
+          message: `You need at least ${TOKEN_OWNERSHIP.DEFAULT_MINIMUM} tokens to use this feature.`
+        };
+      }
+      
+      // Default to allowing in test mode
+      return { allowed: true };
+    }
+
+    // Check if the feature is enabled
+    if (!TOKEN_OWNERSHIP.ENABLED) {
+      return { allowed: true };
+    }
+
+    // Get minimum required token amount
+    const minimumRequired = TOKEN_OWNERSHIP.DEFAULT_MINIMUM;
+
+    // Access the database
+    const db = getDB(env);
+    
+    try {
+      // First check if user is the token creator (creators always have access)
+      const tokenQuery = await db
+        .select()
+        .from(tokens)
+        .where(eq(tokens.mint, mint))
+        .limit(1);
+      
+      if (tokenQuery.length > 0 && tokenQuery[0].creator === publicKey) {
+        // User is the token creator, allow generating
+        return { allowed: true };
+      }
+      
+      // If not the creator, check if user is a token holder with enough tokens
+      const holderQuery = await db
+        .select()
+        .from(tokenHolders)
+        .where(
+          and(
+            eq(tokenHolders.mint, mint),
+            eq(tokenHolders.address, publicKey)
+          )
+        )
+        .limit(1);
+      
+      // If user is not in the token holders table or doesn't have enough tokens
+      if (holderQuery.length === 0) {
+        // User is not a token holder, check the blockchain directly as fallback
+        return await checkBlockchainTokenBalance(env, mint, publicKey, minimumRequired);
+      }
+      
+      // User is in token holders table, check if they have enough tokens
+      const holder = holderQuery[0];
+      const decimals = 6; // Most tokens use 6 decimals in Solana
+      const holdingAmount = holder.amount / Math.pow(10, decimals);
+      
+      if (holdingAmount >= minimumRequired) {
+        return { allowed: true };
+      } else {
+        return { 
+          allowed: false,
+          message: `You need at least ${minimumRequired} tokens to use this feature. You currently have ${holdingAmount.toFixed(2)}.`
+        };
+      }
+    } catch (dbError) {
+      logger.error(`Database error checking token ownership: ${dbError}`);
+      // Fall back to checking the blockchain directly if database check fails
+      return await checkBlockchainTokenBalance(env, mint, publicKey, minimumRequired);
+    }
+  } catch (error) {
+    logger.error(`Error in token ownership check: ${error}`);
+    // Allow by default if there's an error in the function, but can be changed to false in production
+    return { allowed: true };
+  }
+}
+
+/**
+ * Fallback method to check token balance directly on the blockchain
+ * Used when database lookup fails or when user is not in the token holders table
+ */
+async function checkBlockchainTokenBalance(
+  env: Env,
+  mint: string,
+  publicKey: string,
+  minimumRequired: number
+): Promise<{ allowed: boolean; message?: string }> {
+  try {
+    // Connect to Solana
+    const connection = new Connection(getRpcUrl(env), "confirmed");
+    
+    // Convert string addresses to PublicKey objects
+    const mintPublicKey = new PublicKey(mint);
+    const userPublicKey = new PublicKey(publicKey);
+    
+    // Fetch token accounts with a simple RPC call
+    const response = await connection.getTokenAccountsByOwner(
+      userPublicKey,
+      { mint: mintPublicKey },
+      { commitment: "confirmed" }
+    );
+    
+    // Calculate total token amount
+    let totalAmount = 0;
+    
+    // Get token balances from all accounts
+    const tokenAccountInfos = await Promise.all(
+      response.value.map(({ pubkey }) => 
+        connection.getTokenAccountBalance(pubkey)
+      )
+    );
+    
+    // Sum up all token balances
+    for (const info of tokenAccountInfos) {
+      if (info.value) {
+        const amount = info.value.amount;
+        const decimals = info.value.decimals;
+        totalAmount += Number(amount) / Math.pow(10, decimals);
+      }
+    }
+    
+    // Determine if user has enough tokens
+    if (totalAmount >= minimumRequired) {
+      return { allowed: true };
+    } else {
+      return { 
+        allowed: false,
+        message: `You need at least ${minimumRequired} tokens to use this feature. You currently have ${totalAmount.toFixed(2)}.`
+      };
+    }
+  } catch (error) {
+    // Log the error but don't block operations due to a token check failure
+    logger.error(`Error checking blockchain token balance for user ${publicKey}: ${error}`);
+    
+    // Default to allowing if we can't check the balance
+    // You may want to change this to false in production
+    return { allowed: true };
   }
 }
 
@@ -284,71 +465,80 @@ const TokenMetadataGenerationSchema = z.object({
 // Generate media endpoint
 app.post("/:mint/generate", async (c) => {
   // Create overall endpoint timeout
-  const endpointTimeout = setTimeout(() => {
-    // This will log but won't actually terminate the request in Cloudflare Workers
-    // However, it helps with debugging hanging promises
-    console.error("Media generation endpoint timed out after 30 seconds");
-  }, 30000);
+  const endpointTimeout = 120000; // 120 seconds timeout for entire endpoint
+  let endpointTimeoutId: NodeJS.Timeout | number = 0; // Initialize with placeholder
+  
+  // Create a function to clear timeout on exit
+  const clearTimeoutSafe = (timeoutId: NodeJS.Timeout | number) => {
+    if (timeoutId) {
+      if (typeof timeoutId === "number" && typeof window !== 'undefined') {
+        // Clear timeout for browser
+        window.clearTimeout(timeoutId);
+      } else {
+        // Clear timeout for Node.js
+        clearTimeout(timeoutId);
+      }
+    }
+  };
+
+  // Set up the endpoint timeout handler
+  endpointTimeoutId = setTimeout(() => {
+    console.error("Endpoint timed out after", endpointTimeout, "ms");
+    c.json(
+      {
+        error:
+          "Generation request timed out. Please try again with a simpler prompt.",
+      },
+      504,
+    );
+  }, endpointTimeout);
 
   try {
-    const mint = c.req.param("mint");
+    // Get user info
+    const user = c.get("user");
+    if (!user) {
+      clearTimeoutSafe(endpointTimeoutId);
+      return c.json({ error: "Authentication required" }, 401);
+    }
 
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      clearTimeout(endpointTimeout);
-      return c.json({ error: "Invalid mint address" }, 400);
+    const mint = c.req.param("mint");
+    if (!mint) {
+      clearTimeoutSafe(endpointTimeoutId);
+      return c.json({ error: "No mint address provided" }, 400);
     }
 
     // Parse request body
-    let body;
-    try {
-      body = await c.req.json();
-    } catch (error) {
-      clearTimeout(endpointTimeout);
-      return c.json(
-        {
-          error: "Invalid JSON in request body",
-          details:
-            error instanceof Error ? error.message : "Unknown parsing error",
-        },
-        400,
-      );
-    }
+    const body = await c.req.json();
 
-    // Validate with more detailed error handling
+    // Validate rate limit and generation parameters
     let validatedData;
     try {
       validatedData = MediaGenerationRequestSchema.parse(body);
     } catch (error) {
-      clearTimeout(endpointTimeout);
       if (error instanceof z.ZodError) {
-        return c.json(
-          {
-            error: "Validation error",
-            details: error.errors.map((e) => ({
-              path: e.path.join("."),
-              message: e.message,
-              code: e.code,
-            })),
-          },
-          400,
-        );
+        return c.json({ error: error.errors }, 400);
       }
       throw error;
     }
 
-    // Create a DB timeout for database operations
-    const dbTimeout = 5000; // 5 seconds for DB operations
-    const dbTimeoutPromise = new Promise((_, reject) =>
+    // Configure fal.ai client
+    fal.config({
+      credentials: c.env.FAL_API_KEY ?? "",
+    });
+
+    // Create a database timeout
+    const dbTimeout = 5000; // 5 seconds
+    const dbTimeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(
-        () => reject(new Error("Database operation timed out")),
+        () => reject(new Error("Database query timed out")),
         dbTimeout,
       ),
     );
 
+    // Check if the token exists in the database
     const db = getDB(c.env);
-
-    // Verify the token exists with timeout
     let token;
+
     try {
       const tokenQuery = db
         .select()
@@ -359,25 +549,38 @@ app.post("/:mint/generate", async (c) => {
       token = await Promise.race([tokenQuery, dbTimeoutPromise]);
 
       if (!token) {
-        clearTimeout(endpointTimeout);
+        clearTimeoutSafe(endpointTimeoutId);
         return c.json({ error: "Token not found" }, 404);
       }
     } catch (error) {
-      clearTimeout(endpointTimeout);
+      clearTimeoutSafe(endpointTimeoutId);
       console.error(`Database error checking token: ${error}`);
       return c.json({ error: "Database error checking token" }, 500);
     }
 
     // Check rate limits with timeout
-    let rateLimit: { allowed: boolean; remaining: number };
+    let rateLimit: { allowed: boolean; remaining: number; message?: string };
     try {
       rateLimit = (await Promise.race([
-        checkRateLimits(c.env, mint, validatedData.type),
+        checkRateLimits(c.env, mint, validatedData.type, user.publicKey),
         dbTimeoutPromise,
-      ])) as { allowed: boolean; remaining: number };
+      ])) as { allowed: boolean; remaining: number; message?: string };
 
       if (!rateLimit.allowed) {
-        clearTimeout(endpointTimeout);
+        clearTimeoutSafe(endpointTimeoutId);
+        // Check if failure is due to token ownership requirement
+        if (rateLimit.message && rateLimit.message.includes("tokens to use this feature")) {
+          return c.json(
+            {
+              error: "Insufficient token balance",
+              message: rateLimit.message,
+              type: "OWNERSHIP_REQUIREMENT",
+              minimumRequired: TOKEN_OWNERSHIP.DEFAULT_MINIMUM,
+            },
+            403
+          );
+        }
+        // Otherwise it's a standard rate limit error
         return c.json(
           {
             error: "Rate limit exceeded. Please try again later.",
@@ -391,7 +594,7 @@ app.post("/:mint/generate", async (c) => {
         );
       }
     } catch (error) {
-      clearTimeout(endpointTimeout);
+      clearTimeoutSafe(endpointTimeoutId);
       console.error(`Error checking rate limits: ${error}`);
       return c.json({ error: "Error checking rate limits" }, 500);
     }
@@ -402,7 +605,7 @@ app.post("/:mint/generate", async (c) => {
     try {
       result = await generateMedia(c.env, validatedData);
     } catch (error) {
-      clearTimeout(endpointTimeout);
+      clearTimeoutSafe(endpointTimeoutId);
       console.error(`Media generation failed: ${error}`);
       return c.json({ error: "Media generation failed" }, 500);
     }
@@ -465,7 +668,7 @@ app.post("/:mint/generate", async (c) => {
     }
 
     // Return the media URL and remaining generation count
-    clearTimeout(endpointTimeout);
+    clearTimeoutSafe(endpointTimeoutId);
     return c.json({
       success: true,
       mediaUrl,
@@ -475,7 +678,7 @@ app.post("/:mint/generate", async (c) => {
       ).toISOString(),
     });
   } catch (error) {
-    clearTimeout(endpointTimeout);
+    clearTimeoutSafe(endpointTimeoutId);
     logger.error("Error generating media:", error);
 
     if (error instanceof z.ZodError) {
@@ -1559,75 +1762,50 @@ export async function checkAndReplenishTokens(
 // Endpoint to enhance a prompt and generate media
 app.post("/enhance-and-generate", requireAuth, async (c) => {
   try {
-    // Get user from context (guaranteed by requireAuth)
-    const user = c.get("user")!;
-
-    console.log(`Enhance-and-generate request from user: ${user.publicKey}`);
-
-    // Parse request body
-    let body;
-    try {
-      body = await c.req.json();
-      console.log(
-        "Request body:",
-        JSON.stringify(body).substring(0, 200) + "...",
-      );
-    } catch (error) {
+    const user = c.get("user");
+    if (!user) {
       return c.json(
-        {
-          success: false,
-          error: "Invalid JSON in request body",
-          details:
-            error instanceof Error ? error.message : "Unknown parsing error",
-        },
-        400,
+        { success: false, error: "Authentication required" },
+        401,
       );
     }
 
-    // Define schema for token-specific generation
-    const EnhanceAndGenerateSchema = z.object({
-      userPrompt: z.string().min(1).max(500),
+    // Verify and parse required fields
+    const GenerationSchema = z.object({
       tokenMint: z.string().min(32).max(44),
-      tokenMetadata: z.object({
-        name: z.string(),
-        symbol: z.string(),
-        description: z.string().optional(),
-        prompt: z.string().optional(),
-      }),
+      prompt: z.string().min(3).max(1000),
     });
 
-    // Validate with detailed error handling
-    let validatedData;
-    try {
-      validatedData = EnhanceAndGenerateSchema.parse(body);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return c.json(
-          {
-            success: false,
-            error: "Validation error",
-            details: error.errors.map((e) => ({
-              path: e.path.join("."),
-              message: e.message,
-              code: e.code,
-            })),
-          },
-          400,
-        );
-      }
-      throw error;
-    }
+    const body = await c.req.json();
+    const { tokenMint, prompt: userPrompt } = GenerationSchema.parse(body);
 
-    // Extract data
-    const { userPrompt, tokenMint, tokenMetadata } = validatedData;
+    logger.log(`Enhance-and-generate request for token: ${tokenMint}`);
+    logger.log(`Original prompt: ${userPrompt}`);
 
-    // Check if token exists in database
+    // Get token metadata from database if available
     const db = getDB(c.env);
     const existingToken = await db
       .select()
       .from(tokens)
       .where(eq(tokens.mint, tokenMint))
       .limit(1);
+
+    let tokenMetadata = {
+      name: "",
+      symbol: "",
+      description: "",
+      prompt: "",
+    };
+
+    if (existingToken && existingToken.length > 0) {
+      const token = existingToken[0];
+      tokenMetadata = {
+        name: token.name || "",
+        symbol: token.ticker || "",
+        description: token.description || "",
+        prompt: "", // We don't store a separate prompt field currently
+      };
+    }
 
     if (!existingToken || existingToken.length === 0) {
       // For development, allow generation even if token doesn't exist in DB
@@ -1645,8 +1823,22 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
     }
 
     // Check rate limits for the user on this token
-    const rateLimit = await checkRateLimits(c.env, tokenMint, MediaType.IMAGE);
+    const rateLimit = await checkRateLimits(c.env, tokenMint, MediaType.IMAGE, user.publicKey);
     if (!rateLimit.allowed) {
+      // Check if failure is due to token ownership requirement
+      if (rateLimit.message && rateLimit.message.includes("tokens to use this feature")) {
+        return c.json(
+          {
+            success: false,
+            error: "Insufficient token balance",
+            message: rateLimit.message,
+            type: "OWNERSHIP_REQUIREMENT",
+            minimumRequired: TOKEN_OWNERSHIP.DEFAULT_MINIMUM,
+          },
+          403
+        );
+      }
+      // Otherwise it's a standard rate limit error
       return c.json(
         {
           success: false,
