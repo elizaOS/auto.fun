@@ -10,8 +10,7 @@ import { useSwap } from "@/hooks/use-swap";
 import Loader from "./loader";
 import useTokenBalance from "@/hooks/use-token-balance";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { useQuery } from "@tanstack/react-query";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { fetchTokenMarketMetrics } from "@/utils/blockchain";
 

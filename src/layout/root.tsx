@@ -2,7 +2,6 @@ import BreakpointIndicator from "@/components/breakpoint-indicator";
 import Footer from "@/components/footer";
 import Header from "@/components/header";
 import { WalletModal } from "@/components/wallet-dialog";
-import { useAutoCronTrigger_development } from "@/hooks/use-cron";
 import { Providers } from "@/providers";
 import { queryClient } from "@/utils/api";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -11,7 +10,6 @@ import { Outlet, useLocation } from "react-router";
 import { ToastContainer } from "react-toastify";
 
 export default function Layout() {
-  useAutoCronTrigger_development()
   const { pathname } = useLocation();
 
   useEffect(() => {
