@@ -218,7 +218,7 @@ export default function Page() {
       {/* Right Section */}
       <div className="w-full lg:max-w-[450px] flex flex-col gap-3">
         <div className="border p-4 bg-autofun-background-card flex flex-col gap-3">
-          <div className="w-full">
+          <div className="w-full aspect-square">
             <SkeletonImage src={token?.image} alt="image" />
           </div>
           <div className="flex flex-col gap-3">
