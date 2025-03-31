@@ -1,5 +1,5 @@
 import { useWallet } from "@solana/wallet-adapter-react";
-import { X } from "lucide-react";
+import { X, Wallet } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -7,6 +7,10 @@ import Button from "../button";
 
 // --- API Base URL ---
 const API_BASE_URL = import.meta.env.VITE_API_URL || ""; // Ensure fallback
+
+// Additional imports for balance checking
+import { Connection, PublicKey } from "@solana/web3.js";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 // Storage keys for Twitter auth
 const STORAGE_KEY = "twitter-oauth-token";
@@ -49,6 +53,11 @@ export default function CommunityTab() {
   const [shareError, setShareError] = useState<string | null>(null);
   const [twitterCredentials, setTwitterCredentials] =
     useState<TwitterCredentials | null>(null);
+  
+  // Balance checking state
+  const [tokenBalance, setTokenBalance] = useState<number | null>(null);
+  const [isCheckingBalance, setIsCheckingBalance] = useState(false);
+  const [hasEnoughTokens, setHasEnoughTokens] = useState<boolean | null>(null);
 
   // --- Modal State ---
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -349,6 +358,37 @@ export default function CommunityTab() {
           if (contentType && contentType.includes("application/json")) {
             errorData = await response.json();
             errorMessage = errorData.error || errorMessage;
+            
+            // Special handling for token ownership requirement errors
+            if (errorData.type === "OWNERSHIP_REQUIREMENT") {
+              const minimumRequired = errorData.minimumRequired || 1000;
+              const currentAmount = errorData.message?.match(/You currently have ([\d.]+)/)?.[1] || "0";
+              
+              // Show a more helpful message with a link to buy tokens
+              const buyTokensUrl = `/token/${tokenMint}?action=buy`;
+              
+              toast.error(
+                <div>
+                  <p>You need at least {minimumRequired} tokens to use this feature.</p>
+                  <p>You currently have {currentAmount} tokens.</p>
+                  <a 
+                    href={buyTokensUrl}
+                    className="underline text-blue-500 hover:text-blue-700"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.location.href = buyTokensUrl;
+                    }}
+                  >
+                    Click here to buy more tokens
+                  </a>
+                </div>,
+                {
+                  autoClose: 10000, // Show for 10 seconds
+                  closeOnClick: false,
+                }
+              );
+              throw new Error(`Insufficient token balance. You need at least ${minimumRequired} tokens.`);
+            }
           } else {
             // If not JSON, try to get text
             errorMessage = await response.text();
@@ -788,6 +828,129 @@ export default function CommunityTab() {
     }
   }, [generatedImage]);
 
+  // Add function to check token balance
+  const checkTokenBalance = async () => {
+    if (!publicKey || !tokenMint) {
+      toast.error("Please connect your wallet and navigate to a token page");
+      return;
+    }
+
+    try {
+      setIsCheckingBalance(true);
+      
+      // Get wallet mode setting from environment
+      const userWalletMode = import.meta.env.VITE_USER_WALLET_MODE || "default";
+      const isLocalMode = userWalletMode === "local";
+      
+      console.log(`Checking token balance in ${isLocalMode ? "local" : "standard"} mode`);
+      
+      // Get stored auth token if available
+      const authToken = localStorage.getItem("authToken");
+      
+      // First try to get balance from API (which uses the database)
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/api/token/${tokenMint}/check-balance?address=${publicKey.toString()}${isLocalMode ? '&mode=local' : ''}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {})
+            },
+            credentials: "include",
+          }
+        );
+        
+        if (response.ok) {
+          const data = await response.json() as { balance?: number };
+          if (data.balance !== undefined) {
+            const formattedBalance = Number(data.balance);
+            setTokenBalance(formattedBalance);
+            setHasEnoughTokens(formattedBalance >= 1000);
+            return;
+          }
+        }
+      } catch (apiError) {
+        console.error("API balance check failed:", apiError);
+        // Continue to fallback method if API fails
+      }
+      
+      // Fallback: Check balance on-chain on both networks if in local mode
+      // Get network information from environment variables
+      const devnetRpcUrl = import.meta.env.VITE_DEVNET_RPC_URL || "https://api.devnet.solana.com";
+      const mainnetRpcUrl = import.meta.env.VITE_MAINNET_RPC_URL || "https://api.mainnet-beta.solana.com";
+      const defaultRpcUrl = import.meta.env.VITE_RPC_URL || "https://api.devnet.solana.com";
+      
+      // Decide which networks to check
+      const networksToCheck = isLocalMode 
+        ? [
+            { name: "devnet", url: devnetRpcUrl },
+            { name: "mainnet", url: mainnetRpcUrl }
+          ] 
+        : [{ name: import.meta.env.VITE_SOLANA_NETWORK || "devnet", url: defaultRpcUrl }];
+      
+      let totalBalance = 0;
+      let foundOnNetwork = "";
+      
+      // Check each network we decided to look at
+      for (const network of networksToCheck) {
+        try {
+          console.log(`Checking token balance on ${network.name} (${network.url})`);
+          const connection = new Connection(network.url);
+          
+          // Get token accounts owned by user for this mint
+          const tokenAccounts = await connection.getTokenAccountsByOwner(
+            publicKey,
+            { mint: new PublicKey(tokenMint) },
+            { commitment: "confirmed" }
+          );
+          
+          let networkBalance = 0;
+          
+          // Sum up balances from all accounts on this network
+          for (const { pubkey } of tokenAccounts.value) {
+            const accountInfo = await connection.getTokenAccountBalance(pubkey);
+            if (accountInfo.value) {
+              const amount = Number(accountInfo.value.amount);
+              const decimals = accountInfo.value.decimals;
+              networkBalance += amount / Math.pow(10, decimals);
+            }
+          }
+          
+          // If we found a balance on this network
+          if (networkBalance > 0) {
+            totalBalance = networkBalance; // Use this balance
+            foundOnNetwork = network.name;
+            console.log(`Found balance of ${networkBalance} tokens on ${network.name}`);
+            break; // Stop checking other networks
+          }
+        } catch (networkError) {
+          console.error(`Error checking ${network.name}:`, networkError);
+        }
+      }
+      
+      setTokenBalance(totalBalance);
+      setHasEnoughTokens(totalBalance >= 1000);
+      
+      // Show appropriate toast message
+      if (totalBalance > 0) {
+        if (foundOnNetwork) {
+          toast.success(`You have ${totalBalance.toFixed(2)} tokens on ${foundOnNetwork}${totalBalance >= 1000 ? ' - enough to generate content!' : ''}`);
+        } else {
+          toast.success(`You have ${totalBalance.toFixed(2)} tokens${totalBalance >= 1000 ? ' - enough to generate content!' : ''}`);
+        }
+      } else {
+        toast.warning(`You have 0 tokens. You need at least 1,000 to generate content.`);
+      }
+      
+    } catch (error) {
+      console.error("Error checking token balance:", error);
+      toast.error("Failed to check token balance");
+    } finally {
+      setIsCheckingBalance(false);
+    }
+  };
+
   return (
     <div className="p-4 flex flex-col gap-4">
       <div className="flex flex-row">
@@ -851,6 +1014,39 @@ export default function CommunityTab() {
                           }}
                         />
                       </button>
+                    </div>
+
+                    <div className="text-sm text-autofun-text-secondary mb-4">
+                      <div className="flex items-center">
+                        <p>
+                          Note: You need to hold at least 1,000 tokens to generate content. 
+                          Token creators can generate content regardless of their token holdings.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Token Balance Section */}
+                    <div className="flex items-center mb-4 bg-autofun-background-card border border-autofun-stroke-primary p-2 rounded-md">
+                      <Wallet className="text-autofun-text-highlight mr-2 size-5" />
+                      <div className="flex-1">
+                        <span className="text-autofun-text-primary text-sm">
+                          {tokenBalance !== null 
+                            ? `Your Balance: ${tokenBalance.toFixed(2)} tokens ${
+                                hasEnoughTokens 
+                                  ? '✅ Eligible to generate' 
+                                  : '❌ Need at least 1,000 tokens'
+                              }`
+                            : 'Check your token balance'}
+                        </span>
+                      </div>
+                      <Button 
+                        size="small" 
+                        variant="secondary"
+                        onClick={checkTokenBalance}
+                        disabled={isCheckingBalance || !publicKey}
+                      >
+                        {isCheckingBalance ? 'Checking...' : 'Check Balance'}
+                      </Button>
                     </div>
 
                     <div className="flex flex-col relative">

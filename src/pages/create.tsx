@@ -769,20 +769,26 @@ const waitForTokenCreation = async ({
 
 // Main Form Component
 export const Create = () => {
+  // Define things for our page
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuthentication();
   const { publicKey, signTransaction } = useWallet();
-  const { mutateAsync: createTokenOnChainAsync } = useCreateToken();
+  
+  // Check if we're in development mode based on environment variable instead of hostname
+  const isLocalDev = import.meta.env.VITE_SOLANA_NETWORK === 'devnet' || import.meta.env.LOCAL_DEV === 'true';
+  
+  // State for image upload
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [showCoinDrop, setShowCoinDrop] = useState(false);
+  const [coinDropImageUrl, setCoinDropImageUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingField, setGeneratingField] = useState<string | null>(null);
-  const [showCoinDrop, setShowCoinDrop] = useState(false);
-  const [coinDropImageUrl, setCoinDropImageUrl] = useState<string | null>(null);
   const [promptFunctions, setPromptFunctions] = useState<{
     setPrompt: ((prompt: string) => void) | null;
     onPromptChange: ((prompt: string) => void) | null;
   }>({ setPrompt: null, onPromptChange: null });
-  const { isAuthenticated } = useAuthentication();
+  const { mutateAsync: createTokenOnChainAsync } = useCreateToken();
 
   // Import-related state
   const [isImporting, setIsImporting] = useState(false);
@@ -820,24 +826,33 @@ export const Create = () => {
           const tokenData = JSON.parse(storedTokenData) as TokenSearchData;
 
           // Check if the current wallet is authorized to create this token
-          const isCreatorWallet =
-            (tokenData.updateAuthority &&
-              tokenData.updateAuthority === publicKey.toString()) ||
-            (tokenData.creators &&
-              tokenData.creators.includes(publicKey.toString()));
+          // In dev mode, always allow any wallet to register
+          const isCreatorWallet = isLocalDev
+            ? true
+            : (tokenData.isCreator !== undefined
+                ? tokenData.isCreator
+                : ((tokenData.updateAuthority &&
+                    tokenData.updateAuthority === publicKey.toString()) ||
+                  (tokenData.creators &&
+                    tokenData.creators.includes(publicKey.toString()))));
 
           // Update import status based on wallet authorization
-          if (!isCreatorWallet) {
+          if (!isCreatorWallet && !isLocalDev) {
             setImportStatus({
               type: "warning",
               message:
                 "Please connect with the token's creator wallet to register it.",
             });
           } else {
+            // Success message - different in dev mode if not the creator
+            const message = isLocalDev && !tokenData.isCreator && 
+              !(tokenData.updateAuthority === publicKey.toString() || (tokenData.creators && tokenData.creators.includes(publicKey.toString())))
+              ? "Development Mode: You can register this token without being the creator wallet."
+              : "You are connected with the creator wallet. You can now register this token.";
+              
             setImportStatus({
               type: "success",
-              message:
-                "You are connected with the creator wallet. You can now register this token.",
+              message,
             });
           }
         } catch (error) {
@@ -845,7 +860,7 @@ export const Create = () => {
         }
       }
     }
-  }, [activeTab, publicKey]);
+  }, [activeTab, publicKey, isLocalDev]);
 
   // Effect to populate form with token data if it exists
   useEffect(() => {
@@ -954,9 +969,28 @@ export const Create = () => {
 
   console.log("buyValue", buyValue);
   console.log("balance", balance?.data?.formattedBalance);
-
+  
+  // Log development mode and active tab for debugging
+  console.log("Is local development mode?", isLocalDev);
+  console.log("VITE_SOLANA_NETWORK:", import.meta.env.VITE_SOLANA_NETWORK);
+  console.log("LOCAL_DEV:", import.meta.env.LOCAL_DEV);
+  console.log("Active tab:", activeTab);
+  
+  // Skip balance check for imported tokens in development mode
   const insufficientBalance =
-    Number(buyValue) > Number(balance?.data?.formattedBalance || 0) - 0.05;
+    (isLocalDev && activeTab === FormTab.IMPORT) 
+      ? false
+      : Number(buyValue) > Number(balance?.data?.formattedBalance || 0) - 0.05;
+      
+  console.log("Insufficient balance check bypassed:", (isLocalDev && activeTab === FormTab.IMPORT));
+  console.log("Insufficient balance:", insufficientBalance);
+  
+  // Show a message in the console for developers when bypassing balance check
+  if (isLocalDev && activeTab === FormTab.IMPORT) {
+    const source = import.meta.env.VITE_SOLANA_NETWORK === 'devnet' ? 'VITE_SOLANA_NETWORK=devnet' : 'LOCAL_DEV=true';
+    console.log(`%c[DEV MODE via ${source}] SOL balance check bypassed for imported tokens in development mode`, "color: green; font-weight: bold");
+  }
+
   // Error state
   const [errors, setErrors] = useState({
     name: "",
@@ -1528,13 +1562,16 @@ export const Create = () => {
         }
 
         // Check if the current wallet is authorized to create this token
-        const isCreatorWallet =
-          (tokenData.updateAuthority &&
-            tokenData.updateAuthority === publicKey.toString()) ||
-          (tokenData.creators &&
-            tokenData.creators.includes(publicKey.toString()));
+        const isCreatorWallet = isLocalDev 
+          ? true
+          : (tokenData.isCreator !== undefined
+              ? tokenData.isCreator
+              : ((tokenData.updateAuthority &&
+                  tokenData.updateAuthority === publicKey.toString()) ||
+                (tokenData.creators &&
+                  tokenData.creators.includes(publicKey.toString()))));
 
-        if (!isCreatorWallet) {
+        if (!isCreatorWallet && !isLocalDev) {
           // Show a message that they need to switch wallets
           setImportStatus({
             type: "warning",
@@ -1543,10 +1580,13 @@ export const Create = () => {
           });
         } else {
           // Success message - ready to register
+          const message = isLocalDev && !isCreatorWallet
+            ? "Development Mode: You can register this token without being the creator wallet."
+            : "Token data loaded successfully. You can now register this token.";
+            
           setImportStatus({
             type: "success",
-            message:
-              "Token data loaded successfully. You can now register this token.",
+            message
           });
         }
       } catch (fetchError) {
@@ -1801,13 +1841,28 @@ export const Create = () => {
       if (storedTokenData && activeTab === FormTab.IMPORT) {
         try {
           const tokenData = JSON.parse(storedTokenData);
+          
+          console.log("Processing imported token:", tokenData);
+          console.log("Current wallet:", publicKey?.toString());
 
           // Check if the current wallet has permission to create this token
-          const isCreatorNow =
-            (tokenData.updateAuthority &&
-              tokenData.updateAuthority === publicKey.toString()) ||
-            (tokenData.creators &&
-              tokenData.creators.includes(publicKey.toString()));
+          // In dev mode, skip this check and allow any wallet to register
+          const isCreatorNow = isLocalDev 
+            ? true 
+            : ((tokenData.updateAuthority &&
+                tokenData.updateAuthority === publicKey.toString()) ||
+              (tokenData.creators &&
+                tokenData.creators.includes(publicKey.toString())));
+
+          // Log for development purposes
+          if (isLocalDev) {
+            const source = import.meta.env.VITE_SOLANA_NETWORK === 'devnet' ? 'VITE_SOLANA_NETWORK=devnet' : 'LOCAL_DEV=true';
+            console.log(`%c[DEV MODE via ${source}] Creator wallet check bypassed for imported tokens in development mode`, "color: green; font-weight: bold");
+          } else {
+            console.log("Creator wallet check result:", isCreatorNow);
+            console.log("Token update authority:", tokenData.updateAuthority);
+            console.log("Token creators:", tokenData.creators);
+          }
 
           if (!isCreatorNow) {
             throw new Error(
@@ -2057,8 +2112,8 @@ export const Create = () => {
     if (!form.symbol) newErrors.symbol = "Symbol is required";
     if (!form.description) newErrors.description = "Description is required";
 
-    // Validate SOL balance
-    if (insufficientBalance) {
+    // Validate SOL balance - skip this check for imported tokens in dev mode
+    if (insufficientBalance && !(isLocalDev && activeTab === FormTab.IMPORT)) {
       newErrors.initialSol =
         "Insufficient SOL balance (need 0.05 SOL for fees)";
       toast.error("You don't have enough SOL to create this token");
@@ -2740,6 +2795,13 @@ export const Create = () => {
                 }}
               />
             </button>
+
+            {/* Show a dev mode badge when in development mode */}
+            {isLocalDev && activeTab === FormTab.IMPORT && (
+              <div className="text-xs py-1 px-2 bg-green-700 text-white rounded-md mb-2">
+                Development Mode ({import.meta.env.VITE_SOLANA_NETWORK === 'devnet' ? 'devnet' : 'LOCAL_DEV'}): Creator & Balance Checks Bypassed
+              </div>
+            )}
 
             {!isFormValid && (
               <p className="text-red-500 text-center text-sm">
