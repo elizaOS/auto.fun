@@ -100,27 +100,6 @@ export default defineConfig({
     ),
     global: "window",
   },
-  build: {
-    minify: "terser",
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true,
-      },
-      format: {
-        comments: false,
-      },
-    },
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes("node_modules")) {
-            return id.toString().split("node_modules/")[1].split("/")[0];
-          }
-        },
-      },
-    },
-  },
   // Explicitly include node built-ins for browser compatibility
   optimizeDeps: {
     esbuildOptions: {
