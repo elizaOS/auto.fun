@@ -1,5 +1,5 @@
 import { useWallet } from "@solana/wallet-adapter-react";
-import { X, Wallet } from "lucide-react";
+import { X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -9,8 +9,8 @@ import Button from "../button";
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
 
 // Additional imports for balance checking
-import { Connection, PublicKey } from "@solana/web3.js";
 import { env } from "@/utils/env";
+import { Connection, PublicKey } from "@solana/web3.js";
 // import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 // Storage keys for Twitter auth
@@ -57,8 +57,6 @@ export default function CommunityTab() {
 
   // Balance checking state
   const [tokenBalance, setTokenBalance] = useState<number | null>(null);
-  const [isCheckingBalance, setIsCheckingBalance] = useState(false);
-  const [hasEnoughTokens, setHasEnoughTokens] = useState<boolean | null>(null);
 
   // --- Modal State ---
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -824,8 +822,6 @@ export default function CommunityTab() {
     }
 
     try {
-      setIsCheckingBalance(true);
-
       // Get stored auth token if available
       const authToken = localStorage.getItem("authToken");
 
@@ -848,7 +844,6 @@ export default function CommunityTab() {
           if (data.balance !== undefined) {
             const formattedBalance = Number(data.balance);
             setTokenBalance(formattedBalance);
-            setHasEnoughTokens(formattedBalance >= 1000);
             return;
           }
         }
@@ -910,7 +905,6 @@ export default function CommunityTab() {
       }
 
       setTokenBalance(totalBalance);
-      setHasEnoughTokens(totalBalance >= 1000);
 
       // Show appropriate toast message
       if (totalBalance > 0) {
@@ -931,10 +925,12 @@ export default function CommunityTab() {
     } catch (error) {
       console.error("Error checking token balance:", error);
       toast.error("Failed to check token balance");
-    } finally {
-      setIsCheckingBalance(false);
     }
   };
+
+  useEffect(() => {
+    checkTokenBalance();
+  }, [publicKey, tokenMint]);
 
   return (
     <div className="p-4 flex flex-col gap-4">
@@ -1006,48 +1002,23 @@ export default function CommunityTab() {
                       </button>
                     </div>
 
-                    <div className="text-sm text-autofun-text-secondary mb-4">
-                      <div className="flex items-center">
+                    {Number(tokenBalance?.toFixed(2) ?? 0) < 1000 && (
+                      <div className="text-sm text-yellow-500 mb-4">
                         <p>
-                          Note: You need to hold at least 1,000 tokens to
-                          generate content. Token creators can generate content
-                          regardless of their token holdings.
+                          You need to hold at least 1,000 tokens to generate
+                          images.
                         </p>
                       </div>
-                    </div>
-
-                    {/* Token Balance Section */}
-                    <div className="flex items-center mb-4 bg-autofun-background-card border border-autofun-stroke-primary p-2 rounded-md">
-                      <Wallet className="text-autofun-text-highlight mr-2 size-5" />
-                      <div className="flex-1">
-                        <span className="text-autofun-text-primary text-sm">
-                          {tokenBalance !== null
-                            ? `Your Balance: ${tokenBalance.toFixed(2)} tokens ${
-                                hasEnoughTokens
-                                  ? "✅ Eligible to generate"
-                                  : "❌ Need at least 1,000 tokens"
-                              }`
-                            : "Check your token balance"}
-                        </span>
-                      </div>
-                      <Button
-                        size="small"
-                        variant="secondary"
-                        onClick={checkTokenBalance}
-                        disabled={isCheckingBalance || !publicKey}
-                      >
-                        {isCheckingBalance ? "Checking..." : "Check Balance"}
-                      </Button>
-                    </div>
+                    )}
 
                     <div className="flex flex-col relative">
                       {processingStatus === "processing" ? (
-                        <div className="flex items-center justify-center w-[600px] h-[600px]">
+                        <div className="flex items-center justify-center max-w-[600px] max-h-[600px]">
                           <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#03FF24]"></div>
                         </div>
                       ) : (
                         <div
-                          className="w-[600px] h-[600px]"
+                          className="max-w-[600px] max-h-[600px]"
                           style={{
                             backgroundImage: `url(${generatedImage})`,
                             backgroundSize: "cover",
@@ -1055,34 +1026,35 @@ export default function CommunityTab() {
                           }}
                         ></div>
                       )}
-
-                      <div className="w-full flex items-center justify-between absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                        {shareError && (
-                          <div className="text-red-500 text-sm bg-black/50 p-1 rounded">
-                            {shareError}
+                      {generatedImage && (
+                        <div className="w-full flex items-center justify-between absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
+                          {shareError && (
+                            <div className="text-red-500 text-sm bg-black/50 p-1 rounded">
+                              {shareError}
+                            </div>
+                          )}
+                          <div className="ml-auto flex gap-2">
+                            <Button
+                              size="small"
+                              variant="outline"
+                              onClick={downloadImage}
+                              disabled={processingStatus !== "processed"}
+                            >
+                              Download
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="secondary"
+                              onClick={shareOnX}
+                              disabled={
+                                processingStatus !== "processed" || isSharing
+                              }
+                            >
+                              {isSharing ? "Sharing..." : "Share on X"}
+                            </Button>
                           </div>
-                        )}
-                        <div className="ml-auto flex gap-2">
-                          <Button
-                            size="small"
-                            variant="outline"
-                            onClick={downloadImage}
-                            disabled={processingStatus !== "processed"}
-                          >
-                            Download
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="secondary"
-                            onClick={shareOnX}
-                            disabled={
-                              processingStatus !== "processed" || isSharing
-                            }
-                          >
-                            {isSharing ? "Sharing..." : "Share on X"}
-                          </Button>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
