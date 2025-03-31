@@ -50,7 +50,7 @@ tokenRouter.get("/tokens", async (c) => {
     const search = queryParams.search as string;
     const status = queryParams.status as string;
     const creator = queryParams.creator as string;
-    const sortBy = (queryParams.sortBy as string) || "createdAt";
+    const sortBy = search ? "marketCapUSD" : (queryParams.sortBy as string) || "createdAt"
     const sortOrder = (queryParams.sortOrder as string) || "desc";
 
     // Use a shorter timeout for test environments
