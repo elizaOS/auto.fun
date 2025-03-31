@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Badge } from "../ui/badge";
+import Button from "../button";
 
 // --- API Base URL ---
 const API_BASE_URL = import.meta.env.VITE_API_URL || ""; // Ensure fallback
@@ -55,7 +56,7 @@ export default function CommunityTab() {
 
   // Extract token mint from URL if not found in params
   const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(
-    null,
+    null
   );
 
   // Effect to detect token mint from various sources
@@ -106,7 +107,7 @@ export default function CommunityTab() {
       if (storedCredentials) {
         try {
           const parsedCredentials = JSON.parse(
-            storedCredentials,
+            storedCredentials
           ) as TwitterCredentials;
           if (parsedCredentials.expiresAt > Date.now()) {
             console.log("Found valid Twitter credentials in storage");
@@ -148,7 +149,7 @@ export default function CommunityTab() {
         const fetchUrl = `${API_BASE_URL}/api/token/${tokenMint}/agents`;
         console.log(`Fetching agents from URL: ${fetchUrl}`);
         console.log(
-          `Using tokenMint: ${tokenMint}, API_BASE_URL: ${API_BASE_URL}`,
+          `Using tokenMint: ${tokenMint}, API_BASE_URL: ${API_BASE_URL}`
         );
 
         const agentsResponse = await fetch(fetchUrl);
@@ -159,7 +160,7 @@ export default function CommunityTab() {
 
         // ** ADD Log: Log status and ok status **
         console.log(
-          `Agents response status: ${agentsResponse.status}, ok: ${agentsResponse.ok}`,
+          `Agents response status: ${agentsResponse.status}, ok: ${agentsResponse.ok}`
         );
 
         if (!agentsResponse.ok) {
@@ -188,7 +189,7 @@ export default function CommunityTab() {
         if (!agentsData || !Array.isArray(agentsData.agents)) {
           console.error(
             "Invalid agents data received after parsing:",
-            agentsData,
+            agentsData
           );
           throw new Error("Invalid response format when fetching agents.");
         }
@@ -201,7 +202,7 @@ export default function CommunityTab() {
         setAgentsError(
           error instanceof Error
             ? error.message
-            : "Unknown error fetching agents",
+            : "Unknown error fetching agents"
         );
         setTokenAgents([]); // Clear agents on error
       } finally {
@@ -228,7 +229,7 @@ export default function CommunityTab() {
         await connectTwitterAgent(twitterCredentials);
       } else {
         console.log(
-          "Not authenticated, storing intent and redirecting for agent connection.",
+          "Not authenticated, storing intent and redirecting for agent connection."
         );
         // Store the intent to connect agent and the token mint
         localStorage.setItem(AGENT_INTENT_KEY, tokenMint);
@@ -252,7 +253,7 @@ export default function CommunityTab() {
     } catch (error) {
       console.error("Error connecting Twitter account:", error);
       toast.error(
-        `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Error: ${error instanceof Error ? error.message : "Unknown error"}`
       );
     } finally {
       setIsConnectingAgent(false);
@@ -287,7 +288,7 @@ export default function CommunityTab() {
             userId: creds.userId,
             accessToken: creds.accessToken,
           }),
-        },
+        }
       );
 
       if (!response.ok) {
@@ -305,11 +306,11 @@ export default function CommunityTab() {
             setTokenAgents((prev) =>
               prev.find((a) => a.id === errorData.agent.id)
                 ? prev
-                : [...prev, errorData.agent as TokenAgent],
+                : [...prev, errorData.agent as TokenAgent]
             );
 
             toast.info(
-              "This Twitter account is already connected to this token.",
+              "This Twitter account is already connected to this token."
             );
             return;
           }
@@ -338,7 +339,7 @@ export default function CommunityTab() {
     } catch (error) {
       console.error("Failed to connect Twitter agent:", error);
       toast.error(
-        `Failed to connect: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to connect: ${error instanceof Error ? error.message : "Unknown error"}`
       );
     }
   };
@@ -368,7 +369,7 @@ export default function CommunityTab() {
             // ** ADD Authorization Header **
             Authorization: `Bearer ${localStorage.getItem("authToken") || ""}`, // Example
           },
-        },
+        }
       );
 
       if (!response.ok) {
@@ -390,14 +391,14 @@ export default function CommunityTab() {
 
       // Update local state on success
       setTokenAgents((prev) =>
-        prev.filter((agent) => agent.id !== agentToRemove.id),
+        prev.filter((agent) => agent.id !== agentToRemove.id)
       );
 
       toast.success("Agent removed successfully");
     } catch (error) {
       console.error("Error removing agent:", error);
       toast.error(
-        `Failed to remove agent: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to remove agent: ${error instanceof Error ? error.message : "Unknown error"}`
       );
       // Rollback optimistic update if used
       // setTokenAgents(previousAgents);
@@ -406,7 +407,7 @@ export default function CommunityTab() {
 
   // Sorted agents with officials at the top
   const sortedAgents = [...tokenAgents].sort((a, b) =>
-    a.official && !b.official ? -1 : !a.official && b.official ? 1 : 0,
+    a.official && !b.official ? -1 : !a.official && b.official ? 1 : 0
   );
 
   // Check if the callback is from a connect agent intent
@@ -435,24 +436,24 @@ export default function CommunityTab() {
               connectTwitterAgent(parsedCreds).catch((error) => {
                 console.error("Error connecting agent:", error);
                 toast.error(
-                  `Failed to connect agent: ${error instanceof Error ? error.message : "Unknown error"}`,
+                  `Failed to connect agent: ${error instanceof Error ? error.message : "Unknown error"}`
                 );
               });
             }, 100);
           } catch (error) {
             console.error("Failed to process agent connection", error);
             toast.error(
-              `Failed to connect agent: ${error instanceof Error ? error.message : "Unknown error"}`,
+              `Failed to connect agent: ${error instanceof Error ? error.message : "Unknown error"}`
             );
           }
         } else {
           toast.error(
-            "Twitter credentials not found after authentication. Please try again.",
+            "Twitter credentials not found after authentication. Please try again."
           );
         }
       } else {
         toast.warning(
-          `Attempted to connect agent to wrong token. Please try again.`,
+          `Attempted to connect agent to wrong token. Please try again.`
         );
       }
 
@@ -542,17 +543,16 @@ export default function CommunityTab() {
         </div>
       )}
 
-      <div className="flex justify-center">
-        <button
-          onClick={connectTwitter}
-          className="max-w-[350px] bg-[#03FF24] p-3 font-bold border-2 text-black text-[12px] md:text-[15px] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
-          disabled={
-            isConnectingAgent || !tokenMint || isAgentsLoading || !!agentsError
-          }
-        >
-          {isConnectingAgent ? "Connecting..." : "Connect X account"}
-        </button>
-      </div>
+      <Button
+        onClick={connectTwitter}
+        disabled={
+          isConnectingAgent || !tokenMint || isAgentsLoading || !!agentsError
+        }
+        className="mx-auto"
+        variant="tab"
+      >
+        {isConnectingAgent ? "Connecting..." : "Connect X account"}
+      </Button>
     </div>
   );
 }
