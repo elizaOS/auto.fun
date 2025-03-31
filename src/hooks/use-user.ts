@@ -1,10 +1,12 @@
 import { env } from "@/utils/env";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useState } from "react";
+import { useSolBalance } from "./use-sol-balance";
 
 interface User {
   address: string;
   points: number;
+  solBalance?: number;
 }
 
 interface AuthStatus {
@@ -16,6 +18,7 @@ export function useUser() {
   const { publicKey } = useWallet();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const solBalanceQuery = useSolBalance();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -29,13 +32,14 @@ export function useUser() {
         const response = await fetch(`${env.apiUrl}/api/auth-status`, {
           credentials: "include",
         });
-        console.log("response", response);
         if (response.ok) {
           const data = (await response.json()) as AuthStatus;
-          console.log("data", data);
           if (data.isAuthenticated && data.user) {
             console.log("data", data);
-            setUser(data.user);
+            setUser({
+              ...data.user,
+              solBalance: solBalanceQuery.data,
+            });
           } else {
             setUser(null);
           }
@@ -49,7 +53,7 @@ export function useUser() {
     };
 
     fetchUser();
-  }, [publicKey]);
+  }, [publicKey, solBalanceQuery.data]);
 
   return { user, isLoading };
 }

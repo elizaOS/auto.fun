@@ -21,6 +21,9 @@ const BreakpointIndicator = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+  if (window.location.hostname !== "localhost") return;
+
+  if (window.location.hostname !== "localhost") return;
 
   return (
     <div className="select-none fixed bottom-4 left-4 bg-autofun-background-card text-white p-2 rounded border">

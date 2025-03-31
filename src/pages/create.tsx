@@ -1,14 +1,23 @@
 import CoinDrop from "@/components/coindrop";
 import useAuthentication from "@/hooks/use-authentication";
 import { useCreateToken } from "@/hooks/use-create-token";
+import { env } from "@/utils/env";
+import { getAuthToken } from "@/utils/auth";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Keypair } from "@solana/web3.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
+import { EmptyState } from "@/components/empty-state";
+import useTokenBalance from "@/hooks/use-token-balance";
+import { toast } from "react-toastify";
+import { useSolPriceContext } from "@/providers/use-sol-price-context";
 
 const MAX_INITIAL_SOL = 45;
+// Use the token supply and virtual reserves from environment or fallback to defaults
+const TOKEN_SUPPLY = Number(env.tokenSupply) || 1000000000000000;
+const VIRTUAL_RESERVES = Number(env.virtualReserves) || 2800000000;
 
 // Tab types
 enum FormTab {
@@ -158,28 +167,13 @@ export const FormTextArea = ({
   return (
     <div className="flex flex-col gap-1 w-full">
       <div className="flex items-center gap-2">
-        <div className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
-          {label}
-        </div>
-        {onClick && !isLoading && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault(); // Prevent any form submission
-              if (onClick) onClick();
-            }}
-            className="text-[#2fd345] text-sm hover:underline"
-          >
-            Generate
-          </button>
-        )}
         {isLoading && (
-          <div className="w-4 h-4 border-2 border-[#2fd345] border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-4 h-4 border-2 border-[#03FF24] border-t-transparent rounded-full animate-spin"></div>
         )}
       </div>
       <div className="relative">
         <textarea
-          className="w-full bg-[#0F0F0F] h-[250px] p-3 border border-neutral-800 text-white resize-none"
+          className="w-full bg-[#0F0F0F] h-[100px] p-3 border border-neutral-800 text-white resize-none"
           style={{ minHeight: `${minRows * 1.5}rem` }}
           maxLength={maxLength}
           {...props}
@@ -203,7 +197,6 @@ export const FormTextArea = ({
 };
 
 const FormImageInput = ({
-  label,
   onChange,
   onPromptChange,
   isGenerating,
@@ -219,7 +212,6 @@ const FormImageInput = ({
   tickerValue,
   onTickerChange,
 }: {
-  label: string;
   onChange: (file: File | null) => void;
   onPromptChange: (prompt: string) => void;
   isGenerating: boolean;
@@ -322,13 +314,15 @@ const FormImageInput = ({
 
         // Check if file is an image
         if (!file.type.startsWith("image/")) {
-          alert("Please select an image file");
+          toast.error("Please select an image file");
           return;
         }
 
         // Check file size (limit to 5MB)
         if (file.size > 5 * 1024 * 1024) {
-          alert("File is too large. Please select an image less than 5MB.");
+          toast.error(
+            "File is too large. Please select an image less than 5MB.",
+          );
           return;
         }
 
@@ -354,13 +348,15 @@ const FormImageInput = ({
 
         // Check if file is an image
         if (!file.type.startsWith("image/")) {
-          alert("Please drop an image file");
+          toast.error("Please drop an image file");
           return;
         }
 
         // Check file size (limit to 5MB)
         if (file.size > 5 * 1024 * 1024) {
-          alert("File is too large. Please select an image less than 5MB.");
+          toast.error(
+            "File is too large. Please select an image less than 5MB.",
+          );
           return;
         }
 
@@ -414,27 +410,21 @@ const FormImageInput = ({
   }
 
   return (
-    <div className="flex flex-col gap-1 w-full">
-      <div className="flex items-center justify-between">
-        <div className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
-          {label}
-        </div>
-      </div>
-
+    <div className="flex flex-col w-full">
       {/* Image Preview Area - Square */}
       <div
-        className="relative mt-1 aspect-square text-center border border-neutral-800 flex items-center justify-center"
+        className="relative mt-1 aspect-square text-center flex items-center justify-center"
         onDrop={handleDrop}
         onDragOver={handleDragOver}
       >
         {isGenerating ? (
           <div className="flex flex-col items-center justify-center">
-            <div className="w-10 h-10 border-4 border-[#2fd345] border-t-transparent rounded-full animate-spin mb-4"></div>
+            <div className="w-10 h-10 border-4 border-[#03FF24] border-t-transparent rounded-full animate-spin mb-4"></div>
             <p className="text-white">Generating your image...</p>
             <button
               type="button"
               onClick={handleCancel}
-              className="mt-4 text-[#2fd345] px-4 py-2 rounded-lg font-bold transition-colors"
+              className="mt-4 text-[#03FF24] px-4 py-2 rounded-lg font-bold transition-colors"
             >
               Cancel
             </button>
@@ -473,7 +463,7 @@ const FormImageInput = ({
                   maxLength={128}
                   onFocus={() => setNameInputFocused(true)}
                   onBlur={() => setNameInputFocused(false)}
-                  className={`bg-transparent text-white text-xl font-bold border-b ${
+                  className={`bg-transparent text-white text-xl font-bold border-b-2 ${
                     nameInputFocused ? "border-white" : "border-gray-500"
                   } focus:outline-none px-1 py-0.5 w-[280px] max-w-[95%]`}
                 />
@@ -495,7 +485,7 @@ const FormImageInput = ({
                     maxLength={16}
                     onFocus={() => setTickerInputFocused(true)}
                     onBlur={() => setTickerInputFocused(false)}
-                    className={`bg-transparent text-white text-lg font-semibold border-b ${
+                    className={`bg-transparent text-white text-lg font-semibold border-b-2 ${
                       tickerInputFocused ? "border-white" : "border-gray-500"
                     } focus:outline-none px-1 py-0.5 max-w-[60%]`}
                   />
@@ -508,7 +498,7 @@ const FormImageInput = ({
             {activeTab === FormTab.MANUAL ? (
               // Manual mode - File upload UI
               <div
-                className="flex flex-col items-center justify-center w-full h-full cursor-pointer"
+                className="flex flex-col items-center justify-center w-full h-full cursor-pointer bg-[url(/empty-state-bg.svg)] bg-cover"
                 onClick={triggerFileInput}
               >
                 <input
@@ -518,19 +508,9 @@ const FormImageInput = ({
                   onChange={handleFileChange}
                   className="hidden"
                 />
-                <div className="border-2 border-dashed border-neutral-700 rounded-lg p-8 flex flex-col items-center justify-center w-4/5 h-4/5">
+                <div className="p-8 flex flex-col items-center justify-center w-4/5 h-4/5">
                   {/* Placeholder logo when empty */}
-                  <img
-                    src="/create/dicelogo.svg"
-                    alt="Logo"
-                    className="w-24 h-24 mb-4 opacity-30"
-                  />
-                  <p className="text-neutral-300 text-center mb-2">
-                    Click or drag and drop an image here
-                  </p>
-                  <p className="text-neutral-500 text-sm text-center">
-                    PNG, JPG, GIF, SVG, WEBP (Max 5MB)
-                  </p>
+                  <EmptyState maxSizeMb={5} />
                 </div>
               </div>
             ) : (
@@ -575,8 +555,8 @@ const uploadImage = async (metadata: TokenMetadata) => {
     `Uploading image as ${filename} with content type ${contentType}`,
   );
 
-  // Get auth token from localStorage
-  const authToken = localStorage.getItem("authToken");
+  // Get auth token from localStorage with quote handling
+  const authToken = getAuthToken();
 
   // Prepare headers
   const headers: Record<string, string> = {
@@ -607,7 +587,13 @@ const uploadImage = async (metadata: TokenMetadata) => {
   });
 
   if (!response.ok) {
-    throw new Error("Failed to upload image");
+    // Specifically handle authentication errors
+    if (response.status === 401) {
+      throw new Error(
+        "Authentication required. Please connect your wallet and try again.",
+      );
+    }
+    throw new Error("Failed to upload image: " + (await response.text()));
   }
 
   return (await response.json()) as UploadResponse;
@@ -659,8 +645,8 @@ const waitForTokenCreation = async ({
       try {
         console.log(`Creating token record for ${mint}`);
 
-        // Get auth token from localStorage
-        const authToken = localStorage.getItem("authToken");
+        // Get auth token from localStorage with quote handling
+        const authToken = getAuthToken();
 
         // Prepare headers
         const headers: Record<string, string> = {
@@ -719,8 +705,8 @@ const waitForTokenCreation = async ({
 
         console.log(`Checking for token ${mint}, attempt ${i + 1}`);
         try {
-          // Get auth token from localStorage
-          const authToken = localStorage.getItem("authToken");
+          // Get auth token from localStorage with quote handling
+          const authToken = getAuthToken();
 
           // Prepare headers
           const headers: Record<string, string> = {
@@ -783,20 +769,28 @@ const waitForTokenCreation = async ({
 
 // Main Form Component
 export const Create = () => {
+  // Define things for our page
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuthentication();
   const { publicKey, signTransaction } = useWallet();
-  const { mutateAsync: createTokenOnChainAsync } = useCreateToken();
+
+  // Check if we're in development mode based on environment variable instead of hostname
+  const isLocalDev =
+    import.meta.env.VITE_SOLANA_NETWORK === "devnet" ||
+    import.meta.env.LOCAL_DEV === "true";
+
+  // State for image upload
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [showCoinDrop, setShowCoinDrop] = useState(false);
+  const [coinDropImageUrl, setCoinDropImageUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingField, setGeneratingField] = useState<string | null>(null);
-  const [showCoinDrop, setShowCoinDrop] = useState(false);
-  const [coinDropImageUrl, setCoinDropImageUrl] = useState<string | null>(null);
   const [promptFunctions, setPromptFunctions] = useState<{
     setPrompt: ((prompt: string) => void) | null;
     onPromptChange: ((prompt: string) => void) | null;
   }>({ setPrompt: null, onPromptChange: null });
-  const { isAuthenticated } = useAuthentication();
+  const { mutateAsync: createTokenOnChainAsync } = useCreateToken();
 
   // Import-related state
   const [isImporting, setIsImporting] = useState(false);
@@ -817,13 +811,115 @@ export const Create = () => {
   const [userPrompt, setUserPrompt] = useState("");
   const [isProcessingPrompt, setIsProcessingPrompt] = useState(false);
 
+  // Effect to clear import token data if not in import tab
+  useEffect(() => {
+    if (activeTab !== FormTab.IMPORT) {
+      localStorage.removeItem("import_token_data");
+      setHasStoredToken(false);
+    }
+  }, [activeTab]);
+
+  // Effect to check imported token data and wallet authorization when wallet changes
+  useEffect(() => {
+    if (activeTab === FormTab.IMPORT && publicKey) {
+      const storedTokenData = localStorage.getItem("import_token_data");
+      if (storedTokenData) {
+        try {
+          const tokenData = JSON.parse(storedTokenData) as TokenSearchData;
+
+          // Check if the current wallet is authorized to create this token
+          // In dev mode, always allow any wallet to register
+          const isCreatorWallet = isLocalDev
+            ? true
+            : tokenData.isCreator !== undefined
+              ? tokenData.isCreator
+              : (tokenData.updateAuthority &&
+                  tokenData.updateAuthority === publicKey.toString()) ||
+                (tokenData.creators &&
+                  tokenData.creators.includes(publicKey.toString()));
+
+          // Update import status based on wallet authorization
+          if (!isCreatorWallet && !isLocalDev) {
+            setImportStatus({
+              type: "warning",
+              message:
+                "Please connect with the token's creator wallet to register it.",
+            });
+          } else {
+            // Success message - different in dev mode if not the creator
+            const message =
+              isLocalDev &&
+              !tokenData.isCreator &&
+              !(
+                tokenData.updateAuthority === publicKey.toString() ||
+                (tokenData.creators &&
+                  tokenData.creators.includes(publicKey.toString()))
+              )
+                ? "Development Mode: You can register this token without being the creator wallet."
+                : "You are connected with the creator wallet. You can now register this token.";
+
+            setImportStatus({
+              type: "success",
+              message,
+            });
+          }
+        } catch (error) {
+          console.error("Error parsing stored token data:", error);
+        }
+      }
+    }
+  }, [activeTab, publicKey, isLocalDev]);
+
+  // Effect to populate form with token data if it exists
+  useEffect(() => {
+    if (activeTab === FormTab.IMPORT) {
+      const storedTokenData = localStorage.getItem("import_token_data");
+      if (storedTokenData) {
+        try {
+          const tokenData = JSON.parse(storedTokenData) as TokenSearchData;
+          setHasStoredToken(true);
+
+          // Populate the form with token data
+          setForm((prev) => ({
+            ...prev,
+            name: tokenData.name || tokenData.mint.slice(0, 8),
+            symbol: tokenData.symbol || "TOKEN",
+            description: tokenData.description || "Imported token",
+            links: {
+              ...prev.links,
+              twitter: tokenData.twitter || "",
+              telegram: tokenData.telegram || "",
+              website: tokenData.website || "",
+              discord: tokenData.discord || "",
+            },
+          }));
+
+          // Set the image preview if available - use a small timeout to ensure the ref is set
+          if (tokenData.image) {
+            // Set image URL directly to handle refresh cases
+            setCoinDropImageUrl(tokenData.image || null);
+
+            // Use a small timeout to ensure the ref is available after render
+            setTimeout(() => {
+              if (previewSetterRef.current) {
+                previewSetterRef.current(tokenData.image || null);
+              }
+            }, 100);
+          }
+        } catch (error) {
+          console.error("Error parsing stored token data:", error);
+        }
+      }
+    }
+  }, [activeTab]);
+
   // Simple form state
   const [form, setForm] = useState({
     name: "",
     symbol: "",
     description: "",
     prompt: "",
-    initial_sol: "5",
+    initialSol: "2",
     links: {
       twitter: "",
       telegram: "",
@@ -856,7 +952,61 @@ export const Create = () => {
     string | null
   >(null);
 
-  const [buyValue, setBuyValue] = useState(form.initial_sol || 0);
+  const [buyValue, setBuyValue] = useState(form.initialSol || 0);
+  const wallet = useWallet();
+  console.log("wallet", wallet);
+  const balance = useTokenBalance(
+    wallet.publicKey?.toBase58() || "",
+    "So11111111111111111111111111111111111111111",
+  );
+
+  console.log("balance", balance);
+
+  const { solPrice } = useSolPriceContext();
+
+  // Calculate max SOL the user can spend (leave 0.05 SOL for transaction fees)
+  const maxUserSol = balance?.data?.formattedBalance
+    ? Math.max(0, balance.data.formattedBalance - 0.05)
+    : 0;
+  // Use the smaller of MAX_INITIAL_SOL or the user's max available SOL
+  const maxInputSol = Math.min(MAX_INITIAL_SOL, maxUserSol);
+
+  // Calculate dollar value based on SOL price
+  // const solValueUsd =
+  //   solPrice && buyValue ? (Number(buyValue) * solPrice).toFixed(2) : "0.00";
+
+  console.log("buyValue", buyValue);
+  console.log("balance", balance?.data?.formattedBalance);
+
+  // Log development mode and active tab for debugging
+  console.log("Is local development mode?", isLocalDev);
+  console.log("VITE_SOLANA_NETWORK:", import.meta.env.VITE_SOLANA_NETWORK);
+  console.log("LOCAL_DEV:", import.meta.env.LOCAL_DEV);
+  console.log("Active tab:", activeTab);
+
+  // Skip balance check for imported tokens in development mode
+  const insufficientBalance =
+    isLocalDev && activeTab === FormTab.IMPORT
+      ? false
+      : Number(buyValue) > Number(balance?.data?.formattedBalance || 0) - 0.05;
+
+  console.log(
+    "Insufficient balance check bypassed:",
+    isLocalDev && activeTab === FormTab.IMPORT,
+  );
+  console.log("Insufficient balance:", insufficientBalance);
+
+  // Show a message in the console for developers when bypassing balance check
+  if (isLocalDev && activeTab === FormTab.IMPORT) {
+    const source =
+      import.meta.env.VITE_SOLANA_NETWORK === "devnet"
+        ? "VITE_SOLANA_NETWORK=devnet"
+        : "LOCAL_DEV=true";
+    console.log(
+      `%c[DEV MODE via ${source}] SOL balance check bypassed for imported tokens in development mode`,
+      "color: green; font-weight: bold",
+    );
+  }
 
   // Error state
   const [errors, setErrors] = useState({
@@ -864,9 +1014,10 @@ export const Create = () => {
     symbol: "",
     description: "",
     prompt: "",
-    initial_sol: "",
+    initialSol: "",
     userPrompt: "",
     importAddress: "",
+    percentage: "",
   });
 
   // Store a reference to the FormImageInput's setPreview function
@@ -931,6 +1082,14 @@ export const Create = () => {
     }
   }, [form, activeTab]);
 
+  // Keep SOL and percentage values in sync
+  useEffect(() => {
+    // Update buyValue when form.initialSol changes
+    if (form.initialSol !== buyValue.toString()) {
+      setBuyValue(form.initialSol);
+    }
+  }, [form.initialSol]);
+
   // Handle tab switching
   const handleTabChange = (tab: FormTab) => {
     // Save current form values to appropriate mode-specific state
@@ -950,6 +1109,12 @@ export const Create = () => {
         description: form.description,
         imageFile: imageFile,
       }));
+    }
+
+    // When switching to AUTO or MANUAL, clear any imported token data
+    if (tab === FormTab.AUTO || tab === FormTab.MANUAL) {
+      localStorage.removeItem("import_token_data");
+      setHasStoredToken(false);
     }
 
     // When switching to Manual mode, clear the image if coming from Auto
@@ -978,9 +1143,10 @@ export const Create = () => {
       symbol: "",
       description: "",
       prompt: "",
-      initial_sol: "",
+      initialSol: "",
       userPrompt: "",
       importAddress: "",
+      percentage: "",
     });
   };
 
@@ -1023,18 +1189,18 @@ export const Create = () => {
       }
     }
 
-    // Validate initial_sol
-    if (field === "initial_sol" && value) {
+    // Validate initialSol
+    if (field === "initialSol" && value) {
       const numValue = parseFloat(value);
       if (numValue < 0 || numValue > MAX_INITIAL_SOL) {
         setErrors((prev) => ({
           ...prev,
-          initial_sol: `Max initial SOL is ${MAX_INITIAL_SOL}`,
+          initialSol: `Max initial SOL is ${MAX_INITIAL_SOL}`,
         }));
       } else {
         setErrors((prev) => ({
           ...prev,
-          initial_sol: "",
+          initialSol: "",
         }));
       }
     }
@@ -1070,22 +1236,17 @@ export const Create = () => {
       throw new Error("Wallet not connected");
     }
 
-    try {
-      // Use the useCreateToken hook to create the token on-chain
-      await createTokenOnChainAsync({
-        tokenMetadata: _tokenMetadata,
-        metadataUrl: _metadataUrl,
-        mintKeypair,
-      });
+    // Use the useCreateToken hook to create the token on-chain
+    await createTokenOnChainAsync({
+      tokenMetadata: _tokenMetadata,
+      metadataUrl: _metadataUrl,
+      mintKeypair,
+    });
 
-      // Return the mint address as transaction ID
-      const txId = mintKeypair.publicKey.toString();
-      console.log("Token created on-chain with mint address:", txId);
-      return txId;
-    } catch (error) {
-      console.error("Error in token creation:", error);
-      throw error;
-    }
+    // Return the mint address as transaction ID
+    const txId = mintKeypair.publicKey.toString();
+    console.log("Token created on-chain with mint address:", txId);
+    return txId;
   };
 
   // Generate token based on user prompt
@@ -1109,8 +1270,8 @@ export const Create = () => {
     try {
       console.log("Generating token from prompt:", userPrompt);
 
-      // Get auth token from localStorage
-      const authToken = localStorage.getItem("authToken");
+      // Get auth token from localStorage with quote handling
+      const authToken = getAuthToken();
 
       // Prepare headers
       const headers: Record<string, string> = {
@@ -1290,7 +1451,7 @@ export const Create = () => {
       // Reset generating state in case of error
       setIsGenerating(false);
       setGeneratingField(null);
-      alert(
+      toast.error(
         error instanceof Error
           ? error.message
           : "Failed to generate token from prompt. Please try again.",
@@ -1339,8 +1500,8 @@ export const Create = () => {
         throw new Error("Wallet not connected");
       }
 
-      // Get auth token from localStorage
-      const authToken = localStorage.getItem("authToken");
+      // Get auth token from localStorage with quote handling
+      const authToken = getAuthToken();
 
       // Prepare headers
       const headers: Record<string, string> = {
@@ -1390,92 +1551,61 @@ export const Create = () => {
 
         const tokenData = (await response.json()) as TokenSearchData;
 
-        // For now, we'll skip the creator verification check as requested
+        // Store token data in localStorage for later use
+        localStorage.setItem("import_token_data", JSON.stringify(tokenData));
+        setHasStoredToken(true);
 
-        // Create token entry in database before redirecting
-        try {
-          console.log(
-            "Creating token entry for imported token:",
-            form.importAddress,
-          );
+        // Populate the form with token data
+        setForm((prev) => ({
+          ...prev,
+          name: tokenData.name || form.importAddress.slice(0, 8),
+          symbol: tokenData.symbol || "TOKEN",
+          description: tokenData.description || "Imported token",
+          links: {
+            ...prev.links,
+            twitter: tokenData.twitter || "",
+            telegram: tokenData.telegram || "",
+            website: tokenData.website || "",
+            discord: tokenData.discord || "",
+          },
+        }));
 
-          // Show the coin drop animation while creating
-          setShowCoinDrop(true);
-
-          // Create token record via API
-          const createResponse = await fetch(
-            import.meta.env.VITE_API_URL + "/api/create-token",
-            {
-              method: "POST",
-              headers,
-              credentials: "include",
-              body: JSON.stringify({
-                tokenMint: form.importAddress,
-                mint: form.importAddress,
-                name: tokenData.name || form.importAddress.slice(0, 8),
-                symbol: tokenData.symbol || "TOKEN",
-                description: tokenData.description || "Imported token",
-                twitter: tokenData.twitter || "",
-                telegram: tokenData.telegram || "",
-                website: tokenData.website || "",
-                discord: tokenData.discord || "",
-                agentLink: "",
-                imageUrl: tokenData.image || "",
-                metadataUrl: tokenData.metadataUri || "",
-                // Include the import flag to indicate this is an imported token
-                imported: true,
-              }),
-            },
-          );
-
-          if (!createResponse.ok) {
-            const errorData = (await createResponse.json()) as {
-              error?: string;
-            };
-            throw new Error(errorData.error || "Failed to create token entry");
+        // Set token image if available
+        if (tokenData.image) {
+          if (previewSetterRef.current) {
+            previewSetterRef.current(tokenData.image);
           }
+          setCoinDropImageUrl(tokenData.image);
+        }
 
-          // Now redirect to token page
-          navigate(`/token/${form.importAddress}`);
-        } catch (createError) {
-          console.error("Error creating token entry:", createError);
+        // Check if the current wallet is authorized to create this token
+        const isCreatorWallet = isLocalDev
+          ? true
+          : tokenData.isCreator !== undefined
+            ? tokenData.isCreator
+            : (tokenData.updateAuthority &&
+                tokenData.updateAuthority === publicKey.toString()) ||
+              (tokenData.creators &&
+                tokenData.creators.includes(publicKey.toString()));
 
-          // If creating fails, try checking if the token exists already
-          try {
-            // Try the check endpoint as a fallback
-            const checkResponse = await fetch(
-              import.meta.env.VITE_API_URL + "/api/check-token",
-              {
-                method: "POST",
-                headers,
-                credentials: "include",
-                body: JSON.stringify({
-                  tokenMint: form.importAddress,
-                }),
-              },
-            );
+        if (!isCreatorWallet && !isLocalDev) {
+          // Show a message that they need to switch wallets
+          setImportStatus({
+            type: "warning",
+            message:
+              "Please connect with the token's creator wallet to register it. The form below has been populated with the token data.",
+          });
+        } else {
+          // Success message - ready to register
+          const message =
+            isLocalDev && !isCreatorWallet
+              ? "Development Mode: You can register this token without being the creator wallet."
+              : "Token data loaded successfully. You can now register this token.";
 
-            if (checkResponse.ok) {
-              const data = await checkResponse.json();
-              if (
-                data &&
-                typeof data === "object" &&
-                "tokenFound" in data &&
-                data.tokenFound === true
-              ) {
-                // Token exists, we can redirect
-                navigate(`/token/${form.importAddress}`);
-                return;
-              }
-            }
-
-            throw new Error(
-              "Token creation failed and token was not found in database",
-            );
-          } catch (checkError) {
-            console.error("Error checking token:", checkError);
-            throw createError; // Re-throw the original error
-          }
+          setImportStatus({
+            type: "success",
+            message,
+          });
         }
       } catch (fetchError) {
         console.error("API Error:", fetchError);
@@ -1547,7 +1677,7 @@ export const Create = () => {
     !errors.name &&
     !errors.symbol &&
     !errors.description &&
-    !errors.initial_sol;
+    !errors.initialSol;
 
   // Update coinDropImageUrl directly when we have a preview URL
   const handlePreviewChange = useCallback((previewUrl: string | null) => {
@@ -1564,8 +1694,8 @@ export const Create = () => {
         setIsGenerating(true);
         setGeneratingField("name,symbol,description,prompt");
 
-        // Get auth token from localStorage
-        const authToken = localStorage.getItem("authToken");
+        // Get auth token from localStorage with quote handling
+        const authToken = getAuthToken();
 
         // Prepare headers
         const headers: Record<string, string> = {
@@ -1632,7 +1762,7 @@ export const Create = () => {
             // Extract the filename from the R2 URL
             const filename = imageUrl.split("/").pop();
             // Use local endpoint instead
-            imageUrl = `${import.meta.env.VITE_API_URL}/api/direct-file/${filename}`;
+            imageUrl = `${import.meta.env.VITE_API_URL}/api/image/${filename}`;
           }
 
           const imageBlob = await fetch(imageUrl).then((r) => r.blob());
@@ -1701,7 +1831,7 @@ export const Create = () => {
         setHasGeneratedToken(true);
       } catch (error) {
         console.error("Error generating metadata:", error);
-        alert(
+        toast.error(
           error instanceof Error
             ? error.message
             : "Failed to generate metadata. Please try again.",
@@ -1724,32 +1854,121 @@ export const Create = () => {
         throw new Error("Wallet not connected");
       }
 
-      // Check if we're working with imported token data
+      // Check if we're working with imported token data - ONLY do this check for IMPORT tab
       const storedTokenData = localStorage.getItem("import_token_data");
-      if (storedTokenData) {
+      if (storedTokenData && activeTab === FormTab.IMPORT) {
         try {
           const tokenData = JSON.parse(storedTokenData);
 
+          console.log("Processing imported token:", tokenData);
+          console.log("Current wallet:", publicKey?.toString());
+
           // Check if the current wallet has permission to create this token
-          const isCreatorNow =
-            (tokenData.updateAuthority &&
-              tokenData.updateAuthority === publicKey.toString()) ||
-            (tokenData.creators &&
-              tokenData.creators.includes(publicKey.toString()));
+          // In dev mode, skip this check and allow any wallet to register
+          const isCreatorNow = isLocalDev
+            ? true
+            : (tokenData.updateAuthority &&
+                tokenData.updateAuthority === publicKey.toString()) ||
+              (tokenData.creators &&
+                tokenData.creators.includes(publicKey.toString()));
+
+          // Log for development purposes
+          if (isLocalDev) {
+            const source =
+              import.meta.env.VITE_SOLANA_NETWORK === "devnet"
+                ? "VITE_SOLANA_NETWORK=devnet"
+                : "LOCAL_DEV=true";
+            console.log(
+              `%c[DEV MODE via ${source}] Creator wallet check bypassed for imported tokens in development mode`,
+              "color: green; font-weight: bold",
+            );
+          } else {
+            console.log("Creator wallet check result:", isCreatorNow);
+            console.log("Token update authority:", tokenData.updateAuthority);
+            console.log("Token creators:", tokenData.creators);
+          }
 
           if (!isCreatorNow) {
             throw new Error(
               "You need to connect with the token's creator wallet to register it",
             );
           }
+
+          // For imported tokens, create a token entry in the database
+          console.log(
+            "Creating token entry for imported token:",
+            tokenData.mint,
+          );
+
+          // Show coin drop animation
+          setShowCoinDrop(true);
+
+          // Get auth token from localStorage with quote handling
+          const authToken = getAuthToken();
+
+          // Prepare headers
+          const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+          };
+
+          if (authToken) {
+            headers["Authorization"] = `Bearer ${authToken}`;
+          }
+
+          // Create token record via API
+          const createResponse = await fetch(
+            import.meta.env.VITE_API_URL + "/api/create-token",
+            {
+              method: "POST",
+              headers,
+              credentials: "include",
+              body: JSON.stringify({
+                tokenMint: tokenData.mint,
+                mint: tokenData.mint,
+                name: form.name,
+                symbol: form.symbol,
+                description: form.description,
+                twitter: form.links.twitter,
+                telegram: form.links.telegram,
+                website: form.links.website,
+                discord: form.links.discord,
+                agentLink: "",
+                imageUrl: tokenData.image || "",
+                metadataUrl: tokenData.metadataUri || "",
+                // Include the import flag to indicate this is an imported token
+                imported: true,
+              }),
+            },
+          );
+
+          if (!createResponse.ok) {
+            const errorData = (await createResponse.json()) as {
+              error?: string;
+            };
+            throw new Error(errorData.error || "Failed to create token entry");
+          }
+
+          // Clear imported token data from localStorage
+          localStorage.removeItem("import_token_data");
+          setHasStoredToken(false);
+
+          // Trigger confetti to celebrate successful registration
+          if (window.createConfettiFireworks) {
+            window.createConfettiFireworks();
+          }
+
+          // Redirect to token page
+          navigate(`/token/${tokenData.mint}`);
+          return;
         } catch (error) {
-          console.error("Error checking token ownership:", error);
+          console.error("Error handling imported token:", error);
           if (error instanceof Error) {
             throw error; // Re-throw if it's a permission error
           }
         }
       }
 
+      // For AUTO and MANUAL tabs, we proceed with the regular token creation flow
       // Generate a new keypair for the token mint
       const mintKeypair = Keypair.generate();
       const tokenMint = mintKeypair.publicKey.toBase58();
@@ -1769,7 +1988,7 @@ export const Create = () => {
         name: form.name,
         symbol: form.symbol,
         description: form.description,
-        initialSol: parseFloat(form.initial_sol) || 0,
+        initialSol: parseFloat(form.initialSol) || 0,
         links: {
           ...form.links,
           agentLink: "", // Add empty agentLink
@@ -1827,8 +2046,8 @@ export const Create = () => {
             currentPreGeneratedTokenId,
           );
 
-          // Get auth token from localStorage
-          const authToken = localStorage.getItem("authToken");
+          // Get auth token from localStorage with quote handling
+          const authToken = getAuthToken();
 
           // Prepare headers
           const headers: Record<string, string> = {
@@ -1878,6 +2097,11 @@ export const Create = () => {
           metadataUrl,
         });
         console.log("Token creation confirmed");
+
+        // Trigger confetti to celebrate successful minting
+        if (window.createConfettiFireworks) {
+          window.createConfettiFireworks();
+        }
       } catch (waitError) {
         console.error("Error waiting for token creation:", waitError);
         // We still continue to the token page even if this fails
@@ -1892,7 +2116,7 @@ export const Create = () => {
       navigate(`/token/${tokenMint}`);
     } catch (error) {
       console.error("Error creating token:", error);
-      alert(
+      toast.error(
         error instanceof Error
           ? error.message
           : "Failed to create token. Please try again.",
@@ -1912,12 +2136,19 @@ export const Create = () => {
     if (!form.symbol) newErrors.symbol = "Symbol is required";
     if (!form.description) newErrors.description = "Description is required";
 
+    // Validate SOL balance - skip this check for imported tokens in dev mode
+    if (insufficientBalance && !(isLocalDev && activeTab === FormTab.IMPORT)) {
+      newErrors.initialSol =
+        "Insufficient SOL balance (need 0.05 SOL for fees)";
+      toast.error("You don't have enough SOL to create this token");
+    }
+
     // Check if there are any errors
     if (
       newErrors.name ||
       newErrors.symbol ||
       newErrors.description ||
-      newErrors.initial_sol
+      newErrors.initialSol
     ) {
       setErrors(newErrors);
       return;
@@ -1935,8 +2166,8 @@ export const Create = () => {
           setIsGenerating(true);
           setGeneratingField("name,symbol,description,prompt");
 
-          // Get auth token from localStorage
-          const authToken = localStorage.getItem("authToken");
+          // Get auth token from localStorage with quote handling
+          const authToken = getAuthToken();
 
           // Prepare headers
           const headers: Record<string, string> = {
@@ -2004,7 +2235,7 @@ export const Create = () => {
               // Extract the filename from the R2 URL
               const filename = imageUrl.split("/").pop();
               // Use local endpoint instead
-              imageUrl = `${import.meta.env.VITE_API_URL}/api/direct-file/${filename}`;
+              imageUrl = `${import.meta.env.VITE_API_URL}/api/image/${filename}`;
             }
 
             const imageBlob = await fetch(imageUrl).then((r) => r.blob());
@@ -2077,90 +2308,136 @@ export const Create = () => {
     }
   }, [imageFile, activeTab]);
 
+  // Helper function to calculate token amount based on SOL input using bonding curve formula
+  const calculateTokensFromSol = (solAmount: number): number => {
+    // Convert SOL to lamports
+    const lamports = solAmount * 1e9;
+
+    // Using constant product formula: (dx * y) / (x + dx)
+    // where x is virtual reserves, y is token supply, dx is input SOL amount
+    const tokenAmount =
+      (lamports * TOKEN_SUPPLY) / (VIRTUAL_RESERVES + lamports);
+
+    return tokenAmount;
+  };
+
+  // Helper function to calculate percentage of total supply for a given token amount
+  const calculatePercentage = (tokenAmount: number): number => {
+    return (tokenAmount / TOKEN_SUPPLY) * 100;
+  };
+
   return (
     <div className="flex flex-col items-center justify-center">
       {showCoinDrop && <CoinDrop imageUrl={coinDropImageUrl || undefined} />}
-      <div className="p-4 w-full max-w-6xl">
-        <form
-          className="flex font-dm-mono flex-col w-full m-auto gap-4 justify-center"
-          onSubmit={handleSubmit}
-        >
-          {/* Tabs Navigation */}
-          <div className="logo flex items-center flex-col md:flex-row gap-8 mx-auto">
-            <div className="logo flex items-center gap-4 md:ml-8">
-              <img
-                src="/create/dicelogo.svg"
-                alt="Coin Machine"
-                className="w-32 h-32"
-              />
-              <img
-                src="/create/coinmachine.svg"
-                alt="Coin Machine"
-                className="w-64 h-32"
-              />
-            </div>
-            <div className="flex text-lg">
-              <button
-                type="button"
-                className={`mr-6 py-1 border-b-2 font-medium transition-colors ${
-                  activeTab === FormTab.AUTO
-                    ? "border-[#2fd345] text-[#2fd345] font-bold"
-                    : "border-transparent text-neutral-400 hover:text-white"
-                }`}
-                onClick={() => handleTabChange(FormTab.AUTO)}
-              >
-                Auto
-              </button>
-              <button
-                type="button"
-                className={`mr-6 py-1 border-b-2 font-medium transition-colors ${
-                  activeTab === FormTab.MANUAL
-                    ? "border-[#2fd345] text-[#2fd345] font-bold"
-                    : "border-transparent text-neutral-400 hover:text-white"
-                }`}
-                onClick={() => handleTabChange(FormTab.MANUAL)}
-              >
-                Manual
-              </button>
-              <button
-                type="button"
-                className={`py-1 border-b-2 font-medium transition-colors ${
-                  activeTab === FormTab.IMPORT
-                    ? "border-[#2fd345] text-[#2fd345] font-bold"
-                    : "border-transparent text-neutral-400 hover:text-white"
-                }`}
-                onClick={() => handleTabChange(FormTab.IMPORT)}
-              >
-                Import
-              </button>
-            </div>
-          </div>
 
-          {/* Auto Tab Content */}
-          {activeTab === FormTab.AUTO && (
-            <>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={userPrompt}
-                  onChange={(e) => setUserPrompt(e.target.value)}
-                  placeholder="Enter a concept like 'a halloween token about arnold schwarzenegger'"
-                  className="flex-1 my-2 p-0 border-b border-b-[#2fd345] text-white bg-transparent focus:outline-none focus:border-b-white"
+      <form
+        className="py-4 px-auto w-full max-w-2xl flex font-dm-mono flex-col m-auto gap-1 justify-center"
+        onSubmit={handleSubmit}
+      >
+        {/* Tabs Navigation */}
+        <div className="flex items-center md:justify-between flex-col md:flex-row gap-8 mx-auto w-full mb-2">
+          <div className="flex shrink-0 items-center gap-4">
+            <img
+              src="/create/dicelogo.svg"
+              alt="Coin Machine"
+              className="w-24 h-24"
+            />
+            <img
+              src="/create/coinmachine.svg"
+              alt="Coin Machine"
+              className="w-48 h-24"
+            />
+          </div>
+          <div className="flex justify-between items-center text-lg w-full shrink">
+            {Object.values(FormTab).map((tab, _) => (
+              <button
+                type="button"
+                className={`uppercase font-satoshi font-medium transition-colors duration-200 cursor-pointer select-none ${
+                  activeTab === tab
+                    ? "border-[#03FF24] text-[#03FF24] font-bold"
+                    : "border-transparent text-neutral-400 hover:text-white"
+                }`}
+                onClick={() => handleTabChange(tab)}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Auto Tab Content */}
+        {activeTab === FormTab.AUTO && (
+          <>
+            <div className="flex">
+              <input
+                type="text"
+                value={userPrompt}
+                onChange={(e) => setUserPrompt(e.target.value)}
+                placeholder="Enter a concept like 'a halloween token about arnold schwarzenegger'"
+                className="flex-1 truncate my-2 p-0 border-b-2 pb-2.5 border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
+              />
+              <button
+                type="button"
+                onClick={generateFromPrompt}
+                disabled={isProcessingPrompt || !userPrompt.trim()}
+                className="p-0 transition-colors disabled:opacity-50"
+              >
+                <img
+                  src={
+                    isProcessingPrompt
+                      ? "/create/generating.svg"
+                      : "/create/generateup.svg"
+                  }
+                  alt="Generate"
+                  className="w-40 mb-2"
+                  onMouseDown={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    if (!isProcessingPrompt) {
+                      img.src = "/create/generatedown.svg";
+                    }
+                  }}
+                  onMouseUp={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    if (!isProcessingPrompt) {
+                      img.src = "/create/generateup.svg";
+                    }
+                  }}
+                  onDragStart={(e) => {
+                    e.preventDefault();
+                    const img = e.target as HTMLImageElement;
+                    if (!isProcessingPrompt) {
+                      img.src = "/create/generateup.svg";
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    e.preventDefault();
+                    const img = e.target as HTMLImageElement;
+                    if (!isProcessingPrompt) {
+                      img.src = "/create/generateup.svg";
+                    }
+                  }}
                 />
-                <button
-                  type="button"
-                  onClick={generateFromPrompt}
-                  disabled={isProcessingPrompt || !userPrompt.trim()}
-                  className="p-0 transition-colors disabled:opacity-50"
-                >
-                  <img
-                    src={
-                      isProcessingPrompt
-                        ? "/create/generating.svg"
-                        : "/create/generateup.svg"
+              </button>
+            </div>
+            {errors.userPrompt && (
+              <div className="text-red-500 text-sm">{errors.userPrompt}</div>
+            )}
+          </>
+        )}
+
+        {/* Import Tab Content */}
+        {activeTab === FormTab.IMPORT && (
+          <div>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-row">
+                  <input
+                    type="text"
+                    value={form.importAddress || ""}
+                    onChange={(e) =>
+                      handleChange("importAddress", e.target.value)
                     }
                     alt="Generate"
-                    className="h-14 w-32 mb-2"
                     onMouseDown={(e) => {
                       const img = e.target as HTMLImageElement;
                       if (!isProcessingPrompt) {
@@ -2187,274 +2464,399 @@ export const Create = () => {
                         img.src = "/create/generateup.svg";
                       }
                     }}
+                    onPaste={handleImportAddressPaste}
+                    placeholder="Enter any Solana token address (mint)"
+                    className="flex-1 truncate my-2 p-0 border-b-2 pb-2.5 border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
                   />
-                </button>
-              </div>
-              {errors.userPrompt && (
-                <div className="text-red-500 text-sm">{errors.userPrompt}</div>
-              )}
-            </>
-          )}
-
-          {/* Import Tab Content */}
-          {activeTab === FormTab.IMPORT && (
-            <div className="mb-6">
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-2">
-                  <div className="flex flex-row gap-2">
-                    <input
-                      type="text"
-                      value={form.importAddress || ""}
-                      onChange={(e) =>
-                        handleChange("importAddress", e.target.value)
+                  <button
+                    type="button"
+                    onClick={importTokenFromAddress}
+                    disabled={
+                      isImporting ||
+                      !form.importAddress?.trim() ||
+                      !isValidTokenAddress(form.importAddress)
+                    }
+                    className="p-0 transition-colors disabled:opacity-50"
+                  >
+                    <img
+                      src={
+                        isImporting
+                          ? "/create/importing.svg"
+                          : "/create/importup.svg"
                       }
-                      onPaste={handleImportAddressPaste}
-                      placeholder="Enter any Solana token address (mint)"
-                      className="flex-1 my-2 p-0 border-b border-b-[#2fd345] text-white bg-transparent focus:outline-none focus:border-b-white"
-                    />
-                    <button
-                      type="button"
-                      onClick={importTokenFromAddress}
-                      disabled={
-                        isImporting ||
-                        !form.importAddress?.trim() ||
-                        !isValidTokenAddress(form.importAddress)
-                      }
-                      className="p-0 transition-colors disabled:opacity-50"
-                    >
-                      <img
-                        src={
-                          isImporting
-                            ? "/create/importing.svg"
-                            : "/create/importup.svg"
+                      alt="Import"
+                      className="w-40 mb-2"
+                      onMouseDown={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        if (!isImporting) {
+                          img.src = "/create/importdown.svg";
                         }
-                        alt="Import"
-                        className="h-14 w-32 mb-2"
-                        onMouseDown={(e) => {
-                          const img = e.target as HTMLImageElement;
-                          if (!isImporting) {
-                            img.src = "/create/importdown.svg";
-                          }
-                        }}
-                        onMouseUp={(e) => {
-                          const img = e.target as HTMLImageElement;
-                          if (!isImporting) {
-                            img.src = "/create/importup.svg";
-                          }
-                        }}
-                        onDragStart={(e) => {
-                          e.preventDefault();
-                          const img = e.target as HTMLImageElement;
-                          if (!isImporting) {
-                            img.src = "/create/importup.svg";
-                          }
-                        }}
-                        onMouseOut={(e) => {
-                          e.preventDefault();
-                          const img = e.target as HTMLImageElement;
-                          if (!isImporting) {
-                            img.src = "/create/importup.svg";
-                          }
-                        }}
-                      />
-                    </button>
+                      }}
+                      onMouseUp={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        if (!isImporting) {
+                          img.src = "/create/importup.svg";
+                        }
+                      }}
+                      onDragStart={(e) => {
+                        e.preventDefault();
+                        const img = e.target as HTMLImageElement;
+                        if (!isImporting) {
+                          img.src = "/create/importup.svg";
+                        }
+                      }}
+                      onMouseOut={(e) => {
+                        e.preventDefault();
+                        const img = e.target as HTMLImageElement;
+                        if (!isImporting) {
+                          img.src = "/create/importup.svg";
+                        }
+                      }}
+                    />
+                  </button>
+                </div>
+                {errors.importAddress && (
+                  <div className="text-red-500 text-sm">
+                    {errors.importAddress}
                   </div>
-                  {errors.importAddress && (
-                    <div className="text-red-500 text-sm">
-                      {errors.importAddress}
-                    </div>
-                  )}
-                  {importStatus && (
-                    <div
-                      className={`flex items-center gap-2 text-sm ${importStatus.type === "error" ? "text-red-500" : importStatus.type === "warning" ? "text-yellow-500" : "text-green-500"}`}
-                    >
+                )}
+
+                {/* Enhanced import status with clearer guidance */}
+                {importStatus && (
+                  <div
+                    className={`p-3 border rounded-md mb-4 ${
+                      importStatus.type === "error"
+                        ? "border-red-500 bg-red-950/20 text-red-400"
+                        : importStatus.type === "warning"
+                          ? "border-yellow-500 bg-yellow-950/20 text-yellow-400"
+                          : "border-green-500 bg-green-950/20 text-[#03FF24]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 text-sm">
                       {importStatus.type === "success" ? (
-                        <Icons.Check className="w-4 h-4" />
+                        <Icons.Check className="w-5 h-5 flex-shrink-0" />
                       ) : importStatus.type === "warning" ? (
-                        <Icons.Warning className="w-4 h-4" />
+                        <Icons.Warning className="w-5 h-5 flex-shrink-0" />
                       ) : (
-                        <Icons.XCircle className="w-4 h-4" />
+                        <Icons.XCircle className="w-5 h-5 flex-shrink-0" />
                       )}
-                      {importStatus.message}
+                      <span className="font-medium">
+                        {importStatus.message}
+                      </span>
+                    </div>
+
+                    {/* Additional guidance for different status types */}
+                    {importStatus.type === "warning" && (
+                      <div className="mt-2 ml-7 text-sm text-yellow-300/80">
+                        <p>
+                          The token details have been loaded below. Please
+                          connect with the token's creator wallet to register
+                          it.
+                        </p>
+                        {publicKey && (
+                          <p className="mt-1">
+                            Current wallet:{" "}
+                            <span className="font-mono">
+                              {publicKey.toString().slice(0, 4) +
+                                "..." +
+                                publicKey.toString().slice(-4)}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {importStatus.type === "success" && (
+                      <div className="mt-2 ml-7 text-sm text-green-300/80">
+                        <p>
+                          You're connected with the correct wallet. Review the
+                          token details below and click "Launch" to register
+                          this token.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Remove this section as it's redundant with the form below */}
+                {hasStoredToken && !importStatus && (
+                  <div className="mt-4 p-3 border border-neutral-700 rounded-md bg-black/30">
+                    <h3 className="text-white font-medium mb-2">
+                      Imported Token Details
+                    </h3>
+                    <p className="text-neutral-400 text-sm mb-4">
+                      These details have been loaded from the token's metadata.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Two-column layout for form fields and image (conditionally shown based on tab) */}
+        {(activeTab === FormTab.MANUAL ||
+          (activeTab === FormTab.AUTO && hasGeneratedToken) ||
+          (activeTab === FormTab.IMPORT && hasStoredToken)) && (
+          <div className="grid gap-4">
+            {/* Form fields - REMOVE THE NAME AND TICKER INPUTS, KEEP ONLY DESCRIPTION */}
+            <div className="flex flex-col gap-3">
+              {/* Image with overlay inputs for name/ticker */}
+              <FormImageInput
+                onChange={(file) => {
+                  if (activeTab === FormTab.MANUAL) {
+                    setImageFile(file);
+                    setManualForm((prev) => ({
+                      ...prev,
+                      imageFile: file,
+                    }));
+                  }
+                }}
+                onPromptChange={handlePromptChange}
+                isGenerating={isGenerating && generatingField === "prompt"}
+                setIsGenerating={setIsGenerating}
+                setGeneratingField={setGeneratingField}
+                onPromptFunctionsChange={(setPrompt, onPromptChange) => {
+                  setPromptFunctions({ setPrompt, onPromptChange });
+                }}
+                onPreviewChange={handlePreviewChange}
+                imageUrl={
+                  activeTab === FormTab.AUTO
+                    ? autoForm.imageUrl
+                    : activeTab === FormTab.IMPORT && hasStoredToken
+                      ? coinDropImageUrl
+                      : undefined
+                }
+                onDirectPreviewSet={(setter) => {
+                  previewSetterRef.current = setter;
+                }}
+                activeTab={activeTab}
+                nameValue={form.name}
+                onNameChange={(value) => handleChange("name", value)}
+                tickerValue={form.symbol}
+                onTickerChange={(value) => handleChange("symbol", value)}
+              />
+            </div>
+
+            <FormTextArea
+              value={form.description}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                handleChange("description", e.target.value)
+              }
+              label="Description"
+              minRows={1}
+              placeholder="Description"
+              maxLength={2000}
+              error={errors.description}
+              onClick={() => generateAll()}
+              isLoading={isGenerating && generatingField === "description"}
+            />
+
+            {/* Hide Buy section when in IMPORT tab */}
+            {activeTab !== FormTab.IMPORT && (
+              <div className="flex flex-col gap-3 justify-end uppercase">
+                <div className="flex flex-row gap-3 justify-end uppercase">
+                  <span className="text-white text-xl font-medium relative group">
+                    Buy
+                    <span className="inline-block ml-1 cursor-help">
+                      <Icons.Info className="h-4 w-4 text-[#8c8c8c] hover:text-white" />
+                      <div className="absolute hidden group-hover:block right-0 bottom-8 p-3 text-xs normal-case bg-black border border-neutral-800 rounded-md shadow-lg z-10">
+                        <p className="text-white mb-2">
+                          Choose how much of the token you want to buy on
+                          launch:
+                        </p>
+                        <p className="text-neutral-400 mb-1">
+                          • <b>SOL</b>: Amount of SOL to invest
+                        </p>
+                        <p className="text-neutral-400 mb-2">
+                          • <b>%</b>: Percentage of token supply to acquire
+                        </p>
+                        <div className="border-t border-neutral-800 pt-2 mt-1">
+                          <p className="text-neutral-400 text-xs">
+                            Total token supply: {TOKEN_SUPPLY.toLocaleString()}{" "}
+                            tokens
+                          </p>
+                          <p className="text-neutral-400 text-xs mt-1">
+                            Pricing follows a bonding curve, your percentage
+                            increases with more SOL.
+                          </p>
+                        </div>
+                      </div>
+                    </span>
+                  </span>
+                  <div className="flex flex-col items-end">
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={buyValue}
+                        onChange={(e) => {
+                          let value = e.target.value.replace(" SOL", "");
+                          value = value.replace(/[^\d.]/g, "");
+                          const decimalCount = (value.match(/\./g) || [])
+                            .length;
+                          if (decimalCount > 1) {
+                            value = value.replace(/\.+$/, "");
+                          }
+                          const parts = value.split(".");
+                          let wholePart = parts[0];
+                          let decimalPart = parts[1] || "";
+                          if (wholePart.length > 2) {
+                            wholePart = wholePart.slice(0, 2);
+                          }
+                          if (decimalPart.length > 2) {
+                            decimalPart = decimalPart.slice(0, 2);
+                          }
+                          value = decimalPart
+                            ? `${wholePart}.${decimalPart}`
+                            : wholePart;
+                          if (value.length > 5) {
+                            value = value.slice(0, 5);
+                          }
+                          const numValue = parseFloat(value);
+                          if (
+                            value !== "" &&
+                            !isNaN(numValue) &&
+                            numValue > maxInputSol
+                          ) {
+                            value = maxInputSol.toString();
+                          }
+
+                          handleChange("initialSol", value);
+                          setBuyValue(value);
+                        }}
+                        min="0"
+                        max={maxInputSol.toString()}
+                        step="0.01"
+                        className="w-26 pr-10 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white"
+                      />
+
+                      <span className="absolute right-0 text-white text-xl font-medium">
+                        SOL
+                      </span>
+                    </div>
+                    {/* {solPrice && Number(buyValue) > 0 && (
+                        <div className="text-right text-xs text-neutral-400 mt-1">
+                          ≈ ${solValueUsd} USD
+                        </div>
+                      )} */}
+                  </div>
+                </div>
+                {parseFloat(buyValue as string) > 0 && (
+                  <div className="text-right text-xs text-neutral-400">
+                    ≈{" "}
+                    {calculatePercentage(
+                      calculateTokensFromSol(parseFloat(buyValue as string)),
+                    ).toFixed(2)}{" "}
+                    % of supply
+                  </div>
+                )}
+
+                {/* Balance information */}
+                <div className="mt-2 text-right text-xs text-neutral-400">
+                  {/* Your balance:{" "}
+                    {balance?.data?.formattedBalance?.toFixed(2) || "0.00"} SOL */}
+                  {insufficientBalance && (
+                    <div className="text-red-500 mt-1">
+                      Insufficient SOL balance (need 0.05 SOL for fees)
                     </div>
                   )}
+                  {Number(buyValue) === maxInputSol &&
+                    maxInputSol < MAX_INITIAL_SOL && (
+                      <div className="text-yellow-500 mt-1">
+                        Maximum amount based on your balance
+                      </div>
+                    )}
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
-          {/* Two-column layout for form fields and image (conditionally shown based on tab) */}
-          {(activeTab === FormTab.MANUAL ||
-            (activeTab === FormTab.AUTO && hasGeneratedToken) ||
-            (activeTab === FormTab.IMPORT && hasStoredToken)) && (
-            <div className="grid gap-4">
-              {/* Form fields - REMOVE THE NAME AND TICKER INPUTS, KEEP ONLY DESCRIPTION */}
-              <div className="flex flex-col gap-3">
-                {/* Image with overlay inputs for name/ticker */}
-                <FormImageInput
-                  label="Token Image"
-                  onChange={(file) => {
-                    if (activeTab === FormTab.MANUAL) {
-                      setImageFile(file);
-                      setManualForm((prev) => ({
-                        ...prev,
-                        imageFile: file,
-                      }));
-                    }
-                  }}
-                  onPromptChange={handlePromptChange}
-                  isGenerating={isGenerating && generatingField === "prompt"}
-                  setIsGenerating={setIsGenerating}
-                  setGeneratingField={setGeneratingField}
-                  onPromptFunctionsChange={(setPrompt, onPromptChange) => {
-                    setPromptFunctions({ setPrompt, onPromptChange });
-                  }}
-                  onPreviewChange={handlePreviewChange}
-                  imageUrl={
-                    activeTab === FormTab.AUTO ? autoForm.imageUrl : undefined
-                  }
-                  onDirectPreviewSet={(setter) => {
-                    previewSetterRef.current = setter;
-                  }}
-                  activeTab={activeTab}
-                  nameValue={form.name}
-                  onNameChange={(value) => handleChange("name", value)}
-                  tickerValue={form.symbol}
-                  onTickerChange={(value) => handleChange("symbol", value)}
-                />
-              </div>
-
-              <FormTextArea
-                value={form.description}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                  handleChange("description", e.target.value)
+        {/* Launch Button - Only shown if form is valid or in appropriate tabs */}
+        {(activeTab === FormTab.MANUAL ||
+          (activeTab === FormTab.AUTO && hasGeneratedToken) ||
+          (activeTab === FormTab.IMPORT && hasStoredToken)) && (
+          <div className="flex flex-col items-center gap-3">
+            <button
+              type="submit"
+              className="p-0 transition-colors cursor-pointer disabled:opacity-50 select-none"
+              disabled={
+                !isFormValid ||
+                isSubmitting ||
+                !isAuthenticated ||
+                insufficientBalance
+              }
+            >
+              <img
+                src={
+                  isSubmitting
+                    ? "/create/launching.svg"
+                    : "/create/launchup.svg"
                 }
-                label="Description"
-                rightIndicator={`${form.description.length}/2000`}
-                minRows={2}
-                maxLength={2000}
-                error={errors.description}
-                onClick={() => generateAll()}
-                isLoading={isGenerating && generatingField === "description"}
-              />
-
-              <div className="flex flex-row gap-3 justify-end uppercase">
-                <span className="text-white text-xl font-medium">Buy</span>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={buyValue}
-                    onChange={(e) => {
-                      let value = e.target.value.replace(" SOL", "");
-
-                      // Only allow numbers and decimal point
-                      value = value.replace(/[^\d.]/g, "");
-
-                      // Ensure only one decimal point
-                      const decimalCount = (value.match(/\./g) || []).length;
-                      if (decimalCount > 1) {
-                        value = value.replace(/\.+$/, "");
-                      }
-
-                      // Split into whole and decimal parts
-                      const parts = value.split(".");
-                      let wholePart = parts[0];
-                      let decimalPart = parts[1] || "";
-
-                      // Limit whole part to 2 digits
-                      if (wholePart.length > 2) {
-                        wholePart = wholePart.slice(0, 2);
-                      }
-
-                      // Limit decimal part to 2 digits
-                      if (decimalPart.length > 2) {
-                        decimalPart = decimalPart.slice(0, 2);
-                      }
-
-                      // Reconstruct the value
-                      value = decimalPart
-                        ? `${wholePart}.${decimalPart}`
-                        : wholePart;
-
-                      // Ensure total length is max 5 (including decimal point)
-                      if (value.length > 5) {
-                        value = value.slice(0, 5);
-                      }
-
-                      // Parse the value and check if it's within range
-                      const numValue = parseFloat(value);
-                      if (
-                        value === "" ||
-                        (numValue >= 0 && numValue <= MAX_INITIAL_SOL)
-                      ) {
-                        handleChange("initial_sol", value);
-                        setBuyValue(value);
-                      }
-                    }}
-                    min="0"
-                    max={MAX_INITIAL_SOL}
-                    step="0.01"
-                    className="w-26 pr-10 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white"
-                  />
-                  <span className="absolute right-0 text-white text-xl font-medium">
-                    SOL
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Launch Button - Only shown if form is valid or in appropriate tabs */}
-          {(activeTab === FormTab.MANUAL ||
-            (activeTab === FormTab.AUTO && hasGeneratedToken) ||
-            (activeTab === FormTab.IMPORT && hasStoredToken)) && (
-            <div className="grid grid-cols-1 gap-x-3 gap-y-6">
-              <button
-                type="submit"
-                className="p-0 transition-colors disabled:opacity-50"
-                disabled={!isFormValid || isSubmitting || !isAuthenticated}
-              >
-                <img
-                  src={
-                    isSubmitting
-                      ? "/create/launching.svg"
-                      : "/create/launchup.svg"
+                alt="Launch"
+                className="h-32 pr-4 mb-4 select-none pointer-events-none"
+                onMouseDown={(e) => {
+                  const img = e.target as HTMLImageElement;
+                  if (!isSubmitting) {
+                    img.src = "/create/launchdown.svg";
+                  } else {
+                    img.src = "/create/launching.svg";
                   }
-                  alt="Launch"
-                  className="h-32 w-72 mx-auto pr-4"
-                  onMouseDown={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    if (!isSubmitting) {
-                      img.src = "/create/launchdown.svg";
-                    } else {
-                      img.src = "/create/launching.svg";
-                    }
-                  }}
-                  onMouseUp={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    if (!isSubmitting) {
-                      img.src = "/create/launchup.svg";
-                    } else {
-                      img.src = "/create/launchup.svg";
-                    }
-                  }}
-                />
-              </button>
+                }}
+                onMouseUp={(e) => {
+                  const img = e.target as HTMLImageElement;
+                  img.src = "/create/launchup.svg";
+                }}
+                onDragStart={(e) => {
+                  e.preventDefault();
+                  const img = e.target as HTMLImageElement;
+                  img.src = "/create/launchup.svg";
+                }}
+                onMouseOut={(e) => {
+                  e.preventDefault();
+                  const img = e.target as HTMLImageElement;
+                  img.src = "/create/launchup.svg";
+                }}
+              />
+            </button>
 
-              {!isFormValid && (
-                <p className="text-red-500 text-center text-sm m-4">
-                  Please fill in all required fields
-                </p>
-              )}
-              {!isAuthenticated && (
-                <p className="text-red-500 text-center text-sm m-4">
-                  Please connect your wallet to create a token
-                </p>
-              )}
-            </div>
-          )}
-        </form>
-      </div>
+            {/* Show a dev mode badge when in development mode */}
+            {isLocalDev && activeTab === FormTab.IMPORT && (
+              <div className="text-xs py-1 px-2 bg-green-700 text-white rounded-md mb-2">
+                Development Mode (
+                {import.meta.env.VITE_SOLANA_NETWORK === "devnet"
+                  ? "devnet"
+                  : "LOCAL_DEV"}
+                ): Creator & Balance Checks Bypassed
+              </div>
+            )}
+
+            {!isFormValid && (
+              <p className="text-red-500 text-center text-sm">
+                Please fill in all required fields
+              </p>
+            )}
+            {insufficientBalance && (
+              <p className="text-red-500 text-center text-sm">
+                You need at least {(Number(buyValue) + 0.05).toFixed(2)} SOL (
+                {Number(buyValue).toFixed(2)} SOL for token + 0.05 SOL for fees)
+                {solPrice && (
+                  <span className="block mt-1">
+                    ≈ $
+                    {(Number(buyValue) * solPrice + 0.05 * solPrice).toFixed(2)}{" "}
+                    USD
+                  </span>
+                )}
+              </p>
+            )}
+            {!isAuthenticated && (
+              <p className="text-red-500 text-center text-sm">
+                Please connect your wallet to create a token
+              </p>
+            )}
+          </div>
+        )}
+      </form>
     </div>
   );
 };

@@ -1,6 +1,12 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
-import { authenticate, authStatus, generateNonce, logout } from "../auth";
+import {
+  authenticate,
+  authStatus,
+  generateNonce,
+  logout,
+  requireAuth,
+} from "../auth";
 import { getDB, users, vanityKeypairs } from "../db";
 import { Env } from "../env";
 import { logger } from "../logger";
@@ -85,6 +91,44 @@ authRouter.post("/authenticate", (c) => authenticate(c));
 authRouter.post("/generate-nonce", (c) => generateNonce(c));
 authRouter.post("/logout", (c) => logout(c));
 authRouter.get("/auth-status", (c) => authStatus(c));
+
+// Add a protected route to test authentication
+authRouter.get("/protected", requireAuth, async (c) => {
+  try {
+    const user = c.get("user");
+
+    // requireAuth middleware ensures user exists, but let's double-check
+    if (!user) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    // Get user info from database
+    const db = getDB(c.env);
+    const userInfo = await db
+      .select()
+      .from(users)
+      .where(eq(users.address, user.publicKey))
+      .limit(1);
+
+    // Return user info
+    return c.json({
+      message: "You have access to this protected route",
+      user: userInfo.length > 0 ? userInfo[0] : { publicKey: user.publicKey },
+      // Add token info for debugging (DO NOT include in production)
+      token: {
+        publicKey: user.publicKey,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    logger.error("Error accessing protected route:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500,
+    );
+  }
+});
+
 authRouter.post("/vanity-keypair", async (c) => {
   try {
     // Require authentication

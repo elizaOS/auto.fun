@@ -1,15 +1,33 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { Connection, PublicKey } from "@solana/web3.js";
+import { desc, eq, sql, and } from "drizzle-orm";
 import { Hono } from "hono";
-import { monitorSpecificToken, cron } from "../cron";
-import { getDB, swaps, tokenHolders, tokens, users } from "../db";
+import { getCookie } from "hono/cookie";
+import { monitorSpecificToken } from "../cron";
+import {
+  getDB,
+  Swap,
+  swaps,
+  TokenHolder,
+  tokenHolders,
+  tokenAgents,
+  tokens,
+  users,
+} from "../db";
 import { Env } from "../env";
 import { logger } from "../logger";
-import { calculateTokenMarketData, getSOLPrice } from "../mcap";
-import { bulkUpdatePartialTokens } from "../util";
-import { Connection, PublicKey } from "@solana/web3.js";
+import { getSOLPrice } from "../mcap";
+import { getRpcUrl } from "../util";
+import { createTestSwap } from "../websocket"; // Import only createTestSwap
 import { getWebSocketClient } from "../websocket-client";
-import { updateTokenInDB } from "../cron";
-import { createTestSwap } from "../websocket"; // Import the new functions
+import {
+  Keypair,
+  LAMPORTS_PER_SOL,
+  SYSVAR_RENT_PUBKEY,
+  SystemProgram,
+  Transaction,
+  TransactionInstruction,
+  AccountInfo,
+} from "@solana/web3.js";
 
 // Define the router with environment typing
 const tokenRouter = new Hono<{
@@ -186,7 +204,7 @@ tokenRouter.get("/tokens", async (c) => {
 });
 
 // Get specific token via mint id
-tokenRouter.get("/tokens/:mint", async (c) => {
+tokenRouter.get("/token/:mint", async (c) => {
   try {
     const mint = c.req.param("mint");
 
@@ -352,18 +370,75 @@ tokenRouter.post("/search-token", async (c) => {
   const mintPublicKey = new PublicKey(mint);
   logger.log(`[search-token] Searching for token ${mint}`);
 
-  // Create connection to Solana
-  const connection = new Connection(
-    c.env.MAINNET_SOLANA_RPC_URL as string,
-    "confirmed",
-  );
+  // Import the functions to get both mainnet and devnet RPC URLs
+  const { getMainnetRpcUrl, getDevnetRpcUrl } = await import("../util");
 
-  // Check if token exists and determine its type
-  const tokenInfo = await connection.getAccountInfo(mintPublicKey);
-  if (!tokenInfo) {
-    return c.json({ error: "Token not found on chain" }, 404);
+  // We'll try both networks - first the current configured network
+  const primaryConnection = new Connection(getRpcUrl(c.env), "confirmed");
+
+  // Try to find the token on the primary network
+  try {
+    const tokenInfo = await primaryConnection.getAccountInfo(mintPublicKey);
+    if (tokenInfo) {
+      logger.log(
+        `[search-token] Found token on primary network (${c.env.NETWORK || "default"})`,
+      );
+      // Continue with the token info we found
+      return await processTokenInfo(
+        c,
+        mintPublicKey,
+        tokenInfo,
+        primaryConnection,
+        requestor,
+      );
+    }
+  } catch (error) {
+    logger.error(`[search-token] Error checking primary network: ${error}`);
   }
 
+  // If token not found on primary network, try the alternate network
+  const isDevnetPrimary = c.env.NETWORK === "devnet";
+  const alternateRpcUrl = isDevnetPrimary
+    ? getMainnetRpcUrl(c.env)
+    : getDevnetRpcUrl(c.env);
+  const alternateNetworkName = isDevnetPrimary ? "mainnet" : "devnet";
+
+  logger.log(
+    `[search-token] Token not found on primary network, trying ${alternateNetworkName}`,
+  );
+  const alternateConnection = new Connection(alternateRpcUrl, "confirmed");
+
+  try {
+    const tokenInfo = await alternateConnection.getAccountInfo(mintPublicKey);
+    if (tokenInfo) {
+      logger.log(`[search-token] Found token on ${alternateNetworkName}`);
+      // Continue with the token info we found on the alternate network
+      return await processTokenInfo(
+        c,
+        mintPublicKey,
+        tokenInfo,
+        alternateConnection,
+        requestor,
+      );
+    }
+  } catch (error) {
+    logger.error(
+      `[search-token] Error checking ${alternateNetworkName}: ${error}`,
+    );
+  }
+
+  // If we get here, token was not found on either network
+  return c.json({ error: "Token not found on any network" }, 404);
+});
+
+// Helper function to process token info after finding it on a network
+async function processTokenInfo(
+  c: any,
+  mintPublicKey: PublicKey,
+  tokenInfo: AccountInfo<Buffer>,
+  connection: Connection,
+  requestor: string,
+) {
   // Check program ID to verify this is an SPL token
   const TOKEN_PROGRAM_ID = new PublicKey(
     "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
@@ -511,10 +586,12 @@ tokenRouter.post("/search-token", async (c) => {
       // For regular SPL tokens, this is an error
       if (isSPL2022) {
         logger.warn(
-          `[search-token] No Metaplex metadata found for SPL-2022 token: ${mint}`,
+          `[search-token] No Metaplex metadata found for SPL-2022 token: ${mintPublicKey.toString()}`,
         );
       } else {
-        logger.error(`[search-token] No metadata found for token: ${mint}`);
+        logger.error(
+          `[search-token] No metadata found for token: ${mintPublicKey.toString()}`,
+        );
         return c.json({ error: "No metadata found for this token" }, 404);
       }
     } else {
@@ -618,20 +695,43 @@ tokenRouter.post("/search-token", async (c) => {
   // For SPL-2022 tokens, we still consider them valid even without metadata
   // since they might not use the tokenMetadata extension
 
-  // Determine if requestor is the creator/authority
-  const isCreator =
-    updateAuthority === requestor || mintAuthority === requestor;
+  // Check if we're in development mode
+  const isLocalDev = c.env.LOCAL_DEV === "true" || c.env.LOCAL_DEV === true;
 
+  // Determine if requestor is the creator/authority
+  // In development mode, always allow any token to be imported
+  const isCreator = isLocalDev
+    ? true
+    : updateAuthority === requestor || mintAuthority === requestor;
+
+  logger.log(`[search-token] Is local development mode? ${isLocalDev}`);
+  logger.log(`[search-token] LOCAL_DEV value: ${c.env.LOCAL_DEV}`);
   logger.log(`[search-token] Is requestor the creator? ${isCreator}`);
   logger.log(`[search-token] Request wallet: ${requestor}`);
   logger.log(`[search-token] Update authority: ${updateAuthority}`);
+  logger.log(`[search-token] Mint authority: ${mintAuthority}`);
+
+  // Debug log for final creator check result
+  if (isLocalDev) {
+    logger.log(
+      `[search-token] Bypassing creator check in development mode. Anyone can import this token.`,
+    );
+  } else if (isCreator) {
+    logger.log(
+      `[search-token] Creator check passed - requestor is the token creator.`,
+    );
+  } else {
+    logger.log(
+      `[search-token] Creator check failed - requestor is not the token creator.`,
+    );
+  }
 
   // If we don't have names yet (possible for SPL-2022 without tokenMetadata), use defaults
   if (!tokenName) {
-    tokenName = `Token ${mint.slice(0, 8)}`;
+    tokenName = `Token ${mintPublicKey.toString().slice(0, 8)}`;
   }
   if (!tokenSymbol) {
-    tokenSymbol = mint.slice(0, 4).toUpperCase();
+    tokenSymbol = mintPublicKey.toString().slice(0, 4).toUpperCase();
   }
 
   // Return the token data
@@ -639,7 +739,7 @@ tokenRouter.post("/search-token", async (c) => {
     name: tokenName,
     symbol: tokenSymbol,
     description: description || `Token ${tokenName} (${tokenSymbol})`,
-    mint: mint,
+    mint: mintPublicKey.toString(),
     updateAuthority: updateAuthority,
     mintAuthority: mintAuthority || null,
     creator: updateAuthority || mintAuthority || null,
@@ -654,7 +754,7 @@ tokenRouter.post("/search-token", async (c) => {
   logger.log(`[search-token] Final token data: ${JSON.stringify(tokenData)}`);
 
   return c.json(tokenData);
-});
+}
 
 // Helper function to get the Metadata PDA for a mint
 async function getMetadataPDA(mint: string): Promise<PublicKey> {
@@ -881,7 +981,7 @@ async function fetchMetadataUri(uri: string): Promise<string | null> {
 }
 
 // Get token holders endpoint
-tokenRouter.get("/tokens/:mint/holders", async (c) => {
+tokenRouter.get("/token/:mint/holders", async (c) => {
   try {
     const mint = c.req.param("mint");
 
@@ -937,7 +1037,7 @@ tokenRouter.get("/tokens/:mint/holders", async (c) => {
 });
 
 // Transaction to harvest LP fees endpoint
-tokenRouter.get("/tokens/:mint/harvest-tx", async (c) => {
+tokenRouter.get("/token/:mint/harvest-tx", async (c) => {
   try {
     const mint = c.req.param("mint");
 
@@ -990,93 +1090,6 @@ tokenRouter.get("/tokens/:mint/harvest-tx", async (c) => {
   }
 });
 
-// Create new token endpoint
-tokenRouter.post("/new_token", async (c) => {
-  try {
-    // API key verification
-    const apiKey = c.req.header("X-API-Key");
-    if (apiKey !== c.env.API_KEY && apiKey !== "test-api-key") {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const body = await c.req.json();
-
-    // Validate input
-    if (!body.name || !body.symbol) {
-      return c.json({ error: "Missing required fields: name, symbol" }, 400);
-    }
-
-    // Get creator from auth if not provided
-    let creator = body.creator;
-    if (!creator) {
-      const user = c.get("user");
-      if (user && user.publicKey) {
-        creator = user.publicKey;
-      } else {
-        // For development/test, use a placeholder creator
-        if (c.env.NODE_ENV === "development" || c.env.NODE_ENV === "test") {
-          creator = "test-creator-" + crypto.randomUUID().slice(0, 8);
-        } else {
-          return c.json(
-            { error: "Missing creator field and no authenticated user" },
-            400,
-          );
-        }
-      }
-    }
-
-    // Create a basic token record
-    const tokenId = crypto.randomUUID();
-    const now = new Date().toISOString();
-
-    const db = getDB(c.env);
-
-    console.log("******* body", body);
-
-    try {
-      // Insert token with properties from the schema
-      await db.insert(tokens).values({
-        id: tokenId,
-        name: body.name,
-        ticker: body.symbol,
-        url: body.url || "https://example.com",
-        image: body.image || "https://example.com/default.png",
-        mint: body.mint,
-        creator,
-        createdAt: now,
-        lastUpdated: now,
-        txId: body.txId,
-      });
-
-      return c.json({
-        success: true,
-        token: {
-          id: tokenId,
-          name: body.name,
-          symbol: body.symbol,
-          mint: body.mint,
-          creator,
-        },
-      });
-    } catch (dbError: any) {
-      logger.error("Database error creating token:", dbError);
-      return c.json(
-        {
-          error: "Database error when creating token",
-          details: dbError.message,
-        },
-        500,
-      );
-    }
-  } catch (error: any) {
-    logger.error("Error creating new token:", error);
-    return c.json(
-      { error: "Failed to create token", details: error.message },
-      500,
-    );
-  }
-});
-
 // Token price endpoint
 tokenRouter.get("/token/:mint/price", async (c) => {
   try {
@@ -1121,7 +1134,7 @@ tokenRouter.get("/token/:mint/price", async (c) => {
 });
 
 // Replace the implementation of the tokens/:mint/price endpoint
-tokenRouter.get("/tokens/:mint/price", async (c) => {
+tokenRouter.get("/token/:mint/price", async (c) => {
   // Use the same implementation as the token price endpoint
   const mint = c.req.param("mint");
 
@@ -1840,32 +1853,6 @@ tokenRouter.get("/dev/update-token/:mint", async (c) => {
   }
 });
 
-// Manual cron job trigger - useful for development mode
-tokenRouter.get("/dev/run-cron", async (c) => {
-  try {
-    // Only allow in development environment
-    if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
-      return c.json(
-        { error: "This endpoint is only available in development" },
-        403,
-      );
-    }
-
-    await cron(c.env);
-
-    return c.json({
-      success: true,
-      message: "Cron job executed successfully",
-    });
-  } catch (error) {
-    logger.error("Error running cron job:", error);
-    return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
-  }
-});
-
 // Add an endpoint to fix a specific token's virtualReserves value
 tokenRouter.get("/dev/fix-token/:mint", async (c) => {
   try {
@@ -2056,7 +2043,6 @@ tokenRouter.post("/dev/update-token-data/:mint", async (c) => {
   }
 });
 
-// Add this function to worker/routes/token.ts or worker/cron.ts
 export async function updateHoldersCache(
   env: Env,
   mint: string,
@@ -2102,7 +2088,7 @@ export async function updateHoldersCache(
     );
 
     // Create an array to store holder records
-    const holders = [];
+    const holders: TokenHolder[] = [];
 
     // Process each account - get owner and details
     for (const account of largestAccounts.value) {
@@ -2226,7 +2212,7 @@ tokenRouter.get("/dev/update-holders/:mint", async (c) => {
 });
 
 // Add regular endpoint to update holders data on demand
-tokenRouter.get("/tokens/:mint/refresh-holders", async (c) => {
+tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
   try {
     const mint = c.req.param("mint");
     if (!mint || mint.length < 32 || mint.length > 44) {
@@ -2261,7 +2247,7 @@ tokenRouter.get("/tokens/:mint/refresh-holders", async (c) => {
 });
 
 // Add regular endpoint to refresh trade/swap data on demand
-tokenRouter.get("/tokens/:mint/refresh-swaps", async (c) => {
+tokenRouter.get("/token/:mint/refresh-swaps", async (c) => {
   try {
     const mint = c.req.param("mint");
     if (!mint || mint.length < 32 || mint.length > 44) {
@@ -2539,7 +2525,7 @@ tokenRouter.get("/dev/add-all-test-data/:mint", async (c) => {
 
     // Create mock swap data - 10 swaps over the last few days
     const now = new Date();
-    const swapRecords = [];
+    const swapRecords: Swap[] = [];
 
     // Create 10 swaps with alternating directions (buy/sell)
     for (let i = 0; i < 10; i++) {
@@ -2555,6 +2541,7 @@ tokenRouter.get("/dev/add-all-test-data/:mint", async (c) => {
         direction: direction,
         amountIn: 1000000000 + Math.random() * 500000000, // Random amount
         amountOut: 500000000 + Math.random() * 300000000, // Random amount
+        priceImpact: 0, // TBD
         price: price,
         txId: `test-tx-${i}-${crypto.randomUUID().slice(0, 8)}`,
         timestamp: timestamp.toISOString(),
@@ -2757,7 +2744,7 @@ tokenRouter.get("/api/swaps/:mint", async (c) => {
 
       // Create mock swap data with exact fields expected by frontend
       const now = new Date();
-      const swapRecords = [];
+      const swapRecords: Swap[] = [];
 
       // Create 5 test swaps
       for (let i = 0; i < 5; i++) {
@@ -2767,6 +2754,7 @@ tokenRouter.get("/api/swaps/:mint", async (c) => {
         swapRecords.push({
           id: crypto.randomUUID(),
           tokenMint: mint,
+          priceImpact: 0,
           user: "DvmXXp4tSXYwZJhM5HjtEUvQ6SfxwkA7daE1jQgCX1ri", // Example user
           type: direction === 0 ? "buy" : "sell", // Add type field to fix linter error
           direction: direction,
@@ -3100,5 +3088,978 @@ tokenRouter.get("/dev/emit-token-update/:mint", async (c) => {
       { error: error instanceof Error ? error.message : "Unknown error" },
       500,
     );
+  }
+});
+
+// Add token update endpoint for social links
+tokenRouter.post("/token/:mint/update", async (c) => {
+  try {
+    // Get auth headers and extract from cookies
+    const authHeader = c.req.header("Authorization") || "none";
+    const publicKeyCookie = getCookie(c, "publicKey");
+    const authTokenCookie = getCookie(c, "auth_token");
+
+    logger.log("Token update request received");
+    logger.log("Authorization header:", authHeader);
+    logger.log("Auth cookie present:", !!authTokenCookie);
+    logger.log("PublicKey cookie:", publicKeyCookie);
+
+    // Require authentication
+    const user = c.get("user");
+
+    if (!user) {
+      logger.error("Authentication required - no user in context");
+
+      // For development purposes, if in dev mode and there's a publicKey in the body, use that
+      if (c.env.NODE_ENV === "development") {
+        try {
+          const body = await c.req.json();
+          if (body._devWalletOverride && c.env.NODE_ENV === "development") {
+            logger.log(
+              "DEVELOPMENT: Using wallet override:",
+              body._devWalletOverride,
+            );
+            c.set("user", { publicKey: body._devWalletOverride });
+          } else {
+            return c.json({ error: "Authentication required" }, 401);
+          }
+        } catch (e) {
+          logger.error("Failed to parse request body for dev override");
+          return c.json({ error: "Authentication required" }, 401);
+        }
+      } else {
+        return c.json({ error: "Authentication required" }, 401);
+      }
+    }
+
+    // At this point user should be available - get it again after potential override
+    const authenticatedUser = c.get("user");
+    if (!authenticatedUser) {
+      return c.json({ error: "Authentication failed" }, 401);
+    }
+
+    // User is available, continue with the request
+    logger.log("Authenticated user:", authenticatedUser.publicKey);
+
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    // Get request body with updated token metadata
+    let body;
+    try {
+      body = await c.req.json();
+      logger.log("Request body:", body);
+    } catch (e) {
+      logger.error("Failed to parse request body:", e);
+      return c.json({ error: "Invalid request body" }, 400);
+    }
+
+    // Get DB connection
+    const db = getDB(c.env);
+
+    // Get the token to check permissions
+    const tokenData = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    if (!tokenData || tokenData.length === 0) {
+      logger.error(`Token not found: ${mint}`);
+      return c.json({ error: "Token not found" }, 404);
+    }
+
+    // Log for debugging auth issues
+    logger.log(`Update attempt for token ${mint}`);
+    logger.log(`User wallet: ${authenticatedUser.publicKey}`);
+    logger.log(`Token creator: ${tokenData[0].creator}`);
+
+    // Try multiple ways to compare addresses
+    let isCreator = false;
+
+    try {
+      // Try normalized comparison with PublicKey objects
+      const normalizedWallet = new PublicKey(
+        authenticatedUser.publicKey,
+      ).toString();
+      const normalizedCreator = new PublicKey(tokenData[0].creator).toString();
+
+      logger.log("Normalized wallet:", normalizedWallet);
+      logger.log("Normalized creator:", normalizedCreator);
+
+      isCreator = normalizedWallet === normalizedCreator;
+      logger.log("Exact match after normalization:", isCreator);
+
+      if (!isCreator) {
+        // Case-insensitive as fallback
+        const caseMatch =
+          authenticatedUser.publicKey.toLowerCase() ===
+          tokenData[0].creator.toLowerCase();
+        logger.log("Case-insensitive match:", caseMatch);
+        isCreator = caseMatch;
+      }
+    } catch (error) {
+      logger.error("Error normalizing addresses:", error);
+
+      // Fallback to simple comparison
+      isCreator = authenticatedUser.publicKey === tokenData[0].creator;
+      logger.log("Simple equality check:", isCreator);
+    }
+
+    // Special dev override if enabled
+    if (c.env.NODE_ENV === "development" && body._forceAdmin === true) {
+      logger.log("DEVELOPMENT: Admin access override enabled");
+      isCreator = true;
+    }
+
+    // Check if user is the token creator
+    if (!isCreator) {
+      logger.error("User is not authorized to update this token");
+      return c.json(
+        {
+          error: "Only the token creator can update token information",
+          userAddress: authenticatedUser.publicKey,
+          creatorAddress: tokenData[0].creator,
+        },
+        403,
+      );
+    }
+
+    // At this point, user is authenticated and authorized
+    logger.log("User is authorized to update token");
+
+    // Update token with the new social links
+    await db
+      .update(tokens)
+      .set({
+        website: body.website ?? tokenData[0].website,
+        twitter: body.twitter ?? tokenData[0].twitter,
+        telegram: body.telegram ?? tokenData[0].telegram,
+        discord: body.discord ?? tokenData[0].discord,
+        lastUpdated: new Date().toISOString(),
+      })
+      .where(eq(tokens.mint, mint));
+
+    logger.log("Token updated successfully");
+
+    // Get the updated token data
+    const updatedToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    // Emit WebSocket event for token update if needed
+    try {
+      await processTokenUpdateEvent(c.env, {
+        ...updatedToken[0],
+        event: "tokenUpdated",
+        timestamp: new Date().toISOString(),
+      });
+
+      logger.log(`Emitted token update event for ${mint}`);
+    } catch (wsError) {
+      // Don't fail if WebSocket fails
+      logger.error(`WebSocket error when emitting token update: ${wsError}`);
+    }
+
+    return c.json({
+      success: true,
+      message: "Token information updated successfully",
+      token: updatedToken[0],
+    });
+  } catch (error) {
+    logger.error("Error updating token:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500,
+    );
+  }
+});
+
+// --- NEW: Get Token Agents ---
+tokenRouter.get("/token/:mint/agents", async (c) => {
+  try {
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    const db = getDB(c.env);
+    const agents = await db
+      .select()
+      .from(tokenAgents) // Ensure tokenAgents is imported and defined in schema
+      .where(eq(tokenAgents.tokenMint, mint))
+      .orderBy(tokenAgents.createdAt);
+
+    // ** ADD Log: Check the agents data before sending **
+    logger.log(
+      `[GET /agents] Found agents for mint ${mint}:`,
+      JSON.stringify(agents),
+    );
+
+    // Return in the format expected by the frontend { agents: [...] }
+    return c.json({ agents: agents || [] });
+  } catch (error) {
+    logger.error("Error fetching token agents:", error);
+    return c.json({ agents: [], error: "Failed to fetch agents" }, 500);
+  }
+});
+
+// --- NEW: Create Token Agent ---
+tokenRouter.post("/token/:mint/agents", async (c) => {
+  try {
+    // Require authentication (check user variable set by middleware)
+    const user = c.get("user");
+    if (!user || !user.publicKey) {
+      logger.warn("Agent creation attempt failed: Authentication required");
+      return c.json({ error: "Authentication required" }, 401);
+    }
+
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    const body = await c.req.json();
+    const { twitterUserId } = body;
+
+    if (!twitterUserId || typeof twitterUserId !== "string") {
+      return c.json({ error: "Missing or invalid twitterUserId" }, 400);
+    }
+
+    const db = getDB(c.env);
+
+    // Check if this Twitter user is already linked to this specific token
+    const existingAgent = await db
+      .select()
+      .from(tokenAgents)
+      .where(
+        and(
+          eq(tokenAgents.tokenMint, mint),
+          eq(tokenAgents.twitterUserId, twitterUserId),
+        ),
+      )
+      .limit(1);
+
+    if (existingAgent && existingAgent.length > 0) {
+      logger.warn(
+        `Agent creation attempt failed: Twitter user ${twitterUserId} already linked to token ${mint}`,
+      );
+      return c.json(
+        {
+          error: "This Twitter account is already connected to this token.",
+          agent: existingAgent[0],
+        },
+        409, // Conflict
+      );
+    }
+
+    // --- Placeholder: Fetch Twitter Username and Image ---
+    // TODO: Replace with actual Twitter API call using credentials/client
+    const twitterUserName = twitterUserId;
+    const twitterImageUrl = "/default-avatar.png";
+    logger.warn(
+      `Placeholder: Using mock Twitter data for user ID ${twitterUserId}`,
+    );
+    // try {
+    //   const twitterProfile = await fetchTwitterProfile(c.env, twitterUserId);
+    //   twitterUserName = twitterProfile.username;
+    //   twitterImageUrl = twitterProfile.profile_image_url;
+    // } catch (twitterError) {
+    //    logger.error(`Failed to fetch Twitter profile for ${twitterUserId}:`, twitterError);
+    //    // Decide how to handle - proceed with placeholder or error out?
+    // }
+    // --- End Placeholder ---
+
+    // Check if the owner is the token creator to mark as official
+    const tokenData = await db
+      .select({ creator: tokens.creator })
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    const isOfficial =
+      tokenData &&
+      tokenData.length > 0 &&
+      tokenData[0].creator === user.publicKey;
+
+    const newAgentData = {
+      id: crypto.randomUUID(), // Generate ID if not auto-generated by DB
+      tokenMint: mint,
+      ownerAddress: user.publicKey, // The Solana address of the user linking the account
+      twitterUserId: twitterUserId,
+      twitterUserName: twitterUserName,
+      twitterImageUrl: twitterImageUrl,
+      official: isOfficial ? 1 : 0,
+      createdAt: new Date().toISOString(), // Set timestamp if not auto-set by DB
+    };
+
+    // This insert call now expects 'official' as a number (0 or 1)
+    const result = await db
+      .insert(tokenAgents)
+      .values(newAgentData)
+      .returning();
+
+    if (!result || result.length === 0) {
+      throw new Error("Failed to insert new agent into database.");
+    }
+
+    const newAgent = result[0];
+    logger.log(
+      `Successfully created agent link: Token ${mint}, Twitter ${twitterUserName}, Owner ${user.publicKey}`,
+    );
+
+    // TODO: Emit WebSocket event for new agent?
+
+    return c.json(newAgent, 201); // Return the newly created agent with 201 status
+  } catch (error) {
+    logger.error("Error creating token agent:", error);
+    // Handle potential database unique constraint errors more gracefully if needed
+    if (
+      error instanceof Error &&
+      error.message.includes("duplicate key value violates unique constraint")
+    ) {
+      return c.json(
+        {
+          error:
+            "This Twitter account might already be linked elsewhere or a database conflict occurred.",
+        },
+        409,
+      );
+    }
+    return c.json(
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to create agent",
+      },
+      500,
+    );
+  }
+});
+
+// --- NEW: Delete Token Agent ---
+tokenRouter.delete("/token/:mint/agents/:agentId", async (c) => {
+  try {
+    // Require authentication
+    const user = c.get("user");
+    if (!user || !user.publicKey) {
+      logger.warn("Agent deletion attempt failed: Authentication required");
+      return c.json({ error: "Authentication required" }, 401);
+    }
+
+    const mint = c.req.param("mint");
+    const agentId = c.req.param("agentId"); // Assuming agentId is the unique ID (UUID)
+
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+    // Basic UUID check (simplified)
+    if (!agentId || agentId.length < 30) {
+      return c.json({ error: "Missing or invalid agent ID" }, 400);
+    }
+
+    const db = getDB(c.env);
+
+    // Find the agent to check ownership
+    const agentToDelete = await db
+      .select()
+      .from(tokenAgents)
+      .where(and(eq(tokenAgents.id, agentId), eq(tokenAgents.tokenMint, mint)))
+      .limit(1);
+
+    if (!agentToDelete || agentToDelete.length === 0) {
+      return c.json(
+        { error: "Agent not found or does not belong to this token" },
+        404,
+      );
+    }
+
+    // Check if the authenticated user is the owner of this agent link
+    if (agentToDelete[0].ownerAddress !== user.publicKey) {
+      logger.warn(
+        `Agent deletion attempt failed: User ${user.publicKey} tried to delete agent ${agentId} owned by ${agentToDelete[0].ownerAddress}`,
+      );
+      return c.json(
+        { error: "You can only remove agents you have connected." },
+        403, // Forbidden
+      );
+    }
+
+    // Delete the agent
+    const result = await db
+      .delete(tokenAgents)
+      .where(eq(tokenAgents.id, agentId))
+      .returning({ id: tokenAgents.id }); // Return ID to confirm deletion
+
+    if (!result || result.length === 0) {
+      // This might happen if the agent was deleted between the select and delete calls
+      logger.warn(
+        `Agent ${agentId} not found during deletion, possibly already deleted.`,
+      );
+      return c.json({ error: "Agent not found during deletion attempt" }, 404);
+    }
+
+    logger.log(
+      `Successfully deleted agent: ID ${agentId}, Token ${mint}, User ${user.publicKey}`,
+    );
+
+    // TODO: Emit WebSocket event for agent removal?
+
+    return c.json({ success: true, message: "Agent removed successfully" });
+  } catch (error) {
+    logger.error("Error deleting token agent:", error);
+    return c.json({ error: "Failed to remove agent" }, 500);
+  }
+});
+
+// --- NEW: Connect Twitter Agent - Combined Endpoint ---
+tokenRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
+  try {
+    // Require authentication
+    const user = c.get("user");
+    if (!user || !user.publicKey) {
+      logger.warn("Agent connection attempt failed: Authentication required");
+      return c.json({ error: "Authentication required" }, 401);
+    }
+
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    const body = await c.req.json();
+    const { accessToken, userId } = body;
+
+    if (!accessToken || !userId) {
+      return c.json({ error: "Missing Twitter credentials" }, 400);
+    }
+
+    // Step 1: Attempt to fetch Twitter user info
+    let twitterUserId = userId;
+    let twitterUserName = `user_${userId.substring(0, 5)}`;
+    let twitterImageUrl = "/default-avatar.png";
+
+    try {
+      // Try to fetch user profile
+      logger.log(`Fetching Twitter profile for user ID: ${userId}`);
+      const profileResponse = await fetch(
+        "https://api.twitter.com/2/users/me?user.fields=profile_image_url",
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      );
+
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json();
+        logger.log("Twitter profile data:", profileData);
+
+        if (profileData.data && profileData.data.id) {
+          twitterUserId = profileData.data.id;
+          // If username is available, use it
+          if (profileData.data.username) {
+            twitterUserName = `@${profileData.data.username}`;
+          }
+
+          // Handle profile image if available
+          if (profileData.data.profile_image_url) {
+            // Store original Twitter URL temporarily
+            const originalImageUrl = profileData.data.profile_image_url;
+
+            // Replace '_normal' with '_400x400' to get a larger image
+            const largeImageUrl = originalImageUrl.replace(
+              "_normal",
+              "_400x400",
+            );
+
+            try {
+              // Fetch the image
+              const imageResponse = await fetch(largeImageUrl);
+              if (imageResponse.ok) {
+                // Generate a unique filename
+                const imageId = crypto.randomUUID();
+                const imageKey = `twitter-images/${imageId}.jpg`;
+
+                // Get the image as arrayBuffer
+                const imageBuffer = await imageResponse.arrayBuffer();
+
+                // Store in R2 if available
+                if (c.env.R2) {
+                  await c.env.R2.put(imageKey, imageBuffer, {
+                    httpMetadata: {
+                      contentType: "image/jpeg",
+                      cacheControl: "public, max-age=31536000", // Cache for 1 year
+                    },
+                  });
+
+                  // Set the URL to our cached version
+                  twitterImageUrl = `${c.env.ASSET_URL || c.env.VITE_API_URL}/api/twitter-image/${imageId}`;
+                  logger.log(
+                    `Cached Twitter profile image at: ${twitterImageUrl}`,
+                  );
+                } else {
+                  // If R2 is not available, use the original URL
+                  twitterImageUrl = largeImageUrl;
+                  logger.log("R2 not available, using original Twitter URL");
+                }
+              } else {
+                logger.warn(
+                  `Failed to fetch Twitter profile image: ${imageResponse.status}`,
+                );
+                // Fall back to the original URL
+                twitterImageUrl = originalImageUrl;
+              }
+            } catch (imageError) {
+              logger.error("Error caching Twitter profile image:", imageError);
+              // Fall back to the original URL
+              twitterImageUrl = originalImageUrl;
+            }
+          }
+        }
+      } else {
+        logger.warn(
+          `Twitter profile fetch failed with status: ${profileResponse.status}`,
+        );
+        // Continue with default values - we don't want to fail the agent creation
+        // just because we couldn't get user details
+      }
+    } catch (profileError) {
+      logger.error("Error fetching Twitter profile:", profileError);
+      // Continue with default values
+    }
+
+    // Step 2: Check if this Twitter user is already connected to this token
+    const db = getDB(c.env);
+    const existingAgent = await db
+      .select()
+      .from(tokenAgents)
+      .where(
+        and(
+          eq(tokenAgents.tokenMint, mint),
+          eq(tokenAgents.twitterUserId, twitterUserId),
+        ),
+      )
+      .limit(1);
+
+    if (existingAgent && existingAgent.length > 0) {
+      logger.warn(
+        `Agent creation attempt failed: Twitter user ${twitterUserId} already linked to token ${mint}`,
+      );
+      return c.json(
+        {
+          error: "This Twitter account is already connected to this token.",
+          agent: existingAgent[0],
+        },
+        409, // Conflict
+      );
+    }
+
+    // Step 3: Check if the owner is the token creator to mark as official
+    const tokenData = await db
+      .select({ creator: tokens.creator })
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    const isOfficial =
+      tokenData &&
+      tokenData.length > 0 &&
+      tokenData[0].creator === user.publicKey;
+
+    // Step 4: Create new agent
+    const newAgentData = {
+      id: crypto.randomUUID(),
+      tokenMint: mint,
+      ownerAddress: user.publicKey,
+      twitterUserId: twitterUserId,
+      twitterUserName: twitterUserName,
+      twitterImageUrl: twitterImageUrl,
+      official: isOfficial ? 1 : 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    const result = await db
+      .insert(tokenAgents)
+      .values(newAgentData)
+      .returning();
+
+    if (!result || result.length === 0) {
+      throw new Error("Failed to insert new agent into database.");
+    }
+
+    const newAgent = result[0];
+    logger.log(
+      `Successfully created agent link: Token ${mint}, Twitter ${twitterUserName}, Owner ${user.publicKey}`,
+    );
+
+    // TODO: Emit WebSocket event for new agent?
+
+    return c.json(newAgent, 201);
+  } catch (error) {
+    logger.error("Error connecting Twitter agent:", error);
+    return c.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to connect Twitter agent",
+      },
+      500,
+    );
+  }
+});
+
+// --- Serve Twitter profile images directly from R2 ---
+tokenRouter.get("/twitter-image/:imageId", async (c) => {
+  try {
+    // Get the imageId from params
+    const imageId = c.req.param("imageId");
+    if (!imageId) {
+      return c.json({ error: "Image ID parameter is required" }, 400);
+    }
+
+    // Ensure R2 is available
+    if (!c.env.R2) {
+      return c.json({ error: "R2 storage is not available" }, 500);
+    }
+
+    // Construct the full storage key
+    const imageKey = `twitter-images/${imageId}.jpg`;
+
+    // Fetch the image from R2
+    const object = await c.env.R2.get(imageKey);
+
+    if (!object) {
+      return c.json({ error: "Twitter profile image not found" }, 404);
+    }
+
+    // Get the content type and data
+    const contentType = object.httpMetadata?.contentType || "image/jpeg";
+    const data = await object.arrayBuffer();
+
+    // Set CORS headers for browser access
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "*",
+      "Access-Control-Max-Age": "86400",
+    };
+
+    // Return the image with appropriate headers
+    return new Response(data, {
+      headers: {
+        "Content-Type": contentType,
+        "Content-Length": object.size.toString(),
+        "Cache-Control": "public, max-age=31536000", // Cache for 1 year
+        ...corsHeaders,
+      },
+    });
+  } catch (error) {
+    logger.error("Error serving Twitter profile image:", error);
+    return c.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to serve Twitter profile image",
+      },
+      500,
+    );
+  }
+});
+
+// Add endpoint to check token balance for a wallet
+tokenRouter.get("/token/:mint/check-balance", async (c) => {
+  try {
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    // Get wallet address from query parameter
+    const address = c.req.query("address");
+    if (!address || address.length < 32 || address.length > 44) {
+      return c.json({ error: "Invalid wallet address" }, 400);
+    }
+
+    // Check if we're in local mode (which will check both networks)
+    const mode = c.req.query("mode");
+    const isLocalMode = mode === "local";
+
+    logger.log(
+      `Checking token balance for ${address} on ${mint}, mode: ${isLocalMode ? "local" : "standard"}`,
+    );
+
+    const db = getDB(c.env);
+
+    // Check token holders table
+    const holderQuery = await db
+      .select()
+      .from(tokenHolders)
+      .where(
+        and(eq(tokenHolders.mint, mint), eq(tokenHolders.address, address)),
+      )
+      .limit(1);
+
+    // Get token for decimals information
+    const tokenQuery = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    const token = tokenQuery[0];
+
+    // If token doesn't exist in our database but we're in local mode,
+    // try to check the blockchain directly if LOCAL_DEV is enabled
+    if (!token && (isLocalMode || (c.env as any).LOCAL_DEV === "true")) {
+      logger.log(
+        `Token ${mint} not found in database, but in local/dev mode, trying blockchain lookup`,
+      );
+      return await checkBlockchainTokenBalance(c, mint, address, isLocalMode);
+    }
+
+    // If token doesn't exist in our database and not in local mode
+    if (!token) {
+      return c.json({ error: "Token not found" }, 404);
+    }
+
+    // Check if user is the token creator
+    const isCreator = token.creator === address;
+
+    // Default decimals for most tokens
+    const decimals = 6;
+
+    if (holderQuery.length > 0) {
+      // User is in the token holders table
+      const holder = holderQuery[0];
+      const balance = holder.amount / Math.pow(10, decimals);
+
+      return c.json({
+        balance,
+        percentage: holder.percentage,
+        isCreator,
+        mint,
+        address,
+        lastUpdated: holder.lastUpdated,
+      });
+    } else if (isCreator) {
+      // User is the creator but not in holders table (might not have any tokens)
+      return c.json({
+        balance: 0,
+        percentage: 0,
+        isCreator: true,
+        mint,
+        address,
+      });
+    } else if (isLocalMode || (c.env as any).LOCAL_DEV === "true") {
+      // In local mode or with LOCAL_DEV enabled, check blockchain even if not in holders table
+      logger.log(
+        `User ${address} not in holders table, but in local/dev mode, trying blockchain lookup`,
+      );
+      return await checkBlockchainTokenBalance(c, mint, address, isLocalMode);
+    } else {
+      // User is not in holders table and is not the creator
+      // This likely means they have no tokens
+      return c.json({
+        balance: 0,
+        percentage: 0,
+        isCreator: false,
+        mint,
+        address,
+      });
+    }
+  } catch (error) {
+    logger.error(`Error checking token balance: ${error}`);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500,
+    );
+  }
+});
+
+// Helper to check token balance directly on blockchain
+async function checkBlockchainTokenBalance(
+  c,
+  mint,
+  address,
+  checkMultipleNetworks = false,
+) {
+  try {
+    // Initialize return data
+    let balance = 0;
+    let foundNetwork = ""; // Renamed to avoid confusion with loop variable
+
+    // Import the functions to get both mainnet and devnet RPC URLs
+    const { getMainnetRpcUrl, getDevnetRpcUrl } = await import("../util");
+
+    // Get explicit mainnet and devnet URLs
+    const mainnetUrl = getMainnetRpcUrl(c.env);
+    const devnetUrl = getDevnetRpcUrl(c.env);
+
+    // Log detailed connection info and environment settings
+    logger.log(`IMPORTANT DEBUG INFO FOR TOKEN BALANCE CHECK:`);
+    logger.log(`Address: ${address}`);
+    logger.log(`Mint: ${mint}`);
+    logger.log(`CheckMultipleNetworks: ${checkMultipleNetworks}`);
+    logger.log(`LOCAL_DEV setting: ${c.env.LOCAL_DEV}`);
+    logger.log(`ENV.NETWORK setting: ${c.env.NETWORK || "not set"}`);
+    logger.log(`Mainnet URL: ${mainnetUrl}`);
+    logger.log(`Devnet URL: ${devnetUrl}`);
+
+    // Determine which networks to check - ONLY mainnet and devnet if in local mode
+    const networksToCheck = checkMultipleNetworks
+      ? [
+          { name: "mainnet", url: mainnetUrl },
+          { name: "devnet", url: devnetUrl },
+        ]
+      : [
+          {
+            name: c.env.NETWORK || "devnet",
+            url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+          },
+        ];
+
+    logger.log(
+      `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
+    );
+
+    // Try each network until we find a balance
+    for (const network of networksToCheck) {
+      try {
+        logger.log(
+          `Checking ${network.name} (${network.url}) for token balance...`,
+        );
+        const connection = new Connection(network.url, "confirmed");
+
+        // Convert string addresses to PublicKey objects
+        const mintPublicKey = new PublicKey(mint);
+        const userPublicKey = new PublicKey(address);
+
+        logger.log(
+          `Getting token accounts for ${address} for mint ${mint} on ${network.name}`,
+        );
+
+        // Fetch token accounts with a simple RPC call
+        const response = await connection.getTokenAccountsByOwner(
+          userPublicKey,
+          { mint: mintPublicKey },
+          { commitment: "confirmed" },
+        );
+
+        // Log the number of accounts found
+        logger.log(
+          `Found ${response.value.length} token accounts on ${network.name}`,
+        );
+
+        // If we have accounts, calculate total balance
+        if (response && response.value && response.value.length > 0) {
+          let networkBalance = 0;
+
+          // Log each account
+          for (let i = 0; i < response.value.length; i++) {
+            const { pubkey } = response.value[i];
+            logger.log(`Account ${i + 1}: ${pubkey.toString()}`);
+          }
+
+          // Get token balances from all accounts
+          for (const { pubkey } of response.value) {
+            try {
+              const accountInfo =
+                await connection.getTokenAccountBalance(pubkey);
+              if (accountInfo.value) {
+                const amount = accountInfo.value.amount;
+                const decimals = accountInfo.value.decimals;
+                const tokenAmount = Number(amount) / Math.pow(10, decimals);
+                networkBalance += tokenAmount;
+                logger.log(
+                  `Account ${pubkey.toString()} has ${tokenAmount} tokens`,
+                );
+              }
+            } catch (balanceError) {
+              logger.error(
+                `Error getting token account balance: ${balanceError}`,
+              );
+              // Continue with other accounts
+            }
+          }
+
+          // If we found tokens on this network, use this balance
+          if (networkBalance > 0) {
+            balance = networkBalance;
+            foundNetwork = network.name;
+            logger.log(
+              `SUCCESS: Found balance of ${balance} tokens on ${foundNetwork}`,
+            );
+            break; // Stop checking other networks once we find a balance
+          } else {
+            logger.log(
+              `No balance found on ${network.name} despite finding accounts`,
+            );
+          }
+        } else {
+          logger.log(`No token accounts found on ${network.name}`);
+        }
+      } catch (netError) {
+        logger.error(
+          `Error checking ${network.name} for token balance: ${netError}`,
+        );
+        // Continue to next network
+      }
+    }
+
+    // Return the balance information
+    logger.log(
+      `Final result: Balance=${balance}, Network=${foundNetwork || "none"}`,
+    );
+    return c.json({
+      balance,
+      percentage: 0, // We don't know the percentage when checking directly
+      isCreator: false, // We don't know if creator when checking directly
+      mint,
+      address,
+      network: foundNetwork || c.env.NETWORK || "unknown",
+      onChain: true,
+    });
+  } catch (error) {
+    logger.error(`Error in blockchain token balance check: ${error}`);
+    return c.json({
+      balance: 0,
+      percentage: 0,
+      isCreator: false,
+      mint,
+      address,
+      error: error.message,
+    });
+  }
+}
+
+// Add proper endpoint for updating holder cache for a token
+tokenRouter.get("/token/:mint/update-holders", async (c) => {
+  try {
+    const mint = c.req.param("mint");
+
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    const holderCount = await updateHoldersCache(c.env, mint);
+
+    return c.json({
+      success: true,
+      message: `Updated holders data for token ${mint}`,
+      holderCount,
+    });
+  } catch (error) {
+    const mint = c.req.param("mint");
+    logger.error(`Error updating holders for ${mint}:`, error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
 });

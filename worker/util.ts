@@ -8,7 +8,6 @@ import {
 import {
   ComputeBudgetProgram,
   Connection,
-  Keypair,
   ParsedAccountData,
   PublicKey,
   SystemProgram,
@@ -17,14 +16,14 @@ import {
   TransactionInstruction,
 } from "@solana/web3.js";
 import { eq } from "drizzle-orm";
-import { Autofun } from "./target/types/autofun";
-import { calculateAmountOutBuy, calculateAmountOutSell } from "./tests/utils";
 import { CacheService } from "./cache";
 import { SEED_BONDING_CURVE, SEED_CONFIG } from "./constant";
 import { getDB, Token, tokenHolders, tokens } from "./db";
 import { Env } from "./env";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
 import { initSolanaConfig } from "./solana";
+import { Autofun } from "./target/types/autofun";
+import { calculateAmountOutBuy, calculateAmountOutSell } from "./tests/utils";
 import { getWebSocketClient } from "./websocket-client";
 
 // Type definition for token metadata from JSON
@@ -345,105 +344,6 @@ export const createConfigTx = async (
   return configTx;
 };
 
-export const launchTokenTx = async (
-  decimal: number,
-  supply: number,
-  reserve: number,
-  name: string,
-  symbol: string,
-  uri: string,
-
-  user: PublicKey,
-
-  connection: Connection,
-  program: Program<Autofun>,
-  env?: any,
-) => {
-  // Auth our user (register/login)
-  const apiUrl = env?.API_URL || "https://api.auto.fun";
-  const jwt = await fetch(`${apiUrl}/register`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      address: user.toBase58(),
-    }),
-  });
-
-  if (!jwt.ok) {
-    throw new Error("Failed to register or login user wallet");
-  }
-  interface AuthResponse {
-    user: {
-      address: string;
-    };
-    token: string;
-  }
-
-  const jwtData = (await jwt.json()) as AuthResponse;
-
-  // Get pre-generated keypair from server
-  const response = await fetch(`${apiUrl}/vanity-keypair`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${jwtData.token}`,
-    },
-    body: JSON.stringify({ address: user.toBase58() }),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to get vanity keypair");
-  }
-  interface VanityKeypairResponse {
-    address: string;
-    secretKey: number[];
-  }
-  const { secretKey } = (await response.json()) as VanityKeypairResponse;
-  const tokenKp = Keypair.fromSecretKey(new Uint8Array(secretKey));
-
-  console.log(
-    "Using pre-generated vanity address:",
-    tokenKp.publicKey.toBase58(),
-  );
-
-  const [configPda, _] = PublicKey.findProgramAddressSync(
-    [Buffer.from(SEED_CONFIG)],
-    program.programId,
-  );
-
-  console.log("configPda: ", configPda.toBase58());
-  const configAccount = await program.account.config.fetch(configPda);
-
-  // Send the transaction to launch a token
-  const tx = await program.methods
-    .launch(
-      //  launch config
-      decimal,
-      new BN(supply),
-      new BN(reserve),
-
-      //  metadata
-      name,
-      symbol,
-      uri,
-    )
-    .accounts({
-      creator: user,
-      token: tokenKp.publicKey,
-      teamWallet: configAccount.teamWallet,
-    })
-    .transaction();
-
-  tx.feePayer = user;
-  tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-
-  tx.sign(tokenKp);
-
-  return tx;
-};
-
 export const swapTx = async (
   user: PublicKey,
   token: PublicKey,
@@ -538,19 +438,39 @@ export const withdrawTx = async (
 
 // Get RPC URL based on the environment
 export const getRpcUrl = (env: any) => {
-  return env.NETWORK === "devnet"
-    ? env.DEVNET_SOLANA_RPC_URL || "https://api.devnet.solana.com"
-    : env.MAINNET_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+  const result =
+    (env.NETWORK === "devnet"
+      ? env.DEVNET_SOLANA_RPC_URL
+      : env.MAINNET_SOLANA_RPC_URL) || env.VITE_RPC_URL;
+
+  logger.log(
+    `getRpcUrl called with NETWORK=${env.NETWORK}, returning: ${result}`,
+  );
+  return result;
 };
 
-// Replace the getLegacyRpcUrl function
-export const getLegacyRpcUrl = (env?: any) => {
-  if (!env) {
-    // If no env is provided, use safe defaults
-    return "https://api.mainnet-beta.solana.com";
-  }
+// Get mainnet RPC URL regardless of environment setting
+export const getMainnetRpcUrl = (env: any) => {
+  // Use explicit mainnet RPC URLs with fallbacks to ensure we have a valid URL
+  const mainnetUrl =
+    env.MAINNET_SOLANA_RPC_URL ||
+    env.VITE_MAINNET_RPC_URL ||
+    "https://api.mainnet-beta.solana.com";
 
-  return getRpcUrl(env);
+  logger.log(`getMainnetRpcUrl returning: ${mainnetUrl}`);
+  return mainnetUrl;
+};
+
+// Get devnet RPC URL regardless of environment setting
+export const getDevnetRpcUrl = (env: any) => {
+  // Use explicit devnet RPC URLs with fallbacks to ensure we have a valid URL
+  const devnetUrl =
+    env.DEVNET_SOLANA_RPC_URL ||
+    env.VITE_DEVNET_RPC_URL ||
+    "https://api.devnet.solana.com";
+
+  logger.log(`getDevnetRpcUrl returning: ${devnetUrl}`);
+  return devnetUrl;
 };
 
 // Generate a logger that works with Cloudflare Workers

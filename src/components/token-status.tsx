@@ -29,7 +29,7 @@ export default function TokenStatus({ token }: { token: IToken }) {
   };
 
   const variants: Record<TVariant, string> = {
-    info: "text-green-500 bg-green-500/10",
+    info: "text-[#03FF24] bg-green-500/10",
     destructive: "text-red-500 bg-red-500/10",
     warning: "text-yellow-500 bg-yellow-500/10",
   };

@@ -1,12 +1,12 @@
-import { useWallet } from "@solana/wallet-adapter-react";
-import { useEffect, useRef, useState } from "react";
-import Button from "./button";
-import { shortenAddress } from "@/utils";
-import { ChevronDown, Copy, LogOut, User, Trophy } from "lucide-react";
-import { useNavigate } from "react-router";
-import { useWalletModal } from "@/hooks/use-wallet-modal";
 import useAuthentication from "@/hooks/use-authentication";
 import { useUser } from "@/hooks/use-user";
+import { useWalletModal } from "@/hooks/use-wallet-modal";
+import { shortenAddress } from "@/utils";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { ChevronDown, Copy, LogOut, Trophy, User } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
+import Button from "./button";
 
 const WalletButton = () => {
   const navigate = useNavigate();
@@ -14,7 +14,6 @@ const WalletButton = () => {
   const { setVisible } = useWalletModal();
   const { isAuthenticated, signOut } = useAuthentication();
   const { user } = useUser();
-  console.log(user);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -90,12 +89,20 @@ const WalletButton = () => {
         {menuOpen && (
           <div className="absolute z-50 right-0 mt-2 bg-[#171717] border border-[#262626] shadow-lg overflow-hidden w-48">
             <ul className="py-2">
-              {/* {user && ( */}
-              <li className="px-4 py-2 text-sm text-white flex items-center gap-2">
+              <li className="opacity-50 px-4 py-2 text-sm text-white flex items-center gap-2">
                 <Trophy size={16} />
-                <span>{0} points</span>
+                <span>{user?.points ?? 0} points</span>
               </li>
-              {/* )} */}
+              {/* <li className="opacity-50 px-4 py-2 text-sm text-white flex items-center gap-2">
+                <Wallet size={16} />
+                <span>
+                  {user?.solBalance ? user.solBalance.toFixed(2) : "0.00"} SOL
+                </span>
+              </li> */}
+              {/* <li className="opacity-50 px-4 py-2 text-sm text-white flex items-center gap-2">
+                <DollarSign size={16} />
+                <span>${solPrice ? solPrice.toFixed(2) : "0.00"} / SOL</span>
+              </li> */}
               <li
                 className="px-4 py-2 text-sm text-white hover:bg-[#262626] cursor-pointer flex items-center gap-2"
                 onClick={handleCopyAddress}

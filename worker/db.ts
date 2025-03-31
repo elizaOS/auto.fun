@@ -189,6 +189,33 @@ export const preGeneratedTokens = sqliteTable("pre_generated_tokens", {
   used: integer("used").notNull().default(0),
 });
 
+// Twitter OAuth verifiers table (migrated from Supabase)
+export const oauthVerifiers = sqliteTable("oauth_verifiers", {
+  id: text("id").primaryKey(),
+  state: text("state").notNull().unique(),
+  code_verifier: text("code_verifier").notNull(),
+  expires_at: text("expires_at", { mode: "text" }).notNull(),
+});
+
+// Twitter access tokens table (migrated from Supabase)
+export const accessTokens = sqliteTable("access_tokens", {
+  id: text("id").primaryKey(),
+  access_token: text("access_token").notNull(),
+  refresh_token: text("refresh_token").notNull(),
+  expires_at: text("expires_at", { mode: "text" }).notNull(),
+});
+
+export const tokenAgents = sqliteTable("token_agents", {
+  id: text("id").primaryKey(),
+  tokenMint: text("token_mint", { mode: "text" }).notNull(),
+  ownerAddress: text("owner_address", { mode: "text" }).notNull(),
+  twitterUserId: text("twitter_user_id", { mode: "text" }).notNull(),
+  twitterUserName: text("twitter_user_name", { mode: "text" }).notNull(),
+  twitterImageUrl: text("twitter_image_url", { mode: "text" }).notNull(),
+  official: integer("official").notNull().default(0),
+  createdAt: text("created_at", { mode: "text" }).notNull(),
+});
+
 export function getDB(env: Env) {
   try {
     // For non-test environments, use D1 database
@@ -205,6 +232,9 @@ export function getDB(env: Env) {
       mediaGenerations,
       cachePrices,
       preGeneratedTokens,
+      oauthVerifiers,
+      accessTokens,
+      tokenAgents,
     };
     return drizzle(env.DB as any, {
       schema: drizzleSchema,
@@ -247,6 +277,9 @@ export type PreGeneratedToken = typeof schema.preGeneratedTokens.$inferSelect;
 export type PreGeneratedTokenInsert =
   typeof schema.preGeneratedTokens.$inferInsert;
 
+export type TokenAgent = typeof tokenAgents.$inferSelect;
+export type TokenAgentInsert = typeof tokenAgents.$inferInsert;
+
 // Schema for all tables
 const schema = {
   tokens,
@@ -261,6 +294,9 @@ const schema = {
   mediaGenerations,
   cachePrices,
   preGeneratedTokens,
+  oauthVerifiers,
+  accessTokens,
+  tokenAgents,
 };
 
 // Export schema for type inference

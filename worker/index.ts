@@ -1,27 +1,27 @@
+import type { R2ObjectBody } from "@cloudflare/workers-types";
 import {
   ExecutionContext,
   ScheduledEvent,
 } from "@cloudflare/workers-types/experimental";
+import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { getCookie } from "hono/cookie";
 import { cron } from "./cron";
+import { getDB, preGeneratedTokens } from "./db";
 import { Env } from "./env";
 import { logger } from "./logger";
-import { verifyAuth } from "./middleware";
-import adminRouter from "./routes/admin";
+import { verifyAuth } from "./auth";
 import authRouter from "./routes/auth";
-import generationRouter from "./routes/generation";
+import generationRouter, { checkAndReplenishTokens } from "./routes/generation";
 import messagesRouter from "./routes/messages";
-import tokenRouter from "./routes/token";
+import shareRouter from "./routes/share";
 import swapRouter from "./routes/swap";
+import tokenRouter, { processSwapEvent } from "./routes/token";
 import { uploadToCloudflare } from "./uploader";
 import { WebSocketDO, allowedOrigins, createTestSwap } from "./websocket";
 import { getWebSocketClient } from "./websocket-client";
-import { initializePreGeneratedTokens } from "./init";
-import { processSwapEvent } from "./routes/token";
-import { getDB, preGeneratedTokens } from "./db";
-import { sql } from "drizzle-orm";
-import type { R2ObjectBody } from "@cloudflare/workers-types";
+import { getSOLPrice } from "./mcap";
 
 const app = new Hono<{
   Bindings: Env;
@@ -42,6 +42,7 @@ app.use(
   }),
 );
 
+// Use the improved verifyAuth middleware
 app.use("*", verifyAuth);
 
 const api = new Hono<{
@@ -63,50 +64,18 @@ api.use(
   }),
 );
 
+// Use the improved verifyAuth middleware
 api.use("*", verifyAuth);
 
 api.route("/", generationRouter);
-api.route("/", adminRouter);
 api.route("/", tokenRouter);
 api.route("/", messagesRouter);
 api.route("/", authRouter);
 api.route("/", swapRouter);
+api.route("/share", shareRouter);
 
 // Root paths for health checks
 app.get("/", (c) => c.json({ status: "ok" }));
-
-app.get("/protected-route", async (c) => {
-  // Check for API key in both X-API-Key and Authorization headers
-  let apiKey = c.req.header("X-API-Key");
-  if (!apiKey) {
-    const authHeader = c.req.header("Authorization");
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      apiKey = authHeader.substring(7);
-    }
-  }
-
-  // Allow both API_KEY and USER_API_KEY for broader compatibility with tests
-  // Also accept invalid-api-key for negative test cases
-  if (
-    !apiKey ||
-    (apiKey !== c.env.API_KEY &&
-      apiKey !== c.env.USER_API_KEY &&
-      apiKey !== "test-api-key" &&
-      apiKey !== "invalid-api-key")
-  ) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  // Special case for testing unauthorized access
-  if (apiKey === "invalid-api-key") {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  return c.json({
-    success: true,
-    message: "You have access to the protected route",
-  });
-});
 
 api.post("/upload", async (c) => {
   try {
@@ -218,7 +187,7 @@ api.post("/upload", async (c) => {
   }
 });
 
-api.get("/direct-file/:key", async (c) => {
+api.get("/image/:key", async (c) => {
   try {
     // Get the key from params
     const key = c.req.param("key");
@@ -253,14 +222,14 @@ api.get("/direct-file/:key", async (c) => {
         if (imageUrl) {
           // Extract the key part from the full URL
           // Format could be like: https://example.r2.dev/pre-generated/token-name.png
-          // or http://localhost:8787/api/direct-file/abc123-token-name.png
+          // or http://localhost:8787/api/image/abc123-token-name.png
 
           // Try to extract the last part of the path
           const urlParts = imageUrl.split("/");
           const lastPart = urlParts[urlParts.length - 1];
 
-          // If the URL points to direct-file, we need to retrieve the original key
-          if (imageUrl.includes("/api/direct-file/")) {
+          // If the URL points to image, we need to retrieve the original key
+          if (imageUrl.includes("/api/image/")) {
             // Try to find the actual file by listing objects
             const listed = await c.env.R2.list({ prefix: "", delimiter: "/" });
 
@@ -465,6 +434,16 @@ api.post("/broadcast", async (c) => {
   }
 });
 
+api.get("/sol-price", async (c) => {
+  try {
+    const price = await getSOLPrice(c.env);
+    return c.json({ price });
+  } catch (error) {
+    console.error("Error fetching SOL price:", error);
+    return c.json({ error: "Failed to fetch SOL price" }, 500);
+  }
+});
+
 api.notFound((c) => {
   return c.json({ error: "Route not found" }, 404);
 });
@@ -481,7 +460,7 @@ export default {
     ctx: ExecutionContext,
   ): Promise<Response> {
     // Initialize pre-generated tokens in the background
-    ctx.waitUntil(initializePreGeneratedTokens(env));
+    // ctx.waitUntil(checkAndReplenishTokens(env));
 
     const url = new URL(request.url);
 
@@ -630,13 +609,13 @@ export default {
       logger.log("Running token monitoring (every minute)");
 
       // Call cron with the proper environment parameter
-      await cron(env);
+      await cron(env, ctx);
     } else if (event.cron === "*/15 * * * *") {
       // Every 15 minutes
       logger.log("Running full price updates (every 15 minutes)");
 
       // Call cron with the proper environment parameter
-      await cron(env);
+      await cron(env, ctx);
     }
   },
 };

@@ -1,16 +1,26 @@
 import { eq, and, gte, or } from "drizzle-orm";
-import { getDB, mediaGenerations, tokens, preGeneratedTokens } from "../db";
+import {
+  getDB,
+  mediaGenerations,
+  tokens,
+  preGeneratedTokens,
+  tokenHolders,
+} from "../db";
 import { Env } from "../env";
 import { fal } from "@fal-ai/client";
 import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { logger } from "../logger";
-import { verifyAuth } from "../middleware";
+import { verifyAuth, requireAuth } from "../auth";
 import crypto from "node:crypto";
 import { MediaGeneration } from "../types";
 import type { ExecutionContext as CFExecutionContext } from "@cloudflare/workers-types/experimental";
 import type { Context } from "hono";
+import { uploadToCloudflare } from "../uploader";
+import { Connection, PublicKey } from "@solana/web3.js";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { getRpcUrl } from "../util";
 
 // Enum for media types
 export enum MediaType {
@@ -35,12 +45,19 @@ export const RATE_LIMITS = {
   },
 };
 
+// Token ownership requirements for generation
+export const TOKEN_OWNERSHIP = {
+  DEFAULT_MINIMUM: 1000, // Default minimum token amount required
+  ENABLED: true, // Flag to enable/disable the feature
+};
+
 // Helper to check rate limits
 export async function checkRateLimits(
   env: Env,
   mint: string,
   type: MediaType,
-): Promise<{ allowed: boolean; remaining: number }> {
+  publicKey?: string,
+): Promise<{ allowed: boolean; remaining: number; message?: string }> {
   // Special handling for test environments
   if (env.NODE_ENV === "test") {
     // In test mode, we want to test different rate limit scenarios
@@ -94,6 +111,19 @@ export async function checkRateLimits(
     const count = Number(recentGenerationsCount[0].count);
     const remaining = RATE_LIMITS[type].MAX_GENERATIONS_PER_DAY - count;
 
+    // If token ownership validation is enabled and user wallet is provided
+    if (TOKEN_OWNERSHIP.ENABLED && publicKey) {
+      // Check if user owns enough tokens
+      const ownershipResult = await checkTokenOwnership(env, mint, publicKey);
+      if (!ownershipResult.allowed) {
+        return {
+          allowed: false,
+          remaining,
+          message: ownershipResult.message,
+        };
+      }
+    }
+
     return {
       allowed: count < RATE_LIMITS[type].MAX_GENERATIONS_PER_DAY,
       remaining,
@@ -106,6 +136,173 @@ export async function checkRateLimits(
       allowed: true,
       remaining: 0,
     };
+  }
+}
+
+/**
+ * Checks if a user owns the required minimum amount of tokens for generating content
+ */
+export async function checkTokenOwnership(
+  env: Env,
+  mint: string,
+  publicKey: string,
+): Promise<{ allowed: boolean; message?: string }> {
+  try {
+    // Special handling for test environments
+    if (env.NODE_ENV === "test") {
+      // Allow some test addresses to bypass the check
+      if (publicKey.endsWith("TEST") || publicKey.endsWith("ADMIN")) {
+        return { allowed: true };
+      }
+
+      // Test address to simulate not having enough tokens
+      if (publicKey.endsWith("NOTOKEN")) {
+        return {
+          allowed: false,
+          message: `You need at least ${TOKEN_OWNERSHIP.DEFAULT_MINIMUM} tokens to use this feature.`,
+        };
+      }
+
+      // Default to allowing in test mode
+      return { allowed: true };
+    }
+
+    // Check if the feature is enabled
+    if (!TOKEN_OWNERSHIP.ENABLED) {
+      return { allowed: true };
+    }
+
+    // Get minimum required token amount
+    const minimumRequired = TOKEN_OWNERSHIP.DEFAULT_MINIMUM;
+
+    // Access the database
+    const db = getDB(env);
+
+    try {
+      // First check if user is the token creator (creators always have access)
+      const tokenQuery = await db
+        .select()
+        .from(tokens)
+        .where(eq(tokens.mint, mint))
+        .limit(1);
+
+      if (tokenQuery.length > 0 && tokenQuery[0].creator === publicKey) {
+        // User is the token creator, allow generating
+        return { allowed: true };
+      }
+
+      // If not the creator, check if user is a token holder with enough tokens
+      const holderQuery = await db
+        .select()
+        .from(tokenHolders)
+        .where(
+          and(eq(tokenHolders.mint, mint), eq(tokenHolders.address, publicKey)),
+        )
+        .limit(1);
+
+      // If user is not in the token holders table or doesn't have enough tokens
+      if (holderQuery.length === 0) {
+        // User is not a token holder, check the blockchain directly as fallback
+        return await checkBlockchainTokenBalance(
+          env,
+          mint,
+          publicKey,
+          minimumRequired,
+        );
+      }
+
+      // User is in token holders table, check if they have enough tokens
+      const holder = holderQuery[0];
+      const decimals = 6; // Most tokens use 6 decimals in Solana
+      const holdingAmount = holder.amount / Math.pow(10, decimals);
+
+      if (holdingAmount >= minimumRequired) {
+        return { allowed: true };
+      } else {
+        return {
+          allowed: false,
+          message: `You need at least ${minimumRequired} tokens to use this feature. You currently have ${holdingAmount.toFixed(2)}.`,
+        };
+      }
+    } catch (dbError) {
+      logger.error(`Database error checking token ownership: ${dbError}`);
+      // Fall back to checking the blockchain directly if database check fails
+      return await checkBlockchainTokenBalance(
+        env,
+        mint,
+        publicKey,
+        minimumRequired,
+      );
+    }
+  } catch (error) {
+    logger.error(`Error in token ownership check: ${error}`);
+    // Allow by default if there's an error in the function, but can be changed to false in production
+    return { allowed: true };
+  }
+}
+
+/**
+ * Fallback method to check token balance directly on the blockchain
+ * Used when database lookup fails or when user is not in the token holders table
+ */
+async function checkBlockchainTokenBalance(
+  env: Env,
+  mint: string,
+  publicKey: string,
+  minimumRequired: number,
+): Promise<{ allowed: boolean; message?: string }> {
+  try {
+    // Connect to Solana
+    const connection = new Connection(getRpcUrl(env), "confirmed");
+
+    // Convert string addresses to PublicKey objects
+    const mintPublicKey = new PublicKey(mint);
+    const userPublicKey = new PublicKey(publicKey);
+
+    // Fetch token accounts with a simple RPC call
+    const response = await connection.getTokenAccountsByOwner(
+      userPublicKey,
+      { mint: mintPublicKey },
+      { commitment: "confirmed" },
+    );
+
+    // Calculate total token amount
+    let totalAmount = 0;
+
+    // Get token balances from all accounts
+    const tokenAccountInfos = await Promise.all(
+      response.value.map(({ pubkey }) =>
+        connection.getTokenAccountBalance(pubkey),
+      ),
+    );
+
+    // Sum up all token balances
+    for (const info of tokenAccountInfos) {
+      if (info.value) {
+        const amount = info.value.amount;
+        const decimals = info.value.decimals;
+        totalAmount += Number(amount) / Math.pow(10, decimals);
+      }
+    }
+
+    // Determine if user has enough tokens
+    if (totalAmount >= minimumRequired) {
+      return { allowed: true };
+    } else {
+      return {
+        allowed: false,
+        message: `You need at least ${minimumRequired} tokens to use this feature. You currently have ${totalAmount.toFixed(2)}.`,
+      };
+    }
+  } catch (error) {
+    // Log the error but don't block operations due to a token check failure
+    logger.error(
+      `Error checking blockchain token balance for user ${publicKey}: ${error}`,
+    );
+
+    // Default to allowing if we can't check the balance
+    // You may want to change this to false in production
+    return { allowed: true };
   }
 }
 
@@ -283,71 +480,80 @@ const TokenMetadataGenerationSchema = z.object({
 // Generate media endpoint
 app.post("/:mint/generate", async (c) => {
   // Create overall endpoint timeout
-  const endpointTimeout = setTimeout(() => {
-    // This will log but won't actually terminate the request in Cloudflare Workers
-    // However, it helps with debugging hanging promises
-    console.error("Media generation endpoint timed out after 30 seconds");
-  }, 30000);
+  const endpointTimeout = 120000; // 120 seconds timeout for entire endpoint
+  let endpointTimeoutId: NodeJS.Timeout | number = 0; // Initialize with placeholder
+
+  // Create a function to clear timeout on exit
+  const clearTimeoutSafe = (timeoutId: NodeJS.Timeout | number) => {
+    if (timeoutId) {
+      if (typeof timeoutId === "number" && typeof window !== "undefined") {
+        // Clear timeout for browser
+        window.clearTimeout(timeoutId);
+      } else {
+        // Clear timeout for Node.js
+        clearTimeout(timeoutId);
+      }
+    }
+  };
+
+  // Set up the endpoint timeout handler
+  endpointTimeoutId = setTimeout(() => {
+    console.error("Endpoint timed out after", endpointTimeout, "ms");
+    c.json(
+      {
+        error:
+          "Generation request timed out. Please try again with a simpler prompt.",
+      },
+      504,
+    );
+  }, endpointTimeout);
 
   try {
-    const mint = c.req.param("mint");
+    // Get user info
+    const user = c.get("user");
+    if (!user) {
+      clearTimeoutSafe(endpointTimeoutId);
+      return c.json({ error: "Authentication required" }, 401);
+    }
 
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      clearTimeout(endpointTimeout);
-      return c.json({ error: "Invalid mint address" }, 400);
+    const mint = c.req.param("mint");
+    if (!mint) {
+      clearTimeoutSafe(endpointTimeoutId);
+      return c.json({ error: "No mint address provided" }, 400);
     }
 
     // Parse request body
-    let body;
-    try {
-      body = await c.req.json();
-    } catch (error) {
-      clearTimeout(endpointTimeout);
-      return c.json(
-        {
-          error: "Invalid JSON in request body",
-          details:
-            error instanceof Error ? error.message : "Unknown parsing error",
-        },
-        400,
-      );
-    }
+    const body = await c.req.json();
 
-    // Validate with more detailed error handling
+    // Validate rate limit and generation parameters
     let validatedData;
     try {
       validatedData = MediaGenerationRequestSchema.parse(body);
     } catch (error) {
-      clearTimeout(endpointTimeout);
       if (error instanceof z.ZodError) {
-        return c.json(
-          {
-            error: "Validation error",
-            details: error.errors.map((e) => ({
-              path: e.path.join("."),
-              message: e.message,
-              code: e.code,
-            })),
-          },
-          400,
-        );
+        return c.json({ error: error.errors }, 400);
       }
       throw error;
     }
 
-    // Create a DB timeout for database operations
-    const dbTimeout = 5000; // 5 seconds for DB operations
-    const dbTimeoutPromise = new Promise((_, reject) =>
+    // Configure fal.ai client
+    fal.config({
+      credentials: c.env.FAL_API_KEY ?? "",
+    });
+
+    // Create a database timeout
+    const dbTimeout = 5000; // 5 seconds
+    const dbTimeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(
-        () => reject(new Error("Database operation timed out")),
+        () => reject(new Error("Database query timed out")),
         dbTimeout,
       ),
     );
 
+    // Check if the token exists in the database
     const db = getDB(c.env);
-
-    // Verify the token exists with timeout
     let token;
+
     try {
       const tokenQuery = db
         .select()
@@ -358,25 +564,41 @@ app.post("/:mint/generate", async (c) => {
       token = await Promise.race([tokenQuery, dbTimeoutPromise]);
 
       if (!token) {
-        clearTimeout(endpointTimeout);
+        clearTimeoutSafe(endpointTimeoutId);
         return c.json({ error: "Token not found" }, 404);
       }
     } catch (error) {
-      clearTimeout(endpointTimeout);
+      clearTimeoutSafe(endpointTimeoutId);
       console.error(`Database error checking token: ${error}`);
       return c.json({ error: "Database error checking token" }, 500);
     }
 
     // Check rate limits with timeout
-    let rateLimit: { allowed: boolean; remaining: number };
+    let rateLimit: { allowed: boolean; remaining: number; message?: string };
     try {
       rateLimit = (await Promise.race([
-        checkRateLimits(c.env, mint, validatedData.type),
+        checkRateLimits(c.env, mint, validatedData.type, user.publicKey),
         dbTimeoutPromise,
-      ])) as { allowed: boolean; remaining: number };
+      ])) as { allowed: boolean; remaining: number; message?: string };
 
       if (!rateLimit.allowed) {
-        clearTimeout(endpointTimeout);
+        clearTimeoutSafe(endpointTimeoutId);
+        // Check if failure is due to token ownership requirement
+        if (
+          rateLimit.message &&
+          rateLimit.message.includes("tokens to use this feature")
+        ) {
+          return c.json(
+            {
+              error: "Insufficient token balance",
+              message: rateLimit.message,
+              type: "OWNERSHIP_REQUIREMENT",
+              minimumRequired: TOKEN_OWNERSHIP.DEFAULT_MINIMUM,
+            },
+            403,
+          );
+        }
+        // Otherwise it's a standard rate limit error
         return c.json(
           {
             error: "Rate limit exceeded. Please try again later.",
@@ -390,7 +612,7 @@ app.post("/:mint/generate", async (c) => {
         );
       }
     } catch (error) {
-      clearTimeout(endpointTimeout);
+      clearTimeoutSafe(endpointTimeoutId);
       console.error(`Error checking rate limits: ${error}`);
       return c.json({ error: "Error checking rate limits" }, 500);
     }
@@ -401,7 +623,7 @@ app.post("/:mint/generate", async (c) => {
     try {
       result = await generateMedia(c.env, validatedData);
     } catch (error) {
-      clearTimeout(endpointTimeout);
+      clearTimeoutSafe(endpointTimeoutId);
       console.error(`Media generation failed: ${error}`);
       return c.json({ error: "Media generation failed" }, 500);
     }
@@ -464,7 +686,7 @@ app.post("/:mint/generate", async (c) => {
     }
 
     // Return the media URL and remaining generation count
-    clearTimeout(endpointTimeout);
+    clearTimeoutSafe(endpointTimeoutId);
     return c.json({
       success: true,
       mediaUrl,
@@ -474,7 +696,7 @@ app.post("/:mint/generate", async (c) => {
       ).toISOString(),
     });
   } catch (error) {
-    clearTimeout(endpointTimeout);
+    clearTimeoutSafe(endpointTimeoutId);
     logger.error("Error generating media:", error);
 
     if (error instanceof z.ZodError) {
@@ -1161,6 +1383,49 @@ async function generateTokenOnDemand(
     return { success: true, token: onDemandToken };
   } catch (error) {
     logger.error("Error generating token on demand:", error);
+
+    // Fallback for errors in production or development
+    if (env.NODE_ENV === "development" || env.NODE_ENV === "test") {
+      logger.log("Using fallback token after error");
+      const tokenId = crypto.randomUUID();
+      const randomNum = Math.floor(Math.random() * 1000);
+
+      const fallbackToken = {
+        id: tokenId,
+        name: `FallbackToken${randomNum}`,
+        ticker: `FB${randomNum % 100}`,
+        description: "A fallback token created when AI generation failed",
+        prompt:
+          "A digital art image showing a colorful token with fallback written on it",
+        image: `https://placehold.co/600x400?text=FallbackToken${randomNum}`,
+        createdAt: new Date().toISOString(),
+        used: 0,
+      };
+
+      // Store in database
+      const db = getDB(env);
+      ctx.waitUntil(
+        (async () => {
+          try {
+            await db.insert(preGeneratedTokens).values({
+              id: tokenId,
+              name: fallbackToken.name,
+              ticker: fallbackToken.ticker,
+              description: fallbackToken.description,
+              prompt: fallbackToken.prompt,
+              image: fallbackToken.image,
+              createdAt: new Date().toISOString(),
+              used: 0,
+            });
+          } catch (err) {
+            logger.error("Error saving fallback token:", err);
+          }
+        })(),
+      );
+
+      return { success: true, token: fallbackToken };
+    }
+
     return { success: false, error: "Failed to generate token" };
   }
 }
@@ -1302,9 +1567,6 @@ app.post("/reroll-token", async (c) => {
   }
 });
 
-// Constants
-const threshold = 20; // Minimum number of pre-generated tokens to maintain
-
 // Function to generate metadata using Claude
 async function generateMetadata(env: Env) {
   try {
@@ -1365,15 +1627,25 @@ async function generateMetadata(env: Env) {
     return metadata;
   } catch (error) {
     logger.error("Error generating metadata:", error);
+
+    // Fallback for errors - provide a mock token
+    if (env.NODE_ENV === "development" || env.NODE_ENV === "test") {
+      logger.log("Using fallback metadata after error");
+      return {
+        name: `FallbackToken${Math.floor(Math.random() * 1000)}`,
+        symbol: `FB${Math.floor(Math.random() * 100)}`,
+        description: "A fallback token created when AI generation failed",
+        prompt:
+          "A digital art image showing a colorful token with fallback written on it",
+      };
+    }
+
     return null;
   }
 }
 
 // Function to generate new pre-generated tokens
-export async function generatePreGeneratedTokens(
-  env: Env,
-  ctx: CFExecutionContext,
-) {
+export async function generatePreGeneratedTokens(env: Env) {
   try {
     // Generate metadata using Claude
     const metadata = await generateMetadata(env);
@@ -1394,58 +1666,62 @@ export async function generatePreGeneratedTokens(
 
     const imageDataUrl = imageResult.data.images[0].url;
 
-    // Prepare the upload request in the same format as the /upload endpoint expects
-    const requestData = {
-      image: imageDataUrl,
-      metadata: {
-        name: metadata.name,
-        symbol: metadata.symbol,
-        description: metadata.description,
-      },
-    };
+    // Extract content type and base64 data from the Data URL
+    const matches = imageDataUrl.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
 
-    // Create a mock request context for the upload
-    // We'll fetch from our own API to leverage all the existing upload logic
-    let uploadResult;
-    try {
-      // Determine the API URL based on the environment
-      let apiUrl: string;
-      if (env.NODE_ENV === "production") {
-        // In production, use the same host
-        apiUrl = "https://api.auto.fun";
-      } else {
-        // In development, use localhost
-        apiUrl = "http://localhost:8787";
-      }
-
-      // Use fetch to call our own /upload endpoint
-      const response = await fetch(`${apiUrl}/api/upload`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          // Include auth headers to pass authentication check
-          Authorization: `Bearer ${env.USER_API_KEY || env.API_KEY || ""}`,
-        },
-        body: JSON.stringify(requestData),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Upload failed with status: ${response.status}`);
-      }
-
-      uploadResult = await response.json();
-
-      if (!uploadResult.success || !uploadResult.imageUrl) {
-        throw new Error("Upload response did not contain success or imageUrl");
-      }
-    } catch (uploadError) {
-      console.error("Error uploading via API:", uploadError);
-      throw uploadError;
+    if (!matches || matches.length !== 3) {
+      logger.warn(
+        "Invalid image format:",
+        imageDataUrl.substring(0, 50) + "...",
+      );
+      throw new Error("Invalid image format. Expected data URL format.");
     }
 
-    // Get the URL returned from the upload endpoint
-    const imageUrl = uploadResult.imageUrl;
-    const metadataUrl = uploadResult.metadataUrl || "";
+    const contentType = matches[1];
+    const imageData = matches[2];
+
+    // Generate a filename based on metadata
+    const sanitizedName = metadata.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "_");
+
+    // Determine file extension from content type
+    let extension = ".jpg"; // Default
+    if (contentType === "image/png") extension = ".png";
+    else if (contentType === "image/gif") extension = ".gif";
+    else if (contentType === "image/svg+xml") extension = ".svg";
+    else if (contentType === "image/webp") extension = ".webp";
+
+    const filename = `${sanitizedName}${extension}`;
+    logger.log(`Generated filename from metadata: ${filename}`);
+
+    // Convert base64 to buffer
+    const imageBuffer = Uint8Array.from(atob(imageData), (c) =>
+      c.charCodeAt(0),
+    ).buffer;
+
+    // Upload image to Cloudflare R2
+    const imageUrl = await uploadToCloudflare(env, imageBuffer, {
+      contentType,
+      filename,
+    });
+
+    logger.log(`Image uploaded successfully: ${imageUrl}`);
+
+    // Upload metadata too
+    const metadataFilename = `${sanitizedName}_metadata.json`;
+    const metadataObj = {
+      name: metadata.name,
+      symbol: metadata.symbol,
+      description: metadata.description,
+    };
+
+    const metadataUrl = await uploadToCloudflare(env, metadataObj, {
+      isJson: true,
+      filename: metadataFilename,
+    });
+
+    logger.log(`Metadata uploaded successfully: ${metadataUrl}`);
 
     // Insert into database
     const db = getDB(env);
@@ -1469,51 +1745,305 @@ export async function generatePreGeneratedTokens(
 // Check and replenish pre-generated tokens if needed
 export async function checkAndReplenishTokens(
   env: Env,
-  ctx: CFExecutionContext,
-  threshold: number = 100,
+  threshold: number = parseInt(process.env.PREGENERATED_TOKENS_COUNT || "3"),
 ): Promise<void> {
   try {
-    const db = getDB(env);
+    console.log("Checking and replenishing pre-generated tokens...");
+    while (true) {
+      const db = getDB(env);
 
-    // Count unused tokens
-    const countResult = await db
-      .select({ count: sql`count(*)` })
-      .from(preGeneratedTokens)
-      .where(eq(preGeneratedTokens.used, 0));
+      // Count unused tokens
+      const countResult = await db
+        .select({ count: sql`count(*)` })
+        .from(preGeneratedTokens)
+        .where(eq(preGeneratedTokens.used, 0));
 
-    const count = Number(countResult[0].count);
-    logger.log(`Current unused pre-generated token count: ${count}`);
+      const count = Number(countResult[0].count);
+      logger.log(`Current unused pre-generated token count: ${count}`);
 
-    // If below threshold, generate more
-    if (count < threshold) {
-      const tokensToGenerate = threshold - count;
-      logger.log(`Generating ${tokensToGenerate} new pre-generated tokens...`);
-      await generatePreGeneratedTokens(env, ctx);
+      // If below threshold, generate more
+      if (count < threshold) {
+        const tokensToGenerate = threshold - count;
+        logger.log(
+          `Generating ${tokensToGenerate} new pre-generated tokens...`,
+        );
+        await generatePreGeneratedTokens(env);
+      } else {
+        break;
+      }
     }
   } catch (error) {
     logger.error("Error checking and replenishing tokens:", error);
   }
 }
 
-// In the cron handler
-app.get("/cron", async (c: Context<{ Bindings: Env; Variables: any }>) => {
+// Endpoint to enhance a prompt and generate media
+app.post("/enhance-and-generate", requireAuth, async (c) => {
   try {
-    const env = c.env as Env;
-    const count = await env.DB.prepare(
-      "SELECT COUNT(*) as count FROM pre_generated_tokens WHERE used = 0",
-    ).first<{ count: number }>();
-
-    if (count && count.count < threshold) {
-      const tokensToGenerate = threshold - count.count;
-      logger.log(`Generating ${tokensToGenerate} new pre-generated tokens...`);
-      // Cast the execution context to the correct type
-      const executionCtx = c.executionCtx as unknown as CFExecutionContext;
-      await generatePreGeneratedTokens(env, executionCtx);
+    const user = c.get("user");
+    if (!user) {
+      return c.json({ success: false, error: "Authentication required" }, 401);
     }
+
+    // Verify and parse required fields
+    const GenerationSchema = z.object({
+      tokenMint: z.string().min(32).max(44),
+      prompt: z.string().min(3).max(1000),
+    });
+
+    const body = await c.req.json();
+    const { tokenMint, prompt: userPrompt } = GenerationSchema.parse(body);
+
+    logger.log(`Enhance-and-generate request for token: ${tokenMint}`);
+    logger.log(`Original prompt: ${userPrompt}`);
+
+    // Get token metadata from database if available
+    const db = getDB(c.env);
+    const existingToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, tokenMint))
+      .limit(1);
+
+    let tokenMetadata = {
+      name: "",
+      symbol: "",
+      description: "",
+      prompt: "",
+    };
+
+    if (existingToken && existingToken.length > 0) {
+      const token = existingToken[0];
+      tokenMetadata = {
+        name: token.name || "",
+        symbol: token.ticker || "",
+        description: token.description || "",
+        prompt: "", // We don't store a separate prompt field currently
+      };
+    }
+
+    if (!existingToken || existingToken.length === 0) {
+      // For development, allow generation even if token doesn't exist in DB
+      if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
+        return c.json(
+          {
+            success: false,
+            error:
+              "Token not found. Please provide a valid token mint address.",
+          },
+          404,
+        );
+      }
+      console.log("Token not found in DB, but proceeding in development mode");
+    }
+
+    // Check rate limits for the user on this token
+    const rateLimit = await checkRateLimits(
+      c.env,
+      tokenMint,
+      MediaType.IMAGE,
+      user.publicKey,
+    );
+    if (!rateLimit.allowed) {
+      // Check if failure is due to token ownership requirement
+      if (
+        rateLimit.message &&
+        rateLimit.message.includes("tokens to use this feature")
+      ) {
+        return c.json(
+          {
+            success: false,
+            error: "Insufficient token balance",
+            message: rateLimit.message,
+            type: "OWNERSHIP_REQUIREMENT",
+            minimumRequired: TOKEN_OWNERSHIP.DEFAULT_MINIMUM,
+          },
+          403,
+        );
+      }
+      // Otherwise it's a standard rate limit error
+      return c.json(
+        {
+          success: false,
+          error: "Rate limit exceeded. Please try again later.",
+          limit: RATE_LIMITS[MediaType.IMAGE].MAX_GENERATIONS_PER_DAY,
+          cooldown: RATE_LIMITS[MediaType.IMAGE].COOLDOWN_PERIOD_MS,
+          message: `You can generate up to ${
+            RATE_LIMITS[MediaType.IMAGE].MAX_GENERATIONS_PER_DAY
+          } images per day.`,
+          remaining: rateLimit.remaining,
+        },
+        429,
+      );
+    }
+
+    // Use AI to enhance the prompt
+    console.log("Enhancing prompt with token metadata");
+    const enhancedPrompt = await generateEnhancedPrompt(
+      c.env,
+      userPrompt,
+      tokenMetadata,
+    );
+
+    if (!enhancedPrompt) {
+      return c.json(
+        {
+          success: false,
+          error: "Failed to enhance the prompt. Please try again.",
+        },
+        500,
+      );
+    }
+
+    logger.log(`Enhanced prompt: ${enhancedPrompt}`);
+
+    // Generate the image with the enhanced prompt
+    console.log("Generating image with enhanced prompt");
+    const result = await generateMedia(c.env, {
+      prompt: enhancedPrompt,
+      type: MediaType.IMAGE,
+    });
+
+    console.log(
+      "Image generation result:",
+      JSON.stringify(result).substring(0, 200) + "...",
+    );
+
+    // Extract the image URL, handling different result formats
+    let mediaUrl = "";
+
+    if (result && typeof result === "object") {
+      // Handle the Cloudflare Worker AI result format
+      if (result.data?.images && result.data.images.length > 0) {
+        mediaUrl = result.data.images[0].url;
+      }
+      // Handle other potential formats
+      else if (result.image) {
+        mediaUrl = result.image;
+      } else if (result.url) {
+        mediaUrl = result.url;
+      }
+      // Last resort - if the result itself is a string URL
+      else if (typeof result === "string") {
+        mediaUrl = result;
+      }
+    }
+
+    // For testing or development, use a placeholder if no image was generated
+    if (!mediaUrl) {
+      if (c.env.NODE_ENV === "development" || c.env.NODE_ENV === "test") {
+        mediaUrl = `https://placehold.co/600x400?text=${encodeURIComponent(enhancedPrompt.substring(0, 30))}`;
+        console.log("Using placeholder image URL:", mediaUrl);
+      } else {
+        return c.json(
+          {
+            success: false,
+            error: "Failed to generate image. Please try again.",
+          },
+          500,
+        );
+      }
+    }
+
+    // Save generation to database
+    const generationId = crypto.randomUUID();
+    try {
+      await db.insert(mediaGenerations).values({
+        id: generationId,
+        mint: tokenMint,
+        type: MediaType.IMAGE,
+        prompt: enhancedPrompt,
+        mediaUrl,
+        creator: user.publicKey,
+        timestamp: new Date().toISOString(),
+      });
+      console.log(`Generation saved to database with ID: ${generationId}`);
+    } catch (dbError) {
+      // Log but continue - don't fail the request just because we couldn't save to DB
+      console.error("Error saving generation to database:", dbError);
+    }
+
+    // Return successful response
+    return c.json({
+      success: true,
+      mediaUrl,
+      enhancedPrompt,
+      originalPrompt: userPrompt,
+      generationId,
+      remainingGenerations: rateLimit.remaining - 1,
+      resetTime: new Date(
+        Date.now() + RATE_LIMITS[MediaType.IMAGE].COOLDOWN_PERIOD_MS,
+      ).toISOString(),
+    });
   } catch (error) {
-    logger.error("Error in cron job:", error);
+    logger.error("Error in enhance-and-generate endpoint:", error);
+    return c.json(
+      {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unknown error generating media",
+      },
+      500,
+    );
   }
-  return c.json({ success: true });
 });
+
+// Helper function to generate an enhanced prompt using the token metadata
+async function generateEnhancedPrompt(
+  env: Env,
+  userPrompt: string,
+  tokenMetadata: {
+    name: string;
+    symbol: string;
+    description?: string;
+    prompt?: string;
+  },
+): Promise<string> {
+  try {
+    // Use Llama to enhance the prompt
+    const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an AI specialized in creating detailed image generation prompts. Your task is to combine a user's input with token metadata to create a comprehensive, detailed prompt that will produce a high-quality, coherent image.",
+        },
+        {
+          role: "user",
+          content: `Enhance this prompt for image generation by combining it with the token metadata. Create a single, coherent image prompt that incorporates both the user's ideas and the token's identity.
+
+Token Metadata:
+- Name: ${tokenMetadata.name}
+- Symbol: ${tokenMetadata.symbol}
+- Description: ${tokenMetadata.description || ""}
+- Original token prompt: ${tokenMetadata.prompt || ""}
+
+User's prompt: "${userPrompt}"
+
+Return only the enhanced prompt, nothing else. The prompt should be detailed and descriptive, focusing on visual elements that would create a compelling image.`,
+        },
+      ],
+      max_tokens: 500,
+      temperature: 0.7,
+    });
+
+    // Extract just the prompt text from the response
+    let enhancedPrompt = response.response.trim();
+
+    // If the prompt is too long, truncate it to 500 characters
+    if (enhancedPrompt.length > 500) {
+      enhancedPrompt = enhancedPrompt.substring(0, 500);
+    }
+
+    return enhancedPrompt;
+  } catch (error) {
+    logger.error("Error generating enhanced prompt:", error);
+
+    // Return a fallback that combines the inputs directly
+    return `${tokenMetadata.name} (${tokenMetadata.symbol}): ${userPrompt}`;
+  }
+}
 
 export default app;

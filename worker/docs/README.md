@@ -26,7 +26,7 @@ The worker provides several testing endpoints for development:
 
 ## General API Endpoints
 
-- `GET /api/tokens/:mint` - Get token information
-- `GET /api/tokens/:mint/refresh-holders` - Refresh holder data for a token
-- `GET /api/tokens/:mint/refresh-swaps` - Refresh swap data for a token
+- `GET /api/token/:mint` - Get token information
+- `GET /api/token/:mint/refresh-holders` - Refresh holder data for a token
+- `GET /api/token/:mint/refresh-swaps` - Refresh swap data for a token
 - `GET /api/swaps/:mint` - Get swap history for a token 

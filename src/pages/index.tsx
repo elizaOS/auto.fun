@@ -12,7 +12,7 @@ import { IPagination, IToken } from "@/types";
 import { getTokens } from "@/utils/api";
 import { getSocket } from "@/utils/socket";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Fragment } from "react/jsx-runtime";
 
 export default function Page() {
@@ -48,6 +48,13 @@ export default function Page() {
 
   const tokens = queryData?.tokens as IToken[];
 
+  // Memoize tokens for the header to prevent unnecessary rerenders when sorting changes
+  const headerTokens = useMemo(() => {
+    // Only update on initial load or when tokens data structure fundamentally changes
+    // We're intentionally NOT including the tokens array itself in the dependency array
+    return tokens || [];
+  }, [query.dataUpdatedAt]); // Only update when the data is actually refreshed from the server
+
   const pagination = {
     page: queryData?.page || 1,
     totalPages: queryData?.totalPages || 1,
@@ -55,22 +62,20 @@ export default function Page() {
     hasMore: queryData?.hasMore || false,
   } as IPagination;
 
-  console.log(query);
-
   return (
-    <div className="w-full min-h-[100vh]">
+    <div className="w-full min-h-[50vh]">
       {/* Header Section */}
-      <FrontpageHeader tokens={tokens} />
+      <FrontpageHeader tokens={headerTokens} />
       {/* Top Navigation */}
       <div className="flex justify-between gap-2 flex-wrap-reverse md:flex-wrap">
         <GridListSwitcher />
         <div className="flex items-center gap-2">
-          {/* <Button
+          <Button
             variant={sortBy === "featured" ? "primary" : "outline"}
             onClick={() => setSortBy("featured")}
           >
             All
-          </Button> */}
+          </Button>
           <Button
             variant={sortBy === "marketCapUSD" ? "primary" : "outline"}
             onClick={() => setSortBy("marketCapUSD")}
@@ -85,7 +90,7 @@ export default function Page() {
           </Button>
         </div>
       </div>
-      <div className="flex flex-col flex-1 min-h-[80vh]">
+      <div className="flex flex-col flex-1">
         {!query?.isLoading ? (
           <Fragment>
             {activeTab === "grid" ? (

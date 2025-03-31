@@ -3,8 +3,7 @@ import { useProfile } from "../utils/profileUtils";
 import { TokenTable } from "../components/token-table";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { env } from "../utils/env";
-import Skeleton, { SkeletonTheme } from "react-loading-skeleton";
-import "react-loading-skeleton/dist/skeleton.css";
+import Loader from "@/components/loader";
 
 type TabButtonProps = PropsWithChildren<{
   isSelected: boolean;
@@ -30,6 +29,7 @@ const ExternalLinkIcon = ({ address }: { address: string }) => {
       href={env.getWalletUrl(address)}
       target="_blank"
       rel="noopener noreferrer"
+      aria-label="visit profile"
     >
       <svg
         width="16"
@@ -84,41 +84,7 @@ export default function Profile() {
     }
   }, [selectedTab, tokens.tokensCreated, tokens.tokensHeld]);
 
-  if (isLoading) {
-    return (
-      <SkeletonTheme baseColor="#262626" highlightColor="#404040">
-        <div className="flex flex-col flex-1 mt-32 max-w-4xl w-full m-auto">
-          <Skeleton width={200} height={40} className="mb-6" />
-          <div className="p-4 bg-neutral-900 border border-neutral-800 mb-[28px]">
-            <div className="mb-2">
-              <Skeleton width={80} height={24} />
-            </div>
-            <div className="px-3 py-2 bg-[#212121] border border-neutral-800">
-              <Skeleton width="100%" height={24} />
-            </div>
-          </div>
-          <div className="flex gap-2.5 mb-4">
-            <Skeleton width={120} height={40} />
-            <Skeleton width={120} height={40} />
-          </div>
-          <div className="border border-neutral-800 p-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-center gap-4 mb-4 last:mb-0">
-                <Skeleton width={20} height={20} circle />
-                <div className="flex-1 gap-16 flex">
-                  {[...Array(4)].map((_, j) => (
-                    <div key={j} className="flex-1">
-                      <Skeleton height={24} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </SkeletonTheme>
-    );
-  }
+  if (isLoading) return <Loader />;
 
   return (
     <div className="flex flex-col flex-1 mt-32 max-w-4xl w-full m-auto">

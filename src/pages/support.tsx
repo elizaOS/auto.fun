@@ -15,7 +15,7 @@ export default function SupportPage() {
             </p>
             <div className="space-y-4">
               <Link
-                to="https://twitter.com/autofunai"
+                to="https://twitter.com/autodotfun"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-white hover:text-[#2FD345] transition-colors"

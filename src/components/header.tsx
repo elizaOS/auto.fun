@@ -46,46 +46,63 @@ export default function Header() {
 
   return (
     <>
-      <div className="hidden md:block p-6 w-full">
+      <div className="hidden md:block w-full container z-50">
         <div className="flex flex-row items-center justify-between w-full">
-          <div className="flex items-center">
-            <Link to="/" className="mr-6">
-              <img className="size-20" src="/logo_wide.svg" />
+          <div className="flex items-center select-none">
+            <Link to="/" className="mr-6" aria-label="Auto.fun frontpage">
+              <img
+                className="size-20 pointer-events-none"
+                src="/logo_wide.svg"
+                alt="logo"
+              />
             </Link>
           </div>
           <div className="flex space-x-3 flex-row">
-            <SearchBar isMobile={false} />
-            <Link to="/create">
-              <Button className="flex items-center text-base text-autofun-text-highlight font-bold font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345] min-w-34">
-                New Coin{" "}
-                <img
-                  src="/nav/stars.svg"
-                  alt="stars"
-                  className="text-[#2FD345]"
-                />
-              </Button>
-            </Link>
+            {pathname !== "/create" && (
+              <>
+                <SearchBar />
+                <Link to="/create">
+                  <Button className="flex items-center text-base text-autofun-text-highlight font-bold font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345] min-w-34">
+                    New Coin{" "}
+                    <img
+                      src="/nav/stars.svg"
+                      alt="stars"
+                      className="text-[#2FD345]"
+                    />
+                  </Button>
+                </Link>
+              </>
+            )}
             <WalletButton />
           </div>
         </div>
       </div>
 
       {/* mobile menu */}
-      <div className="sticky block md:hidden bg-[#171717] border-b py-4">
-        <div className="flex items-center mx-4 space-x-4 lg:hidden ">
-          <div className="flex flex-row ">
-            <Link to="/">
-              <img className="size-20" src="/logo_wide.svg" />
-            </Link>
+      <div className="sticky block md:hidden bg-[#171717] border-b py-4 z-50">
+        <div className="flex items-center mx-4 space-x-2 sm:space-x-4 lg:hidden ">
+          <Link to="/" className="shrink-0" aria-label="Auto.fun frontpage">
+            <img
+              className="h-11 w-15 sm:w-auto"
+              src="/logo_wide.svg"
+              alt="logo"
+            />
+          </Link>
+          <div className="flex-1">
+            <SearchBar />
           </div>
-          <SearchBar isMobile={false} />
-          {drawerOpen ? (
-            <CloseButton>
-              <X className="size-[30px]" />
-            </CloseButton>
-          ) : (
-            <Menu className="size-[30px]" onClick={() => setDrawerOpen(true)} />
-          )}
+          <div className="shrink-0">
+            {drawerOpen ? (
+              <CloseButton>
+                <X className="size-[30px]" />
+              </CloseButton>
+            ) : (
+              <Menu
+                className="size-[30px]"
+                onClick={() => setDrawerOpen(true)}
+              />
+            )}
+          </div>
           <Dialog
             open={drawerOpen}
             onClose={() => setDrawerOpen(false)}
@@ -109,7 +126,7 @@ export default function Header() {
                               to={item.href}
                             >
                               <img
-                                className="hover:text-green-400"
+                                className="hover:text-[#03FF24]"
                                 src={item.icon}
                                 height={20}
                                 width={20}
