@@ -773,7 +773,7 @@ export async function cron(env: Env, ctx: ExecutionContext): Promise<void> {
     // Check and replenish pre-generated tokens if needed
     try {
       logger.log("Checking pre-generated token supply...");
-      // await checkAndReplenishTokens(env);
+      await checkAndReplenishTokens(env);
     } catch (err) {
       logger.error("Error replenishing pre-generated tokens:", err);
     }
