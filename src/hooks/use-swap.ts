@@ -6,10 +6,7 @@ import {
   VersionedTransaction,
   ComputeBudgetProgram,
 } from "@solana/web3.js";
-import {
-  SEED_BONDING_CURVE,
-  useProgram,
-} from "@/utils/program";
+import { SEED_BONDING_CURVE, useProgram } from "@/utils/program";
 import { sendTxUsingJito } from "@/utils/jito";
 import { useState } from "react";
 import { IToken } from "@/types";
@@ -34,8 +31,8 @@ export const useSwap = () => {
   const wallet = useWallet();
   const program = useProgram();
   const [slippagePercentage] = useSlippage();
-  const [speed] = useTransactionSpeed()
-  const [isProtectionEnabled] = useMevProtection()
+  const [speed] = useTransactionSpeed();
+  const [isProtectionEnabled] = useMevProtection();
 
   const createSwapIx = async ({
     style,
@@ -56,9 +53,15 @@ export const useSwap = () => {
     const amountLamports = Math.floor(amount * 1e9);
     const amountTokens = Math.floor(amount * 1e6);
 
-    console.log('swapping:', {
-      style, amount, tokenAddress, token, reserveToken, reserveLamport, slippageBps
-    })
+    console.log("swapping:", {
+      style,
+      amount,
+      tokenAddress,
+      token,
+      reserveToken,
+      reserveLamport,
+      slippageBps,
+    });
 
     // Convert string style ("buy" or "sell") to numeric style (0 for buy; 1 for sell)
     const numericStyle = style === "buy" ? 0 : 1;
@@ -208,4 +211,3 @@ export const useSwap = () => {
     isExecuting,
   };
 };
-

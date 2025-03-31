@@ -1,6 +1,7 @@
 import { ChartTable, IToken, TSortBy, TSortOrder } from "@/types";
 import { QueryClient } from "@tanstack/react-query";
 import { env } from "./env";
+import { fetchWithAuth } from "@/hooks/use-authentication";
 
 export const queryClient = new QueryClient();
 
@@ -10,25 +11,16 @@ const fetcher = async (
   body?: object,
 ) => {
   try {
-    const query: {
-      method: string;
-      body?: string;
-      headers: object;
-      credentials: RequestCredentials;
-    } = {
+    const response = await fetchWithAuth(`${env.apiUrl}${endpoint}`, {
       method,
       headers: {
-        accept: "application/json",
+        "Content-Type": "application/json",
+        Accept: "application/json",
       },
-      credentials: "include",
-    };
-
-    if (body) {
-      query.body = JSON.stringify(body);
-    }
+      body: body ? JSON.stringify(body) : undefined,
+    });
 
     console.log(`API Request: ${method} ${env.apiUrl}${endpoint}`);
-    const response = await fetch(`${env.apiUrl}${endpoint}`, query as object);
 
     if (!response.ok) {
       if (response.status === 401) {

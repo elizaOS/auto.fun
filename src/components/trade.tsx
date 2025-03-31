@@ -66,7 +66,7 @@ export default function Trade({ token }: { token: IToken }) {
 
   const [error] = useState<string | undefined>("");
 
-  const {executeSwap, isExecuting: isExecutingSwap} = useSwap();
+  const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
     token?.status,
@@ -273,14 +273,17 @@ export default function Trade({ token }: { token: IToken }) {
             !sellingAmount ||
             sellingAmount === 0
           }
-          onClick={sellingAmount
-            ? () => executeSwap({
-                amount: sellingAmount,
-                style: isTokenSelling ? "sell" : "buy",
-                tokenAddress: token.mint,
-                token,
-              })
-            : undefined}
+          onClick={
+            sellingAmount
+              ? () =>
+                  executeSwap({
+                    amount: sellingAmount,
+                    style: isTokenSelling ? "sell" : "buy",
+                    tokenAddress: token.mint,
+                    token,
+                  })
+              : undefined
+          }
         >
           {isExecutingSwap ? (
             <Loader2 className="size-5 animate-spin" />

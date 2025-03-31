@@ -1,5 +1,5 @@
 // import { Connection, SendOptions } from "@solana/web3.js";
-import bs58 from 'bs58'
+import bs58 from "bs58";
 
 export type JitoRegion = "mainnet" | "amsterdam" | "frankfurt" | "ny" | "tokyo";
 export const JitoEndpoints = {
@@ -40,7 +40,7 @@ export async function sendTxUsingJito({
     body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json" },
   });
-  const json = await res.json() as any;
+  const json = (await res.json()) as any;
   if (json.error) {
     throw new Error(json.error.message);
   }

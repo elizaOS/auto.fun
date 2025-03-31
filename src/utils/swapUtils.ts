@@ -1,14 +1,6 @@
-import {
-  Connection,
-  Keypair,
-  PublicKey,
-  Transaction,
-} from "@solana/web3.js";
+import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import { BN, Program } from "@coral-xyz/anchor";
-import {
-  SEED_CONFIG,
-  Autofun,
-} from "@/utils/program";
+import { SEED_CONFIG, Autofun } from "@/utils/program";
 import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { associatedAddress } from "@coral-xyz/anchor/dist/cjs/utils/token";
 import { env } from "@/utils/env";
@@ -170,7 +162,7 @@ export const swapIx = async (
       feePercent,
     );
 
-    console.log('estimated out:', estimatedOutput)
+    console.log("estimated out:", estimatedOutput);
   } else {
     // Sell
     estimatedOutput = calculateAmountOutSell(
@@ -189,9 +181,12 @@ export const swapIx = async (
 
   const deadline = Math.floor(Date.now() / 1000) + 120;
 
-  console.log('program swap:', {
-    amount, style, minOutput, deadline
-  })
+  console.log("program swap:", {
+    amount,
+    style,
+    minOutput,
+    deadline,
+  });
 
   // Apply the fee instruction to the transaction
   const tx = await program.methods
@@ -282,7 +277,7 @@ export const getJupiterSwapIx = async (
     const errorMsg = await swapRes.text();
     throw new Error(`Failed to build Jupiter swap transaction: ${errorMsg}`);
   }
-  const swapJson = await swapRes.json() as any;
+  const swapJson = (await swapRes.json()) as any;
 
   if (!swapJson.swapTransaction) {
     throw new Error("Jupiter swap transaction is missing in the response.");
