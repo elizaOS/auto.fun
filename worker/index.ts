@@ -6,11 +6,12 @@ import {
 import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { getCookie } from "hono/cookie";
 import { cron } from "./cron";
 import { getDB, preGeneratedTokens } from "./db";
 import { Env } from "./env";
 import { logger } from "./logger";
-import { verifyAuth } from "./middleware";
+import { verifyAuth } from "./auth";
 import authRouter from "./routes/auth";
 import generationRouter, { checkAndReplenishTokens } from "./routes/generation";
 import messagesRouter from "./routes/messages";
@@ -41,6 +42,7 @@ app.use(
   }),
 );
 
+// Use the improved verifyAuth middleware
 app.use("*", verifyAuth);
 
 const api = new Hono<{
@@ -62,6 +64,7 @@ api.use(
   }),
 );
 
+// Use the improved verifyAuth middleware
 api.use("*", verifyAuth);
 
 api.route("/", generationRouter);
@@ -73,20 +76,6 @@ api.route("/share", shareRouter);
 
 // Root paths for health checks
 app.get("/", (c) => c.json({ status: "ok" }));
-
-app.get("/protected-route", async (c) => {
-  const authHeader = c.req.header("Authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  const apiKey = authHeader.substring(7);
-
-  return c.json({
-    success: true,
-    message: "You have access to the protected route",
-  });
-});
 
 api.post("/upload", async (c) => {
   try {

@@ -103,16 +103,16 @@ const WalletButton = () => {
                 <Trophy size={16} />
                 <span>{user?.points ?? 0} points</span>
               </li>
-              <li className="opacity-50 px-4 py-2 text-sm text-white flex items-center gap-2">
+              {/* <li className="opacity-50 px-4 py-2 text-sm text-white flex items-center gap-2">
                 <Wallet size={16} />
                 <span>
                   {user?.solBalance ? user.solBalance.toFixed(2) : "0.00"} SOL
                 </span>
-              </li>
-              <li className="opacity-50 px-4 py-2 text-sm text-white flex items-center gap-2">
+              </li> */}
+              {/* <li className="opacity-50 px-4 py-2 text-sm text-white flex items-center gap-2">
                 <DollarSign size={16} />
                 <span>${solPrice ? solPrice.toFixed(2) : "0.00"} / SOL</span>
-              </li>
+              </li> */}
               <li
                 className="px-4 py-2 text-sm text-white hover:bg-[#262626] cursor-pointer flex items-center gap-2"
                 onClick={handleCopyAddress}

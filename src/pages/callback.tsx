@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 // Storage keys
 const STORAGE_KEY = "twitter-oauth-token";
+const OAUTH_REDIRECT_ORIGIN_KEY = "OAUTH_REDIRECT_ORIGIN"; // Key for storing the original path
 
 // Types
 type Credentials = {
@@ -119,10 +120,22 @@ export default function CallbackPage() {
               expiresAt: new Date(credentials.expiresAt).toLocaleString(),
             });
 
-            // Redirect with a flag indicating fresh authentication
-            // Redirect back to the testing page instead of root
-            console.log("Redirecting to testing page with fresh auth flag");
-            window.location.href = "/testing?fresh_auth=true";
+            // --- Dynamic Redirect Logic ---
+            // Retrieve the original path, default to root '/' if not found
+            const redirectOrigin =
+              localStorage.getItem(OAUTH_REDIRECT_ORIGIN_KEY) || "/";
+            localStorage.removeItem(OAUTH_REDIRECT_ORIGIN_KEY); // Clean up immediately
+
+            // Construct the final redirect URL, ensuring it's based on the current origin
+            // and preserves search params/hash from the stored path if any
+            const redirectUrl = new URL(redirectOrigin, window.location.origin);
+            redirectUrl.searchParams.set("fresh_auth", "true"); // Add the flag
+
+            console.log(
+              `Redirecting to original location: ${redirectUrl.toString()}`,
+            );
+            window.location.href = redirectUrl.toString(); // Redirect dynamically
+            // --- End Dynamic Redirect Logic ---
           } else {
             console.error("No tokens received from OAuth response");
             setDebugInfo((prev) => ({ ...prev, tokenMissing: "true" }));

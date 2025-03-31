@@ -1,16 +1,19 @@
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Trash2 } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import Button from "../button";
-import SkeletonImage from "../skeleton-image";
 import { Badge } from "../ui/badge";
+
+// --- API Base URL ---
+const API_BASE_URL = import.meta.env.VITE_API_URL || ""; // Ensure fallback
 
 // Storage keys for Twitter auth
 const STORAGE_KEY = "twitter-oauth-token";
 const PENDING_SHARE_KEY = "pending-twitter-share";
 const AGENT_INTENT_KEY = "connect_agent_intent";
+const OAUTH_REDIRECT_ORIGIN_KEY = "OAUTH_REDIRECT_ORIGIN"; // Key for storing the original path
 
 // Types for Twitter authentication
 type TwitterCredentials = {
@@ -21,9 +24,24 @@ type TwitterCredentials = {
 };
 
 type PendingShare = {
-  text: string;
+  // Store pieces needed to regenerate text
   imageData: string;
+  tokenName: string;
+  tokenSymbol: string;
 };
+
+// --- Expected API Response Types ---
+interface TokenInfoResponse {
+  name: string;
+  symbol: string;
+  // Add other expected fields if needed
+}
+
+interface TokenAgentsResponse {
+  agents: TokenAgent[];
+  // Add other expected fields if needed
+}
+// --- End Expected API Response Types ---
 
 interface TokenAgent {
   id?: string;
@@ -50,6 +68,27 @@ export default function CommunityTab() {
   const [twitterCredentials, setTwitterCredentials] =
     useState<TwitterCredentials | null>(null);
   const [isConnectingAgent, setIsConnectingAgent] = useState(false);
+
+  // --- Modal State ---
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [modalShareText, setModalShareText] = useState("");
+  const [isPostingTweet, setIsPostingTweet] = useState(false); // Loading state for modal post
+  // --- End Modal State ---
+
+  // --- Token Info State ---
+  const [tokenInfo, setTokenInfo] = useState<{
+    name: string;
+    symbol: string;
+  } | null>(null);
+  const [isInfoLoading, setIsInfoLoading] = useState(false);
+  const [infoError, setInfoError] = useState<string | null>(null);
+  // --- End Token Info State ---
+
+  // --- Token Agents State ---
+  const [tokenAgents, setTokenAgents] = useState<TokenAgent[]>([]);
+  const [isAgentsLoading, setIsAgentsLoading] = useState(false);
+  const [agentsError, setAgentsError] = useState<string | null>(null);
+  // --- End Token Agents State ---
 
   // Get token mint from URL params with better fallback logic
   const { mint: urlTokenMint } = useParams<{ mint: string }>();
@@ -94,36 +133,81 @@ export default function CommunityTab() {
   // Use detected token mint instead of directly from params
   const tokenMint = detectedTokenMint;
 
-  // Mock token agents data - in real implementation, would fetch from API
-  const [tokenAgents, setTokenAgents] = useState<TokenAgent[]>([
-    {
-      id: "1",
-      tokenMint: tokenMint || "default-mint",
-      ownerAddress: "TokenCreatorAddress123",
-      twitterUserName: "@officialTokenAccount",
-      twitterImageUrl: "/degen.jpg",
-      official: true,
-      createdAt: Date.now(),
-    },
-    {
-      id: "2",
-      tokenMint: tokenMint || "default-mint",
-      ownerAddress: "UserAddress456",
-      twitterUserName: "@tokenFan1",
-      twitterImageUrl: "/degen.jpg",
-      official: false,
-      createdAt: Date.now() - 86400000,
-    },
-    {
-      id: "3",
-      tokenMint: tokenMint || "default-mint",
-      ownerAddress: "UserAddress789",
-      twitterUserName: "@tokenSupporter",
-      twitterImageUrl: "/degen.jpg",
-      official: false,
-      createdAt: Date.now() - 172800000,
-    },
-  ]);
+  // --- Fetch Real Token Info & Agents ---
+  useEffect(() => {
+    const fetchTokenData = async () => {
+      if (!tokenMint || !API_BASE_URL) {
+        console.log("Skipping fetch: No tokenMint or API_BASE_URL");
+        setTokenInfo(null);
+        setTokenAgents([]);
+        return; // Don't fetch if mint is not available
+      }
+
+      // Reset states
+      setIsInfoLoading(true);
+      setIsAgentsLoading(true);
+      setInfoError(null);
+      setAgentsError(null);
+
+      try {
+        // Fetch Token Info
+        console.log(`Fetching token info for ${tokenMint}...`);
+        const infoResponse = await fetch(
+          `${API_BASE_URL}/api/token/${tokenMint}`,
+        );
+        console.log("Token info response:", infoResponse);
+        if (!infoResponse.ok) {
+          throw new Error(
+            `Failed to fetch token info: ${infoResponse.statusText}`,
+          );
+        }
+        const infoData = (await infoResponse.json()) as TokenInfoResponse;
+        // TODO: Add validation here (e.g., using Zod)
+        setTokenInfo({ name: infoData.name, symbol: infoData.symbol });
+        console.log("Token info received:", infoData);
+      } catch (error) {
+        console.error("Error fetching token info:", error);
+        setInfoError(
+          error instanceof Error
+            ? error.message
+            : "Unknown error fetching info",
+        );
+        setTokenInfo(null);
+      } finally {
+        setIsInfoLoading(false);
+      }
+
+      try {
+        // Fetch Token Agents
+        console.log(`Fetching token agents for ${tokenMint}...`);
+        const agentsResponse = await fetch(
+          `${API_BASE_URL}/api/token/${tokenMint}`,
+        );
+        if (!agentsResponse.ok) {
+          throw new Error(
+            `Failed to fetch token agents: ${agentsResponse.statusText}`,
+          );
+        }
+        const agentsData = (await agentsResponse.json()) as TokenAgentsResponse;
+        // TODO: Add validation here (e.g., using Zod)
+        setTokenAgents(agentsData.agents || []); // Assuming API returns { agents: [...] }
+        console.log("Token agents received:", agentsData.agents);
+      } catch (error) {
+        console.error("Error fetching token agents:", error);
+        setAgentsError(
+          error instanceof Error
+            ? error.message
+            : "Unknown error fetching agents",
+        );
+        setTokenAgents([]);
+      } finally {
+        setIsAgentsLoading(false);
+      }
+    };
+
+    fetchTokenData();
+  }, [tokenMint]); // Re-fetch when tokenMint changes
+  // --- End Fetch Real Token Info & Agents ---
 
   // Current user address - would be from wallet in real implementation
   const currentUserAddress = publicKey?.toString() || "UserAddress456";
@@ -175,27 +259,42 @@ export default function CommunityTab() {
       console.log("Detected fresh Twitter authentication");
 
       // Check if we have a pending share
-      const pendingShare = localStorage.getItem(PENDING_SHARE_KEY);
-      if (pendingShare) {
+      const pendingShareData = localStorage.getItem(PENDING_SHARE_KEY);
+      if (pendingShareData) {
         try {
-          const share = JSON.parse(pendingShare) as PendingShare;
+          // Parse the stored pieces
+          const share = JSON.parse(pendingShareData) as PendingShare;
           const storedCreds = localStorage.getItem(STORAGE_KEY);
 
           if (storedCreds) {
             const parsedCreds = JSON.parse(storedCreds) as TwitterCredentials;
-            console.log("Found fresh credentials and pending share");
+            console.log("Found fresh credentials and pending share pieces");
             setTwitterCredentials(parsedCreds);
 
-            // Use setTimeout to ensure this runs after component is fully mounted
+            // --- Regenerate Text & Open Modal on Callback ---
             setTimeout(() => {
-              console.log("Processing pending share after authentication");
-              handleShareOnX(share.text, share.imageData, parsedCreds);
-            }, 100);
+              console.log(
+                "Regenerating share text and opening modal after authentication",
+              );
+
+              // Regenerate the share text using stored pieces
+              const regeneratedText = generateShareText(
+                { name: share.tokenName, symbol: share.tokenSymbol }, // Use stored token info
+              );
+              setModalShareText(regeneratedText);
+
+              // Set the image
+              setGeneratedImage(share.imageData);
+
+              // Open the modal
+              setIsShareModalOpen(true);
+            }, 100); // Delay ensures state updates settle
+            // --- End Regenerate Text & Open Modal on Callback ---
           } else {
             console.error("No credentials found after authentication");
           }
 
-          // Clean up
+          // Clean up pending share key
           localStorage.removeItem(PENDING_SHARE_KEY);
         } catch (error) {
           console.error("Failed to process pending share", error);
@@ -207,10 +306,15 @@ export default function CommunityTab() {
         console.log("No pending share found after authentication");
       }
 
-      // Clean up URL
-      window.history.replaceState({}, "", window.location.pathname);
+      // Clean up URL (remove fresh_auth param)
+      const currentUrl = new URL(window.location.href);
+      if (currentUrl.searchParams.has("fresh_auth")) {
+        // Check if param exists before deleting
+        currentUrl.searchParams.delete("fresh_auth");
+      }
+      window.history.replaceState({}, "", currentUrl.toString());
     }
-  }, [tokenMint]);
+  }, [tokenMint, generatedImage]);
 
   // Fetch token agents (in a real implementation)
   // const fetchTokenAgents = async (mint: string) => {
@@ -405,10 +509,58 @@ export default function CommunityTab() {
     }
   };
 
+  // --- Tweet Templates & Generator ---
+  const tweetTemplates = [
+    "Check out this AI image for {TOKEN_NAME} (${TOKEN_SYMBOL})! #AICrypto",
+    "I generated this for ${TOKEN_SYMBOL} ({TOKEN_NAME}) using AI! #AIart #Crypto",
+    "AI magic for {TOKEN_NAME} (${TOKEN_SYMBOL}). What do you think?",
+    "My AI creation for ${TOKEN_SYMBOL}. #TokenArt",
+    "Generated with AI for {TOKEN_NAME}!",
+    "Vibing with this AI art for ${TOKEN_SYMBOL}.",
+    "This is {TOKEN_NAME} (${TOKEN_SYMBOL}) as interpreted by AI.",
+    "AI generated image for ${TOKEN_SYMBOL}.",
+    "From thought to picture for {TOKEN_NAME}, via AI! #AI #Blockchain",
+    "${TOKEN_SYMBOL} AI Generation!",
+  ];
+
+  const generateShareText = (
+    currentTokenInfo: { name: string; symbol: string } | null,
+  ): string => {
+    console.log("currentTokenInfo", currentTokenInfo);
+    const name = currentTokenInfo?.name || "this token";
+    const symbol = currentTokenInfo?.symbol
+      ? `$${currentTokenInfo.symbol}`
+      : "";
+
+    // Select a random template
+    const template =
+      tweetTemplates[Math.floor(Math.random() * tweetTemplates.length)];
+
+    // Replace placeholders
+    let text = template
+      .replace(/{TOKEN_NAME}/g, name)
+      .replace(/{TOKEN_SYMBOL}/g, symbol);
+
+    // Basic truncation if needed (Twitter limit is 280)
+    if (text.length > 280) {
+      // Find last space before limit to avoid cutting words
+      const lastSpace = text.lastIndexOf(" ", 277);
+      text = text.substring(0, lastSpace > 0 ? lastSpace : 277) + "...";
+    }
+
+    return text;
+  };
+  // --- End Tweet Templates & Generator ---
+
   // Share on X function
   const shareOnX = useCallback(async () => {
     if (!generatedImage) {
       setShareError("No image to share");
+      return;
+    }
+    // Ensure token info is loaded
+    if (!tokenInfo) {
+      toast.warn("Token information still loading, please wait a moment.");
       return;
     }
 
@@ -416,55 +568,44 @@ export default function CommunityTab() {
     setShareError(null);
 
     try {
-      // Create share text with token info if available
-      const shareText = tokenMint
-        ? `Check out this AI-generated image for $TOKEN_SYMBOL: ${userPrompt}`
-        : `Check out this AI-generated image: ${userPrompt}`;
+      // --- Generate Dynamic Share Text ---
+      const shareText = generateShareText(tokenInfo);
+      // --- End Generate Dynamic Share Text ---
 
       console.log(
-        "Starting image share process, text:",
+        "Starting image share process, generated text:",
         shareText.substring(0, 50),
       );
       console.log("Image data type:", typeof generatedImage);
 
       if (twitterCredentials && twitterCredentials.expiresAt > Date.now()) {
-        console.log("User already authenticated with Twitter");
-        // User is already authenticated, share directly
-        try {
-          // First upload the image
-          console.log("Step 1: Uploading image to Twitter");
-          const mediaId = await uploadImage(
-            generatedImage,
-            twitterCredentials.accessToken,
-          );
-          console.log("Image uploaded successfully, media ID:", mediaId);
-
-          // Then post the tweet with the image
-          console.log("Step 2: Posting tweet with image");
-          await postTweet(shareText, mediaId, twitterCredentials.accessToken);
-          console.log("Tweet posted successfully");
-
-          // Show success notification
-          toast.success("Successfully shared to Twitter!");
-        } catch (error) {
-          console.error("Twitter share failed:", error);
-          setShareError(
-            error instanceof Error ? error.message : "Share failed",
-          );
-          toast.error(
-            `Failed to share: ${error instanceof Error ? error.message : "Unknown error"}`,
-          );
-        }
+        console.log(
+          "User already authenticated with Twitter. Opening share modal...",
+        );
+        // --- Open Modal Directly ---
+        setModalShareText(shareText); // Use generated text
+        setIsShareModalOpen(true);
+        // --- End Open Modal Directly ---
       } else {
         console.log(
-          "User not authenticated with Twitter, storing pending share",
+          "User not authenticated with Twitter, storing pending share and origin",
         );
         // Store the pending share and redirect to auth
         const pendingShare: PendingShare = {
-          text: shareText,
+          // Store pieces needed to regenerate text later
           imageData: generatedImage,
+          tokenName: tokenInfo.name,
+          tokenSymbol: tokenInfo.symbol,
         };
         localStorage.setItem(PENDING_SHARE_KEY, JSON.stringify(pendingShare));
+
+        // Store the current path before redirecting
+        const currentPath =
+          window.location.pathname +
+          window.location.search +
+          window.location.hash;
+        localStorage.setItem(OAUTH_REDIRECT_ORIGIN_KEY, currentPath);
+        console.log("Stored origin path for redirect:", currentPath);
 
         // Redirect to OAuth
         const apiUrl = import.meta.env.VITE_API_URL;
@@ -477,17 +618,22 @@ export default function CommunityTab() {
     } catch (error) {
       console.error("Share failed", error);
       setShareError(error instanceof Error ? error.message : "Share failed");
+      toast.error(
+        `Share initiation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     } finally {
-      setIsSharing(false);
+      setIsSharing(false); // Stop loading state as we are either showing modal or redirecting
     }
-  }, [generatedImage, userPrompt, twitterCredentials, tokenMint]);
+  }, [generatedImage, tokenInfo]);
 
-  // Handle Twitter sharing
+  // Handle Twitter sharing (called FROM the modal or callback)
   const handleShareOnX = async (
     text: string,
     imageData: string,
     creds: TwitterCredentials,
   ) => {
+    // This function is now primarily for the actual posting logic
+    // It will be called by `confirmAndPostShare`
     try {
       // Double-check if credentials expired
       if (creds.expiresAt < Date.now()) {
@@ -496,7 +642,7 @@ export default function CommunityTab() {
         );
       }
 
-      console.log("Processing Twitter share from callback");
+      console.log("Processing Twitter share from modal/callback");
       setShareError(null);
 
       // First upload the image
@@ -517,8 +663,29 @@ export default function CommunityTab() {
       toast.error(
         `Failed to share: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
+      throw error; // Re-throw to allow the caller to handle loading state
     }
   };
+
+  // --- New function to handle modal confirmation ---
+  const confirmAndPostShare = async () => {
+    if (!generatedImage || !twitterCredentials) {
+      toast.error("Missing image or authentication for sharing.");
+      return;
+    }
+
+    setIsPostingTweet(true);
+    try {
+      await handleShareOnX(modalShareText, generatedImage, twitterCredentials);
+      setIsShareModalOpen(false); // Close modal on success
+    } catch (error) {
+      // Error is already handled/logged in handleShareOnX
+      // Keep modal open on error
+    } finally {
+      setIsPostingTweet(false);
+    }
+  };
+  // --- End new function ---
 
   // Upload image to Twitter
   const uploadImage = async (
@@ -588,7 +755,23 @@ export default function CommunityTab() {
 
       if (!uploadResponse.ok) {
         const errorText = await uploadResponse.text();
-        throw new Error(`Failed to upload image: ${errorText}`);
+        console.error(
+          "Image upload failed with status:",
+          uploadResponse.status,
+        );
+        console.error("Error response body:", errorText);
+        // Attempt to parse JSON error if possible
+        let detailedError = `Failed to upload image: ${uploadResponse.statusText}`;
+        try {
+          const jsonError = JSON.parse(errorText);
+          if (jsonError.error) {
+            detailedError += ` - ${jsonError.error}`;
+          }
+        } catch (e) {
+          // Ignore if not JSON
+          detailedError += ` - ${errorText}`;
+        }
+        throw new Error(detailedError);
       }
 
       // Parse the response with type
@@ -660,8 +843,19 @@ export default function CommunityTab() {
       if (twitterCredentials && twitterCredentials.expiresAt > Date.now()) {
         await connectTwitterAgent(twitterCredentials);
       } else {
+        console.log(
+          "Not authenticated, storing intent and redirecting for agent connection.",
+        );
         // Store the intent to connect agent and the token mint
         localStorage.setItem(AGENT_INTENT_KEY, tokenMint);
+
+        // Store the current path before redirecting
+        const currentPath =
+          window.location.pathname +
+          window.location.search +
+          window.location.hash;
+        localStorage.setItem(OAUTH_REDIRECT_ORIGIN_KEY, currentPath);
+        console.log("Stored origin path for redirect:", currentPath);
 
         // Redirect to OAuth
         const apiUrl = import.meta.env.VITE_API_URL;
@@ -778,11 +972,6 @@ export default function CommunityTab() {
     }
   };
 
-  // Sorted agents with officials at the top
-  const sortedAgents = [...tokenAgents].sort((a, b) =>
-    a.official && !b.official ? -1 : !a.official && b.official ? 1 : 0,
-  );
-
   // Check if the callback is from a connect agent intent
   useEffect(() => {
     const storedMint = localStorage.getItem(AGENT_INTENT_KEY);
@@ -834,19 +1023,6 @@ export default function CommunityTab() {
     }
   }, [tokenMint]);
 
-  // Add debug information to the UI if in development mode
-  const debugInfo = import.meta.env.DEV && (
-    <div className="text-xs text-gray-500 mt-1">
-      Token Mint: {tokenMint || "Not detected"}
-      {!tokenMint && (
-        <span className="text-yellow-500">
-          {" "}
-          (Using mock token for development)
-        </span>
-      )}
-    </div>
-  );
-
   // Add download functionality
   const downloadImage = useCallback(async () => {
     if (!generatedImage) {
@@ -895,199 +1071,176 @@ export default function CommunityTab() {
           Audio
         </Button>
       </div>
-      <div className="flex gap-4">
-        {communityTab === "Image" ? (
-          <div className="flex flex-col gap-4 w-full">
-            <div className="font-dm-mono text-autofun-background-action-highlight text-xl">
-              Input
-            </div>
-            <p className="text-sm text-autofun-text-secondary font-dm-mono max-w-3xl w-fit">
-              Create and share an AI-generated image based on your prompt.
-            </p>
-            {debugInfo}
-            <div className="flex flex-col md:flex-row gap-4 w-full">
-              <div className="flex flex-col gap-4 w-full grow">
-                <div className="flex">
-                  <input
-                    type="text"
-                    value={userPrompt}
-                    onChange={(e) => setUserPrompt(e.target.value)}
-                    placeholder="Enter a concept like 'a halloween token about arnold schwarzenegger'"
-                    className="flex-1 my-2 p-0 border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
-                  />
-                  <button
-                    onClick={generateImage}
-                    disabled={isGenerating || !userPrompt.trim()}
-                    className="p-0 transition-colors disabled:opacity-50"
-                  >
-                    <img
-                      src={
-                        isGenerating
-                          ? "/create/generating.svg"
-                          : "/create/generateup.svg"
-                      }
-                      alt="Generate"
-                      className="h-14 mb-2"
-                      onMouseDown={(e) => {
-                        if (!isGenerating) {
-                          (e.target as HTMLImageElement).src =
-                            "/create/generatedown.svg";
-                        }
-                      }}
-                      onMouseUp={(e) => {
-                        if (!isGenerating) {
-                          (e.target as HTMLImageElement).src =
-                            "/create/generateup.svg";
-                        }
-                      }}
-                      onDragStart={(e) => e.preventDefault()}
-                      onMouseOut={(e) => {
-                        if (!isGenerating) {
-                          (e.target as HTMLImageElement).src =
-                            "/create/generateup.svg";
-                        }
-                      }}
-                    />
-                  </button>
-                </div>
 
-                {/* Result section placed directly under the input in the left column */}
-                <div className="flex flex-col gap-4 border p-4">
-                  <div className="flex items-center gap-2.5">
-                    <div className="font-dm-mono text-autofun-background-action-highlight text-xl">
-                      Result
-                    </div>
-                    <div className="flex items-center gap-2.5">
-                      {processingStatus === "processing" && (
-                        <Badge variant="default">Processing</Badge>
-                      )}
-                      {processingStatus === "processed" && (
-                        <Badge variant="success">Processed</Badge>
-                      )}
-                      {processingStatus === "failed" && (
-                        <Badge variant="destructive">Failed</Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  {processingStatus === "processing" ? (
-                    <div className="w-full flex items-center justify-center h-[300px]">
-                      <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#03FF24]"></div>
-                    </div>
-                  ) : (
-                    <div className="w-full h-[300px] flex items-center justify-center overflow-hidden">
-                      <SkeletonImage
-                        src={generatedImage || "/placeholder-image.png"}
-                        width={1024}
-                        height={1024}
-                        alt="generated_image"
-                        className="w-full h-full object-contain"
+      <div className="flex flex-row">
+        <div className="flex flex-col grow mr-4">
+          {communityTab === "Image" ? (
+            <>
+              <div className="flex flex-col gap-4 w-full flex-grow">
+                <div className="flex flex-col md:flex-row gap-4 w-full">
+                  <div className="flex flex-col mt-4 w-full">
+                    <div className="flex">
+                      <input
+                        type="text"
+                        value={userPrompt}
+                        onChange={(e) => setUserPrompt(e.target.value)}
+                        placeholder="Enter a concept like 'a halloween token about arnold schwarzenegger'"
+                        className="flex-1 my-2 p-0 border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
                       />
+                      <button
+                        onClick={generateImage}
+                        disabled={isGenerating || !userPrompt.trim()}
+                        className="p-0 transition-colors disabled:opacity-50"
+                      >
+                        <img
+                          src={
+                            isGenerating
+                              ? "/create/generating.svg"
+                              : "/create/generateup.svg"
+                          }
+                          alt="Generate"
+                          className="h-14 mb-2"
+                          onMouseDown={(e) => {
+                            if (!isGenerating) {
+                              (e.target as HTMLImageElement).src =
+                                "/create/generatedown.svg";
+                            }
+                          }}
+                          onMouseUp={(e) => {
+                            if (!isGenerating) {
+                              (e.target as HTMLImageElement).src =
+                                "/create/generateup.svg";
+                            }
+                          }}
+                          onDragStart={(e) => e.preventDefault()}
+                          onMouseOut={(e) => {
+                            if (!isGenerating) {
+                              (e.target as HTMLImageElement).src =
+                                "/create/generateup.svg";
+                            }
+                          }}
+                        />
+                      </button>
                     </div>
-                  )}
 
-                  <div className="w-full flex items-center justify-between">
-                    {shareError && (
-                      <div className="text-red-500 text-sm">{shareError}</div>
-                    )}
-                    <div className="ml-auto flex gap-2">
-                      <Button
-                        size="small"
-                        variant="outline"
-                        onClick={downloadImage}
-                        disabled={processingStatus !== "processed"}
-                      >
-                        Download
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="secondary"
-                        onClick={shareOnX}
-                        disabled={processingStatus !== "processed" || isSharing}
-                      >
-                        {isSharing ? "Sharing..." : "Share on X"}
-                      </Button>
+                    <div className="flex flex-col relative">
+                      {processingStatus === "processing" ? (
+                        <div className="flex items-center justify-center w-[600px] h-[600px]">
+                          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#03FF24]"></div>
+                        </div>
+                      ) : (
+                        <div
+                          className="w-[600px] h-[600px]"
+                          style={{
+                            backgroundImage: `url(${generatedImage})`,
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                          }}
+                        ></div>
+                      )}
+
+                      <div className="w-full flex items-center justify-between absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
+                        {shareError && (
+                          <div className="text-red-500 text-sm bg-black/50 p-1 rounded">
+                            {shareError}
+                          </div>
+                        )}
+                        <div className="ml-auto flex gap-2">
+                          <Button
+                            size="small"
+                            variant="outline"
+                            onClick={downloadImage}
+                            disabled={processingStatus !== "processed"}
+                          >
+                            Download
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="secondary"
+                            onClick={shareOnX}
+                            disabled={
+                              processingStatus !== "processed" || isSharing
+                            }
+                          >
+                            {isSharing ? "Sharing..." : "Share on X"}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
+            </>
+          ) : communityTab === "Audio" ? (
+            <div>Audio generator page coming soon!</div>
+          ) : null}
+        </div>
+      </div>
+      {isShareModalOpen && generatedImage && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
+          <div className="bg-autofun-background-primary p-6 w-full max-w-lg relative text-white font-dm-mono border-4 border-[#2FD345] shadow-xl">
+            <button
+              onClick={() => setIsShareModalOpen(false)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-white"
+              aria-label="Close modal"
+            >
+              <X size={20} />
+            </button>
+            <h2 className="text-xl font-semibold mb-4 text-[#03FF24]">
+              Share on X
+            </h2>
 
-              <div className="bg-black/20 p-4 space-y-2 w-full md:w-3/6 border h-fit">
-                <h1 className="mb-4 text-xl text-autofun-background-action-highlight font-dm-mono">
-                  Token Agents
-                </h1>
-                <div className="overflow-y-auto max-h-64">
-                  {sortedAgents.length > 0 ? (
-                    <table className="w-full">
-                      <thead>
-                        <tr className="text-left border-b border-neutral-800">
-                          <th className="pb-2">Agent</th>
-                          <th className="pb-2">Status</th>
-                          <th className="pb-2"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sortedAgents.map((agent, index) => (
-                          <tr
-                            key={index}
-                            className="border-b border-neutral-800"
-                          >
-                            <td className="py-2">
-                              <div className="flex items-center gap-2">
-                                <img
-                                  src={agent.twitterImageUrl}
-                                  alt={agent.twitterUserName}
-                                  className="w-8 h-8 rounded-full"
-                                />
-                                <span>{agent.twitterUserName}</span>
-                              </div>
-                            </td>
-                            <td className="py-2">
-                              {agent.official ? (
-                                <Badge variant="success">Official</Badge>
-                              ) : (
-                                <Badge variant="default">Community</Badge>
-                              )}
-                            </td>
-                            <td className="py-2 text-right">
-                              {agent.ownerAddress === currentUserAddress && (
-                                <button
-                                  onClick={() =>
-                                    removeAgent(agent.twitterUserName)
-                                  }
-                                  title="Remove agent"
-                                  className="text-red-500 hover:text-red-400"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <div className="text-center py-4 text-neutral-400">
-                      No agents connected to this token yet
-                    </div>
-                  )}
-                </div>
-                <div className="mt-4">
-                  <button
-                    onClick={connectTwitter}
-                    className="bg-[#03FF24] p-3 font-bold border-2 text-black text-[12px] md:text-[15px] hover:bg-[#27b938] transition-colors disabled:opacity-50 disabled:bg-[#333333] disabled:hover:bg-[#333333]"
-                    disabled={isConnectingAgent || !tokenMint}
-                  >
-                    {isConnectingAgent ? "Connecting..." : "Connect X account"}
-                  </button>
-                </div>
-              </div>
+            <div className="mb-4 border border-gray-600 overflow-hidden">
+              <img
+                src={generatedImage}
+                alt="Generated content to share"
+                className="w-full object-contain bg-gray-700"
+              />
+            </div>
+
+            <div className="mb-4">
+              <label
+                htmlFor="shareText"
+                className="block text-sm font-medium text-gray-300 mb-1"
+              >
+                Tweet Text
+              </label>
+              <textarea
+                id="shareText"
+                value={modalShareText}
+                onChange={(e) => setModalShareText(e.target.value)}
+                maxLength={280}
+                className="w-full p-2 bg-autofun-background-secondary text-sm border-b border-gray-400 focus:border-white focus:outline-none resize-none"
+                placeholder="Edit your tweet text..."
+              />
+              <p className="text-xs text-gray-400 mt-1 text-right">
+                {modalShareText.length} / 280
+              </p>
+            </div>
+
+            {shareError && (
+              <p className="text-red-500 text-sm mb-3">Error: {shareError}</p>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => setIsShareModalOpen(false)}
+                disabled={isPostingTweet}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={confirmAndPostShare}
+                disabled={isPostingTweet || !modalShareText.trim()}
+              >
+                {isPostingTweet ? "Posting..." : "Confirm & Post"}
+              </Button>
             </div>
           </div>
-        ) : communityTab === "Audio" ? (
-          <div>Audio generator page coming soon!</div>
-        ) : null}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

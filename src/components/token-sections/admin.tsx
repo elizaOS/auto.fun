@@ -313,7 +313,7 @@ export default function AdminTab() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 p-4">
       <div className="font-dm-mono text-autofun-background-action-highlight text-xl">
-        Socials
+        Admin Panel
       </div>
 
       {detectedError && (
@@ -321,8 +321,6 @@ export default function AdminTab() {
           {detectedError}
         </div>
       )}
-
-      {debugInfo}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Website Field */}

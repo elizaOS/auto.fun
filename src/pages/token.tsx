@@ -25,8 +25,9 @@ import { Link, useParams } from "react-router";
 import { TradingViewChart } from "@/components/trading-view-chart";
 import { useEffect, useState } from "react";
 import { getSocket } from "@/utils/socket";
-import CommunityTab from "@/components/token-tabs/community-tab";
-import AdminTab from "@/components/token-tabs/admin-tab";
+import GenerationSection from "@/components/token-sections/generation";
+import AdminSection from "@/components/token-sections/admin";
+import AgentsSection from "@/components/token-sections/agents";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { toast } from "react-toastify";
 
@@ -472,39 +473,19 @@ export default function Page() {
             </span>
           </div>
         </div>
-        {/* Tabs */}
-        <div className="flex flex-row">
-          <Button
-            variant={tab === "Trading" ? "tab" : "primary"}
-            onClick={() => setTab("Trading")}
-          >
-            Trading
-          </Button>
-          <Button
-            variant={tab === "Community" ? "tab" : "primary"}
-            onClick={() => setTab("Community")}
-          >
-            Community
-          </Button>
-          {admin && (
-            <Button
-              variant={tab === "Admin" ? "tab" : "primary"}
-              onClick={() => setTab("Admin")}
-            >
-              Admin
-            </Button>
-          )}
-        </div>
         <div className="border bg-autofun-background-card">
-          {tab === "Trading" ? (
-            <TradingViewChart name={token.name} token={token.mint} />
-          ) : tab === "Community" ? (
-            <CommunityTab />
-          ) : tab === "Admin" ? (
-            <AdminTab />
-          ) : null}
+          <TradingViewChart name={token.name} token={token.mint} />
         </div>
         <TransactionsAndHolders token={token} />
+        <div className="border bg-autofun-background-card">
+          <AgentsSection />
+        </div>
+        <div className="border bg-autofun-background-card">
+          <GenerationSection />
+        </div>
+        <div className="border bg-autofun-background-card">
+          <AdminSection />
+        </div>
       </div>
     </div>
   );

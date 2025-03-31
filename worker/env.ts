@@ -35,6 +35,8 @@ export interface Env {
   CLOUDFLARE_API_TOKEN: string;
   NODE_ENV: string;
   SWAP_FEE: string;
+  // Authentication
+  JWT_SECRET: string;
   // Solana connection
   RPC_URL: string;
   MAINNET_SOLANA_RPC_URL: string;

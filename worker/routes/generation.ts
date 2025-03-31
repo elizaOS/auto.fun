@@ -6,7 +6,7 @@ import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { logger } from "../logger";
-import { verifyAuth } from "../middleware";
+import { verifyAuth, requireAuth } from "../auth";
 import crypto from "node:crypto";
 import { MediaGeneration } from "../types";
 import type { ExecutionContext as CFExecutionContext } from "@cloudflare/workers-types/experimental";
@@ -1556,21 +1556,11 @@ export async function checkAndReplenishTokens(
   }
 }
 
-// Fix the enhance-and-generate endpoint to properly handle image generation and return results
-app.post("/enhance-and-generate", async (c) => {
+// Endpoint to enhance a prompt and generate media
+app.post("/enhance-and-generate", requireAuth, async (c) => {
   try {
-    // Verify user is authenticated with a wallet
-    const user = c.get("user");
-    if (!user || !user.publicKey) {
-      return c.json(
-        {
-          success: false,
-          error:
-            "Authentication required. Please connect your wallet to generate images.",
-        },
-        401,
-      );
-    }
+    // Get user from context (guaranteed by requireAuth)
+    const user = c.get("user")!;
 
     console.log(`Enhance-and-generate request from user: ${user.publicKey}`);
 
