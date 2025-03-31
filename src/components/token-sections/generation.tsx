@@ -68,7 +68,7 @@ export default function CommunityTab() {
 
   // Extract token mint from URL if not found in params
   const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(
-    null,
+    null
   );
 
   // Effect to detect token mint from various sources
@@ -118,12 +118,12 @@ export default function CommunityTab() {
         // Fetch Token Info
         console.log(`Fetching token info for ${tokenMint}...`);
         const infoResponse = await fetch(
-          `${API_BASE_URL}/api/token/${tokenMint}`,
+          `${API_BASE_URL}/api/token/${tokenMint}`
         );
         console.log("Token info response:", infoResponse);
         if (!infoResponse.ok) {
           throw new Error(
-            `Failed to fetch token info: ${infoResponse.statusText}`,
+            `Failed to fetch token info: ${infoResponse.statusText}`
           );
         }
         const infoData = (await infoResponse.json()) as TokenInfoResponse;
@@ -153,13 +153,13 @@ export default function CommunityTab() {
     if (storedCredentials) {
       try {
         const parsedCredentials = JSON.parse(
-          storedCredentials,
+          storedCredentials
         ) as TwitterCredentials;
 
         // Check if token is expired
         if (parsedCredentials.expiresAt < Date.now()) {
           console.log(
-            "Twitter token has expired, user needs to re-authenticate",
+            "Twitter token has expired, user needs to re-authenticate"
           );
         } else {
           setTwitterCredentials(parsedCredentials);
@@ -199,12 +199,12 @@ export default function CommunityTab() {
             // --- Regenerate Text & Open Modal on Callback ---
             setTimeout(() => {
               console.log(
-                "Regenerating share text and opening modal after authentication",
+                "Regenerating share text and opening modal after authentication"
               );
 
               // Regenerate the share text using stored pieces
               const regeneratedText = generateShareText(
-                { name: share.tokenName, symbol: share.tokenSymbol }, // Use stored token info
+                { name: share.tokenName, symbol: share.tokenSymbol } // Use stored token info
               );
               setModalShareText(regeneratedText);
 
@@ -224,7 +224,7 @@ export default function CommunityTab() {
         } catch (error) {
           console.error("Failed to process pending share", error);
           setShareError(
-            error instanceof Error ? error.message : "Failed to process share",
+            error instanceof Error ? error.message : "Failed to process share"
           );
         }
       } else {
@@ -269,7 +269,7 @@ export default function CommunityTab() {
     // Check if we have a token mint
     if (!tokenMint) {
       toast.error(
-        "No token found. Please navigate to a token page to generate images",
+        "No token found. Please navigate to a token page to generate images"
       );
       return;
     }
@@ -281,7 +281,7 @@ export default function CommunityTab() {
 
     try {
       console.log(
-        `Generating image for token ${tokenMint} with prompt: ${userPrompt}`,
+        `Generating image for token ${tokenMint} with prompt: ${userPrompt}`
       );
 
       // In a real implementation, we would fetch the token metadata if not available
@@ -299,7 +299,7 @@ export default function CommunityTab() {
         console.error("No auth token found");
         // Try to generate without auth token for testing
         toast.warning(
-          "No auth token found, trying to generate without authentication",
+          "No auth token found, trying to generate without authentication"
         );
       }
 
@@ -392,7 +392,7 @@ export default function CommunityTab() {
           setGeneratedImage(data.mediaUrl);
           console.log(
             "Using data URL directly:",
-            data.mediaUrl.substring(0, 50) + "...",
+            data.mediaUrl.substring(0, 50) + "..."
           );
         } else {
           // It's a URL, make sure it's absolute
@@ -412,7 +412,7 @@ export default function CommunityTab() {
 
         if (data.remainingGenerations !== undefined) {
           toast.success(
-            `Image generated successfully! You have ${data.remainingGenerations} generations left today.`,
+            `Image generated successfully! You have ${data.remainingGenerations} generations left today.`
           );
         } else {
           toast.success("Image generated successfully!");
@@ -420,14 +420,14 @@ export default function CommunityTab() {
       } else {
         console.error("Invalid response:", data);
         throw new Error(
-          data.error || "Failed to generate image: No media URL returned",
+          data.error || "Failed to generate image: No media URL returned"
         );
       }
     } catch (error) {
       console.error("Error generating image:", error);
       setProcessingStatus("failed");
       toast.error(
-        error instanceof Error ? error.message : "Failed to generate image",
+        error instanceof Error ? error.message : "Failed to generate image"
       );
     } finally {
       setIsGenerating(false);
@@ -449,7 +449,7 @@ export default function CommunityTab() {
   ];
 
   const generateShareText = (
-    currentTokenInfo: { name: string; symbol: string } | null,
+    currentTokenInfo: { name: string; symbol: string } | null
   ): string => {
     console.log("currentTokenInfo", currentTokenInfo);
     const name = currentTokenInfo?.name || "this token";
@@ -499,13 +499,13 @@ export default function CommunityTab() {
 
       console.log(
         "Starting image share process, generated text:",
-        shareText.substring(0, 50),
+        shareText.substring(0, 50)
       );
       console.log("Image data type:", typeof generatedImage);
 
       if (twitterCredentials && twitterCredentials.expiresAt > Date.now()) {
         console.log(
-          "User already authenticated with Twitter. Opening share modal...",
+          "User already authenticated with Twitter. Opening share modal..."
         );
         // --- Open Modal Directly ---
         setModalShareText(shareText); // Use generated text
@@ -513,7 +513,7 @@ export default function CommunityTab() {
         // --- End Open Modal Directly ---
       } else {
         console.log(
-          "User not authenticated with Twitter, storing pending share and origin",
+          "User not authenticated with Twitter, storing pending share and origin"
         );
         // Store the pending share and redirect to auth
         const pendingShare: PendingShare = {
@@ -544,7 +544,7 @@ export default function CommunityTab() {
       console.error("Share failed", error);
       setShareError(error instanceof Error ? error.message : "Share failed");
       toast.error(
-        `Share initiation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Share initiation failed: ${error instanceof Error ? error.message : "Unknown error"}`
       );
     } finally {
       setIsSharing(false); // Stop loading state as we are either showing modal or redirecting
@@ -555,7 +555,7 @@ export default function CommunityTab() {
   const handleShareOnX = async (
     text: string,
     imageData: string,
-    creds: TwitterCredentials,
+    creds: TwitterCredentials
   ) => {
     // This function is now primarily for the actual posting logic
     // It will be called by `confirmAndPostShare`
@@ -563,7 +563,7 @@ export default function CommunityTab() {
       // Double-check if credentials expired
       if (creds.expiresAt < Date.now()) {
         throw new Error(
-          "Twitter authentication expired. Please connect again.",
+          "Twitter authentication expired. Please connect again."
         );
       }
 
@@ -586,7 +586,7 @@ export default function CommunityTab() {
       console.error("Twitter share failed:", error);
       setShareError(error instanceof Error ? error.message : "Share failed");
       toast.error(
-        `Failed to share: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to share: ${error instanceof Error ? error.message : "Unknown error"}`
       );
       throw error; // Re-throw to allow the caller to handle loading state
     }
@@ -615,16 +615,16 @@ export default function CommunityTab() {
   // Upload image to Twitter
   const uploadImage = async (
     imageData: string,
-    accessToken: string,
+    accessToken: string
   ): Promise<string> => {
     try {
       console.log(
         "Uploading image to Twitter with image data type:",
-        typeof imageData,
+        typeof imageData
       );
       console.log(
         "Image data starts with:",
-        imageData.substring(0, 50) + "...",
+        imageData.substring(0, 50) + "..."
       );
 
       let blob;
@@ -663,7 +663,7 @@ export default function CommunityTab() {
 
       console.log(
         "Sending image to API:",
-        `${import.meta.env.VITE_API_URL}/api/share/tweet`,
+        `${import.meta.env.VITE_API_URL}/api/share/tweet`
       );
 
       // Send the upload request
@@ -675,14 +675,14 @@ export default function CommunityTab() {
             Authorization: `Bearer ${accessToken}`,
           },
           body: formData,
-        },
+        }
       );
 
       if (!uploadResponse.ok) {
         const errorText = await uploadResponse.text();
         console.error(
           "Image upload failed with status:",
-          uploadResponse.status,
+          uploadResponse.status
         );
         console.error("Error response body:", errorText);
         // Attempt to parse JSON error if possible
@@ -720,7 +720,7 @@ export default function CommunityTab() {
   const postTweet = async (
     text: string,
     mediaId: string,
-    accessToken: string,
+    accessToken: string
   ) => {
     try {
       console.log("Posting tweet with text:", text);
@@ -738,7 +738,7 @@ export default function CommunityTab() {
             text,
             mediaId,
           }),
-        },
+        }
       );
 
       if (!response.ok) {
@@ -814,6 +814,11 @@ export default function CommunityTab() {
                         type="text"
                         value={userPrompt}
                         onChange={(e) => setUserPrompt(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            generateImage();
+                          }
+                        }}
                         placeholder="Enter a concept like 'a halloween token about arnold schwarzenegger'"
                         className="flex-1 my-2 p-0 border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
                       />
