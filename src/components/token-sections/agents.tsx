@@ -21,13 +21,6 @@ type TwitterCredentials = {
   expiresAt: number;
 };
 
-// --- Expected API Response Types ---
-interface TokenInfoResponse {
-  name: string;
-  symbol: string;
-  // Add other expected fields if needed
-}
-
 interface TokenAgentsResponse {
   agents: TokenAgent[];
   // Add other expected fields if needed
@@ -108,47 +101,101 @@ export default function CommunityTab() {
         return; // Don't fetch if mint is not available
       }
 
+      // Check for Twitter credentials on component mount
+      const storedCredentials = localStorage.getItem(STORAGE_KEY);
+      if (storedCredentials) {
+        try {
+          const parsedCredentials = JSON.parse(
+            storedCredentials,
+          ) as TwitterCredentials;
+          if (parsedCredentials.expiresAt > Date.now()) {
+            console.log("Found valid Twitter credentials in storage");
+            setTwitterCredentials(parsedCredentials);
+          } else {
+            console.log("Found expired Twitter credentials in storage");
+          }
+        } catch (e) {
+          console.error("Error parsing stored Twitter credentials:", e);
+        }
+      }
+
       // Reset states
       setIsAgentsLoading(true);
       setAgentsError(null);
 
+      // No longer fetching token info here, assuming it's handled elsewhere or not needed for agents tab
+      /*
       try {
         // Fetch Token Info
         console.log(`Fetching token info for ${tokenMint}...`);
         const infoResponse = await fetch(
-          `${API_BASE_URL}/api/token/${tokenMint}`,
+          `${API_BASE_URL}/api/token/${tokenMint}`, // Keep existing if needed
         );
         if (!infoResponse.ok) {
           throw new Error(
             `Failed to fetch token info: ${infoResponse.statusText}`,
           );
         }
+        // Process info if necessary
       } catch (error) {
         console.error("Error fetching token info:", error);
-        setAgentsError(
-          error instanceof Error
-            ? error.message
-            : "Unknown error fetching token info",
-        );
-        setTokenAgents([]);
-        return;
+        // Handle token info error separately if needed
       }
+      */
 
       try {
-        // Fetch Token Agents
-        console.log(`Fetching token agents for ${tokenMint}...`);
-        const agentsResponse = await fetch(
-          `${API_BASE_URL}/api/token/${tokenMint}`,
+        // Fetch Token Agents using the new dedicated endpoint
+        const fetchUrl = `${API_BASE_URL}/api/token/${tokenMint}/agents`;
+        console.log(`Fetching agents from URL: ${fetchUrl}`);
+        console.log(
+          `Using tokenMint: ${tokenMint}, API_BASE_URL: ${API_BASE_URL}`,
         );
+
+        const agentsResponse = await fetch(fetchUrl);
+
+        // ** ADD Log: Log the raw response text **
+        const responseText = await agentsResponse.text();
+        console.log("Raw agents response text:", responseText);
+
+        // ** ADD Log: Log status and ok status **
+        console.log(
+          `Agents response status: ${agentsResponse.status}, ok: ${agentsResponse.ok}`,
+        );
+
         if (!agentsResponse.ok) {
-          throw new Error(
-            `Failed to fetch token agents: ${agentsResponse.statusText}`,
-          );
+          // Try to get error message from body (use responseText now)
+          let errorMsg = `Failed to fetch token agents: ${agentsResponse.statusText}`;
+          try {
+            const errorBody = JSON.parse(responseText); // Parse the logged text
+            if (
+              errorBody &&
+              typeof errorBody === "object" &&
+              "error" in errorBody &&
+              typeof (errorBody as any).error === "string"
+            ) {
+              errorMsg = (errorBody as any).error;
+            }
+          } catch (e) {
+            /* Ignore if body isn't json */
+          }
+          throw new Error(errorMsg);
         }
-        const agentsData = (await agentsResponse.json()) as TokenAgentsResponse;
-        // TODO: Add validation here (e.g., using Zod)
-        setTokenAgents(agentsData.agents || []); // Assuming API returns { agents: [...] }
-        console.log("Token agents received:", agentsData.agents);
+
+        // ** CHANGE: Parse the logged responseText **
+        const agentsData = JSON.parse(responseText) as TokenAgentsResponse;
+
+        // Check the parsed data structure
+        if (!agentsData || !Array.isArray(agentsData.agents)) {
+          console.error(
+            "Invalid agents data received after parsing:",
+            agentsData,
+          );
+          throw new Error("Invalid response format when fetching agents.");
+        }
+
+        setTokenAgents(agentsData.agents);
+        // Log the successfully parsed agents
+        console.log("Token agents received and parsed:", agentsData.agents);
       } catch (error) {
         console.error("Error fetching token agents:", error);
         setAgentsError(
@@ -156,7 +203,7 @@ export default function CommunityTab() {
             ? error.message
             : "Unknown error fetching agents",
         );
-        setTokenAgents([]);
+        setTokenAgents([]); // Clear agents on error
       } finally {
         setIsAgentsLoading(false);
       }
@@ -165,12 +212,6 @@ export default function CommunityTab() {
     fetchTokenData();
   }, [tokenMint]); // Re-fetch when tokenMint changes
   // --- End Fetch Real Token Info & Agents ---
-
-  // Current user address - would be from wallet in real implementation
-  const currentUserAddress = publicKey?.toString() || "UserAddress456";
-
-  // In a real implementation, this would be fetched from the API
-  const tokenCreatorAddress = "TokenCreatorAddress123";
 
   const connectTwitter = async () => {
     // Verify we have a token mint
@@ -232,86 +273,68 @@ export default function CommunityTab() {
         return;
       }
 
-      // 1. Fetch the user's Twitter profile
+      // Use the new combined endpoint to connect the Twitter agent directly
+      console.log("Connecting Twitter agent with credentials...");
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/share/process`,
+        `${API_BASE_URL}/api/token/${tokenMint}/connect-twitter-agent`,
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${creds.accessToken}`,
             "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("authToken") || ""}`, // Auth header
           },
-          body: JSON.stringify({ userId: creds.userId }),
+          body: JSON.stringify({
+            userId: creds.userId,
+            accessToken: creds.accessToken,
+          }),
         },
       );
 
       if (!response.ok) {
-        throw new Error("Failed to fetch Twitter profile");
-      }
+        const errorText = await response.text();
+        console.error("Twitter agent connection failed:", errorText);
 
-      const data = (await response.json()) as {
-        twitterUserId: string;
-        tweets?: any[];
-      };
+        try {
+          // Try to parse error as JSON
+          const errorData = JSON.parse(errorText);
 
-      // 2. Check if this Twitter account is already connected to this token
-      const existingAgent = tokenAgents.find(
-        (agent) =>
-          agent.twitterUserName === `@twitter_user_${data.twitterUserId}`,
-      );
+          // Handle conflict specifically (already connected)
+          if (response.status === 409 && errorData.agent) {
+            console.warn("Agent already exists:", errorData.agent);
+            // Add to local state if not already there
+            setTokenAgents((prev) =>
+              prev.find((a) => a.id === errorData.agent.id)
+                ? prev
+                : [...prev, errorData.agent as TokenAgent],
+            );
 
-      if (existingAgent) {
-        throw new Error(
-          "This Twitter account is already connected to this token",
-        );
-      }
+            toast.info(
+              "This Twitter account is already connected to this token.",
+            );
+            return;
+          }
 
-      // --- API Call to Add Agent ---
-      console.log("Attempting to add agent to database...");
-      try {
-        const ownerAddress = publicKey.toBase58(); // Use actual public key
-        const agentDataForApi = {
-          ownerAddress: ownerAddress,
-          twitterUserId: data.twitterUserId, // Send ID, backend can format username
-          // twitterImageUrl: data.profileImageUrl || "/default-avatar.png", // Optionally send image URL if available from /process endpoint
-        };
-
-        const createResponse = await fetch(
-          `${API_BASE_URL}/api/token/${tokenMint}/agents`,
-          {
-            // Use correct endpoint
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              // Add Authorization header if your endpoint requires it
-              // "Authorization": `Bearer ${localStorage.getItem("authToken")}`
-            },
-            body: JSON.stringify(agentDataForApi),
-          },
-        );
-
-        if (!createResponse.ok) {
-          const errorBody = await createResponse.text();
-          throw new Error(
-            `Failed to add agent to database: ${createResponse.statusText} - ${errorBody}`,
-          );
+          throw new Error(errorData.error || "Failed to connect Twitter agent");
+        } catch (parseError) {
+          // If JSON parsing fails, use the raw text
+          throw new Error(errorText || "Failed to connect Twitter agent");
         }
-
-        // Assuming the API returns the newly created agent object
-        const newAgentFromApi = (await createResponse.json()) as TokenAgent;
-        console.log("Agent successfully added via API:", newAgentFromApi);
-
-        // Update local state with the agent confirmed by the API
-        setTokenAgents((prev) => [...prev, newAgentFromApi]);
-        toast.success("Twitter account successfully connected as an agent!");
-      } catch (apiError) {
-        console.error("API Error adding agent:", apiError);
-        toast.error(
-          `Failed to save agent: ${apiError instanceof Error ? apiError.message : "Unknown API error"}`,
-        );
-        // Optionally re-throw or handle differently
       }
-      // --- End API Call ---
+
+      // Parse the response to get the new agent
+      const newAgent = (await response.json()) as TokenAgent;
+      console.log("Agent successfully connected:", newAgent);
+
+      // Update local state with the agent
+      setTokenAgents((prev) => {
+        // Avoid adding duplicates
+        if (prev.find((a) => a.id === newAgent.id)) {
+          return prev;
+        }
+        return [...prev, newAgent];
+      });
+
+      toast.success("Twitter account successfully connected as an agent!");
     } catch (error) {
       console.error("Failed to connect Twitter agent:", error);
       toast.error(
@@ -321,16 +344,53 @@ export default function CommunityTab() {
   };
 
   // Remove agent function
-  const removeAgent = async (twitterUserName: string) => {
-    try {
-      // In a real implementation, we would call an API to remove the agent
-      // await fetch(`${import.meta.env.VITE_API_URL}/api/tokens/${tokenMint}/agents/${agentId}`, {
-      //   method: "DELETE"
-      // });
+  // ** CHANGE: Needs agent ID and uses DELETE endpoint **
+  const removeAgent = async (agentToRemove: TokenAgent) => {
+    if (!agentToRemove.id) {
+      toast.error("Cannot remove agent: Missing ID.");
+      return;
+    }
+    if (!tokenMint) {
+      toast.error("Cannot remove agent: Missing token mint.");
+      return;
+    }
 
-      // For now, just update local state
+    // Optimistic UI update (optional)
+    // const previousAgents = tokenAgents;
+    // setTokenAgents((prev) => prev.filter((agent) => agent.id !== agentToRemove.id));
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/token/${tokenMint}/agents/${agentToRemove.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            // ** ADD Authorization Header **
+            Authorization: `Bearer ${localStorage.getItem("authToken") || ""}`, // Example
+          },
+        },
+      );
+
+      if (!response.ok) {
+        let errorMsg = `Failed to remove agent: ${response.statusText}`;
+        try {
+          const errorBody = await response.json();
+          if (
+            errorBody &&
+            typeof errorBody === "object" &&
+            "error" in errorBody &&
+            typeof (errorBody as any).error === "string"
+          ) {
+            errorMsg = (errorBody as any).error;
+          }
+        } catch (e) {
+          throw new Error(errorMsg);
+        }
+      }
+
+      // Update local state on success
       setTokenAgents((prev) =>
-        prev.filter((agent) => agent.twitterUserName !== twitterUserName),
+        prev.filter((agent) => agent.id !== agentToRemove.id),
       );
 
       toast.success("Agent removed successfully");
@@ -339,6 +399,8 @@ export default function CommunityTab() {
       toast.error(
         `Failed to remove agent: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
+      // Rollback optimistic update if used
+      // setTokenAgents(previousAgents);
     }
   };
 
@@ -383,6 +445,10 @@ export default function CommunityTab() {
               `Failed to connect agent: ${error instanceof Error ? error.message : "Unknown error"}`,
             );
           }
+        } else {
+          toast.error(
+            "Twitter credentials not found after authentication. Please try again.",
+          );
         }
       } else {
         toast.warning(
@@ -396,7 +462,7 @@ export default function CommunityTab() {
       // Clean up URL
       window.history.replaceState({}, "", window.location.pathname);
     }
-  }, [tokenMint]);
+  }, [tokenMint, connectTwitterAgent]); // Add connectTwitterAgent to dependencies
 
   return (
     <div className="w-full flex-shrink-0 h-fit p-4">
@@ -455,7 +521,8 @@ export default function CommunityTab() {
                       {publicKey &&
                         agent.ownerAddress === publicKey.toBase58() && (
                           <button
-                            onClick={() => removeAgent(agent.twitterUserName)}
+                            // ** CHANGE: Pass the whole agent object **
+                            onClick={() => removeAgent(agent)}
                             title="Remove agent"
                             className="text-red-500 hover:text-red-400 p-1"
                           >

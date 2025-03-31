@@ -1,21 +1,12 @@
-import { useWallet } from "@solana/wallet-adapter-react";
-import { useEffect, useRef, useState } from "react";
-import Button from "./button";
-import { shortenAddress } from "@/utils";
-import {
-  ChevronDown,
-  Copy,
-  DollarSign,
-  LogOut,
-  User,
-  Trophy,
-  Wallet,
-} from "lucide-react";
-import { useNavigate } from "react-router";
-import { useWalletModal } from "@/hooks/use-wallet-modal";
 import useAuthentication from "@/hooks/use-authentication";
 import { useUser } from "@/hooks/use-user";
-import { useSolPriceContext } from "@/providers/use-sol-price-context";
+import { useWalletModal } from "@/hooks/use-wallet-modal";
+import { shortenAddress } from "@/utils";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { ChevronDown, Copy, LogOut, Trophy, User } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
+import Button from "./button";
 
 const WalletButton = () => {
   const navigate = useNavigate();
@@ -23,7 +14,6 @@ const WalletButton = () => {
   const { setVisible } = useWalletModal();
   const { isAuthenticated, signOut } = useAuthentication();
   const { user } = useUser();
-  const { solPrice } = useSolPriceContext();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);

@@ -207,12 +207,13 @@ CREATE TABLE IF NOT EXISTS token_agents (
   id TEXT PRIMARY KEY,
   token_mint TEXT NOT NULL,
   owner_address TEXT NOT NULL,
+  twitter_user_id TEXT NOT NULL,
   twitter_user_name TEXT NOT NULL,
   twitter_image_url TEXT NOT NULL,
   official INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL DEFAULT (unixepoch()),
   FOREIGN KEY (token_mint) REFERENCES tokens(mint),
-  UNIQUE(token_mint, twitter_user_name)
+  UNIQUE(token_mint, twitter_user_id)
 );
 
 -- Create indexes for better performance
@@ -240,4 +241,5 @@ CREATE INDEX IF NOT EXISTS idx_cache_prices_expires ON cache_prices(expires_at);
 -- Create indexes for token_agents
 CREATE INDEX IF NOT EXISTS idx_token_agents_mint ON token_agents(token_mint);
 CREATE INDEX IF NOT EXISTS idx_token_agents_owner ON token_agents(owner_address);
-CREATE INDEX IF NOT EXISTS idx_token_agents_official ON token_agents(official); 
+CREATE INDEX IF NOT EXISTS idx_token_agents_official ON token_agents(official);
+CREATE INDEX IF NOT EXISTS idx_token_agents_user_id ON token_agents(twitter_user_id); 

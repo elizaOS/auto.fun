@@ -1,13 +1,13 @@
-import { useForm, Controller } from "react-hook-form";
 import { FormInput } from "@/pages/create";
-import CopyButton from "../copy-button";
-import { Icons } from "../icons";
 import { isFromDomain } from "@/utils";
-import { useEffect, useState } from "react";
-import { useParams, useLocation } from "react-router-dom";
-import { toast } from "react-toastify";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
+import { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { useLocation, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
+import CopyButton from "../copy-button";
+import { Icons } from "../icons";
 
 type FormData = {
   links: {
@@ -31,17 +31,12 @@ interface TokenData {
   [key: string]: any; // For other properties that might exist
 }
 
-// Add a development flag to force admin mode
-// This overrides normal authentication for testing purposes
-const DEV_FORCE_ADMIN = true; // Only for development/testing
-
 export default function AdminTab() {
   const { mint: urlTokenMint } = useParams<{ mint: string }>();
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [tokenData, setTokenData] = useState<TokenData | null>(null);
   const [detectedError, setDetectedError] = useState<string | null>(null);
   const { publicKey, connected } = useWallet();
 
@@ -113,7 +108,7 @@ export default function AdminTab() {
       try {
         console.log(`Fetching token data for mint: ${mint}`);
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/tokens/${mint}`,
+          `${import.meta.env.VITE_API_URL}/api/token/${mint}`,
         );
 
         console.log("Token data response status:", response.status);
@@ -123,7 +118,6 @@ export default function AdminTab() {
         }
 
         const data = (await response.json()) as TokenData;
-        setTokenData(data);
 
         console.log("Token data fetched:", data);
         console.log("Token creator address:", data.creator);
@@ -194,25 +188,9 @@ export default function AdminTab() {
     fetchTokenData();
   }, [mint, reset, publicKey]);
 
-  // Force admin mode for development if flag is set
-  useEffect(() => {
-    if (import.meta.env.DEV && DEV_FORCE_ADMIN) {
-      console.log(
-        "DEVELOPMENT MODE: Forcing admin mode due to DEV_FORCE_ADMIN flag",
-      );
-      setIsAdmin(true);
-    }
-  }, []);
-
   const onSubmit = async (data: FormData) => {
     if (!mint) {
       toast.error("No token ID found");
-      return;
-    }
-
-    // Skip admin check in dev mode with force flag
-    if (!isAdmin && !(import.meta.env.DEV && DEV_FORCE_ADMIN)) {
-      toast.error("You must be the token creator to edit these settings");
       return;
     }
 
@@ -241,18 +219,8 @@ export default function AdminTab() {
         discord: data.links.discord,
       };
 
-      // Add development overrides if needed
-      if (import.meta.env.DEV && DEV_FORCE_ADMIN) {
-        payload._forceAdmin = true;
-        if (publicKey) {
-          payload._devWalletOverride = publicKey.toString();
-        }
-      }
-
-      console.log("Request payload:", payload);
-
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/tokens/${mint}/update`,
+        `${import.meta.env.VITE_API_URL}/api/token/${mint}/update`,
         {
           method: "POST",
           headers,
@@ -292,23 +260,6 @@ export default function AdminTab() {
       </div>
     );
   }
-
-  // Add debug information in dev mode
-  const debugInfo = import.meta.env.DEV && (
-    <div className="text-xs text-gray-500 mt-2 p-2 border border-gray-700 rounded mb-4">
-      <div>Token Mint: {mint || "Not detected"}</div>
-      <div>Wallet connected: {connected ? "Yes" : "No"}</div>
-      <div>Wallet address: {publicKey?.toString() || "None"}</div>
-      <div>Token creator: {tokenData?.creator || "Unknown"}</div>
-      <div>Is admin: {isAdmin ? "Yes" : "No"}</div>
-      <button
-        onClick={() => setIsAdmin(!isAdmin)}
-        className="mt-1 text-xs bg-gray-700 px-2 py-1 rounded"
-      >
-        Toggle Admin (DEV ONLY)
-      </button>
-    </div>
-  );
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 p-4">

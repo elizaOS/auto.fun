@@ -235,7 +235,7 @@ describe("Token API Endpoints", () => {
         discord: "test-discord",
         agentLink: "",
       },
-      initial_sol: 0.1, // Adding initial sol to simulate frontend behavior
+      initialSol: 0.1, // Adding initial sol to simulate frontend behavior
     };
 
     // Now simulate the token creation with the transaction
@@ -266,7 +266,7 @@ describe("Token API Endpoints", () => {
       metadataUrl: "https://example.com/metadata.json", // Mock metadata URL for testing
 
       // Initial liquidity information
-      initial_sol: tokenMetadata.initial_sol,
+      initialSol: tokenMetadata.initialSol,
 
       // Transaction details
       transaction: {
@@ -451,7 +451,7 @@ describe("Token API Endpoints", () => {
     const { baseUrl } = ctx.context;
 
     const { response, data } = await fetchWithAuth<{ token: any; agent: any }>(
-      apiUrl(baseUrl, `/tokens/${testState.tokenPubkey}`),
+      apiUrl(baseUrl, `/token/${testState.tokenPubkey}`),
       "GET",
     );
 
@@ -502,7 +502,7 @@ describe("Token API Endpoints", () => {
       page: number;
       totalPages: number;
       total: number;
-    }>(apiUrl(baseUrl, `/tokens/${testState.tokenPubkey}/holders`), "GET");
+    }>(apiUrl(baseUrl, `/token/${testState.tokenPubkey}/holders`), "GET");
 
     expect(response.status).toBe(200);
     expect(data).toHaveProperty("holders");
@@ -754,13 +754,13 @@ describe("Token API Endpoints", () => {
     const headers = {};
 
     console.log(
-      `Fetching GET ${apiUrl(baseUrl, `/tokens/${testState.tokenPubkey}/harvest-tx?owner=${owner}`)}`,
+      `Fetching GET ${apiUrl(baseUrl, `/token/${testState.tokenPubkey}/harvest-tx?owner=${owner}`)}`,
     );
 
     const { response, data } = await fetchWithAuth(
       apiUrl(
         baseUrl,
-        `/tokens/${testState.tokenPubkey}/harvest-tx?owner=${owner}`,
+        `/token/${testState.tokenPubkey}/harvest-tx?owner=${owner}`,
       ),
       "GET",
       undefined,

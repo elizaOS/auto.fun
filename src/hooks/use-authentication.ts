@@ -5,8 +5,6 @@ import { useEffect, useCallback, useState } from "react";
 import bs58 from "bs58";
 import { isTokenExpired } from "@/utils/auth";
 
-const checkStatusCalled = false;
-
 // Helper to sanitize tokens (remove quotes if present)
 const sanitizeToken = (token: string | null): string | null => {
   if (!token) return null;
@@ -14,22 +12,6 @@ const sanitizeToken = (token: string | null): string | null => {
     return token.slice(1, -1);
   }
   return token;
-};
-
-// Basic JWT parsing to extract the expiration time
-const getJwtExpiration = (token: string): number | null => {
-  try {
-    // JWT has three parts separated by dots: header.payload.signature
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-
-    // Decode the payload (second part)
-    const payload = JSON.parse(atob(parts[1]));
-    return payload.exp ? payload.exp * 1000 : null; // Convert seconds to milliseconds
-  } catch (error) {
-    console.error("Failed to parse JWT token:", error);
-    return null;
-  }
 };
 
 export default function useAuthentication() {
@@ -50,12 +32,6 @@ export default function useAuthentication() {
     },
     [setStoredToken],
   );
-
-  // Check if the token is valid (not expired)
-  const isValidToken = useCallback(() => {
-    if (!authToken) return false;
-    return !isTokenExpired(authToken);
-  }, [authToken]);
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 

@@ -896,7 +896,7 @@ export const Create = () => {
     symbol: "",
     description: "",
     prompt: "",
-    initial_sol: "2",
+    initialSol: "2",
     links: {
       twitter: "",
       telegram: "",
@@ -929,12 +929,16 @@ export const Create = () => {
     string | null
   >(null);
 
-  const [buyValue, setBuyValue] = useState(form.initial_sol || 0);
+  const [buyValue, setBuyValue] = useState(form.initialSol || 0);
   const wallet = useWallet();
+  console.log("wallet", wallet);
   const balance = useTokenBalance(
     wallet.publicKey?.toBase58() || "",
     "So11111111111111111111111111111111111111111",
   );
+
+  console.log("balance", balance);
+
   const { solPrice } = useSolPriceContext();
 
   // Calculate max SOL the user can spend (leave 0.05 SOL for transaction fees)
@@ -948,6 +952,9 @@ export const Create = () => {
   // const solValueUsd =
   //   solPrice && buyValue ? (Number(buyValue) * solPrice).toFixed(2) : "0.00";
 
+  console.log("buyValue", buyValue);
+  console.log("balance", balance?.data?.formattedBalance);
+
   const insufficientBalance =
     Number(buyValue) > Number(balance?.data?.formattedBalance || 0) - 0.05;
   // Error state
@@ -956,7 +963,7 @@ export const Create = () => {
     symbol: "",
     description: "",
     prompt: "",
-    initial_sol: "",
+    initialSol: "",
     userPrompt: "",
     importAddress: "",
     percentage: "",
@@ -1026,11 +1033,11 @@ export const Create = () => {
 
   // Keep SOL and percentage values in sync
   useEffect(() => {
-    // Update buyValue when form.initial_sol changes
-    if (form.initial_sol !== buyValue.toString()) {
-      setBuyValue(form.initial_sol);
+    // Update buyValue when form.initialSol changes
+    if (form.initialSol !== buyValue.toString()) {
+      setBuyValue(form.initialSol);
     }
-  }, [form.initial_sol]);
+  }, [form.initialSol]);
 
   // Handle tab switching
   const handleTabChange = (tab: FormTab) => {
@@ -1085,7 +1092,7 @@ export const Create = () => {
       symbol: "",
       description: "",
       prompt: "",
-      initial_sol: "",
+      initialSol: "",
       userPrompt: "",
       importAddress: "",
       percentage: "",
@@ -1131,18 +1138,18 @@ export const Create = () => {
       }
     }
 
-    // Validate initial_sol
-    if (field === "initial_sol" && value) {
+    // Validate initialSol
+    if (field === "initialSol" && value) {
       const numValue = parseFloat(value);
       if (numValue < 0 || numValue > MAX_INITIAL_SOL) {
         setErrors((prev) => ({
           ...prev,
-          initial_sol: `Max initial SOL is ${MAX_INITIAL_SOL}`,
+          initialSol: `Max initial SOL is ${MAX_INITIAL_SOL}`,
         }));
       } else {
         setErrors((prev) => ({
           ...prev,
-          initial_sol: "",
+          initialSol: "",
         }));
       }
     }
@@ -1612,7 +1619,7 @@ export const Create = () => {
     !errors.name &&
     !errors.symbol &&
     !errors.description &&
-    !errors.initial_sol;
+    !errors.initialSol;
 
   // Update coinDropImageUrl directly when we have a preview URL
   const handlePreviewChange = useCallback((previewUrl: string | null) => {
@@ -1902,7 +1909,7 @@ export const Create = () => {
         name: form.name,
         symbol: form.symbol,
         description: form.description,
-        initialSol: parseFloat(form.initial_sol) || 0,
+        initialSol: parseFloat(form.initialSol) || 0,
         links: {
           ...form.links,
           agentLink: "", // Add empty agentLink
@@ -2052,7 +2059,7 @@ export const Create = () => {
 
     // Validate SOL balance
     if (insufficientBalance) {
-      newErrors.initial_sol =
+      newErrors.initialSol =
         "Insufficient SOL balance (need 0.05 SOL for fees)";
       toast.error("You don't have enough SOL to create this token");
     }
@@ -2062,7 +2069,7 @@ export const Create = () => {
       newErrors.name ||
       newErrors.symbol ||
       newErrors.description ||
-      newErrors.initial_sol
+      newErrors.initialSol
     ) {
       setErrors(newErrors);
       return;
@@ -2635,7 +2642,7 @@ export const Create = () => {
                             value = maxInputSol.toString();
                           }
 
-                          handleChange("initial_sol", value);
+                          handleChange("initialSol", value);
                           setBuyValue(value);
                         }}
                         min="0"

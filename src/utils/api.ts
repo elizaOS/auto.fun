@@ -86,7 +86,7 @@ export const getToken = async ({
   address: string;
   bypassCache?: boolean;
 }) => {
-  const endpoint = `/api/tokens/${address}`;
+  const endpoint = `/api/token/${address}`;
 
   try {
     console.log(
@@ -153,7 +153,7 @@ export const getTokenHolders = async ({
   bypassCache?: boolean;
 }) => {
   try {
-    const endpoint = `/api/tokens/${address}/holders`;
+    const endpoint = `/api/token/${address}/holders`;
     console.log(
       `Fetching holders for ${address} (bypass_cache: ${bypassCache})`,
     );
@@ -167,7 +167,7 @@ export const getTokenHolders = async ({
 
 export const refreshTokenHolders = async ({ address }: { address: string }) => {
   try {
-    const data = await fetcher(`/api/tokens/${address}/refresh-holders`, "GET");
+    const data = await fetcher(`/api/token/${address}/refresh-holders`, "GET");
     return data;
   } catch (error) {
     console.error(`Error refreshing token holders: ${error}`);

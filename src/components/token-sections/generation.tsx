@@ -1,10 +1,9 @@
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Trash2, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import Button from "../button";
-import { Badge } from "../ui/badge";
 
 // --- API Base URL ---
 const API_BASE_URL = import.meta.env.VITE_API_URL || ""; // Ensure fallback
@@ -12,7 +11,6 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || ""; // Ensure fallback
 // Storage keys for Twitter auth
 const STORAGE_KEY = "twitter-oauth-token";
 const PENDING_SHARE_KEY = "pending-twitter-share";
-const AGENT_INTENT_KEY = "connect_agent_intent";
 const OAUTH_REDIRECT_ORIGIN_KEY = "OAUTH_REDIRECT_ORIGIN"; // Key for storing the original path
 
 // Types for Twitter authentication
@@ -37,22 +35,6 @@ interface TokenInfoResponse {
   // Add other expected fields if needed
 }
 
-interface TokenAgentsResponse {
-  agents: TokenAgent[];
-  // Add other expected fields if needed
-}
-// --- End Expected API Response Types ---
-
-interface TokenAgent {
-  id?: string;
-  tokenMint: string;
-  ownerAddress: string;
-  twitterUserName: string;
-  twitterImageUrl: string;
-  official: boolean;
-  createdAt?: number;
-}
-
 export default function CommunityTab() {
   type ICommunityTabs = "Image" | "Audio";
   const [communityTab, setCommunityTab] = useState<ICommunityTabs>("Image");
@@ -67,7 +49,6 @@ export default function CommunityTab() {
   const [shareError, setShareError] = useState<string | null>(null);
   const [twitterCredentials, setTwitterCredentials] =
     useState<TwitterCredentials | null>(null);
-  const [isConnectingAgent, setIsConnectingAgent] = useState(false);
 
   // --- Modal State ---
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -80,15 +61,6 @@ export default function CommunityTab() {
     name: string;
     symbol: string;
   } | null>(null);
-  const [isInfoLoading, setIsInfoLoading] = useState(false);
-  const [infoError, setInfoError] = useState<string | null>(null);
-  // --- End Token Info State ---
-
-  // --- Token Agents State ---
-  const [tokenAgents, setTokenAgents] = useState<TokenAgent[]>([]);
-  const [isAgentsLoading, setIsAgentsLoading] = useState(false);
-  const [agentsError, setAgentsError] = useState<string | null>(null);
-  // --- End Token Agents State ---
 
   // Get token mint from URL params with better fallback logic
   const { mint: urlTokenMint } = useParams<{ mint: string }>();
@@ -139,15 +111,8 @@ export default function CommunityTab() {
       if (!tokenMint || !API_BASE_URL) {
         console.log("Skipping fetch: No tokenMint or API_BASE_URL");
         setTokenInfo(null);
-        setTokenAgents([]);
         return; // Don't fetch if mint is not available
       }
-
-      // Reset states
-      setIsInfoLoading(true);
-      setIsAgentsLoading(true);
-      setInfoError(null);
-      setAgentsError(null);
 
       try {
         // Fetch Token Info
@@ -167,53 +132,13 @@ export default function CommunityTab() {
         console.log("Token info received:", infoData);
       } catch (error) {
         console.error("Error fetching token info:", error);
-        setInfoError(
-          error instanceof Error
-            ? error.message
-            : "Unknown error fetching info",
-        );
         setTokenInfo(null);
-      } finally {
-        setIsInfoLoading(false);
-      }
-
-      try {
-        // Fetch Token Agents
-        console.log(`Fetching token agents for ${tokenMint}...`);
-        const agentsResponse = await fetch(
-          `${API_BASE_URL}/api/token/${tokenMint}`,
-        );
-        if (!agentsResponse.ok) {
-          throw new Error(
-            `Failed to fetch token agents: ${agentsResponse.statusText}`,
-          );
-        }
-        const agentsData = (await agentsResponse.json()) as TokenAgentsResponse;
-        // TODO: Add validation here (e.g., using Zod)
-        setTokenAgents(agentsData.agents || []); // Assuming API returns { agents: [...] }
-        console.log("Token agents received:", agentsData.agents);
-      } catch (error) {
-        console.error("Error fetching token agents:", error);
-        setAgentsError(
-          error instanceof Error
-            ? error.message
-            : "Unknown error fetching agents",
-        );
-        setTokenAgents([]);
-      } finally {
-        setIsAgentsLoading(false);
       }
     };
 
     fetchTokenData();
   }, [tokenMint]); // Re-fetch when tokenMint changes
   // --- End Fetch Real Token Info & Agents ---
-
-  // Current user address - would be from wallet in real implementation
-  const currentUserAddress = publicKey?.toString() || "UserAddress456";
-
-  // In a real implementation, this would be fetched from the API
-  const tokenCreatorAddress = "TokenCreatorAddress123";
 
   // Check for Twitter credentials on mount
   useEffect(() => {
@@ -320,7 +245,7 @@ export default function CommunityTab() {
   // const fetchTokenAgents = async (mint: string) => {
   //   try {
   //     // In a real implementation, this would be an API call
-  //     // const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tokens/${mint}/agents`);
+  //     // const response = await fetch(`${import.meta.env.VITE_API_URL}/api/token/${mint}/agents`);
   //     // if (response.ok) {
   //     //   const agents = await response.json();
   //     //   setTokenAgents(agents);
@@ -827,201 +752,6 @@ export default function CommunityTab() {
       throw error;
     }
   };
-
-  // Connect Twitter function for agent
-  const connectTwitter = async () => {
-    // Verify we have a token mint
-    if (!tokenMint) {
-      toast.error("No token mint found, cannot connect agent");
-      return;
-    }
-
-    try {
-      setIsConnectingAgent(true);
-
-      // If we already have credentials, connect the agent
-      if (twitterCredentials && twitterCredentials.expiresAt > Date.now()) {
-        await connectTwitterAgent(twitterCredentials);
-      } else {
-        console.log(
-          "Not authenticated, storing intent and redirecting for agent connection.",
-        );
-        // Store the intent to connect agent and the token mint
-        localStorage.setItem(AGENT_INTENT_KEY, tokenMint);
-
-        // Store the current path before redirecting
-        const currentPath =
-          window.location.pathname +
-          window.location.search +
-          window.location.hash;
-        localStorage.setItem(OAUTH_REDIRECT_ORIGIN_KEY, currentPath);
-        console.log("Stored origin path for redirect:", currentPath);
-
-        // Redirect to OAuth
-        const apiUrl = import.meta.env.VITE_API_URL;
-        if (!apiUrl) {
-          throw new Error("API URL is not configured");
-        }
-
-        window.location.href = `${apiUrl}/api/share/oauth/request_token`;
-      }
-    } catch (error) {
-      console.error("Error connecting Twitter account:", error);
-      toast.error(
-        `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-    } finally {
-      setIsConnectingAgent(false);
-    }
-  };
-
-  // Connect Twitter agent with credentials
-  const connectTwitterAgent = async (creds: TwitterCredentials) => {
-    if (!tokenMint) {
-      toast.error("No token mint found, cannot connect agent");
-      return;
-    }
-
-    try {
-      // 1. Fetch the user's Twitter profile
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/share/process`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${creds.accessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ userId: creds.userId }),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch Twitter profile");
-      }
-
-      const data = (await response.json()) as {
-        twitterUserId: string;
-        tweets?: any[];
-      };
-
-      // 2. Check if this Twitter account is already connected to this token
-      const existingAgent = tokenAgents.find(
-        (agent) =>
-          agent.twitterUserName === `@twitter_user_${data.twitterUserId}`,
-      );
-
-      if (existingAgent) {
-        throw new Error(
-          "This Twitter account is already connected to this token",
-        );
-      }
-
-      // 3. In a real implementation, we would make an API call to create a new agent
-      // const createResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/tokens/${tokenMint}/agents`, {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({
-      //     ownerAddress: currentUserAddress,
-      //     twitterUserName: `@twitter_user_${data.twitterUserId}`,
-      //     twitterImageUrl: "/degen.jpg",
-      //   }),
-      // });
-
-      // For now, we'll just add to our local state
-      const newAgent: TokenAgent = {
-        id: `agent-${Date.now()}`,
-        tokenMint,
-        ownerAddress: currentUserAddress,
-        twitterUserName: `@twitter_user_${data.twitterUserId}`,
-        twitterImageUrl: "/degen.jpg", // Would use the actual profile image
-        official: currentUserAddress === tokenCreatorAddress,
-        createdAt: Date.now(),
-      };
-
-      setTokenAgents((prev) => [...prev, newAgent]);
-
-      toast.success("Twitter account successfully connected as an agent!");
-    } catch (error) {
-      console.error("Failed to connect Twitter agent:", error);
-      toast.error(
-        `Failed to connect: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-    }
-  };
-
-  // Remove agent function
-  const removeAgent = async (twitterUserName: string) => {
-    try {
-      // In a real implementation, we would call an API to remove the agent
-      // await fetch(`${import.meta.env.VITE_API_URL}/api/tokens/${tokenMint}/agents/${agentId}`, {
-      //   method: "DELETE"
-      // });
-
-      // For now, just update local state
-      setTokenAgents((prev) =>
-        prev.filter((agent) => agent.twitterUserName !== twitterUserName),
-      );
-
-      toast.success("Agent removed successfully");
-    } catch (error) {
-      console.error("Error removing agent:", error);
-      toast.error(
-        `Failed to remove agent: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-    }
-  };
-
-  // Check if the callback is from a connect agent intent
-  useEffect(() => {
-    const storedMint = localStorage.getItem(AGENT_INTENT_KEY);
-    if (!storedMint) return;
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const freshAuth = urlParams.get("fresh_auth") === "true";
-
-    if (freshAuth && storedMint) {
-      console.log("Processing agent connection after OAuth callback");
-
-      // Make sure the stored mint matches the current page's token mint
-      if (storedMint === tokenMint) {
-        // Get the Twitter credentials
-        const storedCreds = localStorage.getItem(STORAGE_KEY);
-        if (storedCreds) {
-          try {
-            const parsedCreds = JSON.parse(storedCreds) as TwitterCredentials;
-            setTwitterCredentials(parsedCreds);
-
-            // Use setTimeout to avoid potential stack issues
-            setTimeout(() => {
-              console.log("Connecting Twitter agent after authentication");
-              connectTwitterAgent(parsedCreds).catch((error) => {
-                console.error("Error connecting agent:", error);
-                toast.error(
-                  `Failed to connect agent: ${error instanceof Error ? error.message : "Unknown error"}`,
-                );
-              });
-            }, 100);
-          } catch (error) {
-            console.error("Failed to process agent connection", error);
-            toast.error(
-              `Failed to connect agent: ${error instanceof Error ? error.message : "Unknown error"}`,
-            );
-          }
-        }
-      } else {
-        toast.warning(
-          `Attempted to connect agent to wrong token. Please try again.`,
-        );
-      }
-
-      // Clean up intent
-      localStorage.removeItem(AGENT_INTENT_KEY);
-
-      // Clean up URL
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-  }, [tokenMint]);
 
   // Add download functionality
   const downloadImage = useCallback(async () => {

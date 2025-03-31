@@ -3,9 +3,14 @@ import Button from "@/components/button";
 import CopyButton from "@/components/copy-button";
 import Loader from "@/components/loader";
 import SkeletonImage from "@/components/skeleton-image";
+import AdminSection from "@/components/token-sections/admin";
+import AgentsSection from "@/components/token-sections/agents";
+import GenerationSection from "@/components/token-sections/generation";
 import TokenStatus from "@/components/token-status";
 import Trade from "@/components/trade";
+import { TradingViewChart } from "@/components/trading-view-chart";
 import TransactionsAndHolders from "@/components/txs-and-holders";
+import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { IToken } from "@/types";
 import {
   abbreviateNumber,
@@ -18,17 +23,11 @@ import {
 } from "@/utils";
 import { getToken } from "@/utils/api";
 import { fetchTokenMarketMetrics } from "@/utils/blockchain";
-import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, Info as InfoCircle } from "lucide-react";
-import { Globe } from "lucide-react";
-import { Link, useParams } from "react-router";
-import { TradingViewChart } from "@/components/trading-view-chart";
-import { useEffect, useState } from "react";
 import { getSocket } from "@/utils/socket";
-import GenerationSection from "@/components/token-sections/generation";
-import AdminSection from "@/components/token-sections/admin";
-import AgentsSection from "@/components/token-sections/agents";
-import { useSolPriceContext } from "@/providers/use-sol-price-context";
+import { useQuery } from "@tanstack/react-query";
+import { ExternalLink, Globe, Info as InfoCircle } from "lucide-react";
+import { useEffect } from "react";
+import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
 
 const socket = getSocket();
@@ -37,9 +36,6 @@ export default function Page() {
   const params = useParams();
   const address = params?.address;
   const { solPrice: contextSolPrice } = useSolPriceContext();
-
-  type ITabs = "Trading" | "Community" | "Admin";
-  const [tab, setTab] = useState<ITabs>("Trading");
 
   // Fetch token details from API
   const tokenQuery = useQuery({
@@ -216,8 +212,6 @@ export default function Page() {
       </div>
     );
   }
-
-  const admin = true;
 
   return (
     <div className="flex flex-wrap gap-3">
