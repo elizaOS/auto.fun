@@ -817,6 +817,48 @@ export async function getFeaturedMaxValues(db: any) {
 }
 
 /**
+ * Creates a SQL expression for calculating the weighted featured score
+ * 
+ * @param maxVolume Maximum volume value for normalization
+ * @param maxHolders Maximum holder count for normalization
+ * @returns SQL expression for calculating the weighted score
+ */
+export function getFeaturedScoreExpression(maxVolume: number, maxHolders: number) {
+  // Use provided max values, defaulting to 1 to avoid division by zero
+  const normalizedMaxVolume = maxVolume || 1;
+  const normalizedMaxHolders = maxHolders || 1;
+
+  // Return the weighted score SQL expression
+  return sql`(
+    (COALESCE(${tokens.volume24h}, 0) / ${normalizedMaxVolume} * 0.7) + 
+    (COALESCE(${tokens.holderCount}, 0) / ${normalizedMaxHolders} * 0.3)
+  )`;
+}
+
+/**
+ * Calculates the weighted score for a token using JavaScript
+ * This function matches the SQL logic for consistency
+ * 
+ * @param token Token object with volume24h and holderCount properties
+ * @param maxVolume Maximum volume value for normalization
+ * @param maxHolders Maximum holder count for normalization
+ * @returns Calculated weighted score
+ */
+export function calculateFeaturedScore(
+  token: { volume24h?: number | null; holderCount?: number | null },
+  maxVolume: number,
+  maxHolders: number
+): number {
+  const normalizedMaxVolume = maxVolume || 1;
+  const normalizedMaxHolders = maxHolders || 1;
+  
+  const volume = token.volume24h || 0;
+  const holders = token.holderCount || 0;
+  
+  return (volume / normalizedMaxVolume * 0.7) + (holders / normalizedMaxHolders * 0.3);
+}
+
+/**
  * Applies a weighted sort for the "featured" tokens
  * Uses 70% weight on volume24h and 30% weight on holderCount
  *
@@ -832,21 +874,11 @@ export function applyFeaturedSort(
   maxHolders: number,
   sortOrder: string,
 ) {
-  // Use provided max values, defaulting to 1 to avoid division by zero
-  const normalizedMaxVolume = maxVolume || 1;
-  const normalizedMaxHolders = maxHolders || 1;
+  const featuredScore = getFeaturedScoreExpression(maxVolume, maxHolders);
 
-  // Calculate weighted score as a SQL expression
-  const weightedScore = sql`(
-    (COALESCE(${tokens.volume24h}, 0) / ${normalizedMaxVolume} * 0.7) + 
-    (COALESCE(${tokens.holderCount}, 0) / ${normalizedMaxHolders} * 0.3)
-  )`;
-
-  // Instead of reassigning tokensQuery, return the result of method chaining
-  // This preserves the query builder's type better
   if (sortOrder.toLowerCase() === "desc") {
-    return tokensQuery.orderBy(desc(weightedScore));
+    return tokensQuery.orderBy(desc(featuredScore));
   } else {
-    return tokensQuery.orderBy(weightedScore);
+    return tokensQuery.orderBy(featuredScore);
   }
 }
