@@ -157,7 +157,7 @@ const WalletButton = () => {
       <div className="relative" ref={dropdownRef}>
         <Button
           size="large"
-          className="px-2"
+          className="px-3"
           onClick={() => setMenuOpen(!menuOpen)}
         >
           <div className="flex items-center gap-2.5 justify-between m-auto">

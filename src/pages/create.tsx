@@ -442,7 +442,7 @@ const FormImageInput = ({
               <button
                 type="button"
                 onClick={handleRemoveImage}
-                className="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-700 transition-all"
+                className="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-700 transition-all z-10"
               >
                 ✕
               </button>
@@ -855,16 +855,7 @@ export const Create = () => {
             });
           } else {
             // Success message - different in dev mode if not the creator
-            const message =
-              !tokenData.isCreator &&
-              !(
-                tokenData.updateAuthority === publicKey.toString() ||
-                (tokenData.creators &&
-                  tokenData.creators.includes(publicKey.toString()))
-              )
-                ? "Development Mode: You can register this token without being the creator wallet."
-                : "You are connected with the creator wallet. You can now register this token.";
-
+            const message = "Successfully loaded token data for " + tokenData.name;
             setImportStatus({
               type: "success",
               message,
@@ -1113,14 +1104,15 @@ export const Create = () => {
       setHasStoredToken(false);
     }
 
-    // When switching to Manual mode, clear the image if coming from Auto
-    if (tab === FormTab.MANUAL && activeTab === FormTab.AUTO) {
+    // When switching to Manual mode, clear the image regardless of previous tab
+    if (tab === FormTab.MANUAL) {
       // Clear the imageFile state
       setImageFile(null);
       // Clear the preview in FormImageInput
       if (previewSetterRef.current) {
         previewSetterRef.current(null);
       }
+      setCoinDropImageUrl(null);
     }
 
     setActiveTab(tab);
@@ -1574,14 +1566,6 @@ export const Create = () => {
               (tokenData.creators &&
                 tokenData.creators.includes(publicKey.toString()));
 
-        if (!isCreatorWallet) {
-          // Show a message that they need to switch wallets
-          setImportStatus({
-            type: "warning",
-            message:
-              "Please connect with the token's creator wallet to register it. The form below has been populated with the token data.",
-          });
-        } else {
           // Success message - ready to register
           const message = !isCreatorWallet
             ? "Development Mode: You can register this token without being the creator wallet."
@@ -1591,7 +1575,6 @@ export const Create = () => {
             type: "success",
             message,
           });
-        }
       } catch (fetchError) {
         console.error("API Error:", fetchError);
 
@@ -1854,11 +1837,11 @@ export const Create = () => {
           console.log("Token update authority:", tokenData.updateAuthority);
           console.log("Token creators:", tokenData.creators);
 
-          if (!isCreatorNow) {
-            throw new Error(
-              "You need to connect with the token's creator wallet to register it",
-            );
-          }
+          // if (!isCreatorNow) {
+          //   throw new Error(
+          //     "You need to connect with the token's creator wallet to register it",
+          //   );
+          // }
 
           // For imported tokens, create a token entry in the database
           console.log(
@@ -2250,16 +2233,41 @@ export const Create = () => {
         previewSetterRef.current(autoForm.imageUrl);
         setCoinDropImageUrl(autoForm.imageUrl);
       }
-    } else if (activeTab === FormTab.MANUAL && manualForm.imageFile) {
-      // When switching to Manual, create a new object URL from manual imageFile
-      const manualImageUrl = URL.createObjectURL(manualForm.imageFile);
-      setImageFile(manualForm.imageFile);
-      if (previewSetterRef.current) {
-        previewSetterRef.current(manualImageUrl);
+    } else if (activeTab === FormTab.MANUAL) {
+      // Manual mode should always start clean (image was already cleared in handleTabChange)
+      // Only set the image if manualForm has an imageFile from previous Manual session
+      if (manualForm.imageFile) {
+        const manualImageUrl = URL.createObjectURL(manualForm.imageFile);
+        setImageFile(manualForm.imageFile);
+        if (previewSetterRef.current) {
+          previewSetterRef.current(manualImageUrl);
+        }
+        setCoinDropImageUrl(manualImageUrl);
+      } else {
+        // Ensure everything is cleared for Manual mode
+        setImageFile(null);
+        if (previewSetterRef.current) {
+          previewSetterRef.current(null);
+        }
+        setCoinDropImageUrl(null);
       }
-      setCoinDropImageUrl(manualImageUrl);
+    } else if (activeTab === FormTab.IMPORT && hasStoredToken) {
+      // Import tab should only set image from stored token data
+      const storedTokenData = localStorage.getItem("import_token_data");
+      if (storedTokenData) {
+        try {
+          const tokenData = JSON.parse(storedTokenData) as TokenSearchData;
+          // Set the image if available
+          if (tokenData.image && previewSetterRef.current) {
+            previewSetterRef.current(tokenData.image);
+            setCoinDropImageUrl(tokenData.image);
+          }
+        } catch (error) {
+          console.error("Error parsing stored token data:", error);
+        }
+      }
     }
-  }, [activeTab, autoForm.imageUrl, manualForm.imageFile]);
+  }, [activeTab, autoForm.imageUrl, manualForm.imageFile, hasStoredToken]);
 
   // Update manualForm when imageFile changes in Manual mode
   useEffect(() => {
@@ -2288,6 +2296,31 @@ export const Create = () => {
   const calculatePercentage = (tokenAmount: number): number => {
     return (tokenAmount / TOKEN_SUPPLY) * 100;
   };
+
+  // Cleanup object URLs when component unmounts or when URL changes
+  useEffect(() => {
+    // Store created URLs for cleanup
+    const createdUrls: string[] = [];
+    
+    return () => {
+      // Cleanup any object URLs to prevent memory leaks
+      createdUrls.forEach(url => {
+        URL.revokeObjectURL(url);
+      });
+    };
+  }, []);
+
+  // Additional cleanup for autoForm.imageUrl when it changes
+  useEffect(() => {
+    const prevImageUrl = autoForm.imageUrl;
+    
+    return () => {
+      // Only cleanup URLs that look like object URLs (blob:)
+      if (prevImageUrl && prevImageUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(prevImageUrl);
+      }
+    };
+  }, [autoForm.imageUrl]);
 
   return (
     <div className="flex flex-col items-center justify-center">
@@ -2528,16 +2561,6 @@ export const Create = () => {
                         )}
                       </div>
                     )}
-
-                    {importStatus.type === "success" && (
-                      <div className="mt-2 ml-7 text-sm text-green-300/80">
-                        <p>
-                          You're connected with the correct wallet. Review the
-                          token details below and click "Launch" to register
-                          this token.
-                        </p>
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -2598,9 +2621,19 @@ export const Create = () => {
                 onNameChange={(value) => handleChange("name", value)}
                 tickerValue={form.symbol}
                 onTickerChange={(value) => handleChange("symbol", value)}
+                key={`image-input-${activeTab}`} // Force complete rerender on tab change
               />
             </div>
 
+            {activeTab === FormTab.IMPORT && (
+                  <span
+                    className={`bg-transparent text-white text-xl font-bold focus:outline-none px-1 py-0.5 mb-4`}
+                  >
+                    {form.description}
+                  </span>
+                )}
+            
+            {activeTab !== FormTab.IMPORT && (
             <FormTextArea
               value={form.description}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
@@ -2614,6 +2647,7 @@ export const Create = () => {
               onClick={() => generateAll()}
               isLoading={isGenerating && generatingField === "description"}
             />
+            )}
 
             {/* Hide Buy section when in IMPORT tab */}
             {activeTab !== FormTab.IMPORT && (
