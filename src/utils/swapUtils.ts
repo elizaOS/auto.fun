@@ -132,9 +132,15 @@ export const getSwapAmount = async (
   amount: number,
   style: number,
   reserveToken: number,
-  reserveLamport: number
+  reserveLamport: number,
 ) => {
-  console.log('swap amount input:', amount, style, reserveToken, reserveLamport)
+  console.log(
+    "swap amount input:",
+    amount,
+    style,
+    reserveToken,
+    reserveLamport,
+  );
 
   const configAccount = await getConfigAccount(program);
 
@@ -144,7 +150,7 @@ export const getSwapAmount = async (
       ? Number(configAccount.platformSellFee)
       : Number(configAccount.platformBuyFee);
   const adjustedAmount = Math.floor(
-    (amount * (FEE_BASIS_POINTS - feePercent)) / FEE_BASIS_POINTS
+    (amount * (FEE_BASIS_POINTS - feePercent)) / FEE_BASIS_POINTS,
   );
 
   // Calculate expected output
@@ -156,7 +162,7 @@ export const getSwapAmount = async (
       adjustedAmount,
       9, // SOL decimals
       reserveLamport,
-      feePercent
+      feePercent,
     );
 
     console.log("estimated out:", estimatedOutput);
@@ -167,11 +173,11 @@ export const getSwapAmount = async (
       adjustedAmount,
       6,
       feePercent,
-      reserveToken
+      reserveToken,
     );
   }
 
-  console.log('swap amount:', estimatedOutput);
+  console.log("swap amount:", estimatedOutput);
 
   return estimatedOutput;
 };
@@ -185,9 +191,15 @@ export const swapIx = async (
   program: Program<Autofun>,
   reserveToken: number,
   reserveLamport: number,
-  configAccount: ConfigAccount
+  configAccount: ConfigAccount,
 ) => {
-  const estimatedOutput = await getSwapAmount(program, amount, style, reserveToken, reserveLamport);
+  const estimatedOutput = await getSwapAmount(
+    program,
+    amount,
+    style,
+    reserveToken,
+    reserveLamport,
+  );
 
   // Apply slippage to estimated output
   const minOutput = new BN(

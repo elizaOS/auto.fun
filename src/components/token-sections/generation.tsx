@@ -565,9 +565,10 @@ export default function CommunityTab() {
           window.location.pathname +
           window.location.search +
           window.location.hash;
-          
+
         // Add generation anchor if not already present
-        const pathWithAnchor = currentPath + (currentPath.includes("#") ? "" : "#generation");
+        const pathWithAnchor =
+          currentPath + (currentPath.includes("#") ? "" : "#generation");
         localStorage.setItem(OAUTH_REDIRECT_ORIGIN_KEY, pathWithAnchor);
         console.log("Stored origin path for redirect:", pathWithAnchor);
 

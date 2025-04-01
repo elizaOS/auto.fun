@@ -16,12 +16,12 @@ export const getConfigAccount = async (program: Program<Autofun>) => {
 
       const [configPda, _] = PublicKey.findProgramAddressSync(
         [Buffer.from(SEED_CONFIG)],
-        program.programId
+        program.programId,
       );
       const configAccount = await program.account.config.fetch(configPda);
 
       return configAccount;
     },
-    staleTime: 1000 * 60 * 10 // 10 minutes
+    staleTime: 1000 * 60 * 10, // 10 minutes
   });
 };

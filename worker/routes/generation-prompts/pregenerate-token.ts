@@ -11,5 +11,5 @@ export function pregenerateTokenPrompt() {
             "symbol": "FUN",
             "description": "A fun and engaging token description",
             "prompt": "A detailed prompt for image generation"
-          }`
+          }`;
 }

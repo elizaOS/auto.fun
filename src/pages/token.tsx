@@ -464,13 +464,22 @@ export default function Page() {
           <TradingViewChart name={token.name} token={token.mint} />
         </div>
         <TransactionsAndHolders token={token} />
-        <div id="agents" className="border bg-autofun-background-card scroll-mt-16">
+        <div
+          id="agents"
+          className="border bg-autofun-background-card scroll-mt-16"
+        >
           <AgentsSection />
         </div>
-        <div id="generation" className="border bg-autofun-background-card scroll-mt-16">
+        <div
+          id="generation"
+          className="border bg-autofun-background-card scroll-mt-16"
+        >
           <GenerationSection />
         </div>
-        <div id="admin" className="border bg-autofun-background-card scroll-mt-16">
+        <div
+          id="admin"
+          className="border bg-autofun-background-card scroll-mt-16"
+        >
           <AdminSection />
         </div>
       </div>

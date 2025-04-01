@@ -40,7 +40,7 @@ export default function Trade({ token }: { token: IToken }) {
     staleTime: 60000, // Data stays fresh for 1 minute
   });
 
-  const program = useProgram()
+  const program = useProgram();
 
   // Use blockchain data if available, otherwise fall back to token data
   const metrics = metricsQuery?.data;
@@ -56,11 +56,10 @@ export default function Trade({ token }: { token: IToken }) {
     metricsAvailable: !!metrics,
   });
 
-  const {solBalance, tokenBalance} = useTokenBalance({ tokenId: token.mint });
-  const balance = isTokenSelling ? tokenBalance : solBalance
+  const { solBalance, tokenBalance } = useTokenBalance({ tokenId: token.mint });
+  const balance = isTokenSelling ? tokenBalance : solBalance;
 
-  const insufficientBalance =
-    (sellingAmount || 0) > balance
+  const insufficientBalance = (sellingAmount || 0) > balance;
 
   const [error] = useState<string | undefined>("");
 
@@ -77,7 +76,6 @@ export default function Trade({ token }: { token: IToken }) {
     }
   };
 
-
   const [convertedAmount, setConvertedAmount] = useState(0);
 
   const handleSellAmountChange = async (amount: number) => {
@@ -86,8 +84,8 @@ export default function Trade({ token }: { token: IToken }) {
     setSellingAmount(amount);
 
     const style = isTokenSelling ? 1 : 0;
-    const convertedAmount = isTokenSelling ? amount * 1e6 : amount * 1e9
-    const decimals = isTokenSelling ? 1e9 : 1e6
+    const convertedAmount = isTokenSelling ? amount * 1e6 : amount * 1e9;
+    const decimals = isTokenSelling ? 1e9 : 1e6;
     const swapAmount = await getSwapAmount(
       program,
       convertedAmount,
@@ -96,12 +94,14 @@ export default function Trade({ token }: { token: IToken }) {
       // they are not dynamically calculated but instead use the
       // default values leading to slightly incorrect calculations
       token.reserveAmount,
-      token.reserveLamport
+      token.reserveLamport,
     );
     setConvertedAmount(swapAmount / decimals);
-  }; 
+  };
 
-  const displayConvertedAmount = isTokenSelling ? convertedAmount : formatNumber(convertedAmount, false, true)
+  const displayConvertedAmount = isTokenSelling
+    ? convertedAmount
+    : formatNumber(convertedAmount, false, true);
 
   return (
     <div className="relative border p-4 bg-autofun-background-card">
@@ -210,7 +210,7 @@ export default function Trade({ token }: { token: IToken }) {
                   : tokenPriceUSD
                     ? formatNumber(
                         Number(sellingAmount || 0) * tokenPriceUSD,
-                        true
+                        true,
                       )
                     : formatNumber(0)}
               </span>
@@ -239,9 +239,7 @@ export default function Trade({ token }: { token: IToken }) {
               <input
                 className="text-4xl truncate font-dm-mono text-autofun-text-secondary w-3/4 outline-none"
                 readOnly
-                value={
-                  displayConvertedAmount
-                }
+                value={displayConvertedAmount}
                 placeholder="0"
               />
 
@@ -261,7 +259,11 @@ export default function Trade({ token }: { token: IToken }) {
                       )
                     : "$0.00"}
               </span>
-              <Balance token={token} isSolana={isTokenSelling} balance={isTokenSelling ? solBalance : tokenBalance} />
+              <Balance
+                token={token}
+                isSolana={isTokenSelling}
+                balance={isTokenSelling ? solBalance : tokenBalance}
+              />
             </div>
           </div>
         </div>
@@ -275,8 +277,7 @@ export default function Trade({ token }: { token: IToken }) {
           <div className="flex items-center gap-2">
             <Info className="text-red-600 size-4" />
             <p className="text-red-600 text-xs font-dm-mono">
-              Insufficient Funds: You have{" "}
-              {balance.toFixed(4) || "0"}{" "}
+              Insufficient Funds: You have {balance.toFixed(4) || "0"}{" "}
               {isTokenSelling ? token?.ticker : "SOL"}
             </p>
           </div>
@@ -340,14 +341,16 @@ const Balance = ({
   token,
   isSolana,
   setSellingAmount,
-  balance
+  balance,
 }: {
   token?: IToken;
   isSolana?: boolean;
   setSellingAmount?: any;
-  balance: number
+  balance: number;
 }) => {
-  const formattedBalance = isSolana ? formatNumber(balance, true, true) : formatNumber(balance, undefined, true)
+  const formattedBalance = isSolana
+    ? formatNumber(balance, true, true)
+    : formatNumber(balance, undefined, true);
 
   return (
     <div

@@ -790,7 +790,7 @@ export async function updateHoldersCache(env: Env, mint: string) {
 
 /**
  * Gets the maximum values needed for featured sorting
- * 
+ *
  * @param db Database instance
  * @returns Object containing maxVolume and maxHolders values for normalization
  */
@@ -804,11 +804,11 @@ export async function getFeaturedMaxValues(db: any) {
       })
       .from(tokens)
       .where(sql`${tokens.status} != 'pending'`);
-    
+
     // Extract max values, default to 1 to avoid division by zero
     return {
       maxVolume: Number(maxValues[0]?.maxVolume) || 1,
-      maxHolders: Number(maxValues[0]?.maxHolders) || 1
+      maxHolders: Number(maxValues[0]?.maxHolders) || 1,
     };
   } catch (error) {
     console.error("Error getting max values for featured sort:", error);
@@ -819,7 +819,7 @@ export async function getFeaturedMaxValues(db: any) {
 /**
  * Applies a weighted sort for the "featured" tokens
  * Uses 70% weight on volume24h and 30% weight on holderCount
- * 
+ *
  * @param tokensQuery Current tokens query that needs sorting applied
  * @param maxVolume Maximum volume value for normalization
  * @param maxHolders Maximum holder count for normalization
@@ -827,22 +827,21 @@ export async function getFeaturedMaxValues(db: any) {
  * @returns Updated tokens query with the weighted sorting applied
  */
 export function applyFeaturedSort(
-  tokensQuery: any, 
-  maxVolume: number, 
-  maxHolders: number, 
-  sortOrder: string
+  tokensQuery: any,
+  maxVolume: number,
+  maxHolders: number,
+  sortOrder: string,
 ) {
-  
   // Use provided max values, defaulting to 1 to avoid division by zero
   const normalizedMaxVolume = maxVolume || 1;
   const normalizedMaxHolders = maxHolders || 1;
-  
+
   // Calculate weighted score as a SQL expression
   const weightedScore = sql`(
     (COALESCE(${tokens.volume24h}, 0) / ${normalizedMaxVolume} * 0.7) + 
     (COALESCE(${tokens.holderCount}, 0) / ${normalizedMaxHolders} * 0.3)
   )`;
-  
+
   // Instead of reassigning tokensQuery, return the result of method chaining
   // This preserves the query builder's type better
   if (sortOrder.toLowerCase() === "desc") {

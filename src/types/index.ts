@@ -162,7 +162,7 @@ export type ConfigAccount = {
   platformBuyFee: BN;
   platformSellFee: BN;
   curveLimit: BN;
-}
+};
 
 // Type definitions for global objects
 

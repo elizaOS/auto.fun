@@ -31,7 +31,6 @@ export default function SearchBar() {
   useEffect(() => {
     setSearchResults(tokens);
   }, [tokens]);
-    
 
   const handleSearch = useRef(
     debounce((query: string) => {

@@ -50,7 +50,9 @@ tokenRouter.get("/tokens", async (c) => {
     const search = queryParams.search as string;
     const status = queryParams.status as string;
     const creator = queryParams.creator as string;
-    const sortBy = search ? "marketCapUSD" : (queryParams.sortBy as string) || "createdAt"
+    const sortBy = search
+      ? "marketCapUSD"
+      : (queryParams.sortBy as string) || "createdAt";
     const sortOrder = (queryParams.sortOrder as string) || "desc";
 
     // Use a shorter timeout for test environments
@@ -105,10 +107,15 @@ tokenRouter.get("/tokens", async (c) => {
         if (sortBy === "featured") {
           // Get max values for normalization first
           const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
-          
+
           // Apply the weighted sort with the max values (no await)
           // Use method chaining to preserve the query builder's type
-          tokensQuery = applyFeaturedSort(tokensQuery, maxVolume, maxHolders, sortOrder);
+          tokensQuery = applyFeaturedSort(
+            tokensQuery,
+            maxVolume,
+            maxHolders,
+            sortOrder,
+          );
         } else {
           // For other columns, safely map to actual db columns
           const validSortColumns = {
@@ -244,7 +251,8 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     // Make sure reserveAmount and reserveLamport have values
     token.reserveAmount = token.reserveAmount || Number(c.env.TOKEN_SUPPLY);
-    token.reserveLamport = token.reserveLamport || Number(c.env.VIRTUAL_RESERVES);
+    token.reserveLamport =
+      token.reserveLamport || Number(c.env.VIRTUAL_RESERVES);
 
     // Update or set default values for missing fields
     if (!token.currentPrice && token.reserveAmount && token.reserveLamport) {

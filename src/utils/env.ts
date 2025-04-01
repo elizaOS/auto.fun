@@ -12,12 +12,12 @@ const unparsedEnv = {
   decimals: import.meta.env.VITE_DECIMALS,
   solanaNetwork: import.meta.env.VITE_SOLANA_NETWORK,
   apiUrl: isDevnet
-  ? import.meta.env.VITE_DEV_API_URL ||
-  import.meta.env.VITE_API_URL ||
+    ? import.meta.env.VITE_DEV_API_URL ||
+      import.meta.env.VITE_API_URL ||
       "https://api-dev.autofun.workers.dev"
-  : import.meta.env.VITE_API_URL || "https://api.autofun.workers.dev",
+    : import.meta.env.VITE_API_URL || "https://api.autofun.workers.dev",
   devAddress: import.meta.env.VITE_DEV_ADDRESS,
-  appEnv: process.env.NODE_ENV
+  appEnv: process.env.NODE_ENV,
 } as const;
 
 const envSchema = z.object({
@@ -28,7 +28,7 @@ const envSchema = z.object({
   decimals: z.string().min(1),
   apiUrl: z.string().min(1),
   devAddress: z.string().min(1),
-  appEnv: z.enum(['development', 'production'])
+  appEnv: z.enum(["development", "production"]),
 });
 
 const parsedEnv = envSchema.parse(unparsedEnv);

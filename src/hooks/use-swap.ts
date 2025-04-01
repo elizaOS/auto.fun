@@ -94,7 +94,7 @@ export const useSwap = () => {
         program,
         reserveToken,
         reserveLamport,
-        await getConfigAccount(program)
+        await getConfigAccount(program),
       );
 
       ixs.push(ix);

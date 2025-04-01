@@ -128,11 +128,11 @@ export default function CallbackPage() {
             // Check for intent keys
             const hasAgentIntent = localStorage.getItem(AGENT_INTENT_KEY);
             const hasPendingShare = localStorage.getItem(PENDING_SHARE_KEY);
-            
+
             console.log("Auth intent check:", {
               hasAgentIntent: !!hasAgentIntent,
               hasPendingShare: !!hasPendingShare,
-              hasAuthToken: !!authToken
+              hasAuthToken: !!authToken,
             });
 
             // --- Dynamic Redirect Logic ---
@@ -213,9 +213,7 @@ export default function CallbackPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-autofun-background-primary text-white">
-      <h1 className="text-2xl font-bold mb-4">
-        Authenticating with X...
-      </h1>
+      <h1 className="text-2xl font-bold mb-4">Authenticating with X...</h1>
       <div className="w-12 h-12 border-t-2 border-[#03FF24] rounded-full animate-spin"></div>
       <p className="text-gray-400 mt-4 text-sm">
         Processing authentication response...

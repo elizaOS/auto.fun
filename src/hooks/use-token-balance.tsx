@@ -30,11 +30,11 @@ export const useSolBalance = () => {
     };
   }, [publicKey, connection]);
 
-  return solBalance
-}
+  return solBalance;
+};
 
 export const useTokenBalance = ({ tokenId }: { tokenId: string }) => {
-  const solBalance = useSolBalance()
+  const solBalance = useSolBalance();
   const [tokenBalance, setTokenBalance] = useState(0);
 
   const { connection } = useConnection();
@@ -50,7 +50,7 @@ export const useTokenBalance = ({ tokenId }: { tokenId: string }) => {
         const tokenMint = new PublicKey(tokenId);
         const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
           publicKey,
-          { mint: tokenMint }
+          { mint: tokenMint },
         );
 
         const balance =
@@ -69,7 +69,7 @@ export const useTokenBalance = ({ tokenId }: { tokenId: string }) => {
     // Listen for token account changes
     const tokenAccountListener = connection.onProgramAccountChange(
       program.programId,
-      fetchTokenBalance
+      fetchTokenBalance,
     );
 
     return () => {

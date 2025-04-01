@@ -867,7 +867,6 @@ app.post("/generate-metadata", async (c) => {
       throw error;
     }
 
-
     // Generate metadata using Llama
     const response = await c.env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
       messages: [
