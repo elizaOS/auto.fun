@@ -9,6 +9,7 @@ import { useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import CopyButton from "../copy-button";
 import { Icons } from "../icons";
+import useAuthentication from "@/hooks/use-authentication";
 
 type FormData = {
   links: {
@@ -40,11 +41,15 @@ export default function AdminTab() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [detectedError, setDetectedError] = useState<string | null>(null);
   const { publicKey, connected } = useWallet();
+  const { isAuthenticated, walletAddress } = useAuthentication();
 
   // Extract token mint from URL if not found in params
   const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(
     null,
   );
+
+  // Token data state
+  const [tokenData, setTokenData] = useState<TokenData | null>(null);
 
   // Effect to detect token mint from various sources (similar to community tab)
   useEffect(() => {
@@ -82,23 +87,64 @@ export default function AdminTab() {
     },
   });
 
-  // Debug information about wallet connection
+  // Check wallet connection status whenever related states change
   useEffect(() => {
-    console.log("Wallet connection status:", connected);
-    console.log("Wallet public key:", publicKey?.toString());
-
-    // Try to get wallet address from localStorage as fallback
-    const storedWalletAddress = localStorage.getItem("walletAddress");
-    console.log("Stored wallet address:", storedWalletAddress);
-
-    if (!connected && !publicKey) {
+    // Get wallet address from different sources in order of reliability
+    const currentWalletAddress = publicKey?.toString() || walletAddress || null;
+    
+    // Update error state based on whether we have a wallet connected
+    if (!connected && !isAuthenticated && !currentWalletAddress) {
       setDetectedError(
         "No wallet connected. Please connect your wallet to manage token settings.",
       );
     } else {
       setDetectedError(null);
     }
-  }, [connected, publicKey]);
+
+    // If we have token data and a wallet address, check if this wallet is admin
+    if (tokenData && currentWalletAddress) {
+      checkIsAdmin(currentWalletAddress, tokenData.creator);
+    }
+  }, [connected, publicKey, isAuthenticated, walletAddress, tokenData]);
+
+  // Helper function to check if the connected wallet is the token creator
+  const checkIsAdmin = (walletAddress: string, creator: string) => {
+    try {
+      // Normalize both addresses using PublicKey to ensure consistent format
+      const normalizedWallet = new PublicKey(walletAddress).toString();
+      const normalizedCreator = new PublicKey(creator).toString();
+
+      console.log("Normalized wallet:", normalizedWallet);
+      console.log("Normalized creator:", normalizedCreator);
+
+      const isCreator = normalizedWallet === normalizedCreator;
+      console.log("Is token creator (normalized check):", isCreator);
+
+      // Fallback to case-insensitive string comparison if needed
+      if (!isCreator) {
+        const caseInsensitiveMatch =
+          walletAddress.toLowerCase() === creator.toLowerCase();
+        console.log(
+          "Is token creator (case-insensitive check):",
+          caseInsensitiveMatch,
+        );
+
+        if (caseInsensitiveMatch) {
+          console.log("Match found with case-insensitive comparison");
+        }
+
+        setIsAdmin(caseInsensitiveMatch);
+      } else {
+        setIsAdmin(isCreator);
+      }
+    } catch (error) {
+      console.error("Error comparing addresses:", error);
+      // Fallback to simple comparison
+      const simpleMatch = walletAddress === creator;
+      console.log("Fallback simple comparison match:", simpleMatch);
+      setIsAdmin(simpleMatch);
+    }
+  };
 
   // Fetch current token data
   useEffect(() => {
@@ -117,53 +163,18 @@ export default function AdminTab() {
         }
 
         const data = (await response.json()) as TokenData;
-
         console.log("Token data fetched:", data);
-        console.log("Token creator address:", data.creator);
+        
+        // Store token data for later use
+        setTokenData(data);
 
-        // Get wallet address from different sources
-        const walletAddress = publicKey?.toString();
-        console.log("Current wallet address:", walletAddress);
-
-        // If we have the wallet and creator, check if they match
-        if (walletAddress && data.creator) {
-          try {
-            // Normalize both addresses using PublicKey to ensure consistent format
-            const normalizedWallet = new PublicKey(walletAddress).toString();
-            const normalizedCreator = new PublicKey(data.creator).toString();
-
-            console.log("Normalized wallet:", normalizedWallet);
-            console.log("Normalized creator:", normalizedCreator);
-
-            const isCreator = normalizedWallet === normalizedCreator;
-            console.log("Is token creator (normalized check):", isCreator);
-
-            // Fallback to case-insensitive string comparison if needed
-            if (!isCreator) {
-              const caseInsensitiveMatch =
-                walletAddress.toLowerCase() === data.creator.toLowerCase();
-              console.log(
-                "Is token creator (case-insensitive check):",
-                caseInsensitiveMatch,
-              );
-
-              if (caseInsensitiveMatch) {
-                console.log("Match found with case-insensitive comparison");
-              }
-
-              setIsAdmin(caseInsensitiveMatch);
-            } else {
-              setIsAdmin(isCreator);
-            }
-          } catch (error) {
-            console.error("Error comparing addresses:", error);
-            // Fallback to simple comparison
-            const simpleMatch = walletAddress === data.creator;
-            console.log("Fallback simple comparison match:", simpleMatch);
-            setIsAdmin(simpleMatch);
-          }
+        // Get current wallet address from various sources
+        const currentWalletAddress = publicKey?.toString() || walletAddress || null;
+        
+        // Check if the current wallet is the token creator
+        if (currentWalletAddress && data.creator) {
+          checkIsAdmin(currentWalletAddress, data.creator);
         } else {
-          console.log("Missing wallet or creator address for comparison");
           setIsAdmin(false);
         }
 
@@ -185,7 +196,7 @@ export default function AdminTab() {
     };
 
     fetchTokenData();
-  }, [mint, reset, publicKey]);
+  }, [mint, reset, publicKey, walletAddress]);
 
   const onSubmit = async (data: FormData) => {
     if (!mint) {
