@@ -1,9 +1,21 @@
 import { ChartTable, IToken, TSortBy, TSortOrder } from "@/types";
 import { QueryClient } from "@tanstack/react-query";
 import { env } from "./env";
-import { fetchWithAuth } from "@/hooks/use-authentication";
+import { fetchWithAuth, GLOBAL_AUTH_STATE } from "@/hooks/use-authentication";
 
-export const queryClient = new QueryClient();
+// Configure QueryClient with optimized defaults to prevent unnecessary fetches
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Disable automatic refetching to prefer WebSocket updates
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      // Only allow explicit calls to trigger fetches
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
 const fetcher = async (
   endpoint: string,
@@ -55,12 +67,88 @@ export const getTokens = async ({
   sortBy: TSortBy;
   sortOrder: TSortOrder;
 }) => {
+  console.log(
+    `🔍 HTTP getTokens called with: page=${page}, limit=${limit}, sortBy=${sortBy}, sortOrder=${sortOrder}`,
+  );
+  console.log(`⚠️ This should be handled by WebSocket when connected!`);
+
+  // Print stack trace for debugging
+  const stack = new Error().stack;
+  if (stack) {
+    const stackLines = stack.split("\n").slice(1, 5);
+    console.log("📋 getTokens call stack:");
+    stackLines.forEach((line) => console.log(`   ${line.trim()}`));
+  }
+
+  // AGGRESSIVE BLOCKING: Check for WebSocket activity or connection
+  // We need to determine if we should block this HTTP request
+  const now = Date.now();
+  const recentWebSocketActivity =
+    GLOBAL_AUTH_STATE &&
+    GLOBAL_AUTH_STATE.lastWebSocketActivity &&
+    now - GLOBAL_AUTH_STATE.lastWebSocketActivity < 30000; // 30 seconds
+
+  const tokensReceivedViaWebSocket =
+    GLOBAL_AUTH_STATE && GLOBAL_AUTH_STATE.tokensReceivedViaWebSocket;
+
+  const inInitialPhase =
+    GLOBAL_AUTH_STATE &&
+    (GLOBAL_AUTH_STATE.initialConnectionPhase ||
+      GLOBAL_AUTH_STATE.extendedInitialPhase);
+
+  // Block if any of these conditions are true:
+  // 1. We're in the initial/extended phase, or
+  // 2. We've received tokens via WebSocket at any point, or
+  // 3. There has been recent WebSocket activity
+  if (recentWebSocketActivity || tokensReceivedViaWebSocket || inInitialPhase) {
+    console.log(
+      `🚫 Blocking HTTP getTokens request - WebSocket should handle this request`,
+    );
+
+    // If tokens received via WebSocket, use that as a reason
+    if (tokensReceivedViaWebSocket) {
+      console.log(`  → Reason: Tokens already received via WebSocket`);
+    }
+
+    // If in initial phase, use that as a reason
+    if (inInitialPhase) {
+      console.log(`  → Reason: In initial/extended WebSocket connection phase`);
+    }
+
+    // If recent WebSocket activity, use that as a reason
+    if (recentWebSocketActivity) {
+      console.log(
+        `  → Reason: Recent WebSocket activity (${Math.round((now - (GLOBAL_AUTH_STATE?.lastWebSocketActivity || 0)) / 1000)}s ago)`,
+      );
+    }
+
+    // Return empty placeholder data
+    return {
+      tokens: [],
+      page: page,
+      totalPages: 1,
+      total: 0,
+      hasMore: false,
+      _loading: true,
+      _isPlaceholder: true,
+    };
+  }
+
+  // If we get here, there's no WebSocket activity, so we'll allow the HTTP request
+  console.log(
+    `⚠️ Allowing HTTP getTokens request - NO RECENT WEBSOCKET ACTIVITY`,
+  );
+
   const data = (await fetcher(
     `/api/tokens?limit=${limit || 12}&page=${
       page || 1
     }&sortBy=${sortBy}&sortOrder=${sortOrder}`,
     "GET",
   )) as { tokens: IToken[] };
+
+  console.log(
+    `✅ getTokens HTTP request complete, received ${data?.tokens?.length || 0} tokens`,
+  );
 
   if (data?.tokens?.length > 0) {
     data?.tokens?.forEach((token: IToken) => {

@@ -10,6 +10,7 @@ import TokenStatus from "@/components/token-status";
 import Trade from "@/components/trade";
 import { TradingViewChart } from "@/components/trading-view-chart";
 import TransactionsAndHolders from "@/components/txs-and-holders";
+import { useTokenWebSocket } from "@/hooks/use-websocket";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { IToken } from "@/types";
 import {
@@ -23,15 +24,12 @@ import {
 } from "@/utils";
 import { getToken } from "@/utils/api";
 import { fetchTokenMarketMetrics } from "@/utils/blockchain";
-import { getSocket } from "@/utils/socket";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Globe, Info as InfoCircle } from "lucide-react";
 import { useEffect } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
-
-const socket = getSocket();
 
 export default function Page() {
   const params = useParams();
@@ -39,6 +37,11 @@ export default function Page() {
   const { publicKey } = useWallet();
   const normalizedWallet = publicKey?.toString();
   const { solPrice: contextSolPrice } = useSolPriceContext();
+  const queryClient = useQueryClient();
+
+  // Use token-specific websocket
+  const { addEventListener, connected: wsConnected } =
+    useTokenWebSocket(address);
 
   // Fetch token details from API
   const tokenQuery = useQuery({
@@ -54,7 +57,8 @@ export default function Page() {
         throw error;
       }
     },
-    refetchInterval: 20_000,
+    // Reduce polling frequency when using websockets
+    refetchInterval: wsConnected ? 60_000 : 20_000,
   });
 
   // Fetch token market metrics from blockchain
@@ -64,12 +68,6 @@ export default function Page() {
       if (!address) throw new Error("No address passed");
       try {
         console.log(`Token page: Fetching blockchain metrics for ${address}`);
-        // Add loading toast for better user feedback
-        // toast.info("Fetching real-time blockchain data...", {
-        //   position: "bottom-right",
-        //   autoClose: 3000,
-        // });
-
         const metrics = await fetchTokenMarketMetrics(address);
         console.log(`Token page: Received blockchain metrics:`, metrics);
 
@@ -104,17 +102,89 @@ export default function Page() {
       }
     },
     enabled: !!address,
-    refetchInterval: 30_000, // Longer interval for blockchain queries
+    // Reduce polling frequency when using websockets
+    refetchInterval: wsConnected ? 2 * 60_000 : 30_000,
     staleTime: 60000, // Data stays fresh for 1 minute
   });
 
+  // Set up WebSocket listeners for real-time updates
   useEffect(() => {
-    socket.emit("subscribe", address);
+    if (!address) return;
 
+    // Listen for token updates
+    const removeUpdateListener = addEventListener<IToken>(
+      "updateToken",
+      (updatedToken) => {
+        console.log("Received token update via WebSocket:", updatedToken);
+        queryClient.setQueryData(
+          ["token", address],
+          (oldData: IToken | undefined) => {
+            if (!oldData) return updatedToken;
+            return { ...oldData, ...updatedToken };
+          },
+        );
+      },
+    );
+
+    // Listen for new swaps - also updates metrics
+    interface SwapEvent {
+      token?: Partial<IToken>;
+      txId: string;
+      tokenMint: string;
+      timestamp: string;
+      price: number;
+      amountIn: number;
+      amountOut: number;
+      direction: number;
+    }
+
+    const removeSwapListener = addEventListener<SwapEvent>(
+      "newSwap",
+      (swap) => {
+        console.log("Received new swap via WebSocket:", swap);
+        // Trigger a refetch of metrics
+        metricsQuery.refetch();
+
+        // Update the token data if needed
+        if (swap.token) {
+          queryClient.setQueryData(
+            ["token", address],
+            (oldData: IToken | undefined) => {
+              if (!oldData) return oldData;
+              return { ...oldData, ...swap.token };
+            },
+          );
+        }
+      },
+    );
+
+    // Listen for holder updates
+    interface HoldersUpdateEvent {
+      holderCount: number;
+      mint: string;
+    }
+
+    const removeHoldersListener = addEventListener<HoldersUpdateEvent>(
+      "holdersUpdated",
+      (data) => {
+        console.log("Received holders update via WebSocket:", data);
+        queryClient.setQueryData(
+          ["token", address],
+          (oldData: IToken | undefined) => {
+            if (!oldData) return oldData;
+            return { ...oldData, holderCount: data.holderCount };
+          },
+        );
+      },
+    );
+
+    // Clean up listeners
     return () => {
-      socket.emit("unsubscribe", address);
+      removeUpdateListener();
+      removeSwapListener();
+      removeHoldersListener();
     };
-  }, [address]);
+  }, [address, addEventListener, metricsQuery, queryClient]);
 
   const token = tokenQuery?.data as IToken;
   const metrics = metricsQuery?.data;
@@ -126,10 +196,9 @@ export default function Page() {
   const tokenPriceUSD = metrics?.tokenPriceUSD || token?.tokenPriceUSD || 0;
   const marketCapUSD = metrics?.marketCapUSD || token?.marketCapUSD || 0;
   const volume24h = metrics?.volume24h || token?.volume24h || 0;
-  // const holderCount = metrics?.holderCount || token?.holderCount || 0;
 
   // For bonding curve calculations, still use token data
-  const finalTokenPrice = 0.00000045; // Approximated final value from the bonding curve configuration (This can only be estimated)
+  const finalTokenPrice = 0.00000045; // Approximated final value from the bonding curve configuration
   const finalTokenUSDPrice = finalTokenPrice * solPriceUSD;
   const graduationMarketCap = finalTokenUSDPrice * 1_000_000_000;
 
@@ -150,7 +219,6 @@ export default function Page() {
     volume24h: token?.volume24h,
     holderCount: token?.holderCount,
     status: token?.status,
-    // Add more detailed token data
     reserveAmount: token?.reserveAmount,
     reserveLamport: token?.reserveLamport,
     virtualReserves: token?.virtualReserves,
@@ -169,20 +237,8 @@ export default function Page() {
     metricsAvailable: !!metrics,
     metricsLoading: metricsQuery.isLoading,
     metricsError: metricsQuery.isError,
+    websocketConnected: wsConnected,
   });
-
-  // If the blockchain fetch failed or returned default values, add a warning
-  useEffect(() => {
-    if (metricsQuery.isSuccess && metrics) {
-      const allZeros =
-        !metrics.marketCapUSD && !metrics.currentPrice && !metrics.volume24h;
-      if (allZeros) {
-        console.warn(
-          `WARNING: Blockchain metrics returned all zeros for token ${token?.mint}. This might indicate an error in data retrieval.`,
-        );
-      }
-    }
-  }, [metricsQuery.isSuccess, metrics, token?.mint]);
 
   if (tokenQuery?.isLoading) {
     return <Loader />;
@@ -266,61 +322,61 @@ export default function Page() {
 
           {/* Social Links */}
           {token?.creator !== normalizedWallet && (
-          <div className="flex items-center justify-between gap-0.5">
-            <Link to={token?.website} className="w-full" target="_blank">
-              <Button
-                className="w-full rounded-none "
-                disabled={!token?.website}
-                aria-label="website"
-              >
-                <Globe />
-              </Button>
-            </Link>
-            <Link to={token?.twitter} className="w-full" target="_blank">
-              <Button
-                className="w-full rounded-none"
-                disabled={!token?.twitter}
-                aria-label="twitter"
-              >
-                <SkeletonImage
-                  src="/x.svg"
-                  height={24}
-                  width={24}
-                  alt="twitter_icon"
-                  className="w-6 m-auto"
-                />
-              </Button>
-            </Link>
-            <Link to={token?.telegram} className="w-full" target="_blank">
-              <Button
-                className="w-full rounded-none py-0 flex"
-                disabled={!token?.telegram}
-                aria-label="telegram"
-              >
-                <SkeletonImage
-                  src="/telegram.svg"
-                  height={24}
-                  width={24}
-                  alt="telegram_icon"
-                  className="size-6 object-contain m-auto h-full"
-                />
-              </Button>
-            </Link>
-            <Link to={token?.discord} className="w-full" target="_blank">
-              <Button
-                className="w-full rounded-none  px-0"
-                disabled={!token?.discord}
-                aria-label="discord"
-              >
-                <SkeletonImage
-                  src="/discord.svg"
-                  height={24}
-                  width={24}
-                  alt="discord_icon"
-                  className="w-auto m-auto"
-                />
-              </Button>
-            </Link>
+            <div className="flex items-center justify-between gap-0.5">
+              <Link to={token?.website} className="w-full" target="_blank">
+                <Button
+                  className="w-full rounded-none "
+                  disabled={!token?.website}
+                  aria-label="website"
+                >
+                  <Globe />
+                </Button>
+              </Link>
+              <Link to={token?.twitter} className="w-full" target="_blank">
+                <Button
+                  className="w-full rounded-none"
+                  disabled={!token?.twitter}
+                  aria-label="twitter"
+                >
+                  <SkeletonImage
+                    src="/x.svg"
+                    height={24}
+                    width={24}
+                    alt="twitter_icon"
+                    className="w-6 m-auto"
+                  />
+                </Button>
+              </Link>
+              <Link to={token?.telegram} className="w-full" target="_blank">
+                <Button
+                  className="w-full rounded-none py-0 flex"
+                  disabled={!token?.telegram}
+                  aria-label="telegram"
+                >
+                  <SkeletonImage
+                    src="/telegram.svg"
+                    height={24}
+                    width={24}
+                    alt="telegram_icon"
+                    className="size-6 object-contain m-auto h-full"
+                  />
+                </Button>
+              </Link>
+              <Link to={token?.discord} className="w-full" target="_blank">
+                <Button
+                  className="w-full rounded-none  px-0"
+                  disabled={!token?.discord}
+                  aria-label="discord"
+                >
+                  <SkeletonImage
+                    src="/discord.svg"
+                    height={24}
+                    width={24}
+                    alt="discord_icon"
+                    className="w-auto m-auto"
+                  />
+                </Button>
+              </Link>
             </div>
           )}
           {token?.creator === normalizedWallet && <AdminSection />}

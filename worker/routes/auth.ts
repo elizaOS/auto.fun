@@ -10,6 +10,7 @@ import {
 import { getDB, users, vanityKeypairs } from "../db";
 import { Env } from "../env";
 import { logger } from "../logger";
+import { getWebSocketClient } from "../websocket-client";
 
 const authRouter = new Hono<{
   Bindings: Env;
@@ -91,6 +92,79 @@ authRouter.post("/authenticate", (c) => authenticate(c));
 authRouter.post("/generate-nonce", (c) => generateNonce(c));
 authRouter.post("/logout", (c) => logout(c));
 authRouter.get("/auth-status", (c) => authStatus(c));
+
+// WebSocket handler for auth status
+authRouter.post("/ws-auth-status", async (c) => {
+  try {
+    const { token } = await c.req.json();
+
+    if (!token) {
+      return c.json(
+        {
+          success: false,
+          error: "Missing token",
+        },
+        400,
+      );
+    }
+
+    // Create headers with the authorization token
+    const headers = new Headers();
+    headers.set("Authorization", token);
+
+    // Use direct auth status check instead of mock context
+    const authResult = await authStatus({
+      ...c,
+      req: {
+        ...c.req,
+        header: (name: string) =>
+          name.toLowerCase() === "authorization" ? token : c.req.header(name),
+      } as any,
+    });
+
+    // Get the response data
+    const data = await authResult.json();
+
+    // Get WebSocket client
+    const wsClient = getWebSocketClient(c.env);
+
+    // Extract wallet address
+    let walletAddress = null;
+    if (token.startsWith("wallet_")) {
+      const parts = token.split("_");
+      if (parts.length >= 2) {
+        walletAddress = parts[1];
+      }
+    } else if (token.includes(".")) {
+      try {
+        const parts = token.split(".");
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1]));
+          walletAddress = payload.sub || payload.walletAddress || null;
+        }
+      } catch (e) {
+        console.error("Error extracting wallet address from JWT:", e);
+      }
+    }
+
+    // Emit auth status via WebSocket
+    await wsClient.emit("global", "authStatus", {
+      authenticated: data.authenticated,
+      privileges: data.privileges || [],
+      walletAddress: walletAddress,
+    });
+
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json(
+      {
+        success: false,
+        error: "Error processing WebSocket auth status request",
+      },
+      500,
+    );
+  }
+});
 
 // Add a protected route to test authentication
 authRouter.get("/protected", requireAuth, async (c) => {

@@ -187,10 +187,11 @@ export async function generateMedia(
     return await Promise.race([generationPromise, timeoutPromise]);
   } else if (data.type === MediaType.VIDEO && data.image_url) {
     // Image-to-video generation
-    const model = data.mode === "slow" 
-      ? "fal-ai/pixverse/v4/image-to-video" 
-      : "fal-ai/pixverse/v4/image-to-video/fast";
-      
+    const model =
+      data.mode === "slow"
+        ? "fal-ai/pixverse/v4/image-to-video"
+        : "fal-ai/pixverse/v4/image-to-video/fast";
+
     generationPromise = fal.subscribe(model, {
       input: {
         prompt: data.prompt,
@@ -208,10 +209,11 @@ export async function generateMedia(
     return await Promise.race([generationPromise, timeoutPromise]);
   } else if (data.type === MediaType.VIDEO) {
     // Text-to-video generation
-    const model = data.mode === "slow" 
-      ? "fal-ai/pixverse/v4/text-to-video" 
-      : "fal-ai/pixverse/v4/text-to-video/fast";
-      
+    const model =
+      data.mode === "slow"
+        ? "fal-ai/pixverse/v4/text-to-video"
+        : "fal-ai/pixverse/v4/text-to-video/fast";
+
     generationPromise = fal.subscribe(model, {
       input: {
         prompt: data.prompt,
@@ -235,7 +237,7 @@ export async function generateMedia(
       generationPromise = fal.subscribe("fal-ai/diffrhythm", {
         input: {
           lyrics: data.lyrics,
-          reference_audio_url: "https://example.com/reference.mp3" // Default reference URL
+          reference_audio_url: "https://example.com/reference.mp3", // Default reference URL
         },
         logs: true,
         onQueueUpdate: (update: any) => {

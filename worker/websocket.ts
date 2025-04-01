@@ -206,6 +206,34 @@ export class WebSocketDO {
         await this.leaveRoom(clientId, "global");
         break;
 
+      case "checkAuthStatus":
+        await this.handleAuthStatusCheck(clientId, data);
+        break;
+
+      case "getTokens":
+        await this.handleGetTokens(clientId, data);
+        break;
+
+      case "searchTokens":
+        await this.handleSearchTokens(clientId, data);
+        break;
+
+      case "tokenMetrics":
+        await this.handleTokenMetrics(clientId, data);
+        break;
+
+      case "tokenData":
+        await this.handleTokenData(clientId, data);
+        break;
+
+      case "balanceUpdate":
+        await this.handleWalletBalance(clientId, data);
+        break;
+
+      case "tokenBalanceUpdate":
+        await this.handleTokenBalance(clientId, data);
+        break;
+
       default:
         // Forward messages to appropriate rooms
         if (data?.room) {
@@ -448,6 +476,465 @@ export class WebSocketDO {
           headers: { "Content-Type": "application/json" },
         },
       );
+    }
+  }
+
+  // Handle authentication status check request
+  private async handleAuthStatusCheck(
+    clientId: string,
+    data: any,
+  ): Promise<void> {
+    try {
+      if (!data?.token) {
+        return this.sendToClient(clientId, "authStatus", {
+          authenticated: false,
+          error: "Missing token",
+        });
+      }
+
+      const token = data.token;
+
+      // Extract wallet address from token
+      let walletAddress = null;
+      if (token.startsWith("wallet_")) {
+        const parts = token.split("_");
+        if (parts.length >= 2) {
+          walletAddress = parts[1];
+        }
+
+        // For wallet-based tokens, we consider them authenticated by default
+        // Also add basic user data based on wallet address
+        return this.sendToClient(clientId, "authStatus", {
+          authenticated: true,
+          walletAddress,
+          user: {
+            address: walletAddress,
+            points: 0, // Default value since we don't have actual points data
+          },
+        });
+      }
+
+      // For JWT tokens, make an API call to check authentication
+      if (token.includes(".")) {
+        // Extract wallet address from JWT
+        try {
+          const parts = token.split(".");
+          if (parts.length === 3) {
+            const payload = JSON.parse(atob(parts[1]));
+            walletAddress = payload.sub || payload.walletAddress || null;
+          }
+        } catch (e) {
+          logger.error("Error extracting wallet address from JWT:", e);
+        }
+
+        try {
+          // Call auth-status API using environment variables
+          const response = await fetch(
+            `${this.env.VITE_API_URL}/api/auth-status`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            },
+          );
+
+          if (response.ok) {
+            const responseData = await response.json();
+
+            // Forward all data from the API, including user data if present
+            return this.sendToClient(clientId, "authStatus", {
+              authenticated: responseData.authenticated,
+              privileges: responseData.privileges || [],
+              walletAddress: walletAddress || responseData.user?.address,
+              user: responseData.user,
+            });
+          } else {
+            return this.sendToClient(clientId, "authStatus", {
+              authenticated: false,
+              error: `Auth check failed: ${response.status}`,
+            });
+          }
+        } catch (error) {
+          logger.error("Error checking auth status:", error);
+          return this.sendToClient(clientId, "authStatus", {
+            authenticated: false,
+            error: "Internal error checking auth status",
+          });
+        }
+      }
+
+      // Default response for unknown token format
+      return this.sendToClient(clientId, "authStatus", {
+        authenticated: false,
+        error: "Invalid token format",
+      });
+    } catch (error) {
+      logger.error("Error in handleAuthStatusCheck:", error);
+      return this.sendToClient(clientId, "authStatus", {
+        authenticated: false,
+        error: "Server error processing auth check",
+      });
+    }
+  }
+
+  // Send a message to a specific client
+  private sendToClient(clientId: string, event: string, data: any): void {
+    const client = this.sessions.get(clientId);
+    if (client && client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify({ event, data }));
+    }
+  }
+
+  // Handle tokens request
+  private async handleGetTokens(clientId: string, data: any): Promise<void> {
+    try {
+      // Validate required parameters
+      const page = data?.page || 1;
+      const limit = data?.limit || 12;
+      const sortBy = data?.sortBy || "createdAt";
+      const sortOrder = data?.sortOrder || "desc";
+
+      // Construct API URL with query parameters
+      const url = new URL(`${this.env.VITE_API_URL}/api/tokens`);
+      url.searchParams.append("page", page.toString());
+      url.searchParams.append("limit", limit.toString());
+      url.searchParams.append("sortBy", sortBy);
+      url.searchParams.append("sortOrder", sortOrder);
+
+      try {
+        // Fetch token data from API
+        const response = await fetch(url.toString());
+
+        if (response.ok) {
+          const tokenData = await response.json();
+          return this.sendToClient(clientId, "tokensList", tokenData);
+        } else {
+          return this.sendToClient(clientId, "tokensList", {
+            error: `Failed to fetch tokens: ${response.status}`,
+            tokens: [],
+          });
+        }
+      } catch (error) {
+        logger.error("Error fetching tokens:", error);
+        return this.sendToClient(clientId, "tokensList", {
+          error: "Internal error fetching tokens",
+          tokens: [],
+        });
+      }
+    } catch (error) {
+      logger.error("Error in handleGetTokens:", error);
+      return this.sendToClient(clientId, "tokensList", {
+        error: "Server error processing token request",
+        tokens: [],
+      });
+    }
+  }
+
+  // Handle token search request
+  private async handleSearchTokens(clientId: string, data: any): Promise<void> {
+    try {
+      // Validate required parameters
+      const searchQuery = data?.search || "";
+
+      // Log the search request for debugging
+      logger.log(
+        `WebSocket search request from client ${clientId}: "${searchQuery}"`,
+      );
+
+      // If search is empty, return empty results
+      if (!searchQuery.trim()) {
+        return this.sendToClient(clientId, "searchResults", { tokens: [] });
+      }
+
+      // Construct API URL with search parameter
+      const url = new URL(`${this.env.VITE_API_URL}/api/tokens/search`);
+      url.searchParams.append("search", searchQuery);
+
+      try {
+        // Fetch search results from API with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        const response = await fetch(url.toString(), {
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const searchData = await response.json();
+          logger.log(
+            `Search results for "${searchQuery}": found ${searchData.tokens?.length || 0} tokens`,
+          );
+          return this.sendToClient(clientId, "searchResults", searchData);
+        } else {
+          logger.error(`Error searching tokens: ${response.status}`);
+          return this.sendToClient(clientId, "searchResults", {
+            error: `Failed to search tokens: ${response.status}`,
+            tokens: [],
+          });
+        }
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        logger.error(`Error fetching search results: ${errorMessage}`);
+
+        return this.sendToClient(clientId, "searchResults", {
+          error: `Error searching tokens: ${errorMessage}`,
+          tokens: [],
+        });
+      }
+    } catch (error) {
+      logger.error("Error in handleSearchTokens:", error);
+      return this.sendToClient(clientId, "searchResults", {
+        error: "Server error processing search request",
+        tokens: [],
+      });
+    }
+  }
+
+  // Handle request for token market metrics
+  private async handleTokenMetrics(clientId: string, data: any): Promise<void> {
+    try {
+      if (!data?.mint) {
+        return this.sendToClient(clientId, "tokenMetrics", {
+          error: "Missing token mint address",
+          data: null,
+        });
+      }
+
+      const mint = data.mint;
+      logger.log(`WebSocket request for token metrics: ${mint}`);
+
+      try {
+        // Call the API to get token metrics
+        const url = new URL(
+          `${this.env.VITE_API_URL}/api/token/${mint}/metrics`,
+        );
+
+        const response = await fetch(url.toString());
+
+        if (response.ok) {
+          const metricsData = await response.json();
+          logger.log(`Token metrics for ${mint} fetched successfully`);
+          return this.sendToClient(clientId, "tokenMetrics", {
+            mint,
+            data: metricsData,
+          });
+        } else {
+          logger.error(`Error fetching token metrics: ${response.status}`);
+          return this.sendToClient(clientId, "tokenMetrics", {
+            mint,
+            error: `Failed to fetch metrics: ${response.status}`,
+            data: null,
+          });
+        }
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        logger.error(`Error fetching token metrics: ${errorMessage}`);
+
+        return this.sendToClient(clientId, "tokenMetrics", {
+          mint,
+          error: `Error fetching metrics: ${errorMessage}`,
+          data: null,
+        });
+      }
+    } catch (error) {
+      logger.error("Error in handleTokenMetrics:", error);
+      return this.sendToClient(clientId, "tokenMetrics", {
+        error: "Server error processing metrics request",
+        data: null,
+      });
+    }
+  }
+
+  // Handle request for token data (e.g., complete token info)
+  private async handleTokenData(clientId: string, data: any): Promise<void> {
+    try {
+      if (!data?.mint) {
+        return this.sendToClient(clientId, "tokenData", {
+          error: "Missing token mint address",
+          data: null,
+        });
+      }
+
+      const mint = data.mint;
+      const bypassCache = data.bypassCache === true;
+
+      logger.log(
+        `WebSocket request for token data: ${mint} (bypass cache: ${bypassCache})`,
+      );
+
+      try {
+        // Call the API to get token data
+        const url = new URL(`${this.env.VITE_API_URL}/api/token/${mint}`);
+        if (bypassCache) {
+          url.searchParams.append("bypass_cache", "true");
+        }
+
+        const response = await fetch(url.toString());
+
+        if (response.ok) {
+          const tokenData = await response.json();
+          logger.log(`Token data for ${mint} fetched successfully`);
+          return this.sendToClient(clientId, "tokenData", {
+            mint,
+            data: tokenData,
+          });
+        } else {
+          logger.error(`Error fetching token data: ${response.status}`);
+          return this.sendToClient(clientId, "tokenData", {
+            mint,
+            error: `Failed to fetch token data: ${response.status}`,
+            data: null,
+          });
+        }
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        logger.error(`Error fetching token data: ${errorMessage}`);
+
+        return this.sendToClient(clientId, "tokenData", {
+          mint,
+          error: `Error fetching token data: ${errorMessage}`,
+          data: null,
+        });
+      }
+    } catch (error) {
+      logger.error("Error in handleTokenData:", error);
+      return this.sendToClient(clientId, "tokenData", {
+        error: "Server error processing token data request",
+        data: null,
+      });
+    }
+  }
+
+  // Handle request for wallet balance
+  private async handleWalletBalance(
+    clientId: string,
+    data: any,
+  ): Promise<void> {
+    try {
+      if (!data?.address) {
+        return this.sendToClient(clientId, "balanceUpdate", {
+          error: "Missing wallet address",
+          balance: 0,
+        });
+      }
+
+      const address = data.address;
+      logger.log(`WebSocket request for wallet balance: ${address}`);
+
+      try {
+        // Call the API to get wallet balance
+        const url = new URL(
+          `${this.env.VITE_API_URL}/api/wallet/${address}/balance`,
+        );
+
+        const response = await fetch(url.toString());
+
+        if (response.ok) {
+          const balanceData = await response.json();
+          logger.log(
+            `Balance for ${address} fetched successfully: ${balanceData.balance}`,
+          );
+          return this.sendToClient(clientId, "balanceUpdate", {
+            address,
+            balance: balanceData.balance,
+            timestamp: Date.now(),
+          });
+        } else {
+          logger.error(`Error fetching wallet balance: ${response.status}`);
+          return this.sendToClient(clientId, "balanceUpdate", {
+            address,
+            error: `Failed to fetch balance: ${response.status}`,
+            balance: 0,
+          });
+        }
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        logger.error(`Error fetching wallet balance: ${errorMessage}`);
+
+        return this.sendToClient(clientId, "balanceUpdate", {
+          address,
+          error: `Error fetching balance: ${errorMessage}`,
+          balance: 0,
+        });
+      }
+    } catch (error) {
+      logger.error("Error in handleWalletBalance:", error);
+      return this.sendToClient(clientId, "balanceUpdate", {
+        error: "Server error processing balance request",
+        balance: 0,
+      });
+    }
+  }
+
+  // Handle request for token balance
+  private async handleTokenBalance(clientId: string, data: any): Promise<void> {
+    try {
+      if (!data?.address || !data?.mint) {
+        return this.sendToClient(clientId, "tokenBalanceUpdate", {
+          error: "Missing required parameters (address or mint)",
+          balance: 0,
+        });
+      }
+
+      const address = data.address;
+      const mint = data.mint;
+
+      logger.log(
+        `WebSocket request for token balance: ${mint} for wallet ${address}`,
+      );
+
+      try {
+        // Call the API to get token balance
+        const url = new URL(
+          `${this.env.VITE_API_URL}/api/wallet/${address}/token/${mint}`,
+        );
+
+        const response = await fetch(url.toString());
+
+        if (response.ok) {
+          const balanceData = await response.json();
+          logger.log(
+            `Token balance for ${mint} (owner ${address}) fetched successfully: ${balanceData.balance}`,
+          );
+          return this.sendToClient(clientId, "tokenBalanceUpdate", {
+            address,
+            mint,
+            balance: balanceData.balance,
+            timestamp: Date.now(),
+          });
+        } else {
+          logger.error(`Error fetching token balance: ${response.status}`);
+          return this.sendToClient(clientId, "tokenBalanceUpdate", {
+            address,
+            mint,
+            error: `Failed to fetch token balance: ${response.status}`,
+            balance: 0,
+          });
+        }
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        logger.error(`Error fetching token balance: ${errorMessage}`);
+
+        return this.sendToClient(clientId, "tokenBalanceUpdate", {
+          address,
+          mint,
+          error: `Error fetching token balance: ${errorMessage}`,
+          balance: 0,
+        });
+      }
+    } catch (error) {
+      logger.error("Error in handleTokenBalance:", error);
+      return this.sendToClient(clientId, "tokenBalanceUpdate", {
+        error: "Server error processing token balance request",
+        balance: 0,
+      });
     }
   }
 }

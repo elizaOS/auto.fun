@@ -270,7 +270,7 @@ export default function CommunityTab() {
     // Check if we have a token mint
     if (!tokenMint) {
       toast.error(
-        "No token found. Please navigate to a token page to generate images"
+        "No token found. Please navigate to a token page to generate images",
       );
       return;
     }
@@ -279,7 +279,7 @@ export default function CommunityTab() {
     const requiredBalance = generationMode === "slow" ? 10000 : 1000;
     if (Number(tokenBalance?.toFixed(2) ?? 0) < requiredBalance) {
       toast.error(
-        `You need at least ${requiredBalance.toLocaleString()} tokens to generate images in ${generationMode} mode`
+        `You need at least ${requiredBalance.toLocaleString()} tokens to generate images in ${generationMode} mode`,
       );
       return;
     }
@@ -291,7 +291,7 @@ export default function CommunityTab() {
 
     try {
       console.log(
-        `Generating ${generationMode} image for token ${tokenMint} with prompt: ${userPrompt}`
+        `Generating ${generationMode} image for token ${tokenMint} with prompt: ${userPrompt}`,
       );
 
       // In a real implementation, we would fetch the token metadata if not available
@@ -309,7 +309,7 @@ export default function CommunityTab() {
         console.error("No auth token found");
         // Try to generate without auth token for testing
         toast.warning(
-          "No auth token found, trying to generate without authentication"
+          "No auth token found, trying to generate without authentication",
         );
       }
 
@@ -336,7 +336,7 @@ export default function CommunityTab() {
           tokenMint,
           tokenMetadata,
           mediaType: "image",
-          mode: generationMode
+          mode: generationMode,
         }),
         credentials: "include", // Important to include credentials for auth cookies
       });
@@ -375,8 +375,8 @@ export default function CommunityTab() {
               toast.error(
                 <div>
                   <p>
-                    You need at least {minimumRequired.toLocaleString()} tokens to use this
-                    feature.
+                    You need at least {minimumRequired.toLocaleString()} tokens
+                    to use this feature.
                   </p>
                   <p>You currently have {currentAmount} tokens.</p>
                   <a
@@ -393,10 +393,10 @@ export default function CommunityTab() {
                 {
                   autoClose: 10000, // Show for 10 seconds
                   closeOnClick: false,
-                }
+                },
               );
               throw new Error(
-                `Insufficient token balance. You need at least ${minimumRequired.toLocaleString()} tokens.`
+                `Insufficient token balance. You need at least ${minimumRequired.toLocaleString()} tokens.`,
               );
             }
           } else {
@@ -442,7 +442,7 @@ export default function CommunityTab() {
           setGeneratedImage(data.mediaUrl);
           console.log(
             "Using data URL directly:",
-            data.mediaUrl.substring(0, 50) + "..."
+            data.mediaUrl.substring(0, 50) + "...",
           );
         } else {
           // It's a URL, make sure it's absolute
@@ -462,7 +462,7 @@ export default function CommunityTab() {
 
         if (data.remainingGenerations !== undefined) {
           toast.success(
-            `Image generated successfully! You have ${data.remainingGenerations} generations left today.`
+            `Image generated successfully! You have ${data.remainingGenerations} generations left today.`,
           );
         } else {
           toast.success("Image generated successfully!");
@@ -470,14 +470,14 @@ export default function CommunityTab() {
       } else {
         console.error("Invalid response:", data);
         throw new Error(
-          data.error || "Failed to generate image: No media URL returned"
+          data.error || "Failed to generate image: No media URL returned",
         );
       }
     } catch (error) {
       console.error("Error generating image:", error);
       setProcessingStatus("failed");
       toast.error(
-        error instanceof Error ? error.message : "Failed to generate image"
+        error instanceof Error ? error.message : "Failed to generate image",
       );
     } finally {
       setIsGenerating(false);
@@ -485,7 +485,10 @@ export default function CommunityTab() {
   };
 
   // Generate video function
-  const generateVideo = async (isImageToVideo: boolean = false, sourceImageUrl: string = "") => {
+  const generateVideo = async (
+    isImageToVideo: boolean = false,
+    sourceImageUrl: string = "",
+  ) => {
     if (!userPrompt && !isImageToVideo) return;
 
     // Check if wallet is connected
@@ -497,7 +500,7 @@ export default function CommunityTab() {
     // Check if we have a token mint
     if (!tokenMint) {
       toast.error(
-        "No token found. Please navigate to a token page to generate videos"
+        "No token found. Please navigate to a token page to generate videos",
       );
       return;
     }
@@ -506,7 +509,7 @@ export default function CommunityTab() {
     const requiredBalance = generationMode === "slow" ? 100000 : 10000;
     if (Number(tokenBalance?.toFixed(2) ?? 0) < requiredBalance) {
       toast.error(
-        `You need at least ${requiredBalance.toLocaleString()} tokens to generate videos in ${generationMode} mode`
+        `You need at least ${requiredBalance.toLocaleString()} tokens to generate videos in ${generationMode} mode`,
       );
       return;
     }
@@ -518,7 +521,7 @@ export default function CommunityTab() {
 
     try {
       console.log(
-        `Generating ${generationMode} video for token ${tokenMint} with prompt: ${userPrompt}`
+        `Generating ${generationMode} video for token ${tokenMint} with prompt: ${userPrompt}`,
       );
 
       // In a real implementation, we would fetch the token metadata if not available
@@ -534,7 +537,7 @@ export default function CommunityTab() {
       if (!authToken) {
         console.error("No auth token found");
         toast.warning(
-          "No auth token found, trying to generate without authentication"
+          "No auth token found, trying to generate without authentication",
         );
       }
 
@@ -558,7 +561,7 @@ export default function CommunityTab() {
         tokenMint,
         tokenMetadata,
         mediaType: "video",
-        mode: generationMode
+        mode: generationMode,
       };
 
       // Add image URL for image-to-video if applicable
@@ -606,8 +609,8 @@ export default function CommunityTab() {
               toast.error(
                 <div>
                   <p>
-                    You need at least {minimumRequired.toLocaleString()} tokens to use this
-                    feature.
+                    You need at least {minimumRequired.toLocaleString()} tokens
+                    to use this feature.
                   </p>
                   <p>You currently have {currentAmount} tokens.</p>
                   <a
@@ -624,10 +627,10 @@ export default function CommunityTab() {
                 {
                   autoClose: 10000,
                   closeOnClick: false,
-                }
+                },
               );
               throw new Error(
-                `Insufficient token balance. You need at least ${minimumRequired.toLocaleString()} tokens.`
+                `Insufficient token balance. You need at least ${minimumRequired.toLocaleString()} tokens.`,
               );
             }
           } else {
@@ -681,7 +684,7 @@ export default function CommunityTab() {
 
         if (data.remainingGenerations !== undefined) {
           toast.success(
-            `Video generated successfully! You have ${data.remainingGenerations} generations left today.`
+            `Video generated successfully! You have ${data.remainingGenerations} generations left today.`,
           );
         } else {
           toast.success("Video generated successfully!");
@@ -689,14 +692,14 @@ export default function CommunityTab() {
       } else {
         console.error("Invalid response:", data);
         throw new Error(
-          data.error || "Failed to generate video: No media URL returned"
+          data.error || "Failed to generate video: No media URL returned",
         );
       }
     } catch (error) {
       console.error("Error generating video:", error);
       setProcessingStatus("failed");
       toast.error(
-        error instanceof Error ? error.message : "Failed to generate video"
+        error instanceof Error ? error.message : "Failed to generate video",
       );
     } finally {
       setIsGenerating(false);
@@ -1195,7 +1198,9 @@ export default function CommunityTab() {
 
   // In the component, add these state variables after the existing ones
   const [videoMode, setVideoMode] = useState<"text" | "image">("text");
-  const [selectedImageForVideo, setSelectedImageForVideo] = useState<string | null>(null);
+  const [selectedImageForVideo, setSelectedImageForVideo] = useState<
+    string | null
+  >(null);
   const [imageUploadLoading, setImageUploadLoading] = useState(false);
 
   // Add this function to handle image uploads for image-to-video
@@ -1207,11 +1212,11 @@ export default function CommunityTab() {
     try {
       setImageUploadLoading(true);
       const file = e.target.files[0];
-      
+
       // Convert the file to data URL
       const reader = new FileReader();
       reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
+        if (typeof reader.result === "string") {
           setSelectedImageForVideo(reader.result);
         }
         setImageUploadLoading(false);
@@ -1241,7 +1246,7 @@ export default function CommunityTab() {
     // Check if we have a token mint
     if (!tokenMint) {
       toast.error(
-        "No token found. Please navigate to a token page to generate audio"
+        "No token found. Please navigate to a token page to generate audio",
       );
       return;
     }
@@ -1251,7 +1256,7 @@ export default function CommunityTab() {
     const requiredBalance = 10000;
     if (Number(tokenBalance?.toFixed(2) ?? 0) < requiredBalance) {
       toast.error(
-        `You need at least ${requiredBalance.toLocaleString()} tokens to generate audio`
+        `You need at least ${requiredBalance.toLocaleString()} tokens to generate audio`,
       );
       return;
     }
@@ -1263,7 +1268,7 @@ export default function CommunityTab() {
 
     try {
       console.log(
-        `Generating audio for token ${tokenMint} with mode: ${audioMode}`
+        `Generating audio for token ${tokenMint} with mode: ${audioMode}`,
       );
 
       // Get token metadata
@@ -1279,7 +1284,7 @@ export default function CommunityTab() {
       if (!authToken) {
         console.error("No auth token found");
         toast.warning(
-          "No auth token found, trying to generate without authentication"
+          "No auth token found, trying to generate without authentication",
         );
       }
 
@@ -1303,7 +1308,7 @@ export default function CommunityTab() {
         tokenMint,
         tokenMetadata,
         mediaType: "audio",
-        mode: "fast" // Audio only has one mode for now
+        mode: "fast", // Audio only has one mode for now
       };
 
       // Add lyrics for music generation if applicable
@@ -1351,8 +1356,8 @@ export default function CommunityTab() {
               toast.error(
                 <div>
                   <p>
-                    You need at least {minimumRequired.toLocaleString()} tokens to use this
-                    feature.
+                    You need at least {minimumRequired.toLocaleString()} tokens
+                    to use this feature.
                   </p>
                   <p>You currently have {currentAmount} tokens.</p>
                   <a
@@ -1369,10 +1374,10 @@ export default function CommunityTab() {
                 {
                   autoClose: 10000,
                   closeOnClick: false,
-                }
+                },
               );
               throw new Error(
-                `Insufficient token balance. You need at least ${minimumRequired.toLocaleString()} tokens.`
+                `Insufficient token balance. You need at least ${minimumRequired.toLocaleString()} tokens.`,
               );
             }
           } else {
@@ -1426,7 +1431,7 @@ export default function CommunityTab() {
 
         if (data.remainingGenerations !== undefined) {
           toast.success(
-            `Audio generated successfully! You have ${data.remainingGenerations} generations left today.`
+            `Audio generated successfully! You have ${data.remainingGenerations} generations left today.`,
           );
         } else {
           toast.success("Audio generated successfully!");
@@ -1434,14 +1439,14 @@ export default function CommunityTab() {
       } else {
         console.error("Invalid response:", data);
         throw new Error(
-          data.error || "Failed to generate audio: No media URL returned"
+          data.error || "Failed to generate audio: No media URL returned",
         );
       }
     } catch (error) {
       console.error("Error generating audio:", error);
       setProcessingStatus("failed");
       toast.error(
-        error instanceof Error ? error.message : "Failed to generate audio"
+        error instanceof Error ? error.message : "Failed to generate audio",
       );
     } finally {
       setIsGenerating(false);
@@ -1473,8 +1478,8 @@ export default function CommunityTab() {
           >
             Video
           </Button>
-          <Button 
-            variant={communityTab === "Audio" ? "tab" : "primary"} 
+          <Button
+            variant={communityTab === "Audio" ? "tab" : "primary"}
             onClick={() => {
               setCommunityTab("Audio");
               setGeneratedImage(null);
@@ -1483,7 +1488,7 @@ export default function CommunityTab() {
           >
             Audio
           </Button>
-          
+
           {/* Mode selection - only show for Image and Video */}
           {(communityTab === "Image" || communityTab === "Video") && (
             <div className="mt-4">
@@ -1505,13 +1510,13 @@ export default function CommunityTab() {
                 </Button>
               </div>
               <div className="text-xs text-gray-400 mt-1">
-                {communityTab === "Image" && generationMode === "slow" 
-                  ? "Requires 10k+ tokens" 
-                  : communityTab === "Video" && generationMode === "fast"
+                {communityTab === "Image" && generationMode === "slow"
                   ? "Requires 10k+ tokens"
-                  : communityTab === "Video" && generationMode === "slow"
-                  ? "Requires 100k+ tokens"
-                  : ""}
+                  : communityTab === "Video" && generationMode === "fast"
+                    ? "Requires 10k+ tokens"
+                    : communityTab === "Video" && generationMode === "slow"
+                      ? "Requires 100k+ tokens"
+                      : ""}
               </div>
             </div>
           )}
@@ -1521,7 +1526,13 @@ export default function CommunityTab() {
             <h3 className="text-sm font-bold mb-1">Token Balance</h3>
             <div className="text-sm">
               {tokenBalance !== null ? (
-                <span className={Number(tokenBalance) >= 1000 ? "text-green-400" : "text-yellow-400"}>
+                <span
+                  className={
+                    Number(tokenBalance) >= 1000
+                      ? "text-green-400"
+                      : "text-yellow-400"
+                  }
+                >
                   {Number(tokenBalance).toLocaleString()} tokens
                 </span>
               ) : (
@@ -1553,7 +1564,11 @@ export default function CommunityTab() {
                       />
                       <button
                         onClick={generateImage}
-                        disabled={isGenerating || !userPrompt.trim() || Number(tokenBalance?.toFixed(2) ?? 0) < 1000}
+                        disabled={
+                          isGenerating ||
+                          !userPrompt.trim() ||
+                          Number(tokenBalance?.toFixed(2) ?? 0) < 1000
+                        }
                         className="p-0 transition-colors disabled:opacity-50"
                       >
                         <img
@@ -1663,16 +1678,16 @@ export default function CommunityTab() {
                   Image to Video
                 </Button>
               </div>
-              
+
               <div className="text-sm text-gray-300 mb-2">
-                {videoMode === "text" 
-                  ? "Create videos from text prompts." 
+                {videoMode === "text"
+                  ? "Create videos from text prompts."
                   : "Create videos from your images."}
-                {generationMode === "fast" 
+                {generationMode === "fast"
                   ? " Fast mode requires 10k+ tokens."
                   : " Slow mode requires 100k+ tokens."}
               </div>
-              
+
               <div className="flex flex-col mt-4 w-full">
                 {videoMode === "text" ? (
                   <div className="flex">
@@ -1681,7 +1696,11 @@ export default function CommunityTab() {
                       value={userPrompt}
                       onChange={(e) => setUserPrompt(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" && !isGenerating && userPrompt.trim()) {
+                        if (
+                          e.key === "Enter" &&
+                          !isGenerating &&
+                          userPrompt.trim()
+                        ) {
                           generateVideo();
                         }
                       }}
@@ -1690,7 +1709,12 @@ export default function CommunityTab() {
                     />
                     <button
                       onClick={() => generateVideo()}
-                      disabled={isGenerating || !userPrompt.trim() || Number(tokenBalance?.toFixed(2) ?? 0) < (generationMode === "fast" ? 10000 : 100000)}
+                      disabled={
+                        isGenerating ||
+                        !userPrompt.trim() ||
+                        Number(tokenBalance?.toFixed(2) ?? 0) <
+                          (generationMode === "fast" ? 10000 : 100000)
+                      }
                       className="p-0 transition-colors disabled:opacity-50"
                     >
                       <img
@@ -1728,9 +1752,9 @@ export default function CommunityTab() {
                     <div className="border-2 border-dashed border-gray-600 p-4 rounded-md">
                       {selectedImageForVideo ? (
                         <div className="relative">
-                          <img 
-                            src={selectedImageForVideo} 
-                            alt="Selected image" 
+                          <img
+                            src={selectedImageForVideo}
+                            alt="Selected image"
                             className="max-w-full max-h-[300px] mx-auto"
                           />
                           <button
@@ -1745,7 +1769,9 @@ export default function CommunityTab() {
                         <div className="text-center py-8">
                           <label className="cursor-pointer">
                             <div className="mb-2">
-                              {imageUploadLoading ? "Uploading..." : "Drop an image here or click to upload"}
+                              {imageUploadLoading
+                                ? "Uploading..."
+                                : "Drop an image here or click to upload"}
                             </div>
                             <input
                               type="file"
@@ -1755,23 +1781,30 @@ export default function CommunityTab() {
                               disabled={imageUploadLoading}
                             />
                             <div className="text-blue-400 hover:text-blue-300 text-sm">
-                              {imageUploadLoading ? 
-                                <div className="animate-pulse">Processing...</div> : 
+                              {imageUploadLoading ? (
+                                <div className="animate-pulse">
+                                  Processing...
+                                </div>
+                              ) : (
                                 "Browse files"
-                              }
+                              )}
                             </div>
                           </label>
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="flex">
                       <input
                         type="text"
                         value={userPrompt}
                         onChange={(e) => setUserPrompt(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter" && !isGenerating && selectedImageForVideo) {
+                          if (
+                            e.key === "Enter" &&
+                            !isGenerating &&
+                            selectedImageForVideo
+                          ) {
                             generateVideo(true, selectedImageForVideo);
                           }
                         }}
@@ -1779,11 +1812,14 @@ export default function CommunityTab() {
                         className="flex-1 my-2 p-0 border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
                       />
                       <button
-                        onClick={() => generateVideo(true, selectedImageForVideo!)}
+                        onClick={() =>
+                          generateVideo(true, selectedImageForVideo!)
+                        }
                         disabled={
-                          isGenerating || 
-                          !selectedImageForVideo || 
-                          Number(tokenBalance?.toFixed(2) ?? 0) < (generationMode === "fast" ? 10000 : 100000)
+                          isGenerating ||
+                          !selectedImageForVideo ||
+                          Number(tokenBalance?.toFixed(2) ?? 0) <
+                            (generationMode === "fast" ? 10000 : 100000)
                         }
                         className="p-0 transition-colors disabled:opacity-50"
                       >
@@ -1821,10 +1857,13 @@ export default function CommunityTab() {
                 )}
               </div>
 
-              {Number(tokenBalance?.toFixed(2) ?? 0) < (generationMode === "fast" ? 10000 : 100000) && (
+              {Number(tokenBalance?.toFixed(2) ?? 0) <
+                (generationMode === "fast" ? 10000 : 100000) && (
                 <div className="text-sm text-yellow-500 mb-4">
                   <p>
-                    You need to hold at least {generationMode === "fast" ? "10,000" : "100,000"} tokens to generate videos in {generationMode} mode.
+                    You need to hold at least{" "}
+                    {generationMode === "fast" ? "10,000" : "100,000"} tokens to
+                    generate videos in {generationMode} mode.
                   </p>
                 </div>
               )}
@@ -1837,15 +1876,15 @@ export default function CommunityTab() {
                   </div>
                 ) : generatedImage && processingStatus === "processed" ? (
                   <div className="border border-gray-700">
-                    <video 
-                      src={generatedImage} 
-                      controls 
+                    <video
+                      src={generatedImage}
+                      controls
                       className="w-full max-h-[500px]"
-                      autoPlay 
+                      autoPlay
                       loop
                       muted
                     ></video>
-                    
+
                     {/* Video controls */}
                     <div className="w-full flex items-center justify-between p-2 bg-black/80">
                       {shareError && (
@@ -1897,13 +1936,13 @@ export default function CommunityTab() {
                   Speech (Coming Soon)
                 </Button>
               </div>
-              
+
               <div className="text-sm text-gray-300 mb-2">
-                {audioMode === "music" 
-                  ? "Generate music based on lyrics. Requires 10k+ tokens." 
+                {audioMode === "music"
+                  ? "Generate music based on lyrics. Requires 10k+ tokens."
                   : "Generate speech from text. Requires 10k+ tokens."}
               </div>
-              
+
               <div className="flex flex-col mt-4 w-full">
                 {audioMode === "music" ? (
                   <div className="flex flex-col gap-4">
@@ -1922,7 +1961,7 @@ export default function CommunityTab() {
                         className="w-full bg-transparent border-0 focus:outline-none text-white text-sm font-mono"
                       />
                     </div>
-                    
+
                     <div className="flex">
                       <input
                         type="text"
@@ -1934,8 +1973,8 @@ export default function CommunityTab() {
                       <button
                         onClick={() => generateAudio()}
                         disabled={
-                          isGenerating || 
-                          !lyrics || 
+                          isGenerating ||
+                          !lyrics ||
                           Number(tokenBalance?.toFixed(2) ?? 0) < 10000
                         }
                         className="p-0 transition-colors disabled:opacity-50"
@@ -1996,13 +2035,13 @@ export default function CommunityTab() {
                     </div>
                   ) : generatedImage && processingStatus === "processed" ? (
                     <div className="border border-gray-700 p-4">
-                      <audio 
-                        src={generatedImage} 
-                        controls 
+                      <audio
+                        src={generatedImage}
+                        controls
                         className="w-full"
                         autoPlay
                       ></audio>
-                      
+
                       {/* Audio controls */}
                       <div className="w-full flex items-center justify-between mt-4">
                         {shareError && (
