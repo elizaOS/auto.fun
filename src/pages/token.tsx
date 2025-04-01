@@ -24,6 +24,7 @@ import {
 import { getToken } from "@/utils/api";
 import { fetchTokenMarketMetrics } from "@/utils/blockchain";
 import { getSocket } from "@/utils/socket";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Globe, Info as InfoCircle } from "lucide-react";
 import { useEffect } from "react";
@@ -35,6 +36,8 @@ const socket = getSocket();
 export default function Page() {
   const params = useParams();
   const address = params?.address;
+  const { publicKey } = useWallet();
+  const normalizedWallet = publicKey?.toString();
   const { solPrice: contextSolPrice } = useSolPriceContext();
 
   // Fetch token details from API
@@ -198,9 +201,9 @@ export default function Page() {
           <Link to="/">
             <Button>Back to Home</Button>
           </Link>
-          <Link to={`https://solscan.io/token/${address}`} target="_blank">
+          {/* <Link to={`https://solscan.io/token/${address}`} target="_blank">
             <Button variant="secondary">View on Solscan</Button>
-          </Link>
+          </Link> */}
         </div>
       </div>
     );
@@ -257,7 +260,12 @@ export default function Page() {
               <CopyButton text={token?.mint} />
             </div>
           </div>
+
+          {/* Agents Section */}
+          <AgentsSection />
+
           {/* Social Links */}
+          {token?.creator !== normalizedWallet && (
           <div className="flex items-center justify-between gap-0.5">
             <Link to={token?.website} className="w-full" target="_blank">
               <Button
@@ -313,7 +321,9 @@ export default function Page() {
                 />
               </Button>
             </Link>
-          </div>
+            </div>
+          )}
+          {token?.creator === normalizedWallet && <AdminSection />}
           {/* USD Price & Solana Price */}
           <div className="flex border bg-autofun-background-card py-2 px-3 items-center justify-between divide-x divide-autofun-stroke-primary">
             <div className="flex flex-col gap-1 items-center w-full">
@@ -465,22 +475,10 @@ export default function Page() {
         </div>
         <TransactionsAndHolders token={token} />
         <div
-          id="agents"
-          className="border bg-autofun-background-card scroll-mt-16"
-        >
-          <AgentsSection />
-        </div>
-        <div
           id="generation"
           className="border bg-autofun-background-card scroll-mt-16"
         >
           <GenerationSection />
-        </div>
-        <div
-          id="admin"
-          className="border bg-autofun-background-card scroll-mt-16"
-        >
-          <AdminSection />
         </div>
       </div>
     </div>

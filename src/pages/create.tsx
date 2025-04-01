@@ -442,9 +442,22 @@ const FormImageInput = ({
               <button
                 type="button"
                 onClick={handleRemoveImage}
-                className="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-700 transition-all"
+                className="absolute top-2 right-2 text-white w-12 h-12 rounded-full flex items-center justify-center text-shadow opacity-50 hover:opacity-100 transition-all z-10"
               >
-                ✕
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
               </button>
             )}
 
@@ -856,15 +869,7 @@ export const Create = () => {
           } else {
             // Success message - different in dev mode if not the creator
             const message =
-              !tokenData.isCreator &&
-              !(
-                tokenData.updateAuthority === publicKey.toString() ||
-                (tokenData.creators &&
-                  tokenData.creators.includes(publicKey.toString()))
-              )
-                ? "Development Mode: You can register this token without being the creator wallet."
-                : "You are connected with the creator wallet. You can now register this token.";
-
+              "Successfully loaded token data for " + tokenData.name;
             setImportStatus({
               type: "success",
               message,
@@ -1113,14 +1118,15 @@ export const Create = () => {
       setHasStoredToken(false);
     }
 
-    // When switching to Manual mode, clear the image if coming from Auto
-    if (tab === FormTab.MANUAL && activeTab === FormTab.AUTO) {
+    // When switching to Manual mode, clear the image regardless of previous tab
+    if (tab === FormTab.MANUAL) {
       // Clear the imageFile state
       setImageFile(null);
       // Clear the preview in FormImageInput
       if (previewSetterRef.current) {
         previewSetterRef.current(null);
       }
+      setCoinDropImageUrl(null);
     }
 
     setActiveTab(tab);
@@ -1574,24 +1580,15 @@ export const Create = () => {
               (tokenData.creators &&
                 tokenData.creators.includes(publicKey.toString()));
 
-        if (!isCreatorWallet) {
-          // Show a message that they need to switch wallets
-          setImportStatus({
-            type: "warning",
-            message:
-              "Please connect with the token's creator wallet to register it. The form below has been populated with the token data.",
-          });
-        } else {
-          // Success message - ready to register
-          const message = !isCreatorWallet
-            ? "Development Mode: You can register this token without being the creator wallet."
-            : "Token data loaded successfully. You can now register this token.";
+        // Success message - ready to register
+        const message = !isCreatorWallet
+          ? "Development Mode: You can register this token without being the creator wallet."
+          : "Token data loaded successfully. You can now register this token.";
 
-          setImportStatus({
-            type: "success",
-            message,
-          });
-        }
+        setImportStatus({
+          type: "success",
+          message,
+        });
       } catch (fetchError) {
         console.error("API Error:", fetchError);
 
@@ -1854,11 +1851,11 @@ export const Create = () => {
           console.log("Token update authority:", tokenData.updateAuthority);
           console.log("Token creators:", tokenData.creators);
 
-          if (!isCreatorNow) {
-            throw new Error(
-              "You need to connect with the token's creator wallet to register it",
-            );
-          }
+          // if (!isCreatorNow) {
+          //   throw new Error(
+          //     "You need to connect with the token's creator wallet to register it",
+          //   );
+          // }
 
           // For imported tokens, create a token entry in the database
           console.log(
@@ -2100,7 +2097,7 @@ export const Create = () => {
     if (!form.description) newErrors.description = "Description is required";
 
     // Validate SOL balance - skip this check for imported tokens in dev mode
-    if (insufficientBalance && !(activeTab === FormTab.IMPORT)) {
+    if (isAuthenticated && insufficientBalance && !(activeTab === FormTab.IMPORT)) {
       newErrors.initialSol =
         "Insufficient SOL balance (need 0.05 SOL for fees)";
       toast.error("You don't have enough SOL to create this token");
@@ -2250,16 +2247,41 @@ export const Create = () => {
         previewSetterRef.current(autoForm.imageUrl);
         setCoinDropImageUrl(autoForm.imageUrl);
       }
-    } else if (activeTab === FormTab.MANUAL && manualForm.imageFile) {
-      // When switching to Manual, create a new object URL from manual imageFile
-      const manualImageUrl = URL.createObjectURL(manualForm.imageFile);
-      setImageFile(manualForm.imageFile);
-      if (previewSetterRef.current) {
-        previewSetterRef.current(manualImageUrl);
+    } else if (activeTab === FormTab.MANUAL) {
+      // Manual mode should always start clean (image was already cleared in handleTabChange)
+      // Only set the image if manualForm has an imageFile from previous Manual session
+      if (manualForm.imageFile) {
+        const manualImageUrl = URL.createObjectURL(manualForm.imageFile);
+        setImageFile(manualForm.imageFile);
+        if (previewSetterRef.current) {
+          previewSetterRef.current(manualImageUrl);
+        }
+        setCoinDropImageUrl(manualImageUrl);
+      } else {
+        // Ensure everything is cleared for Manual mode
+        setImageFile(null);
+        if (previewSetterRef.current) {
+          previewSetterRef.current(null);
+        }
+        setCoinDropImageUrl(null);
       }
-      setCoinDropImageUrl(manualImageUrl);
+    } else if (activeTab === FormTab.IMPORT && hasStoredToken) {
+      // Import tab should only set image from stored token data
+      const storedTokenData = localStorage.getItem("import_token_data");
+      if (storedTokenData) {
+        try {
+          const tokenData = JSON.parse(storedTokenData) as TokenSearchData;
+          // Set the image if available
+          if (tokenData.image && previewSetterRef.current) {
+            previewSetterRef.current(tokenData.image);
+            setCoinDropImageUrl(tokenData.image);
+          }
+        } catch (error) {
+          console.error("Error parsing stored token data:", error);
+        }
+      }
     }
-  }, [activeTab, autoForm.imageUrl, manualForm.imageFile]);
+  }, [activeTab, autoForm.imageUrl, manualForm.imageFile, hasStoredToken]);
 
   // Update manualForm when imageFile changes in Manual mode
   useEffect(() => {
@@ -2288,6 +2310,31 @@ export const Create = () => {
   const calculatePercentage = (tokenAmount: number): number => {
     return (tokenAmount / TOKEN_SUPPLY) * 100;
   };
+
+  // Cleanup object URLs when component unmounts or when URL changes
+  useEffect(() => {
+    // Store created URLs for cleanup
+    const createdUrls: string[] = [];
+
+    return () => {
+      // Cleanup any object URLs to prevent memory leaks
+      createdUrls.forEach((url) => {
+        URL.revokeObjectURL(url);
+      });
+    };
+  }, []);
+
+  // Additional cleanup for autoForm.imageUrl when it changes
+  useEffect(() => {
+    const prevImageUrl = autoForm.imageUrl;
+
+    return () => {
+      // Only cleanup URLs that look like object URLs (blob:)
+      if (prevImageUrl && prevImageUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(prevImageUrl);
+      }
+    };
+  }, [autoForm.imageUrl]);
 
   return (
     <div className="flex flex-col items-center justify-center">
@@ -2528,16 +2575,6 @@ export const Create = () => {
                         )}
                       </div>
                     )}
-
-                    {importStatus.type === "success" && (
-                      <div className="mt-2 ml-7 text-sm text-green-300/80">
-                        <p>
-                          You're connected with the correct wallet. Review the
-                          token details below and click "Launch" to register
-                          this token.
-                        </p>
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -2598,22 +2635,33 @@ export const Create = () => {
                 onNameChange={(value) => handleChange("name", value)}
                 tickerValue={form.symbol}
                 onTickerChange={(value) => handleChange("symbol", value)}
+                key={`image-input-${activeTab}`} // Force complete rerender on tab change
               />
             </div>
 
-            <FormTextArea
-              value={form.description}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                handleChange("description", e.target.value)
-              }
-              label="Description"
-              minRows={1}
-              placeholder="Description"
-              maxLength={2000}
-              error={errors.description}
-              onClick={() => generateAll()}
-              isLoading={isGenerating && generatingField === "description"}
-            />
+            {activeTab === FormTab.IMPORT && (
+              <span
+                className={`bg-transparent text-white text-xl font-bold focus:outline-none px-1 py-0.5 mb-4`}
+              >
+                {form.description}
+              </span>
+            )}
+
+            {activeTab !== FormTab.IMPORT && (
+              <FormTextArea
+                value={form.description}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  handleChange("description", e.target.value)
+                }
+                label="Description"
+                minRows={1}
+                placeholder="Description"
+                maxLength={2000}
+                error={errors.description}
+                onClick={() => generateAll()}
+                isLoading={isGenerating && generatingField === "description"}
+              />
+            )}
 
             {/* Hide Buy section when in IMPORT tab */}
             {activeTab !== FormTab.IMPORT && (
@@ -2718,9 +2766,9 @@ export const Create = () => {
                 <div className="mt-2 text-right text-xs text-neutral-400">
                   {/* Your balance:{" "}
                     {balance?.data?.formattedBalance?.toFixed(2) || "0.00"} SOL */}
-                  {insufficientBalance && (
+                  {isAuthenticated && isFormValid && insufficientBalance && (
                     <div className="text-red-500 mt-1">
-                      Insufficient SOL balance (need 0.05 SOL for fees)
+                      You don't have enough SOL in your wallet
                     </div>
                   )}
                   {Number(buyValue) === maxInputSol &&
@@ -2783,22 +2831,9 @@ export const Create = () => {
               />
             </button>
 
-            {!isFormValid && (
+            {isAuthenticated && !isFormValid && (
               <p className="text-red-500 text-center text-sm">
                 Please fill in all required fields
-              </p>
-            )}
-            {insufficientBalance && (
-              <p className="text-red-500 text-center text-sm">
-                You need at least {(Number(buyValue) + 0.05).toFixed(2)} SOL (
-                {Number(buyValue).toFixed(2)} SOL for token + 0.05 SOL for fees)
-                {solPrice && (
-                  <span className="block mt-1">
-                    ≈ $
-                    {(Number(buyValue) * solPrice + 0.05 * solPrice).toFixed(2)}{" "}
-                    USD
-                  </span>
-                )}
               </p>
             )}
             {!isAuthenticated && (

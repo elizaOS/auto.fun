@@ -2,9 +2,8 @@ import { FormInput } from "@/pages/create";
 import { isFromDomain } from "@/utils";
 import { env } from "@/utils/env";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { PublicKey } from "@solana/web3.js";
 import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import CopyButton from "../copy-button";
@@ -38,10 +37,20 @@ export default function AdminTab() {
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [detectedError, setDetectedError] = useState<string | null>(null);
   const { publicKey, connected } = useWallet();
   const { isAuthenticated, walletAddress } = useAuthentication();
+  const [originalData, setOriginalData] = useState<{
+    website: string;
+    twitter: string;
+    telegram: string;
+    discord: string;
+  }>({
+    website: "",
+    twitter: "",
+    telegram: "",
+    discord: "",
+  });
 
   // Extract token mint from URL if not found in params
   const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(
@@ -87,7 +96,23 @@ export default function AdminTab() {
     },
   });
 
-  // Check wallet connection status whenever related states change
+  // Watch for form changes
+  const formValues = useWatch({
+    control,
+    name: "links",
+  });
+
+  // Check if form values have changed
+  const hasChanges = () => {
+    return (
+      formValues?.website !== originalData.website ||
+      formValues?.twitter !== originalData.twitter ||
+      formValues?.telegram !== originalData.telegram ||
+      formValues?.discord !== originalData.discord
+    );
+  };
+
+  // Debug information about wallet connection
   useEffect(() => {
     // Get wallet address from different sources in order of reliability
     const currentWalletAddress = publicKey?.toString() || walletAddress || null;
@@ -168,15 +193,13 @@ export default function AdminTab() {
         // Store token data for later use
         setTokenData(data);
 
-        // Get current wallet address from various sources
-        const currentWalletAddress = publicKey?.toString() || walletAddress || null;
-        
-        // Check if the current wallet is the token creator
-        if (currentWalletAddress && data.creator) {
-          checkIsAdmin(currentWalletAddress, data.creator);
-        } else {
-          setIsAdmin(false);
-        }
+        // Store original values
+        setOriginalData({
+          website: data.website || "",
+          twitter: data.twitter || "",
+          telegram: data.telegram || "",
+          discord: data.discord || "",
+        });
 
         // Update form with existing values
         reset({
@@ -269,14 +292,14 @@ export default function AdminTab() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 p-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col">
       {detectedError && (
         <div className="bg-red-900/30 border border-red-500 p-3 mb-4">
           {detectedError}
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1">
         {/* Website Field */}
         <Controller
           control={control}
@@ -373,19 +396,13 @@ export default function AdminTab() {
 
       <button
         type="submit"
-        disabled={!isAdmin || isSaving}
-        className={`cursor-pointer text-white bg-transparent gap-x-3 border-2 hover:bg-autofun-background-action-highlight border-autofun-background-action-highlight flex px-8 py-1 mt-2 flex-row w-fit items-center justify-items-center ${
-          !isAdmin ? "opacity-50 cursor-not-allowed" : ""
+        disabled={isSaving || !hasChanges()}
+        className={`ml-auto cursor-pointer text-white bg-transparent gap-x-3 border-2 hover:bg-autofun-background-action-highlight border-autofun-background-action-highlight flex px-8 py-1 mt-2 flex-row w-fit items-center justify-items-center ${
+          isSaving || !hasChanges() ? "opacity-50 cursor-not-allowed" : ""
         }`}
       >
-        {isSaving ? "Saving..." : "Save"}
+        {isSaving ? "Updating..." : "Update"}
       </button>
-
-      {!isAdmin && (
-        <p className="text-sm text-red-400 mt-2">
-          You must be the token creator to edit these settings.
-        </p>
-      )}
     </form>
   );
 }

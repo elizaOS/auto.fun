@@ -41,7 +41,7 @@ interface TokenAgent {
   createdAt?: number;
 }
 
-export default function CommunityTab() {
+export default function AgentsSection() {
   const { publicKey } = useWallet();
   const [twitterCredentials, setTwitterCredentials] =
     useState<TwitterCredentials | null>(null);
@@ -67,7 +67,7 @@ export default function CommunityTab() {
 
   // Extract token mint from URL if not found in params
   const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(
-    null,
+    null
   );
 
   // Effect to detect token mint from various sources
@@ -107,7 +107,7 @@ export default function CommunityTab() {
       if (storedCredentials) {
         try {
           const parsedCredentials = JSON.parse(
-            storedCredentials,
+            storedCredentials
           ) as TwitterCredentials;
           if (parsedCredentials.expiresAt > Date.now()) {
             console.log("Found valid Twitter credentials in storage");
@@ -129,7 +129,7 @@ export default function CommunityTab() {
         const fetchUrl = `${API_BASE_URL}/api/token/${tokenMint}/agents`;
         console.log(`Fetching agents from URL: ${fetchUrl}`);
         console.log(
-          `Using tokenMint: ${tokenMint}, API_BASE_URL: ${API_BASE_URL}`,
+          `Using tokenMint: ${tokenMint}, API_BASE_URL: ${API_BASE_URL}`
         );
 
         const agentsResponse = await fetch(fetchUrl);
@@ -140,7 +140,7 @@ export default function CommunityTab() {
 
         // ** ADD Log: Log status and ok status **
         console.log(
-          `Agents response status: ${agentsResponse.status}, ok: ${agentsResponse.ok}`,
+          `Agents response status: ${agentsResponse.status}, ok: ${agentsResponse.ok}`
         );
 
         if (!agentsResponse.ok) {
@@ -169,7 +169,7 @@ export default function CommunityTab() {
         if (!agentsData || !Array.isArray(agentsData.agents)) {
           console.error(
             "Invalid agents data received after parsing:",
-            agentsData,
+            agentsData
           );
           throw new Error("Invalid response format when fetching agents.");
         }
@@ -182,7 +182,7 @@ export default function CommunityTab() {
         setAgentsError(
           error instanceof Error
             ? error.message
-            : "Unknown error fetching agents",
+            : "Unknown error fetching agents"
         );
         setTokenAgents([]); // Clear agents on error
       } finally {
@@ -232,7 +232,7 @@ export default function CommunityTab() {
         await connectTwitterAgent(twitterCredentials);
       } else {
         console.log(
-          "Not authenticated, storing intent and redirecting for agent connection.",
+          "Not authenticated, storing intent and redirecting for agent connection."
         );
         // Store the intent to connect agent and the token mint
         localStorage.setItem(AGENT_INTENT_KEY, tokenMint);
@@ -260,7 +260,7 @@ export default function CommunityTab() {
     } catch (error) {
       console.error("Error connecting Twitter account:", error);
       toast.error(
-        `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Error: ${error instanceof Error ? error.message : "Unknown error"}`
       );
     } finally {
       setIsConnectingAgent(false);
@@ -285,7 +285,7 @@ export default function CommunityTab() {
           if (isFromCallback) {
             // In callback flow, retry after a short delay to allow wallet to connect
             console.log(
-              "No wallet connected yet during callback flow, waiting briefly...",
+              "No wallet connected yet during callback flow, waiting briefly..."
             );
             await new Promise((resolve) => setTimeout(resolve, 500));
 
@@ -293,10 +293,10 @@ export default function CommunityTab() {
             if (!publicKey) {
               console.error(
                 "Wallet still not connected after delay. publicKey state:",
-                publicKey,
+                publicKey
               );
               toast.error(
-                "Wallet not connected. Cannot link agent. Please connect your wallet and try again.",
+                "Wallet not connected. Cannot link agent. Please connect your wallet and try again."
               );
               return;
             }
@@ -312,7 +312,7 @@ export default function CommunityTab() {
         if (!authToken) {
           console.error("Auth token missing. Cookies may not be properly set.");
           toast.error(
-            "Authentication token missing. Please reconnect your wallet.",
+            "Authentication token missing. Please reconnect your wallet."
           );
           return;
         }
@@ -342,12 +342,12 @@ export default function CommunityTab() {
               username: creds.username, // Include username if available
             }),
             credentials: "include",
-          },
+          }
         );
 
         // Log response info for debugging
         console.log(
-          `Agent connection response: ${response.status} ${response.statusText}`,
+          `Agent connection response: ${response.status} ${response.statusText}`
         );
 
         // Check response status
@@ -356,7 +356,7 @@ export default function CommunityTab() {
           const errorText = await response.text();
           console.error(
             "Twitter agent connection failed. Response:",
-            errorText,
+            errorText
           );
 
           try {
@@ -370,11 +370,11 @@ export default function CommunityTab() {
               setTokenAgents((prev) =>
                 prev.find((a) => a.id === errorData.agent.id)
                   ? prev
-                  : [...prev, errorData.agent as TokenAgent],
+                  : [...prev, errorData.agent as TokenAgent]
               );
 
               toast.info(
-                "This Twitter account is already connected to this token.",
+                "This Twitter account is already connected to this token."
               );
               return;
             }
@@ -383,7 +383,7 @@ export default function CommunityTab() {
               // If authentication error, give more specific guidance
               if (response.status === 401) {
                 toast.error(
-                  "Authentication error. Please reconnect your wallet and try again.",
+                  "Authentication error. Please reconnect your wallet and try again."
                 );
               } else {
                 throw new Error(errorData.error);
@@ -461,11 +461,11 @@ export default function CommunityTab() {
       } catch (error) {
         console.error("Failed to connect Twitter agent:", error);
         toast.error(
-          `Failed to connect: ${error instanceof Error ? error.message : "Unknown error"}`,
+          `Failed to connect: ${error instanceof Error ? error.message : "Unknown error"}`
         );
       }
     },
-    [tokenMint, publicKey, API_BASE_URL, setTokenAgents, setIsAgentsLoading],
+    [tokenMint, publicKey, API_BASE_URL, setTokenAgents, setIsAgentsLoading]
   );
 
   // Remove agent function
@@ -485,7 +485,7 @@ export default function CommunityTab() {
 
     if (!authToken) {
       toast.error(
-        "Authentication token missing. Please reconnect your wallet.",
+        "Authentication token missing. Please reconnect your wallet."
       );
       return;
     }
@@ -500,7 +500,7 @@ export default function CommunityTab() {
             Authorization: `Bearer ${authToken}`,
           },
           credentials: "include",
-        },
+        }
       );
 
       if (!response.ok) {
@@ -522,21 +522,21 @@ export default function CommunityTab() {
 
       // Update local state on success
       setTokenAgents((prev) =>
-        prev.filter((agent) => agent.id !== agentToRemove.id),
+        prev.filter((agent) => agent.id !== agentToRemove.id)
       );
 
       toast.success("Agent removed successfully");
     } catch (error) {
       console.error("Error removing agent:", error);
       toast.error(
-        `Failed to remove agent: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to remove agent: ${error instanceof Error ? error.message : "Unknown error"}`
       );
     }
   };
 
   // Sorted agents with officials at the top
   const sortedAgents = [...tokenAgents].sort((a, b) =>
-    a.official && !b.official ? -1 : !a.official && b.official ? 1 : 0,
+    a.official && !b.official ? -1 : !a.official && b.official ? 1 : 0
   );
 
   // Check if the callback is from a connect agent intent
@@ -560,80 +560,140 @@ export default function CommunityTab() {
         if (storedCreds) {
           try {
             const parsedCreds = JSON.parse(storedCreds) as TwitterCredentials;
-            setTwitterCredentials(parsedCreds);
-
-            // IMPORTANT: Add a function to handle connection with delayed retries
-            const connectWithRetries = async (retriesLeft = 5) => {
-              console.log(
-                `Connection attempt (${5 - retriesLeft + 1}/5), wallet state:`,
-                publicKey ? publicKey.toString() : "not connected",
-              );
-
-              // If wallet is connected, attempt connection
-              if (publicKey) {
-                setIsConnectingAgent(true);
-
-                try {
-                  await connectTwitterAgent(parsedCreds);
-                  console.log("Agent connection completed from callback");
-                  // Clean up intent AFTER successful connection
-                  localStorage.removeItem(AGENT_INTENT_KEY);
-
-                  // Clean up URL but preserve hash
-                  window.history.replaceState(
-                    {},
-                    "",
-                    window.location.pathname + location.hash,
-                  );
-                } catch (error) {
-                  console.error("Error connecting agent from callback:", error);
-                  toast.error(
-                    `Failed to connect agent: ${error instanceof Error ? error.message : "Unknown error"}`,
-                  );
-                  // Still clean up on error
-                  localStorage.removeItem(AGENT_INTENT_KEY);
-                } finally {
-                  setIsConnectingAgent(false);
+            
+            // First, check if we need to fetch the correct Twitter username
+            const fetchTwitterUsername = async () => {
+              try {
+                console.log("Fetching Twitter profile info at OAuth callback");
+                const profileResponse = await fetch("https://api.twitter.com/2/users/me?user.fields=profile_image_url", {
+                  headers: {
+                    Authorization: `Bearer ${parsedCreds.accessToken}`
+                  }
+                });
+                
+                if (profileResponse.ok) {
+                  interface TwitterProfileResponse {
+                    data: {
+                      id: string;
+                      username: string;
+                      name?: string;
+                      profile_image_url?: string;
+                    }
+                  }
+                  
+                  const profileData = await profileResponse.json() as TwitterProfileResponse;
+                  console.log("Twitter profile data:", profileData);
+                  
+                  // Update credentials with the username from profile data
+                  if (profileData.data && profileData.data.username) {
+                    const updatedCreds = {
+                      ...parsedCreds,
+                      username: profileData.data.username,
+                      profileImageUrl: profileData.data.profile_image_url
+                    };
+                    
+                    // Update both state and localStorage
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCreds));
+                    console.log("Updated credentials with correct username:", updatedCreds.username);
+                    setTwitterCredentials(updatedCreds);
+                    
+                    // Proceed with the updated credentials
+                    handleTwitterConnection(updatedCreds);
+                  } else {
+                    // Fall back to original creds if username fetch fails
+                    setTwitterCredentials(parsedCreds);
+                    handleTwitterConnection(parsedCreds);
+                  }
+                } else {
+                  // Also fall back if API call fails
+                  setTwitterCredentials(parsedCreds);
+                  handleTwitterConnection(parsedCreds);
                 }
-                return; // Exit the retry function
-              }
-
-              // If still no wallet and we have retries left, try again after a delay
-              if (retriesLeft > 0) {
-                console.log(
-                  `Wallet not connected yet, will retry in 1 second (${retriesLeft} attempts left)`,
-                );
-                setTimeout(() => connectWithRetries(retriesLeft - 1), 1000);
-              } else {
-                console.log(
-                  "Maximum retries reached, wallet still not connected",
-                );
-                toast.warn(
-                  "Your wallet connection wasn't ready. Please click 'Connect as agent' once your wallet is connected.",
-                );
-                // Don't clear the intent yet, so user can try again
+              } catch (error) {
+                console.error("Error fetching Twitter profile:", error);
+                setTwitterCredentials(parsedCreds);
+                handleTwitterConnection(parsedCreds);
               }
             };
+            
+            // Define the connection handler
+            const handleTwitterConnection = (creds: TwitterCredentials) => {
+              // IMPORTANT: Add a function to handle connection with delayed retries
+              const connectWithRetries = async (retriesLeft = 5) => {
+                console.log(
+                  `Connection attempt (${5 - retriesLeft + 1}/5), wallet state:`,
+                  publicKey ? publicKey.toString() : "not connected"
+                );
 
-            // Start the connection retry process
-            connectWithRetries();
+                // If wallet is connected, attempt connection
+                if (publicKey) {
+                  setIsConnectingAgent(true);
+
+                  try {
+                    await connectTwitterAgent(creds);
+                    console.log("Agent connection completed from callback");
+                    // Clean up intent AFTER successful connection
+                    localStorage.removeItem(AGENT_INTENT_KEY);
+
+                    // Clean up URL but preserve hash
+                    window.history.replaceState(
+                      {},
+                      "",
+                      window.location.pathname + location.hash
+                    );
+                  } catch (error) {
+                    console.error("Error connecting agent from callback:", error);
+                    toast.error(
+                      `Failed to connect agent: ${error instanceof Error ? error.message : "Unknown error"}`
+                    );
+                    // Still clean up on error
+                    localStorage.removeItem(AGENT_INTENT_KEY);
+                  } finally {
+                    setIsConnectingAgent(false);
+                  }
+                  return; // Exit the retry function
+                }
+
+                // If still no wallet and we have retries left, try again after a delay
+                if (retriesLeft > 0) {
+                  console.log(
+                    `Wallet not connected yet, will retry in 1 second (${retriesLeft} attempts left)`
+                  );
+                  setTimeout(() => connectWithRetries(retriesLeft - 1), 1000);
+                } else {
+                  console.log(
+                    "Maximum retries reached, wallet still not connected"
+                  );
+                  toast.warn(
+                    "Your wallet connection wasn't ready. Please click 'Connect as agent' once your wallet is connected."
+                  );
+                  // Don't clear the intent yet, so user can try again
+                }
+              };
+
+              // Start the connection retry process
+              connectWithRetries();
+            };
+            
+            // Start by fetching Twitter profile
+            fetchTwitterUsername();
           } catch (error) {
             console.error("Failed to process agent connection", error);
             toast.error(
-              `Failed to connect agent: ${error instanceof Error ? error.message : "Unknown error"}`,
+              `Failed to connect agent: ${error instanceof Error ? error.message : "Unknown error"}`
             );
             // Clean up on error
             localStorage.removeItem(AGENT_INTENT_KEY);
           }
         } else {
           toast.error(
-            "Twitter credentials not found after authentication. Please try again.",
+            "Twitter credentials not found after authentication. Please try again."
           );
           localStorage.removeItem(AGENT_INTENT_KEY);
         }
       } else {
         toast.warning(
-          `Attempted to connect agent to wrong token. Please try again.`,
+          `Attempted to connect agent to wrong token. Please try again.`
         );
         localStorage.removeItem(AGENT_INTENT_KEY);
       }
@@ -642,15 +702,66 @@ export default function CommunityTab() {
 
   // Check if user has a connected agent for this token
   const hasConnectedAgent = tokenAgents.some(
-    (agent) => publicKey && agent.ownerAddress === publicKey.toBase58(),
+    (agent) => publicKey && agent.ownerAddress === publicKey.toBase58()
   );
+
+  // Effect to process OAuth callback and update stored credentials with correct username
+  useEffect(() => {
+    // Check if we have credentials but missing username
+    if (twitterCredentials && (!twitterCredentials.username || twitterCredentials.username === "default_user")) {
+      const fetchTwitterUsername = async () => {
+        try {
+          console.log("Fetching Twitter user info to get actual username");
+          
+          // Call Twitter API directly to get user info
+          const response = await fetch("https://api.twitter.com/2/users/me", {
+            method: "GET",
+            headers: {
+              "Authorization": `Bearer ${twitterCredentials.accessToken}`
+            }
+          });
+
+          if (response.ok) {
+            interface TwitterUserResponse {
+              data: {
+                id: string;
+                name: string;
+                username: string;
+              }
+            }
+            
+            const userData = await response.json() as TwitterUserResponse;
+            
+            if (userData && userData.data && userData.data.username) {
+              console.log("Retrieved actual Twitter username:", userData.data.username);
+              
+              // Update the credentials with the correct username
+              const updatedCredentials = {
+                ...twitterCredentials,
+                username: userData.data.username
+              };
+              
+              // Update state
+              setTwitterCredentials(updatedCredentials);
+              
+              // Update localStorage
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCredentials));
+              console.log("Updated stored Twitter credentials with correct username");
+            }
+          } else {
+            console.error("Failed to fetch Twitter user info:", await response.text());
+          }
+        } catch (error) {
+          console.error("Error fetching Twitter username:", error);
+        }
+      };
+
+      fetchTwitterUsername();
+    }
+  }, [twitterCredentials, API_BASE_URL]);
 
   return (
     <div className="w-full flex-shrink-0 h-fit p-4">
-      <h1 className="mb-4 text-xl text-autofun-background-action-highlight font-dm-mono">
-        Token Agents
-      </h1>
-
       {isAgentsLoading && (
         <div className="text-center py-4 text-neutral-400">
           Loading agents...
@@ -664,74 +775,50 @@ export default function CommunityTab() {
 
       {!isAgentsLoading && !agentsError && (
         <div className="overflow-y-auto max-h-96">
-          {sortedAgents.length > 0 ? (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left border-b border-neutral-700">
-                  <th className="pb-2 font-semibold">Agent</th>
-                  <th className="pb-2 font-semibold">Status</th>
-                  <th className="pb-2"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedAgents.map((agent, index) => (
-                  <tr
-                    key={agent.id || index}
-                    className="border-b border-neutral-800"
+          {sortedAgents.length > 0 &&
+            sortedAgents.map((agent, index) => (
+              <div
+                key={agent.id || index}
+                className="flex items-center gap-2 justify-between"
+              >
+                <div className="flex items-center gap-2">
+                  <img
+                    src={agent.twitterImageUrl || "/default-avatar.png"}
+                    alt={agent.twitterUserName}
+                    className="w-6 h-6 rounded-full"
+                  />
+                  <span className="truncate">{agent.twitterUserName}</span>
+                </div>
+                {agent.official ? (
+                  <Badge variant="success">Official</Badge>
+                ) : (
+                  <Badge variant="default">Community</Badge>
+                )}
+                {publicKey && agent.ownerAddress === publicKey.toBase58() && (
+                  <button
+                    // ** CHANGE: Pass the whole agent object **
+                    onClick={() => removeAgent(agent)}
+                    title="Remove agent"
+                    className="text-red-500 hover:text-red-400 p-1"
                   >
-                    <td className="py-2 pr-2">
-                      <div className="flex items-center gap-2">
-                        <img
-                          src={agent.twitterImageUrl || "/default-avatar.png"}
-                          alt={agent.twitterUserName}
-                          className="w-6 h-6 rounded-full"
-                        />
-                        <span className="truncate">
-                          {agent.twitterUserName}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-2 pr-2">
-                      {agent.official ? (
-                        <Badge variant="success">Official</Badge>
-                      ) : (
-                        <Badge variant="default">Community</Badge>
-                      )}
-                    </td>
-                    <td className="py-2 text-right">
-                      {publicKey &&
-                        agent.ownerAddress === publicKey.toBase58() && (
-                          <button
-                            // ** CHANGE: Pass the whole agent object **
-                            onClick={() => removeAgent(agent)}
-                            title="Remove agent"
-                            className="text-red-500 hover:text-red-400 p-1"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="text-center py-4 text-neutral-400">
-              No agents connected yet.
-            </div>
-          )}
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
+            ))}
         </div>
       )}
 
       {/* Twitter Connection Status and Actions */}
-      <div className="mt-4 border-t border-neutral-700 pt-4">
+      <div className="mt-4">
         {twitterCredentials && twitterCredentials.expiresAt > Date.now() ? (
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-neutral-200">
                 <span className="bg-green-700 rounded-full w-2 h-2"></span>
                 <span>
-                  Connected to X as @{twitterCredentials.username || "user"}
+                  Connected to X as @
+                  {twitterCredentials.username || twitterCredentials.userId}
                 </span>
               </div>
               <Button
