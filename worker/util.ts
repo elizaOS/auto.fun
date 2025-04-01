@@ -823,7 +823,7 @@ export async function getFeaturedMaxValues(db: any) {
  * @param maxHolders Maximum holder count for normalization
  * @returns SQL expression for calculating the weighted score
  */
-export function getWeightedScoreExpression(maxVolume: number, maxHolders: number) {
+export function getFeaturedScoreExpression(maxVolume: number, maxHolders: number) {
   // Use provided max values, defaulting to 1 to avoid division by zero
   const normalizedMaxVolume = maxVolume || 1;
   const normalizedMaxHolders = maxHolders || 1;
@@ -844,7 +844,7 @@ export function getWeightedScoreExpression(maxVolume: number, maxHolders: number
  * @param maxHolders Maximum holder count for normalization
  * @returns Calculated weighted score
  */
-export function calculateWeightedScore(
+export function calculateFeaturedScore(
   token: { volume24h?: number | null; holderCount?: number | null },
   maxVolume: number,
   maxHolders: number
@@ -874,11 +874,11 @@ export function applyFeaturedSort(
   maxHolders: number,
   sortOrder: string,
 ) {
-  const weightedScore = getWeightedScoreExpression(maxVolume, maxHolders);
+  const featuredScore = getFeaturedScoreExpression(maxVolume, maxHolders);
 
   if (sortOrder.toLowerCase() === "desc") {
-    return tokensQuery.orderBy(desc(weightedScore));
+    return tokensQuery.orderBy(desc(featuredScore));
   } else {
-    return tokensQuery.orderBy(weightedScore);
+    return tokensQuery.orderBy(featuredScore);
   }
 }

@@ -16,7 +16,7 @@ import {
 import { Env } from "../env";
 import { logger } from "../logger";
 import { getSOLPrice } from "../mcap";
-import { getRpcUrl, applyFeaturedSort, getFeaturedMaxValues, getWeightedScoreExpression, getMainnetRpcUrl, getDevnetRpcUrl } from "../util";
+import { getRpcUrl, applyFeaturedSort, getFeaturedMaxValues, getFeaturedScoreExpression, getMainnetRpcUrl, getDevnetRpcUrl } from "../util";
 import { createTestSwap } from "../websocket"; // Import only createTestSwap
 import { getWebSocketClient } from "../websocket-client";
 import {
@@ -75,7 +75,7 @@ tokenRouter.get("/tokens", async (c) => {
 
     const db = getDB(c.env);
 
-    // Get max values for normalization first - we need these for both the weightedScore and sorting
+    // Get max values for normalization first - we need these for both the featuredScore and sorting
     const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
 
     // Prepare a basic query
@@ -93,7 +93,7 @@ tokenRouter.get("/tokens", async (c) => {
           // Include all columns
           ...allTokensColumns,
           // Add the weighted score as a column in the result
-          weightedScore: getWeightedScoreExpression(maxVolume, maxHolders),
+          featuredScore: getFeaturedScoreExpression(maxVolume, maxHolders),
         }).from(tokens) as any;
 
         // Apply filters
