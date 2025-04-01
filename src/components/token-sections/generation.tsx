@@ -234,7 +234,8 @@ export default function CommunityTab() {
         // Check if param exists before deleting
         currentUrl.searchParams.delete("fresh_auth");
       }
-      window.history.replaceState({}, "", currentUrl.toString());
+      // Preserve hash/anchor when cleaning up URL
+      window.history.replaceState({}, "", currentUrl.pathname + location.hash);
     }
   }, [tokenMint, generatedImage]);
 
@@ -564,8 +565,11 @@ export default function CommunityTab() {
           window.location.pathname +
           window.location.search +
           window.location.hash;
-        localStorage.setItem(OAUTH_REDIRECT_ORIGIN_KEY, currentPath);
-        console.log("Stored origin path for redirect:", currentPath);
+          
+        // Add generation anchor if not already present
+        const pathWithAnchor = currentPath + (currentPath.includes("#") ? "" : "#generation");
+        localStorage.setItem(OAUTH_REDIRECT_ORIGIN_KEY, pathWithAnchor);
+        console.log("Stored origin path for redirect:", pathWithAnchor);
 
         // Redirect to OAuth
         const apiUrl = env.apiUrl;
@@ -698,13 +702,19 @@ export default function CommunityTab() {
 
       console.log("Sending image to API:", `${env.apiUrl}/api/share/tweet`);
 
+      // Get auth token for the app (separate from Twitter token)
+      const authToken = localStorage.getItem("authToken");
+
       // Send the upload request
       const uploadResponse = await fetch(`${env.apiUrl}/api/share/tweet`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
+          // Include wallet auth token if available in a custom header
+          ...(authToken ? { "X-Auth-Token": `Bearer ${authToken}` } : {}),
         },
         body: formData,
+        credentials: "include",
       });
 
       if (!uploadResponse.ok) {
@@ -755,16 +765,22 @@ export default function CommunityTab() {
       console.log("Posting tweet with text:", text);
       console.log("Using media ID:", mediaId);
 
+      // Get auth token for the app (separate from Twitter token)
+      const authToken = localStorage.getItem("authToken");
+
       const response = await fetch(`${env.apiUrl}/api/share/tweet`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
+          // Include wallet auth token if available in a custom header
+          ...(authToken ? { "X-Auth-Token": `Bearer ${authToken}` } : {}),
         },
         body: JSON.stringify({
           text,
           mediaId,
         }),
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -817,7 +833,7 @@ export default function CommunityTab() {
   // Add function to check token balance
   const checkTokenBalance = async () => {
     if (!publicKey || !tokenMint) {
-      toast.error("Please connect your wallet and navigate to a token page");
+      // toast.error("Please connect your wallet and navigate to a token page");
       return;
     }
 

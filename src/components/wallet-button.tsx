@@ -149,9 +149,7 @@ const WalletButton = () => {
         : "Connect Wallet";
 
   // Get wallet icon - for now just use Phantom icon if directly connected
-  const walletIcon =
-    wallet?.adapter.icon ||
-    (hasDirectPhantomConnection ? "https://phantom.app/favicon.ico" : null);
+  const walletIcon = wallet?.adapter.icon;
 
   // If authenticated, show the dropdown button
   if (isAuthenticated && displayPublicKey) {

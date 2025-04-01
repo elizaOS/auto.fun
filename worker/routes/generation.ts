@@ -1,26 +1,25 @@
-import { eq, and, gte, or } from "drizzle-orm";
+import { fal } from "@fal-ai/client";
+import { Connection, PublicKey } from "@solana/web3.js";
+import { and, eq, gte, or, sql } from "drizzle-orm";
+import { Hono } from "hono";
+import crypto from "node:crypto";
+import { z } from "zod";
+import { requireAuth, verifyAuth } from "../auth";
 import {
   getDB,
   mediaGenerations,
-  tokens,
   preGeneratedTokens,
   tokenHolders,
+  tokens,
 } from "../db";
 import { Env } from "../env";
-import { fal } from "@fal-ai/client";
-import { sql } from "drizzle-orm";
-import { Hono } from "hono";
-import { z } from "zod";
 import { logger } from "../logger";
-import { verifyAuth, requireAuth } from "../auth";
-import crypto from "node:crypto";
 import { MediaGeneration } from "../types";
-import type { ExecutionContext as CFExecutionContext } from "@cloudflare/workers-types/experimental";
-import type { Context } from "hono";
 import { uploadToCloudflare } from "../uploader";
-import { Connection, PublicKey } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { getRpcUrl } from "../util";
+import { createTokenPrompt } from "./generation-prompts/create-token";
+import { pregenerateTokenPrompt } from "./generation-prompts/pregenerate-token";
+import { enhancePrompt } from "./generation-prompts/enhance-prompt";
 
 // Enum for media types
 export enum MediaType {
@@ -868,42 +867,13 @@ app.post("/generate-metadata", async (c) => {
       throw error;
     }
 
-    // Customize AI prompt based on user input
-    let userInstructions = "";
-    if (validatedData.prompt) {
-      userInstructions = `The token should be based on this concept: "${validatedData.prompt}". 
-      Make sure the token name, symbol, description and image prompt directly incorporate elements from this concept.
-      For example, if the concept is "a halloween token about arnold schwarzenegger", the token might be named "Spooky Schwartz" with symbol "SPKS" and an image prompt that describes a muscular halloween figure resembling Arnold.
-      Be creative but stay faithful to the concept.`;
-    }
 
     // Generate metadata using Llama
     const response = await c.env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
       messages: [
         {
           role: "system",
-          content:
-            "You are a helpful assistant that specializes in creating fun and interesting token metadata for crypto projects. Be creative and incorporate the user's concept directly into your response. Always respond with valid JSON and nothing else.",
-        },
-        {
-          role: "user",
-          content: `Generate prompt and engaging token metadata for a Solana token. The token should be fun and memorable. ${userInstructions} 
-          
-          Return ONLY a JSON object with the following fields:
-          - name: A memorable name for the token that clearly reflects the concept
-          - symbol: A 3-8 character symbol for the token
-          - description: A compelling description of the token that incorporates the concept
-          - prompt: A detailed prompt for image generation that will create a visual representation of the concept
-          
-          Example format:
-          {
-            "name": "Fun Token Name",
-            "symbol": "FUN",
-            "description": "A fun and engaging token description",
-            "prompt": "A detailed prompt for image generation"
-          }
-          
-          Only provide the JSON object. Do not include any other text, explanation, or formatting.`,
+          content: createTokenPrompt(validatedData),
         },
       ],
       max_tokens: 500,
@@ -1247,24 +1217,7 @@ async function generateTokenOnDemand(
       messages: [
         {
           role: "system",
-          content:
-            "You are a helpful assistant that specializes in creating fun and prompt token metadata for crypto projects. Always respond with valid JSON.",
-        },
-        {
-          role: "user",
-          content: `Generate prompt and engaging token metadata for a Solana token. The token should be fun and memorable. Return a JSON object with the following fields:
-          - name: A memorable name for the token
-          - symbol: A 3-8 character symbol for the token
-          - description: A compelling description of the token
-          - prompt: A detailed prompt for image generation
-          
-          Example format:
-          {
-            "name": "Fun Token Name",
-            "symbol": "FUN",
-            "description": "A fun and engaging token description",
-            "prompt": "A detailed prompt for image generation"
-          }`,
+          content: pregenerateTokenPrompt(),
         },
       ],
       max_tokens: 500,
@@ -1521,52 +1474,6 @@ app.post("/mark-token-used", async (c) => {
   }
 });
 
-// Reroll token endpoint (get another random one)
-app.post("/reroll-token", async (c) => {
-  try {
-    const db = getDB(c.env);
-
-    // Get a random unused token
-    const randomToken = await db
-      .select()
-      .from(preGeneratedTokens)
-      .where(eq(preGeneratedTokens.used, 0))
-      .orderBy(sql`RANDOM()`)
-      .limit(1);
-
-    if (!randomToken || randomToken.length === 0) {
-      logger.log(
-        "No pre-generated tokens available for reroll. Generating one on demand...",
-      );
-
-      // Generate a token on the fly
-      const result = await generateTokenOnDemand(c.env, c.executionCtx);
-
-      if (!result.success) {
-        return c.json({ error: result.error }, 500);
-      }
-
-      return c.json({
-        success: true,
-        token: result.token,
-      });
-    }
-
-    return c.json({
-      success: true,
-      token: randomToken[0],
-    });
-  } catch (error) {
-    logger.error("Error rerolling token:", error);
-    return c.json(
-      {
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      500,
-    );
-  }
-});
-
 // Function to generate metadata using Claude
 async function generateMetadata(env: Env) {
   try {
@@ -1574,27 +1481,7 @@ async function generateMetadata(env: Env) {
       messages: [
         {
           role: "system",
-          content:
-            "You are a helpful assistant that specializes in creating fun and prompt token metadata for crypto projects. Always respond with valid JSON.",
-        },
-        {
-          role: "user",
-          content: `Generate prompt and engaging token metadata for a Solana token. The token should be fun and memorable. Return a JSON object with the following fields:
-          - name: A memorable name for the token
-          - symbol: A 3-8 character symbol for the token
-          - description: A compelling description of the token
-          - prompt: A detailed prompt for image generation
-          
-          Use this exact output format. Do not include any other text or formatting.
-          \`\`\`json
-          {
-            "name": "Fun Token Name",
-            "symbol": "FUN",
-            "description": "A fun and engaging token description",
-            "prompt": "A detailed prompt for image generation"
-          }
-          \`\`\`
-          `,
+          content: pregenerateTokenPrompt(),
         },
       ],
       max_tokens: 500,
@@ -2007,22 +1894,7 @@ async function generateEnhancedPrompt(
       messages: [
         {
           role: "system",
-          content:
-            "You are an AI specialized in creating detailed image generation prompts. Your task is to combine a user's input with token metadata to create a comprehensive, detailed prompt that will produce a high-quality, coherent image.",
-        },
-        {
-          role: "user",
-          content: `Enhance this prompt for image generation by combining it with the token metadata. Create a single, coherent image prompt that incorporates both the user's ideas and the token's identity.
-
-Token Metadata:
-- Name: ${tokenMetadata.name}
-- Symbol: ${tokenMetadata.symbol}
-- Description: ${tokenMetadata.description || ""}
-- Original token prompt: ${tokenMetadata.prompt || ""}
-
-User's prompt: "${userPrompt}"
-
-Return only the enhanced prompt, nothing else. The prompt should be detailed and descriptive, focusing on visual elements that would create a compelling image.`,
+          content: enhancePrompt(userPrompt, tokenMetadata),
         },
       ],
       max_tokens: 500,

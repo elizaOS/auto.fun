@@ -62,10 +62,10 @@ export default function Page() {
       try {
         console.log(`Token page: Fetching blockchain metrics for ${address}`);
         // Add loading toast for better user feedback
-        toast.info("Fetching real-time blockchain data...", {
-          position: "bottom-right",
-          autoClose: 3000,
-        });
+        // toast.info("Fetching real-time blockchain data...", {
+        //   position: "bottom-right",
+        //   autoClose: 3000,
+        // });
 
         const metrics = await fetchTokenMarketMetrics(address);
         console.log(`Token page: Received blockchain metrics:`, metrics);
@@ -79,13 +79,6 @@ export default function Page() {
         if (!hasValidData) {
           console.warn(
             `Token page: Blockchain metrics may be invalid - all key values are 0`,
-          );
-          toast.warning(
-            "Unable to fetch real-time data from blockchain. Using cached values.",
-            {
-              position: "bottom-right",
-              autoClose: 5000,
-            },
           );
         } else {
           toast.success("Real-time blockchain data loaded successfully!", {
@@ -471,13 +464,13 @@ export default function Page() {
           <TradingViewChart name={token.name} token={token.mint} />
         </div>
         <TransactionsAndHolders token={token} />
-        <div className="border bg-autofun-background-card">
+        <div id="agents" className="border bg-autofun-background-card scroll-mt-16">
           <AgentsSection />
         </div>
-        <div className="border bg-autofun-background-card">
+        <div id="generation" className="border bg-autofun-background-card scroll-mt-16">
           <GenerationSection />
         </div>
-        <div className="border bg-autofun-background-card">
+        <div id="admin" className="border bg-autofun-background-card scroll-mt-16">
           <AdminSection />
         </div>
       </div>

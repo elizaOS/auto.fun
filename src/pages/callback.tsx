@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 // Storage keys
 const STORAGE_KEY = "twitter-oauth-token";
 const OAUTH_REDIRECT_ORIGIN_KEY = "OAUTH_REDIRECT_ORIGIN"; // Key for storing the original path
+const AGENT_INTENT_KEY = "connect_agent_intent"; // For agent connection intent
+const PENDING_SHARE_KEY = "pending-twitter-share"; // For sharing intent
 
 // Types
 type Credentials = {
@@ -11,6 +13,8 @@ type Credentials = {
   accessToken: string;
   refreshToken: string;
   expiresAt: number;
+  username?: string; // Add username for display
+  profileImageUrl?: string; // Add profile image
 };
 
 // Response type for OAuth callback
@@ -19,11 +23,12 @@ type OAuthResponse = {
   refresh_token: string;
   expires_in: number;
   userId?: string;
+  username?: string;
+  profileImageUrl?: string;
 };
 
 export default function CallbackPage() {
   const [error, setError] = useState<string | null>(null);
-
   const [debugInfo, setDebugInfo] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
@@ -99,6 +104,8 @@ export default function CallbackPage() {
               accessToken: data.access_token,
               refreshToken: data.refresh_token,
               expiresAt: Date.now() + data.expires_in * 1000,
+              username: data.username,
+              profileImageUrl: data.profileImageUrl,
             };
 
             localStorage.setItem(STORAGE_KEY, JSON.stringify(credentials));
@@ -106,9 +113,26 @@ export default function CallbackPage() {
             // Log the credentials we're storing (mask sensitive parts)
             console.log("Stored credentials:", {
               userId: credentials.userId,
+              username: credentials.username || "unknown",
               accessToken: credentials.accessToken.substring(0, 10) + "...",
               refreshToken: credentials.refreshToken.substring(0, 5) + "...",
               expiresAt: new Date(credentials.expiresAt).toLocaleString(),
+            });
+
+            // Check if we should reconnect wallet
+            const authToken = localStorage.getItem("authToken");
+            if (!authToken) {
+              console.log("Warning: No wallet authentication token found");
+            }
+
+            // Check for intent keys
+            const hasAgentIntent = localStorage.getItem(AGENT_INTENT_KEY);
+            const hasPendingShare = localStorage.getItem(PENDING_SHARE_KEY);
+            
+            console.log("Auth intent check:", {
+              hasAgentIntent: !!hasAgentIntent,
+              hasPendingShare: !!hasPendingShare,
+              hasAuthToken: !!authToken
             });
 
             // --- Dynamic Redirect Logic ---
@@ -149,10 +173,10 @@ export default function CallbackPage() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-900 text-white">
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-autofun-background-primary text-white">
         <h1 className="text-2xl font-bold mb-4">Authentication Error</h1>
         <p className="text-red-500 mb-4">{error}</p>
-        <div className="bg-gray-800 p-4 rounded-lg my-4 max-w-lg w-full">
+        <div className="bg-autofun-background-secondary p-4 rounded-lg my-4 max-w-lg w-full border border-gray-700">
           <h2 className="text-lg font-semibold mb-2">Debug Information</h2>
           <p className="text-sm text-gray-400 mb-2">Check the following:</p>
           <ul className="list-disc pl-5 text-sm text-gray-300">
@@ -167,7 +191,7 @@ export default function CallbackPage() {
             <h3 className="text-sm font-semibold mb-2 text-gray-400">
               Request Details:
             </h3>
-            <div className="bg-gray-900 p-2 rounded text-xs font-mono overflow-x-auto">
+            <div className="bg-autofun-background-primary p-2 rounded text-xs font-mono overflow-x-auto">
               {Object.entries(debugInfo).map(([key, value]) => (
                 <div key={key} className="flex">
                   <span className="text-blue-400 w-32">{key}:</span>
@@ -178,23 +202,23 @@ export default function CallbackPage() {
           </div>
         </div>
         <a
-          href="/testing"
-          className="text-blue-500 hover:text-blue-400 underline"
+          href="/"
+          className="mt-4 px-4 py-2 bg-[#03FF24] text-black rounded hover:bg-[#02cc1d] font-medium"
         >
-          Go back to share page
+          Return to Home
         </a>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-900 text-white">
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-autofun-background-primary text-white">
       <h1 className="text-2xl font-bold mb-4">
-        Authenticating with Twitter...
+        Authenticating with X...
       </h1>
-      <div className="w-12 h-12 border-t-2 border-[#00FF04] rounded-full animate-spin"></div>
+      <div className="w-12 h-12 border-t-2 border-[#03FF24] rounded-full animate-spin"></div>
       <p className="text-gray-400 mt-4 text-sm">
-        Processing Twitter authentication response...
+        Processing authentication response...
       </p>
     </div>
   );
