@@ -1,4 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
+import BN from "bn.js";
 import { z } from "zod";
 
 export type TSortBy =
@@ -152,6 +153,16 @@ export const TokenSchema = z.object({
 });
 
 export type Token = z.infer<typeof TokenSchema>;
+
+export type ConfigAccount = {
+  authority: PublicKey;
+  pendingAuthority: PublicKey;
+  teamWallet: PublicKey;
+  initBondingCurve: number;
+  platformBuyFee: BN;
+  platformSellFee: BN;
+  curveLimit: BN;
+}
 
 // Type definitions for global objects
 

@@ -8,11 +8,12 @@ import ConfigDialog from "./config-dialog";
 import SkeletonImage from "./skeleton-image";
 import { useSwap } from "@/hooks/use-swap";
 import Loader from "./loader";
-import useTokenBalance from "@/hooks/use-token-balance";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useTokenBalance } from "@/hooks/use-token-balance";
 import { useQuery } from "@tanstack/react-query";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { fetchTokenMarketMetrics } from "@/utils/blockchain";
+import { getSwapAmount } from "@/utils/swapUtils";
+import { useProgram } from "@/utils/program";
 
 export default function Trade({ token }: { token: IToken }) {
   const { solPrice: contextSolPrice } = useSolPriceContext();
@@ -39,6 +40,8 @@ export default function Trade({ token }: { token: IToken }) {
     staleTime: 60000, // Data stays fresh for 1 minute
   });
 
+  const program = useProgram()
+
   // Use blockchain data if available, otherwise fall back to token data
   const metrics = metricsQuery?.data;
   const solanaPrice =
@@ -53,16 +56,11 @@ export default function Trade({ token }: { token: IToken }) {
     metricsAvailable: !!metrics,
   });
 
-  const wallet = useWallet();
-  const balance = useTokenBalance(
-    wallet.publicKey?.toBase58() || "",
-    !isTokenSelling
-      ? "So11111111111111111111111111111111111111111"
-      : token?.mint || "",
-  );
+  const {solBalance, tokenBalance} = useTokenBalance({ tokenId: token.mint });
+  const balance = isTokenSelling ? tokenBalance : solBalance
 
   const insufficientBalance =
-    (sellingAmount || 0) > (balance?.data?.formattedBalance || 0);
+    (sellingAmount || 0) > balance
 
   const [error] = useState<string | undefined>("");
 
@@ -74,10 +72,36 @@ export default function Trade({ token }: { token: IToken }) {
 
   // Set percentage buttons to use real balance
   const handlePercentage = (percentage: number) => {
-    if (balance?.data?.formattedBalance) {
-      setSellingAmount(balance.data.formattedBalance * (percentage / 100));
+    if (balance) {
+      handleSellAmountChange(balance * (percentage / 100));
     }
   };
+
+
+  const [convertedAmount, setConvertedAmount] = useState(0);
+
+  const handleSellAmountChange = async (amount: number) => {
+    if (!program) return;
+
+    setSellingAmount(amount);
+
+    const style = isTokenSelling ? 1 : 0;
+    const convertedAmount = isTokenSelling ? amount * 1e6 : amount * 1e9
+    const decimals = isTokenSelling ? 1e9 : 1e6
+    const swapAmount = await getSwapAmount(
+      program,
+      convertedAmount,
+      style,
+      // TODO: these values from the backend seem incorrect,
+      // they are not dynamically calculated but instead use the
+      // default values leading to slightly incorrect calculations
+      token.reserveAmount,
+      token.reserveLamport
+    );
+    setConvertedAmount(swapAmount / decimals);
+  }; 
+
+  const displayConvertedAmount = isTokenSelling ? convertedAmount : formatNumber(convertedAmount, false, true)
 
   return (
     <div className="relative border p-4 bg-autofun-background-card">
@@ -170,7 +194,7 @@ export default function Trade({ token }: { token: IToken }) {
                 min={0}
                 type="number"
                 onChange={({ target }) =>
-                  setSellingAmount(Number(target.value))
+                  handleSellAmountChange(Number(target.value))
                 }
                 value={sellingAmount}
                 placeholder="0"
@@ -186,7 +210,7 @@ export default function Trade({ token }: { token: IToken }) {
                   : tokenPriceUSD
                     ? formatNumber(
                         Number(sellingAmount || 0) * tokenPriceUSD,
-                        true,
+                        true
                       )
                     : formatNumber(0)}
               </span>
@@ -194,6 +218,7 @@ export default function Trade({ token }: { token: IToken }) {
                 token={token}
                 isSolana={!isTokenSelling}
                 setSellingAmount={setSellingAmount}
+                balance={isTokenSelling ? tokenBalance : solBalance}
               />
             </div>
           </div>
@@ -213,15 +238,9 @@ export default function Trade({ token }: { token: IToken }) {
             <div className="flex justify-between gap-3">
               <input
                 className="text-4xl truncate font-dm-mono text-autofun-text-secondary w-3/4 outline-none"
-                min={0}
-                type="number"
                 readOnly
                 value={
-                  sellingAmount && currentPrice && !isTokenSelling
-                    ? (Number(sellingAmount) / currentPrice).toFixed(2)
-                    : sellingAmount && isTokenSelling
-                      ? (Number(sellingAmount) * currentPrice).toFixed(4)
-                      : "0.00"
+                  displayConvertedAmount
                 }
                 placeholder="0"
               />
@@ -242,7 +261,7 @@ export default function Trade({ token }: { token: IToken }) {
                       )
                     : "$0.00"}
               </span>
-              <Balance token={token} isSolana={isTokenSelling} />
+              <Balance token={token} isSolana={isTokenSelling} balance={isTokenSelling ? solBalance : tokenBalance} />
             </div>
           </div>
         </div>
@@ -257,7 +276,7 @@ export default function Trade({ token }: { token: IToken }) {
             <Info className="text-red-600 size-4" />
             <p className="text-red-600 text-xs font-dm-mono">
               Insufficient Funds: You have{" "}
-              {balance?.data?.formattedBalance?.toFixed(4) || "0"}{" "}
+              {balance.toFixed(4) || "0"}{" "}
               {isTokenSelling ? token?.ticker : "SOL"}
             </p>
           </div>
@@ -321,18 +340,15 @@ const Balance = ({
   token,
   isSolana,
   setSellingAmount,
+  balance
 }: {
   token?: IToken;
   isSolana?: boolean;
   setSellingAmount?: any;
+  balance: number
 }) => {
-  const wallet = useWallet();
-  const balance = useTokenBalance(
-    wallet.publicKey?.toBase58() || "",
-    isSolana
-      ? "So11111111111111111111111111111111111111111"
-      : token?.mint || "",
-  );
+  const formattedBalance = isSolana ? formatNumber(balance, true, true) : formatNumber(balance, undefined, true)
+
   return (
     <div
       className={twMerge([
@@ -340,14 +356,14 @@ const Balance = ({
         setSellingAmount ? "cursor-pointer" : "",
       ])}
       onClick={() => {
-        if (balance?.data?.formattedBalance && setSellingAmount) {
-          setSellingAmount(balance?.data?.formattedBalance);
+        if (balance && setSellingAmount) {
+          setSellingAmount(balance);
         }
       }}
     >
       <Wallet className="text-autofun-text-secondary size-[18px]" />
       <span className="text-sm font-dm-mono text-autofun-text-secondary uppercase">
-        {balance.data?.formattedBalance} {isSolana ? "SOL" : token?.ticker}
+        {formattedBalance} {isSolana ? "SOL" : token?.ticker}
       </span>
     </div>
   );

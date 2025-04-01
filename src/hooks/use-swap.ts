@@ -14,6 +14,7 @@ import { getJupiterSwapIx, swapIx } from "@/utils/swapUtils";
 import { useSlippage } from "./use-slippage";
 import { useTransactionSpeed } from "./use-transaction-speed";
 import { useMevProtection } from "./use-mev-protection";
+import { getConfigAccount } from "./use-config-account";
 
 interface SwapParams {
   style: "buy" | "sell";
@@ -93,6 +94,7 @@ export const useSwap = () => {
         program,
         reserveToken,
         reserveLamport,
+        await getConfigAccount(program)
       );
 
       ixs.push(ix);

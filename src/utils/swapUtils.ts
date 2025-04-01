@@ -1,9 +1,11 @@
 import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import { BN, Program } from "@coral-xyz/anchor";
-import { SEED_CONFIG, Autofun } from "@/utils/program";
+import { Autofun } from "@/utils/program";
 import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { associatedAddress } from "@coral-xyz/anchor/dist/cjs/utils/token";
 import { env } from "@/utils/env";
+import { ConfigAccount } from "@/types";
+import { getConfigAccount } from "@/hooks/use-config-account";
 
 /**
  * Converts a decimal fee (e.g., 0.05 for 5%) to basis points (5% = 500 basis points)
@@ -125,21 +127,16 @@ function calculateAmountOutBuy(
 
 const FEE_BASIS_POINTS = 10000;
 
-export const swapIx = async (
-  user: PublicKey,
-  token: PublicKey,
+export const getSwapAmount = async (
+  program: Program<Autofun>,
   amount: number,
   style: number,
-  slippageBps: number = 100,
-  program: Program<Autofun>,
   reserveToken: number,
-  reserveLamport: number,
+  reserveLamport: number
 ) => {
-  const [configPda, _] = PublicKey.findProgramAddressSync(
-    [Buffer.from(SEED_CONFIG)],
-    program.programId,
-  );
-  const configAccount = await program.account.config.fetch(configPda);
+  console.log('swap amount input:', amount, style, reserveToken, reserveLamport)
+
+  const configAccount = await getConfigAccount(program);
 
   // Apply platform fee
   const feePercent =
@@ -147,7 +144,7 @@ export const swapIx = async (
       ? Number(configAccount.platformSellFee)
       : Number(configAccount.platformBuyFee);
   const adjustedAmount = Math.floor(
-    (amount * (FEE_BASIS_POINTS - feePercent)) / FEE_BASIS_POINTS,
+    (amount * (FEE_BASIS_POINTS - feePercent)) / FEE_BASIS_POINTS
   );
 
   // Calculate expected output
@@ -159,7 +156,7 @@ export const swapIx = async (
       adjustedAmount,
       9, // SOL decimals
       reserveLamport,
-      feePercent,
+      feePercent
     );
 
     console.log("estimated out:", estimatedOutput);
@@ -170,9 +167,27 @@ export const swapIx = async (
       adjustedAmount,
       6,
       feePercent,
-      reserveToken,
+      reserveToken
     );
   }
+
+  console.log('swap amount:', estimatedOutput);
+
+  return estimatedOutput;
+};
+
+export const swapIx = async (
+  user: PublicKey,
+  token: PublicKey,
+  amount: number,
+  style: number,
+  slippageBps: number = 100,
+  program: Program<Autofun>,
+  reserveToken: number,
+  reserveLamport: number,
+  configAccount: ConfigAccount
+) => {
+  const estimatedOutput = await getSwapAmount(program, amount, style, reserveToken, reserveLamport);
 
   // Apply slippage to estimated output
   const minOutput = new BN(
