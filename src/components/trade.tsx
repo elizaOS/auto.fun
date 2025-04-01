@@ -12,6 +12,8 @@ import { useTokenBalance } from "@/hooks/use-token-balance";
 import { useQuery } from "@tanstack/react-query";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { fetchTokenMarketMetrics } from "@/utils/blockchain";
+import { getSwapAmount } from "@/utils/swapUtils";
+import { useProgram } from "@/utils/program";
 
 export default function Trade({ token }: { token: IToken }) {
   const { solPrice: contextSolPrice } = useSolPriceContext();
@@ -37,6 +39,8 @@ export default function Trade({ token }: { token: IToken }) {
     refetchInterval: 30_000, // Longer interval for blockchain queries
     staleTime: 60000, // Data stays fresh for 1 minute
   });
+
+  const program = useProgram()
 
   // Use blockchain data if available, otherwise fall back to token data
   const metrics = metricsQuery?.data;
@@ -69,9 +73,35 @@ export default function Trade({ token }: { token: IToken }) {
   // Set percentage buttons to use real balance
   const handlePercentage = (percentage: number) => {
     if (balance) {
-      setSellingAmount(balance * (percentage / 100));
+      handleSellAmountChange(balance * (percentage / 100));
     }
   };
+
+
+  const [convertedAmount, setConvertedAmount] = useState(0);
+
+  const handleSellAmountChange = async (amount: number) => {
+    if (!program) return;
+
+    setSellingAmount(amount);
+
+    const style = isTokenSelling ? 1 : 0;
+    const convertedAmount = isTokenSelling ? amount * 1e6 : amount * 1e9
+    const decimals = isTokenSelling ? 1e9 : 1e6
+    const swapAmount = await getSwapAmount(
+      program,
+      convertedAmount,
+      style,
+      // TODO: these values from the backend seem incorrect,
+      // they are not dynamically calculated but instead use the
+      // default values leading to slightly incorrect calculations
+      token.reserveAmount,
+      token.reserveLamport
+    );
+    setConvertedAmount(swapAmount / decimals);
+  }; 
+
+  const displayConvertedAmount = isTokenSelling ? convertedAmount : formatNumber(convertedAmount, false, true)
 
   return (
     <div className="relative border p-4 bg-autofun-background-card">
@@ -164,7 +194,7 @@ export default function Trade({ token }: { token: IToken }) {
                 min={0}
                 type="number"
                 onChange={({ target }) =>
-                  setSellingAmount(Number(target.value))
+                  handleSellAmountChange(Number(target.value))
                 }
                 value={sellingAmount}
                 placeholder="0"
@@ -180,7 +210,7 @@ export default function Trade({ token }: { token: IToken }) {
                   : tokenPriceUSD
                     ? formatNumber(
                         Number(sellingAmount || 0) * tokenPriceUSD,
-                        true,
+                        true
                       )
                     : formatNumber(0)}
               </span>
@@ -188,7 +218,7 @@ export default function Trade({ token }: { token: IToken }) {
                 token={token}
                 isSolana={!isTokenSelling}
                 setSellingAmount={setSellingAmount}
-                balance={isTokenSelling ? tokenBalance : solBalance} 
+                balance={isTokenSelling ? tokenBalance : solBalance}
               />
             </div>
           </div>
@@ -208,15 +238,9 @@ export default function Trade({ token }: { token: IToken }) {
             <div className="flex justify-between gap-3">
               <input
                 className="text-4xl truncate font-dm-mono text-autofun-text-secondary w-3/4 outline-none"
-                min={0}
-                type="number"
                 readOnly
                 value={
-                  sellingAmount && currentPrice && !isTokenSelling
-                    ? (Number(sellingAmount) / currentPrice).toFixed(2)
-                    : sellingAmount && isTokenSelling
-                      ? (Number(sellingAmount) * currentPrice).toFixed(4)
-                      : "0.00"
+                  displayConvertedAmount
                 }
                 placeholder="0"
               />

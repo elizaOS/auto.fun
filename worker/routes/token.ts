@@ -241,12 +241,10 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     // Set default values for critical fields if they're missing
     const TOKEN_DECIMALS = Number(c.env.DECIMALS || 6);
-    const defaultReserveAmount = 1000000000000; // 1 trillion (default token supply)
-    const defaultReserveLamport = 2800000000; // 2.8 SOL (default reserve)
 
     // Make sure reserveAmount and reserveLamport have values
-    token.reserveAmount = token.reserveAmount || defaultReserveAmount;
-    token.reserveLamport = token.reserveLamport || defaultReserveLamport;
+    token.reserveAmount = token.reserveAmount || Number(c.env.TOKEN_SUPPLY);
+    token.reserveLamport = token.reserveLamport || Number(c.env.VIRTUAL_RESERVES);
 
     // Update or set default values for missing fields
     if (!token.currentPrice && token.reserveAmount && token.reserveLamport) {
