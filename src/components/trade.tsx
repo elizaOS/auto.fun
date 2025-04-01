@@ -19,7 +19,7 @@ export default function Trade({ token }: { token: IToken }) {
   const { solPrice: contextSolPrice } = useSolPriceContext();
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
-    undefined,
+    undefined
   );
 
   // Fetch real-time blockchain metrics for this token
@@ -66,7 +66,7 @@ export default function Trade({ token }: { token: IToken }) {
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status,
+    token?.status
   );
 
   // Set percentage buttons to use real balance
@@ -94,7 +94,7 @@ export default function Trade({ token }: { token: IToken }) {
       // they are not dynamically calculated but instead use the
       // default values leading to slightly incorrect calculations
       token.reserveAmount,
-      token.reserveLamport,
+      token.reserveLamport
     );
     setConvertedAmount(swapAmount / decimals);
   };
@@ -210,7 +210,7 @@ export default function Trade({ token }: { token: IToken }) {
                   : tokenPriceUSD
                     ? formatNumber(
                         Number(sellingAmount || 0) * tokenPriceUSD,
-                        true,
+                        true
                       )
                     : formatNumber(0)}
               </span>
@@ -250,12 +250,12 @@ export default function Trade({ token }: { token: IToken }) {
                 {sellingAmount && solanaPrice && !isTokenSelling
                   ? formatNumber(
                       (Number(sellingAmount) / currentPrice) * tokenPriceUSD,
-                      true,
+                      true
                     )
                   : sellingAmount && isTokenSelling && tokenPriceUSD
                     ? formatNumber(
                         Number(sellingAmount) * currentPrice * solanaPrice,
-                        true,
+                        true
                       )
                     : "$0.00"}
               </span>
@@ -282,10 +282,8 @@ export default function Trade({ token }: { token: IToken }) {
             </p>
           </div>
         </div>
-        <Button
-          variant="tab"
-          className="font-dm-mono"
-          size="large"
+        <button
+          className="mx-auto"
           disabled={
             isDisabled ||
             insufficientBalance ||
@@ -305,12 +303,32 @@ export default function Trade({ token }: { token: IToken }) {
               : undefined
           }
         >
-          {isExecutingSwap ? (
-            <Loader2 className="size-5 animate-spin" />
-          ) : (
-            "Swap"
-          )}
-        </Button>
+          <img
+            src={
+              isExecutingSwap
+                ? "/token/swapping.svg"
+                : "/token/swapup.svg"
+            }
+            alt="Generate"
+            className="h-32"
+            onMouseDown={(e) => {
+              if (!isExecutingSwap) {
+                (e.target as HTMLImageElement).src = "/token/swapdown.svg";
+              }
+            }}
+            onMouseUp={(e) => {
+              if (!isExecutingSwap) {
+                (e.target as HTMLImageElement).src = "/token/swapup.svg";
+              }
+            }}
+            onDragStart={(e) => e.preventDefault()}
+            onMouseOut={(e) => {
+              if (!isExecutingSwap) {
+                (e.target as HTMLImageElement).src = "/token/swapup.svg";
+              }
+            }}
+          />
+        </button>
       </div>
     </div>
   );
@@ -324,7 +342,7 @@ const TokenDisplay = ({
   isSolana?: boolean;
 }) => {
   return (
-    <div className="flex items-center gap-2 border bg-autofun-background-card p-2 select-none">
+    <div className="flex items-center gap-2 p-2 select-none">
       <SkeletonImage
         src={isSolana ? "/solana.png" : token?.image || ""}
         alt={token?.name || "token"}

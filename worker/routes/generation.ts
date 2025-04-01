@@ -340,10 +340,11 @@ export async function generateMedia(
   },
 ) {
   // Set default timeout - shorter for tests
-  const timeout = process.env.NODE_ENV === "test" ? 3000 : 30000;
+  const timeout = 300000;
 
   // Initialize fal.ai client dynamically if needed for video/audio
-  if (data.type !== MediaType.IMAGE && env.FAL_API_KEY) {
+  if (!(data.type === MediaType.IMAGE && data.mode === "fast") && env.FAL_API_KEY) {
+    console.log("**** env.FAL_API_KEY", env.FAL_API_KEY);
     fal.config({
       credentials: env.FAL_API_KEY,
     });
@@ -734,39 +735,27 @@ app.post("/:mint/generate", async (c) => {
       return c.json({ error: "Media generation failed" }, 500);
     }
 
-    // Extract the appropriate URL based on media type
+    // Validate response
+    if (!result || typeof result !== "object") {
+      throw new Error("Invalid response format");
+    }
+
     let mediaUrl: string = "";  // Initialize with empty string
 
-    // Handle different response formats from the fal.ai API
-    const typedResult = result as any; // Type casting for safety
-
-    if (validatedData.type === MediaType.VIDEO) {
-      if (typedResult.video?.url) {
-        mediaUrl = typedResult.video.url;
-      } else if (typedResult.urls?.video) {
-        // For pixverse models
-        mediaUrl = typedResult.urls.video;
-      }
+    if (validatedData.type === MediaType.VIDEO && result.video?.url) {
+      mediaUrl = result.video.url;
+    } else if (validatedData.type === MediaType.VIDEO && result.data?.video?.url) {
+      mediaUrl = result.data.video.url;
     } else if (
       validatedData.type === MediaType.AUDIO &&
-      typedResult.audio_file?.url
+      result.audio_file?.url
     ) {
-      mediaUrl = typedResult.audio_file.url;
-    } else if (
-      typedResult.data?.images &&
-      typedResult.data.images.length > 0 &&
-      typedResult.data.images[0].url
-    ) {
-      mediaUrl = typedResult.data.images[0].url;
-    } else if (typedResult.image?.url) {
-      // For flux ultra
-      mediaUrl = typedResult.image.url;
-    } else if (typeof typedResult === "string") {
-      // Fallback if the result is just a URL string
-      mediaUrl = typedResult;
+      mediaUrl = result.audio_file.url;
+    } else if (result.data?.images?.length > 0) {
+      mediaUrl = result.data.images[0].url;
     } else {
-      // Placeholder for testing
-      mediaUrl = `https://placehold.co/600x400?text=${encodeURIComponent(validatedData.prompt)}`;
+      // Fallback - should not happen with our implementation
+      mediaUrl = `https://placehold.co/600x400?text=${encodeURIComponent(validatedData.prompt.substring(0, 100))}`;
     }
 
     // Save generation to database with timeout
@@ -778,19 +767,6 @@ app.post("/:mint/generate", async (c) => {
         prompt: validatedData.prompt,
         mediaUrl,
         timestamp: new Date().toISOString(),
-        // negativePrompt: validatedData.negative_prompt,
-        // numInferenceSteps: validatedData.num_inference_steps,
-        // seed: validatedData.seed,
-        // Video specific metadata
-        // numFrames: validatedData.num_frames,
-        // fps: validatedData.fps,
-        // motionBucketId: validatedData.motion_bucket_id,
-        // duration: validatedData.duration,
-        // Audio specific metadata
-        // durationSeconds: validatedData.duration_seconds,
-        // bpm: validatedData.bpm,
-        // creator: c.get("user")?.publicKey || null,
-        // timestamp: new Date().toISOString(),
       });
 
       await Promise.race([insertPromise, dbTimeoutPromise]);
@@ -1091,11 +1067,17 @@ app.post("/generate", async (c) => {
 
     console.log("result is", result);
 
-    // Extract the appropriate URL based on media type
+    // Validate response
+    if (!result || typeof result !== "object") {
+      throw new Error("Invalid response format");
+    }
+
     let mediaUrl: string = "";  // Initialize with empty string
 
     if (validatedData.type === MediaType.VIDEO && result.video?.url) {
       mediaUrl = result.video.url;
+    } else if (validatedData.type === MediaType.VIDEO && result.data?.video?.url) {
+      mediaUrl = result.data.video.url;
     } else if (
       validatedData.type === MediaType.AUDIO &&
       result.audio_file?.url
@@ -1106,6 +1088,22 @@ app.post("/generate", async (c) => {
     } else {
       // Fallback - should not happen with our implementation
       mediaUrl = `https://placehold.co/600x400?text=${encodeURIComponent(validatedData.prompt.substring(0, 100))}`;
+    }
+
+    // For testing or development, use a placeholder if no media was generated
+    if (!mediaUrl) {
+      if (c.env.NODE_ENV === "development" || c.env.NODE_ENV === "test") {
+        mediaUrl = `https://placehold.co/600x400?text=${encodeURIComponent(validatedData.prompt.substring(0, 30))}`;
+        console.log("Using placeholder media URL:", mediaUrl);
+      } else {
+        return c.json(
+          {
+            success: false,
+            error: `Failed to generate ${validatedData.type}. Please try again.`,
+          },
+          500,
+        );
+      }
     }
 
     return c.json({
@@ -1966,7 +1964,11 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
       JSON.stringify(result).substring(0, 200) + "...",
     );
 
-    // Extract the media URL, handling different result formats
+    // Validate response
+    if (!result || typeof result !== "object") {
+      throw new Error("Invalid response format");
+    }
+
     let mediaUrl: string = "";  // Initialize with empty string
 
     if (result && typeof result === "object") {
@@ -1977,6 +1979,9 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
         } else if (result.urls?.video) {
           // For pixverse models
           mediaUrl = result.urls.video;
+        } else if (result.data?.video?.url) {
+          // For data.video.url structure
+          mediaUrl = result.data.video.url;
         }
       }
       // Handle audio result formats

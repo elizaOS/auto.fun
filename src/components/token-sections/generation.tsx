@@ -11,8 +11,6 @@ const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
 // Additional imports for balance checking
 import { env } from "@/utils/env";
 import { Connection, PublicKey } from "@solana/web3.js";
-import { useTokenBalance } from "@/hooks/use-token-balance";
-// import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 // Storage keys for Twitter auth
 const STORAGE_KEY = "twitter-oauth-token";
@@ -1232,11 +1230,10 @@ export default function CommunityTab() {
 
   // Add these state variables at the top of the component
   const [audioMode, setAudioMode] = useState<"music" | "speech">("music");
-  const [lyrics, setLyrics] = useState("");
 
   // Add this function to handle audio generation
   const generateAudio = async () => {
-    if (!userPrompt && (audioMode === "speech" || !lyrics)) return;
+    if (!userPrompt && (audioMode === "speech")) return;
 
     // Check if wallet is connected
     if (!publicKey) {
@@ -1311,11 +1308,6 @@ export default function CommunityTab() {
         mediaType: "audio",
         mode: "fast" // Audio only has one mode for now
       };
-
-      // Add lyrics for music generation if applicable
-      if (audioMode === "music" && lyrics) {
-        requestBody.lyrics = lyrics;
-      }
 
       // Call the API endpoint
       const response = await fetch(apiUrl, {
@@ -1510,20 +1502,11 @@ export default function CommunityTab() {
                   Slow
                 </Button>
               </div>
-              <div className="text-xs text-gray-400 mt-1">
-                {communityTab === "Image" && generationMode === "slow" 
-                  ? "Requires 10k+ tokens" 
-                  : communityTab === "Video" && generationMode === "fast"
-                  ? "Requires 10k+ tokens"
-                  : communityTab === "Video" && generationMode === "slow"
-                  ? "Requires 100k+ tokens"
-                  : ""}
-              </div>
             </div>
           )}
 
           {/* Token balance info */}
-          <div className="mt-4">
+          {/* <div className="mt-4">
             <h3 className="text-sm font-bold mb-1">Token Balance</h3>
             <div className="text-sm">
               {tokenBalance !== null ? (
@@ -1534,7 +1517,7 @@ export default function CommunityTab() {
                 <span className="text-gray-400">Loading...</span>
               )}
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Right side - Content Area */}
@@ -1668,16 +1651,7 @@ export default function CommunityTab() {
                   Image to Video
                 </Button>
               </div>
-              
-              <div className="text-sm text-gray-300 mb-2">
-                {videoMode === "text" 
-                  ? "Create videos from text prompts." 
-                  : "Create videos from your images."}
-                {generationMode === "fast" 
-                  ? " Fast mode requires 10k+ tokens."
-                  : " Slow mode requires 100k+ tokens."}
-              </div>
-              
+
               <div className="flex flex-col mt-4 w-full">
                 {videoMode === "text" ? (
                   <div className="flex">
@@ -1903,30 +1877,9 @@ export default function CommunityTab() {
                 </Button>
               </div>
               
-              <div className="text-sm text-gray-300 mb-2">
-                {audioMode === "music" 
-                  ? "Generate music based on lyrics. Requires 10k+ tokens." 
-                  : "Generate speech from text. Requires 10k+ tokens."}
-              </div>
-              
               <div className="flex flex-col mt-4 w-full">
                 {audioMode === "music" ? (
                   <div className="flex flex-col gap-4">
-                    <div className="border border-gray-700 p-2 rounded-md">
-                      <textarea
-                        value={lyrics}
-                        onChange={(e) => setLyrics(e.target.value)}
-                        placeholder={
-                          "Enter lyrics with timestamps, for example:\n" +
-                          "[00:10.00]Verse 1: The world is spinning\n" +
-                          "[00:13.20]Around the sun so bright\n" +
-                          "[00:16.85]And we are all just living\n" +
-                          "[00:20.40]In this cosmic light"
-                        }
-                        rows={8}
-                        className="w-full bg-transparent border-0 focus:outline-none text-white text-sm font-mono"
-                      />
-                    </div>
                     
                     <div className="flex">
                       <input
@@ -1940,7 +1893,6 @@ export default function CommunityTab() {
                         onClick={() => generateAudio()}
                         disabled={
                           isGenerating || 
-                          !lyrics || 
                           Number(tokenBalance?.toFixed(2) ?? 0) < 10000
                         }
                         className="p-0 transition-colors disabled:opacity-50"
