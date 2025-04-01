@@ -733,51 +733,25 @@ export async function monitorTokenEvents(env: Env): Promise<void> {
 
 export async function cron(env: Env, ctx: ExecutionContext): Promise<void> {
   try {
-    logger.log("Running scheduled tasks...");
+    // Initialize WebSocket client for broadcasting events
+    const wsClient = getWebSocketClient(env);
+    logger.log("Starting CRON job for token monitoring and updates...");
 
-    // Run token monitoring first
-    await monitorTokenEvents(env);
-
-    // Then update token prices
-    const db = getDB(env);
-
-    // Get all active tokens
-    const activeTokens = await db
-      .select()
-      .from(tokens)
-      .where(eq(tokens.status, "active"));
-
-    // Get SOL price once for all tokens
+    // Update SOL price
     const solPrice = await getSOLPrice(env);
 
-    // Update each token with new price data
-    const updatedTokens = await bulkUpdatePartialTokens(activeTokens, env);
+    // Broadcast SOL price update via WebSocket
+    await wsClient.emit("global", "solPriceUpdate", { price: solPrice });
+    logger.log(`Broadcasted SOL price update via WebSocket: $${solPrice}`);
 
-    logger.log(`Updated prices for ${updatedTokens.length} tokens`);
-
-    // Update holder data for each active token
-    for (const token of activeTokens) {
-      try {
-        if (token.mint) {
-          logger.log(`Updating holder data for token: ${token.mint}`);
-          const holderCount = await updateHoldersCache(env, token.mint);
-          logger.log(
-            `Updated holders for ${token.mint}: ${holderCount} holders`,
-          );
-        }
-      } catch (err) {
-        logger.error(`Error updating holders for token ${token.mint}:`, err);
-      }
-    }
+    // Monitor token events (will broadcast WebSocket events internally)
+    await monitorTokenEvents(env);
 
     // Check and replenish pre-generated tokens if needed
-    try {
-      logger.log("Checking pre-generated token supply...");
-      await checkAndReplenishTokens(env);
-    } catch (err) {
-      logger.error("Error replenishing pre-generated tokens:", err);
-    }
+    await checkAndReplenishTokens(env);
+
+    logger.log("CRON job completed successfully");
   } catch (error) {
-    logger.error("Error in cron job:", error);
+    logger.error("Error in CRON job:", error);
   }
 }

@@ -140,6 +140,7 @@ export async function updateSOLPrice(env: Env): Promise<number> {
   try {
     // Get the price from Pyth
     const price = await fetchSOLPriceFromPyth();
+    let finalPrice = price;
 
     if (price > 0) {
       // Store in cache
@@ -147,13 +148,26 @@ export async function updateSOLPrice(env: Env): Promise<number> {
       await cacheService.setSolPrice(price);
 
       logger.log(`Updated SOL price: $${price}`);
-      return price;
+    } else {
+      // If Pyth fails, try fallback sources
+      finalPrice = await getSOLPrice(env);
+      logger.log(`Used fallback source for SOL price: $${finalPrice}`);
     }
-
-    // If Pyth fails, try fallback sources
-    const fallbackPrice = await getSOLPrice(env);
-    logger.log(`Used fallback source for SOL price: $${fallbackPrice}`);
-    return fallbackPrice;
+    
+    // Broadcast the price update via WebSocket if available
+    try {
+      const { getWebSocketClient } = await import('./websocket-client');
+      const wsClient = getWebSocketClient(env);
+      
+      // Emit the price update to the global room
+      await wsClient.emit("global", "solPriceUpdate", { price: finalPrice });
+      logger.log(`Broadcasted SOL price update to WebSocket: $${finalPrice}`);
+    } catch (error) {
+      logger.error("Error broadcasting SOL price to WebSocket:", error);
+      // Non-fatal error, continue with the price update
+    }
+    
+    return finalPrice;
   } catch (error) {
     logger.error("Error updating SOL price:", error);
     return 0;

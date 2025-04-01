@@ -23,6 +23,74 @@ import { WebSocketDO, allowedOrigins, createTestSwap } from "./websocket";
 import { getWebSocketClient } from "./websocket-client";
 import { getSOLPrice } from "./mcap";
 
+// Memory cache for SOL price to reduce API calls in development
+const DEV_SOL_PRICE_CACHE = {
+  price: null as number | null,
+  lastUpdate: 0,
+  // Cache for 2 minutes
+  cacheValidity: 2 * 60 * 1000,
+  // Collection of connected WebSocket clients for price broadcasts
+  connectedClients: new Set<WebSocket>()
+};
+
+// Setup interval for SOL price updates in development
+let solPriceUpdateInterval: NodeJS.Timeout | null = null;
+
+/**
+ * Updates the SOL price and broadcasts to all connected clients
+ * Used for the development WebSocket server only
+ */
+async function updateAndBroadcastSolPrice(env: Env) {
+  try {
+    const now = Date.now();
+    
+    // Only fetch new price if cache is expired
+    if (!DEV_SOL_PRICE_CACHE.price || now - DEV_SOL_PRICE_CACHE.lastUpdate > DEV_SOL_PRICE_CACHE.cacheValidity) {
+      logger.log("Dev WebSocket: Fetching fresh SOL price for broadcast");
+      const price = await getSOLPrice(env);
+      
+      if (price) {
+        DEV_SOL_PRICE_CACHE.price = price;
+        DEV_SOL_PRICE_CACHE.lastUpdate = now;
+        logger.log(`Dev WebSocket: Updated SOL price: $${price}`);
+      }
+    }
+    
+    if (DEV_SOL_PRICE_CACHE.price && DEV_SOL_PRICE_CACHE.connectedClients.size > 0) {
+      // Broadcast to all connected clients
+      const updateMessage = JSON.stringify({
+        event: "solPriceUpdate",
+        data: {
+          price: DEV_SOL_PRICE_CACHE.price
+        }
+      });
+      
+      // Count of successful deliveries
+      let deliveredCount = 0;
+      
+      DEV_SOL_PRICE_CACHE.connectedClients.forEach(client => {
+        try {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(updateMessage);
+            deliveredCount++;
+          } else if (client.readyState === WebSocket.CLOSED || client.readyState === WebSocket.CLOSING) {
+            // Clean up closed clients
+            DEV_SOL_PRICE_CACHE.connectedClients.delete(client);
+          }
+        } catch (error) {
+          logger.error("Error sending SOL price update to client:", error);
+          // Remove problematic clients
+          DEV_SOL_PRICE_CACHE.connectedClients.delete(client);
+        }
+      });
+      
+      logger.log(`Dev WebSocket: Broadcasted SOL price $${DEV_SOL_PRICE_CACHE.price} to ${deliveredCount} clients`);
+    }
+  } catch (error) {
+    logger.error("Error in SOL price broadcast:", error);
+  }
+}
+
 const app = new Hono<{
   Bindings: Env;
   Variables: {
@@ -518,11 +586,29 @@ export default {
           // Accept the connection
           server.accept();
 
-          // Send a welcome message
+          // Add to connected clients for SOL price broadcasts
+          DEV_SOL_PRICE_CACHE.connectedClients.add(server);
+          
+          // Setup SOL price update interval if not already running
+          if (!solPriceUpdateInterval) {
+            // Update SOL price every 30 seconds
+            solPriceUpdateInterval = setInterval(() => {
+              updateAndBroadcastSolPrice(env);
+            }, 30_000); // 30 seconds
+            
+            // Initial update
+            updateAndBroadcastSolPrice(env);
+          }
+
+          // Send a welcome message and initial SOL price if available
           server.send(
             JSON.stringify({
               event: "connected",
-              data: { message: "Connected to development WebSocket server" },
+              data: { 
+                message: "Connected to development WebSocket server",
+                // Include current SOL price if available for immediate use
+                solPrice: DEV_SOL_PRICE_CACHE.price 
+              },
             }),
           );
 
@@ -532,9 +618,21 @@ export default {
               // Log the received message
               logger.log(`Received WebSocket message: ${event.data}`);
 
+              // Set a client ID if not already set
+              if (!server.__clientId) {
+                server.__clientId = `client-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+                logger.log(`Assigned WebSocket client ID: ${server.__clientId}`);
+              }
+
               // Parse the message to handle basic functionality
               try {
                 const message = JSON.parse(event.data);
+                
+                // Extract clientId from message if provided
+                if (message.clientId) {
+                  server.__clientId = message.clientId;
+                  logger.log(`Updated WebSocket client ID to: ${server.__clientId}`);
+                }
 
                 // Handle subscription events
                 if (message.event === "subscribeGlobal") {
@@ -545,6 +643,16 @@ export default {
                       data: { room: "global" },
                     }),
                   );
+                  
+                  // Send current SOL price immediately when subscribing to global
+                  if (DEV_SOL_PRICE_CACHE.price) {
+                    server.send(
+                      JSON.stringify({
+                        event: "solPriceUpdate",
+                        data: { price: DEV_SOL_PRICE_CACHE.price }
+                      })
+                    );
+                  }
                 } else if (message.event === "subscribe" && message.data) {
                   // Acknowledge token subscription
                   server.send(
@@ -553,6 +661,370 @@ export default {
                       data: { room: `token-${message.data}` },
                     }),
                   );
+                } else if (message.event === "getSolPrice") {
+                  // Handle direct SOL price request
+                  const handleSolPriceRequest = async () => {
+                    try {
+                      // Use cached price if available and fresh
+                      const now = Date.now();
+                      let price: number;
+                      
+                      if (DEV_SOL_PRICE_CACHE.price && 
+                          now - DEV_SOL_PRICE_CACHE.lastUpdate < DEV_SOL_PRICE_CACHE.cacheValidity) {
+                        price = DEV_SOL_PRICE_CACHE.price;
+                        logger.log(`Using cached SOL price: $${price}`);
+                      } else {
+                        price = await getSOLPrice(env);
+                        if (price) {
+                          DEV_SOL_PRICE_CACHE.price = price;
+                          DEV_SOL_PRICE_CACHE.lastUpdate = now;
+                        }
+                        logger.log(`Fetched fresh SOL price: $${price}`);
+                      }
+                      
+                      // Send response
+                      server.send(
+                        JSON.stringify({
+                          event: "solPriceUpdate",
+                          data: { price }
+                        })
+                      );
+                    } catch (error) {
+                      logger.error("Error handling SOL price request:", error);
+                      // Send error response
+                      server.send(
+                        JSON.stringify({
+                          event: "solPriceUpdate",
+                          data: { 
+                            error: "Failed to fetch SOL price",
+                            fallbackPrice: 130.0
+                          }
+                        })
+                      );
+                    }
+                  };
+                  
+                  handleSolPriceRequest();
+                } else if (message.event === "checkAuthStatus") {
+                  // Handle auth status check for development
+                  const token = message.data?.token;
+                  let walletAddress = null;
+                  let authenticated = false;
+                  
+                  // For wallet tokens, extract wallet address
+                  if (token && token.startsWith("wallet_")) {
+                    const parts = token.split("_");
+                    if (parts.length >= 2) {
+                      walletAddress = parts[1];
+                      authenticated = true;
+                    }
+                  } 
+                  // For JWT tokens
+                  else if (token && token.includes(".")) {
+                    try {
+                      const parts = token.split(".");
+                      if (parts.length === 3) {
+                        const payload = JSON.parse(atob(parts[1]));
+                        walletAddress = payload.sub || null;
+                        authenticated = true;
+                      }
+                    } catch (e) {
+                      logger.error("Error decoding JWT in dev mode:", e);
+                    }
+                  }
+                  
+                  // Send auth response
+                  server.send(
+                    JSON.stringify({
+                      event: "authStatus",
+                      data: {
+                        authenticated,
+                        privileges: authenticated ? ["user"] : [],
+                        walletAddress,
+                        development: true
+                      }
+                    })
+                  );
+                } else if (message.event === "getTokens") {
+                  // Handle token list request for development
+                  try {
+                    const page = message.data?.page || 1;
+                    const limit = message.data?.limit || 12;
+                    const sortBy = message.data?.sortBy || "createdAt";
+                    const sortOrder = message.data?.sortOrder || "desc";
+                    
+                    // Create a more visible log so it's clear we received the tokens request
+                    logger.log(`🔄 WebSocket token request: page=${page}, limit=${limit}, sortBy=${sortBy}, sortOrder=${sortOrder}`);
+                    
+                    // Create a cache key for this specific request
+                    const cacheKey = `tokens-${page}-${limit}-${sortBy}-${sortOrder}`;
+                    
+                    // Use memory cache for development mode
+                    // This is a simplified implementation that doesn't persist between worker restarts
+                    const memoryCache = (globalThis as any).__tokenCache = (globalThis as any).__tokenCache || {};
+                    
+                    // Track last request time for each client to prevent rapid duplicate requests
+                    const clientRequestCache = (globalThis as any).__clientRequestTimes = (globalThis as any).__clientRequestTimes || {};
+                    const requesterId = server.__clientId || "unknown";
+                    const now = Date.now();
+                    const lastRequestTime = clientRequestCache[`${requesterId}-${cacheKey}`] || 0;
+                    
+                    // If this client has requested this exact data in the last second, throttle the request
+                    if (now - lastRequestTime < 1000) {
+                      logger.log(`🚫 Throttling duplicate request from client ${requesterId} (${now - lastRequestTime}ms since last request)`);
+                      // Still return cached data if available, but don't hit the API
+                      if (memoryCache[cacheKey] && (now - memoryCache[cacheKey].timestamp < 60000)) {
+                        server.send(
+                          JSON.stringify({
+                            event: "tokensList",
+                            data: memoryCache[cacheKey].data
+                          })
+                        );
+                      }
+                      return;
+                    }
+                    
+                    // Update last request time for this client and this cache key
+                    clientRequestCache[`${requesterId}-${cacheKey}`] = now;
+                    
+                    // Check if we have a recent cached response (last 60 seconds)
+                    const cachedItem = memoryCache[cacheKey];
+                    if (cachedItem && (now - cachedItem.timestamp < 60000)) {
+                      // Use cached data
+                      logger.log(`✅ Using cached token data for ${cacheKey} (${now - cachedItem.timestamp}ms old)`);
+                      server.send(
+                        JSON.stringify({
+                          event: "tokensList",
+                          data: cachedItem.data
+                        })
+                      );
+                      return;
+                    }
+                    
+                    // Not in cache or expired, fetch from API
+                    logger.log(`📥 Fetching fresh token data for ${cacheKey}`);
+                    
+                    // Construct API URL with query parameters
+                    const tokenUrl = new URL(`${env.VITE_API_URL}/api/tokens`);
+                    tokenUrl.searchParams.append("page", page.toString());
+                    tokenUrl.searchParams.append("limit", limit.toString());
+                    tokenUrl.searchParams.append("sortBy", sortBy);
+                    tokenUrl.searchParams.append("sortOrder", sortOrder);
+                    
+                    // Fetch token data with reasonable timeout
+                    Promise.race([
+                      fetch(tokenUrl.toString()),
+                      new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error("Fetch timeout")), 5000)
+                      )
+                    ])
+                      .then(response => {
+                        if (!response) {
+                          throw new Error("Empty response");
+                        }
+                        if (!(response as Response).ok) {
+                          throw new Error(`Token fetch failed: ${(response as Response).status}`);
+                        }
+                        return (response as Response).json();
+                      })
+                      .then(tokenData => {
+                        // Store in memory cache with timestamp
+                        memoryCache[cacheKey] = {
+                          data: tokenData,
+                          timestamp: now
+                        };
+                        
+                        // Send response to client
+                        logger.log(`✅ Sending token data via WebSocket: ${tokenData.tokens?.length || 0} tokens`);
+                        server.send(
+                          JSON.stringify({
+                            event: "tokensList",
+                            data: tokenData
+                          })
+                        );
+                      })
+                      .catch(error => {
+                        logger.error("❌ Error fetching tokens in dev WebSocket:", error);
+                        
+                        // If we have stale cache, use it despite being expired
+                        if (cachedItem) {
+                          logger.log(`⚠️ Using stale cache due to fetch error`);
+                          server.send(
+                            JSON.stringify({
+                              event: "tokensList",
+                              data: {
+                                ...cachedItem.data,
+                                _stale: true
+                              }
+                            })
+                          );
+                          return;
+                        }
+                        
+                        server.send(
+                          JSON.stringify({
+                            event: "tokensList",
+                            data: { 
+                              error: "Error fetching tokens", 
+                              tokens: [] 
+                            }
+                          })
+                        );
+                      });
+                  } catch (error) {
+                    logger.error("❌ Error handling token request in dev WebSocket:", error);
+                    server.send(
+                      JSON.stringify({
+                        event: "tokensList",
+                        data: { 
+                          error: "Server error processing token request", 
+                          tokens: [] 
+                        }
+                      })
+                    );
+                  }
+                } else if (message.event === "searchTokens") {
+                  // Handle token search request for development
+                  try {
+                    const searchQuery = message.data?.search || "";
+                    
+                    // Create a more visible log for search requests
+                    logger.log(`🔍 WebSocket token search request: "${searchQuery}"`);
+                    
+                    // Create a cache key for this specific search
+                    const cacheKey = `search-${searchQuery.toLowerCase().trim()}`;
+                    
+                    // Use memory cache for development mode
+                    const memoryCache = (globalThis as any).__searchCache = (globalThis as any).__searchCache || {};
+                    
+                    // Track last request time for search requests
+                    const clientRequestCache = (globalThis as any).__clientSearchTimes = (globalThis as any).__clientSearchTimes || {};
+                    const requesterId = server.__clientId || "unknown";
+                    const now = Date.now();
+                    const lastRequestTime = clientRequestCache[`${requesterId}-${cacheKey}`] || 0;
+                    
+                    // If this client has searched for the same thing in the last second, throttle
+                    if (now - lastRequestTime < 1000) {
+                      logger.log(`🚫 Throttling duplicate search from client ${requesterId} (${now - lastRequestTime}ms since last search)`);
+                      // Still return cached data if available, but don't hit the API
+                      if (memoryCache[cacheKey] && (now - memoryCache[cacheKey].timestamp < 60000)) {
+                        server.send(
+                          JSON.stringify({
+                            event: "searchResults",
+                            data: memoryCache[cacheKey].data
+                          })
+                        );
+                      }
+                      return;
+                    }
+                    
+                    // Update last request time for this client and this search
+                    clientRequestCache[`${requesterId}-${cacheKey}`] = now;
+                    
+                    // If search is empty, return empty results
+                    if (!searchQuery.trim()) {
+                      server.send(
+                        JSON.stringify({
+                          event: "searchResults",
+                          data: { tokens: [] }
+                        })
+                      );
+                      return;
+                    }
+                    
+                    // Check if we have a recent cached response (last 60 seconds)
+                    const cachedItem = memoryCache[cacheKey];
+                    if (cachedItem && (now - cachedItem.timestamp < 60000)) {
+                      // Use cached data
+                      logger.log(`✅ Using cached search results for "${searchQuery}" (${now - cachedItem.timestamp}ms old)`);
+                      server.send(
+                        JSON.stringify({
+                          event: "searchResults",
+                          data: cachedItem.data
+                        })
+                      );
+                      return;
+                    }
+                    
+                    // Not in cache or expired, fetch from API
+                    logger.log(`📥 Fetching fresh search results for "${searchQuery}"`);
+                    
+                    // Construct API URL with search parameter
+                    const searchUrl = new URL(`${env.VITE_API_URL}/api/tokens/search`);
+                    searchUrl.searchParams.append("search", searchQuery);
+                    
+                    // Fetch search results with reasonable timeout
+                    Promise.race([
+                      fetch(searchUrl.toString()),
+                      new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error("Search timeout")), 5000)
+                      )
+                    ])
+                      .then(response => {
+                        if (!response) {
+                          throw new Error("Empty response");
+                        }
+                        if (!(response as Response).ok) {
+                          throw new Error(`Search failed: ${(response as Response).status}`);
+                        }
+                        return (response as Response).json();
+                      })
+                      .then(searchData => {
+                        // Store in memory cache with timestamp
+                        memoryCache[cacheKey] = {
+                          data: searchData,
+                          timestamp: now
+                        };
+                        
+                        // Send response to client
+                        logger.log(`✅ Sending search results via WebSocket: ${searchData.tokens?.length || 0} tokens found`);
+                        server.send(
+                          JSON.stringify({
+                            event: "searchResults",
+                            data: searchData
+                          })
+                        );
+                      })
+                      .catch(error => {
+                        logger.error("❌ Error during token search in dev WebSocket:", error);
+                        
+                        // If we have stale cache, use it despite being expired
+                        if (cachedItem) {
+                          logger.log(`⚠️ Using stale search cache due to fetch error`);
+                          server.send(
+                            JSON.stringify({
+                              event: "searchResults",
+                              data: {
+                                ...cachedItem.data,
+                                _stale: true
+                              }
+                            })
+                          );
+                          return;
+                        }
+                        
+                        server.send(
+                          JSON.stringify({
+                            event: "searchResults",
+                            data: { 
+                              error: "Error searching tokens", 
+                              tokens: [] 
+                            }
+                          })
+                        );
+                      });
+                  } catch (error) {
+                    logger.error("❌ Error handling search request in dev WebSocket:", error);
+                    server.send(
+                      JSON.stringify({
+                        event: "searchResults",
+                        data: { 
+                          error: "Server error processing search request", 
+                          tokens: [] 
+                        }
+                      })
+                    );
+                  }
                 }
 
                 // Echo the message back
@@ -573,6 +1045,20 @@ export default {
               }
             } catch (error) {
               logger.error(`Error handling WebSocket message: ${error}`);
+            }
+          });
+          
+          // Handle WebSocket closing to remove from client list
+          server.addEventListener("close", () => {
+            // Remove from connected clients
+            DEV_SOL_PRICE_CACHE.connectedClients.delete(server);
+            logger.log(`WebSocket client disconnected. Remaining: ${DEV_SOL_PRICE_CACHE.connectedClients.size}`);
+            
+            // Clear interval if no more clients
+            if (DEV_SOL_PRICE_CACHE.connectedClients.size === 0 && solPriceUpdateInterval) {
+              clearInterval(solPriceUpdateInterval);
+              solPriceUpdateInterval = null;
+              logger.log("No more WebSocket clients, stopped SOL price updates");
             }
           });
 

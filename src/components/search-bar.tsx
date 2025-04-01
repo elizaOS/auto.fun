@@ -6,35 +6,108 @@ import { useEffect, useRef, useState } from "react";
 import { debounce } from "lodash";
 import { IToken } from "@/types";
 import { useOutsideClickDetection } from "@/hooks/use-outside-clickdetection";
-import { getSearchTokens } from "@/utils/api";
-import { useQuery } from "@tanstack/react-query";
+import { useGlobalWebSocket, WebSocketEvent } from "@/hooks/use-websocket";
+import { useQueryClient } from "@tanstack/react-query";
+
+// Add custom event name for search results
+declare module "@/hooks/use-websocket" {
+  export interface WebSocketEventMap {
+    searchResults: { tokens: IToken[] };
+  }
+}
 
 export default function SearchBar() {
   const [searchResults, setSearchResults] = useState<IToken[] | []>([]);
   const [search, setSearch] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const queryClient = useQueryClient();
+  
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClickDetection([ref], () => {
     setShowSearchResults(false);
     setSearchResults([]);
   });
 
-  const query = useQuery({
-    queryKey: ["search-tokens", search],
-    queryFn: async () => {
-      const data = await getSearchTokens({ search });
-      return data as { tokens: IToken[] };
-    },
-  });
+  // Use WebSocket for token search
+  const { connected, addEventListener, sendMessage } = useGlobalWebSocket();
 
-  const tokens = query.data?.tokens ?? [];
+  // Listen for search results via WebSocket
   useEffect(() => {
-    setSearchResults(tokens);
-  }, [tokens]);
+    if (!connected) return;
+    
+    // Set up listener for search results
+    const unsubscribe = addEventListener<{tokens: IToken[]}>("searchResults" as WebSocketEvent, (data) => {
+      if (data && data.tokens) {
+        console.log("Received search results via WebSocket:", data.tokens.length, "tokens");
+        
+        // Cache the search results
+        if (search) {
+          queryClient.setQueryData(["search-tokens", search], { tokens: data.tokens });
+        }
+        
+        setSearchResults(data.tokens);
+        setIsSearching(false);
+      }
+    });
+    
+    return () => {
+      unsubscribe();
+    };
+  }, [addEventListener, connected, queryClient, search]);
+  
+  // Function to request search via WebSocket
+  const requestSearch = (searchQuery: string) => {
+    if (!connected || !sendMessage) return;
+    
+    // Clear any existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // If search is empty, clear results
+    if (!searchQuery || searchQuery.trim() === "") {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+    
+    // Try to get from cache first
+    const cachedResults = queryClient.getQueryData<{tokens: IToken[]}>([
+      "search-tokens",
+      searchQuery
+    ]);
+    
+    if (cachedResults && cachedResults.tokens) {
+      console.log("Using cached search results:", cachedResults.tokens.length, "tokens");
+      setSearchResults(cachedResults.tokens);
+      return;
+    }
+    
+    // If no cache, request via WebSocket
+    console.log("Requesting search via WebSocket:", searchQuery);
+    setIsSearching(true);
+    
+    sendMessage({
+      event: "searchTokens",
+      data: { search: searchQuery }
+    });
+    
+    // Set a timeout to fall back to empty results if no response
+    searchTimeoutRef.current = setTimeout(() => {
+      if (isSearching) {
+        console.log("Search timed out, showing empty results");
+        setIsSearching(false);
+        setSearchResults([]);
+      }
+    }, 5000); // 5 second timeout
+  };
 
   const handleSearch = useRef(
     debounce((query: string) => {
       setSearch(query);
+      requestSearch(query);
     }, 300),
   ).current;
 
@@ -47,6 +120,9 @@ export default function SearchBar() {
   useEffect(() => {
     return () => {
       handleSearch.cancel();
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
     };
   }, [handleSearch]);
 
@@ -71,7 +147,7 @@ export default function SearchBar() {
           <div className="text-[16px] font-normal leading-none tracking-widest">
             Tokens
           </div>
-          {query.isFetching ? (
+          {isSearching ? (
             <div className="text-autofun-background-action-highlight">
               Searching for tokens...
             </div>

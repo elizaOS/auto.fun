@@ -1,6 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { env } from "../utils/env";
+import { useEffect } from "react";
+import { useWebSocket } from "./use-websocket";
 
 const RPC_URL = env.rpcUrl;
 
@@ -35,11 +37,36 @@ const fetchSolBalance = async (walletAddress: string): Promise<number> => {
 export function useSolBalance() {
   const { publicKey } = useWallet();
   const walletAddress = publicKey?.toBase58() || "";
+  const queryClient = useQueryClient();
+  const { addEventListener, connected } = useWebSocket();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ["solBalance", walletAddress],
     queryFn: () => fetchSolBalance(walletAddress),
     enabled: Boolean(walletAddress),
-    refetchInterval: 30000, // Refresh every 30 seconds
+    // Reduce polling frequency when connected to websocket
+    refetchInterval: connected ? 2 * 60 * 1000 : 30 * 1000, // 2 min when connected, 30 sec otherwise
   });
+
+  useEffect(() => {
+    if (!walletAddress) return;
+
+    // Set up listener for balance updates from websocket
+    const unsubscribe = addEventListener<{ address: string; balance: number }>(
+      "balanceUpdate", 
+      (data) => {
+        if (data && data.address === walletAddress) {
+          // Update the cached value directly
+          queryClient.setQueryData(["solBalance", walletAddress], data.balance);
+          console.log("Received SOL balance update via WebSocket:", data.balance);
+        }
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [addEventListener, queryClient, walletAddress]);
+
+  return query;
 }
