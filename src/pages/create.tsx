@@ -453,42 +453,62 @@ const FormImageInput = ({
             <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black to-transparent opacity-60 z-[5]"></div>
 
             {/* Name overlay - top left */}
-            {onNameChange && (
+            {
               <div className="absolute top-4 left-4 z-10">
-                <input
-                  type="text"
-                  value={nameValue || ""}
-                  onChange={(e) => onNameChange(e.target.value)}
-                  placeholder="Token Name"
-                  maxLength={128}
-                  onFocus={() => setNameInputFocused(true)}
-                  onBlur={() => setNameInputFocused(false)}
-                  className={`bg-transparent text-white text-xl font-bold border-b-2 ${
-                    nameInputFocused ? "border-white" : "border-gray-500"
-                  } focus:outline-none px-1 py-0.5 w-[280px] max-w-[95%]`}
-                />
+                {activeTab === FormTab.IMPORT && (
+                  <span
+                    className={`bg-transparent text-white text-xl font-bold focus:outline-none px-1 py-0.5`}
+                  >
+                    {nameValue}
+                  </span>
+                )}
+                {activeTab !== FormTab.IMPORT && (
+                  <input
+                    type="text"
+                    value={nameValue || ""}
+                    onChange={(e) =>
+                      onNameChange && onNameChange(e.target.value)
+                    }
+                    placeholder="Token Name"
+                    maxLength={128}
+                    onFocus={() => setNameInputFocused(true)}
+                    onBlur={() => setNameInputFocused(false)}
+                    className={`bg-transparent text-white text-xl font-bold border-b-2 ${
+                      nameInputFocused ? "border-white" : "border-gray-500"
+                    } focus:outline-none px-1 py-0.5 w-[280px] max-w-[95%]`}
+                  />
+                )}
               </div>
-            )}
+            }
 
             {/* Ticker overlay - bottom left */}
             {onTickerChange && (
               <div className="absolute bottom-4 left-4 z-10">
                 <div className="flex items-center">
                   <span className="text-white text-opacity-80 mr-1">$</span>
-                  <input
-                    type="text"
-                    value={tickerValue || ""}
-                    onChange={(e) =>
-                      onTickerChange(e.target.value.toUpperCase())
-                    }
-                    placeholder="TICKER"
-                    maxLength={16}
-                    onFocus={() => setTickerInputFocused(true)}
-                    onBlur={() => setTickerInputFocused(false)}
-                    className={`bg-transparent text-white text-lg font-semibold border-b-2 ${
-                      tickerInputFocused ? "border-white" : "border-gray-500"
-                    } focus:outline-none px-1 py-0.5 max-w-[60%]`}
-                  />
+                  {activeTab === FormTab.IMPORT && (
+                    <span
+                      className={`bg-transparent text-white text-xl font-bold focus:outline-none px-1 py-0.5`}
+                    >
+                      {tickerValue}
+                    </span>
+                  )}
+                  {activeTab !== FormTab.IMPORT && (
+                    <input
+                      type="text"
+                      value={tickerValue || ""}
+                      onChange={(e) =>
+                        onTickerChange(e.target.value.toUpperCase())
+                      }
+                      placeholder="TICKER"
+                      maxLength={16}
+                      onFocus={() => setTickerInputFocused(true)}
+                      onBlur={() => setTickerInputFocused(false)}
+                      className={`bg-transparent text-white text-lg font-semibold border-b-2 ${
+                        tickerInputFocused ? "border-white" : "border-gray-500"
+                      } focus:outline-none px-1 py-0.5 max-w-[60%]`}
+                    />
+                  )}
                 </div>
               </div>
             )}
