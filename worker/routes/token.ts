@@ -16,7 +16,7 @@ import {
 import { Env } from "../env";
 import { logger } from "../logger";
 import { getSOLPrice } from "../mcap";
-import { getRpcUrl, applyFeaturedSort, getFeaturedMaxValues, getMainnetRpcUrl, getDevnetRpcUrl } from "../util";
+import { getRpcUrl, applyFeaturedSort, getFeaturedMaxValues, getWeightedScoreExpression, getMainnetRpcUrl, getDevnetRpcUrl } from "../util";
 import { createTestSwap } from "../websocket"; // Import only createTestSwap
 import { getWebSocketClient } from "../websocket-client";
 import {
@@ -75,11 +75,26 @@ tokenRouter.get("/tokens", async (c) => {
 
     const db = getDB(c.env);
 
+    // Get max values for normalization first - we need these for both the weightedScore and sorting
+    const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
+
     // Prepare a basic query
     const tokenQuery = async () => {
       try {
-        // Start with a basic query
-        let tokensQuery = db.select().from(tokens) as any;
+        // Get all columns from the tokens table programmatically
+        const allTokensColumns = Object.fromEntries(
+          Object.entries(tokens).filter(
+            ([key, value]) => typeof value === 'object' && 'name' in value
+          ).map(([key, value]) => [key, value])
+        );
+
+        // Start with a basic query that includes the weighted score
+        let tokensQuery = db.select({
+          // Include all columns
+          ...allTokensColumns,
+          // Add the weighted score as a column in the result
+          weightedScore: getWeightedScoreExpression(maxVolume, maxHolders),
+        }).from(tokens) as any;
 
         // Apply filters
         if (status) {
@@ -105,11 +120,7 @@ tokenRouter.get("/tokens", async (c) => {
         // Apply sorting - map frontend sort values to actual DB columns
         // Handle "featured" sort as a special case
         if (sortBy === "featured") {
-          // Get max values for normalization first
-          const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
-
-          // Apply the weighted sort with the max values (no await)
-          // Use method chaining to preserve the query builder's type
+          // Apply the weighted sort with the max values
           tokensQuery = applyFeaturedSort(
             tokensQuery,
             maxVolume,
