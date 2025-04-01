@@ -16,7 +16,7 @@ import {
 import { Env } from "../env";
 import { logger } from "../logger";
 import { getSOLPrice } from "../mcap";
-import { getRpcUrl } from "../util";
+import { getRpcUrl, applyFeaturedSort, getFeaturedMaxValues } from "../util";
 import { createTestSwap } from "../websocket"; // Import only createTestSwap
 import { getWebSocketClient } from "../websocket-client";
 import {
@@ -103,12 +103,12 @@ tokenRouter.get("/tokens", async (c) => {
         // Apply sorting - map frontend sort values to actual DB columns
         // Handle "featured" sort as a special case
         if (sortBy === "featured") {
-          // For "featured", we'll sort by holderCount or marketCapUSD as a good default
-          if (sortOrder.toLowerCase() === "desc") {
-            tokensQuery = tokensQuery.orderBy(desc(tokens.holderCount));
-          } else {
-            tokensQuery = tokensQuery.orderBy(tokens.holderCount);
-          }
+          // Get max values for normalization first
+          const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
+          
+          // Apply the weighted sort with the max values (no await)
+          // Use method chaining to preserve the query builder's type
+          tokensQuery = applyFeaturedSort(tokensQuery, maxVolume, maxHolders, sortOrder);
         } else {
           // For other columns, safely map to actual db columns
           const validSortColumns = {
