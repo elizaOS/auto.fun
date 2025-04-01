@@ -27,11 +27,14 @@ export default function SearchBar() {
     },
   });
 
-  const tokens = query?.data?.tokens as IToken[];
+  const tokens = query.data?.tokens ?? [];
+  useEffect(() => {
+    setSearchResults(tokens);
+  }, [tokens]);
+    
 
   const handleSearch = useRef(
     debounce((query: string) => {
-      setSearchResults(tokens);
       setSearch(query);
     }, 300),
   ).current;
