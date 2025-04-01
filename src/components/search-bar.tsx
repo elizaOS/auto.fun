@@ -72,17 +72,27 @@ export default function SearchBar() {
           <div className="text-[16px] font-normal leading-none tracking-widest">
             Tokens
           </div>
-          {searchResults.map((token: IToken) => (
-            <AgentSearchResult
-              key={token.mint}
-              id={token.mint}
-              marketCap={token.marketCapUSD}
-              name={token.name}
-              symbol={token.ticker}
-              imageUrl={token.image}
-              onNavigate={() => setShowSearchResults(false)}
-            />
-          ))}
+          {query.isFetching ? (
+            <div className="text-autofun-background-action-highlight">
+              Searching for tokens...
+            </div>
+          ) : searchResults.length === 0 ? (
+            <div className="text-autofun-background-action-highlight">
+              No tokens found.
+            </div>
+          ) : (
+            searchResults.map((token: IToken) => (
+              <AgentSearchResult
+                key={token.mint}
+                id={token.mint}
+                marketCap={token.marketCapUSD}
+                name={token.name}
+                symbol={token.ticker}
+                imageUrl={token.image}
+                onNavigate={() => setShowSearchResults(false)}
+              />
+            ))
+          )}
         </div>
       )}
     </div>
