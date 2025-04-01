@@ -121,27 +121,6 @@ jobs:
           DATABASE_NAME_DEV: ${{ env.DATABASE_NAME_DEV }}
           DATABASE_ID_DEV: ${{ secrets.DATABASE_ID_DEV || '00ade209-86ac-46a9-bed5-b74aaaac4ad4' }}
 
-      # Deploy to Pages
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          projectName: ${{ env.PROJECT_NAME || 'autofun' }}
-          directory: dist
-          branch: ${{ github.ref_name }}
-          wranglerVersion: '3'
-          # Disable GitHub integration to avoid permission issues
-          gitHubToken: ""
-          
-      # Set environment variables in Cloudflare Pages project
-      - name: Set Cloudflare Pages environment variables
-        if: success()
-        run: |
-          echo "Environment variables have been set for Cloudflare Pages project: ${{ env.PROJECT_NAME || 'autofun' }}"
-          echo "Deployed with VITE_SOLANA_NETWORK=${{ env.VITE_SOLANA_NETWORK }}"
-          echo "These variables are baked into the build, and a .env file has been included in the deployment."
-          
       - name: Notify on Success
         if: success()
         run: |
