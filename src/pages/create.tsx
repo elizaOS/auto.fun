@@ -442,9 +442,22 @@ const FormImageInput = ({
               <button
                 type="button"
                 onClick={handleRemoveImage}
-                className="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-700 transition-all z-10"
+                className="absolute top-2 right-2 text-white w-12 h-12 rounded-full flex items-center justify-center text-shadow opacity-50 hover:opacity-100 transition-all z-10"
               >
-                ✕
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
               </button>
             )}
 
@@ -855,7 +868,8 @@ export const Create = () => {
             });
           } else {
             // Success message - different in dev mode if not the creator
-            const message = "Successfully loaded token data for " + tokenData.name;
+            const message =
+              "Successfully loaded token data for " + tokenData.name;
             setImportStatus({
               type: "success",
               message,
@@ -1566,15 +1580,15 @@ export const Create = () => {
               (tokenData.creators &&
                 tokenData.creators.includes(publicKey.toString()));
 
-          // Success message - ready to register
-          const message = !isCreatorWallet
-            ? "Development Mode: You can register this token without being the creator wallet."
-            : "Token data loaded successfully. You can now register this token.";
+        // Success message - ready to register
+        const message = !isCreatorWallet
+          ? "Development Mode: You can register this token without being the creator wallet."
+          : "Token data loaded successfully. You can now register this token.";
 
-          setImportStatus({
-            type: "success",
-            message,
-          });
+        setImportStatus({
+          type: "success",
+          message,
+        });
       } catch (fetchError) {
         console.error("API Error:", fetchError);
 
@@ -2083,7 +2097,7 @@ export const Create = () => {
     if (!form.description) newErrors.description = "Description is required";
 
     // Validate SOL balance - skip this check for imported tokens in dev mode
-    if (insufficientBalance && !(activeTab === FormTab.IMPORT)) {
+    if (isAuthenticated && insufficientBalance && !(activeTab === FormTab.IMPORT)) {
       newErrors.initialSol =
         "Insufficient SOL balance (need 0.05 SOL for fees)";
       toast.error("You don't have enough SOL to create this token");
@@ -2301,10 +2315,10 @@ export const Create = () => {
   useEffect(() => {
     // Store created URLs for cleanup
     const createdUrls: string[] = [];
-    
+
     return () => {
       // Cleanup any object URLs to prevent memory leaks
-      createdUrls.forEach(url => {
+      createdUrls.forEach((url) => {
         URL.revokeObjectURL(url);
       });
     };
@@ -2313,10 +2327,10 @@ export const Create = () => {
   // Additional cleanup for autoForm.imageUrl when it changes
   useEffect(() => {
     const prevImageUrl = autoForm.imageUrl;
-    
+
     return () => {
       // Only cleanup URLs that look like object URLs (blob:)
-      if (prevImageUrl && prevImageUrl.startsWith('blob:')) {
+      if (prevImageUrl && prevImageUrl.startsWith("blob:")) {
         URL.revokeObjectURL(prevImageUrl);
       }
     };
@@ -2626,27 +2640,27 @@ export const Create = () => {
             </div>
 
             {activeTab === FormTab.IMPORT && (
-                  <span
-                    className={`bg-transparent text-white text-xl font-bold focus:outline-none px-1 py-0.5 mb-4`}
-                  >
-                    {form.description}
-                  </span>
-                )}
-            
+              <span
+                className={`bg-transparent text-white text-xl font-bold focus:outline-none px-1 py-0.5 mb-4`}
+              >
+                {form.description}
+              </span>
+            )}
+
             {activeTab !== FormTab.IMPORT && (
-            <FormTextArea
-              value={form.description}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                handleChange("description", e.target.value)
-              }
-              label="Description"
-              minRows={1}
-              placeholder="Description"
-              maxLength={2000}
-              error={errors.description}
-              onClick={() => generateAll()}
-              isLoading={isGenerating && generatingField === "description"}
-            />
+              <FormTextArea
+                value={form.description}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  handleChange("description", e.target.value)
+                }
+                label="Description"
+                minRows={1}
+                placeholder="Description"
+                maxLength={2000}
+                error={errors.description}
+                onClick={() => generateAll()}
+                isLoading={isGenerating && generatingField === "description"}
+              />
             )}
 
             {/* Hide Buy section when in IMPORT tab */}
@@ -2752,9 +2766,9 @@ export const Create = () => {
                 <div className="mt-2 text-right text-xs text-neutral-400">
                   {/* Your balance:{" "}
                     {balance?.data?.formattedBalance?.toFixed(2) || "0.00"} SOL */}
-                  {insufficientBalance && (
+                  {isAuthenticated && isFormValid && insufficientBalance && (
                     <div className="text-red-500 mt-1">
-                      Insufficient SOL balance (need 0.05 SOL for fees)
+                      You don't have enough SOL in your wallet
                     </div>
                   )}
                   {Number(buyValue) === maxInputSol &&
@@ -2817,22 +2831,9 @@ export const Create = () => {
               />
             </button>
 
-            {!isFormValid && (
+            {isAuthenticated && !isFormValid && (
               <p className="text-red-500 text-center text-sm">
                 Please fill in all required fields
-              </p>
-            )}
-            {insufficientBalance && (
-              <p className="text-red-500 text-center text-sm">
-                You need at least {(Number(buyValue) + 0.05).toFixed(2)} SOL (
-                {Number(buyValue).toFixed(2)} SOL for token + 0.05 SOL for fees)
-                {solPrice && (
-                  <span className="block mt-1">
-                    ≈ $
-                    {(Number(buyValue) * solPrice + 0.05 * solPrice).toFixed(2)}{" "}
-                    USD
-                  </span>
-                )}
               </p>
             )}
             {!isAuthenticated && (
