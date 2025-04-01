@@ -985,7 +985,7 @@ export default function CommunityTab() {
                       />
                       <button
                         onClick={generateImage}
-                        disabled={isGenerating || !userPrompt.trim()}
+                        disabled={isGenerating || !userPrompt.trim() || Number(tokenBalance?.toFixed(2) ?? 0) < 1000}
                         className="p-0 transition-colors disabled:opacity-50"
                       >
                         <img

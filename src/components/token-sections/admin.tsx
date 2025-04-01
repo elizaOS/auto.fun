@@ -2,9 +2,8 @@ import { FormInput } from "@/pages/create";
 import { isFromDomain } from "@/utils";
 import { env } from "@/utils/env";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { PublicKey } from "@solana/web3.js";
 import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import CopyButton from "../copy-button";
@@ -37,9 +36,19 @@ export default function AdminTab() {
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [detectedError, setDetectedError] = useState<string | null>(null);
   const { publicKey, connected } = useWallet();
+  const [originalData, setOriginalData] = useState<{
+    website: string;
+    twitter: string;
+    telegram: string;
+    discord: string;
+  }>({
+    website: "",
+    twitter: "",
+    telegram: "",
+    discord: "",
+  });
 
   // Extract token mint from URL if not found in params
   const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(
@@ -82,6 +91,22 @@ export default function AdminTab() {
     },
   });
 
+  // Watch for form changes
+  const formValues = useWatch({
+    control,
+    name: "links",
+  });
+
+  // Check if form values have changed
+  const hasChanges = () => {
+    return (
+      formValues?.website !== originalData.website ||
+      formValues?.twitter !== originalData.twitter ||
+      formValues?.telegram !== originalData.telegram ||
+      formValues?.discord !== originalData.discord
+    );
+  };
+
   // Debug information about wallet connection
   useEffect(() => {
     console.log("Wallet connection status:", connected);
@@ -118,54 +143,13 @@ export default function AdminTab() {
 
         const data = (await response.json()) as TokenData;
 
-        console.log("Token data fetched:", data);
-        console.log("Token creator address:", data.creator);
-
-        // Get wallet address from different sources
-        const walletAddress = publicKey?.toString();
-        console.log("Current wallet address:", walletAddress);
-
-        // If we have the wallet and creator, check if they match
-        if (walletAddress && data.creator) {
-          try {
-            // Normalize both addresses using PublicKey to ensure consistent format
-            const normalizedWallet = new PublicKey(walletAddress).toString();
-            const normalizedCreator = new PublicKey(data.creator).toString();
-
-            console.log("Normalized wallet:", normalizedWallet);
-            console.log("Normalized creator:", normalizedCreator);
-
-            const isCreator = normalizedWallet === normalizedCreator;
-            console.log("Is token creator (normalized check):", isCreator);
-
-            // Fallback to case-insensitive string comparison if needed
-            if (!isCreator) {
-              const caseInsensitiveMatch =
-                walletAddress.toLowerCase() === data.creator.toLowerCase();
-              console.log(
-                "Is token creator (case-insensitive check):",
-                caseInsensitiveMatch,
-              );
-
-              if (caseInsensitiveMatch) {
-                console.log("Match found with case-insensitive comparison");
-              }
-
-              setIsAdmin(caseInsensitiveMatch);
-            } else {
-              setIsAdmin(isCreator);
-            }
-          } catch (error) {
-            console.error("Error comparing addresses:", error);
-            // Fallback to simple comparison
-            const simpleMatch = walletAddress === data.creator;
-            console.log("Fallback simple comparison match:", simpleMatch);
-            setIsAdmin(simpleMatch);
-          }
-        } else {
-          console.log("Missing wallet or creator address for comparison");
-          setIsAdmin(false);
-        }
+        // Store original values
+        setOriginalData({
+          website: data.website || "",
+          twitter: data.twitter || "",
+          telegram: data.telegram || "",
+          discord: data.discord || "",
+        });
 
         // Update form with existing values
         reset({
@@ -258,14 +242,14 @@ export default function AdminTab() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 p-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col">
       {detectedError && (
         <div className="bg-red-900/30 border border-red-500 p-3 mb-4">
           {detectedError}
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1">
         {/* Website Field */}
         <Controller
           control={control}
@@ -362,19 +346,13 @@ export default function AdminTab() {
 
       <button
         type="submit"
-        disabled={!isAdmin || isSaving}
-        className={`cursor-pointer text-white bg-transparent gap-x-3 border-2 hover:bg-autofun-background-action-highlight border-autofun-background-action-highlight flex px-8 py-1 mt-2 flex-row w-fit items-center justify-items-center ${
-          !isAdmin ? "opacity-50 cursor-not-allowed" : ""
+        disabled={isSaving || !hasChanges()}
+        className={`ml-auto cursor-pointer text-white bg-transparent gap-x-3 border-2 hover:bg-autofun-background-action-highlight border-autofun-background-action-highlight flex px-8 py-1 mt-2 flex-row w-fit items-center justify-items-center ${
+          isSaving || !hasChanges() ? "opacity-50 cursor-not-allowed" : ""
         }`}
       >
-        {isSaving ? "Saving..." : "Save"}
+        {isSaving ? "Updating..." : "Update"}
       </button>
-
-      {!isAdmin && (
-        <p className="text-sm text-red-400 mt-2">
-          You must be the token creator to edit these settings.
-        </p>
-      )}
     </form>
   );
 }
