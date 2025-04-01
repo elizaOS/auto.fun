@@ -11,6 +11,7 @@ const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
 // Additional imports for balance checking
 import { env } from "@/utils/env";
 import { Connection, PublicKey } from "@solana/web3.js";
+import { useTokenBalance } from "@/hooks/use-token-balance";
 // import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 // Storage keys for Twitter auth
@@ -60,6 +61,10 @@ export default function CommunityTab() {
 
   // Balance checking state
   const [tokenBalance, setTokenBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    console.log("**** tokenBalance", tokenBalance);
+  }, [tokenBalance]);
 
   // --- Modal State ---
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -1102,6 +1107,7 @@ export default function CommunityTab() {
 
         if (response.ok) {
           const data = (await response.json()) as { balance?: number };
+          console.log("**** data", data);
           if (data.balance !== undefined) {
             const formattedBalance = Number(data.balance);
             setTokenBalance(formattedBalance);
@@ -1590,8 +1596,7 @@ export default function CommunityTab() {
                     {Number(tokenBalance?.toFixed(2) ?? 0) < 1000 && (
                       <div className="text-sm text-yellow-500 mb-4">
                         <p>
-                          You need to hold at least 1,000 tokens to generate
-                          images.
+                          You need to hold at least 1,000 tokens to generate images.
                         </p>
                       </div>
                     )}

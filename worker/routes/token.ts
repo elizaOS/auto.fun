@@ -16,7 +16,7 @@ import {
 import { Env } from "../env";
 import { logger } from "../logger";
 import { getSOLPrice } from "../mcap";
-import { getRpcUrl, applyFeaturedSort, getFeaturedMaxValues } from "../util";
+import { getRpcUrl, applyFeaturedSort, getFeaturedMaxValues, getMainnetRpcUrl, getDevnetRpcUrl } from "../util";
 import { createTestSwap } from "../websocket"; // Import only createTestSwap
 import { getWebSocketClient } from "../websocket-client";
 import {
@@ -3820,6 +3820,8 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
 
     const token = tokenQuery[0];
 
+    console.log("**** token", token);
+
     // If token doesn't exist in our database but we're in local mode,
     // try to check the blockchain directly if LOCAL_DEV is enabled
     if (!token && (isLocalMode || (c.env as any).LOCAL_DEV === "true")) {
@@ -3855,19 +3857,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
       });
     } else if (isCreator) {
       // User is the creator but not in holders table (might not have any tokens)
-      return c.json({
-        balance: 0,
-        percentage: 0,
-        isCreator: true,
-        mint,
-        address,
-      });
-    } else if (isLocalMode || (c.env as any).LOCAL_DEV === "true") {
-      // In local mode or with LOCAL_DEV enabled, check blockchain even if not in holders table
-      logger.log(
-        `User ${address} not in holders table, but in local/dev mode, trying blockchain lookup`,
-      );
-      return await checkBlockchainTokenBalance(c, mint, address, isLocalMode);
+      return await checkBlockchainTokenBalance(c, mint, address, false);
     } else {
       // User is not in holders table and is not the creator
       // This likely means they have no tokens
@@ -3895,14 +3885,9 @@ async function checkBlockchainTokenBalance(
   address,
   checkMultipleNetworks = false,
 ) {
-  try {
     // Initialize return data
     let balance = 0;
     let foundNetwork = ""; // Renamed to avoid confusion with loop variable
-
-    // Import the functions to get both mainnet and devnet RPC URLs
-    const { getMainnetRpcUrl, getDevnetRpcUrl } = await import("../util");
-
     // Get explicit mainnet and devnet URLs
     const mainnetUrl = getMainnetRpcUrl(c.env);
     const devnetUrl = getDevnetRpcUrl(c.env);
@@ -4031,17 +4016,6 @@ async function checkBlockchainTokenBalance(
       network: foundNetwork || c.env.NETWORK || "unknown",
       onChain: true,
     });
-  } catch (error) {
-    logger.error(`Error in blockchain token balance check: ${error}`);
-    return c.json({
-      balance: 0,
-      percentage: 0,
-      isCreator: false,
-      mint,
-      address,
-      error: error.message,
-    });
-  }
 }
 
 // Add proper endpoint for updating holder cache for a token
