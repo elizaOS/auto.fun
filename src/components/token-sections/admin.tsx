@@ -1,14 +1,12 @@
 import { FormInput } from "@/pages/create";
 import { isFromDomain } from "@/utils";
 import { env } from "@/utils/env";
-import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import CopyButton from "../copy-button";
 import { Icons } from "../icons";
-import useAuthentication from "@/hooks/use-authentication";
 
 type FormData = {
   links: {
@@ -37,9 +35,6 @@ export default function AdminTab() {
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [detectedError, setDetectedError] = useState<string | null>(null);
-  const { publicKey, connected } = useWallet();
-  const { isAuthenticated, walletAddress } = useAuthentication();
   const [originalData, setOriginalData] = useState<{
     website: string;
     twitter: string;
@@ -56,9 +51,6 @@ export default function AdminTab() {
   const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(
     null,
   );
-
-  // Token data state
-  const [tokenData, setTokenData] = useState<TokenData | null>(null);
 
   // Effect to detect token mint from various sources (similar to community tab)
   useEffect(() => {
@@ -112,65 +104,6 @@ export default function AdminTab() {
     );
   };
 
-  // Debug information about wallet connection
-  useEffect(() => {
-    // Get wallet address from different sources in order of reliability
-    const currentWalletAddress = publicKey?.toString() || walletAddress || null;
-    
-    // Update error state based on whether we have a wallet connected
-    if (!connected && !isAuthenticated && !currentWalletAddress) {
-      setDetectedError(
-        "No wallet connected. Please connect your wallet to manage token settings.",
-      );
-    } else {
-      setDetectedError(null);
-    }
-
-    // If we have token data and a wallet address, check if this wallet is admin
-    if (tokenData && currentWalletAddress) {
-      checkIsAdmin(currentWalletAddress, tokenData.creator);
-    }
-  }, [connected, publicKey, isAuthenticated, walletAddress, tokenData]);
-
-  // Helper function to check if the connected wallet is the token creator
-  const checkIsAdmin = (walletAddress: string, creator: string) => {
-    try {
-      // Normalize both addresses using PublicKey to ensure consistent format
-      const normalizedWallet = new PublicKey(walletAddress).toString();
-      const normalizedCreator = new PublicKey(creator).toString();
-
-      console.log("Normalized wallet:", normalizedWallet);
-      console.log("Normalized creator:", normalizedCreator);
-
-      const isCreator = normalizedWallet === normalizedCreator;
-      console.log("Is token creator (normalized check):", isCreator);
-
-      // Fallback to case-insensitive string comparison if needed
-      if (!isCreator) {
-        const caseInsensitiveMatch =
-          walletAddress.toLowerCase() === creator.toLowerCase();
-        console.log(
-          "Is token creator (case-insensitive check):",
-          caseInsensitiveMatch,
-        );
-
-        if (caseInsensitiveMatch) {
-          console.log("Match found with case-insensitive comparison");
-        }
-
-        setIsAdmin(caseInsensitiveMatch);
-      } else {
-        setIsAdmin(isCreator);
-      }
-    } catch (error) {
-      console.error("Error comparing addresses:", error);
-      // Fallback to simple comparison
-      const simpleMatch = walletAddress === creator;
-      console.log("Fallback simple comparison match:", simpleMatch);
-      setIsAdmin(simpleMatch);
-    }
-  };
-
   // Fetch current token data
   useEffect(() => {
     if (!mint) return;
@@ -190,9 +123,6 @@ export default function AdminTab() {
         const data = (await response.json()) as TokenData;
         console.log("Token data fetched:", data);
         
-        // Store token data for later use
-        setTokenData(data);
-
         // Store original values
         setOriginalData({
           website: data.website || "",
@@ -219,7 +149,7 @@ export default function AdminTab() {
     };
 
     fetchTokenData();
-  }, [mint, reset, publicKey, walletAddress]);
+  }, [mint, reset]);
 
   const onSubmit = async (data: FormData) => {
     if (!mint) {
@@ -293,12 +223,6 @@ export default function AdminTab() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col">
-      {detectedError && (
-        <div className="bg-red-900/30 border border-red-500 p-3 mb-4">
-          {detectedError}
-        </div>
-      )}
-
       <div className="grid grid-cols-1">
         {/* Website Field */}
         <Controller

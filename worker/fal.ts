@@ -1,3 +1,4 @@
+import { fal } from "@fal-ai/client";
 import { eq, and, gte, sql } from "drizzle-orm";
 import { getDB, mediaGenerations, tokens } from "./db";
 import { Env } from "./env";
@@ -26,12 +27,21 @@ export const RATE_LIMITS = {
   },
 };
 
+// Token ownership requirements for generation
+export const TOKEN_OWNERSHIP = {
+  DEFAULT_MINIMUM: 1000, // Default minimum token amount required for basic image generation
+  FAST_MODE_MINIMUM: 10000, // Minimum tokens for fast video/audio or slow image
+  SLOW_MODE_MINIMUM: 100000, // Minimum tokens for slow video
+  ENABLED: true, // Flag to enable/disable the ownership requirement feature
+};
+
 // Helper to check rate limits
 export async function checkRateLimits(
   env: Env,
   mint: string,
   type: MediaType,
-): Promise<{ allowed: boolean; remaining: number }> {
+  publicKey?: string,
+): Promise<{ allowed: boolean; remaining: number; message?: string }> {
   const db = getDB(env);
 
   // Check if token exists
@@ -75,7 +85,7 @@ export async function checkRateLimits(
 
 // Helper to generate media using fal.ai
 export async function generateMedia(
-  falApiKey: string,
+  env: Env,
   data: {
     prompt: string;
     type: MediaType;
@@ -91,74 +101,169 @@ export async function generateMedia(
     guidance_scale?: number;
     width?: number;
     height?: number;
+    mode?: "fast" | "slow";
+    image_url?: string; // For image-to-video
+    lyrics?: string; // For music generation with lyrics
   },
 ) {
-  try {
-    // This is a simple implementation that would need proper fal.ai SDK integration
-    // For now, we'll use fetch directly to call the API
+  // Set default timeout
+  const timeout = process.env.NODE_ENV === "test" ? 3000 : 30000;
 
-    let endpoint;
-    let body;
+  // Initialize fal.ai client
+  if (env.FAL_API_KEY) {
+    fal.config({
+      credentials: env.FAL_API_KEY,
+    });
+  } else {
+    throw new Error("FAL_API_KEY is not configured");
+  }
 
-    switch (data.type) {
-      case MediaType.VIDEO:
-        endpoint = "https://fal.run/fal-ai/t2v-turbo";
-        body = {
-          prompt: data.prompt,
-          negative_prompt: data.negative_prompt || "",
-          num_inference_steps: data.num_inference_steps || 25,
-          seed: data.seed || Math.floor(Math.random() * 1000000),
-          guidance_scale: data.guidance_scale || 7.5,
-          width: data.width || 512,
-          height: data.height || 512,
-          num_frames: data.num_frames || 16,
-          fps: data.fps || 8,
-          motion_bucket_id: data.motion_bucket_id || 127,
-        };
-        break;
+  // Create a timeout promise
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(
+      () => reject(new Error(`Media generation timed out after ${timeout}ms`)),
+      timeout,
+    ),
+  );
 
-      case MediaType.AUDIO:
-        endpoint = "https://fal.run/fal-ai/stable-audio";
-        body = {
-          prompt: data.prompt,
-          duration_seconds: data.duration_seconds || 10,
-          bpm: data.bpm || 120,
-          seed: data.seed || Math.floor(Math.random() * 1000000),
-        };
-        break;
+  let generationPromise;
 
-      case MediaType.IMAGE:
-      default:
-        endpoint = "https://fal.run/fal-ai/flux/dev";
-        body = {
-          prompt: data.prompt,
-          negative_prompt: data.negative_prompt || "",
-          num_inference_steps: data.num_inference_steps || 25,
-          seed: data.seed || Math.floor(Math.random() * 1000000),
-          guidance_scale: data.guidance_scale || 7.5,
-          width: data.width || 1024,
-          height: data.height || 1024,
-        };
-        break;
+  // Use Cloudflare Worker AI for image generation (fast mode)
+  if (data.type === MediaType.IMAGE && (!data.mode || data.mode === "fast")) {
+    try {
+      // Use Cloudflare AI binding instead of external API
+      if (!env.AI) {
+        throw new Error("Cloudflare AI binding not configured");
+      }
+
+      // Use the flux-1-schnell model via AI binding
+      const result = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", {
+        prompt: data.prompt,
+        steps: 4,
+      });
+
+      // Create data URL from the base64 image
+      const dataURI = `data:image/jpeg;base64,${result.image}`;
+
+      // Return in a format compatible with our existing code
+      return {
+        data: {
+          images: [
+            {
+              url: dataURI,
+            },
+          ],
+        },
+      };
+    } catch (error) {
+      logger.error("Error in Cloudflare image generation:", error);
+
+      // Return a fallback
+      const placeholderUrl = `https://placehold.co/600x400?text=${encodeURIComponent(data.prompt)}`;
+      return {
+        data: {
+          images: [{ url: placeholderUrl }],
+        },
+      };
     }
-
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Key ${falApiKey}`,
+  } else if (data.type === MediaType.IMAGE && data.mode === "slow") {
+    // Use flux-pro ultra for slow high-quality image generation
+    generationPromise = fal.subscribe("fal-ai/flux-pro/v1.1-ultra", {
+      input: {
+        prompt: data.prompt,
+        // Optional parameters passed if available
+        ...(data.width ? { width: data.width } : {}),
+        ...(data.height ? { height: data.height } : {}),
       },
-      body: JSON.stringify(body),
+      logs: true,
+      onQueueUpdate: (update: any) => {
+        if (update.status === "IN_PROGRESS") {
+          logger.log("Image generation progress:", update.logs);
+        }
+      },
     });
 
-    if (!response.ok) {
-      throw new Error(`Error from fal.ai: ${response.statusText}`);
+    // Race against timeout
+    return await Promise.race([generationPromise, timeoutPromise]);
+  } else if (data.type === MediaType.VIDEO && data.image_url) {
+    // Image-to-video generation
+    const model = data.mode === "slow" 
+      ? "fal-ai/pixverse/v4/image-to-video" 
+      : "fal-ai/pixverse/v4/image-to-video/fast";
+      
+    generationPromise = fal.subscribe(model, {
+      input: {
+        prompt: data.prompt,
+        image_url: data.image_url,
+      },
+      logs: true,
+      onQueueUpdate: (update: any) => {
+        if (update.status === "IN_PROGRESS") {
+          logger.log("Image-to-video generation progress:", update.logs);
+        }
+      },
+    });
+
+    // Race against timeout
+    return await Promise.race([generationPromise, timeoutPromise]);
+  } else if (data.type === MediaType.VIDEO) {
+    // Text-to-video generation
+    const model = data.mode === "slow" 
+      ? "fal-ai/pixverse/v4/text-to-video" 
+      : "fal-ai/pixverse/v4/text-to-video/fast";
+      
+    generationPromise = fal.subscribe(model, {
+      input: {
+        prompt: data.prompt,
+        // Optional parameters passed if available
+        ...(data.width ? { width: data.width } : {}),
+        ...(data.height ? { height: data.height } : {}),
+      },
+      logs: true,
+      onQueueUpdate: (update: any) => {
+        if (update.status === "IN_PROGRESS") {
+          logger.log("Video generation progress:", update.logs);
+        }
+      },
+    });
+
+    // Race against timeout
+    return await Promise.race([generationPromise, timeoutPromise]);
+  } else if (data.type === MediaType.AUDIO) {
+    if (data.lyrics) {
+      // Use diffrhythm for music generation with lyrics
+      generationPromise = fal.subscribe("fal-ai/diffrhythm", {
+        input: {
+          lyrics: data.lyrics,
+          reference_audio_url: "https://example.com/reference.mp3" // Default reference URL
+        },
+        logs: true,
+        onQueueUpdate: (update: any) => {
+          if (update.status === "IN_PROGRESS") {
+            logger.log("Music generation progress:", update.logs);
+          }
+        },
+      });
+    } else {
+      // Default audio generation
+      generationPromise = fal.subscribe("fal-ai/stable-audio", {
+        input: {
+          prompt: data.prompt,
+          // Optional parameters passed if available
+          ...(data.duration_seconds
+            ? { duration: data.duration_seconds }
+            : { duration: 10 }),
+        },
+        logs: true,
+        onQueueUpdate: (update: any) => {
+          if (update.status === "IN_PROGRESS") {
+            logger.log("Audio generation progress:", update.logs);
+          }
+        },
+      });
     }
 
-    const result = await response.json();
-    return result;
-  } catch (error) {
-    logger.error("Error generating media with fal.ai:", error);
-    throw error;
+    // Race against timeout
+    return await Promise.race([generationPromise, timeoutPromise]);
   }
 }

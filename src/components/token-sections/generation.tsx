@@ -41,7 +41,7 @@ interface TokenInfoResponse {
 }
 
 export default function CommunityTab() {
-  type ICommunityTabs = "Image" | "Audio";
+  type ICommunityTabs = "Image" | "Video" | "Audio";
   const [communityTab, setCommunityTab] = useState<ICommunityTabs>("Image");
   const [userPrompt, setUserPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -54,6 +54,9 @@ export default function CommunityTab() {
   const [shareError, setShareError] = useState<string | null>(null);
   const [twitterCredentials, setTwitterCredentials] =
     useState<TwitterCredentials | null>(null);
+
+  // Mode selection state
+  const [generationMode, setGenerationMode] = useState<"fast" | "slow">("fast");
 
   // Balance checking state
   const [tokenBalance, setTokenBalance] = useState<number | null>(null);
@@ -267,7 +270,16 @@ export default function CommunityTab() {
     // Check if we have a token mint
     if (!tokenMint) {
       toast.error(
-        "No token found. Please navigate to a token page to generate images",
+        "No token found. Please navigate to a token page to generate images"
+      );
+      return;
+    }
+
+    // Check token balance requirements based on mode
+    const requiredBalance = generationMode === "slow" ? 10000 : 1000;
+    if (Number(tokenBalance?.toFixed(2) ?? 0) < requiredBalance) {
+      toast.error(
+        `You need at least ${requiredBalance.toLocaleString()} tokens to generate images in ${generationMode} mode`
       );
       return;
     }
@@ -279,14 +291,14 @@ export default function CommunityTab() {
 
     try {
       console.log(
-        `Generating image for token ${tokenMint} with prompt: ${userPrompt}`,
+        `Generating ${generationMode} image for token ${tokenMint} with prompt: ${userPrompt}`
       );
 
       // In a real implementation, we would fetch the token metadata if not available
       // For now, we'll use mock token data or fetch from the page's context
       const tokenMetadata = {
-        name: "Example Token", // In reality, would fetch this
-        symbol: "XMPL", // In reality, would fetch this
+        name: tokenInfo?.name || "Example Token",
+        symbol: tokenInfo?.symbol || "XMPL",
         description: "An example token for demonstration purposes",
         prompt: "A colorful digital token with a unique design",
       };
@@ -297,7 +309,7 @@ export default function CommunityTab() {
         console.error("No auth token found");
         // Try to generate without auth token for testing
         toast.warning(
-          "No auth token found, trying to generate without authentication",
+          "No auth token found, trying to generate without authentication"
         );
       }
 
@@ -323,6 +335,8 @@ export default function CommunityTab() {
           userPrompt,
           tokenMint,
           tokenMetadata,
+          mediaType: "image",
+          mode: generationMode
         }),
         credentials: "include", // Important to include credentials for auth cookies
       });
@@ -361,7 +375,7 @@ export default function CommunityTab() {
               toast.error(
                 <div>
                   <p>
-                    You need at least {minimumRequired} tokens to use this
+                    You need at least {minimumRequired.toLocaleString()} tokens to use this
                     feature.
                   </p>
                   <p>You currently have {currentAmount} tokens.</p>
@@ -379,10 +393,10 @@ export default function CommunityTab() {
                 {
                   autoClose: 10000, // Show for 10 seconds
                   closeOnClick: false,
-                },
+                }
               );
               throw new Error(
-                `Insufficient token balance. You need at least ${minimumRequired} tokens.`,
+                `Insufficient token balance. You need at least ${minimumRequired.toLocaleString()} tokens.`
               );
             }
           } else {
@@ -428,7 +442,7 @@ export default function CommunityTab() {
           setGeneratedImage(data.mediaUrl);
           console.log(
             "Using data URL directly:",
-            data.mediaUrl.substring(0, 50) + "...",
+            data.mediaUrl.substring(0, 50) + "..."
           );
         } else {
           // It's a URL, make sure it's absolute
@@ -448,7 +462,7 @@ export default function CommunityTab() {
 
         if (data.remainingGenerations !== undefined) {
           toast.success(
-            `Image generated successfully! You have ${data.remainingGenerations} generations left today.`,
+            `Image generated successfully! You have ${data.remainingGenerations} generations left today.`
           );
         } else {
           toast.success("Image generated successfully!");
@@ -456,14 +470,233 @@ export default function CommunityTab() {
       } else {
         console.error("Invalid response:", data);
         throw new Error(
-          data.error || "Failed to generate image: No media URL returned",
+          data.error || "Failed to generate image: No media URL returned"
         );
       }
     } catch (error) {
       console.error("Error generating image:", error);
       setProcessingStatus("failed");
       toast.error(
-        error instanceof Error ? error.message : "Failed to generate image",
+        error instanceof Error ? error.message : "Failed to generate image"
+      );
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Generate video function
+  const generateVideo = async (isImageToVideo: boolean = false, sourceImageUrl: string = "") => {
+    if (!userPrompt && !isImageToVideo) return;
+
+    // Check if wallet is connected
+    if (!publicKey) {
+      toast.error("Please connect your wallet to generate videos");
+      return;
+    }
+
+    // Check if we have a token mint
+    if (!tokenMint) {
+      toast.error(
+        "No token found. Please navigate to a token page to generate videos"
+      );
+      return;
+    }
+
+    // Check token balance requirements based on mode
+    const requiredBalance = generationMode === "slow" ? 100000 : 10000;
+    if (Number(tokenBalance?.toFixed(2) ?? 0) < requiredBalance) {
+      toast.error(
+        `You need at least ${requiredBalance.toLocaleString()} tokens to generate videos in ${generationMode} mode`
+      );
+      return;
+    }
+
+    setIsGenerating(true);
+    setProcessingStatus("processing");
+    setGeneratedImage(null); // Clear previous media
+    setShareError(null);
+
+    try {
+      console.log(
+        `Generating ${generationMode} video for token ${tokenMint} with prompt: ${userPrompt}`
+      );
+
+      // In a real implementation, we would fetch the token metadata if not available
+      const tokenMetadata = {
+        name: tokenInfo?.name || "Example Token",
+        symbol: tokenInfo?.symbol || "XMPL",
+        description: "An example token for demonstration purposes",
+        prompt: "A colorful digital token with a unique design",
+      };
+
+      // Get the auth token
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) {
+        console.error("No auth token found");
+        toast.warning(
+          "No auth token found, trying to generate without authentication"
+        );
+      }
+
+      // API endpoint
+      const apiUrl = `${env.apiUrl}/api/enhance-and-generate`;
+      console.log("Calling API endpoint:", apiUrl);
+
+      // Create headers
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      // Add auth token if available
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      }
+
+      // Prepare request body
+      const requestBody: any = {
+        userPrompt,
+        tokenMint,
+        tokenMetadata,
+        mediaType: "video",
+        mode: generationMode
+      };
+
+      // Add image URL for image-to-video if applicable
+      if (isImageToVideo && sourceImageUrl) {
+        requestBody.image_url = sourceImageUrl;
+      }
+
+      // Call the API endpoint
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(requestBody),
+        credentials: "include",
+      });
+
+      // Log response status
+      console.log("Response status:", response.status);
+      const headerObj: Record<string, string> = {};
+      response.headers.forEach((value, key) => {
+        headerObj[key] = value;
+      });
+      console.log("Response headers:", headerObj);
+
+      // Handle error responses
+      if (!response.ok) {
+        let errorMessage = `Failed to generate video (${response.status})`;
+        let errorData: any = null;
+
+        try {
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+
+            // Special handling for token ownership requirement errors
+            if (errorData.type === "OWNERSHIP_REQUIREMENT") {
+              const minimumRequired = errorData.minimumRequired || 10000;
+              const currentAmount =
+                errorData.message?.match(/You currently have ([\d.]+)/)?.[1] ||
+                "0";
+
+              // Show a more helpful message with a link to buy tokens
+              const buyTokensUrl = `/token/${tokenMint}?action=buy`;
+
+              toast.error(
+                <div>
+                  <p>
+                    You need at least {minimumRequired.toLocaleString()} tokens to use this
+                    feature.
+                  </p>
+                  <p>You currently have {currentAmount} tokens.</p>
+                  <a
+                    href={buyTokensUrl}
+                    className="underline text-blue-500 hover:text-blue-700"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.location.href = buyTokensUrl;
+                    }}
+                  >
+                    Click here to buy more tokens
+                  </a>
+                </div>,
+                {
+                  autoClose: 10000,
+                  closeOnClick: false,
+                }
+              );
+              throw new Error(
+                `Insufficient token balance. You need at least ${minimumRequired.toLocaleString()} tokens.`
+              );
+            }
+          } else {
+            errorMessage = await response.text();
+          }
+        } catch (e) {
+          console.error("Error parsing error response:", e);
+        }
+
+        console.error("API error response:", errorData || errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      // Parse the response
+      let data: any = null;
+      try {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          data = await response.json();
+        } else {
+          throw new Error(`Unexpected content type: ${contentType}`);
+        }
+      } catch (jsonError) {
+        console.error("Error parsing JSON response:", jsonError);
+        const textResponse = await response.text();
+        console.log("Raw text response:", textResponse);
+        throw new Error("Failed to parse server response");
+      }
+
+      console.log("API response:", data);
+
+      // Validate response
+      if (!data || typeof data !== "object") {
+        throw new Error("Invalid response format");
+      }
+
+      if (data.success && data.mediaUrl) {
+        // It's a URL, make sure it's absolute
+        const fullUrl = data.mediaUrl.startsWith("http")
+          ? data.mediaUrl
+          : `${env.apiUrl}${data.mediaUrl.startsWith("/") ? "" : "/"}${data.mediaUrl}`;
+
+        console.log("Using video URL:", fullUrl);
+        setGeneratedImage(fullUrl); // We'll reuse this state for videos too
+
+        setProcessingStatus("processed");
+
+        if (data.enhancedPrompt) {
+          console.log("Enhanced prompt:", data.enhancedPrompt);
+        }
+
+        if (data.remainingGenerations !== undefined) {
+          toast.success(
+            `Video generated successfully! You have ${data.remainingGenerations} generations left today.`
+          );
+        } else {
+          toast.success("Video generated successfully!");
+        }
+      } else {
+        console.error("Invalid response:", data);
+        throw new Error(
+          data.error || "Failed to generate video: No media URL returned"
+        );
+      }
+    } catch (error) {
+      console.error("Error generating video:", error);
+      setProcessingStatus("failed");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to generate video"
       );
     } finally {
       setIsGenerating(false);
@@ -796,17 +1029,28 @@ export default function CommunityTab() {
     }
   };
 
-  // Add download functionality
-  const downloadImage = useCallback(async () => {
+  // Add download functionality for any media type
+  const downloadMedia = useCallback(async () => {
     if (!generatedImage) {
-      toast.error("No image to download");
+      toast.error("No media to download");
       return;
     }
 
     try {
-      // Convert the image URL to a blob
+      // Convert the URL to a blob
       const response = await fetch(generatedImage);
       const blob = await response.blob();
+
+      // Determine file extension based on media type and content type
+      let extension = ".png";
+      const contentType = response.headers.get("content-type");
+      if (contentType?.includes("video")) {
+        extension = ".mp4";
+      } else if (contentType?.includes("audio")) {
+        extension = ".mp3";
+      } else if (contentType === "image/jpeg") {
+        extension = ".jpg";
+      }
 
       // Create a URL for the blob
       const blobUrl = window.URL.createObjectURL(blob);
@@ -814,7 +1058,7 @@ export default function CommunityTab() {
       // Create an anchor element for download
       const a = document.createElement("a");
       a.href = blobUrl;
-      a.download = `generated-image-${Date.now()}.png`;
+      a.download = `generated-${communityTab.toLowerCase()}-${Date.now()}${extension}`;
 
       // Trigger the download
       document.body.appendChild(a);
@@ -824,12 +1068,12 @@ export default function CommunityTab() {
       window.URL.revokeObjectURL(blobUrl);
       document.body.removeChild(a);
 
-      toast.success("Image download started");
+      toast.success(`${communityTab} download started`);
     } catch (error) {
-      console.error("Error downloading image:", error);
-      toast.error("Failed to download image");
+      console.error(`Error downloading ${communityTab.toLowerCase()}:`, error);
+      toast.error(`Failed to download ${communityTab.toLowerCase()}`);
     }
-  }, [generatedImage]);
+  }, [generatedImage, communityTab]);
 
   // Add function to check token balance
   const checkTokenBalance = async () => {
@@ -949,21 +1193,345 @@ export default function CommunityTab() {
     checkTokenBalance();
   }, [publicKey, tokenMint]);
 
+  // In the component, add these state variables after the existing ones
+  const [videoMode, setVideoMode] = useState<"text" | "image">("text");
+  const [selectedImageForVideo, setSelectedImageForVideo] = useState<string | null>(null);
+  const [imageUploadLoading, setImageUploadLoading] = useState(false);
+
+  // Add this function to handle image uploads for image-to-video
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) {
+      return;
+    }
+
+    try {
+      setImageUploadLoading(true);
+      const file = e.target.files[0];
+      
+      // Convert the file to data URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setSelectedImageForVideo(reader.result);
+        }
+        setImageUploadLoading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error("Failed to upload image");
+      setImageUploadLoading(false);
+    }
+  };
+
+  // Add these state variables at the top of the component
+  const [audioMode, setAudioMode] = useState<"music" | "speech">("music");
+  const [lyrics, setLyrics] = useState("");
+
+  // Add this function to handle audio generation
+  const generateAudio = async () => {
+    if (!userPrompt && (audioMode === "speech" || !lyrics)) return;
+
+    // Check if wallet is connected
+    if (!publicKey) {
+      toast.error("Please connect your wallet to generate audio");
+      return;
+    }
+
+    // Check if we have a token mint
+    if (!tokenMint) {
+      toast.error(
+        "No token found. Please navigate to a token page to generate audio"
+      );
+      return;
+    }
+
+    // Check token balance requirements
+    // Audio requires at least 10k tokens
+    const requiredBalance = 10000;
+    if (Number(tokenBalance?.toFixed(2) ?? 0) < requiredBalance) {
+      toast.error(
+        `You need at least ${requiredBalance.toLocaleString()} tokens to generate audio`
+      );
+      return;
+    }
+
+    setIsGenerating(true);
+    setProcessingStatus("processing");
+    setGeneratedImage(null); // Clear previous media
+    setShareError(null);
+
+    try {
+      console.log(
+        `Generating audio for token ${tokenMint} with mode: ${audioMode}`
+      );
+
+      // Get token metadata
+      const tokenMetadata = {
+        name: tokenInfo?.name || "Example Token",
+        symbol: tokenInfo?.symbol || "XMPL",
+        description: "An example token for demonstration purposes",
+        prompt: "A colorful digital token with a unique design",
+      };
+
+      // Get the auth token
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) {
+        console.error("No auth token found");
+        toast.warning(
+          "No auth token found, trying to generate without authentication"
+        );
+      }
+
+      // API endpoint
+      const apiUrl = `${env.apiUrl}/api/enhance-and-generate`;
+      console.log("Calling API endpoint:", apiUrl);
+
+      // Create headers
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      // Add auth token if available
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      }
+
+      // Prepare request body
+      const requestBody: any = {
+        userPrompt,
+        tokenMint,
+        tokenMetadata,
+        mediaType: "audio",
+        mode: "fast" // Audio only has one mode for now
+      };
+
+      // Add lyrics for music generation if applicable
+      if (audioMode === "music" && lyrics) {
+        requestBody.lyrics = lyrics;
+      }
+
+      // Call the API endpoint
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(requestBody),
+        credentials: "include",
+      });
+
+      // Log response status
+      console.log("Response status:", response.status);
+      const headerObj: Record<string, string> = {};
+      response.headers.forEach((value, key) => {
+        headerObj[key] = value;
+      });
+      console.log("Response headers:", headerObj);
+
+      // Handle error responses
+      if (!response.ok) {
+        let errorMessage = `Failed to generate audio (${response.status})`;
+        let errorData: any = null;
+
+        try {
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+
+            // Special handling for token ownership requirement errors
+            if (errorData.type === "OWNERSHIP_REQUIREMENT") {
+              const minimumRequired = errorData.minimumRequired || 10000;
+              const currentAmount =
+                errorData.message?.match(/You currently have ([\d.]+)/)?.[1] ||
+                "0";
+
+              // Show a more helpful message with a link to buy tokens
+              const buyTokensUrl = `/token/${tokenMint}?action=buy`;
+
+              toast.error(
+                <div>
+                  <p>
+                    You need at least {minimumRequired.toLocaleString()} tokens to use this
+                    feature.
+                  </p>
+                  <p>You currently have {currentAmount} tokens.</p>
+                  <a
+                    href={buyTokensUrl}
+                    className="underline text-blue-500 hover:text-blue-700"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.location.href = buyTokensUrl;
+                    }}
+                  >
+                    Click here to buy more tokens
+                  </a>
+                </div>,
+                {
+                  autoClose: 10000,
+                  closeOnClick: false,
+                }
+              );
+              throw new Error(
+                `Insufficient token balance. You need at least ${minimumRequired.toLocaleString()} tokens.`
+              );
+            }
+          } else {
+            errorMessage = await response.text();
+          }
+        } catch (e) {
+          console.error("Error parsing error response:", e);
+        }
+
+        console.error("API error response:", errorData || errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      // Parse the response
+      let data: any = null;
+      try {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          data = await response.json();
+        } else {
+          throw new Error(`Unexpected content type: ${contentType}`);
+        }
+      } catch (jsonError) {
+        console.error("Error parsing JSON response:", jsonError);
+        const textResponse = await response.text();
+        console.log("Raw text response:", textResponse);
+        throw new Error("Failed to parse server response");
+      }
+
+      console.log("API response:", data);
+
+      // Validate response
+      if (!data || typeof data !== "object") {
+        throw new Error("Invalid response format");
+      }
+
+      if (data.success && data.mediaUrl) {
+        // It's a URL, make sure it's absolute
+        const fullUrl = data.mediaUrl.startsWith("http")
+          ? data.mediaUrl
+          : `${env.apiUrl}${data.mediaUrl.startsWith("/") ? "" : "/"}${data.mediaUrl}`;
+
+        console.log("Using audio URL:", fullUrl);
+        setGeneratedImage(fullUrl); // We'll reuse this state for audio too
+
+        setProcessingStatus("processed");
+
+        if (data.enhancedPrompt) {
+          console.log("Enhanced prompt:", data.enhancedPrompt);
+        }
+
+        if (data.remainingGenerations !== undefined) {
+          toast.success(
+            `Audio generated successfully! You have ${data.remainingGenerations} generations left today.`
+          );
+        } else {
+          toast.success("Audio generated successfully!");
+        }
+      } else {
+        console.error("Invalid response:", data);
+        throw new Error(
+          data.error || "Failed to generate audio: No media URL returned"
+        );
+      }
+    } catch (error) {
+      console.error("Error generating audio:", error);
+      setProcessingStatus("failed");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to generate audio"
+      );
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <div className="p-4 flex flex-col gap-4">
-      <div className="flex flex-row">
-        <Button
-          variant={communityTab === "Image" ? "tab" : "primary"}
-          onClick={() => setCommunityTab("Image")}
-        >
-          Image
-        </Button>
-        <Button variant={communityTab === "Audio" ? "tab" : "primary"} disabled>
-          Audio
-        </Button>
-      </div>
+      <div className="flex flex-col md:flex-row gap-4">
+        {/* Left side - Tabs */}
+        <div className="flex flex-col gap-2 min-w-[150px]">
+          <Button
+            variant={communityTab === "Image" ? "tab" : "primary"}
+            onClick={() => {
+              setCommunityTab("Image");
+              setGeneratedImage(null);
+              setProcessingStatus("idle");
+            }}
+          >
+            Image
+          </Button>
+          <Button
+            variant={communityTab === "Video" ? "tab" : "primary"}
+            onClick={() => {
+              setCommunityTab("Video");
+              setGeneratedImage(null);
+              setProcessingStatus("idle");
+            }}
+          >
+            Video
+          </Button>
+          <Button 
+            variant={communityTab === "Audio" ? "tab" : "primary"} 
+            onClick={() => {
+              setCommunityTab("Audio");
+              setGeneratedImage(null);
+              setProcessingStatus("idle");
+            }}
+          >
+            Audio
+          </Button>
+          
+          {/* Mode selection - only show for Image and Video */}
+          {(communityTab === "Image" || communityTab === "Video") && (
+            <div className="mt-4">
+              <h3 className="text-sm font-bold mb-2">Generation Mode</h3>
+              <div className="flex gap-2">
+                <Button
+                  size="small"
+                  variant={generationMode === "fast" ? "tab" : "primary"}
+                  onClick={() => setGenerationMode("fast")}
+                >
+                  Fast
+                </Button>
+                <Button
+                  size="small"
+                  variant={generationMode === "slow" ? "tab" : "primary"}
+                  onClick={() => setGenerationMode("slow")}
+                >
+                  Slow
+                </Button>
+              </div>
+              <div className="text-xs text-gray-400 mt-1">
+                {communityTab === "Image" && generationMode === "slow" 
+                  ? "Requires 10k+ tokens" 
+                  : communityTab === "Video" && generationMode === "fast"
+                  ? "Requires 10k+ tokens"
+                  : communityTab === "Video" && generationMode === "slow"
+                  ? "Requires 100k+ tokens"
+                  : ""}
+              </div>
+            </div>
+          )}
 
-      <div className="flex flex-row">
+          {/* Token balance info */}
+          <div className="mt-4">
+            <h3 className="text-sm font-bold mb-1">Token Balance</h3>
+            <div className="text-sm">
+              {tokenBalance !== null ? (
+                <span className={Number(tokenBalance) >= 1000 ? "text-green-400" : "text-yellow-400"}>
+                  {Number(tokenBalance).toLocaleString()} tokens
+                </span>
+              ) : (
+                <span className="text-gray-400">Loading...</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right side - Content Area */}
         <div className="flex flex-col grow">
           {communityTab === "Image" ? (
             <>
@@ -1054,7 +1622,7 @@ export default function CommunityTab() {
                             <Button
                               size="small"
                               variant="outline"
-                              onClick={downloadImage}
+                              onClick={downloadMedia}
                               disabled={processingStatus !== "processed"}
                             >
                               Download
@@ -1077,8 +1645,397 @@ export default function CommunityTab() {
                 </div>
               </div>
             </>
+          ) : communityTab === "Video" ? (
+            <div className="flex flex-col gap-4 w-full flex-grow">
+              <div className="flex gap-4 mb-2">
+                <Button
+                  size="small"
+                  variant={videoMode === "text" ? "tab" : "primary"}
+                  onClick={() => setVideoMode("text")}
+                >
+                  Text to Video
+                </Button>
+                <Button
+                  size="small"
+                  variant={videoMode === "image" ? "tab" : "primary"}
+                  onClick={() => setVideoMode("image")}
+                >
+                  Image to Video
+                </Button>
+              </div>
+              
+              <div className="text-sm text-gray-300 mb-2">
+                {videoMode === "text" 
+                  ? "Create videos from text prompts." 
+                  : "Create videos from your images."}
+                {generationMode === "fast" 
+                  ? " Fast mode requires 10k+ tokens."
+                  : " Slow mode requires 100k+ tokens."}
+              </div>
+              
+              <div className="flex flex-col mt-4 w-full">
+                {videoMode === "text" ? (
+                  <div className="flex">
+                    <input
+                      type="text"
+                      value={userPrompt}
+                      onChange={(e) => setUserPrompt(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !isGenerating && userPrompt.trim()) {
+                          generateVideo();
+                        }
+                      }}
+                      placeholder="Enter a concept for your video"
+                      className="flex-1 my-2 p-0 border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
+                    />
+                    <button
+                      onClick={() => generateVideo()}
+                      disabled={isGenerating || !userPrompt.trim() || Number(tokenBalance?.toFixed(2) ?? 0) < (generationMode === "fast" ? 10000 : 100000)}
+                      className="p-0 transition-colors disabled:opacity-50"
+                    >
+                      <img
+                        src={
+                          isGenerating
+                            ? "/create/generating.svg"
+                            : "/create/generateup.svg"
+                        }
+                        alt="Generate"
+                        className="h-14 mb-2"
+                        onMouseDown={(e) => {
+                          if (!isGenerating) {
+                            (e.target as HTMLImageElement).src =
+                              "/create/generatedown.svg";
+                          }
+                        }}
+                        onMouseUp={(e) => {
+                          if (!isGenerating) {
+                            (e.target as HTMLImageElement).src =
+                              "/create/generateup.svg";
+                          }
+                        }}
+                        onDragStart={(e) => e.preventDefault()}
+                        onMouseOut={(e) => {
+                          if (!isGenerating) {
+                            (e.target as HTMLImageElement).src =
+                              "/create/generateup.svg";
+                          }
+                        }}
+                      />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-4">
+                    <div className="border-2 border-dashed border-gray-600 p-4 rounded-md">
+                      {selectedImageForVideo ? (
+                        <div className="relative">
+                          <img 
+                            src={selectedImageForVideo} 
+                            alt="Selected image" 
+                            className="max-w-full max-h-[300px] mx-auto"
+                          />
+                          <button
+                            onClick={() => setSelectedImageForVideo(null)}
+                            className="absolute top-2 right-2 bg-black/70 p-1 rounded-full"
+                            title="Remove image"
+                          >
+                            <X size={18} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <label className="cursor-pointer">
+                            <div className="mb-2">
+                              {imageUploadLoading ? "Uploading..." : "Drop an image here or click to upload"}
+                            </div>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                              className="hidden"
+                              disabled={imageUploadLoading}
+                            />
+                            <div className="text-blue-400 hover:text-blue-300 text-sm">
+                              {imageUploadLoading ? 
+                                <div className="animate-pulse">Processing...</div> : 
+                                "Browse files"
+                              }
+                            </div>
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex">
+                      <input
+                        type="text"
+                        value={userPrompt}
+                        onChange={(e) => setUserPrompt(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !isGenerating && selectedImageForVideo) {
+                            generateVideo(true, selectedImageForVideo);
+                          }
+                        }}
+                        placeholder="Enter a description for your video (optional)"
+                        className="flex-1 my-2 p-0 border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
+                      />
+                      <button
+                        onClick={() => generateVideo(true, selectedImageForVideo!)}
+                        disabled={
+                          isGenerating || 
+                          !selectedImageForVideo || 
+                          Number(tokenBalance?.toFixed(2) ?? 0) < (generationMode === "fast" ? 10000 : 100000)
+                        }
+                        className="p-0 transition-colors disabled:opacity-50"
+                      >
+                        <img
+                          src={
+                            isGenerating
+                              ? "/create/generating.svg"
+                              : "/create/generateup.svg"
+                          }
+                          alt="Generate"
+                          className="h-14 mb-2"
+                          onMouseDown={(e) => {
+                            if (!isGenerating) {
+                              (e.target as HTMLImageElement).src =
+                                "/create/generatedown.svg";
+                            }
+                          }}
+                          onMouseUp={(e) => {
+                            if (!isGenerating) {
+                              (e.target as HTMLImageElement).src =
+                                "/create/generateup.svg";
+                            }
+                          }}
+                          onDragStart={(e) => e.preventDefault()}
+                          onMouseOut={(e) => {
+                            if (!isGenerating) {
+                              (e.target as HTMLImageElement).src =
+                                "/create/generateup.svg";
+                            }
+                          }}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {Number(tokenBalance?.toFixed(2) ?? 0) < (generationMode === "fast" ? 10000 : 100000) && (
+                <div className="text-sm text-yellow-500 mb-4">
+                  <p>
+                    You need to hold at least {generationMode === "fast" ? "10,000" : "100,000"} tokens to generate videos in {generationMode} mode.
+                  </p>
+                </div>
+              )}
+
+              {/* Video display area */}
+              <div className="flex flex-col relative mt-4">
+                {processingStatus === "processing" ? (
+                  <div className="flex items-center justify-center min-h-[300px] border border-gray-700">
+                    <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#03FF24]"></div>
+                  </div>
+                ) : generatedImage && processingStatus === "processed" ? (
+                  <div className="border border-gray-700">
+                    <video 
+                      src={generatedImage} 
+                      controls 
+                      className="w-full max-h-[500px]"
+                      autoPlay 
+                      loop
+                      muted
+                    ></video>
+                    
+                    {/* Video controls */}
+                    <div className="w-full flex items-center justify-between p-2 bg-black/80">
+                      {shareError && (
+                        <div className="text-red-500 text-sm bg-black/50 p-1 rounded">
+                          {shareError}
+                        </div>
+                      )}
+                      <div className="ml-auto flex gap-2">
+                        <Button
+                          size="small"
+                          variant="outline"
+                          onClick={downloadMedia}
+                          disabled={processingStatus !== "processed"}
+                        >
+                          Download
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="secondary"
+                          onClick={shareOnX}
+                          disabled={
+                            processingStatus !== "processed" || isSharing
+                          }
+                        >
+                          {isSharing ? "Sharing..." : "Share on X"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
           ) : communityTab === "Audio" ? (
-            <div>Audio generator page coming soon!</div>
+            <div className="flex flex-col gap-4 w-full flex-grow">
+              <div className="flex gap-4 mb-2">
+                <Button
+                  size="small"
+                  variant={audioMode === "music" ? "tab" : "primary"}
+                  onClick={() => setAudioMode("music")}
+                >
+                  Music
+                </Button>
+                <Button
+                  size="small"
+                  variant={audioMode === "speech" ? "tab" : "primary"}
+                  onClick={() => setAudioMode("speech")}
+                  disabled
+                >
+                  Speech (Coming Soon)
+                </Button>
+              </div>
+              
+              <div className="text-sm text-gray-300 mb-2">
+                {audioMode === "music" 
+                  ? "Generate music based on lyrics. Requires 10k+ tokens." 
+                  : "Generate speech from text. Requires 10k+ tokens."}
+              </div>
+              
+              <div className="flex flex-col mt-4 w-full">
+                {audioMode === "music" ? (
+                  <div className="flex flex-col gap-4">
+                    <div className="border border-gray-700 p-2 rounded-md">
+                      <textarea
+                        value={lyrics}
+                        onChange={(e) => setLyrics(e.target.value)}
+                        placeholder={
+                          "Enter lyrics with timestamps, for example:\n" +
+                          "[00:10.00]Verse 1: The world is spinning\n" +
+                          "[00:13.20]Around the sun so bright\n" +
+                          "[00:16.85]And we are all just living\n" +
+                          "[00:20.40]In this cosmic light"
+                        }
+                        rows={8}
+                        className="w-full bg-transparent border-0 focus:outline-none text-white text-sm font-mono"
+                      />
+                    </div>
+                    
+                    <div className="flex">
+                      <input
+                        type="text"
+                        value={userPrompt}
+                        onChange={(e) => setUserPrompt(e.target.value)}
+                        placeholder="Optional: describe the musical style (e.g., 'upbeat electronic with retro synths')"
+                        className="flex-1 my-2 p-0 border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
+                      />
+                      <button
+                        onClick={() => generateAudio()}
+                        disabled={
+                          isGenerating || 
+                          !lyrics || 
+                          Number(tokenBalance?.toFixed(2) ?? 0) < 10000
+                        }
+                        className="p-0 transition-colors disabled:opacity-50"
+                      >
+                        <img
+                          src={
+                            isGenerating
+                              ? "/create/generating.svg"
+                              : "/create/generateup.svg"
+                          }
+                          alt="Generate"
+                          className="h-14 mb-2"
+                          onMouseDown={(e) => {
+                            if (!isGenerating) {
+                              (e.target as HTMLImageElement).src =
+                                "/create/generatedown.svg";
+                            }
+                          }}
+                          onMouseUp={(e) => {
+                            if (!isGenerating) {
+                              (e.target as HTMLImageElement).src =
+                                "/create/generateup.svg";
+                            }
+                          }}
+                          onDragStart={(e) => e.preventDefault()}
+                          onMouseOut={(e) => {
+                            if (!isGenerating) {
+                              (e.target as HTMLImageElement).src =
+                                "/create/generateup.svg";
+                            }
+                          }}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  // Speech UI (disabled for now)
+                  <div className="flex flex-col gap-4">
+                    <div className="text-center p-8 text-gray-400">
+                      Text-to-speech generation coming soon!
+                    </div>
+                  </div>
+                )}
+
+                {Number(tokenBalance?.toFixed(2) ?? 0) < 10000 && (
+                  <div className="text-sm text-yellow-500 mb-4">
+                    <p>
+                      You need to hold at least 10,000 tokens to generate audio.
+                    </p>
+                  </div>
+                )}
+
+                {/* Audio display area */}
+                <div className="flex flex-col relative mt-4">
+                  {processingStatus === "processing" ? (
+                    <div className="flex items-center justify-center min-h-[100px] border border-gray-700">
+                      <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#03FF24]"></div>
+                    </div>
+                  ) : generatedImage && processingStatus === "processed" ? (
+                    <div className="border border-gray-700 p-4">
+                      <audio 
+                        src={generatedImage} 
+                        controls 
+                        className="w-full"
+                        autoPlay
+                      ></audio>
+                      
+                      {/* Audio controls */}
+                      <div className="w-full flex items-center justify-between mt-4">
+                        {shareError && (
+                          <div className="text-red-500 text-sm bg-black/50 p-1 rounded">
+                            {shareError}
+                          </div>
+                        )}
+                        <div className="ml-auto flex gap-2">
+                          <Button
+                            size="small"
+                            variant="outline"
+                            onClick={downloadMedia}
+                            disabled={processingStatus !== "processed"}
+                          >
+                            Download
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="secondary"
+                            onClick={shareOnX}
+                            disabled={
+                              processingStatus !== "processed" || isSharing
+                            }
+                          >
+                            {isSharing ? "Sharing..." : "Share on X"}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
           ) : null}
         </div>
       </div>

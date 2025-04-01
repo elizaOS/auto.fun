@@ -1,18 +1,17 @@
 import CoinDrop from "@/components/coindrop";
+import { EmptyState } from "@/components/empty-state";
 import useAuthentication from "@/hooks/use-authentication";
 import { useCreateToken } from "@/hooks/use-create-token";
-import { env } from "@/utils/env";
+import { useSolBalance } from "@/hooks/use-token-balance";
 import { getAuthToken } from "@/utils/auth";
+import { env } from "@/utils/env";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Keypair } from "@solana/web3.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import { toast } from "react-toastify";
 import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
-import { EmptyState } from "@/components/empty-state";
-import { toast } from "react-toastify";
-import { useSolPriceContext } from "@/providers/use-sol-price-context";
-import { useSolBalance } from "@/hooks/use-token-balance";
 
 const MAX_INITIAL_SOL = 45;
 // Use the token supply and virtual reserves from environment or fallback to defaults
@@ -970,8 +969,6 @@ export const Create = () => {
   const balance = useSolBalance();
 
   console.log("balance", balance);
-
-  const { solPrice } = useSolPriceContext();
 
   // Calculate max SOL the user can spend (leave 0.05 SOL for transaction fees)
   const maxUserSol = balance ? Math.max(0, balance - 0.05) : 0;

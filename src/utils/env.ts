@@ -40,3 +40,6 @@ export const env = {
   getTransactionUrl: (txId: string) =>
     `https://solscan.io/tx/${txId}?cluster=${parsedEnv.solanaNetwork}`,
 };
+
+
+console.log("env", env);
