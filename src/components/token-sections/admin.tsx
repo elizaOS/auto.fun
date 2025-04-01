@@ -259,10 +259,6 @@ export default function AdminTab() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4 p-4">
-      <div className="font-dm-mono text-autofun-background-action-highlight text-xl">
-        Admin Panel
-      </div>
-
       {detectedError && (
         <div className="bg-red-900/30 border border-red-500 p-3 mb-4">
           {detectedError}

@@ -460,7 +460,7 @@ export default {
     ctx: ExecutionContext,
   ): Promise<Response> {
     // Initialize pre-generated tokens in the background
-    // ctx.waitUntil(checkAndReplenishTokens(env));
+    ctx.waitUntil(checkAndReplenishTokens(env));
 
     const url = new URL(request.url);
 

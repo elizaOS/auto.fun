@@ -62,4 +62,6 @@ export interface Env {
   TWITTER_API_SECRET: string;
   TWITTER_ACCESS_TOKEN_SECRET: string;
   TWITTER_ACCESS_TOKEN: string;
+  NEWS_API_KEY?: string;
+  PREGENERATED_TOKENS_COUNT?: string;
 }

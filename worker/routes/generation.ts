@@ -18,7 +18,6 @@ import { MediaGeneration } from "../types";
 import { uploadToCloudflare } from "../uploader";
 import { getRpcUrl } from "../util";
 import { createTokenPrompt } from "./generation-prompts/create-token";
-import { pregenerateTokenPrompt } from "./generation-prompts/pregenerate-token";
 import { enhancePrompt } from "./generation-prompts/enhance-prompt";
 
 // Enum for media types
@@ -872,11 +871,11 @@ app.post("/generate-metadata", async (c) => {
       messages: [
         {
           role: "system",
-          content: createTokenPrompt(validatedData),
+          content: await createTokenPrompt(c.env, validatedData),
         },
       ],
-      max_tokens: 500,
-      temperature: 0.7,
+      max_tokens: 1000,
+      temperature: 0.75,
     });
 
     // Extract and parse the JSON response
@@ -1216,11 +1215,11 @@ async function generateTokenOnDemand(
       messages: [
         {
           role: "system",
-          content: pregenerateTokenPrompt(),
+          content: await createTokenPrompt(env),
         },
       ],
-      max_tokens: 500,
-      temperature: 0.7,
+      max_tokens: 1000,
+      temperature: 0.75,
     });
 
     // Extract the generated text
@@ -1480,11 +1479,11 @@ async function generateMetadata(env: Env) {
       messages: [
         {
           role: "system",
-          content: pregenerateTokenPrompt(),
+          content: await createTokenPrompt(env),
         },
       ],
-      max_tokens: 500,
-      temperature: 0.7,
+      max_tokens: 1000,
+      temperature: 0.75,
     });
 
     // Parse the JSON response
@@ -1631,8 +1630,11 @@ export async function generatePreGeneratedTokens(env: Env) {
 // Check and replenish pre-generated tokens if needed
 export async function checkAndReplenishTokens(
   env: Env,
-  threshold: number = parseInt(process.env.PREGENERATED_TOKENS_COUNT || "3"),
+  threshold: number = 3,
 ): Promise<void> {
+  if (!threshold) {
+    threshold = parseInt(env.PREGENERATED_TOKENS_COUNT || "3");
+  }
   try {
     console.log("Checking and replenishing pre-generated tokens...");
     while (true) {
@@ -1674,11 +1676,11 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
     // Verify and parse required fields
     const GenerationSchema = z.object({
       tokenMint: z.string().min(32).max(44),
-      prompt: z.string().min(3).max(1000),
+      userPrompt: z.string().min(3).max(1000),
     });
 
     const body = await c.req.json();
-    const { tokenMint, prompt: userPrompt } = GenerationSchema.parse(body);
+    const { tokenMint, userPrompt } = GenerationSchema.parse(body);
 
     logger.log(`Enhance-and-generate request for token: ${tokenMint}`);
     logger.log(`Original prompt: ${userPrompt}`);
@@ -1896,8 +1898,8 @@ async function generateEnhancedPrompt(
           content: enhancePrompt(userPrompt, tokenMetadata),
         },
       ],
-      max_tokens: 500,
-      temperature: 0.7,
+      max_tokens: 1000,
+      temperature: 0.75,
     });
 
     // Extract just the prompt text from the response

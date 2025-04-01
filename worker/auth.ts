@@ -302,26 +302,18 @@ export const logout = async (c: AppContext) => {
 };
 
 export const authStatus = async (c: AppContext) => {
-  console.log("authStatus");
   try {
-    console.log("authStatus try");
-
     // First check for Authorization header (token-based auth)
     const authHeader = c.req.header("Authorization");
     let headerToken: string | null = null;
 
     if (authHeader && authHeader.startsWith("Bearer ")) {
-      console.log("Found Authorization header");
       headerToken = authHeader.substring(7); // Remove "Bearer " prefix
     }
 
     // Then check cookies as fallback
     const publicKey = getCookie(c, "publicKey");
     const authToken = getCookie(c, "auth_token");
-
-    console.log("publicKey from cookie:", publicKey);
-    console.log("authToken from cookie:", authToken);
-    console.log("headerToken:", headerToken);
 
     let isAuthenticated = false;
     let tokenData: AuthTokenData | null = null;
@@ -336,7 +328,6 @@ export const authStatus = async (c: AppContext) => {
     else if (tokenToUse && tokenToUse.startsWith("wallet_")) {
       tokenData = await validateAuthToken(c.env, tokenToUse);
       isAuthenticated = !!tokenData;
-      console.log("Wallet token validation result:", isAuthenticated);
     }
     // Try JWT token validation if not a wallet_ token
     else if (tokenToUse && tokenToUse.includes(".")) {
@@ -345,7 +336,6 @@ export const authStatus = async (c: AppContext) => {
         const { validateJwtToken } = await import("./auth-utils");
         tokenData = await validateJwtToken(c.env, tokenToUse);
         isAuthenticated = !!tokenData;
-        console.log("JWT token validation result:", isAuthenticated);
       } catch (e) {
         console.error("Error validating JWT token:", e);
       }
@@ -354,8 +344,6 @@ export const authStatus = async (c: AppContext) => {
     else if (publicKey && authToken) {
       // For legacy tokens, just consider them authenticated if both cookies exist
       isAuthenticated = true;
-      console.log("Legacy token authentication");
-
       // Create a new token in KV for this wallet to migrate them
       try {
         const newToken = await createAuthToken(c.env, publicKey);
@@ -377,18 +365,12 @@ export const authStatus = async (c: AppContext) => {
       }
     }
 
-    console.log("isAuthenticated:", isAuthenticated);
-
     if (isAuthenticated) {
       // Get the wallet address to query
       const walletToQuery = tokenData ? tokenData.publicKey : publicKey;
 
-      // Get user data from database
-      console.log("authStatus try 2, querying for wallet:", walletToQuery);
-
       if (walletToQuery) {
         const db = getDB(c.env);
-        console.log("db", db);
 
         try {
           const dbUser = await db
@@ -397,11 +379,7 @@ export const authStatus = async (c: AppContext) => {
             .where(eq(users.address, walletToQuery))
             .limit(1);
 
-          console.log("dbUser", dbUser);
-
           if (dbUser.length > 0) {
-            console.log("dbUser found");
-
             // Include privileges from token if available
             const privileges = tokenData ? tokenData.privileges || [] : [];
 

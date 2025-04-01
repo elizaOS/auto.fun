@@ -964,7 +964,7 @@ export default function CommunityTab() {
       </div>
 
       <div className="flex flex-row">
-        <div className="flex flex-col grow mr-4">
+        <div className="flex flex-col grow">
           {communityTab === "Image" ? (
             <>
               <div className="flex flex-col gap-4 w-full flex-grow">
@@ -1035,7 +1035,7 @@ export default function CommunityTab() {
                         </div>
                       ) : (
                         <div
-                          className="max-w-[600px] max-h-[600px]"
+                          className="max-w-[100%] aspect-square w-full"
                           style={{
                             backgroundImage: `url(${generatedImage})`,
                             backgroundSize: "cover",
