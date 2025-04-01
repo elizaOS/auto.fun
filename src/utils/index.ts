@@ -86,7 +86,7 @@ export const formatNumberSubscript = (num: number): string => {
   }
 
   // Round to 9 decimal places
-  num = Number(num.toFixed(8));
+  num = Number(num.toFixed(10));
 
   if (num >= 1) {
     return sign + num.toString();
