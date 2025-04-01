@@ -30,8 +30,8 @@ preview_bucket_name = "autofun-storage-dev"
 # KV namespace for auth tokens
 [[kv_namespaces]]
 binding = "AUTH_TOKENS"
-id = "devmodeplaceholder"
-preview_id = "devmodeplaceholder_preview"
+id = "91bc4666a62044ba816c53a9b2116281"
+preview_id = "d2622b59f8dd431eb2468732a5053649"
 
 [vars]
 NETWORK = "mainnet"
@@ -93,8 +93,8 @@ database_id = "00ade209-86ac-46a9-bed5-b74aaaac4ad4"
 # KV namespace for auth tokens in development
 [[env.development.kv_namespaces]]
 binding = "AUTH_TOKENS"
-id = "devmodeplaceholder_dev"
-preview_id = "devmodeplaceholder_dev_preview"
+id = "41026322740f476eb6aa38bbb96cc210"
+preview_id = "fe77e6014ebd4cd583d9f2efa53bf3c8"
 
 # Add R2 bucket for development
 [[env.development.r2_buckets]]
@@ -124,4 +124,4 @@ binding = "AI"
 # KV namespace for auth tokens in production (same as default)
 [[env.production.kv_namespaces]]
 binding = "AUTH_TOKENS"
-id = "devmodeplaceholder"
+id = "91bc4666a62044ba816c53a9b2116281"
