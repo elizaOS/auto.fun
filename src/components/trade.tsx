@@ -1,25 +1,25 @@
+import { useSwap } from "@/hooks/use-swap";
+import { useTokenBalance } from "@/hooks/use-token-balance";
+import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { IToken } from "@/types";
 import { formatNumber } from "@/utils";
-import { ArrowUpDown, Cog, Info, Loader2, Wallet } from "lucide-react";
+import { fetchTokenMarketMetrics } from "@/utils/blockchain";
+import { useProgram } from "@/utils/program";
+import { getSwapAmount } from "@/utils/swapUtils";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowUpDown, Cog, Info, Wallet } from "lucide-react";
 import { Fragment, useState } from "react";
 import { twMerge } from "tailwind-merge";
 import Button from "./button";
 import ConfigDialog from "./config-dialog";
-import SkeletonImage from "./skeleton-image";
-import { useSwap } from "@/hooks/use-swap";
 import Loader from "./loader";
-import { useTokenBalance } from "@/hooks/use-token-balance";
-import { useQuery } from "@tanstack/react-query";
-import { useSolPriceContext } from "@/providers/use-sol-price-context";
-import { fetchTokenMarketMetrics } from "@/utils/blockchain";
-import { getSwapAmount } from "@/utils/swapUtils";
-import { useProgram } from "@/utils/program";
+import SkeletonImage from "./skeleton-image";
 
 export default function Trade({ token }: { token: IToken }) {
   const { solPrice: contextSolPrice } = useSolPriceContext();
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
-    undefined
+    undefined,
   );
 
   // Fetch real-time blockchain metrics for this token
@@ -66,7 +66,7 @@ export default function Trade({ token }: { token: IToken }) {
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status
+    token?.status,
   );
 
   // Set percentage buttons to use real balance
@@ -94,7 +94,7 @@ export default function Trade({ token }: { token: IToken }) {
       // they are not dynamically calculated but instead use the
       // default values leading to slightly incorrect calculations
       token.reserveAmount,
-      token.reserveLamport
+      token.reserveLamport,
     );
     setConvertedAmount(swapAmount / decimals);
   };
@@ -210,7 +210,7 @@ export default function Trade({ token }: { token: IToken }) {
                   : tokenPriceUSD
                     ? formatNumber(
                         Number(sellingAmount || 0) * tokenPriceUSD,
-                        true
+                        true,
                       )
                     : formatNumber(0)}
               </span>
@@ -250,12 +250,12 @@ export default function Trade({ token }: { token: IToken }) {
                 {sellingAmount && solanaPrice && !isTokenSelling
                   ? formatNumber(
                       (Number(sellingAmount) / currentPrice) * tokenPriceUSD,
-                      true
+                      true,
                     )
                   : sellingAmount && isTokenSelling && tokenPriceUSD
                     ? formatNumber(
                         Number(sellingAmount) * currentPrice * solanaPrice,
-                        true
+                        true,
                       )
                     : "$0.00"}
               </span>
@@ -304,11 +304,7 @@ export default function Trade({ token }: { token: IToken }) {
           }
         >
           <img
-            src={
-              isExecutingSwap
-                ? "/token/swapping.svg"
-                : "/token/swapup.svg"
-            }
+            src={isExecutingSwap ? "/token/swapping.svg" : "/token/swapup.svg"}
             alt="Generate"
             className="h-32"
             onMouseDown={(e) => {

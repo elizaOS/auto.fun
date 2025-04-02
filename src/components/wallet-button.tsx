@@ -32,9 +32,9 @@ const WalletButton = () => {
   // Create a wallet adapter instance directly in the component to access its icon
   useEffect(() => {
     if (
-      (connected || isAuthenticated) && 
-      !walletIcon && 
-      typeof window !== "undefined" && 
+      (connected || isAuthenticated) &&
+      !walletIcon &&
+      typeof window !== "undefined" &&
       window.solana?.isPhantom
     ) {
       try {
@@ -114,15 +114,19 @@ const WalletButton = () => {
                 }
               }
             })
-            .catch((err) =>
-              console.error("Error auto-connecting:", err),
-            );
+            .catch((err) => console.error("Error auto-connecting:", err));
         } catch (e) {
           console.error("Error during auto-connect attempt:", e);
         }
       }
     }
-  }, [walletAddress, publicKey, hasDirectPhantomConnection, isAuthenticating, walletIcon]);
+  }, [
+    walletAddress,
+    publicKey,
+    hasDirectPhantomConnection,
+    isAuthenticating,
+    walletIcon,
+  ]);
 
   // Try to connect wallet on load if we have a token but no connection
   useEffect(() => {
@@ -207,10 +211,10 @@ const WalletButton = () => {
             </span>
 
             {walletIconSrc && (
-              <img 
-                src={walletIconSrc} 
-                height={18} 
-                width={18} 
+              <img
+                src={walletIconSrc}
+                height={18}
+                width={18}
                 alt={`wallet_icon_${wallet?.adapter?.name || "phantom"}`}
               />
             )}
@@ -269,4 +273,3 @@ const WalletButton = () => {
 };
 
 export default WalletButton;
-

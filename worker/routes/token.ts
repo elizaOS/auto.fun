@@ -16,7 +16,14 @@ import {
 import { Env } from "../env";
 import { logger } from "../logger";
 import { getSOLPrice } from "../mcap";
-import { getRpcUrl, applyFeaturedSort, getFeaturedMaxValues, getFeaturedScoreExpression, getMainnetRpcUrl, getDevnetRpcUrl } from "../util";
+import {
+  getRpcUrl,
+  applyFeaturedSort,
+  getFeaturedMaxValues,
+  getFeaturedScoreExpression,
+  getMainnetRpcUrl,
+  getDevnetRpcUrl,
+} from "../util";
 import { createTestSwap } from "../websocket"; // Import only createTestSwap
 import { getWebSocketClient } from "../websocket-client";
 import {
@@ -83,18 +90,22 @@ tokenRouter.get("/tokens", async (c) => {
       try {
         // Get all columns from the tokens table programmatically
         const allTokensColumns = Object.fromEntries(
-          Object.entries(tokens).filter(
-            ([key, value]) => typeof value === 'object' && 'name' in value
-          ).map(([key, value]) => [key, value])
+          Object.entries(tokens)
+            .filter(
+              ([key, value]) => typeof value === "object" && "name" in value,
+            )
+            .map(([key, value]) => [key, value]),
         );
 
         // Start with a basic query that includes the weighted score
-        let tokensQuery = db.select({
-          // Include all columns
-          ...allTokensColumns,
-          // Add the weighted score as a column in the result
-          featuredScore: getFeaturedScoreExpression(maxVolume, maxHolders),
-        }).from(tokens) as any;
+        let tokensQuery = db
+          .select({
+            // Include all columns
+            ...allTokensColumns,
+            // Add the weighted score as a column in the result
+            featuredScore: getFeaturedScoreExpression(maxVolume, maxHolders),
+          })
+          .from(tokens) as any;
 
         // Apply filters
         if (status) {
@@ -3896,137 +3907,136 @@ async function checkBlockchainTokenBalance(
   address,
   checkMultipleNetworks = false,
 ) {
-    // Initialize return data
-    let balance = 0;
-    let foundNetwork = ""; // Renamed to avoid confusion with loop variable
-    // Get explicit mainnet and devnet URLs
-    const mainnetUrl = getMainnetRpcUrl(c.env);
-    const devnetUrl = getDevnetRpcUrl(c.env);
+  // Initialize return data
+  let balance = 0;
+  let foundNetwork = ""; // Renamed to avoid confusion with loop variable
+  // Get explicit mainnet and devnet URLs
+  const mainnetUrl = getMainnetRpcUrl(c.env);
+  const devnetUrl = getDevnetRpcUrl(c.env);
 
-    // Log detailed connection info and environment settings
-    logger.log(`IMPORTANT DEBUG INFO FOR TOKEN BALANCE CHECK:`);
-    logger.log(`Address: ${address}`);
-    logger.log(`Mint: ${mint}`);
-    logger.log(`CheckMultipleNetworks: ${checkMultipleNetworks}`);
-    logger.log(`LOCAL_DEV setting: ${c.env.LOCAL_DEV}`);
-    logger.log(`ENV.NETWORK setting: ${c.env.NETWORK || "not set"}`);
-    logger.log(`Mainnet URL: ${mainnetUrl}`);
-    logger.log(`Devnet URL: ${devnetUrl}`);
+  // Log detailed connection info and environment settings
+  logger.log(`IMPORTANT DEBUG INFO FOR TOKEN BALANCE CHECK:`);
+  logger.log(`Address: ${address}`);
+  logger.log(`Mint: ${mint}`);
+  logger.log(`CheckMultipleNetworks: ${checkMultipleNetworks}`);
+  logger.log(`LOCAL_DEV setting: ${c.env.LOCAL_DEV}`);
+  logger.log(`ENV.NETWORK setting: ${c.env.NETWORK || "not set"}`);
+  logger.log(`Mainnet URL: ${mainnetUrl}`);
+  logger.log(`Devnet URL: ${devnetUrl}`);
 
-    // Determine which networks to check - ONLY mainnet and devnet if in local mode
-    const networksToCheck = checkMultipleNetworks
-      ? [
-          { name: "mainnet", url: mainnetUrl },
-          { name: "devnet", url: devnetUrl },
-        ]
-      : [
-          {
-            name: c.env.NETWORK || "devnet",
-            url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-          },
-        ];
+  // Determine which networks to check - ONLY mainnet and devnet if in local mode
+  const networksToCheck = checkMultipleNetworks
+    ? [
+        { name: "mainnet", url: mainnetUrl },
+        { name: "devnet", url: devnetUrl },
+      ]
+    : [
+        {
+          name: c.env.NETWORK || "devnet",
+          url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+        },
+      ];
 
-    logger.log(
-      `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
-    );
+  logger.log(
+    `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
+  );
 
-    // Try each network until we find a balance
-    for (const network of networksToCheck) {
-      try {
-        logger.log(
-          `Checking ${network.name} (${network.url}) for token balance...`,
-        );
-        const connection = new Connection(network.url, "confirmed");
+  // Try each network until we find a balance
+  for (const network of networksToCheck) {
+    try {
+      logger.log(
+        `Checking ${network.name} (${network.url}) for token balance...`,
+      );
+      const connection = new Connection(network.url, "confirmed");
 
-        // Convert string addresses to PublicKey objects
-        const mintPublicKey = new PublicKey(mint);
-        const userPublicKey = new PublicKey(address);
+      // Convert string addresses to PublicKey objects
+      const mintPublicKey = new PublicKey(mint);
+      const userPublicKey = new PublicKey(address);
 
-        logger.log(
-          `Getting token accounts for ${address} for mint ${mint} on ${network.name}`,
-        );
+      logger.log(
+        `Getting token accounts for ${address} for mint ${mint} on ${network.name}`,
+      );
 
-        // Fetch token accounts with a simple RPC call
-        const response = await connection.getTokenAccountsByOwner(
-          userPublicKey,
-          { mint: mintPublicKey },
-          { commitment: "confirmed" },
-        );
+      // Fetch token accounts with a simple RPC call
+      const response = await connection.getTokenAccountsByOwner(
+        userPublicKey,
+        { mint: mintPublicKey },
+        { commitment: "confirmed" },
+      );
 
-        // Log the number of accounts found
-        logger.log(
-          `Found ${response.value.length} token accounts on ${network.name}`,
-        );
+      // Log the number of accounts found
+      logger.log(
+        `Found ${response.value.length} token accounts on ${network.name}`,
+      );
 
-        // If we have accounts, calculate total balance
-        if (response && response.value && response.value.length > 0) {
-          let networkBalance = 0;
+      // If we have accounts, calculate total balance
+      if (response && response.value && response.value.length > 0) {
+        let networkBalance = 0;
 
-          // Log each account
-          for (let i = 0; i < response.value.length; i++) {
-            const { pubkey } = response.value[i];
-            logger.log(`Account ${i + 1}: ${pubkey.toString()}`);
-          }
-
-          // Get token balances from all accounts
-          for (const { pubkey } of response.value) {
-            try {
-              const accountInfo =
-                await connection.getTokenAccountBalance(pubkey);
-              if (accountInfo.value) {
-                const amount = accountInfo.value.amount;
-                const decimals = accountInfo.value.decimals;
-                const tokenAmount = Number(amount) / Math.pow(10, decimals);
-                networkBalance += tokenAmount;
-                logger.log(
-                  `Account ${pubkey.toString()} has ${tokenAmount} tokens`,
-                );
-              }
-            } catch (balanceError) {
-              logger.error(
-                `Error getting token account balance: ${balanceError}`,
-              );
-              // Continue with other accounts
-            }
-          }
-
-          // If we found tokens on this network, use this balance
-          if (networkBalance > 0) {
-            balance = networkBalance;
-            foundNetwork = network.name;
-            logger.log(
-              `SUCCESS: Found balance of ${balance} tokens on ${foundNetwork}`,
-            );
-            break; // Stop checking other networks once we find a balance
-          } else {
-            logger.log(
-              `No balance found on ${network.name} despite finding accounts`,
-            );
-          }
-        } else {
-          logger.log(`No token accounts found on ${network.name}`);
+        // Log each account
+        for (let i = 0; i < response.value.length; i++) {
+          const { pubkey } = response.value[i];
+          logger.log(`Account ${i + 1}: ${pubkey.toString()}`);
         }
-      } catch (netError) {
-        logger.error(
-          `Error checking ${network.name} for token balance: ${netError}`,
-        );
-        // Continue to next network
-      }
-    }
 
-    // Return the balance information
-    logger.log(
-      `Final result: Balance=${balance}, Network=${foundNetwork || "none"}`,
-    );
-    return c.json({
-      balance,
-      percentage: 0, // We don't know the percentage when checking directly
-      isCreator: false, // We don't know if creator when checking directly
-      mint,
-      address,
-      network: foundNetwork || c.env.NETWORK || "unknown",
-      onChain: true,
-    });
+        // Get token balances from all accounts
+        for (const { pubkey } of response.value) {
+          try {
+            const accountInfo = await connection.getTokenAccountBalance(pubkey);
+            if (accountInfo.value) {
+              const amount = accountInfo.value.amount;
+              const decimals = accountInfo.value.decimals;
+              const tokenAmount = Number(amount) / Math.pow(10, decimals);
+              networkBalance += tokenAmount;
+              logger.log(
+                `Account ${pubkey.toString()} has ${tokenAmount} tokens`,
+              );
+            }
+          } catch (balanceError) {
+            logger.error(
+              `Error getting token account balance: ${balanceError}`,
+            );
+            // Continue with other accounts
+          }
+        }
+
+        // If we found tokens on this network, use this balance
+        if (networkBalance > 0) {
+          balance = networkBalance;
+          foundNetwork = network.name;
+          logger.log(
+            `SUCCESS: Found balance of ${balance} tokens on ${foundNetwork}`,
+          );
+          break; // Stop checking other networks once we find a balance
+        } else {
+          logger.log(
+            `No balance found on ${network.name} despite finding accounts`,
+          );
+        }
+      } else {
+        logger.log(`No token accounts found on ${network.name}`);
+      }
+    } catch (netError) {
+      logger.error(
+        `Error checking ${network.name} for token balance: ${netError}`,
+      );
+      // Continue to next network
+    }
+  }
+
+  // Return the balance information
+  logger.log(
+    `Final result: Balance=${balance}, Network=${foundNetwork || "none"}`,
+  );
+  return c.json({
+    balance,
+    percentage: 0, // We don't know the percentage when checking directly
+    isCreator: false, // We don't know if creator when checking directly
+    mint,
+    address,
+    network: foundNetwork || c.env.NETWORK || "unknown",
+    onChain: true,
+  });
 }
 
 // Add proper endpoint for updating holder cache for a token

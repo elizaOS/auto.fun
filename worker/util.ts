@@ -818,12 +818,15 @@ export async function getFeaturedMaxValues(db: any) {
 
 /**
  * Creates a SQL expression for calculating the weighted featured score
- * 
+ *
  * @param maxVolume Maximum volume value for normalization
  * @param maxHolders Maximum holder count for normalization
  * @returns SQL expression for calculating the weighted score
  */
-export function getFeaturedScoreExpression(maxVolume: number, maxHolders: number) {
+export function getFeaturedScoreExpression(
+  maxVolume: number,
+  maxHolders: number,
+) {
   // Use provided max values, defaulting to 1 to avoid division by zero
   const normalizedMaxVolume = maxVolume || 1;
   const normalizedMaxHolders = maxHolders || 1;
@@ -838,7 +841,7 @@ export function getFeaturedScoreExpression(maxVolume: number, maxHolders: number
 /**
  * Calculates the weighted score for a token using JavaScript
  * This function matches the SQL logic for consistency
- * 
+ *
  * @param token Token object with volume24h and holderCount properties
  * @param maxVolume Maximum volume value for normalization
  * @param maxHolders Maximum holder count for normalization
@@ -847,15 +850,18 @@ export function getFeaturedScoreExpression(maxVolume: number, maxHolders: number
 export function calculateFeaturedScore(
   token: { volume24h?: number | null; holderCount?: number | null },
   maxVolume: number,
-  maxHolders: number
+  maxHolders: number,
 ): number {
   const normalizedMaxVolume = maxVolume || 1;
   const normalizedMaxHolders = maxHolders || 1;
-  
+
   const volume = token.volume24h || 0;
   const holders = token.holderCount || 0;
-  
-  return (volume / normalizedMaxVolume * 0.7) + (holders / normalizedMaxHolders * 0.3);
+
+  return (
+    (volume / normalizedMaxVolume) * 0.7 +
+    (holders / normalizedMaxHolders) * 0.3
+  );
 }
 
 /**

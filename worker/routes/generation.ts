@@ -147,7 +147,7 @@ export async function checkTokenOwnership(
   mint: string,
   publicKey: string,
   mode: "fast" | "slow" = "fast",
-  mediaType: MediaType = MediaType.IMAGE
+  mediaType: MediaType = MediaType.IMAGE,
 ): Promise<{ allowed: boolean; message?: string }> {
   try {
     // Special handling for test environments
@@ -176,11 +176,12 @@ export async function checkTokenOwnership(
 
     // Get minimum required token amount based on mode and media type
     let minimumRequired = TOKEN_OWNERSHIP.DEFAULT_MINIMUM;
-    
+
     if (mediaType === MediaType.VIDEO || mediaType === MediaType.AUDIO) {
-      minimumRequired = mode === "slow" 
-        ? TOKEN_OWNERSHIP.SLOW_MODE_MINIMUM 
-        : TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
+      minimumRequired =
+        mode === "slow"
+          ? TOKEN_OWNERSHIP.SLOW_MODE_MINIMUM
+          : TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
     } else if (mediaType === MediaType.IMAGE && mode === "slow") {
       minimumRequired = TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
     }
@@ -343,7 +344,10 @@ export async function generateMedia(
   const timeout = 300000;
 
   // Initialize fal.ai client dynamically if needed for video/audio
-  if (!(data.type === MediaType.IMAGE && data.mode === "fast") && env.FAL_API_KEY) {
+  if (
+    !(data.type === MediaType.IMAGE && data.mode === "fast") &&
+    env.FAL_API_KEY
+  ) {
     console.log("**** env.FAL_API_KEY", env.FAL_API_KEY);
     fal.config({
       credentials: env.FAL_API_KEY,
@@ -419,10 +423,11 @@ export async function generateMedia(
     return await Promise.race([generationPromise, timeoutPromise]);
   } else if (data.type === MediaType.VIDEO && data.image_url) {
     // Image-to-video generation
-    const model = data.mode === "slow" 
-      ? "fal-ai/pixverse/v4/image-to-video" 
-      : "fal-ai/pixverse/v4/image-to-video/fast";
-      
+    const model =
+      data.mode === "slow"
+        ? "fal-ai/pixverse/v4/image-to-video"
+        : "fal-ai/pixverse/v4/image-to-video/fast";
+
     generationPromise = fal.subscribe(model, {
       input: {
         prompt: data.prompt,
@@ -440,10 +445,11 @@ export async function generateMedia(
     return await Promise.race([generationPromise, timeoutPromise]);
   } else if (data.type === MediaType.VIDEO) {
     // Text-to-video generation
-    const model = data.mode === "slow" 
-      ? "fal-ai/pixverse/v4/text-to-video" 
-      : "fal-ai/pixverse/v4/text-to-video/fast";
-      
+    const model =
+      data.mode === "slow"
+        ? "fal-ai/pixverse/v4/text-to-video"
+        : "fal-ai/pixverse/v4/text-to-video/fast";
+
     generationPromise = fal.subscribe(model, {
       input: {
         prompt: data.prompt,
@@ -467,7 +473,7 @@ export async function generateMedia(
       generationPromise = fal.subscribe("fal-ai/diffrhythm", {
         input: {
           lyrics: data.lyrics,
-          reference_audio_url: "https://example.com/reference.mp3" // Default reference URL
+          reference_audio_url: "https://example.com/reference.mp3", // Default reference URL
         },
         logs: true,
         onQueueUpdate: (update: any) => {
@@ -657,33 +663,42 @@ app.post("/:mint/generate", async (c) => {
       // Additional ownership check for mode-specific requirements
       if (rateLimit.allowed) {
         const ownershipCheck = await checkTokenOwnership(
-          c.env, 
-          mint, 
-          user.publicKey, 
-          mode, 
-          validatedData.type
+          c.env,
+          mint,
+          user.publicKey,
+          mode,
+          validatedData.type,
         );
-        
+
         if (!ownershipCheck.allowed) {
           clearTimeoutSafe(endpointTimeoutId);
           // Determine the right minimum based on mode and type
           let minimumRequired = TOKEN_OWNERSHIP.DEFAULT_MINIMUM;
-          if (validatedData.type === MediaType.VIDEO || validatedData.type === MediaType.AUDIO) {
-            minimumRequired = mode === "slow" 
-              ? TOKEN_OWNERSHIP.SLOW_MODE_MINIMUM 
-              : TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
-          } else if (validatedData.type === MediaType.IMAGE && mode === "slow") {
+          if (
+            validatedData.type === MediaType.VIDEO ||
+            validatedData.type === MediaType.AUDIO
+          ) {
+            minimumRequired =
+              mode === "slow"
+                ? TOKEN_OWNERSHIP.SLOW_MODE_MINIMUM
+                : TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
+          } else if (
+            validatedData.type === MediaType.IMAGE &&
+            mode === "slow"
+          ) {
             minimumRequired = TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
           }
-          
+
           return c.json(
             {
               error: "Insufficient token balance",
-              message: ownershipCheck.message || `You need at least ${minimumRequired} tokens to use this feature.`,
+              message:
+                ownershipCheck.message ||
+                `You need at least ${minimumRequired} tokens to use this feature.`,
               type: "OWNERSHIP_REQUIREMENT",
               minimumRequired,
             },
-            403
+            403,
           );
         }
       }
@@ -740,11 +755,14 @@ app.post("/:mint/generate", async (c) => {
       throw new Error("Invalid response format");
     }
 
-    let mediaUrl: string = "";  // Initialize with empty string
+    let mediaUrl: string = ""; // Initialize with empty string
 
     if (validatedData.type === MediaType.VIDEO && result.video?.url) {
       mediaUrl = result.video.url;
-    } else if (validatedData.type === MediaType.VIDEO && result.data?.video?.url) {
+    } else if (
+      validatedData.type === MediaType.VIDEO &&
+      result.data?.video?.url
+    ) {
       mediaUrl = result.data.video.url;
     } else if (
       validatedData.type === MediaType.AUDIO &&
@@ -1072,11 +1090,14 @@ app.post("/generate", async (c) => {
       throw new Error("Invalid response format");
     }
 
-    let mediaUrl: string = "";  // Initialize with empty string
+    let mediaUrl: string = ""; // Initialize with empty string
 
     if (validatedData.type === MediaType.VIDEO && result.video?.url) {
       mediaUrl = result.video.url;
-    } else if (validatedData.type === MediaType.VIDEO && result.data?.video?.url) {
+    } else if (
+      validatedData.type === MediaType.VIDEO &&
+      result.data?.video?.url
+    ) {
       mediaUrl = result.data.video.url;
     } else if (
       validatedData.type === MediaType.AUDIO &&
@@ -1753,7 +1774,7 @@ export async function checkAndReplenishTokens(
     console.log("Checking and replenishing pre-generated tokens...");
     let retries = 0;
     const maxRetries = 2;
-    
+
     while (retries < maxRetries) {
       const db = getDB(env);
 
@@ -1769,7 +1790,9 @@ export async function checkAndReplenishTokens(
       // If below threshold, generate more
       if (count < threshold) {
         const tokensToGenerate = threshold - count;
-        logger.log(`Generating ${tokensToGenerate} new pre-generated tokens...`);
+        logger.log(
+          `Generating ${tokensToGenerate} new pre-generated tokens...`,
+        );
         await generatePreGeneratedTokens(env);
         retries++;
       } else {
@@ -1780,7 +1803,6 @@ export async function checkAndReplenishTokens(
     if (retries === maxRetries) {
       logger.error("Max retries reached.");
     }
-
   } catch (error) {
     logger.error("Error checking and replenishing tokens:", error);
   }
@@ -1798,14 +1820,17 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
     const GenerationSchema = z.object({
       tokenMint: z.string().min(32).max(44),
       userPrompt: z.string().min(3).max(1000),
-      mediaType: z.enum([MediaType.IMAGE, MediaType.VIDEO, MediaType.AUDIO]).default(MediaType.IMAGE),
+      mediaType: z
+        .enum([MediaType.IMAGE, MediaType.VIDEO, MediaType.AUDIO])
+        .default(MediaType.IMAGE),
       mode: z.enum(["fast", "slow"]).default("fast"),
       image_url: z.string().optional(), // For image-to-video
       lyrics: z.string().optional(), // For music generation
     });
 
     const body = await c.req.json();
-    const { tokenMint, userPrompt, mediaType, mode, image_url, lyrics } = GenerationSchema.parse(body);
+    const { tokenMint, userPrompt, mediaType, mode, image_url, lyrics } =
+      GenerationSchema.parse(body);
 
     logger.log(`Enhance-and-generate request for token: ${tokenMint}`);
     logger.log(`Original prompt: ${userPrompt}`);
@@ -1858,7 +1883,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
       mediaType,
       user.publicKey,
     );
-    
+
     if (!rateLimit.allowed) {
       // Check if failure is due to token ownership requirement
       if (
@@ -1898,29 +1923,32 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
       tokenMint,
       user.publicKey,
       mode,
-      mediaType
+      mediaType,
     );
-    
+
     if (!ownershipCheck.allowed) {
       // Determine the right minimum based on mode and type
       let minimumRequired = TOKEN_OWNERSHIP.DEFAULT_MINIMUM;
       if (mediaType === MediaType.VIDEO || mediaType === MediaType.AUDIO) {
-        minimumRequired = mode === "slow" 
-          ? TOKEN_OWNERSHIP.SLOW_MODE_MINIMUM 
-          : TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
+        minimumRequired =
+          mode === "slow"
+            ? TOKEN_OWNERSHIP.SLOW_MODE_MINIMUM
+            : TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
       } else if (mediaType === MediaType.IMAGE && mode === "slow") {
         minimumRequired = TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
       }
-      
+
       return c.json(
         {
           success: false,
           error: "Insufficient token balance",
-          message: ownershipCheck.message || `You need at least ${minimumRequired} tokens to use this feature.`,
+          message:
+            ownershipCheck.message ||
+            `You need at least ${minimumRequired} tokens to use this feature.`,
           type: "OWNERSHIP_REQUIREMENT",
           minimumRequired,
         },
-        403
+        403,
       );
     }
 
@@ -1930,7 +1958,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
       c.env,
       userPrompt,
       tokenMetadata,
-      mediaType
+      mediaType,
     );
 
     if (!enhancedPrompt) {
@@ -1947,23 +1975,23 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
 
     // Generate the media with the enhanced prompt
     console.log(`Generating ${mediaType} with enhanced prompt in ${mode} mode`);
-    
+
     // Prepare generation parameters
     const generationParams: any = {
       prompt: enhancedPrompt,
       type: mediaType,
       mode,
     };
-    
+
     // Add optional parameters based on media type
     if (mediaType === MediaType.VIDEO && image_url) {
       generationParams.image_url = image_url;
     }
-    
+
     if (mediaType === MediaType.AUDIO && lyrics) {
       generationParams.lyrics = lyrics;
     }
-    
+
     const result = await generateMedia(c.env, generationParams);
 
     console.log(
@@ -1976,7 +2004,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
       throw new Error("Invalid response format");
     }
 
-    let mediaUrl: string = "";  // Initialize with empty string
+    let mediaUrl: string = ""; // Initialize with empty string
 
     if (result && typeof result === "object") {
       // Handle video result formats
@@ -2092,14 +2120,16 @@ async function generateEnhancedPrompt(
   try {
     // Adjust prompt based on media type
     let systemPrompt = enhancePrompt(userPrompt, tokenMetadata);
-    
+
     // Modify prompt based on media type
     if (mediaType === MediaType.VIDEO) {
-      systemPrompt += "\nAdditionally, focus on dynamic visual elements and motion that would work well in a short video.";
+      systemPrompt +=
+        "\nAdditionally, focus on dynamic visual elements and motion that would work well in a short video.";
     } else if (mediaType === MediaType.AUDIO) {
-      systemPrompt += "\nAdditionally, focus on acoustic elements, mood, and atmosphere suitable for audio content.";
+      systemPrompt +=
+        "\nAdditionally, focus on acoustic elements, mood, and atmosphere suitable for audio content.";
     }
-    
+
     // Use Llama to enhance the prompt
     const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
       messages: [
