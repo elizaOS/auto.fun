@@ -1751,7 +1751,10 @@ export async function checkAndReplenishTokens(
   }
   try {
     console.log("Checking and replenishing pre-generated tokens...");
-    while (true) {
+    let retries = 0;
+    const maxRetries = 2;
+    
+    while (retries < maxRetries) {
       const db = getDB(env);
 
       // Count unused tokens
@@ -1766,14 +1769,18 @@ export async function checkAndReplenishTokens(
       // If below threshold, generate more
       if (count < threshold) {
         const tokensToGenerate = threshold - count;
-        logger.log(
-          `Generating ${tokensToGenerate} new pre-generated tokens...`,
-        );
+        logger.log(`Generating ${tokensToGenerate} new pre-generated tokens...`);
         await generatePreGeneratedTokens(env);
+        retries++;
       } else {
         break;
       }
     }
+
+    if (retries === maxRetries) {
+      logger.error("Max retries reached.");
+    }
+
   } catch (error) {
     logger.error("Error checking and replenishing tokens:", error);
   }
