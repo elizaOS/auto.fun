@@ -83,11 +83,6 @@ export default function Page() {
           console.warn(
             `Token page: Blockchain metrics may be invalid - all key values are 0`,
           );
-        } else {
-          toast.success("Real-time blockchain data loaded successfully!", {
-            position: "bottom-right",
-            autoClose: 3000,
-          });
         }
 
         return metrics;

@@ -16,7 +16,6 @@ export default function TransactionsAndHolders({ token }: { token: IToken }) {
 
     try {
       setIsRefreshing(true);
-      toast.info("Refreshing blockchain data...");
 
       // To refresh data, we'll invalidate and refetch the blockchain queries
       queryClient.invalidateQueries({
@@ -52,7 +51,6 @@ export default function TransactionsAndHolders({ token }: { token: IToken }) {
         }),
       ]);
 
-      toast.success("Blockchain data refreshed");
     } catch (error) {
       console.error("Error refreshing blockchain data:", error);
       toast.error("Could not refresh blockchain data. Please try again later.");
