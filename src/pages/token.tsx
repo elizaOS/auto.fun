@@ -48,6 +48,7 @@ export default function Page() {
       try {
         // Fetch token data from API
         console.log(`Token page: Fetching token data for ${address}`);
+        // TODO: modify this data based on `updateToken` socket event for live data
         return await getToken({ address });
       } catch (error) {
         console.error(`Token page: Error fetching token data:`, error);

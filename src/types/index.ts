@@ -2,59 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 import { z } from "zod";
 
-export type TSortBy =
-  | "featured"
-  | "name"
-  | "marketCapUSD"
-  | "volume24h"
-  | "holderCount"
-  | "curveProgress"
-  | "createdAt";
-export type TSortOrder = "asc" | "desc";
-
-export interface IToken {
-  mint: string;
-  createdAt: string;
-  creator: string;
-  currentPrice: number;
-  curveLimit: number;
-  curveProgress: number;
-  description: string;
-  image: string;
-  inferenceCount: number;
-  lastUpdated: string;
-  liquidity: number;
-  marketCapUSD: number;
-  name: string;
-  price24hAgo: number;
-  priceChange24h: number;
-  reserveAmount: number;
-  reserveLamport: number;
-  solPriceUSD: number;
-  status:
-    | "pending"
-    | "active"
-    | "withdrawn"
-    | "migrating"
-    | "migrated"
-    | "locked"
-    | "harvested"
-    | "migration_failed";
-  telegram: string;
-  ticker: string;
-  tokenPriceUSD: number;
-  twitter: string;
-  discord: string;
-  txId: string;
-  url: string;
-  virtualReserves: number;
-  volume24h: number;
-  website: string;
-  holderCount: number;
-  lastPriceUpdate: string;
-  lastVolumeReset: string;
-  hasAgent: boolean;
-}
+export type HomepageSortBy = "all" | "marketCap" | "newest" | "oldest";
 
 export interface IPagination {
   page: number;
@@ -94,16 +42,17 @@ export type ChartTable = {
     time: number;
   }[];
 };
+
 export const TokenSchema = z.object({
   name: z.string(),
-  url: z.string().optional(),
+  url: z.string().nullish(),
   ticker: z.string(),
   createdAt: z.string().datetime(),
   mint: z.string(),
-  image: z.string().optional(),
-  marketCapUSD: z.number().nullable(),
-  currentPrice: z.number().nullable(),
-  curveProgress: z.number().nullable(),
+  image: z.string().nullish(),
+  marketCapUSD: z.number().nullish(),
+  currentPrice: z.number().nullish().default(0),
+  curveProgress: z.number().nullish(),
   status: z.enum([
     "pending",
     "active",
@@ -115,44 +64,80 @@ export const TokenSchema = z.object({
     "migration_failed",
     "partner_import",
   ]),
-  liquidity: z.number().nullable(),
-  curveLimit: z.number().nullable(),
-  reserveLamport: z.number().nullable(),
-  virtualReserves: z.number().nullable(),
-  solPriceUSD: z.number().nullable(),
-  holderCount: z.number().nullable().default(0),
-  description: z.string(),
-  discord: z.string().optional(),
-  twitter: z.string().optional(),
-  telegram: z.string().optional(),
-  agentLink: z.string().optional(),
+  liquidity: z.number().nullish(),
+  curveLimit: z.number().nullish().default(0),
+  reserveLamport: z.number().nullish(),
+  virtualReserves: z.number().nullish(),
+  solPriceUSD: z.number().nullish(),
+  holderCount: z.number().nullish().default(0),
+  description: z.string().nullish(),
+  discord: z.string().nullish(),
+  twitter: z.string().nullish(),
+  telegram: z.string().nullish(),
+  agentLink: z.string().nullish(),
   creator: z.string(),
-  volume24h: z.number().nullable(),
-  website: z.string().optional(),
-  tokenPriceUSD: z.number().nullable(),
-  nftMinted: z.string().nullable(),
-  lockId: z.string().nullable(),
-  lockedAmount: z.string().nullable(),
-  lockedAt: z.string().datetime().nullable(),
-  harvestedAt: z.string().datetime().nullable(),
-  completedAt: z.string().datetime().nullable(),
-  withdrawnAt: z.string().datetime().nullable(),
-  migratedAt: z.string().datetime().nullable(),
-  marketId: z.string().nullable(),
-  baseVault: z.string().nullable(),
-  quoteVault: z.string().nullable(),
-  withdrawnAmount: z.number().nullable(),
-  reserveAmount: z.number().nullable(),
-  priceChange24h: z.number().nullable(),
-  price24hAgo: z.number().nullable(),
-  inferenceCount: z.number().nullable(),
-  lastVolumeReset: z.string().datetime().nullable(),
-  lastPriceUpdate: z.string().datetime().nullable(),
-  txId: z.string(),
-  lastUpdated: z.string().datetime(),
-});
+  volume24h: z.number().nullish(),
+  website: z.string().nullish(),
+  tokenPriceUSD: z.number().nullish(),
+  nftMinted: z.string().nullish(),
+  lockId: z.string().nullish(),
+  lockedAmount: z.string().nullish(),
+  lockedAt: z.string().datetime().nullish(),
+  harvestedAt: z.string().datetime().nullish(),
+  completedAt: z.string().datetime().nullish(),
+  withdrawnAt: z.string().datetime().nullish(),
+  migratedAt: z.string().datetime().nullish(),
+  marketId: z.string().nullish(),
+  baseVault: z.string().nullish(),
+  quoteVault: z.string().nullish(),
+  withdrawnAmount: z.number().nullish(),
+  reserveAmount: z.number().nullish(),
+  priceChange24h: z.number().nullish(),
+  price24hAgo: z.number().nullish(),
+  inferenceCount: z.number().nullish(),
+  lastVolumeReset: z.string().datetime().nullish(),
+  lastPriceUpdate: z.string().datetime().nullish(),
+  txId: z.string().nullish(),
+  lastUpdated: z.string().datetime().nullish(),
+}).transform((data) => ({
+  ...data,
+  mint: data.mint,
+  createdAt: data.createdAt,
+  creator: data.creator,
+  currentPrice: data.currentPrice != null ? Number(data.currentPrice) : 0,
+  curveLimit: data.curveLimit != null ? Number(data.curveLimit) : 0,
+  curveProgress: data.curveProgress != null ? Number(data.curveProgress) : 0,
+  description: data.description || "",
+  image: data.image || "",
+  inferenceCount: data.inferenceCount != null ? Number(data.inferenceCount) : 0,
+  lastUpdated: data.lastUpdated,
+  liquidity: data.liquidity != null ? Number(data.liquidity) : 0,
+  marketCapUSD: data.marketCapUSD != null ? Number(data.marketCapUSD) : 0,
+  name: data.name,
+  price24hAgo: data.price24hAgo != null ? Number(data.price24hAgo) : 0,
+  priceChange24h: data.priceChange24h != null ? Number(data.priceChange24h) : 0,
+  reserveAmount: data.reserveAmount != null ? Number(data.reserveAmount) : 0,
+  reserveLamport: data.reserveLamport != null ? Number(data.reserveLamport) : 0,
+  solPriceUSD: data.solPriceUSD != null ? Number(data.solPriceUSD) : 0,
+  status: data.status || "active",
+  telegram: data.telegram || "",
+  ticker: data.ticker,
+  tokenPriceUSD: data.tokenPriceUSD != null ? Number(data.tokenPriceUSD) : 0,
+  twitter: data.twitter || "",
+  txId: data.txId || "",
+  url: data.url || "",
+  discord: data?.discord,
+  virtualReserves:
+    data.virtualReserves != null ? Number(data.virtualReserves) : 0,
+  volume24h: data.volume24h != null ? Number(data.volume24h) : 0,
+  website: data.website || "",
+  holderCount: data.holderCount != null ? Number(data.holderCount) : 0,
+  lastPriceUpdate: data.lastPriceUpdate || data.lastUpdated,
+  lastVolumeReset: data.lastVolumeReset || data.lastUpdated,
+  hasAgent: Boolean(data.agentLink),
+}));
 
-export type Token = z.infer<typeof TokenSchema>;
+export type IToken = z.infer<typeof TokenSchema>;
 
 export type ConfigAccount = {
   authority: PublicKey;

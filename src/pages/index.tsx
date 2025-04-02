@@ -6,61 +6,30 @@ import Loader from "@/components/loader";
 import Pagination from "@/components/pagination";
 import { TableView } from "@/components/table-view";
 import { useFilter } from "@/hooks/use-filter";
-import usePagination from "@/hooks/use-pagination";
+import { useTokens } from "@/hooks/use-tokens";
 import { useViewMode } from "@/hooks/use-view-mode";
-import { IPagination, IToken } from "@/types";
-import { getTokens } from "@/utils/api";
 import { getSocket } from "@/utils/socket";
-import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import { Fragment } from "react/jsx-runtime";
 
 export default function Page() {
   const [activeTab] = useViewMode();
-  const { page, onPageChange } = usePagination();
-  const [sortBy, setSortBy, sortOrder] = useFilter();
+  const [sortBy, setSortBy] = useFilter();
 
-  const query = useQuery({
-    queryKey: ["tokens", page, sortBy, sortOrder],
-    queryFn: async () => {
-      return await getTokens({
-        page,
-        limit: 12,
-        sortBy,
-        sortOrder,
-      });
-    },
-    refetchInterval: 20_000,
-    staleTime: 1_000,
-  });
+  console.log(sortBy)
+  const query = useTokens(sortBy);
+  console.log('query:', query)
 
   useEffect(() => {
     getSocket().emit("subscribeGlobal");
   }, []);
 
-  const queryData = query?.data as {
-    tokens: IToken[];
-    page: number;
-    totalPages: number;
-    total: number;
-    hasMore: boolean;
-  };
-
-  const tokens = queryData?.tokens as IToken[];
-
   // Memoize tokens for the header to prevent unnecessary rerenders when sorting changes
   const headerTokens = useMemo(() => {
     // Only update on initial load or when tokens data structure fundamentally changes
     // We're intentionally NOT including the tokens array itself in the dependency array
-    return tokens || [];
-  }, [query.dataUpdatedAt]); // Only update when the data is actually refreshed from the server
-
-  const pagination = {
-    page: queryData?.page || 1,
-    totalPages: queryData?.totalPages || 1,
-    total: queryData?.total || 1,
-    hasMore: queryData?.hasMore || false,
-  } as IPagination;
+    return query.items || [];
+  }, [query.items]); // Only update when the data is actually refreshed from the server
 
   return (
     <div className="w-full min-h-[50vh]">
@@ -71,42 +40,52 @@ export default function Page() {
         <GridListSwitcher />
         <div className="flex items-center gap-2">
           <Button
-            variant={sortBy === "featured" ? "primary" : "outline"}
-            onClick={() => setSortBy("featured")}
+            variant={sortBy === "all" ? "primary" : "outline"}
+            onClick={() => setSortBy("all")}
           >
             All
           </Button>
           <Button
-            variant={sortBy === "marketCapUSD" ? "primary" : "outline"}
-            onClick={() => setSortBy("marketCapUSD")}
+            variant={sortBy === "marketCap" ? "primary" : "outline"}
+            onClick={() => setSortBy("marketCap")}
           >
             Market Cap
           </Button>
+
+          {/* TODO: change to toggle button for newest/oldest */}
           <Button
-            variant={sortBy === "createdAt" ? "primary" : "outline"}
-            onClick={() => setSortBy("createdAt")}
+            variant={sortBy === "newest" ? "primary" : "outline"}
+            onClick={() => setSortBy("newest")}
           >
             Creation Time
           </Button>
         </div>
       </div>
       <div className="flex flex-col flex-1">
-        {!query?.isLoading ? (
+        {!query.isLoading ? (
           <Fragment>
             {activeTab === "grid" ? (
               <div className="my-6">
-                <GridView data={tokens} />
+                <GridView data={query.items} />
               </div>
             ) : (
               <div className="mb-2">
-                <TableView data={tokens} />
+                <TableView data={query.items} />
               </div>
             )}
           </Fragment>
         ) : (
           <Loader />
         )}
-        <Pagination pagination={pagination} onPageChange={onPageChange} />
+        <Pagination
+          pagination={{
+            hasMore: query.hasNextPage,
+            page: query.currentPage,
+            total: query.totalItems,
+            totalPages: query.totalPages,
+          }}
+          onPageChange={query.goToPage}
+        />
       </div>
     </div>
   );

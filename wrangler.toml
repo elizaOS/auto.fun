@@ -48,7 +48,7 @@ AUTH_TOKEN_SALT = "autofun-wallet-auth-salt-replace-in-production" # Salt for ha
 # Socket.io Durable Objects
 [durable_objects]
 bindings = [
-  { name = "WebSocketDO", class_name = "WebSocketDO" }
+  { name = "WEBSOCKET_DO", class_name = "WebSocketDO" }
 ]
 
 # Migration tags
@@ -104,7 +104,7 @@ bucket_name = "autofun-storage-dev"
 # Add Socket.io Durable Objects for development
 [env.development.durable_objects]
 bindings = [
-  { name = "WebSocketDO", class_name = "WebSocketDO" }
+  { name = "WEBSOCKET_DO", class_name = "WebSocketDO" }
 ]
 
 # Add migrations for development environment
