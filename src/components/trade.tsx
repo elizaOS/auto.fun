@@ -1,6 +1,6 @@
 import { IToken } from "@/types";
 import { formatNumber } from "@/utils";
-import { ArrowUpDown, Cog, Info, Loader2, Wallet } from "lucide-react";
+import { ArrowUpDown, Cog, Info, Wallet } from "lucide-react";
 import { Fragment, useState } from "react";
 import { twMerge } from "tailwind-merge";
 import Button from "./button";

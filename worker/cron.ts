@@ -300,7 +300,7 @@ export async function processTransactionLogs(
         await updateHoldersCache(env, mintAddress);
 
         // Emit event to all clients via WebSocket
-        await wsClient.emit("global", "newSwap", {
+        await wsClient.emit(`token-${mintAddress}`, "newSwap", {
           ...swapRecord,
           mint: mintAddress, // Add mint field for compatibility
         });
