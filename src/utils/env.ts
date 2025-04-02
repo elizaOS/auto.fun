@@ -41,5 +41,4 @@ export const env = {
     `https://solscan.io/tx/${txId}?cluster=${parsedEnv.solanaNetwork}`,
 };
 
-
 console.log("env", env);

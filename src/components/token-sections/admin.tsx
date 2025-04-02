@@ -122,7 +122,7 @@ export default function AdminTab() {
 
         const data = (await response.json()) as TokenData;
         console.log("Token data fetched:", data);
-        
+
         // Store original values
         setOriginalData({
           website: data.website || "",

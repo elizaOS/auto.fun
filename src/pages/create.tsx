@@ -2094,7 +2094,11 @@ export const Create = () => {
     if (!form.description) newErrors.description = "Description is required";
 
     // Validate SOL balance - skip this check for imported tokens in dev mode
-    if (isAuthenticated && insufficientBalance && !(activeTab === FormTab.IMPORT)) {
+    if (
+      isAuthenticated &&
+      insufficientBalance &&
+      !(activeTab === FormTab.IMPORT)
+    ) {
       newErrors.initialSol =
         "Insufficient SOL balance (need 0.05 SOL for fees)";
       toast.error("You don't have enough SOL to create this token");
