@@ -209,9 +209,9 @@ export default function Page() {
   return (
     <div className="flex flex-col gap-3">
       {/* Top Stats Section - Full Width */}
-      <div className="w-full py-6 flex flex-wrap justify-between">
+      <div className="w-full py-10 flex flex-wrap justify-between">
         <div className="flex-1 flex flex-col items-center">
-          <span className="text-4xl font-bold font-dm-mono text-autofun-text-highlight">
+          <span className="text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
             {marketCapUSD > 0 ? abbreviateNumber(marketCapUSD) : "-"}
             {metricsQuery.isLoading && (
               <span className="text-xs text-autofun-text-secondary ml-1">
@@ -219,13 +219,13 @@ export default function Page() {
               </span>
             )}
           </span>
-          <span className="text-sm font-dm-mono text-autofun-text-secondary mt-2">
+          <span className="text-lg font-dm-mono text-autofun-text-secondary mt-3">
             Market Cap
           </span>
         </div>
         
         <div className="flex-1 flex flex-col items-center">
-          <span className="text-4xl font-bold font-dm-mono text-autofun-text-highlight">
+          <span className="text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
             {volume24h > 0 ? abbreviateNumber(volume24h) : "-"}
             {metricsQuery.isLoading && (
               <span className="text-xs text-autofun-text-secondary ml-1">
@@ -233,18 +233,18 @@ export default function Page() {
               </span>
             )}
           </span>
-          <span className="text-sm font-dm-mono text-autofun-text-secondary mt-2">
+          <span className="text-lg font-dm-mono text-autofun-text-secondary mt-3">
             24hr Volume
           </span>
         </div>
         
         <div className="flex-1 flex flex-col items-center">
-          <span className="text-4xl font-bold font-dm-mono text-autofun-text-highlight">
+          <span className="text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
             {token?.createdAt
               ? fromNow(token?.createdAt).replace("ago", "").trim()
               : "-"}
           </span>
-          <span className="text-sm font-dm-mono text-autofun-text-secondary mt-2">
+          <span className="text-lg font-dm-mono text-autofun-text-secondary mt-3">
             Age
           </span>
         </div>
@@ -254,25 +254,33 @@ export default function Page() {
       <div className="flex flex-wrap gap-3">
         {/* Left Column - 25% - Token Info */}
         <div className="w-full lg:w-[24%] flex flex-col gap-3">
-          <div className="p-4 flex flex-col gap-3">
-            <div className="w-full aspect-square">
-              <SkeletonImage src={token?.image} alt="image" />
-            </div>
-            <div className="flex flex-col gap-3">
-              {/* Token Info and Time */}
-              <div className="flex items-center w-full min-w-0">
-                <div className="flex items-start md:items-center justify-between w-full min-w-0">
-                  <div className="capitalize text-autofun-text-primary text-3xl font-medium font-satoshi leading-normal truncate min-w-0">
+          <div className="p-4 pt-0 flex flex-col gap-3">
+            <div className="relative overflow-hidden">
+              <div className="w-full aspect-square">
+                <SkeletonImage src={token?.image} alt="image" />
+              </div>
+              
+              {/* Token name overlapping at top - with drop shadow */}
+              <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 via-black/25 to-transparent px-3 py-2.5">
+                <div className="flex items-center justify-between w-full">
+                  <h3 className="capitalize text-white text-2xl font-bold font-satoshi leading-tight truncate pr-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                     {token?.name}
-                  </div>
-                  <div>
+                  </h3>
+                  <div className="shrink-0 ml-1">
                     <TokenStatus token={token} />
                   </div>
                 </div>
               </div>
-              <div className="text-autofun-text-highlight text-base font-normal font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0">
-                ${token?.ticker}
+              
+              {/* Ticker overlapping at bottom - with drop shadow */}
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 via-black/25 to-transparent px-3 py-2.5">
+                <div className="text-autofun-text-highlight text-xl font-bold font-dm-mono uppercase tracking-widest drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                  ${token?.ticker}
+                </div>
               </div>
+            </div>
+            
+            <div className="flex flex-col gap-3">
               <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
                 {token?.description}
               </span>
@@ -287,6 +295,7 @@ export default function Page() {
                 </Link>
               </div>
             </div>
+            
             {/* Contract address */}
             <div className="flex">
               <div className="size-10 inline-flex border-r shrink-0 bg-autofun-background-action-primary">
@@ -370,97 +379,74 @@ export default function Page() {
 
         {/* Middle Column - 50% - Tabs for Chart and AI Create */}
         <div className="w-full lg:w-[49%] flex flex-col gap-3">
-          <div className="overflow-hidden">
-            {/* Tabs Header with Title and Right-aligned Tabs */}
-            <div className="flex border-b items-center justify-between pr-2">
-              <h2 className="font-satoshi font-bold text-xl text-autofun-text-highlight px-6 py-3">
-                {activeTab === 'chart' ? 'Price Chart' : 'AI Content Creation'}
-              </h2>
-              <div className="flex">
-                <button
-                  className={`px-4 py-3 text-autofun-text-primary font-medium ${
-                    activeTab === 'chart' 
-                      ? 'border-b-2 border-autofun-text-highlight' 
-                      : 'text-autofun-text-secondary'
-                  }`}
-                  onClick={() => setActiveTab('chart')}
-                >
-                  <BarChart3 className="size-4 inline-block mr-1.5" />
-                  Chart
-                </button>
-                <button
-                  className={`px-4 py-3 text-autofun-text-primary font-medium ${
-                    activeTab === 'ai' 
-                      ? 'border-b-2 border-autofun-text-highlight' 
-                      : 'text-autofun-text-secondary'
-                  }`}
-                  onClick={() => setActiveTab('ai')}
-                >
-                  <Paintbrush className="size-4 inline-block mr-1.5" />
-                  AI Create
-                </button>
+          <div className="overflow-hidden relative border-b border-autofun-stroke-primary">
+            <div className="flex flex-col">
+              {/* Green stroke above tab section */}
+              <div className="h-2 w-full bg-autofun-text-highlight"></div>
+              
+              {/* Tabs Header with Title and Right-aligned Tabs - removed border-b as it's on the parent */}
+              <div className="flex items-center justify-between pr-2">
+                <h2 className="font-satoshi font-bold text-xl text-autofun-text-highlight px-6 py-3">
+                  {activeTab === 'chart' ? 'Chart' : 'AI Content Creation'}
+                </h2>
+                <div className="flex">
+                  <button
+                    className={`px-4 py-3 text-autofun-text-primary font-medium ${
+                      activeTab === 'chart' 
+                        ? 'bg-autofun-background-highlight text-black' 
+                        : 'text-autofun-text-secondary hover:text-autofun-text-primary'
+                    }`}
+                    onClick={() => setActiveTab('chart')}
+                    style={{ marginTop: '-2px', paddingTop: '14px' }}
+                  >
+                    <BarChart3 className={`size-4 inline-block mr-1.5 ${
+                      activeTab === 'chart' ? 'text-black' : ''
+                    }`} />
+                    Chart
+                  </button>
+                  <button
+                    className={`px-4 py-3 text-autofun-text-primary font-medium ${
+                      activeTab === 'ai' 
+                        ? 'bg-autofun-background-highlight text-black' 
+                        : 'text-autofun-text-secondary hover:text-autofun-text-primary'
+                    }`}
+                    onClick={() => setActiveTab('ai')}
+                    style={{ marginTop: '-2px', paddingTop: '14px' }}
+                  >
+                    <Paintbrush className={`size-4 inline-block mr-1.5 ${
+                      activeTab === 'ai' ? 'text-black' : ''
+                    }`} />
+                    AI Create
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* Tab Content */}
-            {activeTab === 'chart' && (
-              <>
-                <div className="w-full h-[50vh] bg-autofun-background-primary">
-                  <TradingViewChart name={token.name} token={token.mint} />
+              {/* Tab Content */}
+              {activeTab === 'chart' && (
+                <>
+                  <div className="w-full h-[50vh] bg-autofun-background-primary">
+                    <TradingViewChart name={token.name} token={token.mint} />
+                  </div>
+                  <div className="p-4">
+                    <TransactionsAndHolders token={token} />
+                  </div>
+                </>
+              )}
+              {activeTab === 'ai' && (
+                <div id="generation" className="p-4 scroll-mt-16">
+                  <GenerationSection />
                 </div>
-                <div className="p-4">
-                  <TransactionsAndHolders token={token} />
-                </div>
-              </>
-            )}
-            {activeTab === 'ai' && (
-              <div id="generation" className="p-4 scroll-mt-16">
-                <GenerationSection />
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
         {/* Right Column - 25% - Trading and Bonding Curve */}
         <div className="w-full lg:w-[24%] flex flex-col gap-3">
-          {/* Price Display */}
-          <div className="py-4 px-3">
-            <div className="flex flex-col gap-3 divide-y divide-autofun-stroke-primary">
-              <div className="flex flex-col gap-1 items-center pb-3">
-                <span className="text-base font-dm-mono text-autofun-text-secondary">
-                  Price USD
-                </span>
-                <span className="text-xl font-dm-mono text-autofun-text-primary">
-                  {tokenPriceUSD ? formatNumberSubscript(tokenPriceUSD) : "$0.00"}
-                  {metricsQuery.isLoading && (
-                    <span className="text-xs text-autofun-text-secondary ml-1">
-                      loading...
-                    </span>
-                  )}
-                </span>
-              </div>
-              <div className="flex flex-col gap-1 items-center pt-3">
-                <span className="text-base font-dm-mono text-autofun-text-secondary">
-                  Price SOL
-                </span>
-                <span className="text-xl font-dm-mono text-autofun-text-primary">
-                  {currentPrice
-                    ? formatNumberSubscript(currentPrice)
-                    : "0.00000000"}
-                  {metricsQuery.isLoading && (
-                    <span className="text-xs text-autofun-text-secondary ml-1">
-                      loading...
-                    </span>
-                  )}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Trade Component */}
+          {/* Trade Component - Now at the top */}
           <Trade token={token} />
 
-          {/* Bonding Curve with increased height - MOVED UNDER TRADE */}
+          {/* Bonding Curve */}
           <div className="p-4 flex flex-col gap-3.5">
             <div className="flex justify-between gap-3.5 items-center">
               <p className="font-medium font-satoshi">
@@ -485,6 +471,40 @@ export default function Page() {
                 SOL in the bonding curve.
               </p>
             ) : null}
+          </div>
+          
+          {/* Price Display - Now below bonding curve */}
+          <div className="py-4 px-3">
+            <div className="flex flex-col gap-3 divide-y divide-autofun-stroke-primary">
+              <div className="flex flex-col gap-1 items-center pb-3">
+                <span className="text-lg font-dm-mono text-autofun-text-secondary">
+                  Price USD
+                </span>
+                <span className="text-2xl font-dm-mono text-autofun-text-primary">
+                  {tokenPriceUSD ? formatNumberSubscript(tokenPriceUSD) : "$0.00"}
+                  {metricsQuery.isLoading && (
+                    <span className="text-xs text-autofun-text-secondary ml-1">
+                      loading...
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1 items-center pt-3">
+                <span className="text-lg font-dm-mono text-autofun-text-secondary">
+                  Price SOL
+                </span>
+                <span className="text-2xl font-dm-mono text-autofun-text-primary">
+                  {currentPrice
+                    ? formatNumberSubscript(currentPrice)
+                    : "0.00000000"}
+                  {metricsQuery.isLoading && (
+                    <span className="text-xs text-autofun-text-secondary ml-1">
+                      loading...
+                    </span>
+                  )}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -104,7 +104,7 @@ export default function Trade({ token }: { token: IToken }) {
     : formatNumber(convertedAmount, false, true);
 
   return (
-    <div className="relative p-4">
+    <div className="relative p-4 pt-0">
       {isExecutingSwap && <Loader />}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col">
