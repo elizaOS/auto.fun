@@ -17,16 +17,14 @@ import {
   formatNumber,
   formatNumberSubscript,
   fromNow,
-  LAMPORTS_PER_SOL,
-  normalizedProgress,
-  shortenAddress,
+  LAMPORTS_PER_SOL
 } from "@/utils";
 import { getToken } from "@/utils/api";
 import { fetchTokenMarketMetrics } from "@/utils/blockchain";
 import { getSocket } from "@/utils/socket";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, Globe, Info as InfoCircle, BarChart3, Paintbrush } from "lucide-react";
+import { BarChart3, ExternalLink, Globe, Info as InfoCircle, Paintbrush } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
@@ -226,7 +224,7 @@ export default function Page() {
         
         <div className="flex-1 flex flex-col items-center">
           <span className="text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
-            {volume24h > 0 ? abbreviateNumber(volume24h) : "-"}
+            ${volume24h > 0 ? abbreviateNumber(volume24h) : "0"}
             {metricsQuery.isLoading && (
               <span className="text-xs text-autofun-text-secondary ml-1">
                 loading...
@@ -241,7 +239,11 @@ export default function Page() {
         <div className="flex-1 flex flex-col items-center">
           <span className="text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
             {token?.createdAt
-              ? fromNow(token?.createdAt).replace("ago", "").trim()
+              ? fromNow(token?.createdAt, true).includes('a few') ? "NOW" : fromNow(token?.createdAt, true).includes('a minute') ? "1m" : fromNow(token?.createdAt, true).includes('an hour') ? "1h" : fromNow(token?.createdAt, true).includes('a day') ? "1d" : fromNow(token?.createdAt, true).replace("ago", "")
+              .replace(" days", "d").replace(" hours", "h").replace(" minutes", "m").replace("seconds", "s")
+              .replace(" day", "d").replace("hour", "hr").replace(" minute", "m").replace("second", "s").trim()
+              .trim()
+              
               : "-"}
           </span>
           <span className="text-lg font-dm-mono text-autofun-text-secondary mt-3">
@@ -482,11 +484,6 @@ export default function Page() {
                 </span>
                 <span className="text-2xl font-dm-mono text-autofun-text-primary">
                   {tokenPriceUSD ? formatNumberSubscript(tokenPriceUSD) : "$0.00"}
-                  {metricsQuery.isLoading && (
-                    <span className="text-xs text-autofun-text-secondary ml-1">
-                      loading...
-                    </span>
-                  )}
                 </span>
               </div>
               <div className="flex flex-col gap-1 items-center pt-3">

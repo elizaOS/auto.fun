@@ -28,8 +28,8 @@ export default function Page() {
   const headerTokens = useMemo(() => {
     // Only update on initial load or when tokens data structure fundamentally changes
     // We're intentionally NOT including the tokens array itself in the dependency array
-    return query.items || [];
-  }, [query.items]); // Only update when the data is actually refreshed from the server
+    return query?.items || [];
+  }, [query?.items]); // Only update when the data is actually refreshed from the server
 
   return (
     <div className="w-full min-h-[50vh]">
@@ -62,15 +62,15 @@ export default function Page() {
         </div>
       </div>
       <div className="flex flex-col flex-1">
-        {!query.isLoading ? (
+        {!query?.isLoading ? (
           <Fragment>
             {activeTab === "grid" ? (
               <div className="my-6">
-                <GridView data={query.items} />
+                <GridView data={query?.items || []} />
               </div>
             ) : (
               <div className="mb-2">
-                <TableView data={query.items} />
+                <TableView data={query?.items || []} />
               </div>
             )}
           </Fragment>
@@ -79,12 +79,12 @@ export default function Page() {
         )}
         <Pagination
           pagination={{
-            hasMore: query.hasNextPage,
-            page: query.currentPage,
-            total: query.totalItems,
-            totalPages: query.totalPages,
+            hasMore: query?.hasNextPage,
+            page: query?.currentPage,
+            total: query?.totalItems,
+            totalPages: query?.totalPages,
           }}
-          onPageChange={query.goToPage}
+          onPageChange={query?.goToPage}
         />
       </div>
     </div>

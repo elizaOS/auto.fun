@@ -95,6 +95,7 @@
     "rollup-plugin-node-polyfills": "^0.2.1",
     "socket.io": "^4.8.1",
     "socket.io-serverless": "^0.2.1",
+    "solana-vanity-keypair-generator-js": "^1.0.2",
     "sqlite3": "^5.1.7",
     "tailwind-merge": "^3.0.2",
     "three": "^0.174.0",

@@ -23,7 +23,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
   const query = useHolders({tokenId: token.mint});
 
   const isLoading = query.isLoading;
-  const data = query.items
+  const data = query?.items;
 
   return (
     <Table
