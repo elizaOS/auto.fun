@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 const isDevnet = import.meta.env.VITE_SOLANA_NETWORK === "devnet";
-const isLocalhost = import.meta.env.VITE_API_URL === "http://localhost:8787";
 
 const unparsedEnv = {
   rpcUrl:
@@ -12,10 +11,10 @@ const unparsedEnv = {
   tokenSupply: import.meta.env.VITE_TOKEN_SUPPLY,
   decimals: import.meta.env.VITE_DECIMALS,
   solanaNetwork: import.meta.env.VITE_SOLANA_NETWORK,
-  apiUrl: isLocalhost
-    ? "http://localhost:8787"
-    : isDevnet
-    ? import.meta.env.VITE_DEV_API_URL || "https://api-dev.autofun.workers.dev"
+  apiUrl: isDevnet
+    ? import.meta.env.VITE_DEV_API_URL ||
+      import.meta.env.VITE_API_URL ||
+      "https://api-dev.autofun.workers.dev"
     : import.meta.env.VITE_API_URL || "https://api.autofun.workers.dev",
   devAddress: import.meta.env.VITE_DEV_ADDRESS,
   appEnv: process.env.NODE_ENV,
@@ -41,5 +40,6 @@ export const env = {
   getTransactionUrl: (txId: string) =>
     `https://solscan.io/tx/${txId}?cluster=${parsedEnv.solanaNetwork}`,
 };
+
 
 console.log("env", env);
