@@ -28,6 +28,17 @@ enum FormTab {
 // LocalStorage key for tab state
 const TAB_STATE_KEY = "auto_fun_active_tab";
 
+// --- API Response Types ---
+interface VanityKeypairResponse {
+  address: string;
+  secretKey: number[];
+}
+
+interface ApiErrorResponse {
+  error?: string;
+}
+// --- End API Response Types ---
+
 interface UploadResponse {
   success: boolean;
   imageUrl: string;
@@ -1926,9 +1937,56 @@ export const Create = () => {
       }
 
       // For AUTO and MANUAL tabs, we proceed with the regular token creation flow
-      // Generate a new keypair for the token mint
-      const mintKeypair = Keypair.generate();
-      const tokenMint = mintKeypair.publicKey.toBase58();
+
+      // --- Fetch Vanity Keypair from Backend --- START
+      let tokenMint: string;
+      let mintKeypair: Keypair;
+      try {
+        console.log("Fetching vanity keypair from backend...");
+        const authToken = getAuthToken();
+        if (!authToken) {
+          throw new Error("Authentication token not found. Please reconnect wallet.");
+        }
+
+        const vanityResponse = await fetch(`${env.apiUrl}/api/vanity-keypair`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          credentials: "include", // Include cookies if needed for session/auth
+          body: JSON.stringify({ address: publicKey.toString() }),
+        });
+
+        if (!vanityResponse.ok) {
+          let errorMsg = "Failed to obtain vanity keypair.";
+          try {
+            const errorData = await vanityResponse.json() as ApiErrorResponse; // Type assertion
+            errorMsg = errorData.error || errorMsg;
+          } catch (e) { /* Ignore parsing error */ }
+          
+          if (vanityResponse.status === 403) {
+              errorMsg = "A non-zero SOL balance is required to obtain a vanity keypair."
+          } else if (vanityResponse.status === 503 || vanityResponse.status === 404) {
+              errorMsg = "No vanity keypairs currently available, please try again shortly."
+          }
+
+          throw new Error(errorMsg);
+        }
+
+        const { address: vanityAddress, secretKey: secretKeyArray } = await vanityResponse.json() as VanityKeypairResponse; // Type assertion
+        tokenMint = vanityAddress;
+        mintKeypair = Keypair.fromSecretKey(new Uint8Array(secretKeyArray));
+        console.log("Successfully obtained vanity keypair:", tokenMint);
+
+      } catch (error) {
+          console.error("Error fetching vanity keypair:", error);
+          toast.error(error instanceof Error ? error.message : "Could not get vanity keypair.");
+          setIsSubmitting(false); // Stop submission
+          setShowCoinDrop(false); // Hide animation if it started
+          return; // Exit the function
+      }
+      // --- Fetch Vanity Keypair from Backend --- END
 
       // Convert image to base64 if exists
       let media_base64: string | null = null;

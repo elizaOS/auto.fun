@@ -9,11 +9,10 @@ import {
 import usePause from "@/hooks/use-pause";
 import { IToken } from "@/types";
 import { shortenAddress } from "@/utils";
-import { fetchTokenHolders, TokenHolder } from "@/utils/blockchain";
-import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { Link } from "react-router";
 import PausedIndicator from "./paused-indicator";
+import { useHolders } from "@/hooks/use-holders";
 
 export default function HoldersTable({ token }: { token: IToken }) {
   const { paused, setPause } = usePause();
@@ -21,31 +20,10 @@ export default function HoldersTable({ token }: { token: IToken }) {
     `HoldersTable: Rendering for token ${token?.ticker} (${token?.mint})`,
   );
 
-  const query = useQuery({
-    queryKey: ["blockchain-holders", token?.mint],
-    queryFn: async () => {
-      console.log(
-        `HoldersTable: Fetching holders directly from blockchain for ${token?.mint}`,
-      );
-      try {
-        const result = await fetchTokenHolders(token?.mint);
-        console.log(
-          `HoldersTable: Retrieved ${result.total} holders from blockchain`,
-        );
-        return result;
-      } catch (error) {
-        console.error(`HoldersTable: Error fetching holders data:`, error);
-        return { holders: [], total: 0 };
-      }
-    },
-    enabled: !paused && token?.mint ? true : false,
-    refetchInterval: 30000, // Longer interval for blockchain queries to avoid rate limits
-    staleTime: 60000, // Data stays fresh for 1 minute
-  });
+  const query = useHolders({tokenId: token.mint});
 
   const isLoading = query.isLoading;
-  const data = query?.data?.holders || [];
-  // const totalHolders = query?.data?.total || 0;
+  const data = query?.items;
 
   return (
     <Table
@@ -75,7 +53,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
             </TableCell>
           </TableRow>
         ) : data.length > 0 ? (
-          data.map((holder: TokenHolder) => {
+          data.map((holder) => {
             return (
               <TableRow className="hover:bg-white/5" key={holder?.address}>
                 <TableCell className="text-left">

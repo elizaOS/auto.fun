@@ -74,8 +74,8 @@ export const TVChartContainer = ({
         container: elem,
         library_path: `${location.protocol}//${location.host}/libraries/charting_library/`,
         loading_screen: {
-          backgroundColor: "#171717",
-          foregroundColor: "#171717",
+          backgroundColor: "#0a0a0a",
+          foregroundColor: "#0a0a0a",
         },
         enabled_features: [
           ...enabledFeatures,
@@ -98,11 +98,11 @@ export const TVChartContainer = ({
         fullscreen: false,
         autosize: true,
         custom_css_url: "/tradingview-chart.css",
-        toolbar_bg: "#171717",
+        toolbar_bg: "#0a0a0a",
         overrides: {
           ...chartOverrides,
           // Background and Grid
-          "paneProperties.background": "#171717",
+          "paneProperties.background": "#0a0a0a",
           "paneProperties.backgroundType": "solid",
           "paneProperties.vertGridProperties.color": "#2e2e2e",
           "paneProperties.horzGridProperties.color": "#2e2e2e",
@@ -111,7 +111,7 @@ export const TVChartContainer = ({
           "paneProperties.leftMargin": 5,
 
           // Scales
-          "scalesProperties.backgroundColor": "#171717",
+          "scalesProperties.backgroundColor": "#0a0a0a",
           "scalesProperties.lineColor": "#2e2e2e",
           "scalesProperties.textColor": "#8C8C8C",
           "scalesProperties.fontSize": 11,
@@ -144,10 +144,10 @@ export const TVChartContainer = ({
           "volume.transparency": 50,
 
           // Header
-          "header_widget.background": "#171717",
+          "header_widget.background": "#0a0a0a",
           "header_widget.style.color": "#8C8C8C",
           "header_widget.buttons.color": "#8C8C8C",
-          "header_widget.buttons.backgroundColor": "#171717",
+          "header_widget.buttons.backgroundColor": "#0a0a0a",
           "header_widget.buttons.borderColor": "#262626",
           "header_widget.buttons.fontSize": 11,
         },

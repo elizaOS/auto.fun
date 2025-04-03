@@ -2080,31 +2080,14 @@ export async function updateHoldersCache(
     const connection = new Connection(
       (env.NETWORK === "devnet"
         ? env.DEVNET_SOLANA_RPC_URL
-        : env.MAINNET_SOLANA_RPC_URL) || "https://api.devnet.solana.com",
+        : env.MAINNET_SOLANA_RPC_URL) || env.RPC_URL,
     );
     const db = getDB(env);
 
     // Get all token accounts for this mint
-    let largestAccounts;
-    try {
-      largestAccounts = await connection.getTokenLargestAccounts(
+    const largestAccounts = await connection.getTokenLargestAccounts(
         new PublicKey(mint),
       );
-    } catch (error: any) {
-      // If we get rate limited, wait and retry once
-      if (error.toString().includes("429")) {
-        logger.warn(
-          `Rate limited when fetching token accounts for ${mint}, retrying after delay...`,
-        );
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        largestAccounts = await connection.getTokenLargestAccounts(
-          new PublicKey(mint),
-        );
-      } else {
-        throw error;
-      }
-    }
-
     if (!largestAccounts.value || largestAccounts.value.length === 0) {
       logger.log(`No accounts found for token ${mint}`);
       return 0;
