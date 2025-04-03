@@ -21,6 +21,7 @@ import {
   applyFeaturedSort,
   getFeaturedMaxValues,
   getFeaturedScoreExpression,
+  calculateFeaturedScore,
   getMainnetRpcUrl,
   getDevnetRpcUrl,
 } from "../util";
@@ -2977,13 +2978,41 @@ export async function processSwapEvent(
     // Get WebSocket client
     const wsClient = getWebSocketClient(env);
 
+    // Get DB connection to fetch token data and calculate featuredScore
+    const db = getDB(env);
+    
+    // Get the token data for this swap
+    const tokenData = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, swap.tokenMint))
+      .limit(1);
+
+    // Prepare swap data for emission
+    let enrichedSwap = { ...swap };
+    
+    // Add featuredScore if we have token data
+    if (tokenData && tokenData.length > 0) {
+      // Get max values for normalization
+      const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
+      
+      // Calculate featured score
+      const featuredScore = calculateFeaturedScore(tokenData[0], maxVolume, maxHolders);
+      
+      // Add token data with featuredScore to the swap
+      enrichedSwap.tokenData = {
+        ...tokenData[0],
+        featuredScore,
+      };
+    }
+
     // Emit to token-specific room
-    await wsClient.emit(`token-${swap.tokenMint}`, "newSwap", swap);
+    await wsClient.emit(`token-${swap.tokenMint}`, "newSwap", enrichedSwap);
     logger.log(`Emitted swap event for token ${swap.tokenMint}`);
 
     // Optionally emit to global room for activity feed
     if (shouldEmitGlobal) {
-      await wsClient.emit("global", "newSwap", swap);
+      await wsClient.emit("global", "newSwap", enrichedSwap);
       logger.log("Emitted swap event to global feed");
     }
 
@@ -3047,15 +3076,25 @@ export async function processTokenUpdateEvent(
   try {
     // Get WebSocket client
     const wsClient = getWebSocketClient(env);
+    
+    // Get DB connection and calculate featuredScore
+    const db = getDB(env);
+    const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
+    
+    // Create enriched token data with featuredScore
+    const enrichedTokenData = {
+      ...tokenData,
+      featuredScore: calculateFeaturedScore(tokenData, maxVolume, maxHolders),
+    };
 
     // Always emit to token-specific room
-    await wsClient.emit(`token-${tokenData.mint}`, "updateToken", tokenData);
+    await wsClient.emit(`token-${tokenData.mint}`, "updateToken", enrichedTokenData);
     logger.log(`Emitted token update event for ${tokenData.mint}`);
 
     // Optionally emit to global room for activity feed
     if (shouldEmitGlobal) {
       await wsClient.emit("global", "updateToken", {
-        ...tokenData,
+        ...enrichedTokenData,
         timestamp: new Date(),
       });
       logger.log("Emitted token update event to global feed");
