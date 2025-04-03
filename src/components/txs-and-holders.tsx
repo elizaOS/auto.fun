@@ -60,7 +60,7 @@ export default function TransactionsAndHolders({ token }: { token: IToken }) {
   };
 
   return (
-    <div className="border md:overflow-x-hidden xs:max-w-fit md:max-w-full bg-autofun-background-card">
+    <div className="md:overflow-x-hidden xs:max-w-fit md:max-w-full">
       <div className="flex items-center justify-between p-3">
         <div className="flex items-center">
           <Button

@@ -104,7 +104,7 @@ export default function Trade({ token }: { token: IToken }) {
     : formatNumber(convertedAmount, false, true);
 
   return (
-    <div className="relative border p-4 bg-autofun-background-card">
+    <div className="relative p-4">
       {isExecutingSwap && <Loader />}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col">
