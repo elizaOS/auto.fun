@@ -17,6 +17,7 @@ import generationRouter, { checkAndReplenishTokens } from "./routes/generation";
 import messagesRouter from "./routes/messages";
 import shareRouter from "./routes/share";
 import swapRouter from "./routes/swap";
+import heliusWebhookRouter from './routes/helius-webhook'
 import tokenRouter, { processSwapEvent } from "./routes/token";
 import { uploadToCloudflare } from "./uploader";
 import { WebSocketDO, allowedOrigins, createTestSwap } from "./websocket";
@@ -73,6 +74,7 @@ api.route("/", messagesRouter);
 api.route("/", authRouter);
 api.route("/", swapRouter);
 api.route("/share", shareRouter);
+api.route('/', heliusWebhookRouter);
 
 // Root paths for health checks
 app.get("/", (c) => c.json({ status: "ok" }));

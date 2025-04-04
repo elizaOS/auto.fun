@@ -14,6 +14,7 @@ import { Link } from "react-router";
 import { twMerge } from "tailwind-merge";
 import PausedIndicator from "./paused-indicator";
 import { useTransactions } from "@/hooks/use-transactions";
+import { env } from "@/utils/env";
 
 export default function SwapsTable({ token }: { token: IToken }) {
   const { paused, setPause } = usePause();
@@ -103,7 +104,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
                 </TableCell>
                 <TableCell>
                   <Link
-                    to={`https://solscan.io/tx/${swap?.txId}`}
+                    to={env.getTransactionUrl(swap.txId)}
                     target="_blank"
                   >
                     <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary" />

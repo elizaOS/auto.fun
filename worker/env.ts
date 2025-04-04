@@ -64,4 +64,5 @@ export interface Env {
   TWITTER_ACCESS_TOKEN: string;
   NEWS_API_KEY?: string;
   PREGENERATED_TOKENS_COUNT?: string;
+  HELIUS_WEBHOOK_AUTH_TOKEN: string;
 }

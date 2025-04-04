@@ -285,8 +285,6 @@ tokenRouter.get("/token/:mint", async (c) => {
         (Number(token.reserveAmount) / Math.pow(10, TOKEN_DECIMALS));
     }
 
-    console.log(token);
-
     // Calculate tokenPriceUSD in the same way as the old code
     const tokenPriceInSol =
       (token.currentPrice || 0) / Math.pow(10, TOKEN_DECIMALS);
@@ -3863,8 +3861,6 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
       .limit(1);
 
     const token = tokenQuery[0];
-
-    console.log("**** token", token);
 
     // If token doesn't exist in our database but we're in local mode,
     // try to check the blockchain directly if LOCAL_DEV is enabled
