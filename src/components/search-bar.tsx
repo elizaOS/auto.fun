@@ -1,13 +1,13 @@
-import { Search } from "lucide-react";
-import { Link } from "react-router";
-import CopyButton from "./copy-button";
-import { formatNumber, abbreviateNumber } from "@/utils";
-import { useEffect, useRef, useState } from "react";
-import { debounce } from "lodash";
-import { IToken } from "@/types";
 import { useOutsideClickDetection } from "@/hooks/use-outside-clickdetection";
+import { IToken } from "@/types";
+import { abbreviateNumber } from "@/utils";
 import { getSearchTokens } from "@/utils/api";
 import { useQuery } from "@tanstack/react-query";
+import { debounce } from "lodash";
+import { Search } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
+import CopyButton from "./copy-button";
 
 export default function SearchBar() {
   const [searchResults, setSearchResults] = useState<IToken[] | []>([]);
