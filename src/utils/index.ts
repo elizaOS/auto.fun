@@ -99,7 +99,7 @@ export const formatNumberSubscript = (num: number): string => {
   const mantissaDigits = mantissa.replace(".", "").slice(0, 9); // Limit mantissa digits
 
   if (totalZeros > 1) {
-    return sign + "0.0" + toSubscript(totalZeros - 1) + mantissaDigits;
+    return sign + "0.0" + toSubscript(totalZeros) + mantissaDigits;
   } else {
     return sign + "0." + "0".repeat(totalZeros) + mantissaDigits;
   }
