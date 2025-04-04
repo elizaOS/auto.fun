@@ -28,11 +28,11 @@ export const useHolders = ({ tokenId }: { tokenId: string }) => {
     const socket = getSocket();
 
     socket.on("newHolder", (holder: unknown) => {
-      const newHolder = HolderSchema.parse(holder);
+      const newHolder = HolderSchema.array().parse(holder);
 
       if (pagination.currentPage !== 1) return;
 
-      pagination.setItems((items) => [newHolder, ...items].slice(0, pageSize));
+      pagination.setItems(newHolder);
     });
 
     return () => {
