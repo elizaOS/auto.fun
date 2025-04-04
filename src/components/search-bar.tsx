@@ -1,7 +1,7 @@
 import { Search } from "lucide-react";
 import { Link } from "react-router";
 import CopyButton from "./copy-button";
-import { formatNumber } from "@/utils";
+import { formatNumber, abbreviateNumber } from "@/utils";
 import { useEffect, useRef, useState } from "react";
 import { debounce } from "lodash";
 import { IToken } from "@/types";
@@ -51,8 +51,8 @@ export default function SearchBar() {
   }, [handleSearch]);
 
   return (
-    <div className="relative">
-      <div className="flex w-full md:max-w-72 lg:max-w-96 items-center h-11 px-2 gap-2 bg-[#171717] border border-[#262626] hover:border-[#2FD345]/50 focus-within:border-[#2FD345]/50 transition-colors">
+    <div className="relative w-full max-w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+      <div className="flex w-full items-center h-11 px-3 gap-2 bg-[#171717] border border-[#262626] hover:border-[#2FD345]/50 focus-within:border-[#2FD345]/50 transition-colors">
         <Search className="w-6 h-6 text-[#8C8C8C] group-hover:text-[#2FD345] shrink-0" />
         <input
           type="text"
@@ -115,12 +115,12 @@ const AgentSearchResult = ({
 }) => {
   return (
     <Link to={`/token/${id}`} onClick={onNavigate}>
-      <div className="flex items-center gap-4 p-2 hover:bg-[#262626] transition-all duration-200 group cursor-pointer">
-        <img className="w-10 h-10 object-cover" src={imageUrl} alt={name} />
-        <div className="flex flex-col gap-1">
-          <div className="text-white text-[16px] font-medium group-hover:text-[#2FD345] transition-colors">
-            {name}
-            <span className="px-2  text-[#8C8C8C] text-[16px] uppercase tracking-widest group-hover:text-white/80 transition-colors">
+      <div className="flex items-center gap-2 p-2 hover:bg-[#262626] transition-all duration-200 group cursor-pointer">
+        <img className="w-10 h-10 shrink-0 object-cover" src={imageUrl} alt={name} />
+        <div className="flex flex-col gap-1 min-w-0 flex-1">
+          <div className="text-white text-[16px] font-medium group-hover:text-[#2FD345] transition-colors flex items-center">
+            <span className="truncate">{name}</span>
+            <span className="pl-2 text-[#8C8C8C] text-[16px] uppercase tracking-widest group-hover:text-white/80 transition-colors flex-shrink-0">
               ${symbol}
             </span>
           </div>
@@ -131,10 +131,10 @@ const AgentSearchResult = ({
             <CopyButton text={id} />
           </div>
         </div>
-        <div className="flex items-center gap-1 ml-auto">
-          <span className="text-[#8C8C8C] text-sm">MC:</span>
-          <span className="text-[#2FD345] text-sm">
-            {formatNumber(marketCap, false)}
+        <div className="flex-shrink-0 ml-auto flex flex-col items-end">
+          <span className="text-[#8C8C8C] text-xs group-hover:text-white/70 transition-colors">MC</span>
+          <span className="text-[#2FD345] text-sm font-medium whitespace-nowrap">
+            {abbreviateNumber(marketCap)}
           </span>
         </div>
       </div>
