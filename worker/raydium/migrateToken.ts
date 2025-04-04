@@ -7,8 +7,8 @@ import {
   DEVNET_PROGRAM_ID,
   getCpmmPdaAmmConfigId,
   DEV_LOCK_CPMM_AUTH,
-  DEV_LOCK_CPMM_PROGRAM,
   mul,
+  LOCK_CPMM_AUTH,
 } from "@raydium-io/raydium-sdk-v2";
 import { Program, BN, AnchorProvider } from "@coral-xyz/anchor";
 import { initSdk, txVersion } from "./raydium-config";
@@ -434,8 +434,12 @@ export class TokenMigrator {
           units: 300000,
           microLamports: 0.0001 * 1e9,
         },
-        programId: DEV_LOCK_CPMM_PROGRAM,
-        authProgram: DEV_LOCK_CPMM_AUTH,
+        programId:
+          raydium.cluster === "devnet"
+            ? DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM
+            : CREATE_CPMM_POOL_PROGRAM,
+        authProgram:
+          raydium.cluster === "devnet" ? DEV_LOCK_CPMM_AUTH : LOCK_CPMM_AUTH,
       });
     const { txId: lockTxIdPrimary } = await lockExecutePrimary({
       sendAndConfirm: true,
@@ -453,8 +457,12 @@ export class TokenMigrator {
           units: 300000,
           microLamports: 0.0001 * 1e9,
         },
-        programId: DEV_LOCK_CPMM_PROGRAM,
-        authProgram: DEV_LOCK_CPMM_AUTH,
+        programId:
+          raydium.cluster === "devnet"
+            ? DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM
+            : CREATE_CPMM_POOL_PROGRAM,
+        authProgram:
+          raydium.cluster === "devnet" ? DEV_LOCK_CPMM_AUTH : LOCK_CPMM_AUTH,
       });
     const { txId: lockTxIdSecondary } = await lockExecuteSecondary({
       sendAndConfirm: true,
