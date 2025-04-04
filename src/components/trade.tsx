@@ -137,7 +137,7 @@ export default function Trade({ token }: { token: IToken }) {
                 <Button
                   size="small"
                   variant="trade"
-                  onClick={() => setSellingAmount(0)}
+                  onClick={() => handleSellAmountChange(0)}
                 >
                   <span className="hidden sm:inline">Reset</span>
                   <span className="sm:hidden">0</span>
@@ -171,21 +171,21 @@ export default function Trade({ token }: { token: IToken }) {
                     <Button
                       size="small"
                       variant="trade"
-                      onClick={() => setSellingAmount(0.5)}
+                      onClick={() => handleSellAmountChange(0.5)}
                     >
                       0.5
                     </Button>
                     <Button
                       size="small"
                       variant="trade"
-                      onClick={() => setSellingAmount(1)}
+                      onClick={() => handleSellAmountChange(1)}
                     >
                       1
                     </Button>
                     <Button
                       size="small"
                       variant="trade"
-                      onClick={() => setSellingAmount(5)}
+                      onClick={() => handleSellAmountChange(5)}
                     >
                       5
                     </Button>
