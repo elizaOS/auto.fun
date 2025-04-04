@@ -2146,6 +2146,9 @@ export async function updateHoldersCache(
         const batch = holders.slice(i, i + 50);
         await db.insert(tokenHolders).values(batch);
       }
+
+      const wsClient = getWebSocketClient(env);
+      wsClient.emit(`token-${mint}`, 'newHolder', holders);
     }
 
     // Update token holder count
