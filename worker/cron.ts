@@ -3,7 +3,7 @@ import { getDB, tokens, swaps, vanityKeypairs, VanityKeypairInsert } from "./db"
 import { Env } from "./env";
 import { logger } from "./logger";
 import { getSOLPrice } from "./mcap";
-import { bulkUpdatePartialTokens } from "./util";
+import { bulkUpdatePartialTokens, calculateFeaturedScore, getFeaturedMaxValues } from "./util";
 import { Connection, PublicKey, Keypair } from "@solana/web3.js";
 import { getWebSocketClient } from "./websocket-client";
 import { updateHoldersCache } from "./routes/token";
@@ -12,6 +12,7 @@ import {
   ExecutionContext,
   ScheduledEvent,
 } from "@cloudflare/workers-types/experimental";
+import { getLatestCandle } from "./chart";
 
 // Store the last processed signature to avoid duplicate processing
 let lastProcessedSignature: string | null = null;
@@ -141,6 +142,10 @@ export async function processTransactionLogs(
         await updateTokenInDB(env, tokenData);
 
         // Emit the event to all clients
+        /**
+         * TODO: if this event is emitted before the create-token endpoint finishes its
+         * DB update, it seems to corrupt the system and the new token won't ever show on the homepage
+         */
         await wsClient.emit("global", "newToken", {
           ...tokenData,
           timestamp: new Date(),
@@ -173,7 +178,7 @@ export async function processTransactionLogs(
           if (
             !mintAddress ||
             !/^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
-              mintAddress,
+              mintAddress
             )
           ) {
             logger.error(`Invalid mint address format: ${mintAddress}`);
@@ -200,7 +205,7 @@ export async function processTransactionLogs(
           // Validate extracted data
           if (!user || !direction || !amount) {
             logger.error(
-              `Missing swap data: user=${user}, direction=${direction}, amount=${amount}`,
+              `Missing swap data: user=${user}, direction=${direction}, amount=${amount}`
             );
             return result;
           }
@@ -226,17 +231,17 @@ export async function processTransactionLogs(
 
           reserveToken = reservesParts[reservesParts.length - 2].replace(
             /[",)]/g,
-            "",
+            ""
           );
           reserveLamport = reservesParts[reservesParts.length - 1].replace(
             /[",)]/g,
-            "",
+            ""
           );
 
           // Validate extracted data
           if (!reserveToken || !reserveLamport) {
             logger.error(
-              `Missing reserves data: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`,
+              `Missing reserves data: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`
             );
             return result;
           }
@@ -244,7 +249,7 @@ export async function processTransactionLogs(
           // Make sure reserve values are numeric
           if (isNaN(Number(reserveToken)) || isNaN(Number(reserveLamport))) {
             logger.error(
-              `Invalid reserve values: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`,
+              `Invalid reserve values: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`
             );
             return result;
           }
@@ -253,15 +258,33 @@ export async function processTransactionLogs(
           return result;
         }
 
+        const [_usr, _dir, amountOut] = swapeventLog!
+          .split(" ")
+          .slice(-3)
+          .map((s) => s.replace(/[",)]/g, ""));
+
         // Get SOL price for calculations
         const solPrice = await getSOLPrice(env);
 
         // Calculate price based on reserves
         const TOKEN_DECIMALS = Number(env.DECIMALS || 6);
+        const SOL_DECIMALS = 9;
         const tokenAmountDecimal =
           Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS);
         const lamportDecimal = Number(reserveLamport) / 1e9;
         const currentPrice = lamportDecimal / tokenAmountDecimal;
+
+        const tokenPriceInSol = currentPrice / Math.pow(10, TOKEN_DECIMALS);
+        const tokenPriceUSD =
+          currentPrice > 0
+            ? tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)
+            : 0;
+
+        const marketCapUSD =
+          (Number(env.TOKEN_SUPPLY) / Math.pow(10, TOKEN_DECIMALS)) *
+          tokenPriceUSD;
+
+          console.log(tokenPriceInSol, tokenPriceUSD, marketCapUSD)
 
         // Save to the swap table for historical records
         const swapRecord = {
@@ -271,8 +294,15 @@ export async function processTransactionLogs(
           type: direction === "0" ? "buy" : "sell",
           direction: parseInt(direction),
           amountIn: Number(amount),
-          amountOut: 0, // This could be calculated more precisely if needed
-          price: currentPrice,
+          amountOut: Number(amountOut),
+          price:
+            direction === "1"
+              ? Number(amountOut) /
+                Math.pow(10, SOL_DECIMALS) /
+                (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) // Sell price (SOL/token)
+              : Number(amount) /
+                Math.pow(10, SOL_DECIMALS) /
+                (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)), // Buy price (SOL/token),
           txId: signature,
           timestamp: new Date().toISOString(),
         };
@@ -281,20 +311,41 @@ export async function processTransactionLogs(
         const db = getDB(env);
         await db.insert(swaps).values(swapRecord);
         logger.log(
-          `Saved swap: ${direction === "0" ? "buy" : "sell"} for ${mintAddress}`,
+          `Saved swap: ${direction === "0" ? "buy" : "sell"} for ${mintAddress}`
         );
 
         // Update token data in database
-        await db
+        const token = await db
           .update(tokens)
           .set({
             reserveAmount: Number(reserveToken),
             reserveLamport: Number(reserveLamport),
             currentPrice: currentPrice,
+            liquidity:
+              (Number(reserveLamport) / 1e9) * solPrice +
+              (Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS)) *
+                tokenPriceUSD,
+            marketCapUSD,
+            tokenPriceUSD,
+            solPriceUSD: solPrice,
+            curveProgress:
+              ((Number(reserveLamport) - Number(env.VIRTUAL_RESERVES)) /
+                (Number(env.CURVE_LIMIT) -
+                  Number(env.VIRTUAL_RESERVES))) *
+              100,
             txId: signature,
             lastUpdated: new Date().toISOString(),
+            volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${
+              direction === "1"
+                ? (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) *
+                  tokenPriceUSD
+                : (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)) *
+                  tokenPriceUSD
+            }`,
           })
-          .where(eq(tokens.mint, mintAddress));
+          .where(eq(tokens.mint, mintAddress))
+          .returning();
+        const newToken = token[0]
 
         // Update holders data immediately after a swap
         await updateHoldersCache(env, mintAddress);
@@ -304,6 +355,36 @@ export async function processTransactionLogs(
           ...swapRecord,
           mint: mintAddress, // Add mint field for compatibility
         });
+
+        const latestCandle = await getLatestCandle(
+          env,
+          swapRecord.tokenMint,
+          swapRecord
+        );
+
+        // Emit the new candle data
+        await wsClient
+          .to(`token-${swapRecord.tokenMint}`)
+          .emit("newCandle", latestCandle);
+
+        // Emit the updated token data with enriched featured score
+        const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
+
+        // Create enriched token data with featuredScore
+        const enrichedToken = {
+          ...newToken,
+          featuredScore: calculateFeaturedScore(
+            newToken,
+            maxVolume,
+            maxHolders
+          ),
+        };
+
+        await wsClient
+          .to(`token-${swapRecord.tokenMint}`)
+          .emit("updateToken", enrichedToken);
+
+        await wsClient.to("global").emit("updateToken", enrichedToken);
 
         result = { found: true, tokenAddress: mintAddress, event: "swap" };
       } catch (error) {

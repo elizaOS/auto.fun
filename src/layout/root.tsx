@@ -24,7 +24,7 @@ export default function Layout() {
     if (env.appEnv === 'development') {
       setInterval(executeCron_development_only, 1000 * 30);
     }
-  }, [])
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
