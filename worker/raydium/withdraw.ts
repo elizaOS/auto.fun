@@ -13,7 +13,7 @@ export const withdrawTx = async (
   user: PublicKey,
   token: PublicKey,
   connection: Connection,
-  program: Program
+  program: Program<Autofun>
 ) => {
   const tx = await program.methods
     .withdraw()
