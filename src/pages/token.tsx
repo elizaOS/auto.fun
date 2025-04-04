@@ -19,7 +19,7 @@ import {
   fromNow,
   LAMPORTS_PER_SOL
 } from "@/utils";
-import { getToken } from "@/utils/api";
+import { getToken, queryClient } from "@/utils/api";
 import { fetchTokenMarketMetrics } from "@/utils/blockchain";
 import { getSocket } from "@/utils/socket";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -47,7 +47,6 @@ export default function Page() {
       try {
         // Fetch token data from API
         console.log(`Token page: Fetching token data for ${address}`);
-        // TODO: modify this data based on `updateToken` socket event for live data
         return await getToken({ address });
       } catch (error) {
         console.error(`Token page: Error fetching token data:`, error);
@@ -56,6 +55,16 @@ export default function Page() {
     },
     refetchInterval: 20_000,
   });
+
+  useEffect(() => {
+    const socket = getSocket();
+
+    socket.on('updateToken', (token: any) => queryClient.setQueryData(['token', address], token))
+
+    return () => {
+      socket.off('updateToken')
+    }
+  }, [])
 
   // Fetch token market metrics from blockchain
   const metricsQuery = useQuery({
@@ -120,7 +129,7 @@ export default function Page() {
   const currentPrice = metrics?.currentPrice || token?.currentPrice || 0;
   const tokenPriceUSD = metrics?.tokenPriceUSD || token?.tokenPriceUSD || 0;
   const marketCapUSD = metrics?.marketCapUSD || token?.marketCapUSD || 0;
-  const volume24h = metrics?.volume24h || token?.volume24h || 0;
+  const volume24h = token?.volume24h || metrics?.volume24h || 0;
   // const holderCount = metrics?.holderCount || token?.holderCount || 0;
 
   // For bonding curve calculations, still use token data
@@ -224,7 +233,7 @@ export default function Page() {
         
         <div className="flex-1 flex flex-col items-center">
           <span className="text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
-            ${volume24h > 0 ? abbreviateNumber(volume24h) : "0"}
+            {volume24h > 0 ? abbreviateNumber(volume24h) : "0"}
             {metricsQuery.isLoading && (
               <span className="text-xs text-autofun-text-secondary ml-1">
                 loading...

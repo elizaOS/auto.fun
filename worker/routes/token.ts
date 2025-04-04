@@ -2970,7 +2970,7 @@ export async function processSwapEvent(
       .limit(1);
 
     // Prepare swap data for emission
-    let enrichedSwap = { ...swap };
+    const enrichedSwap = { ...swap };
     
     // Add featuredScore if we have token data
     if (tokenData && tokenData.length > 0) {
