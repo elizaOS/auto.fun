@@ -58,4 +58,5 @@ export interface Env {
   TWITTER_API_SECRET: string;
   TWITTER_ACCESS_TOKEN_SECRET: string;
   TWITTER_ACCESS_TOKEN: string;
+  MANAGER_MULTISIG_ADDRESS: string;
 }
