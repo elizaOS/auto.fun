@@ -93,6 +93,14 @@ export default function AgentsSection() {
   // Use detected token mint instead of directly from params
   const tokenMint = detectedTokenMint;
 
+  useEffect(() => {
+    //plz console log the state of the isConnectingAgent, !tokenMint, isAgentsLoading, and !!agentsError
+    console.log("isConnectingAgent", isConnectingAgent);
+    console.log("!tokenMint", !tokenMint);
+    console.log("isAgentsLoading", isAgentsLoading);
+    console.log("!!agentsError", !!agentsError);
+  }, [isConnectingAgent, tokenMint, isAgentsLoading, agentsError]);
+
   // --- Fetch Real Token Info & Agents ---
   useEffect(() => {
     const fetchTokenData = async () => {
@@ -881,10 +889,7 @@ export default function AgentsSection() {
           <Button
             onClick={connectTwitter}
             disabled={
-              isConnectingAgent ||
-              !tokenMint ||
-              isAgentsLoading ||
-              !!agentsError
+              isConnectingAgent || !tokenMint || isAgentsLoading // || !!agentsError
             }
             className="mx-auto w-72 h-fit"
             variant="tab"
@@ -898,9 +903,7 @@ export default function AgentsSection() {
       <div className="mt-4">
         <Button
           onClick={() => {}}
-          disabled={
-            isConnectingAgent || !tokenMint || isAgentsLoading || !!agentsError
-          }
+          disabled={true}
           className="flex flex-col items-center gap-2 mx-auto border-green-500 border-4 w-72 h-fit"
           variant="outline"
         >
