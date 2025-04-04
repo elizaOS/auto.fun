@@ -14,6 +14,7 @@ import Button from "./button";
 import ConfigDialog from "./config-dialog";
 import Loader from "./loader";
 import SkeletonImage from "./skeleton-image";
+import { toast } from "react-toastify";
 
 export default function Trade({ token }: { token: IToken }) {
   const { solPrice: contextSolPrice } = useSolPriceContext();
@@ -102,6 +103,19 @@ export default function Trade({ token }: { token: IToken }) {
   const displayConvertedAmount = isTokenSelling
     ? convertedAmount
     : formatNumber(convertedAmount, false, true);
+
+  const onSwap = async () => {
+    if (!sellingAmount) return;
+
+    await executeSwap({
+      amount: sellingAmount,
+      style: isTokenSelling ? "sell" : "buy",
+      tokenAddress: token.mint,
+      token,
+    });
+
+    toast.success('Trade executed')
+  };
 
   return (
     <div className="relative p-4 pt-0">
@@ -210,7 +224,7 @@ export default function Trade({ token }: { token: IToken }) {
                   : tokenPriceUSD
                     ? formatNumber(
                         Number(sellingAmount || 0) * tokenPriceUSD,
-                        true,
+                        true
                       )
                     : formatNumber(0)}
               </span>
@@ -250,12 +264,12 @@ export default function Trade({ token }: { token: IToken }) {
                 {sellingAmount && solanaPrice && !isTokenSelling
                   ? formatNumber(
                       (Number(sellingAmount) / currentPrice) * tokenPriceUSD,
-                      true,
+                      true
                     )
                   : sellingAmount && isTokenSelling && tokenPriceUSD
                     ? formatNumber(
                         Number(sellingAmount) * currentPrice * solanaPrice,
-                        true,
+                        true
                       )
                     : "$0.00"}
               </span>
@@ -291,17 +305,7 @@ export default function Trade({ token }: { token: IToken }) {
             !sellingAmount ||
             sellingAmount === 0
           }
-          onClick={
-            sellingAmount
-              ? () =>
-                  executeSwap({
-                    amount: sellingAmount,
-                    style: isTokenSelling ? "sell" : "buy",
-                    tokenAddress: token.mint,
-                    token,
-                  })
-              : undefined
-          }
+          onClick={onSwap}
         >
           <img
             src={isExecutingSwap ? "/token/swapping.svg" : "/token/swapup.svg"}
