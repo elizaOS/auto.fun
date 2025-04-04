@@ -138,6 +138,12 @@ export async function processTransactionLogs(
           tokenSwapTransactionId: signature,
         };
 
+        try {
+          await updateHoldersCache(env, rawTokenAddress);
+        } catch (error) {
+          logger.error('Failed to update holder cache on newToken event:', error);
+        }
+
         // Update the database
         await updateTokenInDB(env, tokenData);
 
