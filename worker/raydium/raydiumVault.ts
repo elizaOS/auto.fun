@@ -202,6 +202,7 @@ export async function claim(
     authority: signerWallet.publicKey,
     vaultConfig: vault_config,
     userPosition: user_position,
+    lockingProgram: LOCKING_PROGRAM,
     positionNft: position_nft,
     nftTokenFaucet: nft_token_faucet,
     tokenProgram: spl.TOKEN_PROGRAM_ID,
@@ -221,6 +222,8 @@ export async function claim(
     vault0Mint: vault0_mint,
     vault1Mint: vault1_mint,
     lockedLpVault: locked_lp_vault,
+    tokenProgram2022: spl.TOKEN_2022_PROGRAM_ID,
+    memoProgram: raydium_api.MEMO_PROGRAM_ID,
   };
   const call = program.methods.claim().accounts(accounts);
 
