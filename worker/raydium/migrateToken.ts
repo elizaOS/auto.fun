@@ -20,6 +20,7 @@ import { sendNftTo } from "./utils";
 import { retryOperation } from "./utils";
 import { RaydiumVault } from "./types/raydium_vault";
 import { getWebSocketClient } from "../websocket-client";
+import { Autofun } from "../target/types/autofun";
 
 export class TokenMigrator {
   constructor(
@@ -27,7 +28,7 @@ export class TokenMigrator {
     public connection: Connection,
     public wallet: Keypair,
     public program: Program<RaydiumVault>,
-    public autofunProgram: Program,
+    public autofunProgram: Program<Autofun>,
     public provider: AnchorProvider
   ) {}
   FEE_PERCENTAGE = 10; // 10% fee for pool creation
