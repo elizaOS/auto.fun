@@ -1,0 +1,828 @@
+diff --git a/public/tradingview-chart.css b/public/tradingview-chart.css
+index 6a91488..99095bb 100644
+--- a/public/tradingview-chart.css
++++ b/public/tradingview-chart.css
+@@ -1,11 +1,11 @@
+ .theme-dark:root {
+-  --tv-color-platform-background: #171717;
+-  --tv-color-pane-background: #171717;
+-  --tv-color-pane-background-secondary: #171717;
++  --tv-color-platform-background: #0a0a0a;
++  --tv-color-pane-background: #0a0a0a;
++  --tv-color-pane-background-secondary: #0a0a0a;
+   --tv-color-toolbar-button-text: #8c8c8c;
+   --tv-color-toolbar-button-text-hover: #ffffff;
+   --tv-color-toolbar-button-background-hover: #262626;
+-  --tv-color-toolbar-button-background-expanded: #171717;
++  --tv-color-toolbar-button-background-expanded: #0a0a0a;
+   --tv-color-toolbar-button-background-active: #262626;
+   --tv-color-toolbar-button-background-active-hover: #262626;
+   --tv-color-item-active-text: #4ade80;
+@@ -14,17 +14,17 @@
+ }
+ 
+ .layout__area--center {
+-  background-color: #171717;
++  background-color: #0a0a0a;
+ }
+ 
+ /* Chart Container */
+ html.theme-dark .chart-page {
+-  background-color: #171717;
++  background-color: #0a0a0a;
+   font-family: "DM Mono", monospace;
+ }
+ 
+ html.theme-dark .chart-page .chart-container-border {
+-  background-color: #171717;
++  background-color: #0a0a0a;
+ }
+ 
+ html.theme-dark .chart-container {
+@@ -122,7 +122,7 @@ html.theme-dark .chart-controls-bar {
+   align-items: center;
+   justify-content: space-between;
+   padding: 8px 16px;
+-  background-color: #171717;
++  background-color: #0a0a0a;
+   border-bottom: 1px solid #262626;
+ }
+ 
+@@ -160,5 +160,5 @@ html.theme-dark .chart-controls-bar {
+ 
+ /* Loading Screen */
+ .loading-screen {
+-  background-color: #171717 !important;
++  background-color: #0a0a0a !important;
+ }
+diff --git a/src/components/bonding-curve-bar.tsx b/src/components/bonding-curve-bar.tsx
+index 4cdc498..35a95f7 100644
+--- a/src/components/bonding-curve-bar.tsx
++++ b/src/components/bonding-curve-bar.tsx
+@@ -1,23 +1,96 @@
+ import { normalizedProgress } from "@/utils";
+-import { useState, useEffect } from "react";
++import { useState, useEffect, useRef } from "react";
++
++// Add keyframes for the subtle pulse animation
++const pulseKeyframes = `
++@keyframes subtle-pulse {
++  0% { opacity: 0.9; }
++  50% { opacity: 1; }
++  100% { opacity: 0.9; }
++}
++`;
+ 
+ export default function BondingCurveBar({ progress }: { progress: number }) {
+   const [width, setWidth] = useState<number>(0);
++  const [displayedValue, setDisplayedValue] = useState<number>(0);
++  const animationFrameRef = useRef<number | null>(null);
+ 
++  // Set up the animation effect when progress changes
+   useEffect(() => {
+-    const prog = normalizedProgress(progress);
+-    setWidth(Number(prog));
+-  }, [progress]);
++    const targetValue = Number(normalizedProgress(progress));
++    
++    // Cancel any ongoing animation
++    if (animationFrameRef.current) {
++      cancelAnimationFrame(animationFrameRef.current);
++    }
++    
++    // Set the width immediately for the progress bar transition
++    setWidth(targetValue);
++    
++    // Use a very short duration to make the counter almost immediate
++    const startTime = performance.now();
++    const startValue = displayedValue;
++    const duration = 350; // Slightly faster (350ms vs 1500ms for progress bar)
++    
++    // Simple, fast animation function
++    const animateFrame = (currentTime: number) => {
++      const elapsed = currentTime - startTime;
++      const progress = Math.min(elapsed / duration, 1);
++      
++      // Fast linear animation - no fancy easing
++      const currentDisplayValue = Math.round(startValue + (targetValue - startValue) * progress);
++      setDisplayedValue(currentDisplayValue);
++      
++      // If we're not done yet, continue
++      if (progress < 1) {
++        animationFrameRef.current = requestAnimationFrame(animateFrame);
++      } else {
++        // Ensure we set the exact target value at the end
++        setDisplayedValue(targetValue);
++      }
++    };
++    
++    // Start animation immediately
++    animationFrameRef.current = requestAnimationFrame(animateFrame);
++    
++    return () => {
++      if (animationFrameRef.current) {
++        cancelAnimationFrame(animationFrameRef.current);
++      }
++    };
++  }, [progress, displayedValue]);
+ 
+   return (
+-    <div className="relative w-full z-0 h-2">
++    <div className="relative w-full z-0 h-8">
++      {/* Add keyframes style */}
++      <style>{pulseKeyframes}</style>
++      
+       {/* Background */}
+-      <div className="absolute left-0 h-2 w-full bg-autofun-stroke-primary" />
++      <div className="absolute left-0 h-full w-full bg-autofun-stroke-primary" />
+       {/* Progress */}
+       <div
+-        className="absolute left-0 h-2 bg-gradient-to-r from-green-900 to-green-500 z-20 transition-all duration-500"
+-        style={{ width: `${width}%` }}
+-      />
++        className={`absolute left-0 h-full ${
++          width === 100 ? "bg-autofun-text-highlight" : "bg-white"
++        } z-20 transition-all duration-1500 ease-in-out flex items-center justify-end`}
++        style={{ 
++          width: `${width}%`,
++          transition: "width 1.5s ease-in-out, background-color 0.8s ease-in-out",
++          animation: width === 100 ? "subtle-pulse 2s infinite ease-in-out" : "none"
++        }}
++      >
++        <span className="text-black font-medium font-dm-mono text-sm mr-2">
++          {displayedValue}%
++        </span>
++      </div>
++      
++      {/* Percentage indicator (appears when progress bar is too small) */}
++      {width < 15 && (
++        <div className="absolute right-0 h-full flex items-center z-30">
++          <span className="text-autofun-text-secondary font-medium font-dm-mono text-sm mr-2">
++            {displayedValue}%
++          </span>
++        </div>
++      )}
+     </div>
+   );
+ }
+diff --git a/src/components/trade.tsx b/src/components/trade.tsx
+index 62eb549..de7fb88 100644
+--- a/src/components/trade.tsx
++++ b/src/components/trade.tsx
+@@ -104,7 +104,7 @@ export default function Trade({ token }: { token: IToken }) {
+     : formatNumber(convertedAmount, false, true);
+ 
+   return (
+-    <div className="relative border p-4 bg-autofun-background-card">
++    <div className="relative p-4 pt-0">
+       {isExecutingSwap && <Loader />}
+       <div className="flex flex-col gap-4">
+         <div className="flex flex-col">
+diff --git a/src/components/trading-view-chart/constants.ts b/src/components/trading-view-chart/constants.ts
+index ab3f605..9ce3360 100644
+--- a/src/components/trading-view-chart/constants.ts
++++ b/src/components/trading-view-chart/constants.ts
+@@ -21,17 +21,17 @@ const chartStyleOverrides = [
+ }, {});
+ 
+ export const chartOverrides = {
+-  "paneProperties.background": "#171717",
+-  "paneProperties.backgroundGradientStartColor": "#171717",
+-  "paneProperties.backgroundGradientEndColor": "#171717",
++  "paneProperties.background": "#0a0a0a",
++  "paneProperties.backgroundGradientStartColor": "#0a0a0a",
++  "paneProperties.backgroundGradientEndColor": "#0a0a0a",
+   "paneProperties.backgroundType": "solid",
+-  "paneProperties.vertGridProperties.color": "#171717",
++  "paneProperties.vertGridProperties.color": "#0a0a0a",
+   "paneProperties.vertGridProperties.style": 2,
+-  "paneProperties.horzGridProperties.color": "#171717",
++  "paneProperties.horzGridProperties.color": "#0a0a0a",
+   "paneProperties.horzGridProperties.style": 2,
+   "mainSeriesProperties.priceLineColor": "#3a3e5e",
+   "scalesProperties.textColor": "#9494A8",
+-  "scalesProperties.lineColor": "#171717",
++  "scalesProperties.lineColor": "#0a0a0a",
+   "scalesProperties.fontSize": 14,
+   priceScaleSelectionStrategyName: "left",
+   "scalesProperties.showSymbolLabels": true,
+diff --git a/src/components/trading-view-chart/tv-chart-container.tsx b/src/components/trading-view-chart/tv-chart-container.tsx
+index 53f4eaa..68bd272 100644
+--- a/src/components/trading-view-chart/tv-chart-container.tsx
++++ b/src/components/trading-view-chart/tv-chart-container.tsx
+@@ -74,8 +74,8 @@ export const TVChartContainer = ({
+         container: elem,
+         library_path: `${location.protocol}//${location.host}/libraries/charting_library/`,
+         loading_screen: {
+-          backgroundColor: "#171717",
+-          foregroundColor: "#171717",
++          backgroundColor: "#0a0a0a",
++          foregroundColor: "#0a0a0a",
+         },
+         enabled_features: [
+           ...enabledFeatures,
+@@ -98,11 +98,11 @@ export const TVChartContainer = ({
+         fullscreen: false,
+         autosize: true,
+         custom_css_url: "/tradingview-chart.css",
+-        toolbar_bg: "#171717",
++        toolbar_bg: "#0a0a0a",
+         overrides: {
+           ...chartOverrides,
+           // Background and Grid
+-          "paneProperties.background": "#171717",
++          "paneProperties.background": "#0a0a0a",
+           "paneProperties.backgroundType": "solid",
+           "paneProperties.vertGridProperties.color": "#2e2e2e",
+           "paneProperties.horzGridProperties.color": "#2e2e2e",
+@@ -111,7 +111,7 @@ export const TVChartContainer = ({
+           "paneProperties.leftMargin": 5,
+ 
+           // Scales
+-          "scalesProperties.backgroundColor": "#171717",
++          "scalesProperties.backgroundColor": "#0a0a0a",
+           "scalesProperties.lineColor": "#2e2e2e",
+           "scalesProperties.textColor": "#8C8C8C",
+           "scalesProperties.fontSize": 11,
+@@ -144,10 +144,10 @@ export const TVChartContainer = ({
+           "volume.transparency": 50,
+ 
+           // Header
+-          "header_widget.background": "#171717",
++          "header_widget.background": "#0a0a0a",
+           "header_widget.style.color": "#8C8C8C",
+           "header_widget.buttons.color": "#8C8C8C",
+-          "header_widget.buttons.backgroundColor": "#171717",
++          "header_widget.buttons.backgroundColor": "#0a0a0a",
+           "header_widget.buttons.borderColor": "#262626",
+           "header_widget.buttons.fontSize": 11,
+         },
+diff --git a/src/components/txs-and-holders.tsx b/src/components/txs-and-holders.tsx
+index edb7421..46fbe89 100644
+--- a/src/components/txs-and-holders.tsx
++++ b/src/components/txs-and-holders.tsx
+@@ -60,7 +60,7 @@ export default function TransactionsAndHolders({ token }: { token: IToken }) {
+   };
+ 
+   return (
+-    <div className="border md:overflow-x-hidden xs:max-w-fit md:max-w-full bg-autofun-background-card">
++    <div className="md:overflow-x-hidden xs:max-w-fit md:max-w-full">
+       <div className="flex items-center justify-between p-3">
+         <div className="flex items-center">
+           <Button
+diff --git a/src/pages/token.tsx b/src/pages/token.tsx
+index 0257ba5..ce671c7 100644
+--- a/src/pages/token.tsx
++++ b/src/pages/token.tsx
+@@ -26,8 +26,8 @@ import { fetchTokenMarketMetrics } from "@/utils/blockchain";
+ import { getSocket } from "@/utils/socket";
+ import { useWallet } from "@solana/wallet-adapter-react";
+ import { useQuery } from "@tanstack/react-query";
+-import { ExternalLink, Globe, Info as InfoCircle } from "lucide-react";
+-import { useEffect } from "react";
++import { ExternalLink, Globe, Info as InfoCircle, BarChart3, Paintbrush } from "lucide-react";
++import { useEffect, useState } from "react";
+ import { Link, useParams } from "react-router";
+ import { toast } from "react-toastify";
+ 
+@@ -39,6 +39,7 @@ export default function Page() {
+   const { publicKey } = useWallet();
+   const normalizedWallet = publicKey?.toString();
+   const { solPrice: contextSolPrice } = useSolPriceContext();
++  const [activeTab, setActiveTab] = useState<'chart' | 'ai'>('chart');
+ 
+   // Fetch token details from API
+   const tokenQuery = useQuery({
+@@ -206,167 +207,258 @@ export default function Page() {
+   }
+ 
+   return (
+-    <div className="flex flex-wrap gap-3">
+-      {/* Right Section */}
+-      <div className="w-full lg:max-w-[450px] flex flex-col gap-3">
+-        <div className="border p-4 bg-autofun-background-card flex flex-col gap-3">
+-          <div className="w-full aspect-square">
+-            <SkeletonImage src={token?.image} alt="image" />
+-          </div>
+-          <div className="flex flex-col gap-3">
+-            {/* Token Info and Time */}
+-            <div className="flex items-center w-full min-w-0">
+-              <div className="flex items-start md:items-center justify-between w-full min-w-0">
+-                <div className="capitalize text-autofun-text-primary text-3xl font-medium font-satoshi leading-normal truncate min-w-0">
+-                  {token?.name}
++    <div className="flex flex-col gap-3">
++      {/* Top Stats Section - Full Width */}
++      <div className="w-full py-10 flex flex-wrap justify-between">
++        <div className="flex-1 flex flex-col items-center">
++          <span className="text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
++            {marketCapUSD > 0 ? abbreviateNumber(marketCapUSD) : "-"}
++            {metricsQuery.isLoading && (
++              <span className="text-xs text-autofun-text-secondary ml-1">
++                loading...
++              </span>
++            )}
++          </span>
++          <span className="text-lg font-dm-mono text-autofun-text-secondary mt-3">
++            Market Cap
++          </span>
++        </div>
++        
++        <div className="flex-1 flex flex-col items-center">
++          <span className="text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
++            {volume24h > 0 ? abbreviateNumber(volume24h) : "-"}
++            {metricsQuery.isLoading && (
++              <span className="text-xs text-autofun-text-secondary ml-1">
++                loading...
++              </span>
++            )}
++          </span>
++          <span className="text-lg font-dm-mono text-autofun-text-secondary mt-3">
++            24hr Volume
++          </span>
++        </div>
++        
++        <div className="flex-1 flex flex-col items-center">
++          <span className="text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
++            {token?.createdAt
++              ? fromNow(token?.createdAt).replace("ago", "").trim()
++              : "-"}
++          </span>
++          <span className="text-lg font-dm-mono text-autofun-text-secondary mt-3">
++            Age
++          </span>
++        </div>
++      </div>
++
++      {/* Three Column Layout */}
++      <div className="flex flex-wrap gap-3">
++        {/* Left Column - 25% - Token Info */}
++        <div className="w-full lg:w-[24%] flex flex-col gap-3">
++          <div className="p-4 pt-0 flex flex-col gap-3">
++            <div className="relative overflow-hidden">
++              <div className="w-full aspect-square">
++                <SkeletonImage src={token?.image} alt="image" />
++              </div>
++              
++              {/* Token name overlapping at top - with drop shadow */}
++              <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 via-black/25 to-transparent px-3 py-2.5">
++                <div className="flex items-center justify-between w-full">
++                  <h3 className="capitalize text-white text-2xl font-bold font-satoshi leading-tight truncate pr-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
++                    {token?.name}
++                  </h3>
++                  <div className="shrink-0 ml-1">
++                    <TokenStatus token={token} />
++                  </div>
+                 </div>
+-                <div>
+-                  <TokenStatus token={token} />
++              </div>
++              
++              {/* Ticker overlapping at bottom - with drop shadow */}
++              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 via-black/25 to-transparent px-3 py-2.5">
++                <div className="text-autofun-text-highlight text-xl font-bold font-dm-mono uppercase tracking-widest drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
++                  ${token?.ticker}
+                 </div>
+               </div>
+             </div>
+-            <div className="text-autofun-text-highlight text-base font-normal font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0">
+-              ${token?.ticker}
+-            </div>
+-            <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
+-              {token?.description}
+-            </span>
+-            <div className="flex justify-end">
+-              <Link
+-                to={`https://solscan.io/token/${token?.mint}`}
+-                target="_blank"
+-              >
+-                <Button size="small" variant="ghost">
+-                  View on Solscan <ExternalLink className="size-4 ml-1" />
+-                </Button>
+-              </Link>
+-            </div>
+-          </div>
+-          {/* Contractaddress */}
+-          <div className="flex border">
+-            <div className="size-10  inline-flex border-r shrink-0 bg-autofun-background-action-primary">
+-              <span className="text-base font-dm-mono m-auto text-autofun-text-secondary">
+-                CA
++            
++            <div className="flex flex-col gap-3">
++              <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
++                {token?.description}
+               </span>
++              <div className="flex justify-end">
++                <Link
++                  to={`https://solscan.io/token/${token?.mint}`}
++                  target="_blank"
++                >
++                  <Button size="small" variant="ghost">
++                    View on Solscan <ExternalLink className="size-4 ml-1" />
++                  </Button>
++                </Link>
++              </div>
+             </div>
+-            <div className="bg-autofun-background-input flex justify-between py-2 px-3 min-w-0 w-full gap-2">
+-              <span className="w-0 flex-1 min-w-0 block text-base text-autofun-text-secondary truncate">
+-                {token?.mint}
+-              </span>
+-              <CopyButton text={token?.mint} />
++            
++            {/* Contract address */}
++            <div className="flex">
++              <div className="size-10 inline-flex border-r shrink-0 bg-autofun-background-action-primary">
++                <span className="text-base font-dm-mono m-auto text-autofun-text-secondary">
++                  CA
++                </span>
++              </div>
++              <div className="bg-autofun-background-input flex justify-between py-2 px-3 min-w-0 w-full gap-2">
++                <span className="w-0 flex-1 min-w-0 block text-base text-autofun-text-secondary truncate">
++                  {token?.mint}
++                </span>
++                <CopyButton text={token?.mint} />
++              </div>
+             </div>
++
++            {/* Agents Section */}
++            <AgentsSection />
++
++            {/* Social Links */}
++            {token?.creator !== normalizedWallet && (
++              <div className="flex items-center justify-between gap-0.5">
++                <Link to={token?.website} className="w-full" target="_blank">
++                  <Button
++                    className="w-full rounded-none"
++                    disabled={!token?.website}
++                    aria-label="website"
++                  >
++                    <Globe />
++                  </Button>
++                </Link>
++                <Link to={token?.twitter} className="w-full" target="_blank">
++                  <Button
++                    className="w-full rounded-none"
++                    disabled={!token?.twitter}
++                    aria-label="twitter"
++                  >
++                    <SkeletonImage
++                      src="/x.svg"
++                      height={24}
++                      width={24}
++                      alt="twitter_icon"
++                      className="w-6 m-auto"
++                    />
++                  </Button>
++                </Link>
++                <Link to={token?.telegram} className="w-full" target="_blank">
++                  <Button
++                    className="w-full rounded-none py-0 flex"
++                    disabled={!token?.telegram}
++                    aria-label="telegram"
++                  >
++                    <SkeletonImage
++                      src="/telegram.svg"
++                      height={24}
++                      width={24}
++                      alt="telegram_icon"
++                      className="size-6 object-contain m-auto h-full"
++                    />
++                  </Button>
++                </Link>
++                <Link to={token?.discord} className="w-full" target="_blank">
++                  <Button
++                    className="w-full rounded-none px-0"
++                    disabled={!token?.discord}
++                    aria-label="discord"
++                  >
++                    <SkeletonImage
++                      src="/discord.svg"
++                      height={24}
++                      width={24}
++                      alt="discord_icon"
++                      className="w-auto m-auto"
++                    />
++                  </Button>
++                </Link>
++              </div>
++            )}
++            {token?.creator === normalizedWallet && <AdminSection />}
+           </div>
++        </div>
+ 
+-          {/* Agents Section */}
+-          <AgentsSection />
++        {/* Middle Column - 50% - Tabs for Chart and AI Create */}
++        <div className="w-full lg:w-[49%] flex flex-col gap-3">
++          <div className="overflow-hidden relative border-b border-autofun-stroke-primary">
++            <div className="flex flex-col">
++              {/* Green stroke above tab section */}
++              <div className="h-2 w-full bg-autofun-text-highlight"></div>
++              
++              {/* Tabs Header with Title and Right-aligned Tabs - removed border-b as it's on the parent */}
++              <div className="flex items-center justify-between pr-2">
++                <h2 className="font-satoshi font-bold text-xl text-autofun-text-highlight px-6 py-3">
++                  {activeTab === 'chart' ? 'Chart' : 'AI Content Creation'}
++                </h2>
++                <div className="flex">
++                  <button
++                    className={`px-4 py-3 text-autofun-text-primary font-medium ${
++                      activeTab === 'chart' 
++                        ? 'bg-autofun-background-highlight text-black' 
++                        : 'text-autofun-text-secondary hover:text-autofun-text-primary'
++                    }`}
++                    onClick={() => setActiveTab('chart')}
++                    style={{ marginTop: '-2px', paddingTop: '14px' }}
++                  >
++                    <BarChart3 className={`size-4 inline-block mr-1.5 ${
++                      activeTab === 'chart' ? 'text-black' : ''
++                    }`} />
++                    Chart
++                  </button>
++                  <button
++                    className={`px-4 py-3 text-autofun-text-primary font-medium ${
++                      activeTab === 'ai' 
++                        ? 'bg-autofun-background-highlight text-black' 
++                        : 'text-autofun-text-secondary hover:text-autofun-text-primary'
++                    }`}
++                    onClick={() => setActiveTab('ai')}
++                    style={{ marginTop: '-2px', paddingTop: '14px' }}
++                  >
++                    <Paintbrush className={`size-4 inline-block mr-1.5 ${
++                      activeTab === 'ai' ? 'text-black' : ''
++                    }`} />
++                    AI Create
++                  </button>
++                </div>
++              </div>
+ 
+-          {/* Social Links */}
+-          {token?.creator !== normalizedWallet && (
+-            <div className="flex items-center justify-between gap-0.5">
+-              <Link to={token?.website} className="w-full" target="_blank">
+-                <Button
+-                  className="w-full rounded-none "
+-                  disabled={!token?.website}
+-                  aria-label="website"
+-                >
+-                  <Globe />
+-                </Button>
+-              </Link>
+-              <Link to={token?.twitter} className="w-full" target="_blank">
+-                <Button
+-                  className="w-full rounded-none"
+-                  disabled={!token?.twitter}
+-                  aria-label="twitter"
+-                >
+-                  <SkeletonImage
+-                    src="/x.svg"
+-                    height={24}
+-                    width={24}
+-                    alt="twitter_icon"
+-                    className="w-6 m-auto"
+-                  />
+-                </Button>
+-              </Link>
+-              <Link to={token?.telegram} className="w-full" target="_blank">
+-                <Button
+-                  className="w-full rounded-none py-0 flex"
+-                  disabled={!token?.telegram}
+-                  aria-label="telegram"
+-                >
+-                  <SkeletonImage
+-                    src="/telegram.svg"
+-                    height={24}
+-                    width={24}
+-                    alt="telegram_icon"
+-                    className="size-6 object-contain m-auto h-full"
+-                  />
+-                </Button>
+-              </Link>
+-              <Link to={token?.discord} className="w-full" target="_blank">
+-                <Button
+-                  className="w-full rounded-none  px-0"
+-                  disabled={!token?.discord}
+-                  aria-label="discord"
+-                >
+-                  <SkeletonImage
+-                    src="/discord.svg"
+-                    height={24}
+-                    width={24}
+-                    alt="discord_icon"
+-                    className="w-auto m-auto"
+-                  />
+-                </Button>
+-              </Link>
+-            </div>
+-          )}
+-          {token?.creator === normalizedWallet && <AdminSection />}
+-          {/* USD Price & Solana Price */}
+-          <div className="flex border bg-autofun-background-card py-2 px-3 items-center justify-between divide-x divide-autofun-stroke-primary">
+-            <div className="flex flex-col gap-1 items-center w-full">
+-              <span className="text-base font-dm-mono text-autofun-text-secondary">
+-                Price USD
+-              </span>
+-              <span className="text-xl font-dm-mono text-autofun-text-primary">
+-                {tokenPriceUSD ? formatNumberSubscript(tokenPriceUSD) : "$0.00"}
+-                {metricsQuery.isLoading && (
+-                  <span className="text-xs text-autofun-text-secondary ml-1">
+-                    loading...
+-                  </span>
+-                )}
+-              </span>
+-            </div>
+-            <div className="flex flex-col gap-1 items-center w-full">
+-              <span className="text-base font-dm-mono text-autofun-text-secondary">
+-                Price
+-              </span>
+-              <span className="text-xl font-dm-mono text-autofun-text-primary">
+-                {currentPrice
+-                  ? formatNumberSubscript(currentPrice)
+-                  : "0.00000000"}
+-                {metricsQuery.isLoading && (
+-                  <span className="text-xs text-autofun-text-secondary ml-1">
+-                    loading...
+-                  </span>
+-                )}
+-              </span>
++              {/* Tab Content */}
++              {activeTab === 'chart' && (
++                <>
++                  <div className="w-full h-[50vh] bg-autofun-background-primary">
++                    <TradingViewChart name={token.name} token={token.mint} />
++                  </div>
++                  <div className="p-4">
++                    <TransactionsAndHolders token={token} />
++                  </div>
++                </>
++              )}
++              {activeTab === 'ai' && (
++                <div id="generation" className="p-4 scroll-mt-16">
++                  <GenerationSection />
++                </div>
++              )}
+             </div>
+           </div>
++        </div>
++
++        {/* Right Column - 25% - Trading and Bonding Curve */}
++        <div className="w-full lg:w-[24%] flex flex-col gap-3">
++          {/* Trade Component - Now at the top */}
++          <Trade token={token} />
++
+           {/* Bonding Curve */}
+-          <div className="flex flex-col gap-3.5">
++          <div className="p-4 flex flex-col gap-3.5">
+             <div className="flex justify-between gap-3.5 items-center">
+               <p className="font-medium font-satoshi">
+-                Bonding Curve Progress:{" "}
+-                <span className="text-autofun-text-highlight">
+-                  {normalizedProgress(token?.curveProgress) === 100
+-                    ? "Completed"
+-                    : `${normalizedProgress(token?.curveProgress)}%`}
+-                </span>
++                Bonding Curve Progress
+               </p>
+               <InfoCircle className="size-5 text-autofun-text-secondary" />
+             </div>
+-            <BondingCurveBar progress={token?.curveProgress} />
++            <div>
++              <BondingCurveBar progress={token?.curveProgress} />
++            </div>
+             {token?.status !== "migrated" ? (
+-              <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words">
++              <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">
+                 Graduate this coin to Raydium at{" "}
+                 {formatNumber(graduationMarketCap, true)} market cap.{"\n"}
+                 There is{" "}
+@@ -380,102 +472,41 @@ export default function Page() {
+               </p>
+             ) : null}
+           </div>
+-        </div>
+-        <Trade token={token} />
+-      </div>
+-      {/* Left Section */}
+-      <div className="grow flex flex-col gap-3 w-full md:w-auto">
+-        {/* Info */}
+-        <div className="flex py-2 flex-wrap lg:flex-nowrap border bg-autofun-background-card items-center justify-between gap-3 lg:divide-x divide-autofun-stroke-primary">
+-          <div className="flex flex-col gap-2 items-center w-full">
+-            <span className="text-base font-dm-mono text-autofun-text-secondary">
+-              <span className="lg:hidden">MCap</span>
+-              <span className="hidden lg:inline">Market Cap</span>
+-            </span>
+-            <span className="text-xl font-dm-mono text-autofun-text-highlight">
+-              {marketCapUSD > 0 ? abbreviateNumber(marketCapUSD) : "-"}
+-              {metricsQuery.isLoading && (
+-                <span className="text-xs text-autofun-text-secondary ml-1">
+-                  loading...
++          
++          {/* Price Display - Now below bonding curve */}
++          <div className="py-4 px-3">
++            <div className="flex flex-col gap-3 divide-y divide-autofun-stroke-primary">
++              <div className="flex flex-col gap-1 items-center pb-3">
++                <span className="text-lg font-dm-mono text-autofun-text-secondary">
++                  Price USD
+                 </span>
+-              )}
+-              {!marketCapUSD && !metricsQuery.isLoading && (
+-                <span className="text-xs text-autofun-text-secondary ml-1">
+-                  <Link
+-                    to={`https://solscan.io/token/${token?.mint}`}
+-                    target="_blank"
+-                    className="hover:underline"
+-                  >
+-                    View on Solscan
+-                  </Link>
++                <span className="text-2xl font-dm-mono text-autofun-text-primary">
++                  {tokenPriceUSD ? formatNumberSubscript(tokenPriceUSD) : "$0.00"}
++                  {metricsQuery.isLoading && (
++                    <span className="text-xs text-autofun-text-secondary ml-1">
++                      loading...
++                    </span>
++                  )}
+                 </span>
+-              )}
+-            </span>
+-          </div>
+-          <div className="flex flex-col gap-2 items-center w-full">
+-            <span className="text-base font-dm-mono text-autofun-text-secondary">
+-              <span className="lg:hidden">24hr</span>
+-              <span className="hidden lg:inline">24hr Volume</span>
+-            </span>
+-            <span className="text-xl font-dm-mono text-autofun-text-primary">
+-              {volume24h > 0 ? abbreviateNumber(volume24h) : "-"}
+-              {metricsQuery.isLoading && (
+-                <span className="text-xs text-autofun-text-secondary ml-1">
+-                  loading...
++              </div>
++              <div className="flex flex-col gap-1 items-center pt-3">
++                <span className="text-lg font-dm-mono text-autofun-text-secondary">
++                  Price SOL
+                 </span>
+-              )}
+-              {!volume24h && !metricsQuery.isLoading && (
+-                <span className="text-xs text-autofun-text-secondary ml-1">
+-                  <Link
+-                    to={`https://solscan.io/token/${token?.mint}#trade`}
+-                    target="_blank"
+-                    className="hover:underline"
+-                  >
+-                    View trades
+-                  </Link>
++                <span className="text-2xl font-dm-mono text-autofun-text-primary">
++                  {currentPrice
++                    ? formatNumberSubscript(currentPrice)
++                    : "0.00000000"}
++                  {metricsQuery.isLoading && (
++                    <span className="text-xs text-autofun-text-secondary ml-1">
++                      loading...
++                    </span>
++                  )}
+                 </span>
+-              )}
+-            </span>
+-          </div>
+-          <div className="flex flex-col gap-2 items-center w-full">
+-            <span className="text-base font-dm-mono text-autofun-text-secondary">
+-              Creator
+-            </span>
+-            <span className="text-xl font-dm-mono text-autofun-text-primary">
+-              {token?.creator ? (
+-                <Link
+-                  to={`https://solscan.io/account/${token?.creator}`}
+-                  target="_blank"
+-                  className="hover:text-autofun-text-highlight"
+-                >
+-                  {shortenAddress(token?.creator)}
+-                </Link>
+-              ) : (
+-                "-"
+-              )}
+-            </span>
+-          </div>
+-          <div className="flex flex-col gap-2 items-center w-full">
+-            <span className="text-base font-dm-mono text-autofun-text-secondary">
+-              Time
+-            </span>
+-            <span className="text-lg lg:text-xl font-dm-mono text-autofun-text-primary">
+-              {token?.createdAt
+-                ? fromNow(token?.createdAt).replace("ago", "").trim()
+-                : "-"}
+-            </span>
++              </div>
++            </div>
+           </div>
+         </div>
+-        <div className="border bg-autofun-background-card">
+-          <TradingViewChart name={token.name} token={token.mint} />
+-        </div>
+-        <TransactionsAndHolders token={token} />
+-        <div
+-          id="generation"
+-          className="border bg-autofun-background-card scroll-mt-16"
+-        >
+-          <GenerationSection />
+-        </div>
+       </div>
+     </div>
+   );

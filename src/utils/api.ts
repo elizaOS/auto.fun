@@ -147,6 +147,35 @@ export const getChartTable = async ({
 
 export const executeCron_development_only = async () => {
   if (env.appEnv === "development") {
-    await fetcher("/__scheduled?cron=*/1 * * * *", "GET");
+    try {
+      console.log("Executing development cron...");
+      
+      // First attempt with no-cors mode to bypass CORS restrictions
+      try {
+        console.log(`Attempting no-cors mode fetch to ${env.apiUrl}/__scheduled?cron=*/1 * * * *`);
+        await fetch(`${env.apiUrl}/__scheduled?cron=*/1 * * * *`, {
+          method: "GET",
+          mode: "no-cors", // This bypasses CORS restrictions
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+        console.log("Development cron executed with no-cors mode");
+        return;
+      } catch (noCorsError) {
+        console.warn("No-cors mode fetch failed, falling back to regular fetcher", noCorsError);
+      }
+      
+      // Fallback to regular fetcher if no-cors mode fails
+      try {
+        console.log("Attempting regular fetcher for cron execution");
+        const response = await fetcher("/__scheduled?cron=*/1 * * * *", "GET");
+        console.log("Development cron executed successfully with regular fetcher", response);
+      } catch (fetcherError) {
+        console.error("Development cron execution failed with regular fetcher:", fetcherError);
+      }
+    } catch (error) {
+      console.error("Development cron execution failed completely:", error);
+    }
   }
 };

@@ -1,9 +1,20 @@
 import { Connection, PublicKey, ParsedAccountData } from "@solana/web3.js";
 import { env } from "./env";
 
-// Use Helius RPC URL from environment variables
-export const getRpcUrl = (): string => {
-  return env.rpcUrl;
+// Define fallback RPC URLs
+const MAINNET_RPC_URL = "https://api.mainnet-beta.solana.com";
+const DEVNET_RPC_URL = "https://api.devnet.solana.com";
+
+// Use Helius RPC URL from environment variables with fallback support
+export const getRpcUrl = (useFallback = false): string => {
+  const isPrimaryDevnet = env.solanaNetwork === "devnet";
+  
+  if (!useFallback) {
+    return env.rpcUrl; // Use primary configured RPC URL
+  }
+  
+  // Return the opposite network's URL as fallback
+  return isPrimaryDevnet ? MAINNET_RPC_URL : DEVNET_RPC_URL;
 };
 
 // Cache to store previously fetched data
@@ -92,15 +103,15 @@ const requestQueue = new RequestQueue();
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Create connection instance with proper config
-export const getConnection = (): Connection => {
-  return new Connection(getRpcUrl(), "confirmed");
+export const getConnection = (useFallback = false): Connection => {
+  return new Connection(getRpcUrl(useFallback), "confirmed");
 };
 
-// Wrapper for connection methods with queuing, retries and caching
+// Wrapper for connection methods with queuing, retries, caching, and network fallbacks
 const queuedRequest = async <T>(
   cacheKey: string | null,
   cacheMap: Map<string, T> | null,
-  fn: () => Promise<T>,
+  fn: (connection: Connection) => Promise<T>,
   ttlMs: number = 30000, // 30 seconds cache TTL by default
 ): Promise<T> => {
   // Check cache first if caching is enabled for this request
@@ -109,8 +120,11 @@ const queuedRequest = async <T>(
   }
 
   try {
-    // Queue the request
-    const result = await requestQueue.add(fn);
+    // First try with primary network
+    const primaryConnection = getConnection(false);
+    
+    // Queue the request with primary network
+    const result = await requestQueue.add(() => fn(primaryConnection));
 
     // Store in cache if caching is enabled
     if (cacheKey && cacheMap) {
@@ -120,9 +134,31 @@ const queuedRequest = async <T>(
     }
 
     return result;
-  } catch (error) {
-    console.error(`Error in queuedRequest:`, error);
-    throw error;
+  } catch (primaryError) {
+    console.error(`Error in primary network request:`, primaryError);
+    
+    // If primary network fails, try with fallback network
+    try {
+      console.log("Attempting fallback network request");
+      const fallbackConnection = getConnection(true);
+      
+      // Queue the request with fallback network
+      const fallbackResult = await requestQueue.add(() => fn(fallbackConnection));
+      
+      console.log("Fallback network request succeeded");
+      
+      // Store in cache if caching is enabled
+      if (cacheKey && cacheMap) {
+        cacheMap.set(cacheKey, fallbackResult);
+        // Expire cache entry after TTL
+        setTimeout(() => cacheMap.delete(cacheKey), ttlMs);
+      }
+      
+      return fallbackResult;
+    } catch (fallbackError) {
+      console.error(`Error in fallback network request:`, fallbackError);
+      throw fallbackError; // If fallback also fails, throw the fallback error
+    }
   }
 };
 
@@ -163,7 +199,7 @@ export interface TokenMarketMetrics {
   holderCount: number;
 }
 
-// Enhanced version of fetchTokenMarketMetrics with proper rate limiting
+// Enhanced version of fetchTokenMarketMetrics with proper rate limiting and network fallback
 export const fetchTokenMarketMetrics = async (
   tokenMint: string,
 ): Promise<TokenMarketMetrics> => {
@@ -171,13 +207,12 @@ export const fetchTokenMarketMetrics = async (
     console.log(
       `Fetching token market metrics from blockchain for ${tokenMint}`,
     );
-    const connection = getConnection();
 
-    // Get token supply with caching
+    // Get token supply with caching and fallback
     const tokenSupplyInfo = await queuedRequest(
       `tokenSupply:${tokenMint}`,
       cache.tokenSupply,
-      () => connection.getTokenSupply(new PublicKey(tokenMint)),
+      (connection) => connection.getTokenSupply(new PublicKey(tokenMint)),
       120000, // 2 minute cache for token supply
     );
 
@@ -211,7 +246,7 @@ export const fetchTokenMarketMetrics = async (
     const signatures = await queuedRequest(
       `signatures:${tokenMint}`,
       cache.signatures,
-      () =>
+      (connection) =>
         connection.getSignaturesForAddress(new PublicKey(tokenMint), {
           limit: 25,
         }),
@@ -237,7 +272,7 @@ export const fetchTokenMarketMetrics = async (
           const tx = await queuedRequest(
             `tx:${sig.signature}`,
             cache.transactions,
-            () =>
+            (connection) =>
               connection.getParsedTransaction(sig.signature, {
                 maxSupportedTransactionVersion: 0,
               }),
@@ -455,13 +490,11 @@ export const fetchTokenHolders = async (
       };
     }
 
-    const connection = getConnection();
-
-    // Get all token accounts for this mint
+    // Get all token accounts for this mint with network fallback support
     const accounts = await queuedRequest(
       null, // Don't cache this specific request
       null,
-      () =>
+      (connection) =>
         connection.getParsedProgramAccounts(
           new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
           {
@@ -548,13 +581,12 @@ export const fetchTokenTransactions = async (
     console.log(
       `Fetching token transactions directly from blockchain for ${tokenMint}`,
     );
-    const connection = getConnection();
 
-    // Get recent signatures with smaller batch
+    // Get recent signatures with smaller batch and network fallback
     const signatures = await queuedRequest(
       `signatures:${tokenMint}`,
       cache.signatures,
-      () =>
+      (connection) =>
         connection.getSignaturesForAddress(
           new PublicKey(tokenMint),
           { limit: Math.min(limit * 2, 25) }, // Request fewer signatures to avoid rate limits
@@ -578,11 +610,11 @@ export const fetchTokenTransactions = async (
 
     const transactionPromises = signaturesToProcess.map(async (sig) => {
       try {
-        // Use cached transaction data if available
+        // Use cached transaction data if available with network fallback
         const tx = await queuedRequest(
           `tx:${sig.signature}`,
           cache.transactions,
-          () =>
+          (connection) =>
             connection.getParsedTransaction(sig.signature, {
               maxSupportedTransactionVersion: 0,
             }),
@@ -683,7 +715,7 @@ export const fetchTokenTransactions = async (
   }
 };
 
-// Enhanced version of fetchTokenChartData with proper rate limiting
+// Enhanced version of fetchTokenChartData with proper rate limiting and network fallback
 export const fetchTokenChartData = async (
   tokenMint: string,
   from: number,
@@ -702,13 +734,12 @@ export const fetchTokenChartData = async (
     console.log(
       `Fetching token chart data from blockchain for ${tokenMint} (resolution: ${resolution})`,
     );
-    const connection = getConnection();
 
-    // Get more signatures for better data
+    // Get more signatures for better data with network fallback
     const signatures = await queuedRequest(
       `signatures:${tokenMint}`,
       cache.signatures,
-      () =>
+      (connection) =>
         connection.getSignaturesForAddress(
           new PublicKey(tokenMint),
           { limit: 100 }, // Increased for better chart resolution
@@ -741,11 +772,11 @@ export const fetchTokenChartData = async (
 
     const transactionPromises = signaturesToProcess.map(async (sig) => {
       try {
-        // Use cached transaction data if available
+        // Use cached transaction data if available with network fallback
         const tx = await queuedRequest(
           `tx:${sig.signature}`,
           cache.transactions,
-          () =>
+          (connection) =>
             connection.getParsedTransaction(sig.signature, {
               maxSupportedTransactionVersion: 0,
             }),
