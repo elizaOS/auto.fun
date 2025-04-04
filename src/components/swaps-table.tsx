@@ -37,8 +37,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
         return numericAmount.toFixed(2);
       }
     } else {
-      // Format SOL amount - convert from lamports to SOL
-      return (numericAmount / 1e9).toFixed(4);
+      return numericAmount.toFixed(4);
     }
   };
 
