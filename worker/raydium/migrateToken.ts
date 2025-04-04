@@ -166,7 +166,7 @@ export class TokenMigrator {
         );
       }
 
-      //step 4 : send the 10 nft to  our raydium vault and the 10% to the manager multisig
+      //step 4 : send the 10% to the manager multisig
       if (
         !token.migration.sendNft ||
         token.migration.sendNft.status !== "success"
