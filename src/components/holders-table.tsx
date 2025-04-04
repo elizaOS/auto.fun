@@ -13,6 +13,7 @@ import { ExternalLink, RefreshCw } from "lucide-react";
 import { Link } from "react-router";
 import PausedIndicator from "./paused-indicator";
 import { useHolders } from "@/hooks/use-holders";
+import { env } from "@/utils/env";
 
 export default function HoldersTable({ token }: { token: IToken }) {
   const { paused, setPause } = usePause();
@@ -58,7 +59,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
               <TableRow className="hover:bg-white/5" key={holder?.address}>
                 <TableCell className="text-left">
                   <Link
-                    to={`https://solscan.io/account/${holder?.address}`}
+                    to={env.getWalletUrl(holder.address)}
                     target="_blank"
                     className="hover:text-autofun-text-highlight"
                   >
@@ -73,7 +74,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
                 </TableCell>
                 <TableCell>
                   <Link
-                    to={`https://solscan.io/account/${holder?.address}`}
+                    to={env.getWalletUrl(holder.address)}
                     target="_blank"
                   >
                     <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary" />

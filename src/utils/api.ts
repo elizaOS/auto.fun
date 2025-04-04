@@ -144,3 +144,10 @@ export const getChartTable = async ({
     return undefined;
   }
 };
+
+
+export const executeCron_development_only = async () => {
+  if (env.appEnv === "development") {
+    await fetcher("/__scheduled?cron=*/1 * * * *", "GET");
+  }
+};
