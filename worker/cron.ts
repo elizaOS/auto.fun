@@ -844,7 +844,7 @@ export async function monitorTokenEvents(env: Env): Promise<void> {
 // --- Vanity Keypair Generation ---
 const MIN_VANITY_KEYPAIR_BUFFER = 100;
 const TARGET_VANITY_KEYPAIR_BUFFER = 150; // Target slightly higher than min
-const VANITY_SUFFIX = "fun";
+const VANITY_SUFFIX = "FUN";
 const MAX_KEYPAIRS_PER_CRON_RUN = 50; // Maximum keypairs to generate per cron run
 const MAX_CONCURRENT_KEYPAIR_REQUESTS = 5; // Reduced from 10 to 5 for more stability
 
