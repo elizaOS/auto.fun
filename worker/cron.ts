@@ -138,6 +138,12 @@ export async function processTransactionLogs(
           tokenSwapTransactionId: signature,
         };
 
+        try {
+          await updateHoldersCache(env, rawTokenAddress);
+        } catch (error) {
+          logger.error('Failed to update holder cache on newToken event:', error);
+        }
+
         // Update the database
         await updateTokenInDB(env, tokenData);
 
@@ -187,6 +193,12 @@ export async function processTransactionLogs(
         } catch (error) {
           logger.error(`Error parsing mint address: ${error}`);
           return result;
+        }
+
+        try {
+          await updateHoldersCache(env, mintAddress);
+        } catch (error) {
+          logger.error('Failed to update holder cache on swap event:', error);
         }
 
         // Extract user, direction, amount with validation
@@ -900,28 +912,6 @@ export async function cron(env: Env, ctx: ExecutionContext): Promise<void> {
   try {
     logger.log("Running scheduled tasks...");
 
-    /**
-     * in production, the token monitoring will be handled by ./routes/helius-webhook.ts which
-     * is much more robust and less buggy than this current cron implementation. however since
-     * the web hooks are hard to test locally, we will use this cron as a fallback for now.
-     * 
-     * known bugs with cron:
-     * 1. it processes the same transactions multiple times leading to duplicate socket events
-     * 2. it only processes the last 10 transactions which will fail in high volume situations
-     * 3. it only can process things at most every minute which is way too slow
-     * 4. it tracks lastProcessedTransaction in memory, but the worker memory doesn't persist between cron invocations
-     * 
-     * TODO: ideal solution for the future, is to configure our dev environment to support local web hooks.
-     * to do this we can use cloudflared or ngrok to tunnel and then use the helius API to configure a new
-     * web hook to point to that tunnel. then, we should rewrite the cron to instead act as a "catchup/fallback" to read events from the chain that may have been missed during downtime.
-     * note: it's probably extremely unlikely that cloudflare workers would go down for long enough
-     * for the webhook to fail (it retries for up to 3 minutes), so we might not even need a fallback
-     */
-    if (env.NODE_ENV === "development") {
-      // Run token monitoring first
-      await monitorTokenEvents(env);
-    }
-
     // Then update token prices
     const db = getDB(env);
     const activeTokens = await db
@@ -930,21 +920,6 @@ export async function cron(env: Env, ctx: ExecutionContext): Promise<void> {
       .where(eq(tokens.status, "active"));
     const updatedTokens = await bulkUpdatePartialTokens(activeTokens, env);
     logger.log(`Updated prices for ${updatedTokens.length} tokens`);
-
-    // Update holder data for each active token
-    for (const token of activeTokens) {
-      try {
-        if (token.mint) {
-          logger.log(`Updating holder data for token: ${token.mint}`);
-          const holderCount = await updateHoldersCache(env, token.mint);
-          logger.log(
-            `Updated holders for ${token.mint}: ${holderCount} holders`,
-          );
-        }
-      } catch (err) {
-        logger.error(`Error updating holders for token ${token.mint}:`, err);
-      }
-    }
 
     // Check and replenish pre-generated tokens if needed
     try {
