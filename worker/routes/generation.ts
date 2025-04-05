@@ -1706,142 +1706,182 @@ async function generateMetadata(env: Env, maxRetries = 10) {
 
 // Function to generate new pre-generated tokens
 export async function generatePreGeneratedTokens(env: Env) {
+  let metadata: Record<string, string> | null = null;
   try {
-    // Generate metadata using Claude
-    const metadata = await generateMetadata(env);
+    // ----- Step 1: Generate Metadata (Logic from /generate-metadata) -----
+    logger.log("[PreGen Metadata] Starting metadata generation...");
+    const MAX_METADATA_RETRIES = 5; // Reduced retries for cron efficiency
+    let metadataRetryCount = 0;
+    
+    while (metadataRetryCount < MAX_METADATA_RETRIES) {
+        try {
+          logger.log(`[PreGen Metadata] Attempt ${metadataRetryCount + 1}/${MAX_METADATA_RETRIES}...`);
+          
+          // Note: We don't have `validatedData` here, so createTokenPrompt needs the simpler signature
+          const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
+            messages: [
+              {
+                role: "system",
+                content: await createTokenPrompt(env), // Use simpler prompt generation
+              },
+            ],
+            max_tokens: 1000,
+            temperature: 0.75 + (metadataRetryCount * 0.02),
+          });
+
+          let parsedMetadata: Record<string, string> | null = null;
+          const jsonRegex = /{.*}/s; // Use /s flag to match across lines
+          const matches = response.response.match(jsonRegex);
+          
+          if (matches && matches.length > 0) {
+            const jsonString = matches[0];
+            try {
+              parsedMetadata = JSON.parse(jsonString);
+            } catch (parseError) {
+              logger.warn(`[PreGen Metadata Attempt ${metadataRetryCount + 1}] JSON parse failed. Attempting field extraction...`, parseError);
+              // Fallback field extraction (simplified)
+              const nameMatch = response.response.match(/"name"\s*:\s*"([^"]+)"/);
+              const symbolMatch = response.response.match(/"symbol"\s*:\s*"([^"]+)"/);
+              const descMatch = response.response.match(/"description"\s*:\s*"([^"]+)"/);
+              const promptMatch = response.response.match(/"prompt"\s*:\s*"([^"]+)"/);
+              if (nameMatch && symbolMatch && descMatch && promptMatch) {
+                parsedMetadata = { name: nameMatch[1], symbol: symbolMatch[1], description: descMatch[1], prompt: promptMatch[1] };
+                logger.log(`[PreGen Metadata Attempt ${metadataRetryCount + 1}] Successfully extracted fields.`);
+              } else {
+                 logger.warn(`[PreGen Metadata Attempt ${metadataRetryCount + 1}] Failed to extract required fields.`);
+              }
+            }
+          } else {
+              logger.warn(`[PreGen Metadata Attempt ${metadataRetryCount + 1}] Could not find JSON object in AI response.`);
+          }
+
+          // Validation
+          if (parsedMetadata && parsedMetadata.name && parsedMetadata.symbol && parsedMetadata.description && parsedMetadata.prompt) {
+            parsedMetadata.symbol = parsedMetadata.symbol.toUpperCase();
+            metadata = parsedMetadata; // Assign successfully parsed and validated metadata
+            logger.log(`[PreGen Metadata] Successfully generated metadata on attempt ${metadataRetryCount + 1}.`);
+            break; // Exit retry loop
+          } else {
+             logger.warn(`[PreGen Metadata Attempt ${metadataRetryCount + 1}] Missing required fields or failed parsing. Retrying...`);
+             metadataRetryCount++;
+          }
+        } catch (error) {
+          logger.error(`[PreGen Metadata Attempt ${metadataRetryCount + 1}] Error during generation:`, error);
+          metadataRetryCount++;
+          if (metadataRetryCount < MAX_METADATA_RETRIES) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
+    }
+
     if (!metadata) {
-      console.log("Failed to generate metadata");
-      return;
-    }
-
-    logger.log(`Successfully generated token metadata: ${metadata.name} (${metadata.symbol})`);
-
-    // Generate image using the same generateMedia function we use elsewhere
-    let imageUrl = "";
-    try {
-      const imageResult = await generateMedia(env, {
-        prompt: metadata.prompt,
-        type: MediaType.IMAGE,
-      });
-
-      if (!imageResult?.data?.images?.length) {
-        logger.warn("Image generation didn't return expected results. Using fallback image.");
-          throw new Error("Failed to generate image and no fallback available");
-      } else {
-        // Use the generated image
-        imageUrl = imageResult.data.images[0].url;
-      }
-    } catch (imageError) {
-      logger.error(`Error generating image for token ${metadata.name}:`, imageError);
-      
-      // Use a fallback image in development
-
-        throw imageError; // Re-throw in production
-    }
-
-    // Skip if no image is available (most likely means not in development and image gen failed)
-    if (!imageUrl) {
-      logger.error(`No image URL available for token: ${metadata.name}`);
-      return;
-    }
-
-    // Extract content type and base64 data from the Data URL if it's a data: URL
-    if (imageUrl.startsWith('data:')) {
-      try {
-        const matches = imageUrl.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
-
-        if (!matches || matches.length !== 3) {
-          logger.warn(
-            "Invalid image format:",
-            imageUrl.substring(0, 50) + "...",
-          );
-          throw new Error("Invalid image format. Expected data URL format.");
+        logger.error("[PreGen Metadata] Failed to generate valid metadata after all retries. Skipping token.");
+        // Use fallback in development/test
+        if (env.NODE_ENV === "development" || env.NODE_ENV === "test") {
+            const randomNum = Math.floor(Math.random() * 1000);
+            logger.log("[PreGen Metadata] Using fallback metadata.");
+            metadata = { name: `FallbackToken${randomNum}`, symbol: `FB${randomNum % 100}`, description: "Fallback token", prompt: "Fallback image prompt" };
+        } else {
+            return; // Stop if metadata failed in production
         }
+    }
+    // ----- End Step 1 -----
 
-        const contentType = matches[1];
-        const imageData = matches[2];
-
-        // Generate a filename based on metadata
-        const sanitizedName = metadata.name
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, "_");
-
-        // Determine file extension from content type
-        let extension = ".jpg"; // Default
-        if (contentType === "image/png") extension = ".png";
-        else if (contentType === "image/gif") extension = ".gif";
-        else if (contentType === "image/svg+xml") extension = ".svg";
-        else if (contentType === "image/webp") extension = ".webp";
-
-        const filename = `${sanitizedName}${extension}`;
-        logger.log(`Generated filename from metadata: ${filename}`);
-
-        // Convert base64 to buffer
-        const imageBuffer = Uint8Array.from(atob(imageData), (c) =>
-          c.charCodeAt(0),
-        ).buffer;
-
-        // Upload image to Cloudflare R2
-        imageUrl = await uploadToCloudflare(env, imageBuffer, {
-          contentType,
-          filename,
+    // ----- Step 2: Generate Image (using CF AI) -----
+    let imageDataUrl: string = "";
+    try {
+        logger.log(`[PreGen Image] Generating image for: ${metadata.name} using prompt: ${metadata.prompt.substring(0,50)}...`);
+        const imageResult = await generateMedia(env, {
+            prompt: metadata.prompt,
+            type: MediaType.IMAGE,
         });
-
-        logger.log(`Image uploaded successfully: ${imageUrl}`);
-      } catch (dataUrlError) {
-        logger.error("Error processing data URL:", dataUrlError);
-        if (env.NODE_ENV !== "development" && env.NODE_ENV !== "test") {
-          // In production, we need a proper image URL
-          return;
+        if (imageResult?.data?.images?.length && imageResult.data.images[0].url.startsWith('data:image')) {
+            imageDataUrl = imageResult.data.images[0].url;
+            logger.log(`[PreGen Image] Successfully generated image Data URI for ${metadata.name}`);
+        } else {
+            throw new Error("generateMedia did not return a valid image data URI.");
         }
-        // In development, continue with the data URL
-      }
+    } catch (imageError) {
+        logger.error(`[PreGen Image] Error generating image for ${metadata.name}:`, imageError);
+        return; // Stop if image generation fails
     }
+    // ----- End Step 2 -----
 
-    // Upload metadata too
-    let metadataUrl = "";
+    // ----- Step 3: Upload Image to R2 (Logic from /upload) -----
+    let finalImageUrl = ""; // This will hold the final URL
     try {
-      const sanitizedName = metadata.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "_");
-      const metadataFilename = `${sanitizedName}_metadata.json`;
-      const metadataObj = {
-        name: metadata.name,
-        symbol: metadata.symbol,
-        description: metadata.description,
-      };
+        logger.log(`[PreGen Upload] Preparing image for upload: ${metadata.name}`);
+        const imageMatch = imageDataUrl.match(/^data:(image\/[a-z+]+);base64,(.*)$/);
+        if (!imageMatch) {
+            throw new Error("Invalid image data URI format for upload.");
+        }
+        const contentType = imageMatch[1];
+        const base64Data = imageMatch[2];
+        const imageBuffer = Buffer.from(base64Data, "base64");
+        logger.log(`[PreGen Upload] Decoded image: type=${contentType}, size=${imageBuffer.length} bytes`);
 
-      metadataUrl = await uploadToCloudflare(env, metadataObj, {
-        isJson: true,
-        filename: metadataFilename,
-      });
+        let extension = ".jpg";
+        if (contentType.includes("png")) extension = ".png";
+        else if (contentType.includes("gif")) extension = ".gif";
+        else if (contentType.includes("svg")) extension = ".svg";
+        else if (contentType.includes("webp")) extension = ".webp";
 
-      logger.log(`Metadata uploaded successfully: ${metadataUrl}`);
-    } catch (metadataError) {
-      logger.error(`Error uploading metadata for ${metadata.name}:`, metadataError);
-      // Continue without metadata URL if it fails
+        // Use metadata name for filename
+        // const sanitizedName = metadata.name.toLowerCase().replace(/[^a-z0-9\._-]/g, '_'); // Allow . _ -
+        // const imageFilename = `${sanitizedName}${extension}`; 
+        // const imageFilename = `${crypto.randomUUID()}${extension}`; // Alternative: Use UUID
+        const imageFilename = `${crypto.randomUUID()}${extension}`; // Use UUID for unique filename
+        
+        const imageKey = `token-images/${imageFilename}`; // Using the same prefix as /upload
+        logger.log(`[PreGen Upload] Determined image R2 key: ${imageKey}`);
+
+        if (!env.R2) {
+            throw new Error("[PreGen Upload] R2 binding is not available.");
+        }
+
+        logger.log(`[PreGen Upload] Attempting R2 put for key: ${imageKey}`);
+        await env.R2.put(imageKey, imageBuffer, {
+            httpMetadata: { contentType, cacheControl: "public, max-age=31536000" },
+        });
+        logger.log(`[PreGen Upload] Image successfully uploaded to R2: ${imageKey}`);
+
+        // Construct URL based on environment (like /upload does)
+        const assetBaseUrl = env.ASSET_URL || env.VITE_API_URL || 'http://localhost:8787'; // Default to localhost for safety
+        // We need the *filename* part for the /api/image route, not the full R2 key
+        finalImageUrl = `${assetBaseUrl}/api/image/${imageFilename}`; 
+        logger.log(`[PreGen Upload] Constructed final image URL: ${finalImageUrl}`);
+
+    } catch (uploadError) {
+        logger.error(`[PreGen Upload] Error during image upload for ${metadata.name}:`, uploadError);
+        return; // Stop if upload fails
     }
+    // ----- End Step 3 -----
 
-    // Insert into database
+    // ----- Step 4: Insert into Database ----- (Optional: Upload Metadata JSON could be added here)
     try {
-      const db = getDB(env);
-      await db.insert(preGeneratedTokens).values({
-        id: crypto.randomUUID(),
-        name: metadata.name,
-        ticker: metadata.symbol,
-        description: metadata.description,
-        prompt: metadata.prompt,
-        image: imageUrl,
-        createdAt: new Date().toISOString(),
-        used: 0,
-      });
-
-      console.log(`Generated token: ** ${metadata.name} (** ${metadata.symbol})`);
+        logger.log(`[PreGen DB] Saving token to database: ${metadata.name}`);
+        const db = getDB(env);
+        await db.insert(preGeneratedTokens).values({
+            id: crypto.randomUUID(),
+            name: metadata.name,
+            ticker: metadata.symbol,
+            description: metadata.description,
+            prompt: metadata.prompt,
+            image: finalImageUrl, // Use the constructed URL
+            createdAt: new Date().toISOString(),
+            used: 0,
+        });
+        logger.log(`[PreGen DB] Successfully saved token: ${metadata.name} (${metadata.symbol}) with image ${finalImageUrl}`);
     } catch (dbError) {
-      logger.error(`Error saving token to database: ${metadata.name}`, dbError);
+        logger.error(`[PreGen DB] Error saving token ${metadata.name} to database:`, dbError);
+        // Log error, but maybe don't stop the whole cron job?
     }
+    // ----- End Step 4 -----
+
   } catch (error) {
-    console.error(`Error generating token:`, error);
+    // Catch unexpected errors in the entire process for this token
+    const tokenName = metadata?.name || "unknown_token_error";
+    logger.error(`[PreGen Process] Unexpected error during generation for ${tokenName}:`, error);
   }
 }
 
