@@ -1081,8 +1081,10 @@ export async function cron(env: Env, ctx: ExecutionContext | { cron: string }): 
     const updatedTokens = await bulkUpdatePartialTokens(activeTokens, env);
     logger.log(`Updated prices for ${updatedTokens.length} tokens`);
 
-      // Update holder data for each active token
-      for (const token of activeTokens) {
+    await Promise.all([
+      (async () => {
+        // Update holder data for each active token
+        for (const token of activeTokens) {
         try {
           if (token.mint) {
             logger.log(`Updating holder data for token: ${token.mint}`);
@@ -1095,18 +1097,14 @@ export async function cron(env: Env, ctx: ExecutionContext | { cron: string }): 
           logger.error(`Error updating holders for token ${token.mint}:`, err);
         }
       }
-      
-    // Check and replenish pre-generated tokens if needed
-    try {
-      logger.log("Checking pre-generated token supply...");
+    })(),
+    (async () => {
       await checkAndReplenishTokens(env);
-    } catch (err) {
-      logger.error("Error replenishing pre-generated tokens:", err);
-    }
-
-     // --- NEW: Manage Vanity Keypairs ---
-    await manageVanityKeypairs(env);
-    // --- End NEW ---
+    })(),
+    (async () => {
+      await manageVanityKeypairs(env);
+    })(),
+  ]);
 
   } catch (error) {
     logger.error("Error in cron job:", error);
