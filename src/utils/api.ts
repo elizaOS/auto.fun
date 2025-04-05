@@ -99,11 +99,7 @@ export const refreshTokenHolders = async ({ address }: { address: string }) => {
   }
 };
 
-export const getTokenSwapHistory = async ({
-  address,
-}: {
-  address: string;
-}) => {
+export const getTokenSwapHistory = async ({ address }: { address: string }) => {
   try {
     const endpoint = `/api/swaps/${address}`;
     const data = await fetcher(endpoint, "GET");
@@ -157,7 +153,9 @@ export const executeCron_development_only = async () => {
           "Content-Type": "application/json",
         },
       });
-      console.log("Development cron executed (opaque response due to no-cors mode)");
+      console.log(
+        "Development cron executed (opaque response due to no-cors mode)",
+      );
     } catch (error) {
       console.error("Development cron execution failed:", error);
     }

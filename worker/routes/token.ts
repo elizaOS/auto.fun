@@ -1937,8 +1937,8 @@ export async function updateHoldersCache(
 
     // Get all token accounts for this mint
     const largestAccounts = await connection.getTokenLargestAccounts(
-        new PublicKey(mint),
-      );
+      new PublicKey(mint),
+    );
     if (!largestAccounts.value || largestAccounts.value.length === 0) {
       logger.log(`No accounts found for token ${mint}`);
       return 0;
@@ -2001,7 +2001,7 @@ export async function updateHoldersCache(
       }
 
       const wsClient = getWebSocketClient(env);
-      wsClient.emit(`token-${mint}`, 'newHolder', holders);
+      wsClient.emit(`token-${mint}`, "newHolder", holders);
     }
 
     // Update token holder count
@@ -2817,7 +2817,7 @@ export async function processSwapEvent(
 
     // Get DB connection to fetch token data and calculate featuredScore
     const db = getDB(env);
-    
+
     // Get the token data for this swap
     const tokenData = await db
       .select()
@@ -2827,15 +2827,19 @@ export async function processSwapEvent(
 
     // Prepare swap data for emission
     const enrichedSwap = { ...swap };
-    
+
     // Add featuredScore if we have token data
     if (tokenData && tokenData.length > 0) {
       // Get max values for normalization
       const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
-      
+
       // Calculate featured score
-      const featuredScore = calculateFeaturedScore(tokenData[0], maxVolume, maxHolders);
-      
+      const featuredScore = calculateFeaturedScore(
+        tokenData[0],
+        maxVolume,
+        maxHolders,
+      );
+
       // Add token data with featuredScore to the swap
       enrichedSwap.tokenData = {
         ...tokenData[0],
@@ -2913,11 +2917,11 @@ export async function processTokenUpdateEvent(
   try {
     // Get WebSocket client
     const wsClient = getWebSocketClient(env);
-    
+
     // Get DB connection and calculate featuredScore
     const db = getDB(env);
     const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
-    
+
     // Create enriched token data with featuredScore
     const enrichedTokenData = {
       ...tokenData,
@@ -2925,7 +2929,11 @@ export async function processTokenUpdateEvent(
     };
 
     // Always emit to token-specific room
-    await wsClient.emit(`token-${tokenData.mint}`, "updateToken", enrichedTokenData);
+    await wsClient.emit(
+      `token-${tokenData.mint}`,
+      "updateToken",
+      enrichedTokenData,
+    );
     logger.log(`Emitted token update event for ${tokenData.mint}`);
 
     // Optionally emit to global room for activity feed

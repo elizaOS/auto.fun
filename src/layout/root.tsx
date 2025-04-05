@@ -21,7 +21,7 @@ export default function Layout() {
    * cron doesn't trigger automatically in dev so we invoke manually
    */
   useEffect(() => {
-    if (env.appEnv === 'development') {
+    if (env.appEnv === "development") {
       setInterval(executeCron_development_only, 1000 * 30);
     }
   }, []);

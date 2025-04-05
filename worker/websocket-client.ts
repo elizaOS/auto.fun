@@ -55,9 +55,7 @@ export class WebSocketClient {
 
         logger.log(`Successfully broadcasted to room ${formattedRoom}`);
       } else {
-        logger.error(
-          "Cannot emit: No WebSocket Durable Object available",
-        );
+        logger.error("Cannot emit: No WebSocket Durable Object available");
         throw new Error("WebSocket not available");
       }
     } catch (error) {

@@ -47,14 +47,16 @@ const fetchPaginatedData = async <
 
   const queryEndpoint = `${endpoint}?${queryParams.toString()}`;
 
-  const nonValidatedResponse = await fetcher(queryEndpoint, 'GET');
+  const nonValidatedResponse = await fetcher(queryEndpoint, "GET");
 
-  const response = z.object({
-    [itemsPropertyName]: z.array(validationSchema),
-    page: z.number(),
-    totalPages: z.number(),
-    total: z.number(),
-  }).parse(nonValidatedResponse);
+  const response = z
+    .object({
+      [itemsPropertyName]: z.array(validationSchema),
+      page: z.number(),
+      totalPages: z.number(),
+      total: z.number(),
+    })
+    .parse(nonValidatedResponse);
 
   return {
     items: response[itemsPropertyName] as TOutput[],
@@ -65,7 +67,7 @@ const fetchPaginatedData = async <
   };
 };
 
-export const usePage = ({useUrlState}: {useUrlState: boolean}) => {
+export const usePage = ({ useUrlState }: { useUrlState: boolean }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialPageParam = searchParams.get("page");
   const initialPage = initialPageParam
@@ -90,7 +92,6 @@ export const usePage = ({useUrlState}: {useUrlState: boolean}) => {
   return { page, setPage: onPageChange };
 };
 
-
 export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
   endpoint,
   limit,
@@ -99,9 +100,9 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
   sortBy,
   sortOrder,
   enabled = true,
-  useUrlState = false
+  useUrlState = false,
 }: UsePaginationOptions<TOutput, TInput>) => {
-  const {page, setPage} = usePage({ useUrlState });
+  const { page, setPage } = usePage({ useUrlState });
   const [hasMore, setHasMore] = useState(false);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);

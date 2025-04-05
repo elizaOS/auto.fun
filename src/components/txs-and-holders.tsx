@@ -50,7 +50,6 @@ export default function TransactionsAndHolders({ token }: { token: IToken }) {
           queryKey: ["blockchain-metrics", token.mint],
         }),
       ]);
-
     } catch (error) {
       console.error("Error refreshing blockchain data:", error);
       toast.error("Could not refresh blockchain data. Please try again later.");

@@ -1945,7 +1945,9 @@ export const Create = () => {
         console.log("Fetching vanity keypair from backend...");
         const authToken = getAuthToken();
         if (!authToken) {
-          throw new Error("Authentication token not found. Please reconnect wallet.");
+          throw new Error(
+            "Authentication token not found. Please reconnect wallet.",
+          );
         }
 
         const vanityResponse = await fetch(`${env.apiUrl}/api/vanity-keypair`, {
@@ -1961,30 +1963,41 @@ export const Create = () => {
         if (!vanityResponse.ok) {
           let errorMsg = "Failed to obtain vanity keypair.";
           try {
-            const errorData = await vanityResponse.json() as ApiErrorResponse; // Type assertion
+            const errorData = (await vanityResponse.json()) as ApiErrorResponse; // Type assertion
             errorMsg = errorData.error || errorMsg;
-          } catch (e) { /* Ignore parsing error */ }
-          
+          } catch (e) {
+            /* Ignore parsing error */
+          }
+
           if (vanityResponse.status === 403) {
-              errorMsg = "A non-zero SOL balance is required to obtain a vanity keypair."
-          } else if (vanityResponse.status === 503 || vanityResponse.status === 404) {
-              errorMsg = "No vanity keypairs currently available, please try again shortly."
+            errorMsg =
+              "A non-zero SOL balance is required to obtain a vanity keypair.";
+          } else if (
+            vanityResponse.status === 503 ||
+            vanityResponse.status === 404
+          ) {
+            errorMsg =
+              "No vanity keypairs currently available, please try again shortly.";
           }
 
           throw new Error(errorMsg);
         }
 
-        const { address: vanityAddress, secretKey: secretKeyArray } = await vanityResponse.json() as VanityKeypairResponse; // Type assertion
+        const { address: vanityAddress, secretKey: secretKeyArray } =
+          (await vanityResponse.json()) as VanityKeypairResponse; // Type assertion
         tokenMint = vanityAddress;
         mintKeypair = Keypair.fromSecretKey(new Uint8Array(secretKeyArray));
         console.log("Successfully obtained vanity keypair:", tokenMint);
-
       } catch (error) {
-          console.error("Error fetching vanity keypair:", error);
-          toast.error(error instanceof Error ? error.message : "Could not get vanity keypair.");
-          setIsSubmitting(false); // Stop submission
-          setShowCoinDrop(false); // Hide animation if it started
-          return; // Exit the function
+        console.error("Error fetching vanity keypair:", error);
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Could not get vanity keypair.",
+        );
+        setIsSubmitting(false); // Stop submission
+        setShowCoinDrop(false); // Hide animation if it started
+        return; // Exit the function
       }
       // --- Fetch Vanity Keypair from Backend --- END
 

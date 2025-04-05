@@ -1,9 +1,19 @@
 import { eq, sql } from "drizzle-orm";
-import { getDB, tokens, swaps, vanityKeypairs, VanityKeypairInsert } from "./db";
+import {
+  getDB,
+  tokens,
+  swaps,
+  vanityKeypairs,
+  VanityKeypairInsert,
+} from "./db";
 import { Env } from "./env";
 import { logger } from "./logger";
 import { getSOLPrice } from "./mcap";
-import { bulkUpdatePartialTokens, calculateFeaturedScore, getFeaturedMaxValues } from "./util";
+import {
+  bulkUpdatePartialTokens,
+  calculateFeaturedScore,
+  getFeaturedMaxValues,
+} from "./util";
 import { Connection, PublicKey, Keypair } from "@solana/web3.js";
 import { getWebSocketClient } from "./websocket-client";
 import { updateHoldersCache } from "./routes/token";
@@ -141,7 +151,10 @@ export async function processTransactionLogs(
         try {
           await updateHoldersCache(env, rawTokenAddress);
         } catch (error) {
-          logger.error('Failed to update holder cache on newToken event:', error);
+          logger.error(
+            "Failed to update holder cache on newToken event:",
+            error,
+          );
         }
 
         // Update the database
@@ -184,7 +197,7 @@ export async function processTransactionLogs(
           if (
             !mintAddress ||
             !/^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
-              mintAddress
+              mintAddress,
             )
           ) {
             logger.error(`Invalid mint address format: ${mintAddress}`);
@@ -198,7 +211,7 @@ export async function processTransactionLogs(
         try {
           await updateHoldersCache(env, mintAddress);
         } catch (error) {
-          logger.error('Failed to update holder cache on swap event:', error);
+          logger.error("Failed to update holder cache on swap event:", error);
         }
 
         // Extract user, direction, amount with validation
@@ -217,7 +230,7 @@ export async function processTransactionLogs(
           // Validate extracted data
           if (!user || !direction || !amount) {
             logger.error(
-              `Missing swap data: user=${user}, direction=${direction}, amount=${amount}`
+              `Missing swap data: user=${user}, direction=${direction}, amount=${amount}`,
             );
             return result;
           }
@@ -243,17 +256,17 @@ export async function processTransactionLogs(
 
           reserveToken = reservesParts[reservesParts.length - 2].replace(
             /[",)]/g,
-            ""
+            "",
           );
           reserveLamport = reservesParts[reservesParts.length - 1].replace(
             /[",)]/g,
-            ""
+            "",
           );
 
           // Validate extracted data
           if (!reserveToken || !reserveLamport) {
             logger.error(
-              `Missing reserves data: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`
+              `Missing reserves data: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`,
             );
             return result;
           }
@@ -261,7 +274,7 @@ export async function processTransactionLogs(
           // Make sure reserve values are numeric
           if (isNaN(Number(reserveToken)) || isNaN(Number(reserveLamport))) {
             logger.error(
-              `Invalid reserve values: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`
+              `Invalid reserve values: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`,
             );
             return result;
           }
@@ -296,7 +309,7 @@ export async function processTransactionLogs(
           (Number(env.TOKEN_SUPPLY) / Math.pow(10, TOKEN_DECIMALS)) *
           tokenPriceUSD;
 
-          console.log(tokenPriceInSol, tokenPriceUSD, marketCapUSD)
+        console.log(tokenPriceInSol, tokenPriceUSD, marketCapUSD);
 
         // Save to the swap table for historical records
         const swapRecord = {
@@ -323,7 +336,7 @@ export async function processTransactionLogs(
         const db = getDB(env);
         await db.insert(swaps).values(swapRecord);
         logger.log(
-          `Saved swap: ${direction === "0" ? "buy" : "sell"} for ${mintAddress}`
+          `Saved swap: ${direction === "0" ? "buy" : "sell"} for ${mintAddress}`,
         );
 
         // Update token data in database
@@ -342,8 +355,7 @@ export async function processTransactionLogs(
             solPriceUSD: solPrice,
             curveProgress:
               ((Number(reserveLamport) - Number(env.VIRTUAL_RESERVES)) /
-                (Number(env.CURVE_LIMIT) -
-                  Number(env.VIRTUAL_RESERVES))) *
+                (Number(env.CURVE_LIMIT) - Number(env.VIRTUAL_RESERVES))) *
               100,
             txId: signature,
             lastUpdated: new Date().toISOString(),
@@ -357,7 +369,7 @@ export async function processTransactionLogs(
           })
           .where(eq(tokens.mint, mintAddress))
           .returning();
-        const newToken = token[0]
+        const newToken = token[0];
 
         // Update holders data immediately after a swap
         await updateHoldersCache(env, mintAddress);
@@ -371,7 +383,7 @@ export async function processTransactionLogs(
         const latestCandle = await getLatestCandle(
           env,
           swapRecord.tokenMint,
-          swapRecord
+          swapRecord,
         );
 
         // Emit the new candle data
@@ -388,7 +400,7 @@ export async function processTransactionLogs(
           featuredScore: calculateFeaturedScore(
             newToken,
             maxVolume,
-            maxHolders
+            maxHolders,
           ),
         };
 
@@ -873,7 +885,7 @@ async function manageVanityKeypairs(env: Env): Promise<void> {
         }
         // Yield control briefly to avoid exceeding CPU limits in a tight loop (optional but safer)
         if (attempts % 1000 === 0) {
-             await new Promise(resolve => setTimeout(resolve, 0));
+          await new Promise((resolve) => setTimeout(resolve, 0));
         }
       }
 
@@ -883,21 +895,29 @@ async function manageVanityKeypairs(env: Env): Promise<void> {
 
       // Insert generated keypairs in batches
       if (generatedKeypairs.length > 0) {
-        for (let i = 0; i < generatedKeypairs.length; i += MAX_INSERT_BATCH_SIZE) {
+        for (
+          let i = 0;
+          i < generatedKeypairs.length;
+          i += MAX_INSERT_BATCH_SIZE
+        ) {
           const batch = generatedKeypairs.slice(i, i + MAX_INSERT_BATCH_SIZE);
           try {
             // Use drizzle insert, handling potential duplicates if the schema has unique constraints
             // Note: D1 might not support ON CONFLICT, so we rely on catching errors or ensuring uniqueness via UUID
-             await db.insert(vanityKeypairs).values(batch);
-             logger.log(`Inserted batch of ${batch.length} vanity keypairs.`);
+            await db.insert(vanityKeypairs).values(batch);
+            logger.log(`Inserted batch of ${batch.length} vanity keypairs.`);
           } catch (insertError) {
-             // Check if it's a unique constraint violation (specific error code/message depends on D1/driver)
-             // For now, just log the error and continue
-            logger.error(`Error inserting vanity keypair batch: ${insertError}`);
-             // Consider if you need more robust duplicate handling
+            // Check if it's a unique constraint violation (specific error code/message depends on D1/driver)
+            // For now, just log the error and continue
+            logger.error(
+              `Error inserting vanity keypair batch: ${insertError}`,
+            );
+            // Consider if you need more robust duplicate handling
           }
         }
-         logger.log(`Finished inserting ${generatedKeypairs.length} new vanity keypairs.`);
+        logger.log(
+          `Finished inserting ${generatedKeypairs.length} new vanity keypairs.`,
+        );
       }
     } else {
       logger.log("Vanity keypair buffer is sufficient.");
@@ -929,10 +949,9 @@ export async function cron(env: Env, ctx: ExecutionContext): Promise<void> {
       logger.error("Error replenishing pre-generated tokens:", err);
     }
 
-     // --- NEW: Manage Vanity Keypairs ---
+    // --- NEW: Manage Vanity Keypairs ---
     await manageVanityKeypairs(env);
     // --- End NEW ---
-
   } catch (error) {
     logger.error("Error in cron job:", error);
   }

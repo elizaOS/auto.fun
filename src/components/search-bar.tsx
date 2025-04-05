@@ -116,7 +116,11 @@ const AgentSearchResult = ({
   return (
     <Link to={`/token/${id}`} onClick={onNavigate}>
       <div className="flex items-center gap-2 p-2 hover:bg-[#262626] transition-all duration-200 group cursor-pointer">
-        <img className="w-10 h-10 shrink-0 object-cover" src={imageUrl} alt={name} />
+        <img
+          className="w-10 h-10 shrink-0 object-cover"
+          src={imageUrl}
+          alt={name}
+        />
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <div className="text-white text-[16px] font-medium group-hover:text-[#2FD345] transition-colors flex items-center">
             <span className="truncate">{name}</span>
@@ -132,7 +136,9 @@ const AgentSearchResult = ({
           </div>
         </div>
         <div className="flex-shrink-0 ml-auto flex flex-col items-end">
-          <span className="text-[#8C8C8C] text-xs group-hover:text-white/70 transition-colors">MC</span>
+          <span className="text-[#8C8C8C] text-xs group-hover:text-white/70 transition-colors">
+            MC
+          </span>
           <span className="text-[#2FD345] text-sm font-medium whitespace-nowrap">
             {abbreviateNumber(marketCap)}
           </span>

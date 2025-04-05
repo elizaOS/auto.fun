@@ -137,35 +137,39 @@ authRouter.get("/protected", requireAuth, async (c) => {
 });
 
 // --- Vanity Keypair Generation Helper ---
-const VANITY_SUFFIXES: string[] = []
+const VANITY_SUFFIXES: string[] = [];
 
-const baseWords = ["lucky", "auto", "fun"]
+const baseWords = ["lucky", "auto", "fun"];
 
 // add every permutation of "auto" to the array, "Auto", "autO", etc
 // Generate all case permutations of "auto"
 
 for (const baseWord of baseWords) {
-// for (let i = 0; i < Math.pow(2, baseWord.length); i++) {
-    let permutation = baseWord // "";
-    // for (let j = 0; j < baseWord.length; j++) {
-    //     // Use bitwise AND to determine if this character should be uppercase
-    //     permutation += (i & (1 << j)) ? baseWord[j].toUpperCase() : baseWord[j].toLowerCase();
-    // }
-    VANITY_SUFFIXES.push(permutation);
-// }
+  // for (let i = 0; i < Math.pow(2, baseWord.length); i++) {
+  const permutation = baseWord; // "";
+  // for (let j = 0; j < baseWord.length; j++) {
+  //     // Use bitwise AND to determine if this character should be uppercase
+  //     permutation += (i & (1 << j)) ? baseWord[j].toUpperCase() : baseWord[j].toLowerCase();
+  // }
+  VANITY_SUFFIXES.push(permutation);
+  // }
 }
-console.log("VANITY_SUFFIXES", VANITY_SUFFIXES)
-
+console.log("VANITY_SUFFIXES", VANITY_SUFFIXES);
 
 const MAX_ON_DEMAND_GENERATION_ATTEMPTS = 5000; // Attempts for on-demand generation
 
-async function generateSingleVanityKeypair(): Promise<{ address: string; secretKey: number[] } | null> {
+async function generateSingleVanityKeypair(): Promise<{
+  address: string;
+  secretKey: number[];
+} | null> {
   logger.log("Attempting on-demand vanity keypair generation...");
   for (let i = 0; i < MAX_ON_DEMAND_GENERATION_ATTEMPTS; i++) {
     const keypair = Keypair.generate();
     const address = keypair.publicKey.toBase58();
-    if (VANITY_SUFFIXES.some(suffix => address.endsWith(suffix))) {
-      logger.log(`Generated on-demand keypair: ${address} after ${i + 1} attempts.`);
+    if (VANITY_SUFFIXES.some((suffix) => address.endsWith(suffix))) {
+      logger.log(
+        `Generated on-demand keypair: ${address} after ${i + 1} attempts.`,
+      );
       const secretKeyBuffer = Buffer.from(keypair.secretKey);
       const secretKeyArray = Array.from(new Uint8Array(secretKeyBuffer));
       return {
@@ -192,17 +196,11 @@ authRouter.post("/vanity-keypair", async (c) => {
     const body = await c.req.json();
 
     // Validate requestor's address (ensure it matches authenticated user)
-    if (
-      !body.address ||
-      body.address.length < 32 ||
-      body.address.length > 44
-    ) {
+    if (!body.address || body.address.length < 32 || body.address.length > 44) {
       return c.json({ error: "Invalid or mismatched address" }, 400);
     }
 
     const db = getDB(c.env);
-
-
 
     let claimedKeypair: VanityKeypair | null = null;
 
@@ -232,7 +230,7 @@ authRouter.post("/vanity-keypair", async (c) => {
 
         // 3. Check if update was successful (1 row written)
         // Note: D1 returns rows_written, adjust if your driver differs
-        if (updateResult?.meta?.rows_written === 1) { 
+        if (updateResult?.meta?.rows_written === 1) {
           logger.log(`Successfully claimed keypair ID: ${keypairIdToClaim}`);
           // 4. Select the details of the claimed keypair
           const result = await db
@@ -243,19 +241,21 @@ authRouter.post("/vanity-keypair", async (c) => {
           if (result.length > 0) {
             claimedKeypair = result[0];
           } else {
-             logger.error(`Claimed keypair ${keypairIdToClaim} but failed to re-select it.`);
-             // Continue to fallback as something went wrong
+            logger.error(
+              `Claimed keypair ${keypairIdToClaim} but failed to re-select it.`,
+            );
+            // Continue to fallback as something went wrong
           }
         } else {
           logger.log(
             `Failed to claim keypair ID: ${keypairIdToClaim} (likely claimed by another request).`,
           );
-           // Keypair was likely claimed by another request between SELECT and UPDATE
-           // Proceed to fallback
+          // Keypair was likely claimed by another request between SELECT and UPDATE
+          // Proceed to fallback
         }
       } else {
         logger.log("No unused keypairs found in the pool.");
-         // Pool is empty, proceed to fallback
+        // Pool is empty, proceed to fallback
       }
     } catch (dbError) {
       logger.error("Error during atomic claim attempt:", dbError);
@@ -275,81 +275,90 @@ authRouter.post("/vanity-keypair", async (c) => {
 
     // --- Fallback: Pool Empty or Claim Failed - Attempt On-Demand Vanity Generation ---
     logger.log(
-        "Vanity pool empty/claim failed. Attempting limited on-demand vanity generation...",
+      "Vanity pool empty/claim failed. Attempting limited on-demand vanity generation...",
     );
     const generatedKeypair = await generateSingleVanityKeypair();
 
     if (generatedKeypair) {
-        // Return the generated vanity keypair directly (it's not saved to the pool)
-        return c.json({
-            address: generatedKeypair.address,
-            secretKey: generatedKeypair.secretKey,
-        });
+      // Return the generated vanity keypair directly (it's not saved to the pool)
+      return c.json({
+        address: generatedKeypair.address,
+        secretKey: generatedKeypair.secretKey,
+      });
     } else {
-        // GENERATE THE KEYPAIR AND RETURN IT
-        logger.warn("Initial generation attempt failed, switching to persistent generation...");
-        
-        // This will loop indefinitely until we find a keypair
-        let foundKeypair: { address: string; secretKey: number[] } | null = null;
-        let attempts = 0;
-        const startTime = Date.now();
-        
-        // Continue generating until we find a keypair with "auto" suffix
-        while (!foundKeypair) {
-            attempts++;
-            
-            // Generate a keypair and check if it has the right suffix
-            const keypair = Keypair.generate();
-            const address = keypair.publicKey.toBase58();
-            
-            if (VANITY_SUFFIXES.some(suffix => address.endsWith(suffix))) {
-                // Found a matching keypair!
-                const secretKeyBuffer = Buffer.from(keypair.secretKey);
-                const secretKeyArray = Array.from(new Uint8Array(secretKeyBuffer));
-                foundKeypair = {
-                    address: address,
-                    secretKey: secretKeyArray,
-                };
-                
-                const duration = (Date.now() - startTime) / 1000;
-                logger.log(`Success! Found vanity keypair ${address} after ${attempts} attempts (${duration.toFixed(2)}s)`);
-                
-                // Optionally save this keypair to the pool for future use
-                try {
-                    await db.insert(vanityKeypairs).values({
-                        id: crypto.randomUUID(),
-                        address: address,
-                        secretKey: Buffer.from(keypair.secretKey).toString("base64"),
-                        createdAt: new Date().toISOString(),
-                        used: 1, // Mark as used since we're returning it
-                    });
-                    logger.log(`Added the generated keypair to the pool (marked as used)`);
-                } catch (saveError) {
-                    // Non-critical error, just log it
-                    logger.error(`Failed to save generated keypair to pool: ${saveError}`);
-                }
-                
-                break; // Exit the loop
-            }
-            
-            // Every 10,000 attempts, log progress and yield control briefly
-            if (attempts % 10000 === 0) {
-                const duration = (Date.now() - startTime) / 1000;
-                logger.log(`Still searching... ${attempts} attempts so far (${duration.toFixed(2)}s)`);
-                
-                // Yield control briefly to prevent blocking
-                await new Promise(resolve => setTimeout(resolve, 0));
-            }
+      // GENERATE THE KEYPAIR AND RETURN IT
+      logger.warn(
+        "Initial generation attempt failed, switching to persistent generation...",
+      );
+
+      // This will loop indefinitely until we find a keypair
+      let foundKeypair: { address: string; secretKey: number[] } | null = null;
+      let attempts = 0;
+      const startTime = Date.now();
+
+      // Continue generating until we find a keypair with "auto" suffix
+      while (!foundKeypair) {
+        attempts++;
+
+        // Generate a keypair and check if it has the right suffix
+        const keypair = Keypair.generate();
+        const address = keypair.publicKey.toBase58();
+
+        if (VANITY_SUFFIXES.some((suffix) => address.endsWith(suffix))) {
+          // Found a matching keypair!
+          const secretKeyBuffer = Buffer.from(keypair.secretKey);
+          const secretKeyArray = Array.from(new Uint8Array(secretKeyBuffer));
+          foundKeypair = {
+            address: address,
+            secretKey: secretKeyArray,
+          };
+
+          const duration = (Date.now() - startTime) / 1000;
+          logger.log(
+            `Success! Found vanity keypair ${address} after ${attempts} attempts (${duration.toFixed(2)}s)`,
+          );
+
+          // Optionally save this keypair to the pool for future use
+          try {
+            await db.insert(vanityKeypairs).values({
+              id: crypto.randomUUID(),
+              address: address,
+              secretKey: Buffer.from(keypair.secretKey).toString("base64"),
+              createdAt: new Date().toISOString(),
+              used: 1, // Mark as used since we're returning it
+            });
+            logger.log(
+              `Added the generated keypair to the pool (marked as used)`,
+            );
+          } catch (saveError) {
+            // Non-critical error, just log it
+            logger.error(
+              `Failed to save generated keypair to pool: ${saveError}`,
+            );
+          }
+
+          break; // Exit the loop
         }
-        
-        // Return the vanity keypair we found
-        return c.json({
-            address: foundKeypair.address,
-            secretKey: foundKeypair.secretKey,
-        });
+
+        // Every 10,000 attempts, log progress and yield control briefly
+        if (attempts % 10000 === 0) {
+          const duration = (Date.now() - startTime) / 1000;
+          logger.log(
+            `Still searching... ${attempts} attempts so far (${duration.toFixed(2)}s)`,
+          );
+
+          // Yield control briefly to prevent blocking
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+      }
+
+      // Return the vanity keypair we found
+      return c.json({
+        address: foundKeypair.address,
+        secretKey: foundKeypair.secretKey,
+      });
     }
     // --- End Fallback ---
-
   } catch (error) {
     logger.error("Error getting vanity keypair:", error);
     return c.json(
