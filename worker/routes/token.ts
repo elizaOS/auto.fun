@@ -2573,10 +2573,10 @@ export async function updateHoldersCache(
     // Sort holders by amount (descending)
     holders.sort((a, b) => b.amount - a.amount);
     
-    logger.log(`Processing ${holders.length} holders for token ${mint}`);
+    // logger.log(`Processing ${holders.length} holders for token ${mint}`);
 
     // Clear existing holders and insert new ones
-    logger.log(`Clearing existing holders for token ${mint}`);
+    // logger.log(`Clearing existing holders for token ${mint}`);
     await db.delete(tokenHolders).where(eq(tokenHolders.mint, mint));
 
     // For large number of holders, we need to limit what we insert
@@ -2586,7 +2586,7 @@ export async function updateHoldersCache(
       ? holders.slice(0, MAX_HOLDERS_TO_SAVE) 
       : holders;
     
-    logger.log(`Will insert ${holdersToSave.length} holders (from ${holders.length} total) for token ${mint}`);
+    // logger.log(`Will insert ${holdersToSave.length} holders (from ${holders.length} total) for token ${mint}`);
 
     if (holdersToSave.length > 0) {
       // Use a very small batch size to avoid SQLite parameter limits
@@ -2599,11 +2599,11 @@ export async function updateHoldersCache(
           const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
           const totalBatches = Math.ceil(holdersToSave.length / BATCH_SIZE);
           
-          logger.log(`Inserting batch ${batchNumber}/${totalBatches} (${batch.length} holders) for token ${mint}`);
+          // logger.log(`Inserting batch ${batchNumber}/${totalBatches} (${batch.length} holders) for token ${mint}`);
           
           await db.insert(tokenHolders).values(batch);
           
-          logger.log(`Successfully inserted batch ${batchNumber}/${totalBatches} for token ${mint}`);
+          // logger.log(`Successfully inserted batch ${batchNumber}/${totalBatches} for token ${mint}`);
         } catch (insertError) {
           logger.error(`Error inserting batch for token ${mint}:`, insertError);
           // Continue with next batch even if this one fails
@@ -2615,7 +2615,7 @@ export async function updateHoldersCache(
         // Only emit a limited set of holders to avoid overwhelming WebSockets
         const limitedHolders = holdersToSave.slice(0, 50);
         wsClient.emit(`token-${mint}`, "newHolder", limitedHolders);
-        logger.log(`Emitted WebSocket update with ${limitedHolders.length} holders`);
+        // logger.log(`Emitted WebSocket update with ${limitedHolders.length} holders`);
       } catch (wsError) {
         logger.error(`WebSocket error when emitting holder update:`, wsError);
         // Don't fail if WebSocket fails
@@ -2650,7 +2650,7 @@ export async function updateHoldersCache(
           timestamp: new Date().toISOString(),
         });
 
-        logger.log(`Emitted holder update event for token ${mint} with ${holders.length} holders count`);
+        // logger.log(`Emitted holder update event for token ${mint} with ${holders.length} holders count`);
       }
     } catch (wsError) {
       // Don't fail if WebSocket fails
@@ -2710,9 +2710,9 @@ tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
       return c.json({ error: "Authentication required" }, 401);
     }
 
-    logger.log(
-      `Refreshing holders data for token ${mint} requested by ${user.publicKey}`,
-    );
+    // logger.log(
+    //   `Refreshing holders data for token ${mint} requested by ${user.publicKey}`,
+    // );
 
     // Update holders for this specific token
     const holderCount = await updateHoldersCache(c.env, mint);
@@ -2745,9 +2745,9 @@ tokenRouter.get("/token/:mint/refresh-swaps", async (c) => {
       return c.json({ error: "Authentication required" }, 401);
     }
 
-    logger.log(
-      `Refreshing swap data for token ${mint} requested by ${user.publicKey}`,
-    );
+    // logger.log(
+    //   `Refreshing swap data for token ${mint} requested by ${user.publicKey}`,
+    // );
 
     // In a real implementation, this would fetch the latest swaps
     // For now, just return the current swap data from the database
@@ -2766,9 +2766,9 @@ tokenRouter.get("/token/:mint/refresh-swaps", async (c) => {
       for (const swap of recentSwaps) {
         await processSwapEvent(c.env, swap, false); // Only emit to token-specific room
       }
-      logger.log(
-        `Emitted ${recentSwaps.length} recent swaps for token ${mint}`,
-      );
+      // logger.log(
+      //   `Emitted ${recentSwaps.length} recent swaps for token ${mint}`,
+      // );
     } catch (wsError) {
       // Don't fail if WebSocket emission fails
       logger.error(`WebSocket error when emitting swaps: ${wsError}`);
@@ -2805,7 +2805,7 @@ tokenRouter.get("/dev/add-test-holders/:mint", async (c) => {
       return c.json({ error: "Invalid mint address" }, 400);
     }
 
-    logger.log(`Adding test holder data for token ${mint}`);
+    // logger.log(`Adding test holder data for token ${mint}`);
 
     const db = getDB(c.env);
 
@@ -2890,7 +2890,7 @@ tokenRouter.get("/dev/check-holders/:mint", async (c) => {
       return c.json({ error: "Invalid mint address" }, 400);
     }
 
-    logger.log(`Checking holder data in database for token ${mint}`);
+    // logger.log(`Checking holder data in database for token ${mint}`);
 
     const db = getDB(c.env);
 
@@ -2951,7 +2951,7 @@ tokenRouter.get("/dev/add-all-test-data/:mint", async (c) => {
       return c.json({ error: "Invalid mint address" }, 400);
     }
 
-    logger.log(`Adding all test data for token ${mint}`);
+    // logger.log(`Adding all test data for token ${mint}`);
 
     const db = getDB(c.env);
 
@@ -3076,7 +3076,7 @@ tokenRouter.get("/dev/check-swaps/:mint", async (c) => {
       return c.json({ error: "Invalid mint address" }, 400);
     }
 
-    logger.log(`Checking swap data in database for token ${mint}`);
+    // logger.log(`Checking swap data in database for token ${mint}`);
 
     const db = getDB(c.env);
 
@@ -3114,7 +3114,7 @@ tokenRouter.get("/dev/check-swaps/:mint", async (c) => {
 
 // Get specific token swaps endpoint
 tokenRouter.get("/swaps/:mint", async (c) => {
-  logger.log(`Swaps endpoint called for mint: ${c.req.param("mint")}`);
+  // logger.log(`Swaps endpoint called for mint: ${c.req.param("mint")}`);
   try {
     const mint = c.req.param("mint");
 
@@ -3139,7 +3139,7 @@ tokenRouter.get("/swaps/:mint", async (c) => {
       .offset(offset)
       .limit(limit);
 
-    logger.log(`Found ${swapsResult.length} swaps for mint ${mint}`);
+    // logger.log(`Found ${swapsResult.length} swaps for mint ${mint}`);
 
     // Get total count for pagination
     const totalSwapsQuery = await db
@@ -3182,7 +3182,7 @@ tokenRouter.get("/swaps/:mint", async (c) => {
 // Add a new endpoint that matches the frontend path
 tokenRouter.get("/api/swaps/:mint", async (c) => {
   // Simplified logging - just log the mint
-  logger.log(`API swaps endpoint called for mint: ${c.req.param("mint")}`);
+  // logger.log(`API swaps endpoint called for mint: ${c.req.param("mint")}`);
   try {
     const mint = c.req.param("mint");
 
@@ -5747,18 +5747,18 @@ export async function updateSwapsCache(
     for (let i = 0; i < swapRecords.length; i += BATCH_SIZE) {
       try {
         const batch = swapRecords.slice(i, i + BATCH_SIZE);
-        logger.log(`Inserting batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(swapRecords.length/BATCH_SIZE)} (${batch.length} swaps) for token ${mint}`);
+        // logger.log(`Inserting batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(swapRecords.length/BATCH_SIZE)} (${batch.length} swaps) for token ${mint}`);
         
         await db.insert(swaps).values(batch);
         insertedCount += batch.length;
         
-        logger.log(`Successfully inserted batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(swapRecords.length/BATCH_SIZE)} for token ${mint}`);
+        // logger.log(`Successfully inserted batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(swapRecords.length/BATCH_SIZE)} for token ${mint}`);
       } catch (err) {
         logger.error(`Error inserting batch for token ${mint}:`, err);
       }
     }
     
-    logger.log(`Inserted ${insertedCount} swaps for token ${mint}`);
+    // logger.log(`Inserted ${insertedCount} swaps for token ${mint}`);
     
     // Emit WebSocket events for new swaps if any were inserted
     if (insertedCount > 0) {
@@ -5781,7 +5781,7 @@ export async function updateSwapsCache(
           await new Promise(resolve => setTimeout(resolve, 50));
         }
         
-        logger.log(`Emitted ${formattedSwaps.length} swap events for token ${mint}`);
+        // logger.log(`Emitted ${formattedSwaps.length} swap events for token ${mint}`);
         
         // Also update the token in db with correct swap count
         try {
@@ -5802,7 +5802,7 @@ export async function updateSwapsCache(
           
           // Emit token update event with the correctly formatted data
           await processTokenUpdateEvent(env, tokenUpdateData, false);
-          logger.log(`Updated token record with new swap count: ${insertedCount}`);
+          // logger.log(`Updated token record with new swap count: ${insertedCount}`);
         } catch (dbErr) {
           logger.error(`Error updating token record for ${mint}:`, dbErr);
         }
@@ -5846,7 +5846,7 @@ tokenRouter.get("/token/:mint/update-swaps", async (c) => {
 
 // Update the existing swaps endpoint to first check for real data and fetch it if needed
 tokenRouter.get("/api/swaps/:mint", async (c) => {
-  logger.log(`API swaps endpoint called for mint: ${c.req.param("mint")}`);
+  // logger.log(`API swaps endpoint called for mint: ${c.req.param("mint")}`);
   try {
     const mint = c.req.param("mint");
 
@@ -5871,7 +5871,7 @@ tokenRouter.get("/api/swaps/:mint", async (c) => {
       .offset(offset)
       .limit(limit);
 
-    logger.log(`Found ${swapsResult.length} swaps in database for mint ${mint}`);
+    // logger.log(`Found ${swapsResult.length} swaps in database for mint ${mint}`);
 
     // Calculate total for pagination
     const totalSwapsQuery = await db
@@ -6088,7 +6088,7 @@ tokenRouter.post("/api/token/:mint/refresh-swaps", async (c) => {
 
 // Define a single endpoint for /api/swaps/:mint that works correctly with the frontend
 tokenRouter.get("/api/swaps/:mint", async (c) => {
-  logger.log(`API swaps endpoint called for mint: ${c.req.param("mint")}`);
+  // logger.log(`API swaps endpoint called for mint: ${c.req.param("mint")}`);
   try {
     const mint = c.req.param("mint");
 
@@ -6154,7 +6154,7 @@ tokenRouter.get("/api/swaps/:mint", async (c) => {
 
       try {
         await db.insert(swaps).values(swapRecords);
-        logger.log(`Added ${swapRecords.length} test swaps for ${mint}`);
+        // logger.log(`Added ${swapRecords.length} test swaps for ${mint}`);
       } catch (error) {
         logger.error(`Error adding test swaps for ${mint}:`, error);
       }
@@ -6172,7 +6172,7 @@ tokenRouter.get("/api/swaps/:mint", async (c) => {
       .offset(offset)
       .limit(limit);
 
-    logger.log(`Found ${swapsResult.length} swaps in database for mint ${mint}`);
+    // logger.log(`Found ${swapsResult.length} swaps in database for mint ${mint}`);
 
     // Calculate total for pagination
     const totalSwapsQuery = await db
