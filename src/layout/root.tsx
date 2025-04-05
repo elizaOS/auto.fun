@@ -3,8 +3,7 @@ import Footer from "@/components/footer";
 import Header from "@/components/header";
 import { WalletModal } from "@/components/wallet-dialog";
 import { Providers } from "@/providers";
-import { executeCron_development_only, queryClient } from "@/utils/api";
-import { env } from "@/utils/env";
+import { queryClient } from "@/utils/api";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router";
@@ -16,15 +15,6 @@ export default function Layout() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
-
-  /**
-   * cron doesn't trigger automatically in dev so we invoke manually
-   */
-  useEffect(() => {
-    if (env.appEnv === 'development') {
-      setInterval(executeCron_development_only, 1000 * 30);
-    }
-  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

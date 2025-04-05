@@ -74,7 +74,6 @@ export const TokenSchema = z.object({
   discord: z.string().nullish(),
   twitter: z.string().nullish(),
   telegram: z.string().nullish(),
-  agentLink: z.string().nullish(),
   creator: z.string(),
   volume24h: z.number().nullish(),
   website: z.string().nullish(),
@@ -134,7 +133,6 @@ export const TokenSchema = z.object({
   holderCount: data.holderCount != null ? Number(data.holderCount) : 0,
   lastPriceUpdate: data.lastPriceUpdate || data.lastUpdated,
   lastVolumeReset: data.lastVolumeReset || data.lastUpdated,
-  hasAgent: Boolean(data.agentLink),
 }));
 
 export type IToken = z.infer<typeof TokenSchema>;
