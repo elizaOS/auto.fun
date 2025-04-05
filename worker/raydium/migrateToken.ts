@@ -21,6 +21,7 @@ import { retryOperation } from "./utils";
 import { RaydiumVault } from "./types/raydium_vault";
 import { getWebSocketClient } from "../websocket-client";
 import { Autofun } from "../target/types/autofun";
+import { TokenData } from "./types/tokenData";
 
 export class TokenMigrator {
   constructor(
@@ -33,7 +34,7 @@ export class TokenMigrator {
   ) {}
   FEE_PERCENTAGE = 10; // 10% fee for pool creation
 
-  async migrateToken(token: any): Promise<void> {
+  async migrateToken(token: TokenData): Promise<void> {
     try {
       if (!token.migration) {
         token.migration = {};
@@ -54,21 +55,20 @@ export class TokenMigrator {
         token.migration.withdraw = {
           status: "success",
           txId: withdrawResult.txId,
-          updatedAt: new Date(),
+          updatedAt: new Date().toISOString(),
         };
         token.withdrawnAmounts = withdrawResult.withdrawnAmounts;
 
-        const tokenData = {
+        // Prepare token data with JSON stringified objects
+        const tokenData: Partial<TokenData> = {
           mint: token.mint,
-          status: "migrating",
-          lastUpdated: new Date(),
+          migration: token.migration,
+          withdrawnAmounts: token.withdrawnAmounts,
+          lastUpdated: new Date().toISOString(),
         };
         await updateTokenInDB(this.env, tokenData);
-        // emit the migration start event
-        ws.to(`token-${token.mint}`).emit("migrationStarted", {
-          mint: token.mint,
-          status: "migrating",
-        });
+
+        ws.to(`token-${token.mint}`).emit("migrationStarted", token);
 
         logger.log(
           `[Migrate] Withdrawal successful for token ${token.mint} txId: ${withdrawResult.txId}`
@@ -93,25 +93,20 @@ export class TokenMigrator {
         token.migration.createPool = {
           status: "success",
           txId: poolResult.txId,
-          updatedAt: new Date(),
+          updatedAt: new Date().toISOString(),
         };
         token.marketId = poolResult.poolId;
         token.poolInfo = poolResult.poolAddresses;
 
-        const tokenData = {
+        const tokenData: Partial<TokenData> = {
           mint: token.mint,
-          status: "migrated",
+          migration: token.migration,
           marketId: token.marketId,
           poolInfo: token.poolInfo,
-          lastUpdated: new Date(),
+          lastUpdated: new Date().toISOString(),
         };
         await updateTokenInDB(this.env, tokenData);
-        ws.to(`token-${token.mint}`).emit("poolCreated", {
-          mint: token.mint,
-          marketId: token.marketId,
-          poolInfo: token.poolInfo,
-          txId: poolResult.txId,
-        });
+        ws.to(`token-${token.mint}`).emit("poolCreated", token);
 
         logger.log(
           `[Migrate] Pool creation successful for token ${token.mint} txId: ${poolResult.txId}`
@@ -138,26 +133,20 @@ export class TokenMigrator {
         token.migration.lockLP = {
           status: "success",
           txId: lockResult.txId,
-          updatedAt: new Date(),
+          updatedAt: new Date().toISOString(),
         };
         token.lockLpTxId = lockResult.txId;
         token.nftMinted = lockResult.nftMinted;
-        const tokenData = {
+        const tokenData: Partial<TokenData> = {
           mint: token.mint,
-          lockId: lockResult.txId,
-          nftMinted: lockResult.nftMinted,
-          lockedAmount: token.lockedAmount,
-          lockedAt: new Date(),
+          migration: token.migration,
+          lockLpTxId: token.lockLpTxId,
+          nftMinted: token.nftMinted,
+          lockedAt: new Date().toISOString(),
         };
         await updateTokenInDB(this.env, tokenData);
-        ws.to(`token-${token.mint}`).emit("lpLocked", {
-          mint: token.mint,
-          lockId: lockResult.txId,
-          nftMinted: lockResult.nftMinted,
-          txId: lockResult.txId,
-          marketId: token.marketId,
-        });
-        await logger.log(
+        ws.to(`token-${token.mint}`).emit("lpLocked", token);
+        logger.log(
           `[Migrate] LP token locking successful for token ${token.mint} txId: ${lockResult.txId}`
         );
       } else {
@@ -166,7 +155,7 @@ export class TokenMigrator {
         );
       }
 
-      //step 4 : send the 10% to the manager multisig
+      // Step 5: Send 10% NFT to manager multisig
       if (
         !token.migration.sendNft ||
         token.migration.sendNft.status !== "success"
@@ -180,7 +169,7 @@ export class TokenMigrator {
           () =>
             this.sendNftToManagerMultisig(
               token,
-              token.nftMinted.split(",")[1], // 10% NFT
+              token.nftMinted?.split(",")[1] ?? "", // 10% NFT
               signerWallet,
               multisig
             ),
@@ -190,7 +179,7 @@ export class TokenMigrator {
         token.migration.sendNft = {
           status: "success",
           txId: sendNftResult,
-          updatedAt: new Date(),
+          updatedAt: new Date().toISOString(),
         };
         logger.log(
           `[Migrate] NFT sent to manager multisig for token ${token.mint} txId: ${sendNftResult}`
@@ -201,7 +190,7 @@ export class TokenMigrator {
         );
       }
 
-      // 5 : deposit the 90% NFT to our raydium vault
+      // Step 6: Deposit 90% NFT to Raydium vault
       if (
         !token.migration.depositNft ||
         token.migration.depositNft.status !== "success"
@@ -213,7 +202,7 @@ export class TokenMigrator {
           () =>
             this.depositNftToRaydiumVault(
               token,
-              token.nftMinted.split(",")[0], // 90% NFT
+              (token.nftMinted ?? "").split(",")[0], // 90% NFT
               new PublicKey(token.creator) // claimer address
             ),
           3,
@@ -222,9 +211,15 @@ export class TokenMigrator {
         token.migration.depositNft = {
           status: "success",
           txId: depositNftResult,
-          updatedAt: new Date(),
+          updatedAt: new Date().toISOString(),
         };
-        // emit the nft deposit event
+        const tokenData: Partial<TokenData> = {
+          mint: token.mint,
+          migration: token.migration,
+          lastUpdated: new Date().toISOString(),
+        };
+        await updateTokenInDB(this.env, tokenData);
+
         ws.to(`token-${token.mint}`).emit("nftDeposited", {
           mint: token.mint,
           txId: depositNftResult,
@@ -238,7 +233,7 @@ export class TokenMigrator {
         );
       }
 
-      // Step 6: Finalize migration
+      // Step 7: Finalize migration
       if (
         !token.migration.finalize ||
         token.migration.finalize.status !== "success"
@@ -248,37 +243,31 @@ export class TokenMigrator {
         token.migration.finalize = {
           status: "success",
           txId: finalizeResult.txId,
-          updatedAt: new Date(),
+          updatedAt: new Date().toISOString(),
         };
         token.status = "locked";
-        const tokenData = {
+        const tokenData: Partial<TokenData> = {
           mint: token.mint,
+          migration: token.migration,
           status: "locked",
-          lastUpdated: new Date(),
+          lastUpdated: new Date().toISOString(),
         };
         await updateTokenInDB(this.env, tokenData);
 
-        // emit the migration completion event
-        ws.to(`token-${token.mint}`).emit("migrationCompleted", {
-          mint: token.mint,
-          marketId: token.marketId,
-          status: "locked",
-        });
+        ws.to(`token-${token.mint}`).emit("updateToken", token);
         logger.log(`[Migrate] Migration finalized for token ${token.mint}`);
       } else {
         logger.log(
           `[Migrate] Migration finalization already processed for token ${token.mint}`
         );
       }
-
-      // emit and event for migration completion
     } catch (error) {
       logger.error(`[Migrate] Migration failed for token ${token.mint}:`);
       console.log(error + "");
       await updateTokenInDB(this.env, {
         mint: token.mint,
         status: "migration_failed",
-        lastUpdated: new Date(),
+        lastUpdated: new Date().toISOString(),
       });
     }
   }
@@ -472,14 +461,14 @@ export class TokenMigrator {
     const aggregatedTxId = `${lockTxIdPrimary},${lockTxIdSecondary}`;
     const aggregatedNftMint = `${lockExtInfoPrimary.nftMint.toString()},${lockExtInfoSecondary.nftMint.toString()}`;
 
-    const tokenData = {
+    const tokenData: Partial<TokenData> = {
       mint: token.mint,
       lockId: aggregatedTxId,
       nftMinted: aggregatedNftMint,
       lockedAmount: totalLPAmount.toString(),
       status: "locked",
-      lastUpdated: new Date(),
-      lockedAt: new Date(),
+      lastUpdated: new Date().toISOString(),
+      lockedAt: new Date().toISOString(),
     };
     await updateTokenInDB(this.env, tokenData);
 
