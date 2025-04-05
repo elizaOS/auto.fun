@@ -14,7 +14,7 @@ import generationRouter, { checkAndReplenishTokens } from "./routes/generation";
 import messagesRouter from "./routes/messages";
 import shareRouter from "./routes/share";
 import swapRouter from "./routes/swap";
-import heliusWebhookRouter from './routes/helius-webhook'
+import heliusWebhookRouter from "./routes/helius-webhook";
 import tokenRouter, { processSwapEvent } from "./routes/token";
 import { uploadToCloudflare } from "./uploader";
 import { WebSocketDO, allowedOrigins, createTestSwap } from "./websocket";
@@ -52,18 +52,24 @@ app.use("*", verifyAuth);
 // Block direct access to __scheduled endpoints from browsers
 app.use("/__scheduled*", async (c, next) => {
   const userAgent = c.req.header("User-Agent") || "";
-  
+
   // Only allow requests from Cloudflare's own systems or cURL (for testing)
-  const isBrowser = userAgent.includes("Mozilla/") || 
-                   userAgent.includes("Chrome/") || 
-                   userAgent.includes("Safari/") ||
-                   userAgent.includes("Firefox/");
-  
+  const isBrowser =
+    userAgent.includes("Mozilla/") ||
+    userAgent.includes("Chrome/") ||
+    userAgent.includes("Safari/") ||
+    userAgent.includes("Firefox/");
+
   if (isBrowser) {
-    logger.warn(`Blocked browser access to __scheduled endpoint - User-Agent: ${userAgent}`);
-    return c.json({ error: "This endpoint is for internal Cloudflare use only" }, 403);
+    logger.warn(
+      `Blocked browser access to __scheduled endpoint - User-Agent: ${userAgent}`,
+    );
+    return c.json(
+      { error: "This endpoint is for internal Cloudflare use only" },
+      403,
+    );
   }
-  
+
   return next();
 });
 
@@ -95,7 +101,7 @@ api.route("/", messagesRouter);
 api.route("/", authRouter);
 api.route("/", swapRouter);
 api.route("/share", shareRouter);
-api.route('/', heliusWebhookRouter);
+api.route("/", heliusWebhookRouter);
 
 // Root paths for health checks
 app.get("/", (c) => c.json({ status: "ok" }));
@@ -210,7 +216,6 @@ api.post("/upload", async (c) => {
   }
 });
 
-
 // Test endpoint to emit a swap event via WebSocket
 api.get("/emit-test-swap/:tokenId", async (c) => {
   try {
@@ -301,13 +306,17 @@ api.get("/image/:key", async (c) => {
       return c.json({ error: "R2 is not available" }, 500);
     }
 
-    logger.log(`[App Route] Attempting to fetch R2 object directly with key: ${key}`);
+    logger.log(
+      `[App Route] Attempting to fetch R2 object directly with key: ${key}`,
+    );
     let object: R2ObjectBody | null = await c.env.R2.get(key);
     let foundKey = key; // Assume the requested key is the correct one initially
 
     // If direct fetch fails, try a fallback lookup via database
     if (!object) {
-      logger.warn(`[App Route] Direct R2 fetch failed for key: ${key}. Attempting DB fallback.`);
+      logger.warn(
+        `[App Route] Direct R2 fetch failed for key: ${key}. Attempting DB fallback.`,
+      );
       try {
         const db = getDB(c.env);
         const tokens = await db
@@ -328,7 +337,11 @@ api.get("/image/:key", async (c) => {
           );
 
           let extractedKey: string | null = null;
-          if (imageUrl.includes("/api/image/") || imageUrl.includes("/image/")) { // Check both /api/image/ and /image/
+          if (
+            imageUrl.includes("/api/image/") ||
+            imageUrl.includes("/image/")
+          ) {
+            // Check both /api/image/ and /image/
             extractedKey = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
           } else if (imageUrl.includes("r2.dev/")) {
             const pathMatch = imageUrl.match(/r2\.dev\/(.*?)(?:\?|$)/);
@@ -346,37 +359,50 @@ api.get("/image/:key", async (c) => {
               foundKey = extractedKey;
             }
           } else if (extractedKey === key) {
-             logger.log(`[App Route] Extracted key ${extractedKey} matches requested key ${key}. Object likely does not exist.`);
+            logger.log(
+              `[App Route] Extracted key ${extractedKey} matches requested key ${key}. Object likely does not exist.`,
+            );
           } else {
-             logger.warn(`[App Route] Could not reliably extract R2 key from DB URL: ${imageUrl}`);
+            logger.warn(
+              `[App Route] Could not reliably extract R2 key from DB URL: ${imageUrl}`,
+            );
           }
         } else {
-          logger.log(`[App Route] No matching image URL found in DB for key: ${key}`);
+          logger.log(
+            `[App Route] No matching image URL found in DB for key: ${key}`,
+          );
         }
       } catch (dbError) {
         logger.error("[App Route] Error during DB fallback lookup:", dbError);
       }
     }
 
-    if (!object || !object.body) { // Check for object and body existence
-      logger.error(`[App Route] R2 object not found or has no body for key: ${key} (even after fallback)`);
+    if (!object || !object.body) {
+      // Check for object and body existence
+      logger.error(
+        `[App Route] R2 object not found or has no body for key: ${key} (even after fallback)`,
+      );
       return c.json({ error: "File not found", searchedKey: key }, 404);
     }
 
-    logger.log(`[App Route] Successfully retrieved R2 object with key: ${foundKey}`);
+    logger.log(
+      `[App Route] Successfully retrieved R2 object with key: ${foundKey}`,
+    );
 
     const contentType =
       object.httpMetadata?.contentType || "application/octet-stream";
-    logger.log(`[App Route] Serving file ${foundKey} with content type: ${contentType}`);
+    logger.log(
+      `[App Route] Serving file ${foundKey} with content type: ${contentType}`,
+    );
 
     const headers = new Headers();
     headers.set("Content-Type", contentType);
     headers.set("Content-Length", object.size.toString());
     headers.set("Cache-Control", "public, max-age=31536000");
     headers.set("ETag", object.httpEtag);
-    headers.set("Access-Control-Allow-Origin", "*"); 
+    headers.set("Access-Control-Allow-Origin", "*");
     headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
-    headers.set("Access-Control-Allow-Headers", "*"); 
+    headers.set("Access-Control-Allow-Headers", "*");
     headers.set("Access-Control-Max-Age", "86400");
 
     return new Response(object.body as any, {
@@ -544,12 +570,12 @@ export default {
   async scheduled(event: any, env: Env, ctx: ExecutionContext) {
     try {
       // Make sure event has the required properties
-      if (!event || typeof event.cron !== 'string') {
+      if (!event || typeof event.cron !== "string") {
         logger.error("Invalid scheduled event format:", event);
         return;
       }
-      
-        await cron(env, event);
+
+      await cron(env, event);
     } catch (error) {
       logger.error("Error in scheduled handler:", error);
     }

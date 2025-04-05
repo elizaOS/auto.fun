@@ -620,8 +620,8 @@ const uploadImage = async (metadata: TokenMetadata) => {
     properties: {
       files: [{ type: "image/png", uri: "pending" }],
       category: "image",
-      creators: [{ address: metadata.mintAuthority, share: 100 }]
-    }
+      creators: [{ address: metadata.mintAuthority, share: 100 }],
+    },
   };
 
   console.log("Preparing metadata:", basicMetadata);
@@ -656,30 +656,30 @@ const uploadImage = async (metadata: TokenMetadata) => {
       throw new Error("Failed to upload image: " + (await response.text()));
     }
 
-    const result = await response.json() as UploadResponse;
-    
+    const result = (await response.json()) as UploadResponse;
+
     // Verify metadata URL exists, if not create a fallback
     if (!result.metadataUrl || result.metadataUrl === "undefined") {
       console.warn("No metadata URL returned from server, using fallback URL");
-      
+
       // Generate a fallback URL using the mint address or a UUID
       result.metadataUrl = `https://metadata.auto.fun/${metadata.tokenMint || crypto.randomUUID()}.json`;
       console.log("Using fallback metadata URL:", result.metadataUrl);
     }
-    
+
     return result;
   } catch (error) {
     console.error("Error uploading:", error);
-    
+
     // In case of upload error, return a placeholder URL
     const tokenMint = metadata.tokenMint || crypto.randomUUID();
     const fallbackUrl = `https://metadata.auto.fun/${tokenMint}.json`;
-    
+
     console.log("Upload failed, using fallback URLs");
     return {
       success: false,
       imageUrl: "",
-      metadataUrl: fallbackUrl
+      metadataUrl: fallbackUrl,
     };
   }
 };
@@ -1290,9 +1290,15 @@ export const Create = () => {
 
     try {
       // Ensure we have a valid metadata URL
-      if (!_metadataUrl || _metadataUrl === "undefined" || _metadataUrl === "") {
-        console.warn("No metadata URL provided, generating minimal metadata...");
-        
+      if (
+        !_metadataUrl ||
+        _metadataUrl === "undefined" ||
+        _metadataUrl === ""
+      ) {
+        console.warn(
+          "No metadata URL provided, generating minimal metadata...",
+        );
+
         // Create minimal metadata and upload it
         const minimalMetadata = {
           name: _tokenMetadata.name,
@@ -1301,24 +1307,24 @@ export const Create = () => {
           image: _tokenMetadata.imageBase64 ? "pending" : "",
           external_url: _tokenMetadata.links.website || "",
         };
-        
+
         console.log("Generated minimal metadata:", minimalMetadata);
-        
+
         // Upload minimal metadata
         const uploadResult = await uploadImage(_tokenMetadata);
         _metadataUrl = uploadResult.metadataUrl;
-        
+
         console.log("Uploaded minimal metadata, URL:", _metadataUrl);
       }
-      
+
       console.log("Creating token on-chain with parameters:", {
         name: _tokenMetadata.name,
         symbol: _tokenMetadata.symbol,
         metadataUrl: _metadataUrl,
         mintKeypair: {
           publicKey: mintKeypair.publicKey.toString(),
-          secretKeyLength: mintKeypair.secretKey.length
-        }
+          secretKeyLength: mintKeypair.secretKey.length,
+        },
       });
 
       // Use the useCreateToken hook to create the token on-chain
@@ -1330,20 +1336,28 @@ export const Create = () => {
 
       // Return the mint address as transaction ID
       const txId = mintKeypair.publicKey.toString();
-      console.log("Token created on-chain successfully with mint address:", txId);
+      console.log(
+        "Token created on-chain successfully with mint address:",
+        txId,
+      );
       return txId;
     } catch (error) {
       console.error("Error creating token on-chain:", error);
-      
+
       // Check if it's a deserialization error (0x66 / 102)
-      if (error instanceof Error && 
-          (error.message.includes("custom program error: 0x66") ||
-           error.message.includes("InstructionDidNotDeserialize") ||
-           error.message.includes("Error Number: 102"))) {
-        
-        console.error("Transaction failed due to instruction deserialization error.");
-        console.error("This is likely due to parameter mismatch with the on-chain program.");
-        
+      if (
+        error instanceof Error &&
+        (error.message.includes("custom program error: 0x66") ||
+          error.message.includes("InstructionDidNotDeserialize") ||
+          error.message.includes("Error Number: 102"))
+      ) {
+        console.error(
+          "Transaction failed due to instruction deserialization error.",
+        );
+        console.error(
+          "This is likely due to parameter mismatch with the on-chain program.",
+        );
+
         // Try to log relevant parameters
         console.log("Debug information:");
         console.log("- Token name:", _tokenMetadata.name);
@@ -1351,10 +1365,12 @@ export const Create = () => {
         console.log("- Metadata URL:", _metadataUrl);
         console.log("- Decimals:", _tokenMetadata.decimals);
         console.log("- Mint public key:", mintKeypair.publicKey.toString());
-        
-        throw new Error("Failed to create token: instruction format mismatch with on-chain program. Please try again or contact support.");
+
+        throw new Error(
+          "Failed to create token: instruction format mismatch with on-chain program. Please try again or contact support.",
+        );
       }
-      
+
       throw new Error("Failed to create token on-chain");
     }
   };
@@ -1595,7 +1611,8 @@ export const Create = () => {
       importAddress: "",
     }));
 
-    setIsImporting(true);    setImportStatus(null);
+    setIsImporting(true);
+    setImportStatus(null);
 
     try {
       // Ensure wallet is connected
@@ -2044,7 +2061,9 @@ export const Create = () => {
         console.log("Fetching vanity keypair from backend...");
         const authToken = getAuthToken();
         if (!authToken) {
-          throw new Error("Authentication token not found. Please reconnect wallet.");
+          throw new Error(
+            "Authentication token not found. Please reconnect wallet.",
+          );
         }
 
         const vanityResponse = await fetch(`${env.apiUrl}/api/vanity-keypair`, {
@@ -2060,76 +2079,106 @@ export const Create = () => {
         if (!vanityResponse.ok) {
           let errorMsg = "Failed to obtain vanity keypair.";
           try {
-            const errorData = await vanityResponse.json() as ApiErrorResponse; // Type assertion
+            const errorData = (await vanityResponse.json()) as ApiErrorResponse; // Type assertion
             errorMsg = errorData.error || errorMsg;
-          } catch (e) { /* Ignore parsing error */ }
-          
+          } catch (e) {
+            /* Ignore parsing error */
+          }
+
           if (vanityResponse.status === 403) {
-              errorMsg = "A non-zero SOL balance is required to obtain a vanity keypair."
-          } else if (vanityResponse.status === 503 || vanityResponse.status === 404) {
-              errorMsg = "No vanity keypairs currently available, please try again shortly."
+            errorMsg =
+              "A non-zero SOL balance is required to obtain a vanity keypair.";
+          } else if (
+            vanityResponse.status === 503 ||
+            vanityResponse.status === 404
+          ) {
+            errorMsg =
+              "No vanity keypairs currently available, please try again shortly.";
           }
 
           throw new Error(errorMsg);
         }
 
-        const responseData = await vanityResponse.json() as VanityKeypairResponse;
+        const responseData =
+          (await vanityResponse.json()) as VanityKeypairResponse;
         console.log("Response data:", responseData);
-        
+
         // Ensure we have both address and secretKey in the response
-        if (!responseData.publicKey || !responseData.secretKey || !Array.isArray(responseData.secretKey)) {
+        if (
+          !responseData.publicKey ||
+          !responseData.secretKey ||
+          !Array.isArray(responseData.secretKey)
+        ) {
           console.error("Invalid keypair response from server:", responseData);
-          throw new Error("Invalid keypair format: missing address or secretKey");
+          throw new Error(
+            "Invalid keypair format: missing address or secretKey",
+          );
         }
-        
-        const { publicKey: vanityAddress, secretKey: secretKeyArray } = responseData;
+
+        const { publicKey: vanityAddress, secretKey: secretKeyArray } =
+          responseData;
         tokenMint = vanityAddress;
-        
-        console.log("Received keypair from API:", 
-          `Address: ${vanityAddress}`, 
-          `Secret key length: ${secretKeyArray?.length || 0} bytes`);
-        
+
+        console.log(
+          "Received keypair from API:",
+          `Address: ${vanityAddress}`,
+          `Secret key length: ${secretKeyArray?.length || 0} bytes`,
+        );
+
         // Convert the number array to Uint8Array for Solana
         const secretKeyUint8Array = new Uint8Array(secretKeyArray);
-        
+
         // Verify length is exactly 64 bytes
         if (secretKeyUint8Array.length !== 64) {
-          throw new Error(`Invalid secret key length: ${secretKeyUint8Array.length} bytes (expected 64 bytes)`);
+          throw new Error(
+            `Invalid secret key length: ${secretKeyUint8Array.length} bytes (expected 64 bytes)`,
+          );
         }
-        
+
         // Create the keypair using Solana's fromSecretKey method
         try {
           mintKeypair = Keypair.fromSecretKey(secretKeyUint8Array);
-          
+
           // Get the public key from the keypair - this is the deterministic, correct value
           const derivedPublicKey = mintKeypair.publicKey.toString();
-          
-          console.log(`Derived public key from secret key: ${derivedPublicKey}`);
-          
+
+          console.log(
+            `Derived public key from secret key: ${derivedPublicKey}`,
+          );
+
           // Check if they match, but don't throw an error if they don't - use the derived one
           if (derivedPublicKey !== vanityAddress) {
-            console.warn(`Public key mismatch - API returned: ${vanityAddress}, derived: ${derivedPublicKey}`);
-            console.warn("Using the derived public key from the secret key for safety");
+            console.warn(
+              `Public key mismatch - API returned: ${vanityAddress}, derived: ${derivedPublicKey}`,
+            );
+            console.warn(
+              "Using the derived public key from the secret key for safety",
+            );
             // Update tokenMint to use the derived public key which is guaranteed to be correct
             tokenMint = derivedPublicKey;
           } else {
-            console.log("Public key validation successful - API and derived keys match");
+            console.log(
+              "Public key validation successful - API and derived keys match",
+            );
           }
-          
+
           console.log("Successfully created Solana keypair from secret key");
         } catch (keypairError) {
           console.error("Failed to create Solana keypair:", keypairError);
           throw new Error("Invalid keypair format received from server");
         }
-        
-        console.log("Successfully obtained vanity keypair:", tokenMint);
 
+        console.log("Successfully obtained vanity keypair:", tokenMint);
       } catch (error) {
-          console.error("Error fetching vanity keypair:", error);
-          toast.error(error instanceof Error ? error.message : "Could not get vanity keypair.");
-          setIsSubmitting(false); // Stop submission
-          setShowCoinDrop(false); // Hide animation if it started
-          return; // Exit the function
+        console.error("Error fetching vanity keypair:", error);
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Could not get vanity keypair.",
+        );
+        setIsSubmitting(false); // Stop submission
+        setShowCoinDrop(false); // Hide animation if it started
+        return; // Exit the function
       }
       // --- Fetch Vanity Keypair from Backend --- END
 
@@ -2176,7 +2225,10 @@ export const Create = () => {
 
           // Verify metadata URL is valid
           if (!metadataUrl || metadataUrl === "undefined") {
-            console.error("Upload succeeded but metadata URL is invalid:", metadataUrl);
+            console.error(
+              "Upload succeeded but metadata URL is invalid:",
+              metadataUrl,
+            );
             // Fallback: generate a unique metadata URL based on mint address
             metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
             console.log("Using fallback metadata URL:", metadataUrl);
@@ -2198,18 +2250,24 @@ export const Create = () => {
       } else if (activeTab === FormTab.IMPORT && coinDropImageUrl) {
         // For imported tokens, use the image URL directly
         imageUrl = coinDropImageUrl;
-        
+
         // Generate a metadata URL if none exists
         if (!metadataUrl) {
           metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
-          console.log("Using default metadata URL for imported token:", metadataUrl);
+          console.log(
+            "Using default metadata URL for imported token:",
+            metadataUrl,
+          );
         }
       } else if (!media_base64 && !metadataUrl) {
         // No image provided, generate minimal metadata URL
         metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
-        console.log("No image provided, using default metadata URL:", metadataUrl);
+        console.log(
+          "No image provided, using default metadata URL:",
+          metadataUrl,
+        );
       }
-      
+
       // Double-check that we have a valid metadata URL
       if (!metadataUrl) {
         console.warn("No metadata URL set, using fallback");
@@ -2223,31 +2281,35 @@ export const Create = () => {
         console.log("Token created on-chain successfully");
       } catch (onChainError) {
         console.error("Error creating token on-chain:", onChainError);
-        
+
         // Format a user-friendly error message
         let errorMessage = "Failed to create token on-chain";
-        
+
         if (onChainError instanceof Error) {
           // Handle deserialization errors specially
-          if (onChainError.message.includes("instruction format mismatch") || 
-              onChainError.message.includes("InstructionDidNotDeserialize") ||
-              onChainError.message.includes("custom program error: 0x66")) {
-            
-            errorMessage = "The token creation transaction was rejected by the blockchain. This may be due to a temporary program upgrade. Please try again in a few minutes.";
-            
+          if (
+            onChainError.message.includes("instruction format mismatch") ||
+            onChainError.message.includes("InstructionDidNotDeserialize") ||
+            onChainError.message.includes("custom program error: 0x66")
+          ) {
+            errorMessage =
+              "The token creation transaction was rejected by the blockchain. This may be due to a temporary program upgrade. Please try again in a few minutes.";
+
             // Try again with different parameters
             try {
               // Wait a moment before retrying
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              toast.info("Retrying token creation with different parameters...");
-              
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+              toast.info(
+                "Retrying token creation with different parameters...",
+              );
+
               // Modify token metadata for retry
               const retryMetadata = {
                 ...tokenMetadata,
                 decimals: 9, // Ensure decimals is 9
                 supply: 1000000000000000, // Set explicit supply
               };
-              
+
               await createTokenOnChain(retryMetadata, mintKeypair, metadataUrl);
               console.log("Token created successfully on retry");
               // Continue with token creation flow...
@@ -2261,7 +2323,7 @@ export const Create = () => {
             errorMessage = `Failed to create token on-chain: ${onChainError.message}`;
           }
         }
-        
+
         throw new Error(errorMessage);
       }
 
@@ -3119,5 +3181,3 @@ export const Create = () => {
   );
 };
 export default Create;
-
-

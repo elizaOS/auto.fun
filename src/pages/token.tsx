@@ -17,14 +17,20 @@ import {
   formatNumber,
   formatNumberSubscript,
   fromNow,
-  LAMPORTS_PER_SOL
+  LAMPORTS_PER_SOL,
 } from "@/utils";
 import { getToken, queryClient } from "@/utils/api";
 import { fetchTokenMarketMetrics } from "@/utils/blockchain";
 import { getSocket } from "@/utils/socket";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, ExternalLink, Globe, Info as InfoCircle, Paintbrush } from "lucide-react";
+import {
+  BarChart3,
+  ExternalLink,
+  Globe,
+  Info as InfoCircle,
+  Paintbrush,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
@@ -37,7 +43,7 @@ export default function Page() {
   const { publicKey } = useWallet();
   const normalizedWallet = publicKey?.toString();
   const { solPrice: contextSolPrice } = useSolPriceContext();
-  const [activeTab, setActiveTab] = useState<'chart' | 'ai'>('chart');
+  const [activeTab, setActiveTab] = useState<"chart" | "ai">("chart");
 
   // Fetch token details from API
   const tokenQuery = useQuery({
@@ -59,12 +65,14 @@ export default function Page() {
   useEffect(() => {
     const socket = getSocket();
 
-    socket.on('updateToken', (token: any) => queryClient.setQueryData(['token', address], token))
+    socket.on("updateToken", (token: any) =>
+      queryClient.setQueryData(["token", address], token),
+    );
 
     return () => {
-      socket.off('updateToken')
-    }
-  }, [])
+      socket.off("updateToken");
+    };
+  }, []);
 
   // Fetch token market metrics from blockchain
   const metricsQuery = useQuery({
@@ -230,7 +238,7 @@ export default function Page() {
             Market Cap
           </span>
         </div>
-        
+
         <div className="flex-1 flex flex-col items-center">
           <span className="text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
             {volume24h > 0 ? abbreviateNumber(volume24h) : "0"}
@@ -244,15 +252,30 @@ export default function Page() {
             24hr Volume
           </span>
         </div>
-        
+
         <div className="flex-1 flex flex-col items-center">
           <span className="text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
             {token?.createdAt
-              ? fromNow(token?.createdAt, true).includes('a few') ? "NOW" : fromNow(token?.createdAt, true).includes('a minute') ? "1m" : fromNow(token?.createdAt, true).includes('an hour') ? "1h" : fromNow(token?.createdAt, true).includes('a day') ? "1d" : fromNow(token?.createdAt, true).replace("ago", "")
-              .replace(" days", "d").replace(" hours", "h").replace(" minutes", "m").replace("seconds", "s")
-              .replace(" day", "d").replace("hour", "hr").replace(" minute", "m").replace("second", "s").trim()
-              .trim()
-              
+              ? fromNow(token?.createdAt, true).includes("a few")
+                ? "NOW"
+                : fromNow(token?.createdAt, true).includes("a minute")
+                  ? "1m"
+                  : fromNow(token?.createdAt, true).includes("an hour")
+                    ? "1h"
+                    : fromNow(token?.createdAt, true).includes("a day")
+                      ? "1d"
+                      : fromNow(token?.createdAt, true)
+                          .replace("ago", "")
+                          .replace(" days", "d")
+                          .replace(" hours", "h")
+                          .replace(" minutes", "m")
+                          .replace("seconds", "s")
+                          .replace(" day", "d")
+                          .replace("hour", "hr")
+                          .replace(" minute", "m")
+                          .replace("second", "s")
+                          .trim()
+                          .trim()
               : "-"}
           </span>
           <span className="text-lg font-dm-mono text-autofun-text-secondary mt-3">
@@ -270,7 +293,7 @@ export default function Page() {
               <div className="w-full aspect-square">
                 <SkeletonImage src={token?.image} alt="image" />
               </div>
-              
+
               {/* Token name overlapping at top - with drop shadow */}
               <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 via-black/25 to-transparent px-3 py-2.5">
                 <div className="flex items-center justify-between w-full">
@@ -282,7 +305,7 @@ export default function Page() {
                   </div>
                 </div>
               </div>
-              
+
               {/* Ticker overlapping at bottom - with drop shadow */}
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 via-black/25 to-transparent px-3 py-2.5">
                 <div className="text-autofun-text-highlight text-xl font-bold font-dm-mono uppercase tracking-widest drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
@@ -290,7 +313,7 @@ export default function Page() {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex flex-col gap-3">
               <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
                 {token?.description}
@@ -306,7 +329,7 @@ export default function Page() {
                 </Link>
               </div>
             </div>
-            
+
             {/* Contract address */}
             <div className="flex">
               <div className="size-10 inline-flex border-r shrink-0 bg-autofun-background-action-primary">
@@ -394,46 +417,50 @@ export default function Page() {
             <div className="flex flex-col">
               {/* Green stroke above tab section */}
               <div className="h-2 w-full bg-autofun-text-highlight"></div>
-              
+
               {/* Tabs Header with Title and Right-aligned Tabs - removed border-b as it's on the parent */}
               <div className="flex items-center justify-between pr-2">
                 <h2 className="font-satoshi font-bold text-xl text-autofun-text-highlight px-6 py-3">
-                  {activeTab === 'chart' ? 'Chart' : 'AI Content Creation'}
+                  {activeTab === "chart" ? "Chart" : "AI Content Creation"}
                 </h2>
                 <div className="flex">
                   <button
                     className={`px-4 py-3 text-autofun-text-primary font-medium ${
-                      activeTab === 'chart' 
-                        ? 'bg-autofun-background-highlight text-black' 
-                        : 'text-autofun-text-secondary hover:text-autofun-text-primary'
+                      activeTab === "chart"
+                        ? "bg-autofun-background-highlight text-black"
+                        : "text-autofun-text-secondary hover:text-autofun-text-primary"
                     }`}
-                    onClick={() => setActiveTab('chart')}
-                    style={{ marginTop: '-2px', paddingTop: '14px' }}
+                    onClick={() => setActiveTab("chart")}
+                    style={{ marginTop: "-2px", paddingTop: "14px" }}
                   >
-                    <BarChart3 className={`size-4 inline-block mr-1.5 ${
-                      activeTab === 'chart' ? 'text-black' : ''
-                    }`} />
+                    <BarChart3
+                      className={`size-4 inline-block mr-1.5 ${
+                        activeTab === "chart" ? "text-black" : ""
+                      }`}
+                    />
                     Chart
                   </button>
                   <button
                     className={`px-4 py-3 text-autofun-text-primary font-medium ${
-                      activeTab === 'ai' 
-                        ? 'bg-autofun-background-highlight text-black' 
-                        : 'text-autofun-text-secondary hover:text-autofun-text-primary'
+                      activeTab === "ai"
+                        ? "bg-autofun-background-highlight text-black"
+                        : "text-autofun-text-secondary hover:text-autofun-text-primary"
                     }`}
-                    onClick={() => setActiveTab('ai')}
-                    style={{ marginTop: '-2px', paddingTop: '14px' }}
+                    onClick={() => setActiveTab("ai")}
+                    style={{ marginTop: "-2px", paddingTop: "14px" }}
                   >
-                    <Paintbrush className={`size-4 inline-block mr-1.5 ${
-                      activeTab === 'ai' ? 'text-black' : ''
-                    }`} />
+                    <Paintbrush
+                      className={`size-4 inline-block mr-1.5 ${
+                        activeTab === "ai" ? "text-black" : ""
+                      }`}
+                    />
                     AI Create
                   </button>
                 </div>
               </div>
 
               {/* Tab Content */}
-              {activeTab === 'chart' && (
+              {activeTab === "chart" && (
                 <>
                   <div className="w-full h-[50vh] bg-autofun-background-primary">
                     <TradingViewChart name={token.name} token={token.mint} />
@@ -443,7 +470,7 @@ export default function Page() {
                   </div>
                 </>
               )}
-              {activeTab === 'ai' && (
+              {activeTab === "ai" && (
                 <div id="generation" className="p-4 scroll-mt-16">
                   <GenerationSection />
                 </div>
@@ -460,9 +487,7 @@ export default function Page() {
           {/* Bonding Curve */}
           <div className="p-4 flex flex-col gap-3.5">
             <div className="flex justify-between gap-3.5 items-center">
-              <p className="font-medium font-satoshi">
-                Bonding Curve Progress
-              </p>
+              <p className="font-medium font-satoshi">Bonding Curve Progress</p>
               <InfoCircle className="size-5 text-autofun-text-secondary" />
             </div>
             <div>
@@ -483,7 +508,7 @@ export default function Page() {
               </p>
             ) : null}
           </div>
-          
+
           {/* Price Display - Now below bonding curve */}
           <div className="py-4 px-3">
             <div className="flex flex-col gap-3 divide-y divide-autofun-stroke-primary">
@@ -492,7 +517,9 @@ export default function Page() {
                   Price USD
                 </span>
                 <span className="text-2xl font-dm-mono text-autofun-text-primary">
-                  {tokenPriceUSD ? formatNumberSubscript(tokenPriceUSD) : "$0.00"}
+                  {tokenPriceUSD
+                    ? formatNumberSubscript(tokenPriceUSD)
+                    : "$0.00"}
                 </span>
               </div>
               <div className="flex flex-col gap-1 items-center pt-3">

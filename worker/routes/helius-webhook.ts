@@ -19,7 +19,7 @@ router.post("/webhook", async (c) => {
       {
         message: "Unauthorized",
       },
-      401
+      401,
     );
   }
 
@@ -40,7 +40,7 @@ router.post("/webhook", async (c) => {
     await processTransactionLogs(
       c.env,
       event.meta.logMessages,
-      event.transaction.signatures[0]
+      event.transaction.signatures[0],
     );
   }
 

@@ -18,7 +18,7 @@ import { env } from "@/utils/env";
 
 export default function SwapsTable({ token }: { token: IToken }) {
   const { paused, setPause } = usePause();
-  const {items: data, isLoading} = useTransactions({tokenId: token.mint})
+  const { items: data, isLoading } = useTransactions({ tokenId: token.mint });
 
   // Helper to format swap amounts based on type
   const formatSwapAmount = (amount: number | string, isToken: boolean) => {
@@ -72,7 +72,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
           </TableRow>
         ) : data.length > 0 ? (
           data.map((swap) => {
-            const isBuy = swap.type === 'Buy'
+            const isBuy = swap.type === "Buy";
             return (
               <TableRow className="hover:bg-white/5" key={swap?.txId}>
                 <TableCell className="text-left">
@@ -102,10 +102,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
                   {fromNow(swap?.timestamp)}
                 </TableCell>
                 <TableCell>
-                  <Link
-                    to={env.getTransactionUrl(swap.txId)}
-                    target="_blank"
-                  >
+                  <Link to={env.getTransactionUrl(swap.txId)} target="_blank">
                     <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary" />
                   </Link>
                 </TableCell>

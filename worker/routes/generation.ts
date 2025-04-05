@@ -366,50 +366,55 @@ export async function generateMedia(
 
   // Use Cloudflare Worker AI for image generation (fast mode)
   if (data.type === MediaType.IMAGE && (!data.mode || data.mode === "fast")) {
-      // Use Cloudflare AI binding instead of external API
-      if (!env.AI) {
-        throw new Error("Cloudflare AI binding not configured");
-      }
+    // Use Cloudflare AI binding instead of external API
+    if (!env.AI) {
+      throw new Error("Cloudflare AI binding not configured");
+    }
 
-      // Add retry logic for AI generation
-      const maxRetries = 3;
-      let lastError;
-      
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-          // Use the flux-1-schnell model via AI binding
-          const result = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", {
+    // Add retry logic for AI generation
+    const maxRetries = 3;
+    let lastError;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Use the flux-1-schnell model via AI binding
+        const result = await env.AI.run(
+          "@cf/black-forest-labs/flux-1-schnell",
+          {
             prompt: data.prompt,
             steps: 4,
-          });
+          },
+        );
 
-          // Create data URL from the base64 image
-          const dataURI = `data:image/jpeg;base64,${result.image}`;
+        // Create data URL from the base64 image
+        const dataURI = `data:image/jpeg;base64,${result.image}`;
 
-          // Return in a format compatible with our existing code
-          return {
-            data: {
-              images: [
-                {
-                  url: dataURI,
-                },
-              ],
-            },
-          };
-        } catch (error) {
-          console.error(`Attempt ${attempt} failed:`, error);
-          lastError = error;
-          
-          // If we haven't reached max retries, wait before trying again
-          if (attempt < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-            continue;
-          }
+        // Return in a format compatible with our existing code
+        return {
+          data: {
+            images: [
+              {
+                url: dataURI,
+              },
+            ],
+          },
+        };
+      } catch (error) {
+        console.error(`Attempt ${attempt} failed:`, error);
+        lastError = error;
+
+        // If we haven't reached max retries, wait before trying again
+        if (attempt < maxRetries) {
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+          continue;
         }
       }
+    }
 
-      // If we get here, all retries failed
-      throw new Error(`Failed to generate image after ${maxRetries} attempts: ${lastError?.message}`);
+    // If we get here, all retries failed
+    throw new Error(
+      `Failed to generate image after ${maxRetries} attempts: ${lastError?.message}`,
+    );
   } else if (data.type === MediaType.IMAGE && data.mode === "slow") {
     // Use flux-pro ultra for slow high-quality image generation
     generationPromise = fal.subscribe("fal-ai/flux-pro/v1.1-ultra", {
@@ -980,72 +985,99 @@ app.post("/generate-metadata", async (c) => {
       }
       throw error;
     }
-    
+
     // Custom max retries for endpoint
     const MAX_RETRIES = 10;
-    logger.log(`Generating token metadata with up to ${MAX_RETRIES} retries...`);
-    
+    logger.log(
+      `Generating token metadata with up to ${MAX_RETRIES} retries...`,
+    );
+
     // Function to generate metadata with the specified prompt data
     async function generatePromptMetadata(maxRetries = MAX_RETRIES) {
       let retryCount = 0;
-      
+
       while (retryCount < maxRetries) {
         try {
-          logger.log(`Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`);
-          
-          const response = await c.env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
-            messages: [
-              {
-                role: "system",
-                content: await createTokenPrompt(c.env, validatedData),
-              },
-            ],
-            max_tokens: 1000,
-            temperature: 0.75 + (retryCount * 0.02), // Slightly increase temperature on retries for variation
-          });
+          logger.log(
+            `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`,
+          );
+
+          const response = await c.env.AI.run(
+            "@cf/meta/llama-3.1-8b-instruct-fast",
+            {
+              messages: [
+                {
+                  role: "system",
+                  content: await createTokenPrompt(c.env, validatedData),
+                },
+              ],
+              max_tokens: 1000,
+              temperature: 0.75 + retryCount * 0.02, // Slightly increase temperature on retries for variation
+            },
+          );
 
           // Parse the JSON response with robust error handling
           let metadata: Record<string, string>;
-          
+
           // Log the raw response for debugging
-          logger.log(`[Endpoint - Attempt ${retryCount + 1}] Raw AI response:`, response.response.substring(0, 100) + "...");
-          
+          logger.log(
+            `[Endpoint - Attempt ${retryCount + 1}] Raw AI response:`,
+            response.response.substring(0, 100) + "...",
+          );
+
           // First try to extract JSON using regex - find content between the first { and last }
           const jsonRegex = /{[\s\S]*}/;
           const matches = response.response.match(jsonRegex);
-          
+
           if (!matches || matches.length === 0) {
-            logger.warn(`[Endpoint - Attempt ${retryCount + 1}] Could not find JSON object in AI response, retrying...`);
+            logger.warn(
+              `[Endpoint - Attempt ${retryCount + 1}] Could not find JSON object in AI response, retrying...`,
+            );
             retryCount++;
             continue;
           }
-          
+
           const jsonString = matches[0];
-          logger.log(`[Endpoint - Attempt ${retryCount + 1}] Extracted JSON string:`, jsonString.substring(0, 100) + "...");
-          
+          logger.log(
+            `[Endpoint - Attempt ${retryCount + 1}] Extracted JSON string:`,
+            jsonString.substring(0, 100) + "...",
+          );
+
           try {
             // Try to parse the extracted JSON
             metadata = JSON.parse(jsonString);
           } catch (parseError) {
             // If the first extraction fails, try a more aggressive approach
             // Look for individual fields and construct a JSON object
-            logger.log(`[Endpoint - Attempt ${retryCount + 1}] JSON parse failed. Attempting field extraction...`);
-            
+            logger.log(
+              `[Endpoint - Attempt ${retryCount + 1}] JSON parse failed. Attempting field extraction...`,
+            );
+
             const nameMatch = response.response.match(/"name"\s*:\s*"([^"]+)"/);
-            const symbolMatch = response.response.match(/"symbol"\s*:\s*"([^"]+)"/);
-            const descMatch = response.response.match(/"description"\s*:\s*"([^"]+)"/);
-            const promptMatch = response.response.match(/"prompt"\s*:\s*"([^"]+)"/);
-            
+            const symbolMatch = response.response.match(
+              /"symbol"\s*:\s*"([^"]+)"/,
+            );
+            const descMatch = response.response.match(
+              /"description"\s*:\s*"([^"]+)"/,
+            );
+            const promptMatch = response.response.match(
+              /"prompt"\s*:\s*"([^"]+)"/,
+            );
+
             if (nameMatch && symbolMatch && descMatch && promptMatch) {
               metadata = {
                 name: nameMatch[1],
                 symbol: symbolMatch[1],
                 description: descMatch[1],
-                prompt: promptMatch[1]
+                prompt: promptMatch[1],
               };
-              logger.log(`[Endpoint - Attempt ${retryCount + 1}] Successfully extracted fields from response`);
+              logger.log(
+                `[Endpoint - Attempt ${retryCount + 1}] Successfully extracted fields from response`,
+              );
             } else {
-              logger.warn(`[Endpoint - Attempt ${retryCount + 1}] Failed to extract required fields, retrying...`);
+              logger.warn(
+                `[Endpoint - Attempt ${retryCount + 1}] Failed to extract required fields, retrying...`,
+              );
               retryCount++;
               continue;
             }
@@ -1058,53 +1090,70 @@ app.post("/generate-metadata", async (c) => {
             !metadata.description ||
             !metadata.prompt
           ) {
-            logger.warn(`[Endpoint - Attempt ${retryCount + 1}] Missing required fields in metadata, retrying...`);
+            logger.warn(
+              `[Endpoint - Attempt ${retryCount + 1}] Missing required fields in metadata, retrying...`,
+            );
             retryCount++;
             continue;
           }
 
           // Ensure symbol is uppercase
           metadata.symbol = metadata.symbol.toUpperCase();
-          
-          logger.log(`Successfully generated metadata on attempt ${retryCount + 1}/${maxRetries}`);
+
+          logger.log(
+            `Successfully generated metadata on attempt ${retryCount + 1}/${maxRetries}`,
+          );
           return metadata;
         } catch (error) {
-          logger.error(`[Endpoint - Attempt ${retryCount + 1}] Error during metadata generation:`, error);
+          logger.error(
+            `[Endpoint - Attempt ${retryCount + 1}] Error during metadata generation:`,
+            error,
+          );
           retryCount++;
-          
+
           // Small delay before retrying
           if (retryCount < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise((resolve) => setTimeout(resolve, 500));
           }
         }
       }
-      
+
       // All retries failed
-      logger.error(`Failed to generate metadata after ${maxRetries} attempts in endpoint`);
+      logger.error(
+        `Failed to generate metadata after ${maxRetries} attempts in endpoint`,
+      );
       return null;
     }
-    
+
     // Generate metadata with retries
     const metadata = await generatePromptMetadata();
-    
+
     if (!metadata) {
       // All retries failed - provide fallback in development or return error
       if (c.env.NODE_ENV === "development" || c.env.NODE_ENV === "test") {
         const randomNum = Math.floor(Math.random() * 1000);
-        logger.log("Using fallback metadata in development/test environment after all retries failed");
+        logger.log(
+          "Using fallback metadata in development/test environment after all retries failed",
+        );
         return c.json({
           success: true,
           metadata: {
             name: `FallbackToken${randomNum}`,
             symbol: `FB${randomNum % 100}`,
-            description: "A fallback token created when all generation attempts failed",
-            prompt: "A digital art image showing a colorful token with fallback written on it"
-          }
+            description:
+              "A fallback token created when all generation attempts failed",
+            prompt:
+              "A digital art image showing a colorful token with fallback written on it",
+          },
         });
       }
-      
+
       return c.json(
-        { success: false, error: "Failed to generate valid token metadata after maximum retries" },
+        {
+          success: false,
+          error:
+            "Failed to generate valid token metadata after maximum retries",
+        },
         500,
       );
     }
@@ -1192,13 +1241,13 @@ app.post("/generate", async (c) => {
 
     // For testing or development, use a placeholder if no media was generated
     if (!mediaUrl) {
-        return c.json(
-          {
-            success: false,
-            error: `Failed to generate ${validatedData.type}. Please try again.`,
-          },
-          500,
-        );
+      return c.json(
+        {
+          success: false,
+          error: `Failed to generate ${validatedData.type}. Please try again.`,
+        },
+        500,
+      );
     }
 
     return c.json({
@@ -1421,12 +1470,17 @@ async function generateTokenOnDemand(
 
     // Use our improved generateMetadata function with retry
     const metadata = await generateMetadata(env);
-    
+
     if (!metadata) {
-      return { success: false, error: "Failed to generate token metadata after maximum retries" };
+      return {
+        success: false,
+        error: "Failed to generate token metadata after maximum retries",
+      };
     }
 
-    logger.log(`Successfully generated token metadata: ${metadata.name} (${metadata.symbol})`);
+    logger.log(
+      `Successfully generated token metadata: ${metadata.name} (${metadata.symbol})`,
+    );
 
     // Generate the image for this token
     let imageUrl = "";
@@ -1446,7 +1500,9 @@ async function generateTokenOnDemand(
         imageUrl = imageResult.data.images[0].url;
         logger.log(`Generated image URL: ${imageUrl}`);
       } else {
-        logger.warn("Image generation result doesn't contain expected image data");
+        logger.warn(
+          "Image generation result doesn't contain expected image data",
+        );
       }
     } catch (imageError) {
       logger.error(
@@ -1595,11 +1651,13 @@ app.post("/mark-token-used", async (c) => {
 // Function to generate metadata using Claude with retry
 async function generateMetadata(env: Env, maxRetries = 10) {
   let retryCount = 0;
-  
+
   while (retryCount < maxRetries) {
     try {
-      logger.log(`Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`);
-      
+      logger.log(
+        `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`,
+      );
+
       const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
         messages: [
           {
@@ -1608,51 +1666,67 @@ async function generateMetadata(env: Env, maxRetries = 10) {
           },
         ],
         max_tokens: 1000,
-        temperature: 0.75 + (retryCount * 0.02), // Slightly increase temperature on retries for variation
+        temperature: 0.75 + retryCount * 0.02, // Slightly increase temperature on retries for variation
       });
 
       // Parse the JSON response with robust error handling
       let metadata: Record<string, string>;
-      
+
       // Log the raw response for debugging
-      logger.log(`[Attempt ${retryCount + 1}] Raw AI response:`, response.response.substring(0, 100) + "...");
-      
+      logger.log(
+        `[Attempt ${retryCount + 1}] Raw AI response:`,
+        response.response.substring(0, 100) + "...",
+      );
+
       // First try to extract JSON using regex - find content between the first { and last }
       const jsonRegex = /{[\s\S]*}/;
       const matches = response.response.match(jsonRegex);
-      
+
       if (!matches || matches.length === 0) {
-        logger.warn(`[Attempt ${retryCount + 1}] Could not find JSON object in AI response, retrying...`);
+        logger.warn(
+          `[Attempt ${retryCount + 1}] Could not find JSON object in AI response, retrying...`,
+        );
         retryCount++;
         continue;
       }
-      
+
       const jsonString = matches[0];
-      logger.log(`[Attempt ${retryCount + 1}] Extracted JSON string:`, jsonString.substring(0, 100) + "...");
-      
+      logger.log(
+        `[Attempt ${retryCount + 1}] Extracted JSON string:`,
+        jsonString.substring(0, 100) + "...",
+      );
+
       try {
         // Try to parse the extracted JSON
         metadata = JSON.parse(jsonString);
       } catch (parseError) {
         // If the first extraction fails, try a more aggressive approach
         // Look for individual fields and construct a JSON object
-        logger.log(`[Attempt ${retryCount + 1}] JSON parse failed. Attempting field extraction...`);
-        
+        logger.log(
+          `[Attempt ${retryCount + 1}] JSON parse failed. Attempting field extraction...`,
+        );
+
         const nameMatch = response.response.match(/"name"\s*:\s*"([^"]+)"/);
         const symbolMatch = response.response.match(/"symbol"\s*:\s*"([^"]+)"/);
-        const descMatch = response.response.match(/"description"\s*:\s*"([^"]+)"/);
+        const descMatch = response.response.match(
+          /"description"\s*:\s*"([^"]+)"/,
+        );
         const promptMatch = response.response.match(/"prompt"\s*:\s*"([^"]+)"/);
-        
+
         if (nameMatch && symbolMatch && descMatch && promptMatch) {
           metadata = {
             name: nameMatch[1],
             symbol: symbolMatch[1],
             description: descMatch[1],
-            prompt: promptMatch[1]
+            prompt: promptMatch[1],
           };
-          logger.log(`[Attempt ${retryCount + 1}] Successfully extracted fields from response`);
+          logger.log(
+            `[Attempt ${retryCount + 1}] Successfully extracted fields from response`,
+          );
         } else {
-          logger.warn(`[Attempt ${retryCount + 1}] Failed to extract required fields, retrying...`);
+          logger.warn(
+            `[Attempt ${retryCount + 1}] Failed to extract required fields, retrying...`,
+          );
           retryCount++;
           continue;
         }
@@ -1665,42 +1739,53 @@ async function generateMetadata(env: Env, maxRetries = 10) {
         !metadata.description ||
         !metadata.prompt
       ) {
-        logger.warn(`[Attempt ${retryCount + 1}] Missing required fields in metadata, retrying...`);
+        logger.warn(
+          `[Attempt ${retryCount + 1}] Missing required fields in metadata, retrying...`,
+        );
         retryCount++;
         continue;
       }
 
       // Ensure symbol is uppercase
       metadata.symbol = metadata.symbol.toUpperCase();
-      
-      logger.log(`Successfully generated metadata on attempt ${retryCount + 1}/${maxRetries}`);
+
+      logger.log(
+        `Successfully generated metadata on attempt ${retryCount + 1}/${maxRetries}`,
+      );
       return metadata;
     } catch (error) {
-      logger.error(`[Attempt ${retryCount + 1}] Error during metadata generation:`, error);
+      logger.error(
+        `[Attempt ${retryCount + 1}] Error during metadata generation:`,
+        error,
+      );
       retryCount++;
-      
+
       // Small delay before retrying
       if (retryCount < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }
   }
-  
+
   // All retries failed, return fallback
   logger.error(`Failed to generate metadata after ${maxRetries} attempts`);
-  
+
   // In development, provide a detailed fallback
   if (env.NODE_ENV === "development" || env.NODE_ENV === "test") {
     const randomNum = Math.floor(Math.random() * 1000);
-    logger.log("Using fallback metadata in development/test environment after all retries failed");
+    logger.log(
+      "Using fallback metadata in development/test environment after all retries failed",
+    );
     return {
       name: `FallbackToken${randomNum}`,
       symbol: `FB${randomNum % 100}`,
-      description: "A fallback token created when all generation attempts failed",
-      prompt: "A digital art image showing a colorful token with fallback written on it"
+      description:
+        "A fallback token created when all generation attempts failed",
+      prompt:
+        "A digital art image showing a colorful token with fallback written on it",
     };
   }
-  
+
   return null;
 }
 
@@ -1712,13 +1797,17 @@ export async function generatePreGeneratedTokens(env: Env) {
     logger.log("[PreGen Metadata] Starting metadata generation...");
     const MAX_METADATA_RETRIES = 5; // Reduced retries for cron efficiency
     let metadataRetryCount = 0;
-    
+
     while (metadataRetryCount < MAX_METADATA_RETRIES) {
-        try {
-          logger.log(`[PreGen Metadata] Attempt ${metadataRetryCount + 1}/${MAX_METADATA_RETRIES}...`);
-          
-          // Note: We don't have `validatedData` here, so createTokenPrompt needs the simpler signature
-          const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
+      try {
+        logger.log(
+          `[PreGen Metadata] Attempt ${metadataRetryCount + 1}/${MAX_METADATA_RETRIES}...`,
+        );
+
+        // Note: We don't have `validatedData` here, so createTokenPrompt needs the simpler signature
+        const response = await env.AI.run(
+          "@cf/meta/llama-3.1-8b-instruct-fast",
+          {
             messages: [
               {
                 role: "system",
@@ -1726,162 +1815,233 @@ export async function generatePreGeneratedTokens(env: Env) {
               },
             ],
             max_tokens: 1000,
-            temperature: 0.75 + (metadataRetryCount * 0.02),
-          });
+            temperature: 0.75 + metadataRetryCount * 0.02,
+          },
+        );
 
-          let parsedMetadata: Record<string, string> | null = null;
-          const jsonRegex = /{.*}/s; // Use /s flag to match across lines
-          const matches = response.response.match(jsonRegex);
-          
-          if (matches && matches.length > 0) {
-            const jsonString = matches[0];
-            try {
-              parsedMetadata = JSON.parse(jsonString);
-            } catch (parseError) {
-              logger.warn(`[PreGen Metadata Attempt ${metadataRetryCount + 1}] JSON parse failed. Attempting field extraction...`, parseError);
-              // Fallback field extraction (simplified)
-              const nameMatch = response.response.match(/"name"\s*:\s*"([^"]+)"/);
-              const symbolMatch = response.response.match(/"symbol"\s*:\s*"([^"]+)"/);
-              const descMatch = response.response.match(/"description"\s*:\s*"([^"]+)"/);
-              const promptMatch = response.response.match(/"prompt"\s*:\s*"([^"]+)"/);
-              if (nameMatch && symbolMatch && descMatch && promptMatch) {
-                parsedMetadata = { name: nameMatch[1], symbol: symbolMatch[1], description: descMatch[1], prompt: promptMatch[1] };
-                logger.log(`[PreGen Metadata Attempt ${metadataRetryCount + 1}] Successfully extracted fields.`);
-              } else {
-                 logger.warn(`[PreGen Metadata Attempt ${metadataRetryCount + 1}] Failed to extract required fields.`);
-              }
+        let parsedMetadata: Record<string, string> | null = null;
+        const jsonRegex = /{.*}/s; // Use /s flag to match across lines
+        const matches = response.response.match(jsonRegex);
+
+        if (matches && matches.length > 0) {
+          const jsonString = matches[0];
+          try {
+            parsedMetadata = JSON.parse(jsonString);
+          } catch (parseError) {
+            logger.warn(
+              `[PreGen Metadata Attempt ${metadataRetryCount + 1}] JSON parse failed. Attempting field extraction...`,
+              parseError,
+            );
+            // Fallback field extraction (simplified)
+            const nameMatch = response.response.match(/"name"\s*:\s*"([^"]+)"/);
+            const symbolMatch = response.response.match(
+              /"symbol"\s*:\s*"([^"]+)"/,
+            );
+            const descMatch = response.response.match(
+              /"description"\s*:\s*"([^"]+)"/,
+            );
+            const promptMatch = response.response.match(
+              /"prompt"\s*:\s*"([^"]+)"/,
+            );
+            if (nameMatch && symbolMatch && descMatch && promptMatch) {
+              parsedMetadata = {
+                name: nameMatch[1],
+                symbol: symbolMatch[1],
+                description: descMatch[1],
+                prompt: promptMatch[1],
+              };
+              logger.log(
+                `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Successfully extracted fields.`,
+              );
+            } else {
+              logger.warn(
+                `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Failed to extract required fields.`,
+              );
             }
-          } else {
-              logger.warn(`[PreGen Metadata Attempt ${metadataRetryCount + 1}] Could not find JSON object in AI response.`);
           }
-
-          // Validation
-          if (parsedMetadata && parsedMetadata.name && parsedMetadata.symbol && parsedMetadata.description && parsedMetadata.prompt) {
-            parsedMetadata.symbol = parsedMetadata.symbol.toUpperCase();
-            metadata = parsedMetadata; // Assign successfully parsed and validated metadata
-            logger.log(`[PreGen Metadata] Successfully generated metadata on attempt ${metadataRetryCount + 1}.`);
-            break; // Exit retry loop
-          } else {
-             logger.warn(`[PreGen Metadata Attempt ${metadataRetryCount + 1}] Missing required fields or failed parsing. Retrying...`);
-             metadataRetryCount++;
-          }
-        } catch (error) {
-          logger.error(`[PreGen Metadata Attempt ${metadataRetryCount + 1}] Error during generation:`, error);
-          metadataRetryCount++;
-          if (metadataRetryCount < MAX_METADATA_RETRIES) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
+        } else {
+          logger.warn(
+            `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Could not find JSON object in AI response.`,
+          );
         }
+
+        // Validation
+        if (
+          parsedMetadata &&
+          parsedMetadata.name &&
+          parsedMetadata.symbol &&
+          parsedMetadata.description &&
+          parsedMetadata.prompt
+        ) {
+          parsedMetadata.symbol = parsedMetadata.symbol.toUpperCase();
+          metadata = parsedMetadata; // Assign successfully parsed and validated metadata
+          logger.log(
+            `[PreGen Metadata] Successfully generated metadata on attempt ${metadataRetryCount + 1}.`,
+          );
+          break; // Exit retry loop
+        } else {
+          logger.warn(
+            `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Missing required fields or failed parsing. Retrying...`,
+          );
+          metadataRetryCount++;
+        }
+      } catch (error) {
+        logger.error(
+          `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Error during generation:`,
+          error,
+        );
+        metadataRetryCount++;
+        if (metadataRetryCount < MAX_METADATA_RETRIES) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      }
     }
 
     if (!metadata) {
-        logger.error("[PreGen Metadata] Failed to generate valid metadata after all retries. Skipping token.");
-        // Use fallback in development/test
-        if (env.NODE_ENV === "development" || env.NODE_ENV === "test") {
-            const randomNum = Math.floor(Math.random() * 1000);
-            logger.log("[PreGen Metadata] Using fallback metadata.");
-            metadata = { name: `FallbackToken${randomNum}`, symbol: `FB${randomNum % 100}`, description: "Fallback token", prompt: "Fallback image prompt" };
-        } else {
-            return; // Stop if metadata failed in production
-        }
+      logger.error(
+        "[PreGen Metadata] Failed to generate valid metadata after all retries. Skipping token.",
+      );
+      // Use fallback in development/test
+      if (env.NODE_ENV === "development" || env.NODE_ENV === "test") {
+        const randomNum = Math.floor(Math.random() * 1000);
+        logger.log("[PreGen Metadata] Using fallback metadata.");
+        metadata = {
+          name: `FallbackToken${randomNum}`,
+          symbol: `FB${randomNum % 100}`,
+          description: "Fallback token",
+          prompt: "Fallback image prompt",
+        };
+      } else {
+        return; // Stop if metadata failed in production
+      }
     }
     // ----- End Step 1 -----
 
     // ----- Step 2: Generate Image (using CF AI) -----
     let imageDataUrl: string = "";
     try {
-        logger.log(`[PreGen Image] Generating image for: ${metadata.name} using prompt: ${metadata.prompt.substring(0,50)}...`);
-        const imageResult = await generateMedia(env, {
-            prompt: metadata.prompt,
-            type: MediaType.IMAGE,
-        });
-        if (imageResult?.data?.images?.length && imageResult.data.images[0].url.startsWith('data:image')) {
-            imageDataUrl = imageResult.data.images[0].url;
-            logger.log(`[PreGen Image] Successfully generated image Data URI for ${metadata.name}`);
-        } else {
-            throw new Error("generateMedia did not return a valid image data URI.");
-        }
+      logger.log(
+        `[PreGen Image] Generating image for: ${metadata.name} using prompt: ${metadata.prompt.substring(0, 50)}...`,
+      );
+      const imageResult = await generateMedia(env, {
+        prompt: metadata.prompt,
+        type: MediaType.IMAGE,
+      });
+      if (
+        imageResult?.data?.images?.length &&
+        imageResult.data.images[0].url.startsWith("data:image")
+      ) {
+        imageDataUrl = imageResult.data.images[0].url;
+        logger.log(
+          `[PreGen Image] Successfully generated image Data URI for ${metadata.name}`,
+        );
+      } else {
+        throw new Error("generateMedia did not return a valid image data URI.");
+      }
     } catch (imageError) {
-        logger.error(`[PreGen Image] Error generating image for ${metadata.name}:`, imageError);
-        return; // Stop if image generation fails
+      logger.error(
+        `[PreGen Image] Error generating image for ${metadata.name}:`,
+        imageError,
+      );
+      return; // Stop if image generation fails
     }
     // ----- End Step 2 -----
 
     // ----- Step 3: Upload Image to R2 (Logic from /upload) -----
     let finalImageUrl = ""; // This will hold the final URL
     try {
-        logger.log(`[PreGen Upload] Preparing image for upload: ${metadata.name}`);
-        const imageMatch = imageDataUrl.match(/^data:(image\/[a-z+]+);base64,(.*)$/);
-        if (!imageMatch) {
-            throw new Error("Invalid image data URI format for upload.");
-        }
-        const contentType = imageMatch[1];
-        const base64Data = imageMatch[2];
-        const imageBuffer = Buffer.from(base64Data, "base64");
-        logger.log(`[PreGen Upload] Decoded image: type=${contentType}, size=${imageBuffer.length} bytes`);
+      logger.log(
+        `[PreGen Upload] Preparing image for upload: ${metadata.name}`,
+      );
+      const imageMatch = imageDataUrl.match(
+        /^data:(image\/[a-z+]+);base64,(.*)$/,
+      );
+      if (!imageMatch) {
+        throw new Error("Invalid image data URI format for upload.");
+      }
+      const contentType = imageMatch[1];
+      const base64Data = imageMatch[2];
+      const imageBuffer = Buffer.from(base64Data, "base64");
+      logger.log(
+        `[PreGen Upload] Decoded image: type=${contentType}, size=${imageBuffer.length} bytes`,
+      );
 
-        let extension = ".jpg";
-        if (contentType.includes("png")) extension = ".png";
-        else if (contentType.includes("gif")) extension = ".gif";
-        else if (contentType.includes("svg")) extension = ".svg";
-        else if (contentType.includes("webp")) extension = ".webp";
+      let extension = ".jpg";
+      if (contentType.includes("png")) extension = ".png";
+      else if (contentType.includes("gif")) extension = ".gif";
+      else if (contentType.includes("svg")) extension = ".svg";
+      else if (contentType.includes("webp")) extension = ".webp";
 
-        // Use metadata name for filename
-        // const sanitizedName = metadata.name.toLowerCase().replace(/[^a-z0-9\._-]/g, '_'); // Allow . _ -
-        // const imageFilename = `${sanitizedName}${extension}`; 
-        // const imageFilename = `${crypto.randomUUID()}${extension}`; // Alternative: Use UUID
-        const imageFilename = `${crypto.randomUUID()}${extension}`; // Use UUID for unique filename
-        
-        const imageKey = `token-images/${imageFilename}`; // Using the same prefix as /upload
-        logger.log(`[PreGen Upload] Determined image R2 key: ${imageKey}`);
+      // Use metadata name for filename
+      // const sanitizedName = metadata.name.toLowerCase().replace(/[^a-z0-9\._-]/g, '_'); // Allow . _ -
+      // const imageFilename = `${sanitizedName}${extension}`;
+      // const imageFilename = `${crypto.randomUUID()}${extension}`; // Alternative: Use UUID
+      const imageFilename = `${crypto.randomUUID()}${extension}`; // Use UUID for unique filename
 
-        if (!env.R2) {
-            throw new Error("[PreGen Upload] R2 binding is not available.");
-        }
+      const imageKey = `token-images/${imageFilename}`; // Using the same prefix as /upload
+      logger.log(`[PreGen Upload] Determined image R2 key: ${imageKey}`);
 
-        logger.log(`[PreGen Upload] Attempting R2 put for key: ${imageKey}`);
-        await env.R2.put(imageKey, imageBuffer, {
-            httpMetadata: { contentType, cacheControl: "public, max-age=31536000" },
-        });
-        logger.log(`[PreGen Upload] Image successfully uploaded to R2: ${imageKey}`);
+      if (!env.R2) {
+        throw new Error("[PreGen Upload] R2 binding is not available.");
+      }
 
-        // Construct URL based on environment (like /upload does)
-        const assetBaseUrl = env.ASSET_URL || env.VITE_API_URL || 'http://localhost:8787'; // Default to localhost for safety
-        // We need the *filename* part for the /api/image route, not the full R2 key
-        finalImageUrl = `${assetBaseUrl}/api/image/${imageFilename}`; 
-        logger.log(`[PreGen Upload] Constructed final image URL: ${finalImageUrl}`);
+      logger.log(`[PreGen Upload] Attempting R2 put for key: ${imageKey}`);
+      await env.R2.put(imageKey, imageBuffer, {
+        httpMetadata: { contentType, cacheControl: "public, max-age=31536000" },
+      });
+      logger.log(
+        `[PreGen Upload] Image successfully uploaded to R2: ${imageKey}`,
+      );
 
+      // Construct URL based on environment (like /upload does)
+      const assetBaseUrl =
+        env.ASSET_URL || env.VITE_API_URL || "http://localhost:8787"; // Default to localhost for safety
+      // We need the *filename* part for the /api/image route, not the full R2 key
+      finalImageUrl = `${assetBaseUrl}/api/image/${imageFilename}`;
+      logger.log(
+        `[PreGen Upload] Constructed final image URL: ${finalImageUrl}`,
+      );
     } catch (uploadError) {
-        logger.error(`[PreGen Upload] Error during image upload for ${metadata.name}:`, uploadError);
-        return; // Stop if upload fails
+      logger.error(
+        `[PreGen Upload] Error during image upload for ${metadata.name}:`,
+        uploadError,
+      );
+      return; // Stop if upload fails
     }
     // ----- End Step 3 -----
 
     // ----- Step 4: Insert into Database ----- (Optional: Upload Metadata JSON could be added here)
     try {
-        logger.log(`[PreGen DB] Saving token to database: ${metadata.name}`);
-        const db = getDB(env);
-        await db.insert(preGeneratedTokens).values({
-            id: crypto.randomUUID(),
-            name: metadata.name,
-            ticker: metadata.symbol,
-            description: metadata.description,
-            prompt: metadata.prompt,
-            image: finalImageUrl, // Use the constructed URL
-            createdAt: new Date().toISOString(),
-            used: 0,
-        });
-        logger.log(`[PreGen DB] Successfully saved token: ${metadata.name} (${metadata.symbol}) with image ${finalImageUrl}`);
+      logger.log(`[PreGen DB] Saving token to database: ${metadata.name}`);
+      const db = getDB(env);
+      await db.insert(preGeneratedTokens).values({
+        id: crypto.randomUUID(),
+        name: metadata.name,
+        ticker: metadata.symbol,
+        description: metadata.description,
+        prompt: metadata.prompt,
+        image: finalImageUrl, // Use the constructed URL
+        createdAt: new Date().toISOString(),
+        used: 0,
+      });
+      logger.log(
+        `[PreGen DB] Successfully saved token: ${metadata.name} (${metadata.symbol}) with image ${finalImageUrl}`,
+      );
     } catch (dbError) {
-        logger.error(`[PreGen DB] Error saving token ${metadata.name} to database:`, dbError);
-        // Log error, but maybe don't stop the whole cron job?
+      logger.error(
+        `[PreGen DB] Error saving token ${metadata.name} to database:`,
+        dbError,
+      );
+      // Log error, but maybe don't stop the whole cron job?
     }
     // ----- End Step 4 -----
-
   } catch (error) {
     // Catch unexpected errors in the entire process for this token
     const tokenName = metadata?.name || "unknown_token_error";
-    logger.error(`[PreGen Process] Unexpected error during generation for ${tokenName}:`, error);
+    logger.error(
+      `[PreGen Process] Unexpected error during generation for ${tokenName}:`,
+      error,
+    );
   }
 }
 
@@ -2168,13 +2328,13 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
     }
 
     if (!mediaUrl) {
-        return c.json(
-          {
-            success: false,
-            error: `Failed to generate ${mediaType}. Please try again.`,
-          },
-          500,
-        );
+      return c.json(
+        {
+          success: false,
+          error: `Failed to generate ${mediaType}. Please try again.`,
+        },
+        500,
+      );
     }
 
     // Save generation to database

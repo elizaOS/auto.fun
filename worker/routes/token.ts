@@ -56,19 +56,37 @@ tokenRouter.post("/upload", async (c) => {
   try {
     // Log raw body *first* before extensive validation
     try {
-        rawBody = await c.req.json();
-        logger.log("[/upload - Image Only] Received raw body keys:", Object.keys(rawBody));
-        // Log image prefix if it exists
-        if (rawBody && typeof rawBody.image === 'string') {
-            logger.log("[/upload - Image Only] Received image prefix:", rawBody.image.substring(0, 30) + "...");
-            logger.log("[/upload - Image Only] Image data is string:", typeof rawBody.image === 'string');
-            logger.log("[/upload - Image Only] Image starts with data:image?", rawBody.image.startsWith("data:image"));
-        } else {
-            logger.log("[/upload - Image Only] Received image field type:", typeof rawBody?.image);
-        }
+      rawBody = await c.req.json();
+      logger.log(
+        "[/upload - Image Only] Received raw body keys:",
+        Object.keys(rawBody),
+      );
+      // Log image prefix if it exists
+      if (rawBody && typeof rawBody.image === "string") {
+        logger.log(
+          "[/upload - Image Only] Received image prefix:",
+          rawBody.image.substring(0, 30) + "...",
+        );
+        logger.log(
+          "[/upload - Image Only] Image data is string:",
+          typeof rawBody.image === "string",
+        );
+        logger.log(
+          "[/upload - Image Only] Image starts with data:image?",
+          rawBody.image.startsWith("data:image"),
+        );
+      } else {
+        logger.log(
+          "[/upload - Image Only] Received image field type:",
+          typeof rawBody?.image,
+        );
+      }
     } catch (parseError) {
-        logger.error("[/upload - Image Only] Failed to parse request body:", parseError);
-        return c.json({ error: "Invalid JSON body" }, 400); // Return early if parsing fails
+      logger.error(
+        "[/upload - Image Only] Failed to parse request body:",
+        parseError,
+      );
+      return c.json({ error: "Invalid JSON body" }, 400); // Return early if parsing fails
     }
 
     const user = c.get("user");
@@ -86,23 +104,38 @@ tokenRouter.post("/upload", async (c) => {
     // Use the previously parsed body
     const { image: imageBase64, filename: requestedFilename } = rawBody;
 
-    if (!imageBase64 || typeof imageBase64 !== "string" || !imageBase64.startsWith("data:image")) {
-      logger.error("[/upload - Image Only] Missing or invalid image data (base64). Value:", 
-        imageBase64 ? (typeof imageBase64 + ": " + imageBase64.substring(0,30)+'...') : String(imageBase64));
+    if (
+      !imageBase64 ||
+      typeof imageBase64 !== "string" ||
+      !imageBase64.startsWith("data:image")
+    ) {
+      logger.error(
+        "[/upload - Image Only] Missing or invalid image data (base64). Value:",
+        imageBase64
+          ? typeof imageBase64 + ": " + imageBase64.substring(0, 30) + "..."
+          : String(imageBase64),
+      );
       return c.json({ error: "Missing or invalid image data" }, 400);
     }
 
     const imageMatch = imageBase64.match(/^data:(image\/[a-z+]+);base64,(.*)$/);
     if (!imageMatch) {
-      logger.error("[/upload - Image Only] Invalid image format (regex mismatch)");
-      logger.error("[/upload - Image Only] Image prefix:", imageBase64.substring(0, 50));
+      logger.error(
+        "[/upload - Image Only] Invalid image format (regex mismatch)",
+      );
+      logger.error(
+        "[/upload - Image Only] Image prefix:",
+        imageBase64.substring(0, 50),
+      );
       return c.json({ error: "Invalid image format" }, 400);
     }
 
     const contentType = imageMatch[1];
     const base64Data = imageMatch[2];
     const imageBuffer = Buffer.from(base64Data, "base64");
-    logger.log(`[/upload - Image Only] Decoded image: type=${contentType}, size=${imageBuffer.length} bytes`);
+    logger.log(
+      `[/upload - Image Only] Decoded image: type=${contentType}, size=${imageBuffer.length} bytes`,
+    );
 
     let extension = ".jpg";
     if (contentType.includes("png")) extension = ".png";
@@ -111,31 +144,44 @@ tokenRouter.post("/upload", async (c) => {
     else if (contentType.includes("webp")) extension = ".webp";
 
     const imageFilename =
-      requestedFilename && typeof requestedFilename === 'string'
-        ? requestedFilename.replace(/[^a-zA-Z0-9._-]/g, '_')
+      requestedFilename && typeof requestedFilename === "string"
+        ? requestedFilename.replace(/[^a-zA-Z0-9._-]/g, "_")
         : `${crypto.randomUUID()}${extension}`;
     const imageKey = `token-images/${imageFilename}`;
     logger.log(`[/upload - Image Only] Determined image R2 key: ${imageKey}`);
 
-    logger.log(`[/upload - Image Only] Attempting to upload image to R2 key: ${imageKey}`);
+    logger.log(
+      `[/upload - Image Only] Attempting to upload image to R2 key: ${imageKey}`,
+    );
     await c.env.R2.put(imageKey, imageBuffer, {
       httpMetadata: { contentType, cacheControl: "public, max-age=31536000" },
     });
     logger.log(`[/upload - Image Only] Image successfully uploaded to R2.`);
 
-    const assetBaseUrl = c.env.ASSET_URL || c.env.VITE_API_URL || c.req.url.split("/api/")[0];
+    const assetBaseUrl =
+      c.env.ASSET_URL || c.env.VITE_API_URL || c.req.url.split("/api/")[0];
     const imageUrl = `${assetBaseUrl}/api/image/${imageFilename}`;
-    logger.log(`[/upload - Image Only] Constructed public image URL: ${imageUrl}`);
+    logger.log(
+      `[/upload - Image Only] Constructed public image URL: ${imageUrl}`,
+    );
 
-    logger.log("[/upload - Image Only] Request successful. Returning image URL.");
+    logger.log(
+      "[/upload - Image Only] Request successful. Returning image URL.",
+    );
     return c.json({
       success: true,
-      imageUrl: imageUrl // Only return image URL
+      imageUrl: imageUrl, // Only return image URL
     });
   } catch (error) {
     logger.error("[/upload - Image Only] Unexpected error:", error);
     return c.json(
-      { success: false, error: error instanceof Error ? error.message : "Failed to process image upload" },
+      {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to process image upload",
+      },
       500,
     );
   }
@@ -158,40 +204,53 @@ tokenRouter.get("/image/:filename", async (c) => {
 
     // IMPORTANT: Use the correct path - all files are in token-images directory
     const imageKey = `token-images/${filename}`;
-    logger.log(`[/image/:filename] Attempting to get object from R2 key: ${imageKey}`);
+    logger.log(
+      `[/image/:filename] Attempting to get object from R2 key: ${imageKey}`,
+    );
     const object = await c.env.R2.get(imageKey);
 
     if (!object) {
-      logger.warn(`[/image/:filename] Image not found in R2 for key: ${imageKey}`);
-      
+      logger.warn(
+        `[/image/:filename] Image not found in R2 for key: ${imageKey}`,
+      );
+
       // DEBUG: List files in the token-images directory to help diagnose issues
       try {
-        const objects = await c.env.R2.list({ prefix: 'token-images/', limit: 10 });
-        logger.log(`[/image/:filename] Files in token-images directory: ${objects.objects.map(o => o.key).join(', ')}`);
+        const objects = await c.env.R2.list({
+          prefix: "token-images/",
+          limit: 10,
+        });
+        logger.log(
+          `[/image/:filename] Files in token-images directory: ${objects.objects.map((o) => o.key).join(", ")}`,
+        );
       } catch (listError) {
-        logger.error(`[/image/:filename] Error listing files in token-images: ${listError}`);
+        logger.error(
+          `[/image/:filename] Error listing files in token-images: ${listError}`,
+        );
       }
-      
+
       return c.json({ error: "Image not found" }, 404);
     }
-    logger.log(`[/image/:filename] Found object in R2: size=${object.size}, type=${object.httpMetadata?.contentType}`);
+    logger.log(
+      `[/image/:filename] Found object in R2: size=${object.size}, type=${object.httpMetadata?.contentType}`,
+    );
 
     // Determine appropriate content type
     let contentType = object.httpMetadata?.contentType || "image/jpeg";
-    
+
     // For JSON files, ensure content type is application/json
-    if (filename.endsWith('.json')) {
+    if (filename.endsWith(".json")) {
       contentType = "application/json";
-    } else if (filename.endsWith('.png')) {
+    } else if (filename.endsWith(".png")) {
       contentType = "image/png";
-    } else if (filename.endsWith('.gif')) {
+    } else if (filename.endsWith(".gif")) {
       contentType = "image/gif";
-    } else if (filename.endsWith('.svg')) {
+    } else if (filename.endsWith(".svg")) {
       contentType = "image/svg+xml";
-    } else if (filename.endsWith('.webp')) {
+    } else if (filename.endsWith(".webp")) {
       contentType = "image/webp";
     }
-    
+
     const data = await object.arrayBuffer();
 
     const corsHeaders = {
@@ -201,7 +260,9 @@ tokenRouter.get("/image/:filename", async (c) => {
       "Access-Control-Max-Age": "86400",
     };
 
-    logger.log(`[/image/:filename] Serving ${filename} with type ${contentType}`);
+    logger.log(
+      `[/image/:filename] Serving ${filename} with type ${contentType}`,
+    );
     return new Response(data, {
       headers: {
         "Content-Type": contentType,
@@ -215,7 +276,6 @@ tokenRouter.get("/image/:filename", async (c) => {
     return c.json({ error: "Failed to serve image" }, 500);
   }
 });
-
 
 // --- Register Token Endpoint (REVISED + Logging) ---
 // Accepts mint, metadata, imageUrl, metadataUrl. Validates mint. Saves to DB.
@@ -231,7 +291,14 @@ tokenRouter.post("/register-token", async (c) => {
     logger.log(`[/register-token] Authenticated user: ${user.publicKey}`);
 
     const body = await c.req.json();
-    logger.log("[/register-token] Received body:", { mint: body.mint, name: body.name, symbol: body.symbol, imageUrl: !!body.imageUrl, metadataUrl: !!body.metadataUrl, imported: body.imported });
+    logger.log("[/register-token] Received body:", {
+      mint: body.mint,
+      name: body.name,
+      symbol: body.symbol,
+      imageUrl: !!body.imageUrl,
+      metadataUrl: !!body.metadataUrl,
+      imported: body.imported,
+    });
     const {
       mint,
       name,
@@ -247,12 +314,17 @@ tokenRouter.post("/register-token", async (c) => {
     } = body;
 
     // --- Validation ---
-    if (!mint || typeof mint !== "string" || mint.length < 32 || mint.length > 44) {
+    if (
+      !mint ||
+      typeof mint !== "string" ||
+      mint.length < 32 ||
+      mint.length > 44
+    ) {
       logger.error("[/register-token] Invalid or missing mint address:", mint);
       return c.json({ error: "Invalid or missing mint address" }, 400);
     }
     // ... (keep other validations for name, symbol, description)
-     if (!name || typeof name !== "string") {
+    if (!name || typeof name !== "string") {
       logger.error("[/register-token] Invalid or missing name");
       return c.json({ error: "Invalid or missing name" }, 400);
     }
@@ -277,7 +349,9 @@ tokenRouter.post("/register-token", async (c) => {
     const db = getDB(c.env);
 
     // --- Check if token already exists in DB ---
-    logger.log(`[/register-token] Checking database for existing token ${mint}`);
+    logger.log(
+      `[/register-token] Checking database for existing token ${mint}`,
+    );
     const existingToken = await db
       .select()
       .from(tokens)
@@ -285,7 +359,9 @@ tokenRouter.post("/register-token", async (c) => {
       .limit(1);
 
     if (existingToken && existingToken.length > 0) {
-      logger.warn(`[/register-token] Token ${mint} already exists in database.`);
+      logger.warn(
+        `[/register-token] Token ${mint} already exists in database.`,
+      );
       return c.json({
         success: true,
         tokenFound: true,
@@ -297,7 +373,9 @@ tokenRouter.post("/register-token", async (c) => {
 
     // --- Blockchain Validation (Mint Account Existence) ---
     if (!imported) {
-      logger.log(`[/register-token] Performing on-chain validation for mint: ${mint}`);
+      logger.log(
+        `[/register-token] Performing on-chain validation for mint: ${mint}`,
+      );
       try {
         const connection = new Connection(getRpcUrl(c.env), "confirmed");
         const mintPublicKey = new PublicKey(mint);
@@ -312,7 +390,9 @@ tokenRouter.post("/register-token", async (c) => {
             400,
           );
         }
-        logger.log(`[/register-token] Mint address ${mint} confirmed on chain. Size: ${mintAccountInfo.data.length}`);
+        logger.log(
+          `[/register-token] Mint address ${mint} confirmed on chain. Size: ${mintAccountInfo.data.length}`,
+        );
       } catch (chainError) {
         logger.error(
           `[/register-token] Error validating mint address ${mint} on chain:`,
@@ -324,11 +404,15 @@ tokenRouter.post("/register-token", async (c) => {
         );
       }
     } else {
-      logger.log(`[/register-token] Skipping on-chain validation for imported token ${mint}`);
+      logger.log(
+        `[/register-token] Skipping on-chain validation for imported token ${mint}`,
+      );
     }
 
     // --- Insert Token into Database ---
-    logger.log(`[/register-token] Attempting to insert token ${mint} into database`);
+    logger.log(
+      `[/register-token] Attempting to insert token ${mint} into database`,
+    );
     try {
       const now = new Date().toISOString();
       const tokenId = crypto.randomUUID();
@@ -362,7 +446,9 @@ tokenRouter.post("/register-token", async (c) => {
       }
 
       await db.insert(tokens).values(newTokenData as any);
-      logger.log(`[/register-token] Token ${mint} successfully inserted into DB`);
+      logger.log(
+        `[/register-token] Token ${mint} successfully inserted into DB`,
+      );
 
       // --- Emit WebSocket Event ---
       try {
@@ -399,7 +485,9 @@ tokenRouter.post("/register-token", async (c) => {
       }
 
       // --- Return Success ---
-      logger.log(`[/register-token] Registration process completed successfully for ${mint}`);
+      logger.log(
+        `[/register-token] Registration process completed successfully for ${mint}`,
+      );
       const finalTokenData = await db
         .select()
         .from(tokens)
@@ -451,57 +539,73 @@ tokenRouter.post("/register-token", async (c) => {
 tokenRouter.get("/metadata/:filename", async (c) => {
   const filename = c.req.param("filename");
   const isTemp = c.req.query("temp") === "true";
-  
-  logger.log(`[/metadata/:filename] Request received for filename: ${filename}, temp=${isTemp}`);
-  
+
+  logger.log(
+    `[/metadata/:filename] Request received for filename: ${filename}, temp=${isTemp}`,
+  );
+
   try {
     if (!filename || !filename.endsWith(".json")) {
       logger.error("[/metadata/:filename] Invalid filename format:", filename);
       return c.json({ error: "Filename parameter must end with .json" }, 400);
     }
-    
+
     if (!c.env.R2) {
       logger.error("[/metadata/:filename] R2 storage is not configured");
       return c.json({ error: "R2 storage is not available" }, 500);
     }
-    
+
     // Determine which location to check first based on the temp parameter
-    const primaryKey = isTemp ? `token-metadata-temp/${filename}` : `token-metadata/${filename}`;
-    const fallbackKey = isTemp ? `token-metadata/${filename}` : `token-metadata-temp/${filename}`;
-    
-    logger.log(`[/metadata/:filename] Checking primary location: ${primaryKey}`);
+    const primaryKey = isTemp
+      ? `token-metadata-temp/${filename}`
+      : `token-metadata/${filename}`;
+    const fallbackKey = isTemp
+      ? `token-metadata/${filename}`
+      : `token-metadata-temp/${filename}`;
+
+    logger.log(
+      `[/metadata/:filename] Checking primary location: ${primaryKey}`,
+    );
     let object = await c.env.R2.get(primaryKey);
-    
+
     // If not found in primary location, check fallback location
     if (!object) {
-      logger.log(`[/metadata/:filename] Not found in primary location, checking fallback: ${fallbackKey}`);
+      logger.log(
+        `[/metadata/:filename] Not found in primary location, checking fallback: ${fallbackKey}`,
+      );
       object = await c.env.R2.get(fallbackKey);
     }
-    
+
     if (!object) {
-      logger.error(`[/metadata/:filename] Metadata not found in either location`);
+      logger.error(
+        `[/metadata/:filename] Metadata not found in either location`,
+      );
       return c.json({ error: "Metadata not found" }, 404);
     }
-    
-    logger.log(`[/metadata/:filename] Found metadata: size=${object.size}, type=${object.httpMetadata?.contentType}`);
-    
+
+    logger.log(
+      `[/metadata/:filename] Found metadata: size=${object.size}, type=${object.httpMetadata?.contentType}`,
+    );
+
     const contentType = object.httpMetadata?.contentType || "application/json";
     const data = await object.text();
-    
+
     // Set appropriate CORS headers for public access
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
       "Content-Type": contentType,
-      "Cache-Control": isTemp ? "max-age=3600" : "max-age=86400" // Shorter cache for temp metadata
+      "Cache-Control": isTemp ? "max-age=3600" : "max-age=86400", // Shorter cache for temp metadata
     };
-    
+
     logger.log(`[/metadata/:filename] Serving metadata: ${filename}`);
     return new Response(data, { headers: corsHeaders });
-    
   } catch (error) {
-    logger.error(`[/metadata/:filename] Error serving metadata ${filename}:`, error);
+    logger.error(
+      `[/metadata/:filename] Error serving metadata ${filename}:`,
+      error,
+    );
     return c.json({ error: "Failed to serve metadata JSON" }, 500);
   }
 });
@@ -2398,8 +2502,8 @@ export async function updateHoldersCache(
 
     // Get all token accounts for this mint
     const largestAccounts = await connection.getTokenLargestAccounts(
-        new PublicKey(mint),
-      );
+      new PublicKey(mint),
+    );
     if (!largestAccounts.value || largestAccounts.value.length === 0) {
       logger.log(`No accounts found for token ${mint}`);
       return 0;
@@ -2462,7 +2566,7 @@ export async function updateHoldersCache(
       }
 
       const wsClient = getWebSocketClient(env);
-      wsClient.emit(`token-${mint}`, 'newHolder', holders);
+      wsClient.emit(`token-${mint}`, "newHolder", holders);
     }
 
     // Update token holder count
@@ -3278,7 +3382,7 @@ export async function processSwapEvent(
 
     // Get DB connection to fetch token data and calculate featuredScore
     const db = getDB(env);
-    
+
     // Get the token data for this swap
     const tokenData = await db
       .select()
@@ -3288,15 +3392,19 @@ export async function processSwapEvent(
 
     // Prepare swap data for emission
     const enrichedSwap = { ...swap };
-    
+
     // Add featuredScore if we have token data
     if (tokenData && tokenData.length > 0) {
       // Get max values for normalization
       const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
-      
+
       // Calculate featured score
-      const featuredScore = calculateFeaturedScore(tokenData[0], maxVolume, maxHolders);
-      
+      const featuredScore = calculateFeaturedScore(
+        tokenData[0],
+        maxVolume,
+        maxHolders,
+      );
+
       // Add token data with featuredScore to the swap
       enrichedSwap.tokenData = {
         ...tokenData[0],
@@ -3374,11 +3482,11 @@ export async function processTokenUpdateEvent(
   try {
     // Get WebSocket client
     const wsClient = getWebSocketClient(env);
-    
+
     // Get DB connection and calculate featuredScore
     const db = getDB(env);
     const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
-    
+
     // Create enriched token data with featuredScore
     const enrichedTokenData = {
       ...tokenData,
@@ -3386,7 +3494,11 @@ export async function processTokenUpdateEvent(
     };
 
     // Always emit to token-specific room
-    await wsClient.emit(`token-${tokenData.mint}`, "updateToken", enrichedTokenData);
+    await wsClient.emit(
+      `token-${tokenData.mint}`,
+      "updateToken",
+      enrichedTokenData,
+    );
     logger.log(`Emitted token update event for ${tokenData.mint}`);
 
     // Optionally emit to global room for activity feed
@@ -4403,89 +4515,112 @@ tokenRouter.get("/token/:mint/update-holders", async (c) => {
 // --- STEP 3 (Part 1): Temporary Metadata Upload Endpoint ---
 // Accepts metadata JSON, uploads to R2 with a temporary name, returns temporary URL.
 tokenRouter.post("/upload-metadata-temp", async (c) => {
-    logger.log("[/upload-metadata-temp] Received request");
-    try {
-        const user = c.get("user");
-        if (!user || !user.publicKey) {
-            logger.warn("[/upload-metadata-temp] Authentication required");
-            return c.json({ error: "Authentication required" }, 401);
-        }
-        logger.log(`[/upload-metadata-temp] Authenticated user: ${user.publicKey}`);
-
-        if (!c.env.R2) {
-            logger.error("[/upload-metadata-temp] R2 storage is not configured");
-            return c.json({ error: "Metadata storage is not available" }, 500);
-        }
-
-        // Parse the request body
-        let metadataJson;
-        try {
-            metadataJson = await c.req.json();
-            logger.log(`[/upload-metadata-temp] Received metadata for token: ${metadataJson.name || 'unnamed'}`);
-        } catch (parseError) {
-            logger.error("[/upload-metadata-temp] Failed to parse request JSON:", parseError);
-            return c.json({ error: "Invalid JSON payload" }, 400);
-        }
-
-        // Basic validation of received JSON
-        if (!metadataJson || typeof metadataJson !== 'object') {
-            logger.error("[/upload-metadata-temp] Invalid metadata JSON format");
-            return c.json({ error: "Invalid metadata format: must be a JSON object" }, 400);
-        }
-
-        if (!metadataJson.name || !metadataJson.symbol) {
-            logger.error("[/upload-metadata-temp] Missing required metadata fields");
-            return c.json({ error: "Metadata must include at least name and symbol" }, 400);
-        }
-
-        // Ensure image field exists if provided
-        if (metadataJson.image && typeof metadataJson.image !== 'string') {
-            logger.error("[/upload-metadata-temp] Invalid image URL in metadata");
-            return c.json({ error: "Image field must be a string URL" }, 400);
-        }
-
-        logger.log(`[/upload-metadata-temp] Metadata validation passed for: ${metadataJson.name}`);
-
-        // Create a temporary unique ID for the metadata
-        const tempId = crypto.randomUUID();
-        const tempFilename = `${tempId}.json`;
-        const tempMetadataKey = `token-metadata-temp/${tempFilename}`;
-
-        // Convert to buffer and upload
-        const metadataBuffer = Buffer.from(JSON.stringify(metadataJson));
-        logger.log(`[/upload-metadata-temp] Uploading metadata to temp location: ${tempMetadataKey}`);
-        
-        await c.env.R2.put(tempMetadataKey, metadataBuffer, {
-            httpMetadata: { 
-                contentType: "application/json", 
-                cacheControl: "public, max-age=3600" // Cache for 1 hour
-            },
-        });
-        logger.log(`[/upload-metadata-temp] Metadata uploaded successfully to R2`);
-
-        // Construct the temporary metadata URL
-        const assetBaseUrl = c.env.ASSET_URL || c.env.VITE_API_URL || c.req.url.split("/api/")[0];
-        // For the temporary metadata, we'll need a way to serve it:
-        // Either from a specific temp endpoint, or by adapting the existing metadata endpoint
-        // For now, we'll use the same metadata endpoint with a temp=true query parameter
-        const temporaryMetadataUrl = `${assetBaseUrl}/api/metadata/${tempFilename}?temp=true`;
-        
-        logger.log(`[/upload-metadata-temp] Created temporary metadata URL: ${temporaryMetadataUrl}`);
-
-        return c.json({
-            success: true,
-            temporaryMetadataUrl: temporaryMetadataUrl,
-            // Also return the key for debugging
-            temporaryMetadataKey: tempMetadataKey,
-        });
-
-    } catch (error) {
-        logger.error("[/upload-metadata-temp] Unexpected error:", error);
-        return c.json(
-            { success: false, error: error instanceof Error ? error.message : "Failed to upload temporary metadata" },
-            500,
-        );
+  logger.log("[/upload-metadata-temp] Received request");
+  try {
+    const user = c.get("user");
+    if (!user || !user.publicKey) {
+      logger.warn("[/upload-metadata-temp] Authentication required");
+      return c.json({ error: "Authentication required" }, 401);
     }
+    logger.log(`[/upload-metadata-temp] Authenticated user: ${user.publicKey}`);
+
+    if (!c.env.R2) {
+      logger.error("[/upload-metadata-temp] R2 storage is not configured");
+      return c.json({ error: "Metadata storage is not available" }, 500);
+    }
+
+    // Parse the request body
+    let metadataJson;
+    try {
+      metadataJson = await c.req.json();
+      logger.log(
+        `[/upload-metadata-temp] Received metadata for token: ${metadataJson.name || "unnamed"}`,
+      );
+    } catch (parseError) {
+      logger.error(
+        "[/upload-metadata-temp] Failed to parse request JSON:",
+        parseError,
+      );
+      return c.json({ error: "Invalid JSON payload" }, 400);
+    }
+
+    // Basic validation of received JSON
+    if (!metadataJson || typeof metadataJson !== "object") {
+      logger.error("[/upload-metadata-temp] Invalid metadata JSON format");
+      return c.json(
+        { error: "Invalid metadata format: must be a JSON object" },
+        400,
+      );
+    }
+
+    if (!metadataJson.name || !metadataJson.symbol) {
+      logger.error("[/upload-metadata-temp] Missing required metadata fields");
+      return c.json(
+        { error: "Metadata must include at least name and symbol" },
+        400,
+      );
+    }
+
+    // Ensure image field exists if provided
+    if (metadataJson.image && typeof metadataJson.image !== "string") {
+      logger.error("[/upload-metadata-temp] Invalid image URL in metadata");
+      return c.json({ error: "Image field must be a string URL" }, 400);
+    }
+
+    logger.log(
+      `[/upload-metadata-temp] Metadata validation passed for: ${metadataJson.name}`,
+    );
+
+    // Create a temporary unique ID for the metadata
+    const tempId = crypto.randomUUID();
+    const tempFilename = `${tempId}.json`;
+    const tempMetadataKey = `token-metadata-temp/${tempFilename}`;
+
+    // Convert to buffer and upload
+    const metadataBuffer = Buffer.from(JSON.stringify(metadataJson));
+    logger.log(
+      `[/upload-metadata-temp] Uploading metadata to temp location: ${tempMetadataKey}`,
+    );
+
+    await c.env.R2.put(tempMetadataKey, metadataBuffer, {
+      httpMetadata: {
+        contentType: "application/json",
+        cacheControl: "public, max-age=3600", // Cache for 1 hour
+      },
+    });
+    logger.log(`[/upload-metadata-temp] Metadata uploaded successfully to R2`);
+
+    // Construct the temporary metadata URL
+    const assetBaseUrl =
+      c.env.ASSET_URL || c.env.VITE_API_URL || c.req.url.split("/api/")[0];
+    // For the temporary metadata, we'll need a way to serve it:
+    // Either from a specific temp endpoint, or by adapting the existing metadata endpoint
+    // For now, we'll use the same metadata endpoint with a temp=true query parameter
+    const temporaryMetadataUrl = `${assetBaseUrl}/api/metadata/${tempFilename}?temp=true`;
+
+    logger.log(
+      `[/upload-metadata-temp] Created temporary metadata URL: ${temporaryMetadataUrl}`,
+    );
+
+    return c.json({
+      success: true,
+      temporaryMetadataUrl: temporaryMetadataUrl,
+      // Also return the key for debugging
+      temporaryMetadataKey: tempMetadataKey,
+    });
+  } catch (error) {
+    logger.error("[/upload-metadata-temp] Unexpected error:", error);
+    return c.json(
+      {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to upload temporary metadata",
+      },
+      500,
+    );
+  }
 });
 
 // --- STEP 4: Register Token Endpoint ---
@@ -4508,20 +4643,23 @@ tokenRouter.post("/register-token", async (c) => {
       body = await c.req.json();
       logger.log("[/register-token] Received body keys:", Object.keys(body));
     } catch (parseError) {
-      logger.error("[/register-token] Failed to parse request body:", parseError);
+      logger.error(
+        "[/register-token] Failed to parse request body:",
+        parseError,
+      );
       return c.json({ error: "Invalid JSON body" }, 400);
     }
 
     const {
       mint,
-      name, 
-      symbol, 
+      name,
+      symbol,
       description,
       imageUrl,
       // Don't destructure temporaryMetadataUrl or metadataUrl here - we'll handle them specially
-      twitter = "", 
-      telegram = "", 
-      website = "", 
+      twitter = "",
+      telegram = "",
+      website = "",
       discord = "",
       imported = false,
       preGeneratedId = null,
@@ -4532,14 +4670,24 @@ tokenRouter.post("/register-token", async (c) => {
     const metadataUrl = body.metadataUrl; // For backward compatibility
 
     // Validate required fields
-    if (!mint || typeof mint !== "string" || mint.length < 32 || mint.length > 44) {
+    if (
+      !mint ||
+      typeof mint !== "string" ||
+      mint.length < 32 ||
+      mint.length > 44
+    ) {
       logger.error("[/register-token] Invalid mint address:", mint);
       return c.json({ error: "Invalid mint address" }, 400);
     }
 
     if (!name || !symbol || !description) {
       logger.error("[/register-token] Missing required metadata fields");
-      return c.json({ error: "Missing required metadata fields (name, symbol, description)" }, 400);
+      return c.json(
+        {
+          error: "Missing required metadata fields (name, symbol, description)",
+        },
+        400,
+      );
     }
 
     if (!imageUrl || typeof imageUrl !== "string") {
@@ -4549,20 +4697,31 @@ tokenRouter.post("/register-token", async (c) => {
 
     // Use metadataUrl as fallback if temporaryMetadataUrl is not provided
     if (!temporaryMetadataUrl && metadataUrl) {
-      logger.log("[/register-token] Using metadataUrl instead of temporaryMetadataUrl for backward compatibility");
+      logger.log(
+        "[/register-token] Using metadataUrl instead of temporaryMetadataUrl for backward compatibility",
+      );
       temporaryMetadataUrl = metadataUrl;
     }
 
     // For non-imported tokens, validate metadata URL
-    if (!imported && (!temporaryMetadataUrl || typeof temporaryMetadataUrl !== "string")) {
-      logger.error("[/register-token] Missing or invalid metadata URL. temporaryMetadataUrl:", temporaryMetadataUrl, 
-                 "metadataUrl:", metadataUrl);
+    if (
+      !imported &&
+      (!temporaryMetadataUrl || typeof temporaryMetadataUrl !== "string")
+    ) {
+      logger.error(
+        "[/register-token] Missing or invalid metadata URL. temporaryMetadataUrl:",
+        temporaryMetadataUrl,
+        "metadataUrl:",
+        metadataUrl,
+      );
       return c.json({ error: "Missing or invalid metadata URL" }, 400);
     }
-    
+
     logger.log(`[/register-token] Using metadata URL: ${temporaryMetadataUrl}`);
 
-    logger.log(`[/register-token] Initial validation passed for token: ${name} (${mint})`);
+    logger.log(
+      `[/register-token] Initial validation passed for token: ${name} (${mint})`,
+    );
 
     // Access database
     const db = getDB(c.env);
@@ -4572,26 +4731,40 @@ tokenRouter.post("/register-token", async (c) => {
     }
 
     // Check if token already exists in the database
-    logger.log(`[/register-token] Checking if token ${mint} already exists in database`);
-    const existingToken = await db.select().from(tokens).where(eq(tokens.mint, mint)).limit(1);
-    
+    logger.log(
+      `[/register-token] Checking if token ${mint} already exists in database`,
+    );
+    const existingToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
     if (existingToken && existingToken.length > 0) {
       logger.log(`[/register-token] Token ${mint} already exists in database`);
-      return c.json({ 
-        success: true, 
+      return c.json({
+        success: true,
         tokenExists: true,
         token: existingToken[0],
-        message: "Token already registered" 
+        message: "Token already registered",
       });
     }
-    logger.log(`[/register-token] Token ${mint} not found in database, proceeding with registration`);
+    logger.log(
+      `[/register-token] Token ${mint} not found in database, proceeding with registration`,
+    );
 
     // For non-imported tokens: validate on blockchain, finalize metadata
     let finalMetadataUrl = temporaryMetadataUrl || metadataUrl || "";
-    
+
     // If no metadata URL was provided, but we have imageUrl, create a minimal metadata file
-    if ((!finalMetadataUrl || finalMetadataUrl === "") && imageUrl && c.env.R2) {
-      logger.log(`[/register-token] No metadata URL provided. Creating minimal metadata file for ${mint}`);
+    if (
+      (!finalMetadataUrl || finalMetadataUrl === "") &&
+      imageUrl &&
+      c.env.R2
+    ) {
+      logger.log(
+        `[/register-token] No metadata URL provided. Creating minimal metadata file for ${mint}`,
+      );
       try {
         // Create minimal metadata JSON
         const minimalMetadata = {
@@ -4609,47 +4782,57 @@ tokenRouter.post("/register-token", async (c) => {
               telegram: telegram || "",
               website: website || "",
               discord: discord || "",
-            }
-          }
+            },
+          },
         };
-        
+
         // Generate metadata filename and key
         const metadataFilename = `${mint}.json`;
         const metadataKey = `token-metadata/${metadataFilename}`;
-        
+
         // Upload metadata JSON
         const metadataBuffer = Buffer.from(JSON.stringify(minimalMetadata));
-        logger.log(`[/register-token] Creating fallback metadata at: ${metadataKey}`);
-        
+        logger.log(
+          `[/register-token] Creating fallback metadata at: ${metadataKey}`,
+        );
+
         await c.env.R2.put(metadataKey, metadataBuffer, {
-          httpMetadata: { 
-            contentType: "application/json", 
-            cacheControl: "public, max-age=86400" // Cache for 24 hours
+          httpMetadata: {
+            contentType: "application/json",
+            cacheControl: "public, max-age=86400", // Cache for 24 hours
           },
         });
-        
+
         // Create metadata URL
-        const assetBaseUrl = c.env.ASSET_URL || c.env.VITE_API_URL || c.req.url.split("/api/")[0];
+        const assetBaseUrl =
+          c.env.ASSET_URL || c.env.VITE_API_URL || c.req.url.split("/api/")[0];
         finalMetadataUrl = `${assetBaseUrl}/api/metadata/${metadataFilename}`;
-        logger.log(`[/register-token] Created fallback metadata URL: ${finalMetadataUrl}`);
+        logger.log(
+          `[/register-token] Created fallback metadata URL: ${finalMetadataUrl}`,
+        );
       } catch (fallbackError) {
-        logger.error(`[/register-token] Error creating fallback metadata:`, fallbackError);
+        logger.error(
+          `[/register-token] Error creating fallback metadata:`,
+          fallbackError,
+        );
         // Continue with empty URL if this fails
       }
     }
-    
+
     if ((!finalMetadataUrl || finalMetadataUrl === "") && !imported) {
-      logger.warn(`[/register-token] No valid metadata URL available for token ${mint}`);
+      logger.warn(
+        `[/register-token] No valid metadata URL available for token ${mint}`,
+      );
       // Continue anyway, better to have the token in DB with missing metadata than not at all
     }
 
     // Insert token into database
     try {
       logger.log(`[/register-token] Inserting token ${mint} into database`);
-      
+
       const now = new Date().toISOString();
       const tokenId = crypto.randomUUID();
-      
+
       const newToken = {
         id: tokenId,
         mint,
@@ -4671,81 +4854,110 @@ tokenRouter.post("/register-token", async (c) => {
         tokenPriceUSD: 0,
         marketCapUSD: 0,
         volume24h: 0,
-        txId: `register-${tokenId}` // Default txId to satisfy NOT NULL constraint
+        txId: `register-${tokenId}`, // Default txId to satisfy NOT NULL constraint
       };
-      
+
       // Insert the token into the database
       await db.insert(tokens).values(newToken);
-      logger.log(`[/register-token] Successfully inserted token ${mint} into database`);
-      
+      logger.log(
+        `[/register-token] Successfully inserted token ${mint} into database`,
+      );
+
       // If this was a pre-generated token, mark it as used
-      if (preGeneratedId && typeof preGeneratedId === 'string') {
+      if (preGeneratedId && typeof preGeneratedId === "string") {
         try {
-          logger.log(`[/register-token] Marking pre-generated token ${preGeneratedId} as used`);
+          logger.log(
+            `[/register-token] Marking pre-generated token ${preGeneratedId} as used`,
+          );
           // Note: Implement this if needed
           // await markPreGeneratedTokenAsUsed(c.env, preGeneratedId, name, symbol);
-          logger.log(`[/register-token] Successfully marked pre-generated token as used`);
+          logger.log(
+            `[/register-token] Successfully marked pre-generated token as used`,
+          );
         } catch (markError) {
-          logger.warn(`[/register-token] Failed to mark pre-generated token as used:`, markError);
+          logger.warn(
+            `[/register-token] Failed to mark pre-generated token as used:`,
+            markError,
+          );
           // Continue even if this fails
         }
       }
-      
+
       // Fetch the token to return in response
-      const insertedToken = await db.select().from(tokens).where(eq(tokens.mint, mint)).limit(1);
-      logger.log(`[/register-token] Fetched inserted token from database: ${!!insertedToken}`);
-      
+      const insertedToken = await db
+        .select()
+        .from(tokens)
+        .where(eq(tokens.mint, mint))
+        .limit(1);
+      logger.log(
+        `[/register-token] Fetched inserted token from database: ${!!insertedToken}`,
+      );
+
       // Emit token creation event via WebSocket if available
       try {
         const wsClient = getWebSocketClient(c.env);
         if (wsClient) {
-          logger.log(`[/register-token] Emitting token creation event for ${mint}`);
+          logger.log(
+            `[/register-token] Emitting token creation event for ${mint}`,
+          );
           await processTokenUpdateEvent(c.env, insertedToken[0], true);
-          logger.log(`[/register-token] Successfully emitted token creation event`);
+          logger.log(
+            `[/register-token] Successfully emitted token creation event`,
+          );
         }
       } catch (wsError) {
-        logger.warn(`[/register-token] Failed to emit WebSocket event:`, wsError);
+        logger.warn(
+          `[/register-token] Failed to emit WebSocket event:`,
+          wsError,
+        );
         // Continue even if this fails
       }
-      
+
       // Start monitoring the token
       try {
         logger.log(`[/register-token] Starting monitoring for token ${mint}`);
         await monitorSpecificToken(c.env, mint);
         logger.log(`[/register-token] Successfully started monitoring`);
       } catch (monitorError) {
-        logger.warn(`[/register-token] Failed to start token monitoring:`, monitorError);
+        logger.warn(
+          `[/register-token] Failed to start token monitoring:`,
+          monitorError,
+        );
         // Continue even if this fails
       }
-      
+
       // Return success response
       logger.log(`[/register-token] Successfully registered token ${mint}`);
       return c.json({
         success: true,
         token: insertedToken[0],
-        message: "Token successfully registered"
+        message: "Token successfully registered",
       });
-      
     } catch (dbError) {
       logger.error(`[/register-token] Database error:`, dbError);
-      
+
       // Handle unique constraint violations
-      if (dbError instanceof Error && dbError.message.includes("UNIQUE constraint failed")) {
+      if (
+        dbError instanceof Error &&
+        dbError.message.includes("UNIQUE constraint failed")
+      ) {
         return c.json({ error: "Token already exists in database" }, 409);
       }
-      
+
       return c.json({ error: "Failed to add token to database" }, 500);
     }
-    
   } catch (error) {
     logger.error("[/register-token] Unexpected error:", error);
     return c.json(
-      { success: false, error: error instanceof Error ? error.message : "Failed to register token" },
-      500
+      {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Failed to register token",
+      },
+      500,
     );
   }
 });
-
 
 // --- Endpoint to get a vanity keypair ---
 tokenRouter.get("/vanity-keypair", async (c) => {
@@ -4769,7 +4981,10 @@ tokenRouter.get("/vanity-keypair", async (c) => {
 
     if (!keypairs || keypairs.length === 0) {
       logger.warn("[/vanity-keypair] No unused vanity keypairs available");
-      return c.json({ error: "No vanity keypairs available, try again later" }, 503);
+      return c.json(
+        { error: "No vanity keypairs available, try again later" },
+        503,
+      );
     }
 
     const keypair = keypairs[0];
@@ -4783,22 +4998,26 @@ tokenRouter.get("/vanity-keypair", async (c) => {
         // Note: We're only updating the 'used' field since the schema doesn't have usedBy or usedAt
       })
       .where(eq(vanityKeypairs.id, keypair.id));
-    
-    logger.log(`[/vanity-keypair] Marked keypair ${keypair.address} as used by ${user.publicKey}`);
+
+    logger.log(
+      `[/vanity-keypair] Marked keypair ${keypair.address} as used by ${user.publicKey}`,
+    );
 
     // Convert secretKey from base64 to byte array for the client
     let secretKeyBytes;
     try {
       // The secretKey is stored as base64 string in the database
       const base64Key = keypair.secretKey;
-      
+
       // Decode it to get a binary buffer
-      const secretKeyBuffer = Buffer.from(base64Key, 'base64');
-      
+      const secretKeyBuffer = Buffer.from(base64Key, "base64");
+
       // Convert to array format expected by solana/web3.js
       secretKeyBytes = Array.from(secretKeyBuffer);
-      
-      logger.log(`[/vanity-keypair] Successfully converted secretKey to array of length ${secretKeyBytes.length}`);
+
+      logger.log(
+        `[/vanity-keypair] Successfully converted secretKey to array of length ${secretKeyBytes.length}`,
+      );
     } catch (keyError) {
       logger.error(`[/vanity-keypair] Error converting secretKey: ${keyError}`);
       return c.json({ error: "Failed to process keypair" }, 500);
@@ -4807,21 +5026,26 @@ tokenRouter.get("/vanity-keypair", async (c) => {
     // Return the keypair details
     return c.json({
       id: keypair.id,
-      publicKey: keypair.address,  // Map 'address' to 'publicKey' for client compatibility
-      secretKey: secretKeyBytes
+      publicKey: keypair.address, // Map 'address' to 'publicKey' for client compatibility
+      secretKey: secretKeyBytes,
     });
   } catch (error) {
     logger.error("[/vanity-keypair] Error fetching vanity keypair:", error);
     return c.json(
-      { error: error instanceof Error ? error.message : "Failed to get vanity keypair" },
-      500
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to get vanity keypair",
+      },
+      500,
     );
   }
 });
 
 // --- POST endpoint to request a vanity keypair ---
 tokenRouter.post("/vanity-keypair", async (c) => {
-  console.log("keypairs")
+  console.log("keypairs");
   try {
     // Require authentication
     const user = c.get("user");
@@ -4834,28 +5058,32 @@ tokenRouter.post("/vanity-keypair", async (c) => {
     const db = getDB(c.env);
 
     // Parse request body (optional - could include specific vanity requirements or force generation flag)
-    let requestOptions = {
-      forceGenerate: false
+    const requestOptions = {
+      forceGenerate: false,
     };
-    
+
     try {
       const body = await c.req.json();
       logger.log(`[POST /vanity-keypair] Request body:`, body);
       requestOptions.forceGenerate = !!body.forceGenerate;
     } catch (e) {
       // If body can't be parsed, just use default options
-      logger.log(`[POST /vanity-keypair] No request body or invalid JSON, using defaults`);
+      logger.log(
+        `[POST /vanity-keypair] No request body or invalid JSON, using defaults`,
+      );
     }
-    
+
     // Check actual count of available keypairs for debugging
     const countResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(vanityKeypairs)
       .where(eq(vanityKeypairs.used, 0));
-    
+
     const totalCount = countResult[0]?.count || 0;
-    logger.log(`[POST /vanity-keypair] Database reports ${totalCount} unused keypairs available`);
-    
+    logger.log(
+      `[POST /vanity-keypair] Database reports ${totalCount} unused keypairs available`,
+    );
+
     // Try to find an unused keypair
     const keypairs = await db
       .select()
@@ -4866,22 +5094,30 @@ tokenRouter.post("/vanity-keypair", async (c) => {
     if (!keypairs || keypairs.length === 0) {
       // Double-check if there's a discrepancy between count and actual query
       if (totalCount > 0) {
-        logger.warn(`[POST /vanity-keypair] Discrepancy: Count reports ${totalCount} keypairs but query found none!`);
-        
+        logger.warn(
+          `[POST /vanity-keypair] Discrepancy: Count reports ${totalCount} keypairs but query found none!`,
+        );
+
         // Try a more direct query to check for any issue
         const allKeypairs = await db
           .select({ id: vanityKeypairs.id, used: vanityKeypairs.used })
           .from(vanityKeypairs)
           .limit(5);
-        
-        logger.log(`[POST /vanity-keypair] Sample of up to 5 keypairs from database: ${JSON.stringify(allKeypairs)}`);
+
+        logger.log(
+          `[POST /vanity-keypair] Sample of up to 5 keypairs from database: ${JSON.stringify(allKeypairs)}`,
+        );
       } else {
-        logger.warn("[POST /vanity-keypair] No unused vanity keypairs available (confirmed by count)");
+        logger.warn(
+          "[POST /vanity-keypair] No unused vanity keypairs available (confirmed by count)",
+        );
       }
     }
 
     const keypair = keypairs[0];
-    logger.log(`[POST /vanity-keypair] Found unused keypair: ${keypair.address}`);
+    logger.log(
+      `[POST /vanity-keypair] Found unused keypair: ${keypair.address}`,
+    );
 
     // Mark this keypair as used
     await db
@@ -4890,24 +5126,30 @@ tokenRouter.post("/vanity-keypair", async (c) => {
         used: 1,
       })
       .where(eq(vanityKeypairs.id, keypair.id));
-    
-    logger.log(`[POST /vanity-keypair] Marked keypair ${keypair.address} as used by ${user.publicKey}`);
+
+    logger.log(
+      `[POST /vanity-keypair] Marked keypair ${keypair.address} as used by ${user.publicKey}`,
+    );
 
     // Convert secretKey from base64 to byte array for the client
     let secretKeyBytes;
     try {
       // The secretKey is stored as base64 string in the database
       const base64Key = keypair.secretKey;
-      
+
       // Decode it to get a binary buffer
-      const secretKeyBuffer = Buffer.from(base64Key, 'base64');
-      
+      const secretKeyBuffer = Buffer.from(base64Key, "base64");
+
       // Convert to array format expected by solana/web3.js
       secretKeyBytes = Array.from(secretKeyBuffer);
-      
-      logger.log(`[POST /vanity-keypair] Successfully converted secretKey to array of length ${secretKeyBytes.length}`);
+
+      logger.log(
+        `[POST /vanity-keypair] Successfully converted secretKey to array of length ${secretKeyBytes.length}`,
+      );
     } catch (keyError) {
-      logger.error(`[POST /vanity-keypair] Error converting secretKey: ${keyError}`);
+      logger.error(
+        `[POST /vanity-keypair] Error converting secretKey: ${keyError}`,
+      );
       return c.json({ error: "Failed to process keypair" }, 500);
     }
 
@@ -4916,13 +5158,18 @@ tokenRouter.post("/vanity-keypair", async (c) => {
       id: keypair.id,
       publicKey: keypair.address,
       secretKey: secretKeyBytes,
-      message: "Successfully reserved a vanity keypair"
+      message: "Successfully reserved a vanity keypair",
     });
   } catch (error) {
     logger.error("[POST /vanity-keypair] Error processing request:", error);
     return c.json(
-      { error: error instanceof Error ? error.message : "Failed to process vanity keypair request" },
-      500
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to process vanity keypair request",
+      },
+      500,
     );
   }
 });
@@ -4938,7 +5185,9 @@ tokenRouter.get("/vanity-keypair-status", async (c) => {
       logger.warn("[/vanity-keypair-status] Authentication required");
       return c.json({ error: "Authentication required" }, 401);
     }
-    logger.log(`[/vanity-keypair-status] Authenticated user: ${user.publicKey}`);
+    logger.log(
+      `[/vanity-keypair-status] Authenticated user: ${user.publicKey}`,
+    );
 
     const db = getDB(c.env);
 
@@ -4946,49 +5195,67 @@ tokenRouter.get("/vanity-keypair-status", async (c) => {
     const totalCount = await db
       .select({ count: sql<number>`count(*)` })
       .from(vanityKeypairs);
-    
+
     // Count used keypairs
     const usedCount = await db
       .select({ count: sql<number>`count(*)` })
       .from(vanityKeypairs)
       .where(eq(vanityKeypairs.used, 1));
-    
+
     // Count unused keypairs
     const unusedCount = await db
       .select({ count: sql<number>`count(*)` })
       .from(vanityKeypairs)
       .where(eq(vanityKeypairs.used, 0));
-      
+
     // Get the most recent keypair for checking timestamp
     const recentKeypairs = await db
       .select()
       .from(vanityKeypairs)
       .orderBy(desc(vanityKeypairs.createdAt))
       .limit(1);
-    
-    const mostRecentKeypair = recentKeypairs.length > 0 ? recentKeypairs[0] : null;
-    
-    logger.log(`[/vanity-keypair-status] Total keypairs: ${totalCount[0]?.count || 0}, Used: ${usedCount[0]?.count || 0}, Unused: ${unusedCount[0]?.count || 0}`);
-    
+
+    const mostRecentKeypair =
+      recentKeypairs.length > 0 ? recentKeypairs[0] : null;
+
+    logger.log(
+      `[/vanity-keypair-status] Total keypairs: ${totalCount[0]?.count || 0}, Used: ${usedCount[0]?.count || 0}, Unused: ${unusedCount[0]?.count || 0}`,
+    );
+
     return c.json({
       total: totalCount[0]?.count || 0,
       used: usedCount[0]?.count || 0,
       unused: unusedCount[0]?.count || 0,
-      mostRecent: mostRecentKeypair ? {
-        createdAt: mostRecentKeypair.createdAt,
-        addressPreview: mostRecentKeypair.address.substring(0, 8) + '...' + mostRecentKeypair.address.substring(mostRecentKeypair.address.length - 4),
-        used: mostRecentKeypair.used === 1
-      } : null,
+      mostRecent: mostRecentKeypair
+        ? {
+            createdAt: mostRecentKeypair.createdAt,
+            addressPreview:
+              mostRecentKeypair.address.substring(0, 8) +
+              "..." +
+              mostRecentKeypair.address.substring(
+                mostRecentKeypair.address.length - 4,
+              ),
+            used: mostRecentKeypair.used === 1,
+          }
+        : null,
       buffer: {
         min: 100, // From your MIN_VANITY_KEYPAIR_BUFFER constant
         target: 150, // From your TARGET_VANITY_KEYPAIR_BUFFER constant
-      }
+      },
     });
   } catch (error) {
-    logger.error("[/vanity-keypair-status] Error checking keypair status:", error);
+    logger.error(
+      "[/vanity-keypair-status] Error checking keypair status:",
+      error,
+    );
     return c.json(
-      { error: error instanceof Error ? error.message : "Failed to check keypair status" },
-      500
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to check keypair status",
+      },
+      500,
     );
   }
 });

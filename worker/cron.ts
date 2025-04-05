@@ -1,16 +1,24 @@
-import {
-  ExecutionContext,
-} from "@cloudflare/workers-types/experimental";
+import { ExecutionContext } from "@cloudflare/workers-types/experimental";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
 import { getLatestCandle } from "./chart";
-import { getDB, swaps, tokens, VanityKeypairInsert, vanityKeypairs } from "./db";
+import {
+  getDB,
+  swaps,
+  tokens,
+  VanityKeypairInsert,
+  vanityKeypairs,
+} from "./db";
 import { Env } from "./env";
 import { logger } from "./logger";
 import { getSOLPrice } from "./mcap";
 import { checkAndReplenishTokens } from "./routes/generation";
 import { updateHoldersCache } from "./routes/token";
-import { bulkUpdatePartialTokens, calculateFeaturedScore, getFeaturedMaxValues } from "./util";
+import {
+  bulkUpdatePartialTokens,
+  calculateFeaturedScore,
+  getFeaturedMaxValues,
+} from "./util";
 import { getWebSocketClient } from "./websocket-client";
 import bs58 from "bs58";
 
@@ -148,7 +156,10 @@ export async function processTransactionLogs(
         try {
           await updateHoldersCache(env, rawTokenAddress);
         } catch (error) {
-          logger.error('Failed to update holder cache on newToken event:', error);
+          logger.error(
+            "Failed to update holder cache on newToken event:",
+            error,
+          );
         }
 
         // Update the database
@@ -191,7 +202,7 @@ export async function processTransactionLogs(
           if (
             !mintAddress ||
             !/^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
-              mintAddress
+              mintAddress,
             )
           ) {
             logger.error(`Invalid mint address format: ${mintAddress}`);
@@ -205,7 +216,7 @@ export async function processTransactionLogs(
         try {
           await updateHoldersCache(env, mintAddress);
         } catch (error) {
-          logger.error('Failed to update holder cache on swap event:', error);
+          logger.error("Failed to update holder cache on swap event:", error);
         }
 
         // Extract user, direction, amount with validation
@@ -224,7 +235,7 @@ export async function processTransactionLogs(
           // Validate extracted data
           if (!user || !direction || !amount) {
             logger.error(
-              `Missing swap data: user=${user}, direction=${direction}, amount=${amount}`
+              `Missing swap data: user=${user}, direction=${direction}, amount=${amount}`,
             );
             return result;
           }
@@ -250,17 +261,17 @@ export async function processTransactionLogs(
 
           reserveToken = reservesParts[reservesParts.length - 2].replace(
             /[",)]/g,
-            ""
+            "",
           );
           reserveLamport = reservesParts[reservesParts.length - 1].replace(
             /[",)]/g,
-            ""
+            "",
           );
 
           // Validate extracted data
           if (!reserveToken || !reserveLamport) {
             logger.error(
-              `Missing reserves data: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`
+              `Missing reserves data: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`,
             );
             return result;
           }
@@ -268,7 +279,7 @@ export async function processTransactionLogs(
           // Make sure reserve values are numeric
           if (isNaN(Number(reserveToken)) || isNaN(Number(reserveLamport))) {
             logger.error(
-              `Invalid reserve values: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`
+              `Invalid reserve values: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`,
             );
             return result;
           }
@@ -303,7 +314,7 @@ export async function processTransactionLogs(
           (Number(env.TOKEN_SUPPLY) / Math.pow(10, TOKEN_DECIMALS)) *
           tokenPriceUSD;
 
-          console.log(tokenPriceInSol, tokenPriceUSD, marketCapUSD)
+        console.log(tokenPriceInSol, tokenPriceUSD, marketCapUSD);
 
         // Save to the swap table for historical records
         const swapRecord = {
@@ -330,7 +341,7 @@ export async function processTransactionLogs(
         const db = getDB(env);
         await db.insert(swaps).values(swapRecord);
         logger.log(
-          `Saved swap: ${direction === "0" ? "buy" : "sell"} for ${mintAddress}`
+          `Saved swap: ${direction === "0" ? "buy" : "sell"} for ${mintAddress}`,
         );
 
         // Update token data in database
@@ -349,8 +360,7 @@ export async function processTransactionLogs(
             solPriceUSD: solPrice,
             curveProgress:
               ((Number(reserveLamport) - Number(env.VIRTUAL_RESERVES)) /
-                (Number(env.CURVE_LIMIT) -
-                  Number(env.VIRTUAL_RESERVES))) *
+                (Number(env.CURVE_LIMIT) - Number(env.VIRTUAL_RESERVES))) *
               100,
             txId: signature,
             lastUpdated: new Date().toISOString(),
@@ -364,7 +374,7 @@ export async function processTransactionLogs(
           })
           .where(eq(tokens.mint, mintAddress))
           .returning();
-        const newToken = token[0]
+        const newToken = token[0];
 
         // Update holders data immediately after a swap
         await updateHoldersCache(env, mintAddress);
@@ -378,7 +388,7 @@ export async function processTransactionLogs(
         const latestCandle = await getLatestCandle(
           env,
           swapRecord.tokenMint,
-          swapRecord
+          swapRecord,
         );
 
         // Emit the new candle data
@@ -395,7 +405,7 @@ export async function processTransactionLogs(
           featuredScore: calculateFeaturedScore(
             newToken,
             maxVolume,
-            maxHolders
+            maxHolders,
           ),
         };
 
@@ -848,7 +858,7 @@ export async function manageVanityKeypairs(env: Env): Promise<void> {
       .select({ count: sql<number>`count(*)` })
       .from(vanityKeypairs)
       .where(eq(vanityKeypairs.used, 0));
-      
+
     // Also count total keypairs for full stats
     const totalResult = await db
       .select({ count: sql<number>`count(*)` })
@@ -857,147 +867,183 @@ export async function manageVanityKeypairs(env: Env): Promise<void> {
     const currentCount = countResult[0]?.count || 0;
     const totalCount = totalResult[0]?.count || 0;
     const usedCount = totalCount - currentCount;
-    
-    logger.log(`[VANITY] Current stats: ${currentCount} unused out of ${totalCount} total keypairs (${usedCount} used)`);
+
+    logger.log(
+      `[VANITY] Current stats: ${currentCount} unused out of ${totalCount} total keypairs (${usedCount} used)`,
+    );
 
     // Determine the vanity service URL based on environment
-    const vanityServiceUrl = env.NODE_ENV === "development" 
-      ? "http://localhost:8888/grind"
-      : "https://vanity.autofun.workers.dev/grind";
-    
+    const vanityServiceUrl =
+      env.NODE_ENV === "development"
+        ? "http://localhost:8888/grind"
+        : "https://vanity.autofun.workers.dev/grind";
+
     // Start timing
     const startTime = Date.now();
-    
+
     // Calculate how many keypairs we need to generate
     const keypairsToGenerate = Math.min(
-      MAX_KEYPAIRS_PER_CRON_RUN, 
-      currentCount < MIN_VANITY_KEYPAIR_BUFFER ? TARGET_VANITY_KEYPAIR_BUFFER - currentCount : 0
+      MAX_KEYPAIRS_PER_CRON_RUN,
+      currentCount < MIN_VANITY_KEYPAIR_BUFFER
+        ? TARGET_VANITY_KEYPAIR_BUFFER - currentCount
+        : 0,
     );
-    
+
     if (keypairsToGenerate <= 0) {
-      logger.log(`[VANITY] Buffer full (${currentCount}/${MIN_VANITY_KEYPAIR_BUFFER}). Not generating any keypairs.`);
+      logger.log(
+        `[VANITY] Buffer full (${currentCount}/${MIN_VANITY_KEYPAIR_BUFFER}). Not generating any keypairs.`,
+      );
       return;
     }
-    
-    logger.log(`[VANITY] Will generate ${keypairsToGenerate} keypairs this run`);
-    
+
+    logger.log(
+      `[VANITY] Will generate ${keypairsToGenerate} keypairs this run`,
+    );
+
     let successfullyGenerated = 0;
-    
+
     // Define the concurrency limit
     const maxConcurrent = MAX_CONCURRENT_KEYPAIR_REQUESTS;
-    
+
     // Function to generate and save a single keypair
     async function generateAndSaveKeypair(index: number): Promise<boolean> {
       try {
-        logger.log(`[VANITY] Requesting keypair ${index+1}/${keypairsToGenerate}...`);
-        
+        logger.log(
+          `[VANITY] Requesting keypair ${index + 1}/${keypairsToGenerate}...`,
+        );
+
         // Request a single keypair from the vanity service
         const response = await fetch(vanityServiceUrl, {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             target: VANITY_SUFFIX,
             case_insensitive: false,
-            position: "suffix"
-          })
+            position: "suffix",
+          }),
         });
-        
+
         if (!response.ok) {
           const errorText = await response.text();
-          logger.error(`[VANITY] Vanity service error ${response.status}: ${errorText}`);
+          logger.error(
+            `[VANITY] Vanity service error ${response.status}: ${errorText}`,
+          );
           return false;
         }
-        
+
         const result = await response.json();
-        
+
         // Validate the keypair data
         if (!result.pubkey || !result.private_key) {
-          logger.error(`[VANITY] Invalid keypair format: ${JSON.stringify(result)}`);
+          logger.error(
+            `[VANITY] Invalid keypair format: ${JSON.stringify(result)}`,
+          );
           return false;
         }
-        
+
         // Log success
-        logger.log(`[VANITY] Generated keypair ending with "${VANITY_SUFFIX}" in ${result.attempts || 'unknown'} attempts: ${result.pubkey}`);
-        
+        logger.log(
+          `[VANITY] Generated keypair ending with "${VANITY_SUFFIX}" in ${result.attempts || "unknown"} attempts: ${result.pubkey}`,
+        );
+
         // Check if this keypair is already in the database before proceeding
         const existingCheck = await db
           .select()
           .from(vanityKeypairs)
           .where(eq(vanityKeypairs.address, result.pubkey))
           .limit(1);
-          
+
         if (existingCheck && existingCheck.length > 0) {
-          logger.warn(`[VANITY] Keypair ${result.pubkey} already exists in database, skipping`);
+          logger.warn(
+            `[VANITY] Keypair ${result.pubkey} already exists in database, skipping`,
+          );
           return false;
         }
-        
+
         // IMPORTANT: Make sure we have valid Base58 format from the vanity service
         const privateKeyBytes = bs58.decode(result.private_key);
-        
+
         // Verify the private key is exactly 64 bytes (required by Solana)
         if (privateKeyBytes.length !== 64) {
-          logger.error(`[VANITY] Invalid private key length: ${privateKeyBytes.length} bytes (expected 64 bytes)`);
+          logger.error(
+            `[VANITY] Invalid private key length: ${privateKeyBytes.length} bytes (expected 64 bytes)`,
+          );
           return false;
         }
-        
+
         // Convert to Base64 for storage to ensure consistent handling
-        const privateKeyBase64 = Buffer.from(privateKeyBytes).toString('base64');
-        
+        const privateKeyBase64 =
+          Buffer.from(privateKeyBytes).toString("base64");
+
         // Verify the keypair is valid by trying to recreate it
         try {
           // We need to import the Keypair class here since it's not available at the module level
-          const { Keypair } = await import('@solana/web3.js');
+          const { Keypair } = await import("@solana/web3.js");
           const recreatedKeypair = Keypair.fromSecretKey(privateKeyBytes);
           const recreatedPubkey = recreatedKeypair.publicKey.toString();
-          
+
           // Verify the public key matches what the vanity service returned
           if (recreatedPubkey !== result.pubkey) {
-            logger.error(`[VANITY] Keypair verification failed: public key mismatch`);
-            logger.error(`[VANITY] Expected: ${result.pubkey}, Got: ${recreatedPubkey}`);
+            logger.error(
+              `[VANITY] Keypair verification failed: public key mismatch`,
+            );
+            logger.error(
+              `[VANITY] Expected: ${result.pubkey}, Got: ${recreatedPubkey}`,
+            );
             return false;
           }
-          
-          logger.log(`[VANITY] Keypair verification successful: ${result.pubkey}`);
+
+          logger.log(
+            `[VANITY] Keypair verification successful: ${result.pubkey}`,
+          );
         } catch (verifyError) {
           logger.error(`[VANITY] Keypair verification failed: ${verifyError}`);
           return false;
         }
-        
+
         // Create keypair object with Base64-encoded secret key
         const keypair = {
           id: crypto.randomUUID(),
           address: result.pubkey,
           secretKey: privateKeyBase64,
           createdAt: new Date().toISOString(),
-          used: 0
+          used: 0,
         };
-        
+
         // CRITICAL: Insert this keypair DIRECTLY with a DEDICATED database connection
         // This is the most important part - no transactions, no batching, just a direct insert
         try {
-          // We're using the main db connection, NOT creating a new one to avoid 
+          // We're using the main db connection, NOT creating a new one to avoid
           // potential connection pool issues
           await db.insert(vanityKeypairs).values(keypair);
-          
+
           // Log successful insert
-          logger.log(`[VANITY] ✓ SAVED KEYPAIR DIRECTLY TO DATABASE: ${result.pubkey}`);
+          logger.log(
+            `[VANITY] ✓ SAVED KEYPAIR DIRECTLY TO DATABASE: ${result.pubkey}`,
+          );
           return true;
         } catch (insertError) {
-          logger.error(`[VANITY] ✘ ERROR SAVING KEYPAIR: ${result.pubkey}`, insertError);
+          logger.error(
+            `[VANITY] ✘ ERROR SAVING KEYPAIR: ${result.pubkey}`,
+            insertError,
+          );
           return false;
         }
       } catch (error) {
-        logger.error(`[VANITY] Error in generateAndSaveKeypair for index ${index}:`, error);
+        logger.error(
+          `[VANITY] Error in generateAndSaveKeypair for index ${index}:`,
+          error,
+        );
         return false;
       }
     }
-    
+
     // Use a completely different approach with a managed promise pool
     let generatedCount = 0;
     let processingPromises: Promise<boolean>[] = [];
-    
+
     for (let i = 0; i < keypairsToGenerate; i++) {
       // Add this task to our managed promise pool
       processingPromises.push(
@@ -1007,67 +1053,83 @@ export async function manageVanityKeypairs(env: Env): Promise<void> {
             if (success) {
               // Only log once after we've completed a successful generation
               generatedCount++;
-              logger.log(`[VANITY] Progress: ${generatedCount}/${keypairsToGenerate} keypairs generated (${Math.round(generatedCount/keypairsToGenerate*100)}%)`);
+              logger.log(
+                `[VANITY] Progress: ${generatedCount}/${keypairsToGenerate} keypairs generated (${Math.round((generatedCount / keypairsToGenerate) * 100)}%)`,
+              );
             }
             return success;
           } catch (error) {
             logger.error(`[VANITY] Error in keypair task ${i}:`, error);
             return false;
           }
-        })()
+        })(),
       );
-      
+
       // Process in batches to limit concurrency
-      if (processingPromises.length >= maxConcurrent || i === keypairsToGenerate - 1) {
+      if (
+        processingPromises.length >= maxConcurrent ||
+        i === keypairsToGenerate - 1
+      ) {
         // Wait for all current promises to complete before adding more
         const results = await Promise.all(processingPromises);
         // Count successful generations
         successfullyGenerated += results.filter(Boolean).length;
         // Clear the promise array for the next batch
         processingPromises = [];
-        
+
         // Log the progress after each batch
-        logger.log(`[VANITY] Batch complete: ${successfullyGenerated}/${keypairsToGenerate} keypairs generated so far`);
-        
+        logger.log(
+          `[VANITY] Batch complete: ${successfullyGenerated}/${keypairsToGenerate} keypairs generated so far`,
+        );
+
         // Do a database check after each batch to verify
         const dbCheckCount = await db
           .select({ count: sql<number>`count(*)` })
           .from(vanityKeypairs)
           .where(eq(vanityKeypairs.used, 0));
-        
+
         const currentDbCount = dbCheckCount[0]?.count || 0;
-        logger.log(`[VANITY] Database verification: ${currentDbCount} unused keypairs now in database`);
+        logger.log(
+          `[VANITY] Database verification: ${currentDbCount} unused keypairs now in database`,
+        );
       }
     }
-    
+
     const totalTime = (Date.now() - startTime) / 1000;
-    logger.log(`[VANITY] Completed generation of ${successfullyGenerated}/${keypairsToGenerate} keypairs in ${totalTime.toFixed(1)}s`);
-    
+    logger.log(
+      `[VANITY] Completed generation of ${successfullyGenerated}/${keypairsToGenerate} keypairs in ${totalTime.toFixed(1)}s`,
+    );
+
     // Get updated counts
     const updatedCount = await db
       .select({ count: sql<number>`count(*)` })
       .from(vanityKeypairs)
       .where(eq(vanityKeypairs.used, 0));
-      
-    logger.log(`[VANITY] Final buffer status: ${updatedCount[0]?.count || 0}/${MIN_VANITY_KEYPAIR_BUFFER} unused keypairs`);
+
+    logger.log(
+      `[VANITY] Final buffer status: ${updatedCount[0]?.count || 0}/${MIN_VANITY_KEYPAIR_BUFFER} unused keypairs`,
+    );
   } catch (error) {
     logger.error("[VANITY] Error managing vanity keypairs:", error);
   }
 }
 // --- End Vanity Keypair Generation ---
 
-export async function cron(env: Env, ctx: ExecutionContext | { cron: string }): Promise<void> {
+export async function cron(
+  env: Env,
+  ctx: ExecutionContext | { cron: string },
+): Promise<void> {
   console.log("Running cron job...");
   try {
     // Check if this is a legitimate Cloudflare scheduled trigger
     // For scheduled triggers, the ctx should have a 'cron' property
-    const isScheduledEvent = 'cron' in ctx && typeof ctx.cron === 'string';
-    
+    const isScheduledEvent = "cron" in ctx && typeof ctx.cron === "string";
+
     // if (!isScheduledEvent) {
     //   logger.warn("Rejected direct call to cron function - not triggered by scheduler");
     //   return; // Exit early without running the scheduled tasks
     // }
-    
+
     // Log the cron pattern being executed
     const cronPattern = (ctx as { cron: string }).cron;
     logger.log(`Running scheduled tasks for cron pattern: ${cronPattern}...`);
@@ -1085,27 +1147,29 @@ export async function cron(env: Env, ctx: ExecutionContext | { cron: string }): 
       (async () => {
         // Update holder data for each active token
         for (const token of activeTokens) {
-        try {
-          if (token.mint) {
-            logger.log(`Updating holder data for token: ${token.mint}`);
-            const holderCount = await updateHoldersCache(env, token.mint);
-            logger.log(
-              `Updated holders for ${token.mint}: ${holderCount} holders`,
+          try {
+            if (token.mint) {
+              logger.log(`Updating holder data for token: ${token.mint}`);
+              const holderCount = await updateHoldersCache(env, token.mint);
+              logger.log(
+                `Updated holders for ${token.mint}: ${holderCount} holders`,
+              );
+            }
+          } catch (err) {
+            logger.error(
+              `Error updating holders for token ${token.mint}:`,
+              err,
             );
           }
-        } catch (err) {
-          logger.error(`Error updating holders for token ${token.mint}:`, err);
         }
-      }
-    })(),
-    (async () => {
-      await checkAndReplenishTokens(env);
-    })(),
-    (async () => {
-      await manageVanityKeypairs(env);
-    })(),
-  ]);
-
+      })(),
+      (async () => {
+        await checkAndReplenishTokens(env);
+      })(),
+      (async () => {
+        await manageVanityKeypairs(env);
+      })(),
+    ]);
   } catch (error) {
     logger.error("Error in cron job:", error);
   }

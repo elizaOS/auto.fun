@@ -114,7 +114,7 @@ export default function Trade({ token }: { token: IToken }) {
       token,
     });
 
-    toast.success('Trade executed')
+    toast.success("Trade executed");
   };
 
   return (
@@ -224,7 +224,7 @@ export default function Trade({ token }: { token: IToken }) {
                   : tokenPriceUSD
                     ? formatNumber(
                         Number(sellingAmount || 0) * tokenPriceUSD,
-                        true
+                        true,
                       )
                     : formatNumber(0)}
               </span>
@@ -264,12 +264,12 @@ export default function Trade({ token }: { token: IToken }) {
                 {sellingAmount && solanaPrice && !isTokenSelling
                   ? formatNumber(
                       (Number(sellingAmount) / currentPrice) * tokenPriceUSD,
-                      true
+                      true,
                     )
                   : sellingAmount && isTokenSelling && tokenPriceUSD
                     ? formatNumber(
                         Number(sellingAmount) * currentPrice * solanaPrice,
-                        true
+                        true,
                       )
                     : "$0.00"}
               </span>

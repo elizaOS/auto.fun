@@ -21,7 +21,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
     `HoldersTable: Rendering for token ${token?.ticker} (${token?.mint})`,
   );
 
-  const query = useHolders({tokenId: token.mint});
+  const query = useHolders({ tokenId: token.mint });
 
   const isLoading = query.isLoading;
   const data = query?.items;
@@ -73,10 +73,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
                   {holder?.percentage}%
                 </TableCell>
                 <TableCell>
-                  <Link
-                    to={env.getWalletUrl(holder.address)}
-                    target="_blank"
-                  >
+                  <Link to={env.getWalletUrl(holder.address)} target="_blank">
                     <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary" />
                   </Link>
                 </TableCell>

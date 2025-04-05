@@ -99,11 +99,7 @@ export const refreshTokenHolders = async ({ address }: { address: string }) => {
   }
 };
 
-export const getTokenSwapHistory = async ({
-  address,
-}: {
-  address: string;
-}) => {
+export const getTokenSwapHistory = async ({ address }: { address: string }) => {
   try {
     const endpoint = `/api/swaps/${address}`;
     const data = await fetcher(endpoint, "GET");
