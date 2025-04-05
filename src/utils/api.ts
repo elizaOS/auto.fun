@@ -140,24 +140,3 @@ export const getChartTable = async ({
     return undefined;
   }
 };
-
-export const executeCron_development_only = async () => {
-  if (env.appEnv === "development") {
-    try {
-      // Use mode: 'no-cors' to bypass CORS restrictions for development crons
-      // Note: This will return an opaque response that cannot be read
-      await fetch(`${env.apiUrl}/__scheduled?cron=*/1 * * * *`, {
-        method: "GET",
-        mode: "no-cors", // This bypasses CORS restrictions
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      console.log(
-        "Development cron executed (opaque response due to no-cors mode)",
-      );
-    } catch (error) {
-      console.error("Development cron execution failed:", error);
-    }
-  }
-};

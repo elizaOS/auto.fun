@@ -36,7 +36,6 @@ export interface TokenMetadataJson {
   telegram?: string;
   website?: string;
   discord?: string;
-  agentLink?: string;
 }
 
 const FEE_BASIS_POINTS = 10000;

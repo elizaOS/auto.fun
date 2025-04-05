@@ -65,4 +65,9 @@ export interface Env {
   NEWS_API_KEY?: string;
   PREGENERATED_TOKENS_COUNT?: string;
   HELIUS_WEBHOOK_AUTH_TOKEN: string;
+  // Vanity keypair management
+  MINIMUM_VANITY_KEYPAIRS?: string;
+  VANITY_GENERATION_ADDRESS?: string;
+  // Add ADMIN_ADDRESSES to the Env interface
+  ADMIN_ADDRESSES?: string;
 }
