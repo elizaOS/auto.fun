@@ -437,10 +437,22 @@ export const withdrawTx = async (
 
 // Get RPC URL based on the environment
 export const getRpcUrl = (env: any) => {
-  const result =
-    (env.NETWORK === "devnet"
-      ? env.DEVNET_SOLANA_RPC_URL
-      : env.MAINNET_SOLANA_RPC_URL) || env.VITE_RPC_URL;
+  // Extract the base URL and ensure we use the correct API key
+  let baseUrl;
+  
+  if (env.NETWORK === "devnet") {
+    baseUrl = "https://devnet.helius-rpc.com/";
+  } else {
+    // Default to mainnet
+    baseUrl = "https://mainnet.helius-rpc.com/";
+  }
+  
+  // Use API key from environment, ensuring it's applied correctly
+  const apiKey = env.NETWORK === "devnet" 
+    ? (env.DEVNET_SOLANA_RPC_URL?.split("api-key=")[1] || "7f068738-8b88-4a91-b2a9-99b00f716717")
+    : (env.MAINNET_SOLANA_RPC_URL?.split("api-key=")[1] || "7f068738-8b88-4a91-b2a9-99b00f716717");
+  
+  const result = `${baseUrl}?api-key=${apiKey}`;
 
   logger.log(
     `getRpcUrl called with NETWORK=${env.NETWORK}, returning: ${result}`,
@@ -450,11 +462,13 @@ export const getRpcUrl = (env: any) => {
 
 // Get mainnet RPC URL regardless of environment setting
 export const getMainnetRpcUrl = (env: any) => {
-  // Use explicit mainnet RPC URLs with fallbacks to ensure we have a valid URL
-  const mainnetUrl =
-    env.MAINNET_SOLANA_RPC_URL ||
-    env.VITE_MAINNET_RPC_URL ||
-    "https://api.mainnet-beta.solana.com";
+  // Extract base URL and API key
+  const baseUrl = "https://mainnet.helius-rpc.com/";
+  const apiKey = env.MAINNET_SOLANA_RPC_URL?.split("api-key=")[1] || 
+                env.VITE_MAINNET_RPC_URL?.split("api-key=")[1] || 
+                "7f068738-8b88-4a91-b2a9-99b00f716717";
+  
+  const mainnetUrl = `${baseUrl}?api-key=${apiKey}`;
 
   logger.log(`getMainnetRpcUrl returning: ${mainnetUrl}`);
   return mainnetUrl;
@@ -462,11 +476,13 @@ export const getMainnetRpcUrl = (env: any) => {
 
 // Get devnet RPC URL regardless of environment setting
 export const getDevnetRpcUrl = (env: any) => {
-  // Use explicit devnet RPC URLs with fallbacks to ensure we have a valid URL
-  const devnetUrl =
-    env.DEVNET_SOLANA_RPC_URL ||
-    env.VITE_DEVNET_RPC_URL ||
-    "https://api.devnet.solana.com";
+  // Extract base URL and API key
+  const baseUrl = "https://devnet.helius-rpc.com/";
+  const apiKey = env.DEVNET_SOLANA_RPC_URL?.split("api-key=")[1] || 
+                env.VITE_DEVNET_RPC_URL?.split("api-key=")[1] || 
+                "7f068738-8b88-4a91-b2a9-99b00f716717";
+  
+  const devnetUrl = `${baseUrl}?api-key=${apiKey}`;
 
   logger.log(`getDevnetRpcUrl returning: ${devnetUrl}`);
   return devnetUrl;
@@ -735,6 +751,8 @@ export async function updateHoldersCache(env: Env, mint: string) {
       },
     );
 
+    logger.log(`Found ${accounts.length} token accounts for mint ${mint}`);
+
     // Process accounts
     let totalTokens = 0;
     const holders: any[] = [];
@@ -766,9 +784,13 @@ export async function updateHoldersCache(env: Env, mint: string) {
     // Remove old holders data
     await db.delete(tokenHolders).where(eq(tokenHolders.mint, mint));
 
-    // Insert new holders data
+    // Insert new holders data in batches of 100 to avoid SQLite parameter limits
     if (holderRecords.length > 0) {
-      await db.insert(tokenHolders).values(holderRecords);
+      const BATCH_SIZE = 100;
+      for (let i = 0; i < holderRecords.length; i += BATCH_SIZE) {
+        const batch = holderRecords.slice(i, i + BATCH_SIZE);
+        await db.insert(tokenHolders).values(batch);
+      }
     }
 
     // Update the token with holder count
@@ -779,6 +801,20 @@ export async function updateHoldersCache(env: Env, mint: string) {
         lastUpdated: new Date().toISOString(),
       })
       .where(eq(tokens.mint, mint));
+
+    // Try to emit websocket update for holders
+    try {
+      // Get the WebSocket client
+      const wsClient = getWebSocketClient(env);
+      
+      // Emit event to notify of holder update
+      await wsClient.emit(`token-${mint}`, "newHolder", holderRecords);
+      
+      logger.log(`Emitted holders update for token ${mint}`);
+    } catch (wsError) {
+      // Don't fail if WebSocket fails
+      logger.error(`Error emitting WebSocket event: ${wsError}`);
+    }
 
     return holderRecords.length;
   } catch (error) {

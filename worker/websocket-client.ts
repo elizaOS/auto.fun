@@ -14,8 +14,6 @@ export class WebSocketClient {
 
   // Send a message to a specific room (token or global)
   async emit(room: string, event: string, data: any): Promise<void> {
-    logger.log(`Emitting to room ${room}, event: ${event}`);
-
     try {
       // Format room name correctly for both implementations
       // For token room we need to use 'token-{mintAddress}' format
@@ -52,8 +50,6 @@ export class WebSocketClient {
             `Failed to broadcast to room ${formattedRoom}: ${error}`,
           );
         }
-
-        logger.log(`Successfully broadcasted to room ${formattedRoom}`);
       } else {
         logger.error("Cannot emit: No WebSocket Durable Object available");
         throw new Error("WebSocket not available");
@@ -70,8 +66,6 @@ export class WebSocketClient {
     event: string,
     data: any,
   ): Promise<void> {
-    logger.log(`Emitting directly to client ${clientId}, event: ${event}`);
-
     try {
       // Use Durable Object if available (production or Miniflare)
       if (this.webSocketDO) {
@@ -102,8 +96,6 @@ export class WebSocketClient {
             throw new Error(`Error sending to client ${clientId}: ${error}`);
           }
         }
-
-        logger.log(`Successfully sent message to client ${clientId}`);
       } else {
         logger.error(
           "Cannot emit to client: No WebSocket implementation available",

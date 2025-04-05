@@ -243,8 +243,6 @@ export class WebSocketDO {
         }),
       );
     }
-
-    logger.log(`Client ${clientId} joined room ${roomName}`);
   }
 
   // Remove a client from a room
@@ -273,8 +271,6 @@ export class WebSocketDO {
         }),
       );
     }
-
-    logger.log(`Client ${clientId} left room ${roomName}`);
   }
 
   // Handle client disconnection
@@ -332,7 +328,6 @@ export class WebSocketDO {
     const clients = this.rooms.get(roomName);
 
     if (!clients || clients.size === 0) {
-      logger.log(`No clients in room ${roomName}`);
       return;
     }
 
@@ -345,10 +340,6 @@ export class WebSocketDO {
         client.send(message);
       }
     }
-
-    logger.log(
-      `Broadcasted ${event} to ${clients.size} clients in room ${roomName}`,
-    );
   }
 
   // Handle HTTP POST requests to broadcast messages

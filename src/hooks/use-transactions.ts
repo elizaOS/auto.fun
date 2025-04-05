@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { getSocket } from "@/utils/socket";
 import { usePagination } from "./use-pagination";
+import { fetchTokenTransactions } from "@/utils/blockchain";
+import { useQuery } from "@tanstack/react-query";
 
 const TransactionSchema = z
   .object({
@@ -28,6 +30,35 @@ export type Transaction = z.infer<typeof TransactionSchema>;
 
 export const useTransactions = ({ tokenId }: { tokenId: string }) => {
   const pageSize = 100;
+  const [blockchainSwaps, setBlockchainSwaps] = useState<Transaction[]>([]);
+  
+  // Fetch directly from blockchain
+  const blockchainQuery = useQuery({
+    queryKey: ["blockchain-swaps", tokenId],
+    queryFn: async () => {
+      try {
+        console.log(`Fetching blockchain swaps directly for ${tokenId}`);
+        const result = await fetchTokenTransactions(tokenId, 100);
+        
+        if (result.swaps && result.swaps.length > 0) {
+          console.log(`Found ${result.swaps.length} swaps from blockchain`);
+          const parsedSwaps = result.swaps.map(swap => TransactionSchema.parse(swap));
+          setBlockchainSwaps(parsedSwaps);
+          return parsedSwaps;
+        }
+        
+        console.log(`No blockchain swaps found for ${tokenId}`);
+        return [];
+      } catch (error) {
+        console.error(`Error fetching blockchain swaps:`, error);
+        return [];
+      }
+    },
+    enabled: !!tokenId,
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  // Fallback to API for backward compatibility
   const pagination = usePagination({
     endpoint: `/api/swaps/${tokenId}`,
     limit: pageSize,
@@ -41,13 +72,19 @@ export const useTransactions = ({ tokenId }: { tokenId: string }) => {
     const socket = getSocket();
 
     socket.on("newSwap", (transaction: unknown) => {
-      const newTransaction = TransactionSchema.parse(transaction);
+      try {
+        const newTransaction = TransactionSchema.parse(transaction);
 
-      if (pagination.currentPage !== 1) return;
+        if (pagination.currentPage !== 1) return;
 
-      pagination.setItems((items) =>
-        [newTransaction, ...items].slice(0, pageSize),
-      );
+        // Add to both blockchain swaps and pagination items
+        setBlockchainSwaps(items => [newTransaction, ...items].slice(0, pageSize));
+        pagination.setItems((items) =>
+          [newTransaction, ...items].slice(0, pageSize)
+        );
+      } catch (error) {
+        console.error("Error processing socket swap:", error);
+      }
     });
 
     return () => {
@@ -55,5 +92,17 @@ export const useTransactions = ({ tokenId }: { tokenId: string }) => {
     };
   }, [pagination]);
 
-  return pagination;
+  // Use blockchain data if available, otherwise fallback to API data
+  const items = blockchainQuery.data && blockchainQuery.data.length > 0 
+    ? blockchainQuery.data
+    : pagination.items;
+
+  const isLoading = blockchainQuery.isLoading || pagination.isLoading;
+
+  return {
+    ...pagination,
+    items,
+    isLoading,
+    hasBlockchainData: blockchainQuery.data && blockchainQuery.data.length > 0
+  };
 };

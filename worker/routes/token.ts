@@ -1,5 +1,5 @@
 import { Connection, PublicKey } from "@solana/web3.js";
-import { desc, eq, sql, and } from "drizzle-orm";
+import { desc, eq, sql, and, asc, count } from "drizzle-orm";
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import { monitorSpecificToken } from "../cron";
@@ -37,6 +37,7 @@ import {
   Transaction,
   TransactionInstruction,
   AccountInfo,
+  ParsedAccountData,
 } from "@solana/web3.js";
 import bs58 from "bs58";
 
@@ -2493,61 +2494,68 @@ export async function updateHoldersCache(
   mint: string,
 ): Promise<number> {
   try {
-    const connection = new Connection(
-      (env.NETWORK === "devnet"
-        ? env.DEVNET_SOLANA_RPC_URL
-        : env.MAINNET_SOLANA_RPC_URL) || env.RPC_URL,
-    );
+    // Use the utility function to get the RPC URL with proper API key
+    const connection = new Connection(getRpcUrl(env));
     const db = getDB(env);
 
-    // Get all token accounts for this mint
-    const largestAccounts = await connection.getTokenLargestAccounts(
-      new PublicKey(mint),
+    // Get all token accounts for this mint using getParsedProgramAccounts
+    // This method is more reliable for finding all holders
+    const accounts = await connection.getParsedProgramAccounts(
+      new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), // Token program
+      {
+        filters: [
+          {
+            dataSize: 165, // Size of token account
+          },
+          {
+            memcmp: {
+              offset: 0,
+              bytes: mint, // Mint address
+            },
+          },
+        ],
+      },
     );
-    if (!largestAccounts.value || largestAccounts.value.length === 0) {
+
+    if (!accounts || accounts.length === 0) {
       logger.log(`No accounts found for token ${mint}`);
       return 0;
     }
 
-    // Calculate total supply from all accounts
-    const totalSupply = largestAccounts.value.reduce(
-      (sum, account) => sum + Number(account.amount),
-      0,
-    );
+    logger.log(`Found ${accounts.length} token accounts for mint ${mint}`);
 
-    // Create an array to store holder records
+    // Process accounts to extract holder information
+    let totalTokens = 0;
     const holders: TokenHolder[] = [];
 
-    // Process each account - get owner and details
-    for (const account of largestAccounts.value) {
-      if (Number(account.amount) === 0) continue;
-
+    // Process each account to get holder details
+    for (const account of accounts) {
       try {
-        // Add a small delay between requests to avoid rate limiting
-        await new Promise((resolve) => setTimeout(resolve, 200));
+        const parsedAccountInfo = account.account.data as ParsedAccountData;
+        const tokenBalance = parsedAccountInfo.parsed?.info?.tokenAmount?.uiAmount || 0;
+        
+        // Skip accounts with zero balance
+        if (tokenBalance <= 0) continue;
+        
+        const ownerAddress = parsedAccountInfo.parsed?.info?.owner || "";
+        
+        // Skip accounts without owner
+        if (!ownerAddress) continue;
 
-        const accountInfo = await connection.getParsedAccountInfo(
-          account.address,
-        );
-        // Skip if account not found
-        if (!accountInfo.value) continue;
-
-        const parsedData = accountInfo.value.data as any;
-        if (!parsedData.parsed?.info?.owner) continue;
-
-        const owner = parsedData.parsed.info.owner;
-
+        // Add to total tokens for percentage calculation
+        totalTokens += tokenBalance;
+        
         holders.push({
           id: crypto.randomUUID(),
           mint,
-          address: owner,
-          amount: Number(account.amount),
-          percentage: (Number(account.amount) / totalSupply) * 100,
+          address: ownerAddress,
+          amount: tokenBalance,
+          percentage: 0, // Will calculate after we have the total
           lastUpdated: new Date().toISOString(),
         });
       } catch (error: any) {
         logger.error(
-          `Error processing account ${account.address.toString()}:`,
+          `Error processing account for ${mint}:`,
           error,
         );
         // Continue with other accounts even if one fails
@@ -2555,25 +2563,71 @@ export async function updateHoldersCache(
       }
     }
 
-    // Clear existing holders and insert new ones
-    await db.delete(tokenHolders).where(eq(tokenHolders.mint, mint));
-
-    if (holders.length > 0) {
-      // Insert in batches to avoid overwhelming the database
-      for (let i = 0; i < holders.length; i += 50) {
-        const batch = holders.slice(i, i + 50);
-        await db.insert(tokenHolders).values(batch);
+    // Calculate percentages now that we have the total
+    if (totalTokens > 0) {
+      for (const holder of holders) {
+        holder.percentage = (holder.amount / totalTokens) * 100;
       }
-
-      const wsClient = getWebSocketClient(env);
-      wsClient.emit(`token-${mint}`, "newHolder", holders);
     }
 
-    // Update token holder count
+    // Sort holders by amount (descending)
+    holders.sort((a, b) => b.amount - a.amount);
+    
+    logger.log(`Processing ${holders.length} holders for token ${mint}`);
+
+    // Clear existing holders and insert new ones
+    logger.log(`Clearing existing holders for token ${mint}`);
+    await db.delete(tokenHolders).where(eq(tokenHolders.mint, mint));
+
+    // For large number of holders, we need to limit what we insert
+    // to avoid overwhelming the database
+    const MAX_HOLDERS_TO_SAVE = 500; // Reasonable limit for most UI needs
+    const holdersToSave = holders.length > MAX_HOLDERS_TO_SAVE 
+      ? holders.slice(0, MAX_HOLDERS_TO_SAVE) 
+      : holders;
+    
+    logger.log(`Will insert ${holdersToSave.length} holders (from ${holders.length} total) for token ${mint}`);
+
+    if (holdersToSave.length > 0) {
+      // Use a very small batch size to avoid SQLite parameter limits
+      const BATCH_SIZE = 10;
+      
+      // Insert in batches to avoid overwhelming the database
+      for (let i = 0; i < holdersToSave.length; i += BATCH_SIZE) {
+        try {
+          const batch = holdersToSave.slice(i, i + BATCH_SIZE);
+          const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+          const totalBatches = Math.ceil(holdersToSave.length / BATCH_SIZE);
+          
+          logger.log(`Inserting batch ${batchNumber}/${totalBatches} (${batch.length} holders) for token ${mint}`);
+          
+          await db.insert(tokenHolders).values(batch);
+          
+          logger.log(`Successfully inserted batch ${batchNumber}/${totalBatches} for token ${mint}`);
+        } catch (insertError) {
+          logger.error(`Error inserting batch for token ${mint}:`, insertError);
+          // Continue with next batch even if this one fails
+        }
+      }
+
+      try {
+        const wsClient = getWebSocketClient(env);
+        // Only emit a limited set of holders to avoid overwhelming WebSockets
+        const limitedHolders = holdersToSave.slice(0, 50);
+        wsClient.emit(`token-${mint}`, "newHolder", limitedHolders);
+        logger.log(`Emitted WebSocket update with ${limitedHolders.length} holders`);
+      } catch (wsError) {
+        logger.error(`WebSocket error when emitting holder update:`, wsError);
+        // Don't fail if WebSocket fails
+      }
+    }
+
+    // Update token holder count with the ACTUAL total count
+    // even if we've only stored a subset
     await db
       .update(tokens)
       .set({
-        holderCount: holders.length,
+        holderCount: holders.length, // Use full count, not just what we saved
         lastUpdated: new Date().toISOString(),
       })
       .where(eq(tokens.mint, mint));
@@ -2592,21 +2646,21 @@ export async function updateHoldersCache(
         await processTokenUpdateEvent(env, {
           ...tokenData[0],
           event: "holdersUpdated",
-          holderCount: holders.length,
+          holderCount: holders.length, // Use full count here too
           timestamp: new Date().toISOString(),
         });
 
-        logger.log(`Emitted holder update event for token ${mint}`);
+        logger.log(`Emitted holder update event for token ${mint} with ${holders.length} holders count`);
       }
     } catch (wsError) {
       // Don't fail if WebSocket fails
       logger.error(`WebSocket error when emitting holder update: ${wsError}`);
     }
 
-    return holders.length;
+    return holders.length; // Return full count, not just what we saved
   } catch (error) {
     logger.error(`Error updating holders for token ${mint}:`, error);
-    return 0;
+    return 0; // Return 0 instead of throwing to avoid crashing the endpoint
   }
 }
 
@@ -3060,7 +3114,7 @@ tokenRouter.get("/dev/check-swaps/:mint", async (c) => {
 
 // Get specific token swaps endpoint
 tokenRouter.get("/swaps/:mint", async (c) => {
-  console.log("******* swaps endpoint called for mint:", c.req.param("mint"));
+  logger.log(`Swaps endpoint called for mint: ${c.req.param("mint")}`);
   try {
     const mint = c.req.param("mint");
 
@@ -3085,10 +3139,7 @@ tokenRouter.get("/swaps/:mint", async (c) => {
       .offset(offset)
       .limit(limit);
 
-    console.log(`Found ${swapsResult.length} swaps for mint ${mint}`);
-    if (swapsResult.length > 0) {
-      console.log("Sample swap data:", swapsResult[0]);
-    }
+    logger.log(`Found ${swapsResult.length} swaps for mint ${mint}`);
 
     // Get total count for pagination
     const totalSwapsQuery = await db
@@ -3112,7 +3163,6 @@ tokenRouter.get("/swaps/:mint", async (c) => {
       total: totalSwaps,
     };
 
-    console.log(`Returning response with ${formattedSwaps.length} swaps`);
     return c.json(response);
   } catch (error) {
     logger.error("Error in swaps history route:", error);
@@ -3131,10 +3181,8 @@ tokenRouter.get("/swaps/:mint", async (c) => {
 
 // Add a new endpoint that matches the frontend path
 tokenRouter.get("/api/swaps/:mint", async (c) => {
-  console.log(
-    "******* api/swaps endpoint called for mint:",
-    c.req.param("mint"),
-  );
+  // Simplified logging - just log the mint
+  logger.log(`API swaps endpoint called for mint: ${c.req.param("mint")}`);
   try {
     const mint = c.req.param("mint");
 
@@ -3150,7 +3198,78 @@ tokenRouter.get("/api/swaps/:mint", async (c) => {
     // Get the DB connection
     const db = getDB(c.env);
 
-    // Get real swap data from the database
+    // First, try to fetch real swap data from the blockchain
+    let blockchainSwaps: typeof swaps.$inferInsert[] = [];
+    try {
+      // Import the fetchTokenTransactions function if needed
+      const { fetchTokenTransactions } = await import("../../src/utils/blockchain");
+      
+      logger.log(`Fetching real blockchain swap data for mint ${mint}`);
+      logger.log(`Using Solana RPC URL: ${process.env.MAINNET_SOLANA_RPC_URL || process.env.VITE_RPC_URL || 'default url'}`);
+      const txResult = await fetchTokenTransactions(mint, limit * 2); // Fetch more to account for pagination
+      
+      logger.log(`Blockchain transaction search results: ${JSON.stringify({
+        found: txResult && txResult.swaps ? txResult.swaps.length : 0,
+        total: txResult?.total || 0,
+        hasSwaps: !!(txResult && txResult.swaps && txResult.swaps.length > 0)
+      })}`);
+      
+      if (txResult && txResult.swaps && txResult.swaps.length > 0) {
+        logger.log(`Found ${txResult.swaps.length} real swaps from blockchain for mint ${mint}`);
+        
+        // Format the blockchain swaps to match our DB schema
+        blockchainSwaps = txResult.swaps.map(swap => ({
+          id: swap.txId,
+          tokenMint: mint,
+          user: swap.user,
+          type: swap.direction === 0 ? "buy" : "sell",
+          direction: swap.direction,
+          amountIn: swap.amountIn,
+          amountOut: swap.amountOut,
+          price: swap.amountIn / swap.amountOut, // Calculate price
+          priceImpact: 0.01, // Default value
+          txId: swap.txId,
+          timestamp: swap.timestamp
+        }));
+        
+        // Insert these swaps into the database for future reference
+        try {
+          // Use batch insert to avoid conflicts
+          for (const swap of blockchainSwaps) {
+            await db
+              .insert(swaps)
+              .values(swap)
+              .onConflictDoNothing({ target: [swaps.txId] });
+          }
+          logger.log(`Inserted ${blockchainSwaps.length} blockchain swaps into database`);
+        } catch (err) {
+          logger.error("Error saving blockchain swaps to database:", err);
+          // Continue without failing - we still have the data in memory
+        }
+      }
+    } catch (err) {
+      logger.error("Error fetching blockchain swap data:", err);
+      // Continue with fallback to database
+    }
+
+    // If we found blockchain swaps, use them directly
+    if (blockchainSwaps.length > 0) {
+      // Apply pagination to the blockchain swaps
+      const paginatedSwaps = blockchainSwaps
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(offset, offset + limit);
+
+      logger.log(`Returning ${paginatedSwaps.length} blockchain swaps for page ${page}`);
+      
+      return c.json({
+        swaps: paginatedSwaps,
+        page,
+        totalPages: Math.ceil(blockchainSwaps.length / limit),
+        total: blockchainSwaps.length,
+      });
+    }
+
+    // Otherwise, try to get swap data from the database
     const swapsResult = await db
       .select()
       .from(swaps)
@@ -3159,39 +3278,45 @@ tokenRouter.get("/api/swaps/:mint", async (c) => {
       .offset(offset)
       .limit(limit);
 
-    console.log(
-      `Found ${swapsResult.length} swaps for mint ${mint} in api/swaps endpoint`,
-    );
-    if (swapsResult.length > 0) {
-      console.log("Sample swap data:", swapsResult[0]);
-    }
+    logger.log(`Found ${swapsResult.length} swaps in database for mint ${mint}`);
 
-    // If no swaps found and we're in dev mode, create some test data
-    if (
-      swapsResult.length === 0 &&
-      (c.env.NODE_ENV === "development" || c.env.NODE_ENV === "test")
-    ) {
-      console.log("No swaps found in api/swaps, adding test data");
+    // If no swaps found in either blockchain or database, create sample data in development mode
+    if (swapsResult.length === 0 && c.env.NODE_ENV === 'development') {
+      logger.log("No swaps found, adding sample data for development");
 
       // Create mock swap data with exact fields expected by frontend
       const now = new Date();
-      const swapRecords: Swap[] = [];
+      const swapRecords: typeof swaps.$inferInsert[] = [];
 
-      // Create 5 test swaps
-      for (let i = 0; i < 5; i++) {
-        const timestamp = new Date(now.getTime() - i * 3600000).toISOString(); // 1 hour apart
-        const direction = i % 2; // Alternate between 0 (buy) and 1 (sell)
-
+      // Create 15 test swaps with varying times and directions
+      for (let i = 0; i < 15; i++) {
+        // Vary the time offsets to create a realistic timeline
+        const timeOffset = i * (Math.random() * 600000 + 3600000); // 1-2 hours apart
+        const timestamp = new Date(now.getTime() - timeOffset).toISOString();
+        
+        // Alternate between buy and sell with some randomness
+        const direction = Math.random() > 0.4 ? 0 : 1; // 60% buys, 40% sells
+        
+        // Create varying amounts based on direction
+        const solAmount = 1000000000 + Math.random() * 3000000000; // 1-4 SOL
+        const tokenAmount = 500000000 + Math.random() * 2500000000; // 0.5-3 tokens
+        
         swapRecords.push({
           id: crypto.randomUUID(),
           tokenMint: mint,
-          priceImpact: 0,
-          user: "DvmXXp4tSXYwZJhM5HjtEUvQ6SfxwkA7daE1jQgCX1ri", // Example user
-          type: direction === 0 ? "buy" : "sell", // Add type field to fix linter error
+          priceImpact: Math.random() * 0.02, // 0-2% price impact
+          user: [
+            "DvmXXp4tSXYwZJhM5HjtEUvQ6SfxwkA7daE1jQgCX1ri",
+            "Gq8ncxiUZBP5V8dd1XRqsyiV7aQmQVZEEYgLLJwFAXvA",
+            "3LCNtKAQRYMMCcXrKY9eMR1p8zUuY6gGZnBnnwQwULkE",
+            "8HQUbGPnG4XzfKMrpJG9nNq9h6JU5Q3dkKA49E1JZQke",
+            "HzkWnuoMSJRNhyHYrXVPgpyWaPn795bLJNBsfgXF326x",
+          ][Math.floor(Math.random() * 5)], // Random user from list
+          type: direction === 0 ? "buy" : "sell",
           direction: direction,
-          amountIn: 2000000000 + Math.random() * 1000000000, // Random amount (2-3 SOL)
-          amountOut: 5000000000 + Math.random() * 2000000000, // Random amount (5-7 tokens)
-          price: 0.0001 + Math.random() * 0.0001,
+          amountIn: direction === 0 ? solAmount : tokenAmount,
+          amountOut: direction === 0 ? tokenAmount : solAmount,
+          price: 0.0001 + Math.random() * 0.0005, // Small price variation
           txId: `test-tx-${i}-${crypto.randomUUID().slice(0, 8)}`,
           timestamp: timestamp,
         });
@@ -3200,21 +3325,48 @@ tokenRouter.get("/api/swaps/:mint", async (c) => {
       // Insert test swaps
       try {
         await db.insert(swaps).values(swapRecords);
-        console.log("Added test swap data in api/swaps endpoint");
+        logger.log("Added test swap data");
 
         // Return the newly added data
-        return c.json({
-          swaps: swapRecords.map((swap) => ({
+        const convertedSwaps = swapRecords.map((swap) => {
+          // Calculate solAmount and tokenAmount based on direction
+          const direction = typeof swap.direction === "number" ? swap.direction : 0;
+          const amountIn = typeof swap.amountIn === "number" ? swap.amountIn : 0;
+          const amountOut = typeof swap.amountOut === "number" ? swap.amountOut : 0;
+          
+          // If direction is 0 (buy), amountIn is SOL and amountOut is token
+          // If direction is 1 (sell), amountIn is token and amountOut is SOL
+          const solAmount = direction === 0 ? amountIn / 1e9 : amountOut / 1e9; // Convert lamports to SOL
+          const tokenAmount = direction === 0 ? amountOut / 1e6 : amountIn / 1e6; // Convert to token amount
+          
+          return {
             ...swap,
-            directionText: swap.direction === 0 ? "buy" : "sell",
-          })),
+            directionText: direction === 0 ? "buy" : "sell",
+            type: direction === 0 ? "Buy" : "Sell", // Uppercase first letter for display
+            solAmount: solAmount, // Added for frontend
+            tokenAmount: tokenAmount, // Added for frontend
+          };
+        });
+        
+        const response = {
+          swaps: convertedSwaps,
           page: 1,
           totalPages: 1,
           total: swapRecords.length,
-        });
+        };
+        
+        return c.json(response);
       } catch (err) {
-        console.error("Error adding test swaps:", err);
+        logger.error("Error adding test swaps:", err);
       }
+    } else if (swapsResult.length === 0) {
+      // In production, just return empty array if no swaps found
+      return c.json({
+        swaps: [],
+        page: 1,
+        totalPages: 0,
+        total: 0,
+      });
     }
 
     // Get total count for pagination
@@ -3228,19 +3380,29 @@ tokenRouter.get("/api/swaps/:mint", async (c) => {
 
     // Format the swaps for the frontend with careful type handling
     const formattedSwaps = swapsResult.map((swap) => {
+      // Calculate solAmount and tokenAmount based on direction
+      const direction = typeof swap.direction === "number" ? swap.direction : 0;
+      const amountIn = typeof swap.amountIn === "number" ? swap.amountIn : 0;
+      const amountOut = typeof swap.amountOut === "number" ? swap.amountOut : 0;
+      
+      // If direction is 0 (buy), amountIn is SOL and amountOut is token
+      // If direction is 1 (sell), amountIn is token and amountOut is SOL
+      const solAmount = direction === 0 ? amountIn / 1e9 : amountOut / 1e9; // Convert lamports to SOL
+      const tokenAmount = direction === 0 ? amountOut / 1e6 : amountIn / 1e6; // Convert to token amount
+      
       // Create a new object with exactly the expected fields
       return {
+        ...swap,
         txId: typeof swap.txId === "string" ? swap.txId : "", // Must be string
-        timestamp:
-          typeof swap.timestamp === "string"
-            ? swap.timestamp
-            : new Date().toISOString(), // Must be string in ISO format
+        timestamp: typeof swap.timestamp === "string" ? swap.timestamp : new Date().toISOString(), // Must be string in ISO format
         user: typeof swap.user === "string" ? swap.user : "", // Must be string
-        direction: typeof swap.direction === "number" ? swap.direction : 0, // Must be 0 or 1
-        amountIn: typeof swap.amountIn === "number" ? swap.amountIn : 0, // Must be number
-        amountOut: typeof swap.amountOut === "number" ? swap.amountOut : 0, // Must be number
-        // These extra fields won't affect validation
-        directionText: swap.direction === 0 ? "buy" : "sell",
+        direction: direction, // Must be 0 or 1
+        amountIn: amountIn, // Must be number
+        amountOut: amountOut, // Must be number
+        directionText: direction === 0 ? "buy" : "sell",
+        type: direction === 0 ? "Buy" : "Sell", // Uppercase first letter for display
+        solAmount: solAmount, // Added for frontend
+        tokenAmount: tokenAmount, // Added for frontend
       };
     });
 
@@ -3251,9 +3413,6 @@ tokenRouter.get("/api/swaps/:mint", async (c) => {
       total: totalSwaps,
     };
 
-    console.log(
-      `Returning response with ${formattedSwaps.length} swaps from api/swaps endpoint`,
-    );
     return c.json(response);
   } catch (error) {
     logger.error("Error in api/swaps history route:", error);
@@ -3414,12 +3573,19 @@ export async function processSwapEvent(
 
     // Emit to token-specific room
     await wsClient.emit(`token-${swap.tokenMint}`, "newSwap", enrichedSwap);
-    logger.log(`Emitted swap event for token ${swap.tokenMint}`);
+    
+    // Only log in debug mode or for significant events
+    if (process.env.DEBUG_WEBSOCKET) {
+      logger.log(`Emitted swap event for token ${swap.tokenMint}`);
+    }
 
     // Optionally emit to global room for activity feed
     if (shouldEmitGlobal) {
       await wsClient.emit("global", "newSwap", enrichedSwap);
-      logger.log("Emitted swap event to global feed");
+      
+      if (process.env.DEBUG_WEBSOCKET) {
+        logger.log("Emitted swap event to global feed");
+      }
     }
 
     return;
@@ -3428,50 +3594,6 @@ export async function processSwapEvent(
     throw error;
   }
 }
-
-// // Add endpoint to create a test swap for WebSocket testing
-// tokenRouter.post("/dev/create-test-swap/:mint", async (c) => {
-//   try {
-//     // Only allow in development environment
-//     if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
-//       return c.json(
-//         { error: "This endpoint is only available in development" },
-//         403,
-//       );
-//     }
-
-//     const mint = c.req.param("mint");
-//     if (!mint || mint.length < 32 || mint.length > 44) {
-//       return c.json({ error: "Invalid mint address" }, 400);
-//     }
-
-//     const { userAddress } = (await c.req.json()) as { userAddress?: string };
-
-//     // Create a test swap
-//     const testSwap = createTestSwap(mint, userAddress);
-
-//     // Get DB connection
-//     const db = getDB(c.env);
-
-//     // Save the test swap to the database
-//     await db.insert(swaps).values(testSwap);
-
-//     // Emit WebSocket events
-//     await processSwapEvent(c.env, testSwap);
-
-//     return c.json({
-//       success: true,
-//       message: "Test swap created and WebSocket event emitted",
-//       swap: testSwap,
-//     });
-//   } catch (error) {
-//     logger.error("Error creating test swap:", error);
-//     return c.json(
-//       { error: error instanceof Error ? error.message : "Unknown error" },
-//       500,
-//     );
-//   }
-// });
 
 // Function to process a token update and emit WebSocket events
 export async function processTokenUpdateEvent(
@@ -3499,7 +3621,10 @@ export async function processTokenUpdateEvent(
       "updateToken",
       enrichedTokenData,
     );
-    logger.log(`Emitted token update event for ${tokenData.mint}`);
+    
+    if (process.env.DEBUG_WEBSOCKET) {
+      logger.log(`Emitted token update event for ${tokenData.mint}`);
+    }
 
     // Optionally emit to global room for activity feed
     if (shouldEmitGlobal) {
@@ -3507,7 +3632,10 @@ export async function processTokenUpdateEvent(
         ...enrichedTokenData,
         timestamp: new Date(),
       });
-      logger.log("Emitted token update event to global feed");
+      
+      if (process.env.DEBUG_WEBSOCKET) {
+        logger.log("Emitted token update event to global feed");
+      }
     }
 
     return;
@@ -5257,5 +5385,997 @@ tokenRouter.get("/vanity-keypair-status", async (c) => {
       },
       500,
     );
+  }
+});
+
+// New endpoint to generate sample swaps
+tokenRouter.post("/api/token/:mint/generate-sample-swaps", async (c) => {
+  try {
+    const mint = c.req.param("mint");
+    const count = parseInt(c.req.query("count") || "15");
+    
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    // Get the DB connection
+    const db = getDB(c.env);
+    
+    logger.log(`Generating ${count} sample swaps for token ${mint}`);
+    
+    // Create mock swap data
+    const now = new Date();
+    const swapRecords: typeof swaps.$inferInsert[] = [];
+
+    // Create sample swaps
+    for (let i = 0; i < count; i++) {
+      // Vary the time offsets to create a realistic timeline
+      const timeOffset = i * (Math.random() * 600000 + 3600000); // 1-2 hours apart
+      const timestamp = new Date(now.getTime() - timeOffset).toISOString();
+      
+      // Alternate between buy and sell with some randomness
+      const direction = Math.random() > 0.4 ? 0 : 1; // 60% buys, 40% sells
+      
+      // Create varying amounts based on direction
+      const solAmount = 1000000000 + Math.random() * 3000000000; // 1-4 SOL
+      const tokenAmount = 500000000 + Math.random() * 2500000000; // 0.5-3 tokens
+      
+      swapRecords.push({
+        id: crypto.randomUUID(),
+        tokenMint: mint,
+        priceImpact: Math.random() * 0.02, // 0-2% price impact
+        user: [
+          "DvmXXp4tSXYwZJhM5HjtEUvQ6SfxwkA7daE1jQgCX1ri",
+          "Gq8ncxiUZBP5V8dd1XRqsyiV7aQmQVZEEYgLLJwFAXvA",
+          "3LCNtKAQRYMMCcXrKY9eMR1p8zUuY6gGZnBnnwQwULkE",
+          "8HQUbGPnG4XzfKMrpJG9nNq9h6JU5Q3dkKA49E1JZQke",
+          "HzkWnuoMSJRNhyHYrXVPgpyWaPn795bLJNBsfgXF326x",
+        ][Math.floor(Math.random() * 5)], // Random user from list
+        type: direction === 0 ? "buy" : "sell",
+        direction: direction,
+        amountIn: direction === 0 ? solAmount : tokenAmount,
+        amountOut: direction === 0 ? tokenAmount : solAmount,
+        price: 0.0001 + Math.random() * 0.0005, // Small price variation
+        txId: `test-tx-${i}-${crypto.randomUUID().slice(0, 8)}`,
+        timestamp: timestamp,
+      });
+    }
+
+    // Insert all swaps
+    await db.insert(swaps).values(swapRecords);
+    
+    // Emit swap events to update clients
+    try {
+      const socket = getWebSocketClient(c.env);
+      
+      // Emit to token room that new swaps are available
+      await socket.emit(`token-${mint}`, "newSwaps", {
+        swaps: swapRecords.slice(0, 5).map(swap => ({
+          ...swap,
+          directionText: swap.direction === 0 ? "buy" : "sell"
+        })),
+      });
+      
+      logger.log(`Emitted swap events for token ${mint}`);
+    } catch (err) {
+      logger.error("Failed to emit WebSocket events:", err);
+    }
+    
+    return c.json({
+      success: true,
+      message: `Generated ${swapRecords.length} sample swaps for token ${mint}`,
+      count: swapRecords.length
+    });
+  } catch (error) {
+    logger.error("Error generating sample swaps:", error);
+    return c.json({ error: "Failed to generate sample swaps" }, 500);
+  }
+});
+
+// Create a dedicated endpoint for generating sample swap data for testing
+tokenRouter.post("/api/token/:mint/generate-sample-swaps", async (c) => {
+  try {
+    const mint = c.req.param("mint");
+    
+    // Get count from query parameter or body
+    const count = parseInt(c.req.query("count") || "15");
+    
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    // Get the DB connection
+    const db = getDB(c.env);
+    
+    logger.log(`Generating ${count} sample swaps for token ${mint}`);
+    
+    // Create mock swap data
+    const now = new Date();
+    const swapRecords: typeof swaps.$inferInsert[] = [];
+
+    // Create sample swaps
+    for (let i = 0; i < count; i++) {
+      // Vary the time offsets to create a realistic timeline
+      const timeOffset = i * (Math.random() * 600000 + 3600000); // 1-2 hours apart
+      const timestamp = new Date(now.getTime() - timeOffset).toISOString();
+      
+      // Alternate between buy and sell with some randomness
+      const direction = Math.random() > 0.4 ? 0 : 1; // 60% buys, 40% sells
+      
+      // Create varying amounts based on direction
+      const solAmount = 1000000000 + Math.random() * 3000000000; // 1-4 SOL in lamports
+      const tokenAmount = 500000 + Math.random() * 2500000; // 0.5-3 tokens in smallest units
+      
+      swapRecords.push({
+        id: crypto.randomUUID(),
+        tokenMint: mint,
+        priceImpact: Math.random() * 0.02, // 0-2% price impact
+        user: [
+          "DvmXXp4tSXYwZJhM5HjtEUvQ6SfxwkA7daE1jQgCX1ri",
+          "Gq8ncxiUZBP5V8dd1XRqsyiV7aQmQVZEEYgLLJwFAXvA",
+          "3LCNtKAQRYMMCcXrKY9eMR1p8zUuY6gGZnBnnwQwULkE",
+          "8HQUbGPnG4XzfKMrpJG9nNq9h6JU5Q3dkKA49E1JZQke",
+          "HzkWnuoMSJRNhyHYrXVPgpyWaPn795bLJNBsfgXF326x",
+        ][Math.floor(Math.random() * 5)], // Random user from list
+        type: direction === 0 ? "buy" : "sell",
+        direction: direction,
+        amountIn: direction === 0 ? solAmount : tokenAmount,
+        amountOut: direction === 0 ? tokenAmount : solAmount,
+        price: 0.0001 + Math.random() * 0.0005, // Small price variation
+        txId: `test-tx-${i}-${crypto.randomUUID().slice(0, 8)}`,
+        timestamp: timestamp,
+      });
+    }
+
+    // Insert all swaps
+    try {
+      await db.insert(swaps).values(swapRecords);
+      logger.log(`Inserted ${swapRecords.length} sample swaps for token ${mint}`);
+    } catch (err) {
+      logger.error(`Error inserting sample swaps:`, err);
+      return c.json({ error: "Failed to insert sample swaps" }, 500);
+    }
+    
+    // Emit swap events to update clients
+    try {
+      const socket = getWebSocketClient(c.env);
+      
+      // Emit each swap event individually as the frontend expects
+      for (const swap of swapRecords.slice(0, 5)) {
+        await socket.emit("newSwap", {
+          txId: swap.txId,
+          timestamp: swap.timestamp,
+          user: swap.user,
+          direction: swap.direction,
+          amountIn: swap.amountIn,
+          amountOut: swap.amountOut
+        });
+        logger.log(`Emitted newSwap event for txId ${swap.txId}`);
+      }
+      
+      // Also emit to the token-specific room
+      await socket.emit(`token-${mint}`, "newSwaps", {
+        swaps: swapRecords.slice(0, 5).map(swap => ({
+          txId: swap.txId,
+          timestamp: swap.timestamp,
+          user: swap.user,
+          direction: swap.direction,
+          amountIn: swap.amountIn,
+          amountOut: swap.amountOut
+        }))
+      });
+      
+      logger.log(`Emitted swap events for token ${mint}`);
+    } catch (err) {
+      logger.error("Failed to emit WebSocket events:", err);
+    }
+    
+    return c.json({
+      success: true,
+      message: `Generated ${swapRecords.length} sample swaps for token ${mint}`,
+      count: swapRecords.length
+    });
+  } catch (error) {
+    logger.error("Error generating sample swaps:", error);
+    return c.json({ error: "Failed to generate sample swaps" }, 500);
+  }
+});
+
+// Add direct endpoint to get real blockchain swap data
+tokenRouter.get("/api/token/:mint/real-swaps", async (c) => {
+  logger.log(`Direct blockchain swaps endpoint called for mint: ${c.req.param("mint")}`);
+  try {
+    const mint = c.req.param("mint");
+
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    // Import the blockchain utility directly
+    const { fetchTokenTransactions, getConnection } = await import("../../src/utils/blockchain");
+    
+    logger.log(`Attempting to fetch real blockchain swap data for mint ${mint}`);
+    
+    // Add more debugging info
+    const connection = getConnection();
+    logger.log(`Using RPC connection: ${connection.rpcEndpoint}`);
+    
+    // Try to fetch a larger amount of transactions
+    const result = await fetchTokenTransactions(mint, 100);
+    
+    if (!result || !result.swaps || result.swaps.length === 0) {
+      logger.log(`No blockchain swaps found for mint ${mint}`);
+      
+      // Get DB connection to check if we have any swaps in the database
+      const db = getDB(c.env);
+      const dbSwaps = await db
+        .select()
+        .from(swaps)
+        .where(eq(swaps.tokenMint, mint))
+        .orderBy(desc(swaps.timestamp))
+        .limit(5);
+      
+      return c.json({
+        success: false,
+        mint,
+        message: "No blockchain swaps found",
+        blockchainSwaps: [],
+        total: 0,
+        dbSwapsCount: dbSwaps.length,
+        dbSwapsSample: dbSwaps.length > 0 ? dbSwaps.slice(0, 2) : []
+      });
+    }
+    
+    logger.log(`Found ${result.swaps.length} real blockchain swaps for mint ${mint}`);
+    
+    // Try to save these swaps to the database
+    try {
+      const db = getDB(c.env);
+      
+      // Format the swaps for database insertion
+      const swapRecords = result.swaps.map(swap => ({
+        id: swap.txId,
+        tokenMint: mint,
+        user: swap.user,
+        type: swap.direction === 0 ? "buy" : "sell",
+        direction: swap.direction,
+        amountIn: swap.amountIn,
+        amountOut: swap.amountOut,
+        price: swap.amountIn / swap.amountOut, // Calculate price
+        priceImpact: 0.01, // Default value
+        txId: swap.txId,
+        timestamp: swap.timestamp
+      }));
+      
+      // Insert each swap one by one to avoid conflicts
+      let insertedCount = 0;
+      for (const swap of swapRecords) {
+        try {
+          await db
+            .insert(swaps)
+            .values(swap)
+            .onConflictDoNothing({ target: [swaps.txId] });
+          insertedCount++;
+        } catch (err) {
+          logger.error(`Error inserting swap ${swap.txId}:`, err);
+        }
+      }
+      
+      logger.log(`Inserted ${insertedCount} new swaps into database`);
+      
+      // Emit WebSocket events for new swaps
+      const wsClient = getWebSocketClient(c.env);
+      await wsClient.emit(`token-${mint}`, "newSwap", result.swaps[0]);
+      logger.log(`Emitted newSwap event to token room`);
+      
+    } catch (err) {
+      logger.error("Error saving blockchain swaps to database:", err);
+    }
+    
+    return c.json({
+      success: true,
+      mint,
+      blockchainSwaps: result.swaps,
+      total: result.swaps.length,
+      sample: result.swaps.slice(0, 3)
+    });
+    
+  } catch (error) {
+    logger.error("Error fetching real blockchain swaps:", error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error fetching blockchain swaps",
+    }, 500);
+  }
+});
+
+// Function to update the swaps cache for a token
+export async function updateSwapsCache(
+  env: Env,
+  mint: string,
+): Promise<number> {
+  try {
+    // Use the blockchain utility directly
+    const { fetchTokenTransactions, getConnection } = await import("../../src/utils/blockchain");
+    
+    logger.log(`Updating swaps cache for token ${mint}`);
+    
+    // Add more debugging info
+    const connection = getConnection();
+    logger.log(`Using RPC connection: ${connection.rpcEndpoint}`);
+    
+    // Try to fetch a larger amount of transactions
+    const result = await fetchTokenTransactions(mint, 100);
+    
+    if (!result || !result.swaps || result.swaps.length === 0) {
+      logger.log(`No blockchain swaps found for mint ${mint}`);
+      return 0;
+    }
+    
+    logger.log(`Found ${result.swaps.length} real blockchain swaps for mint ${mint}`);
+    
+    // Get DB connection
+    const db = getDB(env);
+    
+    // Format the swaps for database insertion
+    const swapRecords = result.swaps.map(swap => ({
+      id: swap.txId,
+      tokenMint: mint,
+      user: swap.user,
+      type: swap.direction === 0 ? "buy" : "sell",
+      direction: swap.direction,
+      amountIn: swap.amountIn,
+      amountOut: swap.amountOut,
+      price: swap.amountIn / swap.amountOut, // Calculate price
+      priceImpact: 0.01, // Default value
+      txId: swap.txId,
+      timestamp: swap.timestamp
+    }));
+    
+    // First, clear existing swaps for this mint
+    try {
+      await db.delete(swaps).where(eq(swaps.tokenMint, mint));
+      logger.log(`Cleared existing swaps for token ${mint}`);
+    } catch (err) {
+      logger.error(`Error clearing existing swaps for ${mint}:`, err);
+    }
+    
+    // Insert new swaps in batches to avoid overwhelming the DB
+    const BATCH_SIZE = 10;
+    let insertedCount = 0;
+    
+    for (let i = 0; i < swapRecords.length; i += BATCH_SIZE) {
+      try {
+        const batch = swapRecords.slice(i, i + BATCH_SIZE);
+        logger.log(`Inserting batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(swapRecords.length/BATCH_SIZE)} (${batch.length} swaps) for token ${mint}`);
+        
+        await db.insert(swaps).values(batch);
+        insertedCount += batch.length;
+        
+        logger.log(`Successfully inserted batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(swapRecords.length/BATCH_SIZE)} for token ${mint}`);
+      } catch (err) {
+        logger.error(`Error inserting batch for token ${mint}:`, err);
+      }
+    }
+    
+    logger.log(`Inserted ${insertedCount} swaps for token ${mint}`);
+    
+    // Emit WebSocket events for new swaps if any were inserted
+    if (insertedCount > 0) {
+      try {
+        const wsClient = getWebSocketClient(env);
+        
+        // Format the swaps to match what the frontend expects
+        const formattedSwaps = swapRecords.slice(0, 10).map(swap => ({
+          ...swap,
+          directionText: swap.direction === 0 ? "buy" : "sell",
+          solAmount: swap.direction === 0 ? swap.amountIn / 1e9 : swap.amountOut / 1e9, // Convert lamports to SOL
+          tokenAmount: swap.direction === 0 ? swap.amountOut / 1e6 : swap.amountIn / 1e6, // Convert to token amount
+        }));
+        
+        // Emit each swap individually to match current WebSocket protocol
+        for (const swap of formattedSwaps) {
+          // Emit to token room
+          await wsClient.emit(`token-${mint}`, "newSwap", swap);
+          // Add a small delay between emissions to avoid overwhelming the WebSocket
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        
+        logger.log(`Emitted ${formattedSwaps.length} swap events for token ${mint}`);
+        
+        // Also update the token in db with correct swap count
+        try {
+          // Update token with swap count
+          await db
+            .update(tokens)
+            .set({ 
+              lastUpdated: new Date().toISOString() 
+            })
+            .where(eq(tokens.mint, mint));
+          
+          // Create token update event data
+          const tokenUpdateData = {
+            mint,
+            swapCount: insertedCount,
+            lastSwapAt: new Date().toISOString()
+          };
+          
+          // Emit token update event with the correctly formatted data
+          await processTokenUpdateEvent(env, tokenUpdateData, false);
+          logger.log(`Updated token record with new swap count: ${insertedCount}`);
+        } catch (dbErr) {
+          logger.error(`Error updating token record for ${mint}:`, dbErr);
+        }
+      } catch (wsErr) {
+        logger.error(`Error emitting swap events for ${mint}:`, wsErr);
+      }
+    }
+    
+    return insertedCount;
+  } catch (error) {
+    logger.error(`Error updating swaps cache for ${mint}:`, error);
+    return 0;
+  }
+}
+
+// Add endpoint to update swaps cache for a token (similar to holders)
+tokenRouter.get("/token/:mint/update-swaps", async (c) => {
+  try {
+    const mint = c.req.param("mint");
+
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    const swapCount = await updateSwapsCache(c.env, mint);
+
+    return c.json({
+      success: true,
+      message: `Updated swaps data for token ${mint}`,
+      swapCount,
+    });
+  } catch (error) {
+    const mint = c.req.param("mint");
+    logger.error(`Error updating swaps for ${mint}:`, error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+// Update the existing swaps endpoint to first check for real data and fetch it if needed
+tokenRouter.get("/api/swaps/:mint", async (c) => {
+  logger.log(`API swaps endpoint called for mint: ${c.req.param("mint")}`);
+  try {
+    const mint = c.req.param("mint");
+
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    // Parse pagination parameters
+    const limit = parseInt(c.req.query("limit") || "50");
+    const page = parseInt(c.req.query("page") || "1");
+    const offset = (page - 1) * limit;
+
+    // Get the DB connection
+    const db = getDB(c.env);
+
+    // Get existing swap data from the database
+    const swapsResult = await db
+      .select()
+      .from(swaps)
+      .where(eq(swaps.tokenMint, mint))
+      .orderBy(desc(swaps.timestamp))
+      .offset(offset)
+      .limit(limit);
+
+    logger.log(`Found ${swapsResult.length} swaps in database for mint ${mint}`);
+
+    // Calculate total for pagination
+    const totalSwapsQuery = await db
+      .select({ count: sql`count(*)` })
+      .from(swaps)
+      .where(eq(swaps.tokenMint, mint));
+
+    const totalSwaps = Number(totalSwapsQuery[0]?.count || 0);
+    const totalPages = Math.ceil(totalSwaps / limit);
+
+    // Format the swaps for the frontend with careful type handling
+    const formattedSwaps = swapsResult.map((swap) => {
+      // Get direction as a number (0 = buy, 1 = sell)
+      const direction = typeof swap.direction === "number" ? swap.direction : 0;
+      
+      // Get amounts with proper fallbacks
+      const amountIn = typeof swap.amountIn === "number" ? swap.amountIn : 0;
+      const amountOut = typeof swap.amountOut === "number" ? swap.amountOut : 0;
+      
+      // For a buy (direction = 0), amountIn is SOL and amountOut is token
+      // For a sell (direction = 1), amountIn is token and amountOut is SOL
+      const solAmount = direction === 0 ? amountIn / 1e9 : amountOut / 1e9;
+      const tokenAmount = direction === 0 ? amountOut / 1e6 : amountIn / 1e6;
+      
+      // Return a complete object with all fields needed by the frontend
+      return {
+        id: swap.id,
+        txId: typeof swap.txId === "string" ? swap.txId : "",
+        timestamp: typeof swap.timestamp === "string" ? swap.timestamp : new Date().toISOString(),
+        user: typeof swap.user === "string" ? swap.user : "",
+        direction,
+        amountIn,
+        amountOut,
+        type: direction === 0 ? "Buy" : "Sell",
+        directionText: direction === 0 ? "buy" : "sell",
+        solAmount,
+        tokenAmount,
+        price: typeof swap.price === "number" ? swap.price : 0,
+        priceImpact: typeof swap.priceImpact === "number" ? swap.priceImpact : 0
+      };
+    });
+
+    const response = {
+      swaps: formattedSwaps,
+      page,
+      totalPages,
+      total: totalSwaps,
+    };
+
+    return c.json(response);
+  } catch (error) {
+    logger.error("Error in api/swaps history route:", error);
+    return c.json(
+      {
+        swaps: [],
+        page: 1,
+        totalPages: 0,
+        total: 0,
+        error: "Failed to fetch swap history",
+      },
+      500,
+    );
+  }
+});
+
+// First endpoint - /api/swaps/:mint
+tokenRouter.get("/api/swaps/:mint", async (c) => {
+  const env = c.env as Env;
+  const mint = c.req.param("mint");
+
+  if (!mint || mint.length < 32 || mint.length > 44) {
+    return c.json({ error: "Invalid mint address" }, 400);
+  }
+
+  try {
+    // Get pagination params
+    const limit = parseInt(c.req.query("limit") || "10");
+    const page = parseInt(c.req.query("page") || "1");
+    const sortBy = c.req.query("sortBy") || "timestamp";
+    const sortOrder = c.req.query("sortOrder") || "desc";
+    const txId = c.req.query("txId");
+
+    const offset = (page - 1) * limit;
+
+    const db = await getDB(env);
+
+    let swapsQuery = db
+      .select()
+      .from(swaps)
+      .where(eq(swaps.tokenMint, mint))
+      .orderBy(desc(swaps.timestamp))
+      .limit(limit)
+      .offset(offset);
+
+    // Apply sorting - map frontend sort values to actual DB columns
+    if (sortBy === "timestamp") {
+      swapsQuery = swapsQuery.orderBy(
+        sortOrder === "asc" ? asc(swaps.timestamp) : desc(swaps.timestamp),
+      );
+    } else if (sortBy === "price") {
+      swapsQuery = swapsQuery.orderBy(
+        sortOrder === "asc" ? asc(swaps.price) : desc(swaps.price),
+      );
+    } else if (sortBy === "amountIn") {
+      swapsQuery = swapsQuery.orderBy(
+        sortOrder === "asc" ? asc(swaps.amountIn) : desc(swaps.amountIn),
+      );
+    } else if (sortBy === "amountOut") {
+      swapsQuery = swapsQuery.orderBy(
+        sortOrder === "asc" ? asc(swaps.amountOut) : desc(swaps.amountOut),
+      );
+    }
+
+    if (txId) {
+      swapsQuery = swapsQuery.where(eq(swaps.txId, txId));
+    }
+
+    const [swapsResult, totalSwaps] = await Promise.all([
+      swapsQuery,
+      db
+        .select({ count: count() })
+        .from(swaps)
+        .where(eq(swaps.tokenMint, mint))
+        .then((result) => result[0]?.count || 0),
+    ]);
+
+    const totalPages = Math.ceil(totalSwaps / limit);
+
+    // Format swap data for the frontend
+    const formattedSwaps = swapsResult.map((swap) => {
+      // Calculate solAmount and tokenAmount based on direction
+      const direction = typeof swap.direction === "number" ? swap.direction : 0;
+      const amountIn = typeof swap.amountIn === "number" ? swap.amountIn : 0;
+      const amountOut = typeof swap.amountOut === "number" ? swap.amountOut : 0;
+      
+      // If direction is 0 (buy), amountIn is SOL and amountOut is token
+      // If direction is 1 (sell), amountIn is token and amountOut is SOL
+      const solAmount = direction === 0 ? amountIn / 1e9 : amountOut / 1e9; // Convert lamports to SOL
+      const tokenAmount = direction === 0 ? amountOut / 1e6 : amountIn / 1e6; // Convert to token amount
+      
+      return {
+        ...swap,
+        directionText: direction === 0 ? "buy" : "sell",
+        type: direction === 0 ? "Buy" : "Sell", // Uppercase first letter for display
+        solAmount: solAmount, // Added for frontend
+        tokenAmount: tokenAmount, // Added for frontend
+      };
+    });
+
+    return c.json({
+      swaps: formattedSwaps,
+      page,
+      totalPages,
+      total: totalSwaps,
+    });
+  } catch (error) {
+    console.error("Error fetching swaps:", error);
+    return c.json({ error: "Failed to fetch swaps" }, 500);
+  }
+});
+
+// Second endpoint - /api/token/:mint/refresh-swaps
+tokenRouter.post("/api/token/:mint/refresh-swaps", async (c) => {
+  const env = c.env as Env;
+  const mint = c.req.param("mint");
+
+  if (!mint || mint.length < 32 || mint.length > 44) {
+    return c.json({ error: "Invalid mint address" }, 400);
+  }
+
+  try {
+    const count = await updateSwapsCache(env, mint);
+    
+    // Get fresh swaps after updating
+    const db = await getDB(env);
+    const freshSwapsResult = await db
+      .select()
+      .from(swaps)
+      .where(eq(swaps.tokenMint, mint))
+      .orderBy(desc(swaps.timestamp))
+      .limit(10);
+
+    // Format directions for better readability
+    const convertedSwaps = freshSwapsResult.map((swap) => {
+      // Calculate solAmount and tokenAmount based on direction
+      const direction = typeof swap.direction === "number" ? swap.direction : 0;
+      const amountIn = typeof swap.amountIn === "number" ? swap.amountIn : 0;
+      const amountOut = typeof swap.amountOut === "number" ? swap.amountOut : 0;
+      
+      // If direction is 0 (buy), amountIn is SOL and amountOut is token
+      // If direction is 1 (sell), amountIn is token and amountOut is SOL
+      const solAmount = direction === 0 ? amountIn / 1e9 : amountOut / 1e9; // Convert lamports to SOL
+      const tokenAmount = direction === 0 ? amountOut / 1e6 : amountIn / 1e6; // Convert to token amount
+      
+      return {
+        ...swap,
+        directionText: direction === 0 ? "buy" : "sell",
+        type: direction === 0 ? "Buy" : "Sell", // Uppercase first letter for display
+        solAmount: solAmount, // Added for frontend
+        tokenAmount: tokenAmount, // Added for frontend
+      };
+    });
+    
+    return c.json({
+      success: true,
+      message: `Found ${count} swaps for ${mint}`,
+      swaps: convertedSwaps,
+    });
+  } catch (error) {
+    console.error("Error refreshing swaps:", error);
+    return c.json({ error: "Failed to refresh swaps" }, 500);
+  }
+});
+
+// Define a single endpoint for /api/swaps/:mint that works correctly with the frontend
+tokenRouter.get("/api/swaps/:mint", async (c) => {
+  logger.log(`API swaps endpoint called for mint: ${c.req.param("mint")}`);
+  try {
+    const mint = c.req.param("mint");
+
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    // Parse pagination parameters
+    const limit = parseInt(c.req.query("limit") || "50");
+    const page = parseInt(c.req.query("page") || "1");
+    const offset = (page - 1) * limit;
+
+    // Get the DB connection
+    const db = getDB(c.env);
+
+    // If this is a dev environment and we haven't populated data yet, do it now
+    const swapCount = await db
+      .select({ count: sql`count(*)` })
+      .from(swaps)
+      .where(eq(swaps.tokenMint, mint))
+      .then((result) => Number(result[0]?.count || 0));
+
+    // In development with no swaps, create sample data
+    if (swapCount === 0 && c.env.NODE_ENV === 'development') {
+      logger.log(`No swaps found for ${mint} - generating sample data in dev mode`);
+      
+      // Create mock swap data
+      const now = new Date();
+      const swapRecords: typeof swaps.$inferInsert[] = [];
+
+      // Create test swaps with varying times and directions
+      for (let i = 0; i < 15; i++) {
+        const timeOffset = i * (Math.random() * 600000 + 3600000); // 1-2 hours apart
+        const timestamp = new Date(now.getTime() - timeOffset).toISOString();
+        
+        // Alternate between buy and sell with some randomness
+        const direction = Math.random() > 0.4 ? 0 : 1; // 60% buys, 40% sells
+        
+        // Create varying amounts based on direction
+        const solAmount = 1000000000 + Math.random() * 3000000000; // 1-4 SOL
+        const tokenAmount = 500000000 + Math.random() * 2500000000; // 0.5-3 tokens
+        
+        swapRecords.push({
+          id: crypto.randomUUID(),
+          tokenMint: mint,
+          priceImpact: Math.random() * 0.02, // 0-2% price impact
+          user: [
+            "DvmXXp4tSXYwZJhM5HjtEUvQ6SfxwkA7daE1jQgCX1ri",
+            "Gq8ncxiUZBP5V8dd1XRqsyiV7aQmQVZEEYgLLJwFAXvA",
+            "3LCNtKAQRYMMCcXrKY9eMR1p8zUuY6gGZnBnnwQwULkE",
+            "8HQUbGPnG4XzfKMrpJG9nNq9h6JU5Q3dkKA49E1JZQke",
+            "HzkWnuoMSJRNhyHYrXVPgpyWaPn795bLJNBsfgXF326x",
+          ][Math.floor(Math.random() * 5)], // Random user from list
+          type: direction === 0 ? "buy" : "sell",
+          direction: direction,
+          amountIn: direction === 0 ? solAmount : tokenAmount,
+          amountOut: direction === 0 ? tokenAmount : solAmount,
+          price: 0.0001 + Math.random() * 0.0005, // Small price variation
+          txId: `test-tx-${i}-${crypto.randomUUID().slice(0, 8)}`,
+          timestamp: timestamp,
+        });
+      }
+
+      try {
+        await db.insert(swaps).values(swapRecords);
+        logger.log(`Added ${swapRecords.length} test swaps for ${mint}`);
+      } catch (error) {
+        logger.error(`Error adding test swaps for ${mint}:`, error);
+      }
+    } else if (swapCount === 0) {
+      // Try to update from blockchain
+      await updateSwapsCache(c.env, mint);
+    }
+
+    // Get swap data from the database (now should include any new data)
+    const swapsResult = await db
+      .select()
+      .from(swaps)
+      .where(eq(swaps.tokenMint, mint))
+      .orderBy(desc(swaps.timestamp))
+      .offset(offset)
+      .limit(limit);
+
+    logger.log(`Found ${swapsResult.length} swaps in database for mint ${mint}`);
+
+    // Calculate total for pagination
+    const totalSwapsQuery = await db
+      .select({ count: sql`count(*)` })
+      .from(swaps)
+      .where(eq(swaps.tokenMint, mint));
+
+    const totalSwaps = Number(totalSwapsQuery[0]?.count || 0);
+    const totalPages = Math.ceil(totalSwaps / limit);
+
+    // Format the swaps to exactly match TransactionSchema expectations
+    const formattedSwaps = swapsResult.map((swap) => {
+      return {
+        txId: typeof swap.txId === "string" ? swap.txId : "",
+        timestamp: typeof swap.timestamp === "string" ? swap.timestamp : new Date().toISOString(),
+        user: typeof swap.user === "string" ? swap.user : "",
+        direction: typeof swap.direction === "number" ? swap.direction : 0,
+        amountIn: typeof swap.amountIn === "number" ? swap.amountIn : 0,
+        amountOut: typeof swap.amountOut === "number" ? swap.amountOut : 0,
+      };
+    });
+
+    return c.json({
+      swaps: formattedSwaps,
+      page,
+      totalPages,
+      total: totalSwaps,
+    });
+  } catch (error) {
+    logger.error("Error in api/swaps history route:", error);
+    return c.json({
+      swaps: [],
+      page: 1,
+      totalPages: 0,
+      total: 0,
+      error: "Failed to fetch swap history",
+    }, 500);
+  }
+});
+
+// Endpoint to generate sample swap data for testing
+tokenRouter.post("/api/token/:mint/sample-swaps", async (c) => {
+  try {
+    const mint = c.req.param("mint");
+    
+    // Get count from query parameter or body
+    const count = parseInt(c.req.query("count") || "15");
+    
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    // Get the DB connection
+    const db = getDB(c.env);
+    
+    logger.log(`Generating ${count} sample swaps for token ${mint}`);
+    
+    // Create mock swap data
+    const now = new Date();
+    const swapRecords: typeof swaps.$inferInsert[] = [];
+
+    // Create sample swaps
+    for (let i = 0; i < count; i++) {
+      // Vary the time offsets to create a realistic timeline
+      const timeOffset = i * (Math.random() * 600000 + 3600000); // 1-2 hours apart
+      const timestamp = new Date(now.getTime() - timeOffset).toISOString();
+      
+      // Alternate between buy and sell with some randomness
+      const direction = Math.random() > 0.4 ? 0 : 1; // 60% buys, 40% sells
+      
+      // Create varying amounts based on direction
+      const solAmount = 1000000000 + Math.random() * 3000000000; // 1-4 SOL in lamports
+      const tokenAmount = 500000 + Math.random() * 2500000; // 0.5-3 tokens in smallest units
+      
+      swapRecords.push({
+        id: crypto.randomUUID(),
+        tokenMint: mint,
+        priceImpact: Math.random() * 0.02, // 0-2% price impact
+        user: [
+          "DvmXXp4tSXYwZJhM5HjtEUvQ6SfxwkA7daE1jQgCX1ri",
+          "Gq8ncxiUZBP5V8dd1XRqsyiV7aQmQVZEEYgLLJwFAXvA",
+          "3LCNtKAQRYMMCcXrKY9eMR1p8zUuY6gGZnBnnwQwULkE",
+          "8HQUbGPnG4XzfKMrpJG9nNq9h6JU5Q3dkKA49E1JZQke",
+          "HzkWnuoMSJRNhyHYrXVPgpyWaPn795bLJNBsfgXF326x",
+        ][Math.floor(Math.random() * 5)], // Random user from list
+        type: direction === 0 ? "buy" : "sell",
+        direction: direction,
+        amountIn: direction === 0 ? solAmount : tokenAmount,
+        amountOut: direction === 0 ? tokenAmount : solAmount,
+        price: 0.0001 + Math.random() * 0.0005, // Small price variation
+        txId: `test-tx-${i}-${crypto.randomUUID().slice(0, 8)}`,
+        timestamp: timestamp,
+      });
+    }
+
+    // Insert all swaps
+    try {
+      await db.insert(swaps).values(swapRecords);
+      logger.log(`Inserted ${swapRecords.length} sample swaps for token ${mint}`);
+    } catch (err) {
+      logger.error(`Error inserting sample swaps:`, err);
+      return c.json({ error: "Failed to insert sample swaps" }, 500);
+    }
+    
+    // Emit swap events to update clients
+    try {
+      const socket = getWebSocketClient(c.env);
+      
+      // Format the swaps to match what the frontend expects
+      const formattedSwaps = swapRecords.slice(0, 5).map(swap => {
+        // Calculate formatted values
+        const solAmount = swap.direction === 0 ? swap.amountIn / 1e9 : swap.amountOut / 1e9;
+        const tokenAmount = swap.direction === 0 ? swap.amountOut / 1e6 : swap.amountIn / 1e6;
+        
+        return {
+          txId: swap.txId,
+          timestamp: swap.timestamp,
+          user: swap.user,
+          direction: swap.direction,
+          type: swap.direction === 0 ? "Buy" : "Sell",
+          amountIn: swap.amountIn,
+          amountOut: swap.amountOut,
+          solAmount,
+          tokenAmount
+        };
+      });
+      
+      // Emit each swap event individually as the frontend expects
+      for (const swap of formattedSwaps) {
+        await socket.emit(`token-${mint}`, "newSwap", swap);
+        logger.log(`Emitted newSwap event for txId ${swap.txId}`);
+      }
+      
+      logger.log(`Emitted swap events for token ${mint}`);
+    } catch (err) {
+      logger.error("Failed to emit WebSocket events:", err);
+    }
+    
+    return c.json({
+      success: true,
+      message: `Generated ${swapRecords.length} sample swaps for token ${mint}`,
+      count: swapRecords.length
+    });
+  } catch (error) {
+    logger.error("Error generating sample swaps:", error);
+    return c.json({ error: "Failed to generate sample swaps" }, 500);
+  }
+});
+
+// Add a brand new endpoint that directly fetches from blockchain
+tokenRouter.get("/direct-swaps/:mint", async (c) => {
+  try {
+    const mint = c.req.param("mint");
+
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    // Import the blockchain function directly
+    const { fetchTokenTransactions } = await import("../utils/blockchain");
+    
+    logger.log(`Directly fetching blockchain swap data for mint ${mint}`);
+    const txResult = await fetchTokenTransactions(mint, 100);
+    
+    if (!txResult || !txResult.swaps) {
+      logger.error(`No swaps found for mint ${mint} from blockchain directly`);
+      return c.json({
+        swaps: [],
+        page: 1,
+        totalPages: 0,
+        total: 0
+      });
+    }
+    
+    logger.log(`Found ${txResult.swaps.length} real swaps from blockchain for mint ${mint}`);
+    
+    // Format the swaps to match exactly what the frontend expects
+    const formattedSwaps = txResult.swaps.map(swap => ({
+      txId: swap.txId,
+      timestamp: swap.timestamp,
+      user: swap.user,
+      direction: swap.direction,
+      amountIn: swap.amountIn,
+      amountOut: swap.amountOut,
+      type: swap.direction === 0 ? "Buy" : "Sell",
+      solAmount: (swap.direction === 0 ? swap.amountIn : swap.amountOut) / 1e9,
+      tokenAmount: swap.direction === 0 ? swap.amountOut / 1e6 : swap.amountIn / 1e6
+    }));
+    
+    return c.json({
+      swaps: formattedSwaps,
+      page: 1,
+      totalPages: 1,
+      total: formattedSwaps.length
+    });
+  } catch (error) {
+    logger.error(`Error directly fetching swaps from blockchain: ${error}`);
+    return c.json({
+      swaps: [],
+      page: 1,
+      totalPages: 0,
+      total: 0,
+      error: "Failed to fetch swap data directly from blockchain"
+    }, 500);
   }
 });
