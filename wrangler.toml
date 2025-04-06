@@ -88,7 +88,7 @@ AUTH_TOKEN_SALT = "autofun-wallet-auth-salt-dev-env" # Salt for hashing auth tok
 [[env.development.d1_databases]]
 binding = "DB"
 database_name = "autofun-dev"
-database_id = "00ade209-86ac-46a9-bed5-b74aaaac4ad4"
+database_id = "9d80bef0-48e8-482b-928a-8d9398f6fa04"
 
 # KV namespace for auth tokens in development
 [[env.development.kv_namespaces]]
