@@ -159,7 +159,7 @@ tokenRouter.post("/upload", async (c) => {
     });
     logger.log(`[/upload - Image Only] Image successfully uploaded to R2.`);
 
-    const imageUrl = c.env.LOCAL_DEV === "true"
+    const imageUrl = (c.env as any).LOCAL_DEV === "true"
       ? `${c.env.VITE_API_URL}/api/image/${imageFilename}`
       : `https://pub-75e2227bb40747d9b8b21df85a33efa7.r2.dev/token-images/${imageFilename}`;
     logger.log(
@@ -2095,12 +2095,44 @@ tokenRouter.post("/create-token", async (c) => {
       .limit(1);
 
     if (existingToken && existingToken.length > 0) {
-      logger.log(`Token ${tokenMint} already exists in database`);
+      // Update all fields if token exists
+      await db
+        .update(tokens)
+        .set({
+          name: name || existingToken[0].name,
+          ticker: symbol || existingToken[0].ticker,
+          description: description || existingToken[0].description,
+          twitter: twitter || existingToken[0].twitter,
+          telegram: telegram || existingToken[0].telegram,
+          website: website || existingToken[0].website,
+          discord: discord || existingToken[0].discord,
+          image: imageUrl || existingToken[0].image,
+          url: metadataUrl || existingToken[0].url,
+          lastUpdated: new Date().toISOString(),
+        })
+        .where(eq(tokens.mint, tokenMint));
+
+      logger.log(`Updated token ${tokenMint} with new data`);
+
+      // Return the updated token
+      const updatedToken = {
+        ...existingToken[0],
+        name: name || existingToken[0].name,
+        ticker: symbol || existingToken[0].ticker,
+        description: description || existingToken[0].description,
+        twitter: twitter || existingToken[0].twitter,
+        telegram: telegram || existingToken[0].telegram,
+        website: website || existingToken[0].website,
+        discord: discord || existingToken[0].discord,
+        image: imageUrl || existingToken[0].image,
+        url: metadataUrl || existingToken[0].url,
+      };
+
       return c.json({
         success: true,
         tokenFound: true,
-        message: "Token already exists in database",
-        token: existingToken[0],
+        message: "Token exists and data updated",
+        token: updatedToken,
       });
     }
 

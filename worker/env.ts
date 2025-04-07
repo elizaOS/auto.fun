@@ -30,6 +30,7 @@ export interface Env {
   ASSET_URL: string; // URL for accessing cached assets
   VITE_API_URL: string; // API URL fallback for assets
   FAL_API_KEY: string;
+  LOCAL_DEV: string;
   // Cloudflare AI binding
   AI: Ai;
   // Cloudflare AI credentials (only needed for external API calls, not when using binding)
