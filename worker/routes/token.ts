@@ -5185,7 +5185,8 @@ tokenRouter.post("/vanity-keypair", async (c) => {
       }
     }
 
-    const keypair = keypairs[0];
+    const keypair = (keypairs && keypairs[0]) ?? Keypair.generate();
+
     logger.log(
       `[POST /vanity-keypair] Found unused keypair: ${keypair.address}`,
     );
