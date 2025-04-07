@@ -5182,10 +5182,11 @@ tokenRouter.post("/vanity-keypair", async (c) => {
         logger.warn(
           "[POST /vanity-keypair] No unused vanity keypairs available (confirmed by count)",
         );
+        return c.json({ error: "No vanity keypairs available" }, 503);
       }
     }
 
-    const keypair = (keypairs && keypairs[0]) ?? Keypair.generate();
+    const keypair = keypairs[0];
 
     logger.log(
       `[POST /vanity-keypair] Found unused keypair: ${keypair.address}`,
@@ -5222,8 +5223,8 @@ tokenRouter.post("/vanity-keypair", async (c) => {
       logger.error(
         `[POST /vanity-keypair] Error converting secretKey: ${keyError}`,
       );
-      return c.json({ error: "Failed to process keypair" }, 500);
-    }
+        return c.json({ error: "Failed to process keypair" }, 500);
+      }
 
     // Return the keypair details with consistent field naming (publicKey instead of address)
     return c.json({
@@ -5605,7 +5606,7 @@ tokenRouter.get("/api/token/:mint/real-swaps", async (c) => {
       let insertedCount = 0;
       for (const swap of swapRecords) {
         try {
-          await db
+    await db
             .insert(swaps)
             .values(swap)
             .onConflictDoNothing({ target: [swaps.txId] });
@@ -5752,7 +5753,7 @@ export async function updateSwapsCache(
           // Update token with swap count
           await db
             .update(tokens)
-            .set({
+      .set({
               lastUpdated: new Date().toISOString(),
             })
             .where(eq(tokens.mint, mint));
