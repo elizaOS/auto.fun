@@ -159,7 +159,6 @@ tokenRouter.post("/upload", async (c) => {
     });
     logger.log(`[/upload - Image Only] Image successfully uploaded to R2.`);
 
-    // need to move this to a env for public r2 url. When an object is put we can assume the url that should be saved in D1.
     const imageUrl = c.env.LOCAL_DEV === "true"
       ? `${c.env.VITE_API_URL}/api/image/${imageFilename}`
       : `https://pub-75e2227bb40747d9b8b21df85a33efa7.r2.dev/token-images/${imageFilename}`;
@@ -172,7 +171,7 @@ tokenRouter.post("/upload", async (c) => {
     );
     return c.json({
       success: true,
-      imageUrl: imageUrl,
+      imageUrl,
     });
   } catch (error) {
     logger.error("[/upload - Image Only] Unexpected error:", error);
@@ -1909,13 +1908,13 @@ tokenRouter.post("/check-token", async (c) => {
       // If we have new image or metadata URLs, update the token
       if (
         (imageUrl || metadataUrl) &&
-        (existingToken[0].image === "" || existingToken[0].url === "" || imageUrl)
+        (existingToken[0].image === "" || existingToken[0].url === "")
       ) {
         await db
           .update(tokens)
           .set({
-            image: imageUrl || existingToken[0].image,
-            url: metadataUrl || existingToken[0].url,
+            image: imageUrl || existingToken[0].image || "",
+            url: metadataUrl || existingToken[0].url || "",
             lastUpdated: new Date().toISOString(),
           })
           .where(eq(tokens.mint, tokenMint));
@@ -1925,8 +1924,8 @@ tokenRouter.post("/check-token", async (c) => {
         // Return the updated token
         const updatedToken = {
           ...existingToken[0],
-          image: imageUrl || existingToken[0].image,
-          url: metadataUrl || existingToken[0].url,
+          image: imageUrl || existingToken[0].image || "",
+          url: metadataUrl || existingToken[0].url || "",
         };
 
         return c.json({
@@ -6380,6 +6379,153 @@ tokenRouter.get("/direct-swaps/:mint", async (c) => {
         total: 0,
         error: "Failed to fetch swap data directly from blockchain",
       },
+      500,
+    );
+  }
+});
+
+// Get specific token data with full details
+tokenRouter.get("/api/token/:mint", async (c) => {
+  try {
+    const mint = c.req.param("mint");
+
+    // Validate mint address
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    // Get token data
+    const db = getDB(c.env);
+    const tokenData = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    if (!tokenData || tokenData.length === 0) {
+      return c.json({ error: "Token not found", mint }, 404);
+    }
+
+    // Only refresh holder data if explicitly requested
+    // const refreshHolders = c.req.query("refresh_holders") === "true";
+    // if (refreshHolders) {
+    logger.log(`Refreshing holders data for token ${mint}`);
+    await updateHoldersCache(c.env, mint);
+    // }
+
+    const token = tokenData[0];
+
+    // Get fresh SOL price
+    const solPrice = await getSOLPrice(c.env);
+
+    // Set default values for critical fields if they're missing
+    const TOKEN_DECIMALS = Number(c.env.DECIMALS || 6);
+    const defaultReserveAmount = 1000000000000; // 1 trillion (default token supply)
+    const defaultReserveLamport = 2800000000; // 2.8 SOL (default reserve)
+
+    // Make sure reserveAmount and reserveLamport have values
+    token.reserveAmount = token.reserveAmount || defaultReserveAmount;
+    token.reserveLamport = token.reserveLamport || defaultReserveLamport;
+
+    // Update or set default values for missing fields
+    if (!token.currentPrice && token.reserveAmount && token.reserveLamport) {
+      token.currentPrice =
+        Number(token.reserveLamport) /
+        1e9 /
+        (Number(token.reserveAmount) / Math.pow(10, TOKEN_DECIMALS));
+    }
+
+    // Calculate tokenPriceUSD in the same way as the old code
+    const tokenPriceInSol =
+      (token.currentPrice || 0) / Math.pow(10, TOKEN_DECIMALS);
+    token.tokenPriceUSD =
+      (token.currentPrice || 0) > 0
+        ? tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)
+        : 0;
+
+    // Update solPriceUSD
+    token.solPriceUSD = solPrice;
+
+    // Use TOKEN_SUPPLY from env if available, otherwise use reserveAmount
+    const tokenSupply = c.env.TOKEN_SUPPLY
+      ? Number(c.env.TOKEN_SUPPLY)
+      : token.reserveAmount;
+
+    // Calculate or update marketCapUSD if we have tokenPriceUSD
+    token.marketCapUSD =
+      (tokenSupply / Math.pow(10, TOKEN_DECIMALS)) * token.tokenPriceUSD;
+
+    // Get virtualReserves and curveLimit from env or set defaults
+    const virtualReserves = c.env.VIRTUAL_RESERVES
+      ? Number(c.env.VIRTUAL_RESERVES)
+      : 2800000000;
+    const curveLimit = c.env.CURVE_LIMIT
+      ? Number(c.env.CURVE_LIMIT)
+      : 11300000000;
+
+    // Update virtualReserves and curveLimit
+    token.virtualReserves = token.virtualReserves || virtualReserves;
+    token.curveLimit = token.curveLimit || curveLimit;
+
+    // Calculate or update curveProgress using the original formula
+    token.curveProgress =
+      token.status === "migrated"
+        ? 100
+        : ((token.reserveLamport - token.virtualReserves) /
+            (token.curveLimit - token.virtualReserves)) *
+          100;
+
+    // Get token holders count
+    const holdersCountQuery = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(tokenHolders)
+      .where(eq(tokenHolders.mint, mint));
+
+    const holdersCount = holdersCountQuery[0]?.count || 0;
+    token.holderCount = holdersCount;
+
+    // Get latest swap - most recent transaction
+    const latestSwapQuery = await db
+      .select()
+      .from(swaps)
+      .where(eq(swaps.tokenMint, mint))
+      .orderBy(desc(swaps.timestamp))
+      .limit(1);
+
+    const latestSwap = latestSwapQuery[0] || null;
+
+    // Update token in database if we've calculated new values
+    await db
+      .update(tokens)
+      .set({
+        tokenPriceUSD: token.tokenPriceUSD,
+        currentPrice: token.currentPrice,
+        marketCapUSD: token.marketCapUSD,
+        solPriceUSD: token.solPriceUSD,
+        curveProgress: token.curveProgress,
+        virtualReserves: token.virtualReserves,
+        curveLimit: token.curveLimit,
+        holderCount: token.holderCount,
+        // Only update reserveAmount and reserveLamport if they were null
+        ...(tokenData[0].reserveAmount === null
+          ? { reserveAmount: token.reserveAmount }
+          : {}),
+        ...(tokenData[0].reserveLamport === null
+          ? { reserveLamport: token.reserveLamport }
+          : {}),
+        lastUpdated: new Date().toISOString(),
+      })
+      .where(eq(tokens.mint, mint));
+
+    // Format response with additional data
+    return c.json({
+      ...token,
+      latestSwap,
+    });
+  } catch (error) {
+    logger.error(`Error getting token: ${error}`);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
       500,
     );
   }
