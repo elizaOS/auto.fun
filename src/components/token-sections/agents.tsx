@@ -3,7 +3,7 @@ import { Trash2, LogOut } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { Badge } from "../ui/badge";
+// import { Badge } from "../ui/badge";
 import Button from "../button";
 import { env } from "@/utils/env";
 
@@ -825,11 +825,11 @@ export default function AgentsSection() {
                   />
                   <span className="truncate">{agent.twitterUserName}</span>
                 </div>
-                {agent.official ? (
+                {/* {agent.official ? (
                   <Badge variant="success">Official</Badge>
                 ) : (
                   <Badge variant="default">Community</Badge>
-                )}
+                )} */}
                 {publicKey && agent.ownerAddress === publicKey.toBase58() && (
                   <button
                     // ** CHANGE: Pass the whole agent object **
@@ -849,9 +849,9 @@ export default function AgentsSection() {
       <div className="mt-4">
         {twitterCredentials && twitterCredentials.expiresAt > Date.now() ? (
           <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-neutral-200">
-                <span className="bg-green-700 rounded-full w-2 h-2"></span>
+                <span className="border border-[#03FF24] rounded-full w-2 h-2"></span>
                 <span>
                   Connected to X as @
                   {twitterCredentials.username || twitterCredentials.userId}
@@ -862,10 +862,10 @@ export default function AgentsSection() {
                 disabled={isDisconnecting}
                 variant="outline"
                 size="small"
-                className="!px-2 text-red-500 hover:text-red-400 hover:bg-red-950/20"
+                className="!px-2 text-red-500 hover:text-red-400 hover:bg-red-950/20 mx-auto"
               >
                 <LogOut size={16} className="mr-1" />
-                Disconnect
+                Disconnect X Account
               </Button>
             </div>
 
@@ -891,10 +891,10 @@ export default function AgentsSection() {
             disabled={
               isConnectingAgent || !tokenMint || isAgentsLoading // || !!agentsError
             }
-            className="mx-auto w-72 h-fit"
+            className="mx-auto h-fit"
             variant="tab"
           >
-            {isConnectingAgent ? "Connecting..." : "Connect X account"}
+            {isConnectingAgent ? "Connecting..." : "Connect X Account"}
           </Button>
         )}
       </div>
@@ -903,14 +903,11 @@ export default function AgentsSection() {
       <div className="mt-4">
         <Button
           onClick={() => {}}
-          disabled={true}
-          className="flex flex-col items-center gap-2 mx-auto border-green-500 border-4 w-72 h-fit"
+          className="flex flex-col items-center gap-2 mx-auto border-[#03FF24] border-2 h-fit hover:bg-[#03FF24]"
           variant="outline"
         >
-          {isConnectingAgent
-            ? "Connecting..."
-            : "Create an Eliza Agent Now with"}
-          <img src="/fleek-logo.svg" alt="Fleek" className="w-32 aspect-auto" />
+          {isConnectingAgent ? "Connecting..." : "Create an Agent With"}
+          <img src="/fleek-logo.svg" alt="Fleek" className="aspect-auto" />
         </Button>
       </div>
     </div>

@@ -411,7 +411,16 @@ export default function Page() {
               {/* Tabs Header with Title and Right-aligned Tabs - removed border-b as it's on the parent */}
               <div className="flex items-center justify-between pr-2">
                 <h2 className="font-satoshi font-bold text-xl text-autofun-text-highlight px-6 py-3">
-                  {activeTab === "chart" ? "Chart" : "AI Content Creation"}
+                  {activeTab === "chart" ? (
+                    "Chart"
+                  ) : (
+                    <div
+                      id="media-selector-container"
+                      className="flex space-x-2 items-center"
+                    >
+                      {/* Media type buttons will be moved here by the generation component */}
+                    </div>
+                  )}
                 </h2>
                 <div className="flex">
                   <button
@@ -423,12 +432,12 @@ export default function Page() {
                     onClick={() => setActiveTab("chart")}
                     style={{ marginTop: "-2px", paddingTop: "14px" }}
                   >
+                    Chart
                     <BarChart3
-                      className={`size-4 inline-block mr-1.5 ${
+                      className={`size-4 inline-block ml-1.5 ${
                         activeTab === "chart" ? "text-black" : ""
                       }`}
                     />
-                    Chart
                   </button>
                   <button
                     className={`px-4 py-3 text-autofun-text-primary font-medium ${
@@ -439,12 +448,12 @@ export default function Page() {
                     onClick={() => setActiveTab("ai")}
                     style={{ marginTop: "-2px", paddingTop: "14px" }}
                   >
+                    AI Create
                     <Paintbrush
-                      className={`size-4 inline-block mr-1.5 ${
+                      className={`size-4 inline-block ml-1.5 ${
                         activeTab === "ai" ? "text-black" : ""
                       }`}
                     />
-                    AI Create
                   </button>
                 </div>
               </div>
@@ -461,7 +470,7 @@ export default function Page() {
                 </>
               )}
               {activeTab === "ai" && (
-                <div id="generation" className="p-4 scroll-mt-16">
+                <div id="generation" className="scroll-mt-16">
                   <GenerationSection />
                 </div>
               )}

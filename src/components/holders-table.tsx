@@ -11,12 +11,12 @@ import { IToken } from "@/types";
 import { shortenAddress } from "@/utils";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { Link } from "react-router";
-import PausedIndicator from "./paused-indicator";
+// import PausedIndicator from "./paused-indicator";
 import { useHolders } from "@/hooks/use-holders";
 import { env } from "@/utils/env";
 
 export default function HoldersTable({ token }: { token: IToken }) {
-  const { paused, setPause } = usePause();
+  const { /*paused,*/ setPause } = usePause();
   console.log(
     `HoldersTable: Rendering for token ${token?.ticker} (${token?.mint})`,
   );
@@ -33,7 +33,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
       onMouseLeave={() => setPause(false)}
     >
       <TableHeader className="relative">
-        <PausedIndicator show={paused} />
+        {/* <PausedIndicator show={paused} /> */}
         <TableRow className="bg-transparent">
           <TableHead>Account</TableHead>
           <TableHead className="text-right">Amount</TableHead>
@@ -70,7 +70,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
                   {holder?.amount.toLocaleString()}
                 </TableCell>
                 <TableCell className="text-right">
-                  {holder?.percentage}%
+                  {holder?.percentage.toFixed(2)}%
                 </TableCell>
                 <TableCell>
                   <Link to={env.getWalletUrl(holder.address)} target="_blank">

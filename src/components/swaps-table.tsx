@@ -12,12 +12,12 @@ import { fromNow, shortenAddress } from "@/utils";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { Link } from "react-router";
 import { twMerge } from "tailwind-merge";
-import PausedIndicator from "./paused-indicator";
+// import PausedIndicator from "./paused-indicator";
 import { useTransactions } from "@/hooks/use-transactions";
 import { env } from "@/utils/env";
 
 export default function SwapsTable({ token }: { token: IToken }) {
-  const { paused, setPause } = usePause();
+  const { /*paused,*/ setPause } = usePause();
   const { items: data, isLoading } = useTransactions({ tokenId: token.mint });
 
   // Helper to format swap amounts based on type
@@ -47,7 +47,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
       onMouseEnter={() => setPause(true)}
       onMouseLeave={() => setPause(false)}
     >
-      <PausedIndicator show={paused} />
+      {/* <PausedIndicator show={paused} /> */}
       <TableHeader>
         <TableRow className="bg-transparent">
           <TableHead>Account</TableHead>
