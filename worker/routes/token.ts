@@ -159,9 +159,10 @@ tokenRouter.post("/upload", async (c) => {
     });
     logger.log(`[/upload - Image Only] Image successfully uploaded to R2.`);
 
-    const imageUrl = (c.env as any).LOCAL_DEV === "true"
-      ? `${c.env.VITE_API_URL}/api/image/${imageFilename}`
-      : `https://pub-75e2227bb40747d9b8b21df85a33efa7.r2.dev/token-images/${imageFilename}`;
+    const imageUrl =
+      (c.env as any).LOCAL_DEV === "true"
+        ? `${c.env.VITE_API_URL}/api/image/${imageFilename}`
+        : `https://pub-75e2227bb40747d9b8b21df85a33efa7.r2.dev/token-images/${imageFilename}`;
     logger.log(
       `[/upload - Image Only] Constructed public image URL: ${imageUrl}`,
     );
@@ -5212,14 +5213,16 @@ tokenRouter.post("/vanity-keypair", async (c) => {
       }
 
       // Generate a new keypair as fallback
-      logger.log("[POST /vanity-keypair] Falling back to generating a new keypair");
+      logger.log(
+        "[POST /vanity-keypair] Falling back to generating a new keypair",
+      );
       const generatedKeypair = Keypair.generate();
       const newKeypair = {
         id: generatedKeypair.publicKey.toString(),
         address: generatedKeypair.publicKey.toString(),
-        secretKey: Buffer.from(generatedKeypair.secretKey).toString('base64'),
+        secretKey: Buffer.from(generatedKeypair.secretKey).toString("base64"),
         createdAt: Math.floor(Date.now() / 1000).toString(),
-        used: 1 // Mark as used immediately since we're using it now
+        used: 1, // Mark as used immediately since we're using it now
       };
 
       // Insert the generated keypair
@@ -5285,8 +5288,8 @@ tokenRouter.post("/vanity-keypair", async (c) => {
       logger.error(
         `[POST /vanity-keypair] Error converting secretKey: ${keyError}`,
       );
-        return c.json({ error: "Failed to process keypair" }, 500);
-      }
+      return c.json({ error: "Failed to process keypair" }, 500);
+    }
 
     // Return the keypair details with consistent field naming (publicKey instead of address)
     return c.json({
@@ -5668,7 +5671,7 @@ tokenRouter.get("/api/token/:mint/real-swaps", async (c) => {
       let insertedCount = 0;
       for (const swap of swapRecords) {
         try {
-    await db
+          await db
             .insert(swaps)
             .values(swap)
             .onConflictDoNothing({ target: [swaps.txId] });
@@ -5815,7 +5818,7 @@ export async function updateSwapsCache(
           // Update token with swap count
           await db
             .update(tokens)
-      .set({
+            .set({
               lastUpdated: new Date().toISOString(),
             })
             .where(eq(tokens.mint, mint));

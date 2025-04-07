@@ -3145,11 +3145,7 @@ export const Create = () => {
             <button
               type="submit"
               className="p-0 transition-colors cursor-pointer disabled:opacity-50 select-none"
-              disabled={
-                !canLaunch() ||
-                isSubmitting ||
-                !isAuthenticated
-              }
+              disabled={!canLaunch() || isSubmitting || !isAuthenticated}
             >
               <img
                 src={
