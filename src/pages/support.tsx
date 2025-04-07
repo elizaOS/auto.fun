@@ -10,9 +10,6 @@ export default function SupportPage() {
           {/* Contact Section */}
           <section className="bg-[#171717] p-6 border border-[#262626]">
             <h2 className="text-2xl font-medium text-white mb-4">Contact Us</h2>
-            <p className="text-[#8C8C8C] mb-4">
-              Need help? You can reach us through any of these channels:
-            </p>
             <div className="space-y-4">
               <Link
                 to="https://twitter.com/autodotfun"
@@ -31,7 +28,7 @@ export default function SupportPage() {
                 @autofunai
               </Link>
               <Link
-                to="https://discord.gg/autofun"
+                to="https://discord.com/invite/tgCCVF9vEa"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-white hover:text-[#2FD345] transition-colors"
@@ -63,42 +60,65 @@ export default function SupportPage() {
                 </svg>
                 support@auto.fun
               </Link>
+              <Link
+                to="https://web.telegram.org/k/#@AutoDotFunBot"
+                className="flex items-center gap-2 text-white hover:text-[#2FD345] transition-colors"
+              >
+                <img
+                  src="/nav/tg-icon.svg"
+                  alt="telegram-icon"
+                  className="size-6"
+                />
+                @AutoDotFunBot
+              </Link>
             </div>
           </section>
 
           {/* FAQ Section */}
           <section className="bg-[#171717] p-6 border border-[#262626]">
             <h2 className="text-2xl font-medium text-white mb-4">
-              Frequently Asked Questions
+              How it Works
             </h2>
             <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-2">
-                  How do I create a token?
+              <div className="flex flex-col gap-y-3">
+                <h3 className="text-lg font-bold text-white">
+                  Coin Launch Options
                 </h3>
                 <p className="text-[#8C8C8C]">
-                  Click on the Create Token button in the navigation bar and
-                  follow the simple steps to launch your token.
+                  Auto.fun offers two approaches:
+                </p>
+                <p className="text-[#8C8C8C]">
+                  <span className="text-white font-bold">1. New Coins: </span>
+                  Launch with our bonding curve mechanism that provides initial
+                  price stability, dynamic pricing, guaranteed liquidity, and
+                  automated graduation to Raydium. Create a coin manually or
+                  generate one.
+                </p>
+                <p className="text-[#8C8C8C]">
+                  <span className="text-white font-bold">
+                    2. Existing Coins:{" "}
+                  </span>
+                  Import coins already trading elsewhere, maintaining your
+                  existing liquidity while gaining access to the auto.fun
+                  ecosystem.
                 </p>
               </div>
               <div>
-                <h3 className="text-lg font-medium text-white mb-2">
-                  What is the bonding curve?
+                <h3 className="text-lg font-bold text-white mb-2">
+                  Bonding Curve
                 </h3>
                 <p className="text-[#8C8C8C]">
-                  A bonding curve is a mathematical curve that defines the
-                  relationship between a tokens price and its supply. The more
-                  tokens that are purchased, the higher the price becomes.
+                  Auto.fun uses a bonding curve with 28 SOL initial virtual
+                  reserves. When a coin reaches 113 SOL in reserves, it
+                  automatically graduates to Raydium with a 6 SOL flat fee.
                 </p>
               </div>
               <div>
-                <h3 className="text-lg font-medium text-white mb-2">
-                  How does liquidity work?
-                </h3>
+                <h3 className="text-lg font-bold text-white mb-2">Liquidity</h3>
                 <p className="text-[#8C8C8C]">
-                  When a token reaches $100k market cap, $17k of liquidity is
-                  automatically deposited into Raydium and the LP tokens are
-                  burned.
+                  LP tokens for graduated coins are locked with a 90/10 token
+                  split for creators and Auto.fun respectively with burn and
+                  earn mechanisms.
                 </p>
               </div>
             </div>

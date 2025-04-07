@@ -12,6 +12,8 @@ import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
+import { useConnection } from "@solana/wallet-adapter-react";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 
 const MAX_INITIAL_SOL = 45;
 // Use the token supply and virtual reserves from environment or fallback to defaults
@@ -852,6 +854,18 @@ export const Create = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthentication();
   const { publicKey, signTransaction } = useWallet();
+  const { connection } = useConnection();
+  const [solBalance, setSolBalance] = useState<number>(0);
+
+  useEffect(() => {
+    const checkBalance = async () => {
+      if (publicKey) {
+        const balance = await connection.getBalance(publicKey);
+        setSolBalance(balance / LAMPORTS_PER_SOL);
+      }
+    };
+    checkBalance();
+  }, [publicKey, connection]);
 
   // State for image upload
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -2669,6 +2683,13 @@ export const Create = () => {
     };
   }, [autoForm.imageUrl]);
 
+  const canLaunch = () => {
+    if (!publicKey) return false;
+    const initialSol = parseFloat(form.initialSol) || 0;
+    const hasEnoughSol = solBalance >= initialSol;
+    return hasEnoughSol && !Object.values(errors).some((error) => error);
+  };
+
   return (
     <div className="flex flex-col items-center justify-center">
       {showCoinDrop && <CoinDrop imageUrl={coinDropImageUrl || undefined} />}
@@ -3125,10 +3146,9 @@ export const Create = () => {
               type="submit"
               className="p-0 transition-colors cursor-pointer disabled:opacity-50 select-none"
               disabled={
-                !isFormValid ||
+                !canLaunch() ||
                 isSubmitting ||
-                !isAuthenticated ||
-                insufficientBalance
+                !isAuthenticated
               }
             >
               <img
