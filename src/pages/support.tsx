@@ -25,7 +25,7 @@ export default function SupportPage() {
                 >
                   <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                 </svg>
-                @autofunai
+                @autodotfun
               </Link>
               <Link
                 to="https://discord.com/invite/tgCCVF9vEa"
@@ -88,14 +88,14 @@ export default function SupportPage() {
                   Auto.fun offers two approaches:
                 </p>
                 <p className="text-[#8C8C8C]">
-                  <span className="text-white font-bold">1. New Coins: </span>
+                  <span className="text-[#8C8C8C] font-bold">1. New Coins: </span>
                   Launch with our bonding curve mechanism that provides initial
                   price stability, dynamic pricing, guaranteed liquidity, and
                   automated graduation to Raydium. Create a coin manually or
                   generate one.
                 </p>
                 <p className="text-[#8C8C8C]">
-                  <span className="text-white font-bold">
+                  <span className="text-[#8C8C8C] font-bold">
                     2. Existing Coins:{" "}
                   </span>
                   Import coins already trading elsewhere, maintaining your
