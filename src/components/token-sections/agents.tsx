@@ -41,7 +41,7 @@ interface TokenAgent {
   createdAt?: number;
 }
 
-export default function AgentsSection() {
+export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
   const { publicKey } = useWallet();
   const [twitterCredentials, setTwitterCredentials] =
     useState<TwitterCredentials | null>(null);
@@ -846,70 +846,73 @@ export default function AgentsSection() {
       )}
 
       {/* Twitter Connection Status and Actions */}
-      <div className="mt-4">
-        {twitterCredentials && twitterCredentials.expiresAt > Date.now() ? (
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-neutral-200">
-                <span className="border border-[#03FF24] rounded-full w-2 h-2"></span>
-                <span>
-                  Connected to X as @
-                  {twitterCredentials.username || twitterCredentials.userId}
-                </span>
-              </div>
-              <Button
-                onClick={disconnectTwitter}
-                disabled={isDisconnecting}
-                variant="outline"
-                size="small"
-                className="!px-2 text-red-500 hover:text-red-400 hover:bg-red-950/20 mx-auto"
-              >
-                <LogOut size={16} className="mr-1" />
-                Disconnect X Account
-              </Button>
-            </div>
+      {isCreator && (
+        <>
+          <div className="mt-4">
+            {twitterCredentials && twitterCredentials.expiresAt > Date.now() ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-neutral-200">
+                    <span className="border border-[#03FF24] rounded-full w-2 h-2"></span>
+                    <span>
+                      Connected to X as @
+                      {twitterCredentials.username || twitterCredentials.userId}
+                    </span>
+                  </div>
+                  <Button
+                    onClick={disconnectTwitter}
+                    disabled={isDisconnecting}
+                    variant="outline"
+                    size="small"
+                    className="!px-2 text-red-500 hover:text-red-400 hover:bg-red-950/20 mx-auto"
+                  >
+                    <LogOut size={16} className="mr-1" />
+                    Disconnect X Account
+                  </Button>
+                </div>
 
-            {!hasConnectedAgent && (
+                {!hasConnectedAgent && (
+                  <Button
+                    onClick={connectTwitter}
+                    disabled={
+                      isConnectingAgent ||
+                      !tokenMint ||
+                      isAgentsLoading ||
+                      !!agentsError
+                    }
+                    className="mx-auto mt-2"
+                    variant="tab"
+                  >
+                    {isConnectingAgent ? "Connecting..." : "Connect as agent"}
+                  </Button>
+                )}
+              </div>
+            ) : (
               <Button
                 onClick={connectTwitter}
                 disabled={
-                  isConnectingAgent ||
-                  !tokenMint ||
-                  isAgentsLoading ||
-                  !!agentsError
+                  isConnectingAgent || !tokenMint || isAgentsLoading // || !!agentsError
                 }
-                className="mx-auto mt-2"
+                className="mx-auto h-fit"
                 variant="tab"
               >
-                {isConnectingAgent ? "Connecting..." : "Connect as agent"}
+                {isConnectingAgent ? "Connecting..." : "Connect X Account"}
               </Button>
             )}
           </div>
-        ) : (
-          <Button
-            onClick={connectTwitter}
-            disabled={
-              isConnectingAgent || !tokenMint || isAgentsLoading // || !!agentsError
-            }
-            className="mx-auto h-fit"
-            variant="tab"
-          >
-            {isConnectingAgent ? "Connecting..." : "Connect X Account"}
-          </Button>
-        )}
-      </div>
 
-      {/* Fleek Connection Status and Actions */}
-      <div className="mt-4">
-        <Button
-          onClick={() => {}}
-          className="flex flex-col items-center gap-2 mx-auto border-[#03FF24] border-2 h-fit hover:bg-[#03FF24]"
-          variant="outline"
-        >
-          {isConnectingAgent ? "Connecting..." : "Create an Agent With"}
-          <img src="/fleek-logo.svg" alt="Fleek" className="aspect-auto" />
-        </Button>
-      </div>
+          <div className="mt-4">
+            <Button
+              onClick={() => {}}
+              className="flex flex-col items-center gap-2 mx-auto border-[#03FF24] border-2 h-fit hover:bg-[#03FF24]"
+              variant="outline"
+            >
+              {isConnectingAgent ? "Connecting..." : "Create an Agent With"}
+              <img src="/fleek-logo.svg" alt="Fleek" className="aspect-auto" />
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

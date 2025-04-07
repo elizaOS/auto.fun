@@ -25,11 +25,10 @@ import { getSocket } from "@/utils/socket";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  BarChart3,
   ExternalLink,
   Globe,
   Info as InfoCircle,
-  Paintbrush,
+  Paintbrush
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
@@ -336,7 +335,7 @@ export default function Page() {
             </div>
 
             {/* Agents Section */}
-            <AgentsSection />
+            <AgentsSection isCreator={token?.creator === normalizedWallet} />
 
             {/* Social Links */}
             {token?.creator !== normalizedWallet && (
@@ -403,7 +402,7 @@ export default function Page() {
 
         {/* Middle Column - 50% - Tabs for Chart and AI Create */}
         <div className="w-full lg:w-[49%] flex flex-col gap-3">
-          <div className="overflow-hidden relative border-b border-autofun-stroke-primary">
+          <div className="overflow-hidden relative">
             <div className="flex flex-col">
               {/* Green stroke above tab section */}
               <div className="h-2 w-full bg-autofun-text-highlight z-10"></div>
@@ -421,8 +420,12 @@ export default function Page() {
                     style={{ marginTop: "-2px", paddingTop: "14px" }}
                   >
                     Chart
-                    <img 
-                      src={activeTab === "chart" ? "/token/charton.svg" : "/public/token/chartoff.svg"}
+                    <img
+                      src={
+                        activeTab === "chart"
+                          ? "/token/charton.svg"
+                          : "/public/token/chartoff.svg"
+                      }
                       className={`size-4 inline-block ml-1.5 ${
                         activeTab === "chart" ? "text-black" : ""
                       }`}
@@ -447,13 +450,13 @@ export default function Page() {
                   </button>
                 </div>
                 {activeTab === "chart" ? null : (
-                    <div
-                      id="media-selector-container"
-                      className="flex space-x-2 items-center"
-                    >
-                      {/* Media type buttons will be moved here by the generation component */}
-                    </div>
-                  )}
+                  <div
+                    id="media-selector-container"
+                    className="flex space-x-2 items-center"
+                  >
+                    {/* Media type buttons will be moved here by the generation component */}
+                  </div>
+                )}
               </div>
 
               {/* Tab Content */}
