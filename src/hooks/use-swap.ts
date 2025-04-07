@@ -155,8 +155,7 @@ export const useSwap = () => {
     });
 
     const tx = new Transaction().add(...(Array.isArray(ixs) ? ixs : [ixs]));
-    const { blockhash } =
-      await connection.getLatestBlockhash();
+    const { blockhash } = await connection.getLatestBlockhash();
     tx.feePayer = wallet.publicKey;
     tx.recentBlockhash = blockhash;
 
@@ -202,7 +201,9 @@ export const useSwap = () => {
         if (signature) {
           toast.info(`Transaction sent: ${signature.slice(0, 8)}...`);
         } else {
-          toast.warning("Transaction potentially sent, but signature was not received.");
+          toast.warning(
+            "Transaction potentially sent, but signature was not received.",
+          );
         }
       } finally {
         setIsExecuting(false);

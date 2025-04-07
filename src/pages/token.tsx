@@ -228,11 +228,6 @@ export default function Page() {
         <div className="flex-1 flex flex-col items-center">
           <span className="text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
             {marketCapUSD > 0 ? abbreviateNumber(marketCapUSD) : "-"}
-            {metricsQuery.isLoading && (
-              <span className="text-xs text-autofun-text-secondary ml-1">
-                loading...
-              </span>
-            )}
           </span>
           <span className="text-lg font-dm-mono text-autofun-text-secondary mt-3">
             Market Cap
@@ -242,11 +237,6 @@ export default function Page() {
         <div className="flex-1 flex flex-col items-center">
           <span className="text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
             {volume24h > 0 ? abbreviateNumber(volume24h) : "0"}
-            {metricsQuery.isLoading && (
-              <span className="text-xs text-autofun-text-secondary ml-1">
-                loading...
-              </span>
-            )}
           </span>
           <span className="text-lg font-dm-mono text-autofun-text-secondary mt-3">
             24hr Volume
@@ -495,7 +485,8 @@ export default function Page() {
             </div>
             {token?.status !== "migrated" ? (
               <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">
-                Graduate this coin at {formatNumber(graduationMarketCap, true)} market cap.{"\n"}
+                Graduate this coin at {formatNumber(graduationMarketCap, true)}{" "}
+                market cap.{"\n"}
                 There is{" "}
                 {formatNumber(
                   (token?.reserveLamport - token?.virtualReserves) /
@@ -529,11 +520,6 @@ export default function Page() {
                   {currentPrice
                     ? formatNumberSubscript(currentPrice)
                     : "0.00000000"}
-                  {metricsQuery.isLoading && (
-                    <span className="text-xs text-autofun-text-secondary ml-1">
-                      loading...
-                    </span>
-                  )}
                 </span>
               </div>
             </div>

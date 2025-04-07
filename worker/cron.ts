@@ -1,13 +1,11 @@
-import { ExecutionContext, ScheduledEvent } from "@cloudflare/workers-types/experimental";
+import {
+  ExecutionContext,
+  ScheduledEvent,
+} from "@cloudflare/workers-types/experimental";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
 import { getLatestCandle } from "./chart";
-import {
-  getDB,
-  swaps,
-  tokens,
-  vanityKeypairs,
-} from "./db";
+import { getDB, swaps, tokens, vanityKeypairs } from "./db";
 import { Env } from "./env";
 import { logger } from "./logger";
 import { getSOLPrice } from "./mcap";
@@ -26,7 +24,7 @@ import { TokenData, TokenDBData } from "../worker/raydium/types/tokenData";
 let lastProcessedSignature: string | null = null;
 
 function convertTokenDataToDBData(
-  tokenData: Partial<TokenData>
+  tokenData: Partial<TokenData>,
 ): Partial<TokenDBData> {
   const now = new Date().toISOString();
   return {
@@ -50,7 +48,7 @@ function convertTokenDataToDBData(
 
 export async function updateTokenInDB(
   env: Env,
-  tokenData: Partial<TokenData>
+  tokenData: Partial<TokenData>,
 ): Promise<void> {
   try {
     const db = getDB(env);
@@ -126,7 +124,7 @@ export async function processTransactionLogs(
   env: Env,
   logs: string[],
   signature: string,
-  wsClient: any = null
+  wsClient: any = null,
 ): Promise<{ found: boolean; tokenAddress?: string; event?: string }> {
   try {
     // Get WebSocket client if not provided
@@ -147,7 +145,7 @@ export async function processTransactionLogs(
     const swapeventLog = logs.find((log) => log.includes("SwapEvent:"));
     const newTokenLog = logs.find((log) => log.includes("NewToken:"));
     const completeEventLog = logs.find((log) =>
-      log.includes("curve is completed")
+      log.includes("curve is completed"),
     );
 
     // Handle new token events
@@ -167,16 +165,16 @@ export async function processTransactionLogs(
         // Validate addresses are in proper base58 format
         const isValidTokenAddress =
           /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
-            rawTokenAddress
+            rawTokenAddress,
           );
         const isValidCreatorAddress =
           /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
-            rawCreatorAddress
+            rawCreatorAddress,
           );
 
         if (!isValidTokenAddress || !isValidCreatorAddress) {
           logger.error(
-            `Invalid address format in NewToken log: token=${rawTokenAddress}, creator=${rawCreatorAddress}`
+            `Invalid address format in NewToken log: token=${rawTokenAddress}, creator=${rawCreatorAddress}`,
           );
           return { found: false };
         }
@@ -241,7 +239,7 @@ export async function processTransactionLogs(
           if (
             !mintAddress ||
             !/^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
-              mintAddress
+              mintAddress,
             )
           ) {
             logger.error(`Invalid mint address format: ${mintAddress}`);
@@ -274,7 +272,7 @@ export async function processTransactionLogs(
           // Validate extracted data
           if (!user || !direction || !amount) {
             logger.error(
-              `Missing swap data: user=${user}, direction=${direction}, amount=${amount}`
+              `Missing swap data: user=${user}, direction=${direction}, amount=${amount}`,
             );
             return result;
           }
@@ -300,17 +298,17 @@ export async function processTransactionLogs(
 
           reserveToken = reservesParts[reservesParts.length - 2].replace(
             /[",)]/g,
-            ""
+            "",
           );
           reserveLamport = reservesParts[reservesParts.length - 1].replace(
             /[",)]/g,
-            ""
+            "",
           );
 
           // Validate extracted data
           if (!reserveToken || !reserveLamport) {
             logger.error(
-              `Missing reserves data: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`
+              `Missing reserves data: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`,
             );
             return result;
           }
@@ -318,7 +316,7 @@ export async function processTransactionLogs(
           // Make sure reserve values are numeric
           if (isNaN(Number(reserveToken)) || isNaN(Number(reserveLamport))) {
             logger.error(
-              `Invalid reserve values: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`
+              `Invalid reserve values: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`,
             );
             return result;
           }
@@ -380,7 +378,7 @@ export async function processTransactionLogs(
         const db = getDB(env);
         await db.insert(swaps).values(swapRecord);
         logger.log(
-          `Saved swap: ${direction === "0" ? "buy" : "sell"} for ${mintAddress}`
+          `Saved swap: ${direction === "0" ? "buy" : "sell"} for ${mintAddress}`,
         );
 
         // Update token data in database
@@ -468,7 +466,7 @@ export async function processTransactionLogs(
           const mintParts = mintLog.split("Mint:");
           if (mintParts.length < 2) {
             logger.error(
-              `Invalid Mint log format in curve completion: ${mintLog}`
+              `Invalid Mint log format in curve completion: ${mintLog}`,
             );
             return result;
           }
@@ -478,17 +476,17 @@ export async function processTransactionLogs(
           if (
             !mintAddress ||
             !/^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
-              mintAddress
+              mintAddress,
             )
           ) {
             logger.error(
-              `Invalid mint address format in curve completion: ${mintAddress}`
+              `Invalid mint address format in curve completion: ${mintAddress}`,
             );
             return result;
           }
         } catch (error) {
           logger.error(
-            `Error parsing mint address in curve completion: ${error}`
+            `Error parsing mint address in curve completion: ${error}`,
           );
           return result;
         }
@@ -528,7 +526,7 @@ export async function processTransactionLogs(
 // Function to specifically check for a recently created token
 export async function monitorSpecificToken(
   env: Env,
-  tokenMint: string
+  tokenMint: string,
 ): Promise<{ found: boolean; message: string }> {
   logger.log(`Looking for specific token: ${tokenMint}`);
 
@@ -537,7 +535,7 @@ export async function monitorSpecificToken(
     const connection = new Connection(
       env.NETWORK === "devnet"
         ? env.DEVNET_SOLANA_RPC_URL
-        : env.MAINNET_SOLANA_RPC_URL
+        : env.MAINNET_SOLANA_RPC_URL,
     );
 
     // Validate programId first since we'll always need this
@@ -568,7 +566,7 @@ export async function monitorSpecificToken(
     let tokenSignatures: { signature: string }[] = [];
     const isValidBase58 =
       /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
-        tokenMint
+        tokenMint,
       );
 
     if (isValidBase58) {
@@ -580,18 +578,18 @@ export async function monitorSpecificToken(
         tokenSignatures = await connection.getSignaturesForAddress(
           tokenPubkey,
           { limit: 5 },
-          "confirmed"
+          "confirmed",
         );
         logger.log(`Successfully queried signatures for token ${tokenMint}`);
       } catch (error) {
         logger.log(
-          `Could not get signatures for token ${tokenMint}: ${error instanceof Error ? error.message : "Unknown error"}`
+          `Could not get signatures for token ${tokenMint}: ${error instanceof Error ? error.message : "Unknown error"}`,
         );
         logger.log(`Falling back to checking program signatures only`);
       }
     } else {
       logger.log(
-        `Token ${tokenMint} contains invalid base58 characters, skipping direct token lookup`
+        `Token ${tokenMint} contains invalid base58 characters, skipping direct token lookup`,
       );
     }
 
@@ -599,7 +597,7 @@ export async function monitorSpecificToken(
     const programSignatures = await connection.getSignaturesForAddress(
       programId,
       { limit: 20 }, // Check more program signatures
-      "confirmed"
+      "confirmed",
     );
     logger.log(`Found ${programSignatures.length} program signatures to check`);
 
@@ -612,7 +610,7 @@ export async function monitorSpecificToken(
       // Create a basic token record anyway since the user is requesting it
       try {
         logger.log(
-          `No signatures found, but creating basic token record for ${tokenMint}`
+          `No signatures found, but creating basic token record for ${tokenMint}`,
         );
 
         // Create a basic token record with all required fields
@@ -685,7 +683,7 @@ export async function monitorSpecificToken(
 
         if (relevantLogs.length > 0) {
           logger.log(
-            `Found ${relevantLogs.length} relevant logs for ${tokenMint} in tx ${signatureInfo.signature}`
+            `Found ${relevantLogs.length} relevant logs for ${tokenMint} in tx ${signatureInfo.signature}`,
           );
 
           try {
@@ -694,7 +692,7 @@ export async function monitorSpecificToken(
               env,
               logs,
               signatureInfo.signature,
-              wsClient
+              wsClient,
             );
 
             // Check exact match when tokenAddress is available, otherwise
@@ -702,7 +700,7 @@ export async function monitorSpecificToken(
             if (result.found) {
               if (result.tokenAddress === tokenMint) {
                 logger.log(
-                  `Successfully processed token ${tokenMint} from transaction ${signatureInfo.signature}`
+                  `Successfully processed token ${tokenMint} from transaction ${signatureInfo.signature}`,
                 );
                 return {
                   found: true,
@@ -710,21 +708,21 @@ export async function monitorSpecificToken(
                 };
               } else {
                 logger.log(
-                  `Found a token in transaction, but not the one we're looking for. Found ${result.tokenAddress} vs ${tokenMint}`
+                  `Found a token in transaction, but not the one we're looking for. Found ${result.tokenAddress} vs ${tokenMint}`,
                 );
               }
             }
           } catch (error) {
             logger.error(
               `Error processing logs for transaction ${signatureInfo.signature}:`,
-              error
+              error,
             );
           }
         }
       } catch (txError) {
         logger.error(
           `Error fetching transaction ${signatureInfo.signature}:`,
-          txError
+          txError,
         );
       }
     }
@@ -733,7 +731,7 @@ export async function monitorSpecificToken(
     // But we should still create a basic record for it
     try {
       logger.log(
-        `No matching transaction found, but creating basic token record for ${tokenMint}`
+        `No matching transaction found, but creating basic token record for ${tokenMint}`,
       );
 
       // Create a basic token record with all required fields
@@ -791,7 +789,7 @@ export async function monitorTokenEvents(env: Env): Promise<void> {
     const connection = new Connection(
       env.NETWORK === "devnet"
         ? env.DEVNET_SOLANA_RPC_URL
-        : env.MAINNET_SOLANA_RPC_URL
+        : env.MAINNET_SOLANA_RPC_URL,
     );
 
     // Validate program ID is a proper base58 string before creating PublicKey
@@ -803,11 +801,11 @@ export async function monitorTokenEvents(env: Env): Promise<void> {
     // Check if program ID is a valid base58 string
     const isValidBase58 =
       /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
-        env.PROGRAM_ID
+        env.PROGRAM_ID,
       );
     if (!isValidBase58) {
       logger.error(
-        `Invalid PROGRAM_ID format: ${env.PROGRAM_ID} - contains non-base58 characters`
+        `Invalid PROGRAM_ID format: ${env.PROGRAM_ID} - contains non-base58 characters`,
       );
       return;
     }
@@ -818,7 +816,7 @@ export async function monitorTokenEvents(env: Env): Promise<void> {
       programId = new PublicKey(env.PROGRAM_ID);
     } catch (error) {
       logger.error(
-        `Invalid PROGRAM_ID: ${env.PROGRAM_ID} - ${error instanceof Error ? error.message : "Unknown error"}`
+        `Invalid PROGRAM_ID: ${env.PROGRAM_ID} - ${error instanceof Error ? error.message : "Unknown error"}`,
       );
       return;
     }
@@ -828,7 +826,7 @@ export async function monitorTokenEvents(env: Env): Promise<void> {
       const signatures = await connection.getSignaturesForAddress(
         programId,
         { limit: 10 }, // Adjust limit as needed
-        "confirmed"
+        "confirmed",
       );
 
       // Process signatures from newest to oldest
@@ -857,12 +855,12 @@ export async function monitorTokenEvents(env: Env): Promise<void> {
             env,
             logs,
             signatureInfo.signature,
-            wsClient
+            wsClient,
           );
         } catch (txError) {
           logger.error(
             `Error processing transaction ${signatureInfo.signature}:`,
-            txError
+            txError,
           );
           // Continue with next signature
         }
@@ -872,7 +870,7 @@ export async function monitorTokenEvents(env: Env): Promise<void> {
     } catch (sigError) {
       logger.error(
         `Error getting signatures for program ${env.PROGRAM_ID}:`,
-        sigError
+        sigError,
       );
     }
   } catch (error) {

@@ -113,7 +113,7 @@ export default function Trade({ token }: { token: IToken }) {
 
   // Card styling for the right column items
   const cardStyle = "mb-4";
-  
+
   return (
     <div className="relative p-4 pt-0">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
@@ -125,8 +125,8 @@ export default function Trade({ token }: { token: IToken }) {
               onClick={() => setIsTokenSelling(false)}
               className="flex items-center justify-center w-1/2 translate-x-[0.12em]"
             >
-              <img 
-                src={!isTokenSelling ? "/token/buyon.svg" : "/token/buyoff.svg"} 
+              <img
+                src={!isTokenSelling ? "/token/buyon.svg" : "/token/buyoff.svg"}
                 alt="Buy"
                 className="w-full"
               />
@@ -135,11 +135,12 @@ export default function Trade({ token }: { token: IToken }) {
               onClick={() => setIsTokenSelling(true)}
               className="flex items-center justify-center w-1/2 translate-x-[-0.12em]"
             >
-              <img 
-                src={isTokenSelling ? "/token/sellon.svg" : "/token/selloff.svg"} 
+              <img
+                src={
+                  isTokenSelling ? "/token/sellon.svg" : "/token/selloff.svg"
+                }
                 alt="Sell"
                 className="w-full"
-
               />
             </button>
           </div>
@@ -167,7 +168,7 @@ export default function Trade({ token }: { token: IToken }) {
                   <TokenDisplay token={token} isSolana={!isTokenSelling} />
                 </div>
               </div>
-              {isTokenSelling &&
+              {isTokenSelling && (
                 <div className="flex items-center justify-end gap-2">
                   <Balance
                     token={token}
@@ -176,25 +177,25 @@ export default function Trade({ token }: { token: IToken }) {
                     balance={isTokenSelling ? tokenBalance : solBalance}
                   />
                 </div>
-              }
+              )}
             </div>
 
             {/* Buying */}
-                <div className="flex items-center p-4 gap-2 justify-between text-sm font-dm-mono text-autofun-text-secondary w-full">
-                  <span>Min Received:</span>
-                  <span>
-                    <span className="uppercase flex items-center">
-                    {displayMinReceived}
-                      <SkeletonImage
-                        src={isTokenSelling ? "/solana.png" : token?.image || ""}
-                        alt={isTokenSelling ? "SOL" : token?.name || "token"}
-                        className="rounded-full size-4 mr-1"
-                      />
-                      {isTokenSelling ? "SOL" : token?.ticker}
-                    </span>
-                  </span>
-                </div>
+            <div className="flex items-center p-4 gap-2 justify-between text-sm font-dm-mono text-autofun-text-secondary w-full">
+              <span>Min Received:</span>
+              <span>
+                <span className="uppercase flex items-center">
+                  {displayMinReceived}
+                  <SkeletonImage
+                    src={isTokenSelling ? "/solana.png" : token?.image || ""}
+                    alt={isTokenSelling ? "SOL" : token?.name || "token"}
+                    className="rounded-full size-4 mr-1"
+                  />
+                  {isTokenSelling ? "SOL" : token?.ticker}
+                </span>
+              </span>
             </div>
+          </div>
 
           <div
             className={twMerge([
@@ -210,7 +211,7 @@ export default function Trade({ token }: { token: IToken }) {
               </p>
             </div>
           </div>
-          
+
           {/* Swap Button - Now in the left column below Min Received */}
           <div className="flex justify-center items-center">
             <button
@@ -225,7 +226,9 @@ export default function Trade({ token }: { token: IToken }) {
               onClick={onSwap}
             >
               <img
-                src={isExecutingSwap ? "/token/swapping.svg" : "/token/swapup.svg"}
+                src={
+                  isExecutingSwap ? "/token/swapping.svg" : "/token/swapup.svg"
+                }
                 alt="Generate"
                 className="w-full"
                 onMouseDown={(e) => {
@@ -254,8 +257,10 @@ export default function Trade({ token }: { token: IToken }) {
           {/* Slippage Input */}
           <div className={cardStyle}>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">Slippage:</span>
-              <div className="flex items-center">
+              <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                Slippage:
+              </span>
+              <div className="relative flex items-center">
                 <input
                   type="number"
                   min="0.1"
@@ -263,9 +268,11 @@ export default function Trade({ token }: { token: IToken }) {
                   step="0.1"
                   value={slippage}
                   onChange={(e) => setSlippage(Number(e.target.value))}
-                  className="w-16 py-1 px-2 rounded bg-transparent border border-autofun-text-secondary font-dm-mono text-autofun-text-secondary text-right"
+                  className="w-16 py-1 pl-2 pr-6 bg-[#1a1a1a] border-b border-white/50 hover:border-white focus:border-white font-dm-mono text-autofun-text-secondary text-right"
                 />
-                <span className="text-sm font-dm-mono text-autofun-text-secondary ml-1">%</span>
+                <span className="absolute right-2 text-sm font-dm-mono text-autofun-text-secondary">
+                  %
+                </span>
               </div>
             </div>
           </div>
@@ -273,13 +280,17 @@ export default function Trade({ token }: { token: IToken }) {
           {/* Balance and Value */}
           <div className={cardStyle}>
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">Balance:</span>
+              <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                Balance:
+              </span>
               <span className="text-sm font-dm-mono text-autofun-text-secondary">
                 {formatNumber(tokenBalance, false, true)} {token?.ticker}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">Value:</span>
+              <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                Value:
+              </span>
               <span className="text-sm font-dm-mono text-autofun-text-secondary">
                 {formatNumber(tokenBalance * currentPrice, false, true)} SOL
               </span>
@@ -289,31 +300,34 @@ export default function Trade({ token }: { token: IToken }) {
           {/* Bonding Curve Progress */}
           <div className={cardStyle}>
             <div className="mb-1">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">Progress:</span>
+              <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                Progress:
+              </span>
             </div>
             <div className="w-full bg-gray-700 rounded-full h-2.5">
-              <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${Math.min((token?.reserveAmount || 0) / 1000000 * 100, 100)}%` }}></div>
+              <div
+                className="bg-blue-600 h-2.5 rounded-full"
+                style={{
+                  width: `${Math.min(((token?.reserveAmount || 0) / 1000000) * 100, 100)}%`,
+                }}
+              ></div>
             </div>
             <div className="flex justify-between mt-1">
-              <span className="text-xs font-dm-mono text-autofun-text-secondary">0%</span>
-              <span className="text-xs font-dm-mono text-autofun-text-secondary">100%</span>
-            </div>
-          </div>
-
-          {/* Graduate this Coin */}
-          <div className={cardStyle}>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">Graduate this Coin:</span>
-              <button className="px-3 py-1 bg-autofun-background-action-primary rounded-md text-xs font-dm-mono">
-                Request
-              </button>
+              <span className="text-xs font-dm-mono text-autofun-text-secondary">
+                0%
+              </span>
+              <span className="text-xs font-dm-mono text-autofun-text-secondary">
+                100%
+              </span>
             </div>
           </div>
 
           {/* Price USD */}
           <div className={cardStyle}>
             <div className="flex justify-between items-center">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">Price USD:</span>
+              <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                Price USD:
+              </span>
               <span className="text-sm font-dm-mono text-autofun-text-secondary">
                 ${formatNumber(tokenPriceUSD * solanaPrice, true, false)}
               </span>

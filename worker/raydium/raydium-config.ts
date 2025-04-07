@@ -32,12 +32,12 @@ export const initSdk = async (params: {
 }) => {
   const connection = new Connection(getRpcUrl(params.env));
   const owner: Keypair = Keypair.fromSecretKey(
-    Uint8Array.from(JSON.parse(params.env.WALLET_PRIVATE_KEY!))
+    Uint8Array.from(JSON.parse(params.env.WALLET_PRIVATE_KEY!)),
   );
 
   if (raydium) return raydium;
   logger.log(
-    `Raydium SDK: Connected to RPC ${connection.rpcEndpoint} in ${cluster}`
+    `Raydium SDK: Connected to RPC ${connection.rpcEndpoint} in ${cluster}`,
   );
   raydium = await Raydium.load({
     owner: params?.owner || owner,
@@ -54,16 +54,16 @@ export const initSdk = async (params: {
 export const fetchTokenAccountData = async (env: Env) => {
   const connection = new Connection(getRpcUrl(env));
   const owner: Keypair = Keypair.fromSecretKey(
-    Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY!))
+    Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY!)),
   );
   const solAccountResp = await connection.getAccountInfo(owner.publicKey);
   const tokenAccountResp = await connection.getTokenAccountsByOwner(
     owner.publicKey,
-    { programId: TOKEN_PROGRAM_ID }
+    { programId: TOKEN_PROGRAM_ID },
   );
   const token2022Req = await connection.getTokenAccountsByOwner(
     owner.publicKey,
-    { programId: TOKEN_2022_PROGRAM_ID }
+    { programId: TOKEN_2022_PROGRAM_ID },
   );
   const tokenAccountData = parseTokenAccountResp({
     owner: owner.publicKey,

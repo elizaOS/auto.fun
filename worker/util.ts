@@ -439,19 +439,22 @@ export const withdrawTx = async (
 export const getRpcUrl = (env: any) => {
   // Extract the base URL and ensure we use the correct API key
   let baseUrl;
-  
+
   if (env.NETWORK === "devnet") {
     baseUrl = "https://devnet.helius-rpc.com/";
   } else {
     // Default to mainnet
     baseUrl = "https://mainnet.helius-rpc.com/";
   }
-  
+
   // Use API key from environment, ensuring it's applied correctly
-  const apiKey = env.NETWORK === "devnet" 
-    ? (env.DEVNET_SOLANA_RPC_URL?.split("api-key=")[1] || "7f068738-8b88-4a91-b2a9-99b00f716717")
-    : (env.MAINNET_SOLANA_RPC_URL?.split("api-key=")[1] || "7f068738-8b88-4a91-b2a9-99b00f716717");
-  
+  const apiKey =
+    env.NETWORK === "devnet"
+      ? env.DEVNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
+        "7f068738-8b88-4a91-b2a9-99b00f716717"
+      : env.MAINNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
+        "7f068738-8b88-4a91-b2a9-99b00f716717";
+
   const result = `${baseUrl}?api-key=${apiKey}`;
 
   logger.log(
@@ -464,10 +467,11 @@ export const getRpcUrl = (env: any) => {
 export const getMainnetRpcUrl = (env: any) => {
   // Extract base URL and API key
   const baseUrl = "https://mainnet.helius-rpc.com/";
-  const apiKey = env.MAINNET_SOLANA_RPC_URL?.split("api-key=")[1] || 
-                env.VITE_MAINNET_RPC_URL?.split("api-key=")[1] || 
-                "7f068738-8b88-4a91-b2a9-99b00f716717";
-  
+  const apiKey =
+    env.MAINNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
+    env.VITE_MAINNET_RPC_URL?.split("api-key=")[1] ||
+    "7f068738-8b88-4a91-b2a9-99b00f716717";
+
   const mainnetUrl = `${baseUrl}?api-key=${apiKey}`;
 
   logger.log(`getMainnetRpcUrl returning: ${mainnetUrl}`);
@@ -478,10 +482,11 @@ export const getMainnetRpcUrl = (env: any) => {
 export const getDevnetRpcUrl = (env: any) => {
   // Extract base URL and API key
   const baseUrl = "https://devnet.helius-rpc.com/";
-  const apiKey = env.DEVNET_SOLANA_RPC_URL?.split("api-key=")[1] || 
-                env.VITE_DEVNET_RPC_URL?.split("api-key=")[1] || 
-                "7f068738-8b88-4a91-b2a9-99b00f716717";
-  
+  const apiKey =
+    env.DEVNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
+    env.VITE_DEVNET_RPC_URL?.split("api-key=")[1] ||
+    "7f068738-8b88-4a91-b2a9-99b00f716717";
+
   const devnetUrl = `${baseUrl}?api-key=${apiKey}`;
 
   logger.log(`getDevnetRpcUrl returning: ${devnetUrl}`);
@@ -806,10 +811,10 @@ export async function updateHoldersCache(env: Env, mint: string) {
     try {
       // Get the WebSocket client
       const wsClient = getWebSocketClient(env);
-      
+
       // Emit event to notify of holder update
       await wsClient.emit(`token-${mint}`, "newHolder", holderRecords);
-      
+
       logger.log(`Emitted holders update for token ${mint}`);
     } catch (wsError) {
       // Don't fail if WebSocket fails
