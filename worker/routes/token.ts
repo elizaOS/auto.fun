@@ -159,9 +159,10 @@ tokenRouter.post("/upload", async (c) => {
     });
     logger.log(`[/upload - Image Only] Image successfully uploaded to R2.`);
 
-    const assetBaseUrl =
-      c.env.ASSET_URL || c.env.VITE_API_URL || c.req.url.split("/api/")[0];
-    const imageUrl = `${assetBaseUrl}/api/image/${imageFilename}`;
+    // need to move this to a env for public r2 url. When an object is put we can assume the url that should be saved in D1.
+    const imageUrl = c.env.LOCAL_DEV === "true"
+      ? `${c.env.VITE_API_URL}/api/image/${imageFilename}`
+      : `https://pub-75e2227bb40747d9b8b21df85a33efa7.r2.dev/token-images/${imageFilename}`;
     logger.log(
       `[/upload - Image Only] Constructed public image URL: ${imageUrl}`,
     );
@@ -171,7 +172,7 @@ tokenRouter.post("/upload", async (c) => {
     );
     return c.json({
       success: true,
-      imageUrl: imageUrl, // Only return image URL
+      imageUrl: imageUrl,
     });
   } catch (error) {
     logger.error("[/upload - Image Only] Unexpected error:", error);
@@ -1908,14 +1909,13 @@ tokenRouter.post("/check-token", async (c) => {
       // If we have new image or metadata URLs, update the token
       if (
         (imageUrl || metadataUrl) &&
-        existingToken[0].image === "" &&
-        existingToken[0].url === ""
+        (existingToken[0].image === "" || existingToken[0].url === "" || imageUrl)
       ) {
         await db
           .update(tokens)
           .set({
-            image: imageUrl || "",
-            url: metadataUrl || "",
+            image: imageUrl || existingToken[0].image,
+            url: metadataUrl || existingToken[0].url,
             lastUpdated: new Date().toISOString(),
           })
           .where(eq(tokens.mint, tokenMint));
