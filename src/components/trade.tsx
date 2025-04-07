@@ -215,7 +215,6 @@ export default function Trade({ token }: { token: IToken }) {
           {/* Swap Button - Now in the left column below Min Received */}
           <div className="flex justify-center items-center">
             <button
-              className="mx-auto"
               disabled={
                 isDisabled ||
                 insufficientBalance ||
@@ -224,6 +223,7 @@ export default function Trade({ token }: { token: IToken }) {
                 sellingAmount === 0
               }
               onClick={onSwap}
+              className="w-full mx-2"
             >
               <img
                 src={
@@ -329,7 +329,7 @@ export default function Trade({ token }: { token: IToken }) {
                 Price USD:
               </span>
               <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                ${formatNumber(tokenPriceUSD * solanaPrice, true, false)}
+                {formatNumber(tokenPriceUSD * solanaPrice, true, false)}
               </span>
             </div>
           </div>

@@ -42,7 +42,22 @@ export default function Page() {
   const { publicKey } = useWallet();
   const normalizedWallet = publicKey?.toString();
   const { solPrice: contextSolPrice } = useSolPriceContext();
-  const [activeTab, setActiveTab] = useState<"chart" | "ai">("chart");
+  
+  // Load active tab from localStorage or default to "chart"
+  const [activeTab, setActiveTab] = useState<"chart" | "ai">(() => {
+    if (typeof window !== 'undefined') {
+      const savedTab = localStorage.getItem(`token-tab-${address}`);
+      return (savedTab === "chart" || savedTab === "ai") ? savedTab : "chart";
+    }
+    return "chart";
+  });
+
+  // Save active tab to localStorage when it changes
+  useEffect(() => {
+    if (address) {
+      localStorage.setItem(`token-tab-${address}`, activeTab);
+    }
+  }, [activeTab, address]);
 
   // Fetch token details from API
   const tokenQuery = useQuery({

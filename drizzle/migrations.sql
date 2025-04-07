@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS tokens (
   inference_count INTEGER,
   last_volume_reset INTEGER,
   last_price_update INTEGER,
+  migration TEXT,
   holder_count INTEGER,
   tx_id TEXT NOT NULL
 );
