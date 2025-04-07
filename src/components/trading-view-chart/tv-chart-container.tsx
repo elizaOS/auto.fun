@@ -26,35 +26,6 @@ export const TVChartContainer = ({
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const tvWidgetRef = useRef<IChartingLibraryWidget | null>(null);
 
-  // Function to handle chart refresh events
-  const handleChartRefresh = (event: CustomEvent) => {
-    const { tokenMint } = event.detail;
-
-    // Only refresh if this is our token
-    if (tokenMint === token && tvWidgetRef.current) {
-      console.log(`Refreshing chart data for ${token}`);
-
-      // Reset the data on the chart
-      const chart = tvWidgetRef.current.activeChart();
-      chart.resetData();
-    }
-  };
-
-  useEffect(() => {
-    // Listen for chart refresh events
-    document.addEventListener(
-      "refresh-chart-data",
-      handleChartRefresh as EventListener,
-    );
-
-    return () => {
-      document.removeEventListener(
-        "refresh-chart-data",
-        handleChartRefresh as EventListener,
-      );
-    };
-  }, [token]);
-
   useEffect(() => {
     if (!chartContainerRef.current) {
       return () => {};
@@ -74,8 +45,8 @@ export const TVChartContainer = ({
         container: elem,
         library_path: `${location.protocol}//${location.host}/libraries/charting_library/`,
         loading_screen: {
-          backgroundColor: "#0a0a0a",
-          foregroundColor: "#0a0a0a",
+          backgroundColor: "#171717",
+          foregroundColor: "#171717",
         },
         enabled_features: [
           ...enabledFeatures,
@@ -98,11 +69,11 @@ export const TVChartContainer = ({
         fullscreen: false,
         autosize: true,
         custom_css_url: "/tradingview-chart.css",
-        toolbar_bg: "#0a0a0a",
+        toolbar_bg: "#171717",
         overrides: {
           ...chartOverrides,
           // Background and Grid
-          "paneProperties.background": "#0a0a0a",
+          "paneProperties.background": "#171717",
           "paneProperties.backgroundType": "solid",
           "paneProperties.vertGridProperties.color": "#2e2e2e",
           "paneProperties.horzGridProperties.color": "#2e2e2e",
@@ -111,7 +82,7 @@ export const TVChartContainer = ({
           "paneProperties.leftMargin": 5,
 
           // Scales
-          "scalesProperties.backgroundColor": "#0a0a0a",
+          "scalesProperties.backgroundColor": "#171717",
           "scalesProperties.lineColor": "#2e2e2e",
           "scalesProperties.textColor": "#8C8C8C",
           "scalesProperties.fontSize": 11,
@@ -144,10 +115,10 @@ export const TVChartContainer = ({
           "volume.transparency": 50,
 
           // Header
-          "header_widget.background": "#0a0a0a",
+          "header_widget.background": "#171717",
           "header_widget.style.color": "#8C8C8C",
           "header_widget.buttons.color": "#8C8C8C",
-          "header_widget.buttons.backgroundColor": "#0a0a0a",
+          "header_widget.buttons.backgroundColor": "#171717",
           "header_widget.buttons.borderColor": "#262626",
           "header_widget.buttons.fontSize": 11,
         },
@@ -167,10 +138,10 @@ export const TVChartContainer = ({
         }
       };
     }
-  }, [name, pairIndex, token]);
+  }, [name, pairIndex]);
 
   return (
-    <div className="relative h-full w-full bg-autofun-background-primary overflow-hidden min-h-[50vh]">
+    <div className="relative h-full w-full bg-[#171717] rounded-xl overflow-hidden">
       <div ref={chartContainerRef} className={twMerge("h-full w-full")} />
     </div>
   );
