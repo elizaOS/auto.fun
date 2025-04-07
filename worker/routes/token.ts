@@ -5178,12 +5178,30 @@ tokenRouter.post("/vanity-keypair", async (c) => {
         logger.log(
           `[POST /vanity-keypair] Sample of up to 5 keypairs from database: ${JSON.stringify(allKeypairs)}`,
         );
-      } else {
-        logger.warn(
-          "[POST /vanity-keypair] No unused vanity keypairs available (confirmed by count)",
-        );
-        return c.json({ error: "No vanity keypairs available" }, 503);
       }
+
+      // Generate a new keypair as fallback
+      logger.log("[POST /vanity-keypair] Falling back to generating a new keypair");
+      const generatedKeypair = Keypair.generate();
+      const newKeypair = {
+        id: generatedKeypair.publicKey.toString(),
+        address: generatedKeypair.publicKey.toString(),
+        secretKey: Buffer.from(generatedKeypair.secretKey).toString('base64'),
+        createdAt: Math.floor(Date.now() / 1000).toString(),
+        used: 1 // Mark as used immediately since we're using it now
+      };
+
+      // Insert the generated keypair
+      await db.insert(vanityKeypairs).values(newKeypair);
+      logger.log(`[POST /vanity-keypair] Inserted new generated keypair`);
+
+      // Return the generated keypair
+      return c.json({
+        id: newKeypair.id,
+        publicKey: newKeypair.address,
+        secretKey: Array.from(generatedKeypair.secretKey),
+        message: "Successfully generated a new keypair",
+      });
     }
 
     const keypair = keypairs[0];
