@@ -15,6 +15,7 @@ import { useSlippage } from "./use-slippage";
 import { useTransactionSpeed } from "./use-transaction-speed";
 import { useMevProtection } from "./use-mev-protection";
 import { getConfigAccount } from "./use-config-account";
+import { toast } from "react-toastify";
 
 interface SwapParams {
   style: "buy" | "sell";
@@ -182,30 +183,27 @@ export const useSwap = () => {
         console.error("Failed to send through Jito:", error);
         // Fallback to regular transaction sending if Jito fails
         const signature = await wallet.sendTransaction(versionedTx, connection);
-        const confirmation = await connection.confirmTransaction({
-          signature,
-          blockhash: versionedTx.message.recentBlockhash,
-          lastValidBlockHeight,
-        });
-        return { signature, confirmation };
+        console.log("Transaction sent (fallback), signature:", signature);
+        return { signature, confirmation: null };
       }
     }
 
     // Regular transaction sending if protection is not enabled
     const signature = await wallet.sendTransaction(versionedTx, connection);
-    const confirmation = await connection.confirmTransaction({
-      signature,
-      blockhash: versionedTx.message.recentBlockhash,
-      lastValidBlockHeight,
-    });
-    return { signature, confirmation };
+    console.log("Transaction sent, signature:", signature);
+    return { signature, confirmation: null };
   };
 
   return {
     executeSwap: async (...params: Parameters<typeof executeSwap>) => {
       try {
         setIsExecuting(true);
-        await executeSwap(...params);
+        const { signature } = await executeSwap(...params);
+        if (signature) {
+          toast.info(`Transaction sent: ${signature.slice(0, 8)}...`);
+        } else {
+          toast.warning("Transaction potentially sent, but signature was not received.");
+        }
       } finally {
         setIsExecuting(false);
       }

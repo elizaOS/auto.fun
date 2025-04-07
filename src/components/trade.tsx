@@ -7,14 +7,10 @@ import { fetchTokenMarketMetrics } from "@/utils/blockchain";
 import { useProgram } from "@/utils/program";
 import { getSwapAmount } from "@/utils/swapUtils";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowUpDown, Cog, Info, Wallet } from "lucide-react";
-import { Fragment, useState } from "react";
+import { Info, Wallet } from "lucide-react";
+import { useState } from "react";
 import { twMerge } from "tailwind-merge";
-import Button from "./button";
-import ConfigDialog from "./config-dialog";
-import Loader from "./loader";
 import SkeletonImage from "./skeleton-image";
-import { toast } from "react-toastify";
 
 export default function Trade({ token }: { token: IToken }) {
   const { solPrice: contextSolPrice } = useSolPriceContext();
@@ -22,6 +18,7 @@ export default function Trade({ token }: { token: IToken }) {
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
     undefined,
   );
+  const [slippage, setSlippage] = useState<number>(2);
 
   // Fetch real-time blockchain metrics for this token
   const metricsQuery = useQuery({
@@ -104,6 +101,12 @@ export default function Trade({ token }: { token: IToken }) {
     ? convertedAmount
     : formatNumber(convertedAmount, false, true);
 
+  // Calculate minimum amount received with slippage
+  const minReceived = convertedAmount * (1 - slippage / 100);
+  const displayMinReceived = isTokenSelling
+    ? formatNumber(minReceived, false, true)
+    : formatNumber(minReceived, false, true);
+
   const onSwap = async () => {
     if (!sellingAmount) return;
 
@@ -113,222 +116,215 @@ export default function Trade({ token }: { token: IToken }) {
       tokenAddress: token.mint,
       token,
     });
-
-    toast.success("Trade executed");
   };
 
+  // Card styling for the right column items
+  const cardStyle = "mb-4";
+  
   return (
     <div className="relative p-4 pt-0">
-      {isExecutingSwap && <Loader />}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col">
-          {/* Selling */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
+        {/* LEFT COLUMN - Controls and Swap - Takes 3/5 of the space on md screens */}
+        <div className="col-span-1 md:col-span-1 lg:col-span-1">
+          {/* BUY/SELL Toggle Buttons */}
+          <div className="flex justify-between items-end w-full">
+            <button
+              onClick={() => setIsTokenSelling(false)}
+              className="flex items-center justify-center w-1/2 translate-x-[0.12em]"
+            >
+              <img 
+                src={!isTokenSelling ? "/token/buyon.svg" : "/token/buyoff.svg"} 
+                alt="Buy"
+                className="w-full"
+              />
+            </button>
+            <button
+              onClick={() => setIsTokenSelling(true)}
+              className="flex items-center justify-center w-1/2 translate-x-[-0.12em]"
+            >
+              <img 
+                src={isTokenSelling ? "/token/sellon.svg" : "/token/selloff.svg"} 
+                alt="Sell"
+                className="w-full"
+
+              />
+            </button>
+          </div>
+
+          <div className="flex flex-col mt-4">
+            {/* Selling */}
+            <div
+              className={twMerge([
+                "flex flex-col py-3 px-4 gap-[18px] transition-colors duration-200",
+                error ? "border-autofun-text-error" : "",
+              ])}
+            >
+              <div className="flex justify-between gap-3">
+                <input
+                  className="text-4xl truncate font-dm-mono text-autofun-text-secondary w-3/4 outline-none"
+                  min={0}
+                  type="number"
+                  onChange={({ target }) =>
+                    handleSellAmountChange(Number(target.value))
+                  }
+                  value={sellingAmount}
+                  placeholder="0"
+                />
+                <div className="w-fit shrink-0">
+                  <TokenDisplay token={token} isSolana={!isTokenSelling} />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <Balance
+                  token={token}
+                  isSolana={!isTokenSelling}
+                  setSellingAmount={setSellingAmount}
+                  balance={isTokenSelling ? tokenBalance : solBalance}
+                />
+              </div>
+            </div>
+
+            {/* Buying */}
+                <div className="flex items-center p-4 gap-2 justify-between text-sm font-dm-mono text-autofun-text-secondary w-full">
+                  <span>Min Received:</span>
+                  <span>
+                    <span className="uppercase flex items-center">
+                    {displayMinReceived}
+                      <SkeletonImage
+                        src={isTokenSelling ? "/solana.png" : token?.image || ""}
+                        alt={isTokenSelling ? "SOL" : token?.name || "token"}
+                        className="rounded-full size-4 mr-1"
+                      />
+                      {isTokenSelling ? "SOL" : token?.ticker}
+                    </span>
+                  </span>
+                </div>
+            </div>
+
           <div
             className={twMerge([
-              "flex flex-col py-3 px-4 bg-autofun-background-input border gap-[18px] transition-colors duration-200",
-              error ? "border-autofun-text-error" : "",
+              "flex items-center gap-2 h-4 m-2 select-none",
+              insufficientBalance ? "block" : "hidden",
             ])}
           >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="text-base font-dm-mono text-autofun-text-primary select-none">
-                Selling
-              </span>
-              <div className="flex items-center gap-0.5 xl:ml-auto">
-                <Button
-                  size="small"
-                  variant="trade"
-                  onClick={() => handleSellAmountChange(0)}
-                >
-                  <span className="hidden sm:inline">Reset</span>
-                  <span className="sm:hidden">0</span>
-                </Button>
-                {isTokenSelling ? (
-                  <Fragment>
-                    <Button
-                      size="small"
-                      variant="trade"
-                      onClick={() => handlePercentage(25)}
-                    >
-                      25%
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="trade"
-                      onClick={() => handlePercentage(50)}
-                    >
-                      50%
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="trade"
-                      onClick={() => handlePercentage(100)}
-                    >
-                      100%
-                    </Button>
-                  </Fragment>
-                ) : (
-                  <Fragment>
-                    <Button
-                      size="small"
-                      variant="trade"
-                      onClick={() => handleSellAmountChange(0.5)}
-                    >
-                      0.5
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="trade"
-                      onClick={() => handleSellAmountChange(1)}
-                    >
-                      1
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="trade"
-                      onClick={() => handleSellAmountChange(5)}
-                    >
-                      5
-                    </Button>
-                  </Fragment>
-                )}
-                <ConfigDialog>
-                  <Button
-                    size="small"
-                    variant="trade"
-                    aria-label="config dialog"
-                  >
-                    <Cog />
-                  </Button>
-                </ConfigDialog>
-              </div>
-            </div>
-            <div className="flex justify-between gap-3">
-              <input
-                className="text-4xl truncate font-dm-mono text-autofun-text-secondary w-3/4 outline-none"
-                min={0}
-                type="number"
-                onChange={({ target }) =>
-                  handleSellAmountChange(Number(target.value))
-                }
-                value={sellingAmount}
-                placeholder="0"
-              />
-              <div className="w-fit shrink-0">
-                <TokenDisplay token={token} isSolana={!isTokenSelling} />
-              </div>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-dm-mono truncate text-autofun-text-secondary select-none">
-                {!isTokenSelling
-                  ? formatNumber(Number(sellingAmount || 0) * solanaPrice, true)
-                  : tokenPriceUSD
-                    ? formatNumber(
-                        Number(sellingAmount || 0) * tokenPriceUSD,
-                        true,
-                      )
-                    : formatNumber(0)}
-              </span>
-              <Balance
-                token={token}
-                isSolana={!isTokenSelling}
-                setSellingAmount={setSellingAmount}
-                balance={isTokenSelling ? tokenBalance : solBalance}
-              />
+            <div className="flex items-center gap-2">
+              <Info className="text-red-600 size-4" />
+              <p className="text-red-600 text-xs font-dm-mono">
+                Insufficient Funds: You have {balance.toFixed(4) || "0"}{" "}
+                {isTokenSelling ? token?.ticker : "SOL"}
+              </p>
             </div>
           </div>
-          <div className="h-[10px] z-20 relative">
-            <div
-              onClick={() => setIsTokenSelling(!isTokenSelling)}
-              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 size-10 rounded-full border-3 cursor-pointer select-none border-autofun-background-card bg-autofun-background-action-primary inline-flex"
+          
+          {/* Swap Button - Now in the left column below Min Received */}
+          <div className="flex justify-center items-center">
+            <button
+              className="mx-auto"
+              disabled={
+                isDisabled ||
+                insufficientBalance ||
+                isExecutingSwap ||
+                !sellingAmount ||
+                sellingAmount === 0
+              }
+              onClick={onSwap}
             >
-              <ArrowUpDown className="m-auto size-3.5" />
-            </div>
-          </div>
-          {/* Buying */}
-          <div className="flex flex-col py-3 px-4 bg-autofun-background-input border gap-[18px]">
-            <span className="text-base font-dm-mono text-autofun-text-primary select-none">
-              Buying
-            </span>
-            <div className="flex justify-between gap-3">
-              <input
-                className="text-4xl truncate font-dm-mono text-autofun-text-secondary w-3/4 outline-none"
-                readOnly
-                value={displayConvertedAmount}
-                placeholder="0"
+              <img
+                src={isExecutingSwap ? "/token/swapping.svg" : "/token/swapup.svg"}
+                alt="Generate"
+                className="w-full"
+                onMouseDown={(e) => {
+                  if (!isExecutingSwap) {
+                    (e.target as HTMLImageElement).src = "/token/swapdown.svg";
+                  }
+                }}
+                onMouseUp={(e) => {
+                  if (!isExecutingSwap) {
+                    (e.target as HTMLImageElement).src = "/token/swapup.svg";
+                  }
+                }}
+                onDragStart={(e) => e.preventDefault()}
+                onMouseOut={(e) => {
+                  if (!isExecutingSwap) {
+                    (e.target as HTMLImageElement).src = "/token/swapup.svg";
+                  }
+                }}
               />
+            </button>
+          </div>
+        </div>
 
-              <TokenDisplay token={token} isSolana={isTokenSelling} />
-            </div>
+        {/* RIGHT COLUMN - Advanced Settings & Info - Takes 2/5 of the space on md screens */}
+        <div className="col-span-1 md:col-span-1 lg:col-span-1">
+          {/* Slippage Input */}
+          <div className={cardStyle}>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-dm-mono truncate text-autofun-text-secondary select-none">
-                {sellingAmount && solanaPrice && !isTokenSelling
-                  ? formatNumber(
-                      (Number(sellingAmount) / currentPrice) * tokenPriceUSD,
-                      true,
-                    )
-                  : sellingAmount && isTokenSelling && tokenPriceUSD
-                    ? formatNumber(
-                        Number(sellingAmount) * currentPrice * solanaPrice,
-                        true,
-                      )
-                    : "$0.00"}
+              <span className="text-sm font-dm-mono text-autofun-text-secondary">Slippage:</span>
+              <div className="flex items-center">
+                <input
+                  type="number"
+                  min="0.1"
+                  max="100"
+                  step="0.1"
+                  value={slippage}
+                  onChange={(e) => setSlippage(Number(e.target.value))}
+                  className="w-16 py-1 px-2 rounded bg-transparent border border-autofun-text-secondary font-dm-mono text-autofun-text-secondary text-right"
+                />
+                <span className="text-sm font-dm-mono text-autofun-text-secondary ml-1">%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Balance and Value */}
+          <div className={cardStyle}>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-dm-mono text-autofun-text-secondary">Balance:</span>
+              <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                {formatNumber(tokenBalance, false, true)} {token?.ticker}
               </span>
-              <Balance
-                token={token}
-                isSolana={isTokenSelling}
-                balance={isTokenSelling ? solBalance : tokenBalance}
-              />
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-dm-mono text-autofun-text-secondary">Value:</span>
+              <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                {formatNumber(tokenBalance * currentPrice, false, true)} SOL
+              </span>
+            </div>
+          </div>
+
+          {/* Bonding Curve Progress */}
+          <div className={cardStyle}>
+            <div className="mb-1">
+              <span className="text-sm font-dm-mono text-autofun-text-secondary">Progress:</span>
+            </div>
+            <div className="w-full bg-gray-700 rounded-full h-2.5">
+              <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${Math.min((token?.reserveAmount || 0) / 1000000 * 100, 100)}%` }}></div>
+            </div>
+            <div className="flex justify-between mt-1">
+              <span className="text-xs font-dm-mono text-autofun-text-secondary">0%</span>
+              <span className="text-xs font-dm-mono text-autofun-text-secondary">100%</span>
+            </div>
+          </div>
+
+          {/* Graduate this Coin */}
+          <div className={cardStyle}>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-dm-mono text-autofun-text-secondary">Graduate this Coin:</span>
+              <button className="px-3 py-1 bg-autofun-background-action-primary rounded-md text-xs font-dm-mono">
+                Request
+              </button>
+            </div>
+          </div>
+
+          {/* Price USD */}
+          <div className={cardStyle}>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-dm-mono text-autofun-text-secondary">Price USD:</span>
+              <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                ${formatNumber(tokenPriceUSD * solanaPrice, true, false)}
+              </span>
             </div>
           </div>
         </div>
-
-        <div
-          className={twMerge([
-            "flex items-center gap-2 h-4 m-2 select-none",
-            insufficientBalance ? "block" : "hidden",
-          ])}
-        >
-          <div className="flex items-center gap-2">
-            <Info className="text-red-600 size-4" />
-            <p className="text-red-600 text-xs font-dm-mono">
-              Insufficient Funds: You have {balance.toFixed(4) || "0"}{" "}
-              {isTokenSelling ? token?.ticker : "SOL"}
-            </p>
-          </div>
-        </div>
-        <button
-          className="mx-auto"
-          disabled={
-            isDisabled ||
-            insufficientBalance ||
-            isExecutingSwap ||
-            !sellingAmount ||
-            sellingAmount === 0
-          }
-          onClick={onSwap}
-        >
-          <img
-            src={isExecutingSwap ? "/token/swapping.svg" : "/token/swapup.svg"}
-            alt="Generate"
-            className="h-32"
-            onMouseDown={(e) => {
-              if (!isExecutingSwap) {
-                (e.target as HTMLImageElement).src = "/token/swapdown.svg";
-              }
-            }}
-            onMouseUp={(e) => {
-              if (!isExecutingSwap) {
-                (e.target as HTMLImageElement).src = "/token/swapup.svg";
-              }
-            }}
-            onDragStart={(e) => e.preventDefault()}
-            onMouseOut={(e) => {
-              if (!isExecutingSwap) {
-                (e.target as HTMLImageElement).src = "/token/swapup.svg";
-              }
-            }}
-          />
-        </button>
       </div>
     </div>
   );
@@ -367,7 +363,7 @@ const Balance = ({
   balance: number;
 }) => {
   const formattedBalance = isSolana
-    ? formatNumber(balance, true, true)
+    ? formatNumber(balance, false, true)
     : formatNumber(balance, undefined, true);
 
   return (

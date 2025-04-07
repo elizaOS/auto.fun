@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { getSocket } from "@/utils/socket";
 import { usePagination } from "./use-pagination";
 import { fetchTokenTransactions } from "@/utils/blockchain";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const TransactionSchema = z
   .object({
@@ -30,7 +30,7 @@ export type Transaction = z.infer<typeof TransactionSchema>;
 
 export const useTransactions = ({ tokenId }: { tokenId: string }) => {
   const pageSize = 100;
-  const [blockchainSwaps, setBlockchainSwaps] = useState<Transaction[]>([]);
+  const queryClient = useQueryClient();
   
   // Fetch directly from blockchain
   const blockchainQuery = useQuery({
@@ -42,9 +42,7 @@ export const useTransactions = ({ tokenId }: { tokenId: string }) => {
         
         if (result.swaps && result.swaps.length > 0) {
           console.log(`Found ${result.swaps.length} swaps from blockchain`);
-          const parsedSwaps = result.swaps.map(swap => TransactionSchema.parse(swap));
-          setBlockchainSwaps(parsedSwaps);
-          return parsedSwaps;
+          return result.swaps.map(swap => TransactionSchema.parse(swap));
         }
         
         console.log(`No blockchain swaps found for ${tokenId}`);
@@ -77,8 +75,15 @@ export const useTransactions = ({ tokenId }: { tokenId: string }) => {
 
         if (pagination.currentPage !== 1) return;
 
-        // Add to both blockchain swaps and pagination items
-        setBlockchainSwaps(items => [newTransaction, ...items].slice(0, pageSize));
+        // Update React Query cache with new transaction
+        queryClient.setQueryData(["blockchain-swaps", tokenId], (oldData: Transaction[] | undefined) => {
+          if (oldData && oldData.length > 0) {
+            return [newTransaction, ...oldData].slice(0, pageSize);
+          }
+          return oldData;
+        });
+
+        // Also update the pagination items for the API fallback
         pagination.setItems((items) =>
           [newTransaction, ...items].slice(0, pageSize)
         );
@@ -90,7 +95,7 @@ export const useTransactions = ({ tokenId }: { tokenId: string }) => {
     return () => {
       socket.off("newSwap");
     };
-  }, [pagination]);
+  }, [pagination, tokenId, queryClient]);
 
   // Use blockchain data if available, otherwise fallback to API data
   const items = blockchainQuery.data && blockchainQuery.data.length > 0 

@@ -487,7 +487,7 @@ export default function Page() {
           {/* Bonding Curve */}
           <div className="p-4 flex flex-col gap-3.5">
             <div className="flex justify-between gap-3.5 items-center">
-              <p className="font-medium font-satoshi">Bonding Curve Progress</p>
+              <p className="font-medium font-satoshi">Progress</p>
               <InfoCircle className="size-5 text-autofun-text-secondary" />
             </div>
             <div>
@@ -495,8 +495,7 @@ export default function Page() {
             </div>
             {token?.status !== "migrated" ? (
               <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">
-                Graduate this coin to Raydium at{" "}
-                {formatNumber(graduationMarketCap, true)} market cap.{"\n"}
+                Graduate this coin at {formatNumber(graduationMarketCap, true)} market cap.{"\n"}
                 There is{" "}
                 {formatNumber(
                   (token?.reserveLamport - token?.virtualReserves) /
