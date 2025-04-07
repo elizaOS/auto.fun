@@ -953,12 +953,6 @@ async function processTokenInfo(
       uri = metadataExt.state.uri || "";
       updateAuthority = metadataExt.state.updateAuthority || null;
 
-      // Try to get image URL directly from extension if available
-      if (metadataExt.state.image) {
-        imageUrl = metadataExt.state.image;
-        logger.log(`[search-token] Found image URL in extension: ${imageUrl}`);
-      }
-
       logger.log(
         `[search-token] SPL-2022 metadata - Name: ${tokenName}, Symbol: ${tokenSymbol}`,
       );
@@ -969,8 +963,8 @@ async function processTokenInfo(
 
       foundMetadata = true;
 
-      // Now fetch additional metadata from the URI if available and we don't have an image URL yet
-      if (uri && !imageUrl) {
+      // Now fetch additional metadata from the URI if available
+      if (uri) {
         logger.log(`[search-token] Fetching metadata from URI: ${uri}`);
         const uriResponse = await fetch(uri);
 
