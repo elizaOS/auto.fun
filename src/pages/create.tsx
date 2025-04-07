@@ -3146,10 +3146,9 @@ export const Create = () => {
               type="submit"
               className="p-0 transition-colors cursor-pointer disabled:opacity-50 select-none"
               disabled={
-                !isFormValid ||
+                !canLaunch() ||
                 isSubmitting ||
-                !isAuthenticated ||
-                insufficientBalance
+                !isAuthenticated
               }
             >
               <img
