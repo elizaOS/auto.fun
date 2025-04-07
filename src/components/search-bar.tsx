@@ -113,6 +113,11 @@ const AgentSearchResult = ({
   imageUrl: string;
   onNavigate: () => void;
 }) => {
+  const handleCopyClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   return (
     <Link to={`/token/${id}`} onClick={onNavigate}>
       <div className="flex items-center gap-2 p-2 hover:bg-[#262626] transition-all duration-200 group cursor-pointer">
@@ -132,7 +137,9 @@ const AgentSearchResult = ({
             <div className="text-[#8C8C8C] text-xs group-hover:text-white/70 transition-colors">
               {id.slice(0, 3)}...{id.slice(-3)}
             </div>
-            <CopyButton text={id} />
+            <div onClick={handleCopyClick}>
+              <CopyButton text={id} />
+            </div>
           </div>
         </div>
         <div className="flex-shrink-0 ml-auto flex flex-col items-end">
