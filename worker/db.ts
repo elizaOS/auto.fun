@@ -50,6 +50,11 @@ export const tokens = sqliteTable("tokens", {
   lastPriceUpdate: text("last_price_update"),
   holderCount: integer("holder_count"),
   txId: text("tx_id"),
+  // New fields
+  migration: text("migration", { mode: "text" }), // object with withdraw, createPool, lockLP, finalize info
+  withdrawnAmounts: text("withdrawn_amounts", { mode: "text" }), // Expected to store { withdrawnSol, withdrawnTokens }
+  poolInfo: text("pool_info", { mode: "text" }), // Expected to store pool details (id, lpMint, baseVault, quoteVault)
+  lockLpTxId: text("lock_lp_tx_id", { mode: "text" }),
 });
 
 // Swap schema
@@ -117,10 +122,10 @@ export const personalities = sqliteTable("personalities", {
   name: text("name").notNull(),
   description: text("description"),
   createdAt: integer("created_at", { mode: "timestamp" }).default(
-    sql`CURRENT_TIMESTAMP`,
+    sql`CURRENT_TIMESTAMP`
   ),
   updatedAt: integer("updated_at", { mode: "timestamp" }).default(
-    sql`CURRENT_TIMESTAMP`,
+    sql`CURRENT_TIMESTAMP`
   ),
   deletedAt: integer("deleted_at", { mode: "timestamp" }),
 });

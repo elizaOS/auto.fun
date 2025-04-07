@@ -67,13 +67,6 @@ export default function Trade({ token }: { token: IToken }) {
     token?.status,
   );
 
-  // Set percentage buttons to use real balance
-  const handlePercentage = (percentage: number) => {
-    if (balance) {
-      handleSellAmountChange(balance * (percentage / 100));
-    }
-  };
-
   const [convertedAmount, setConvertedAmount] = useState(0);
 
   const handleSellAmountChange = async (amount: number) => {
@@ -97,9 +90,9 @@ export default function Trade({ token }: { token: IToken }) {
     setConvertedAmount(swapAmount / decimals);
   };
 
-  const displayConvertedAmount = isTokenSelling
-    ? convertedAmount
-    : formatNumber(convertedAmount, false, true);
+  // const displayConvertedAmount = isTokenSelling
+  //   ? convertedAmount
+  //   : formatNumber(convertedAmount, false, true);
 
   // Calculate minimum amount received with slippage
   const minReceived = convertedAmount * (1 - slippage / 100);
@@ -174,14 +167,16 @@ export default function Trade({ token }: { token: IToken }) {
                   <TokenDisplay token={token} isSolana={!isTokenSelling} />
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-2">
-                <Balance
-                  token={token}
-                  isSolana={!isTokenSelling}
-                  setSellingAmount={setSellingAmount}
-                  balance={isTokenSelling ? tokenBalance : solBalance}
-                />
-              </div>
+              {isTokenSelling &&
+                <div className="flex items-center justify-end gap-2">
+                  <Balance
+                    token={token}
+                    isSolana={!isTokenSelling}
+                    setSellingAmount={setSellingAmount}
+                    balance={isTokenSelling ? tokenBalance : solBalance}
+                  />
+                </div>
+              }
             </div>
 
             {/* Buying */}

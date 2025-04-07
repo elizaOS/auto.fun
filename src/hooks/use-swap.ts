@@ -1,21 +1,21 @@
+import { IToken } from "@/types";
+import { sendTxUsingJito } from "@/utils/jito";
+import { SEED_BONDING_CURVE, useProgram } from "@/utils/program";
+import { getJupiterSwapIx, swapIx } from "@/utils/swapUtils";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import {
+  ComputeBudgetProgram,
   Connection,
   PublicKey,
   Transaction,
   VersionedTransaction,
-  ComputeBudgetProgram,
 } from "@solana/web3.js";
-import { SEED_BONDING_CURVE, useProgram } from "@/utils/program";
-import { sendTxUsingJito } from "@/utils/jito";
 import { useState } from "react";
-import { IToken } from "@/types";
-import { getJupiterSwapIx, swapIx } from "@/utils/swapUtils";
+import { toast } from "react-toastify";
+import { getConfigAccount } from "./use-config-account";
+import { useMevProtection } from "./use-mev-protection";
 import { useSlippage } from "./use-slippage";
 import { useTransactionSpeed } from "./use-transaction-speed";
-import { useMevProtection } from "./use-mev-protection";
-import { getConfigAccount } from "./use-config-account";
-import { toast } from "react-toastify";
 
 interface SwapParams {
   style: "buy" | "sell";
@@ -155,7 +155,7 @@ export const useSwap = () => {
     });
 
     const tx = new Transaction().add(...(Array.isArray(ixs) ? ixs : [ixs]));
-    const { blockhash, lastValidBlockHeight } =
+    const { blockhash } =
       await connection.getLatestBlockhash();
     tx.feePayer = wallet.publicKey;
     tx.recentBlockhash = blockhash;

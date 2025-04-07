@@ -510,8 +510,8 @@ export default function Page() {
 
           {/* Price Display - Now below bonding curve */}
           <div className="py-4 px-3">
-            <div className="flex flex-col gap-3 divide-y divide-autofun-stroke-primary">
-              <div className="flex flex-col gap-1 items-center pb-3">
+            <div className="flex px-4 justify-between">
+              <div className="flex flex-col gap-1 items-center">
                 <span className="text-lg font-dm-mono text-autofun-text-secondary">
                   Price USD
                 </span>
@@ -521,7 +521,7 @@ export default function Page() {
                     : "$0.00"}
                 </span>
               </div>
-              <div className="flex flex-col gap-1 items-center pt-3">
+              <div className="flex flex-col gap-1 items-center">
                 <span className="text-lg font-dm-mono text-autofun-text-secondary">
                   Price SOL
                 </span>
