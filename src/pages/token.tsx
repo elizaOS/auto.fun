@@ -28,7 +28,7 @@ import {
   ExternalLink,
   Globe,
   Info as InfoCircle,
-  Paintbrush
+  Paintbrush,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
@@ -42,12 +42,12 @@ export default function Page() {
   const { publicKey } = useWallet();
   const normalizedWallet = publicKey?.toString();
   const { solPrice: contextSolPrice } = useSolPriceContext();
-  
+
   // Load active tab from localStorage or default to "chart"
   const [activeTab, setActiveTab] = useState<"chart" | "ai">(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const savedTab = localStorage.getItem(`token-tab-${address}`);
-      return (savedTab === "chart" || savedTab === "ai") ? savedTab : "chart";
+      return savedTab === "chart" || savedTab === "ai" ? savedTab : "chart";
     }
     return "chart";
   });

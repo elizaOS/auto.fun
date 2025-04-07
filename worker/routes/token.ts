@@ -5158,7 +5158,7 @@ tokenRouter.post("/vanity-keypair", async (c) => {
       .where(eq(vanityKeypairs.used, 0))
       .limit(1);
 
-    console.log("keypairs", keypairs)
+    console.log("keypairs", keypairs);
 
     if (!keypairs || keypairs.length === 0) {
       // Double-check if there's a discrepancy between count and actual query
@@ -5173,7 +5173,7 @@ tokenRouter.post("/vanity-keypair", async (c) => {
           .from(vanityKeypairs)
           .limit(5);
 
-        console.log("allKeypairs", allKeypairs)
+        console.log("allKeypairs", allKeypairs);
 
         logger.log(
           `[POST /vanity-keypair] Sample of up to 5 keypairs from database: ${JSON.stringify(allKeypairs)}`,
@@ -5185,7 +5185,20 @@ tokenRouter.post("/vanity-keypair", async (c) => {
       }
     }
 
-    const keypair = (keypairs && keypairs[0]) ?? Keypair.generate();
+    const keypair = keypairs[0];
+
+    console.log("**** *keypair is", keypair);
+
+    if (!keypair) {
+      // generate a regular keypair
+      const kp = Keypair.generate();
+      return c.json({
+        id: crypto.randomUUID(),
+        publicKey: kp.publicKey,
+        secretKey: Object.values(kp.secretKey),
+        message: "Successfully reserved a vanity keypair",
+      });
+    }
 
     logger.log(
       `[POST /vanity-keypair] Found unused keypair: ${keypair.address}`,
