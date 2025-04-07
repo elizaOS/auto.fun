@@ -4,7 +4,7 @@ const FeesContent = () => {
       <div className="flex w-fit lg:w-[600px] bg-autofun-stroke-primary/40 flex-col h-fit">
         <div className="flex-1">
           <div className="w-full justify-center">
-            <div className="w-full">
+            <div className="w-full mb-12">
               {/* Header */}
               <div className="flex flex-col py-5 px-4 gap-3.5 border-b">
                 <h1 className="text-2xl md:text-[32px] font-satoshi font-medium leading-9 tracking-[-0.018em] text-[#2FD345]">
@@ -26,34 +26,12 @@ const FeesContent = () => {
               </div>
 
               {/* Table Rows */}
-              <TableRow title="Create a token" text="0 SOL" />
+              <TableRow title="Create a token" text="0 SOL + blockchain fees" />
               <TableRow
                 title="Trading while on bonding curve"
                 text="1% of total sale price"
               />
-              <TableRow
-                title="raydium graduation"
-                text="1% of migrated liquidity"
-              />
-
-              {/* Footer */}
-              <div className="flex flex-col p-5 gap-3.5">
-                <p className="text-sm md:text-base font-satoshi text-[#2FD345]">
-                  Trading fees are distributed as follows
-                </p>
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#2FD345]" />
-                  <span className="font-dm-mono text-sm md:text-base text-[#8C8C8C] tracking-[-0.6px]">
-                    Buy fees (1%) are collected in SOL
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#2FD345]" />
-                  <span className="font-dm-mono text-sm md:text-base text-[#8C8C8C] tracking-[-0.6px]">
-                    All fees are sent to token creators
-                  </span>
-                </div>
-              </div>
+              <TableRow title="raydium graduation" text="6 sol" />
             </div>
           </div>
         </div>
