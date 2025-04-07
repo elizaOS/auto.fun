@@ -457,10 +457,16 @@ export default function Page() {
                     style={{ marginTop: "-2px", paddingTop: "14px" }}
                   >
                     AI Create
-                    <Paintbrush
+                    <img
+                      src={
+                        activeTab === "chart"
+                          ? "/token/createon.svg"
+                          : "/token/createoff.svg"
+                      }
                       className={`size-4 inline-block ml-1.5 ${
-                        activeTab === "ai" ? "text-black" : ""
+                        activeTab === "chart" ? "text-black" : ""
                       }`}
+                      alt="chart icon"
                     />
                   </button>
                 </div>
