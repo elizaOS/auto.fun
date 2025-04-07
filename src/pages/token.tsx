@@ -406,44 +406,34 @@ export default function Page() {
           <div className="overflow-hidden relative border-b border-autofun-stroke-primary">
             <div className="flex flex-col">
               {/* Green stroke above tab section */}
-              <div className="h-2 w-full bg-autofun-text-highlight"></div>
+              <div className="h-2 w-full bg-autofun-text-highlight z-10"></div>
 
               {/* Tabs Header with Title and Right-aligned Tabs - removed border-b as it's on the parent */}
               <div className="flex items-center justify-between pr-2">
-                <h2 className="font-satoshi font-bold text-xl text-autofun-text-highlight py-1">
-                  {activeTab === "chart" ? (
-                    null
-                  ) : (
-                    <div
-                      id="media-selector-container"
-                      className="flex space-x-2 items-center"
-                    >
-                      {/* Media type buttons will be moved here by the generation component */}
-                    </div>
-                  )}
-                </h2>
                 <div className="flex">
                   <button
                     className={`px-4 py-3 text-autofun-text-primary font-medium ${
                       activeTab === "chart"
                         ? "bg-autofun-background-highlight text-black"
-                        : "text-autofun-text-secondary hover:text-autofun-text-primary"
+                        : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
                     }`}
                     onClick={() => setActiveTab("chart")}
                     style={{ marginTop: "-2px", paddingTop: "14px" }}
                   >
                     Chart
-                    <BarChart3
+                    <img 
+                      src={activeTab === "chart" ? "/token/charton.svg" : "/public/token/chartoff.svg"}
                       className={`size-4 inline-block ml-1.5 ${
                         activeTab === "chart" ? "text-black" : ""
                       }`}
+                      alt="chart icon"
                     />
                   </button>
                   <button
                     className={`px-4 py-3 text-autofun-text-primary font-medium ${
                       activeTab === "ai"
                         ? "bg-autofun-background-highlight text-black"
-                        : "text-autofun-text-secondary hover:text-autofun-text-primary"
+                        : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
                     }`}
                     onClick={() => setActiveTab("ai")}
                     style={{ marginTop: "-2px", paddingTop: "14px" }}
@@ -456,6 +446,14 @@ export default function Page() {
                     />
                   </button>
                 </div>
+                {activeTab === "chart" ? null : (
+                    <div
+                      id="media-selector-container"
+                      className="flex space-x-2 items-center"
+                    >
+                      {/* Media type buttons will be moved here by the generation component */}
+                    </div>
+                  )}
               </div>
 
               {/* Tab Content */}
@@ -510,22 +508,22 @@ export default function Page() {
 
           {/* Price Display - Now below bonding curve */}
           <div className="py-4 px-3">
-            <div className="flex px-4 justify-between">
+            <div className="flex justify-between">
               <div className="flex flex-col gap-1 items-center">
-                <span className="text-lg font-dm-mono text-autofun-text-secondary">
+                <span className="font-dm-mono text-autofun-text-secondary">
                   Price USD
                 </span>
-                <span className="text-2xl font-dm-mono text-autofun-text-primary">
+                <span className="text-xl font-dm-mono text-autofun-text-primary">
                   {tokenPriceUSD
                     ? formatNumberSubscript(tokenPriceUSD)
                     : "$0.00"}
                 </span>
               </div>
               <div className="flex flex-col gap-1 items-center">
-                <span className="text-lg font-dm-mono text-autofun-text-secondary">
+                <span className="font-dm-mono text-autofun-text-secondary">
                   Price SOL
                 </span>
-                <span className="text-2xl font-dm-mono text-autofun-text-primary">
+                <span className="text-xl font-dm-mono text-autofun-text-primary">
                   {currentPrice
                     ? formatNumberSubscript(currentPrice)
                     : "0.00000000"}

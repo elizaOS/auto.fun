@@ -80,7 +80,9 @@ export default function CommunityTab() {
   const [generationMode, setGenerationMode] = useState<"fast" | "pro">("fast");
 
   // We can keep this for debugging but it's no longer the primary balance source
-  const [manualTokenBalance, setManualTokenBalance] = useState<number | null>(null);
+  const [manualTokenBalance, setManualTokenBalance] = useState<number | null>(
+    null,
+  );
 
   // --- Modal State ---
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -125,7 +127,7 @@ export default function CommunityTab() {
 
   // Use detected token mint instead of directly from params
   const tokenMint = detectedTokenMint;
-  
+
   // Use the proper hook to get token balance AFTER tokenMint is declared
   const { tokenBalance } = useTokenBalance({ tokenId: tokenMint || "" });
 
@@ -1113,7 +1115,7 @@ export default function CommunityTab() {
       return;
     }
 
-    console.log('**** checkTokenBalance running');
+    console.log("**** checkTokenBalance running");
 
     try {
       // Get stored auth token if available
@@ -1229,7 +1231,7 @@ export default function CommunityTab() {
   }, [publicKey, tokenMint]);
 
   // In the component, add these state variables after the existing ones
-  const [videoMode, setVideoMode] = useState<"text" | "image">("text");
+  const [videoMode, _setVideoMode] = useState<"text" | "image">("text");
   const [selectedImageForVideo, setSelectedImageForVideo] = useState<
     string | null
   >(null);
@@ -1640,17 +1642,19 @@ export default function CommunityTab() {
                   isGenerating ||
                   (communityTab === "Image" &&
                     (!userPrompt.trim() ||
-                      (tokenBalance ?? 0) < (generationMode === "pro" ? 10000 : 1000))) ||
+                      (tokenBalance ?? 0) <
+                        (generationMode === "pro" ? 10000 : 1000))) ||
                   (communityTab === "Video" &&
                     videoMode === "text" &&
                     (!userPrompt.trim() ||
-                      (tokenBalance ?? 0) < (generationMode === "fast" ? 10000 : 100000))) ||
+                      (tokenBalance ?? 0) <
+                        (generationMode === "fast" ? 10000 : 100000))) ||
                   (communityTab === "Video" &&
                     videoMode === "image" &&
                     (!selectedImageForVideo ||
-                      (tokenBalance ?? 0) < (generationMode === "fast" ? 10000 : 100000))) ||
-                  (communityTab === "Audio" &&
-                    (tokenBalance ?? 0) < 10000)
+                      (tokenBalance ?? 0) <
+                        (generationMode === "fast" ? 10000 : 100000))) ||
+                  (communityTab === "Audio" && (tokenBalance ?? 0) < 10000)
                 }
                 className="transition-colors disabled:opacity-50 flex items-center mx-2 h-12"
               >
@@ -1719,7 +1723,6 @@ export default function CommunityTab() {
             {/* Video-specific options */}
             {communityTab === "Video" && (
               <div className="px-4">
-
                 {/* Image upload area for image-to-video */}
                 {videoMode === "image" && (
                   <div className="border-2 border-dashed border-gray-600 p-4 rounded-md mb-4">
@@ -1770,7 +1773,8 @@ export default function CommunityTab() {
 
             {/* Token balance message */}
             {communityTab === "Image" &&
-              (tokenBalance ?? 0) < (generationMode === "pro" ? 10000 : 1000) && (
+              (tokenBalance ?? 0) <
+                (generationMode === "pro" ? 10000 : 1000) && (
                 <div className="text-sm text-yellow-500 px-4 -mt-2">
                   <p>
                     You need to hold at least{" "}
@@ -1781,7 +1785,8 @@ export default function CommunityTab() {
               )}
 
             {communityTab === "Video" &&
-              (tokenBalance ?? 0) < (generationMode === "fast" ? 10000 : 100000) && (
+              (tokenBalance ?? 0) <
+                (generationMode === "fast" ? 10000 : 100000) && (
                 <div className="text-sm text-yellow-500 px-4 -mt-2">
                   <p>
                     You need to hold at least{" "}
@@ -1791,14 +1796,13 @@ export default function CommunityTab() {
                 </div>
               )}
 
-            {communityTab === "Audio" &&
-              (tokenBalance ?? 0) < 10000 && (
-                <div className="text-sm text-yellow-500 px-4 -mt-2">
-                  <p>
-                    You need to hold at least 10,000 tokens to generate audio.
-                  </p>
-                </div>
-              )}
+            {communityTab === "Audio" && (tokenBalance ?? 0) < 10000 && (
+              <div className="text-sm text-yellow-500 px-4 -mt-2">
+                <p>
+                  You need to hold at least 10,000 tokens to generate audio.
+                </p>
+              </div>
+            )}
 
             {/* Generated content display area */}
             <div className="flex flex-col relative">
