@@ -439,7 +439,7 @@ export default function Page() {
                       src={
                         activeTab === "chart"
                           ? "/token/charton.svg"
-                          : "/public/token/chartoff.svg"
+                          : "/token/chartoff.svg"
                       }
                       className={`size-4 inline-block ml-1.5 ${
                         activeTab === "chart" ? "text-black" : ""
