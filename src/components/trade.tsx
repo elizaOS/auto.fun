@@ -168,16 +168,14 @@ export default function Trade({ token }: { token: IToken }) {
                   <TokenDisplay token={token} isSolana={!isTokenSelling} />
                 </div>
               </div>
-              {isTokenSelling && (
-                <div className="flex items-center justify-end gap-2">
-                  <Balance
-                    token={token}
-                    isSolana={!isTokenSelling}
-                    setSellingAmount={setSellingAmount}
-                    balance={isTokenSelling ? tokenBalance : solBalance}
-                  />
-                </div>
-              )}
+              <div className="flex items-center justify-end gap-2">
+                <Balance
+                  token={token}
+                  isSolana={!isTokenSelling}
+                  setSellingAmount={setSellingAmount}
+                  balance={isTokenSelling ? tokenBalance : solBalance}
+                />
+              </div>
             </div>
 
             {/* Buying */}
