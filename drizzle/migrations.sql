@@ -81,9 +81,12 @@ CREATE TABLE IF NOT EXISTS tokens (
   inference_count INTEGER,
   last_volume_reset INTEGER,
   last_price_update INTEGER,
-  migration TEXT,
   holder_count INTEGER,
-  tx_id TEXT NOT NULL
+  tx_id TEXT NOT NULL,
+  migration TEXT,
+  withdrawn_amounts TEXT,
+  pool_info TEXT,
+  lock_lp_tx_id TEXT
 );
 
 -- Create swaps table

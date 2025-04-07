@@ -148,7 +148,7 @@
     "vite-plugin-sitemap": "^0.7.1",
     "vitest": "^3.0.9",
     "vitest-environment-miniflare": "^2.12.0",
-    "wrangler": "^4.4.0"
+    "wrangler": "^4.7.2"
   },
   "peerDependencies": {
     "@solana/spl-token": "^0.4.13",

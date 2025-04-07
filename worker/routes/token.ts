@@ -5110,90 +5110,6 @@ tokenRouter.post("/register-token", async (c) => {
   }
 });
 
-// --- Endpoint to get a vanity keypair ---
-tokenRouter.get("/vanity-keypair", async (c) => {
-  try {
-    // Require authentication
-    const user = c.get("user");
-    if (!user || !user.publicKey) {
-      logger.warn("[/vanity-keypair] Authentication required");
-      return c.json({ error: "Authentication required" }, 401);
-    }
-    logger.log(`[/vanity-keypair] Authenticated user: ${user.publicKey}`);
-
-    const db = getDB(c.env);
-
-    // First find an unused vanity keypair
-    const keypairs = await db
-      .select()
-      .from(vanityKeypairs)
-      .where(eq(vanityKeypairs.used, 0))
-      .limit(1);
-
-    if (!keypairs || keypairs.length === 0) {
-      logger.warn("[/vanity-keypair] No unused vanity keypairs available");
-      return c.json(
-        { error: "No vanity keypairs available, try again later" },
-        503,
-      );
-    }
-
-    const keypair = keypairs[0];
-    logger.log(`[/vanity-keypair] Found unused keypair: ${keypair.address}`);
-
-    // Mark this keypair as used
-    await db
-      .update(vanityKeypairs)
-      .set({
-        used: 1,
-        // Note: We're only updating the 'used' field since the schema doesn't have usedBy or usedAt
-      })
-      .where(eq(vanityKeypairs.id, keypair.id));
-
-    logger.log(
-      `[/vanity-keypair] Marked keypair ${keypair.address} as used by ${user.publicKey}`,
-    );
-
-    // Convert secretKey from base64 to byte array for the client
-    let secretKeyBytes;
-    try {
-      // The secretKey is stored as base64 string in the database
-      const base64Key = keypair.secretKey;
-
-      // Decode it to get a binary buffer
-      const secretKeyBuffer = Buffer.from(base64Key, "base64");
-
-      // Convert to array format expected by solana/web3.js
-      secretKeyBytes = Array.from(secretKeyBuffer);
-
-      logger.log(
-        `[/vanity-keypair] Successfully converted secretKey to array of length ${secretKeyBytes.length}`,
-      );
-    } catch (keyError) {
-      logger.error(`[/vanity-keypair] Error converting secretKey: ${keyError}`);
-      return c.json({ error: "Failed to process keypair" }, 500);
-    }
-
-    // Return the keypair details
-    return c.json({
-      id: keypair.id,
-      publicKey: keypair.address, // Map 'address' to 'publicKey' for client compatibility
-      secretKey: secretKeyBytes,
-    });
-  } catch (error) {
-    logger.error("[/vanity-keypair] Error fetching vanity keypair:", error);
-    return c.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to get vanity keypair",
-      },
-      500,
-    );
-  }
-});
-
 // --- POST endpoint to request a vanity keypair ---
 tokenRouter.post("/vanity-keypair", async (c) => {
   console.log("keypairs");
@@ -5242,6 +5158,8 @@ tokenRouter.post("/vanity-keypair", async (c) => {
       .where(eq(vanityKeypairs.used, 0))
       .limit(1);
 
+    console.log("keypairs", keypairs)
+
     if (!keypairs || keypairs.length === 0) {
       // Double-check if there's a discrepancy between count and actual query
       if (totalCount > 0) {
@@ -5254,6 +5172,8 @@ tokenRouter.post("/vanity-keypair", async (c) => {
           .select({ id: vanityKeypairs.id, used: vanityKeypairs.used })
           .from(vanityKeypairs)
           .limit(5);
+
+        console.log("allKeypairs", allKeypairs)
 
         logger.log(
           `[POST /vanity-keypair] Sample of up to 5 keypairs from database: ${JSON.stringify(allKeypairs)}`,
