@@ -12,12 +12,16 @@ type TabButtonProps = PropsWithChildren<{
 
 const TabButton = ({ isSelected, onClick, children }: TabButtonProps) => (
   <button
-    className={`px-3 py-2 border border-[#262626] justify-center items-center gap-2 self-start font-satoshi ${
-      isSelected ? "bg-[#2e2e2e]" : "bg-neutral-900"
+    className={`px-3 py-2 border border-[#03FF24] justify-center items-center gap-2 self-start font-satoshi ${
+      isSelected ? "bg-[#03FF24]" : "bg-neutral-900"
     }`}
     onClick={onClick}
   >
-    <div className="text-right text-white text-base font-medium leading-tight">
+    <div
+      className={`text-right text-white text-base font-medium leading-tight ${
+        isSelected ? "text-black" : "text-white"
+      }`}
+    >
       {children}
     </div>
   </button>

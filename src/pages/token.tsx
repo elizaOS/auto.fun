@@ -410,9 +410,9 @@ export default function Page() {
 
               {/* Tabs Header with Title and Right-aligned Tabs - removed border-b as it's on the parent */}
               <div className="flex items-center justify-between pr-2">
-                <h2 className="font-satoshi font-bold text-xl text-autofun-text-highlight px-6 py-3">
+                <h2 className="font-satoshi font-bold text-xl text-autofun-text-highlight py-1">
                   {activeTab === "chart" ? (
-                    "Chart"
+                    null
                   ) : (
                     <div
                       id="media-selector-container"

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import Button from "../button";
+import { useTokenBalance } from "@/hooks/use-token-balance";
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
@@ -78,12 +79,8 @@ export default function CommunityTab() {
   // Mode selection state
   const [generationMode, setGenerationMode] = useState<"fast" | "pro">("fast");
 
-  // Balance checking state
-  const [tokenBalance, setTokenBalance] = useState<number | null>(null);
-
-  useEffect(() => {
-    console.log("**** tokenBalance", tokenBalance);
-  }, [tokenBalance]);
+  // We can keep this for debugging but it's no longer the primary balance source
+  const [manualTokenBalance, setManualTokenBalance] = useState<number | null>(null);
 
   // --- Modal State ---
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -128,6 +125,14 @@ export default function CommunityTab() {
 
   // Use detected token mint instead of directly from params
   const tokenMint = detectedTokenMint;
+  
+  // Use the proper hook to get token balance AFTER tokenMint is declared
+  const { tokenBalance } = useTokenBalance({ tokenId: tokenMint || "" });
+
+  useEffect(() => {
+    console.log("**** tokenBalance from hook:", tokenBalance);
+    console.log("**** manualTokenBalance:", manualTokenBalance);
+  }, [tokenBalance, manualTokenBalance]);
 
   // --- Fetch Real Token Info & Agents ---
   useEffect(() => {
@@ -301,7 +306,7 @@ export default function CommunityTab() {
 
     // Check token balance requirements based on mode
     const requiredBalance = generationMode === "pro" ? 10000 : 1000;
-    if (Number(tokenBalance?.toFixed(2) ?? 0) < requiredBalance) {
+    if ((tokenBalance ?? 0) < requiredBalance) {
       toast.error(
         `You need at least ${requiredBalance.toLocaleString()} tokens to generate images in ${generationMode} mode`,
       );
@@ -531,7 +536,7 @@ export default function CommunityTab() {
 
     // Check token balance requirements based on mode
     const requiredBalance = generationMode === "pro" ? 100000 : 10000;
-    if (Number(tokenBalance?.toFixed(2) ?? 0) < requiredBalance) {
+    if ((tokenBalance ?? 0) < requiredBalance) {
       toast.error(
         `You need at least ${requiredBalance.toLocaleString()} tokens to generate videos in ${generationMode} mode`,
       );
@@ -1105,9 +1110,10 @@ export default function CommunityTab() {
   // Add function to check token balance
   const checkTokenBalance = async () => {
     if (!publicKey || !tokenMint) {
-      // toast.error("Please connect your wallet and navigate to a token page");
       return;
     }
+
+    console.log('**** checkTokenBalance running');
 
     try {
       // Get stored auth token if available
@@ -1129,10 +1135,11 @@ export default function CommunityTab() {
 
         if (response.ok) {
           const data = (await response.json()) as { balance?: number };
-          console.log("**** data", data);
+          console.log("**** API balance response:", data);
           if (data.balance !== undefined) {
             const formattedBalance = Number(data.balance);
-            setTokenBalance(formattedBalance);
+            // Store as backup
+            setManualTokenBalance(formattedBalance);
             return;
           }
         }
@@ -1193,7 +1200,7 @@ export default function CommunityTab() {
         }
       }
 
-      setTokenBalance(totalBalance);
+      setManualTokenBalance(totalBalance);
 
       // Show appropriate toast message
       if (totalBalance > 0) {
@@ -1278,7 +1285,7 @@ export default function CommunityTab() {
     // Check token balance requirements
     // Audio requires at least 10k tokens
     const requiredBalance = 10000;
-    if (Number(tokenBalance?.toFixed(2) ?? 0) < requiredBalance) {
+    if ((tokenBalance ?? 0) < requiredBalance) {
       toast.error(
         `You need at least ${requiredBalance.toLocaleString()} tokens to generate audio`,
       );
@@ -1578,7 +1585,7 @@ export default function CommunityTab() {
           {/* Main generation controls - consistent across all media types */}
           <div className="flex flex-col gap-4 w-full">
             {/* Controls row - consistent for all media types */}
-            <div className="flex items-center gap-2 px-4 py-3 h-[60px]">
+            <div className="flex items-end py-3">
               {/* Input field with dynamic placeholder based on tab */}
               <input
                 type="text"
@@ -1633,20 +1640,17 @@ export default function CommunityTab() {
                   isGenerating ||
                   (communityTab === "Image" &&
                     (!userPrompt.trim() ||
-                      Number(tokenBalance?.toFixed(2) ?? 0) <
-                        (generationMode === "pro" ? 10000 : 1000))) ||
+                      (tokenBalance ?? 0) < (generationMode === "pro" ? 10000 : 1000))) ||
                   (communityTab === "Video" &&
                     videoMode === "text" &&
                     (!userPrompt.trim() ||
-                      Number(tokenBalance?.toFixed(2) ?? 0) <
-                        (generationMode === "fast" ? 10000 : 100000))) ||
+                      (tokenBalance ?? 0) < (generationMode === "fast" ? 10000 : 100000))) ||
                   (communityTab === "Video" &&
                     videoMode === "image" &&
                     (!selectedImageForVideo ||
-                      Number(tokenBalance?.toFixed(2) ?? 0) <
-                        (generationMode === "fast" ? 10000 : 100000))) ||
+                      (tokenBalance ?? 0) < (generationMode === "fast" ? 10000 : 100000))) ||
                   (communityTab === "Audio" &&
-                    Number(tokenBalance?.toFixed(2) ?? 0) < 10000)
+                    (tokenBalance ?? 0) < 10000)
                 }
                 className="transition-colors disabled:opacity-50 flex items-center mx-2 h-12"
               >
@@ -1715,22 +1719,6 @@ export default function CommunityTab() {
             {/* Video-specific options */}
             {communityTab === "Video" && (
               <div className="px-4">
-                <div className="flex gap-4 mb-2">
-                  <Button
-                    size="small"
-                    variant={videoMode === "text" ? "tab" : "primary"}
-                    onClick={() => setVideoMode("text")}
-                  >
-                    Text to Video
-                  </Button>
-                  <Button
-                    size="small"
-                    variant={videoMode === "image" ? "tab" : "primary"}
-                    onClick={() => setVideoMode("image")}
-                  >
-                    Image to Video
-                  </Button>
-                </div>
 
                 {/* Image upload area for image-to-video */}
                 {videoMode === "image" && (
@@ -1782,8 +1770,7 @@ export default function CommunityTab() {
 
             {/* Token balance message */}
             {communityTab === "Image" &&
-              Number(tokenBalance?.toFixed(2) ?? 0) <
-                (generationMode === "pro" ? 10000 : 1000) && (
+              (tokenBalance ?? 0) < (generationMode === "pro" ? 10000 : 1000) && (
                 <div className="text-sm text-yellow-500 px-4 -mt-2">
                   <p>
                     You need to hold at least{" "}
@@ -1794,8 +1781,7 @@ export default function CommunityTab() {
               )}
 
             {communityTab === "Video" &&
-              Number(tokenBalance?.toFixed(2) ?? 0) <
-                (generationMode === "fast" ? 10000 : 100000) && (
+              (tokenBalance ?? 0) < (generationMode === "fast" ? 10000 : 100000) && (
                 <div className="text-sm text-yellow-500 px-4 -mt-2">
                   <p>
                     You need to hold at least{" "}
@@ -1806,7 +1792,7 @@ export default function CommunityTab() {
               )}
 
             {communityTab === "Audio" &&
-              Number(tokenBalance?.toFixed(2) ?? 0) < 10000 && (
+              (tokenBalance ?? 0) < 10000 && (
                 <div className="text-sm text-yellow-500 px-4 -mt-2">
                   <p>
                     You need to hold at least 10,000 tokens to generate audio.
