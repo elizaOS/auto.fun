@@ -421,7 +421,7 @@ export default function Page() {
               <div className="flex items-center justify-between pr-2">
                 <div className="flex">
                   <button
-                    className={`px-4 py-3 text-autofun-text-primary font-medium ${
+                    className={`px-4 py-3 text-autofun-text-primary font-medium cursor-pointer ${
                       activeTab === "chart"
                         ? "bg-autofun-background-highlight text-black"
                         : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
@@ -443,7 +443,7 @@ export default function Page() {
                     />
                   </button>
                   <button
-                    className={`px-4 py-3 text-autofun-text-primary font-medium ${
+                    className={`px-4 py-3 text-autofun-text-primary font-medium cursor-pointer ${
                       activeTab === "ai"
                         ? "bg-autofun-background-highlight text-black"
                         : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
