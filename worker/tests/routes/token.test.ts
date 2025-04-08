@@ -233,7 +233,6 @@ describe("Token API Endpoints", () => {
         telegram: "testgroup",
         website: "https://test.com",
         discord: "test-discord",
-        agentLink: "",
       },
       initialSol: 0.1, // Adding initial sol to simulate frontend behavior
     };

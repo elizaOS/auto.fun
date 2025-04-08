@@ -9,44 +9,16 @@ import {
 import usePause from "@/hooks/use-pause";
 import { IToken } from "@/types";
 import { fromNow, shortenAddress } from "@/utils";
-import { fetchTokenTransactions, TokenTransaction } from "@/utils/blockchain";
-import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { Link } from "react-router";
 import { twMerge } from "tailwind-merge";
 import PausedIndicator from "./paused-indicator";
+import { useTransactions } from "@/hooks/use-transactions";
+import { env } from "@/utils/env";
 
 export default function SwapsTable({ token }: { token: IToken }) {
   const { paused, setPause } = usePause();
-
-  console.log(
-    `SwapsTable: Rendering for token ${token?.ticker} (${token?.mint})`,
-  );
-
-  const query = useQuery({
-    queryKey: ["blockchain-swaps", token?.mint],
-    queryFn: async () => {
-      console.log(
-        `SwapsTable: Fetching swaps directly from blockchain for ${token?.mint}`,
-      );
-      try {
-        const result = await fetchTokenTransactions(token?.mint);
-        console.log(
-          `SwapsTable: Retrieved ${result.total} transactions from blockchain`,
-        );
-        return result;
-      } catch (error) {
-        console.error(`SwapsTable: Error fetching transactions data:`, error);
-        return { swaps: [], total: 0 };
-      }
-    },
-    enabled: !paused && token?.mint ? true : false,
-    refetchInterval: 30000, // Longer interval for blockchain queries
-    staleTime: 60000, // Data stays fresh for 1 minute
-  });
-
-  const isLoading = query.isLoading;
-  const data = query?.data?.swaps || [];
+  const { items: data, isLoading } = useTransactions({ tokenId: token.mint });
 
   // Helper to format swap amounts based on type
   const formatSwapAmount = (amount: number | string, isToken: boolean) => {
@@ -65,8 +37,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
         return numericAmount.toFixed(2);
       }
     } else {
-      // Format SOL amount - convert from lamports to SOL
-      return (numericAmount / 1e9).toFixed(4);
+      return numericAmount.toFixed(4);
     }
   };
 
@@ -100,8 +71,8 @@ export default function SwapsTable({ token }: { token: IToken }) {
             </TableCell>
           </TableRow>
         ) : data.length > 0 ? (
-          data.map((swap: TokenTransaction) => {
-            const isBuy = swap?.direction === 0;
+          data.map((swap) => {
+            const isBuy = swap.type === "Buy";
             return (
               <TableRow className="hover:bg-white/5" key={swap?.txId}>
                 <TableCell className="text-left">
@@ -119,22 +90,19 @@ export default function SwapsTable({ token }: { token: IToken }) {
                     isBuy ? "text-[#2FD345]" : "text-[#EF5350]",
                   ])}
                 >
-                  {isBuy ? "Buy" : "Sell"}
+                  {swap.type}
                 </TableCell>
                 <TableCell className="text-left">
-                  {formatSwapAmount(swap?.amountIn || 0, !isBuy)}
+                  {formatSwapAmount(swap.solAmount, !isBuy)}
                 </TableCell>
                 <TableCell className="text-left">
-                  {formatSwapAmount(swap?.amountOut || 0, isBuy)}
+                  {formatSwapAmount(swap.tokenAmount, isBuy)}
                 </TableCell>
                 <TableCell className="text-left">
                   {fromNow(swap?.timestamp)}
                 </TableCell>
                 <TableCell>
-                  <Link
-                    to={`https://solscan.io/tx/${swap?.txId}`}
-                    target="_blank"
-                  >
+                  <Link to={env.getTransactionUrl(swap.txId)} target="_blank">
                     <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary" />
                   </Link>
                 </TableCell>

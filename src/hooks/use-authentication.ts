@@ -1,216 +1,638 @@
 import { env } from "@/utils/env";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useLocalStorage } from "@uidotdev/usehooks";
-import { useEffect, useCallback, useState } from "react";
-import bs58 from "bs58";
-import { isTokenExpired } from "@/utils/auth";
+import { useEffect, useState } from "react";
 
-// Helper to sanitize tokens (remove quotes if present)
-const sanitizeToken = (token: string | null): string | null => {
-  if (!token) return null;
-  if (token.startsWith('"') && token.endsWith('"')) {
-    return token.slice(1, -1);
+// This global variable helps us avoid multiple API calls across instances
+let checkStatusCalled = false;
+
+// Allow resetting the check status flag when needed
+export function resetAuthCheckStatus() {
+  checkStatusCalled = false;
+}
+
+// Helper function to send auth token in headers
+export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
+  // Get token from localStorage
+  let authToken = null;
+  try {
+    // Try to read the expanded wallet auth data first (preferred method)
+    const walletAuthStr = localStorage.getItem("walletAuth");
+    if (walletAuthStr) {
+      try {
+        const walletAuthData = JSON.parse(walletAuthStr) as {
+          token: string;
+          walletAddress: string;
+          timestamp: number;
+        };
+
+        if (walletAuthData && walletAuthData.token) {
+          authToken = walletAuthData.token;
+          console.log(
+            "Using auth token from walletAuth:",
+            authToken.substring(0, 20) + "...",
+          );
+          console.log(
+            "Token format:",
+            authToken.includes(".")
+              ? "JWT"
+              : authToken.startsWith("wallet_")
+                ? "wallet_prefix"
+                : "unknown",
+          );
+        }
+      } catch (parseError) {
+        console.error("Error parsing wallet auth data:", parseError);
+      }
+    }
+
+    // Fallback to regular token check if walletAuth doesn't have a token
+    if (!authToken) {
+      const storedAuthToken = localStorage.getItem("authToken");
+      if (storedAuthToken) {
+        try {
+          authToken = JSON.parse(storedAuthToken);
+          console.log(
+            "Using auth token from authToken:",
+            authToken.substring(0, 20) + "...",
+          );
+          console.log(
+            "Token format:",
+            authToken.includes(".")
+              ? "JWT"
+              : authToken.startsWith("wallet_")
+                ? "wallet_prefix"
+                : "unknown",
+          );
+        } catch (parseError) {
+          console.error("Error parsing stored auth token:", parseError);
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Error reading auth token from localStorage:", e);
   }
-  return token;
+
+  // Set up headers with token
+  const headers = new Headers(options.headers || {});
+  if (authToken) {
+    // Always ensure token has the Bearer prefix for JWT tokens
+    const tokenWithBearer = authToken.startsWith("Bearer ")
+      ? authToken
+      : `Bearer ${authToken}`;
+
+    headers.set("Authorization", tokenWithBearer);
+    console.log(
+      "Set Authorization header for request:",
+      tokenWithBearer.substring(0, 30) + "...",
+    );
+  } else {
+    console.log("No auth token found for request to:", url);
+  }
+
+  // Merge with existing options
+  const newOptions = {
+    ...options,
+    headers,
+    credentials: "include" as RequestCredentials, // Keep for backward compatibility
+  };
+
+  // Make the request
+  console.log(`Making authenticated request to ${url}`);
+  return fetch(url, newOptions);
 };
 
 export default function useAuthentication() {
-  const { publicKey, signMessage, connected } = useWallet();
-  const [storedToken, setStoredToken] = useLocalStorage<string | null>(
+  const { publicKey, connected, disconnect: adapterDisconnect } = useWallet();
+  const [authToken, setAuthToken] = useLocalStorage<string | null>(
     "authToken",
     null,
   );
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [userPrivileges, setUserPrivileges] = useState<string[]>([]);
 
-  // Clean version of the token that guarantees no quotes
-  const authToken = sanitizeToken(storedToken);
+  // Enhance setAuthToken to ensure it's also directly set in localStorage
+  const setAuthTokenWithStorage = (token: string | null) => {
+    // Update the hook state
+    setAuthToken(token);
 
-  // Custom setter that ensures we don't store quotes
-  const setAuthToken = useCallback(
-    (token: string | null) => {
-      // Ensure we're not storing the token with quotes
-      setStoredToken(token ? sanitizeToken(token) : null);
-    },
-    [setStoredToken],
+    // Also directly set in localStorage as a backup
+    try {
+      if (token) {
+        localStorage.setItem("authToken", JSON.stringify(token));
+        console.log("Auth token stored in localStorage");
+      } else {
+        localStorage.removeItem("authToken");
+        console.log("Auth token removed from localStorage");
+      }
+    } catch (e) {
+      console.error("Error updating authToken in localStorage:", e);
+    }
+  };
+
+  // Check for Phantom connection directly from window.solana
+  const hasDirectPhantomConnection =
+    typeof window !== "undefined" &&
+    window.solana &&
+    window.solana.isPhantom &&
+    window.solana.publicKey;
+
+  // Extract and store the wallet address from the authToken
+  const getWalletAddressFromToken = (token: string | null): string | null => {
+    if (!token) return null;
+
+    // Handle our wallet_ prefix format
+    if (token.startsWith("wallet_")) {
+      const parts = token.split("_");
+      if (parts.length >= 2) {
+        return parts[1];
+      }
+    }
+
+    // Handle JWT format token
+    else if (token.includes(".")) {
+      try {
+        // JWT tokens have 3 parts separated by dots
+        const parts = token.split(".");
+        if (parts.length === 3) {
+          // Decode the middle part (payload)
+          const payload = JSON.parse(atob(parts[1]));
+          // The subject field should contain the wallet address
+          if (payload.sub) {
+            return payload.sub;
+          }
+        }
+      } catch (e) {
+        console.error("Error decoding JWT token:", e);
+      }
+    }
+
+    return null;
+  };
+
+  // The stored wallet address from token
+  const [storedWalletAddress, setStoredWalletAddress] = useState<string | null>(
+    authToken ? getWalletAddressFromToken(authToken) : null,
   );
 
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Consider connected if:
+  // 1. We have an auth token AND
+  // 2. Either the wallet is connected directly, OR through the window.solana object
+  const isAuthenticated =
+    !!authToken &&
+    (connected || hasDirectPhantomConnection || !!storedWalletAddress);
 
-  // Sign in with wallet method
-  const signInWithWallet = useCallback(async () => {
-    if (!publicKey || !signMessage) {
-      console.error("Wallet not connected or doesn't support signing");
-      return false;
+  // Clean sign out process
+  const signOut = async () => {
+    console.log("Signing out and cleaning up auth state");
+
+    // Call the server logout endpoint to revoke the token in KV store
+    try {
+      await fetchWithAuth(`${env.apiUrl}/api/logout`, {
+        method: "POST",
+      });
+      console.log("Server-side logout completed");
+    } catch (e) {
+      console.error("Failed to complete server-side logout:", e);
+    }
+
+    // Clear local storage and state
+    setAuthTokenWithStorage(null);
+    setStoredWalletAddress(null);
+    setUserPrivileges([]);
+
+    // Also clean up the expanded walletAuth data
+    try {
+      localStorage.removeItem("walletAuth");
+    } catch (e) {
+      console.error("Error removing walletAuth data:", e);
     }
 
     try {
-      // Step 1: Get a nonce from the server
-      const nonceResponse = await fetch(`${env.apiUrl}/api/generate-nonce`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ publicKey: publicKey.toString() }),
-      });
-
-      if (!nonceResponse.ok) {
-        throw new Error("Failed to get authentication nonce");
-      }
-
-      const { nonce } = (await nonceResponse.json()) as { nonce: string };
-
-      // Step 2: Create a message to sign
-      const message = `Sign this message for authenticating with nonce: ${nonce}`;
-      const messageUint8 = new TextEncoder().encode(message);
-
-      // Step 3: Sign the message with wallet
-      const signature = await signMessage(messageUint8);
-
-      // Step 4: Send the signature to the server for verification
-      const authResponse = await fetch(`${env.apiUrl}/api/authenticate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          publicKey: publicKey.toString(),
-          signature: bs58.encode(signature),
-          nonce,
-          message,
-        }),
-      });
-
-      if (!authResponse.ok) {
-        const errorData = (await authResponse.json()) as { message?: string };
-        throw new Error(errorData.message || "Authentication failed");
-      }
-
-      const authData = (await authResponse.json()) as { token: string };
-
-      // Step 5: Store the returned JWT token and update state
-      setAuthToken(authData.token);
-      setIsAuthenticated(true); // Successfully authenticated
-      return true;
-    } catch (error) {
-      console.error("Error during wallet authentication:", error);
-      setAuthToken(null);
-      setIsAuthenticated(false); // Failed to authenticate
-      return false;
-    }
-  }, [publicKey, signMessage, setAuthToken]);
-
-  const signOut = useCallback(() => {
-    setAuthToken(null);
-    setIsAuthenticated(false);
-
-    // Call logout endpoint to clear server-side cookies
-    fetch(`${env.apiUrl}/api/logout`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    }).catch((error) => {
-      console.error("Error logging out:", error);
-    });
-  }, [setAuthToken]);
-
-  // Effect to check authentication status on load or when wallet/token changes
-  useEffect(() => {
-    let isMounted = true; // Prevent state updates on unmounted component
-
-    const checkStatus = async () => {
-      // If wallet is not connected, ensure we are signed out
-      if (!connected) {
-        if (isMounted && isAuthenticated) {
-          // Only sign out if currently authenticated
-          console.log("Wallet disconnected, signing out.");
-          signOut();
+      // Try to disconnect adapter
+      if (adapterDisconnect) {
+        try {
+          adapterDisconnect().catch((e) =>
+            console.error("Error disconnecting adapter:", e),
+          );
+        } catch (e) {
+          console.error("Error disconnecting adapter:", e);
         }
-        return; // Stop further checks if not connected
       }
 
-      // Wallet is connected, now check the token
-      if (authToken) {
-        if (isTokenExpired(authToken)) {
-          // Token exists but is expired
-          if (isMounted) {
-            console.log("Token found but expired on load/change.");
-            signOut();
-          }
-        } else {
-          // Token exists and is not expired, verify with server
-          try {
-            const authCheckResponse = await fetch(
-              `${env.apiUrl}/api/auth-status`,
-              {
-                credentials: "include",
-                headers: { Authorization: `Bearer ${authToken}` },
-              },
-            );
+      // If using Phantom directly, disconnect
+      if (window.solana && window.solana.disconnect) {
+        try {
+          window.solana
+            .disconnect()
+            .catch((e) => console.error("Error disconnecting Phantom:", e));
+        } catch (e) {
+          console.error("Error disconnecting Phantom:", e);
+        }
+      }
+    } catch (e) {
+      console.error("Error during sign out:", e);
+    }
+  };
 
-            if (isMounted) {
-              if (authCheckResponse.ok) {
-                const statusData = (await authCheckResponse.json()) as {
-                  authenticated: boolean;
-                  error?: string;
+  // Check localStorage first for auth token and wallet data on initial mount
+  useEffect(() => {
+    // Reset the check status when component mounts to ensure auth check runs
+    if (typeof window !== "undefined") {
+      resetAuthCheckStatus();
+    }
+
+    // Check localStorage first for auth token and expanded wallet auth data
+    try {
+      // Try to read the expanded wallet auth data first
+      const walletAuthStr = localStorage.getItem("walletAuth");
+      if (walletAuthStr) {
+        try {
+          const walletAuthData = JSON.parse(walletAuthStr) as {
+            token: string;
+            walletAddress: string;
+            timestamp: number;
+          };
+
+          console.log("Found wallet auth data in localStorage, restoring");
+          setAuthToken(walletAuthData.token);
+          setStoredWalletAddress(walletAuthData.walletAddress);
+
+          // If we're within 7 days of the token creation, it's still valid
+          const tokenAge = Date.now() - walletAuthData.timestamp;
+          const tokenValid = tokenAge < 7 * 24 * 60 * 60 * 1000; // 7 days
+
+          if (!tokenValid) {
+            console.log("Token is older than 7 days, will try to refresh");
+          }
+
+          return; // Skip regular token check if we found the expanded data
+        } catch (parseError) {
+          console.error("Error parsing wallet auth data:", parseError);
+          localStorage.removeItem("walletAuth");
+        }
+      }
+
+      // Fallback to regular token check
+      const storedAuthToken = localStorage.getItem("authToken");
+      if (storedAuthToken && !authToken) {
+        try {
+          const parsedToken = JSON.parse(storedAuthToken);
+          console.log("Found auth token in localStorage, restoring");
+          setAuthToken(parsedToken);
+
+          // Try to extract wallet address from token
+          const extractedAddress = getWalletAddressFromToken(parsedToken);
+          if (extractedAddress) {
+            setStoredWalletAddress(extractedAddress);
+          }
+        } catch (parseError) {
+          console.error("Error parsing stored auth token:", parseError);
+          // Remove invalid token
+          localStorage.removeItem("authToken");
+        }
+      }
+    } catch (e) {
+      console.error("Error reading auth token from localStorage:", e);
+    }
+  }, []);
+
+  // Check server-side auth status on initial load and when wallet connection changes
+  useEffect(() => {
+    // Get public key from adapter or direct connection
+    const connectedPublicKey =
+      publicKey?.toString() ||
+      (hasDirectPhantomConnection && window.solana?.publicKey
+        ? window.solana.publicKey.toString()
+        : null) ||
+      storedWalletAddress; // Also use stored wallet address as a fallback
+
+    if (!checkStatusCalled) {
+      checkStatusCalled = true;
+      const checkStatus = async () => {
+        try {
+          setIsAuthenticating(true);
+          console.log("Checking auth status with server...");
+
+          // First, check for auth token in localStorage
+          let token = null;
+          let walletAddressFromStorage = null;
+
+          // Try to read the enhanced wallet auth data first
+          try {
+            const walletAuthStr = localStorage.getItem("walletAuth");
+            if (walletAuthStr) {
+              try {
+                const walletAuthData = JSON.parse(walletAuthStr) as {
+                  token: string;
+                  walletAddress: string;
+                  timestamp: number;
                 };
 
-                if (statusData.authenticated) {
-                  if (!isAuthenticated) {
-                    // Update state only if needed
-                    console.log("Server confirmed authenticated status.");
-                    setIsAuthenticated(true);
-                  }
-                } else {
+                if (walletAuthData && walletAuthData.token) {
+                  token = walletAuthData.token;
+                  walletAddressFromStorage = walletAuthData.walletAddress;
                   console.log(
-                    "Server denied authentication:",
-                    statusData.error,
+                    "Found auth token in walletAuth:",
+                    token.substring(0, 20) + "...",
                   );
-                  signOut(); // Token is invalid according to server
                 }
-              } else {
-                console.error(
-                  "Auth status check failed:",
-                  authCheckResponse.status,
-                );
-                if (authCheckResponse.status === 401) {
-                  signOut(); // Unauthorized, clear token
-                }
-                // Don't sign out on other network errors, could be temporary
-                // But ensure isAuthenticated is false if it wasn't confirmed
-                else if (isAuthenticated) {
-                  setIsAuthenticated(false);
+              } catch (parseError) {
+                console.error("Error parsing wallet auth data:", parseError);
+              }
+            }
+
+            // Fallback to regular authToken storage
+            if (!token) {
+              const storedAuthToken = localStorage.getItem("authToken");
+              if (storedAuthToken) {
+                try {
+                  token = JSON.parse(storedAuthToken);
+                  console.log(
+                    "Found auth token in authToken:",
+                    token.substring(0, 20) + "...",
+                  );
+                } catch (parseError) {
+                  console.error("Error parsing stored auth token:", parseError);
                 }
               }
             }
-          } catch (error) {
-            if (isMounted) {
-              console.error("Error checking auth status:", error);
-              // Don't sign out on network errors, but ensure state reflects uncertainty
-              if (isAuthenticated) setIsAuthenticated(false);
+          } catch (storageError) {
+            console.error("Error accessing localStorage:", storageError);
+          }
+
+          // If we have a token, verify with server
+          if (token) {
+            console.log("Have token, checking with server...");
+            try {
+              // Always use explicit Authorization header with Bearer prefix
+              const bearerToken = token.startsWith("Bearer ")
+                ? token
+                : `Bearer ${token}`;
+              console.log(
+                "Using token with Authorization header:",
+                bearerToken.substring(0, 30) + "...",
+              );
+
+              const headers = new Headers();
+              headers.set("Authorization", bearerToken);
+
+              const authCheckResponse = await fetch(
+                `${env.apiUrl}/api/auth-status`,
+                {
+                  method: "GET",
+                  headers,
+                  credentials: "include", // For backward compatibility
+                },
+              );
+
+              console.log(
+                `Auth status check response: ${authCheckResponse.status}`,
+              );
+
+              if (authCheckResponse.ok) {
+                const statusData = (await authCheckResponse.json()) as {
+                  authenticated: boolean;
+                  privileges?: string[];
+                };
+
+                console.log(
+                  "Auth status from server:",
+                  statusData?.authenticated
+                    ? "Authenticated"
+                    : "Not authenticated",
+                );
+
+                // If authenticated, update local state
+                if (statusData?.authenticated) {
+                  console.log("Server confirms we are authenticated");
+
+                  // Update privileges if provided
+                  if (statusData.privileges) {
+                    setUserPrivileges(statusData.privileges);
+                  }
+
+                  // Ensure token is stored in state
+                  setAuthTokenWithStorage(token);
+
+                  // If we have a wallet address from storage, use it
+                  if (walletAddressFromStorage) {
+                    setStoredWalletAddress(walletAddressFromStorage);
+                  } else {
+                    // Try to extract from token
+                    const extractedAddress = getWalletAddressFromToken(token);
+                    if (extractedAddress) {
+                      setStoredWalletAddress(extractedAddress);
+                    }
+                  }
+
+                  setIsAuthenticating(false);
+                  return;
+                } else {
+                  console.log(
+                    "Server says we're not authenticated despite having a token",
+                  );
+                  // Log headers in a way that's compatible with all browser versions
+                  console.log("Response headers:");
+                  authCheckResponse.headers.forEach((value, key) => {
+                    console.log(`${key}: ${value}`);
+                  });
+
+                  // Let's try one more time with fetchWithAuth helper to ensure consistent header formatting
+                  try {
+                    console.log("Retrying with fetchWithAuth helper...");
+                    const retryResponse = await fetchWithAuth(
+                      `${env.apiUrl}/api/auth-status`,
+                      {
+                        method: "GET",
+                      },
+                    );
+
+                    if (retryResponse.ok) {
+                      const retryData = (await retryResponse.json()) as {
+                        authenticated: boolean;
+                        privileges?: string[];
+                      };
+                      console.log(
+                        "Retry auth check result:",
+                        retryData?.authenticated
+                          ? "Authenticated"
+                          : "Not authenticated",
+                      );
+
+                      if (retryData?.authenticated) {
+                        console.log("Retry succeeded - we are authenticated");
+                        if (retryData.privileges) {
+                          setUserPrivileges(retryData.privileges);
+                        }
+                        setAuthTokenWithStorage(token);
+                        if (walletAddressFromStorage) {
+                          setStoredWalletAddress(walletAddressFromStorage);
+                        }
+                        setIsAuthenticating(false);
+                        return;
+                      }
+                    }
+
+                    // If retry failed, continue with normal flow
+                    console.log(
+                      "Retry also failed, proceeding with normal flow",
+                    );
+                  } catch (retryError) {
+                    console.error(
+                      "Error during auth status retry:",
+                      retryError,
+                    );
+                  }
+
+                  // If we have a direct wallet connection, create a new token
+                  if (connectedPublicKey) {
+                    console.log(
+                      "Have wallet connection, will create new token",
+                    );
+                  } else {
+                    // Otherwise sign out
+                    console.log("No wallet connection, signing out");
+                    signOut();
+                    setIsAuthenticating(false);
+                    return;
+                  }
+                }
+              } else {
+                console.warn(
+                  "Auth status check failed:",
+                  authCheckResponse.status,
+                );
+                // Log headers in a way that's compatible with all browser versions
+                console.log("Response headers:");
+                authCheckResponse.headers.forEach((value, key) => {
+                  console.log(`${key}: ${value}`);
+                });
+              }
+            } catch (checkError) {
+              console.error(
+                "Error checking auth status with server:",
+                checkError,
+              );
             }
           }
+
+          // If we got here, either we don't have a token or the server didn't recognize our token
+
+          // If we have a direct connection or a stored wallet address, create local token
+          if (hasDirectPhantomConnection || connected || connectedPublicKey) {
+            console.log("Have wallet connection, creating local token");
+
+            if (!connectedPublicKey) {
+              console.error("No connected public key available");
+              setIsAuthenticating(false);
+              return;
+            }
+
+            const walletSpecificToken = `wallet_${connectedPublicKey}_${Date.now()}`;
+
+            // Store expanded auth data
+            const authStorage = {
+              token: walletSpecificToken,
+              walletAddress: connectedPublicKey,
+              timestamp: Date.now(),
+            };
+
+            try {
+              localStorage.setItem("walletAuth", JSON.stringify(authStorage));
+              console.log("Stored new wallet auth data in localStorage");
+            } catch (e) {
+              console.error("Error storing wallet auth data:", e);
+            }
+
+            setAuthTokenWithStorage(walletSpecificToken);
+            setStoredWalletAddress(connectedPublicKey);
+            setIsAuthenticating(false);
+            return;
+          }
+
+          // If we got here, we have no token and no wallet connection
+          console.log("No token and no wallet connection");
+          signOut();
+          setIsAuthenticating(false);
+        } catch (error) {
+          console.error("Error checking auth status:", error);
+          setIsAuthenticating(false);
         }
-      } else {
-        // No token exists, ensure signed out state
-        if (isMounted && isAuthenticated) {
-          // Update state only if needed
-          console.log("No token found, ensuring signed out state.");
-          setIsAuthenticated(false);
+      };
+
+      checkStatus();
+    }
+  }, [
+    connected,
+    publicKey,
+    hasDirectPhantomConnection,
+    authToken,
+    setAuthToken,
+    adapterDisconnect,
+    storedWalletAddress,
+  ]);
+
+  // Auto-reconnect if we have a token but wallet is not connected
+  useEffect(() => {
+    if (
+      authToken &&
+      !connected &&
+      !hasDirectPhantomConnection &&
+      !isAuthenticating
+    ) {
+      console.log(
+        "Have auth token but wallet not connected - will try to reconnect via auto-connect",
+      );
+
+      // If we have window.solana available, try to directly connect Phantom
+      if (
+        typeof window !== "undefined" &&
+        window.solana &&
+        window.solana.isPhantom
+      ) {
+        try {
+          console.log("Attempting direct Phantom reconnection");
+          window.solana
+            .connect()
+            .then((response) => {
+              console.log(
+                "Direct reconnection successful:",
+                response.publicKey.toString(),
+              );
+            })
+            .catch((err) => {
+              console.error("Failed to reconnect directly:", err);
+            });
+        } catch (err) {
+          console.error("Error during reconnection attempt:", err);
         }
       }
-    };
+    }
+  }, [authToken, connected, hasDirectPhantomConnection, isAuthenticating]);
 
-    checkStatus();
-
-    // Cleanup function
-    return () => {
-      isMounted = false;
-    };
-  }, [connected, authToken, isAuthenticated, signOut]); // Added isAuthenticated to dependencies
+  // Mark first render as complete to let components know they can use authentication status
+  const [isInitialized, setIsInitialized] = useState(false);
+  useEffect(() => {
+    if (!isInitialized) {
+      setIsInitialized(true);
+    }
+  }, [isInitialized]);
 
   return {
     authToken,
-    setAuthToken,
+    setAuthToken: setAuthTokenWithStorage,
     isAuthenticated,
+    isAuthenticating,
+    isInitialized,
     signOut,
-    signInWithWallet,
-    walletConnected: !!connected && !!publicKey,
-    walletPublicKey: publicKey?.toString() || null,
+    walletAddress:
+      storedWalletAddress ||
+      publicKey?.toString() ||
+      (hasDirectPhantomConnection && window.solana?.publicKey
+        ? window.solana.publicKey.toString()
+        : null),
+    privileges: userPrivileges,
+    fetchWithAuth, // Export the fetchWithAuth function for use in other components
   };
 }

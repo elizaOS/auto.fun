@@ -1,26 +1,24 @@
-import { eq, and, gte, or } from "drizzle-orm";
+import { fal } from "@fal-ai/client";
+import { Connection, PublicKey } from "@solana/web3.js";
+import { and, eq, gte, or, sql } from "drizzle-orm";
+import { Hono } from "hono";
+import crypto from "node:crypto";
+import { z } from "zod";
+import { requireAuth, verifyAuth } from "../auth";
 import {
   getDB,
   mediaGenerations,
-  tokens,
   preGeneratedTokens,
   tokenHolders,
+  tokens,
 } from "../db";
 import { Env } from "../env";
-import { fal } from "@fal-ai/client";
-import { sql } from "drizzle-orm";
-import { Hono } from "hono";
-import { z } from "zod";
 import { logger } from "../logger";
-import { verifyAuth, requireAuth } from "../auth";
-import crypto from "node:crypto";
 import { MediaGeneration } from "../types";
-import type { ExecutionContext as CFExecutionContext } from "@cloudflare/workers-types/experimental";
-import type { Context } from "hono";
 import { uploadToCloudflare } from "../uploader";
-import { Connection, PublicKey } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { getRpcUrl } from "../util";
+import { createTokenPrompt } from "./generation-prompts/create-token";
+import { enhancePrompt } from "./generation-prompts/enhance-prompt";
 
 // Enum for media types
 export enum MediaType {
@@ -48,6 +46,8 @@ export const RATE_LIMITS = {
 // Token ownership requirements for generation
 export const TOKEN_OWNERSHIP = {
   DEFAULT_MINIMUM: 1000, // Default minimum token amount required
+  FAST_MODE_MINIMUM: 10000, // Minimum tokens for fast video/audio
+  SLOW_MODE_MINIMUM: 100000, // Minimum tokens for slow video/audio
   ENABLED: true, // Flag to enable/disable the feature
 };
 
@@ -146,6 +146,8 @@ export async function checkTokenOwnership(
   env: Env,
   mint: string,
   publicKey: string,
+  mode: "fast" | "slow" = "fast",
+  mediaType: MediaType = MediaType.IMAGE,
 ): Promise<{ allowed: boolean; message?: string }> {
   try {
     // Special handling for test environments
@@ -172,8 +174,17 @@ export async function checkTokenOwnership(
       return { allowed: true };
     }
 
-    // Get minimum required token amount
-    const minimumRequired = TOKEN_OWNERSHIP.DEFAULT_MINIMUM;
+    // Get minimum required token amount based on mode and media type
+    let minimumRequired = TOKEN_OWNERSHIP.DEFAULT_MINIMUM;
+
+    if (mediaType === MediaType.VIDEO || mediaType === MediaType.AUDIO) {
+      minimumRequired =
+        mode === "slow"
+          ? TOKEN_OWNERSHIP.SLOW_MODE_MINIMUM
+          : TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
+    } else if (mediaType === MediaType.IMAGE && mode === "slow") {
+      minimumRequired = TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
+    }
 
     // Access the database
     const db = getDB(env);
@@ -324,13 +335,20 @@ export async function generateMedia(
     guidance_scale?: number;
     width?: number;
     height?: number;
+    mode?: "fast" | "slow";
+    image_url?: string; // For image-to-video
+    lyrics?: string; // For music generation
   },
 ) {
   // Set default timeout - shorter for tests
-  const timeout = process.env.NODE_ENV === "test" ? 3000 : 30000;
+  const timeout = 300000;
 
   // Initialize fal.ai client dynamically if needed for video/audio
-  if (data.type !== MediaType.IMAGE && env.FAL_API_KEY) {
+  if (
+    !(data.type === MediaType.IMAGE && data.mode === "fast") &&
+    env.FAL_API_KEY
+  ) {
+    console.log("**** env.FAL_API_KEY", env.FAL_API_KEY);
     fal.config({
       credentials: env.FAL_API_KEY,
     });
@@ -346,59 +364,111 @@ export async function generateMedia(
 
   let generationPromise;
 
-  // Use Cloudflare Worker AI for image generation
-  if (data.type === MediaType.IMAGE) {
-    try {
-      // Use Cloudflare AI binding instead of external API
-      if (!env.AI) {
-        throw new Error("Cloudflare AI binding not configured");
-      }
-
-      // Use the flux-1-schnell model via AI binding
-      const result = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", {
-        prompt: data.prompt,
-        steps: 4,
-      });
-
-      // Create data URL from the base64 image
-      const dataURI = `data:image/jpeg;base64,${result.image}`;
-
-      // Return in a format compatible with our existing code
-      return {
-        data: {
-          images: [
-            {
-              url: dataURI,
-            },
-          ],
-        },
-      };
-    } catch (error) {
-      console.error("Error in Cloudflare image generation:", error);
-
-      // Return a fallback
-      const placeholderUrl = `https://placehold.co/600x400?text=${encodeURIComponent(data.prompt)}`;
-      return {
-        data: {
-          images: [{ url: placeholderUrl }],
-        },
-      };
+  // Use Cloudflare Worker AI for image generation (fast mode)
+  if (data.type === MediaType.IMAGE && (!data.mode || data.mode === "fast")) {
+    // Use Cloudflare AI binding instead of external API
+    if (!env.AI) {
+      throw new Error("Cloudflare AI binding not configured");
     }
-  } else if (data.type === MediaType.VIDEO) {
-    generationPromise = fal.subscribe("fal-ai/t2v-turbo", {
+
+    // Add retry logic for AI generation
+    const maxRetries = 3;
+    let lastError;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Use the flux-1-schnell model via AI binding
+        const result = await env.AI.run(
+          "@cf/black-forest-labs/flux-1-schnell",
+          {
+            prompt: data.prompt,
+            steps: 4,
+          },
+        );
+
+        // Create data URL from the base64 image
+        const dataURI = `data:image/jpeg;base64,${result.image}`;
+
+        // Return in a format compatible with our existing code
+        return {
+          data: {
+            images: [
+              {
+                url: dataURI,
+              },
+            ],
+          },
+        };
+      } catch (error) {
+        console.error(`Attempt ${attempt} failed:`, error);
+        lastError = error;
+
+        // If we haven't reached max retries, wait before trying again
+        if (attempt < maxRetries) {
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+          continue;
+        }
+      }
+    }
+
+    // If we get here, all retries failed
+    throw new Error(
+      `Failed to generate image after ${maxRetries} attempts: ${lastError?.message}`,
+    );
+  } else if (data.type === MediaType.IMAGE && data.mode === "slow") {
+    // Use flux-pro ultra for slow high-quality image generation
+    generationPromise = fal.subscribe("fal-ai/flux-pro/v1.1-ultra", {
       input: {
         prompt: data.prompt,
-        num_inference_steps: data.num_inference_steps || 25,
-        seed: data.seed || Math.floor(Math.random() * 1000000),
-        guidance_scale: data.guidance_scale || 7.5,
-        num_frames: data.num_frames || 16,
         // Optional parameters passed if available
         ...(data.width ? { width: data.width } : {}),
         ...(data.height ? { height: data.height } : {}),
-        ...(data.fps ? { fps: data.fps } : {}),
-        ...(data.motion_bucket_id
-          ? { motion_bucket_id: data.motion_bucket_id }
-          : {}),
+      },
+      logs: true,
+      onQueueUpdate: (update: any) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log("Image generation progress:", update.logs);
+        }
+      },
+    });
+
+    // Race against timeout
+    return await Promise.race([generationPromise, timeoutPromise]);
+  } else if (data.type === MediaType.VIDEO && data.image_url) {
+    // Image-to-video generation
+    const model =
+      data.mode === "slow"
+        ? "fal-ai/pixverse/v4/image-to-video"
+        : "fal-ai/pixverse/v4/image-to-video/fast";
+
+    generationPromise = fal.subscribe(model, {
+      input: {
+        prompt: data.prompt,
+        image_url: data.image_url,
+      },
+      logs: true,
+      onQueueUpdate: (update: any) => {
+        if (update.status === "IN_PROGRESS") {
+          console.log("Image-to-video generation progress:", update.logs);
+        }
+      },
+    });
+
+    // Race against timeout
+    return await Promise.race([generationPromise, timeoutPromise]);
+  } else if (data.type === MediaType.VIDEO) {
+    // Text-to-video generation
+    const model =
+      data.mode === "slow"
+        ? "fal-ai/pixverse/v4/text-to-video"
+        : "fal-ai/pixverse/v4/text-to-video/fast";
+
+    generationPromise = fal.subscribe(model, {
+      input: {
+        prompt: data.prompt,
+        // Optional parameters passed if available
+        ...(data.width ? { width: data.width } : {}),
+        ...(data.height ? { height: data.height } : {}),
       },
       logs: true,
       onQueueUpdate: (update: any) => {
@@ -411,21 +481,38 @@ export async function generateMedia(
     // Race against timeout
     return await Promise.race([generationPromise, timeoutPromise]);
   } else if (data.type === MediaType.AUDIO) {
-    generationPromise = fal.subscribe("fal-ai/stable-audio", {
-      input: {
-        prompt: data.prompt,
-        // Optional parameters passed if available
-        ...(data.duration_seconds
-          ? { duration: data.duration_seconds }
-          : { duration: 10 }),
-      },
-      logs: true,
-      onQueueUpdate: (update: any) => {
-        if (update.status === "IN_PROGRESS") {
-          console.log("Audio generation progress:", update.logs);
-        }
-      },
-    });
+    if (data.lyrics) {
+      // Use diffrhythm for music generation with lyrics
+      generationPromise = fal.subscribe("fal-ai/diffrhythm", {
+        input: {
+          lyrics: data.lyrics,
+          reference_audio_url: "https://example.com/reference.mp3", // Default reference URL
+        },
+        logs: true,
+        onQueueUpdate: (update: any) => {
+          if (update.status === "IN_PROGRESS") {
+            console.log("Music generation progress:", update.logs);
+          }
+        },
+      });
+    } else {
+      // Default audio generation
+      generationPromise = fal.subscribe("fal-ai/stable-audio", {
+        input: {
+          prompt: data.prompt,
+          // Optional parameters passed if available
+          ...(data.duration_seconds
+            ? { duration: data.duration_seconds }
+            : { duration: 10 }),
+        },
+        logs: true,
+        onQueueUpdate: (update: any) => {
+          if (update.status === "IN_PROGRESS") {
+            console.log("Audio generation progress:", update.logs);
+          }
+        },
+      });
+    }
 
     // Race against timeout
     return await Promise.race([generationPromise, timeoutPromise]);
@@ -462,6 +549,10 @@ const MediaGenerationRequestSchema = z.object({
   guidance_scale: z.number().min(1).max(20).optional().default(7.5),
   width: z.number().min(512).max(1024).optional().default(512),
   height: z.number().min(512).max(1024).optional().default(512),
+  // New options
+  mode: z.enum(["fast", "slow"]).optional().default("fast"),
+  image_url: z.string().optional(), // For image-to-video
+  lyrics: z.string().optional(), // For music generation with lyrics
 });
 
 // Token metadata generation validation schema
@@ -576,10 +667,54 @@ app.post("/:mint/generate", async (c) => {
     // Check rate limits with timeout
     let rateLimit: { allowed: boolean; remaining: number; message?: string };
     try {
+      const mode = validatedData.mode || "fast";
       rateLimit = (await Promise.race([
         checkRateLimits(c.env, mint, validatedData.type, user.publicKey),
         dbTimeoutPromise,
       ])) as { allowed: boolean; remaining: number; message?: string };
+
+      // Additional ownership check for mode-specific requirements
+      if (rateLimit.allowed) {
+        const ownershipCheck = await checkTokenOwnership(
+          c.env,
+          mint,
+          user.publicKey,
+          mode,
+          validatedData.type,
+        );
+
+        if (!ownershipCheck.allowed) {
+          clearTimeoutSafe(endpointTimeoutId);
+          // Determine the right minimum based on mode and type
+          let minimumRequired = TOKEN_OWNERSHIP.DEFAULT_MINIMUM;
+          if (
+            validatedData.type === MediaType.VIDEO ||
+            validatedData.type === MediaType.AUDIO
+          ) {
+            minimumRequired =
+              mode === "slow"
+                ? TOKEN_OWNERSHIP.SLOW_MODE_MINIMUM
+                : TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
+          } else if (
+            validatedData.type === MediaType.IMAGE &&
+            mode === "slow"
+          ) {
+            minimumRequired = TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
+          }
+
+          return c.json(
+            {
+              error: "Insufficient token balance",
+              message:
+                ownershipCheck.message ||
+                `You need at least ${minimumRequired} tokens to use this feature.`,
+              type: "OWNERSHIP_REQUIREMENT",
+              minimumRequired,
+            },
+            403,
+          );
+        }
+      }
 
       if (!rateLimit.allowed) {
         clearTimeoutSafe(endpointTimeoutId);
@@ -628,31 +763,27 @@ app.post("/:mint/generate", async (c) => {
       return c.json({ error: "Media generation failed" }, 500);
     }
 
-    // Extract the appropriate URL based on media type
-    let mediaUrl: string;
+    // Validate response
+    if (!result || typeof result !== "object") {
+      throw new Error("Invalid response format");
+    }
 
-    // Handle different response formats from the fal.ai API
-    const typedResult = result as any; // Type casting for safety
+    let mediaUrl: string = ""; // Initialize with empty string
 
-    if (validatedData.type === MediaType.VIDEO && typedResult.video?.url) {
-      mediaUrl = typedResult.video.url;
+    if (validatedData.type === MediaType.VIDEO && result.video?.url) {
+      mediaUrl = result.video.url;
+    } else if (
+      validatedData.type === MediaType.VIDEO &&
+      result.data?.video?.url
+    ) {
+      mediaUrl = result.data.video.url;
     } else if (
       validatedData.type === MediaType.AUDIO &&
-      typedResult.audio_file?.url
+      result.audio_file?.url
     ) {
-      mediaUrl = typedResult.audio_file.url;
-    } else if (
-      typedResult.data?.images &&
-      typedResult.data.images.length > 0 &&
-      typedResult.data.images[0].url
-    ) {
-      mediaUrl = typedResult.data.images[0].url;
-    } else if (typeof typedResult === "string") {
-      // Fallback if the result is just a URL string
-      mediaUrl = typedResult;
-    } else {
-      // Placeholder for testing
-      mediaUrl = `https://placehold.co/600x400?text=${encodeURIComponent(validatedData.prompt)}`;
+      mediaUrl = result.audio_file.url;
+    } else if (result.data?.images?.length > 0) {
+      mediaUrl = result.data.images[0].url;
     }
 
     // Save generation to database with timeout
@@ -664,19 +795,6 @@ app.post("/:mint/generate", async (c) => {
         prompt: validatedData.prompt,
         mediaUrl,
         timestamp: new Date().toISOString(),
-        // negativePrompt: validatedData.negative_prompt,
-        // numInferenceSteps: validatedData.num_inference_steps,
-        // seed: validatedData.seed,
-        // Video specific metadata
-        // numFrames: validatedData.num_frames,
-        // fps: validatedData.fps,
-        // motionBucketId: validatedData.motion_bucket_id,
-        // duration: validatedData.duration,
-        // Audio specific metadata
-        // durationSeconds: validatedData.duration_seconds,
-        // bpm: validatedData.bpm,
-        // creator: c.get("user")?.publicKey || null,
-        // timestamp: new Date().toISOString(),
       });
 
       await Promise.race([insertPromise, dbTimeoutPromise]);
@@ -868,94 +986,185 @@ app.post("/generate-metadata", async (c) => {
       throw error;
     }
 
-    // Customize AI prompt based on user input
-    let userInstructions = "";
-    if (validatedData.prompt) {
-      userInstructions = `The token should be based on this concept: "${validatedData.prompt}". 
-      Make sure the token name, symbol, description and image prompt directly incorporate elements from this concept.
-      For example, if the concept is "a halloween token about arnold schwarzenegger", the token might be named "Spooky Schwartz" with symbol "SPKS" and an image prompt that describes a muscular halloween figure resembling Arnold.
-      Be creative but stay faithful to the concept.`;
-    }
+    // Custom max retries for endpoint
+    const MAX_RETRIES = 10;
+    logger.log(
+      `Generating token metadata with up to ${MAX_RETRIES} retries...`,
+    );
 
-    // Generate metadata using Llama
-    const response = await c.env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a helpful assistant that specializes in creating fun and interesting token metadata for crypto projects. Be creative and incorporate the user's concept directly into your response. Always respond with valid JSON and nothing else.",
-        },
-        {
-          role: "user",
-          content: `Generate prompt and engaging token metadata for a Solana token. The token should be fun and memorable. ${userInstructions} 
-          
-          Return ONLY a JSON object with the following fields:
-          - name: A memorable name for the token that clearly reflects the concept
-          - symbol: A 3-8 character symbol for the token
-          - description: A compelling description of the token that incorporates the concept
-          - prompt: A detailed prompt for image generation that will create a visual representation of the concept
-          
-          Example format:
-          {
-            "name": "Fun Token Name",
-            "symbol": "FUN",
-            "description": "A fun and engaging token description",
-            "prompt": "A detailed prompt for image generation"
+    // Function to generate metadata with the specified prompt data
+    async function generatePromptMetadata(maxRetries = MAX_RETRIES) {
+      let retryCount = 0;
+
+      while (retryCount < maxRetries) {
+        try {
+          logger.log(
+            `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`,
+          );
+
+          const response = await c.env.AI.run(
+            "@cf/meta/llama-3.1-8b-instruct-fast",
+            {
+              messages: [
+                {
+                  role: "system",
+                  content: await createTokenPrompt(c.env, validatedData),
+                },
+              ],
+              max_tokens: 1000,
+              temperature: 0.75 + retryCount * 0.02, // Slightly increase temperature on retries for variation
+            },
+          );
+
+          // Parse the JSON response with robust error handling
+          let metadata: Record<string, string>;
+
+          // Log the raw response for debugging
+          logger.log(
+            `[Endpoint - Attempt ${retryCount + 1}] Raw AI response:`,
+            response.response.substring(0, 100) + "...",
+          );
+
+          // First try to extract JSON using regex - find content between the first { and last }
+          const jsonRegex = /{[\s\S]*}/;
+          const matches = response.response.match(jsonRegex);
+
+          if (!matches || matches.length === 0) {
+            logger.warn(
+              `[Endpoint - Attempt ${retryCount + 1}] Could not find JSON object in AI response, retrying...`,
+            );
+            retryCount++;
+            continue;
           }
-          
-          Only provide the JSON object. Do not include any other text, explanation, or formatting.`,
-        },
-      ],
-      max_tokens: 500,
-      temperature: 0.7,
-    });
 
-    // Extract and parse the JSON response
-    let metadata: Record<string, string>;
-    try {
-      const jsonStartIndex = response.response.indexOf("{");
-      const jsonEndIndex = response.response.lastIndexOf("}") + 1;
+          const jsonString = matches[0];
+          logger.log(
+            `[Endpoint - Attempt ${retryCount + 1}] Extracted JSON string:`,
+            jsonString.substring(0, 100) + "...",
+          );
 
-      if (jsonStartIndex === -1 || jsonEndIndex === -1) {
-        throw new Error("Could not find valid JSON in the response");
+          try {
+            // Try to parse the extracted JSON
+            metadata = JSON.parse(jsonString);
+          } catch (parseError) {
+            // If the first extraction fails, try a more aggressive approach
+            // Look for individual fields and construct a JSON object
+            logger.log(
+              `[Endpoint - Attempt ${retryCount + 1}] JSON parse failed. Attempting field extraction...`,
+            );
+
+            const nameMatch = response.response.match(/"name"\s*:\s*"([^"]+)"/);
+            const symbolMatch = response.response.match(
+              /"symbol"\s*:\s*"([^"]+)"/,
+            );
+            const descMatch = response.response.match(
+              /"description"\s*:\s*"([^"]+)"/,
+            );
+            const promptMatch = response.response.match(
+              /"prompt"\s*:\s*"([^"]+)"/,
+            );
+
+            if (nameMatch && symbolMatch && descMatch && promptMatch) {
+              metadata = {
+                name: nameMatch[1],
+                symbol: symbolMatch[1],
+                description: descMatch[1],
+                prompt: promptMatch[1],
+              };
+              logger.log(
+                `[Endpoint - Attempt ${retryCount + 1}] Successfully extracted fields from response`,
+              );
+            } else {
+              logger.warn(
+                `[Endpoint - Attempt ${retryCount + 1}] Failed to extract required fields, retrying...`,
+              );
+              retryCount++;
+              continue;
+            }
+          }
+
+          // Validate required fields
+          if (
+            !metadata.name ||
+            !metadata.symbol ||
+            !metadata.description ||
+            !metadata.prompt
+          ) {
+            logger.warn(
+              `[Endpoint - Attempt ${retryCount + 1}] Missing required fields in metadata, retrying...`,
+            );
+            retryCount++;
+            continue;
+          }
+
+          // Ensure symbol is uppercase
+          metadata.symbol = metadata.symbol.toUpperCase();
+
+          logger.log(
+            `Successfully generated metadata on attempt ${retryCount + 1}/${maxRetries}`,
+          );
+          return metadata;
+        } catch (error) {
+          logger.error(
+            `[Endpoint - Attempt ${retryCount + 1}] Error during metadata generation:`,
+            error,
+          );
+          retryCount++;
+
+          // Small delay before retrying
+          if (retryCount < maxRetries) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
+        }
       }
 
-      const jsonString = response.response.substring(
-        jsonStartIndex,
-        jsonEndIndex,
+      // All retries failed
+      logger.error(
+        `Failed to generate metadata after ${maxRetries} attempts in endpoint`,
       );
-      metadata = JSON.parse(jsonString);
-    } catch (error) {
-      logger.error("Failed to parse token metadata JSON:", error);
+      return null;
+    }
+
+    // Generate metadata with retries
+    const metadata = await generatePromptMetadata();
+
+    if (!metadata) {
+      // All retries failed - provide fallback in development or return error
+      if (c.env.NODE_ENV === "development" || c.env.NODE_ENV === "test") {
+        const randomNum = Math.floor(Math.random() * 1000);
+        logger.log(
+          "Using fallback metadata in development/test environment after all retries failed",
+        );
+        return c.json({
+          success: true,
+          metadata: {
+            name: `FallbackToken${randomNum}`,
+            symbol: `FB${randomNum % 100}`,
+            description:
+              "A fallback token created when all generation attempts failed",
+            prompt:
+              "A digital art image showing a colorful token with fallback written on it",
+          },
+        });
+      }
+
       return c.json(
-        { success: false, error: "Failed to generate valid token metadata" },
+        {
+          success: false,
+          error:
+            "Failed to generate valid token metadata after maximum retries",
+        },
         500,
       );
     }
 
-    // Validate required fields
-    if (
-      !metadata.name ||
-      !metadata.symbol ||
-      !metadata.description ||
-      !metadata.prompt
-    ) {
-      logger.error("Missing required fields in token metadata:", metadata);
-      return c.json(
-        { success: false, error: "Failed to generate complete token metadata" },
-        500,
-      );
-    }
-
-    // Ensure symbol is uppercase
-    metadata.symbol = metadata.symbol.toUpperCase();
-
+    // Return the successfully generated metadata
     return c.json({
       success: true,
       metadata,
     });
   } catch (error) {
-    console.error("Error generating metadata:", error);
+    console.error("Error in metadata endpoint:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
       500,
@@ -1007,11 +1216,20 @@ app.post("/generate", async (c) => {
 
     console.log("result is", result);
 
-    // Extract the appropriate URL based on media type
-    let mediaUrl: string;
+    // Validate response
+    if (!result || typeof result !== "object") {
+      throw new Error("Invalid response format");
+    }
+
+    let mediaUrl: string = ""; // Initialize with empty string
 
     if (validatedData.type === MediaType.VIDEO && result.video?.url) {
       mediaUrl = result.video.url;
+    } else if (
+      validatedData.type === MediaType.VIDEO &&
+      result.data?.video?.url
+    ) {
+      mediaUrl = result.data.video.url;
     } else if (
       validatedData.type === MediaType.AUDIO &&
       result.audio_file?.url
@@ -1019,9 +1237,17 @@ app.post("/generate", async (c) => {
       mediaUrl = result.audio_file.url;
     } else if (result.data?.images?.length > 0) {
       mediaUrl = result.data.images[0].url;
-    } else {
-      // Fallback - should not happen with our implementation
-      mediaUrl = `https://placehold.co/600x400?text=${encodeURIComponent(validatedData.prompt.substring(0, 100))}`;
+    }
+
+    // For testing or development, use a placeholder if no media was generated
+    if (!mediaUrl) {
+      return c.json(
+        {
+          success: false,
+          error: `Failed to generate ${validatedData.type}. Please try again.`,
+        },
+        500,
+      );
     }
 
     return c.json({
@@ -1242,81 +1468,19 @@ async function generateTokenOnDemand(
   try {
     logger.log("Generating a token on demand...");
 
-    // Generate token metadata using Llama
-    const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a helpful assistant that specializes in creating fun and prompt token metadata for crypto projects. Always respond with valid JSON.",
-        },
-        {
-          role: "user",
-          content: `Generate prompt and engaging token metadata for a Solana token. The token should be fun and memorable. Return a JSON object with the following fields:
-          - name: A memorable name for the token
-          - symbol: A 3-8 character symbol for the token
-          - description: A compelling description of the token
-          - prompt: A detailed prompt for image generation
-          
-          Example format:
-          {
-            "name": "Fun Token Name",
-            "symbol": "FUN",
-            "description": "A fun and engaging token description",
-            "prompt": "A detailed prompt for image generation"
-          }`,
-        },
-      ],
-      max_tokens: 500,
-      temperature: 0.7,
-    });
+    // Use our improved generateMetadata function with retry
+    const metadata = await generateMetadata(env);
 
-    // Extract the generated text
-    const generatedText = response.response;
-
-    // Parse the metadata
-    const metadata: Record<string, string> = {};
-
-    // Extract name
-    const nameMatch = generatedText.match(/name:?\s*["']?([^"\n]+)["']?/i);
-    if (nameMatch) {
-      metadata.name = nameMatch[1].trim();
+    if (!metadata) {
+      return {
+        success: false,
+        error: "Failed to generate token metadata after maximum retries",
+      };
     }
 
-    // Extract symbol
-    const symbolMatch = generatedText.match(/symbol:?\s*["']?([^"\n]+)["']?/i);
-    if (symbolMatch) {
-      metadata.symbol = symbolMatch[1].trim().toUpperCase();
-    }
-
-    // Extract description
-    const descMatch = generatedText.match(
-      /description:?\s*["']?([^"\n]+)["']?/i,
+    logger.log(
+      `Successfully generated token metadata: ${metadata.name} (${metadata.symbol})`,
     );
-    if (descMatch) {
-      metadata.description = descMatch[1].trim();
-    }
-
-    // Extract prompt prompt
-    const creativeMatch = generatedText.match(
-      /prompt:?\s*["']?([^"\n]+)["']?/i,
-    );
-    if (creativeMatch) {
-      metadata.prompt = creativeMatch[1].trim();
-    }
-
-    // Skip if we're missing any required field
-    if (
-      !metadata.name ||
-      !metadata.symbol ||
-      !metadata.description ||
-      !metadata.prompt
-    ) {
-      return { success: false, error: "Failed to generate token metadata" };
-    }
-
-    // Ensure symbol is uppercase
-    metadata.symbol = metadata.symbol.toUpperCase();
 
     // Generate the image for this token
     let imageUrl = "";
@@ -1334,6 +1498,11 @@ async function generateTokenOnDemand(
         imageResult.data.images.length > 0
       ) {
         imageUrl = imageResult.data.images[0].url;
+        logger.log(`Generated image URL: ${imageUrl}`);
+      } else {
+        logger.warn(
+          "Image generation result doesn't contain expected image data",
+        );
       }
     } catch (imageError) {
       logger.error(
@@ -1383,48 +1552,6 @@ async function generateTokenOnDemand(
     return { success: true, token: onDemandToken };
   } catch (error) {
     logger.error("Error generating token on demand:", error);
-
-    // Fallback for errors in production or development
-    if (env.NODE_ENV === "development" || env.NODE_ENV === "test") {
-      logger.log("Using fallback token after error");
-      const tokenId = crypto.randomUUID();
-      const randomNum = Math.floor(Math.random() * 1000);
-
-      const fallbackToken = {
-        id: tokenId,
-        name: `FallbackToken${randomNum}`,
-        ticker: `FB${randomNum % 100}`,
-        description: "A fallback token created when AI generation failed",
-        prompt:
-          "A digital art image showing a colorful token with fallback written on it",
-        image: `https://placehold.co/600x400?text=FallbackToken${randomNum}`,
-        createdAt: new Date().toISOString(),
-        used: 0,
-      };
-
-      // Store in database
-      const db = getDB(env);
-      ctx.waitUntil(
-        (async () => {
-          try {
-            await db.insert(preGeneratedTokens).values({
-              id: tokenId,
-              name: fallbackToken.name,
-              ticker: fallbackToken.ticker,
-              description: fallbackToken.description,
-              prompt: fallbackToken.prompt,
-              image: fallbackToken.image,
-              createdAt: new Date().toISOString(),
-              used: 0,
-            });
-          } catch (err) {
-            logger.error("Error saving fallback token:", err);
-          }
-        })(),
-      );
-
-      return { success: true, token: fallbackToken };
-    }
 
     return { success: false, error: "Failed to generate token" };
   }
@@ -1521,235 +1648,417 @@ app.post("/mark-token-used", async (c) => {
   }
 });
 
-// Reroll token endpoint (get another random one)
-app.post("/reroll-token", async (c) => {
-  try {
-    const db = getDB(c.env);
+// Function to generate metadata using Claude with retry
+async function generateMetadata(env: Env, maxRetries = 10) {
+  let retryCount = 0;
 
-    // Get a random unused token
-    const randomToken = await db
-      .select()
-      .from(preGeneratedTokens)
-      .where(eq(preGeneratedTokens.used, 0))
-      .orderBy(sql`RANDOM()`)
-      .limit(1);
-
-    if (!randomToken || randomToken.length === 0) {
+  while (retryCount < maxRetries) {
+    try {
       logger.log(
-        "No pre-generated tokens available for reroll. Generating one on demand...",
+        `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`,
       );
 
-      // Generate a token on the fly
-      const result = await generateTokenOnDemand(c.env, c.executionCtx);
+      const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
+        messages: [
+          {
+            role: "system",
+            content: await createTokenPrompt(env),
+          },
+        ],
+        max_tokens: 1000,
+        temperature: 0.75 + retryCount * 0.02, // Slightly increase temperature on retries for variation
+      });
 
-      if (!result.success) {
-        return c.json({ error: result.error }, 500);
+      // Parse the JSON response with robust error handling
+      let metadata: Record<string, string>;
+
+      // Log the raw response for debugging
+      logger.log(
+        `[Attempt ${retryCount + 1}] Raw AI response:`,
+        response.response.substring(0, 100) + "...",
+      );
+
+      // First try to extract JSON using regex - find content between the first { and last }
+      const jsonRegex = /{[\s\S]*}/;
+      const matches = response.response.match(jsonRegex);
+
+      if (!matches || matches.length === 0) {
+        logger.warn(
+          `[Attempt ${retryCount + 1}] Could not find JSON object in AI response, retrying...`,
+        );
+        retryCount++;
+        continue;
       }
 
-      return c.json({
-        success: true,
-        token: result.token,
-      });
-    }
+      const jsonString = matches[0];
+      logger.log(
+        `[Attempt ${retryCount + 1}] Extracted JSON string:`,
+        jsonString.substring(0, 100) + "...",
+      );
 
-    return c.json({
-      success: true,
-      token: randomToken[0],
-    });
-  } catch (error) {
-    logger.error("Error rerolling token:", error);
-    return c.json(
-      {
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      500,
-    );
-  }
-});
+      try {
+        // Try to parse the extracted JSON
+        metadata = JSON.parse(jsonString);
+      } catch (parseError) {
+        // If the first extraction fails, try a more aggressive approach
+        // Look for individual fields and construct a JSON object
+        logger.log(
+          `[Attempt ${retryCount + 1}] JSON parse failed. Attempting field extraction...`,
+        );
 
-// Function to generate metadata using Claude
-async function generateMetadata(env: Env) {
-  try {
-    const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a helpful assistant that specializes in creating fun and prompt token metadata for crypto projects. Always respond with valid JSON.",
-        },
-        {
-          role: "user",
-          content: `Generate prompt and engaging token metadata for a Solana token. The token should be fun and memorable. Return a JSON object with the following fields:
-          - name: A memorable name for the token
-          - symbol: A 3-8 character symbol for the token
-          - description: A compelling description of the token
-          - prompt: A detailed prompt for image generation
-          
-          Use this exact output format. Do not include any other text or formatting.
-          \`\`\`json
-          {
-            "name": "Fun Token Name",
-            "symbol": "FUN",
-            "description": "A fun and engaging token description",
-            "prompt": "A detailed prompt for image generation"
-          }
-          \`\`\`
-          `,
-        },
-      ],
-      max_tokens: 500,
-      temperature: 0.7,
-    });
+        const nameMatch = response.response.match(/"name"\s*:\s*"([^"]+)"/);
+        const symbolMatch = response.response.match(/"symbol"\s*:\s*"([^"]+)"/);
+        const descMatch = response.response.match(
+          /"description"\s*:\s*"([^"]+)"/,
+        );
+        const promptMatch = response.response.match(/"prompt"\s*:\s*"([^"]+)"/);
 
-    // Parse the JSON response
-    let metadata: Record<string, string>;
-    try {
-      metadata = JSON.parse(response.response);
+        if (nameMatch && symbolMatch && descMatch && promptMatch) {
+          metadata = {
+            name: nameMatch[1],
+            symbol: symbolMatch[1],
+            description: descMatch[1],
+            prompt: promptMatch[1],
+          };
+          logger.log(
+            `[Attempt ${retryCount + 1}] Successfully extracted fields from response`,
+          );
+        } else {
+          logger.warn(
+            `[Attempt ${retryCount + 1}] Failed to extract required fields, retrying...`,
+          );
+          retryCount++;
+          continue;
+        }
+      }
+
+      // Validate required fields
+      if (
+        !metadata.name ||
+        !metadata.symbol ||
+        !metadata.description ||
+        !metadata.prompt
+      ) {
+        logger.warn(
+          `[Attempt ${retryCount + 1}] Missing required fields in metadata, retrying...`,
+        );
+        retryCount++;
+        continue;
+      }
+
+      // Ensure symbol is uppercase
+      metadata.symbol = metadata.symbol.toUpperCase();
+
+      logger.log(
+        `Successfully generated metadata on attempt ${retryCount + 1}/${maxRetries}`,
+      );
+      return metadata;
     } catch (error) {
-      logger.error("Failed to parse token metadata JSON:", error);
-      return null;
+      logger.error(
+        `[Attempt ${retryCount + 1}] Error during metadata generation:`,
+        error,
+      );
+      retryCount++;
+
+      // Small delay before retrying
+      if (retryCount < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
     }
-
-    // Validate required fields
-    if (
-      !metadata.name ||
-      !metadata.symbol ||
-      !metadata.description ||
-      !metadata.prompt
-    ) {
-      logger.error("Missing required fields in token metadata:", metadata);
-      return null;
-    }
-
-    // Ensure symbol is uppercase
-    metadata.symbol = metadata.symbol.toUpperCase();
-
-    return metadata;
-  } catch (error) {
-    logger.error("Error generating metadata:", error);
-
-    // Fallback for errors - provide a mock token
-    if (env.NODE_ENV === "development" || env.NODE_ENV === "test") {
-      logger.log("Using fallback metadata after error");
-      return {
-        name: `FallbackToken${Math.floor(Math.random() * 1000)}`,
-        symbol: `FB${Math.floor(Math.random() * 100)}`,
-        description: "A fallback token created when AI generation failed",
-        prompt:
-          "A digital art image showing a colorful token with fallback written on it",
-      };
-    }
-
-    return null;
   }
+
+  // All retries failed, return fallback
+  logger.error(`Failed to generate metadata after ${maxRetries} attempts`);
+
+  // In development, provide a detailed fallback
+  if (env.NODE_ENV === "development" || env.NODE_ENV === "test") {
+    const randomNum = Math.floor(Math.random() * 1000);
+    logger.log(
+      "Using fallback metadata in development/test environment after all retries failed",
+    );
+    return {
+      name: `FallbackToken${randomNum}`,
+      symbol: `FB${randomNum % 100}`,
+      description:
+        "A fallback token created when all generation attempts failed",
+      prompt:
+        "A digital art image showing a colorful token with fallback written on it",
+    };
+  }
+
+  return null;
 }
 
 // Function to generate new pre-generated tokens
 export async function generatePreGeneratedTokens(env: Env) {
+  let metadata: Record<string, string> | null = null;
   try {
-    // Generate metadata using Claude
-    const metadata = await generateMetadata(env);
+    // ----- Step 1: Generate Metadata (Logic from /generate-metadata) -----
+    logger.log("[PreGen Metadata] Starting metadata generation...");
+    const MAX_METADATA_RETRIES = 5; // Reduced retries for cron efficiency
+    let metadataRetryCount = 0;
+
+    while (metadataRetryCount < MAX_METADATA_RETRIES) {
+      try {
+        logger.log(
+          `[PreGen Metadata] Attempt ${metadataRetryCount + 1}/${MAX_METADATA_RETRIES}...`,
+        );
+
+        // Note: We don't have `validatedData` here, so createTokenPrompt needs the simpler signature
+        const response = await env.AI.run(
+          "@cf/meta/llama-3.1-8b-instruct-fast",
+          {
+            messages: [
+              {
+                role: "system",
+                content: await createTokenPrompt(env), // Use simpler prompt generation
+              },
+            ],
+            max_tokens: 1000,
+            temperature: 0.75 + metadataRetryCount * 0.02,
+          },
+        );
+
+        let parsedMetadata: Record<string, string> | null = null;
+        const jsonRegex = /{.*}/s; // Use /s flag to match across lines
+        const matches = response.response.match(jsonRegex);
+
+        if (matches && matches.length > 0) {
+          const jsonString = matches[0];
+          try {
+            parsedMetadata = JSON.parse(jsonString);
+          } catch (parseError) {
+            logger.warn(
+              `[PreGen Metadata Attempt ${metadataRetryCount + 1}] JSON parse failed. Attempting field extraction...`,
+              parseError,
+            );
+            // Fallback field extraction (simplified)
+            const nameMatch = response.response.match(/"name"\s*:\s*"([^"]+)"/);
+            const symbolMatch = response.response.match(
+              /"symbol"\s*:\s*"([^"]+)"/,
+            );
+            const descMatch = response.response.match(
+              /"description"\s*:\s*"([^"]+)"/,
+            );
+            const promptMatch = response.response.match(
+              /"prompt"\s*:\s*"([^"]+)"/,
+            );
+            if (nameMatch && symbolMatch && descMatch && promptMatch) {
+              parsedMetadata = {
+                name: nameMatch[1],
+                symbol: symbolMatch[1],
+                description: descMatch[1],
+                prompt: promptMatch[1],
+              };
+              logger.log(
+                `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Successfully extracted fields.`,
+              );
+            } else {
+              logger.warn(
+                `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Failed to extract required fields.`,
+              );
+            }
+          }
+        } else {
+          logger.warn(
+            `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Could not find JSON object in AI response.`,
+          );
+        }
+
+        // Validation
+        if (
+          parsedMetadata &&
+          parsedMetadata.name &&
+          parsedMetadata.symbol &&
+          parsedMetadata.description &&
+          parsedMetadata.prompt
+        ) {
+          parsedMetadata.symbol = parsedMetadata.symbol.toUpperCase();
+          metadata = parsedMetadata; // Assign successfully parsed and validated metadata
+          logger.log(
+            `[PreGen Metadata] Successfully generated metadata on attempt ${metadataRetryCount + 1}.`,
+          );
+          break; // Exit retry loop
+        } else {
+          logger.warn(
+            `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Missing required fields or failed parsing. Retrying...`,
+          );
+          metadataRetryCount++;
+        }
+      } catch (error) {
+        logger.error(
+          `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Error during generation:`,
+          error,
+        );
+        metadataRetryCount++;
+        if (metadataRetryCount < MAX_METADATA_RETRIES) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      }
+    }
+
     if (!metadata) {
-      console.log("Failed to generate metadata");
-      return;
-    }
-
-    // Generate image using the same generateMedia function we use elsewhere
-    const imageResult = await generateMedia(env, {
-      prompt: metadata.prompt,
-      type: MediaType.IMAGE,
-    });
-
-    if (!imageResult?.data?.images?.length) {
-      throw new Error("Failed to generate image");
-    }
-
-    const imageDataUrl = imageResult.data.images[0].url;
-
-    // Extract content type and base64 data from the Data URL
-    const matches = imageDataUrl.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
-
-    if (!matches || matches.length !== 3) {
-      logger.warn(
-        "Invalid image format:",
-        imageDataUrl.substring(0, 50) + "...",
+      logger.error(
+        "[PreGen Metadata] Failed to generate valid metadata after all retries. Skipping token.",
       );
-      throw new Error("Invalid image format. Expected data URL format.");
+      // Use fallback in development/test
+      if (env.NODE_ENV === "development" || env.NODE_ENV === "test") {
+        const randomNum = Math.floor(Math.random() * 1000);
+        logger.log("[PreGen Metadata] Using fallback metadata.");
+        metadata = {
+          name: `FallbackToken${randomNum}`,
+          symbol: `FB${randomNum % 100}`,
+          description: "Fallback token",
+          prompt: "Fallback image prompt",
+        };
+      } else {
+        return; // Stop if metadata failed in production
+      }
     }
+    // ----- End Step 1 -----
 
-    const contentType = matches[1];
-    const imageData = matches[2];
+    // ----- Step 2: Generate Image (using CF AI) -----
+    let imageDataUrl: string = "";
+    try {
+      logger.log(
+        `[PreGen Image] Generating image for: ${metadata.name} using prompt: ${metadata.prompt.substring(0, 50)}...`,
+      );
+      const imageResult = await generateMedia(env, {
+        prompt: metadata.prompt,
+        type: MediaType.IMAGE,
+      });
+      if (
+        imageResult?.data?.images?.length &&
+        imageResult.data.images[0].url.startsWith("data:image")
+      ) {
+        imageDataUrl = imageResult.data.images[0].url;
+        logger.log(
+          `[PreGen Image] Successfully generated image Data URI for ${metadata.name}`,
+        );
+      } else {
+        throw new Error("generateMedia did not return a valid image data URI.");
+      }
+    } catch (imageError) {
+      logger.error(
+        `[PreGen Image] Error generating image for ${metadata.name}:`,
+        imageError,
+      );
+      return; // Stop if image generation fails
+    }
+    // ----- End Step 2 -----
 
-    // Generate a filename based on metadata
-    const sanitizedName = metadata.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "_");
+    // ----- Step 3: Upload Image to R2 (Logic from /upload) -----
+    let finalImageUrl = ""; // This will hold the final URL
+    try {
+      logger.log(
+        `[PreGen Upload] Preparing image for upload: ${metadata.name}`,
+      );
+      const imageMatch = imageDataUrl.match(
+        /^data:(image\/[a-z+]+);base64,(.*)$/,
+      );
+      if (!imageMatch) {
+        throw new Error("Invalid image data URI format for upload.");
+      }
+      const contentType = imageMatch[1];
+      const base64Data = imageMatch[2];
+      const imageBuffer = Buffer.from(base64Data, "base64");
+      logger.log(
+        `[PreGen Upload] Decoded image: type=${contentType}, size=${imageBuffer.length} bytes`,
+      );
 
-    // Determine file extension from content type
-    let extension = ".jpg"; // Default
-    if (contentType === "image/png") extension = ".png";
-    else if (contentType === "image/gif") extension = ".gif";
-    else if (contentType === "image/svg+xml") extension = ".svg";
-    else if (contentType === "image/webp") extension = ".webp";
+      let extension = ".jpg";
+      if (contentType.includes("png")) extension = ".png";
+      else if (contentType.includes("gif")) extension = ".gif";
+      else if (contentType.includes("svg")) extension = ".svg";
+      else if (contentType.includes("webp")) extension = ".webp";
 
-    const filename = `${sanitizedName}${extension}`;
-    logger.log(`Generated filename from metadata: ${filename}`);
+      // Use metadata name for filename
+      // const sanitizedName = metadata.name.toLowerCase().replace(/[^a-z0-9\._-]/g, '_'); // Allow . _ -
+      // const imageFilename = `${sanitizedName}${extension}`;
+      // const imageFilename = `${crypto.randomUUID()}${extension}`; // Alternative: Use UUID
+      const imageFilename = `${crypto.randomUUID()}${extension}`; // Use UUID for unique filename
 
-    // Convert base64 to buffer
-    const imageBuffer = Uint8Array.from(atob(imageData), (c) =>
-      c.charCodeAt(0),
-    ).buffer;
+      const imageKey = `token-images/${imageFilename}`; // Using the same prefix as /upload
+      logger.log(`[PreGen Upload] Determined image R2 key: ${imageKey}`);
 
-    // Upload image to Cloudflare R2
-    const imageUrl = await uploadToCloudflare(env, imageBuffer, {
-      contentType,
-      filename,
-    });
+      if (!env.R2) {
+        throw new Error("[PreGen Upload] R2 binding is not available.");
+      }
 
-    logger.log(`Image uploaded successfully: ${imageUrl}`);
+      logger.log(`[PreGen Upload] Attempting R2 put for key: ${imageKey}`);
+      await env.R2.put(imageKey, imageBuffer, {
+        httpMetadata: { contentType, cacheControl: "public, max-age=31536000" },
+      });
+      logger.log(
+        `[PreGen Upload] Image successfully uploaded to R2: ${imageKey}`,
+      );
 
-    // Upload metadata too
-    const metadataFilename = `${sanitizedName}_metadata.json`;
-    const metadataObj = {
-      name: metadata.name,
-      symbol: metadata.symbol,
-      description: metadata.description,
-    };
+      // Construct URL based on environment (like /upload does)
+      const assetBaseUrl =
+        env.ASSET_URL || env.VITE_API_URL || "http://localhost:8787"; // Default to localhost for safety
+      // We need the *filename* part for the /api/image route, not the full R2 key
+      finalImageUrl = `${assetBaseUrl}/api/image/${imageFilename}`;
+      logger.log(
+        `[PreGen Upload] Constructed final image URL: ${finalImageUrl}`,
+      );
+    } catch (uploadError) {
+      logger.error(
+        `[PreGen Upload] Error during image upload for ${metadata.name}:`,
+        uploadError,
+      );
+      return; // Stop if upload fails
+    }
+    // ----- End Step 3 -----
 
-    const metadataUrl = await uploadToCloudflare(env, metadataObj, {
-      isJson: true,
-      filename: metadataFilename,
-    });
-
-    logger.log(`Metadata uploaded successfully: ${metadataUrl}`);
-
-    // Insert into database
-    const db = getDB(env);
-    await db.insert(preGeneratedTokens).values({
-      id: crypto.randomUUID(),
-      name: metadata.name,
-      ticker: metadata.symbol,
-      description: metadata.description,
-      prompt: metadata.prompt,
-      image: imageUrl,
-      createdAt: new Date().toISOString(),
-      used: 0,
-    });
-
-    console.log(`Generated token: ** ${metadata.name} (** ${metadata.symbol})`);
+    // ----- Step 4: Insert into Database ----- (Optional: Upload Metadata JSON could be added here)
+    try {
+      logger.log(`[PreGen DB] Saving token to database: ${metadata.name}`);
+      const db = getDB(env);
+      await db.insert(preGeneratedTokens).values({
+        id: crypto.randomUUID(),
+        name: metadata.name,
+        ticker: metadata.symbol,
+        description: metadata.description,
+        prompt: metadata.prompt,
+        image: finalImageUrl, // Use the constructed URL
+        createdAt: new Date().toISOString(),
+        used: 0,
+      });
+      logger.log(
+        `[PreGen DB] Successfully saved token: ${metadata.name} (${metadata.symbol}) with image ${finalImageUrl}`,
+      );
+    } catch (dbError) {
+      logger.error(
+        `[PreGen DB] Error saving token ${metadata.name} to database:`,
+        dbError,
+      );
+      // Log error, but maybe don't stop the whole cron job?
+    }
+    // ----- End Step 4 -----
   } catch (error) {
-    console.error(`Error generating image for token:`, error);
+    // Catch unexpected errors in the entire process for this token
+    const tokenName = metadata?.name || "unknown_token_error";
+    logger.error(
+      `[PreGen Process] Unexpected error during generation for ${tokenName}:`,
+      error,
+    );
   }
 }
 
 // Check and replenish pre-generated tokens if needed
 export async function checkAndReplenishTokens(
   env: Env,
-  threshold: number = parseInt(process.env.PREGENERATED_TOKENS_COUNT || "3"),
+  threshold: number = 3,
 ): Promise<void> {
+  if (!threshold) {
+    threshold = parseInt(env.PREGENERATED_TOKENS_COUNT || "3");
+  }
   try {
     console.log("Checking and replenishing pre-generated tokens...");
-    while (true) {
+    let retries = 0;
+    const maxRetries = 5; // Increased from 2 to 5 to give more chances for success
+
+    while (retries < maxRetries) {
       const db = getDB(env);
 
       // Count unused tokens
@@ -1768,9 +2077,14 @@ export async function checkAndReplenishTokens(
           `Generating ${tokensToGenerate} new pre-generated tokens...`,
         );
         await generatePreGeneratedTokens(env);
+        retries++;
       } else {
         break;
       }
+    }
+
+    if (retries === maxRetries) {
+      logger.error("Max retries reached.");
     }
   } catch (error) {
     logger.error("Error checking and replenishing tokens:", error);
@@ -1788,14 +2102,22 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
     // Verify and parse required fields
     const GenerationSchema = z.object({
       tokenMint: z.string().min(32).max(44),
-      prompt: z.string().min(3).max(1000),
+      userPrompt: z.string().min(3).max(1000),
+      mediaType: z
+        .enum([MediaType.IMAGE, MediaType.VIDEO, MediaType.AUDIO])
+        .default(MediaType.IMAGE),
+      mode: z.enum(["fast", "slow"]).default("fast"),
+      image_url: z.string().optional(), // For image-to-video
+      lyrics: z.string().optional(), // For music generation
     });
 
     const body = await c.req.json();
-    const { tokenMint, prompt: userPrompt } = GenerationSchema.parse(body);
+    const { tokenMint, userPrompt, mediaType, mode, image_url, lyrics } =
+      GenerationSchema.parse(body);
 
     logger.log(`Enhance-and-generate request for token: ${tokenMint}`);
     logger.log(`Original prompt: ${userPrompt}`);
+    logger.log(`Media type: ${mediaType}, Mode: ${mode}`);
 
     // Get token metadata from database if available
     const db = getDB(c.env);
@@ -1841,9 +2163,10 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
     const rateLimit = await checkRateLimits(
       c.env,
       tokenMint,
-      MediaType.IMAGE,
+      mediaType,
       user.publicKey,
     );
+
     if (!rateLimit.allowed) {
       // Check if failure is due to token ownership requirement
       if (
@@ -1866,23 +2189,59 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
         {
           success: false,
           error: "Rate limit exceeded. Please try again later.",
-          limit: RATE_LIMITS[MediaType.IMAGE].MAX_GENERATIONS_PER_DAY,
-          cooldown: RATE_LIMITS[MediaType.IMAGE].COOLDOWN_PERIOD_MS,
+          limit: RATE_LIMITS[mediaType].MAX_GENERATIONS_PER_DAY,
+          cooldown: RATE_LIMITS[mediaType].COOLDOWN_PERIOD_MS,
           message: `You can generate up to ${
-            RATE_LIMITS[MediaType.IMAGE].MAX_GENERATIONS_PER_DAY
-          } images per day.`,
+            RATE_LIMITS[mediaType].MAX_GENERATIONS_PER_DAY
+          } ${mediaType}s per day.`,
           remaining: rateLimit.remaining,
         },
         429,
       );
     }
 
+    // Check specific token requirements for the selected mode
+    const ownershipCheck = await checkTokenOwnership(
+      c.env,
+      tokenMint,
+      user.publicKey,
+      mode,
+      mediaType,
+    );
+
+    if (!ownershipCheck.allowed) {
+      // Determine the right minimum based on mode and type
+      let minimumRequired = TOKEN_OWNERSHIP.DEFAULT_MINIMUM;
+      if (mediaType === MediaType.VIDEO || mediaType === MediaType.AUDIO) {
+        minimumRequired =
+          mode === "slow"
+            ? TOKEN_OWNERSHIP.SLOW_MODE_MINIMUM
+            : TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
+      } else if (mediaType === MediaType.IMAGE && mode === "slow") {
+        minimumRequired = TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
+      }
+
+      return c.json(
+        {
+          success: false,
+          error: "Insufficient token balance",
+          message:
+            ownershipCheck.message ||
+            `You need at least ${minimumRequired} tokens to use this feature.`,
+          type: "OWNERSHIP_REQUIREMENT",
+          minimumRequired,
+        },
+        403,
+      );
+    }
+
     // Use AI to enhance the prompt
-    console.log("Enhancing prompt with token metadata");
+    console.log(`Enhancing prompt with token metadata for ${mediaType}`);
     const enhancedPrompt = await generateEnhancedPrompt(
       c.env,
       userPrompt,
       tokenMetadata,
+      mediaType,
     );
 
     if (!enhancedPrompt) {
@@ -1897,52 +2256,85 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
 
     logger.log(`Enhanced prompt: ${enhancedPrompt}`);
 
-    // Generate the image with the enhanced prompt
-    console.log("Generating image with enhanced prompt");
-    const result = await generateMedia(c.env, {
+    // Generate the media with the enhanced prompt
+    console.log(`Generating ${mediaType} with enhanced prompt in ${mode} mode`);
+
+    // Prepare generation parameters
+    const generationParams: any = {
       prompt: enhancedPrompt,
-      type: MediaType.IMAGE,
-    });
+      type: mediaType,
+      mode,
+    };
+
+    // Add optional parameters based on media type
+    if (mediaType === MediaType.VIDEO && image_url) {
+      generationParams.image_url = image_url;
+    }
+
+    if (mediaType === MediaType.AUDIO && lyrics) {
+      generationParams.lyrics = lyrics;
+    }
+
+    const result = await generateMedia(c.env, generationParams);
 
     console.log(
-      "Image generation result:",
+      "Media generation result:",
       JSON.stringify(result).substring(0, 200) + "...",
     );
 
-    // Extract the image URL, handling different result formats
-    let mediaUrl = "";
-
-    if (result && typeof result === "object") {
-      // Handle the Cloudflare Worker AI result format
-      if (result.data?.images && result.data.images.length > 0) {
-        mediaUrl = result.data.images[0].url;
-      }
-      // Handle other potential formats
-      else if (result.image) {
-        mediaUrl = result.image;
-      } else if (result.url) {
-        mediaUrl = result.url;
-      }
-      // Last resort - if the result itself is a string URL
-      else if (typeof result === "string") {
-        mediaUrl = result;
-      }
+    // Validate response
+    if (!result || typeof result !== "object") {
+      throw new Error("Invalid response format");
     }
 
-    // For testing or development, use a placeholder if no image was generated
-    if (!mediaUrl) {
-      if (c.env.NODE_ENV === "development" || c.env.NODE_ENV === "test") {
-        mediaUrl = `https://placehold.co/600x400?text=${encodeURIComponent(enhancedPrompt.substring(0, 30))}`;
-        console.log("Using placeholder image URL:", mediaUrl);
-      } else {
-        return c.json(
-          {
-            success: false,
-            error: "Failed to generate image. Please try again.",
-          },
-          500,
-        );
+    let mediaUrl: string = ""; // Initialize with empty string
+
+    if (result && typeof result === "object") {
+      // Handle video result formats
+      if (mediaType === MediaType.VIDEO) {
+        if (result.video?.url) {
+          mediaUrl = result.video.url;
+        } else if (result.urls?.video) {
+          // For pixverse models
+          mediaUrl = result.urls.video;
+        } else if (result.data?.video?.url) {
+          // For data.video.url structure
+          mediaUrl = result.data.video.url;
+        }
       }
+      // Handle audio result formats
+      else if (mediaType === MediaType.AUDIO) {
+        if (result.audio_file?.url) {
+          mediaUrl = result.audio_file.url;
+        } else if (result.output?.audio) {
+          mediaUrl = result.output.audio;
+        }
+      }
+      // Handle image result formats
+      else if (result.data?.images && result.data.images.length > 0) {
+        mediaUrl = result.data.images[0].url;
+      } else if (result.image?.url) {
+        // For flux ultra
+        mediaUrl = result.image.url;
+      }
+      // Handle any other format
+      else if (result.url) {
+        mediaUrl = result.url;
+      }
+    }
+    // Last resort - if the result itself is a string URL
+    else if (typeof result === "string") {
+      mediaUrl = result;
+    }
+
+    if (!mediaUrl) {
+      return c.json(
+        {
+          success: false,
+          error: `Failed to generate ${mediaType}. Please try again.`,
+        },
+        500,
+      );
     }
 
     // Save generation to database
@@ -1951,7 +2343,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
       await db.insert(mediaGenerations).values({
         id: generationId,
         mint: tokenMint,
-        type: MediaType.IMAGE,
+        type: mediaType,
         prompt: enhancedPrompt,
         mediaUrl,
         creator: user.publicKey,
@@ -1972,7 +2364,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
       generationId,
       remainingGenerations: rateLimit.remaining - 1,
       resetTime: new Date(
-        Date.now() + RATE_LIMITS[MediaType.IMAGE].COOLDOWN_PERIOD_MS,
+        Date.now() + RATE_LIMITS[mediaType].COOLDOWN_PERIOD_MS,
       ).toISOString(),
     });
   } catch (error) {
@@ -2000,33 +2392,31 @@ async function generateEnhancedPrompt(
     description?: string;
     prompt?: string;
   },
+  mediaType: MediaType = MediaType.IMAGE,
 ): Promise<string> {
   try {
+    // Adjust prompt based on media type
+    let systemPrompt = enhancePrompt(userPrompt, tokenMetadata);
+
+    // Modify prompt based on media type
+    if (mediaType === MediaType.VIDEO) {
+      systemPrompt +=
+        "\nAdditionally, focus on dynamic visual elements and motion that would work well in a short video.";
+    } else if (mediaType === MediaType.AUDIO) {
+      systemPrompt +=
+        "\nAdditionally, focus on acoustic elements, mood, and atmosphere suitable for audio content.";
+    }
+
     // Use Llama to enhance the prompt
     const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
       messages: [
         {
           role: "system",
-          content:
-            "You are an AI specialized in creating detailed image generation prompts. Your task is to combine a user's input with token metadata to create a comprehensive, detailed prompt that will produce a high-quality, coherent image.",
-        },
-        {
-          role: "user",
-          content: `Enhance this prompt for image generation by combining it with the token metadata. Create a single, coherent image prompt that incorporates both the user's ideas and the token's identity.
-
-Token Metadata:
-- Name: ${tokenMetadata.name}
-- Symbol: ${tokenMetadata.symbol}
-- Description: ${tokenMetadata.description || ""}
-- Original token prompt: ${tokenMetadata.prompt || ""}
-
-User's prompt: "${userPrompt}"
-
-Return only the enhanced prompt, nothing else. The prompt should be detailed and descriptive, focusing on visual elements that would create a compelling image.`,
+          content: systemPrompt,
         },
       ],
-      max_tokens: 500,
-      temperature: 0.7,
+      max_tokens: 1000,
+      temperature: 0.75,
     });
 
     // Extract just the prompt text from the response

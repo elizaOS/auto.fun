@@ -27,6 +27,12 @@ binding = "R2"
 bucket_name = "autofun-storage"
 preview_bucket_name = "autofun-storage-dev"
 
+# KV namespace for auth tokens
+[[kv_namespaces]]
+binding = "AUTH_TOKENS"
+id = "91bc4666a62044ba816c53a9b2116281"
+preview_id = "d2622b59f8dd431eb2468732a5053649"
+
 [vars]
 NETWORK = "mainnet"
 DECIMALS = "6"
@@ -37,11 +43,12 @@ R2_PUBLIC_URL = "https://pub-30f52db29266428495af0c1aea206af1.r2.dev"
 NODE_ENV = "production"
 MAINNET_FRONTEND_URL="https://api.autofun.workers.dev"
 DEVNET_FRONTEND_URL="https://api-dev.autofun.workers.dev"
+AUTH_TOKEN_SALT = "autofun-wallet-auth-salt-replace-in-production" # Salt for hashing auth tokens
 
 # Socket.io Durable Objects
 [durable_objects]
 bindings = [
-  { name = "WebSocketDO", class_name = "WebSocketDO" }
+  { name = "WEBSOCKET_DO", class_name = "WebSocketDO" }
 ]
 
 # Migration tags
@@ -72,15 +79,22 @@ TOKEN_SUPPLY = "100000000000000"
 VIRTUAL_RESERVES = "280000000"
 CURVE_LIMIT = "11300000000"
 R2_PUBLIC_URL = "https://pub-30f52db29266428495af0c1aea206af1.r2.dev"
-NODE_ENV = "production"
+NODE_ENV = "development"
 MAINNET_FRONTEND_URL="https://api.autofun.workers.dev"
 DEVNET_FRONTEND_URL="https://api-dev.autofun.workers.dev"
+AUTH_TOKEN_SALT = "autofun-wallet-auth-salt-dev-env" # Salt for hashing auth tokens in dev
 
 # D1 Database for development
 [[env.development.d1_databases]]
 binding = "DB"
 database_name = "autofun-dev"
-database_id = "00ade209-86ac-46a9-bed5-b74aaaac4ad4"
+database_id = "9d80bef0-48e8-482b-928a-8d9398f6fa04"
+
+# KV namespace for auth tokens in development
+[[env.development.kv_namespaces]]
+binding = "AUTH_TOKENS"
+id = "41026322740f476eb6aa38bbb96cc210"
+preview_id = "fe77e6014ebd4cd583d9f2efa53bf3c8"
 
 # Add R2 bucket for development
 [[env.development.r2_buckets]]
@@ -90,7 +104,7 @@ bucket_name = "autofun-storage-dev"
 # Add Socket.io Durable Objects for development
 [env.development.durable_objects]
 bindings = [
-  { name = "WebSocketDO", class_name = "WebSocketDO" }
+  { name = "WEBSOCKET_DO", class_name = "WebSocketDO" }
 ]
 
 # Add migrations for development environment
@@ -106,3 +120,8 @@ name = "api"
 binding = "AI"
 
 # The production database is already defined in the default configuration
+
+# KV namespace for auth tokens in production (same as default)
+[[env.production.kv_namespaces]]
+binding = "AUTH_TOKENS"
+id = "91bc4666a62044ba816c53a9b2116281"

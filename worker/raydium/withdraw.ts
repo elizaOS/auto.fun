@@ -13,7 +13,7 @@ export const withdrawTx = async (
   user: PublicKey,
   token: PublicKey,
   connection: Connection,
-  program: Program<Autofun>
+  program: Program<Autofun>,
 ) => {
   const tx = await program.methods
     .withdraw()
@@ -33,7 +33,7 @@ export async function execWithdrawTx(
   tx: Transaction,
   connection: Connection,
   wallet: any,
-  maxRetries = 1
+  maxRetries = 1,
 ): Promise<{ signature: string; logs: string[] }> {
   let lastError: Error | null = null;
 
@@ -45,7 +45,7 @@ export async function execWithdrawTx(
       const simulation = await connection.simulateTransaction(signedTx);
       if (simulation.value.err) {
         throw new Error(
-          `Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`
+          `Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`,
         );
       }
 
@@ -58,7 +58,7 @@ export async function execWithdrawTx(
           skipPreflight: true,
           maxRetries: 2,
           preflightCommitment: "confirmed",
-        }
+        },
       );
 
       if (!signature) {
@@ -73,7 +73,7 @@ export async function execWithdrawTx(
           lastValidBlockHeight: (await connection.getLatestBlockhash())
             .lastValidBlockHeight,
         },
-        "confirmed"
+        "confirmed",
       );
 
       // Check if we got ProgramFailedToComplete but program actually succeeded
@@ -81,7 +81,7 @@ export async function execWithdrawTx(
         confirmation.value.err === "ProgramFailedToComplete" ||
         (confirmation.value.err &&
           JSON.stringify(confirmation.value.err).includes(
-            "ProgramFailedToComplete"
+            "ProgramFailedToComplete",
           ))
       ) {
         // Get transaction logs to verify actual execution
@@ -91,17 +91,17 @@ export async function execWithdrawTx(
 
         if (
           txInfo?.meta?.logMessages?.some((log) =>
-            log.includes(`Program success`)
+            log.includes(`Program success`),
           )
         ) {
           logger.log(
-            "Transaction succeeded despite ProgramFailedToComplete error"
+            "Transaction succeeded despite ProgramFailedToComplete error",
           );
           return { signature, logs: txInfo.meta.logMessages };
         }
       } else if (confirmation.value.err) {
         throw new Error(
-          `Transaction failed: ${JSON.stringify(confirmation.value.err)}`
+          `Transaction failed: ${JSON.stringify(confirmation.value.err)}`,
         );
       }
 
@@ -118,7 +118,7 @@ export async function execWithdrawTx(
           error.message?.includes("Block height exceeded"))
       ) {
         await new Promise((resolve) =>
-          setTimeout(resolve, Math.min(1000 * Math.pow(2, i), 15000))
+          setTimeout(resolve, Math.min(1000 * Math.pow(2, i), 15000)),
         );
         continue;
       }

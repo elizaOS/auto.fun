@@ -1,8 +1,7 @@
-import { TSortBy, TSortOrder } from "@/types";
+import { HomepageSortBy } from "@/types";
 import { useLocalStorage } from "@uidotdev/usehooks";
 
 export const useFilter = () => {
-  const [sortBy, setSortBy] = useLocalStorage<TSortBy>("filter", "createdAt");
-  const [sortOrder, setSortOrder] = useLocalStorage<TSortOrder>("sort", "desc");
-  return [sortBy, setSortBy, sortOrder, setSortOrder] as const;
+  const [sortBy, setSortBy] = useLocalStorage<HomepageSortBy>("filter", "all");
+  return [sortBy, setSortBy] as const;
 };

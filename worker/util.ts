@@ -15,7 +15,7 @@ import {
   Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { eq } from "drizzle-orm";
+import { eq, sql, desc } from "drizzle-orm";
 import { CacheService } from "./cache";
 import { SEED_BONDING_CURVE, SEED_CONFIG } from "./constant";
 import { getDB, Token, tokenHolders, tokens } from "./db";
@@ -36,7 +36,6 @@ export interface TokenMetadataJson {
   telegram?: string;
   website?: string;
   discord?: string;
-  agentLink?: string;
 }
 
 const FEE_BASIS_POINTS = 10000;
@@ -438,10 +437,25 @@ export const withdrawTx = async (
 
 // Get RPC URL based on the environment
 export const getRpcUrl = (env: any) => {
-  const result =
-    (env.NETWORK === "devnet"
-      ? env.DEVNET_SOLANA_RPC_URL
-      : env.MAINNET_SOLANA_RPC_URL) || env.VITE_RPC_URL;
+  // Extract the base URL and ensure we use the correct API key
+  let baseUrl;
+
+  if (env.NETWORK === "devnet") {
+    baseUrl = "https://devnet.helius-rpc.com/";
+  } else {
+    // Default to mainnet
+    baseUrl = "https://mainnet.helius-rpc.com/";
+  }
+
+  // Use API key from environment, ensuring it's applied correctly
+  const apiKey =
+    env.NETWORK === "devnet"
+      ? env.DEVNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
+        "7f068738-8b88-4a91-b2a9-99b00f716717"
+      : env.MAINNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
+        "7f068738-8b88-4a91-b2a9-99b00f716717";
+
+  const result = `${baseUrl}?api-key=${apiKey}`;
 
   logger.log(
     `getRpcUrl called with NETWORK=${env.NETWORK}, returning: ${result}`,
@@ -451,11 +465,14 @@ export const getRpcUrl = (env: any) => {
 
 // Get mainnet RPC URL regardless of environment setting
 export const getMainnetRpcUrl = (env: any) => {
-  // Use explicit mainnet RPC URLs with fallbacks to ensure we have a valid URL
-  const mainnetUrl =
-    env.MAINNET_SOLANA_RPC_URL ||
-    env.VITE_MAINNET_RPC_URL ||
-    "https://api.mainnet-beta.solana.com";
+  // Extract base URL and API key
+  const baseUrl = "https://mainnet.helius-rpc.com/";
+  const apiKey =
+    env.MAINNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
+    env.VITE_MAINNET_RPC_URL?.split("api-key=")[1] ||
+    "7f068738-8b88-4a91-b2a9-99b00f716717";
+
+  const mainnetUrl = `${baseUrl}?api-key=${apiKey}`;
 
   logger.log(`getMainnetRpcUrl returning: ${mainnetUrl}`);
   return mainnetUrl;
@@ -463,11 +480,14 @@ export const getMainnetRpcUrl = (env: any) => {
 
 // Get devnet RPC URL regardless of environment setting
 export const getDevnetRpcUrl = (env: any) => {
-  // Use explicit devnet RPC URLs with fallbacks to ensure we have a valid URL
-  const devnetUrl =
-    env.DEVNET_SOLANA_RPC_URL ||
-    env.VITE_DEVNET_RPC_URL ||
-    "https://api.devnet.solana.com";
+  // Extract base URL and API key
+  const baseUrl = "https://devnet.helius-rpc.com/";
+  const apiKey =
+    env.DEVNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
+    env.VITE_DEVNET_RPC_URL?.split("api-key=")[1] ||
+    "7f068738-8b88-4a91-b2a9-99b00f716717";
+
+  const devnetUrl = `${baseUrl}?api-key=${apiKey}`;
 
   logger.log(`getDevnetRpcUrl returning: ${devnetUrl}`);
   return devnetUrl;
@@ -736,6 +756,8 @@ export async function updateHoldersCache(env: Env, mint: string) {
       },
     );
 
+    logger.log(`Found ${accounts.length} token accounts for mint ${mint}`);
+
     // Process accounts
     let totalTokens = 0;
     const holders: any[] = [];
@@ -767,9 +789,13 @@ export async function updateHoldersCache(env: Env, mint: string) {
     // Remove old holders data
     await db.delete(tokenHolders).where(eq(tokenHolders.mint, mint));
 
-    // Insert new holders data
+    // Insert new holders data in batches of 100 to avoid SQLite parameter limits
     if (holderRecords.length > 0) {
-      await db.insert(tokenHolders).values(holderRecords);
+      const BATCH_SIZE = 100;
+      for (let i = 0; i < holderRecords.length; i += BATCH_SIZE) {
+        const batch = holderRecords.slice(i, i + BATCH_SIZE);
+        await db.insert(tokenHolders).values(batch);
+      }
     }
 
     // Update the token with holder count
@@ -781,9 +807,124 @@ export async function updateHoldersCache(env: Env, mint: string) {
       })
       .where(eq(tokens.mint, mint));
 
+    // Try to emit websocket update for holders
+    try {
+      // Get the WebSocket client
+      const wsClient = getWebSocketClient(env);
+
+      // Emit event to notify of holder update
+      await wsClient.emit(`token-${mint}`, "newHolder", holderRecords);
+
+      logger.log(`Emitted holders update for token ${mint}`);
+    } catch (wsError) {
+      // Don't fail if WebSocket fails
+      logger.error(`Error emitting WebSocket event: ${wsError}`);
+    }
+
     return holderRecords.length;
   } catch (error) {
     logger.error(`Error updating holders for ${mint}:`, error);
     throw error;
+  }
+}
+
+/**
+ * Gets the maximum values needed for featured sorting
+ *
+ * @param db Database instance
+ * @returns Object containing maxVolume and maxHolders values for normalization
+ */
+export async function getFeaturedMaxValues(db: any) {
+  // Get max values for normalization with a subquery
+  try {
+    const maxValues = await db
+      .select({
+        maxVolume: sql`MAX(COALESCE(${tokens.volume24h}, 0))`,
+        maxHolders: sql`MAX(COALESCE(${tokens.holderCount}, 0))`,
+      })
+      .from(tokens)
+      .where(sql`${tokens.status} != 'pending'`);
+
+    // Extract max values, default to 1 to avoid division by zero
+    return {
+      maxVolume: Number(maxValues[0]?.maxVolume) || 1,
+      maxHolders: Number(maxValues[0]?.maxHolders) || 1,
+    };
+  } catch (error) {
+    console.error("Error getting max values for featured sort:", error);
+    return { maxVolume: 1, maxHolders: 1 }; // Default values on error
+  }
+}
+
+/**
+ * Creates a SQL expression for calculating the weighted featured score
+ *
+ * @param maxVolume Maximum volume value for normalization
+ * @param maxHolders Maximum holder count for normalization
+ * @returns SQL expression for calculating the weighted score
+ */
+export function getFeaturedScoreExpression(
+  maxVolume: number,
+  maxHolders: number,
+) {
+  // Use provided max values, defaulting to 1 to avoid division by zero
+  const normalizedMaxVolume = maxVolume || 1;
+  const normalizedMaxHolders = maxHolders || 1;
+
+  // Return the weighted score SQL expression
+  return sql`(
+    (COALESCE(${tokens.volume24h}, 0) / ${normalizedMaxVolume} * 0.7) + 
+    (COALESCE(${tokens.holderCount}, 0) / ${normalizedMaxHolders} * 0.3)
+  )`;
+}
+
+/**
+ * Calculates the weighted score for a token using JavaScript
+ * This function matches the SQL logic for consistency
+ *
+ * @param token Token object with volume24h and holderCount properties
+ * @param maxVolume Maximum volume value for normalization
+ * @param maxHolders Maximum holder count for normalization
+ * @returns Calculated weighted score
+ */
+export function calculateFeaturedScore(
+  token: { volume24h?: number | null; holderCount?: number | null },
+  maxVolume: number,
+  maxHolders: number,
+): number {
+  const normalizedMaxVolume = maxVolume || 1;
+  const normalizedMaxHolders = maxHolders || 1;
+
+  const volume = token.volume24h || 0;
+  const holders = token.holderCount || 0;
+
+  return (
+    (volume / normalizedMaxVolume) * 0.7 +
+    (holders / normalizedMaxHolders) * 0.3
+  );
+}
+
+/**
+ * Applies a weighted sort for the "featured" tokens
+ * Uses 70% weight on volume24h and 30% weight on holderCount
+ *
+ * @param tokensQuery Current tokens query that needs sorting applied
+ * @param maxVolume Maximum volume value for normalization
+ * @param maxHolders Maximum holder count for normalization
+ * @param sortOrder Sort direction ("asc" or "desc")
+ * @returns Updated tokens query with the weighted sorting applied
+ */
+export function applyFeaturedSort(
+  tokensQuery: any,
+  maxVolume: number,
+  maxHolders: number,
+  sortOrder: string,
+) {
+  const featuredScore = getFeaturedScoreExpression(maxVolume, maxHolders);
+
+  if (sortOrder.toLowerCase() === "desc") {
+    return tokensQuery.orderBy(desc(featuredScore));
+  } else {
+    return tokensQuery.orderBy(featuredScore);
   }
 }

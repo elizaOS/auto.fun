@@ -1,11 +1,11 @@
 .theme-dark:root {
-  --tv-color-platform-background: #171717;
-  --tv-color-pane-background: #171717;
-  --tv-color-pane-background-secondary: #171717;
+  --tv-color-platform-background: #0a0a0a;
+  --tv-color-pane-background: #0a0a0a;
+  --tv-color-pane-background-secondary: #0a0a0a;
   --tv-color-toolbar-button-text: #8c8c8c;
   --tv-color-toolbar-button-text-hover: #ffffff;
   --tv-color-toolbar-button-background-hover: #262626;
-  --tv-color-toolbar-button-background-expanded: #171717;
+  --tv-color-toolbar-button-background-expanded: #0a0a0a;
   --tv-color-toolbar-button-background-active: #262626;
   --tv-color-toolbar-button-background-active-hover: #262626;
   --tv-color-item-active-text: #4ade80;
@@ -14,17 +14,17 @@
 }
 
 .layout__area--center {
-  background-color: #171717;
+  background-color: #0a0a0a;
 }
 
 /* Chart Container */
 html.theme-dark .chart-page {
-  background-color: #171717;
+  background-color: #0a0a0a;
   font-family: "DM Mono", monospace;
 }
 
 html.theme-dark .chart-page .chart-container-border {
-  background-color: #171717;
+  background-color: #0a0a0a;
 }
 
 html.theme-dark .chart-container {
@@ -122,7 +122,7 @@ html.theme-dark .chart-controls-bar {
   align-items: center;
   justify-content: space-between;
   padding: 8px 16px;
-  background-color: #171717;
+  background-color: #0a0a0a;
   border-bottom: 1px solid #262626;
 }
 
@@ -160,5 +160,5 @@ html.theme-dark .chart-controls-bar {
 
 /* Loading Screen */
 .loading-screen {
-  background-color: #171717 !important;
+  background-color: #0a0a0a !important;
 }

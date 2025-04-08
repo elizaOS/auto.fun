@@ -15,6 +15,7 @@ export default function TokenStatus({ token }: { token: IToken }) {
     migration_failed: "Migration Failed",
     pending: "Pending",
     withdrawn: "Withdrawn",
+    partner_import: "Imported",
   };
 
   const variantStatus: Record<IToken["status"], TVariant> = {
@@ -26,6 +27,7 @@ export default function TokenStatus({ token }: { token: IToken }) {
     migration_failed: "destructive",
     pending: "warning",
     withdrawn: "warning",
+    partner_import: "info",
   };
 
   const variants: Record<TVariant, string> = {

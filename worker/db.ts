@@ -122,10 +122,10 @@ export const personalities = sqliteTable("personalities", {
   name: text("name").notNull(),
   description: text("description"),
   createdAt: integer("created_at", { mode: "timestamp" }).default(
-    sql`CURRENT_TIMESTAMP`
+    sql`CURRENT_TIMESTAMP`,
   ),
   updatedAt: integer("updated_at", { mode: "timestamp" }).default(
-    sql`CURRENT_TIMESTAMP`
+    sql`CURRENT_TIMESTAMP`,
   ),
   deletedAt: integer("deleted_at", { mode: "timestamp" }),
 });

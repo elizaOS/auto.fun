@@ -5,11 +5,11 @@ module.exports = {
       center: true,
       padding: "1rem",
       screens: {
-        sm: "640px",
-        md: "768px",
-        lg: "1024px",
-        xl: "1280px",
-        "2xl": "1712px",
+        sm: "100vw",
+        md: "100vw",
+        lg: "100vw",
+        xl: "100vw",
+        "2xl": "100vw",
       },
     },
     extend: {

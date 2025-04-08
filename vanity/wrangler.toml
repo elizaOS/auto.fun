@@ -1,0 +1,14 @@
+name = "vanity"
+main = "build/worker/shim.mjs"
+compatibility_date = "2025-03-21"
+
+[build]
+command = "cargo install -q worker-build && worker-build --release"
+
+[dev]
+port = 8888
+
+[env.development]
+name = "vanity-dev"
+[env.development.dev]
+port = 8888

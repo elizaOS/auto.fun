@@ -1,96 +1,84 @@
-import { useQuery } from "@tanstack/react-query";
+import { useProgram } from "@/utils/program";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { PublicKey } from "@solana/web3.js";
+import { useEffect, useState } from "react";
 
-export interface TokenBalance {
-  balance: number;
-  decimals: number;
-  formattedBalance: number;
-}
+export const useSolBalance = () => {
+  const [solBalance, setSolBalance] = useState(0);
 
-const RPC_URL =
-  (import.meta.env.network === "devnet"
-    ? import.meta.env.VITE_DEVNET_RPC_URL
-    : import.meta.env.VITE_MAINNET_RPC_URL) || import.meta.env.VITE_RPC_URL;
+  const { connection } = useConnection();
+  const { publicKey } = useWallet();
 
-const fetchTokenBalance = async (
-  walletAddress: string,
-  contractAddress: "So11111111111111111111111111111111111111111" | string,
-): Promise<TokenBalance> => {
-  // If the contract address is for native SOL
-  if (contractAddress === "So11111111111111111111111111111111111111111") {
-    const response = await fetch(RPC_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "getBalance",
-        params: [walletAddress],
-      }),
-    });
+  useEffect(() => {
+    if (!publicKey || !connection) return;
 
-    const data: { error: any; result: any } = await response.json();
-    if (data.error) {
-      throw new Error(data.error.message || "Error fetching SOL balance");
-    }
-
-    const rawBalance: number = data.result.value;
-    return {
-      balance: rawBalance,
-      decimals: 9,
-      formattedBalance: rawBalance / 1e9,
+    const fetchSolBalance = async () => {
+      try {
+        const balance = await connection.getBalance(publicKey);
+        setSolBalance(balance / 1e9);
+      } catch (error) {
+        console.error("Error fetching SOL balance:", error);
+      }
     };
-  } else {
-    // Fetch SPL token balance using getTokenAccountsByOwner with a mint filter
-    const response = await fetch(RPC_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "getTokenAccountsByOwner",
-        params: [
-          walletAddress,
-          { mint: contractAddress },
-          { encoding: "jsonParsed" },
-        ],
-      }),
+
+    fetchSolBalance();
+    const id = connection.onAccountChange(publicKey, () => {
+      fetchSolBalance();
     });
-
-    const data: { error: any; result: any } = await response.json();
-    if (data.error) {
-      throw new Error(data.error.message || "Error fetching token balance");
-    }
-
-    let total = 0;
-    let tokenDecimals: number | null = null;
-    if (data.result.value && data.result.value.length > 0) {
-      data.result.value.forEach((tokenAccount: any) => {
-        const tokenInfo = tokenAccount.account.data.parsed.info.tokenAmount;
-        total += parseInt(tokenInfo.amount, 10);
-        tokenDecimals = tokenInfo.decimals;
-      });
-    }
-
-    return {
-      balance: total,
-      decimals: tokenDecimals !== null ? tokenDecimals : 0,
-      formattedBalance:
-        tokenDecimals !== null ? total / Math.pow(10, tokenDecimals) : 0,
+    return () => {
+      connection.removeAccountChangeListener(id);
     };
-  }
+  }, [publicKey, connection]);
+
+  return solBalance;
 };
 
-const useTokenBalance = (
-  walletAddress: string,
-  contractAddress: "So11111111111111111111111111111111111111111" | string,
-) => {
-  return useQuery<TokenBalance, Error>({
-    queryKey: ["tokenBalance", walletAddress, contractAddress],
-    queryFn: async () =>
-      await fetchTokenBalance(walletAddress, contractAddress),
-    enabled: Boolean(walletAddress && contractAddress),
-    refetchInterval: 7500,
-  });
-};
+export const useTokenBalance = ({ tokenId }: { tokenId: string }) => {
+  const solBalance = useSolBalance();
+  const [tokenBalance, setTokenBalance] = useState(0);
 
-export default useTokenBalance;
+  const { connection } = useConnection();
+  const { publicKey } = useWallet();
+  const program = useProgram();
+
+  // Get token balance
+  useEffect(() => {
+    if (!publicKey || !connection || !program) return;
+
+    const fetchTokenBalance = async () => {
+      try {
+        const tokenMint = new PublicKey(tokenId);
+        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+          publicKey,
+          { mint: tokenMint },
+        );
+
+        const balance =
+          tokenAccounts.value.length > 0
+            ? tokenAccounts.value[0].account.data.parsed.info.tokenAmount
+                .uiAmount
+            : 0;
+
+        setTokenBalance(balance);
+      } catch (error) {
+        console.error("Error fetching token balance:", error);
+      }
+    };
+
+    fetchTokenBalance();
+    // Listen for token account changes
+    const tokenAccountListener = connection.onProgramAccountChange(
+      program.programId,
+      fetchTokenBalance,
+    );
+
+    return () => {
+      connection.removeProgramAccountChangeListener(tokenAccountListener);
+    };
+  }, [publicKey, connection, tokenId, program]);
+
+  return {
+    solBalance,
+    tokenBalance,
+  };
+};

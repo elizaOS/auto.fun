@@ -8,16 +8,66 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import Button from "./button";
 
+// Force re-initialization of PhantomWalletAdapter
+import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
+
 const WalletButton = () => {
   const navigate = useNavigate();
-  const { publicKey, connecting, wallet } = useWallet();
+  const { publicKey, connecting, wallet, connected } = useWallet();
   const { setVisible } = useWalletModal();
-  const { isAuthenticated, signOut } = useAuthentication();
+  const {
+    isAuthenticated,
+    signOut,
+    isAuthenticating,
+    authToken,
+    walletAddress,
+  } = useAuthentication();
   const { user } = useUser();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [walletIcon, setWalletIcon] = useState<string | null>(null);
+
+  // Create a wallet adapter instance directly in the component to access its icon
+  useEffect(() => {
+    if (
+      (connected || isAuthenticated) &&
+      !walletIcon &&
+      typeof window !== "undefined" &&
+      window.solana?.isPhantom
+    ) {
+      try {
+        // Create a fresh adapter to get the icon
+        const adapter = new PhantomWalletAdapter();
+        // PhantomWalletAdapter initializes immediately with the icon property
+        if (adapter.icon) {
+          setWalletIcon(adapter.icon);
+        }
+      } catch (e) {
+        console.error("Error creating wallet adapter for icon:", e);
+      }
+    }
+  }, [connected, isAuthenticated, walletIcon]);
+
+  // Also set icon from wallet when it becomes available
+  useEffect(() => {
+    if (wallet?.adapter.icon && !walletIcon) {
+      setWalletIcon(wallet.adapter.icon);
+    }
+  }, [wallet, walletIcon]);
+
+  // Check for direct Phantom connection
+  const hasDirectPhantomConnection =
+    typeof window !== "undefined" &&
+    window.solana?.isPhantom &&
+    window.solana?.publicKey;
+
+  // Get wallet display public key from either source
+  const displayPublicKey =
+    publicKey ||
+    (hasDirectPhantomConnection ? window.solana?.publicKey : null) ||
+    (walletAddress ? { toString: () => walletAddress } : null);
 
   // Handle clicks outside of dropdown to close it
   useEffect(() => {
@@ -38,10 +88,80 @@ const WalletButton = () => {
     };
   }, []);
 
+  // When walletAddress changes, try to reconnect
+  useEffect(() => {
+    if (
+      walletAddress &&
+      !publicKey &&
+      !hasDirectPhantomConnection &&
+      !isAuthenticating
+    ) {
+      // Try to connect directly to Phantom if available
+      if (
+        typeof window !== "undefined" &&
+        window.solana &&
+        window.solana.isPhantom
+      ) {
+        try {
+          window.solana
+            .connect()
+            .then((_response) => {
+              // Try to load icon if not yet loaded
+              if (!walletIcon) {
+                const adapter = new PhantomWalletAdapter();
+                if (adapter.icon) {
+                  setWalletIcon(adapter.icon);
+                }
+              }
+            })
+            .catch((err) => console.error("Error auto-connecting:", err));
+        } catch (e) {
+          console.error("Error during auto-connect attempt:", e);
+        }
+      }
+    }
+  }, [
+    walletAddress,
+    publicKey,
+    hasDirectPhantomConnection,
+    isAuthenticating,
+    walletIcon,
+  ]);
+
+  // Try to connect wallet on load if we have a token but no connection
+  useEffect(() => {
+    if (!isAuthenticated && !isAuthenticating && authToken) {
+      // Try to connect directly to Phantom if available
+      if (
+        typeof window !== "undefined" &&
+        window.solana &&
+        window.solana.isPhantom &&
+        !window.solana.publicKey
+      ) {
+        try {
+          window.solana
+            .connect()
+            .then(() => {
+              // Try to load icon if not yet loaded
+              if (!walletIcon) {
+                const adapter = new PhantomWalletAdapter();
+                if (adapter.icon) {
+                  setWalletIcon(adapter.icon);
+                }
+              }
+            })
+            .catch((err) => console.error("Error auto-connecting:", err));
+        } catch (e) {
+          console.error("Error during auto-connect attempt:", e);
+        }
+      }
+    }
+  }, [isAuthenticated, isAuthenticating, authToken, walletIcon]);
+
   // Handle copy wallet address
   const handleCopyAddress = async () => {
-    if (publicKey) {
-      await navigator.clipboard.writeText(publicKey.toString());
+    if (displayPublicKey) {
+      await navigator.clipboard.writeText(displayPublicKey.toString());
       setCopied(true);
       setTimeout(() => setCopied(false), 1000);
     }
@@ -53,35 +173,51 @@ const WalletButton = () => {
     setMenuOpen(false);
   };
 
-  const buttonText = connecting
-    ? "Connecting..."
-    : isAuthenticated
-      ? "Disconnect Wallet"
-      : "Connect Wallet";
+  // Handle disconnect with proper cleanup
+  const handleDisconnect = async () => {
+    try {
+      signOut(); // This will handle both adapter and direct Phantom disconnection
+      setMenuOpen(false);
+      setWalletIcon(null);
+    } catch (error) {
+      console.error("Error disconnecting wallet:", error);
+    }
+  };
 
-  if (isAuthenticated) {
+  // Determine button text based on connection state
+  const buttonText =
+    connecting || isAuthenticating
+      ? "Connecting..."
+      : isAuthenticated
+        ? shortenAddress(displayPublicKey?.toString() || "")
+        : "Connect Wallet";
+
+  // Get wallet icon - use the stored state which will be populated
+  // from either wallet.adapter.icon or our own adapter instance
+  const walletIconSrc = wallet?.adapter.icon || walletIcon;
+
+  // If authenticated, show the dropdown button
+  if (isAuthenticated && displayPublicKey) {
     return (
       <div className="relative" ref={dropdownRef}>
         <Button
           size="large"
-          className="px-2"
+          className="px-3"
           onClick={() => setMenuOpen(!menuOpen)}
         >
           <div className="flex items-center gap-2.5 justify-between m-auto">
             <span className="font-satoshi font-medium">
-              {wallet?.adapter?.publicKey?.toString()
-                ? shortenAddress(wallet?.adapter?.publicKey?.toString())
-                : null}
+              {shortenAddress(displayPublicKey.toString())}
             </span>
 
-            {wallet?.adapter.icon ? (
+            {walletIconSrc && (
               <img
-                src={wallet?.adapter?.icon}
+                src={walletIconSrc}
                 height={18}
                 width={18}
-                alt={`wallet_icon_${wallet?.adapter?.name}`}
+                alt={`wallet_icon_${wallet?.adapter?.name || "phantom"}`}
               />
-            ) : null}
+            )}
             <ChevronDown className="size-5 text-autofun-icon-secondary" />
           </div>
         </Button>
@@ -93,16 +229,6 @@ const WalletButton = () => {
                 <Trophy size={16} />
                 <span>{user?.points ?? 0} points</span>
               </li>
-              {/* <li className="opacity-50 px-4 py-2 text-sm text-white flex items-center gap-2">
-                <Wallet size={16} />
-                <span>
-                  {user?.solBalance ? user.solBalance.toFixed(2) : "0.00"} SOL
-                </span>
-              </li> */}
-              {/* <li className="opacity-50 px-4 py-2 text-sm text-white flex items-center gap-2">
-                <DollarSign size={16} />
-                <span>${solPrice ? solPrice.toFixed(2) : "0.00"} / SOL</span>
-              </li> */}
               <li
                 className="px-4 py-2 text-sm text-white hover:bg-[#262626] cursor-pointer flex items-center gap-2"
                 onClick={handleCopyAddress}
@@ -120,7 +246,7 @@ const WalletButton = () => {
 
               <li
                 className="px-4 py-2 text-sm text-white hover:bg-[#262626] cursor-pointer flex items-center gap-2"
-                onClick={signOut}
+                onClick={handleDisconnect}
               >
                 <LogOut size={16} />
                 Disconnect
@@ -132,13 +258,15 @@ const WalletButton = () => {
     );
   }
 
+  // If not authenticated, show connect button
   return (
     <Button
       size="large"
       onClick={() => {
         setVisible(true);
       }}
-      disabled={connecting}
+      disabled={connecting || isAuthenticating}
+      className="min-w-[150px]"
     >
       {buttonText}
     </Button>

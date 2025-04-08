@@ -48,6 +48,10 @@ export interface Env {
   tokenPubkey: string; // Used in tests to track the current test token
   // Redis
   REDIS: KVNamespace;
+  // KV namespace for auth tokens
+  AUTH_TOKENS: KVNamespace;
+  // Auth token salt for hashing
+  AUTH_TOKEN_SALT: string;
   // Frontend URL
   DEVNET_FRONTEND_URL: string;
   MAINNET_FRONTEND_URL: string;
@@ -58,5 +62,13 @@ export interface Env {
   TWITTER_API_SECRET: string;
   TWITTER_ACCESS_TOKEN_SECRET: string;
   TWITTER_ACCESS_TOKEN: string;
+  NEWS_API_KEY?: string;
+  PREGENERATED_TOKENS_COUNT?: string;
+  HELIUS_WEBHOOK_AUTH_TOKEN: string;
+  // Vanity keypair management
+  MINIMUM_VANITY_KEYPAIRS?: string;
+  VANITY_GENERATION_ADDRESS?: string;
+  // Add ADMIN_ADDRESSES to the Env interface
+  ADMIN_ADDRESSES?: string;
   MANAGER_MULTISIG_ADDRESS: string;
 }

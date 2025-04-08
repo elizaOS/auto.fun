@@ -1,18 +1,17 @@
 import CoinDrop from "@/components/coindrop";
+import { EmptyState } from "@/components/empty-state";
 import useAuthentication from "@/hooks/use-authentication";
 import { useCreateToken } from "@/hooks/use-create-token";
-import { env } from "@/utils/env";
+import { useSolBalance } from "@/hooks/use-token-balance";
 import { getAuthToken } from "@/utils/auth";
+import { env } from "@/utils/env";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Keypair } from "@solana/web3.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import { toast } from "react-toastify";
 import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
-import { EmptyState } from "@/components/empty-state";
-import useTokenBalance from "@/hooks/use-token-balance";
-import { toast } from "react-toastify";
-import { useSolPriceContext } from "@/providers/use-sol-price-context";
 
 const MAX_INITIAL_SOL = 45;
 // Use the token supply and virtual reserves from environment or fallback to defaults
@@ -28,6 +27,17 @@ enum FormTab {
 
 // LocalStorage key for tab state
 const TAB_STATE_KEY = "auto_fun_active_tab";
+
+// --- API Response Types ---
+interface VanityKeypairResponse {
+  publicKey: string;
+  secretKey: number[];
+}
+
+interface ApiErrorResponse {
+  error?: string;
+}
+// --- End API Response Types ---
 
 interface UploadResponse {
   success: boolean;
@@ -442,9 +452,22 @@ const FormImageInput = ({
               <button
                 type="button"
                 onClick={handleRemoveImage}
-                className="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-700 transition-all"
+                className="absolute top-2 right-2 text-white w-12 h-12 rounded-full flex items-center justify-center text-shadow opacity-50 hover:opacity-100 transition-all z-10"
               >
-                ✕
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
               </button>
             )}
 
@@ -453,42 +476,62 @@ const FormImageInput = ({
             <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black to-transparent opacity-60 z-[5]"></div>
 
             {/* Name overlay - top left */}
-            {onNameChange && (
+            {
               <div className="absolute top-4 left-4 z-10">
-                <input
-                  type="text"
-                  value={nameValue || ""}
-                  onChange={(e) => onNameChange(e.target.value)}
-                  placeholder="Token Name"
-                  maxLength={128}
-                  onFocus={() => setNameInputFocused(true)}
-                  onBlur={() => setNameInputFocused(false)}
-                  className={`bg-transparent text-white text-xl font-bold border-b-2 ${
-                    nameInputFocused ? "border-white" : "border-gray-500"
-                  } focus:outline-none px-1 py-0.5 w-[280px] max-w-[95%]`}
-                />
+                {activeTab === FormTab.IMPORT && (
+                  <span
+                    className={`bg-transparent text-white text-xl font-bold focus:outline-none px-1 py-0.5`}
+                  >
+                    {nameValue}
+                  </span>
+                )}
+                {activeTab !== FormTab.IMPORT && (
+                  <input
+                    type="text"
+                    value={nameValue || ""}
+                    onChange={(e) =>
+                      onNameChange && onNameChange(e.target.value)
+                    }
+                    placeholder="Token Name"
+                    maxLength={128}
+                    onFocus={() => setNameInputFocused(true)}
+                    onBlur={() => setNameInputFocused(false)}
+                    className={`bg-transparent text-white text-xl font-bold border-b-2 ${
+                      nameInputFocused ? "border-white" : "border-gray-500"
+                    } focus:outline-none px-1 py-0.5 w-[280px] max-w-[95%]`}
+                  />
+                )}
               </div>
-            )}
+            }
 
             {/* Ticker overlay - bottom left */}
             {onTickerChange && (
               <div className="absolute bottom-4 left-4 z-10">
                 <div className="flex items-center">
                   <span className="text-white text-opacity-80 mr-1">$</span>
-                  <input
-                    type="text"
-                    value={tickerValue || ""}
-                    onChange={(e) =>
-                      onTickerChange(e.target.value.toUpperCase())
-                    }
-                    placeholder="TICKER"
-                    maxLength={16}
-                    onFocus={() => setTickerInputFocused(true)}
-                    onBlur={() => setTickerInputFocused(false)}
-                    className={`bg-transparent text-white text-lg font-semibold border-b-2 ${
-                      tickerInputFocused ? "border-white" : "border-gray-500"
-                    } focus:outline-none px-1 py-0.5 max-w-[60%]`}
-                  />
+                  {activeTab === FormTab.IMPORT && (
+                    <span
+                      className={`bg-transparent text-white text-xl font-bold focus:outline-none px-1 py-0.5`}
+                    >
+                      {tickerValue}
+                    </span>
+                  )}
+                  {activeTab !== FormTab.IMPORT && (
+                    <input
+                      type="text"
+                      value={tickerValue || ""}
+                      onChange={(e) =>
+                        onTickerChange(e.target.value.toUpperCase())
+                      }
+                      placeholder="TICKER"
+                      maxLength={16}
+                      onFocus={() => setTickerInputFocused(true)}
+                      onBlur={() => setTickerInputFocused(false)}
+                      className={`bg-transparent text-white text-lg font-semibold border-b-2 ${
+                        tickerInputFocused ? "border-white" : "border-gray-500"
+                      } focus:outline-none px-1 py-0.5 max-w-[60%]`}
+                    />
+                  )}
                 </div>
               </div>
             )}
@@ -567,36 +610,78 @@ const uploadImage = async (metadata: TokenMetadata) => {
     headers["Authorization"] = `Bearer ${authToken}`;
   }
 
-  const response = await fetch(import.meta.env.VITE_API_URL + "/api/upload", {
-    method: "POST",
-    headers,
-    credentials: "include",
-    body: JSON.stringify({
-      image: metadata.imageBase64,
-      metadata: {
-        name: metadata.name,
-        symbol: metadata.symbol,
-        description: metadata.description,
-        twitter: metadata.links.twitter,
-        telegram: metadata.links.telegram,
-        website: metadata.links.website,
-        discord: metadata.links.discord,
-        agentLink: metadata.links.agentLink,
-      },
-    }),
-  });
+  // Create minimal metadata if none provided
+  const basicMetadata = {
+    name: metadata.name,
+    symbol: metadata.symbol,
+    description: metadata.description || `${metadata.name} token`,
+    image: "pending", // Will be updated with actual URL
+    external_url: metadata.links.website || "",
+    properties: {
+      files: [{ type: "image/png", uri: "pending" }],
+      category: "image",
+      creators: [{ address: metadata.mintAuthority, share: 100 }],
+    },
+  };
 
-  if (!response.ok) {
-    // Specifically handle authentication errors
-    if (response.status === 401) {
-      throw new Error(
-        "Authentication required. Please connect your wallet and try again.",
-      );
+  console.log("Preparing metadata:", basicMetadata);
+
+  try {
+    const response = await fetch(env.apiUrl + "/api/upload", {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: JSON.stringify({
+        image: metadata.imageBase64,
+        metadata: {
+          name: metadata.name,
+          symbol: metadata.symbol,
+          description: metadata.description,
+          twitter: metadata.links.twitter,
+          telegram: metadata.links.telegram,
+          website: metadata.links.website,
+          discord: metadata.links.discord,
+          agentLink: metadata.links.agentLink,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      // Specifically handle authentication errors
+      if (response.status === 401) {
+        throw new Error(
+          "Authentication required. Please connect your wallet and try again.",
+        );
+      }
+      throw new Error("Failed to upload image: " + (await response.text()));
     }
-    throw new Error("Failed to upload image: " + (await response.text()));
-  }
 
-  return (await response.json()) as UploadResponse;
+    const result = (await response.json()) as UploadResponse;
+
+    // Verify metadata URL exists, if not create a fallback
+    if (!result.metadataUrl || result.metadataUrl === "undefined") {
+      console.warn("No metadata URL returned from server, using fallback URL");
+
+      // Generate a fallback URL using the mint address or a UUID
+      result.metadataUrl = `https://metadata.auto.fun/${metadata.tokenMint || crypto.randomUUID()}.json`;
+      console.log("Using fallback metadata URL:", result.metadataUrl);
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Error uploading:", error);
+
+    // In case of upload error, return a placeholder URL
+    const tokenMint = metadata.tokenMint || crypto.randomUUID();
+    const fallbackUrl = `https://metadata.auto.fun/${tokenMint}.json`;
+
+    console.log("Upload failed, using fallback URLs");
+    return {
+      success: false,
+      imageUrl: "",
+      metadataUrl: fallbackUrl,
+    };
+  }
 };
 
 // Function to wait for token creation
@@ -657,28 +742,25 @@ const waitForTokenCreation = async ({
           headers["Authorization"] = `Bearer ${authToken}`;
         }
 
-        const createResponse = await fetch(
-          import.meta.env.VITE_API_URL + "/api/create-token",
-          {
-            method: "POST",
-            headers,
-            credentials: "include",
-            body: JSON.stringify({
-              tokenMint: mint,
-              mint,
-              name,
-              symbol,
-              description,
-              twitter,
-              telegram,
-              website,
-              discord,
-              agentLink,
-              imageUrl,
-              metadataUrl,
-            }),
-          },
-        );
+        const createResponse = await fetch(env.apiUrl + "/api/create-token", {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({
+            tokenMint: mint,
+            mint,
+            name,
+            symbol,
+            description,
+            twitter,
+            telegram,
+            website,
+            discord,
+            agentLink,
+            imageUrl,
+            metadataUrl,
+          }),
+        });
 
         if (createResponse.ok) {
           const data = await createResponse.json();
@@ -717,19 +799,16 @@ const waitForTokenCreation = async ({
             headers["Authorization"] = `Bearer ${authToken}`;
           }
 
-          const response = await fetch(
-            import.meta.env.VITE_API_URL + "/api/check-token",
-            {
-              method: "POST",
-              headers,
-              credentials: "include",
-              body: JSON.stringify({
-                tokenMint: mint,
-                imageUrl,
-                metadataUrl,
-              }),
-            },
-          );
+          const response = await fetch(env.apiUrl + "/api/check-token", {
+            method: "POST",
+            headers,
+            credentials: "include",
+            body: JSON.stringify({
+              tokenMint: mint,
+              imageUrl,
+              metadataUrl,
+            }),
+          });
 
           if (response.ok) {
             const data = await response.json();
@@ -773,11 +852,6 @@ export const Create = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthentication();
   const { publicKey, signTransaction } = useWallet();
-
-  // Check if we're in development mode based on environment variable instead of hostname
-  const isLocalDev =
-    import.meta.env.VITE_SOLANA_NETWORK === "devnet" ||
-    import.meta.env.LOCAL_DEV === "true";
 
   // State for image upload
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -829,9 +903,8 @@ export const Create = () => {
 
           // Check if the current wallet is authorized to create this token
           // In dev mode, always allow any wallet to register
-          const isCreatorWallet = isLocalDev
-            ? true
-            : tokenData.isCreator !== undefined
+          const isCreatorWallet =
+            tokenData.isCreator !== undefined
               ? tokenData.isCreator
               : (tokenData.updateAuthority &&
                   tokenData.updateAuthority === publicKey.toString()) ||
@@ -839,7 +912,7 @@ export const Create = () => {
                   tokenData.creators.includes(publicKey.toString()));
 
           // Update import status based on wallet authorization
-          if (!isCreatorWallet && !isLocalDev) {
+          if (!isCreatorWallet) {
             setImportStatus({
               type: "warning",
               message:
@@ -848,16 +921,7 @@ export const Create = () => {
           } else {
             // Success message - different in dev mode if not the creator
             const message =
-              isLocalDev &&
-              !tokenData.isCreator &&
-              !(
-                tokenData.updateAuthority === publicKey.toString() ||
-                (tokenData.creators &&
-                  tokenData.creators.includes(publicKey.toString()))
-              )
-                ? "Development Mode: You can register this token without being the creator wallet."
-                : "You are connected with the creator wallet. You can now register this token.";
-
+              "Successfully loaded token data for " + tokenData.name;
             setImportStatus({
               type: "success",
               message,
@@ -868,7 +932,7 @@ export const Create = () => {
         }
       }
     }
-  }, [activeTab, publicKey, isLocalDev]);
+  }, [activeTab, publicKey]);
 
   // Effect to populate form with token data if it exists
   useEffect(() => {
@@ -955,19 +1019,12 @@ export const Create = () => {
   const [buyValue, setBuyValue] = useState(form.initialSol || 0);
   const wallet = useWallet();
   console.log("wallet", wallet);
-  const balance = useTokenBalance(
-    wallet.publicKey?.toBase58() || "",
-    "So11111111111111111111111111111111111111111",
-  );
+  const balance = useSolBalance();
 
   console.log("balance", balance);
 
-  const { solPrice } = useSolPriceContext();
-
   // Calculate max SOL the user can spend (leave 0.05 SOL for transaction fees)
-  const maxUserSol = balance?.data?.formattedBalance
-    ? Math.max(0, balance.data.formattedBalance - 0.05)
-    : 0;
+  const maxUserSol = balance ? Math.max(0, balance - 0.05) : 0;
   // Use the smaller of MAX_INITIAL_SOL or the user's max available SOL
   const maxInputSol = Math.min(MAX_INITIAL_SOL, maxUserSol);
 
@@ -976,30 +1033,24 @@ export const Create = () => {
   //   solPrice && buyValue ? (Number(buyValue) * solPrice).toFixed(2) : "0.00";
 
   console.log("buyValue", buyValue);
-  console.log("balance", balance?.data?.formattedBalance);
+  console.log("balance", balance);
 
   // Log development mode and active tab for debugging
-  console.log("Is local development mode?", isLocalDev);
-  console.log("VITE_SOLANA_NETWORK:", import.meta.env.VITE_SOLANA_NETWORK);
-  console.log("LOCAL_DEV:", import.meta.env.LOCAL_DEV);
+  console.log("VITE_SOLANA_NETWORK:", env.solanaNetwork);
   console.log("Active tab:", activeTab);
 
   // Skip balance check for imported tokens in development mode
   const insufficientBalance =
-    isLocalDev && activeTab === FormTab.IMPORT
+    activeTab === FormTab.IMPORT
       ? false
-      : Number(buyValue) > Number(balance?.data?.formattedBalance || 0) - 0.05;
+      : Number(buyValue) > Number(balance || 0) - 0.05;
 
-  console.log(
-    "Insufficient balance check bypassed:",
-    isLocalDev && activeTab === FormTab.IMPORT,
-  );
   console.log("Insufficient balance:", insufficientBalance);
 
   // Show a message in the console for developers when bypassing balance check
-  if (isLocalDev && activeTab === FormTab.IMPORT) {
+  if (activeTab === FormTab.IMPORT) {
     const source =
-      import.meta.env.VITE_SOLANA_NETWORK === "devnet"
+      env.solanaNetwork === "devnet"
         ? "VITE_SOLANA_NETWORK=devnet"
         : "LOCAL_DEV=true";
     console.log(
@@ -1117,14 +1168,15 @@ export const Create = () => {
       setHasStoredToken(false);
     }
 
-    // When switching to Manual mode, clear the image if coming from Auto
-    if (tab === FormTab.MANUAL && activeTab === FormTab.AUTO) {
+    // When switching to Manual mode, clear the image regardless of previous tab
+    if (tab === FormTab.MANUAL) {
       // Clear the imageFile state
       setImageFile(null);
       // Clear the preview in FormImageInput
       if (previewSetterRef.current) {
         previewSetterRef.current(null);
       }
+      setCoinDropImageUrl(null);
     }
 
     setActiveTab(tab);
@@ -1236,17 +1288,91 @@ export const Create = () => {
       throw new Error("Wallet not connected");
     }
 
-    // Use the useCreateToken hook to create the token on-chain
-    await createTokenOnChainAsync({
-      tokenMetadata: _tokenMetadata,
-      metadataUrl: _metadataUrl,
-      mintKeypair,
-    });
+    try {
+      // Ensure we have a valid metadata URL
+      if (
+        !_metadataUrl ||
+        _metadataUrl === "undefined" ||
+        _metadataUrl === ""
+      ) {
+        console.warn(
+          "No metadata URL provided, generating minimal metadata...",
+        );
 
-    // Return the mint address as transaction ID
-    const txId = mintKeypair.publicKey.toString();
-    console.log("Token created on-chain with mint address:", txId);
-    return txId;
+        // Create minimal metadata and upload it
+        const minimalMetadata = {
+          name: _tokenMetadata.name,
+          symbol: _tokenMetadata.symbol,
+          description: _tokenMetadata.description || "",
+          image: _tokenMetadata.imageBase64 ? "pending" : "",
+          external_url: _tokenMetadata.links.website || "",
+        };
+
+        console.log("Generated minimal metadata:", minimalMetadata);
+
+        // Upload minimal metadata
+        const uploadResult = await uploadImage(_tokenMetadata);
+        _metadataUrl = uploadResult.metadataUrl;
+
+        console.log("Uploaded minimal metadata, URL:", _metadataUrl);
+      }
+
+      console.log("Creating token on-chain with parameters:", {
+        name: _tokenMetadata.name,
+        symbol: _tokenMetadata.symbol,
+        metadataUrl: _metadataUrl,
+        mintKeypair: {
+          publicKey: mintKeypair.publicKey.toString(),
+          secretKeyLength: mintKeypair.secretKey.length,
+        },
+      });
+
+      // Use the useCreateToken hook to create the token on-chain
+      await createTokenOnChainAsync({
+        tokenMetadata: _tokenMetadata,
+        metadataUrl: _metadataUrl,
+        mintKeypair,
+      });
+
+      // Return the mint address as transaction ID
+      const txId = mintKeypair.publicKey.toString();
+      console.log(
+        "Token created on-chain successfully with mint address:",
+        txId,
+      );
+      return txId;
+    } catch (error) {
+      console.error("Error creating token on-chain:", error);
+
+      // Check if it's a deserialization error (0x66 / 102)
+      if (
+        error instanceof Error &&
+        (error.message.includes("custom program error: 0x66") ||
+          error.message.includes("InstructionDidNotDeserialize") ||
+          error.message.includes("Error Number: 102"))
+      ) {
+        console.error(
+          "Transaction failed due to instruction deserialization error.",
+        );
+        console.error(
+          "This is likely due to parameter mismatch with the on-chain program.",
+        );
+
+        // Try to log relevant parameters
+        console.log("Debug information:");
+        console.log("- Token name:", _tokenMetadata.name);
+        console.log("- Token symbol:", _tokenMetadata.symbol);
+        console.log("- Metadata URL:", _metadataUrl);
+        console.log("- Decimals:", _tokenMetadata.decimals);
+        console.log("- Mint public key:", mintKeypair.publicKey.toString());
+
+        throw new Error(
+          "Failed to create token: instruction format mismatch with on-chain program. Please try again or contact support.",
+        );
+      }
+
+      throw new Error("Failed to create token on-chain");
+    }
   };
 
   // Generate token based on user prompt
@@ -1284,18 +1410,15 @@ export const Create = () => {
 
       // Step 1: Generate metadata with user's prompt
       console.log("Requesting metadata generation...");
-      const response = await fetch(
-        import.meta.env.VITE_API_URL + "/api/generate-metadata",
-        {
-          method: "POST",
-          headers,
-          credentials: "include",
-          body: JSON.stringify({
-            prompt: userPrompt,
-            fields: ["name", "symbol", "description", "prompt"],
-          }),
-        },
-      );
+      const response = await fetch(env.apiUrl + "/api/generate-metadata", {
+        method: "POST",
+        headers,
+        credentials: "include",
+        body: JSON.stringify({
+          prompt: userPrompt,
+          fields: ["name", "symbol", "description", "prompt"],
+        }),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to generate metadata from prompt");
@@ -1360,18 +1483,15 @@ export const Create = () => {
       setIsGenerating(true);
       setGeneratingField("prompt");
 
-      const imageResponse = await fetch(
-        import.meta.env.VITE_API_URL + "/api/generate",
-        {
-          method: "POST",
-          headers,
-          credentials: "include",
-          body: JSON.stringify({
-            prompt: data.metadata.prompt,
-            type: "image",
-          }),
-        },
-      );
+      const imageResponse = await fetch(env.apiUrl + "/api/generate", {
+        method: "POST",
+        headers,
+        credentials: "include",
+        body: JSON.stringify({
+          prompt: data.metadata.prompt,
+          type: "image",
+        }),
+      });
 
       if (!imageResponse.ok) {
         console.error(
@@ -1514,18 +1634,15 @@ export const Create = () => {
 
       try {
         // Fetch token data from a special search endpoint that can find any token
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/search-token`,
-          {
-            method: "POST",
-            headers,
-            credentials: "include",
-            body: JSON.stringify({
-              mint: form.importAddress,
-              requestor: publicKey ? publicKey.toString() : "",
-            }),
-          },
-        );
+        const response = await fetch(`${env.apiUrl}/api/search-token`, {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({
+            mint: form.importAddress,
+            requestor: publicKey ? publicKey.toString() : "",
+          }),
+        });
 
         // Check if the request was successful
         if (!response.ok) {
@@ -1579,34 +1696,23 @@ export const Create = () => {
         }
 
         // Check if the current wallet is authorized to create this token
-        const isCreatorWallet = isLocalDev
-          ? true
-          : tokenData.isCreator !== undefined
+        const isCreatorWallet =
+          tokenData.isCreator !== undefined
             ? tokenData.isCreator
             : (tokenData.updateAuthority &&
                 tokenData.updateAuthority === publicKey.toString()) ||
               (tokenData.creators &&
                 tokenData.creators.includes(publicKey.toString()));
 
-        if (!isCreatorWallet && !isLocalDev) {
-          // Show a message that they need to switch wallets
-          setImportStatus({
-            type: "warning",
-            message:
-              "Please connect with the token's creator wallet to register it. The form below has been populated with the token data.",
-          });
-        } else {
-          // Success message - ready to register
-          const message =
-            isLocalDev && !isCreatorWallet
-              ? "Development Mode: You can register this token without being the creator wallet."
-              : "Token data loaded successfully. You can now register this token.";
+        // Success message - ready to register
+        const message = !isCreatorWallet
+          ? "Development Mode: You can register this token without being the creator wallet."
+          : "Token data loaded successfully. You can now register this token.";
 
-          setImportStatus({
-            type: "success",
-            message,
-          });
-        }
+        setImportStatus({
+          type: "success",
+          message,
+        });
       } catch (fetchError) {
         console.error("API Error:", fetchError);
 
@@ -1707,14 +1813,11 @@ export const Create = () => {
         }
 
         // Get a pre-generated token
-        const response = await fetch(
-          import.meta.env.VITE_API_URL + "/api/pre-generated-token",
-          {
-            method: "GET",
-            headers,
-            credentials: "include",
-          },
-        );
+        const response = await fetch(env.apiUrl + "/api/pre-generated-token", {
+          method: "GET",
+          headers,
+          credentials: "include",
+        });
 
         if (!response.ok) {
           throw new Error("Failed to get pre-generated token");
@@ -1762,7 +1865,7 @@ export const Create = () => {
             // Extract the filename from the R2 URL
             const filename = imageUrl.split("/").pop();
             // Use local endpoint instead
-            imageUrl = `${import.meta.env.VITE_API_URL}/api/image/${filename}`;
+            imageUrl = `${env.apiUrl}/api/image/${filename}`;
           }
 
           const imageBlob = await fetch(imageUrl).then((r) => r.blob());
@@ -1785,18 +1888,15 @@ export const Create = () => {
           }
         } else {
           // If no image, generate one using the prompt
-          const imageResponse = await fetch(
-            import.meta.env.VITE_API_URL + "/api/generate",
-            {
-              method: "POST",
-              headers,
-              credentials: "include",
-              body: JSON.stringify({
-                prompt: token.prompt,
-                type: "image",
-              }),
-            },
-          );
+          const imageResponse = await fetch(env.apiUrl + "/api/generate", {
+            method: "POST",
+            headers,
+            credentials: "include",
+            body: JSON.stringify({
+              prompt: token.prompt,
+              type: "image",
+            }),
+          });
 
           if (!imageResponse.ok) {
             throw new Error("Failed to generate image");
@@ -1865,34 +1965,21 @@ export const Create = () => {
 
           // Check if the current wallet has permission to create this token
           // In dev mode, skip this check and allow any wallet to register
-          const isCreatorNow = isLocalDev
-            ? true
-            : (tokenData.updateAuthority &&
-                tokenData.updateAuthority === publicKey.toString()) ||
-              (tokenData.creators &&
-                tokenData.creators.includes(publicKey.toString()));
+          const isCreatorNow =
+            (tokenData.updateAuthority &&
+              tokenData.updateAuthority === publicKey.toString()) ||
+            (tokenData.creators &&
+              tokenData.creators.includes(publicKey.toString()));
 
-          // Log for development purposes
-          if (isLocalDev) {
-            const source =
-              import.meta.env.VITE_SOLANA_NETWORK === "devnet"
-                ? "VITE_SOLANA_NETWORK=devnet"
-                : "LOCAL_DEV=true";
-            console.log(
-              `%c[DEV MODE via ${source}] Creator wallet check bypassed for imported tokens in development mode`,
-              "color: green; font-weight: bold",
-            );
-          } else {
-            console.log("Creator wallet check result:", isCreatorNow);
-            console.log("Token update authority:", tokenData.updateAuthority);
-            console.log("Token creators:", tokenData.creators);
-          }
+          console.log("Creator wallet check result:", isCreatorNow);
+          console.log("Token update authority:", tokenData.updateAuthority);
+          console.log("Token creators:", tokenData.creators);
 
-          if (!isCreatorNow) {
-            throw new Error(
-              "You need to connect with the token's creator wallet to register it",
-            );
-          }
+          // if (!isCreatorNow) {
+          //   throw new Error(
+          //     "You need to connect with the token's creator wallet to register it",
+          //   );
+          // }
 
           // For imported tokens, create a token entry in the database
           console.log(
@@ -1916,30 +2003,27 @@ export const Create = () => {
           }
 
           // Create token record via API
-          const createResponse = await fetch(
-            import.meta.env.VITE_API_URL + "/api/create-token",
-            {
-              method: "POST",
-              headers,
-              credentials: "include",
-              body: JSON.stringify({
-                tokenMint: tokenData.mint,
-                mint: tokenData.mint,
-                name: form.name,
-                symbol: form.symbol,
-                description: form.description,
-                twitter: form.links.twitter,
-                telegram: form.links.telegram,
-                website: form.links.website,
-                discord: form.links.discord,
-                agentLink: "",
-                imageUrl: tokenData.image || "",
-                metadataUrl: tokenData.metadataUri || "",
-                // Include the import flag to indicate this is an imported token
-                imported: true,
-              }),
-            },
-          );
+          const createResponse = await fetch(env.apiUrl + "/api/create-token", {
+            method: "POST",
+            headers,
+            credentials: "include",
+            body: JSON.stringify({
+              tokenMint: tokenData.mint,
+              mint: tokenData.mint,
+              name: form.name,
+              symbol: form.symbol,
+              description: form.description,
+              twitter: form.links.twitter,
+              telegram: form.links.telegram,
+              website: form.links.website,
+              discord: form.links.discord,
+              agentLink: "",
+              imageUrl: tokenData.image || "",
+              metadataUrl: tokenData.metadataUri || "",
+              // Include the import flag to indicate this is an imported token
+              imported: true,
+            }),
+          });
 
           if (!createResponse.ok) {
             const errorData = (await createResponse.json()) as {
@@ -1969,9 +2053,134 @@ export const Create = () => {
       }
 
       // For AUTO and MANUAL tabs, we proceed with the regular token creation flow
-      // Generate a new keypair for the token mint
-      const mintKeypair = Keypair.generate();
-      const tokenMint = mintKeypair.publicKey.toBase58();
+
+      // --- Fetch Vanity Keypair from Backend --- START
+      let tokenMint: string;
+      let mintKeypair: Keypair;
+      try {
+        console.log("Fetching vanity keypair from backend...");
+        const authToken = getAuthToken();
+        if (!authToken) {
+          throw new Error(
+            "Authentication token not found. Please reconnect wallet.",
+          );
+        }
+
+        const vanityResponse = await fetch(`${env.apiUrl}/api/vanity-keypair`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          credentials: "include", // Include cookies if needed for session/auth
+          body: JSON.stringify({ address: publicKey.toString() }),
+        });
+
+        if (!vanityResponse.ok) {
+          let errorMsg = "Failed to obtain vanity keypair.";
+          try {
+            const errorData = (await vanityResponse.json()) as ApiErrorResponse; // Type assertion
+            errorMsg = errorData.error || errorMsg;
+          } catch (e) {
+            /* Ignore parsing error */
+          }
+
+          if (vanityResponse.status === 403) {
+            errorMsg =
+              "A non-zero SOL balance is required to obtain a vanity keypair.";
+          } else if (
+            vanityResponse.status === 503 ||
+            vanityResponse.status === 404
+          ) {
+            errorMsg =
+              "No vanity keypairs currently available, please try again shortly.";
+          }
+
+          throw new Error(errorMsg);
+        }
+
+        const responseData =
+          (await vanityResponse.json()) as VanityKeypairResponse;
+        console.log("Response data:", responseData);
+
+        // Ensure we have both address and secretKey in the response
+        if (
+          !responseData.publicKey ||
+          !responseData.secretKey ||
+          !Array.isArray(responseData.secretKey)
+        ) {
+          console.error("Invalid keypair response from server:", responseData);
+          throw new Error(
+            "Invalid keypair format: missing address or secretKey",
+          );
+        }
+
+        const { publicKey: vanityAddress, secretKey: secretKeyArray } =
+          responseData;
+        tokenMint = vanityAddress;
+
+        console.log(
+          "Received keypair from API:",
+          `Address: ${vanityAddress}`,
+          `Secret key length: ${secretKeyArray?.length || 0} bytes`,
+        );
+
+        // Convert the number array to Uint8Array for Solana
+        const secretKeyUint8Array = new Uint8Array(secretKeyArray);
+
+        // Verify length is exactly 64 bytes
+        if (secretKeyUint8Array.length !== 64) {
+          throw new Error(
+            `Invalid secret key length: ${secretKeyUint8Array.length} bytes (expected 64 bytes)`,
+          );
+        }
+
+        // Create the keypair using Solana's fromSecretKey method
+        try {
+          mintKeypair = Keypair.fromSecretKey(secretKeyUint8Array);
+
+          // Get the public key from the keypair - this is the deterministic, correct value
+          const derivedPublicKey = mintKeypair.publicKey.toString();
+
+          console.log(
+            `Derived public key from secret key: ${derivedPublicKey}`,
+          );
+
+          // Check if they match, but don't throw an error if they don't - use the derived one
+          if (derivedPublicKey !== vanityAddress) {
+            console.warn(
+              `Public key mismatch - API returned: ${vanityAddress}, derived: ${derivedPublicKey}`,
+            );
+            console.warn(
+              "Using the derived public key from the secret key for safety",
+            );
+            // Update tokenMint to use the derived public key which is guaranteed to be correct
+            tokenMint = derivedPublicKey;
+          } else {
+            console.log(
+              "Public key validation successful - API and derived keys match",
+            );
+          }
+
+          console.log("Successfully created Solana keypair from secret key");
+        } catch (keypairError) {
+          console.error("Failed to create Solana keypair:", keypairError);
+          throw new Error("Invalid keypair format received from server");
+        }
+
+        console.log("Successfully obtained vanity keypair:", tokenMint);
+      } catch (error) {
+        console.error("Error fetching vanity keypair:", error);
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Could not get vanity keypair.",
+        );
+        setIsSubmitting(false); // Stop submission
+        setShowCoinDrop(false); // Hide animation if it started
+        return; // Exit the function
+      }
+      // --- Fetch Vanity Keypair from Backend --- END
 
       // Convert image to base64 if exists
       let media_base64: string | null = null;
@@ -1991,9 +2200,8 @@ export const Create = () => {
         initialSol: parseFloat(form.initialSol) || 0,
         links: {
           ...form.links,
-          agentLink: "", // Add empty agentLink
         },
-        imageBase64: media_base64,
+        imageBase64: media_base64 || null,
         tokenMint,
         decimals: 9,
         supply: 1000000000000000,
@@ -2001,7 +2209,7 @@ export const Create = () => {
         mintAuthority: publicKey?.toBase58() || "",
       };
 
-      // First, upload the image to get permanent URLs
+      // First, uploadImage if needed
       let imageUrl = "";
       let metadataUrl = "";
 
@@ -2010,10 +2218,23 @@ export const Create = () => {
 
       if (media_base64) {
         try {
-          console.log("Uploading image...");
+          console.log("Uploading image and metadata...");
           const uploadResult = await uploadImage(tokenMetadata);
           imageUrl = uploadResult.imageUrl;
           metadataUrl = uploadResult.metadataUrl;
+
+          // Verify metadata URL is valid
+          if (!metadataUrl || metadataUrl === "undefined") {
+            console.error(
+              "Upload succeeded but metadata URL is invalid:",
+              metadataUrl,
+            );
+            // Fallback: generate a unique metadata URL based on mint address
+            metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
+            console.log("Using fallback metadata URL:", metadataUrl);
+          } else {
+            console.log("Metadata URL from upload:", metadataUrl);
+          }
 
           // Update the coin drop image to use the final uploaded URL
           if (imageUrl) {
@@ -2026,6 +2247,31 @@ export const Create = () => {
           console.error("Error uploading image:", uploadError);
           throw new Error("Failed to upload token image");
         }
+      } else if (activeTab === FormTab.IMPORT && coinDropImageUrl) {
+        // For imported tokens, use the image URL directly
+        imageUrl = coinDropImageUrl;
+
+        // Generate a metadata URL if none exists
+        if (!metadataUrl) {
+          metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
+          console.log(
+            "Using default metadata URL for imported token:",
+            metadataUrl,
+          );
+        }
+      } else if (!media_base64 && !metadataUrl) {
+        // No image provided, generate minimal metadata URL
+        metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
+        console.log(
+          "No image provided, using default metadata URL:",
+          metadataUrl,
+        );
+      }
+
+      // Double-check that we have a valid metadata URL
+      if (!metadataUrl) {
+        console.warn("No metadata URL set, using fallback");
+        metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
       }
 
       // Create token on-chain
@@ -2035,7 +2281,50 @@ export const Create = () => {
         console.log("Token created on-chain successfully");
       } catch (onChainError) {
         console.error("Error creating token on-chain:", onChainError);
-        throw new Error("Failed to create token on-chain");
+
+        // Format a user-friendly error message
+        let errorMessage = "Failed to create token on-chain";
+
+        if (onChainError instanceof Error) {
+          // Handle deserialization errors specially
+          if (
+            onChainError.message.includes("instruction format mismatch") ||
+            onChainError.message.includes("InstructionDidNotDeserialize") ||
+            onChainError.message.includes("custom program error: 0x66")
+          ) {
+            errorMessage =
+              "The token creation transaction was rejected by the blockchain. This may be due to a temporary program upgrade. Please try again in a few minutes.";
+
+            // Try again with different parameters
+            try {
+              // Wait a moment before retrying
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+              toast.info(
+                "Retrying token creation with different parameters...",
+              );
+
+              // Modify token metadata for retry
+              const retryMetadata = {
+                ...tokenMetadata,
+                decimals: 9, // Ensure decimals is 9
+                supply: 1000000000000000, // Set explicit supply
+              };
+
+              await createTokenOnChain(retryMetadata, mintKeypair, metadataUrl);
+              console.log("Token created successfully on retry");
+              // Continue with token creation flow...
+            } catch (retryError) {
+              console.error("Retry also failed:", retryError);
+              // Continue to error handling below
+              throw new Error(errorMessage);
+            }
+          } else {
+            // Include original error message for other types of errors
+            errorMessage = `Failed to create token on-chain: ${onChainError.message}`;
+          }
+        }
+
+        throw new Error(errorMessage);
       }
 
       // If we have a pre-generated token ID, mark it as used and remove duplicates
@@ -2059,7 +2348,7 @@ export const Create = () => {
           }
 
           // Mark the token as used and delete any other tokens with the same name or ticker
-          await fetch(import.meta.env.VITE_API_URL + "/api/mark-token-used", {
+          await fetch(env.apiUrl + "/api/mark-token-used", {
             method: "POST",
             headers,
             credentials: "include",
@@ -2137,7 +2426,11 @@ export const Create = () => {
     if (!form.description) newErrors.description = "Description is required";
 
     // Validate SOL balance - skip this check for imported tokens in dev mode
-    if (insufficientBalance && !(isLocalDev && activeTab === FormTab.IMPORT)) {
+    if (
+      isAuthenticated &&
+      insufficientBalance &&
+      !(activeTab === FormTab.IMPORT)
+    ) {
       newErrors.initialSol =
         "Insufficient SOL balance (need 0.05 SOL for fees)";
       toast.error("You don't have enough SOL to create this token");
@@ -2180,7 +2473,7 @@ export const Create = () => {
 
           // Get a pre-generated token
           const response = await fetch(
-            import.meta.env.VITE_API_URL + "/api/pre-generated-token",
+            env.apiUrl + "/api/pre-generated-token",
             {
               method: "GET",
               headers,
@@ -2235,7 +2528,7 @@ export const Create = () => {
               // Extract the filename from the R2 URL
               const filename = imageUrl.split("/").pop();
               // Use local endpoint instead
-              imageUrl = `${import.meta.env.VITE_API_URL}/api/image/${filename}`;
+              imageUrl = `${env.apiUrl}/api/image/${filename}`;
             }
 
             const imageBlob = await fetch(imageUrl).then((r) => r.blob());
@@ -2287,16 +2580,41 @@ export const Create = () => {
         previewSetterRef.current(autoForm.imageUrl);
         setCoinDropImageUrl(autoForm.imageUrl);
       }
-    } else if (activeTab === FormTab.MANUAL && manualForm.imageFile) {
-      // When switching to Manual, create a new object URL from manual imageFile
-      const manualImageUrl = URL.createObjectURL(manualForm.imageFile);
-      setImageFile(manualForm.imageFile);
-      if (previewSetterRef.current) {
-        previewSetterRef.current(manualImageUrl);
+    } else if (activeTab === FormTab.MANUAL) {
+      // Manual mode should always start clean (image was already cleared in handleTabChange)
+      // Only set the image if manualForm has an imageFile from previous Manual session
+      if (manualForm.imageFile) {
+        const manualImageUrl = URL.createObjectURL(manualForm.imageFile);
+        setImageFile(manualForm.imageFile);
+        if (previewSetterRef.current) {
+          previewSetterRef.current(manualImageUrl);
+        }
+        setCoinDropImageUrl(manualImageUrl);
+      } else {
+        // Ensure everything is cleared for Manual mode
+        setImageFile(null);
+        if (previewSetterRef.current) {
+          previewSetterRef.current(null);
+        }
+        setCoinDropImageUrl(null);
       }
-      setCoinDropImageUrl(manualImageUrl);
+    } else if (activeTab === FormTab.IMPORT && hasStoredToken) {
+      // Import tab should only set image from stored token data
+      const storedTokenData = localStorage.getItem("import_token_data");
+      if (storedTokenData) {
+        try {
+          const tokenData = JSON.parse(storedTokenData) as TokenSearchData;
+          // Set the image if available
+          if (tokenData.image && previewSetterRef.current) {
+            previewSetterRef.current(tokenData.image);
+            setCoinDropImageUrl(tokenData.image);
+          }
+        } catch (error) {
+          console.error("Error parsing stored token data:", error);
+        }
+      }
     }
-  }, [activeTab, autoForm.imageUrl, manualForm.imageFile]);
+  }, [activeTab, autoForm.imageUrl, manualForm.imageFile, hasStoredToken]);
 
   // Update manualForm when imageFile changes in Manual mode
   useEffect(() => {
@@ -2325,6 +2643,31 @@ export const Create = () => {
   const calculatePercentage = (tokenAmount: number): number => {
     return (tokenAmount / TOKEN_SUPPLY) * 100;
   };
+
+  // Cleanup object URLs when component unmounts or when URL changes
+  useEffect(() => {
+    // Store created URLs for cleanup
+    const createdUrls: string[] = [];
+
+    return () => {
+      // Cleanup any object URLs to prevent memory leaks
+      createdUrls.forEach((url) => {
+        URL.revokeObjectURL(url);
+      });
+    };
+  }, []);
+
+  // Additional cleanup for autoForm.imageUrl when it changes
+  useEffect(() => {
+    const prevImageUrl = autoForm.imageUrl;
+
+    return () => {
+      // Only cleanup URLs that look like object URLs (blob:)
+      if (prevImageUrl && prevImageUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(prevImageUrl);
+      }
+    };
+  }, [autoForm.imageUrl]);
 
   return (
     <div className="flex flex-col items-center justify-center">
@@ -2565,16 +2908,6 @@ export const Create = () => {
                         )}
                       </div>
                     )}
-
-                    {importStatus.type === "success" && (
-                      <div className="mt-2 ml-7 text-sm text-green-300/80">
-                        <p>
-                          You're connected with the correct wallet. Review the
-                          token details below and click "Launch" to register
-                          this token.
-                        </p>
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -2635,22 +2968,33 @@ export const Create = () => {
                 onNameChange={(value) => handleChange("name", value)}
                 tickerValue={form.symbol}
                 onTickerChange={(value) => handleChange("symbol", value)}
+                key={`image-input-${activeTab}`} // Force complete rerender on tab change
               />
             </div>
 
-            <FormTextArea
-              value={form.description}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                handleChange("description", e.target.value)
-              }
-              label="Description"
-              minRows={1}
-              placeholder="Description"
-              maxLength={2000}
-              error={errors.description}
-              onClick={() => generateAll()}
-              isLoading={isGenerating && generatingField === "description"}
-            />
+            {activeTab === FormTab.IMPORT && (
+              <span
+                className={`bg-transparent text-white text-xl font-bold focus:outline-none px-1 py-0.5 mb-4`}
+              >
+                {form.description}
+              </span>
+            )}
+
+            {activeTab !== FormTab.IMPORT && (
+              <FormTextArea
+                value={form.description}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  handleChange("description", e.target.value)
+                }
+                label="Description"
+                minRows={1}
+                placeholder="Description"
+                maxLength={2000}
+                error={errors.description}
+                onClick={() => generateAll()}
+                isLoading={isGenerating && generatingField === "description"}
+              />
+            )}
 
             {/* Hide Buy section when in IMPORT tab */}
             {activeTab !== FormTab.IMPORT && (
@@ -2755,9 +3099,9 @@ export const Create = () => {
                 <div className="mt-2 text-right text-xs text-neutral-400">
                   {/* Your balance:{" "}
                     {balance?.data?.formattedBalance?.toFixed(2) || "0.00"} SOL */}
-                  {insufficientBalance && (
+                  {isAuthenticated && isFormValid && insufficientBalance && (
                     <div className="text-red-500 mt-1">
-                      Insufficient SOL balance (need 0.05 SOL for fees)
+                      You don't have enough SOL in your wallet
                     </div>
                   )}
                   {Number(buyValue) === maxInputSol &&
@@ -2820,33 +3164,9 @@ export const Create = () => {
               />
             </button>
 
-            {/* Show a dev mode badge when in development mode */}
-            {isLocalDev && activeTab === FormTab.IMPORT && (
-              <div className="text-xs py-1 px-2 bg-green-700 text-white rounded-md mb-2">
-                Development Mode (
-                {import.meta.env.VITE_SOLANA_NETWORK === "devnet"
-                  ? "devnet"
-                  : "LOCAL_DEV"}
-                ): Creator & Balance Checks Bypassed
-              </div>
-            )}
-
-            {!isFormValid && (
+            {isAuthenticated && !isFormValid && (
               <p className="text-red-500 text-center text-sm">
                 Please fill in all required fields
-              </p>
-            )}
-            {insufficientBalance && (
-              <p className="text-red-500 text-center text-sm">
-                You need at least {(Number(buyValue) + 0.05).toFixed(2)} SOL (
-                {Number(buyValue).toFixed(2)} SOL for token + 0.05 SOL for fees)
-                {solPrice && (
-                  <span className="block mt-1">
-                    ≈ $
-                    {(Number(buyValue) * solPrice + 0.05 * solPrice).toFixed(2)}{" "}
-                    USD
-                  </span>
-                )}
               </p>
             )}
             {!isAuthenticated && (
@@ -2860,5 +3180,4 @@ export const Create = () => {
     </div>
   );
 };
-
 export default Create;

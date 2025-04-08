@@ -63,13 +63,8 @@ jobs:
             # Pages settings
             echo "NODE_ENV=production" >> $GITHUB_ENV
             echo "DATABASE_NAME=autofun" >> $GITHUB_ENV
-            # API URL for production
             echo "VITE_API_URL=https://api.autofun.workers.dev" >> $GITHUB_ENV
-            # Solana network for production
             echo "VITE_SOLANA_NETWORK=mainnet" >> $GITHUB_ENV
-            # Production-specific values
-            echo "VITE_VIRTUAL_RESERVES=2800000000" >> $GITHUB_ENV
-            echo "VITE_TOKEN_SUPPLY=1000000000000000" >> $GITHUB_ENV
           else
             # Worker settings
             echo "WORKER_NAME=api-dev" >> $GITHUB_ENV
@@ -79,35 +74,17 @@ jobs:
             echo "NODE_ENV=development" >> $GITHUB_ENV
             echo "DATABASE_NAME=autofun-dev" >> $GITHUB_ENV
             echo "DATABASE_NAME_DEV=autofun-dev" >> $GITHUB_ENV
-            # API URL for development
             echo "VITE_API_URL=https://api-dev.autofun.workers.dev" >> $GITHUB_ENV
-            # Solana network for development
             echo "VITE_SOLANA_NETWORK=devnet" >> $GITHUB_ENV
-            # Development-specific values
-            echo "VITE_VIRTUAL_RESERVES=280000000" >> $GITHUB_ENV
-            echo "VITE_TOKEN_SUPPLY=100000000000000" >> $GITHUB_ENV
-          fi
-
-          # Common environment variables for both branches
-          echo "VITE_DECIMALS=6" >> $GITHUB_ENV
-          echo "VITE_BONDING_CURVE_ADDRESS=HzkWnuoMSJRNhyHYrXVPgpyWaPn795bLJNBsfgXF326x" >> $GITHUB_ENV
-          echo "VITE_DEV_ADDRESS=6X498a5ujz5zZ5d5LJXqdR28dzDgmLisaAL6Qdq18N9p" >> $GITHUB_ENV
-          echo "VITE_RAYDIUM_ADDRESS=GpMZbSM2GgvTKHJirzeGfMFoaZ8UR2X7F4v8vHTvxFbL" >> $GITHUB_ENV
-          echo "VITE_DEVNET_RPC_URL=https://devnet.helius-rpc.com/?api-key=7f068738-8b88-4a91-b2a9-99b00f716717" >> $GITHUB_ENV
-          echo "VITE_MAINNET_RPC_URL=https://mainnet.helius-rpc.com/?api-key=7f068738-8b88-4a91-b2a9-99b00f716717" >> $GITHUB_ENV
-          
-          # Set appropriate RPC URL based on network
-          if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
-            echo "VITE_RPC_URL=https://mainnet.helius-rpc.com/?api-key=7f068738-8b88-4a91-b2a9-99b00f716717" >> $GITHUB_ENV
-          else
+            echo "VITE_DEVNET_RPC_URL=https://devnet.helius-rpc.com/?api-key=7f068738-8b88-4a91-b2a9-99b00f716717" >> $GITHUB_ENV
+            echo "VITE_MAINNET_RPC_URL=https://mainnet.helius-rpc.com/?api-key=7f068738-8b88-4a91-b2a9-99b00f716717" >> $GITHUB_ENV
+            echo "VITE_VIRTUAL_RESERVES=2800000000" >> $GITHUB_ENV
+            echo "VITE_TOKEN_SUPPLY=1000000000000000" >> $GITHUB_ENV
+            echo "VITE_DECIMALS=6" >> $GITHUB_ENV
+            echo "VITE_BONDING_CURVE_ADDRESS=HzkWnuoMSJRNhyHYrXVPgpyWaPn795bLJNBsfgXF326x" >> $GITHUB_ENV
+            echo "VITE_DEV_ADDRESS=6X498a5ujz5zZ5d5LJXqdR28dzDgmLisaAL6Qdq18N9p" >> $GITHUB_ENV
+            echo "VITE_RAYDIUM_ADDRESS=GpMZbSM2GgvTKHJirzeGfMFoaZ8UR2X7F4v8vHTvxFbL" >> $GITHUB_ENV
             echo "VITE_RPC_URL=https://devnet.helius-rpc.com/?api-key=7f068738-8b88-4a91-b2a9-99b00f716717" >> $GITHUB_ENV
-          fi
-          
-          # Display which environment is being used
-          if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
-            echo "Deploying with MAINNET configuration"
-          else
-            echo "Deploying with DEVNET configuration"
           fi
 
       # Build frontend before deploying backend
@@ -119,13 +96,13 @@ jobs:
           VITE_SOLANA_NETWORK: ${{ env.VITE_SOLANA_NETWORK }}
           VITE_DEVNET_RPC_URL: ${{ env.VITE_DEVNET_RPC_URL }}
           VITE_MAINNET_RPC_URL: ${{ env.VITE_MAINNET_RPC_URL }}
-          VITE_RPC_URL: ${{ env.VITE_RPC_URL }}
           VITE_VIRTUAL_RESERVES: ${{ env.VITE_VIRTUAL_RESERVES }}
           VITE_TOKEN_SUPPLY: ${{ env.VITE_TOKEN_SUPPLY }}
           VITE_DECIMALS: ${{ env.VITE_DECIMALS }}
           VITE_BONDING_CURVE_ADDRESS: ${{ env.VITE_BONDING_CURVE_ADDRESS }}
           VITE_DEV_ADDRESS: ${{ env.VITE_DEV_ADDRESS }}
           VITE_RAYDIUM_ADDRESS: ${{ env.VITE_RAYDIUM_ADDRESS }}
+          VITE_RPC_URL: ${{ env.VITE_RPC_URL }}
 
       # Apply migrations to D1 database
       - name: Apply D1 migrations
@@ -162,35 +139,27 @@ jobs:
           DATABASE_NAME_DEV: ${{ env.DATABASE_NAME_DEV }}
           DATABASE_ID_DEV: ${{ secrets.DATABASE_ID_DEV || '00ade209-86ac-46a9-bed5-b74aaaac4ad4' }}
 
-      # Create .env file for Pages with correct environment variables
-      - name: Create environment file for Pages
-        run: |
-          # Create a .env file with all the environment variables for Pages
-          echo "VITE_SOLANA_NETWORK=${{ env.VITE_SOLANA_NETWORK }}" > dist/.env
-          echo "VITE_API_URL=${{ env.VITE_API_URL }}" >> dist/.env
-          echo "VITE_DEVNET_RPC_URL=${{ env.VITE_DEVNET_RPC_URL }}" >> dist/.env
-          echo "VITE_MAINNET_RPC_URL=${{ env.VITE_MAINNET_RPC_URL }}" >> dist/.env
-          echo "VITE_RPC_URL=${{ env.VITE_RPC_URL }}" >> dist/.env
-          echo "VITE_VIRTUAL_RESERVES=${{ env.VITE_VIRTUAL_RESERVES }}" >> dist/.env
-          echo "VITE_TOKEN_SUPPLY=${{ env.VITE_TOKEN_SUPPLY }}" >> dist/.env
-          echo "VITE_DECIMALS=${{ env.VITE_DECIMALS }}" >> dist/.env
-          echo "VITE_BONDING_CURVE_ADDRESS=${{ env.VITE_BONDING_CURVE_ADDRESS }}" >> dist/.env
-          echo "VITE_DEV_ADDRESS=${{ env.VITE_DEV_ADDRESS }}" >> dist/.env
-          echo "VITE_RAYDIUM_ADDRESS=${{ env.VITE_RAYDIUM_ADDRESS }}" >> dist/.env
-
       # Deploy to Pages
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          projectName: ${{ env.PROJECT_NAME || 'autofun' }}
-          directory: dist
-          branch: ${{ github.ref_name }}
-          wranglerVersion: '3'
-          # Disable GitHub integration to avoid permission issues
-          gitHubToken: ""
-          
+          command: pages publish dist --project-name=${{ env.PROJECT_NAME || 'autofun' }} --branch=${{ github.ref_name }} --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          VITE_API_URL: ${{ env.VITE_API_URL }}
+          VITE_SOLANA_NETWORK: ${{ env.VITE_SOLANA_NETWORK }}
+          VITE_DEVNET_RPC_URL: ${{ env.VITE_DEVNET_RPC_URL }}
+          VITE_MAINNET_RPC_URL: ${{ env.VITE_MAINNET_RPC_URL }}
+          VITE_VIRTUAL_RESERVES: ${{ env.VITE_VIRTUAL_RESERVES }}
+          VITE_TOKEN_SUPPLY: ${{ env.VITE_TOKEN_SUPPLY }}
+          VITE_DECIMALS: ${{ env.VITE_DECIMALS }}
+          VITE_BONDING_CURVE_ADDRESS: ${{ env.VITE_BONDING_CURVE_ADDRESS }}
+          VITE_DEV_ADDRESS: ${{ env.VITE_DEV_ADDRESS }}
+          VITE_RAYDIUM_ADDRESS: ${{ env.VITE_RAYDIUM_ADDRESS }}
+          VITE_RPC_URL: ${{ env.VITE_RPC_URL }}
+
       # Set environment variables in Cloudflare Pages project
       - name: Set Cloudflare Pages environment variables
         if: success()

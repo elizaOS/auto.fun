@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
 import { Hono } from "hono";
 import {
   authenticate,
@@ -7,9 +7,16 @@ import {
   logout,
   requireAuth,
 } from "../auth";
-import { getDB, users, vanityKeypairs } from "../db";
+import { getDB, users, vanityKeypairs, VanityKeypair } from "../db";
 import { Env } from "../env";
 import { logger } from "../logger";
+import {
+  Connection,
+  PublicKey,
+  Keypair,
+  LAMPORTS_PER_SOL,
+} from "@solana/web3.js";
+import { Buffer } from "buffer";
 
 const authRouter = new Hono<{
   Bindings: Env;
@@ -128,67 +135,4 @@ authRouter.get("/protected", requireAuth, async (c) => {
     );
   }
 });
-
-authRouter.post("/vanity-keypair", async (c) => {
-  try {
-    // Require authentication
-    const user = c.get("user");
-    if (!user) {
-      return c.json({ error: "Authentication required" }, 401);
-    }
-
-    const body = await c.req.json();
-
-    // Validate address
-    if (!body.address || body.address.length < 32 || body.address.length > 44) {
-      return c.json({ error: "Invalid address" }, 400);
-    }
-
-    const db = getDB(c.env);
-
-    // Check if address belongs to a valid user
-    const userExists = await db
-      .select()
-      .from(users)
-      .where(eq(users.address, body.address))
-      .limit(1);
-
-    if (userExists.length === 0) {
-      return c.json({ error: "User not found" }, 404);
-    }
-
-    // Find an unused vanity keypair
-    const keypair = await db
-      .select()
-      .from(vanityKeypairs)
-      .where(eq(vanityKeypairs.used, 0))
-      .limit(1);
-
-    if (keypair.length === 0) {
-      return c.json({ error: "No unused keypairs available" }, 404);
-    }
-
-    // Mark the keypair as used
-    await db
-      .update(vanityKeypairs)
-      .set({ used: 1 } as any)
-      .where(eq(vanityKeypairs.id, keypair[0].id));
-
-    // Parse the secret key to return it in the expected format
-    const secretKeyBuffer = Buffer.from(keypair[0].secretKey, "base64");
-    const secretKeyArray = Array.from(new Uint8Array(secretKeyBuffer));
-
-    return c.json({
-      address: keypair[0].address,
-      secretKey: secretKeyArray,
-    });
-  } catch (error) {
-    logger.error("Error getting vanity keypair:", error);
-    return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
-  }
-});
-
 export default authRouter;

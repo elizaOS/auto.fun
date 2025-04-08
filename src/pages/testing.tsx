@@ -1,3 +1,4 @@
+import { env } from "@/utils/env";
 import { useCallback, useEffect, useState } from "react";
 
 // Storage keys
@@ -31,7 +32,7 @@ export default function TwitterSharePage() {
 
   // Check if the API URL is valid
   useEffect(() => {
-    const apiUrl = import.meta.env.VITE_API_URL;
+    const apiUrl = env.apiUrl;
     if (!apiUrl) {
       console.error("VITE_API_URL is not defined in environment variables");
       setApiUrlStatus("error");
@@ -161,7 +162,7 @@ export default function TwitterSharePage() {
         localStorage.setItem(PENDING_SHARE_KEY, JSON.stringify(pendingShare));
 
         // Check for client ID
-        const apiUrl = import.meta.env.VITE_API_URL;
+        const apiUrl = env.apiUrl;
         if (!apiUrl) {
           throw new Error(
             "API URL is not configured. Check your environment variables.",
@@ -228,7 +229,7 @@ export default function TwitterSharePage() {
   ): Promise<string> => {
     console.log(
       "Sending image upload request to:",
-      `${import.meta.env.VITE_API_URL}/api/share/tweet`,
+      `${env.apiUrl}/api/share/tweet`,
     );
 
     try {
@@ -241,16 +242,13 @@ export default function TwitterSharePage() {
       formData.append("media", blob, "share-image.png");
 
       // Send the upload request
-      const uploadResponse = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/share/tweet`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: formData,
+      const uploadResponse = await fetch(`${env.apiUrl}/api/share/tweet`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
         },
-      );
+        body: formData,
+      });
 
       if (!uploadResponse.ok) {
         const errorText = await uploadResponse.text();
@@ -295,26 +293,23 @@ export default function TwitterSharePage() {
   ) => {
     console.log(
       "Sending tweet post request to:",
-      `${import.meta.env.VITE_API_URL}/api/share/tweet`,
+      `${env.apiUrl}/api/share/tweet`,
     );
     console.log("With text:", text.substring(0, 30) + "...");
     console.log("And media ID:", mediaId);
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/share/tweet`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            text,
-            mediaId,
-          }),
+      const response = await fetch(`${env.apiUrl}/api/share/tweet`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          text,
+          mediaId,
+        }),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -432,7 +427,7 @@ export default function TwitterSharePage() {
             Log State
           </button>
         </div>
-        <div>API URL: {import.meta.env.VITE_API_URL || "Not set"}</div>
+        <div>API URL: {env.apiUrl || "Not set"}</div>
         <div>
           Auth Status: {credentials ? "Authenticated" : "Not authenticated"}
         </div>

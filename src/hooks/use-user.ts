@@ -1,7 +1,7 @@
 import { env } from "@/utils/env";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useState } from "react";
-import { useSolBalance } from "./use-sol-balance";
+import { fetchWithAuth } from "./use-authentication";
 
 interface User {
   address: string;
@@ -10,15 +10,15 @@ interface User {
 }
 
 interface AuthStatus {
-  isAuthenticated: boolean;
+  authenticated: boolean;
   user?: User;
+  privileges?: string[];
 }
 
 export function useUser() {
   const { publicKey } = useWallet();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const solBalanceQuery = useSolBalance();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -29,20 +29,27 @@ export function useUser() {
 
       setIsLoading(true);
       try {
-        const response = await fetch(`${env.apiUrl}/api/auth-status`, {
-          credentials: "include",
+        console.log("Fetching user data with auth token...");
+
+        // Use fetchWithAuth instead of regular fetch to include the JWT token
+        const response = await fetchWithAuth(`${env.apiUrl}/api/auth-status`, {
+          method: "GET",
         });
+
         if (response.ok) {
           const data = (await response.json()) as AuthStatus;
-          if (data.isAuthenticated && data.user) {
-            console.log("data", data);
-            setUser({
-              ...data.user,
-              solBalance: solBalanceQuery.data,
-            });
+          console.log("Auth status response:", data);
+
+          if (data.authenticated && data.user) {
+            console.log("User authenticated, setting user data");
+            setUser(data.user);
           } else {
+            console.log("User not authenticated or no user data");
             setUser(null);
           }
+        } else {
+          console.error("Error response from auth-status:", response.status);
+          setUser(null);
         }
       } catch (error) {
         console.error("Error fetching user:", error);
@@ -53,7 +60,7 @@ export function useUser() {
     };
 
     fetchUser();
-  }, [publicKey, solBalanceQuery.data]);
+  }, [publicKey]);
 
   return { user, isLoading };
 }

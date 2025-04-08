@@ -670,7 +670,7 @@ export class TokenMonitor {
 
 export async function getLatestCandle(env: Env, tokenMint: string, swap: any) {
   // Get a time range that covers just this swap
-  const swapTime = swap.timestamp.getTime() / 1000;
+  const swapTime = new Date(swap.timestamp).getTime() / 1000;
   const candlePeriod = 60; // 1 min default
   const candleStart = Math.floor(swapTime / candlePeriod) * candlePeriod;
 

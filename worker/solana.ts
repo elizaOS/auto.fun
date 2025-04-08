@@ -13,10 +13,11 @@ export function initSolanaConfig(env?: Env) {
   const umi = createUmi(rpcUrl);
 
   // Set up program ID based on network
-  const programId =
-    network === "mainnet"
-      ? "55QFMmfMVYNmxMWL5XY6FytSpa1Z5BZsYnbC8ATXzQYC"
-      : "55QFMmfMVYNmxMWL5XY6FytSpa1Z5BZsYnbC8ATXzQYC";
+  const programId = env?.PROGRAM_ID;
+
+  if (!programId) {
+    throw new Error("missing program_id env var");
+  }
 
   // Create wallet if private key is available
   let wallet: Keypair | undefined;

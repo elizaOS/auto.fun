@@ -1,9 +1,6 @@
 import type { R2ObjectBody } from "@cloudflare/workers-types";
-import {
-  ExecutionContext,
-  ScheduledEvent,
-} from "@cloudflare/workers-types/experimental";
-import { sql } from "drizzle-orm";
+import { ExecutionContext } from "@cloudflare/workers-types/experimental";
+import { sql, or } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { getCookie } from "hono/cookie";
@@ -17,11 +14,18 @@ import generationRouter, { checkAndReplenishTokens } from "./routes/generation";
 import messagesRouter from "./routes/messages";
 import shareRouter from "./routes/share";
 import swapRouter from "./routes/swap";
+import heliusWebhookRouter from "./routes/helius-webhook";
 import tokenRouter, { processSwapEvent } from "./routes/token";
 import { uploadToCloudflare } from "./uploader";
 import { WebSocketDO, allowedOrigins, createTestSwap } from "./websocket";
 import { getWebSocketClient } from "./websocket-client";
 import { getSOLPrice } from "./mcap";
+
+// Define a simple interface for the scheduled event object
+interface ScheduledEvent {
+  cron: string;
+  scheduledTime: number;
+}
 
 const app = new Hono<{
   Bindings: Env;
@@ -44,6 +48,30 @@ app.use(
 
 // Use the improved verifyAuth middleware
 app.use("*", verifyAuth);
+
+// Block direct access to __scheduled endpoints from browsers
+app.use("/__scheduled*", async (c, next) => {
+  const userAgent = c.req.header("User-Agent") || "";
+
+  // Only allow requests from Cloudflare's own systems or cURL (for testing)
+  const isBrowser =
+    userAgent.includes("Mozilla/") ||
+    userAgent.includes("Chrome/") ||
+    userAgent.includes("Safari/") ||
+    userAgent.includes("Firefox/");
+
+  if (isBrowser) {
+    logger.warn(
+      `Blocked browser access to __scheduled endpoint - User-Agent: ${userAgent}`,
+    );
+    return c.json(
+      { error: "This endpoint is for internal Cloudflare use only" },
+      403,
+    );
+  }
+
+  return next();
+});
 
 const api = new Hono<{
   Bindings: Env;
@@ -73,6 +101,7 @@ api.route("/", messagesRouter);
 api.route("/", authRouter);
 api.route("/", swapRouter);
 api.route("/share", shareRouter);
+api.route("/", heliusWebhookRouter);
 
 // Root paths for health checks
 app.get("/", (c) => c.json({ status: "ok" }));
@@ -187,193 +216,6 @@ api.post("/upload", async (c) => {
   }
 });
 
-api.get("/image/:key", async (c) => {
-  try {
-    // Get the key from params
-    const key = c.req.param("key");
-    if (!key) {
-      return c.json({ error: "Key parameter is required" }, 400);
-    }
-
-    if (!c.env.R2) {
-      return c.json({ error: "R2 is not available" }, 500);
-    }
-
-    // First, let's try to find the file in the pre-generated tokens table
-    let fullStorageKey: string | null = null;
-
-    try {
-      const db = getDB(c.env);
-
-      // Search for tokens where the image URL contains the requested filename
-      const tokens = await db
-        .select()
-        .from(preGeneratedTokens)
-        .where(sql`image LIKE ${"%" + key + "%"}`);
-
-      logger.log(
-        `Found ${tokens.length} tokens with image URLs containing ${key}`,
-      );
-
-      if (tokens.length > 0) {
-        // Extract the full storage path from the image URL
-        const imageUrl = tokens[0].image;
-
-        if (imageUrl) {
-          // Extract the key part from the full URL
-          // Format could be like: https://example.r2.dev/pre-generated/token-name.png
-          // or http://localhost:8787/api/image/abc123-token-name.png
-
-          // Try to extract the last part of the path
-          const urlParts = imageUrl.split("/");
-          const lastPart = urlParts[urlParts.length - 1];
-
-          // If the URL points to image, we need to retrieve the original key
-          if (imageUrl.includes("/api/image/")) {
-            // Try to find the actual file by listing objects
-            const listed = await c.env.R2.list({ prefix: "", delimiter: "/" });
-
-            // Look for a key containing the lastPart
-            const matchingKey = listed.objects.find(
-              (obj) =>
-                obj.key.includes(lastPart) ||
-                obj.key.toLowerCase().includes(lastPart.toLowerCase()),
-            )?.key;
-
-            if (matchingKey) {
-              fullStorageKey = matchingKey;
-              logger.log(`Found storage key from listing: ${fullStorageKey}`);
-            }
-          } else if (imageUrl.includes("r2.dev")) {
-            // This is a direct R2 URL, extract the path after the domain
-            const pathMatch = imageUrl.match(/r2\.dev\/(.*?)(?:\?|$)/);
-            if (pathMatch && pathMatch[1]) {
-              fullStorageKey = pathMatch[1];
-              logger.log(`Extracted R2 path: ${fullStorageKey}`);
-            }
-          } else if (imageUrl.includes("pre-generated/")) {
-            // If the URL contains pre-generated/, use that path
-            const pathMatch = imageUrl.match(/pre-generated\/(.*?)(?:\?|$)/);
-            if (pathMatch && pathMatch[1]) {
-              fullStorageKey = `pre-generated/${pathMatch[1]}`;
-              logger.log(`Using pre-generated path: ${fullStorageKey}`);
-            }
-          }
-        }
-      }
-    } catch (dbError) {
-      logger.error("Error querying database:", dbError);
-      // Continue with fallback search even if DB lookup fails
-    }
-
-    // If we found the key in the database, retrieve it directly
-    if (fullStorageKey) {
-      const object = await c.env.R2.get(fullStorageKey);
-      if (object) {
-        logger.log(
-          `Successfully retrieved file using database key: ${fullStorageKey}`,
-        );
-        // Get the content type from the object's metadata
-        const contentType =
-          object.httpMetadata?.contentType || "application/octet-stream";
-
-        // Read the object's body
-        const data = await object.arrayBuffer();
-
-        // Return the object with the correct content type
-        return new Response(data, {
-          headers: {
-            "Content-Type": contentType,
-            "Content-Length": object.size.toString(),
-            "Cache-Control": "public, max-age=31536000",
-            "Access-Control-Allow-Origin": "*",
-          },
-        });
-      }
-    }
-
-    // Fallback to the direct key search with different prefixes
-    const possiblePrefixes = [
-      "", // No prefix
-      "pre-generated/",
-      `pre-generated/${key.split(".")[0]}.`, // Try filename without extension
-    ];
-
-    let object: R2ObjectBody | null = null;
-
-    // Try each possible prefix
-    for (const prefix of possiblePrefixes) {
-      const fullKey = prefix + key;
-      logger.log(`Trying to fetch file with key: ${fullKey}`);
-      const result = await c.env.R2.get(fullKey);
-      if (result) {
-        object = result;
-        logger.log(`Found file with key: ${fullKey}`);
-        break;
-      }
-    }
-
-    // If no object found, try listing objects to find a match
-    if (!object) {
-      // List objects to find a match
-      const listed = await c.env.R2.list({ prefix: "", delimiter: "/" });
-
-      // Look for a key containing the filename
-      const matchingKey = listed.objects.find(
-        (obj) =>
-          obj.key.includes(key) ||
-          obj.key.toLowerCase().includes(key.toLowerCase()),
-      )?.key;
-
-      if (matchingKey) {
-        logger.log(`Found file with similar name: ${matchingKey}`);
-        const result = await c.env.R2.get(matchingKey);
-        if (result) {
-          object = result;
-        }
-      }
-    }
-
-    if (!object) {
-      return c.json({ error: "File not found", searched: key }, 404);
-    }
-
-    // Get the content type from the object's metadata
-    const contentType =
-      object.httpMetadata?.contentType || "application/octet-stream";
-
-    // Log the content type for debugging
-    logger.log(`Serving file ${key} with content type: ${contentType}`);
-
-    // Read the object's body
-    const data = await object.arrayBuffer();
-
-    // Broad CORS headers for development
-    const corsHeaders = {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "*",
-      "Access-Control-Max-Age": "86400",
-    };
-
-    // Return the object with the correct content type
-    return new Response(data, {
-      headers: {
-        "Content-Type": contentType,
-        "Content-Length": object.size.toString(),
-        "Cache-Control": "public, max-age=31536000",
-        ...corsHeaders,
-      },
-    });
-  } catch (error) {
-    logger.error("Error serving R2 file:", error);
-    return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
-  }
-});
-
 // Test endpoint to emit a swap event via WebSocket
 api.get("/emit-test-swap/:tokenId", async (c) => {
   try {
@@ -450,6 +292,132 @@ api.notFound((c) => {
 
 app.route("/api", api);
 
+// --- Add Explicit Image Route to Main App ---
+api.get("/image/:key", async (c) => {
+  // This logic is identical to api.get("/image/:key")
+  // We add it here to ensure it overrides any implicit/incorrect handling
+  try {
+    const key = c.req.param("key");
+    if (!key) {
+      return c.json({ error: "Key parameter is required" }, 400);
+    }
+
+    if (!c.env.R2) {
+      return c.json({ error: "R2 is not available" }, 500);
+    }
+
+    logger.log(
+      `[App Route] Attempting to fetch R2 object directly with key: ${key}`,
+    );
+    let object: R2ObjectBody | null = await c.env.R2.get(key);
+    let foundKey = key; // Assume the requested key is the correct one initially
+
+    // If direct fetch fails, try a fallback lookup via database
+    if (!object) {
+      logger.warn(
+        `[App Route] Direct R2 fetch failed for key: ${key}. Attempting DB fallback.`,
+      );
+      try {
+        const db = getDB(c.env);
+        const tokens = await db
+          .select()
+          .from(preGeneratedTokens)
+          .where(
+            or(
+              sql`image LIKE ${"%/" + key}`,
+              sql`image LIKE ${"%/" + key + "?%"}`, // Handle potential query params
+            ),
+          )
+          .limit(1);
+
+        if (tokens.length > 0 && tokens[0].image) {
+          const imageUrl = tokens[0].image;
+          logger.log(
+            `[App Route] Found potential match in DB with URL: ${imageUrl}`,
+          );
+
+          let extractedKey: string | null = null;
+          if (
+            imageUrl.includes("/api/image/") ||
+            imageUrl.includes("/image/")
+          ) {
+            // Check both /api/image/ and /image/
+            extractedKey = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
+          } else if (imageUrl.includes("r2.dev/")) {
+            const pathMatch = imageUrl.match(/r2\.dev\/(.*?)(?:\?|$)/);
+            if (pathMatch && pathMatch[1]) {
+              extractedKey = pathMatch[1];
+            }
+          }
+
+          if (extractedKey && extractedKey !== key) {
+            logger.log(
+              `[App Route] Extracted potential R2 key from DB URL: ${extractedKey}. Retrying fetch.`,
+            );
+            object = await c.env.R2.get(extractedKey);
+            if (object) {
+              foundKey = extractedKey;
+            }
+          } else if (extractedKey === key) {
+            logger.log(
+              `[App Route] Extracted key ${extractedKey} matches requested key ${key}. Object likely does not exist.`,
+            );
+          } else {
+            logger.warn(
+              `[App Route] Could not reliably extract R2 key from DB URL: ${imageUrl}`,
+            );
+          }
+        } else {
+          logger.log(
+            `[App Route] No matching image URL found in DB for key: ${key}`,
+          );
+        }
+      } catch (dbError) {
+        logger.error("[App Route] Error during DB fallback lookup:", dbError);
+      }
+    }
+
+    if (!object || !object.body) {
+      // Check for object and body existence
+      logger.error(
+        `[App Route] R2 object not found or has no body for key: ${key} (even after fallback)`,
+      );
+      return c.json({ error: "File not found", searchedKey: key }, 404);
+    }
+
+    logger.log(
+      `[App Route] Successfully retrieved R2 object with key: ${foundKey}`,
+    );
+
+    const contentType =
+      object.httpMetadata?.contentType || "application/octet-stream";
+    logger.log(
+      `[App Route] Serving file ${foundKey} with content type: ${contentType}`,
+    );
+
+    const headers = new Headers();
+    headers.set("Content-Type", contentType);
+    headers.set("Content-Length", object.size.toString());
+    headers.set("Cache-Control", "public, max-age=31536000");
+    headers.set("ETag", object.httpEtag);
+    headers.set("Access-Control-Allow-Origin", "*");
+    headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+    headers.set("Access-Control-Allow-Headers", "*");
+    headers.set("Access-Control-Max-Age", "86400");
+
+    return new Response(object.body as any, {
+      headers,
+    });
+  } catch (error) {
+    logger.error("[App Route] Error serving R2 file:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500,
+    );
+  }
+});
+// --- End Explicit Image Route ---
+
 // Export the WebSocket Durable Object
 export { WebSocketDO };
 
@@ -460,7 +428,7 @@ export default {
     ctx: ExecutionContext,
   ): Promise<Response> {
     // Initialize pre-generated tokens in the background
-    // ctx.waitUntil(checkAndReplenishTokens(env));
+    ctx.waitUntil(checkAndReplenishTokens(env));
 
     const url = new URL(request.url);
 
@@ -599,21 +567,17 @@ export default {
     return app.fetch(request, env, ctx);
   },
 
-  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-    // Run frequent monitoring for token events if it's the right trigger
-    // We should run this more frequently than the regular price updates
-    if (event.cron === "*/1 * * * *") {
-      // Every minute
-      logger.log("Running token monitoring (every minute)");
+  async scheduled(event: any, env: Env, ctx: ExecutionContext) {
+    try {
+      // Make sure event has the required properties
+      if (!event || typeof event.cron !== "string") {
+        logger.error("Invalid scheduled event format:", event);
+        return;
+      }
 
-      // Call cron with the proper environment parameter
-      await cron(env, ctx);
-    } else if (event.cron === "*/15 * * * *") {
-      // Every 15 minutes
-      logger.log("Running full price updates (every 15 minutes)");
-
-      // Call cron with the proper environment parameter
-      await cron(env, ctx);
+      await cron(env, event);
+    } catch (error) {
+      logger.error("Error in scheduled handler:", error);
     }
   },
 };
