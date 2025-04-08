@@ -231,7 +231,7 @@ export default function Page() {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col">
       {/* Top Stats Section - Full Width */}
       <div className="w-full py-10 flex flex-wrap justify-between">
         <div className="flex-1 flex flex-col items-center">
@@ -284,225 +284,225 @@ export default function Page() {
       </div>
 
       {/* Three Column Layout */}
-        {/* Three Column Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[25%_50%_25%]">
-          {/* Left Column - Token Info */}
-          <div className="flex flex-col gap-3">
-            <div className="p-4 pt-0 flex flex-col gap-3">
-              <div className="relative overflow-hidden">
-                <div className="w-full aspect-square">
-                  <SkeletonImage src={token?.image} alt="image" />
-                </div>
+      {/* Three Column Grid Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-[25%_50%_25%]">
+        {/* Left Column - Token Info */}
+        <div className="flex flex-col gap-3">
+          <div className="p-4 pt-0 flex flex-col gap-3">
+            <div className="relative overflow-hidden">
+              <div className="w-full aspect-square">
+                <SkeletonImage src={token?.image} alt="image" />
+              </div>
 
-                {/* Token name overlapping at top - with drop shadow */}
-                <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 via-black/25 to-transparent px-3 py-2.5">
-                  <div className="flex items-center justify-between w-full">
-                    <h3 className="capitalize text-white text-2xl font-bold font-satoshi leading-tight truncate pr-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                      {token?.name}
-                    </h3>
-                    <div className="shrink-0 ml-1">
-                      <TokenStatus token={token} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Ticker overlapping at bottom - with drop shadow */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 via-black/25 to-transparent px-3 py-2.5">
-                  <div className="text-autofun-text-highlight text-xl font-bold font-dm-mono uppercase tracking-widest drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                    ${token?.ticker}
+              {/* Token name overlapping at top - with drop shadow */}
+              <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 via-black/25 to-transparent px-3 py-2.5">
+                <div className="flex items-center justify-between w-full">
+                  <h3 className="capitalize text-white text-2xl font-bold font-satoshi leading-tight truncate pr-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                    {token?.name}
+                  </h3>
+                  <div className="shrink-0 ml-1">
+                    <TokenStatus token={token} />
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3">
-                <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
-                  {token?.description}
+              {/* Ticker overlapping at bottom - with drop shadow */}
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 via-black/25 to-transparent px-3 py-2.5">
+                <div className="text-autofun-text-highlight text-xl font-bold font-dm-mono uppercase tracking-widest drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                  ${token?.ticker}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
+                {token?.description}
+              </span>
+              <div className="flex justify-end">
+                <Link
+                  to={`https://solscan.io/token/${token?.mint}`}
+                  target="_blank"
+                >
+                  <Button size="small" variant="ghost">
+                    View on Solscan <ExternalLink className="size-4 ml-1" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            {/* Contract address */}
+            <div className="flex">
+              <div className="size-10 inline-flex border-r shrink-0 bg-autofun-background-action-primary">
+                <span className="text-base font-dm-mono m-auto text-autofun-text-secondary">
+                  CA
                 </span>
-                <div className="flex justify-end">
-                  <Link
-                    to={`https://solscan.io/token/${token?.mint}`}
-                    target="_blank"
+              </div>
+              <div className="bg-autofun-background-input flex justify-between py-2 px-3 min-w-0 w-full gap-2">
+                <span className="w-0 flex-1 min-w-0 block text-base text-autofun-text-secondary truncate">
+                  {token?.mint}
+                </span>
+                <CopyButton text={token?.mint} />
+              </div>
+            </div>
+
+            {/* Agents Section */}
+            <AgentsSection isCreator={token?.creator === normalizedWallet} />
+
+            {/* Social Links */}
+            {token?.creator !== normalizedWallet && (
+              <div className="flex items-center justify-between gap-0.5">
+                <Link to={token?.website} className="w-full" target="_blank">
+                  <Button
+                    className="w-full rounded-none"
+                    disabled={!token?.website}
+                    aria-label="website"
                   >
-                    <Button size="small" variant="ghost">
-                      View on Solscan <ExternalLink className="size-4 ml-1" />
-                    </Button>
-                  </Link>
+                    <Globe />
+                  </Button>
+                </Link>
+                <Link to={token?.twitter} className="w-full" target="_blank">
+                  <Button
+                    className="w-full rounded-none"
+                    disabled={!token?.twitter}
+                    aria-label="twitter"
+                  >
+                    <SkeletonImage
+                      src="/x.svg"
+                      height={24}
+                      width={24}
+                      alt="twitter_icon"
+                      className="w-6 m-auto"
+                    />
+                  </Button>
+                </Link>
+                <Link to={token?.telegram} className="w-full" target="_blank">
+                  <Button
+                    className="w-full rounded-none py-0 flex"
+                    disabled={!token?.telegram}
+                    aria-label="telegram"
+                  >
+                    <SkeletonImage
+                      src="/telegram.svg"
+                      height={24}
+                      width={24}
+                      alt="telegram_icon"
+                      className="size-6 object-contain m-auto h-full"
+                    />
+                  </Button>
+                </Link>
+                <Link to={token?.discord} className="w-full" target="_blank">
+                  <Button
+                    className="w-full rounded-none px-0"
+                    disabled={!token?.discord}
+                    aria-label="discord"
+                  >
+                    <SkeletonImage
+                      src="/discord.svg"
+                      height={24}
+                      width={24}
+                      alt="discord_icon"
+                      className="w-auto m-auto"
+                    />
+                  </Button>
+                </Link>
+              </div>
+            )}
+            {token?.creator === normalizedWallet && <AdminSection />}
+          </div>
+        </div>
+
+        {/* Middle Column - Tabs for Chart and AI Create */}
+        <div className="flex flex-col gap-3">
+          <div className="overflow-hidden relative">
+            <div className="flex flex-col">
+              {/* Green stroke above tab section */}
+              <div className="h-2 w-full bg-autofun-text-highlight z-10"></div>
+
+              {/* Tabs Header with Title and Right-aligned Tabs - removed border-b as it's on the parent */}
+              <div className="flex items-center justify-between pr-2 mb-4">
+                <div className="flex">
+                  <button
+                    className={`cursor-pointer px-4 py-3 text-autofun-text-primary font-medium ${
+                      activeTab === "chart"
+                        ? "bg-autofun-background-highlight text-black"
+                        : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
+                    }`}
+                    onClick={() => setActiveTab("chart")}
+                    style={{ marginTop: "-2px", paddingTop: "14px" }}
+                  >
+                    Chart
+                    <img
+                      src={
+                        activeTab === "chart"
+                          ? "/token/charton.svg"
+                          : "/token/chartoff.svg"
+                      }
+                      className={`size-4 inline-block ml-1.5 ${
+                        activeTab === "chart" ? "text-black" : ""
+                      }`}
+                      alt="chart icon"
+                    />
+                  </button>
+                  <button
+                    className={`cursor-pointer px-4 py-3 text-autofun-text-primary font-medium ${
+                      activeTab === "ai"
+                        ? "bg-autofun-background-highlight text-black"
+                        : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
+                    }`}
+                    onClick={() => setActiveTab("ai")}
+                    style={{ marginTop: "-2px", paddingTop: "14px" }}
+                  >
+                    AI Create
+                    <img
+                      src={
+                        activeTab === "chart"
+                          ? "/token/createon.svg"
+                          : "/token/createoff.svg"
+                      }
+                      className={`size-4 inline-block ml-1.5 ${
+                        activeTab === "chart" ? "text-black" : ""
+                      }`}
+                      alt="chart icon"
+                    />
+                  </button>
                 </div>
+                {activeTab === "chart" ? null : (
+                  <div
+                    id="media-selector-container"
+                    className="flex space-x-2 items-center"
+                  >
+                    {/* Media type buttons will be moved here by the generation component */}
+                  </div>
+                )}
               </div>
 
-              {/* Contract address */}
-              <div className="flex">
-                <div className="size-10 inline-flex border-r shrink-0 bg-autofun-background-action-primary">
-                  <span className="text-base font-dm-mono m-auto text-autofun-text-secondary">
-                    CA
-                  </span>
-                </div>
-                <div className="bg-autofun-background-input flex justify-between py-2 px-3 min-w-0 w-full gap-2">
-                  <span className="w-0 flex-1 min-w-0 block text-base text-autofun-text-secondary truncate">
-                    {token?.mint}
-                  </span>
-                  <CopyButton text={token?.mint} />
-                </div>
-              </div>
-
-              {/* Agents Section */}
-              <AgentsSection isCreator={token?.creator === normalizedWallet} />
-
-              {/* Social Links */}
-              {token?.creator !== normalizedWallet && (
-                <div className="flex items-center justify-between gap-0.5">
-                  <Link to={token?.website} className="w-full" target="_blank">
-                    <Button
-                      className="w-full rounded-none"
-                      disabled={!token?.website}
-                      aria-label="website"
-                    >
-                      <Globe />
-                    </Button>
-                  </Link>
-                  <Link to={token?.twitter} className="w-full" target="_blank">
-                    <Button
-                      className="w-full rounded-none"
-                      disabled={!token?.twitter}
-                      aria-label="twitter"
-                    >
-                      <SkeletonImage
-                        src="/x.svg"
-                        height={24}
-                        width={24}
-                        alt="twitter_icon"
-                        className="w-6 m-auto"
-                      />
-                    </Button>
-                  </Link>
-                  <Link to={token?.telegram} className="w-full" target="_blank">
-                    <Button
-                      className="w-full rounded-none py-0 flex"
-                      disabled={!token?.telegram}
-                      aria-label="telegram"
-                    >
-                      <SkeletonImage
-                        src="/telegram.svg"
-                        height={24}
-                        width={24}
-                        alt="telegram_icon"
-                        className="size-6 object-contain m-auto h-full"
-                      />
-                    </Button>
-                  </Link>
-                  <Link to={token?.discord} className="w-full" target="_blank">
-                    <Button
-                      className="w-full rounded-none px-0"
-                      disabled={!token?.discord}
-                      aria-label="discord"
-                    >
-                      <SkeletonImage
-                        src="/discord.svg"
-                        height={24}
-                        width={24}
-                        alt="discord_icon"
-                        className="w-auto m-auto"
-                      />
-                    </Button>
-                  </Link>
+              {/* Tab Content */}
+              {activeTab === "chart" && (
+                <>
+                  <div className="w-full h-[50vh] bg-autofun-background-primary">
+                    <TradingViewChart name={token.name} token={token.mint} />
+                  </div>
+                  <div className="p-4">
+                    <TransactionsAndHolders token={token} />
+                  </div>
+                </>
+              )}
+              {activeTab === "ai" && (
+                <div id="generation" className="scroll-mt-16">
+                  <GenerationSection />
                 </div>
               )}
-              {token?.creator === normalizedWallet && <AdminSection />}
             </div>
           </div>
+        </div>
 
-          {/* Middle Column - Tabs for Chart and AI Create */}
-          <div className="flex flex-col gap-3">
-            <div className="overflow-hidden relative">
-              <div className="flex flex-col">
-                {/* Green stroke above tab section */}
-                <div className="h-2 w-full bg-autofun-text-highlight z-10"></div>
-
-                {/* Tabs Header with Title and Right-aligned Tabs - removed border-b as it's on the parent */}
-                <div className="flex items-center justify-between pr-2">
-                  <div className="flex">
-                    <button
-                      className={`px-4 py-3 text-autofun-text-primary font-medium ${
-                        activeTab === "chart"
-                          ? "bg-autofun-background-highlight text-black"
-                          : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
-                      }`}
-                      onClick={() => setActiveTab("chart")}
-                      style={{ marginTop: "-2px", paddingTop: "14px" }}
-                    >
-                      Chart
-                      <img
-                        src={
-                          activeTab === "chart"
-                            ? "/token/charton.svg"
-                            : "/token/chartoff.svg"
-                        }
-                        className={`size-4 inline-block ml-1.5 ${
-                          activeTab === "chart" ? "text-black" : ""
-                        }`}
-                        alt="chart icon"
-                      />
-                    </button>
-                    <button
-                      className={`px-4 py-3 text-autofun-text-primary font-medium ${
-                        activeTab === "ai"
-                          ? "bg-autofun-background-highlight text-black"
-                          : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
-                      }`}
-                      onClick={() => setActiveTab("ai")}
-                      style={{ marginTop: "-2px", paddingTop: "14px" }}
-                    >
-                      AI Create
-                      <img
-                        src={
-                          activeTab === "chart"
-                            ? "/token/createon.svg"
-                            : "/token/createoff.svg"
-                        }
-                        className={`size-4 inline-block ml-1.5 ${
-                          activeTab === "chart" ? "text-black" : ""
-                        }`}
-                        alt="chart icon"
-                      />
-                    </button>
-                  </div>
-                  {activeTab === "chart" ? null : (
-                    <div
-                      id="media-selector-container"
-                      className="flex space-x-2 items-center"
-                    >
-                      {/* Media type buttons will be moved here by the generation component */}
-                    </div>
-                  )}
-                </div>
-
-                {/* Tab Content */}
-                {activeTab === "chart" && (
-                  <>
-                    <div className="w-full h-[50vh] bg-autofun-background-primary">
-                      <TradingViewChart name={token.name} token={token.mint} />
-                    </div>
-                    <div className="p-4">
-                      <TransactionsAndHolders token={token} />
-                    </div>
-                  </>
-                )}
-                {activeTab === "ai" && (
-                  <div id="generation" className="scroll-mt-16">
-                    <GenerationSection />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column - Trading and Bonding Curve */}
-          <div className="flex flex-col gap-3">
+        {/* Right Column - Trading and Bonding Curve */}
+        <div className="flex flex-col gap-3">
           {/* Trade Component - Now at the top */}
           <Trade token={token} />
 
           {/* Bonding Curve */}
-          <div className="px-4 flex flex-col gap-3.5">
+          <div className="ml-4 flex flex-col gap-3.5">
             <div className="flex justify-between gap-3.5 items-center">
               <p className="font-medium font-satoshi">Progress</p>
               <InfoCircle className="size-5 text-autofun-text-secondary" />
@@ -512,16 +512,15 @@ export default function Page() {
             </div>
             {token?.status !== "migrated" ? (
               <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">
-                Graduate this coin at {formatNumber(graduationMarketCap, true)}{" "}
-                market cap.{"\n"}
-                There is{" "}
+                Graduate this coin at {formatNumber(graduationMarketCap, true)}
+                {"\n"}
                 {formatNumber(
                   (token?.reserveLamport - token?.virtualReserves) /
                     LAMPORTS_PER_SOL,
                   true,
                   true,
                 )}{" "}
-                SOL in the bonding curve.
+                SOL in the bonding curve
               </p>
             ) : null}
           </div>

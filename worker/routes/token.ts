@@ -40,7 +40,6 @@ import {
   ParsedAccountData,
 } from "@solana/web3.js";
 import bs58 from "bs58";
-import { createHash } from "crypto";
 
 // Define the router with environment typing
 const tokenRouter = new Hono<{
@@ -5145,6 +5144,7 @@ tokenRouter.post("/register-token", async (c) => {
 
 // --- POST endpoint to request a vanity keypair ---
 tokenRouter.post("/vanity-keypair", async (c) => {
+  console.log("keypairs");
   try {
     // Require authentication
     const user = c.get("user");
@@ -5190,6 +5190,8 @@ tokenRouter.post("/vanity-keypair", async (c) => {
       .where(eq(vanityKeypairs.used, 0))
       .limit(1);
 
+    console.log("keypairs", keypairs);
+
     if (!keypairs || keypairs.length === 0) {
       // Double-check if there's a discrepancy between count and actual query
       if (totalCount > 0) {
@@ -5203,28 +5205,23 @@ tokenRouter.post("/vanity-keypair", async (c) => {
           .from(vanityKeypairs)
           .limit(5);
 
+        console.log("allKeypairs", allKeypairs);
+
         logger.log(
           `[POST /vanity-keypair] Sample of up to 5 keypairs from database: ${JSON.stringify(allKeypairs)}`,
         );
       }
 
-      // Generate a new keypair as fallback - THIS WILL NOT BE A VANITY ADDRESS
+      // Generate a new keypair as fallback
       logger.log(
-        "[POST /vanity-keypair] No vanity keypairs available. Falling back to generating a regular keypair.",
+        "[POST /vanity-keypair] Falling back to generating a new keypair",
       );
       const generatedKeypair = Keypair.generate();
-      
-      // Generate a base keypair for signing
-      const baseKeypair = Keypair.generate();
-      
-      // Use the public key as the seed (limited to 32 bytes)
-      const seed = generatedKeypair.publicKey.toString().substring(0, 32);
-      
       const newKeypair = {
-        id: crypto.randomUUID(),
+        id: generatedKeypair.publicKey.toString(),
         address: generatedKeypair.publicKey.toString(),
         secretKey: Buffer.from(generatedKeypair.secretKey).toString("base64"),
-        createdAt: new Date().toISOString(),
+        createdAt: Math.floor(Date.now() / 1000).toString(),
         used: 1, // Mark as used immediately since we're using it now
       };
 
@@ -5232,19 +5229,30 @@ tokenRouter.post("/vanity-keypair", async (c) => {
       await db.insert(vanityKeypairs).values(newKeypair);
       logger.log(`[POST /vanity-keypair] Inserted new generated keypair`);
 
-      // Return the generated keypair with seed info for CreateAccountWithSeed
+      // Return the generated keypair
       return c.json({
         id: newKeypair.id,
         publicKey: newKeypair.address,
         secretKey: Array.from(generatedKeypair.secretKey),
-        // Add these for CreateAccountWithSeed
-        seed: seed,
-        basePublicKey: baseKeypair.publicKey.toString(),
-        message: "Generated a new keypair (not a vanity address)",
+        message: "Successfully generated a new keypair",
       });
     }
 
     const keypair = keypairs[0];
+
+    console.log("**** *keypair is", keypair);
+
+    if (!keypair) {
+      // generate a regular keypair
+      const kp = Keypair.generate();
+      return c.json({
+        id: crypto.randomUUID(),
+        publicKey: kp.publicKey,
+        secretKey: Object.values(kp.secretKey),
+        message: "Successfully reserved a vanity keypair",
+      });
+    }
+
     logger.log(
       `[POST /vanity-keypair] Found unused keypair: ${keypair.address}`,
     );
@@ -5283,40 +5291,13 @@ tokenRouter.post("/vanity-keypair", async (c) => {
       return c.json({ error: "Failed to process keypair" }, 500);
     }
 
-    // Generate data for CreateAccountWithSeed approach
-    try {
-      // Create a new base keypair for signing transactions
-      const baseKeypair = Keypair.generate();
-      
-      // Create a seed that when combined with baseKeypair will generate a deterministic address
-      // For simplicity and uniqueness, we'll use a hash of the existing vanity address
-      // This doesn't recreate the original vanity address but creates a defined relationship
-      // between the base keypair, seed, and mint address
-      const seedSource = `vanity-${keypair.address}-${Date.now()}`;
-      const seedHash = createHash('sha256').update(seedSource).digest('hex');
-      const seed = seedHash.substring(0, 32); // Seeds must be <= 32 bytes
-      
-      logger.log(`[POST /vanity-keypair] Generated seed: ${seed} for CreateAccountWithSeed`);
-      
-      // Return the vanity keypair with seed info
-      // Note: This approach requires handling the token creation differently
-      return c.json({
-        id: keypair.id,
-        publicKey: keypair.address,
-        secretKey: secretKeyBytes,
-        // Add these for CreateAccountWithSeed
-        seed: seed,
-        basePublicKey: baseKeypair.publicKey.toString(),
-        // Include base keypair secret key for signing
-        baseSecretKey: Array.from(baseKeypair.secretKey),
-        message: "Successfully reserved a vanity keypair with seed information",
-      });
-    } catch (seedError) {
-      logger.error(
-        `[POST /vanity-keypair] Error generating seed information: ${seedError}`,
-      );
-      return c.json({ error: "Failed to generate seed information" }, 500);
-    }
+    // Return the keypair details with consistent field naming (publicKey instead of address)
+    return c.json({
+      id: keypair.id,
+      publicKey: keypair.address,
+      secretKey: secretKeyBytes,
+      message: "Successfully reserved a vanity keypair",
+    });
   } catch (error) {
     logger.error("[POST /vanity-keypair] Error processing request:", error);
     return c.json(

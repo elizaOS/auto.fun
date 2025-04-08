@@ -835,7 +835,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
                     // ** CHANGE: Pass the whole agent object **
                     onClick={() => removeAgent(agent)}
                     title="Remove agent"
-                    className="text-red-500 hover:text-red-400 p-1"
+                    className="cursor-pointer text-red-500 hover:text-red-400 p-1"
                   >
                     <Trash2 size={16} />
                   </button>

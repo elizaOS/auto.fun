@@ -19,7 +19,7 @@ const SkeletonImage: React.FC<SkeletonImageProps> = ({
   };
 
   return (
-    <div className="ml-1 size-full select-none">
+    <div className="size-full select-none">
       {/* Skeleton placeholder */}
       {!loaded && (
         <div

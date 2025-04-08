@@ -18,7 +18,7 @@ const TabButton = ({ isSelected, onClick, children }: TabButtonProps) => (
     onClick={onClick}
   >
     <div
-      className={`text-right text-white text-base font-medium leading-tight ${
+      className={`cursor-pointer text-right text-white text-base font-medium leading-tight ${
         isSelected ? "text-black" : "text-white"
       }`}
     >

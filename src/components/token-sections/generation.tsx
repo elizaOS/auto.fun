@@ -1502,7 +1502,7 @@ export default function CommunityTab() {
     const imageImg = document.createElement("img");
     imageImg.src = getTabIconPath("Image", communityTab);
     imageImg.alt = "Image";
-    imageImg.className = "h-8 w-auto";
+    imageImg.className = "cursor-pointer h-8 w-auto";
 
     imageButton.appendChild(imageImg);
     mediaTypeButtons.appendChild(imageButton);
@@ -1519,7 +1519,7 @@ export default function CommunityTab() {
     const videoImg = document.createElement("img");
     videoImg.src = getTabIconPath("Video", communityTab);
     videoImg.alt = "Video";
-    videoImg.className = "h-8 w-auto";
+    videoImg.className = "cursor-pointer h-8 w-auto";
 
     videoButton.appendChild(videoImg);
     mediaTypeButtons.appendChild(videoButton);
@@ -1536,7 +1536,7 @@ export default function CommunityTab() {
     const audioImg = document.createElement("img");
     audioImg.src = getTabIconPath("Audio", communityTab);
     audioImg.alt = "Audio";
-    audioImg.className = "h-8 w-auto";
+    audioImg.className = "cursor-pointer h-8 w-auto";
 
     audioButton.appendChild(audioImg);
     mediaTypeButtons.appendChild(audioButton);
@@ -1656,7 +1656,7 @@ export default function CommunityTab() {
                         (generationMode === "fast" ? 10000 : 100000))) ||
                   (communityTab === "Audio" && (tokenBalance ?? 0) < 10000)
                 }
-                className="transition-colors disabled:opacity-50 flex items-center mx-2 h-12"
+                className="cursor-pointer transition-colors disabled:opacity-50 flex items-center mx-2 h-12"
               >
                 <img
                   src={
@@ -1690,7 +1690,7 @@ export default function CommunityTab() {
                 <div className="flex space-x-1 h-10">
                   <button
                     onClick={() => setGenerationMode("fast")}
-                    className="h-10"
+                    className="cursor-pointer h-10"
                   >
                     <img
                       src={
@@ -1704,7 +1704,7 @@ export default function CommunityTab() {
                   </button>
                   <button
                     onClick={() => setGenerationMode("pro")}
-                    className="h-10"
+                    className="cursor-pointer h-10"
                   >
                     <img
                       src={
@@ -1735,7 +1735,7 @@ export default function CommunityTab() {
                         />
                         <button
                           onClick={() => setSelectedImageForVideo(null)}
-                          className="absolute top-2 right-2 bg-black/70 p-1 rounded-full"
+                          className="cursor-pointer absolute top-2 right-2 bg-black/70 p-1 rounded-full"
                           title="Remove image"
                         >
                           <X size={18} />
@@ -1887,7 +1887,7 @@ export default function CommunityTab() {
           <div className="bg-autofun-background-primary p-6 w-full max-w-lg relative text-white font-dm-mono border-4 border-[#2FD345] shadow-xl">
             <button
               onClick={() => setIsShareModalOpen(false)}
-              className="absolute top-3 right-3 text-gray-400 hover:text-white"
+              className="cursor-pointer absolute top-3 right-3 text-gray-400 hover:text-white"
               aria-label="Close modal"
             >
               <X size={20} />

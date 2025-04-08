@@ -115,7 +115,7 @@ export default function Trade({ token }: { token: IToken }) {
   const cardStyle = "mb-4";
 
   return (
-    <div className="relative p-4 pt-0">
+    <div className="relative ml-3 pt-0">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
         {/* LEFT COLUMN - Controls and Swap - Takes 3/5 of the space on md screens */}
         <div className="col-span-1 md:col-span-1 lg:col-span-1">
@@ -123,7 +123,7 @@ export default function Trade({ token }: { token: IToken }) {
           <div className="flex justify-between items-end w-full">
             <button
               onClick={() => setIsTokenSelling(false)}
-              className="flex items-center justify-center w-1/2 translate-x-[0.12em]"
+              className="cursor-pointer flex items-center justify-center w-1/2 translate-x-[0.12em]"
             >
               <img
                 src={!isTokenSelling ? "/token/buyon.svg" : "/token/buyoff.svg"}
@@ -133,7 +133,7 @@ export default function Trade({ token }: { token: IToken }) {
             </button>
             <button
               onClick={() => setIsTokenSelling(true)}
-              className="flex items-center justify-center w-1/2 translate-x-[-0.12em]"
+              className="cursor-pointer flex items-center justify-center w-1/2 translate-x-[-0.12em]"
             >
               <img
                 src={
@@ -221,7 +221,7 @@ export default function Trade({ token }: { token: IToken }) {
                 sellingAmount === 0
               }
               onClick={onSwap}
-              className="w-full mx-2"
+              className="cursor-pointer w-full"
             >
               <img
                 src={
@@ -251,7 +251,7 @@ export default function Trade({ token }: { token: IToken }) {
         </div>
 
         {/* RIGHT COLUMN - Advanced Settings & Info - Takes 2/5 of the space on md screens */}
-        <div className="col-span-1 md:col-span-1 lg:col-span-1 px-2">
+        <div className="col-span-1 md:col-span-1 lg:col-span-1">
           {/* Slippage Input */}
           <div className={cardStyle}>
             <div className="flex items-center justify-between gap-2">
