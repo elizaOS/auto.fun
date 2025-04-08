@@ -5,32 +5,8 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { env } from "../utils/env";
 import Loader from "@/components/loader";
 import Button from "@/components/button";
-
-const ExternalLinkIcon = ({ address }: { address: string }) => {
-  return (
-    <a
-      href={env.getWalletUrl(address)}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label="visit profile"
-    >
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 16 16"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          d="M11 1.5H14.5V5M13.75 2.25L10 6M8.5 2.5H4C3.60218 2.5 3.22064 2.65804 2.93934 2.93934C2.65804 3.22064 2.5 3.60218 2.5 4V12C2.5 12.3978 2.65804 12.7794 2.93934 13.0607C3.22064 13.342 3.60218 13.5 4 13.5H12C12.3978 13.5 12.7794 13.342 13.0607 13.0607C13.342 12.7794 13.5 12.3978 13.5 12V7.5"
-          stroke="#8C8C8C"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </a>
-  );
-};
+import { Link } from "react-router";
+import { ExternalLink } from "lucide-react";
 
 const WalletAddress = () => {
   const { publicKey } = useWallet();
@@ -44,10 +20,17 @@ const WalletAddress = () => {
         wallet
       </div>
       <div className="px-3 py-2 bg-[#212121] border border-neutral-800 flex justify-between items-center gap-4">
-        <div className="text-[#8c8c8c] text-base font-normal leading-normal">
+        <div className="text-[#8c8c8c] text-base font-normal leading-normal truncate">
           {walletAddress}
         </div>
-        <ExternalLinkIcon address={walletAddress} />
+        <Link
+          to={env.getWalletUrl(walletAddress)}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="visit profile"
+        >
+          <ExternalLink className="text-[#8C8C8C] size-5" />
+        </Link>
       </div>
     </div>
   );
