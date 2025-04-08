@@ -88,7 +88,9 @@ export default function SupportPage() {
                   Auto.fun offers two approaches:
                 </p>
                 <p className="text-[#8C8C8C]">
-                  <span className="text-[#8C8C8C] font-bold">1. New Coins: </span>
+                  <span className="text-[#8C8C8C] font-bold">
+                    1. New Coins:{" "}
+                  </span>
                   Launch with our bonding curve mechanism that provides initial
                   price stability, dynamic pricing, guaranteed liquidity, and
                   automated graduation to Raydium. Create a coin manually or

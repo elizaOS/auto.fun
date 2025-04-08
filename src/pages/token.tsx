@@ -24,12 +24,7 @@ import { fetchTokenMarketMetrics } from "@/utils/blockchain";
 import { getSocket } from "@/utils/socket";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  ExternalLink,
-  Globe,
-  Info as InfoCircle,
-  Paintbrush,
-} from "lucide-react";
+import { ExternalLink, Globe, Info as InfoCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
