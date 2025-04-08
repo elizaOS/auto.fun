@@ -111,9 +111,6 @@ export default function Trade({ token }: { token: IToken }) {
     });
   };
 
-  // Card styling for the right column items
-  const cardStyle = "mb-4";
-
   return (
     <div className="relative">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
