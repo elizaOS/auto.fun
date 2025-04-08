@@ -251,7 +251,7 @@ export default function Trade({ token }: { token: IToken }) {
         </div>
 
         {/* RIGHT COLUMN - Advanced Settings & Info - Takes 2/5 of the space on md screens */}
-        <div className="col-span-1 md:col-span-1 lg:col-span-1">
+        <div className="col-span-1 md:col-span-1 lg:col-span-1 px-2">
           {/* Slippage Input */}
           <div className={cardStyle}>
             <div className="flex items-center justify-between gap-2">

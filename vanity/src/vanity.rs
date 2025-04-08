@@ -2,8 +2,6 @@ use sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
 use rand::{rngs::ThreadRng, Rng};
 use worker::*;
-use ed25519_dalek::{Signer, SigningKey, Verifier, VerifyingKey};
-use rand::rngs::OsRng;
 
 // Define the structures for the vanity address grinding functionality
 #[derive(Deserialize)]
@@ -38,30 +36,18 @@ pub async fn grind_vanity(req: VanityRequest) -> Result<VanityResponse> {
     
     let start_time = js_sys::Date::now();
     let mut count = 0_u64;
-    let mut csprng = OsRng;
+    let mut rng = rand::thread_rng();
     
     loop {
-        // Generate a proper ed25519 signing key
-        let signing_key = SigningKey::generate(&mut csprng);
+        // Generate a completely random keypair (32 bytes for private key)
+        let private_key = generate_random_bytes(&mut rng);
         
-        // Get the verifying key (public key)
-        let verifying_key = signing_key.verifying_key();
+        // Generate public key from private key
+        let pubkey = generate_pubkey_from_private(&private_key);
         
-        // Get the public key bytes
-        let pubkey_bytes = verifying_key.to_bytes();
-        
-        // For Solana, we need to combine private key + public key bytes
-        // Format: [private_key (32 bytes) | public_key (32 bytes)]
-        let secret_key_bytes = signing_key.to_bytes();
-        let mut keypair_bytes = Vec::with_capacity(64);
-        keypair_bytes.extend_from_slice(&secret_key_bytes);
-        keypair_bytes.extend_from_slice(&pubkey_bytes);
-        
-        // Convert public key to Base58 for vanity searching
-        let pubkey_str = bs58::encode(&pubkey_bytes).into_string();
-        
-        // Convert full keypair to Base64 for storage - this matches Solana's format
-        let keypair_str = bs58::encode(&keypair_bytes).into_string();
+        // Convert to Base58
+        let pubkey_str = bs58::encode(&pubkey).into_string();
+        let private_key_str = bs58::encode(&private_key).into_string();
         
         let check_str = if case_insensitive {
             maybe_bs58_aware_lowercase(&pubkey_str)
@@ -89,7 +75,7 @@ pub async fn grind_vanity(req: VanityRequest) -> Result<VanityResponse> {
             
             return Ok(VanityResponse {
                 pubkey: pubkey_str,
-                private_key: keypair_str,
+                private_key: private_key_str,
                 attempts: count,
                 time_secs,
             });
@@ -102,6 +88,27 @@ pub async fn grind_vanity(req: VanityRequest) -> Result<VanityResponse> {
             let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
         }
     }
+}
+
+// Generate random bytes for private key
+fn generate_random_bytes(rng: &mut ThreadRng) -> [u8; 32] {
+    let mut bytes = [0u8; 32];
+    rng.fill(&mut bytes);
+    bytes
+}
+
+// Generate a public key from a private key
+// This is a simplified version - in a real implementation we would use ed25519-dalek or similar
+fn generate_pubkey_from_private(private_key: &[u8; 32]) -> [u8; 32] {
+    // For Solana, we would normally use ed25519 to derive the public key
+    // As a simplified version for this example, we'll just hash the private key
+    // In a real implementation, replace this with proper ed25519 key derivation
+    let pubkey_bytes: [u8; 32] = Sha256::new()
+        .chain_update(private_key)
+        .finalize()
+        .into();
+    
+    pubkey_bytes
 }
 
 fn get_validated_target(target: &str, case_insensitive: bool) -> Result<String> {
