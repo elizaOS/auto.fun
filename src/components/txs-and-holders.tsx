@@ -80,6 +80,7 @@ export default function TransactionsAndHolders({ token }: { token: IToken }) {
         <Button
           size="small"
           variant="ghost"
+          className="p-0"
           onClick={refreshData}
           disabled={isRefreshing}
         >
