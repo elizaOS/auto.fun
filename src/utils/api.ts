@@ -2,7 +2,6 @@ import { ChartTable } from "@/types";
 import { QueryClient } from "@tanstack/react-query";
 import { env } from "./env";
 import { fetchWithAuth } from "@/hooks/use-authentication";
-import { HomepageTokenSchema } from "@/hooks/use-tokens";
 
 export const queryClient = new QueryClient();
 
