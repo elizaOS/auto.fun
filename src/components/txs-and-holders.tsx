@@ -60,7 +60,7 @@ export default function TransactionsAndHolders({ token }: { token: IToken }) {
 
   return (
     <div className="md:overflow-x-hidden xs:max-w-fit md:max-w-full">
-      <div className="flex items-center justify-between p-3">
+      <div className="flex items-center justify-between py-3">
         <div className="flex items-center">
           <Button
             size="small"
@@ -80,6 +80,7 @@ export default function TransactionsAndHolders({ token }: { token: IToken }) {
         <Button
           size="small"
           variant="ghost"
+          className="p-0"
           onClick={refreshData}
           disabled={isRefreshing}
         >

@@ -96,6 +96,7 @@
     "react-router": "^7.4.0",
     "react-router-dom": "^7.4.0",
     "react-toastify": "^11.0.5",
+    "react-tooltip": "^5.28.0",
     "rollup-plugin-node-polyfills": "^0.2.1",
     "socket.io": "^4.8.1",
     "socket.io-serverless": "^0.2.1",

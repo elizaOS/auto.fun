@@ -121,29 +121,46 @@ textarea:focus-visible {
 :root {
   /* Base background colors */
   --toastify-color-light: #171717; /* autofun.background.card */
-  --toastify-color-dark:  #171717; /* autofun.background.primary */
+  --toastify-color-dark: #171717; /* autofun.background.primary */
 
   /* Toast status colors */
-  --toastify-color-info:    #707070; /* autofun.stroke.light */
-  --toastify-color-success: #03FF24; /* autofun.icon.highlight */
+  --toastify-color-info: #707070; /* autofun.stroke.light */
+  --toastify-color-success: #03ff24; /* autofun.icon.highlight */
   --toastify-color-warning: #8c8c8c; /* autofun.text.secondary */
-  --toastify-color-error:   #872C2C; /* autofun.text.error */
-  --toastify-color-transparent: rgba(23, 23, 23, 0.7); /* based on autofun.background.card */
+  --toastify-color-error: #872c2c; /* autofun.text.error */
+  --toastify-color-transparent: rgba(
+    23,
+    23,
+    23,
+    0.7
+  ); /* based on autofun.background.card */
 
   /* Icon colors (matching status colors) */
-  --toastify-icon-color-info:    var(--toastify-color-info);
+  --toastify-icon-color-info: var(--toastify-color-info);
   --toastify-icon-color-success: var(--toastify-color-success);
   --toastify-icon-color-warning: var(--toastify-color-warning);
-  --toastify-icon-color-error:   var(--toastify-color-error);
+  --toastify-icon-color-error: var(--toastify-color-error);
 
   /* Container and toast dimensions */
   --toastify-container-width: fit-content;
   --toastify-toast-width: 320px;
   --toastify-toast-offset: 16px;
-  --toastify-toast-top: max(var(--toastify-toast-offset), env(safe-area-inset-top));
-  --toastify-toast-right: max(var(--toastify-toast-offset), env(safe-area-inset-right));
-  --toastify-toast-left: max(var(--toastify-toast-offset), env(safe-area-inset-left));
-  --toastify-toast-bottom: max(var(--toastify-toast-offset), env(safe-area-inset-bottom));
+  --toastify-toast-top: max(
+    var(--toastify-toast-offset),
+    env(safe-area-inset-top)
+  );
+  --toastify-toast-right: max(
+    var(--toastify-toast-offset),
+    env(safe-area-inset-right)
+  );
+  --toastify-toast-left: max(
+    var(--toastify-toast-offset),
+    env(safe-area-inset-left)
+  );
+  --toastify-toast-bottom: max(
+    var(--toastify-toast-offset),
+    env(safe-area-inset-bottom)
+  );
 
   /* Toast appearance */
   --toastify-toast-background: #171717; /* autofun.background.card */
@@ -157,25 +174,29 @@ textarea:focus-visible {
 
   /* Text colors */
   --toastify-text-color-light: #ffffff; /* autofun.text.primary */
-  --toastify-text-color-dark:  #ffffff; /* autofun.text.primary */
+  --toastify-text-color-dark: #ffffff; /* autofun.text.primary */
 
   /* Colored toast text (ensuring legibility on colored backgrounds) */
-  --toastify-text-color-info:    #ffffff;
+  --toastify-text-color-info: #ffffff;
   --toastify-text-color-success: #ffffff;
   --toastify-text-color-warning: #ffffff;
-  --toastify-text-color-error:   #ffffff;
+  --toastify-text-color-error: #ffffff;
 
   /* Spinner colors */
   --toastify-spinner-color: #505050; /* autofun.text/ icon.disabled */
   --toastify-spinner-color-empty-area: #171717; /* autofun.background.card */
 
   /* Progress bar colors */
-  --toastify-color-progress-light: linear-gradient(to right, #03FF24, #8c8c8c);
-  --toastify-color-progress-dark:  linear-gradient(to right, #03FF24, #8c8c8c);
-  --toastify-color-progress-info:    var(--toastify-color-info);
+  --toastify-color-progress-light: linear-gradient(to right, #03ff24, #8c8c8c);
+  --toastify-color-progress-dark: linear-gradient(to right, #03ff24, #8c8c8c);
+  --toastify-color-progress-info: var(--toastify-color-info);
   --toastify-color-progress-success: var(--toastify-color-success);
   --toastify-color-progress-warning: var(--toastify-color-warning);
-  --toastify-color-progress-error:   var(--toastify-color-error);
+  --toastify-color-progress-error: var(--toastify-color-error);
   /* Control the opacity of the progress trail */
   --toastify-color-progress-bgo: 0.2;
+}
+
+button {
+  cursor: pointer;
 }

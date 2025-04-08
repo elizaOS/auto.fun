@@ -111,11 +111,8 @@ export default function Trade({ token }: { token: IToken }) {
     });
   };
 
-  // Card styling for the right column items
-  const cardStyle = "mb-4";
-
   return (
-    <div className="relative ml-3 pt-0">
+    <div className="relative">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
         {/* LEFT COLUMN - Controls and Swap - Takes 3/5 of the space on md screens */}
         <div className="col-span-1 md:col-span-1 lg:col-span-1">
@@ -123,7 +120,7 @@ export default function Trade({ token }: { token: IToken }) {
           <div className="flex justify-between items-end w-full">
             <button
               onClick={() => setIsTokenSelling(false)}
-              className="cursor-pointer flex items-center justify-center w-1/2 translate-x-[0.12em]"
+              className="flex items-center justify-center w-1/2 translate-x-[0.12em] cursor-pointer"
             >
               <img
                 src={!isTokenSelling ? "/token/buyon.svg" : "/token/buyoff.svg"}
@@ -133,7 +130,7 @@ export default function Trade({ token }: { token: IToken }) {
             </button>
             <button
               onClick={() => setIsTokenSelling(true)}
-              className="cursor-pointer flex items-center justify-center w-1/2 translate-x-[-0.12em]"
+              className="flex items-center justify-center w-1/2 translate-x-[-0.12em] cursor-pointer"
             >
               <img
                 src={
@@ -155,7 +152,7 @@ export default function Trade({ token }: { token: IToken }) {
             >
               <div className="flex justify-between gap-3">
                 <input
-                  className="text-4xl truncate font-dm-mono text-autofun-text-secondary w-3/4 outline-none"
+                  className="text-4xl truncate font-dm-mono text-white w-3/4 outline-none"
                   min={0}
                   type="number"
                   onChange={({ target }) =>
@@ -181,17 +178,15 @@ export default function Trade({ token }: { token: IToken }) {
             {/* Buying */}
             <div className="flex items-center p-4 gap-2 justify-between text-sm font-dm-mono text-autofun-text-secondary w-full">
               <span>Min Received:</span>
-              <span>
-                <span className="uppercase flex items-center">
-                  {displayMinReceived}
-                  <SkeletonImage
-                    src={isTokenSelling ? "/solana.png" : token?.image || ""}
-                    alt={isTokenSelling ? "SOL" : token?.name || "token"}
-                    className="rounded-full size-4 mr-1"
-                  />
-                  {isTokenSelling ? "SOL" : token?.ticker}
-                </span>
-              </span>
+              <div className="relative flex uppercase items-center gap-2">
+                {displayMinReceived}
+                <img
+                  src={isTokenSelling ? "/solana.png" : token?.image || ""}
+                  alt={isTokenSelling ? "SOL" : token?.name || "token"}
+                  className="rounded-full size-4"
+                />
+                {isTokenSelling ? "SOL" : token?.ticker}
+              </div>
             </div>
           </div>
 
@@ -221,7 +216,10 @@ export default function Trade({ token }: { token: IToken }) {
                 sellingAmount === 0
               }
               onClick={onSwap}
-              className="cursor-pointer w-full"
+              className={twMerge([
+                "w-full mx-2 cursor-pointer mt-2",
+                isDisabled ? "cursor-not-allowed! opacity-50" : "",
+              ])}
             >
               <img
                 src={
@@ -253,7 +251,7 @@ export default function Trade({ token }: { token: IToken }) {
         {/* RIGHT COLUMN - Advanced Settings & Info - Takes 2/5 of the space on md screens */}
         <div className="col-span-1 md:col-span-1 lg:col-span-1">
           {/* Slippage Input */}
-          <div className={cardStyle}>
+          <div className="mb-4 flex flex-col gap-4">
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-dm-mono text-autofun-text-secondary">
                 Slippage:
@@ -273,11 +271,17 @@ export default function Trade({ token }: { token: IToken }) {
                 </span>
               </div>
             </div>
+            {slippage > 3 ? (
+              <p className="text-orange-500 font-dm-mono text-xs">
+                Your transaction may be frontrun and result in an unfavorable
+                trade
+              </p>
+            ) : null}
           </div>
 
           {/* Balance and Value */}
-          <div className={cardStyle}>
-            <div className="flex justify-between items-center mb-2">
+          <div className={`flex flex-col gap-4 mb-4`}>
+            <div className="flex justify-between items-center">
               <span className="text-sm font-dm-mono text-autofun-text-secondary">
                 Balance:
               </span>
@@ -293,16 +297,16 @@ export default function Trade({ token }: { token: IToken }) {
                 {formatNumber(tokenBalance * currentPrice, false, true)} SOL
               </span>
             </div>
-          </div>
-
-          {/* Price USD */}
-          <div className={cardStyle}>
             <div className="flex justify-between items-center">
               <span className="text-sm font-dm-mono text-autofun-text-secondary">
                 Price USD:
               </span>
               <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                {formatNumber(tokenPriceUSD * solanaPrice, true, false)}
+                {formatNumber(
+                  tokenBalance * currentPrice * solanaPrice,
+                  true,
+                  false,
+                )}
               </span>
             </div>
           </div>

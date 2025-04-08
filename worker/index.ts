@@ -106,6 +106,12 @@ api.route("/", heliusWebhookRouter);
 // Root paths for health checks
 app.get("/", (c) => c.json({ status: "ok" }));
 
+const MAINTENANCE_MODE_ENABLED = false;
+
+app.get("/maintenance-mode", (c) => {
+  return c.json({ enabled: MAINTENANCE_MODE_ENABLED });
+});
+
 api.post("/upload", async (c) => {
   try {
     // Require authentication

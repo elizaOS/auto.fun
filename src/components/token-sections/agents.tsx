@@ -1,7 +1,7 @@
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Trash2, LogOut } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 // import { Badge } from "../ui/badge";
 import Button from "../button";
@@ -902,14 +902,24 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
           </div>
 
           <div className="mt-4">
-            <Button
-              onClick={() => {}}
-              className="flex flex-col items-center gap-2 mx-auto border-[#03FF24] border-2 h-fit hover:bg-[#03FF24]"
-              variant="outline"
+            <Link
+              to="https://fleek.xyz/eliza/"
+              aria-label="fleek url"
+              target="_blank"
             >
-              {isConnectingAgent ? "Connecting..." : "Create an Agent With"}
-              <img src="/fleek-logo.svg" alt="Fleek" className="aspect-auto" />
-            </Button>
+              <Button
+                onClick={() => {}}
+                className="flex flex-col items-center gap-2 mx-auto border-[#03FF24] border-2 h-fit hover:bg-[#03FF24]"
+                variant="outline"
+              >
+                {isConnectingAgent ? "Connecting..." : "Create an Agent With"}
+                <img
+                  src="/fleek-logo.svg"
+                  alt="Fleek"
+                  className="aspect-auto"
+                />
+              </Button>
+            </Link>
           </div>
         </>
       )}

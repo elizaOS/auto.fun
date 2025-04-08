@@ -2,7 +2,6 @@ import { ChartTable } from "@/types";
 import { QueryClient } from "@tanstack/react-query";
 import { env } from "./env";
 import { fetchWithAuth } from "@/hooks/use-authentication";
-import { HomepageTokenSchema } from "@/hooks/use-tokens";
 
 export const queryClient = new QueryClient();
 
@@ -59,10 +58,11 @@ export const getToken = async ({
       `Fetching token data for ${address} (bypass_cache: ${bypassCache})`,
     );
     const rawData = await fetcher(endpoint, "GET");
-    const data = rawData as Record<string, any>;
-    const transformedData = HomepageTokenSchema.parse(data);
+    // TODO - Figure out why this broke
+    // const data = rawData as Record<string, any>;
+    // const transformedData = HomepageTokenSchema.parse(data);
 
-    return transformedData;
+    return rawData;
   } catch (error) {
     console.error(`Error fetching token data: ${error}`);
     throw error;
@@ -139,4 +139,8 @@ export const getChartTable = async ({
     console.error(err);
     return undefined;
   }
+};
+
+export const getMaintenanceMode = async () => {
+  return await fetcher("/maintenance-mode", "GET");
 };

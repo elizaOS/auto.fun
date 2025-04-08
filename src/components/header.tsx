@@ -8,6 +8,8 @@ import { Menu, X } from "lucide-react";
 import WalletButton from "@/components/wallet-button";
 import { useWallet } from "@solana/wallet-adapter-react";
 import useAuthentication from "@/hooks/use-authentication";
+import { useSolBalance } from "@/hooks/use-token-balance";
+import SkeletonImage from "./skeleton-image";
 // import { HowItWorksDialog } from "./how-it-works-dialog";
 
 export default function Header() {
@@ -15,6 +17,7 @@ export default function Header() {
   const { publicKey } = useWallet();
   const { isAuthenticated } = useAuthentication();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const solBalance = useSolBalance();
 
   const mobileNavItems = [
     { icon: "/nav/stars.svg", title: "Create Token", href: "/create" },
@@ -61,6 +64,24 @@ export default function Header() {
             {pathname !== "/create" && (
               <>
                 <SearchBar />
+
+                {isAuthenticated ? (
+                  <Button size="large" className="cursor-default!">
+                    <div className="flex items-center gap-2 justify-between">
+                      <span className="max-w-24 w-full grow truncate">
+                        {solBalance}
+                      </span>
+                      <SkeletonImage
+                        parentClassName="w-5 h-5 shrink-0"
+                        src="/solana.png"
+                        width={32}
+                        height={32}
+                        alt="solana_logo"
+                        className="w-5 h-5"
+                      />
+                    </div>
+                  </Button>
+                ) : null}
                 <Link to="/create">
                   <Button className="cursor-pointer flex items-center text-base text-autofun-text-highlight font-bold font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345] min-w-34">
                     New Coin{" "}

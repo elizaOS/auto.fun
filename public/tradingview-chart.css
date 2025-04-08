@@ -3,6 +3,13 @@
   --tv-color-pane-background: #0a0a0a;
   --tv-color-pane-background-secondary: #0a0a0a;
   --tv-color-toolbar-button-text: #8c8c8c;
+  --tv-color-toolbar-button-text-active: #03FF24;
+  --tv-color-toolbar-button-text-active-hover: #03FF24;
+  --tv-color-popup-background: #212121;
+  --tv-color-popup-element-text: #8c8c8c;
+  --tv-color-popup-element-text-active: black;
+  --tv-color-popup-element-background-active: #03FF24;
+  --tv-color-popup-element-background-hover: #262626;
   --tv-color-toolbar-button-text-hover: #ffffff;
   --tv-color-toolbar-button-background-hover: #262626;
   --tv-color-toolbar-button-background-expanded: #0a0a0a;
@@ -25,11 +32,6 @@ html.theme-dark .chart-page {
 
 html.theme-dark .chart-page .chart-container-border {
   background-color: #0a0a0a;
-}
-
-html.theme-dark .chart-container {
-  border: 1px solid #262626;
-  border-radius: 12px;
 }
 
 /* Hide the default header */

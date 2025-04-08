@@ -1,57 +1,12 @@
-import { PropsWithChildren, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useProfile } from "../utils/profileUtils";
 import { TokenTable } from "../components/token-table";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { env } from "../utils/env";
 import Loader from "@/components/loader";
-
-type TabButtonProps = PropsWithChildren<{
-  isSelected: boolean;
-  onClick: () => void;
-}>;
-
-const TabButton = ({ isSelected, onClick, children }: TabButtonProps) => (
-  <button
-    className={`px-3 py-2 border border-[#03FF24] justify-center items-center gap-2 self-start font-satoshi ${
-      isSelected ? "bg-[#03FF24]" : "bg-neutral-900"
-    }`}
-    onClick={onClick}
-  >
-    <div
-      className={`cursor-pointer text-right text-white text-base font-medium leading-tight ${
-        isSelected ? "text-black" : "text-white"
-      }`}
-    >
-      {children}
-    </div>
-  </button>
-);
-
-const ExternalLinkIcon = ({ address }: { address: string }) => {
-  return (
-    <a
-      href={env.getWalletUrl(address)}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label="visit profile"
-    >
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 16 16"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          d="M11 1.5H14.5V5M13.75 2.25L10 6M8.5 2.5H4C3.60218 2.5 3.22064 2.65804 2.93934 2.93934C2.65804 3.22064 2.5 3.60218 2.5 4V12C2.5 12.3978 2.65804 12.7794 2.93934 13.0607C3.22064 13.342 3.60218 13.5 4 13.5H12C12.3978 13.5 12.7794 13.342 13.0607 13.0607C13.342 12.7794 13.5 12.3978 13.5 12V7.5"
-          stroke="#8C8C8C"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </a>
-  );
-};
+import Button from "@/components/button";
+import { Link } from "react-router";
+import { ExternalLink } from "lucide-react";
 
 const WalletAddress = () => {
   const { publicKey } = useWallet();
@@ -65,10 +20,17 @@ const WalletAddress = () => {
         wallet
       </div>
       <div className="px-3 py-2 bg-[#212121] border border-neutral-800 flex justify-between items-center gap-4">
-        <div className="text-[#8c8c8c] text-base font-normal leading-normal">
+        <div className="text-[#8c8c8c] text-base font-normal leading-normal truncate">
           {walletAddress}
         </div>
-        <ExternalLinkIcon address={walletAddress} />
+        <Link
+          to={env.getWalletUrl(walletAddress)}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="visit profile"
+        >
+          <ExternalLink className="text-[#8C8C8C] size-5" />
+        </Link>
       </div>
     </div>
   );
@@ -97,18 +59,18 @@ export default function Profile() {
       </div>
       <WalletAddress />
       <div className="flex gap-2.5 mb-4">
-        <TabButton
-          isSelected={selectedTab === "held"}
+        <Button
+          variant={selectedTab === "held" ? "tab" : "outline"}
           onClick={() => setSelectedTab("held")}
         >
-          Autos Held
-        </TabButton>
-        <TabButton
-          isSelected={selectedTab === "created"}
+          Coins Held
+        </Button>
+        <Button
+          variant={selectedTab === "created" ? "tab" : "outline"}
           onClick={() => setSelectedTab("created")}
         >
-          Autos Created
-        </TabButton>
+          Coins Created
+        </Button>
       </div>
 
       <TokenTable tokens={tableTokens} />

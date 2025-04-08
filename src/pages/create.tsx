@@ -1508,11 +1508,17 @@ export const Create = () => {
       });
 
       if (!imageResponse.ok) {
-        console.error(
-          "Image generation API returned an error:",
-          await imageResponse.text(),
-        );
-        throw new Error("Failed to generate image for token");
+        const errorText = await imageResponse.text();
+        console.error("Image generation API returned an error:", errorText);
+        const backendError = JSON.parse(errorText).error;
+
+        let userErrorMessage = "Failed to generate image for token.";
+
+        if (backendError.includes("NSFW")) {
+          userErrorMessage =
+            "Your input contains inappropriate content. Please modify and try again.";
+        }
+        throw new Error(userErrorMessage);
       }
 
       const imageData = (await imageResponse.json()) as GenerateImageResponse;

@@ -1656,7 +1656,7 @@ export default function CommunityTab() {
                         (generationMode === "fast" ? 10000 : 100000))) ||
                   (communityTab === "Audio" && (tokenBalance ?? 0) < 10000)
                 }
-                className="cursor-pointer transition-colors disabled:opacity-50 flex items-center mx-2 h-12"
+                className="transition-colors disabled:opacity-50 flex items-center mx-2 h-12 cursor-pointer"
               >
                 <img
                   src={
@@ -1699,7 +1699,7 @@ export default function CommunityTab() {
                           : "/token/fastoff.svg"
                       }
                       alt="Fast mode"
-                      className="h-10 w-auto"
+                      className="h-10 w-auto cursor-pointer"
                     />
                   </button>
                   <button
@@ -1713,7 +1713,7 @@ export default function CommunityTab() {
                           : "/token/prooff.svg"
                       }
                       alt="Pro mode"
-                      className="h-10 w-auto"
+                      className="h-10 w-auto cursor-pointer"
                     />
                   </button>
                 </div>
@@ -1735,7 +1735,7 @@ export default function CommunityTab() {
                         />
                         <button
                           onClick={() => setSelectedImageForVideo(null)}
-                          className="cursor-pointer absolute top-2 right-2 bg-black/70 p-1 rounded-full"
+                          className="absolute top-2 right-2 bg-black/70 p-1 rounded-full cursor-pointer"
                           title="Remove image"
                         >
                           <X size={18} />
@@ -1775,7 +1775,7 @@ export default function CommunityTab() {
             {communityTab === "Image" &&
               (tokenBalance ?? 0) <
                 (generationMode === "pro" ? 10000 : 1000) && (
-                <div className="text-sm text-yellow-500 px-4 -mt-2">
+                <div className="text-sm text-yellow-500 -mt-2">
                   <p>
                     You need to hold at least{" "}
                     {generationMode === "pro" ? "10,000" : "1,000"} tokens to
@@ -1787,7 +1787,7 @@ export default function CommunityTab() {
             {communityTab === "Video" &&
               (tokenBalance ?? 0) <
                 (generationMode === "fast" ? 10000 : 100000) && (
-                <div className="text-sm text-yellow-500 px-4 -mt-2">
+                <div className="text-sm text-yellow-500 -mt-2">
                   <p>
                     You need to hold at least{" "}
                     {generationMode === "fast" ? "10,000" : "100,000"} tokens to
@@ -1797,7 +1797,7 @@ export default function CommunityTab() {
               )}
 
             {communityTab === "Audio" && (tokenBalance ?? 0) < 10000 && (
-              <div className="text-sm text-yellow-500 px-4 -mt-2">
+              <div className="text-sm text-yellow-500 -mt-2">
                 <p>
                   You need to hold at least 10,000 tokens to generate audio.
                 </p>
@@ -1887,7 +1887,7 @@ export default function CommunityTab() {
           <div className="bg-autofun-background-primary p-6 w-full max-w-lg relative text-white font-dm-mono border-4 border-[#2FD345] shadow-xl">
             <button
               onClick={() => setIsShareModalOpen(false)}
-              className="cursor-pointer absolute top-3 right-3 text-gray-400 hover:text-white"
+              className="absolute top-3 right-3 text-gray-400 hover:text-white cursor-pointer"
               aria-label="Close modal"
             >
               <X size={20} />

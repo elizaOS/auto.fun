@@ -70,6 +70,14 @@ export const env = {
     `https://solscan.io/address/${address}?cluster=${parsedEnv.solanaNetwork}`,
   getTransactionUrl: (txId: string) =>
     `https://solscan.io/tx/${txId}?cluster=${parsedEnv.solanaNetwork}`,
+  getHolderURL: (tokenAddress: string) =>
+    `https://solscan.io/token/${tokenAddress}#holders?cluster=${parsedEnv.solanaNetwork}`,
+  getAccountUrl: (address: string) =>
+    `https://solscan.io/account/${address}?cluster=${parsedEnv.solanaNetwork}`,
+  getTradesURL: (tokenAddress: string) =>
+    `https://solscan.io/token/${tokenAddress}#trades?cluster=${parsedEnv.solanaNetwork}`,
+  getTokenURL: (tokenAddress: string) =>
+    `https://solscan.io/token/${tokenAddress}?cluster=${parsedEnv.solanaNetwork}`,
 };
 
 console.log("env", env);

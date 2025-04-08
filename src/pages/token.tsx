@@ -11,6 +11,7 @@ import Trade from "@/components/trade";
 import { TradingViewChart } from "@/components/trading-view-chart";
 import TransactionsAndHolders from "@/components/txs-and-holders";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
+import { Tooltip } from "react-tooltip";
 import { IToken } from "@/types";
 import {
   abbreviateNumber,
@@ -28,6 +29,7 @@ import { ExternalLink, Globe, Info as InfoCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
+import { env } from "@/utils/env";
 
 const socket = getSocket();
 
@@ -234,27 +236,18 @@ export default function Page() {
     <div className="flex flex-col">
       {/* Top Stats Section - Full Width */}
       <div className="w-full py-10 flex flex-wrap justify-between">
-        <div className="flex-1 flex flex-col items-center">
-          <span className="text-2xl md:text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
-            {marketCapUSD > 0 ? abbreviateNumber(marketCapUSD) : "-"}
-          </span>
-          <span className="text-lg font-dm-mono text-autofun-text-secondary mt-3">
-            <span className="hidden md:inline">Market</span> Cap
-          </span>
-        </div>
-
-        <div className="flex-1 flex flex-col items-center">
-          <span className="text-2xl md:text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
-            {volume24h > 0 ? abbreviateNumber(volume24h) : "0"}
-          </span>
-          <span className="text-lg font-dm-mono text-autofun-text-secondary mt-3">
-            24hr <span className="hidden md:inline">Volume</span>
-          </span>
-        </div>
-
-        <div className="flex-1 flex flex-col items-center">
-          <span className="text-2xl md:text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
-            {token?.createdAt
+        <TopPageItem
+          title="Market Cap"
+          value={marketCapUSD > 0 ? abbreviateNumber(marketCapUSD) : "-"}
+        />
+        <TopPageItem
+          title="24hr Volume"
+          value={volume24h > 0 ? abbreviateNumber(volume24h) : "0"}
+        />
+        <TopPageItem
+          title="Age"
+          value={
+            token?.createdAt
               ? fromNow(token?.createdAt, true).includes("a few")
                 ? "NOW"
                 : fromNow(token?.createdAt, true).includes("a minute")
@@ -275,20 +268,16 @@ export default function Page() {
                           .replace("second", "s")
                           .trim()
                           .trim()
-              : "-"}
-          </span>
-          <span className="text-lg font-dm-mono text-autofun-text-secondary mt-3">
-            Age
-          </span>
-        </div>
+              : "-"
+          }
+        />
       </div>
 
       {/* Three Column Layout */}
-      {/* Three Column Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[25%_50%_25%]">
-        {/* Left Column - Token Info */}
-        <div className="flex flex-col gap-3">
-          <div className="p-4 pt-0 flex flex-col gap-3">
+      <div className="flex flex-wrap lg:flex-nowrap gap-4">
+        {/* Left Column - 25% - Token Info */}
+        <div className="w-full lg:w-1/4 flex flex-col gap-3">
+          <div className="pt-0 flex flex-col gap-3">
             <div className="relative overflow-hidden">
               <div className="w-full aspect-square">
                 <SkeletonImage src={token?.image} alt="image" />
@@ -297,9 +286,21 @@ export default function Page() {
               {/* Token name overlapping at top - with drop shadow */}
               <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 via-black/25 to-transparent px-3 py-2.5">
                 <div className="flex items-center justify-between w-full">
-                  <h3 className="capitalize text-white text-2xl font-bold font-satoshi leading-tight truncate pr-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                    {token?.name}
-                  </h3>
+                  <div className="flex flex-row items-center gap-1">
+                    <h3 className="capitalize text-white text-2xl font-bold font-satoshi leading-tight truncate pr-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                      {token?.name}
+                    </h3>
+                    <Tooltip anchorSelect="#view-on-solscan">
+                      <span>View on Solscan</span>
+                    </Tooltip>
+                    <Link
+                      to={env.getTokenURL(token?.mint)}
+                      target="_blank"
+                      id="view-on-solscan"
+                    >
+                      <ExternalLink className="size-5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
+                    </Link>
+                  </div>
                   <div className="shrink-0 ml-1">
                     <TokenStatus token={token} />
                   </div>
@@ -318,16 +319,6 @@ export default function Page() {
               <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
                 {token?.description}
               </span>
-              <div className="flex justify-end">
-                <Link
-                  to={`https://solscan.io/token/${token?.mint}`}
-                  target="_blank"
-                >
-                  <Button size="small" variant="ghost">
-                    View on Solscan <ExternalLink className="size-4 ml-1" />
-                  </Button>
-                </Link>
-              </div>
             </div>
 
             {/* Contract address */}
@@ -411,8 +402,8 @@ export default function Page() {
           </div>
         </div>
 
-        {/* Middle Column - Tabs for Chart and AI Create */}
-        <div className="flex flex-col gap-3">
+        {/* Middle Column - 50% - Tabs for Chart and AI Create */}
+        <div className="w-full lg:w-1/2 flex flex-col gap-3">
           <div className="overflow-hidden relative">
             <div className="flex flex-col">
               {/* Green stroke above tab section */}
@@ -422,7 +413,7 @@ export default function Page() {
               <div className="flex items-center justify-between pr-2 mb-4">
                 <div className="flex">
                   <button
-                    className={`cursor-pointer px-4 py-3 text-autofun-text-primary font-medium ${
+                    className={`px-4 py-3 text-autofun-text-primary font-medium cursor-pointer ${
                       activeTab === "chart"
                         ? "bg-autofun-background-highlight text-black"
                         : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
@@ -444,7 +435,7 @@ export default function Page() {
                     />
                   </button>
                   <button
-                    className={`cursor-pointer px-4 py-3 text-autofun-text-primary font-medium ${
+                    className={`px-4 py-3 text-autofun-text-primary font-medium cursor-pointer ${
                       activeTab === "ai"
                         ? "bg-autofun-background-highlight text-black"
                         : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
@@ -482,9 +473,8 @@ export default function Page() {
                   <div className="w-full h-[50vh] bg-autofun-background-primary">
                     <TradingViewChart name={token.name} token={token.mint} />
                   </div>
-                  <div className="p-4">
-                    <TransactionsAndHolders token={token} />
-                  </div>
+
+                  <TransactionsAndHolders token={token} />
                 </>
               )}
               {activeTab === "ai" && (
@@ -496,16 +486,25 @@ export default function Page() {
           </div>
         </div>
 
-        {/* Right Column - Trading and Bonding Curve */}
-        <div className="flex flex-col gap-3">
+        {/* Right Column - 25% - Trading and Bonding Curve */}
+        <div className="w-full lg:w-1/4 flex flex-col gap-3">
           {/* Trade Component - Now at the top */}
           <Trade token={token} />
 
           {/* Bonding Curve */}
-          <div className="ml-4 flex flex-col gap-3.5">
+          <div className="flex flex-col gap-3.5">
             <div className="flex justify-between gap-3.5 items-center">
               <p className="font-medium font-satoshi">Progress</p>
-              <InfoCircle className="size-5 text-autofun-text-secondary" />
+              <Tooltip anchorSelect="#tooltip">
+                <span>
+                  When the market cap reaches the graduation threshold, the
+                  coin's liquidity will transition to Raydium.
+                </span>
+              </Tooltip>
+              <InfoCircle
+                className="size-5 text-autofun-text-secondary"
+                id="tooltip"
+              />
             </div>
             <div>
               <BondingCurveBar progress={token?.curveProgress} />
@@ -555,3 +554,16 @@ export default function Page() {
     </div>
   );
 }
+
+const TopPageItem = ({ title, value }: { title: any; value: any }) => {
+  return (
+    <div className="flex-1 flex flex-col items-center">
+      <span className="text-2xl md:text-4xl xl:text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
+        {value}
+      </span>
+      <span className="text-base md:text-lg font-dm-mono text-autofun-text-secondary mt-3">
+        {title}
+      </span>
+    </div>
+  );
+};
