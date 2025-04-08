@@ -36,9 +36,9 @@ class SocketWrapper {
 
     const wsUrl =
       (this.url.startsWith("https")
-        ? this.url.replace(/^https/, "ws")
+        ? this.url.replace(/^https/, "wss")
         : this.url.replace(/^http/, "ws")) + "/ws";
-        
+
     this.ws = new WebSocket(wsUrl);
 
     this.ws.onopen = () => {
