@@ -141,7 +141,7 @@ export const TVChartContainer = ({
   }, [name, pairIndex]);
 
   return (
-    <div className="relative h-full w-full bg-[#171717] rounded-xl overflow-hidden">
+    <div className="relative h-full w-full bg-[#171717] overflow-hidden">
       <div ref={chartContainerRef} className={twMerge("h-full w-full")} />
     </div>
   );
