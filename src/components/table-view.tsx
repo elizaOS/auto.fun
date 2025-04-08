@@ -7,16 +7,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { IToken } from "@/types";
-import {
-  formatNumber,
-  fromNow,
-  shortenAddress,
-} from "@/utils";
+import { formatNumber, fromNow, shortenAddress } from "@/utils";
 import { Grid } from "lucide-react";
 import { useNavigate } from "react-router";
 import BondingCurveBar from "./bonding-curve-bar";
 import CopyButton from "./copy-button";
 import SkeletonImage from "./skeleton-image";
+import { twMerge } from "tailwind-merge";
 
 export function TableView({ data }: { data: IToken[] }) {
   const navigate = useNavigate();
@@ -43,17 +40,14 @@ export function TableView({ data }: { data: IToken[] }) {
               <TableCell>
                 <div className="flex items-center gap-4">
                   <div className="relative size-[50px] bg-[#262626] overflow-hidden">
-                    {token.image ? (
-                      <SkeletonImage
-                        src={token.image}
-                        alt={token.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Grid className="w-6 h-6 text-[#8C8C8C]" />
-                      </div>
-                    )}
+                    <SkeletonImage
+                      src={token?.image || "/logo.png"}
+                      alt={token?.name || "token"}
+                      className={twMerge([
+                        "w-full h-full object-cover",
+                        !token?.image ? "grayscale" : "",
+                      ])}
+                    />
                   </div>
                   <div className="flex flex-col gap-1 min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
