@@ -29,7 +29,6 @@ import {
   acquireMigrationLock,
   releaseMigrationLock,
 } from "./migrations";
-import { real } from "drizzle-orm/gel-core";
 
 export class TokenMigrator {
   constructor(
