@@ -84,7 +84,10 @@ export default function Page() {
             total: query?.totalItems,
             totalPages: query?.totalPages,
           }}
-          onPageChange={query?.goToPage}
+          onPageChange={(pageNumber: number) => {
+            if (query?.isLoading) return;
+            query?.goToPage(pageNumber);
+          }}
         />
       </div>
     </div>
