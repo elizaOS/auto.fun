@@ -43,7 +43,8 @@ export default function Page() {
             variant={sortBy === "all" ? "primary" : "outline"}
             onClick={() => setSortBy("all")}
           >
-            All
+            {/* featured represents all */}
+            Featured
           </Button>
           <Button
             variant={sortBy === "marketCap" ? "primary" : "outline"}
