@@ -34,7 +34,11 @@ class SocketWrapper {
       this.connectionResolve = resolve;
     });
 
-    const wsUrl = this.url.replace(/^http/, "ws") + "/ws";
+    const wsUrl =
+      (this.url.startsWith("https")
+        ? this.url.replace(/^https/, "ws")
+        : this.url.replace(/^http/, "ws")) + "/ws";
+        
     this.ws = new WebSocket(wsUrl);
 
     this.ws.onopen = () => {
@@ -93,7 +97,7 @@ class SocketWrapper {
       // Calculate delay with exponential backoff, but cap at maxReconnectInterval
       const delay = Math.min(
         this.reconnectInterval * Math.pow(1.5, this.reconnectAttempts),
-        this.maxReconnectInterval,
+        this.maxReconnectInterval
       );
 
       this.reconnectTimer = setTimeout(() => {
@@ -124,7 +128,7 @@ class SocketWrapper {
       delete this.eventHandlers[event];
     } else if (this.eventHandlers[event]) {
       this.eventHandlers[event] = this.eventHandlers[event].filter(
-        (handler) => handler !== callback,
+        (handler) => handler !== callback
       );
     }
     return this;
