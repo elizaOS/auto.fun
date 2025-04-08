@@ -5,34 +5,34 @@ const isDevnet = import.meta.env.VITE_SOLANA_NETWORK === "devnet";
 console.log("isDevnet", isDevnet);
 console.log(
   "import.meta.env.VITE_SOLANA_NETWORK",
-  import.meta.env.VITE_SOLANA_NETWORK,
+  import.meta.env.VITE_SOLANA_NETWORK
 );
 console.log(
   "import.meta.env.VITE_DEVNET_RPC_URL",
-  import.meta.env.VITE_DEVNET_RPC_URL,
+  import.meta.env.VITE_DEVNET_RPC_URL
 );
 console.log(
   "import.meta.env.VITE_MAINNET_RPC_URL",
-  import.meta.env.VITE_MAINNET_RPC_URL,
+  import.meta.env.VITE_MAINNET_RPC_URL
 );
 console.log("import.meta.env.VITE_RPC_URL", import.meta.env.VITE_RPC_URL);
 console.log("import.meta.env.VITE_API_URL", import.meta.env.VITE_API_URL);
 console.log(
   "import.meta.env.VITE_DEV_API_URL",
-  import.meta.env.VITE_DEV_API_URL,
+  import.meta.env.VITE_DEV_API_URL
 );
 console.log(
   "import.meta.env.VITE_VIRTUAL_RESERVES",
-  import.meta.env.VITE_VIRTUAL_RESERVES,
+  import.meta.env.VITE_VIRTUAL_RESERVES
 );
 console.log(
   "import.meta.env.VITE_TOKEN_SUPPLY",
-  import.meta.env.VITE_TOKEN_SUPPLY,
+  import.meta.env.VITE_TOKEN_SUPPLY
 );
 console.log("import.meta.env.VITE_DECIMALS", import.meta.env.VITE_DECIMALS);
 console.log(
   "import.meta.env.VITE_DEV_ADDRESS",
-  import.meta.env.VITE_DEV_ADDRESS,
+  import.meta.env.VITE_DEV_ADDRESS
 );
 
 const unparsedEnv = {
@@ -70,6 +70,14 @@ export const env = {
     `https://solscan.io/address/${address}?cluster=${parsedEnv.solanaNetwork}`,
   getTransactionUrl: (txId: string) =>
     `https://solscan.io/tx/${txId}?cluster=${parsedEnv.solanaNetwork}`,
+  getHolderURL: (tokenAddress: string) =>
+    `https://solscan.io/token/${tokenAddress}#holders?cluster=${parsedEnv.solanaNetwork}`,
+  getAccountUrl: (address: string) =>
+    `https://solscan.io/account/${address}?cluster=${parsedEnv.solanaNetwork}`,
+  getTradesURL: (tokenAddress: string) =>
+    `https://solscan.io/token/${tokenAddress}#trades?cluster=${parsedEnv.solanaNetwork}`,
+  getTokenURL: (tokenAddress: string) =>
+    `https://solscan.io/token/${tokenAddress}?cluster=${parsedEnv.solanaNetwork}`,
 };
 
 console.log("env", env);

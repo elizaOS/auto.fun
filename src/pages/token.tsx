@@ -29,6 +29,7 @@ import { ExternalLink, Globe, Info as InfoCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
+import { env } from "@/utils/env";
 
 const socket = getSocket();
 
@@ -76,7 +77,7 @@ export default function Page() {
     const socket = getSocket();
 
     socket.on("updateToken", (token: any) =>
-      queryClient.setQueryData(["token", address], token),
+      queryClient.setQueryData(["token", address], token)
     );
 
     return () => {
@@ -108,7 +109,7 @@ export default function Page() {
 
         if (!hasValidData) {
           console.warn(
-            `Token page: Blockchain metrics may be invalid - all key values are 0`,
+            `Token page: Blockchain metrics may be invalid - all key values are 0`
           );
         }
 
@@ -120,7 +121,7 @@ export default function Page() {
           {
             position: "bottom-right",
             autoClose: 5000,
-          },
+          }
         );
         return null;
       }
@@ -200,7 +201,7 @@ export default function Page() {
         !metrics.marketCapUSD && !metrics.currentPrice && !metrics.volume24h;
       if (allZeros) {
         console.warn(
-          `WARNING: Blockchain metrics returned all zeros for token ${token?.mint}. This might indicate an error in data retrieval.`,
+          `WARNING: Blockchain metrics returned all zeros for token ${token?.mint}. This might indicate an error in data retrieval.`
         );
       }
     }
@@ -293,7 +294,7 @@ export default function Page() {
                       <span>View on Solscan</span>
                     </Tooltip>
                     <Link
-                      to={`https://solscan.io/token/${token?.mint}`}
+                      to={env.getTokenURL(token?.mint)}
                       target="_blank"
                       id="view-on-solscan"
                     >
@@ -517,7 +518,7 @@ export default function Page() {
                   (token?.reserveLamport - token?.virtualReserves) /
                     LAMPORTS_PER_SOL,
                   true,
-                  true,
+                  true
                 )}{" "}
                 SOL in the bonding curve.
               </p>
