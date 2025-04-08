@@ -28,7 +28,7 @@ const CopyButton: React.FC<CopyButtonProps> = ({ text }) => {
   return (
     <button
       onClick={handleCopy}
-      className="flex items-center text-xs text-[#8c8c8c] hover:text-white transition-colors"
+      className="flex items-center text-xs text-[#8c8c8c] hover:text-white transition-colors cursor-pointer"
       aria-label="copy"
     >
       {copied ? (

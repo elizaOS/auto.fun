@@ -16,7 +16,7 @@ export default function Trade({ token }: { token: IToken }) {
   const { solPrice: contextSolPrice } = useSolPriceContext();
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
-    undefined,
+    undefined
   );
   const [slippage, setSlippage] = useState<number>(2);
 
@@ -64,7 +64,7 @@ export default function Trade({ token }: { token: IToken }) {
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status,
+    token?.status
   );
 
   const [convertedAmount, setConvertedAmount] = useState(0);
@@ -85,7 +85,7 @@ export default function Trade({ token }: { token: IToken }) {
       // they are not dynamically calculated but instead use the
       // default values leading to slightly incorrect calculations
       token.reserveAmount,
-      token.reserveLamport,
+      token.reserveLamport
     );
     setConvertedAmount(swapAmount / decimals);
   };
@@ -181,17 +181,15 @@ export default function Trade({ token }: { token: IToken }) {
             {/* Buying */}
             <div className="flex items-center p-4 gap-2 justify-between text-sm font-dm-mono text-autofun-text-secondary w-full">
               <span>Min Received:</span>
-              <span>
-                <span className="uppercase flex items-center">
-                  {displayMinReceived}
-                  <SkeletonImage
-                    src={isTokenSelling ? "/solana.png" : token?.image || ""}
-                    alt={isTokenSelling ? "SOL" : token?.name || "token"}
-                    className="rounded-full size-4 mr-1"
-                  />
-                  {isTokenSelling ? "SOL" : token?.ticker}
-                </span>
-              </span>
+              <div className="flex uppercase items-center gap-2">
+                {displayMinReceived}
+                <SkeletonImage
+                  src={isTokenSelling ? "/solana.png" : token?.image || ""}
+                  alt={isTokenSelling ? "SOL" : token?.name || "token"}
+                  className="rounded-full size-4"
+                />
+                {isTokenSelling ? "SOL" : token?.ticker}
+              </div>
             </div>
           </div>
 
