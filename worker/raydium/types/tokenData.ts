@@ -29,6 +29,8 @@ export interface MigrationData {
     txId: string;
     updatedAt: string;
   };
+  lock?: boolean;
+  lastStep?: string;
 }
 
 export interface WithdrawnAmountsData {

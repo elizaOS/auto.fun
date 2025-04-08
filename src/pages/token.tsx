@@ -29,6 +29,7 @@ import { ExternalLink, Globe, Info as InfoCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
+import { env } from "@/utils/env";
 
 const socket = getSocket();
 
@@ -232,7 +233,7 @@ export default function Page() {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col">
       {/* Top Stats Section - Full Width */}
       <div className="w-full py-10 flex flex-wrap justify-between">
         <TopPageItem
@@ -293,7 +294,7 @@ export default function Page() {
                       <span>View on Solscan</span>
                     </Tooltip>
                     <Link
-                      to={`https://solscan.io/token/${token?.mint}`}
+                      to={env.getTokenURL(token?.mint)}
                       target="_blank"
                       id="view-on-solscan"
                     >
@@ -409,7 +410,7 @@ export default function Page() {
               <div className="h-2 w-full bg-autofun-text-highlight z-10"></div>
 
               {/* Tabs Header with Title and Right-aligned Tabs - removed border-b as it's on the parent */}
-              <div className="flex items-center justify-between pr-2">
+              <div className="flex items-center justify-between pr-2 mb-4">
                 <div className="flex">
                   <button
                     className={`px-4 py-3 text-autofun-text-primary font-medium cursor-pointer ${
@@ -510,22 +511,21 @@ export default function Page() {
             </div>
             {token?.status !== "migrated" ? (
               <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">
-                Graduate this coin at {formatNumber(graduationMarketCap, true)}{" "}
-                market cap.{"\n"}
-                There is{" "}
+                Graduate this coin at {formatNumber(graduationMarketCap, true)}
+                {"\n"}
                 {formatNumber(
                   (token?.reserveLamport - token?.virtualReserves) /
                     LAMPORTS_PER_SOL,
                   true,
                   true,
                 )}{" "}
-                SOL in the bonding curve.
+                SOL in the bonding curve
               </p>
             ) : null}
           </div>
 
           {/* Price Display - Now below bonding curve */}
-          <div className="py-4 px-3">
+          <div className="py-4 px-4">
             <div className="flex justify-between">
               <div className="flex flex-col gap-1 items-center">
                 <span className="font-dm-mono text-autofun-text-secondary">

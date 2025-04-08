@@ -89,7 +89,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
               <div className="flex flex-col items-center gap-2">
                 <p>No holders data available from blockchain.</p>
                 <Link
-                  to={`https://solscan.io/token/${token?.mint}#holders`}
+                  to={env.getHolderURL(token?.mint)}
                   target="_blank"
                   className="text-autofun-text-highlight hover:underline flex items-center gap-1"
                 >

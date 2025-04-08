@@ -953,3 +953,45 @@ async function generateOAuth1Signature(
 
 // Export the router
 export default shareRouter;
+
+// Add a new endpoint to fetch Twitter user profile
+shareRouter.get("/twitter-user", async (c) => {
+  try {
+    // Extract the access token from the Authorization header
+    const authHeader = c.req.header("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      c.status(401);
+      return c.json({ error: "Missing or invalid authorization header" });
+    }
+    const accessToken = authHeader.split(" ")[1];
+
+    // Include profile_image_url in the user fields
+    const profileResponse = await fetch(
+      "https://api.twitter.com/2/users/me?user.fields=profile_image_url,username,name",
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
+
+    if (!profileResponse.ok) {
+      const errorText = await profileResponse.text();
+      logger.error("Error fetching Twitter profile:", errorText);
+      c.status(profileResponse.status as StatusCode);
+      return c.json({ error: `Error fetching Twitter profile: ${errorText}` });
+    }
+
+    const profileData = await profileResponse.json();
+    return c.json(profileData);
+  } catch (error) {
+    logger.error("Error in /twitter-user handler:", error);
+    c.status(500);
+    return c.json({
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unknown error fetching Twitter profile",
+    });
+  }
+});
