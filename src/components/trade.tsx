@@ -115,7 +115,7 @@ export default function Trade({ token }: { token: IToken }) {
   const cardStyle = "mb-4";
 
   return (
-    <div className="relative p-4 pt-0">
+    <div className="relative">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
         {/* LEFT COLUMN - Controls and Swap - Takes 3/5 of the space on md screens */}
         <div className="col-span-1 md:col-span-1 lg:col-span-1">

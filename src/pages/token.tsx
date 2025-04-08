@@ -272,10 +272,10 @@ export default function Page() {
       </div>
 
       {/* Three Column Layout */}
-      <div className="flex flex-wrap">
+      <div className="flex flex-wrap lg:flex-nowrap gap-3">
         {/* Left Column - 25% - Token Info */}
         <div className="w-full lg:w-1/4 flex flex-col gap-3">
-          <div className="p-4 pt-0 flex flex-col gap-3">
+          <div className="pt-0 flex flex-col gap-3">
             <div className="relative overflow-hidden">
               <div className="w-full aspect-square">
                 <SkeletonImage src={token?.image} alt="image" />
@@ -488,7 +488,7 @@ export default function Page() {
           <Trade token={token} />
 
           {/* Bonding Curve */}
-          <div className="p-4 flex flex-col gap-3.5">
+          <div className="flex flex-col gap-3.5">
             <div className="flex justify-between gap-3.5 items-center">
               <p className="font-medium font-satoshi">Progress</p>
               <InfoCircle className="size-5 text-autofun-text-secondary" />
