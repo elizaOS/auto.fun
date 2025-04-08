@@ -75,7 +75,7 @@ export default function Page() {
     const socket = getSocket();
 
     socket.on("updateToken", (token: any) =>
-      queryClient.setQueryData(["token", address], token),
+      queryClient.setQueryData(["token", address], token)
     );
 
     return () => {
@@ -107,7 +107,7 @@ export default function Page() {
 
         if (!hasValidData) {
           console.warn(
-            `Token page: Blockchain metrics may be invalid - all key values are 0`,
+            `Token page: Blockchain metrics may be invalid - all key values are 0`
           );
         }
 
@@ -119,7 +119,7 @@ export default function Page() {
           {
             position: "bottom-right",
             autoClose: 5000,
-          },
+          }
         );
         return null;
       }
@@ -199,7 +199,7 @@ export default function Page() {
         !metrics.marketCapUSD && !metrics.currentPrice && !metrics.volume24h;
       if (allZeros) {
         console.warn(
-          `WARNING: Blockchain metrics returned all zeros for token ${token?.mint}. This might indicate an error in data retrieval.`,
+          `WARNING: Blockchain metrics returned all zeros for token ${token?.mint}. This might indicate an error in data retrieval.`
         );
       }
     }
@@ -234,27 +234,18 @@ export default function Page() {
     <div className="flex flex-col gap-3">
       {/* Top Stats Section - Full Width */}
       <div className="w-full py-10 flex flex-wrap justify-between">
-        <div className="flex-1 flex flex-col items-center">
-          <span className="text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
-            {marketCapUSD > 0 ? abbreviateNumber(marketCapUSD) : "-"}
-          </span>
-          <span className="text-lg font-dm-mono text-autofun-text-secondary mt-3">
-            Market Cap
-          </span>
-        </div>
-
-        <div className="flex-1 flex flex-col items-center">
-          <span className="text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
-            {volume24h > 0 ? abbreviateNumber(volume24h) : "0"}
-          </span>
-          <span className="text-lg font-dm-mono text-autofun-text-secondary mt-3">
-            24hr Volume
-          </span>
-        </div>
-
-        <div className="flex-1 flex flex-col items-center">
-          <span className="text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
-            {token?.createdAt
+        <TopPageItem
+          title="Market Cap"
+          value={marketCapUSD > 0 ? abbreviateNumber(marketCapUSD) : "-"}
+        />
+        <TopPageItem
+          title="24hr Volume"
+          value={volume24h > 0 ? abbreviateNumber(volume24h) : "0"}
+        />
+        <TopPageItem
+          title="Age"
+          value={
+            token?.createdAt
               ? fromNow(token?.createdAt, true).includes("a few")
                 ? "NOW"
                 : fromNow(token?.createdAt, true).includes("a minute")
@@ -275,12 +266,9 @@ export default function Page() {
                           .replace("second", "s")
                           .trim()
                           .trim()
-              : "-"}
-          </span>
-          <span className="text-lg font-dm-mono text-autofun-text-secondary mt-3">
-            Age
-          </span>
-        </div>
+              : "-"
+          }
+        />
       </div>
 
       {/* Three Column Layout */}
@@ -518,7 +506,7 @@ export default function Page() {
                   (token?.reserveLamport - token?.virtualReserves) /
                     LAMPORTS_PER_SOL,
                   true,
-                  true,
+                  true
                 )}{" "}
                 SOL in the bonding curve.
               </p>
@@ -555,3 +543,16 @@ export default function Page() {
     </div>
   );
 }
+
+const TopPageItem = ({ title, value }: { title: any; value: any }) => {
+  return (
+    <div className="flex-1 flex flex-col items-center">
+      <span className="text-2xl md:text-4xl xl:text-6xl font-extrabold font-dm-mono text-autofun-text-highlight">
+        {value}
+      </span>
+      <span className="text-base md:text-lg font-dm-mono text-autofun-text-secondary mt-3">
+        {title}
+      </span>
+    </div>
+  );
+};
