@@ -469,9 +469,8 @@ export default function Page() {
                   <div className="w-full h-[50vh] bg-autofun-background-primary">
                     <TradingViewChart name={token.name} token={token.mint} />
                   </div>
-                  <div className="p-4">
-                    <TransactionsAndHolders token={token} />
-                  </div>
+
+                  <TransactionsAndHolders token={token} />
                 </>
               )}
               {activeTab === "ai" && (
