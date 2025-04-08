@@ -272,7 +272,7 @@ export default function Page() {
       </div>
 
       {/* Three Column Layout */}
-      <div className="flex flex-wrap lg:flex-nowrap gap-3">
+      <div className="flex flex-wrap lg:flex-nowrap gap-4">
         {/* Left Column - 25% - Token Info */}
         <div className="w-full lg:w-1/4 flex flex-col gap-3">
           <div className="pt-0 flex flex-col gap-3">
