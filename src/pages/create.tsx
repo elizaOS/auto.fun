@@ -1876,6 +1876,48 @@ export const Create = () => {
           // Show coin drop animation
           setShowCoinDrop(true);
 
+          // Get auth token from localStorage with quote handling
+          const authToken = getAuthToken();
+
+          // Prepare headers
+          const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+          };
+
+          if (authToken) {
+            headers["Authorization"] = `Bearer ${authToken}`;
+          }
+
+          // Create token record via API
+          const createResponse = await fetch(env.apiUrl + "/api/create-token", {
+            method: "POST",
+            headers,
+            credentials: "include",
+            body: JSON.stringify({
+              tokenMint: tokenData.mint,
+              mint: tokenData.mint,
+              name: form.name,
+              symbol: form.symbol,
+              description: form.description,
+              twitter: form.links.twitter,
+              telegram: form.links.telegram,
+              website: form.links.website,
+              discord: form.links.discord,
+              agentLink: "",
+              imageUrl: tokenData.image || "",
+              metadataUrl: tokenData.metadataUri || "",
+              // Include the import flag to indicate this is an imported token
+              imported: true,
+            }),
+          });
+
+          if (!createResponse.ok) {
+            const errorData = (await createResponse.json()) as {
+              error?: string;
+            };
+            throw new Error(errorData.error || "Failed to create token entry");
+          }
+
           // Clear imported token data from localStorage
           localStorage.removeItem("import_token_data");
           setHasStoredToken(false);
