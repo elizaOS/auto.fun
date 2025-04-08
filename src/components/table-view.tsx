@@ -10,7 +10,6 @@ import { IToken } from "@/types";
 import {
   formatNumber,
   fromNow,
-  normalizedProgress,
   shortenAddress,
 } from "@/utils";
 import { Grid } from "lucide-react";
