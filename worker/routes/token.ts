@@ -1,18 +1,22 @@
-import { AccountInfo, Connection, Keypair, ParsedAccountData, PublicKey } from "@solana/web3.js";
-import { and, asc, count, desc, eq, sql } from "drizzle-orm";
+import {
+  AccountInfo,
+  Connection,
+  Keypair,
+  ParsedAccountData,
+  PublicKey,
+} from "@solana/web3.js";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import { monitorSpecificToken } from "../cron";
 import {
   getDB,
-  Swap,
   swaps,
   tokenAgents,
   TokenHolder,
   tokenHolders,
   tokens,
-  users,
-  vanityKeypairs
+  vanityKeypairs,
 } from "../db";
 import { Env } from "../env";
 import { logger } from "../logger";
@@ -361,7 +365,6 @@ async function processTokenInfo(
   return c.json(tokenData);
 }
 
-
 // Helper to check token balance directly on blockchain
 async function checkBlockchainTokenBalance(
   c,
@@ -500,8 +503,6 @@ async function checkBlockchainTokenBalance(
     onChain: true,
   });
 }
-
-
 
 // Function to process a token update and emit WebSocket events
 export async function processTokenUpdateEvent(
