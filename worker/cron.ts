@@ -188,6 +188,12 @@ export async function processTransactionLogs(
           status: "active",
           tokenPriceUSD: 0,
           tokenSwapTransactionId: signature,
+
+          // TODO: fetch from chain metadata or r2
+          image: '',
+          ticker: '',
+          name: '',
+          createdAt: new Date().toISOString()
         };
 
         try {

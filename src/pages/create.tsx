@@ -14,6 +14,8 @@ import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { getSocket } from "@/utils/socket";
+import { HomepageTokenSchema } from "@/hooks/use-tokens";
 
 const MAX_INITIAL_SOL = 45;
 // Use the token supply and virtual reserves from environment or fallback to defaults
@@ -686,165 +688,30 @@ const uploadImage = async (metadata: TokenMetadata) => {
   }
 };
 
-// Function to wait for token creation
-const waitForTokenCreation = async ({
-  mint,
-  name,
-  symbol,
-  description,
-  twitter,
-  telegram,
-  website,
-  discord,
-  agentLink,
-  imageUrl,
-  metadataUrl,
-  timeout = 80_000,
-}: {
-  mint: string;
-  name: string;
-  symbol: string;
-  description: string;
-  twitter: string;
-  telegram: string;
-  website: string;
-  discord: string;
-  agentLink: string;
-  imageUrl: string;
-  metadataUrl: string;
-  timeout?: number;
-}) => {
-  return new Promise<void>(async (resolve, reject) => {
-    let resolved = false;
+const waitForTokenCreation = async (mint: string, timeout = 80_000) => {
+  console.log('waiting for creation from token mint:', mint);
 
-    // Set a timeout to reject if we don't get a response
-    const timerId = setTimeout(() => {
-      if (!resolved) {
-        reject(new Error("Token creation timed out"));
-      }
-    }, timeout);
+  return new Promise<void>((resolve, reject) => {
+    const socket = getSocket();
 
-    try {
-      // Wait a few seconds for the transaction to be confirmed
-      await new Promise((r) => setTimeout(r, 4000));
-
-      // Try direct token creation
-      try {
-        console.log(`Creating token record for ${mint}`);
-
-        // Get auth token from localStorage with quote handling
-        const authToken = getAuthToken();
-
-        // Prepare headers
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-        };
-
-        if (authToken) {
-          headers["Authorization"] = `Bearer ${authToken}`;
-        }
-
-        const createResponse = await fetch(env.apiUrl + "/api/create-token", {
-          method: "POST",
-          headers,
-          credentials: "include",
-          body: JSON.stringify({
-            tokenMint: mint,
-            mint,
-            name,
-            symbol,
-            description,
-            twitter,
-            telegram,
-            website,
-            discord,
-            agentLink,
-            imageUrl,
-            metadataUrl,
-          }),
-        });
-
-        if (createResponse.ok) {
-          const data = await createResponse.json();
-          if (
-            data &&
-            typeof data === "object" &&
-            "success" in data &&
-            data.success === true
-          ) {
-            console.log(`Token ${mint} created via direct API call`);
-            clearTimeout(timerId);
-            resolved = true;
-            resolve();
-            return;
-          }
-        }
-      } catch (createError) {
-        console.error("Error creating token:", createError);
-      }
-
-      // If direct creation fails, try the check endpoint
-      for (let i = 0; i < 3; i++) {
-        if (resolved) break;
-
-        console.log(`Checking for token ${mint}, attempt ${i + 1}`);
-        try {
-          // Get auth token from localStorage with quote handling
-          const authToken = getAuthToken();
-
-          // Prepare headers
-          const headers: Record<string, string> = {
-            "Content-Type": "application/json",
-          };
-
-          if (authToken) {
-            headers["Authorization"] = `Bearer ${authToken}`;
-          }
-
-          const response = await fetch(env.apiUrl + "/api/check-token", {
-            method: "POST",
-            headers,
-            credentials: "include",
-            body: JSON.stringify({
-              tokenMint: mint,
-              imageUrl,
-              metadataUrl,
-            }),
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (
-              data &&
-              typeof data === "object" &&
-              "tokenFound" in data &&
-              data.tokenFound === true
-            ) {
-              console.log(`Token ${mint} found via check API`);
-              clearTimeout(timerId);
-              resolved = true;
-              resolve();
-              break;
-            }
-          }
-        } catch (checkError) {
-          console.error(`Error checking token (attempt ${i + 1}):`, checkError);
-        }
-
-        // Wait before trying again
-        await new Promise((r) => setTimeout(r, 3000));
-      }
-
-      // If we got here and haven't resolved, reject
-      if (!resolved) {
+    const newTokenListener = (token: unknown) => {
+      console.log('got new token:', JSON.stringify(token))
+      const { mint: newMint } = HomepageTokenSchema.parse(token);
+      console.log('new token successfully parsed')
+      if (newMint === mint) {
         clearTimeout(timerId);
-        reject(new Error("Failed to confirm token creation"));
+        socket.off("newToken", newTokenListener);
+        resolve();
       }
-    } catch (error) {
-      console.error("Error in token creation process:", error);
-      clearTimeout(timerId);
-      reject(error);
-    }
+    };
+
+    socket.emit("subscribeGlobal");
+    socket.on("newToken", newTokenListener);
+
+    const timerId = setTimeout(() => {
+      socket.off("newToken", newTokenListener);
+      reject(new Error("Token creation timed out"));
+    }, timeout);
   });
 };
 
@@ -2009,48 +1876,6 @@ export const Create = () => {
           // Show coin drop animation
           setShowCoinDrop(true);
 
-          // Get auth token from localStorage with quote handling
-          const authToken = getAuthToken();
-
-          // Prepare headers
-          const headers: Record<string, string> = {
-            "Content-Type": "application/json",
-          };
-
-          if (authToken) {
-            headers["Authorization"] = `Bearer ${authToken}`;
-          }
-
-          // Create token record via API
-          const createResponse = await fetch(env.apiUrl + "/api/create-token", {
-            method: "POST",
-            headers,
-            credentials: "include",
-            body: JSON.stringify({
-              tokenMint: tokenData.mint,
-              mint: tokenData.mint,
-              name: form.name,
-              symbol: form.symbol,
-              description: form.description,
-              twitter: form.links.twitter,
-              telegram: form.links.telegram,
-              website: form.links.website,
-              discord: form.links.discord,
-              agentLink: "",
-              imageUrl: tokenData.image || "",
-              metadataUrl: tokenData.metadataUri || "",
-              // Include the import flag to indicate this is an imported token
-              imported: true,
-            }),
-          });
-
-          if (!createResponse.ok) {
-            const errorData = (await createResponse.json()) as {
-              error?: string;
-            };
-            throw new Error(errorData.error || "Failed to create token entry");
-          }
-
           // Clear imported token data from localStorage
           localStorage.removeItem("import_token_data");
           setHasStoredToken(false);
@@ -2391,19 +2216,7 @@ export const Create = () => {
       // Wait for token creation to be confirmed
       try {
         console.log("Waiting for token creation confirmation...");
-        await waitForTokenCreation({
-          mint: tokenMint,
-          name: form.name,
-          symbol: form.symbol,
-          description: form.description,
-          twitter: form.links.twitter,
-          telegram: form.links.telegram,
-          website: form.links.website,
-          discord: form.links.discord,
-          agentLink: "", // Add empty agentLink
-          imageUrl,
-          metadataUrl,
-        });
+        await waitForTokenCreation(tokenMint);
         console.log("Token creation confirmed");
 
         // Trigger confetti to celebrate successful minting
