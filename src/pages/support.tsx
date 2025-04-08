@@ -44,23 +44,6 @@ export default function SupportPage() {
                 Join our Discord
               </Link>
               <Link
-                to="mailto:support@auto.fun"
-                className="flex items-center gap-2 text-white hover:text-[#2FD345] transition-colors"
-              >
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                  <polyline points="22,6 12,13 2,6" />
-                </svg>
-                support@auto.fun
-              </Link>
-              <Link
                 to="https://web.telegram.org/k/#@AutoDotFunBot"
                 className="flex items-center gap-2 text-white hover:text-[#2FD345] transition-colors"
               >
