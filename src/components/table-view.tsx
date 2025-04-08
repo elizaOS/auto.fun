@@ -8,7 +8,6 @@ import {
 } from "@/components/ui/table";
 import { IToken } from "@/types";
 import { formatNumber, fromNow, shortenAddress } from "@/utils";
-import { Grid } from "lucide-react";
 import { useNavigate } from "react-router";
 import BondingCurveBar from "./bonding-curve-bar";
 import CopyButton from "./copy-button";
@@ -21,7 +20,7 @@ export function TableView({ data }: { data: IToken[] }) {
     <Table>
       <TableHeader>
         <TableRow className="bg-transparent">
-          <TableHead className="w-[500px]">AI Agents</TableHead>
+          <TableHead className="w-[500px]">Coin</TableHead>
           <TableHead className="text-left">Market Cap</TableHead>
           <TableHead className="text-left">24H Volume</TableHead>
           <TableHead className="text-left">Holders Count</TableHead>
