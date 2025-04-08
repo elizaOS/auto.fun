@@ -219,7 +219,10 @@ export default function Trade({ token }: { token: IToken }) {
                 sellingAmount === 0
               }
               onClick={onSwap}
-              className="w-full mx-2 cursor-pointer"
+              className={twMerge([
+                "w-full mx-2 cursor-pointer",
+                isDisabled ? "cursor-not-allowed! opacity-50" : "",
+              ])}
             >
               <img
                 src={
