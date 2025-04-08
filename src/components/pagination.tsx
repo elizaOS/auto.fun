@@ -26,7 +26,13 @@ const Pagination: React.FC<PaginationProps> = ({
     if (totalPages <= 6) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
-    return [1, 2, 3, "...", totalPages - 2, totalPages - 1, totalPages];
+
+    let endPages: (string | number)[] = [];
+    if (totalPages >= 3) {
+      endPages = ["...", totalPages - 2, totalPages - 1, totalPages];
+    }
+    
+    return [1, 2, 3, ...endPages];
   };
 
   const pages = renderPages();
