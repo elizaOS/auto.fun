@@ -220,7 +220,7 @@ export default function Trade({ token }: { token: IToken }) {
               }
               onClick={onSwap}
               className={twMerge([
-                "w-full mx-2 cursor-pointer",
+                "w-full mx-2 cursor-pointer mt-2",
                 isDisabled ? "cursor-not-allowed! opacity-50" : "",
               ])}
             >
@@ -283,8 +283,8 @@ export default function Trade({ token }: { token: IToken }) {
           </div>
 
           {/* Balance and Value */}
-          <div className={cardStyle}>
-            <div className="flex justify-between items-center mb-2">
+          <div className={`flex flex-col gap-4 mb-4`}>
+            <div className="flex justify-between items-center">
               <span className="text-sm font-dm-mono text-autofun-text-secondary">
                 Balance:
               </span>
@@ -300,16 +300,16 @@ export default function Trade({ token }: { token: IToken }) {
                 {formatNumber(tokenBalance * currentPrice, false, true)} SOL
               </span>
             </div>
-          </div>
-
-          {/* Price USD */}
-          <div className={cardStyle}>
             <div className="flex justify-between items-center">
               <span className="text-sm font-dm-mono text-autofun-text-secondary">
                 Price USD:
               </span>
               <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                {formatNumber(tokenPriceUSD)}
+                {formatNumber(
+                  tokenBalance * currentPrice * solanaPrice,
+                  true,
+                  false
+                )}
               </span>
             </div>
           </div>

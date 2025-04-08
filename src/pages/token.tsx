@@ -76,7 +76,7 @@ export default function Page() {
     const socket = getSocket();
 
     socket.on("updateToken", (token: any) =>
-      queryClient.setQueryData(["token", address], token)
+      queryClient.setQueryData(["token", address], token),
     );
 
     return () => {
@@ -108,7 +108,7 @@ export default function Page() {
 
         if (!hasValidData) {
           console.warn(
-            `Token page: Blockchain metrics may be invalid - all key values are 0`
+            `Token page: Blockchain metrics may be invalid - all key values are 0`,
           );
         }
 
@@ -120,7 +120,7 @@ export default function Page() {
           {
             position: "bottom-right",
             autoClose: 5000,
-          }
+          },
         );
         return null;
       }
@@ -200,7 +200,7 @@ export default function Page() {
         !metrics.marketCapUSD && !metrics.currentPrice && !metrics.volume24h;
       if (allZeros) {
         console.warn(
-          `WARNING: Blockchain metrics returned all zeros for token ${token?.mint}. This might indicate an error in data retrieval.`
+          `WARNING: Blockchain metrics returned all zeros for token ${token?.mint}. This might indicate an error in data retrieval.`,
         );
       }
     }
@@ -517,7 +517,7 @@ export default function Page() {
                   (token?.reserveLamport - token?.virtualReserves) /
                     LAMPORTS_PER_SOL,
                   true,
-                  true
+                  true,
                 )}{" "}
                 SOL in the bonding curve.
               </p>
