@@ -16,7 +16,7 @@ export interface MigrationStepResult {
 }
 
 export type MigrationStepFn = (
-  token: TokenData
+  token: TokenData,
 ) => Promise<MigrationStepResult>;
 
 export interface MigrationStep {
@@ -28,7 +28,7 @@ export interface MigrationStep {
 
 export async function getToken(
   env: Env,
-  mint: string
+  mint: string,
 ): Promise<TokenData | null> {
   const db = getDB(env);
   const tokenRecords = await db
@@ -104,7 +104,7 @@ export async function executeMigrationStep(
   token: TokenData,
   step: MigrationStep,
   retryCount: number = 3,
-  delay: number = 2000
+  delay: number = 2000,
 ): Promise<MigrationStepResult> {
   logger.log(`[Migrate] Starting ${step.name} for token ${token.mint}`);
 
@@ -135,14 +135,14 @@ export async function executeMigrationStep(
   }
 
   logger.log(
-    `[Migrate] ${step.name} successful for token ${token.mint} txId: ${result.txId}`
+    `[Migrate] ${step.name} successful for token ${token.mint} txId: ${result.txId}`,
   );
   return result;
 }
 
 export async function acquireMigrationLock(
   env: Env,
-  token: TokenData
+  token: TokenData,
 ): Promise<boolean> {
   const migration = token.migration ? token.migration : {};
   if (migration.lock) {
@@ -161,7 +161,7 @@ export async function acquireMigrationLock(
 }
 export async function releaseMigrationLock(
   env: Env,
-  token: TokenData
+  token: TokenData,
 ): Promise<void> {
   const migration = token.migration ? token.migration : {};
   if (migration.lock) {
@@ -178,7 +178,7 @@ export async function releaseMigrationLock(
 export async function saveMigrationState(
   env: Env,
   token: TokenData,
-  step: string
+  step: string,
 ) {
   const db = getDB(env);
   const updatedMigration = {

@@ -80,14 +80,14 @@ describe("TokenMigrator Integration Tests", () => {
     connection = new Connection(env.RPC_URL);
 
     wallet = Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY))
+      Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY)),
     );
 
     // Create Anchor provider
     provider = new AnchorProvider(
       connection,
       new Wallet(wallet),
-      AnchorProvider.defaultOptions()
+      AnchorProvider.defaultOptions(),
     );
 
     // create programs
@@ -101,7 +101,7 @@ describe("TokenMigrator Integration Tests", () => {
       wallet,
       program,
       autofunProgram,
-      provider
+      provider,
     );
 
     // test mint address
