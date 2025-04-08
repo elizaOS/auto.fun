@@ -295,31 +295,6 @@ export default function Trade({ token }: { token: IToken }) {
             </div>
           </div>
 
-          {/* Bonding Curve Progress */}
-          <div className={cardStyle}>
-            <div className="mb-1">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                Progress:
-              </span>
-            </div>
-            <div className="w-full bg-gray-700 rounded-full h-2.5">
-              <div
-                className="bg-blue-600 h-2.5 rounded-full"
-                style={{
-                  width: `${Math.min(((token?.reserveAmount || 0) / 1000000) * 100, 100)}%`,
-                }}
-              ></div>
-            </div>
-            <div className="flex justify-between mt-1">
-              <span className="text-xs font-dm-mono text-autofun-text-secondary">
-                0%
-              </span>
-              <span className="text-xs font-dm-mono text-autofun-text-secondary">
-                100%
-              </span>
-            </div>
-          </div>
-
           {/* Price USD */}
           <div className={cardStyle}>
             <div className="flex justify-between items-center">
