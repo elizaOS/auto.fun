@@ -39,7 +39,7 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
 
       // Fast linear animation - no fancy easing
       const currentDisplayValue = Math.round(
-        startValue + (targetValue - startValue) * progress,
+        startValue + (targetValue - startValue) * progress
       );
       setDisplayedValue(currentDisplayValue);
 
@@ -86,6 +86,7 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
           {displayedValue}%
         </span>
       </div>
+
       {/* Percentage indicator (appears when progress bar is too small) */}
       {width < 15 && (
         <div className="absolute right-0 h-full flex items-center z-30">

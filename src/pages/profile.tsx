@@ -4,6 +4,7 @@ import { TokenTable } from "../components/token-table";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { env } from "../utils/env";
 import Loader from "@/components/loader";
+import Button from "@/components/button";
 
 type TabButtonProps = PropsWithChildren<{
   isSelected: boolean;
@@ -97,18 +98,18 @@ export default function Profile() {
       </div>
       <WalletAddress />
       <div className="flex gap-2.5 mb-4">
-        <TabButton
-          isSelected={selectedTab === "held"}
+        <Button
+          variant={selectedTab === "held" ? "tab" : "outline"}
           onClick={() => setSelectedTab("held")}
         >
-          Autos Held
-        </TabButton>
-        <TabButton
-          isSelected={selectedTab === "created"}
+          Coins Held
+        </Button>
+        <Button
+          variant={selectedTab === "created" ? "tab" : "outline"}
           onClick={() => setSelectedTab("created")}
         >
-          Autos Created
-        </TabButton>
+          Coins Created
+        </Button>
       </div>
 
       <TokenTable tokens={tableTokens} />
