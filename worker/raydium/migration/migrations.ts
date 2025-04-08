@@ -6,6 +6,10 @@ import { updateTokenInDB } from "../../cron";
 import { getWebSocketClient } from "../../websocket-client";
 import { retryOperation } from "../utils";
 import { logger } from "../../logger";
+export interface LockResult {
+  txId: string;
+}
+
 export interface MigrationStepResult {
   txId: string;
   extraData?: Record<string, any>;

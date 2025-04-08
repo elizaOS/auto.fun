@@ -28,6 +28,7 @@ import {
   executeMigrationStep,
   acquireMigrationLock,
   releaseMigrationLock,
+  LockResult,
 } from "./migrations";
 
 export class TokenMigrator {
@@ -269,6 +270,76 @@ export class TokenMigrator {
     };
   }
 
+  async lockPrimaryLP(
+    raydium: any,
+    poolInfo: any,
+    poolKeys: any,
+    primaryAmount: any
+  ): Promise<{ txId: string; nftMint: string }> {
+    const { execute: lockExecutePrimary, extInfo: lockExtInfoPrimary } =
+      await raydium.cpmm.lockLp({
+        poolInfo,
+        poolKeys,
+        lpAmount: primaryAmount,
+        withMetadata: true,
+        txVersion,
+        computeBudgetConfig: {
+          units: 300000,
+          microLamports: 0.0001 * 1e9,
+        },
+        programId:
+          raydium.cluster === "devnet"
+            ? DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM
+            : CREATE_CPMM_POOL_PROGRAM,
+        authProgram:
+          raydium.cluster === "devnet" ? DEV_LOCK_CPMM_AUTH : LOCK_CPMM_AUTH,
+      });
+    const { txId: lockTxIdPrimary } = (await retryOperation(
+      () => lockExecutePrimary({ sendAndConfirm: true }),
+      3,
+      2000
+    )) as LockResult;
+    const nftMintPrimary = lockExtInfoPrimary.nftMint.toString();
+    logger.log(`[Lock] Primary LP lock txId: ${lockTxIdPrimary}`);
+
+    return { txId: lockTxIdPrimary, nftMint: nftMintPrimary };
+  }
+
+  async lockSecondaryLP(
+    raydium: any,
+    poolInfo: any,
+    poolKeys: any,
+    secondaryAmount: any
+  ): Promise<{ txId: string; nftMint: string }> {
+    const { execute: lockExecuteSecondary, extInfo: lockExtInfoSecondary } =
+      await raydium.cpmm.lockLp({
+        poolInfo,
+        poolKeys,
+        lpAmount: secondaryAmount,
+        withMetadata: true,
+        txVersion,
+        computeBudgetConfig: {
+          units: 300000,
+          microLamports: 0.0001 * 1e9,
+        },
+        programId:
+          raydium.cluster === "devnet"
+            ? DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM
+            : CREATE_CPMM_POOL_PROGRAM,
+        authProgram:
+          raydium.cluster === "devnet" ? DEV_LOCK_CPMM_AUTH : LOCK_CPMM_AUTH,
+      });
+    const { txId: lockTxIdSecondary } = (await retryOperation(
+      () => lockExecuteSecondary({ sendAndConfirm: true }),
+      3,
+      2000
+    )) as LockResult;
+    const nftMintSecondary = lockExtInfoSecondary.nftMint.toString();
+    logger.log(`[Lock] Secondary LP lock txId: ${lockTxIdSecondary}`);
+
+    return { txId: lockTxIdSecondary, nftMint: nftMintSecondary };
+  }
+
   async performLockLP(token: any): Promise<{
     txId: string;
     extraData: { lockLpTxId: string; nftMinted: string };
@@ -303,54 +374,21 @@ export class TokenMigrator {
       .muln(SECONDARY_LOCK_PERCENTAGE)
       .divn(100);
 
-    const { execute: lockExecutePrimary, extInfo: lockExtInfoPrimary } =
-      await raydium.cpmm.lockLp({
-        poolInfo,
-        poolKeys,
-        lpAmount: primaryAmount,
-        withMetadata: true,
-        txVersion,
-        computeBudgetConfig: {
-          units: 300000,
-          microLamports: 0.0001 * 1e9,
-        },
-        programId:
-          raydium.cluster === "devnet"
-            ? DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM
-            : CREATE_CPMM_POOL_PROGRAM,
-        authProgram:
-          raydium.cluster === "devnet" ? DEV_LOCK_CPMM_AUTH : LOCK_CPMM_AUTH,
-      });
-    const { txId: lockTxIdPrimary } = await lockExecutePrimary({
-      sendAndConfirm: true,
-    });
-    logger.log(`[Lock] Primary LP lock txId: ${lockTxIdPrimary}`);
+    const primaryLock = await this.lockPrimaryLP(
+      raydium,
+      poolInfo,
+      poolKeys,
+      primaryAmount
+    );
+    const secondaryLock = await this.lockSecondaryLP(
+      raydium,
+      poolInfo,
+      poolKeys,
+      secondaryAmount
+    );
 
-    const { execute: lockExecuteSecondary, extInfo: lockExtInfoSecondary } =
-      await raydium.cpmm.lockLp({
-        poolInfo,
-        poolKeys,
-        lpAmount: secondaryAmount,
-        withMetadata: true,
-        txVersion,
-        computeBudgetConfig: {
-          units: 300000,
-          microLamports: 0.0001 * 1e9,
-        },
-        programId:
-          raydium.cluster === "devnet"
-            ? DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM
-            : CREATE_CPMM_POOL_PROGRAM,
-        authProgram:
-          raydium.cluster === "devnet" ? DEV_LOCK_CPMM_AUTH : LOCK_CPMM_AUTH,
-      });
-    const { txId: lockTxIdSecondary } = await lockExecuteSecondary({
-      sendAndConfirm: true,
-    });
-    logger.log(`[Lock] Secondary LP lock txId: ${lockTxIdSecondary}`);
-
-    const aggregatedTxId = `${lockTxIdPrimary},${lockTxIdSecondary}`;
-    const aggregatedNftMint = `${lockExtInfoPrimary.nftMint.toString()},${lockExtInfoSecondary.nftMint.toString()}`;
+    const aggregatedTxId = `${primaryLock.txId},${secondaryLock.txId}`;
+    const aggregatedNftMint = `${primaryLock.nftMint},${secondaryLock.nftMint}`;
 
     const tokenData: Partial<TokenData> = {
       mint: token.mint,
