@@ -123,7 +123,7 @@ export default function Trade({ token }: { token: IToken }) {
           <div className="flex justify-between items-end w-full">
             <button
               onClick={() => setIsTokenSelling(false)}
-              className="flex items-center justify-center w-1/2 translate-x-[0.12em]"
+              className="flex items-center justify-center w-1/2 translate-x-[0.12em] cursor-pointer"
             >
               <img
                 src={!isTokenSelling ? "/token/buyon.svg" : "/token/buyoff.svg"}
@@ -133,7 +133,7 @@ export default function Trade({ token }: { token: IToken }) {
             </button>
             <button
               onClick={() => setIsTokenSelling(true)}
-              className="flex items-center justify-center w-1/2 translate-x-[-0.12em]"
+              className="flex items-center justify-center w-1/2 translate-x-[-0.12em] cursor-pointer"
             >
               <img
                 src={
@@ -221,7 +221,7 @@ export default function Trade({ token }: { token: IToken }) {
                 sellingAmount === 0
               }
               onClick={onSwap}
-              className="w-full mx-2"
+              className="w-full mx-2 cursor-pointer"
             >
               <img
                 src={
