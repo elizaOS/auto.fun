@@ -1775,7 +1775,7 @@ export default function CommunityTab() {
             {communityTab === "Image" &&
               (tokenBalance ?? 0) <
                 (generationMode === "pro" ? 10000 : 1000) && (
-                <div className="text-sm text-yellow-500 px-4 -mt-2">
+                <div className="text-sm text-yellow-500 -mt-2">
                   <p>
                     You need to hold at least{" "}
                     {generationMode === "pro" ? "10,000" : "1,000"} tokens to
@@ -1787,7 +1787,7 @@ export default function CommunityTab() {
             {communityTab === "Video" &&
               (tokenBalance ?? 0) <
                 (generationMode === "fast" ? 10000 : 100000) && (
-                <div className="text-sm text-yellow-500 px-4 -mt-2">
+                <div className="text-sm text-yellow-500 -mt-2">
                   <p>
                     You need to hold at least{" "}
                     {generationMode === "fast" ? "10,000" : "100,000"} tokens to
@@ -1797,7 +1797,7 @@ export default function CommunityTab() {
               )}
 
             {communityTab === "Audio" && (tokenBalance ?? 0) < 10000 && (
-              <div className="text-sm text-yellow-500 px-4 -mt-2">
+              <div className="text-sm text-yellow-500 -mt-2">
                 <p>
                   You need to hold at least 10,000 tokens to generate audio.
                 </p>
