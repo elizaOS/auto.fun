@@ -1,32 +1,10 @@
-import { PropsWithChildren, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useProfile } from "../utils/profileUtils";
 import { TokenTable } from "../components/token-table";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { env } from "../utils/env";
 import Loader from "@/components/loader";
 import Button from "@/components/button";
-
-type TabButtonProps = PropsWithChildren<{
-  isSelected: boolean;
-  onClick: () => void;
-}>;
-
-const TabButton = ({ isSelected, onClick, children }: TabButtonProps) => (
-  <button
-    className={`px-3 py-2 border border-[#03FF24] justify-center items-center gap-2 self-start font-satoshi ${
-      isSelected ? "bg-[#03FF24]" : "bg-neutral-900"
-    }`}
-    onClick={onClick}
-  >
-    <div
-      className={`text-right text-white text-base font-medium leading-tight ${
-        isSelected ? "text-black" : "text-white"
-      }`}
-    >
-      {children}
-    </div>
-  </button>
-);
 
 const ExternalLinkIcon = ({ address }: { address: string }) => {
   return (
