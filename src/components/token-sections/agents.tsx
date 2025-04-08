@@ -573,13 +573,16 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
             const fetchTwitterUsername = async () => {
               try {
                 console.log("Fetching Twitter profile info at OAuth callback");
-                
+
                 // Replace direct Twitter API call with our backend endpoint
-                const profileResponse = await fetch(`${API_BASE_URL}/api/share/twitter-user`, {
-                  headers: {
-                    Authorization: `Bearer ${parsedCreds.accessToken}`,
+                const profileResponse = await fetch(
+                  `${API_BASE_URL}/api/share/twitter-user`,
+                  {
+                    headers: {
+                      Authorization: `Bearer ${parsedCreds.accessToken}`,
+                    },
                   },
-                });
+                );
 
                 if (profileResponse.ok) {
                   interface TwitterProfileResponse {
@@ -738,12 +741,15 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
           console.log("Fetching Twitter user info to get actual username");
 
           // Replace direct Twitter API call with our backend endpoint
-          const response = await fetch(`${API_BASE_URL}/api/share/twitter-user`, {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${twitterCredentials.accessToken}`,
+          const response = await fetch(
+            `${API_BASE_URL}/api/share/twitter-user`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${twitterCredentials.accessToken}`,
+              },
             },
-          });
+          );
 
           if (response.ok) {
             interface TwitterUserResponse {

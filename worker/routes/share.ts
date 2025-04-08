@@ -964,7 +964,7 @@ shareRouter.get("/twitter-user", async (c) => {
       return c.json({ error: "Missing or invalid authorization header" });
     }
     const accessToken = authHeader.split(" ")[1];
-    
+
     // Include profile_image_url in the user fields
     const profileResponse = await fetch(
       "https://api.twitter.com/2/users/me?user.fields=profile_image_url,username,name",
@@ -988,7 +988,10 @@ shareRouter.get("/twitter-user", async (c) => {
     logger.error("Error in /twitter-user handler:", error);
     c.status(500);
     return c.json({
-      error: error instanceof Error ? error.message : "Unknown error fetching Twitter profile",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unknown error fetching Twitter profile",
     });
   }
 });

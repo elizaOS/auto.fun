@@ -100,7 +100,7 @@ export default function Header() {
       </div>
 
       {/* mobile menu */}
-      <div className="sticky block md:hidden bg-[#171717] border-b py-4 z-50">
+      <div className="sticky block lg:hidden bg-[#171717] border-b py-4 z-50">
         <div className="flex items-center mx-4 space-x-2 sm:space-x-4 lg:hidden ">
           <Link to="/" className="shrink-0" aria-label="Auto.fun frontpage">
             <img
