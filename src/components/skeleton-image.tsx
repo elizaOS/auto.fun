@@ -21,13 +21,18 @@ const SkeletonImage: React.FC<SkeletonImageProps> = ({
   };
 
   return (
-    <div className={twMerge(["size-full select-none", parentClassName ? parentClassName : ""])}>
+    <div
+      className={twMerge([
+        "size-full select-none",
+        parentClassName ? parentClassName : "",
+      ])}
+    >
       {/* Skeleton placeholder */}
       {!loaded && (
         <div
           className={twMerge(
             "absolute inset-0 bg-autofun-background-input animate-pulse size-full",
-            className
+            className,
           )}
         />
       )}
@@ -39,7 +44,7 @@ const SkeletonImage: React.FC<SkeletonImageProps> = ({
         className={twMerge(
           "transition-opacity duration-200 object-cover size-full",
           loaded ? "opacity-100" : "opacity-0",
-          className
+          className,
         )}
         {...props}
       />

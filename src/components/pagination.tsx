@@ -31,7 +31,7 @@ const Pagination: React.FC<PaginationProps> = ({
     if (totalPages >= 3) {
       endPages = ["...", totalPages - 2, totalPages - 1, totalPages];
     }
-    
+
     return [1, 2, 3, ...endPages];
   };
 

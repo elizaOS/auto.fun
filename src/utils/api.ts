@@ -9,7 +9,7 @@ export const queryClient = new QueryClient();
 export const fetcher = async (
   endpoint: string,
   method: "GET" | "POST",
-  body?: object
+  body?: object,
 ) => {
   try {
     const response = await fetchWithAuth(`${env.apiUrl}${endpoint}`, {
@@ -27,7 +27,7 @@ export const fetcher = async (
       if (response.status === 401) {
         console.warn(`Authentication required for ${endpoint}`);
         throw new Error(
-          "Authentication required. Please sign in to access this data."
+          "Authentication required. Please sign in to access this data.",
         );
       }
 
@@ -56,7 +56,7 @@ export const getToken = async ({
 
   try {
     console.log(
-      `Fetching token data for ${address} (bypass_cache: ${bypassCache})`
+      `Fetching token data for ${address} (bypass_cache: ${bypassCache})`,
     );
     const rawData = await fetcher(endpoint, "GET");
     const data = rawData as Record<string, any>;
@@ -79,7 +79,7 @@ export const getTokenHolders = async ({
   try {
     const endpoint = `/api/token/${address}/holders`;
     console.log(
-      `Fetching holders for ${address} (bypass_cache: ${bypassCache})`
+      `Fetching holders for ${address} (bypass_cache: ${bypassCache})`,
     );
     const data = await fetcher(endpoint, "GET");
     return data;
@@ -131,7 +131,7 @@ export const getChartTable = async ({
   try {
     const res = await fetcher(
       `/api/chart/${pairIndex}/${from}/${to}/${range}/${token}`,
-      "GET"
+      "GET",
     );
 
     return res as ChartTable;

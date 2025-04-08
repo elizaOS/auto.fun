@@ -8,12 +8,12 @@ export type Token = z.infer<typeof TokenSchema>;
 export const HomepageTokenSchema = TokenSchema.and(
   z.object({
     numComments: z.number().default(0),
-  })
+  }),
 );
 export const HomepageFeaturedSchema = HomepageTokenSchema.and(
   z.object({
     featuredScore: z.number(),
-  })
+  }),
 );
 
 export type HomepageSortBy = "all" | "marketCap" | "newest" | "oldest";
@@ -38,7 +38,7 @@ export const useHomepageAll = (enabled: boolean) => {
     const onTokenEvent = (token: unknown) => {
       const newToken = HomepageFeaturedSchema.parse(token);
       const existingToken = pagination.items.find(
-        (token) => token.mint === newToken.mint
+        (token) => token.mint === newToken.mint,
       );
 
       if (existingToken) {
@@ -90,7 +90,7 @@ export const useHomepageMarketCap = (enabled: boolean) => {
     const onTokenEvent = (token: unknown) => {
       const newToken = HomepageTokenSchema.parse(token);
       const existingTokenIndex = pagination.items.findIndex(
-        (token) => token.mint === newToken.mint
+        (token) => token.mint === newToken.mint,
       );
       if (existingTokenIndex !== -1) {
         const itemsCopy = [...pagination.items];
@@ -149,14 +149,14 @@ export const useHomepageNewest = (enabled: boolean) => {
     socket.on("updateToken", (token) => {
       const updatedToken = HomepageTokenSchema.parse(token);
       const existingToken = pagination.items.find(
-        (item) => item.mint === updatedToken.mint
+        (item) => item.mint === updatedToken.mint,
       );
 
       if (existingToken) {
         pagination.setItems((items) =>
           items.map((token) =>
-            token.mint === updatedToken.mint ? updatedToken : token
-          )
+            token.mint === updatedToken.mint ? updatedToken : token,
+          ),
         );
       }
     });
@@ -202,14 +202,14 @@ export const useHomepageOldest = (enabled: boolean) => {
     socket.on("updateToken", (token) => {
       const updatedToken = HomepageTokenSchema.parse(token);
       const existingToken = pagination.items.find(
-        (item) => item.mint === updatedToken.mint
+        (item) => item.mint === updatedToken.mint,
       );
 
       if (existingToken) {
         pagination.setItems((items) =>
           items.map((token) =>
-            token.mint === updatedToken.mint ? updatedToken : token
-          )
+            token.mint === updatedToken.mint ? updatedToken : token,
+          ),
         );
       }
     });
