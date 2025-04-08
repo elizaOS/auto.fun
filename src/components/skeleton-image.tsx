@@ -4,12 +4,14 @@ import { twMerge } from "tailwind-merge";
 interface SkeletonImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
   alt: string;
+  parentClassName?: string;
 }
 
 const SkeletonImage: React.FC<SkeletonImageProps> = ({
   src,
   alt,
   className,
+  parentClassName,
   ...props
 }) => {
   const [loaded, setLoaded] = useState(false);
@@ -19,7 +21,7 @@ const SkeletonImage: React.FC<SkeletonImageProps> = ({
   };
 
   return (
-    <div className="size-full select-none">
+    <div className={twMerge(["size-full select-none", parentClassName ? parentClassName : ""])}>
       {/* Skeleton placeholder */}
       {!loaded && (
         <div
