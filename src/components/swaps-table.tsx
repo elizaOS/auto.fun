@@ -77,7 +77,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
               <TableRow className="hover:bg-white/5" key={swap?.txId}>
                 <TableCell className="text-left">
                   <Link
-                    to={`https://solscan.io/account/${swap?.user}`}
+                    to={env.getAccountUrl(swap?.user)}
                     target="_blank"
                     className="hover:text-autofun-text-highlight"
                   >
