@@ -40,6 +40,71 @@ const tokenRouter = new Hono<{
   };
 }>();
 
+export async function processSwapEvent(
+  env: Env,
+  swap: any,
+  shouldEmitGlobal: boolean = true,
+): Promise<void> {
+  try {
+    // Get WebSocket client
+    const wsClient = getWebSocketClient(env);
+
+    // Get DB connection to fetch token data and calculate featuredScore
+    const db = getDB(env);
+
+    // Get the token data for this swap
+    const tokenData = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, swap.tokenMint))
+      .limit(1);
+
+    // Prepare swap data for emission
+    const enrichedSwap = { ...swap };
+
+    // Add featuredScore if we have token data
+    if (tokenData && tokenData.length > 0) {
+      // Get max values for normalization
+      const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
+
+      // Calculate featured score
+      const featuredScore = calculateFeaturedScore(
+        tokenData[0],
+        maxVolume,
+        maxHolders,
+      );
+
+      // Add token data with featuredScore to the swap
+      enrichedSwap.tokenData = {
+        ...tokenData[0],
+        featuredScore,
+      };
+    }
+
+    // Emit to token-specific room
+    await wsClient.emit(`token-${swap.tokenMint}`, "newSwap", enrichedSwap);
+
+    // Only log in debug mode or for significant events
+    if (process.env.DEBUG_WEBSOCKET) {
+      logger.log(`Emitted swap event for token ${swap.tokenMint}`);
+    }
+
+    // Optionally emit to global room for activity feed
+    if (shouldEmitGlobal) {
+      await wsClient.emit("global", "newSwap", enrichedSwap);
+
+      if (process.env.DEBUG_WEBSOCKET) {
+        logger.log("Emitted swap event to global feed");
+      }
+    }
+
+    return;
+  } catch (error) {
+    logger.error("Error processing swap event:", error);
+    throw error;
+  }
+}
+
 // Helper function to process token info after finding it on a network
 async function processTokenInfo(
   c: any,
