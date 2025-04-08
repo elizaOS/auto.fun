@@ -1,17 +1,6 @@
 module.exports = {
   content: ["./src/**/*.{html,js,jsx,ts,tsx}", "./*.{html}"],
   theme: {
-    container: {
-      center: true,
-      padding: "1rem",
-      screens: {
-        sm: "100vw",
-        md: "100vw",
-        lg: "100vw",
-        xl: "100vw",
-        "2xl": "100vw",
-      },
-    },
     extend: {
       fontFamily: {
         satoshi: ["Satoshi", "sans-serif"],

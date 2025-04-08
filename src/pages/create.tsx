@@ -1515,7 +1515,8 @@ export const Create = () => {
         let userErrorMessage = "Failed to generate image for token.";
 
         if (backendError.includes("NSFW")) {
-          userErrorMessage = "Your input contains inappropriate content. Please modify and try again.";
+          userErrorMessage =
+            "Your input contains inappropriate content. Please modify and try again.";
         }
         throw new Error(userErrorMessage);
       }

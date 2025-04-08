@@ -522,7 +522,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
           </h1>
           <button
             onClick={() => setVisible(false)}
-            className="absolute top-4 right-4 text-autofun-background-disabled cursor-pointer"
+            className="cursor-pointer absolute top-4 right-4 text-autofun-background-disabled cursor-pointer"
             aria-label="Close"
           >
             <svg
@@ -588,7 +588,7 @@ const WalletListItem: FC<{
     <li>
       <button
         onClick={handleClick}
-        className="cursor-pointer bg-autofun-background-action-primary w-full flex items-center justify-between px-4 py-3 transition-colors"
+        className="cursor-pointer cursor-pointer bg-autofun-background-action-primary w-full flex items-center justify-between px-4 py-3 transition-colors"
         tabIndex={tabIndex}
       >
         <div className="flex items-center gap-1 m-auto">

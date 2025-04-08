@@ -16,7 +16,7 @@ export default function Trade({ token }: { token: IToken }) {
   const { solPrice: contextSolPrice } = useSolPriceContext();
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
-    undefined
+    undefined,
   );
   const [slippage, setSlippage] = useState<number>(2);
 
@@ -64,7 +64,7 @@ export default function Trade({ token }: { token: IToken }) {
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status
+    token?.status,
   );
 
   const [convertedAmount, setConvertedAmount] = useState(0);
@@ -85,7 +85,7 @@ export default function Trade({ token }: { token: IToken }) {
       // they are not dynamically calculated but instead use the
       // default values leading to slightly incorrect calculations
       token.reserveAmount,
-      token.reserveLamport
+      token.reserveLamport,
     );
     setConvertedAmount(swapAmount / decimals);
   };
@@ -152,7 +152,7 @@ export default function Trade({ token }: { token: IToken }) {
             >
               <div className="flex justify-between gap-3">
                 <input
-                  className="text-4xl truncate font-dm-mono text-autofun-text-secondary w-3/4 outline-none"
+                  className="text-4xl truncate font-dm-mono text-white w-3/4 outline-none"
                   min={0}
                   type="number"
                   onChange={({ target }) =>
@@ -305,7 +305,7 @@ export default function Trade({ token }: { token: IToken }) {
                 {formatNumber(
                   tokenBalance * currentPrice * solanaPrice,
                   true,
-                  false
+                  false,
                 )}
               </span>
             </div>

@@ -1502,7 +1502,7 @@ export default function CommunityTab() {
     const imageImg = document.createElement("img");
     imageImg.src = getTabIconPath("Image", communityTab);
     imageImg.alt = "Image";
-    imageImg.className = "h-8 w-auto";
+    imageImg.className = "cursor-pointer h-8 w-auto";
 
     imageButton.appendChild(imageImg);
     mediaTypeButtons.appendChild(imageButton);
@@ -1519,7 +1519,7 @@ export default function CommunityTab() {
     const videoImg = document.createElement("img");
     videoImg.src = getTabIconPath("Video", communityTab);
     videoImg.alt = "Video";
-    videoImg.className = "h-8 w-auto";
+    videoImg.className = "cursor-pointer h-8 w-auto";
 
     videoButton.appendChild(videoImg);
     mediaTypeButtons.appendChild(videoButton);
@@ -1536,7 +1536,7 @@ export default function CommunityTab() {
     const audioImg = document.createElement("img");
     audioImg.src = getTabIconPath("Audio", communityTab);
     audioImg.alt = "Audio";
-    audioImg.className = "h-8 w-auto";
+    audioImg.className = "cursor-pointer h-8 w-auto";
 
     audioButton.appendChild(audioImg);
     mediaTypeButtons.appendChild(audioButton);
@@ -1690,7 +1690,7 @@ export default function CommunityTab() {
                 <div className="flex space-x-1 h-10">
                   <button
                     onClick={() => setGenerationMode("fast")}
-                    className="h-10"
+                    className="cursor-pointer h-10"
                   >
                     <img
                       src={
@@ -1704,7 +1704,7 @@ export default function CommunityTab() {
                   </button>
                   <button
                     onClick={() => setGenerationMode("pro")}
-                    className="h-10"
+                    className="cursor-pointer h-10"
                   >
                     <img
                       src={

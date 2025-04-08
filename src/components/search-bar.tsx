@@ -35,7 +35,7 @@ export default function SearchBar() {
   const handleSearch = useRef(
     debounce((query: string) => {
       setSearch(query);
-    }, 300)
+    }, 300),
   ).current;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

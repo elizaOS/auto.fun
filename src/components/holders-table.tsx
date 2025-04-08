@@ -18,7 +18,7 @@ import { env } from "@/utils/env";
 export default function HoldersTable({ token }: { token: IToken }) {
   const { /*paused,*/ setPause } = usePause();
   console.log(
-    `HoldersTable: Rendering for token ${token?.ticker} (${token?.mint})`
+    `HoldersTable: Rendering for token ${token?.ticker} (${token?.mint})`,
   );
 
   const query = useHolders({ tokenId: token.mint });

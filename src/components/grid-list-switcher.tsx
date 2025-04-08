@@ -9,7 +9,7 @@ export default function GridListSwitcher() {
     <div className="flex bg-autofun-background-card mr-3">
       <Button
         className={twMerge([
-          "px-4 py-2 border-0",
+          "cursor-pointer px-4 py-2 border-0",
           activeTab === "grid" ? "" : "bg-transparent",
         ])}
         onClick={() => setActiveTab("grid")}
@@ -19,7 +19,7 @@ export default function GridListSwitcher() {
       </Button>
       <Button
         className={twMerge([
-          "px-4 py-2 border-0",
+          "cursor-pointer px-4 py-2 border-0",
           activeTab === "list" ? "" : "bg-transparent",
         ])}
         onClick={() => setActiveTab("list")}
