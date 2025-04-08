@@ -272,9 +272,9 @@ export default function Page() {
       </div>
 
       {/* Three Column Layout */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap">
         {/* Left Column - 25% - Token Info */}
-        <div className="w-full lg:w-[24%] flex flex-col gap-3">
+        <div className="w-full lg:w-1/4 flex flex-col gap-3">
           <div className="p-4 pt-0 flex flex-col gap-3">
             <div className="relative overflow-hidden">
               <div className="w-full aspect-square">
@@ -399,7 +399,7 @@ export default function Page() {
         </div>
 
         {/* Middle Column - 50% - Tabs for Chart and AI Create */}
-        <div className="w-full lg:w-[49%] flex flex-col gap-3">
+        <div className="w-full lg:w-1/2 flex flex-col gap-3">
           <div className="overflow-hidden relative">
             <div className="flex flex-col">
               {/* Green stroke above tab section */}
@@ -483,7 +483,7 @@ export default function Page() {
         </div>
 
         {/* Right Column - 25% - Trading and Bonding Curve */}
-        <div className="w-full lg:w-[24%] flex flex-col gap-3">
+        <div className="w-full lg:w-1/4 flex flex-col gap-3">
           {/* Trade Component - Now at the top */}
           <Trade token={token} />
 

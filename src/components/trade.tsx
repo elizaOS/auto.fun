@@ -181,9 +181,9 @@ export default function Trade({ token }: { token: IToken }) {
             {/* Buying */}
             <div className="flex items-center p-4 gap-2 justify-between text-sm font-dm-mono text-autofun-text-secondary w-full">
               <span>Min Received:</span>
-              <div className="flex uppercase items-center gap-2">
+              <div className="relative flex uppercase items-center gap-2">
                 {displayMinReceived}
-                <SkeletonImage
+                <img
                   src={isTokenSelling ? "/solana.png" : token?.image || ""}
                   alt={isTokenSelling ? "SOL" : token?.name || "token"}
                   className="rounded-full size-4"
