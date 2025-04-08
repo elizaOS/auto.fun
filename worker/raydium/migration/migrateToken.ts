@@ -38,7 +38,7 @@ export class TokenMigrator {
     public wallet: Keypair,
     public program: Program<RaydiumVault>,
     public autofunProgram: Program<Autofun>,
-    public provider: AnchorProvider,
+    public provider: AnchorProvider
   ) {}
   FEE_PERCENTAGE = 10; // 10% fee for pool creation
 
@@ -48,7 +48,7 @@ export class TokenMigrator {
       await this.migrateToken(token);
     } catch (error) {
       logger.error(
-        `[Migrate] Error releasing lock for token ${token.mint}: ${error}`,
+        `[Migrate] Error releasing lock for token ${token.mint}: ${error}`
       );
     }
   }
@@ -76,7 +76,7 @@ export class TokenMigrator {
             token,
             token.nftMinted?.split(",")[1] ?? "",
             this.wallet,
-            new PublicKey(this.env.MANAGER_MULTISIG_ADDRESS!),
+            new PublicKey(this.env.MANAGER_MULTISIG_ADDRESS!)
           ).then((result) => result),
       },
       {
@@ -86,7 +86,7 @@ export class TokenMigrator {
           this.depositNftToRaydiumVault(
             token,
             (token.nftMinted ?? "").split(",")[0],
-            new PublicKey(token.creator),
+            new PublicKey(token.creator)
           ).then((result) => result),
       },
       {
@@ -105,7 +105,7 @@ export class TokenMigrator {
             : token.migration;
         if (migrationData.lock) {
           logger.log(
-            `[Migrate] Migration already in progress for token ${token.mint}. Deferring additional execution.`,
+            `[Migrate] Migration already in progress for token ${token.mint}. Deferring additional execution.`
           );
           return;
         }
@@ -115,7 +115,7 @@ export class TokenMigrator {
       const lockAcquired = await acquireMigrationLock(this.env, token);
       if (!lockAcquired) {
         logger.log(
-          `[Migrate] Unable to acquire lock for token ${token.mint}. Deferring to resume operation.`,
+          `[Migrate] Unable to acquire lock for token ${token.mint}. Deferring to resume operation.`
         );
         await this.callResumeWorker(token);
         return;
@@ -124,7 +124,7 @@ export class TokenMigrator {
       for (const step of steps) {
         if (token.migration[step.name]?.status === "success") {
           logger.log(
-            `[Migrate] ${step.name} already processed for token ${token.mint}`,
+            `[Migrate] ${step.name} already processed for token ${token.mint}`
           );
           continue;
         }
@@ -166,7 +166,7 @@ export class TokenMigrator {
       this.wallet.publicKey,
       new PublicKey(token.mint),
       this.connection,
-      this.autofunProgram,
+      this.autofunProgram
     );
 
     transaction.instructions = [...transaction.instructions];
@@ -174,7 +174,7 @@ export class TokenMigrator {
     const { signature: txId, logs } = await execWithdrawTx(
       transaction,
       this.connection,
-      this.wallet,
+      this.wallet
     );
     const withdrawnAmounts = this.parseWithdrawLogs(logs);
     return { txId, extraData: { withdrawnAmounts } };
@@ -189,12 +189,12 @@ export class TokenMigrator {
     withdrawLogs.forEach((log) => {
       if (log.includes("withdraw lamports:")) {
         withdrawnSol = Number(
-          log.replace("Program log: withdraw lamports:", "").trim(),
+          log.replace("Program log: withdraw lamports:", "").trim()
         );
       }
       if (log.includes("withdraw token:")) {
         withdrawnTokens = Number(
-          log.replace("Program log: withdraw token:", "").trim(),
+          log.replace("Program log: withdraw token:", "").trim()
         );
       }
     });
@@ -202,7 +202,7 @@ export class TokenMigrator {
   }
 
   async performCreatePool(
-    token: any,
+    token: any
   ): Promise<{ txId: string; extraData: { marketId: string; poolInfo: any } }> {
     const raydium = await initSdk({ env: this.env, loadToken: false });
     const mintA = await raydium.token.getTokenInfo(token.mint);
@@ -213,7 +213,7 @@ export class TokenMigrator {
       feeConfigs.forEach((config: any) => {
         config.id = getCpmmPdaAmmConfigId(
           DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM,
-          config.index,
+          config.index
         ).publicKey.toBase58();
       });
     }
@@ -274,7 +274,7 @@ export class TokenMigrator {
     raydium: any,
     poolInfo: any,
     poolKeys: any,
-    primaryAmount: any,
+    primaryAmount: any
   ): Promise<{ txId: string; nftMint: string }> {
     const { execute: lockExecutePrimary, extInfo: lockExtInfoPrimary } =
       await raydium.cpmm.lockLp({
@@ -297,7 +297,7 @@ export class TokenMigrator {
     const { txId: lockTxIdPrimary } = (await retryOperation(
       () => lockExecutePrimary({ sendAndConfirm: true }),
       3,
-      2000,
+      2000
     )) as LockResult;
     const nftMintPrimary = lockExtInfoPrimary.nftMint.toString();
     logger.log(`[Lock] Primary LP lock txId: ${lockTxIdPrimary}`);
@@ -309,7 +309,7 @@ export class TokenMigrator {
     raydium: any,
     poolInfo: any,
     poolKeys: any,
-    secondaryAmount: any,
+    secondaryAmount: any
   ): Promise<{ txId: string; nftMint: string }> {
     const { execute: lockExecuteSecondary, extInfo: lockExtInfoSecondary } =
       await raydium.cpmm.lockLp({
@@ -332,7 +332,7 @@ export class TokenMigrator {
     const { txId: lockTxIdSecondary } = (await retryOperation(
       () => lockExecuteSecondary({ sendAndConfirm: true }),
       3,
-      2000,
+      2000
     )) as LockResult;
     const nftMintSecondary = lockExtInfoSecondary.nftMint.toString();
     logger.log(`[Lock] Secondary LP lock txId: ${lockTxIdSecondary}`);
@@ -353,17 +353,17 @@ export class TokenMigrator {
     await raydium.account.fetchWalletTokenAccounts();
     const lpMintStr = poolInfo.lpMint.address;
     const lpAccount = raydium.account.tokenAccounts.find(
-      (a: any) => a.mint.toBase58() === lpMintStr,
+      (a: any) => a.mint.toBase58() === lpMintStr
     );
     if (!lpAccount) {
       throw new Error(`No LP balance found for pool: ${poolInfo.id}`);
     }
 
     const PRIMARY_LOCK_PERCENTAGE = Number(
-      process.env.PRIMARY_LOCK_PERCENTAGE || "90",
+      process.env.PRIMARY_LOCK_PERCENTAGE || "90"
     );
     const SECONDARY_LOCK_PERCENTAGE = Number(
-      process.env.SECONDARY_LOCK_PERCENTAGE || "10",
+      process.env.SECONDARY_LOCK_PERCENTAGE || "10"
     );
     if (PRIMARY_LOCK_PERCENTAGE + SECONDARY_LOCK_PERCENTAGE !== 100) {
       throw new Error("Lock percentages must sum to 100");
@@ -378,13 +378,13 @@ export class TokenMigrator {
       raydium,
       poolInfo,
       poolKeys,
-      primaryAmount,
+      primaryAmount
     );
     const secondaryLock = await this.lockSecondaryLP(
       raydium,
       poolInfo,
       poolKeys,
-      secondaryAmount,
+      secondaryAmount
     );
 
     const aggregatedTxId = `${primaryLock.txId},${secondaryLock.txId}`;
@@ -412,17 +412,17 @@ export class TokenMigrator {
     token: any,
     nftMinted: string,
     signerWallet: Keypair,
-    multisig: PublicKey,
+    multisig: PublicKey
   ): Promise<{ txId: string; extraData: object }> {
     const txSignature = await sendNftTo(
       signerWallet,
       multisig,
       new PublicKey(nftMinted), // 10% NFT
-      this.connection,
+      this.connection
     );
 
     logger.log(
-      `[Send] Sending NFT to manager multisig for token ${token.mint} with NFT ${nftMinted}`,
+      `[Send] Sending NFT to manager multisig for token ${token.mint} with NFT ${nftMinted}`
     );
     return { txId: txSignature, extraData: {} };
   }
@@ -430,18 +430,18 @@ export class TokenMigrator {
   async depositNftToRaydiumVault(
     token: any,
     nftMinted: string,
-    claimer_address: PublicKey,
+    claimer_address: PublicKey
   ): Promise<{ txId: string; extraData: object }> {
     const txSignature = await depositToRaydiumVault(
       this.provider,
       this.wallet,
       this.program,
       new PublicKey(nftMinted), // 90% NFT
-      claimer_address,
+      claimer_address
     );
 
     logger.log(
-      `[Deposit] Depositing NFT to Raydium vault for token ${token.mint} with NFT ${nftMinted}`,
+      `[Deposit] Depositing NFT to Raydium vault for token ${token.mint} with NFT ${nftMinted}`
     );
     return { txId: txSignature, extraData: {} };
   }
@@ -452,7 +452,7 @@ export class TokenMigrator {
 
   private async fetchPoolInfoWithRetry(
     raydium: any,
-    poolId: string,
+    poolId: string
   ): Promise<{ poolInfo: any; poolKeys: any }> {
     const MAX_RETRIES = 3;
     let retryCount = 0;
