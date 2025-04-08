@@ -231,7 +231,7 @@ const FormImageInput = ({
   setGeneratingField: (value: string | null) => void;
   onPromptFunctionsChange: (
     setPrompt: (prompt: string) => void,
-    onPromptChange: (prompt: string) => void,
+    onPromptChange: (prompt: string) => void
   ) => void;
   onPreviewChange?: (previewUrl: string | null) => void;
   imageUrl?: string | null;
@@ -245,7 +245,7 @@ const FormImageInput = ({
   const [preview, setPreview] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
   const [lastGeneratedImage, setLastGeneratedImage] = useState<string | null>(
-    null,
+    null
   );
   const promptDebounceRef = useRef<number | null>(null);
   const hasDirectlySetPreview = useRef<boolean>(false);
@@ -281,7 +281,7 @@ const FormImageInput = ({
         onPromptChange(value);
       }, 500);
     },
-    [onPromptChange],
+    [onPromptChange]
   );
 
   // Update lastGeneratedImage only when preview changes
@@ -307,7 +307,7 @@ const FormImageInput = ({
       setPrompt(value);
       debouncedPromptChange(value);
     },
-    [debouncedPromptChange],
+    [debouncedPromptChange]
   );
 
   const handleCancel = useCallback(() => {
@@ -333,7 +333,7 @@ const FormImageInput = ({
         // Check file size (limit to 5MB)
         if (file.size > 5 * 1024 * 1024) {
           toast.error(
-            "File is too large. Please select an image less than 5MB.",
+            "File is too large. Please select an image less than 5MB."
           );
           return;
         }
@@ -346,7 +346,7 @@ const FormImageInput = ({
         onChange(file);
       }
     },
-    [onChange],
+    [onChange]
   );
 
   // Handle drag & drop
@@ -367,7 +367,7 @@ const FormImageInput = ({
         // Check file size (limit to 5MB)
         if (file.size > 5 * 1024 * 1024) {
           toast.error(
-            "File is too large. Please select an image less than 5MB.",
+            "File is too large. Please select an image less than 5MB."
           );
           return;
         }
@@ -380,7 +380,7 @@ const FormImageInput = ({
         onChange(file);
       }
     },
-    [onChange],
+    [onChange]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -597,7 +597,7 @@ const uploadImage = async (metadata: TokenMetadata) => {
   const filename = `${safeName}${extension}`;
 
   console.log(
-    `Uploading image as ${filename} with content type ${contentType}`,
+    `Uploading image as ${filename} with content type ${contentType}`
   );
 
   // Get auth token from localStorage with quote handling
@@ -652,7 +652,7 @@ const uploadImage = async (metadata: TokenMetadata) => {
       // Specifically handle authentication errors
       if (response.status === 401) {
         throw new Error(
-          "Authentication required. Please connect your wallet and try again.",
+          "Authentication required. Please connect your wallet and try again."
         );
       }
       throw new Error("Failed to upload image: " + (await response.text()));
@@ -1069,7 +1069,7 @@ export const Create = () => {
         : "LOCAL_DEV=true";
     console.log(
       `%c[DEV MODE via ${source}] SOL balance check bypassed for imported tokens in development mode`,
-      "color: green; font-weight: bold",
+      "color: green; font-weight: bold"
     );
   }
 
@@ -1087,7 +1087,7 @@ export const Create = () => {
 
   // Store a reference to the FormImageInput's setPreview function
   const previewSetterRef = useRef<((preview: string | null) => void) | null>(
-    null,
+    null
   );
 
   // Create ref to track image URL creation to prevent infinite loops
@@ -1292,7 +1292,7 @@ export const Create = () => {
   const createTokenOnChain = async (
     _tokenMetadata: TokenMetadata,
     mintKeypair: Keypair,
-    _metadataUrl: string,
+    _metadataUrl: string
   ) => {
     if (!signTransaction) {
       throw new Error("Wallet doesn't support signing");
@@ -1310,7 +1310,7 @@ export const Create = () => {
         _metadataUrl === ""
       ) {
         console.warn(
-          "No metadata URL provided, generating minimal metadata...",
+          "No metadata URL provided, generating minimal metadata..."
         );
 
         // Create minimal metadata and upload it
@@ -1341,22 +1341,45 @@ export const Create = () => {
         },
       });
 
-      // Use the useCreateToken hook to create the token on-chain
-      await createTokenOnChainAsync({
-        tokenMetadata: _tokenMetadata,
-        metadataUrl: _metadataUrl,
-        mintKeypair,
-      });
+      try {
+        // Use the useCreateToken hook to create the token on-chain
+        await createTokenOnChainAsync({
+          tokenMetadata: _tokenMetadata,
+          metadataUrl: _metadataUrl,
+          mintKeypair,
+        });
 
-      // Return the mint address as transaction ID
-      const txId = mintKeypair.publicKey.toString();
-      console.log(
-        "Token created on-chain successfully with mint address:",
-        txId,
-      );
-      return txId;
+        // Return the mint address as transaction ID
+        const txId = mintKeypair.publicKey.toString();
+        console.log(
+          "Token created on-chain successfully with mint address:",
+          txId
+        );
+        return txId;
+      } catch (txError) {
+        // Check if it's a user rejection error
+        if (
+          txError instanceof Error &&
+          (txError.message.includes("User rejected") ||
+            txError.message.includes("cancelled") ||
+            txError.message.includes("canceled") ||
+            txError.message.includes("rejected") ||
+            txError.message.includes("was not confirmed"))
+        ) {
+          console.log("Transaction was rejected by the user");
+          // Throw a special error for transaction rejection
+          throw new Error("TRANSACTION_REJECTED");
+        }
+        // Re-throw other errors
+        throw txError;
+      }
     } catch (error) {
       console.error("Error creating token on-chain:", error);
+
+      // Re-throw transaction rejection errors
+      if (error instanceof Error && error.message === "TRANSACTION_REJECTED") {
+        throw error;
+      }
 
       // Check if it's a deserialization error (0x66 / 102)
       if (
@@ -1366,10 +1389,10 @@ export const Create = () => {
           error.message.includes("Error Number: 102"))
       ) {
         console.error(
-          "Transaction failed due to instruction deserialization error.",
+          "Transaction failed due to instruction deserialization error."
         );
         console.error(
-          "This is likely due to parameter mismatch with the on-chain program.",
+          "This is likely due to parameter mismatch with the on-chain program."
         );
 
         // Try to log relevant parameters
@@ -1381,7 +1404,7 @@ export const Create = () => {
         console.log("- Mint public key:", mintKeypair.publicKey.toString());
 
         throw new Error(
-          "Failed to create token: instruction format mismatch with on-chain program. Please try again or contact support.",
+          "Failed to create token: instruction format mismatch with on-chain program. Please try again or contact support."
         );
       }
 
@@ -1470,7 +1493,7 @@ export const Create = () => {
       if (promptFunctions.setPrompt) {
         console.log(
           "Setting promptFunctions.setPrompt with:",
-          data.metadata.prompt,
+          data.metadata.prompt
         );
         promptFunctions.setPrompt(data.metadata.prompt);
       } else {
@@ -1480,7 +1503,7 @@ export const Create = () => {
       if (promptFunctions.onPromptChange) {
         console.log(
           "Calling promptFunctions.onPromptChange with:",
-          data.metadata.prompt,
+          data.metadata.prompt
         );
         promptFunctions.onPromptChange(data.metadata.prompt);
       } else {
@@ -1490,7 +1513,7 @@ export const Create = () => {
       // Step 2: Generate image with the generated prompt
       console.log(
         "Requesting image generation with prompt:",
-        data.metadata.prompt,
+        data.metadata.prompt
       );
 
       // Temporarily set the generating state
@@ -1515,7 +1538,8 @@ export const Create = () => {
         let userErrorMessage = "Failed to generate image for token.";
 
         if (backendError.includes("NSFW")) {
-          userErrorMessage = "Your input contains inappropriate content. Please modify and try again.";
+          userErrorMessage =
+            "Your input contains inappropriate content. Please modify and try again.";
         }
         throw new Error(userErrorMessage);
       }
@@ -1535,7 +1559,7 @@ export const Create = () => {
         const imageBlob = await fetch(imageData.mediaUrl).then((r) => {
           if (!r.ok)
             throw new Error(
-              `Failed to fetch image: ${r.status} ${r.statusText}`,
+              `Failed to fetch image: ${r.status} ${r.statusText}`
             );
           return r.blob();
         });
@@ -1583,7 +1607,7 @@ export const Create = () => {
       setHasGeneratedToken(true);
 
       console.log(
-        "=== Token generation from prompt completed successfully ===",
+        "=== Token generation from prompt completed successfully ==="
       );
     } catch (error) {
       console.error("Error generating from prompt:", error);
@@ -1593,7 +1617,7 @@ export const Create = () => {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to generate token from prompt. Please try again.",
+          : "Failed to generate token from prompt. Please try again."
       );
     } finally {
       setIsProcessingPrompt(false);
@@ -1675,11 +1699,11 @@ export const Create = () => {
             // If we can't parse the error, show a more friendly message
             if (response.status === 404) {
               throw new Error(
-                "The token doesn't exist or doesn't have metadata.",
+                "The token doesn't exist or doesn't have metadata."
               );
             } else {
               throw new Error(
-                `Server error (${response.status}): Unable to retrieve token data.`,
+                `Server error (${response.status}): Unable to retrieve token data.`
               );
             }
           }
@@ -1768,7 +1792,7 @@ export const Create = () => {
 
   // Handle paste in the import address field
   const handleImportAddressPaste = (
-    e: React.ClipboardEvent<HTMLInputElement>,
+    e: React.ClipboardEvent<HTMLInputElement>
   ) => {
     const pastedText = e.clipboardData.getData("text");
 
@@ -1813,7 +1837,7 @@ export const Create = () => {
   const generateAll = useCallback(
     async (
       setPrompt?: ((prompt: string) => void) | null,
-      onPromptChange?: ((prompt: string) => void) | null,
+      onPromptChange?: ((prompt: string) => void) | null
     ) => {
       try {
         setIsGenerating(true);
@@ -1953,14 +1977,14 @@ export const Create = () => {
         toast.error(
           error instanceof Error
             ? error.message
-            : "Failed to generate metadata. Please try again.",
+            : "Failed to generate metadata. Please try again."
         );
       } finally {
         setIsGenerating(false);
         setGeneratingField(null);
       }
     },
-    [setIsGenerating, setGeneratingField],
+    [setIsGenerating, setGeneratingField]
   );
 
   // Submit form to backend
@@ -2003,7 +2027,7 @@ export const Create = () => {
           // For imported tokens, create a token entry in the database
           console.log(
             "Creating token entry for imported token:",
-            tokenData.mint,
+            tokenData.mint
           );
 
           // Show coin drop animation
@@ -2081,7 +2105,7 @@ export const Create = () => {
         const authToken = getAuthToken();
         if (!authToken) {
           throw new Error(
-            "Authentication token not found. Please reconnect wallet.",
+            "Authentication token not found. Please reconnect wallet."
           );
         }
 
@@ -2130,7 +2154,7 @@ export const Create = () => {
         ) {
           console.error("Invalid keypair response from server:", responseData);
           throw new Error(
-            "Invalid keypair format: missing address or secretKey",
+            "Invalid keypair format: missing address or secretKey"
           );
         }
 
@@ -2141,7 +2165,7 @@ export const Create = () => {
         console.log(
           "Received keypair from API:",
           `Address: ${vanityAddress}`,
-          `Secret key length: ${secretKeyArray?.length || 0} bytes`,
+          `Secret key length: ${secretKeyArray?.length || 0} bytes`
         );
 
         // Convert the number array to Uint8Array for Solana
@@ -2150,7 +2174,7 @@ export const Create = () => {
         // Verify length is exactly 64 bytes
         if (secretKeyUint8Array.length !== 64) {
           throw new Error(
-            `Invalid secret key length: ${secretKeyUint8Array.length} bytes (expected 64 bytes)`,
+            `Invalid secret key length: ${secretKeyUint8Array.length} bytes (expected 64 bytes)`
           );
         }
 
@@ -2162,22 +2186,22 @@ export const Create = () => {
           const derivedPublicKey = mintKeypair.publicKey.toString();
 
           console.log(
-            `Derived public key from secret key: ${derivedPublicKey}`,
+            `Derived public key from secret key: ${derivedPublicKey}`
           );
 
           // Check if they match, but don't throw an error if they don't - use the derived one
           if (derivedPublicKey !== vanityAddress) {
             console.warn(
-              `Public key mismatch - API returned: ${vanityAddress}, derived: ${derivedPublicKey}`,
+              `Public key mismatch - API returned: ${vanityAddress}, derived: ${derivedPublicKey}`
             );
             console.warn(
-              "Using the derived public key from the secret key for safety",
+              "Using the derived public key from the secret key for safety"
             );
             // Update tokenMint to use the derived public key which is guaranteed to be correct
             tokenMint = derivedPublicKey;
           } else {
             console.log(
-              "Public key validation successful - API and derived keys match",
+              "Public key validation successful - API and derived keys match"
             );
           }
 
@@ -2193,7 +2217,7 @@ export const Create = () => {
         toast.error(
           error instanceof Error
             ? error.message
-            : "Could not get vanity keypair.",
+            : "Could not get vanity keypair."
         );
         setIsSubmitting(false); // Stop submission
         setShowCoinDrop(false); // Hide animation if it started
@@ -2246,7 +2270,7 @@ export const Create = () => {
           if (!metadataUrl || metadataUrl === "undefined") {
             console.error(
               "Upload succeeded but metadata URL is invalid:",
-              metadataUrl,
+              metadataUrl
             );
             // Fallback: generate a unique metadata URL based on mint address
             metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
@@ -2275,7 +2299,7 @@ export const Create = () => {
           metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
           console.log(
             "Using default metadata URL for imported token:",
-            metadataUrl,
+            metadataUrl
           );
         }
       } else if (!media_base64 && !metadataUrl) {
@@ -2283,7 +2307,7 @@ export const Create = () => {
         metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
         console.log(
           "No image provided, using default metadata URL:",
-          metadataUrl,
+          metadataUrl
         );
       }
 
@@ -2300,6 +2324,18 @@ export const Create = () => {
         console.log("Token created on-chain successfully");
       } catch (onChainError) {
         console.error("Error creating token on-chain:", onChainError);
+
+        // Handle transaction rejection by the user
+        if (
+          onChainError instanceof Error &&
+          onChainError.message === "TRANSACTION_REJECTED"
+        ) {
+          console.log("Transaction was rejected by the user");
+          toast.info("Transaction cancelled");
+          setIsSubmitting(false);
+          setShowCoinDrop(false); // Hide animation when transaction is cancelled
+          return; // Exit the function
+        }
 
         // Format a user-friendly error message
         let errorMessage = "Failed to create token on-chain";
@@ -2319,7 +2355,7 @@ export const Create = () => {
               // Wait a moment before retrying
               await new Promise((resolve) => setTimeout(resolve, 1000));
               toast.info(
-                "Retrying token creation with different parameters...",
+                "Retrying token creation with different parameters..."
               );
 
               // Modify token metadata for retry
@@ -2333,6 +2369,18 @@ export const Create = () => {
               console.log("Token created successfully on retry");
               // Continue with token creation flow...
             } catch (retryError) {
+              // Check if the retry was also rejected by the user
+              if (
+                retryError instanceof Error &&
+                retryError.message === "TRANSACTION_REJECTED"
+              ) {
+                console.log("Retry transaction was also rejected by the user");
+                toast.info("Transaction cancelled");
+                setIsSubmitting(false);
+                setShowCoinDrop(false); // Hide animation
+                return; // Exit the function
+              }
+
               console.error("Retry also failed:", retryError);
               // Continue to error handling below
               throw new Error(errorMessage);
@@ -2351,7 +2399,7 @@ export const Create = () => {
         try {
           console.log(
             "Marking pre-generated token as used:",
-            currentPreGeneratedTokenId,
+            currentPreGeneratedTokenId
           );
 
           // Get auth token from localStorage with quote handling
@@ -2380,7 +2428,7 @@ export const Create = () => {
           });
 
           console.log(
-            "Successfully marked token as used and removed duplicates",
+            "Successfully marked token as used and removed duplicates"
           );
         } catch (error) {
           console.error("Error marking pre-generated token as used:", error);
@@ -2424,10 +2472,14 @@ export const Create = () => {
       navigate(`/token/${tokenMint}`);
     } catch (error) {
       console.error("Error creating token:", error);
+
+      // Make sure to hide the coin drop animation for any error
+      setShowCoinDrop(false);
+
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to create token. Please try again.",
+          : "Failed to create token. Please try again."
       );
     } finally {
       setIsSubmitting(false);
@@ -2497,7 +2549,7 @@ export const Create = () => {
               method: "GET",
               headers,
               credentials: "include",
-            },
+            }
           );
 
           if (!response.ok) {
@@ -3115,7 +3167,7 @@ export const Create = () => {
                   <div className="text-right text-xs text-neutral-400">
                     ≈{" "}
                     {calculatePercentage(
-                      calculateTokensFromSol(parseFloat(buyValue as string)),
+                      calculateTokensFromSol(parseFloat(buyValue as string))
                     ).toFixed(2)}{" "}
                     % of supply
                   </div>
