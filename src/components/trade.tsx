@@ -251,7 +251,7 @@ export default function Trade({ token }: { token: IToken }) {
         {/* RIGHT COLUMN - Advanced Settings & Info - Takes 2/5 of the space on md screens */}
         <div className="col-span-1 md:col-span-1 lg:col-span-1">
           {/* Slippage Input */}
-          <div className={cardStyle}>
+          <div className="mb-4 flex flex-col gap-4">
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-dm-mono text-autofun-text-secondary">
                 Slippage:
@@ -271,6 +271,12 @@ export default function Trade({ token }: { token: IToken }) {
                 </span>
               </div>
             </div>
+            {slippage > 3 ? (
+              <p className="text-orange-500 font-dm-mono text-xs">
+                Your transaction may be frontrun and result in an unfavorable
+                trade
+              </p>
+            ) : null}
           </div>
 
           {/* Balance and Value */}
