@@ -86,7 +86,6 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
           {displayedValue}%
         </span>
       </div>
-
       {/* Percentage indicator (appears when progress bar is too small) */}
       {width < 15 && (
         <div className="absolute right-0 h-full flex items-center z-30">

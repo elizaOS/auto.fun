@@ -86,9 +86,6 @@ export function TableView({ data }: { data: IToken[] }) {
               <TableCell className="text-left">
                 <div className="flex items-center gap-2 w-full">
                   <BondingCurveBar progress={token.curveProgress} />
-                  <span className={`font-dm-mono text-sm text-white`}>
-                    {normalizedProgress(token.curveProgress)}%
-                  </span>
                 </div>
               </TableCell>
               <TableCell className="text-right">
