@@ -66,7 +66,7 @@ export default function Header() {
                 <SearchBar />
 
                 {isAuthenticated ? (
-                  <Button size="large" className="cursor-default">
+                  <Button size="large" className="cursor-default!">
                     <div className="flex items-center gap-2 justify-between">
                       <span className="max-w-24 w-full grow truncate">
                         {solBalance}
