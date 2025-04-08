@@ -76,7 +76,7 @@ export default function Page() {
     const socket = getSocket();
 
     socket.on("updateToken", (token: any) =>
-      queryClient.setQueryData(["token", address], token),
+      queryClient.setQueryData(["token", address], token)
     );
 
     return () => {
@@ -108,7 +108,7 @@ export default function Page() {
 
         if (!hasValidData) {
           console.warn(
-            `Token page: Blockchain metrics may be invalid - all key values are 0`,
+            `Token page: Blockchain metrics may be invalid - all key values are 0`
           );
         }
 
@@ -120,7 +120,7 @@ export default function Page() {
           {
             position: "bottom-right",
             autoClose: 5000,
-          },
+          }
         );
         return null;
       }
@@ -200,7 +200,7 @@ export default function Page() {
         !metrics.marketCapUSD && !metrics.currentPrice && !metrics.volume24h;
       if (allZeros) {
         console.warn(
-          `WARNING: Blockchain metrics returned all zeros for token ${token?.mint}. This might indicate an error in data retrieval.`,
+          `WARNING: Blockchain metrics returned all zeros for token ${token?.mint}. This might indicate an error in data retrieval.`
         );
       }
     }
@@ -285,9 +285,21 @@ export default function Page() {
               {/* Token name overlapping at top - with drop shadow */}
               <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 via-black/25 to-transparent px-3 py-2.5">
                 <div className="flex items-center justify-between w-full">
-                  <h3 className="capitalize text-white text-2xl font-bold font-satoshi leading-tight truncate pr-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                    {token?.name}
-                  </h3>
+                  <div className="flex flex-row items-center gap-1">
+                    <h3 className="capitalize text-white text-2xl font-bold font-satoshi leading-tight truncate pr-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                      {token?.name}
+                    </h3>
+                    <Tooltip anchorSelect="#view-on-solscan">
+                      <span>View on Solscan</span>
+                    </Tooltip>
+                    <Link
+                      to={`https://solscan.io/token/${token?.mint}`}
+                      target="_blank"
+                      id="view-on-solscan"
+                    >
+                      <ExternalLink className="size-5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
+                    </Link>
+                  </div>
                   <div className="shrink-0 ml-1">
                     <TokenStatus token={token} />
                   </div>
@@ -306,16 +318,6 @@ export default function Page() {
               <span className="text-autofun-text-secondary text-xs font-normal font-dm-mono leading-tight">
                 {token?.description}
               </span>
-              <div className="flex justify-end">
-                <Link
-                  to={`https://solscan.io/token/${token?.mint}`}
-                  target="_blank"
-                >
-                  <Button size="small" variant="ghost">
-                    View on Solscan <ExternalLink className="size-4 ml-1" />
-                  </Button>
-                </Link>
-              </div>
             </div>
 
             {/* Contract address */}
@@ -515,7 +517,7 @@ export default function Page() {
                   (token?.reserveLamport - token?.virtualReserves) /
                     LAMPORTS_PER_SOL,
                   true,
-                  true,
+                  true
                 )}{" "}
                 SOL in the bonding curve.
               </p>
