@@ -46,7 +46,10 @@ Press the fun button.
 
 5. **Configure webhooks for chain events**
 
-   In order to test webhooks properly in dev, create your own helius account on https://dashboard.helius.dev.
+   By default, we will mock the webhook events using a web socket server in mock-helius-webhook.js. If you want to test with real webhooks in dev, modify the dev script in package.json
+   to call the setup-webhook.js rather than mock-helius-webhook.js. Then:
+
+   Create your own helius account on https://dashboard.helius.dev.
 
    This is so that each developer has a separate web hook and we aren't overwriting each other's webhooks.
 
