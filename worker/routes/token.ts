@@ -1802,7 +1802,6 @@ tokenRouter.post("/create-token", async (c) => {
           image: imageUrl || existingToken[0].image,
           url: metadataUrl || existingToken[0].url,
           lastUpdated: new Date().toISOString(),
-          imported: imported || existingToken[0].imported,
         })
         .where(eq(tokens.mint, tokenMint));
 
@@ -1820,7 +1819,6 @@ tokenRouter.post("/create-token", async (c) => {
         discord: discord || existingToken[0].discord,
         image: imageUrl || existingToken[0].image,
         url: metadataUrl || existingToken[0].url,
-        imported: imported || existingToken[0].imported,
       };
 
       return c.json({
@@ -1855,6 +1853,7 @@ tokenRouter.post("/create-token", async (c) => {
         createdAt: now,
         lastUpdated: now,
         txId: txId || "create-" + tokenId, // Default txId when not provided
+        imported: imported || 0,
       });
 
       // For response, include just what we need
@@ -1873,6 +1872,7 @@ tokenRouter.post("/create-token", async (c) => {
         url: metadataUrl || "",
         image: imageUrl || "",
         createdAt: now,
+        imported: imported || 0,
       };
 
       // Emit WebSocket event
