@@ -33,7 +33,6 @@ const fetchPaginatedData = async <
   endpoint,
   page,
   limit,
-  validationSchema,
   sortBy,
   sortOrder,
   itemsPropertyName,
