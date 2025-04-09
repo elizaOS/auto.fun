@@ -4,6 +4,10 @@ import { abbreviateNumber, fromNow } from "@/utils";
 import { Link } from "react-router";
 
 export default function GridView({ data }: { data: IToken[] }) {
+
+  // this is for testing purpose only, untill we have implemented partner tokens
+  const isFeaturedToken = true;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
       {data?.map((token: IToken, _: number) => (
@@ -34,7 +38,10 @@ export default function GridView({ data }: { data: IToken[] }) {
               {fromNow(token.createdAt, true)}
             </div>
             <div className="w-full h-full aspect-square relative">
-              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/90 to-transparent z-[1]"></div>
+              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/90 to-transparent z-[1]" />
+              {isFeaturedToken ? (
+                <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-autofun-background-action-highlight/20 to-transparent z-[1] p-4 font-bold">Verified token</div>
+              ): null}
               <SkeletonImage
                 src={token.image}
                 alt="image"
