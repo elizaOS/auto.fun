@@ -1854,7 +1854,7 @@ tokenRouter.post("/create-token", async (c) => {
         createdAt: now,
         lastUpdated: now,
         txId: txId || "create-" + tokenId, // Default txId when not provided
-        imported: imported || 0,
+        imported: Number(imported) || 0,
       });
 
       // For response, include just what we need
@@ -1873,7 +1873,7 @@ tokenRouter.post("/create-token", async (c) => {
         url: metadataUrl || "",
         image: imageUrl || "",
         createdAt: now,
-        imported: imported || 0,
+        imported: Number(imported) || 0,
       };
 
       // Emit WebSocket event
