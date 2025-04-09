@@ -147,11 +147,16 @@ export class CacheService {
         now.getTime() + ttlSeconds * 1000,
       ).toISOString();
 
+      // Serialize data with BigInt handling
+      const serializedData = JSON.stringify(data, (_, value) => 
+        typeof value === 'bigint' ? value.toString() : value
+      );
+
       await this.db.insert(cachePrices).values({
         id: crypto.randomUUID(),
         type: "metadata",
         symbol: key,
-        price: JSON.stringify(data),
+        price: serializedData,
         timestamp: now.toISOString(),
         expiresAt,
       });
@@ -184,6 +189,8 @@ export class CacheService {
 
       if (cachedData.length > 0) {
         try {
+          // Parse the data without special handling for now
+          // BigInt values will be returned as strings
           return JSON.parse(cachedData[0].price) as T;
         } catch (parseError) {
           logger.error(`Error parsing cached metadata for ${key}:`, parseError);

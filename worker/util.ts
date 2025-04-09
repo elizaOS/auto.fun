@@ -263,8 +263,6 @@ export async function createNewTokenData(
       lastUpdated: new Date().toISOString(),
     };
 
-    getIoServer(env).to("global").emit("newToken", tokenData);
-
     return tokenData;
   } catch (error) {
     logger.error("Error processing new token log:", error);

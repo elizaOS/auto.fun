@@ -49,145 +49,6 @@ const tokenRouter = new Hono<{
   };
 }>();
 
-// --- STEP 2: Image Upload Endpoint (Simplified) ---
-// Accepts only image data, uploads to R2, returns final imageUrl.
-tokenRouter.post("/upload", async (c) => {
-  logger.log("[/upload - Image Only] Received request");
-  let rawBody: any = {}; // Variable to store parsed body for logging
-  try {
-    // Log raw body *first* before extensive validation
-    try {
-      rawBody = await c.req.json();
-      logger.log(
-        "[/upload - Image Only] Received raw body keys:",
-        Object.keys(rawBody),
-      );
-      // Log image prefix if it exists
-      if (rawBody && typeof rawBody.image === "string") {
-        logger.log(
-          "[/upload - Image Only] Received image prefix:",
-          rawBody.image.substring(0, 30) + "...",
-        );
-        logger.log(
-          "[/upload - Image Only] Image data is string:",
-          typeof rawBody.image === "string",
-        );
-        logger.log(
-          "[/upload - Image Only] Image starts with data:image?",
-          rawBody.image.startsWith("data:image"),
-        );
-      } else {
-        logger.log(
-          "[/upload - Image Only] Received image field type:",
-          typeof rawBody?.image,
-        );
-      }
-    } catch (parseError) {
-      logger.error(
-        "[/upload - Image Only] Failed to parse request body:",
-        parseError,
-      );
-      return c.json({ error: "Invalid JSON body" }, 400); // Return early if parsing fails
-    }
-
-    const user = c.get("user");
-    if (!user || !user.publicKey) {
-      logger.warn("[/upload - Image Only] Authentication required");
-      return c.json({ error: "Authentication required" }, 401);
-    }
-    logger.log(`[/upload - Image Only] Authenticated user: ${user.publicKey}`);
-
-    if (!c.env.R2) {
-      logger.error("[/upload - Image Only] R2 storage is not configured");
-      return c.json({ error: "Image storage is not available" }, 500);
-    }
-
-    // Use the previously parsed body
-    const { image: imageBase64, filename: requestedFilename } = rawBody;
-
-    if (
-      !imageBase64 ||
-      typeof imageBase64 !== "string" ||
-      !imageBase64.startsWith("data:image")
-    ) {
-      logger.error(
-        "[/upload - Image Only] Missing or invalid image data (base64). Value:",
-        imageBase64
-          ? typeof imageBase64 + ": " + imageBase64.substring(0, 30) + "..."
-          : String(imageBase64),
-      );
-      return c.json({ error: "Missing or invalid image data" }, 400);
-    }
-
-    const imageMatch = imageBase64.match(/^data:(image\/[a-z+]+);base64,(.*)$/);
-    if (!imageMatch) {
-      logger.error(
-        "[/upload - Image Only] Invalid image format (regex mismatch)",
-      );
-      logger.error(
-        "[/upload - Image Only] Image prefix:",
-        imageBase64.substring(0, 50),
-      );
-      return c.json({ error: "Invalid image format" }, 400);
-    }
-
-    const contentType = imageMatch[1];
-    const base64Data = imageMatch[2];
-    const imageBuffer = Buffer.from(base64Data, "base64");
-    logger.log(
-      `[/upload - Image Only] Decoded image: type=${contentType}, size=${imageBuffer.length} bytes`,
-    );
-
-    let extension = ".jpg";
-    if (contentType.includes("png")) extension = ".png";
-    else if (contentType.includes("gif")) extension = ".gif";
-    else if (contentType.includes("svg")) extension = ".svg";
-    else if (contentType.includes("webp")) extension = ".webp";
-
-    const imageFilename =
-      requestedFilename && typeof requestedFilename === "string"
-        ? requestedFilename.replace(/[^a-zA-Z0-9._-]/g, "_")
-        : `${crypto.randomUUID()}${extension}`;
-    const imageKey = `token-images/${imageFilename}`;
-    logger.log(`[/upload - Image Only] Determined image R2 key: ${imageKey}`);
-
-    logger.log(
-      `[/upload - Image Only] Attempting to upload image to R2 key: ${imageKey}`,
-    );
-    await c.env.R2.put(imageKey, imageBuffer, {
-      httpMetadata: { contentType, cacheControl: "public, max-age=31536000" },
-    });
-    logger.log(`[/upload - Image Only] Image successfully uploaded to R2.`);
-
-    const imageUrl =
-      (c.env as any).LOCAL_DEV === "true"
-        ? `${c.env.VITE_API_URL}/api/image/${imageFilename}`
-        : `https://pub-75e2227bb40747d9b8b21df85a33efa7.r2.dev/token-images/${imageFilename}`;
-    logger.log(
-      `[/upload - Image Only] Constructed public image URL: ${imageUrl}`,
-    );
-
-    logger.log(
-      "[/upload - Image Only] Request successful. Returning image URL.",
-    );
-    return c.json({
-      success: true,
-      imageUrl,
-    });
-  } catch (error) {
-    logger.error("[/upload - Image Only] Unexpected error:", error);
-    return c.json(
-      {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to process image upload",
-      },
-      500,
-    );
-  }
-});
 
 // --- Endpoint to serve images from R2 (Logging Added) ---
 tokenRouter.get("/image/:filename", async (c) => {
@@ -2047,6 +1908,178 @@ tokenRouter.post("/check-token", async (c) => {
         success: false,
         tokenFound: false,
         error: "Failed to check token",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      500,
+    );
+  }
+});
+
+// Add direct token creation endpoint
+tokenRouter.post("/create-token", async (c) => {
+  console.log("****** create-token ******\n");
+  try {
+    // Require authentication
+    const user = c.get("user");
+    if (!user) {
+      return c.json({ error: "Authentication required" }, 401);
+    }
+
+    const body = await c.req.json();
+    console.log("****** body ******\n", body);
+    const {
+      tokenMint,
+      name,
+      symbol,
+      txId,
+      description,
+      twitter,
+      telegram,
+      website,
+      discord,
+      imageUrl,
+      metadataUrl,
+    } = body;
+
+    if (!tokenMint) {
+      return c.json({ error: "Token mint address is required" }, 400);
+    }
+
+    logger.log(`Creating token record for: ${tokenMint}`);
+
+    const db = getDB(c.env);
+
+    // Check if token already exists
+    const existingToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, tokenMint))
+      .limit(1);
+
+    if (existingToken && existingToken.length > 0) {
+      // Update all fields if token exists
+      await db
+        .update(tokens)
+        .set({
+          name: name || existingToken[0].name,
+          ticker: symbol || existingToken[0].ticker,
+          description: description || existingToken[0].description,
+          twitter: twitter || existingToken[0].twitter,
+          telegram: telegram || existingToken[0].telegram,
+          website: website || existingToken[0].website,
+          discord: discord || existingToken[0].discord,
+          image: imageUrl || existingToken[0].image,
+          url: metadataUrl || existingToken[0].url,
+          lastUpdated: new Date().toISOString(),
+        })
+        .where(eq(tokens.mint, tokenMint));
+
+      logger.log(`Updated token ${tokenMint} with new data`);
+
+      // Return the updated token
+      const updatedToken = {
+        ...existingToken[0],
+        name: name || existingToken[0].name,
+        ticker: symbol || existingToken[0].ticker,
+        description: description || existingToken[0].description,
+        twitter: twitter || existingToken[0].twitter,
+        telegram: telegram || existingToken[0].telegram,
+        website: website || existingToken[0].website,
+        discord: discord || existingToken[0].discord,
+        image: imageUrl || existingToken[0].image,
+        url: metadataUrl || existingToken[0].url,
+      };
+
+      return c.json({
+        success: true,
+        tokenFound: true,
+        message: "Token exists and data updated",
+        token: updatedToken,
+      });
+    }
+
+    try {
+      // Create token data with all required fields from the token schema
+      const now = new Date().toISOString();
+      const tokenId = crypto.randomUUID();
+
+      // Insert with all required fields from the schema
+      await db.insert(tokens).values({
+        id: tokenId,
+        mint: tokenMint,
+        name: name || `Token ${tokenMint.slice(0, 8)}`,
+        ticker: symbol || "TOKEN",
+        url: metadataUrl || "", // Use metadataUrl if provided
+        image: imageUrl || "", // Use imageUrl if provided
+        description: description || "",
+        twitter: twitter || "",
+        telegram: telegram || "",
+        website: website || "",
+        discord: discord || "",
+        creator: user.publicKey || "unknown",
+        status: "active",
+        tokenPriceUSD: 0,
+        createdAt: now,
+        lastUpdated: now,
+        txId: txId || "create-" + tokenId, // Default txId when not provided
+      });
+
+      // For response, include just what we need
+      const tokenData = {
+        id: tokenId,
+        mint: tokenMint,
+        name: name || `Token ${tokenMint.slice(0, 8)}`,
+        ticker: symbol || "TOKEN",
+        description: description || "",
+        twitter: twitter || "",
+        telegram: telegram || "",
+        website: website || "",
+        discord: discord || "",
+        creator: user.publicKey || "unknown",
+        status: "active",
+        url: metadataUrl || "",
+        image: imageUrl || "",
+        createdAt: now,
+      };
+
+      // Emit WebSocket event
+      try {
+        const wsClient = getWebSocketClient(c.env);
+        await wsClient.emit("global", "newToken", {
+          ...tokenData,
+          timestamp: new Date(),
+        });
+        logger.log(`WebSocket event emitted for token ${tokenMint}`);
+      } catch (wsError) {
+        // Don't fail if WebSocket fails
+        logger.error(`WebSocket error: ${wsError}`);
+      }
+
+      return c.json({
+        success: true,
+        token: tokenData,
+        message: "Token created successfully",
+      });
+    } catch (dbError) {
+      logger.error(`Database error creating token: ${dbError}`);
+      return c.json(
+        {
+          success: false,
+          error: "Failed to create token in database",
+          details:
+            dbError instanceof Error
+              ? dbError.message
+              : "Unknown database error",
+        },
+        500,
+      );
+    }
+  } catch (error) {
+    logger.error("Error creating token:", error);
+    return c.json(
+      {
+        success: false,
+        error: "Failed to create token",
         details: error instanceof Error ? error.message : "Unknown error",
       },
       500,

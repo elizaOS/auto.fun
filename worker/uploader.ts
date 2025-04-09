@@ -65,54 +65,6 @@ export async function uploadToCloudflare(
     typeof process !== "undefined" && process.env.NODE_ENV === "development";
 
   try {
-    // For development and testing, use a local URL when R2 is available via Miniflare
-    if (isLocalDev) {
-      // We're in local development mode with Miniflare
-      const localDevBaseUrl = "http://localhost:8787/api/image";
-
-      // Prepare data for upload
-      let objectData: ArrayBuffer;
-      if (options.isJson) {
-        // Convert JSON to ArrayBuffer for storage
-        const jsonString = JSON.stringify(data);
-        objectData = new TextEncoder().encode(jsonString).buffer as ArrayBuffer;
-      } else if (data instanceof ArrayBuffer) {
-        // Use data directly if it's already an ArrayBuffer
-        objectData = data;
-      } else if (
-        data instanceof Uint8Array ||
-        data instanceof Uint8ClampedArray
-      ) {
-        // Handle typed arrays
-        objectData = data.buffer as ArrayBuffer;
-      } else {
-        // Fallback for other object types
-        const jsonString = JSON.stringify(data);
-        objectData = new TextEncoder().encode(jsonString).buffer as ArrayBuffer;
-      }
-
-      // Upload to the local R2 store
-      if (env.R2) {
-        await env.R2.put(objectKey, objectData, {
-          httpMetadata: { contentType },
-          customMetadata: {
-            publicAccess: "true",
-            originalFilename: options.filename || "",
-            localDev: "true",
-          },
-        });
-      }
-
-      // Generate local dev URL that uses our image endpoint
-      const localUrl = `${localDevBaseUrl}/${objectKey}`;
-      logger.log(`Successfully uploaded to local R2 (Miniflare): ${localUrl}`);
-
-      // Log the file URL for debugging
-      logUploadedFile(env, objectKey, localUrl);
-
-      return localUrl;
-    }
-
     // Prepare data for upload
     let objectData: ArrayBuffer;
     if (options.isJson) {
@@ -137,6 +89,8 @@ export async function uploadToCloudflare(
     try {
       // Create R2 upload and timeout promises
       const uploadPromise = new Promise<void>((resolve, reject) => {
+        const objectPath = options.isJson ? 'token-metadata' : 'token-images'
+
         // Check if R2 is available
         if (!env.R2) {
           reject(new Error("R2 is not available"));
@@ -144,42 +98,33 @@ export async function uploadToCloudflare(
         }
 
         // Perform the upload
-        env.R2.put(objectKey, objectData, {
+        env.R2.put(objectPath + '/' + objectKey, objectData, {
           httpMetadata: { contentType },
           customMetadata: {
             publicAccess: "true",
             originalFilename: options.filename || "",
           },
         })
-          .then(() => resolve())
-          .catch((e) => reject(e));
+          .then(() => {
+            resolve();
+          })
+          .catch((e) => {
+            reject(e);
+          });
       });
 
       const timeoutPromise = new Promise<void>((_, reject) => {
-        setTimeout(() => reject(new Error("Upload timed out")), timeout);
+        setTimeout(() => {
+          reject(new Error("Upload timed out"));
+        }, timeout);
       });
 
       // Race the promises to implement timeout
       await Promise.race([uploadPromise, timeoutPromise]);
 
-      // Format the public URL correctly - make sure R2_PUBLIC_URL is properly set
-      // e.g., 'https://pub-XXXX.r2.dev' or your custom domain
-      let baseUrl = env.R2_PUBLIC_URL;
-
-      // Ensure baseUrl doesn't have a trailing slash
-      if (baseUrl && baseUrl.endsWith("/")) {
-        baseUrl = baseUrl.slice(0, -1);
-      }
-
-      if (!baseUrl) {
-        logger.warn(
-          "R2_PUBLIC_URL environment variable is not set. Using default URL format.",
-        );
-        baseUrl = "https://example.r2.dev"; // This won't work, proper config needed
-      }
-
+      const apiPath = options.isJson ? 'metadata' : 'image';
       // Ensure proper path formatting - don't URL encode here as R2 handles this
-      const publicUrl = `${baseUrl}/${objectKey}`;
+      const publicUrl = `${env.VITE_API_URL}/api/${apiPath}/${objectKey}`;
 
       // Log file in development mode
       logUploadedFile(env, objectKey, publicUrl);
@@ -192,7 +137,7 @@ export async function uploadToCloudflare(
 
       // Return a fallback URL
       const fallbackUrl = `${env.R2_PUBLIC_URL || "https://fallback-storage.example.com"}/${objectKey}`;
-      logger.log(`Using fallback URL: ${fallbackUrl}`);
+      logger.log("Using fallback URL:", fallbackUrl);
 
       // Still log the fallback URL
       logUploadedFile(env, objectKey, fallbackUrl);
@@ -209,7 +154,7 @@ export async function uploadToCloudflare(
 
     // Return a fallback URL
     const fallbackUrl = `${env.R2_PUBLIC_URL || "https://fallback-storage.example.com"}/${objectKey}`;
-    logger.log(`Using fallback URL: ${fallbackUrl}`);
+    logger.log("Using fallback URL from catch block:", fallbackUrl);
 
     // Log even fallback URLs from errors
     logUploadedFile(env, objectKey, fallbackUrl);
