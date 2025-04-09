@@ -53,12 +53,11 @@ export default function GridView({ data }: { data: IToken[] }) {
                         className="flex items-center gap-2 cursor-pointer"
                       >
                         <Verified />
-                        <span>Verified</span>
                       </div>
 
                       <Tooltip
                         anchorSelect="#partner-token"
-                        content="This token is verified by the Auto.Fun team"
+                        content="Verified by Auto.fun"
                         place="top-start"
                         noArrow
                       />
