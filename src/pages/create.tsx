@@ -689,15 +689,15 @@ const uploadImage = async (metadata: TokenMetadata) => {
 };
 
 const waitForTokenCreation = async (mint: string, timeout = 80_000) => {
-  console.log('waiting for creation from token mint:', mint);
+  console.log("waiting for creation from token mint:", mint);
 
   return new Promise<void>((resolve, reject) => {
     const socket = getSocket();
 
     const newTokenListener = (token: unknown) => {
-      console.log('got new token:', JSON.stringify(token))
+      console.log("got new token:", JSON.stringify(token));
       const { mint: newMint } = HomepageTokenSchema.parse(token);
-      console.log('new token successfully parsed')
+      console.log("new token successfully parsed");
       if (newMint === mint) {
         clearTimeout(timerId);
         socket.off("newToken", newTokenListener);
@@ -1172,7 +1172,9 @@ export const Create = () => {
 
       // Ensure we have a valid metadata URL
       if (!metadataUrl || metadataUrl === "undefined" || metadataUrl === "") {
-        console.warn("No metadata URL provided, generating minimal metadata...");
+        console.warn(
+          "No metadata URL provided, generating minimal metadata...",
+        );
 
         // Create minimal metadata and upload it
         const minimalMetadata = {
@@ -1220,7 +1222,10 @@ export const Create = () => {
 
       // Return the mint address as transaction ID
       const txId = mintKeypair.publicKey.toString();
-      console.log("Token created on-chain successfully with mint address:", txId);
+      console.log(
+        "Token created on-chain successfully with mint address:",
+        txId,
+      );
       return txId;
     } catch (error) {
       console.error("Error creating token on-chain:", error);
@@ -2570,8 +2575,8 @@ export const Create = () => {
   return (
     <div className="flex flex-col items-center justify-center">
       {showCoinDrop && (
-        <CoinDrop 
-          imageUrl={coinDropImageUrl || undefined} 
+        <CoinDrop
+          imageUrl={coinDropImageUrl || undefined}
           onCancel={handleCoinDropCancel}
         />
       )}
