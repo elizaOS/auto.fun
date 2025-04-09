@@ -1,5 +1,5 @@
 import * as CANNON from "cannon-es";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import * as THREE from "three";
 import { InstancedMesh } from "three";
 // @ts-ignore
@@ -39,6 +39,7 @@ declare global {
     pauseCoins?: () => void;
     resumeCoins?: () => void;
     createConfettiFireworks?: () => void;
+    flushCoins?: () => void;
   }
 }
 
@@ -49,6 +50,7 @@ const WALL_MATERIAL = "wall";
 
 interface CoinDropProps {
   imageUrl?: string;
+  onCancel?: () => void;
 }
 
 // Create fireworks-like confetti effect
@@ -165,29 +167,124 @@ const createConfettiFireworks = () => {
 // Expose the function globally
 window.createConfettiFireworks = createConfettiFireworks;
 
-const CoinDrop = ({ imageUrl }: CoinDropProps) => {
+const CoinDrop = ({ imageUrl, onCancel }: CoinDropProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
-  // Track how many coins have been dropped
   const coinCountRef = useRef<number>(0);
-  // Max number of coins to generate - increased to 10,000
   const MAX_COINS = 100;
-  // Reference to store instance matrices for updating
   const coinInstanceRef = useRef<InstancedMesh | null>(null);
-  // Reference to store coin bodies
   const coinBodiesRef = useRef<CANNON.Body[]>([]);
-  // Track if coins are being created
   const isCreatingCoinsRef = useRef<boolean>(false);
-  // Track if physics is paused
   const isPausedRef = useRef<boolean>(false);
-  // For coin dropping over time
   const coinCreationIntervalRef = useRef<number | null>(null);
-  // Use refs for dimensions that need to be updated on resize
   const boxWidthRef = useRef<number>(0);
   const boxDepthRef = useRef<number>(0);
   const boxHeightRef = useRef<number>(0);
   const coinRadiusRef = useRef<number>(0);
   const coinThicknessRef = useRef<number>(0);
+  const floorBodyRef = useRef<CANNON.Body | null>(null);
+  const floorMeshRef = useRef<THREE.Mesh | null>(null);
+  const isFlushingRef = useRef<boolean>(false);
+  const wallBodiesRef = useRef<CANNON.Body[]>([]);
+
+  // Add new function to handle cancellation animation
+  const flushCoins = useCallback(() => {
+    if (isFlushingRef.current) return;
+    isFlushingRef.current = true;
+
+    // Stop any ongoing coin creation
+    if (coinCreationIntervalRef.current !== null) {
+      clearInterval(coinCreationIntervalRef.current);
+      coinCreationIntervalRef.current = null;
+      isCreatingCoinsRef.current = false;
+    }
+
+    // Store the world reference
+    const world = coinBodiesRef.current[0]?.world;
+    if (!world) return;
+
+    // Temporarily remove walls from physics world
+    wallBodiesRef.current.forEach(wall => {
+      world.removeBody(wall);
+    });
+
+    // Temporarily disable gravity and collisions
+    const originalGravity = world.gravity.clone();
+    world.gravity.set(0, 0, 0);
+
+    // Apply initial velocities with a natural curve
+    coinBodiesRef.current.forEach((coinBody) => {
+      // Disable collision response to prevent coins from getting stuck
+      coinBody.collisionResponse = false;
+      
+      // Keep the current angular velocity for spinning
+      const currentAngularVel = coinBody.angularVelocity.clone();
+      
+      // Calculate initial position-based velocities for a natural curve
+      const x = coinBody.position.x;
+      const y = coinBody.position.y;
+      const z = coinBody.position.z;
+      
+      // Base velocity components - increased values
+      const baseSpeed = 8000; // Doubled from 4000
+      const horizontalScatter = 1600; // Doubled from 800
+      
+      // Calculate initial velocities with a natural curve
+      // More horizontal movement for coins higher up
+      const horizontalFactor = Math.max(0, (y / boxHeightRef.current) * 4); // Increased from 3
+      const forwardFactor = Math.max(0, (y / boxHeightRef.current) * 3); // Increased from 2
+      
+      // Set initial velocity with natural curve
+      coinBody.velocity.set(
+        (Math.random() - 0.5) * horizontalScatter * horizontalFactor,  // Horizontal scatter
+        -baseSpeed * (1 + Math.random() * 0.5),  // Strong downward movement with variation
+        baseSpeed * forwardFactor  // Forward movement based on height
+      );
+
+      // Apply an additional downward force to ensure coins keep moving
+      coinBody.applyImpulse(
+        new CANNON.Vec3(0, -baseSpeed * 1.2, 0),  // Increased from 0.8
+        new CANNON.Vec3(0, 0, 0)  // Apply at center of mass
+      );
+
+      // Restore the angular velocity to maintain spin
+      coinBody.angularVelocity.copy(currentAngularVel);
+    });
+
+    // Gradually increase gravity over time for a natural acceleration
+    let gravityStep = 0;
+    const gravityInterval = setInterval(() => {
+      gravityStep += 0.2; // Increased from 0.1 for faster gravity restoration
+      if (gravityStep >= 1) {
+        clearInterval(gravityInterval);
+        world.gravity.copy(originalGravity);
+      } else {
+        world.gravity.set(
+          0,
+          originalGravity.y * gravityStep,
+          0
+        );
+      }
+    }, 30); // Reduced from 50ms for more frequent updates
+
+    // Restore walls and call onCancel after the animation is complete (2.5 seconds)
+    setTimeout(() => {
+      wallBodiesRef.current.forEach(wall => {
+        world.addBody(wall);
+      });
+      coinCountRef.current = 0; // Reset coin count to allow restart
+      if (onCancel) onCancel();
+    }, 2500);
+  }, [onCancel]);
+
+  // Expose the flush function globally
+  useEffect(() => {
+    const globalWindow = window as any;
+    globalWindow.flushCoins = flushCoins;
+    return () => {
+      delete globalWindow.flushCoins;
+    };
+  }, [flushCoins]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -310,7 +407,8 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
     const floor = new THREE.Mesh(floorGeometry, floorMeshMaterial);
     floor.position.y = -0.5;
     floor.receiveShadow = true;
-    // scene.add(floor);
+    floorMeshRef.current = floor;
+    scene.add(floor);
 
     // Floor physics body
     const floorBody = new CANNON.Body({
@@ -321,6 +419,7 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
       material: floorMaterial,
     });
     floorBody.position.set(0, -0.5, 0);
+    floorBodyRef.current = floorBody;
     world.addBody(floorBody);
 
     // Walls - invisible, match window edges exactly
@@ -359,6 +458,7 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
       -boxDepthRef.current / 2,
     );
     world.addBody(backWallBody);
+    wallBodiesRef.current.push(backWallBody);
 
     // Front wall (bottom of screen)
     const frontWall = new THREE.Mesh(backWallGeometry, wallMeshMaterial);
@@ -383,6 +483,7 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
       boxDepthRef.current / 2,
     );
     world.addBody(frontWallBody);
+    wallBodiesRef.current.push(frontWallBody);
 
     // Left wall
     const sideWallGeometry = new THREE.BoxGeometry(
@@ -412,6 +513,7 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
       0,
     );
     world.addBody(leftWallBody);
+    wallBodiesRef.current.push(leftWallBody);
 
     // Right wall
     const rightWall = new THREE.Mesh(sideWallGeometry, wallMeshMaterial);
@@ -436,6 +538,7 @@ const CoinDrop = ({ imageUrl }: CoinDropProps) => {
       0,
     );
     world.addBody(rightWallBody);
+    wallBodiesRef.current.push(rightWallBody);
 
     // Load textures for coins
     const textureLoader = new THREE.TextureLoader();
