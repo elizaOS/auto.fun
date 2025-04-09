@@ -1869,7 +1869,7 @@ export const Create = () => {
             // Extract the filename from the R2 URL
             const filename = imageUrl.split("/").pop();
             // Use local endpoint instead
-            imageUrl = `${env.apiUrl}/api/image/${filename}`;
+            imageUrl = `${env.apiUrl}/api/file/${filename}`;
           }
 
           const imageBlob = await fetch(imageUrl).then((r) => r.blob());
@@ -2516,7 +2516,7 @@ export const Create = () => {
               // Extract the filename from the R2 URL
               const filename = imageUrl.split("/").pop();
               // Use local endpoint instead
-              imageUrl = `${env.apiUrl}/api/image/${filename}`;
+              imageUrl = `${env.apiUrl}/api/file/${filename}`;
             }
 
             const imageBlob = await fetch(imageUrl).then((r) => r.blob());

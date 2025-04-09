@@ -793,7 +793,7 @@ export async function updateHoldersCache(
   }
 }
 
-tokenRouter.get("/image/:filename", async (c) => {
+tokenRouter.get("/file/:filename", async (c) => {
   const filename = c.req.param("filename");
   logger.log(`[/image/:filename] Request received for filename: ${filename}`);
   try {
@@ -2020,9 +2020,9 @@ tokenRouter.post("/token/:mint/update", async (c) => {
           if (parts.length > 1) {
             metadataKey = parts[1].split("?")[0]; // Remove any query params
           }
-        } else if (tokenData[0].url.includes("/api/image/")) {
+        } else if (tokenData[0].url.includes("/api/file/")) {
           // Extract from API URL
-          const parts = tokenData[0].url.split("/api/image/");
+          const parts = tokenData[0].url.split("/api/file/");
           if (parts.length > 1) {
             metadataKey = `token-metadata/${parts[1].split("?")[0]}`; // Remove any query params and add folder
           }

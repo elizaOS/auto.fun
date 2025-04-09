@@ -227,7 +227,7 @@ api.post("/upload", async (c) => {
 
     const imageUrl =
       (c.env as any).LOCAL_DEV === "true"
-        ? `${c.env.VITE_API_URL}/api/image/${filename}`
+        ? `${c.env.VITE_API_URL}/api/file/${filename}`
         : `https://pub-75e2227bb40747d9b8b21df85a33efa7.r2.dev/token-images/${filename}`;
     logger.log(`[/upload] Constructed public image URL: ${imageUrl}`);
 
@@ -258,7 +258,7 @@ api.post("/upload", async (c) => {
 
     metadataUrl =
       (c.env as any).LOCAL_DEV === "true"
-        ? `${c.env.VITE_API_URL}/api/image/${metadataFilename}`
+        ? `${c.env.VITE_API_URL}/api/file/${metadataFilename}`
         : `https://pub-75e2227bb40747d9b8b21df85a33efa7.r2.dev/token-metadata/${metadataFilename}`;
 
     logger.log(`[/upload] Metadata uploaded, URL: ${metadataUrl}`);
@@ -366,8 +366,8 @@ api.notFound((c) => {
 app.route("/api", api);
 
 // --- Add Explicit Image Route to Main App ---
-api.get("/image/:key", async (c) => {
-  // This logic is identical to api.get("/image/:key")
+api.get("/file/:key", async (c) => {
+  // This logic is identical to api.get("/file/:key")
   // We add it here to ensure it overrides any implicit/incorrect handling
   try {
     const key = c.req.param("key");
@@ -411,10 +411,10 @@ api.get("/image/:key", async (c) => {
 
           let extractedKey: string | null = null;
           if (
-            imageUrl.includes("/api/image/") ||
-            imageUrl.includes("/image/")
+            imageUrl.includes("/api/file/") ||
+            imageUrl.includes("/file/")
           ) {
-            // Check both /api/image/ and /image/
+            // Check both /api/file/ and /image/
             extractedKey = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
           } else if (imageUrl.includes("r2.dev/")) {
             const pathMatch = imageUrl.match(/r2\.dev\/(.*?)(?:\?|$)/);
