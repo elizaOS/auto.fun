@@ -74,8 +74,29 @@ describe("TokenMigrator Integration Tests", () => {
       VANITY_GENERATION_ADDRESS: process.env.VANITY_GENERATION_ADDRESS,
       ADMIN_ADDRESSES: process.env.ADMIN_ADDRESSES,
       MANAGER_MULTISIG_ADDRESS: process.env.MANAGER_MULTISIG_ADDRESS || "",
+      LOCAL_DEV: process.env.LOCAL_DEV || "false",
     };
+    // check for required env variables
 
+    if (!env.DB) {
+      throw new Error("DB is not defined in environment variables.");
+    }
+    if (!env.RPC_URL) {
+      throw new Error("RPC_URL is not defined in environment variables.");
+    }
+    if (!env.WALLET_PRIVATE_KEY) {
+      throw new Error(
+        "WALLET_PRIVATE_KEY is not defined in environment variables."
+      );
+    }
+    if (!env.TEST_MINT) {
+      throw new Error("TEST_MINT is not defined in environment variables.");
+    }
+    if (!env.MANAGER_MULTISIG_ADDRESS) {
+      throw new Error(
+        "MANAGER_MULTISIG_ADDRESS is not defined in environment variables."
+      );
+    }
     // Create a Solana connection
     connection = new Connection(env.RPC_URL);
 
@@ -122,16 +143,20 @@ describe("TokenMigrator Integration Tests", () => {
     // Call the migration process.
     await tokenMigrator.migrateToken(token);
 
-    // After migration, we expect:
-    expect(token.status).toBe("locked");
-    expect(token.lockedAmount).toBeDefined();
-    expect(token.migration?.withdraw?.status).toBe("success");
-    expect(token.migration?.createPool?.status).toBe("success");
-    expect(token.migration?.lockLP?.status).toBe("success");
-    expect(token.migration?.sendNft?.status).toBe("success");
-    expect(token.migration?.depositNft?.status).toBe("success");
-    expect(token.migration?.lastStep).toBe("finalize");
-    expect(token.lockId).toBeDefined();
-    expect(token.nftMinted).toBeDefined();
+    // After migration, re-fetch the token from the DB.
+    const updatedToken = await getToken(env, testTokenMint);
+    expect(updatedToken).not.toBeNull();
+    if (updatedToken) {
+      expect(updatedToken.status).toBe("locked");
+      expect(updatedToken.lockedAmount).toBeDefined();
+      expect(updatedToken.migration?.withdraw?.status).toBe("success");
+      expect(updatedToken.migration?.createPool?.status).toBe("success");
+      expect(updatedToken.migration?.lockLP?.status).toBe("success");
+      expect(updatedToken.migration?.sendNft?.status).toBe("success");
+      expect(updatedToken.migration?.depositNft?.status).toBe("success");
+      expect(updatedToken.migration?.lastStep).toBe("finalize");
+      expect(updatedToken.lockId).toBeDefined();
+      expect(updatedToken.nftMinted).toBeDefined();
+    }
   });
 });

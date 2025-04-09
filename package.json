@@ -23,6 +23,7 @@
     "deploy:pages": "bun run build && wrangler pages deploy dist",
     "test": "vitest run worker/tests",
     "test:worker": "vitest run worker/tests",
+    "test:migration": "vitest run worker/raydium/tests/migration.test.ts",
     "test:routes": "vitest run worker/tests/routes",
     "test:routes:debug": "DEBUG=true vitest run worker/tests/routes",
     "test:auth": "vitest run worker/tests/unit/auth.test.ts",
