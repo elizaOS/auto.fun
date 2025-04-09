@@ -35,7 +35,7 @@ export default function TransactionsAndHolders({ token }: { token: IToken }) {
       document.dispatchEvent(
         new CustomEvent("refresh-chart-data", {
           detail: { tokenMint: token.mint },
-        }),
+        })
       );
 
       // Force immediate refetch
@@ -77,20 +77,6 @@ export default function TransactionsAndHolders({ token }: { token: IToken }) {
             Holders
           </Button>
         </div>
-        <Button
-          size="small"
-          variant="ghost"
-          className="p-0"
-          onClick={refreshData}
-          disabled={isRefreshing}
-        >
-          {isRefreshing ? (
-            <Loader2 className="size-4 animate-spin mr-1" />
-          ) : (
-            <RefreshCw className="size-4 mr-1" />
-          )}
-          Refresh Data
-        </Button>
       </div>
       {mode === "transactions" ? (
         <SwapsTable token={token} />
