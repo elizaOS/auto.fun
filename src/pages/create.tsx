@@ -1157,51 +1157,45 @@ export const Create = () => {
 
   // Create token on-chain
   const createTokenOnChain = async (
-    _tokenMetadata: TokenMetadata,
+    tokenMetadata: TokenMetadata,
     mintKeypair: Keypair,
-    _metadataUrl: string,
+    metadataUrl: string,
   ) => {
-    if (!signTransaction) {
-      throw new Error("Wallet doesn't support signing");
-    }
-
-    if (!publicKey) {
-      throw new Error("Wallet not connected");
-    }
-
     try {
+      if (!publicKey) {
+        throw new Error("Wallet not connected");
+      }
+
+      if (!signTransaction) {
+        throw new Error("Wallet doesn't support signing");
+      }
+
       // Ensure we have a valid metadata URL
-      if (
-        !_metadataUrl ||
-        _metadataUrl === "undefined" ||
-        _metadataUrl === ""
-      ) {
-        console.warn(
-          "No metadata URL provided, generating minimal metadata...",
-        );
+      if (!metadataUrl || metadataUrl === "undefined" || metadataUrl === "") {
+        console.warn("No metadata URL provided, generating minimal metadata...");
 
         // Create minimal metadata and upload it
         const minimalMetadata = {
-          name: _tokenMetadata.name,
-          symbol: _tokenMetadata.symbol,
-          description: _tokenMetadata.description || "",
-          image: _tokenMetadata.imageBase64 ? "pending" : "",
-          external_url: _tokenMetadata.links.website || "",
+          name: tokenMetadata.name,
+          symbol: tokenMetadata.symbol,
+          description: tokenMetadata.description || "",
+          image: tokenMetadata.imageBase64 ? "pending" : "",
+          external_url: tokenMetadata.links.website || "",
         };
 
         console.log("Generated minimal metadata:", minimalMetadata);
 
         // Upload minimal metadata
-        const uploadResult = await uploadImage(_tokenMetadata);
-        _metadataUrl = uploadResult.metadataUrl;
+        const uploadResult = await uploadImage(tokenMetadata);
+        metadataUrl = uploadResult.metadataUrl;
 
-        console.log("Uploaded minimal metadata, URL:", _metadataUrl);
+        console.log("Uploaded minimal metadata, URL:", metadataUrl);
       }
 
       console.log("Creating token on-chain with parameters:", {
-        name: _tokenMetadata.name,
-        symbol: _tokenMetadata.symbol,
-        metadataUrl: _metadataUrl,
+        name: tokenMetadata.name,
+        symbol: tokenMetadata.symbol,
+        metadataUrl: metadataUrl,
         mintKeypair: {
           publicKey: mintKeypair.publicKey.toString(),
           secretKeyLength: mintKeypair.secretKey.length,
@@ -1209,18 +1203,24 @@ export const Create = () => {
       });
 
       // Use the useCreateToken hook to create the token on-chain
-      await createTokenOnChainAsync({
-        tokenMetadata: _tokenMetadata,
-        metadataUrl: _metadataUrl,
+      const tx = await createTokenOnChainAsync({
+        tokenMetadata,
+        metadataUrl,
         mintKeypair,
       });
 
+      // Handle transaction cancellation
+      if (!tx) {
+        // Trigger the flush animation
+        if (window.flushCoins) {
+          window.flushCoins();
+        }
+        return;
+      }
+
       // Return the mint address as transaction ID
       const txId = mintKeypair.publicKey.toString();
-      console.log(
-        "Token created on-chain successfully with mint address:",
-        txId,
-      );
+      console.log("Token created on-chain successfully with mint address:", txId);
       return txId;
     } catch (error) {
       console.error("Error creating token on-chain:", error);
@@ -1241,15 +1241,25 @@ export const Create = () => {
 
         // Try to log relevant parameters
         console.log("Debug information:");
-        console.log("- Token name:", _tokenMetadata.name);
-        console.log("- Token symbol:", _tokenMetadata.symbol);
-        console.log("- Metadata URL:", _metadataUrl);
-        console.log("- Decimals:", _tokenMetadata.decimals);
+        console.log("- Token name:", tokenMetadata.name);
+        console.log("- Token symbol:", tokenMetadata.symbol);
+        console.log("- Metadata URL:", metadataUrl);
+        console.log("- Decimals:", tokenMetadata.decimals);
         console.log("- Mint public key:", mintKeypair.publicKey.toString());
+
+        // Trigger the flush animation on error
+        if (window.flushCoins) {
+          window.flushCoins();
+        }
 
         throw new Error(
           "Failed to create token: instruction format mismatch with on-chain program. Please try again or contact support.",
         );
+      }
+
+      // Trigger the flush animation on error
+      if (window.flushCoins) {
+        window.flushCoins();
       }
 
       throw new Error("Failed to create token on-chain");
@@ -2551,9 +2561,20 @@ export const Create = () => {
     return hasEnoughSol && !Object.values(errors).some((error) => error);
   };
 
+  // Add handler for coin drop cancellation
+  const handleCoinDropCancel = useCallback(() => {
+    setShowCoinDrop(false);
+    setIsSubmitting(false);
+  }, []);
+
   return (
     <div className="flex flex-col items-center justify-center">
-      {showCoinDrop && <CoinDrop imageUrl={coinDropImageUrl || undefined} />}
+      {showCoinDrop && (
+        <CoinDrop 
+          imageUrl={coinDropImageUrl || undefined} 
+          onCancel={handleCoinDropCancel}
+        />
+      )}
 
       <form
         className="py-4 px-auto w-full max-w-2xl flex font-dm-mono flex-col m-auto gap-1 justify-center"
