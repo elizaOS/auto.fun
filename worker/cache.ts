@@ -148,8 +148,8 @@ export class CacheService {
       ).toISOString();
 
       // Serialize data with BigInt handling
-      const serializedData = JSON.stringify(data, (_, value) => 
-        typeof value === 'bigint' ? value.toString() : value
+      const serializedData = JSON.stringify(data, (_, value) =>
+        typeof value === "bigint" ? value.toString() : value,
       );
 
       await this.db.insert(cachePrices).values({

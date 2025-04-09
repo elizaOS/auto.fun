@@ -197,7 +197,7 @@ api.post("/upload", async (c) => {
         {
           isJson: true,
           filename: metadataFilename,
-        }
+        },
       );
       logger.log(`Metadata uploaded successfully: ${metadataUrl}`);
     }

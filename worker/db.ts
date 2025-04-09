@@ -55,6 +55,7 @@ export const tokens = sqliteTable("tokens", {
   withdrawnAmounts: text("withdrawn_amounts", { mode: "text" }), // Expected to store { withdrawnSol, withdrawnTokens }
   poolInfo: text("pool_info", { mode: "text" }), // Expected to store pool details (id, lpMint, baseVault, quoteVault)
   lockLpTxId: text("lock_lp_tx_id", { mode: "text" }),
+  imported: integer("imported").default(0),
 });
 
 // Swap schema

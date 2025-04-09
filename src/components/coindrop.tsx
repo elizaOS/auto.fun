@@ -204,7 +204,7 @@ const CoinDrop = ({ imageUrl, onCancel }: CoinDropProps) => {
     if (!world) return;
 
     // Temporarily remove walls from physics world
-    wallBodiesRef.current.forEach(wall => {
+    wallBodiesRef.current.forEach((wall) => {
       world.removeBody(wall);
     });
 
@@ -216,35 +216,35 @@ const CoinDrop = ({ imageUrl, onCancel }: CoinDropProps) => {
     coinBodiesRef.current.forEach((coinBody) => {
       // Disable collision response to prevent coins from getting stuck
       coinBody.collisionResponse = false;
-      
+
       // Keep the current angular velocity for spinning
       const currentAngularVel = coinBody.angularVelocity.clone();
-      
+
       // Calculate initial position-based velocities for a natural curve
       const x = coinBody.position.x;
       const y = coinBody.position.y;
       const z = coinBody.position.z;
-      
+
       // Base velocity components - increased values
       const baseSpeed = 8000; // Doubled from 4000
       const horizontalScatter = 1600; // Doubled from 800
-      
+
       // Calculate initial velocities with a natural curve
       // More horizontal movement for coins higher up
       const horizontalFactor = Math.max(0, (y / boxHeightRef.current) * 4); // Increased from 3
       const forwardFactor = Math.max(0, (y / boxHeightRef.current) * 3); // Increased from 2
-      
+
       // Set initial velocity with natural curve
       coinBody.velocity.set(
-        (Math.random() - 0.5) * horizontalScatter * horizontalFactor,  // Horizontal scatter
-        -baseSpeed * (1 + Math.random() * 0.5),  // Strong downward movement with variation
-        baseSpeed * forwardFactor  // Forward movement based on height
+        (Math.random() - 0.5) * horizontalScatter * horizontalFactor, // Horizontal scatter
+        -baseSpeed * (1 + Math.random() * 0.5), // Strong downward movement with variation
+        baseSpeed * forwardFactor, // Forward movement based on height
       );
 
       // Apply an additional downward force to ensure coins keep moving
       coinBody.applyImpulse(
-        new CANNON.Vec3(0, -baseSpeed * 1.2, 0),  // Increased from 0.8
-        new CANNON.Vec3(0, 0, 0)  // Apply at center of mass
+        new CANNON.Vec3(0, -baseSpeed * 1.2, 0), // Increased from 0.8
+        new CANNON.Vec3(0, 0, 0), // Apply at center of mass
       );
 
       // Restore the angular velocity to maintain spin
@@ -259,17 +259,13 @@ const CoinDrop = ({ imageUrl, onCancel }: CoinDropProps) => {
         clearInterval(gravityInterval);
         world.gravity.copy(originalGravity);
       } else {
-        world.gravity.set(
-          0,
-          originalGravity.y * gravityStep,
-          0
-        );
+        world.gravity.set(0, originalGravity.y * gravityStep, 0);
       }
     }, 30); // Reduced from 50ms for more frequent updates
 
     // Restore walls and call onCancel after the animation is complete (2.5 seconds)
     setTimeout(() => {
-      wallBodiesRef.current.forEach(wall => {
+      wallBodiesRef.current.forEach((wall) => {
         world.addBody(wall);
       });
       coinCountRef.current = 0; // Reset coin count to allow restart

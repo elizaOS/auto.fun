@@ -500,23 +500,24 @@ export default function Page() {
           <Trade token={token} />
 
           {/* Bonding Curve */}
-          <div className="flex flex-col gap-3.5">
-            <div className="flex justify-between gap-3.5 items-center">
-              <p className="font-medium font-satoshi">Progress</p>
-              <Tooltip anchorSelect="#tooltip">
-                <span>
-                  When the market cap reaches the graduation threshold, the
-                  coin's liquidity will transition to Raydium.
-                </span>
-              </Tooltip>
-              <InfoCircle
-                className="size-5 text-autofun-text-secondary"
-                id="tooltip"
-              />
-            </div>
-            <div>
-              <BondingCurveBar progress={token?.curveProgress} />
-            </div>
+          {token?.imported === 0 && (
+            <div className="flex flex-col gap-3.5">
+              <div className="flex justify-between gap-3.5 items-center">
+                <p className="font-medium font-satoshi">Progress</p>
+                <Tooltip anchorSelect="#tooltip">
+                  <span>
+                    When the market cap reaches the graduation threshold, the
+                    coin's liquidity will transition to Raydium.
+                  </span>
+                </Tooltip>
+                <InfoCircle
+                  className="size-5 text-autofun-text-secondary"
+                  id="tooltip"
+                />
+              </div>
+              <div>
+                <BondingCurveBar progress={token?.curveProgress} />
+              </div>
             {token?.status !== "migrated" ? (
               <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">
                 Graduate this coin at {formatNumber(graduationMarketCap, true)}{" "}
@@ -532,6 +533,7 @@ export default function Page() {
               </p>
             ) : null}
           </div>
+
 
           {/* Price Display - Now below bonding curve */}
           <div className="py-4 px-3">
