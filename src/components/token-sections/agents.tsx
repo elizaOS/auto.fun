@@ -573,8 +573,10 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
             const fetchTwitterUsername = async () => {
               try {
                 console.log("Fetching Twitter profile info at OAuth callback");
+
+                // Replace direct Twitter API call with our backend endpoint
                 const profileResponse = await fetch(
-                  "https://api.twitter.com/2/users/me?user.fields=profile_image_url",
+                  `${API_BASE_URL}/api/share/twitter-user`,
                   {
                     headers: {
                       Authorization: `Bearer ${parsedCreds.accessToken}`,
@@ -738,13 +740,16 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
         try {
           console.log("Fetching Twitter user info to get actual username");
 
-          // Call Twitter API directly to get user info
-          const response = await fetch("https://api.twitter.com/2/users/me", {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${twitterCredentials.accessToken}`,
+          // Replace direct Twitter API call with our backend endpoint
+          const response = await fetch(
+            `${API_BASE_URL}/api/share/twitter-user`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${twitterCredentials.accessToken}`,
+              },
             },
-          });
+          );
 
           if (response.ok) {
             interface TwitterUserResponse {
@@ -752,6 +757,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
                 id: string;
                 name: string;
                 username: string;
+                profile_image_url?: string;
               };
             }
 
@@ -763,10 +769,11 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
                 userData.data.username,
               );
 
-              // Update the credentials with the correct username
+              // Update the credentials with the correct username and profile image
               const updatedCredentials = {
                 ...twitterCredentials,
                 username: userData.data.username,
+                profileImageUrl: userData.data.profile_image_url,
               };
 
               // Update state
@@ -835,7 +842,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
                     // ** CHANGE: Pass the whole agent object **
                     onClick={() => removeAgent(agent)}
                     title="Remove agent"
-                    className="text-red-500 hover:text-red-400 p-1"
+                    className="cursor-pointer text-red-500 hover:text-red-400 p-1"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -903,8 +910,8 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
 
           <div className="mt-4">
             <Link
-              to="https://fleek.xyz/guides/eliza-guide/"
-              aria-label="fleed url"
+              to="https://fleek.xyz/eliza/"
+              aria-label="fleek url"
               target="_blank"
             >
               <Button
