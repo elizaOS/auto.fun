@@ -49,14 +49,7 @@ const fetchPaginatedData = async <
 
   const nonValidatedResponse = await fetcher(queryEndpoint, "GET");
 
-  const response = z
-    .object({
-      [itemsPropertyName]: z.array(validationSchema),
-      page: z.number(),
-      totalPages: z.number(),
-      total: z.number(),
-    })
-    .parse(nonValidatedResponse);
+  const response = nonValidatedResponse as any;
 
   return {
     items: response[itemsPropertyName] as TOutput[],
