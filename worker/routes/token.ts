@@ -1819,6 +1819,7 @@ tokenRouter.post("/create-token", async (c) => {
         discord: discord || existingToken[0].discord,
         image: imageUrl || existingToken[0].image,
         url: metadataUrl || existingToken[0].url,
+        imported: existingToken[0].imported || 0,
       };
 
       return c.json({
