@@ -168,6 +168,18 @@ export function useCreateToken() {
         throw new Error("Sign transaction method not found");
       }
 
+      // Validate metadata URL
+      if (!metadataUrl || metadataUrl === "undefined") {
+        throw new Error("Invalid metadata URL provided");
+      }
+
+      // Validate required token metadata
+      if (!tokenMetadata.name || !tokenMetadata.symbol) {
+        throw new Error("Token name and symbol are required");
+      }
+
+      console.log("Using metadata URL:", metadataUrl);
+
       return mutation.mutate({
         token_metadata: tokenMetadata,
         signTransaction,
@@ -201,6 +213,26 @@ export function useCreateToken() {
       if (!signTransaction) {
         throw new Error("Sign transaction method not found");
       }
+
+      // Validate metadata URL
+      if (!metadataUrl || metadataUrl === "undefined") {
+        throw new Error("Invalid metadata URL provided");
+      }
+
+      // Validate required token metadata
+      if (!tokenMetadata.name || !tokenMetadata.symbol) {
+        throw new Error("Token name and symbol are required");
+      }
+
+      console.log("Using metadata URL:", metadataUrl);
+      console.log("Token metadata:", {
+        name: tokenMetadata.name,
+        symbol: tokenMetadata.symbol,
+        description: tokenMetadata.description,
+        links: tokenMetadata.links,
+        tokenMint: tokenMetadata.tokenMint,
+        initialSol: tokenMetadata.initialSol,
+      });
 
       return mutation.mutateAsync({
         token_metadata: tokenMetadata,

@@ -53,6 +53,7 @@ export interface TokenData {
   image: string;
   twitter?: string;
   telegram?: string;
+  farcaster?: string;
   website?: string;
   discord?: string;
   description?: string;
@@ -105,6 +106,7 @@ export interface TokenDBData {
   image?: string;
   twitter?: string;
   telegram?: string;
+  farcaster?: string;
   website?: string;
   discord?: string;
   description?: string;

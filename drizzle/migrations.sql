@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS tokens (
   image TEXT NOT NULL,
   twitter TEXT,
   telegram TEXT,
+  farcaster TEXT,
   website TEXT,
   discord TEXT,
   agent_link TEXT,

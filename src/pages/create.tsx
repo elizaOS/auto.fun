@@ -91,6 +91,7 @@ interface TokenSearchData {
   telegram?: string;
   website?: string;
   discord?: string;
+  farcaster?: string;
   metadataUri?: string;
   isCreator?: boolean;
   updateAuthority?: string;
@@ -628,62 +629,43 @@ const uploadImage = async (metadata: TokenMetadata) => {
 
   console.log("Preparing metadata:", basicMetadata);
 
-  try {
-    const response = await fetch(env.apiUrl + "/api/upload", {
-      method: "POST",
-      headers,
-      credentials: "include",
-      body: JSON.stringify({
-        image: metadata.imageBase64,
-        metadata: {
-          name: metadata.name,
-          symbol: metadata.symbol,
-          description: metadata.description,
-          twitter: metadata.links.twitter,
-          telegram: metadata.links.telegram,
-          website: metadata.links.website,
-          discord: metadata.links.discord,
-          agentLink: metadata.links.agentLink,
-        },
-      }),
-    });
+  const response = await fetch(env.apiUrl + "/api/upload", {
+    method: "POST",
+    headers,
+    credentials: "include",
+    body: JSON.stringify({
+      image: metadata.imageBase64,
+      metadata: {
+        name: metadata.name,
+        symbol: metadata.symbol,
+        description: metadata.description,
+        twitter: metadata.links.twitter,
+        telegram: metadata.links.telegram,
+        website: metadata.links.website,
+        discord: metadata.links.discord,
+        farcaster: metadata.links.farcaster,
+      },
+    }),
+  });
 
-    if (!response.ok) {
-      // Specifically handle authentication errors
-      if (response.status === 401) {
-        throw new Error(
-          "Authentication required. Please connect your wallet and try again.",
-        );
-      }
-      throw new Error("Failed to upload image: " + (await response.text()));
+  if (!response.ok) {
+    // Specifically handle authentication errors
+    if (response.status === 401) {
+      throw new Error(
+        "Authentication required. Please connect your wallet and try again.",
+      );
     }
-
-    const result = (await response.json()) as UploadResponse;
-
-    // Verify metadata URL exists, if not create a fallback
-    if (!result.metadataUrl || result.metadataUrl === "undefined") {
-      console.warn("No metadata URL returned from server, using fallback URL");
-
-      // Generate a fallback URL using the mint address or a UUID
-      result.metadataUrl = `https://metadata.auto.fun/${metadata.tokenMint || crypto.randomUUID()}.json`;
-      console.log("Using fallback metadata URL:", result.metadataUrl);
-    }
-
-    return result;
-  } catch (error) {
-    console.error("Error uploading:", error);
-
-    // In case of upload error, return a placeholder URL
-    const tokenMint = metadata.tokenMint || crypto.randomUUID();
-    const fallbackUrl = `https://metadata.auto.fun/${tokenMint}.json`;
-
-    console.log("Upload failed, using fallback URLs");
-    return {
-      success: false,
-      imageUrl: "",
-      metadataUrl: fallbackUrl,
-    };
+    throw new Error("Failed to upload image: " + (await response.text()));
   }
+
+  const result = (await response.json()) as UploadResponse;
+
+  // Verify metadata URL exists, if not create a fallback
+  if (!result.metadataUrl || result.metadataUrl === "undefined") {
+    throw new Error("No metadata URL returned from server");
+  }
+
+  return result;
 };
 
 // Function to wait for token creation
@@ -696,7 +678,7 @@ const waitForTokenCreation = async ({
   telegram,
   website,
   discord,
-  agentLink,
+  farcaster,
   imageUrl,
   metadataUrl,
   timeout = 80_000,
@@ -709,7 +691,7 @@ const waitForTokenCreation = async ({
   telegram: string;
   website: string;
   discord: string;
-  agentLink: string;
+  farcaster: string;
   imageUrl: string;
   metadataUrl: string;
   timeout?: number;
@@ -758,7 +740,7 @@ const waitForTokenCreation = async ({
             telegram,
             website,
             discord,
-            agentLink,
+            farcaster,
             imageUrl,
             metadataUrl,
           }),
@@ -969,6 +951,7 @@ export const Create = () => {
               telegram: tokenData.telegram || "",
               website: tokenData.website || "",
               discord: tokenData.discord || "",
+              farcaster: tokenData.farcaster || "",
             },
           }));
 
@@ -1003,7 +986,7 @@ export const Create = () => {
       telegram: "",
       website: "",
       discord: "",
-      agentLink: "",
+      farcaster: "",
     },
     importAddress: "",
   });
@@ -1704,6 +1687,7 @@ export const Create = () => {
             telegram: tokenData.telegram || "",
             website: tokenData.website || "",
             discord: tokenData.discord || "",
+            farcaster: tokenData.farcaster || "",
           },
         }));
 
@@ -2037,7 +2021,7 @@ export const Create = () => {
               telegram: form.links.telegram,
               website: form.links.website,
               discord: form.links.discord,
-              agentLink: "",
+              farcaster: form.links.farcaster,
               imageUrl: tokenData.image || "",
               metadataUrl: tokenData.metadataUri || "",
               // Include the import flag to indicate this is an imported token
@@ -2245,13 +2229,7 @@ export const Create = () => {
 
           // Verify metadata URL is valid
           if (!metadataUrl || metadataUrl === "undefined") {
-            console.error(
-              "Upload succeeded but metadata URL is invalid:",
-              metadataUrl,
-            );
-            // Fallback: generate a unique metadata URL based on mint address
-            metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
-            console.log("Using fallback metadata URL:", metadataUrl);
+            throw new Error("Invalid metadata URL provided");
           } else {
             console.log("Metadata URL from upload:", metadataUrl);
           }
@@ -2273,25 +2251,15 @@ export const Create = () => {
 
         // Generate a metadata URL if none exists
         if (!metadataUrl) {
-          metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
-          console.log(
-            "Using default metadata URL for imported token:",
-            metadataUrl,
-          );
+          throw new Error("No metadata URL provided");
         }
       } else if (!media_base64 && !metadataUrl) {
-        // No image provided, generate minimal metadata URL
-        metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
-        console.log(
-          "No image provided, using default metadata URL:",
-          metadataUrl,
-        );
+        throw new Error("No metadata URL provided");
       }
 
       // Double-check that we have a valid metadata URL
       if (!metadataUrl) {
-        console.warn("No metadata URL set, using fallback");
-        metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
+        throw new Error("No metadata URL provided");
       }
 
       // Create token on-chain
@@ -2401,7 +2369,7 @@ export const Create = () => {
           telegram: form.links.telegram,
           website: form.links.website,
           discord: form.links.discord,
-          agentLink: "", // Add empty agentLink
+          farcaster: form.links.farcaster,
           imageUrl,
           metadataUrl,
         });

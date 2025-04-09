@@ -14,6 +14,7 @@ export const tokens = sqliteTable("tokens", {
   telegram: text("telegram"),
   website: text("website"),
   discord: text("discord"),
+  farcaster: text("farcaster"),
   description: text("description"),
   mint: text("mint").notNull().unique(),
   creator: text("creator").notNull(),

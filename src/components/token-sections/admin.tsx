@@ -14,6 +14,7 @@ type FormData = {
     twitter: string;
     telegram: string;
     discord: string;
+    farcaster: string;
   };
 };
 
@@ -40,11 +41,13 @@ export default function AdminTab() {
     twitter: string;
     telegram: string;
     discord: string;
+    farcaster: string;
   }>({
     website: "",
     twitter: "",
     telegram: "",
     discord: "",
+    farcaster: "",
   });
 
   // Extract token mint from URL if not found in params
@@ -84,6 +87,7 @@ export default function AdminTab() {
         twitter: "",
         telegram: "",
         discord: "",
+        farcaster: "",
       },
     },
   });
@@ -100,7 +104,8 @@ export default function AdminTab() {
       formValues?.website !== originalData.website ||
       formValues?.twitter !== originalData.twitter ||
       formValues?.telegram !== originalData.telegram ||
-      formValues?.discord !== originalData.discord
+      formValues?.discord !== originalData.discord ||
+      formValues?.farcaster !== originalData.farcaster
     );
   };
 
@@ -129,6 +134,7 @@ export default function AdminTab() {
           twitter: data.twitter || "",
           telegram: data.telegram || "",
           discord: data.discord || "",
+          farcaster: data.farcaster || "",
         });
 
         // Update form with existing values
@@ -138,6 +144,7 @@ export default function AdminTab() {
             twitter: data.twitter || "",
             telegram: data.telegram || "",
             discord: data.discord || "",
+            farcaster: data.farcaster || "",
           },
         });
       } catch (error) {
@@ -180,6 +187,7 @@ export default function AdminTab() {
         twitter: data.links.twitter,
         telegram: data.links.telegram,
         discord: data.links.discord,
+        farcaster: data.links.farcaster,
       };
 
       const response = await fetch(`${env.apiUrl}/api/token/${mint}/update`, {
@@ -308,6 +316,39 @@ export default function AdminTab() {
                 isOptional
                 inputTag={<Icons.Discord />}
                 placeholder="Discord"
+                rightIndicator={<CopyButton text={field.value || ""} />}
+              />
+              {error && (
+                <span className="text-red-500 text-sm">{error.message}</span>
+              )}
+            </div>
+          )}
+        />
+
+        {/* Farcaster Field with custom domain validation */}
+        <Controller
+          control={control}
+          name="links.farcaster"
+          rules={{
+            validate: (value: string) =>
+              !value ||
+              isFromDomain(value, "warpcast.com") ||
+              "Invalid Farcaster URL",
+          }}
+          render={({ field, fieldState: { error } }) => (
+            <div className="flex flex-col gap-1">
+              <FormInput
+                type="text"
+                {...field}
+                isOptional
+                inputTag={
+                  <img
+                    src="/farcaster.svg"
+                    alt="Farcaster"
+                    className="w-5 h-5"
+                  />
+                }
+                placeholder="Farcaster"
                 rightIndicator={<CopyButton text={field.value || ""} />}
               />
               {error && (

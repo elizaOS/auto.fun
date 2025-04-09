@@ -1600,6 +1600,7 @@ tokenRouter.post("/create-token", async (c) => {
       description,
       twitter,
       telegram,
+      farcaster,
       website,
       discord,
       imageUrl,
@@ -1679,6 +1680,7 @@ tokenRouter.post("/create-token", async (c) => {
         description: description || "",
         twitter: twitter || "",
         telegram: telegram || "",
+        farcaster: farcaster || "",
         website: website || "",
         discord: discord || "",
         creator: user.publicKey || "unknown",
@@ -1698,6 +1700,7 @@ tokenRouter.post("/create-token", async (c) => {
         description: description || "",
         twitter: twitter || "",
         telegram: telegram || "",
+        farcaster: farcaster || "",
         website: website || "",
         discord: discord || "",
         creator: user.publicKey || "unknown",
@@ -1998,11 +2001,93 @@ tokenRouter.post("/token/:mint/update", async (c) => {
         twitter: body.twitter ?? tokenData[0].twitter,
         telegram: body.telegram ?? tokenData[0].telegram,
         discord: body.discord ?? tokenData[0].discord,
+        farcaster: body.farcaster ?? tokenData[0].farcaster,
         lastUpdated: new Date().toISOString(),
       })
       .where(eq(tokens.mint, mint));
 
-    logger.log("Token updated successfully");
+    logger.log("Token updated successfully in database");
+
+    // NEW: Update metadata in R2 if available
+    if (tokenData[0].url && c.env.R2) {
+      try {
+        // Extract the key from the metadata URL
+        let metadataKey = "";
+
+        if (tokenData[0].url.includes("r2.dev")) {
+          // Extract from R2 URL
+          const parts = tokenData[0].url.split("r2.dev/");
+          if (parts.length > 1) {
+            metadataKey = parts[1].split("?")[0]; // Remove any query params
+          }
+        } else if (tokenData[0].url.includes("/api/image/")) {
+          // Extract from API URL
+          const parts = tokenData[0].url.split("/api/image/");
+          if (parts.length > 1) {
+            metadataKey = `token-metadata/${parts[1].split("?")[0]}`; // Remove any query params and add folder
+          }
+        }
+
+        if (metadataKey) {
+          logger.log(`Attempting to update metadata at R2 key: ${metadataKey}`);
+
+          // Fetch the current metadata
+          const existingObject = await c.env.R2.get(metadataKey);
+
+          if (existingObject) {
+            // Parse the existing metadata
+            let metadata = {};
+            try {
+              const text = await existingObject.text();
+              metadata = JSON.parse(text);
+              logger.log(`Successfully retrieved existing metadata:`, metadata);
+            } catch (parseError) {
+              logger.error(`Error parsing metadata: ${parseError}`);
+              metadata = {}; // Start with empty object if can't parse
+            }
+
+            // Update the metadata with new values
+            const updatedMetadata = {
+              ...metadata,
+              ...(body.website !== undefined && {
+                website: body.website,
+                external_url: body.website,
+              }),
+              ...(body.twitter !== undefined && { twitter: body.twitter }),
+              ...(body.telegram !== undefined && { telegram: body.telegram }),
+              ...(body.discord !== undefined && { discord: body.discord }),
+              ...(body.farcaster !== undefined && {
+                farcaster: body.farcaster,
+              }),
+            };
+
+            // Convert back to JSON and upload
+            const metadataJson = JSON.stringify(updatedMetadata, null, 2);
+            const metadataBuffer = Buffer.from(metadataJson, "utf-8");
+
+            await c.env.R2.put(metadataKey, metadataBuffer, {
+              httpMetadata: {
+                contentType: "application/json",
+                cacheControl: "public, max-age=31536000",
+              },
+            });
+
+            logger.log(`Successfully updated metadata at ${metadataKey}`);
+          } else {
+            logger.warn(`Metadata object not found at key: ${metadataKey}`);
+          }
+        } else {
+          logger.warn(
+            `Could not extract metadata key from URL: ${tokenData[0].url}`,
+          );
+        }
+      } catch (r2Error) {
+        logger.error(`Error updating metadata in R2: ${r2Error}`);
+        // Continue despite R2 error - database update was successful
+      }
+    } else {
+      logger.log(`No metadata URL available or R2 not configured`);
+    }
 
     // Get the updated token data
     const updatedToken = await db

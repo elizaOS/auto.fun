@@ -113,110 +113,177 @@ app.get("/maintenance-mode", (c) => {
 });
 
 api.post("/upload", async (c) => {
+  logger.log("[/upload] Received request");
+  let rawBody: any = {}; // Variable to store parsed body for logging
   try {
-    // Require authentication
-    const user = c.get("user");
-    if (!user) {
-      return c.json({ error: "Authentication required" }, 401);
+    rawBody = await c.req.json();
+    logger.log("[/upload] Received raw body keys:", Object.keys(rawBody));
+
+    // Log image prefix if it exists
+    if (rawBody && typeof rawBody.image === "string") {
+      logger.log(
+        "[/upload] Received image prefix:",
+        rawBody.image.substring(0, 30) + "...",
+      );
+      logger.log(
+        "[/upload] Image data is string:",
+        typeof rawBody.image === "string",
+      );
+      logger.log(
+        "[/upload] Image starts with data:image?",
+        rawBody.image.startsWith("data:image"),
+      );
+    } else {
+      logger.log("[/upload] Received image field type:", typeof rawBody?.image);
     }
 
-    const body = await c.req.json();
-
-    if (!body.image) {
-      return c.json({ error: "Image is required" }, 400);
-    }
-
-    // Extract content type and base64 data from the Data URL
-    const matches = body.image.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
-
-    if (!matches || matches.length !== 3) {
-      logger.warn("Invalid image format:", body.image.substring(0, 50) + "...");
-      return c.json(
-        { error: "Invalid image format. Expected data URL format." },
-        400,
+    // Log metadata if it exists
+    if (rawBody && rawBody.metadata) {
+      logger.log(
+        "[/upload] Metadata received:",
+        typeof rawBody.metadata === "object"
+          ? Object.keys(rawBody.metadata)
+          : typeof rawBody.metadata,
       );
     }
 
-    const contentType = matches[1];
-    const imageData = matches[2];
+    const user = c.get("user");
+    if (!user || !user.publicKey) {
+      logger.warn("[/upload] Authentication required");
+      return c.json({ error: "Authentication required" }, 401);
+    }
+    logger.log(`[/upload] Authenticated user: ${user.publicKey}`);
 
-    logger.log(`Detected content type: ${contentType}`);
-
-    // Check if it's a PNG to verify handling
-    const isPng = contentType.toLowerCase() === "image/png";
-    if (isPng) {
-      logger.log("PNG image detected - ensuring proper handling");
+    if (!c.env.R2) {
+      logger.error("[/upload] R2 storage is not configured");
+      return c.json({ error: "Image storage is not available" }, 500);
     }
 
-    // Generate a filename based on metadata if available, or use a default
-    let filename = `image_${Date.now()}`;
+    // Use the previously parsed body
+    const {
+      image: imageBase64,
+      filename: requestedFilename,
+      metadata,
+    } = rawBody;
 
-    // If there's metadata with a name, use it for the filename
-    if (body.metadata && body.metadata.name) {
+    if (
+      !imageBase64 ||
+      typeof imageBase64 !== "string" ||
+      !imageBase64.startsWith("data:image")
+    ) {
+      logger.error(
+        "[/upload] Missing or invalid image data (base64). Value:",
+        imageBase64
+          ? typeof imageBase64 + ": " + imageBase64.substring(0, 30) + "..."
+          : String(imageBase64),
+      );
+      return c.json({ error: "Missing or invalid image data" }, 400);
+    }
+
+    const imageMatch = imageBase64.match(/^data:(image\/[a-z+]+);base64,(.*)$/);
+    if (!imageMatch) {
+      logger.error("[/upload] Invalid image format (regex mismatch)");
+      logger.error("[/upload] Image prefix:", imageBase64.substring(0, 50));
+      return c.json({ error: "Invalid image format" }, 400);
+    }
+
+    const contentType = imageMatch[1];
+    const base64Data = imageMatch[2];
+    const imageBuffer = Buffer.from(base64Data, "base64");
+    logger.log(
+      `[/upload] Decoded image: type=${contentType}, size=${imageBuffer.length} bytes`,
+    );
+
+    let extension = ".jpg";
+    if (contentType.includes("png")) extension = ".png";
+    else if (contentType.includes("gif")) extension = ".gif";
+    else if (contentType.includes("svg")) extension = ".svg";
+    else if (contentType.includes("webp")) extension = ".webp";
+
+    // Generate filename based on metadata if available
+    let filename = `${crypto.randomUUID()}${extension}`;
+
+    if (metadata && metadata.name) {
       // Sanitize the name for use in filenames
-      const sanitizedName = body.metadata.name
+      const sanitizedName = metadata.name
         .toLowerCase()
         .replace(/[^a-z0-9]/g, "_");
 
-      // Determine file extension from content type
-      let extension = ".jpg"; // Default
-      if (contentType === "image/png") extension = ".png";
-      else if (contentType === "image/gif") extension = ".gif";
-      else if (contentType === "image/svg+xml") extension = ".svg";
-      else if (contentType === "image/webp") extension = ".webp";
-
       filename = `${sanitizedName}${extension}`;
-      logger.log(`Generated filename from metadata: ${filename}`);
+      logger.log(`[/upload] Generated filename from metadata: ${filename}`);
+    } else if (requestedFilename && typeof requestedFilename === "string") {
+      filename = requestedFilename.replace(/[^a-zA-Z0-9._-]/g, "_");
+      logger.log(`[/upload] Using requested filename: ${filename}`);
     }
 
-    const imageBuffer = Uint8Array.from(atob(imageData), (c) =>
-      c.charCodeAt(0),
-    ).buffer;
+    const imageKey = `token-images/${filename}`;
+    logger.log(`[/upload] Determined image R2 key: ${imageKey}`);
 
-    logger.log(
-      `Uploading image with content type: ${contentType}, filename: ${filename}`,
-    );
+    logger.log(`[/upload] Attempting to upload image to R2 key: ${imageKey}`);
+    await c.env.R2.put(imageKey, imageBuffer, {
+      httpMetadata: { contentType, cacheControl: "public, max-age=31536000" },
+    });
+    logger.log(`[/upload] Image successfully uploaded to R2.`);
 
-    // Upload image to Cloudflare R2
-    const imageUrl = await uploadToCloudflare(c.env, imageBuffer, {
-      contentType,
-      filename,
+    const imageUrl =
+      (c.env as any).LOCAL_DEV === "true"
+        ? `${c.env.VITE_API_URL}/api/image/${filename}`
+        : `https://pub-75e2227bb40747d9b8b21df85a33efa7.r2.dev/token-images/${filename}`;
+    logger.log(`[/upload] Constructed public image URL: ${imageUrl}`);
+
+    // Process metadata if provided
+    let metadataUrl = "";
+    // Create a copy of metadata with the image URL
+    const metadataWithImage = {
+      ...metadata,
+      image: imageUrl,
+    };
+
+    // Use a similar naming convention for metadata files
+    const metadataFilename = `${filename.replace(/\.[^.]+$/, "")}_metadata.json`;
+    const metadataKey = `token-metadata/${metadataFilename}`;
+
+    logger.log(`[/upload] Uploading metadata with key: ${metadataKey}`);
+
+    // Convert metadata to JSON string and upload as UTF-8 buffer
+    const metadataJson = JSON.stringify(metadataWithImage, null, 2);
+    const metadataBuffer = Buffer.from(metadataJson, "utf-8");
+
+    await c.env.R2.put(metadataKey, metadataBuffer, {
+      httpMetadata: {
+        contentType: "application/json",
+        cacheControl: "public, max-age=31536000",
+      },
     });
 
-    logger.log(`Image uploaded successfully: ${imageUrl}`);
+    metadataUrl =
+      (c.env as any).LOCAL_DEV === "true"
+        ? `${c.env.VITE_API_URL}/api/image/${metadataFilename}`
+        : `https://pub-75e2227bb40747d9b8b21df85a33efa7.r2.dev/token-metadata/${metadataFilename}`;
 
-    // If metadata provided, upload that too
-    let metadataUrl = "";
-    if (body.metadata) {
-      // Use a similar naming convention for metadata files
-      const metadataFilename = `${filename.replace(/\.[^.]+$/, "")}_metadata.json`;
+    logger.log(`[/upload] Metadata uploaded, URL: ${metadataUrl}`);
 
-      metadataUrl = await uploadToCloudflare(c.env, body.metadata, {
-        isJson: true,
-        filename: metadataFilename,
-      });
-      logger.log(`Metadata uploaded successfully: ${metadataUrl}`);
-    }
-
-    // Log success for debugging
-    logger.log(
-      `Upload complete - Image: ${imageUrl}, Metadata: ${metadataUrl}`,
-    );
-
+    logger.log("[/upload] Request successful. Returning URLs.");
     return c.json({
       success: true,
       imageUrl,
       metadataUrl,
       debug: {
         contentType,
-        isPng: isPng || false,
+        isPng: contentType.toLowerCase() === "image/png",
         filename,
       },
     });
   } catch (error) {
-    logger.error("Error uploading to Cloudflare:", error);
+    logger.error("[/upload] Unexpected error:", error);
     return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
+      {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to process image upload",
+      },
       500,
     );
   }

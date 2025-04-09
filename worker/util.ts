@@ -34,6 +34,7 @@ export interface TokenMetadataJson {
   image: string;
   twitter?: string;
   telegram?: string;
+  farcaster?: string;
   website?: string;
   discord?: string;
 }
@@ -226,6 +227,7 @@ export async function createNewTokenData(
       image: additionalMetadata?.image || "",
       twitter: additionalMetadata?.twitter || "",
       telegram: additionalMetadata?.telegram || "",
+      farcaster: additionalMetadata?.farcaster || "",
       website: additionalMetadata?.website || "",
       description: additionalMetadata?.description || "",
       mint: tokenAddress,

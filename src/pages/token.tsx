@@ -342,60 +342,113 @@ export default function Page() {
             {/* Social Links */}
             {token?.creator !== normalizedWallet && (
               <div className="flex items-center justify-between gap-0.5">
-                <Link to={token?.website} className="w-full" target="_blank">
-                  <Button
-                    className="w-full rounded-none"
-                    disabled={!token?.website}
-                    aria-label="website"
-                  >
-                    <Globe />
-                  </Button>
-                </Link>
-                <Link to={token?.twitter} className="w-full" target="_blank">
-                  <Button
-                    className="w-full rounded-none"
-                    disabled={!token?.twitter}
-                    aria-label="twitter"
-                  >
-                    <SkeletonImage
-                      src="/x.svg"
-                      height={24}
-                      width={24}
-                      alt="twitter_icon"
-                      className="w-6 m-auto"
-                    />
-                  </Button>
-                </Link>
-                <Link to={token?.telegram} className="w-full" target="_blank">
-                  <Button
-                    className="w-full rounded-none py-0 flex"
-                    disabled={!token?.telegram}
-                    aria-label="telegram"
-                  >
-                    <SkeletonImage
-                      src="/telegram.svg"
-                      height={24}
-                      width={24}
-                      alt="telegram_icon"
-                      className="size-6 object-contain m-auto h-full"
-                    />
-                  </Button>
-                </Link>
-                <Link to={token?.discord} className="w-full" target="_blank">
-                  <Button
-                    className="w-full rounded-none px-0"
-                    disabled={!token?.discord}
-                    aria-label="discord"
-                  >
-                    <SkeletonImage
-                      src="/discord.svg"
-                      height={24}
-                      width={24}
-                      alt="discord_icon"
-                      className="w-auto m-auto"
-                    />
-                  </Button>
-                </Link>
+                {/* Only render social links that exist */}
+                {token?.website ||
+                token?.twitter ||
+                token?.telegram ||
+                token?.discord ||
+                token?.farcaster ? (
+                  <>
+                    {token?.website && (
+                      <Link
+                        to={token?.website}
+                        className="w-full"
+                        target="_blank"
+                      >
+                        <Button
+                          className="w-full rounded-none"
+                          aria-label="website"
+                        >
+                          <Globe />
+                        </Button>
+                      </Link>
+                    )}
+                    {token?.twitter && (
+                      <Link
+                        to={token?.twitter}
+                        className="w-full"
+                        target="_blank"
+                      >
+                        <Button
+                          className="w-full rounded-none"
+                          aria-label="twitter"
+                        >
+                          <SkeletonImage
+                            src="/x.svg"
+                            height={24}
+                            width={24}
+                            alt="twitter_icon"
+                            className="w-6 m-auto"
+                          />
+                        </Button>
+                      </Link>
+                    )}
+                    {token?.telegram && (
+                      <Link
+                        to={token?.telegram}
+                        className="w-full"
+                        target="_blank"
+                      >
+                        <Button
+                          className="w-full rounded-none py-0 flex"
+                          aria-label="telegram"
+                        >
+                          <SkeletonImage
+                            src="/telegram.svg"
+                            height={24}
+                            width={24}
+                            alt="telegram_icon"
+                            className="size-6 object-contain m-auto h-full"
+                          />
+                        </Button>
+                      </Link>
+                    )}
+                    {token?.discord && (
+                      <Link
+                        to={token?.discord}
+                        className="w-full"
+                        target="_blank"
+                      >
+                        <Button
+                          className="w-full rounded-none px-0"
+                          aria-label="discord"
+                        >
+                          <SkeletonImage
+                            src="/discord.svg"
+                            height={24}
+                            width={24}
+                            alt="discord_icon"
+                            className="w-auto m-auto"
+                          />
+                        </Button>
+                      </Link>
+                    )}
+                    {token?.farcaster && (
+                      <Link
+                        to={token?.farcaster}
+                        className="w-full"
+                        target="_blank"
+                      >
+                        <Button
+                          className="w-full rounded-none px-0"
+                          aria-label="farcaster"
+                        >
+                          <SkeletonImage
+                            src="/farcaster.svg"
+                            height={24}
+                            width={24}
+                            alt="farcaster_icon"
+                            className="w-auto m-auto"
+                          />
+                        </Button>
+                      </Link>
+                    )}
+                  </>
+                ) : (
+                  <div className="w-full text-center text-autofun-text-secondary text-sm py-2">
+                    No social links available
+                  </div>
+                )}
               </div>
             )}
             {token?.creator === normalizedWallet && <AdminSection />}
