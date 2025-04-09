@@ -61,7 +61,7 @@ export async function getSOLPrice(env?: Env): Promise<number> {
   // If Pyth fails, try CoinGecko
   try {
     const response = await fetch(
-      "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd"
+      "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd",
     );
     const data = (await response.json()) as any;
 
@@ -83,7 +83,7 @@ export async function getSOLPrice(env?: Env): Promise<number> {
   // If CoinGecko fails, try Binance
   try {
     const response = await fetch(
-      "https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT"
+      "https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT",
     );
     const data = (await response.json()) as any;
 
@@ -112,7 +112,7 @@ export async function getSOLPrice(env?: Env): Promise<number> {
 export async function fetchSOLPriceFromPyth(): Promise<number> {
   try {
     const pythConnection = new Connection(
-      getPythClusterApiUrl(PYTHNET_CLUSTER_NAME)
+      getPythClusterApiUrl(PYTHNET_CLUSTER_NAME),
     );
     const pythPublicKey = getPythProgramKeyForCluster(PYTHNET_CLUSTER_NAME);
     const pythClient = new PythHttpClient(pythConnection, pythPublicKey);
@@ -223,11 +223,11 @@ async function calculateRaydiumTokenMarketData(token: any, env?: Env) {
         retries--;
         if (retries === 0) {
           logger.error(
-            `Mcap: Failed to fetch pool info after retries: ${error instanceof Error ? error.message : "Unknown error"}`
+            `Mcap: Failed to fetch pool info after retries: ${error instanceof Error ? error.message : "Unknown error"}`,
           );
         }
         await new Promise((resolve) =>
-          setTimeout(resolve, (5 - retries) * 5000)
+          setTimeout(resolve, (5 - retries) * 5000),
         );
       }
     }
@@ -307,10 +307,10 @@ async function calculateRaydiumTokenMarketData(token: any, env?: Env) {
   } catch (error) {
     logger.error(
       `Error calculating Raydium token market data for ${token.mint}:`,
-      error
+      error,
     );
     logger.error(
-      "RPC Node issue - Consider using a paid RPC endpoint for better reliability"
+      "RPC Node issue - Consider using a paid RPC endpoint for better reliability",
     );
     failedUpdates++;
     return {
@@ -362,7 +362,7 @@ export async function updateMigratedTokenMarketData(env?: Env) {
           try {
             const marketData = await calculateRaydiumTokenMarketData(
               token,
-              workingEnv
+              workingEnv,
             );
 
             await db
@@ -381,12 +381,12 @@ export async function updateMigratedTokenMarketData(env?: Env) {
           } catch (error) {
             logger.error(
               `Error updating market data for token ${token.mint}:`,
-              error
+              error,
             );
             failedUpdates++;
             return { success: false, token };
           }
-        })
+        }),
       );
 
       // Count successes from this batch
