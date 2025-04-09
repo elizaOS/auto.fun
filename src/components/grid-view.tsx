@@ -51,7 +51,11 @@ export default function GridView({ data }: { data: IToken[] }) {
                         id="partner-token"
                         className="flex items-center gap-2 cursor-pointer"
                       >
-                        <img src="/verified.svg" className="size-6" alt="verified-mark" />
+                        <img
+                          src="/verified.svg"
+                          className="size-6"
+                          alt="verified-mark"
+                        />
                       </div>
 
                       <Tooltip
