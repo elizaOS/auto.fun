@@ -10,7 +10,6 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import useAuthentication from "@/hooks/use-authentication";
 import { useSolBalance } from "@/hooks/use-token-balance";
 import SkeletonImage from "./skeleton-image";
-// import { HowItWorksDialog } from "./how-it-works-dialog";
 
 export default function Header() {
   const { pathname } = useLocation();
@@ -22,7 +21,6 @@ export default function Header() {
   const mobileNavItems = [
     { icon: "/nav/stars.svg", title: "Create Token", href: "/create" },
     { icon: "/nav/eye.svg", title: "Tokens", href: "/" },
-    { icon: "/nav/circles.svg", title: "How It Works", href: "/how-it-works" },
     { icon: "/nav/question-mark.svg", title: "Support", href: "/support" },
   ];
 
