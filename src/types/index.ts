@@ -99,6 +99,7 @@ export const TokenSchema = z
     lastPriceUpdate: z.string().datetime().nullish(),
     txId: z.string().nullish(),
     lastUpdated: z.string().datetime().nullish(),
+    imported: z.number().nullish(),
   })
   .transform((data) => ({
     ...data,
@@ -138,6 +139,7 @@ export const TokenSchema = z
     holderCount: data.holderCount != null ? Number(data.holderCount) : 0,
     lastPriceUpdate: data.lastPriceUpdate || data.lastUpdated,
     lastVolumeReset: data.lastVolumeReset || data.lastUpdated,
+    imported: data.imported != null ? Number(data.imported) : 0,
   }));
 
 export type IToken = z.infer<typeof TokenSchema>;
@@ -160,7 +162,7 @@ declare global {
       isPhantom?: boolean;
       signMessage?: (
         message: Uint8Array,
-        encoding: string,
+        encoding: string
       ) => Promise<Uint8Array>;
       connect: () => Promise<{ publicKey: string }>;
       disconnect?: () => Promise<void>;
