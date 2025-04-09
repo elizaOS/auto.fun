@@ -181,9 +181,9 @@ export async function calculateTokenMarketData(
     if (token.reserveAmount && tokenWithMarketData.tokenPriceUSD) {
       tokenWithMarketData.marketCapUSD = env
         ? (Number(env.TOKEN_SUPPLY) / Math.pow(10, TOKEN_DECIMALS)) *
-          tokenWithMarketData.tokenPriceUSD
+        tokenWithMarketData.tokenPriceUSD
         : (1000000000000000 / Math.pow(10, TOKEN_DECIMALS)) *
-          tokenWithMarketData.tokenPriceUSD;
+        tokenWithMarketData.tokenPriceUSD;
     }
 
     // Add SOL price
