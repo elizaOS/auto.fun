@@ -60,6 +60,7 @@ export default function GridView({ data }: { data: IToken[] }) {
                         anchorSelect="#partner-token"
                         content="This token is verified by the Auto.Fun team"
                         place="top-start"
+                        noArrow
                       />
                     </div>
                   </div>
