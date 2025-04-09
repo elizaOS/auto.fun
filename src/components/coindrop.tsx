@@ -221,9 +221,9 @@ const CoinDrop = ({ imageUrl, onCancel }: CoinDropProps) => {
       const currentAngularVel = coinBody.angularVelocity.clone();
 
       // Calculate initial position-based velocities for a natural curve
-      const x = coinBody.position.x;
+      // const x = coinBody.position.x;
       const y = coinBody.position.y;
-      const z = coinBody.position.z;
+      // const z = coinBody.position.z;
 
       // Base velocity components - increased values
       const baseSpeed = 8000; // Doubled from 4000
