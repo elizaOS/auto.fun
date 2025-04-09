@@ -14,6 +14,8 @@ import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
 import { useConnection } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { getSocket } from "@/utils/socket";
+import { HomepageTokenSchema } from "@/hooks/use-tokens";
 
 const MAX_INITIAL_SOL = 45;
 // Use the token supply and virtual reserves from environment or fallback to defaults
@@ -686,165 +688,30 @@ const uploadImage = async (metadata: TokenMetadata) => {
   }
 };
 
-// Function to wait for token creation
-const waitForTokenCreation = async ({
-  mint,
-  name,
-  symbol,
-  description,
-  twitter,
-  telegram,
-  website,
-  discord,
-  agentLink,
-  imageUrl,
-  metadataUrl,
-  timeout = 80_000,
-}: {
-  mint: string;
-  name: string;
-  symbol: string;
-  description: string;
-  twitter: string;
-  telegram: string;
-  website: string;
-  discord: string;
-  agentLink: string;
-  imageUrl: string;
-  metadataUrl: string;
-  timeout?: number;
-}) => {
-  return new Promise<void>(async (resolve, reject) => {
-    let resolved = false;
+const waitForTokenCreation = async (mint: string, timeout = 80_000) => {
+  console.log("waiting for creation from token mint:", mint);
 
-    // Set a timeout to reject if we don't get a response
-    const timerId = setTimeout(() => {
-      if (!resolved) {
-        reject(new Error("Token creation timed out"));
-      }
-    }, timeout);
+  return new Promise<void>((resolve, reject) => {
+    const socket = getSocket();
 
-    try {
-      // Wait a few seconds for the transaction to be confirmed
-      await new Promise((r) => setTimeout(r, 4000));
-
-      // Try direct token creation
-      try {
-        console.log(`Creating token record for ${mint}`);
-
-        // Get auth token from localStorage with quote handling
-        const authToken = getAuthToken();
-
-        // Prepare headers
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-        };
-
-        if (authToken) {
-          headers["Authorization"] = `Bearer ${authToken}`;
-        }
-
-        const createResponse = await fetch(env.apiUrl + "/api/create-token", {
-          method: "POST",
-          headers,
-          credentials: "include",
-          body: JSON.stringify({
-            tokenMint: mint,
-            mint,
-            name,
-            symbol,
-            description,
-            twitter,
-            telegram,
-            website,
-            discord,
-            agentLink,
-            imageUrl,
-            metadataUrl,
-          }),
-        });
-
-        if (createResponse.ok) {
-          const data = await createResponse.json();
-          if (
-            data &&
-            typeof data === "object" &&
-            "success" in data &&
-            data.success === true
-          ) {
-            console.log(`Token ${mint} created via direct API call`);
-            clearTimeout(timerId);
-            resolved = true;
-            resolve();
-            return;
-          }
-        }
-      } catch (createError) {
-        console.error("Error creating token:", createError);
-      }
-
-      // If direct creation fails, try the check endpoint
-      for (let i = 0; i < 3; i++) {
-        if (resolved) break;
-
-        console.log(`Checking for token ${mint}, attempt ${i + 1}`);
-        try {
-          // Get auth token from localStorage with quote handling
-          const authToken = getAuthToken();
-
-          // Prepare headers
-          const headers: Record<string, string> = {
-            "Content-Type": "application/json",
-          };
-
-          if (authToken) {
-            headers["Authorization"] = `Bearer ${authToken}`;
-          }
-
-          const response = await fetch(env.apiUrl + "/api/check-token", {
-            method: "POST",
-            headers,
-            credentials: "include",
-            body: JSON.stringify({
-              tokenMint: mint,
-              imageUrl,
-              metadataUrl,
-            }),
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (
-              data &&
-              typeof data === "object" &&
-              "tokenFound" in data &&
-              data.tokenFound === true
-            ) {
-              console.log(`Token ${mint} found via check API`);
-              clearTimeout(timerId);
-              resolved = true;
-              resolve();
-              break;
-            }
-          }
-        } catch (checkError) {
-          console.error(`Error checking token (attempt ${i + 1}):`, checkError);
-        }
-
-        // Wait before trying again
-        await new Promise((r) => setTimeout(r, 3000));
-      }
-
-      // If we got here and haven't resolved, reject
-      if (!resolved) {
+    const newTokenListener = (token: unknown) => {
+      console.log("got new token:", JSON.stringify(token));
+      const { mint: newMint } = HomepageTokenSchema.parse(token);
+      console.log("new token successfully parsed");
+      if (newMint === mint) {
         clearTimeout(timerId);
-        reject(new Error("Failed to confirm token creation"));
+        socket.off("newToken", newTokenListener);
+        resolve();
       }
-    } catch (error) {
-      console.error("Error in token creation process:", error);
-      clearTimeout(timerId);
-      reject(error);
-    }
+    };
+
+    socket.emit("subscribeGlobal");
+    socket.on("newToken", newTokenListener);
+
+    const timerId = setTimeout(() => {
+      socket.off("newToken", newTokenListener);
+      reject(new Error("Token creation timed out"));
+    }, timeout);
   });
 };
 
@@ -1290,51 +1157,47 @@ export const Create = () => {
 
   // Create token on-chain
   const createTokenOnChain = async (
-    _tokenMetadata: TokenMetadata,
+    tokenMetadata: TokenMetadata,
     mintKeypair: Keypair,
-    _metadataUrl: string,
+    metadataUrl: string,
   ) => {
-    if (!signTransaction) {
-      throw new Error("Wallet doesn't support signing");
-    }
-
-    if (!publicKey) {
-      throw new Error("Wallet not connected");
-    }
-
     try {
+      if (!publicKey) {
+        throw new Error("Wallet not connected");
+      }
+
+      if (!signTransaction) {
+        throw new Error("Wallet doesn't support signing");
+      }
+
       // Ensure we have a valid metadata URL
-      if (
-        !_metadataUrl ||
-        _metadataUrl === "undefined" ||
-        _metadataUrl === ""
-      ) {
+      if (!metadataUrl || metadataUrl === "undefined" || metadataUrl === "") {
         console.warn(
           "No metadata URL provided, generating minimal metadata...",
         );
 
         // Create minimal metadata and upload it
         const minimalMetadata = {
-          name: _tokenMetadata.name,
-          symbol: _tokenMetadata.symbol,
-          description: _tokenMetadata.description || "",
-          image: _tokenMetadata.imageBase64 ? "pending" : "",
-          external_url: _tokenMetadata.links.website || "",
+          name: tokenMetadata.name,
+          symbol: tokenMetadata.symbol,
+          description: tokenMetadata.description || "",
+          image: tokenMetadata.imageBase64 ? "pending" : "",
+          external_url: tokenMetadata.links.website || "",
         };
 
         console.log("Generated minimal metadata:", minimalMetadata);
 
         // Upload minimal metadata
-        const uploadResult = await uploadImage(_tokenMetadata);
-        _metadataUrl = uploadResult.metadataUrl;
+        const uploadResult = await uploadImage(tokenMetadata);
+        metadataUrl = uploadResult.metadataUrl;
 
-        console.log("Uploaded minimal metadata, URL:", _metadataUrl);
+        console.log("Uploaded minimal metadata, URL:", metadataUrl);
       }
 
       console.log("Creating token on-chain with parameters:", {
-        name: _tokenMetadata.name,
-        symbol: _tokenMetadata.symbol,
-        metadataUrl: _metadataUrl,
+        name: tokenMetadata.name,
+        symbol: tokenMetadata.symbol,
+        metadataUrl: metadataUrl,
         mintKeypair: {
           publicKey: mintKeypair.publicKey.toString(),
           secretKeyLength: mintKeypair.secretKey.length,
@@ -1342,11 +1205,20 @@ export const Create = () => {
       });
 
       // Use the useCreateToken hook to create the token on-chain
-      await createTokenOnChainAsync({
-        tokenMetadata: _tokenMetadata,
-        metadataUrl: _metadataUrl,
+      const tx = await createTokenOnChainAsync({
+        tokenMetadata,
+        metadataUrl,
         mintKeypair,
       });
+
+      // Handle transaction cancellation
+      if (!tx) {
+        // Trigger the flush animation
+        if (window.flushCoins) {
+          window.flushCoins();
+        }
+        return;
+      }
 
       // Return the mint address as transaction ID
       const txId = mintKeypair.publicKey.toString();
@@ -1374,15 +1246,25 @@ export const Create = () => {
 
         // Try to log relevant parameters
         console.log("Debug information:");
-        console.log("- Token name:", _tokenMetadata.name);
-        console.log("- Token symbol:", _tokenMetadata.symbol);
-        console.log("- Metadata URL:", _metadataUrl);
-        console.log("- Decimals:", _tokenMetadata.decimals);
+        console.log("- Token name:", tokenMetadata.name);
+        console.log("- Token symbol:", tokenMetadata.symbol);
+        console.log("- Metadata URL:", metadataUrl);
+        console.log("- Decimals:", tokenMetadata.decimals);
         console.log("- Mint public key:", mintKeypair.publicKey.toString());
+
+        // Trigger the flush animation on error
+        if (window.flushCoins) {
+          window.flushCoins();
+        }
 
         throw new Error(
           "Failed to create token: instruction format mismatch with on-chain program. Please try again or contact support.",
         );
+      }
+
+      // Trigger the flush animation on error
+      if (window.flushCoins) {
+        window.flushCoins();
       }
 
       throw new Error("Failed to create token on-chain");
@@ -2392,19 +2274,7 @@ export const Create = () => {
       // Wait for token creation to be confirmed
       try {
         console.log("Waiting for token creation confirmation...");
-        await waitForTokenCreation({
-          mint: tokenMint,
-          name: form.name,
-          symbol: form.symbol,
-          description: form.description,
-          twitter: form.links.twitter,
-          telegram: form.links.telegram,
-          website: form.links.website,
-          discord: form.links.discord,
-          agentLink: "", // Add empty agentLink
-          imageUrl,
-          metadataUrl,
-        });
+        await waitForTokenCreation(tokenMint);
         console.log("Token creation confirmed");
 
         // Trigger confetti to celebrate successful minting
@@ -2696,9 +2566,20 @@ export const Create = () => {
     return hasEnoughSol && !Object.values(errors).some((error) => error);
   };
 
+  // Add handler for coin drop cancellation
+  const handleCoinDropCancel = useCallback(() => {
+    setShowCoinDrop(false);
+    setIsSubmitting(false);
+  }, []);
+
   return (
     <div className="flex flex-col items-center justify-center">
-      {showCoinDrop && <CoinDrop imageUrl={coinDropImageUrl || undefined} />}
+      {showCoinDrop && (
+        <CoinDrop
+          imageUrl={coinDropImageUrl || undefined}
+          onCancel={handleCoinDropCancel}
+        />
+      )}
 
       <form
         className="py-4 px-auto w-full max-w-2xl flex font-dm-mono flex-col m-auto gap-1 justify-center"

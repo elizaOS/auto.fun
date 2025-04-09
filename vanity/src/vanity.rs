@@ -1,8 +1,6 @@
-use sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
-use rand::{rngs::ThreadRng, Rng};
 use worker::*;
-use ed25519_dalek::{Signer, SigningKey, Verifier, VerifyingKey};
+use ed25519_dalek::SigningKey;
 use rand::rngs::OsRng;
 
 // Define the structures for the vanity address grinding functionality
