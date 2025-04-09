@@ -1,7 +1,6 @@
 import SkeletonImage from "@/components/skeleton-image";
 import { IToken } from "@/types";
 import { abbreviateNumber, fromNow } from "@/utils";
-import { Verified } from "lucide-react";
 import { Link } from "react-router";
 import { Tooltip } from "react-tooltip";
 
@@ -52,7 +51,8 @@ export default function GridView({ data }: { data: IToken[] }) {
                         id="partner-token"
                         className="flex items-center gap-2 cursor-pointer"
                       >
-                        <Verified />
+                        {/* <SquareCheckBig className="size-6" /> */}
+                        <img src="/verified.svg" className="size-6" alt="verified-mark" />
                       </div>
 
                       <Tooltip
