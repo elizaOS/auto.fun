@@ -130,6 +130,81 @@ tokenRouter.get("/image/:filename", async (c) => {
   }
 });
 
+// --- Endpoint to serve metadata JSON from R2 (Updated to support temporary metadata) ---
+tokenRouter.get("/metadata/:filename", async (c) => {
+  const filename = c.req.param("filename");
+  const isTemp = c.req.query("temp") === "true";
+
+  logger.log(
+    `[/metadata/:filename] Request received for filename: ${filename}, temp=${isTemp}`,
+  );
+
+  try {
+    if (!filename || !filename.endsWith(".json")) {
+      logger.error("[/metadata/:filename] Invalid filename format:", filename);
+      return c.json({ error: "Filename parameter must end with .json" }, 400);
+    }
+
+    if (!c.env.R2) {
+      logger.error("[/metadata/:filename] R2 storage is not configured");
+      return c.json({ error: "R2 storage is not available" }, 500);
+    }
+
+    // Determine which location to check first based on the temp parameter
+    const primaryKey = isTemp
+      ? `token-metadata-temp/${filename}`
+      : `token-metadata/${filename}`;
+    const fallbackKey = isTemp
+      ? `token-metadata/${filename}`
+      : `token-metadata-temp/${filename}`;
+
+    logger.log(
+      `[/metadata/:filename] Checking primary location: ${primaryKey}`,
+    );
+    let object = await c.env.R2.get(primaryKey);
+
+    // If not found in primary location, check fallback location
+    if (!object) {
+      logger.log(
+        `[/metadata/:filename] Not found in primary location, checking fallback: ${fallbackKey}`,
+      );
+      object = await c.env.R2.get(fallbackKey);
+    }
+
+    if (!object) {
+      logger.error(
+        `[/metadata/:filename] Metadata not found in either location`,
+      );
+      return c.json({ error: "Metadata not found" }, 404);
+    }
+
+    logger.log(
+      `[/metadata/:filename] Found metadata: size=${object.size}, type=${object.httpMetadata?.contentType}`,
+    );
+
+    const contentType = object.httpMetadata?.contentType || "application/json";
+    const data = await object.text();
+
+    // Set appropriate CORS headers for public access
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+      "Content-Type": contentType,
+      "Cache-Control": isTemp ? "max-age=3600" : "max-age=86400", // Shorter cache for temp metadata
+    };
+
+    logger.log(`[/metadata/:filename] Serving metadata: ${filename}`);
+    return new Response(data, { headers: corsHeaders });
+  } catch (error) {
+    logger.error(
+      `[/metadata/:filename] Error serving metadata ${filename}:`,
+      error,
+    );
+    return c.json({ error: "Failed to serve metadata JSON" }, 500);
+  }
+});
+
 export async function processSwapEvent(
   env: Env,
   swap: any,
