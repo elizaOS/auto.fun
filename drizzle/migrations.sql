@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS tokens (
   withdrawn_amounts TEXT,
   pool_info TEXT,
   lock_lp_tx_id TEXT,
-  imported INTEGER NOT NULL DEFAULT 0
+  imported TEXT DEFAULT "0"
 );
 
 -- Create swaps table
