@@ -233,7 +233,7 @@ export default function Page() {
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-3">
       {/* Top Stats Section - Full Width */}
       <div className="w-full py-10 flex flex-wrap justify-between">
         <TopPageItem
@@ -340,64 +340,72 @@ export default function Page() {
             <AgentsSection isCreator={token?.creator === normalizedWallet} />
 
             {/* Social Links */}
-            {token?.creator !== normalizedWallet && (
-              <div className="flex items-center justify-between gap-0.5">
-                <Link to={token?.website} className="w-full" target="_blank">
-                  <Button
-                    className="w-full rounded-none"
-                    disabled={!token?.website}
-                    aria-label="website"
-                  >
-                    <Globe />
-                  </Button>
-                </Link>
-                <Link to={token?.twitter} className="w-full" target="_blank">
-                  <Button
-                    className="w-full rounded-none"
-                    disabled={!token?.twitter}
-                    aria-label="twitter"
-                  >
-                    <SkeletonImage
-                      src="/x.svg"
-                      height={24}
-                      width={24}
-                      alt="twitter_icon"
-                      className="w-6 m-auto"
-                    />
-                  </Button>
-                </Link>
-                <Link to={token?.telegram} className="w-full" target="_blank">
-                  <Button
-                    className="w-full rounded-none py-0 flex"
-                    disabled={!token?.telegram}
-                    aria-label="telegram"
-                  >
-                    <SkeletonImage
-                      src="/telegram.svg"
-                      height={24}
-                      width={24}
-                      alt="telegram_icon"
-                      className="size-6 object-contain m-auto h-full"
-                    />
-                  </Button>
-                </Link>
-                <Link to={token?.discord} className="w-full" target="_blank">
-                  <Button
-                    className="w-full rounded-none px-0"
-                    disabled={!token?.discord}
-                    aria-label="discord"
-                  >
-                    <SkeletonImage
-                      src="/discord.svg"
-                      height={24}
-                      width={24}
-                      alt="discord_icon"
-                      className="w-auto m-auto"
-                    />
-                  </Button>
-                </Link>
-              </div>
-            )}
+            {token?.creator !== normalizedWallet &&
+              (() => {
+                const socialLinks = [
+                  {
+                    url: token?.website,
+                    icon: <Globe />,
+                    label: "website",
+                    key: "website",
+                  },
+                  {
+                    url: token?.twitter,
+                    icon: "/x.svg",
+                    label: "twitter",
+                    key: "twitter",
+                  },
+                  {
+                    url: token?.telegram,
+                    icon: "/telegram.svg",
+                    label: "telegram",
+                    key: "telegram",
+                  },
+                  {
+                    url: token?.discord,
+                    icon: "/discord.svg",
+                    label: "discord",
+                    key: "discord",
+                  },
+                ];
+
+                const availableLinks = socialLinks.filter((link) => !!link.url);
+
+                if (availableLinks.length === 0) {
+                  return null; // Don't render the container if no links are available
+                }
+
+                return (
+                  <div className="flex items-stretch gap-0.5">
+                    {/* Use flex and items-stretch */}
+                    {availableLinks.map((link) => (
+                      <Link
+                        key={link.key}
+                        to={link.url}
+                        className="flex-1"
+                        target="_blank"
+                      >
+                        <Button
+                          className="w-full h-full rounded-none py-2 flex items-center justify-center"
+                          aria-label={link.label}
+                        >
+                          {typeof link.icon === "string" ? (
+                            <SkeletonImage
+                              src={link.icon}
+                              height={24}
+                              width={24}
+                              alt={`${link.label}_icon`}
+                              className="size-6 object-contain m-auto"
+                            />
+                          ) : (
+                            link.icon
+                          )}
+                        </Button>
+                      </Link>
+                    ))}
+                  </div>
+                );
+              })()}
             {token?.creator === normalizedWallet && <AdminSection />}
           </div>
         </div>
@@ -410,7 +418,7 @@ export default function Page() {
               <div className="h-2 w-full bg-autofun-text-highlight z-10"></div>
 
               {/* Tabs Header with Title and Right-aligned Tabs - removed border-b as it's on the parent */}
-              <div className="flex items-center justify-between pr-2 mb-4">
+              <div className="flex items-center justify-between pr-2">
                 <div className="flex">
                   <button
                     className={`px-4 py-3 text-autofun-text-primary font-medium cursor-pointer ${
@@ -510,25 +518,25 @@ export default function Page() {
               <div>
                 <BondingCurveBar progress={token?.curveProgress} />
               </div>
-              {token?.status !== "migrated" ? (
-                <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">
-                  Graduate this coin at{" "}
-                  {formatNumber(graduationMarketCap, true)}
-                  {"\n"}
-                  {formatNumber(
-                    (token?.reserveLamport - token?.virtualReserves) /
-                      LAMPORTS_PER_SOL,
-                    true,
-                    true,
-                  )}{" "}
-                  SOL in the bonding curve
-                </p>
-              ) : null}
-            </div>
-          )}
+            {token?.status !== "migrated" ? (
+              <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">
+                Graduate this coin at {formatNumber(graduationMarketCap, true)}{" "}
+                market cap.{"\n"}
+                There is{" "}
+                {formatNumber(
+                  (token?.reserveLamport - token?.virtualReserves) /
+                    LAMPORTS_PER_SOL,
+                  true,
+                  true,
+                )}{" "}
+                SOL in the bonding curve.
+              </p>
+            ) : null}
+          </div>
+
 
           {/* Price Display - Now below bonding curve */}
-          <div className="py-4 px-4">
+          <div className="py-4 px-3">
             <div className="flex justify-between">
               <div className="flex flex-col gap-1 items-center">
                 <span className="font-dm-mono text-autofun-text-secondary">
