@@ -39,7 +39,7 @@ const Pagination: React.FC<PaginationProps> = ({
           totalPages - 3,
           totalPages - 2,
           totalPages - 1,
-          totalPages
+          totalPages,
         );
       } else {
         pages.push(1, page - 1, page, page + 1, "...", totalPages);

@@ -71,44 +71,49 @@ export default function SwapsTable({ token }: { token: IToken }) {
             </TableCell>
           </TableRow>
         ) : data.length > 0 ? (
-          data.map((swap) => {
-            const isBuy = swap.type === "Buy";
-            return (
-              <TableRow className="hover:bg-white/5" key={swap?.txId}>
-                <TableCell className="text-left">
-                  <Link
-                    to={env.getAccountUrl(swap?.user)}
-                    target="_blank"
-                    className="hover:text-autofun-text-highlight"
+          data
+            .filter(
+              (swap, index, self) =>
+                index === self.findIndex((t) => t.txId === swap.txId),
+            )
+            .map((swap) => {
+              const isBuy = swap.type === "Buy";
+              return (
+                <TableRow className="hover:bg-white/5" key={swap?.txId}>
+                  <TableCell className="text-left">
+                    <Link
+                      to={env.getAccountUrl(swap?.user)}
+                      target="_blank"
+                      className="hover:text-autofun-text-highlight"
+                    >
+                      {shortenAddress(swap?.user)}
+                    </Link>
+                  </TableCell>
+                  <TableCell
+                    className={twMerge([
+                      "text-left",
+                      isBuy ? "text-[#2FD345]" : "text-[#EF5350]",
+                    ])}
                   >
-                    {shortenAddress(swap?.user)}
-                  </Link>
-                </TableCell>
-                <TableCell
-                  className={twMerge([
-                    "text-left",
-                    isBuy ? "text-[#2FD345]" : "text-[#EF5350]",
-                  ])}
-                >
-                  {swap.type}
-                </TableCell>
-                <TableCell className="text-left">
-                  {formatSwapAmount(swap.solAmount, !isBuy)}
-                </TableCell>
-                <TableCell className="text-left">
-                  {formatSwapAmount(swap.tokenAmount, isBuy)}
-                </TableCell>
-                <TableCell className="text-left">
-                  {fromNow(swap?.timestamp)}
-                </TableCell>
-                <TableCell>
-                  <Link to={env.getTransactionUrl(swap.txId)} target="_blank">
-                    <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary" />
-                  </Link>
-                </TableCell>
-              </TableRow>
-            );
-          })
+                    {swap.type}
+                  </TableCell>
+                  <TableCell className="text-left">
+                    {formatSwapAmount(swap.solAmount, !isBuy)}
+                  </TableCell>
+                  <TableCell className="text-left">
+                    {formatSwapAmount(swap.tokenAmount, isBuy)}
+                  </TableCell>
+                  <TableCell className="text-left">
+                    {fromNow(swap?.timestamp)}
+                  </TableCell>
+                  <TableCell>
+                    <Link to={env.getTransactionUrl(swap.txId)} target="_blank">
+                      <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary" />
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              );
+            })
         ) : (
           <TableRow>
             <TableCell
