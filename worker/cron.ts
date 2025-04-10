@@ -5,7 +5,7 @@ import {
 import { Connection, PublicKey } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
 import { getLatestCandle } from "./chart";
-import { getDB, swaps, tokens, vanityKeypairs } from "./db";
+import { getDB, swaps, Token, tokens, vanityKeypairs } from "./db";
 import { Env } from "./env";
 import { logger } from "./logger";
 import { getSOLPrice } from "./mcap";
@@ -14,6 +14,7 @@ import { updateHoldersCache } from "./routes/token";
 import {
   bulkUpdatePartialTokens,
   calculateFeaturedScore,
+  createNewTokenData,
   getFeaturedMaxValues,
 } from "./util";
 import { getWebSocketClient } from "./websocket-client";
@@ -49,7 +50,7 @@ function convertTokenDataToDBData(
 export async function updateTokenInDB(
   env: Env,
   tokenData: Partial<TokenData>,
-): Promise<void> {
+): Promise<Token> {
   try {
     const db = getDB(env);
     const now = new Date().toISOString();
@@ -82,40 +83,52 @@ export async function updateTokenInDB(
       .from(tokens)
       .where(eq(tokens.mint, updateData.mint));
 
+    let updatedTokens: Token[];
+
     if (existingTokens.length > 0) {
-      await db
+      console.log("found existing token in DB");
+      updatedTokens = await db
         .update(tokens)
         .set(updateData)
-        .where(eq(tokens.mint, updateData.mint!));
+        .where(eq(tokens.mint, updateData.mint!))
+        .returning();
       logger.log(`Updated token ${updateData.mint} in database`);
     } else {
-      await db.insert(tokens).values({
-        id: crypto.randomUUID(),
-        mint: updateData.mint!,
-        name: updateData.name || `Token ${updateData.mint?.slice(0, 8)}`,
-        ticker: updateData.ticker || "TOKEN",
-        url: updateData.url || "",
-        image: updateData.image || "",
-        creator: updateData.creator || "unknown",
-        status: updateData.status || "active",
-        tokenPriceUSD: updateData.tokenPriceUSD || 0,
-        reserveAmount: updateData.reserveAmount || 0,
-        reserveLamport: updateData.reserveLamport || 0,
-        currentPrice: updateData.currentPrice || 0,
-        createdAt: now,
-        lastUpdated: now,
-        txId: updateData.txId || "",
-        migration: updateData.migration || "",
-        withdrawnAmounts: updateData.withdrawnAmounts || "",
-        poolInfo: updateData.poolInfo || "",
-        lockLpTxId: updateData.lockLpTxId || "",
-        nftMinted: updateData.nftMinted || "",
-        marketId: updateData.marketId || "",
-      });
+      console.log("not found existing token in DB");
+      console.log(JSON.stringify(updateData, null, 2));
+      updatedTokens = await db
+        .insert(tokens)
+        .values({
+          id: crypto.randomUUID(),
+          mint: updateData.mint!,
+          name: updateData.name || `Token ${updateData.mint?.slice(0, 8)}`,
+          ticker: updateData.ticker || "TOKEN",
+          url: updateData.url || "",
+          image: updateData.image || "",
+          creator: updateData.creator || "unknown",
+          status: updateData.status || "active",
+          tokenPriceUSD: updateData.tokenPriceUSD || 0,
+          reserveAmount: updateData.reserveAmount || 0,
+          reserveLamport: updateData.reserveLamport || 0,
+          currentPrice: updateData.currentPrice || 0,
+          createdAt: now,
+          lastUpdated: now,
+          txId: updateData.txId || "",
+          migration: updateData.migration || "",
+          withdrawnAmounts: updateData.withdrawnAmounts || "",
+          poolInfo: updateData.poolInfo || "",
+          lockLpTxId: updateData.lockLpTxId || "",
+          nftMinted: updateData.nftMinted || "",
+          marketId: updateData.marketId || "",
+        })
+        .returning();
       logger.log(`Added new token ${updateData.mint} to database`);
     }
+
+    return updatedTokens[0];
   } catch (error) {
     logger.error(`Error updating token in database: ${error}`);
+    throw error;
   }
 }
 
@@ -181,14 +194,16 @@ export async function processTransactionLogs(
 
         logger.log(`New token detected: ${rawTokenAddress}`);
 
-        // Basic token data
-        const tokenData = {
-          mint: rawTokenAddress,
-          creator: rawCreatorAddress,
-          status: "active",
-          tokenPriceUSD: 0,
-          tokenSwapTransactionId: signature,
-        };
+        // Update the database
+        const newToken = await createNewTokenData(
+          signature,
+          rawTokenAddress,
+          rawCreatorAddress,
+          env,
+        );
+        await getDB(env)
+          .insert(tokens)
+          .values(newToken as Token);
 
         try {
           await updateHoldersCache(env, rawTokenAddress);
@@ -199,18 +214,12 @@ export async function processTransactionLogs(
           );
         }
 
-        // Update the database
-        await updateTokenInDB(env, tokenData);
-
         // Emit the event to all clients
         /**
          * TODO: if this event is emitted before the create-token endpoint finishes its
          * DB update, it seems to corrupt the system and the new token won't ever show on the homepage
          */
-        await wsClient.emit("global", "newToken", {
-          ...tokenData,
-          timestamp: new Date(),
-        });
+        await wsClient.emit("global", "newToken", newToken);
 
         result = {
           found: true,

@@ -1,0 +1,8 @@
+
+<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Square Box with Bolder Stroke -->
+  <rect x="5" y="5" width="90" height="90" stroke="black" stroke-width="8" fill="none" />
+  
+  <!-- Bold Checkmark -->
+  <path d="M30 55 L45 70 L75 35" stroke="black" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
