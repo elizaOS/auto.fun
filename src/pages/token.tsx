@@ -30,6 +30,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
 import { env } from "@/utils/env";
+import { twMerge } from "tailwind-merge";
 
 const socket = getSocket();
 
@@ -77,7 +78,7 @@ export default function Page() {
     const socket = getSocket();
 
     socket.on("updateToken", (token: any) =>
-      queryClient.setQueryData(["token", address], token),
+      queryClient.setQueryData(["token", address], token)
     );
 
     return () => {
@@ -109,7 +110,7 @@ export default function Page() {
 
         if (!hasValidData) {
           console.warn(
-            `Token page: Blockchain metrics may be invalid - all key values are 0`,
+            `Token page: Blockchain metrics may be invalid - all key values are 0`
           );
         }
 
@@ -121,7 +122,7 @@ export default function Page() {
           {
             position: "bottom-right",
             autoClose: 5000,
-          },
+          }
         );
         return null;
       }
@@ -201,7 +202,7 @@ export default function Page() {
         !metrics.marketCapUSD && !metrics.currentPrice && !metrics.volume24h;
       if (allZeros) {
         console.warn(
-          `WARNING: Blockchain metrics returned all zeros for token ${token?.mint}. This might indicate an error in data retrieval.`,
+          `WARNING: Blockchain metrics returned all zeros for token ${token?.mint}. This might indicate an error in data retrieval.`
         );
       }
     }
@@ -231,6 +232,13 @@ export default function Page() {
       </div>
     );
   }
+
+  // this is for testing purpose only, untill we have implemented partner tokens
+  const parntnerMintList = [
+    "B6t4KWk4MTGadFwzwTorAv5fmxw7v2bS7J74dRkw8FUN",
+    "78c5zQY31XJ38U1TdH6WWEaa4AgxDPXq5fJr2q5rgFUN",
+  ];
+  const isPartner = parntnerMintList.includes(address as string);
 
   return (
     <div className="flex flex-col gap-3">
@@ -284,9 +292,37 @@ export default function Page() {
               </div>
 
               {/* Token name overlapping at top - with drop shadow */}
-              <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 via-black/25 to-transparent px-3 py-2.5">
+              <div
+                className={twMerge(
+                  isPartner
+                    ? "from-autofun-background-action-highlight/10 via-autofun-background-action-highlight/10"
+                    : "from-black/50 via-black/25",
+                  "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5"
+                )}
+              >
                 <div className="flex items-center justify-between w-full">
-                  <div className="flex flex-row items-center gap-1">
+                  <div className="flex space-x-2  flex-row items-center gap-1">
+                    {isPartner ? (
+                      <>
+                        <div
+                          id="partner-token"
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <img
+                            src="/verified.svg"
+                            className="size-6"
+                            alt="verified-mark"
+                          />
+                        </div>
+
+                        <Tooltip
+                          anchorSelect="#partner-token"
+                          content="Verified by Auto.fun"
+                          place="top-start"
+                          noArrow
+                        />
+                      </>
+                    ) : null}
                     <h3 className="capitalize text-white text-2xl font-bold font-satoshi leading-tight truncate pr-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                       {token?.name}
                     </h3>
@@ -527,7 +563,7 @@ export default function Page() {
                     (token?.reserveLamport - token?.virtualReserves) /
                       LAMPORTS_PER_SOL,
                     true,
-                    true,
+                    true
                   )}{" "}
                   SOL in the bonding curve.
                 </p>
