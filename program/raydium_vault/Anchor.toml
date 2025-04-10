@@ -5,13 +5,13 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-raydium_vault = "D3JRxfEhXafUXwyG45yXAfQ8yfSEYpqEpzJUaiWmJXEi"
+raydium_vault = "F7cFbGWynSconpJvoYnA3WQ8R3xWNUDYfoEp3NBvoEgh"
 
 [registry]
 url = "https://api.devnet.solana.com"
 
 [provider]
-cluster = "Devnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

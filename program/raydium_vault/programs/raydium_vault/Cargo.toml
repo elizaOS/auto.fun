@@ -20,4 +20,3 @@ anchor-spl = { version = "=0.30.1", features = ["metadata", "memo"] }
 raydium-cpmm-cpi = { git = "https://github.com/raydium-io/raydium-cpi", package = "raydium-cpmm-cpi", branch = "anchor-0.30.1" }
 raydium-locking-cpi = { git = "https://github.com/raydium-io/raydium-cpi", package = "raydium-locking-cpi", branch = "anchor-0.30.1" }
 bytemuck_derive = "=1.7.0"
-
