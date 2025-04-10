@@ -46,7 +46,7 @@ export const useTransactions = ({ tokenId }: { tokenId: string }) => {
       if (pagination.currentPage !== 1) return;
 
       pagination.setItems((items) =>
-        [newTransaction, ...items].slice(0, pageSize)
+        [newTransaction, ...items].slice(0, pageSize),
       );
     });
 

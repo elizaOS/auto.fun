@@ -1850,7 +1850,7 @@ export const Create = () => {
   const submitFormToBackend = async () => {
     try {
       setIsCreating(true);
-      setCreationStage('initializing');
+      setCreationStage("initializing");
       setCreationStep("Preparing token creation...");
 
       setIsSubmitting(true);
@@ -2299,19 +2299,19 @@ export const Create = () => {
       navigate(`/token/${tokenMint}`);
 
       // After transaction confirmation
-      setCreationStage('confirming');
+      setCreationStage("confirming");
       setCreationStep("Waiting for wallet confirmation...");
 
       // After token creation
-      setCreationStage('creating');
+      setCreationStage("creating");
       setCreationStep("Creating token on-chain...");
 
       // After token record creation
-      setCreationStage('validating');
+      setCreationStage("validating");
       setCreationStep("Validating transaction...");
 
       // After validation
-      setCreationStage('finalizing');
+      setCreationStage("finalizing");
       setCreationStep("Finalizing token setup...");
     } catch (error) {
       console.error("Error creating token:", error);
@@ -2322,7 +2322,7 @@ export const Create = () => {
       );
       setIsCreating(false);
       setCreationStep("");
-      setCreationStage('initializing');
+      setCreationStage("initializing");
     } finally {
       setIsSubmitting(false);
     }
@@ -2597,7 +2597,9 @@ export const Create = () => {
 
   const [isCreating, setIsCreating] = useState(false);
   const [creationStep, setCreationStep] = useState<string>("");
-  const [creationStage, setCreationStage] = useState<'initializing' | 'confirming' | 'creating' | 'validating' | 'finalizing'>('initializing');
+  const [creationStage, setCreationStage] = useState<
+    "initializing" | "confirming" | "creating" | "validating" | "finalizing"
+  >("initializing");
 
   const [rotation, setRotation] = useState(0);
 
@@ -2614,18 +2616,20 @@ export const Create = () => {
     const originalConsoleLog = console.log;
     console.log = (...args) => {
       originalConsoleLog(...args);
-      
+
       // Check for specific log messages to update state
       const message = args[0];
-      if (typeof message === 'string') {
-        if (message.includes('Token created on-chain successfully')) {
-          setCreationStage('validating');
+      if (typeof message === "string") {
+        if (message.includes("Token created on-chain successfully")) {
+          setCreationStage("validating");
           setCreationStep("Token created successfully, validating...");
-        } else if (message.includes('Waiting for token creation confirmation')) {
-          setCreationStage('validating');
+        } else if (
+          message.includes("Waiting for token creation confirmation")
+        ) {
+          setCreationStage("validating");
           setCreationStep("Waiting for blockchain confirmation...");
-        } else if (message.includes('waiting for creation from token mint')) {
-          setCreationStage('validating');
+        } else if (message.includes("waiting for creation from token mint")) {
+          setCreationStage("validating");
           setCreationStep("Confirming token creation on-chain...");
         }
       }
@@ -3149,27 +3153,37 @@ export const Create = () => {
         <div className="fixed inset-0 flex items-center justify-center z-[60]">
           <div className="bg-[#1A1A1A]/80 p-6 rounded-lg shadow-lg max-w-md w-full">
             <div className="flex items-center flex-col gap-3">
-              <div style={{ width: "128px", height: "128px", perspective: "1000px" }}>
-                <div style={{
-                  width: "100%",
-                  height: "100%",
-                  position: "relative",
-                  transformStyle: "preserve-3d",
-                  transition: "transform 0.5s ease",
-                  transform: `rotateY(${rotation}deg)`
-                }}>
-                  {/* Front face - left half */}
-                  <div style={{
-                    position: "absolute",
+              <div
+                style={{
+                  width: "128px",
+                  height: "128px",
+                  perspective: "1000px",
+                }}
+              >
+                <div
+                  style={{
                     width: "100%",
                     height: "100%",
-                    backfaceVisibility: "hidden",
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    overflow: "hidden",
-                    transform: "rotateY(0deg) translateZ(64px)"
-                  }}>
+                    position: "relative",
+                    transformStyle: "preserve-3d",
+                    transition: "transform 0.5s ease",
+                    transform: `rotateY(${rotation}deg)`,
+                  }}
+                >
+                  {/* Front face - left half */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      width: "100%",
+                      height: "100%",
+                      backfaceVisibility: "hidden",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      overflow: "hidden",
+                      transform: "rotateY(0deg) translateZ(64px)",
+                    }}
+                  >
                     <img
                       src="/logo_wide.svg"
                       alt="logo front"
@@ -3177,29 +3191,33 @@ export const Create = () => {
                         height: "100%",
                         width: "256px",
                         objectFit: "cover",
-                        objectPosition: "-3% 0"
+                        objectPosition: "-3% 0",
                       }}
                     />
                   </div>
 
                   {/* Right face - right half */}
-                  <div style={{
-                    position: "absolute",
-                    width: "100%",
-                    height: "100%",
-                    backfaceVisibility: "hidden",
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    overflow: "hidden",
-                    transform: "rotateY(90deg) translateZ(64px)"
-                  }}>
-                    <div style={{
-                      height: "100%",
+                  <div
+                    style={{
+                      position: "absolute",
                       width: "100%",
+                      height: "100%",
+                      backfaceVisibility: "hidden",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
                       overflow: "hidden",
-                      position: "relative"
-                    }}>
+                      transform: "rotateY(90deg) translateZ(64px)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: "100%",
+                        overflow: "hidden",
+                        position: "relative",
+                      }}
+                    >
                       <img
                         src="/logo_wide.svg"
                         alt="logo right"
@@ -3209,24 +3227,26 @@ export const Create = () => {
                           width: "256px",
                           right: 0,
                           objectFit: "cover",
-                          objectPosition: "100% 0"
+                          objectPosition: "100% 0",
                         }}
                       />
                     </div>
                   </div>
 
                   {/* Back face - left half */}
-                  <div style={{
-                    position: "absolute",
-                    width: "100%",
-                    height: "100%",
-                    backfaceVisibility: "hidden",
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    overflow: "hidden",
-                    transform: "rotateY(180deg) translateZ(64px)"
-                  }}>
+                  <div
+                    style={{
+                      position: "absolute",
+                      width: "100%",
+                      height: "100%",
+                      backfaceVisibility: "hidden",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      overflow: "hidden",
+                      transform: "rotateY(180deg) translateZ(64px)",
+                    }}
+                  >
                     <img
                       src="/logo_wide.svg"
                       alt="logo back"
@@ -3234,29 +3254,33 @@ export const Create = () => {
                         height: "100%",
                         width: "256px",
                         objectFit: "cover",
-                        objectPosition: "-3% 0"
+                        objectPosition: "-3% 0",
                       }}
                     />
                   </div>
 
                   {/* Left face - right half */}
-                  <div style={{
-                    position: "absolute",
-                    width: "100%",
-                    height: "100%",
-                    backfaceVisibility: "hidden",
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    overflow: "hidden",
-                    transform: "rotateY(270deg) translateZ(64px)"
-                  }}>
-                    <div style={{
-                      height: "100%",
+                  <div
+                    style={{
+                      position: "absolute",
                       width: "100%",
+                      height: "100%",
+                      backfaceVisibility: "hidden",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
                       overflow: "hidden",
-                      position: "relative"
-                    }}>
+                      transform: "rotateY(270deg) translateZ(64px)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: "100%",
+                        overflow: "hidden",
+                        position: "relative",
+                      }}
+                    >
                       <img
                         src="/logo_wide.svg"
                         alt="logo left"
@@ -3266,19 +3290,25 @@ export const Create = () => {
                           width: "256px",
                           right: 0,
                           objectFit: "cover",
-                          objectPosition: "100% 0"
+                          objectPosition: "100% 0",
                         }}
                       />
                     </div>
                   </div>
                 </div>
               </div>
-              <p className="font-dm-mono text-base text-autofun-text-secondary">{creationStep}</p>
-              {creationStage === 'confirming' && (
-                <p className="font-dm-mono text-sm text-autofun-text-secondary/80">Please confirm the transaction in your wallet</p>
+              <p className="font-dm-mono text-base text-autofun-text-secondary">
+                {creationStep}
+              </p>
+              {creationStage === "confirming" && (
+                <p className="font-dm-mono text-sm text-autofun-text-secondary/80">
+                  Please confirm the transaction in your wallet
+                </p>
               )}
-              {creationStage === 'validating' && (
-                <p className="font-dm-mono text-sm text-autofun-text-secondary/80">This may take a few moments</p>
+              {creationStage === "validating" && (
+                <p className="font-dm-mono text-sm text-autofun-text-secondary/80">
+                  This may take a few moments
+                </p>
               )}
             </div>
           </div>

@@ -166,7 +166,7 @@ export async function updateSOLPrice(env: Env): Promise<number> {
 export async function calculateTokenMarketData(
   token: any,
   solPrice: number,
-  env?: Env
+  env?: Env,
 ): Promise<any> {
   // Copy the token to avoid modifying the original
   const tokenWithMarketData = { ...token };
@@ -181,9 +181,9 @@ export async function calculateTokenMarketData(
     if (token.reserveAmount && tokenWithMarketData.tokenPriceUSD) {
       tokenWithMarketData.marketCapUSD = env
         ? (Number(env.TOKEN_SUPPLY) / Math.pow(10, TOKEN_DECIMALS)) *
-        tokenWithMarketData.tokenPriceUSD
+          tokenWithMarketData.tokenPriceUSD
         : (1000000000000000 / Math.pow(10, TOKEN_DECIMALS)) *
-        tokenWithMarketData.tokenPriceUSD;
+          tokenWithMarketData.tokenPriceUSD;
     }
 
     // Add SOL price
