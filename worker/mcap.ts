@@ -166,10 +166,11 @@ export async function updateSOLPrice(env: Env): Promise<number> {
 export async function calculateTokenMarketData(
   token: any,
   solPrice: number,
+  env?: Env
 ): Promise<any> {
   // Copy the token to avoid modifying the original
   const tokenWithMarketData = { ...token };
-
+  const TOKEN_DECIMALS = Number(env?.DECIMALS || 6);
   try {
     // Calculate token price in USD
     if (token.currentPrice) {
@@ -178,8 +179,11 @@ export async function calculateTokenMarketData(
 
     // Calculate market cap
     if (token.reserveAmount && tokenWithMarketData.tokenPriceUSD) {
-      tokenWithMarketData.marketCapUSD =
-        token.reserveAmount * tokenWithMarketData.tokenPriceUSD;
+      tokenWithMarketData.marketCapUSD = env
+        ? (Number(env.TOKEN_SUPPLY) / Math.pow(10, TOKEN_DECIMALS)) *
+        tokenWithMarketData.tokenPriceUSD
+        : (1000000000000000 / Math.pow(10, TOKEN_DECIMALS)) *
+        tokenWithMarketData.tokenPriceUSD;
     }
 
     // Add SOL price
@@ -263,7 +267,7 @@ async function calculateRaydiumTokenMarketData(token: any, env?: Env) {
     const marketCapUSD = env
       ? (Number(env.TOKEN_SUPPLY) / Math.pow(10, TOKEN_DECIMALS)) *
         tokenPriceUSD
-      : (1000000000000 / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD; // Default value if env not available
+      : (1000000000000000 / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD; // Default value if env not available
 
     if (marketCapUSD < 0) {
       throw new Error("Mcap: Market cap is negative");

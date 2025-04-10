@@ -289,7 +289,7 @@ export async function bulkUpdatePartialTokens(
 
   // Process each token in parallel
   const updatedTokensPromises = tokens.map((token) =>
-    calculateTokenMarketData(token, solPrice),
+    calculateTokenMarketData(token, solPrice, env),
   );
 
   // Wait for all updates to complete
