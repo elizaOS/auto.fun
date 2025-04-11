@@ -10,10 +10,14 @@ import Button from "./button";
 
 // Force re-initialization of PhantomWalletAdapter
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
+import { useSolBalance } from "@/hooks/use-token-balance";
+import SkeletonImage from "./skeleton-image";
 
 const WalletButton = () => {
   const navigate = useNavigate();
   const { publicKey, connecting, wallet, connected } = useWallet();
+  const solBalance = useSolBalance();
+
   const { setVisible } = useWalletModal();
   const {
     isAuthenticated,
@@ -225,6 +229,18 @@ const WalletButton = () => {
         {menuOpen && (
           <div className="absolute z-50 right-0 mt-2 bg-[#171717] border border-[#262626] shadow-lg overflow-hidden w-48">
             <ul className="py-2">
+              <li className="opacity-50 px-4 py-2 text-sm text-white flex items-centerjustofy-between gap-2">
+              <SkeletonImage
+                        parentClassName="w-5 h-5 shrink-0"
+                        src="/solana.png"
+                        width={32}
+                        height={32}
+                        alt="solana_logo"
+                        className="w-5 h-5 inline"
+                      />
+                  {Number(solBalance).toFixed(2)}
+                  
+              </li>
               <li className="opacity-50 px-4 py-2 text-sm text-white flex items-center gap-2">
                 <Trophy size={16} />
                 <span>{user?.points ?? 0} points</span>

@@ -96,6 +96,10 @@ export interface TokenData {
   withdrawnAmounts?: WithdrawnAmountsData;
   poolInfo?: PoolInfoData;
   lockLpTxId?: string;
+  tokenSupply?: string;
+  tokenSupplyUiAmount?: number;
+  tokenDecimals?: number;
+  lastSupplyUpdate?: string;
 }
 
 export interface TokenDBData {
