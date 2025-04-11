@@ -1052,8 +1052,9 @@ tokenRouter.get("/image/:filename", async (c) => {
 tokenRouter.get("/tokens", async (c) => {
   try {
     const queryParams = c.req.query();
+    const isSearching = !!queryParams.search;
 
-    const limit = parseInt(queryParams.limit as string) || 50;
+    const limit = isSearching ? 5 : parseInt(queryParams.limit as string) || 50;
     const page = parseInt(queryParams.page as string) || 1;
     const skip = (page - 1) * limit;
 

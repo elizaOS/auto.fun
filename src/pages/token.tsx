@@ -146,8 +146,6 @@ export default function Page() {
   // Use real blockchain data if available, otherwise fall back to API data
   const solPriceUSD =
     metrics?.solPriceUSD || contextSolPrice || token?.solPriceUSD || 0;
-  const currentPrice = metrics?.currentPrice || token?.currentPrice || 0;
-  const tokenPriceUSD = metrics?.tokenPriceUSD || token?.tokenPriceUSD || 0;
   const marketCapUSD = metrics?.marketCapUSD || token?.marketCapUSD || 0;
   const volume24h = token?.volume24h || metrics?.volume24h || 0;
   // const holderCount = metrics?.holderCount || token?.holderCount || 0;
@@ -570,32 +568,6 @@ export default function Page() {
               ) : null}
             </div>
           )}
-
-          {/* Price Display - Now below bonding curve */}
-          <div className="py-4 px-3">
-            <div className="flex justify-between">
-              <div className="flex flex-col gap-1 items-center">
-                <span className="font-dm-mono text-autofun-text-secondary">
-                  Price USD
-                </span>
-                <span className="text-xl font-dm-mono text-autofun-text-primary">
-                  {tokenPriceUSD
-                    ? formatNumberSubscript(tokenPriceUSD)
-                    : "$0.00"}
-                </span>
-              </div>
-              <div className="flex flex-col gap-1 items-center">
-                <span className="font-dm-mono text-autofun-text-secondary">
-                  Price SOL
-                </span>
-                <span className="text-xl font-dm-mono text-autofun-text-primary">
-                  {currentPrice
-                    ? formatNumberSubscript(currentPrice)
-                    : "0.00000000"}
-                </span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
