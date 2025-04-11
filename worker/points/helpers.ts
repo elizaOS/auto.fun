@@ -1,7 +1,6 @@
-
 import { eq, sql, gt } from "drizzle-orm";
 import { getDB, users, swaps, tokenHolders, tokens } from "../db";
-import {getToken} from "../raydium/migration/migrations";
+import { getToken } from "../raydium/migration/migrations";
 
 import { v4 as uuidv4 } from "uuid";
 import { Env } from "../env";
@@ -14,9 +13,9 @@ export type PointEvent =
   | { type: "postbond_buy"; usdVolume: number }
   | { type: "prebond_sell"; usdVolume: number }
   | { type: "postbond_sell"; usdVolume: number }
-  | { type: "trade_volume_bonus"; usdVolume: number }       // >$10/$100
+  | { type: "trade_volume_bonus"; usdVolume: number } // >$10/$100
   | { type: "successful_bond" }
-  | { type: "daily_holding"; usdHeld: number }             // per day
+  | { type: "daily_holding"; usdHeld: number } // per day
   | { type: "graduation_holding"; heldAtGraduation: number } // value at graduation
   | { type: "graduating_tx" } // tx at graduation
   | { type: "referral" }
@@ -54,7 +53,7 @@ function calculatePoints(evt: PointEvent): number {
     case "owner_graduation":
       return 100;
     case "referral":
-      return 100; 
+      return 100;
     case "daily_trading_streak":
       return Math.min(evt.days * 10, 280);
     case "first_buyer":
@@ -64,13 +63,11 @@ function calculatePoints(evt: PointEvent): number {
   }
 }
 
-
-
 export async function awardUserPoints(
   env: Env,
   userAddress: string,
   event: PointEvent,
-  description = ""
+  description = "",
 ): Promise<void> {
   const db = getDB(env);
   const now = new Date().toISOString();
@@ -78,29 +75,29 @@ export async function awardUserPoints(
   if (pointsToAdd <= 0) return;
 
   // 1) Upsert into user_points
-//   await db
-//     .insert(userPoints)
-//     .values({
-//       id: uuidv4(),
-//       userAddress,
-//       eventType: event.type,
-//       pointsAwarded: pointsToAdd,
-//       description,
-//       timestamp: now,
-//     })
-//     .onConflictDoUpdate({
-//       target: [userPoints.userAddress, userPoints.eventType],
-//       set: {
-//          pointsAwarded: sql`${userPoints.pointsAwarded} + ${pointsToAdd}`,
-//         description,
-//         timestamp: now,
-//       },
-//     })
-//     .execute();    
-// this needs to be moved to a new database/system 
-//so we can keep logs of each event where a user was rewarded points {/* Malibu To do */}
+  //   await db
+  //     .insert(userPoints)
+  //     .values({
+  //       id: uuidv4(),
+  //       userAddress,
+  //       eventType: event.type,
+  //       pointsAwarded: pointsToAdd,
+  //       description,
+  //       timestamp: now,
+  //     })
+  //     .onConflictDoUpdate({
+  //       target: [userPoints.userAddress, userPoints.eventType],
+  //       set: {
+  //          pointsAwarded: sql`${userPoints.pointsAwarded} + ${pointsToAdd}`,
+  //         description,
+  //         timestamp: now,
+  //       },
+  //     })
+  //     .execute();
+  // this needs to be moved to a new database/system
+  //so we can keep logs of each event where a user was rewarded points {/* Malibu To do */}
 
-   // 2) Update running total in users table
+  // 2) Update running total in users table
   const existing = await db
     .select()
     .from(users)
@@ -112,7 +109,7 @@ export async function awardUserPoints(
     await db
       .update(users)
       .set({
-         points: sql`${users.points} + ${pointsToAdd}`,
+        points: sql`${users.points} + ${pointsToAdd}`,
       })
       .where(eq(users.address, userAddress))
       .execute();
@@ -131,10 +128,9 @@ export async function awardUserPoints(
   }
 }
 
-
 export async function awardGraduationPoints(
   env: Env,
-  mint: string
+  mint: string,
 ): Promise<void> {
   const db = getDB(env);
 
@@ -152,7 +148,7 @@ export async function awardGraduationPoints(
       env,
       lastSwap.user,
       { type: "graduating_tx" },
-      "Graduating transaction bonus"
+      "Graduating transaction bonus",
     );
   }
 
@@ -164,7 +160,7 @@ export async function awardGraduationPoints(
       env,
       creator,
       { type: "owner_graduation" },
-      "Owner graduation bonus"
+      "Owner graduation bonus",
     );
   }
 
@@ -175,14 +171,14 @@ export async function awardGraduationPoints(
     .where(eq(tokenHolders.mint, mint))
     .execute();
 
-    const [priceRow] = await db
+  const [priceRow] = await db
     .select({ tokenPriceUSD: tokens.tokenPriceUSD })
     .from(tokens)
     .where(eq(tokens.mint, mint))
     .limit(1)
     .execute();
-  
-    const priceAtGraduation = priceRow?.tokenPriceUSD ?? 0;
+
+  const priceAtGraduation = priceRow?.tokenPriceUSD ?? 0;
 
   for (const h of holders) {
     const usdHeld = (h.amount || 0) * priceAtGraduation;
@@ -190,7 +186,7 @@ export async function awardGraduationPoints(
       env,
       h.address,
       { type: "graduation_holding", heldAtGraduation: usdHeld },
-      `Holding through graduation: $${usdHeld.toFixed(2)}`
+      `Holding through graduation: $${usdHeld.toFixed(2)}`,
     );
   }
 }
@@ -199,7 +195,7 @@ export async function awardGraduationPoints(
 export async function distributeWeeklyPoints(
   env: Env,
   weeklyPool = 1_000_000,
-  capPercent = 0.02
+  capPercent = 0.02,
 ): Promise<{ distributed: number; unassigned: number }> {
   const db = getDB(env);
 
@@ -228,7 +224,8 @@ export async function distributeWeeklyPoints(
 
     if (share <= 0) continue;
 
-    await db.update(users)
+    await db
+      .update(users)
       .set({
         rewardPoints: sql`${users.rewardPoints} + ${share}`,
       })

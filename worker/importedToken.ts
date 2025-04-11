@@ -100,7 +100,7 @@ export class ImportedToken {
       tokenPriceUSD: token.priceUSD ? Number(token.priceUSD) : 0,
       holderCount: token.holders,
       // time of import
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
 
       // time of actual token creation
       // createdAt: token.createdAt
@@ -154,7 +154,7 @@ export class ImportedToken {
 
     const swaps = codexSwaps
       .filter(
-        (codexSwap): codexSwap is NonNullable<typeof codexSwap> => !!codexSwap
+        (codexSwap): codexSwap is NonNullable<typeof codexSwap> => !!codexSwap,
       )
       .map((codexSwap) => {
         const swapData = codexSwap.data as SwapEventData;

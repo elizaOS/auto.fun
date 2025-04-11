@@ -80,9 +80,10 @@ authRouter.post("/register", async (c) => {
       await db.insert(users).values(userData);
       // ** Points system **
       // Award points for registration
-      awardUserPoints(c.env,
+      awardUserPoints(
+        c.env,
         userData.address,
-        { type: "wallet_connected", }, 
+        { type: "wallet_connected" },
         "User registered",
       );
       user = userData;

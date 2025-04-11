@@ -1411,7 +1411,7 @@ tokenRouter.get("/token/:mint", async (c) => {
         .update(tokens)
         .set({
           solPriceUSD: solPrice,
-          currentPrice: (token.tokenPriceUSD || 0) / solPrice
+          currentPrice: (token.tokenPriceUSD || 0) / solPrice,
         })
         .where(eq(tokens.mint, mint))
         .returning();
@@ -1854,8 +1854,8 @@ tokenRouter.post("/create-token", async (c) => {
 
       if (imported) {
         const importedToken = new ImportedToken(c.env, mintAddress);
-        const {marketData} = await importedToken.updateAllData()
-        Object.assign(tokenData, marketData.newTokenData)
+        const { marketData } = await importedToken.updateAllData();
+        Object.assign(tokenData, marketData.newTokenData);
       }
 
       // Emit WebSocket event

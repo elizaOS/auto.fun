@@ -437,22 +437,9 @@ export const verifyAuth = async (
     const publicKey = getCookie(c, "publicKey");
     const authToken = getCookie(c, "auth_token");
 
-    logger.log(
-      "verifyAuth check - publicKey:",
-      publicKey,
-      "authToken:",
-      authToken ? "exists" : "missing",
-    );
-
     const tokenToUse = headerToken || authToken;
 
-    // For testing allow valid-token in Authorization header
-    if (c.env.NODE_ENV === "test" && tokenToUse === "valid-token") {
-      c.set("user", { publicKey: "test_user" });
-      logger.log("Test user authenticated via token");
-      await next();
-      return;
-    }
+    console.log("tokenToUse", tokenToUse);
 
     // Check for JWT token first (more modern approach)
     if (tokenToUse && tokenToUse.includes(".")) {

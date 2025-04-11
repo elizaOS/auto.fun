@@ -425,11 +425,14 @@ export async function processTransactionLogs(
 
         /** Point System  modification*/
         const usdVolume =
-        swapRecord.type === "buy"
-          ? (swapRecord.amountOut / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD
-            : (swapRecord.amountIn / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD;
-        
-        const bondStatus = newToken?.status === "bonded" ? "postbond" : "prebond";
+          swapRecord.type === "buy"
+            ? (swapRecord.amountOut / Math.pow(10, TOKEN_DECIMALS)) *
+              tokenPriceUSD
+            : (swapRecord.amountIn / Math.pow(10, TOKEN_DECIMALS)) *
+              tokenPriceUSD;
+
+        const bondStatus =
+          newToken?.status === "bonded" ? "postbond" : "prebond";
         if (swapRecord.type === "buy") {
           await awardUserPoints(env, swapRecord.user, {
             type: bondStatus === "prebond" ? "prebond_buy" : "postbond_buy",
@@ -554,7 +557,7 @@ export async function processTransactionLogs(
         /** Point System */
         await awardGraduationPoints(env, mintAddress);
         /** End of point system */
-        
+
         // Update in database
         await updateTokenInDB(env, tokenData);
 
