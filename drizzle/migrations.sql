@@ -89,7 +89,11 @@ CREATE TABLE IF NOT EXISTS tokens (
   withdrawn_amounts TEXT,
   pool_info TEXT,
   lock_lp_tx_id TEXT,
-  imported TEXT DEFAULT "0"
+  imported INTEGER DEFAULT 0,
+  token_supply TEXT DEFAULT "1000000000000000",
+  token_supply_ui_amount INTEGER DEFAULT 1000000000,
+  token_decimals INTEGER DEFAULT 6,
+  last_supply_update TEXT
 );
 
 -- Create swaps table

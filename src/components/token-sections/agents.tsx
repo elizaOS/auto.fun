@@ -858,7 +858,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
         <>
           <div className="mt-4">
             <Link
-              to="https://fleek.xyz/eliza/"
+              to="https://fleek.xyz/?referral=autofun"
               aria-label="fleek url"
               target="_blank"
             >

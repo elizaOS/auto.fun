@@ -56,7 +56,7 @@ export const tokens = sqliteTable("tokens", {
   withdrawnAmounts: text("withdrawn_amounts", { mode: "text" }), // Expected to store { withdrawnSol, withdrawnTokens }
   poolInfo: text("pool_info", { mode: "text" }), // Expected to store pool details (id, lpMint, baseVault, quoteVault)
   lockLpTxId: text("lock_lp_tx_id", { mode: "text" }),
-  imported: text("imported", { mode: "text" }).default("0"),
+  imported: integer("imported").default(0),
   // NEW: Token supply and decimals
   tokenSupply: text("token_supply", { mode: "text" }).default(
     "1000000000000000",
