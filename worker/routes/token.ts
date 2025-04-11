@@ -31,7 +31,7 @@ import {
   getRpcUrl,
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
-import { ImportedToken } from "../importedToken";
+import { ExternalToken } from "../externalToken";
 
 // Define the router with environment typing
 const tokenRouter = new Hono<{
@@ -1853,7 +1853,7 @@ tokenRouter.post("/create-token", async (c) => {
       };
 
       if (imported) {
-        const importedToken = new ImportedToken(c.env, mintAddress);
+        const importedToken = new ExternalToken(c.env, mintAddress);
         const { marketData } = await importedToken.updateAllData();
         Object.assign(tokenData, marketData.newTokenData);
       }

@@ -12,7 +12,10 @@ import { eq } from "drizzle-orm";
 
 const SOLANA_NETWORK_ID = 1399811149;
 
-export class ImportedToken {
+/**
+ * Use to fetch/update token, holder and swap data for an external token (either post-bond or imported).
+ */
+export class ExternalToken {
   private sdk: Codex;
   private mint: string;
   private db: ReturnType<typeof getDB>;
