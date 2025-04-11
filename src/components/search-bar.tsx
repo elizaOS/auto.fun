@@ -25,6 +25,7 @@ export default function SearchBar() {
       const data = await getSearchTokens({ search });
       return data as { tokens: IToken[] };
     },
+    enabled: search.length >= 2,
   });
 
   const tokens = query.data?.tokens ?? [];
