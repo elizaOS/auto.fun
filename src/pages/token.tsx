@@ -78,7 +78,7 @@ export default function Page() {
     const socket = getSocket();
 
     socket.on("updateToken", (token: any) =>
-      queryClient.setQueryData(["token", address], token),
+      queryClient.setQueryData(["token", address], token)
     );
 
     return () => {
@@ -110,7 +110,7 @@ export default function Page() {
 
         if (!hasValidData) {
           console.warn(
-            `Token page: Blockchain metrics may be invalid - all key values are 0`,
+            `Token page: Blockchain metrics may be invalid - all key values are 0`
           );
         }
 
@@ -122,7 +122,7 @@ export default function Page() {
           {
             position: "bottom-right",
             autoClose: 5000,
-          },
+          }
         );
         return null;
       }
@@ -146,8 +146,6 @@ export default function Page() {
   // Use real blockchain data if available, otherwise fall back to API data
   const solPriceUSD =
     metrics?.solPriceUSD || contextSolPrice || token?.solPriceUSD || 0;
-  const currentPrice = metrics?.currentPrice || token?.currentPrice || 0;
-  const tokenPriceUSD = metrics?.tokenPriceUSD || token?.tokenPriceUSD || 0;
   const marketCapUSD = metrics?.marketCapUSD || token?.marketCapUSD || 0;
   const volume24h = token?.volume24h || metrics?.volume24h || 0;
   // const holderCount = metrics?.holderCount || token?.holderCount || 0;
@@ -202,7 +200,7 @@ export default function Page() {
         !metrics.marketCapUSD && !metrics.currentPrice && !metrics.volume24h;
       if (allZeros) {
         console.warn(
-          `WARNING: Blockchain metrics returned all zeros for token ${token?.mint}. This might indicate an error in data retrieval.`,
+          `WARNING: Blockchain metrics returned all zeros for token ${token?.mint}. This might indicate an error in data retrieval.`
         );
       }
     }
@@ -297,7 +295,7 @@ export default function Page() {
                   isPartner
                     ? "from-autofun-background-action-highlight/10 via-autofun-background-action-highlight/10"
                     : "from-black/50 via-black/25",
-                  "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5",
+                  "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5"
                 )}
               >
                 <div className="flex items-center justify-between w-full">
@@ -563,39 +561,13 @@ export default function Page() {
                     (token?.reserveLamport - token?.virtualReserves) /
                       LAMPORTS_PER_SOL,
                     true,
-                    true,
+                    true
                   )}{" "}
                   SOL in the bonding curve.
                 </p>
               ) : null}
             </div>
           )}
-
-          {/* Price Display - Now below bonding curve */}
-          <div className="py-4 px-3">
-            <div className="flex justify-between">
-              <div className="flex flex-col gap-1 items-center">
-                <span className="font-dm-mono text-autofun-text-secondary">
-                  Price USD
-                </span>
-                <span className="text-xl font-dm-mono text-autofun-text-primary">
-                  {tokenPriceUSD
-                    ? formatNumberSubscript(tokenPriceUSD)
-                    : "$0.00"}
-                </span>
-              </div>
-              <div className="flex flex-col gap-1 items-center">
-                <span className="font-dm-mono text-autofun-text-secondary">
-                  Price SOL
-                </span>
-                <span className="text-xl font-dm-mono text-autofun-text-primary">
-                  {currentPrice
-                    ? formatNumberSubscript(currentPrice)
-                    : "0.00000000"}
-                </span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
