@@ -6,7 +6,7 @@ import {
 } from "@codex-data/sdk/dist/sdk/generated/graphql";
 import { Env } from "./env";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { getDB, tokens } from "./db";
+import { getDB, TokenHolderInsert, tokenHolders, tokens } from "./db";
 import { getWebSocketClient, WebSocketClient } from "./websocket-client";
 import { eq } from "drizzle-orm";
 
@@ -132,13 +132,36 @@ export class ExternalToken {
       },
     });
 
-    const holders = tokenSupply
-      ? codexHolders.items.map((holder) => ({
-          account: holder.address,
+    const now = new Date().toISOString();
+
+    const allHolders = tokenSupply
+      ? codexHolders.items.map((holder): TokenHolderInsert => ({
+          id: crypto.randomUUID(),
+          mint: this.mint,
+          address: holder.address,
           amount: holder.shiftedBalance,
           percentage: (holder.shiftedBalance / tokenSupply) * 100,
+          lastUpdated: now,
         }))
       : [];
+
+    allHolders.sort((a, b) => b.percentage - a.percentage)
+    
+    const MAXIMUM_HOLDERS_STORED = 50
+    const holders = allHolders.slice(0, MAXIMUM_HOLDERS_STORED);
+
+    if (holders.length > 0) {
+      const MAX_SQLITE_PARAMETERS = 100;
+      const parametersPerHolder = Object.keys(holders[0]).length
+      const batchSize = Math.floor(MAX_SQLITE_PARAMETERS / parametersPerHolder)
+
+      for (let i = 0; i < holders.length; i += batchSize) {
+        const batch = holders.slice(i, i + batchSize);
+        await this.db.insert(tokenHolders).values(batch);
+      }
+    }
+
+    await this.wsClient.to(`token-${this.mint}`).emit('newHolder', holders);
 
     return holders;
   }
