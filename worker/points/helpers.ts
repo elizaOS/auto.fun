@@ -32,13 +32,13 @@ function calculatePoints(evt: PointEvent): number {
     case "creator_token_bonds":
       return 50;
     case "prebond_buy":
-      return Math.min(evt.usdVolume * 0.6, 25);
+      return Math.min(evt.usdVolume * 0.6);
     case "postbond_buy":
-      return Math.min(evt.usdVolume * 0.02, 15);
+      return Math.min(evt.usdVolume * 0.02);
     case "prebond_sell":
-      return Math.min(evt.usdVolume * 0.1, 15);
+      return Math.min(evt.usdVolume * 0.1);
     case "postbond_sell":
-      return Math.min(evt.usdVolume * 0.01, 10);
+      return Math.min(evt.usdVolume * 0.01);
     case "trade_volume_bonus":
       if (evt.usdVolume > 100) return 500;
       if (evt.usdVolume > 10) return 10;
@@ -56,7 +56,7 @@ function calculatePoints(evt: PointEvent): number {
     case "referral":
       return 100; 
     case "daily_trading_streak":
-      return Math.min(evt.days * 10, 60);
+      return Math.min(evt.days * 10, 280);
     case "first_buyer":
       return 200;
     default:
