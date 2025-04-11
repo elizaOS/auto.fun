@@ -1464,7 +1464,7 @@ tokenRouter.get("/token/:mint", async (c) => {
       : 28000000000;
     const curveLimit = c.env.CURVE_LIMIT
       ? Number(c.env.CURVE_LIMIT)
-      : 11300000000;
+      : 113000000000;
 
     // Update virtualReserves and curveLimit
     token.virtualReserves = token.virtualReserves || virtualReserves;
