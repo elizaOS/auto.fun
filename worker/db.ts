@@ -137,6 +137,7 @@ export const users = sqliteTable("users", {
   name: text("name"),
   address: text("address").notNull().unique(),
   points: integer("points").notNull().default(0),
+  rewardPoints: integer("reward_points").notNull().default(0), // Permanent Points for rewards
   createdAt: text("created_at", { mode: "text" }).notNull(),
 });
 
