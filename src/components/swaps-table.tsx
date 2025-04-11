@@ -20,8 +20,6 @@ export default function SwapsTable({ token }: { token: IToken }) {
   const { /*paused,*/ setPause } = usePause();
   const { items: data, isLoading } = useTransactions({ tokenId: token.mint });
 
-  console.log(data);
-
   // Helper to format swap amounts based on type
   const formatSwapAmount = (amount: number | string, isToken: boolean) => {
     const numericAmount =
@@ -76,7 +74,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
           data
             .filter(
               (swap, index, self) =>
-                index === self.findIndex((t) => t.txId === swap.txId),
+                index === self.findIndex((t) => t.txId === swap.txId)
             )
             .map((swap) => {
               const isBuy = swap.type === "Buy";
