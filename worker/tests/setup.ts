@@ -22,7 +22,7 @@ export async function setupWorkerTest(): Promise<TestContext> {
       NETWORK: process.env.NETWORK || "devnet",
       DECIMALS: process.env.DECIMALS || "6",
       TOKEN_SUPPLY: process.env.TOKEN_SUPPLY || "1000000000000000",
-      VIRTUAL_RESERVES: process.env.VIRTUAL_RESERVES || "28000000000",
+      VIRTUAL_RESERVES: process.env.VIRTUAL_RESERVES || "280000000000",
       CURVE_LIMIT: process.env.CURVE_LIMIT || "113000000000",
       PORT: process.env.PORT || "8787",
       NODE_ENV: "test",
