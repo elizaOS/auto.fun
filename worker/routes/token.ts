@@ -31,6 +31,7 @@ import {
   getRpcUrl,
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
+import { ImportedToken } from "../importedToken";
 
 // Define the router with environment typing
 const tokenRouter = new Hono<{
@@ -1234,6 +1235,11 @@ tokenRouter.get("/tokens", async (c) => {
   }
 });
 
+/**
+ * used for importing tokens
+ * will only search in mainnet because it's easier to test popular solana tokens that way.
+ * we don't want to accidentally import devnet tokens into our system
+ */
 tokenRouter.post("/search-token", async (c) => {
   const body = await c.req.json();
   const { mint, requestor } = body;
@@ -1250,15 +1256,11 @@ tokenRouter.post("/search-token", async (c) => {
   const mintPublicKey = new PublicKey(mint);
   logger.log(`[search-token] Searching for token ${mint}`);
 
-  // Import the functions to get both mainnet and devnet RPC URLs
-  const { getMainnetRpcUrl, getDevnetRpcUrl } = await import("../util");
+  const connection = new Connection(c.env.MAINNET_SOLANA_RPC_URL, "confirmed");
 
-  // We'll try both networks - first the current configured network
-  const primaryConnection = new Connection(getRpcUrl(c.env), "confirmed");
-
-  // Try to find the token on the primary network
+  // Try to find the token on mainnet
   try {
-    const tokenInfo = await primaryConnection.getAccountInfo(mintPublicKey);
+    const tokenInfo = await connection.getAccountInfo(mintPublicKey);
     if (tokenInfo) {
       logger.log(
         `[search-token] Found token on primary network (${c.env.NETWORK || "default"})`,
@@ -1268,47 +1270,13 @@ tokenRouter.post("/search-token", async (c) => {
         c,
         mintPublicKey,
         tokenInfo,
-        primaryConnection,
+        connection,
         requestor,
       );
     }
   } catch (error) {
     logger.error(`[search-token] Error checking primary network: ${error}`);
   }
-
-  // If token not found on primary network, try the alternate network
-  const isDevnetPrimary = c.env.NETWORK === "devnet";
-  const alternateRpcUrl = isDevnetPrimary
-    ? getMainnetRpcUrl(c.env)
-    : getDevnetRpcUrl(c.env);
-  const alternateNetworkName = isDevnetPrimary ? "mainnet" : "devnet";
-
-  logger.log(
-    `[search-token] Token not found on primary network, trying ${alternateNetworkName}`,
-  );
-  const alternateConnection = new Connection(alternateRpcUrl, "confirmed");
-
-  try {
-    const tokenInfo = await alternateConnection.getAccountInfo(mintPublicKey);
-    if (tokenInfo) {
-      logger.log(`[search-token] Found token on ${alternateNetworkName}`);
-      // Continue with the token info we found on the alternate network
-      return await processTokenInfo(
-        c,
-        mintPublicKey,
-        tokenInfo,
-        alternateConnection,
-        requestor,
-      );
-    }
-  } catch (error) {
-    logger.error(
-      `[search-token] Error checking ${alternateNetworkName}: ${error}`,
-    );
-  }
-
-  // If we get here, token was not found on either network
-  return c.json({ error: "Token not found on any network" }, 404);
 });
 
 tokenRouter.get("/token/:mint/holders", async (c) => {
@@ -1424,9 +1392,30 @@ tokenRouter.get("/token/:mint", async (c) => {
       .from(tokens)
       .where(eq(tokens.mint, mint))
       .limit(1);
+    const token = tokenData[0];
 
     if (!tokenData || tokenData.length === 0) {
       return c.json({ error: "Token not found", mint }, 404);
+    }
+
+    // Get fresh SOL price
+    const solPrice = await getSOLPrice(c.env);
+
+    /**
+     * Use DB as source of truth for imported tokens since we have
+     * fetched and stored all the market data. we don't need to calculate
+     * anything based on our program variables.
+     */
+    if (Number(token.imported) === 1) {
+      const updatedToken = await db
+        .update(tokens)
+        .set({
+          solPriceUSD: solPrice,
+          currentPrice: (token.tokenPriceUSD || 0) / solPrice
+        })
+        .where(eq(tokens.mint, mint))
+        .returning();
+      return c.json(updatedToken[0]);
     }
 
     // Only refresh holder data if explicitly requested
@@ -1435,11 +1424,6 @@ tokenRouter.get("/token/:mint", async (c) => {
     logger.log(`Refreshing holders data for token ${mint}`);
     await updateHoldersCache(c.env, mint);
     // }
-
-    const token = tokenData[0];
-
-    // Get fresh SOL price
-    const solPrice = await getSOLPrice(c.env);
 
     // Set default values for critical fields if they're missing
     const TOKEN_DECIMALS = Number(c.env.DECIMALS || 6);
@@ -1507,16 +1491,6 @@ tokenRouter.get("/token/:mint", async (c) => {
     const holdersCount = holdersCountQuery[0]?.count || 0;
     token.holderCount = holdersCount;
 
-    // Get latest swap - most recent transaction
-    const latestSwapQuery = await db
-      .select()
-      .from(swaps)
-      .where(eq(swaps.tokenMint, mint))
-      .orderBy(desc(swaps.timestamp))
-      .limit(1);
-
-    const latestSwap = latestSwapQuery[0] || null;
-
     // Update token in database if we've calculated new values
     await db
       .update(tokens)
@@ -1541,10 +1515,7 @@ tokenRouter.get("/token/:mint", async (c) => {
       .where(eq(tokens.mint, mint));
 
     // Format response with additional data
-    return c.json({
-      ...token,
-      latestSwap,
-    });
+    return c.json(token);
   } catch (error) {
     logger.error(`Error getting token: ${error}`);
     return c.json(
@@ -1759,6 +1730,7 @@ tokenRouter.post("/create-token", async (c) => {
     console.log("****** body ******\n", body);
     const {
       tokenMint,
+      mint,
       name,
       symbol,
       txId,
@@ -1772,11 +1744,12 @@ tokenRouter.post("/create-token", async (c) => {
       imported,
     } = body;
 
-    if (!tokenMint) {
+    const mintAddress = tokenMint || mint;
+    if (!mintAddress) {
       return c.json({ error: "Token mint address is required" }, 400);
     }
 
-    logger.log(`Creating token record for: ${tokenMint}`);
+    logger.log(`Creating token record for: ${mintAddress}`);
 
     const db = getDB(c.env);
 
@@ -1784,7 +1757,7 @@ tokenRouter.post("/create-token", async (c) => {
     const existingToken = await db
       .select()
       .from(tokens)
-      .where(eq(tokens.mint, tokenMint))
+      .where(eq(tokens.mint, mintAddress))
       .limit(1);
 
     if (existingToken && existingToken.length > 0) {
@@ -1803,9 +1776,9 @@ tokenRouter.post("/create-token", async (c) => {
           url: metadataUrl || existingToken[0].url,
           lastUpdated: new Date().toISOString(),
         })
-        .where(eq(tokens.mint, tokenMint));
+        .where(eq(tokens.mint, mintAddress));
 
-      logger.log(`Updated token ${tokenMint} with new data`);
+      logger.log(`Updated token ${mintAddress} with new data`);
 
       // Return the updated token
       const updatedToken = {
@@ -1835,14 +1808,17 @@ tokenRouter.post("/create-token", async (c) => {
       const now = new Date().toISOString();
       const tokenId = crypto.randomUUID();
 
+      // Convert imported to number (1 for true, 0 for false)
+      const importedValue = imported === true ? 1 : 0;
+
       // Insert with all required fields from the schema
       await db.insert(tokens).values({
         id: tokenId,
-        mint: tokenMint,
-        name: name || `Token ${tokenMint.slice(0, 8)}`,
+        mint: mintAddress,
+        name: name || `Token ${mintAddress.slice(0, 8)}`,
         ticker: symbol || "TOKEN",
-        url: metadataUrl || "", // Use metadataUrl if provided
-        image: imageUrl || "", // Use imageUrl if provided
+        url: metadataUrl || "",
+        image: imageUrl || "",
         description: description || "",
         twitter: twitter || "",
         telegram: telegram || "",
@@ -1853,15 +1829,15 @@ tokenRouter.post("/create-token", async (c) => {
         tokenPriceUSD: 0,
         createdAt: now,
         lastUpdated: now,
-        txId: txId || "create-" + tokenId, // Default txId when not provided
-        imported: Number(imported) || 0,
+        txId: txId || "create-" + tokenId,
+        imported: importedValue.toString(),
       });
 
       // For response, include just what we need
       const tokenData = {
         id: tokenId,
-        mint: tokenMint,
-        name: name || `Token ${tokenMint.slice(0, 8)}`,
+        mint: mintAddress,
+        name: name || `Token ${mintAddress.slice(0, 8)}`,
         ticker: symbol || "TOKEN",
         description: description || "",
         twitter: twitter || "",
@@ -1873,8 +1849,14 @@ tokenRouter.post("/create-token", async (c) => {
         url: metadataUrl || "",
         image: imageUrl || "",
         createdAt: now,
-        imported: Number(imported) || 0,
+        imported: importedValue,
       };
+
+      if (imported) {
+        const importedToken = new ImportedToken(c.env, mintAddress);
+        const {marketData} = await importedToken.updateAllData()
+        Object.assign(tokenData, marketData.newTokenData)
+      }
 
       // Emit WebSocket event
       try {
@@ -1883,7 +1865,7 @@ tokenRouter.post("/create-token", async (c) => {
           ...tokenData,
           timestamp: new Date(),
         });
-        logger.log(`WebSocket event emitted for token ${tokenMint}`);
+        logger.log(`WebSocket event emitted for token ${mintAddress}`);
       } catch (wsError) {
         // Don't fail if WebSocket fails
         logger.error(`WebSocket error: ${wsError}`);
