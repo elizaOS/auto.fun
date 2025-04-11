@@ -423,6 +423,11 @@ export const verifyAuth = async (
   c: Context<{ Bindings: Env }>,
   next: Function,
 ) => {
+
+  if (c.req.path === "/api/webhook") {
+    return next();
+  }
+
   try {
     // First check for Authorization header (token-based auth)
     const authHeader = c.req.header("Authorization");

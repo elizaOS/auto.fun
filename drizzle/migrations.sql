@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS tokens (
   telegram TEXT,
   website TEXT,
   discord TEXT,
+  farcaster TEXT,
   agent_link TEXT,
   description TEXT,
   mint TEXT NOT NULL UNIQUE,
@@ -248,4 +249,4 @@ CREATE INDEX IF NOT EXISTS idx_cache_prices_expires ON cache_prices(expires_at);
 CREATE INDEX IF NOT EXISTS idx_token_agents_mint ON token_agents(token_mint);
 CREATE INDEX IF NOT EXISTS idx_token_agents_owner ON token_agents(owner_address);
 CREATE INDEX IF NOT EXISTS idx_token_agents_official ON token_agents(official);
-CREATE INDEX IF NOT EXISTS idx_token_agents_user_id ON token_agents(twitter_user_id); 
+CREATE INDEX IF NOT EXISTS idx_token_agents_user_id ON token_agents(twitter_user_id);

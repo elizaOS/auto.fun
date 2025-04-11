@@ -645,7 +645,6 @@ const uploadImage = async (metadata: TokenMetadata) => {
           telegram: metadata.links.telegram,
           website: metadata.links.website,
           discord: metadata.links.discord,
-          agentLink: metadata.links.agentLink,
         },
       }),
     });
@@ -870,7 +869,7 @@ export const Create = () => {
       telegram: "",
       website: "",
       discord: "",
-      agentLink: "",
+      farcaster: "",
     },
     importAddress: "",
   });
@@ -1923,7 +1922,6 @@ export const Create = () => {
               telegram: form.links.telegram,
               website: form.links.website,
               discord: form.links.discord,
-              agentLink: "",
               imageUrl: tokenData.image || "",
               metadataUrl: tokenData.metadataUri || "",
               // Include the import flag to indicate this is an imported token

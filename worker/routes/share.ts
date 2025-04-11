@@ -347,7 +347,7 @@ shareRouter.get("/oauth/request_token", async (c) => {
     client_id: clientId,
     redirect_uri: redirectUri,
     scope:
-      "tweet.read users.read tweet.write follows.read offline.access media.write",
+      "users.read",
     state: state,
     code_challenge: codeChallenge,
     code_challenge_method: "S256",
