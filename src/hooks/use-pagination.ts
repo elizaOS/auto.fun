@@ -54,7 +54,7 @@ const fetchPaginatedData = async <
   // Validate each item in the response with the provided schema if it exists
   const validatedItems = response[itemsPropertyName]
     ? (response[itemsPropertyName] as unknown[]).map((item) =>
-        validationSchema ? validationSchema.parse(item) : (item as TOutput)
+        validationSchema ? validationSchema.parse(item) : (item as TOutput),
       )
     : [];
 
@@ -86,7 +86,7 @@ export const usePage = ({ useUrlState }: { useUrlState: boolean }) => {
         setSearchParams(newParams);
       }
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams],
   );
 
   return { page, setPage: onPageChange };
@@ -146,14 +146,14 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
       sortBy,
       sortOrder,
       validationSchema,
-    ]
+    ],
   );
 
   useEffect(
     function updateSortOrder() {
       loadPage(page);
     },
-    [loadPage, page]
+    [loadPage, page],
   );
 
   const nextPage = useCallback(async () => {
@@ -173,7 +173,7 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
       if (page < 1 || page > totalPages) return;
       setPage(pageNumber);
     },
-    [page, totalPages]
+    [page, totalPages],
   );
 
   return {
