@@ -11,6 +11,10 @@ import { getDB, tokens } from "./db";
 import { Env } from "./env";
 import { logger } from "./logger";
 import { CacheService } from "./cache";
+import {
+  shouldUpdateSupply,
+  updateTokenSupplyFromChain,
+} from "./tokenSupplyHelpers";
 
 // Constants
 const PYTHNET_CLUSTER_NAME: PythCluster = "pythnet";
@@ -166,24 +170,32 @@ export async function updateSOLPrice(env: Env): Promise<number> {
 export async function calculateTokenMarketData(
   token: any,
   solPrice: number,
-  env?: Env,
+  env: Env,
 ): Promise<any> {
   // Copy the token to avoid modifying the original
   const tokenWithMarketData = { ...token };
-  const TOKEN_DECIMALS = Number(env?.DECIMALS || 6);
+
   try {
     // Calculate token price in USD
     if (token.currentPrice) {
       tokenWithMarketData.tokenPriceUSD = token.currentPrice * solPrice;
     }
 
+    if (shouldUpdateSupply(token)) {
+      const updatedSupply = await updateTokenSupplyFromChain(env, token.mint);
+      tokenWithMarketData.tokenSupply = updatedSupply.tokenSupply;
+      tokenWithMarketData.tokenSupplyUiAmount =
+        updatedSupply.tokenSupplyUiAmount;
+      tokenWithMarketData.tokenDecimals = updatedSupply.tokenDecimals;
+      tokenWithMarketData.lastSupplyUpdate = updatedSupply.lastSupplyUpdate;
+    }
+
     // Calculate market cap
-    if (token.reserveAmount && tokenWithMarketData.tokenPriceUSD) {
-      tokenWithMarketData.marketCapUSD = env
-        ? (Number(env.TOKEN_SUPPLY) / Math.pow(10, TOKEN_DECIMALS)) *
-          tokenWithMarketData.tokenPriceUSD
-        : (1000000000000000 / Math.pow(10, TOKEN_DECIMALS)) *
-          tokenWithMarketData.tokenPriceUSD;
+    if (token.tokenSupplyUiAmount) {
+      if (tokenWithMarketData.tokenPriceUSD) {
+        tokenWithMarketData.marketCapUSD =
+          Number(token.tokenSupplyUiAmount) * tokenWithMarketData.tokenPriceUSD;
+      }
     }
 
     // Add SOL price

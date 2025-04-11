@@ -204,7 +204,7 @@ export async function createNewTokenData(
     // Get TOKEN_SUPPLY from env if available, otherwise use default
     const tokenSupply = env?.TOKEN_SUPPLY
       ? Number(env.TOKEN_SUPPLY)
-      : 1000000000000;
+      : 1000000000000000;
     const marketCapUSD =
       (tokenSupply / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD;
 
@@ -259,6 +259,10 @@ export async function createNewTokenData(
       holderCount: 0,
       marketId: null,
       txId,
+      tokenSupply: tokenSupply.toString(),
+      tokenSupplyUiAmount: tokenSupply / Math.pow(10, TOKEN_DECIMALS),
+      tokenDecimals: TOKEN_DECIMALS,
+      lastSupplyUpdate: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       lastUpdated: new Date().toISOString(),
     };

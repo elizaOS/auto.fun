@@ -6,6 +6,8 @@ import { updateTokenInDB } from "../../cron";
 import { getWebSocketClient } from "../../websocket-client";
 import { retryOperation } from "../utils";
 import { logger } from "../../logger";
+import { updateTokenSupplyFromChain } from "../../tokenSupplyHelpers";
+
 export interface LockResult {
   txId: string;
 }
@@ -40,6 +42,19 @@ export async function getToken(
 
   if (tokenRecords.length > 0) {
     const tokenDb = tokenRecords[0];
+    let tokenSupply = tokenDb.tokenSupply;
+    let tokenSupplyUiAmount = tokenDb.tokenSupplyUiAmount;
+    let tokenDecimals = tokenDb.tokenDecimals;
+    let lastSupplyUpdate = tokenDb.lastSupplyUpdate;
+
+    if (tokenDb.tokenDecimals === undefined) {
+      const supplyResult = await updateTokenSupplyFromChain(env, tokenDb.mint);
+      tokenSupply = supplyResult.tokenSupply;
+      tokenSupplyUiAmount = supplyResult.tokenSupplyUiAmount;
+      tokenDecimals = supplyResult.tokenDecimals;
+      lastSupplyUpdate = supplyResult.lastSupplyUpdate;
+    }
+
     const token: TokenData = {
       id: tokenDb.id,
       name: tokenDb.name,
@@ -93,6 +108,10 @@ export async function getToken(
         typeof tokenDb.migration === "string"
           ? JSON.parse(tokenDb.migration)
           : (tokenDb.migration ?? {}),
+      tokenSupply: tokenDb.tokenSupply ?? undefined,
+      tokenSupplyUiAmount: tokenDb.tokenSupplyUiAmount ?? undefined,
+      tokenDecimals: tokenDb.tokenDecimals ?? undefined,
+      lastSupplyUpdate: tokenDb.lastSupplyUpdate ?? undefined,
     };
     return token;
   }

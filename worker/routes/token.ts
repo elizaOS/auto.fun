@@ -20,7 +20,8 @@ import {
 } from "../db";
 import { Env } from "../env";
 import { logger } from "../logger";
-import { getSOLPrice } from "../mcap";
+import { getSOLPrice, calculateTokenMarketData } from "../mcap";
+import {getToken} from '../raydium/migration/migrations';
 import {
   applyFeaturedSort,
   calculateFeaturedScore,
@@ -1400,6 +1401,7 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     // Get fresh SOL price
     const solPrice = await getSOLPrice(c.env);
+    const tokenMarketData = await calculateTokenMarketData(token, solPrice, c.env);
 
     /**
      * Use DB as source of truth for imported tokens since we have
@@ -1426,7 +1428,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     // }
 
     // Set default values for critical fields if they're missing
-    const TOKEN_DECIMALS = Number(c.env.DECIMALS || 6);
+    const TOKEN_DECIMALS = tokenMarketData.tokenDecimals || 6;
     const defaultReserveAmount = 1000000000000; // 1 trillion (default token supply)
     const defaultReserveLamport = 2800000000; // 2.8 SOL (default reserve)
 
@@ -1453,14 +1455,8 @@ tokenRouter.get("/token/:mint", async (c) => {
     // Update solPriceUSD
     token.solPriceUSD = solPrice;
 
-    // Use TOKEN_SUPPLY from env if available, otherwise use reserveAmount
-    const tokenSupply = c.env.TOKEN_SUPPLY
-      ? Number(c.env.TOKEN_SUPPLY)
-      : token.reserveAmount;
-
     // Calculate or update marketCapUSD if we have tokenPriceUSD
-    token.marketCapUSD =
-      (tokenSupply / Math.pow(10, TOKEN_DECIMALS)) * token.tokenPriceUSD;
+    token.marketCapUSD = tokenMarketData.marketCapUSD 
 
     // Get virtualReserves and curveLimit from env or set defaults
     const virtualReserves = c.env.VIRTUAL_RESERVES
