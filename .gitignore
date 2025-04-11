@@ -42,3 +42,4 @@ debug
 sbf-solana-solana
 .rustc_info.json
 CACHEDIR.TAG
+program/id.json
