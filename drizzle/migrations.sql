@@ -248,3 +248,7 @@ CREATE INDEX IF NOT EXISTS idx_token_agents_mint ON token_agents(token_mint);
 CREATE INDEX IF NOT EXISTS idx_token_agents_owner ON token_agents(owner_address);
 CREATE INDEX IF NOT EXISTS idx_token_agents_official ON token_agents(official);
 CREATE INDEX IF NOT EXISTS idx_token_agents_user_id ON token_agents(twitter_user_id); 
+
+
+-- Add reward_points column to users table if it doesn't exist
+ALTER TABLE users ADD COLUMN reward_points INTEGER NOT NULL DEFAULT 0;
