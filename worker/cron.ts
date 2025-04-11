@@ -20,6 +20,7 @@ import {
 import { getWebSocketClient } from "./websocket-client";
 import bs58 from "bs58";
 import { TokenData, TokenDBData } from "../worker/raydium/types/tokenData";
+import { awardUserPoints, awardGraduationPoints } from "./points/helpers";
 
 // Store the last processed signature to avoid duplicate processing
 let lastProcessedSignature: string | null = null;
@@ -422,6 +423,51 @@ export async function processTransactionLogs(
           .returning();
         const newToken = token[0];
 
+        /** Point System  modification*/
+        const usdVolume =
+          swapRecord.type === "buy"
+            ? (swapRecord.amountOut / Math.pow(10, TOKEN_DECIMALS)) *
+              tokenPriceUSD
+            : (swapRecord.amountIn / Math.pow(10, TOKEN_DECIMALS)) *
+              tokenPriceUSD;
+
+        const bondStatus =
+          newToken?.status === "bonded" ? "postbond" : "prebond";
+        if (swapRecord.type === "buy") {
+          await awardUserPoints(env, swapRecord.user, {
+            type: bondStatus === "prebond" ? "prebond_buy" : "postbond_buy",
+            usdVolume,
+          });
+        } else {
+          await awardUserPoints(env, swapRecord.user, {
+            type: bondStatus === "prebond" ? "prebond_sell" : "postbond_sell",
+            usdVolume,
+          });
+        }
+        // volume bonus
+        await awardUserPoints(env, swapRecord.user, {
+          type: "trade_volume_bonus",
+          usdVolume,
+        });
+
+        //first buyer
+        if (swapRecord.type === "buy") {
+          // check if this is the very first swap on this mint
+          const count = await db
+            .select()
+            .from(swaps)
+            .where(eq(swaps.tokenMint, mintAddress))
+            .limit(2)
+            .execute();
+          if (count.length === 1) {
+            await awardUserPoints(env, swapRecord.user, {
+              type: "first_buyer",
+            });
+          }
+        }
+
+        /** End of point system */
+
         // Update holders data immediately after a swap
         await updateHoldersCache(env, mintAddress);
 
@@ -508,6 +554,9 @@ export async function processTransactionLogs(
           status: "migrating",
           lastUpdated: new Date().toISOString(),
         };
+        /** Point System */
+        await awardGraduationPoints(env, mintAddress);
+        /** End of point system */
 
         // Update in database
         await updateTokenInDB(env, tokenData);

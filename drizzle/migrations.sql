@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT,
   address TEXT NOT NULL UNIQUE,
   points INTEGER NOT NULL DEFAULT 0,
-  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  reward_points INTEGER NOT NULL DEFAULT 0
 );
 
 -- Create tokens table

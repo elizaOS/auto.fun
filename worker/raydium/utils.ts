@@ -177,15 +177,3 @@ export const sendNftTo = async (
 export const isDevnet = (connection: anchor.web3.Connection): boolean => {
   return connection.rpcEndpoint == devnetEndpoint;
 };
-
-module.exports = {
-  sendSolTo,
-  sendTokenTo,
-  isDevnet,
-  retryOperation,
-  vaultConfigSeed,
-  positionSeed,
-  claimerInfoSeed,
-  nftFaucetSeed,
-  claimer_address_0,
-};

@@ -17,6 +17,7 @@ import {
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 import { Buffer } from "buffer";
+import { awardUserPoints } from "../points/helpers";
 
 const authRouter = new Hono<{
   Bindings: Env;
@@ -77,6 +78,14 @@ authRouter.post("/register", async (c) => {
       };
 
       await db.insert(users).values(userData);
+      // ** Points system **
+      // Award points for registration
+      awardUserPoints(
+        c.env,
+        userData.address,
+        { type: "wallet_connected" },
+        "User registered",
+      );
       user = userData;
       logger.log(`New user registered: ${user.address}`);
     } else {
