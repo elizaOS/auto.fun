@@ -1430,7 +1430,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     // Set default values for critical fields if they're missing
     const TOKEN_DECIMALS = tokenMarketData.tokenDecimals || 6;
     const defaultReserveAmount = 1000000000000; // 1 trillion (default token supply)
-    const defaultReserveLamport = 2800000000; // 2.8 SOL (default reserve)
+    const defaultReserveLamport = 28000000000; // 2.8 SOL (default reserve)
 
     // Make sure reserveAmount and reserveLamport have values
     token.reserveAmount = token.reserveAmount || defaultReserveAmount;
@@ -1461,7 +1461,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     // Get virtualReserves and curveLimit from env or set defaults
     const virtualReserves = c.env.VIRTUAL_RESERVES
       ? Number(c.env.VIRTUAL_RESERVES)
-      : 2800000000;
+      : 28000000000;
     const curveLimit = c.env.CURVE_LIMIT
       ? Number(c.env.CURVE_LIMIT)
       : 11300000000;
