@@ -36,6 +36,7 @@ const fetchPaginatedData = async <
   sortBy,
   sortOrder,
   itemsPropertyName,
+  validationSchema,
 }: PaginationOptions<TOutput, TInput>): Promise<PaginatedResponse<TOutput>> => {
   const queryParams = new URLSearchParams({
     limit: limit.toString(),
@@ -50,11 +51,11 @@ const fetchPaginatedData = async <
 
   const response = nonValidatedResponse as any;
 
-  console.log("response", response);
-
   // Validate each item in the response with the provided schema if it exists
   const validatedItems = response[itemsPropertyName]
-    ? (response[itemsPropertyName] as unknown[]).map((item) => item as TOutput)
+    ? (response[itemsPropertyName] as unknown[]).map((item) =>
+        validationSchema ? validationSchema.parse(item) : (item as TOutput)
+      )
     : [];
 
   return {
@@ -85,7 +86,7 @@ export const usePage = ({ useUrlState }: { useUrlState: boolean }) => {
         setSearchParams(newParams);
       }
     },
-    [searchParams, setSearchParams],
+    [searchParams, setSearchParams]
   );
 
   return { page, setPage: onPageChange };
@@ -145,14 +146,14 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
       sortBy,
       sortOrder,
       validationSchema,
-    ],
+    ]
   );
 
   useEffect(
     function updateSortOrder() {
       loadPage(page);
     },
-    [loadPage, page],
+    [loadPage, page]
   );
 
   const nextPage = useCallback(async () => {
@@ -172,7 +173,7 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
       if (page < 1 || page > totalPages) return;
       setPage(pageNumber);
     },
-    [page, totalPages],
+    [page, totalPages]
   );
 
   return {
