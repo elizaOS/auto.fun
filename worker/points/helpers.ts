@@ -28,7 +28,7 @@ export type PointEvent =
 function calculatePoints(evt: PointEvent): number {
   switch (evt.type) {
     case "wallet_connected":
-      return 5;
+      return 50;
     case "creator_token_bonds":
       return 50;
     case "prebond_buy":
@@ -52,7 +52,7 @@ function calculatePoints(evt: PointEvent): number {
     case "graduating_tx":
       return 1000;
     case "owner_graduation":
-      return 100;
+      return 500;
     case "referral":
       return 100; 
     case "daily_trading_streak":
