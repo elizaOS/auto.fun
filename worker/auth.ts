@@ -423,7 +423,6 @@ export const verifyAuth = async (
   c: Context<{ Bindings: Env }>,
   next: Function,
 ) => {
-
   if (c.req.path === "/api/webhook") {
     return next();
   }

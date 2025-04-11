@@ -27,12 +27,21 @@ export function calculateAmountOutSell(
   platformSellFee: number,
   reserveToken: number,
 ): number {
-  console.log("calculateAmountOutSell", reserveLamport, amount, _tokenDecimals, platformSellFee, reserveToken);
+  console.log(
+    "calculateAmountOutSell",
+    reserveLamport,
+    amount,
+    _tokenDecimals,
+    platformSellFee,
+    reserveToken,
+  );
 
   // Input validation
-  if (reserveLamport < 0) throw new Error("reserveLamport must be non-negative");
-  if (amount < 0) throw new Error("amount must be non-negative"); 
-  if (platformSellFee < 0) throw new Error("platformSellFee must be non-negative");
+  if (reserveLamport < 0)
+    throw new Error("reserveLamport must be non-negative");
+  if (amount < 0) throw new Error("amount must be non-negative");
+  if (platformSellFee < 0)
+    throw new Error("platformSellFee must be non-negative");
   if (reserveToken < 0) throw new Error("reserveToken must be non-negative");
 
   const feeBasisPoints = convertToBasisPoints(platformSellFee);
@@ -127,13 +136,14 @@ function calculateAmountOutBuy(
   const amountBN = new BN(amount);
 
   const adjustedAmount = amountBN
-    .mul(new BN(10000)).sub(feeBasisPoints)
+    .mul(new BN(10000))
+    .sub(feeBasisPoints)
     .div(new BN(10000));
 
   const reserveTokenBN = new BN(reserveToken.toString());
 
   const numerator = (reserveTokenBN as any).mul(adjustedAmount);
-  const denominator = (new BN(reserveLamport.toString())).add(adjustedAmount);
+  const denominator = new BN(reserveLamport.toString()).add(adjustedAmount);
 
   const out = numerator.div(denominator).toNumber();
   return out;

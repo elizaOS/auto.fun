@@ -160,6 +160,7 @@ export type ConfigAccount = {
 
 declare global {
   interface Window {
+    // @ts-ignore
     solana?: {
       isPhantom?: boolean;
       signMessage?: (

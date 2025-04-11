@@ -225,7 +225,7 @@ export default function useAuthentication() {
         try {
           window.solana
             .disconnect()
-            .catch((e) => console.error("Error disconnecting Phantom:", e));
+            .catch((e: Error) => console.error("Error disconnecting Phantom:", e));
         } catch (e) {
           console.error("Error disconnecting Phantom:", e);
         }
@@ -595,13 +595,13 @@ export default function useAuthentication() {
           console.log("Attempting direct Phantom reconnection");
           window.solana
             .connect()
-            .then((response) => {
+            .then((response: any) => {
               console.log(
                 "Direct reconnection successful:",
                 response.publicKey.toString(),
               );
             })
-            .catch((err) => {
+            .catch((err: any) => {
               console.error("Failed to reconnect directly:", err);
             });
         } catch (err) {

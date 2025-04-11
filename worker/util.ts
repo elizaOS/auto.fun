@@ -195,7 +195,7 @@ export async function createNewTokenData(
     // Get a Solana config with the right environment
     const solanaConfig = initSolanaConfig(env);
 
-    console.log("solanaConfig", solanaConfig)
+    console.log("solanaConfig", solanaConfig);
 
     const metadata = await fetchMetadataWithBackoff(
       solanaConfig.umi,
@@ -439,7 +439,6 @@ export const swapTx = async (
   // Calculate expected output
   let estimatedOutput;
 
-
   console.log("curve.reserveToken.toNumber()", curve.reserveToken.toNumber());
   console.log("adjustedAmount", adjustedAmount);
   console.log(
@@ -464,7 +463,7 @@ export const swapTx = async (
       adjustedAmount,
       feePercent,
       curve.reserveToken.toNumber(),
-      300
+      300,
     );
   }
 

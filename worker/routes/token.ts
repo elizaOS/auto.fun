@@ -21,7 +21,7 @@ import {
 import { Env } from "../env";
 import { logger } from "../logger";
 import { getSOLPrice, calculateTokenMarketData } from "../mcap";
-import {getToken} from '../raydium/migration/migrations';
+import { getToken } from "../raydium/migration/migrations";
 import {
   applyFeaturedSort,
   calculateFeaturedScore,
@@ -1402,7 +1402,11 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     // Get fresh SOL price
     const solPrice = await getSOLPrice(c.env);
-    const tokenMarketData = await calculateTokenMarketData(token, solPrice, c.env);
+    const tokenMarketData = await calculateTokenMarketData(
+      token,
+      solPrice,
+      c.env,
+    );
 
     /**
      * Use DB as source of truth for imported tokens since we have
@@ -1457,7 +1461,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     token.solPriceUSD = solPrice;
 
     // Calculate or update marketCapUSD if we have tokenPriceUSD
-    token.marketCapUSD = tokenMarketData.marketCapUSD 
+    token.marketCapUSD = tokenMarketData.marketCapUSD;
 
     // Get virtualReserves and curveLimit from env or set defaults
     const virtualReserves = c.env.VIRTUAL_RESERVES

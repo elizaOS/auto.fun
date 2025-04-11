@@ -1,11 +1,11 @@
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Trash2, LogOut } from "lucide-react";
-import { useEffect, useState, useCallback } from "react";
+import { Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 // import { Badge } from "../ui/badge";
-import Button from "../button";
 import { env } from "@/utils/env";
+import Button from "../button";
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
@@ -13,7 +13,7 @@ const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
 // Storage keys for Twitter auth
 const STORAGE_KEY = "twitter-oauth-token";
 const AGENT_INTENT_KEY = "connect_agent_intent";
-const OAUTH_REDIRECT_ORIGIN_KEY = "OAUTH_REDIRECT_ORIGIN"; // Key for storing the original path
+// const OAUTH_REDIRECT_ORIGIN_KEY = "OAUTH_REDIRECT_ORIGIN"; // Key for storing the original path
 
 // Types for Twitter authentication
 type TwitterCredentials = {
@@ -46,7 +46,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
   const [twitterCredentials, setTwitterCredentials] =
     useState<TwitterCredentials | null>(null);
   const [isConnectingAgent, setIsConnectingAgent] = useState(false);
-  const [isDisconnecting, setIsDisconnecting] = useState(false);
+  // const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [componentMounted, setComponentMounted] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -203,78 +203,78 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
   }, [tokenMint]); // Re-fetch when tokenMint changes
   // --- End Fetch Real Token Info & Agents ---
 
-  const disconnectTwitter = async () => {
-    try {
-      setIsDisconnecting(true);
+  // const disconnectTwitter = async () => {
+  //   try {
+  //     setIsDisconnecting(true);
 
-      // Remove from localStorage
-      localStorage.removeItem(STORAGE_KEY);
+  //     // Remove from localStorage
+  //     localStorage.removeItem(STORAGE_KEY);
 
-      // Clear state
-      setTwitterCredentials(null);
-    } catch (error) {
-      toast.error("Failed to disconnect from X");
-      console.error("Disconnect error:", error);
-    } finally {
-      setIsDisconnecting(false);
-    }
-  };
+  //     // Clear state
+  //     setTwitterCredentials(null);
+  //   } catch (error) {
+  //     toast.error("Failed to disconnect from X");
+  //     console.error("Disconnect error:", error);
+  //   } finally {
+  //     setIsDisconnecting(false);
+  //   }
+  // };
 
-  const connectTwitter = async () => {
-    // Verify we have a token mint
-    if (!tokenMint) {
-      toast.error("No token mint found, cannot connect agent");
-      return;
-    }
+  // const connectTwitter = async () => {
+  //   // Verify we have a token mint
+  //   if (!tokenMint) {
+  //     toast.error("No token mint found, cannot connect agent");
+  //     return;
+  //   }
 
-    // Ensure wallet is connected
-    if (!publicKey) {
-      toast.error("Please connect your wallet before connecting to X");
-      return;
-    }
+  //   // Ensure wallet is connected
+  //   if (!publicKey) {
+  //     toast.error("Please connect your wallet before connecting to X");
+  //     return;
+  //   }
 
-    try {
-      setIsConnectingAgent(true);
+  //   try {
+  //     setIsConnectingAgent(true);
 
-      // If we already have credentials, connect the agent
-      if (twitterCredentials && twitterCredentials.expiresAt > Date.now()) {
-        await connectTwitterAgent(twitterCredentials);
-      } else {
-        console.log(
-          "Not authenticated, storing intent and redirecting for agent connection.",
-        );
-        // Store the intent to connect agent and the token mint
-        localStorage.setItem(AGENT_INTENT_KEY, tokenMint);
+  //     // If we already have credentials, connect the agent
+  //     if (twitterCredentials && twitterCredentials.expiresAt > Date.now()) {
+  //       await connectTwitterAgent(twitterCredentials);
+  //     } else {
+  //       console.log(
+  //         "Not authenticated, storing intent and redirecting for agent connection.",
+  //       );
+  //       // Store the intent to connect agent and the token mint
+  //       localStorage.setItem(AGENT_INTENT_KEY, tokenMint);
 
-        // Store the current path before redirecting
-        const currentPath =
-          window.location.pathname +
-          window.location.search +
-          window.location.hash;
+  //       // Store the current path before redirecting
+  //       const currentPath =
+  //         window.location.pathname +
+  //         window.location.search +
+  //         window.location.hash;
 
-        // Add agents anchor to the path
-        const pathWithAnchor =
-          currentPath + (currentPath.includes("#") ? "" : "#agents");
-        localStorage.setItem(OAUTH_REDIRECT_ORIGIN_KEY, pathWithAnchor);
-        console.log("Stored origin path for redirect:", pathWithAnchor);
+  //       // Add agents anchor to the path
+  //       const pathWithAnchor =
+  //         currentPath + (currentPath.includes("#") ? "" : "#agents");
+  //       localStorage.setItem(OAUTH_REDIRECT_ORIGIN_KEY, pathWithAnchor);
+  //       console.log("Stored origin path for redirect:", pathWithAnchor);
 
-        // Redirect to OAuth
-        const apiUrl = env.apiUrl;
-        if (!apiUrl) {
-          throw new Error("API URL is not configured");
-        }
+  //       // Redirect to OAuth
+  //       const apiUrl = env.apiUrl;
+  //       if (!apiUrl) {
+  //         throw new Error("API URL is not configured");
+  //       }
 
-        window.location.href = `${apiUrl}/api/share/oauth/request_token`;
-      }
-    } catch (error) {
-      console.error("Error connecting Twitter account:", error);
-      toast.error(
-        `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-    } finally {
-      setIsConnectingAgent(false);
-    }
-  };
+  //       window.location.href = `${apiUrl}/api/share/oauth/request_token`;
+  //     }
+  //   } catch (error) {
+  //     console.error("Error connecting Twitter account:", error);
+  //     toast.error(
+  //       `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+  //     );
+  //   } finally {
+  //     setIsConnectingAgent(false);
+  //   }
+  // };
 
   // Connect Twitter agent with credentials
   const connectTwitterAgent = useCallback(
@@ -725,9 +725,9 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
   }, [tokenMint, componentMounted, publicKey]); // connectTwitterAgent is already memoized
 
   // Check if user has a connected agent for this token
-  const hasConnectedAgent = tokenAgents.some(
-    (agent) => publicKey && agent.ownerAddress === publicKey.toBase58(),
-  );
+  // const hasConnectedAgent = tokenAgents.some(
+  //   (agent) => publicKey && agent.ownerAddress === publicKey.toBase58(),
+  // );
 
   // Effect to process OAuth callback and update stored credentials with correct username
   useEffect(() => {

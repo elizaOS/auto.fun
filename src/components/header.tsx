@@ -1,22 +1,20 @@
+import WalletButton from "@/components/wallet-button";
+import useAuthentication from "@/hooks/use-authentication";
+import { CloseButton, Dialog, DialogPanel } from "@headlessui/react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { Menu, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { twMerge } from "tailwind-merge";
-import SearchBar from "./search-bar";
 import Button from "./button";
-import { CloseButton, Dialog, DialogPanel } from "@headlessui/react";
-import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
-import WalletButton from "@/components/wallet-button";
-import { useWallet } from "@solana/wallet-adapter-react";
-import useAuthentication from "@/hooks/use-authentication";
-import { useSolBalance } from "@/hooks/use-token-balance";
-import SkeletonImage from "./skeleton-image";
+import SearchBar from "./search-bar";
 
 export default function Header() {
   const { pathname } = useLocation();
   const { publicKey } = useWallet();
   const { isAuthenticated } = useAuthentication();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const solBalance = useSolBalance();
+  // const solBalance = useSolBalance();
 
   const mobileNavItems = [
     { icon: "/nav/stars.svg", title: "Create Token", href: "/create" },

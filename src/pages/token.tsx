@@ -11,17 +11,16 @@ import Trade from "@/components/trade";
 import { TradingViewChart } from "@/components/trading-view-chart";
 import TransactionsAndHolders from "@/components/txs-and-holders";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
-import { Tooltip } from "react-tooltip";
 import { IToken } from "@/types";
 import {
   abbreviateNumber,
   formatNumber,
-  formatNumberSubscript,
   fromNow,
-  LAMPORTS_PER_SOL,
+  LAMPORTS_PER_SOL
 } from "@/utils";
 import { getToken, queryClient } from "@/utils/api";
 import { fetchTokenMarketMetrics } from "@/utils/blockchain";
+import { env } from "@/utils/env";
 import { getSocket } from "@/utils/socket";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useQuery } from "@tanstack/react-query";
@@ -29,7 +28,7 @@ import { ExternalLink, Globe, Info as InfoCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
-import { env } from "@/utils/env";
+import { Tooltip } from "react-tooltip";
 import { twMerge } from "tailwind-merge";
 
 const socket = getSocket();

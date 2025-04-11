@@ -3,7 +3,7 @@ import { getDB, tokens } from "../db";
 import { eq } from "drizzle-orm";
 import { Env } from "../env";
 import { logger } from "../logger";
-import {retryOperation} from "../raydium/utils";
+import { retryOperation } from "../raydium/utils";
 
 export function shouldUpdateSupply(token: any): boolean {
   if (!token.lastSupplyUpdate) {
@@ -23,13 +23,13 @@ export async function updateTokenSupplyFromChain(
   tokenDecimals: number;
   lastSupplyUpdate: string;
 }> {
-   const connection = new Connection(env.RPC_URL, "confirmed");
-   // retry in case it fails once
+  const connection = new Connection(env.RPC_URL, "confirmed");
+  // retry in case it fails once
   const supplyResponse = await retryOperation(
-   () => connection.getTokenSupply(new PublicKey(tokenMint)),
-   2,
-   5000
- );
+    () => connection.getTokenSupply(new PublicKey(tokenMint)),
+    2,
+    5000,
+  );
   if (!supplyResponse || !supplyResponse.value) {
     throw new Error(`Failed to fetch token supply for ${tokenMint}`);
   }
