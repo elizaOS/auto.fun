@@ -17,7 +17,6 @@ import {
 } from "./tokenSupplyHelpers";
 import { BN, Program } from "@coral-xyz/anchor";
 
-
 // Constants
 const PYTHNET_CLUSTER_NAME: PythCluster = "pythnet";
 const SOLUSD_SYMBOL = "Crypto.SOL/USD";
@@ -149,7 +148,7 @@ export async function calculateTokenMarketData(
   // Copy the token to avoid modifying the original
   const tokenWithMarketData = { ...token };
 
-  console.log("solPrice", solPrice)
+  console.log("solPrice", solPrice);
 
   try {
     // Calculate token price in USD
@@ -168,8 +167,9 @@ export async function calculateTokenMarketData(
 
     // Calculate market cap
     if (token.tokenSupplyUiAmount) {
-      if (tokenWithMarketData.tokenPriceUSD) { 
-        tokenWithMarketData.marketCapUSD = token.tokenSupplyUiAmount * tokenWithMarketData.tokenPriceUSD;
+      if (tokenWithMarketData.tokenPriceUSD) {
+        tokenWithMarketData.marketCapUSD =
+          token.tokenSupplyUiAmount * tokenWithMarketData.tokenPriceUSD;
       }
     }
 

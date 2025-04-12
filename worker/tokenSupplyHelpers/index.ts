@@ -3,7 +3,7 @@ import { getDB, tokens } from "../db";
 import { eq } from "drizzle-orm";
 import { Env } from "../env";
 import { logger } from "../logger";
-import {retryOperation} from "../raydium/utils";
+import { retryOperation } from "../raydium/utils";
 import { processTransactionLogs } from "../cron";
 import { getWebSocketClient } from "../websocket-client";
 
@@ -21,7 +21,7 @@ export async function handleSignature(env: Env, signature: string) {
     maxSupportedTransactionVersion: 0,
     commitment,
   });
-  
+
   const logs = tx?.meta?.logMessages;
 
   const wsClient = getWebSocketClient(env);
@@ -48,8 +48,13 @@ export async function updateTokenSupplyFromChain(
   tokenDecimals: number;
   lastSupplyUpdate: string;
 }> {
-   const connection = new Connection(env.NETWORK === "mainnet" ? env.MAINNET_SOLANA_RPC_URL : env.DEVNET_SOLANA_RPC_URL, "confirmed");
-   // retry in case it fails once
+  const connection = new Connection(
+    env.NETWORK === "mainnet"
+      ? env.MAINNET_SOLANA_RPC_URL
+      : env.DEVNET_SOLANA_RPC_URL,
+    "confirmed",
+  );
+  // retry in case it fails once
   const supplyResponse = await retryOperation(
     () => connection.getTokenSupply(new PublicKey(tokenMint)),
     2,

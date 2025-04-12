@@ -10,7 +10,13 @@ import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
 
-export default function Trade({ token, onSwapCompleted }: { token: IToken, onSwapCompleted: (signature: string) => void }) {
+export default function Trade({
+  token,
+  onSwapCompleted,
+}: {
+  token: IToken;
+  onSwapCompleted: (signature: string) => void;
+}) {
   const { solPrice: contextSolPrice } = useSolPriceContext();
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
@@ -21,8 +27,7 @@ export default function Trade({ token, onSwapCompleted }: { token: IToken, onSwa
   const program = useProgram();
 
   // Use blockchain data if available, otherwise fall back to token data
-  const solanaPrice =
-    contextSolPrice || token?.solPriceUSD || 0;
+  const solanaPrice = contextSolPrice || token?.solPriceUSD || 0;
   const currentPrice = token?.currentPrice || 0;
   const tokenPriceUSD = token?.tokenPriceUSD || 0;
 
@@ -81,12 +86,12 @@ export default function Trade({ token, onSwapCompleted }: { token: IToken, onSwa
   const onSwap = async () => {
     if (!sellingAmount) return;
 
-    const res = await executeSwap({
+    const res = (await executeSwap({
       amount: sellingAmount,
       style: isTokenSelling ? "sell" : "buy",
       tokenAddress: token.mint,
       token,
-    }) as { signature: string };
+    })) as { signature: string };
 
     onSwapCompleted(res.signature);
   };
@@ -274,7 +279,8 @@ export default function Trade({ token, onSwapCompleted }: { token: IToken, onSwa
                 Value:
               </span>
               <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                {formatNumber(tokenBalance * currentPrice, false, true)} SOL / {formatNumber(
+                {formatNumber(tokenBalance * currentPrice, false, true)} SOL /{" "}
+                {formatNumber(
                   tokenBalance * currentPrice * solanaPrice,
                   true,
                   false,

@@ -236,8 +236,8 @@ export async function processTransactionLogs(
     // Handle swap events
     if (mintLog && swapLog && reservesLog && feeLog) {
       try {
-        console.log("Swap event detected")
-        console.log("swapLog", swapLog)
+        console.log("Swap event detected");
+        console.log("swapLog", swapLog);
         // Extract data with better error handling
         let mintAddress: string;
         try {
@@ -365,17 +365,17 @@ export async function processTransactionLogs(
             ? tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)
             : 0;
         tokenWithSupply.tokenPriceUSD = tokenPriceUSD;
-        tokenWithSupply.currentPrice = currentPrice
-        
+        tokenWithSupply.currentPrice = currentPrice;
+
         const tokenWithMarketData = await calculateTokenMarketData(
-            tokenWithSupply,
-            solPrice,
-            env,
-        )
-        console.log("tokenWithMarketData", tokenWithMarketData)
-        
-        const marketCapUSD = tokenWithMarketData.marketCapUSD
-        
+          tokenWithSupply,
+          solPrice,
+          env,
+        );
+        console.log("tokenWithMarketData", tokenWithMarketData);
+
+        const marketCapUSD = tokenWithMarketData.marketCapUSD;
+
         // Save to the swap table for historical records
         const swapRecord = {
           id: crypto.randomUUID(),

@@ -1380,7 +1380,7 @@ tokenRouter.get("/token/:mint/price", async (c) => {
 });
 
 tokenRouter.get("/token/:mint", async (c) => {
-  console.log("token/:mint")
+  console.log("token/:mint");
   try {
     const mint = c.req.param("mint");
 
@@ -1458,9 +1458,9 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     // Update solPriceUSD
     token.solPriceUSD = solPrice;
-        
+
     // Calculate or update marketCapUSD if we have tokenPriceUSD
-    token.marketCapUSD = token.tokenPriceUSD * (token.tokenSupplyUiAmount || 0)
+    token.marketCapUSD = token.tokenPriceUSD * (token.tokenSupplyUiAmount || 0);
 
     // Get virtualReserves and curveLimit from env or set defaults
     const virtualReserves = c.env.VIRTUAL_RESERVES
@@ -1514,9 +1514,9 @@ tokenRouter.get("/token/:mint", async (c) => {
       })
       .where(eq(tokens.mint, mint));
 
-      console.log("currentPrice", token.currentPrice)
-      console.log("tokenPriceUSD", token.tokenPriceUSD)
-      console.log("marketCapUSD", token.marketCapUSD)
+    console.log("currentPrice", token.currentPrice);
+    console.log("tokenPriceUSD", token.tokenPriceUSD);
+    console.log("marketCapUSD", token.marketCapUSD);
 
     // Format response with additional data
     return c.json(token);

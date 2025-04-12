@@ -225,7 +225,9 @@ export default function useAuthentication() {
         try {
           window.solana
             .disconnect()
-            .catch((e: Error) => console.error("Error disconnecting Phantom:", e));
+            .catch((e: Error) =>
+              console.error("Error disconnecting Phantom:", e),
+            );
         } catch (e) {
           console.error("Error disconnecting Phantom:", e);
         }

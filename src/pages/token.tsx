@@ -17,7 +17,7 @@ import {
   formatNumber,
   formatNumberSubscript,
   fromNow,
-  LAMPORTS_PER_SOL
+  LAMPORTS_PER_SOL,
 } from "@/utils";
 import { getToken, queryClient } from "@/utils/api";
 import { env } from "@/utils/env";
@@ -51,7 +51,7 @@ export default function Page() {
   const [signature, setSignature] = useState<string | undefined>(undefined);
 
   const onSwapCompleted = (signature: string) => {
-    console.log("onSwapCompleted", onSwapCompleted)
+    console.log("onSwapCompleted", onSwapCompleted);
     setSignature(signature);
     queryClient.invalidateQueries({ queryKey: ["token", address] });
     setTimeout(() => {
@@ -83,7 +83,6 @@ export default function Page() {
     refetchInterval: 20_000,
   });
 
-
   useEffect(() => {
     const socket = getSocket();
 
@@ -108,11 +107,10 @@ export default function Page() {
   const token = tokenQuery?.data as IToken;
 
   // Use real blockchain data if available, otherwise fall back to API data
-  const solPriceUSD =
-    contextSolPrice || token?.solPriceUSD || 0;
+  const solPriceUSD = contextSolPrice || token?.solPriceUSD || 0;
   const currentPrice = token?.currentPrice || 0;
   const tokenPriceUSD = token?.tokenPriceUSD || 0;
-  const marketCapUSD = token?.marketCapUSD || 0;
+  // const marketCapUSD = token?.marketCapUSD || 0;
   const volume24h = token?.volume24h || 0;
   // const holderCount = metrics?.holderCount || token?.holderCount || 0;
 
@@ -122,10 +120,10 @@ export default function Page() {
   const graduationMarketCap = finalTokenUSDPrice * 1_000_000_000;
 
   // Calculate negative reserve status
-  const negativeReserve =
-    token && token.reserveLamport - token.virtualReserves < 0
-      ? (token.reserveLamport - token.virtualReserves) / LAMPORTS_PER_SOL
-      : null;
+  // const negativeReserve =
+  //   token && token.reserveLamport - token.virtualReserves < 0
+  //     ? (token.reserveLamport - token.virtualReserves) / LAMPORTS_PER_SOL
+  //     : null;
 
   // Add debug logging
   console.log("Token data from API:", token);
@@ -168,7 +166,11 @@ export default function Page() {
       <div className="w-full py-10 flex flex-wrap justify-between">
         <TopPageItem
           title="Market Cap"
-          value={(tokenPriceUSD * token?.tokenSupplyUiAmount) > 0 ? abbreviateNumber(tokenPriceUSD * token?.tokenSupplyUiAmount) : "-"}
+          value={
+            tokenPriceUSD * token?.tokenSupplyUiAmount > 0
+              ? abbreviateNumber(tokenPriceUSD * token?.tokenSupplyUiAmount)
+              : "-"
+          }
         />
         <TopPageItem
           title="24hr Volume"
