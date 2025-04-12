@@ -52,6 +52,27 @@ export default function Trade({
 
   const [convertedAmount, setConvertedAmount] = useState(0);
 
+  const isButtonDisabled = (amount: number | string) => {
+    if (typeof amount === 'string') {
+      // For percentage buttons, check if balance is 0
+      return balance === 0;
+    } else {
+      // For fixed amount buttons, check if amount exceeds balance
+      return amount > balance;
+    }
+  };
+
+  const handleBalanceSelection = (amount: number | string) => {
+    if (typeof amount === 'string') {
+      // Handle percentage
+      const percentage = parseFloat(amount) / 100;
+      setSellingAmount(balance * percentage);
+    } else {
+      // Handle fixed amount
+      setSellingAmount(amount);
+    }
+  };
+
   const handleSellAmountChange = async (amount: number) => {
     if (!program) return;
 
@@ -150,6 +171,73 @@ export default function Trade({
                   <TokenDisplay token={token} isSolana={!isTokenSelling} />
                 </div>
               </div>
+
+              {/* Balance Selection Buttons */}
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => handleBalanceSelection(0)}
+                  className="px-3 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Reset
+                </button>
+                {!isTokenSelling ? (
+                  <>
+                    <button
+                      onClick={() => handleBalanceSelection(0.1)}
+                      disabled={isButtonDisabled(0.1)}
+                      className="px-3 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      0.1 SOL
+                    </button>
+                    <button
+                      onClick={() => handleBalanceSelection(0.5)}
+                      disabled={isButtonDisabled(0.5)}
+                      className="px-3 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      0.5 SOL
+                    </button>
+                    <button
+                      onClick={() => handleBalanceSelection(1.0)}
+                      disabled={isButtonDisabled(1.0)}
+                      className="px-3 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      1.0 SOL
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => handleBalanceSelection("25")}
+                      disabled={isButtonDisabled("25")}
+                      className="px-3 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      25%
+                    </button>
+                    <button
+                      onClick={() => handleBalanceSelection("50")}
+                      disabled={isButtonDisabled("50")}
+                      className="px-3 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      50%
+                    </button>
+                    <button
+                      onClick={() => handleBalanceSelection("75")}
+                      disabled={isButtonDisabled("75")}
+                      className="px-3 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      75%
+                    </button>
+                    <button
+                      onClick={() => handleBalanceSelection("100")}
+                      disabled={isButtonDisabled("100")}
+                      className="px-3 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      100%
+                    </button>
+                  </>
+                )}
+              </div>
+
               <div className="flex items-center justify-end gap-2">
                 <Balance
                   token={token}
