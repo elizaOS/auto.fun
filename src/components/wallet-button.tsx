@@ -231,12 +231,12 @@ const WalletButton = () => {
             <ul className="py-2">
               <li className="opacity-50 px-4 py-2 text-sm text-white flex items-centerjustofy-between gap-2">
                 <SkeletonImage
-                  parentClassName="w-5 h-5 shrink-0"
+                  parentClassName="w-4 h-4"
                   src="/solana.svg"
                   width={32}
                   height={32}
                   alt="solana_logo"
-                  className="w-5 h-5 inline"
+                  className="w-4 h-4 inline"
                 />
                 {Number(solBalance).toFixed(2)}
               </li>
