@@ -27,6 +27,23 @@ export function calculateAmountOutSell(
   platformSellFee: number,
   reserveToken: number,
 ): number {
+  console.log(
+    "calculateAmountOutSell",
+    reserveLamport,
+    amount,
+    _tokenDecimals,
+    platformSellFee,
+    reserveToken,
+  );
+
+  // Input validation
+  if (reserveLamport < 0)
+    throw new Error("reserveLamport must be non-negative");
+  if (amount < 0) throw new Error("amount must be non-negative");
+  if (platformSellFee < 0)
+    throw new Error("platformSellFee must be non-negative");
+  if (reserveToken < 0) throw new Error("reserveToken must be non-negative");
+
   const feeBasisPoints = convertToBasisPoints(platformSellFee);
   const amountBN = new BN(amount);
 
@@ -38,6 +55,8 @@ export function calculateAmountOutSell(
   // For selling tokens: amount_out = reserve_lamport * adjusted_amount / (reserve_token + adjusted_amount)
   const numerator = new BN(reserveLamport.toString()).mul(adjustedAmount);
   const denominator = new BN(reserveToken.toString()).add(adjustedAmount);
+
+  if (denominator.isZero()) throw new Error("Division by zero");
 
   return numerator.div(denominator).toNumber();
 }
@@ -111,18 +130,23 @@ function calculateAmountOutBuy(
   reserveLamport: number,
   platformBuyFee: number,
 ): number {
-  const feeBasisPoints = convertToBasisPoints(platformBuyFee);
+  const reserveTokenBN2 = new BN(reserveToken.toString());
+  console.log("reserveTokenBN2", reserveTokenBN2.toString());
+  const feeBasisPoints = new BN(convertToBasisPoints(platformBuyFee));
   const amountBN = new BN(amount);
 
-  // Apply fee: adjusted_amount = amount * (10000 - fee_basis_points) / 10000
   const adjustedAmount = amountBN
-    .mul(new BN(10000 - feeBasisPoints))
+    .mul(new BN(10000))
+    .sub(feeBasisPoints)
     .div(new BN(10000));
 
-  const numerator = new BN(reserveToken.toString()).mul(adjustedAmount);
+  const reserveTokenBN = new BN(reserveToken.toString());
+
+  const numerator = (reserveTokenBN as any).mul(adjustedAmount);
   const denominator = new BN(reserveLamport.toString()).add(adjustedAmount);
 
-  return numerator.div(denominator).toNumber();
+  const out = numerator.div(denominator).toNumber();
+  return out;
 }
 
 const FEE_BASIS_POINTS = 10000;

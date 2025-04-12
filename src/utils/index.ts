@@ -86,7 +86,7 @@ export const formatNumberSubscript = (num: number): string => {
   }
 
   // Round to 9 decimal places
-  num = Number(num.toFixed(10));
+  num = Number(num.toFixed(7));
 
   if (num >= 1) {
     return sign + num.toString();
@@ -114,6 +114,11 @@ export const sleep = (ms: number) => {
 };
 
 export const isFromDomain = (url: string, domain: string): boolean => {
+  // if url does not have http or https, add it
+  if (!url.startsWith("http") && !url.startsWith("https")) {
+    url = "https://" + url;
+  }
+
   try {
     const parsedUrl = new URL(url);
     return (

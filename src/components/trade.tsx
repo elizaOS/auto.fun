@@ -274,28 +274,8 @@ export default function Trade({ token, onSwapCompleted }: { token: IToken, onSwa
                 Value:
               </span>
               <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                {formatNumber(tokenBalance * currentPrice, false, true)} SOL
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                Value USD:
-              </span>
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                {formatNumber(
+                {formatNumber(tokenBalance * currentPrice, false, true)} SOL / {formatNumber(
                   tokenBalance * currentPrice * solanaPrice,
-                  true,
-                  false,
-                )}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                Market Cap:
-              </span>
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                {formatNumber(
-                  token.marketCapUSD,
                   true,
                   false,
                 )}

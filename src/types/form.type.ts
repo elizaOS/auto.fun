@@ -6,9 +6,9 @@ export interface TokenMetadata {
   links: {
     twitter: string;
     telegram: string;
+    farcaster: string;
     website: string;
     discord: string;
-    agentLink: string;
   };
   imageBase64: string | null;
   tokenMint: string;

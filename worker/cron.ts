@@ -21,7 +21,7 @@ import { getWebSocketClient } from "./websocket-client";
 import bs58 from "bs58";
 import { TokenData, TokenDBData } from "../worker/raydium/types/tokenData";
 import { awardUserPoints, awardGraduationPoints } from "./points/helpers";
-import {getToken} from './raydium/migration/migrations';
+import { getToken } from "./raydium/migration/migrations";
 
 // Store the last processed signature to avoid duplicate processing
 let lastProcessedSignature: string | null = null;

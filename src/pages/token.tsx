@@ -17,7 +17,7 @@ import {
   formatNumber,
   formatNumberSubscript,
   fromNow,
-  LAMPORTS_PER_SOL,
+  LAMPORTS_PER_SOL
 } from "@/utils";
 import { getToken, queryClient } from "@/utils/api";
 import { env } from "@/utils/env";

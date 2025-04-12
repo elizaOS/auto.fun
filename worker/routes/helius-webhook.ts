@@ -11,6 +11,7 @@ const router = new Hono<{
 }>();
 
 router.post("/webhook", async (c) => {
+  console.log("helius webhook received");
   // value is configured in helius webhook dashboard
   const authorization = c.req.header("Authorization");
 

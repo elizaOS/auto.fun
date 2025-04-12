@@ -63,6 +63,7 @@ export async function getToken(
       image: tokenDb.image,
       twitter: tokenDb.twitter ?? undefined,
       telegram: tokenDb.telegram ?? undefined,
+      farcaster: tokenDb.farcaster ?? undefined,
       website: tokenDb.website ?? undefined,
       discord: tokenDb.discord ?? undefined,
       description: tokenDb.description ?? undefined,

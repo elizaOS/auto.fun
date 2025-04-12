@@ -21,7 +21,7 @@ import {
 import { Env } from "../env";
 import { logger } from "../logger";
 import { getSOLPrice, calculateTokenMarketData } from "../mcap";
-import {getToken} from '../raydium/migration/migrations';
+import { getToken } from "../raydium/migration/migrations";
 import {
   applyFeaturedSort,
   calculateFeaturedScore,
@@ -1741,6 +1741,7 @@ tokenRouter.post("/create-token", async (c) => {
       description,
       twitter,
       telegram,
+      farcaster,
       website,
       discord,
       imageUrl,
@@ -1826,6 +1827,7 @@ tokenRouter.post("/create-token", async (c) => {
         description: description || "",
         twitter: twitter || "",
         telegram: telegram || "",
+        farcaster: farcaster || "",
         website: website || "",
         discord: discord || "",
         creator: user.publicKey || "unknown",
@@ -1846,6 +1848,7 @@ tokenRouter.post("/create-token", async (c) => {
         description: description || "",
         twitter: twitter || "",
         telegram: telegram || "",
+        farcaster: farcaster || "",
         website: website || "",
         discord: discord || "",
         creator: user.publicKey || "unknown",
@@ -2153,6 +2156,7 @@ tokenRouter.post("/token/:mint/update", async (c) => {
         twitter: body.twitter ?? tokenData[0].twitter,
         telegram: body.telegram ?? tokenData[0].telegram,
         discord: body.discord ?? tokenData[0].discord,
+        farcaster: body.farcaster ?? tokenData[0].farcaster,
         lastUpdated: new Date().toISOString(),
       })
       .where(eq(tokens.mint, mint));

@@ -51,10 +51,10 @@ export async function updateTokenSupplyFromChain(
    const connection = new Connection(env.NETWORK === "mainnet" ? env.MAINNET_SOLANA_RPC_URL : env.DEVNET_SOLANA_RPC_URL, "confirmed");
    // retry in case it fails once
   const supplyResponse = await retryOperation(
-   () => connection.getTokenSupply(new PublicKey(tokenMint)),
-   2,
-   5000
- );
+    () => connection.getTokenSupply(new PublicKey(tokenMint)),
+    2,
+    5000,
+  );
   if (!supplyResponse || !supplyResponse.value) {
     throw new Error(`Failed to fetch token supply for ${tokenMint}`);
   }

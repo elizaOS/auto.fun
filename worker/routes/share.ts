@@ -301,6 +301,11 @@ shareRouter.use("*", async (c, next) => {
     "https://basedorbiased.vercel.app",
     "http://localhost:5173",
     "https://basedorbiased.app",
+    "http://localhost:3000",
+    "https://auto.fun",
+    "https://develop.auto.fun",
+    "https://develop.autofun.pages.dev",
+    "https://autofun.pages.dev",
   ];
 
   const origin = c.req.header("Origin");

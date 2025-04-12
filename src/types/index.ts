@@ -75,6 +75,7 @@ export const TokenSchema = z
     discord: z.string().nullish(),
     twitter: z.string().nullish(),
     telegram: z.string().nullish(),
+    farcaster: z.string().nullish(),
     creator: z.string(),
     volume24h: z.number().nullish(),
     website: z.string().nullish(),
@@ -127,6 +128,7 @@ export const TokenSchema = z
     solPriceUSD: data.solPriceUSD != null ? Number(data.solPriceUSD) : 0,
     status: data.status || "active",
     telegram: data.telegram || "",
+    farcaster: data.farcaster || "",
     ticker: data.ticker,
     tokenPriceUSD: data.tokenPriceUSD != null ? Number(data.tokenPriceUSD) : 0,
     twitter: data.twitter || "",
@@ -159,6 +161,7 @@ export type ConfigAccount = {
 
 declare global {
   interface Window {
+    // @ts-ignore
     solana?: {
       isPhantom?: boolean;
       signMessage?: (

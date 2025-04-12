@@ -979,7 +979,7 @@ export default function CommunityTab() {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           // Include wallet auth token if available in a custom header
-          ...(authToken ? { "X-Auth-Token": `Bearer ${authToken}` } : {}),
+          // ...(authToken ? { "X-Auth-Token": `Bearer ${authToken}` } : {}),
         },
         body: formData,
         credentials: "include",
@@ -1042,7 +1042,7 @@ export default function CommunityTab() {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
           // Include wallet auth token if available in a custom header
-          ...(authToken ? { "X-Auth-Token": `Bearer ${authToken}` } : {}),
+          // ...(authToken ? { "X-Auth-Token": `Bearer ${authToken}` } : {}),
         },
         body: JSON.stringify({
           text,

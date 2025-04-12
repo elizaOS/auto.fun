@@ -15,7 +15,7 @@ import {
   Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { eq, sql, desc } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { CacheService } from "./cache";
 import { SEED_BONDING_CURVE, SEED_CONFIG } from "./constant";
 import { getDB, Token, tokenHolders, tokens } from "./db";
@@ -23,8 +23,64 @@ import { Env } from "./env";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
 import { initSolanaConfig } from "./solana";
 import { Autofun } from "./target/types/autofun";
-import { calculateAmountOutBuy, calculateAmountOutSell } from "./tests/utils";
 import { getWebSocketClient } from "./websocket-client";
+import anchor from "@coral-xyz/anchor";
+
+/**
+ * Converts a decimal fee (e.g., 0.05 for 5%) to basis points (5% = 500 basis points)
+ */
+function convertToBasisPoints(feePercent: number): number {
+  if (feePercent >= 1) {
+    return feePercent;
+  }
+  return Math.floor(feePercent * 10000);
+}
+
+/**
+ * Calculates the amount of SOL received when selling tokens
+ */
+function calculateAmountOutSell(
+  reserveLamport: number,
+  amount: number,
+  _tokenDecimals: number,
+  platformSellFee: number,
+  reserveToken: number,
+): number {
+  const feeBasisPoints = convertToBasisPoints(platformSellFee);
+  const amountBN = new BN(amount);
+
+  // Apply fee: adjusted_amount = amount * (10000 - fee_basis_points) / 10000
+  const adjustedAmount = amountBN
+    .mul(new BN(10000 - feeBasisPoints))
+    .div(new BN(10000));
+
+  // For selling tokens: amount_out = reserve_lamport * adjusted_amount / (reserve_token + adjusted_amount)
+  const numerator = new BN(reserveLamport).mul(adjustedAmount);
+  const denominator = new BN(reserveToken).add(adjustedAmount);
+
+  return numerator.div(denominator).toNumber();
+}
+
+function calculateAmountOutBuy(
+  reserveToken: number,
+  amount: number,
+  _solDecimals: number,
+  reserveLamport: number,
+  platformBuyFee: number,
+): number {
+  const feeBasisPoints = convertToBasisPoints(platformBuyFee);
+  const amountBN = new BN(amount);
+
+  // Apply fee: adjusted_amount = amount * (10000 - fee_basis_points) / 10000
+  const adjustedAmount = amountBN
+    .mul(new BN(10000 - feeBasisPoints))
+    .div(new BN(10000));
+
+  const numerator = new BN(reserveToken).mul(adjustedAmount);
+  const denominator = new BN(reserveLamport).add(adjustedAmount);
+
+  return numerator.div(denominator).toNumber();
+}
 
 // Type definition for token metadata from JSON
 export interface TokenMetadataJson {
@@ -34,6 +90,7 @@ export interface TokenMetadataJson {
   image: string;
   twitter?: string;
   telegram?: string;
+  farcaster?: string;
   website?: string;
   discord?: string;
 }
@@ -138,6 +195,8 @@ export async function createNewTokenData(
     // Get a Solana config with the right environment
     const solanaConfig = initSolanaConfig(env);
 
+    console.log("solanaConfig", solanaConfig);
+
     const metadata = await fetchMetadataWithBackoff(
       solanaConfig.umi,
       tokenAddress,
@@ -226,6 +285,7 @@ export async function createNewTokenData(
       image: additionalMetadata?.image || "",
       twitter: additionalMetadata?.twitter || "",
       telegram: additionalMetadata?.telegram || "",
+      farcaster: additionalMetadata?.farcaster || "",
       website: additionalMetadata?.website || "",
       description: additionalMetadata?.description || "",
       mint: tokenAddress,
@@ -267,6 +327,8 @@ export async function createNewTokenData(
       lastUpdated: new Date().toISOString(),
     };
 
+    getIoServer(env).to("global").emit("newToken", tokenData);
+
     return tokenData;
   } catch (error) {
     logger.error("Error processing new token log:", error);
@@ -293,7 +355,7 @@ export async function bulkUpdatePartialTokens(
 
   // Process each token in parallel
   const updatedTokensPromises = tokens.map((token) =>
-    calculateTokenMarketData(token, solPrice, env),
+    calculateTokenMarketData(token, solPrice),
   );
 
   // Wait for all updates to complete
@@ -376,6 +438,15 @@ export const swapTx = async (
 
   // Calculate expected output
   let estimatedOutput;
+
+  console.log("curve.reserveToken.toNumber()", curve.reserveToken.toNumber());
+  console.log("adjustedAmount", adjustedAmount);
+  console.log(
+    "curve.reserveLamport.toNumber()",
+    curve.reserveLamport.toNumber(),
+  );
+  console.log("feePercent", feePercent);
+
   if (style === 0) {
     // Buy
     estimatedOutput = calculateAmountOutBuy(
@@ -383,6 +454,7 @@ export const swapTx = async (
       adjustedAmount,
       curve.reserveLamport.toNumber(),
       feePercent,
+      300,
     );
   } else {
     // Sell
@@ -391,6 +463,7 @@ export const swapTx = async (
       adjustedAmount,
       feePercent,
       curve.reserveToken.toNumber(),
+      300,
     );
   }
 
