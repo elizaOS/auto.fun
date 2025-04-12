@@ -80,7 +80,13 @@ export const TokenSchema = z
     volume24h: z.number().nullish(),
     website: z.string().nullish(),
     tokenPriceUSD: z.number().nullish(),
-    tokenSupplyUiAmount: z.number(),
+    tokenSupplyUiAmount: z.preprocess((val) => {
+      if (typeof val === 'string') {
+        const num = Number(val);
+        return isNaN(num) ? 0 : num;
+      }
+      return val;
+    }, z.number()),
     nftMinted: z.string().nullish(),
     lockId: z.string().nullish(),
     lockedAmount: z.string().nullish(),
@@ -101,7 +107,13 @@ export const TokenSchema = z
     lastPriceUpdate: z.string().datetime().nullish(),
     txId: z.string().nullish(),
     lastUpdated: z.string().datetime().nullish(),
-    imported: z.number().nullish(),
+    imported: z.preprocess((val) => {
+      if (typeof val === 'string') {
+        const num = Number(val);
+        return isNaN(num) ? 0 : num;
+      }
+      return val;
+    }, z.number().nullish()),
   })
   .transform((data) => ({
     ...data,
