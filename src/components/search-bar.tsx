@@ -14,7 +14,7 @@ export default function SearchBar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  
+
   useOutsideClickDetection([ref], () => {
     setShowSearchResults(false);
   });
@@ -34,7 +34,7 @@ export default function SearchBar() {
     debounce((value: string) => {
       setSearchQuery(value);
     }, 300),
-    []
+    [],
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -20,7 +20,7 @@ export default function Trade({
   const { solPrice: contextSolPrice } = useSolPriceContext();
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
-    undefined
+    undefined,
   );
   const [slippage, setSlippage] = useState<number>(2);
 
@@ -47,7 +47,7 @@ export default function Trade({
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status
+    token?.status,
   );
 
   const [convertedAmount, setConvertedAmount] = useState(0);
@@ -89,7 +89,7 @@ export default function Trade({
       // they are not dynamically calculated but instead use the
       // default values leading to slightly incorrect calculations
       token.reserveAmount,
-      token.reserveLamport
+      token.reserveLamport,
     );
     setConvertedAmount(swapAmount / decimals);
   };
@@ -148,7 +148,7 @@ export default function Trade({
             </button>
           </div>
 
-                    {/* Balance and Value */}
+          {/* Balance and Value */}
           <div className={`flex flex-col gap-4 my-4 mx-2`}>
             <div className="flex justify-between items-center">
               <span className="text-sm font-dm-mono text-autofun-text-secondary">
@@ -167,7 +167,7 @@ export default function Trade({
                 {formatNumber(
                   tokenBalance * currentPrice * solanaPrice,
                   true,
-                  false
+                  false,
                 )}
               </span>
             </div>
@@ -195,19 +195,17 @@ export default function Trade({
                 <div className="w-fit absolute right-4 top-[50%] translate-y-[-50%]">
                   <TokenDisplay token={token} isSolana={!isTokenSelling} />
                   <Balance
-                  token={token}
-                  isSolana={!isTokenSelling}
-                  setSellingAmount={setSellingAmount}
-                  balance={isTokenSelling ? tokenBalance : solBalance}
-                />
+                    token={token}
+                    isSolana={!isTokenSelling}
+                    setSellingAmount={setSellingAmount}
+                    balance={isTokenSelling ? tokenBalance : solBalance}
+                  />
                 </div>
               </div>
 
               {/* Balance Selection Buttons */}
               <div className="flex flex-col gap-3">
-
                 <div className="flex gap-1 mt-1 w-full">
-                  
                   <button
                     onClick={() => handleBalanceSelection(0)}
                     className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
@@ -429,10 +427,10 @@ const Balance = ({
       }}
     >
       <div className="flex gap-1 justify-end w-full">
-          <Wallet className="text-autofun-text-secondary size-[18px]" />
-          <span className="text-sm font-dm-mono text-autofun-text-secondary uppercase">
-            {formattedBalance} {isSolana ? "SOL" : token?.ticker}
-          </span>
+        <Wallet className="text-autofun-text-secondary size-[18px]" />
+        <span className="text-sm font-dm-mono text-autofun-text-secondary uppercase">
+          {formattedBalance} {isSolana ? "SOL" : token?.ticker}
+        </span>
       </div>
     </div>
   );
