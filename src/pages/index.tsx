@@ -1,5 +1,5 @@
 import Button from "@/components/button";
-import FrontpageHeader from "@/components/frontpage-header";
+// import FrontpageHeader from "@/components/frontpage-header";
 import GridListSwitcher from "@/components/grid-list-switcher";
 import GridView from "@/components/grid-view";
 import Loader from "@/components/loader";
@@ -34,7 +34,7 @@ export default function Page() {
   return (
     <div className="w-full min-h-[50vh]">
       {/* Header Section */}
-      <FrontpageHeader tokens={headerTokens} />
+      {/* <FrontpageHeader tokens={headerTokens} /> */}
       {/* Top Navigation */}
       <div className="flex justify-between gap-2 flex-wrap-reverse md:flex-wrap">
         <GridListSwitcher />
