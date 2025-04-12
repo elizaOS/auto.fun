@@ -43,3 +43,5 @@ sbf-solana-solana
 .rustc_info.json
 CACHEDIR.TAG
 program/id.json
+program/recover_autofun.json
+program/recover_vault.json
