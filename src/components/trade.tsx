@@ -278,9 +278,9 @@ export default function Trade({
               <div className="relative flex uppercase items-center gap-2">
                 {displayMinReceived}
                 <img
-                  src={isTokenSelling ? "/solana.png" : token?.image || ""}
+                  src={isTokenSelling ? "/solana.svg" : token?.image || ""}
                   alt={isTokenSelling ? "SOL" : token?.name || "token"}
-                  className="rounded-full size-4"
+                  className="size-6 m-2"
                 />
                 {isTokenSelling ? "SOL" : token?.ticker}
               </div>
@@ -388,9 +388,9 @@ const TokenDisplay = ({
   return (
     <div className="flex items-center justify-end mb-4">
       <SkeletonImage
-        src={isSolana ? "/solana.png" : token?.image || ""}
+        src={isSolana ? "/solana.svg" : token?.image || ""}
         alt={token?.name || "token"}
-        className="rounded-full size-8"
+        className="size-6"
       />
       <span className="text-xl uppercase font-dm-mono tracking-wider font-bold">
         {isSolana ? "SOL" : token?.ticker}
