@@ -36,8 +36,8 @@ export function calculateAmountOutSell(
     .div(new BN(10000));
 
   // For selling tokens: amount_out = reserve_lamport * adjusted_amount / (reserve_token + adjusted_amount)
-  const numerator = new BN(reserveLamport).mul(adjustedAmount);
-  const denominator = new BN(reserveToken).add(adjustedAmount);
+  const numerator = new BN(reserveLamport.toString()).mul(adjustedAmount);
+  const denominator = new BN(reserveToken.toString()).add(adjustedAmount);
 
   return numerator.div(denominator).toNumber();
 }
@@ -119,8 +119,8 @@ function calculateAmountOutBuy(
     .mul(new BN(10000 - feeBasisPoints))
     .div(new BN(10000));
 
-  const numerator = new BN(reserveToken).mul(adjustedAmount);
-  const denominator = new BN(reserveLamport).add(adjustedAmount);
+  const numerator = new BN(reserveToken.toString()).mul(adjustedAmount);
+  const denominator = new BN(reserveLamport.toString()).add(adjustedAmount);
 
   return numerator.div(denominator).toNumber();
 }

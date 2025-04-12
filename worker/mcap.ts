@@ -139,34 +139,6 @@ export async function fetchSOLPriceFromPyth(): Promise<number> {
 }
 
 /**
- * Force update the SOL price in the cache using Pyth as the primary source
- * Used by CRON jobs to ensure the cache is always up-to-date
- */
-export async function updateSOLPrice(env: Env): Promise<number> {
-  try {
-    // Get the price from Pyth
-    const price = await fetchSOLPriceFromPyth();
-
-    if (price > 0) {
-      // Store in cache
-      const cacheService = new CacheService(env);
-      await cacheService.setSolPrice(price);
-
-      logger.log(`Updated SOL price: $${price}`);
-      return price;
-    }
-
-    // If Pyth fails, try fallback sources
-    const fallbackPrice = await getSOLPrice(env);
-    logger.log(`Used fallback source for SOL price: $${fallbackPrice}`);
-    return fallbackPrice;
-  } catch (error) {
-    logger.error("Error updating SOL price:", error);
-    return 0;
-  }
-}
-
-/**
  * Calculate token market data using SOL price
  */
 export async function calculateTokenMarketData(
@@ -176,6 +148,8 @@ export async function calculateTokenMarketData(
 ): Promise<any> {
   // Copy the token to avoid modifying the original
   const tokenWithMarketData = { ...token };
+
+  console.log("solPrice", solPrice)
 
   try {
     // Calculate token price in USD
@@ -195,13 +169,7 @@ export async function calculateTokenMarketData(
     // Calculate market cap
     if (token.tokenSupplyUiAmount) {
       if (tokenWithMarketData.tokenPriceUSD) { 
-        console.log("tokenPrice", token.currentPrice)
-        console.log("tokeSuppy", token.tokenSupplyUiAmount);
-        console.log("tokenPriceUSD", tokenWithMarketData.tokenPriceUSD);
-         tokenWithMarketData.marketCapUSD =
-          new BN(token.tokenSupplyUiAmount)
-            .mul(new BN(tokenWithMarketData.tokenPriceUSD))
-            .toNumber();
+        tokenWithMarketData.marketCapUSD = token.tokenSupplyUiAmount * tokenWithMarketData.tokenPriceUSD;
       }
     }
 

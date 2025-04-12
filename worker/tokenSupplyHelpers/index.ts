@@ -4,6 +4,31 @@ import { eq } from "drizzle-orm";
 import { Env } from "../env";
 import { logger } from "../logger";
 import {retryOperation} from "../raydium/utils";
+import { processTransactionLogs } from "../cron";
+import { getWebSocketClient } from "../websocket-client";
+
+export async function handleSignature(env: Env, signature: string) {
+  const connection = new Connection(
+    env.NETWORK === "devnet"
+      ? env.DEVNET_SOLANA_RPC_URL
+      : env.MAINNET_SOLANA_RPC_URL,
+  );
+
+  // finalize
+  const commitment = "confirmed";
+
+  const tx = await connection.getTransaction(signature, {
+    maxSupportedTransactionVersion: 0,
+    commitment,
+  });
+  
+  const logs = tx?.meta?.logMessages;
+
+  const wsClient = getWebSocketClient(env);
+  await processTransactionLogs(env, logs || [], signature, wsClient);
+
+  return logs;
+}
 
 export function shouldUpdateSupply(token: any): boolean {
   if (!token.lastSupplyUpdate) {
@@ -23,7 +48,7 @@ export async function updateTokenSupplyFromChain(
   tokenDecimals: number;
   lastSupplyUpdate: string;
 }> {
-   const connection = new Connection(env.RPC_URL, "confirmed");
+   const connection = new Connection(env.NETWORK === "mainnet" ? env.MAINNET_SOLANA_RPC_URL : env.DEVNET_SOLANA_RPC_URL, "confirmed");
    // retry in case it fails once
   const supplyResponse = await retryOperation(
    () => connection.getTokenSupply(new PublicKey(tokenMint)),

@@ -79,6 +79,7 @@ export const TokenSchema = z
     volume24h: z.number().nullish(),
     website: z.string().nullish(),
     tokenPriceUSD: z.number().nullish(),
+    tokenSupplyUiAmount: z.number(),
     nftMinted: z.string().nullish(),
     lockId: z.string().nullish(),
     lockedAmount: z.string().nullish(),
