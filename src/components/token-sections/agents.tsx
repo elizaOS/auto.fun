@@ -48,6 +48,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
   const [isConnectingAgent, setIsConnectingAgent] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [componentMounted, setComponentMounted] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   // --- Token Agents State ---
   const [tokenAgents, setTokenAgents] = useState<TokenAgent[]>([]);
@@ -856,75 +857,45 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
       {isCreator && (
         <>
           <div className="mt-4">
-            {twitterCredentials && twitterCredentials.expiresAt > Date.now() ? (
-              <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-neutral-200">
-                    <span className="border border-[#03FF24] rounded-full w-2 h-2"></span>
-                    <span>
-                      Connected to X as @
-                      {twitterCredentials.username || twitterCredentials.userId}
-                    </span>
-                  </div>
-                  <Button
-                    onClick={disconnectTwitter}
-                    disabled={isDisconnecting}
-                    variant="outline"
-                    size="small"
-                    className="!px-2 text-red-500 hover:text-red-400 hover:bg-red-950/20 mx-auto"
-                  >
-                    <LogOut size={16} className="mr-1" />
-                    Disconnect X Account
-                  </Button>
-                </div>
-
-                {!hasConnectedAgent && (
-                  <Button
-                    onClick={connectTwitter}
-                    disabled={
-                      isConnectingAgent ||
-                      !tokenMint ||
-                      isAgentsLoading ||
-                      !!agentsError
-                    }
-                    className="mx-auto mt-2"
-                    variant="tab"
-                  >
-                    {isConnectingAgent ? "Connecting..." : "Connect as agent"}
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <Button
-                onClick={connectTwitter}
-                disabled={
-                  isConnectingAgent || !tokenMint || isAgentsLoading // || !!agentsError
-                }
-                className="mx-auto h-fit"
-                variant="tab"
-              >
-                {isConnectingAgent ? "Connecting..." : "Connect X Account"}
-              </Button>
-            )}
-          </div>
-
-          <div className="mt-4">
             <Link
               to="https://fleek.xyz/eliza/"
               aria-label="fleek url"
               target="_blank"
             >
               <Button
-                onClick={() => {}}
-                className="flex flex-col items-center gap-2 mx-auto border-[#03FF24] border-2 h-fit hover:bg-[#03FF24]"
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+                className={`flex flex-col items-center gap-2 mx-auto border-[#03FF24] border-2 h-fit hover:bg-[#03FF24] hover:font-bold ${
+                  isHovered ? "text-black" : ""
+                }`}
+                style={{
+                  transition: "color 0.3s ease", // Add transition for text color
+                }}
                 variant="outline"
               >
-                {isConnectingAgent ? "Connecting..." : "Create an Agent With"}
-                <img
-                  src="/fleek-logo.svg"
-                  alt="Fleek"
-                  className="aspect-auto"
-                />
+                {isConnectingAgent
+                  ? "Connecting..."
+                  : "Create and Connect an Agent With"}
+                <div className="relative">
+                  <img
+                    src="/fleek-logo.svg"
+                    alt="Fleek"
+                    className="aspect-auto absolute"
+                    style={{
+                      transition: "opacity 0.3s ease",
+                      opacity: isHovered ? 0 : 1, // Show white logo when not hovered
+                    }}
+                  />
+                  <img
+                    src="/fleek-dark-logo.svg"
+                    alt="Fleek Dark"
+                    className="aspect-auto"
+                    style={{
+                      transition: "opacity 0.3s ease",
+                      opacity: isHovered ? 1 : 0, // Show dark logo on hover
+                    }}
+                  />
+                </div>
               </Button>
             </Link>
           </div>
