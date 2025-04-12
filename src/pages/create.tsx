@@ -17,7 +17,7 @@ import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { getSocket } from "@/utils/socket";
 import { HomepageTokenSchema } from "@/hooks/use-tokens";
 
-const MAX_INITIAL_SOL = 45;
+const MAX_INITIAL_SOL = 42.5;
 // Use the token supply and virtual reserves from environment or fallback to defaults
 const TOKEN_SUPPLY = Number(env.tokenSupply) || 1000000000000000;
 const VIRTUAL_RESERVES = Number(env.virtualReserves) || 2800000000;
@@ -645,7 +645,6 @@ const uploadImage = async (metadata: TokenMetadata) => {
           telegram: metadata.links.telegram,
           website: metadata.links.website,
           discord: metadata.links.discord,
-          agentLink: metadata.links.agentLink,
         },
       }),
     });
@@ -864,13 +863,13 @@ export const Create = () => {
     symbol: "",
     description: "",
     prompt: "",
-    initialSol: "2",
+    initialSol: "0",
     links: {
       twitter: "",
       telegram: "",
       website: "",
       discord: "",
-      agentLink: "",
+      farcaster: "",
     },
     importAddress: "",
   });
@@ -1923,11 +1922,10 @@ export const Create = () => {
               telegram: form.links.telegram,
               website: form.links.website,
               discord: form.links.discord,
-              agentLink: "",
               imageUrl: tokenData.image || "",
               metadataUrl: tokenData.metadataUri || "",
               // Include the import flag to indicate this is an imported token
-              imported: true,
+              imported: 1,
             }),
           });
 
@@ -3303,11 +3301,6 @@ export const Create = () => {
               {creationStage === "confirming" && (
                 <p className="font-dm-mono text-sm text-autofun-text-secondary/80">
                   Please confirm the transaction in your wallet
-                </p>
-              )}
-              {creationStage === "validating" && (
-                <p className="font-dm-mono text-sm text-autofun-text-secondary/80">
-                  This may take a few moments
                 </p>
               )}
             </div>

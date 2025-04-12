@@ -14,6 +14,7 @@ export const tokens = sqliteTable("tokens", {
   telegram: text("telegram"),
   website: text("website"),
   discord: text("discord"),
+  farcaster: text("farcaster"),
   description: text("description"),
   mint: text("mint").notNull().unique(),
   creator: text("creator").notNull(),
@@ -55,7 +56,14 @@ export const tokens = sqliteTable("tokens", {
   withdrawnAmounts: text("withdrawn_amounts", { mode: "text" }), // Expected to store { withdrawnSol, withdrawnTokens }
   poolInfo: text("pool_info", { mode: "text" }), // Expected to store pool details (id, lpMint, baseVault, quoteVault)
   lockLpTxId: text("lock_lp_tx_id", { mode: "text" }),
-  imported: text("imported", { mode: "text" }).default("0"),
+  imported: integer("imported").default(0),
+  // NEW: Token supply and decimals
+  tokenSupply: text("token_supply", { mode: "text" }).default(
+    "1000000000000000",
+  ), // As string to preserve precision
+  tokenSupplyUiAmount: integer("token_supply_ui_amount").default(1000000000),
+  tokenDecimals: integer("token_decimals").default(6),
+  lastSupplyUpdate: text("last_supply_update"),
 });
 
 // Swap schema
@@ -137,7 +145,7 @@ export const users = sqliteTable("users", {
   name: text("name"),
   address: text("address").notNull().unique(),
   points: integer("points").notNull().default(0),
-  rewardPoints: integer("reward_points").notNull().default(0), // Permanent Points for rewards
+  rewardPoints: integer("reward_points").notNull().default(0),
   createdAt: text("created_at", { mode: "text" }).notNull(),
 });
 

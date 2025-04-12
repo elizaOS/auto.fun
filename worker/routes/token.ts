@@ -8,7 +8,7 @@ import {
 import { and, desc, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
-import { monitorSpecificToken } from "../cron";
+import { monitorSpecificToken, processTransactionLogs } from "../cron";
 import {
   getDB,
   swaps,
@@ -20,7 +20,8 @@ import {
 } from "../db";
 import { Env } from "../env";
 import { logger } from "../logger";
-import { getSOLPrice } from "../mcap";
+import { getSOLPrice, calculateTokenMarketData } from "../mcap";
+import { getToken } from "../raydium/migration/migrations";
 import {
   applyFeaturedSort,
   calculateFeaturedScore,
@@ -32,6 +33,7 @@ import {
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { ImportedToken } from "../importedToken";
+import { handleSignature } from "../tokenSupplyHelpers";
 
 // Define the router with environment typing
 const tokenRouter = new Hono<{
@@ -1378,6 +1380,7 @@ tokenRouter.get("/token/:mint/price", async (c) => {
 });
 
 tokenRouter.get("/token/:mint", async (c) => {
+  console.log("token/:mint");
   try {
     const mint = c.req.param("mint");
 
@@ -1427,9 +1430,9 @@ tokenRouter.get("/token/:mint", async (c) => {
     // }
 
     // Set default values for critical fields if they're missing
-    const TOKEN_DECIMALS = Number(c.env.DECIMALS || 6);
+    const TOKEN_DECIMALS = token.tokenDecimals || 6;
     const defaultReserveAmount = 1000000000000; // 1 trillion (default token supply)
-    const defaultReserveLamport = 2800000000; // 2.8 SOL (default reserve)
+    const defaultReserveLamport = 28000000000; // 2.8 SOL (default reserve)
 
     // Make sure reserveAmount and reserveLamport have values
     token.reserveAmount = token.reserveAmount || defaultReserveAmount;
@@ -1451,25 +1454,21 @@ tokenRouter.get("/token/:mint", async (c) => {
         ? tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)
         : 0;
 
+    // const tokenMarketData = await calculateTokenMarketData(token, solPrice, c.env);
+
     // Update solPriceUSD
     token.solPriceUSD = solPrice;
 
-    // Use TOKEN_SUPPLY from env if available, otherwise use reserveAmount
-    const tokenSupply = c.env.TOKEN_SUPPLY
-      ? Number(c.env.TOKEN_SUPPLY)
-      : token.reserveAmount;
-
     // Calculate or update marketCapUSD if we have tokenPriceUSD
-    token.marketCapUSD =
-      (tokenSupply / Math.pow(10, TOKEN_DECIMALS)) * token.tokenPriceUSD;
+    token.marketCapUSD = token.tokenPriceUSD * (token.tokenSupplyUiAmount || 0);
 
     // Get virtualReserves and curveLimit from env or set defaults
     const virtualReserves = c.env.VIRTUAL_RESERVES
       ? Number(c.env.VIRTUAL_RESERVES)
-      : 2800000000;
+      : 28000000000;
     const curveLimit = c.env.CURVE_LIMIT
       ? Number(c.env.CURVE_LIMIT)
-      : 11300000000;
+      : 113000000000;
 
     // Update virtualReserves and curveLimit
     token.virtualReserves = token.virtualReserves || virtualReserves;
@@ -1514,6 +1513,10 @@ tokenRouter.get("/token/:mint", async (c) => {
         lastUpdated: new Date().toISOString(),
       })
       .where(eq(tokens.mint, mint));
+
+    console.log("currentPrice", token.currentPrice);
+    console.log("tokenPriceUSD", token.tokenPriceUSD);
+    console.log("marketCapUSD", token.marketCapUSD);
 
     // Format response with additional data
     return c.json(token);
@@ -1738,6 +1741,7 @@ tokenRouter.post("/create-token", async (c) => {
       description,
       twitter,
       telegram,
+      farcaster,
       website,
       discord,
       imageUrl,
@@ -1823,11 +1827,12 @@ tokenRouter.post("/create-token", async (c) => {
         description: description || "",
         twitter: twitter || "",
         telegram: telegram || "",
+        farcaster: farcaster || "",
         website: website || "",
         discord: discord || "",
         creator: user.publicKey || "unknown",
         status: "active",
-        tokenPriceUSD: 0,
+        tokenPriceUSD: 0.00000001,
         createdAt: now,
         lastUpdated: now,
         txId: txId || "create-" + tokenId,
@@ -1843,6 +1848,7 @@ tokenRouter.post("/create-token", async (c) => {
         description: description || "",
         twitter: twitter || "",
         telegram: telegram || "",
+        farcaster: farcaster || "",
         website: website || "",
         discord: discord || "",
         creator: user.publicKey || "unknown",
@@ -2150,6 +2156,7 @@ tokenRouter.post("/token/:mint/update", async (c) => {
         twitter: body.twitter ?? tokenData[0].twitter,
         telegram: body.telegram ?? tokenData[0].telegram,
         discord: body.discord ?? tokenData[0].discord,
+        farcaster: body.farcaster ?? tokenData[0].farcaster,
         lastUpdated: new Date().toISOString(),
       })
       .where(eq(tokens.mint, mint));

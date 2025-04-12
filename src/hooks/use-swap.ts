@@ -163,7 +163,7 @@ export const useSwap = () => {
     const simulation = await connection.simulateTransaction(tx);
     console.log("Simulation logs:", simulation.value.logs);
     if (simulation.value.err) {
-      console.error("Simulation failed:", simulation.value.err.toString());
+      console.error("Simulation failed:", JSON.stringify(simulation.value.err));
       throw new Error(`Transaction simulation failed: ${simulation.value.err}`);
     }
 
@@ -195,9 +195,11 @@ export const useSwap = () => {
 
   return {
     executeSwap: async (...params: Parameters<typeof executeSwap>) => {
+      let signature: string | undefined;
       try {
         setIsExecuting(true);
-        const { signature } = await executeSwap(...params);
+        const res = await executeSwap(...params);
+        signature = res.signature;
         if (signature) {
           toast.info(`Transaction sent: ${signature.slice(0, 8)}...`);
         } else {
@@ -208,6 +210,7 @@ export const useSwap = () => {
       } finally {
         setIsExecuting(false);
       }
+      return { signature };
     },
     isExecuting,
   };

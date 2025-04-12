@@ -8,7 +8,7 @@ import { getLatestCandle } from "./chart";
 import { getDB, swaps, Token, tokens, vanityKeypairs } from "./db";
 import { Env } from "./env";
 import { logger } from "./logger";
-import { getSOLPrice } from "./mcap";
+import { getSOLPrice, calculateTokenMarketData } from "./mcap";
 import { checkAndReplenishTokens } from "./routes/generation";
 import { updateHoldersCache } from "./routes/token";
 import {
@@ -21,6 +21,7 @@ import { getWebSocketClient } from "./websocket-client";
 import bs58 from "bs58";
 import { TokenData, TokenDBData } from "../worker/raydium/types/tokenData";
 import { awardUserPoints, awardGraduationPoints } from "./points/helpers";
+import { getToken } from "./raydium/migration/migrations";
 
 // Store the last processed signature to avoid duplicate processing
 let lastProcessedSignature: string | null = null;
@@ -235,6 +236,8 @@ export async function processTransactionLogs(
     // Handle swap events
     if (mintLog && swapLog && reservesLog && feeLog) {
       try {
+        console.log("Swap event detected");
+        console.log("swapLog", swapLog);
         // Extract data with better error handling
         let mintAddress: string;
         try {
@@ -342,26 +345,36 @@ export async function processTransactionLogs(
 
         // Get SOL price for calculations
         const solPrice = await getSOLPrice(env);
+        const tokenWithSupply = await getToken(env, mintAddress);
+        if (!tokenWithSupply) {
+          logger.error(`Token not found in database: ${mintAddress}`);
+          return result;
+        }
 
         // Calculate price based on reserves
-        const TOKEN_DECIMALS = Number(env.DECIMALS || 6);
+        const TOKEN_DECIMALS = tokenWithSupply?.tokenDecimals || 6;
         const SOL_DECIMALS = 9;
         const tokenAmountDecimal =
           Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS);
         const lamportDecimal = Number(reserveLamport) / 1e9;
         const currentPrice = lamportDecimal / tokenAmountDecimal;
-
+        console.log("currentPrice", currentPrice);
         const tokenPriceInSol = currentPrice / Math.pow(10, TOKEN_DECIMALS);
         const tokenPriceUSD =
           currentPrice > 0
             ? tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)
             : 0;
+        tokenWithSupply.tokenPriceUSD = tokenPriceUSD;
+        tokenWithSupply.currentPrice = currentPrice;
 
-        const marketCapUSD =
-          (Number(env.TOKEN_SUPPLY) / Math.pow(10, TOKEN_DECIMALS)) *
-          tokenPriceUSD;
+        const tokenWithMarketData = await calculateTokenMarketData(
+          tokenWithSupply,
+          solPrice,
+          env,
+        );
+        console.log("tokenWithMarketData", tokenWithMarketData);
 
-        console.log(tokenPriceInSol, tokenPriceUSD, marketCapUSD);
+        const marketCapUSD = tokenWithMarketData.marketCapUSD;
 
         // Save to the swap table for historical records
         const swapRecord = {

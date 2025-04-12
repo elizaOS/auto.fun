@@ -50,7 +50,9 @@ describe("TokenMigrator Integration Tests", () => {
       NODE_ENV: process.env.NODE_ENV || "development",
       SWAP_FEE: process.env.SWAP_FEE || "0.3",
       JWT_SECRET: process.env.JWT_SECRET || "",
-      RPC_URL: process.env.RPC_URL || "",
+      RPC_URL: (process.env.NETWORK === "mainnet"
+        ? process.env.MAINNET_SOLANA_RPC_URL
+        : process.env.DEVNET_SOLANA_RPC_URL) as string,
       MAINNET_SOLANA_RPC_URL: process.env.MAINNET_SOLANA_RPC_URL || "",
       DEVNET_SOLANA_RPC_URL: process.env.DEVNET_SOLANA_RPC_URL || "",
       PROGRAM_ID: process.env.PROGRAM_ID || "",

@@ -51,6 +51,8 @@ const fetchPaginatedData = async <
 
   const response = nonValidatedResponse as any;
 
+  console.log("response", response);
+
   // Validate each item in the response with the provided schema if it exists
   const validatedItems = response[itemsPropertyName]
     ? (response[itemsPropertyName] as unknown[]).map((item) =>

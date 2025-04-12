@@ -114,6 +114,11 @@ export const sleep = (ms: number) => {
 };
 
 export const isFromDomain = (url: string, domain: string): boolean => {
+  // if url does not have http or https, add it
+  if (!url.startsWith("http") && !url.startsWith("https")) {
+    url = "https://" + url;
+  }
+
   try {
     const parsedUrl = new URL(url);
     return (
