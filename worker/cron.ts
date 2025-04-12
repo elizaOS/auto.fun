@@ -234,289 +234,297 @@ export async function processTransactionLogs(
     }
 
     // Handle swap events
-    // if (mintLog && swapLog && reservesLog && feeLog) {
-    //   try {
-    //     console.log("Swap event detected")
-    //     console.log("swapLog", swapLog)
-    //     // Extract data with better error handling
-    //     let mintAddress: string;
-    //     try {
-    //       const mintParts = mintLog.split("Mint:");
-    //       if (mintParts.length < 2) {
-    //         logger.error(`Invalid Mint log format: ${mintLog}`);
-    //         return result;
-    //       }
-    //       mintAddress = mintParts[1].trim().replace(/[",)]/g, "");
+    if (mintLog && swapLog && reservesLog && feeLog) {
+      try {
+        console.log("Swap event detected")
+        console.log("swapLog", swapLog)
+        // Extract data with better error handling
+        let mintAddress: string;
+        try {
+          const mintParts = mintLog.split("Mint:");
+          if (mintParts.length < 2) {
+            logger.error(`Invalid Mint log format: ${mintLog}`);
+            return result;
+          }
+          mintAddress = mintParts[1].trim().replace(/[",)]/g, "");
 
-    //       // Validate mint address format
-    //       if (
-    //         !mintAddress ||
-    //         !/^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
-    //           mintAddress,
-    //         )
-    //       ) {
-    //         logger.error(`Invalid mint address format: ${mintAddress}`);
-    //         return result;
-    //       }
-    //     } catch (error) {
-    //       logger.error(`Error parsing mint address: ${error}`);
-    //       return result;
-    //     }
+          // Validate mint address format
+          if (
+            !mintAddress ||
+            !/^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
+              mintAddress,
+            )
+          ) {
+            logger.error(`Invalid mint address format: ${mintAddress}`);
+            return result;
+          }
+        } catch (error) {
+          logger.error(`Error parsing mint address: ${error}`);
+          return result;
+        }
 
-    //     try {
-    //       await updateHoldersCache(env, mintAddress);
-    //     } catch (error) {
-    //       logger.error("Failed to update holder cache on swap event:", error);
-    //     }
+        try {
+          await updateHoldersCache(env, mintAddress);
+        } catch (error) {
+          logger.error("Failed to update holder cache on swap event:", error);
+        }
 
-    //     // Extract user, direction, amount with validation
-    //     let user: string, direction: string, amount: string;
-    //     try {
-    //       const swapParts = swapLog.split(" ");
-    //       if (swapParts.length < 3) {
-    //         logger.error(`Invalid Swap log format: ${swapLog}`);
-    //         return result;
-    //       }
+        // Extract user, direction, amount with validation
+        let user: string, direction: string, amount: string;
+        try {
+          const swapParts = swapLog.split(" ");
+          if (swapParts.length < 3) {
+            logger.error(`Invalid Swap log format: ${swapLog}`);
+            return result;
+          }
 
-    //       user = swapParts[swapParts.length - 3].replace(/[",)]/g, "");
-    //       direction = swapParts[swapParts.length - 2].replace(/[",)]/g, "");
-    //       amount = swapParts[swapParts.length - 1].replace(/[",)]/g, "");
+          user = swapParts[swapParts.length - 3].replace(/[",)]/g, "");
+          direction = swapParts[swapParts.length - 2].replace(/[",)]/g, "");
+          amount = swapParts[swapParts.length - 1].replace(/[",)]/g, "");
 
-    //       // Validate extracted data
-    //       if (!user || !direction || !amount) {
-    //         logger.error(
-    //           `Missing swap data: user=${user}, direction=${direction}, amount=${amount}`,
-    //         );
-    //         return result;
-    //       }
+          // Validate extracted data
+          if (!user || !direction || !amount) {
+            logger.error(
+              `Missing swap data: user=${user}, direction=${direction}, amount=${amount}`,
+            );
+            return result;
+          }
 
-    //       // Make sure direction is either "0" or "1"
-    //       if (direction !== "0" && direction !== "1") {
-    //         logger.error(`Invalid direction value: ${direction}`);
-    //         return result;
-    //       }
-    //     } catch (error) {
-    //       logger.error(`Error parsing swap data: ${error}`);
-    //       return result;
-    //     }
+          // Make sure direction is either "0" or "1"
+          if (direction !== "0" && direction !== "1") {
+            logger.error(`Invalid direction value: ${direction}`);
+            return result;
+          }
+        } catch (error) {
+          logger.error(`Error parsing swap data: ${error}`);
+          return result;
+        }
 
-    //     // Extract reserveToken and reserveLamport with validation
-    //     let reserveToken: string, reserveLamport: string;
-    //     try {
-    //       const reservesParts = reservesLog.split(" ");
-    //       if (reservesParts.length < 2) {
-    //         logger.error(`Invalid Reserves log format: ${reservesLog}`);
-    //         return result;
-    //       }
+        // Extract reserveToken and reserveLamport with validation
+        let reserveToken: string, reserveLamport: string;
+        try {
+          const reservesParts = reservesLog.split(" ");
+          if (reservesParts.length < 2) {
+            logger.error(`Invalid Reserves log format: ${reservesLog}`);
+            return result;
+          }
 
-    //       reserveToken = reservesParts[reservesParts.length - 2].replace(
-    //         /[",)]/g,
-    //         "",
-    //       );
-    //       reserveLamport = reservesParts[reservesParts.length - 1].replace(
-    //         /[",)]/g,
-    //         "",
-    //       );
+          reserveToken = reservesParts[reservesParts.length - 2].replace(
+            /[",)]/g,
+            "",
+          );
+          reserveLamport = reservesParts[reservesParts.length - 1].replace(
+            /[",)]/g,
+            "",
+          );
 
-    //       // Validate extracted data
-    //       if (!reserveToken || !reserveLamport) {
-    //         logger.error(
-    //           `Missing reserves data: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`,
-    //         );
-    //         return result;
-    //       }
+          // Validate extracted data
+          if (!reserveToken || !reserveLamport) {
+            logger.error(
+              `Missing reserves data: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`,
+            );
+            return result;
+          }
 
-    //       // Make sure reserve values are numeric
-    //       if (isNaN(Number(reserveToken)) || isNaN(Number(reserveLamport))) {
-    //         logger.error(
-    //           `Invalid reserve values: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`,
-    //         );
-    //         return result;
-    //       }
-    //     } catch (error) {
-    //       logger.error(`Error parsing reserves data: ${error}`);
-    //       return result;
-    //     }
+          // Make sure reserve values are numeric
+          if (isNaN(Number(reserveToken)) || isNaN(Number(reserveLamport))) {
+            logger.error(
+              `Invalid reserve values: reserveToken=${reserveToken}, reserveLamport=${reserveLamport}`,
+            );
+            return result;
+          }
+        } catch (error) {
+          logger.error(`Error parsing reserves data: ${error}`);
+          return result;
+        }
 
-    //     const [_usr, _dir, amountOut] = swapeventLog!
-    //       .split(" ")
-    //       .slice(-3)
-    //       .map((s) => s.replace(/[",)]/g, ""));
+        const [_usr, _dir, amountOut] = swapeventLog!
+          .split(" ")
+          .slice(-3)
+          .map((s) => s.replace(/[",)]/g, ""));
 
-    //     // Get SOL price for calculations
-    //     const solPrice = await getSOLPrice(env);
-    //     const tokenWithSupply = await getToken(env, mintAddress);
+        // Get SOL price for calculations
+        const solPrice = await getSOLPrice(env);
+        const tokenWithSupply = await getToken(env, mintAddress);
+        if (!tokenWithSupply) {
+          logger.error(`Token not found in database: ${mintAddress}`);
+          return result;
+        }
 
-    //     // Calculate price based on reserves
-    //     const TOKEN_DECIMALS = tokenWithSupply?.tokenDecimals || 6;
-    //     const SOL_DECIMALS = 9;
-    //     const tokenAmountDecimal =
-    //       Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS);
-    //     const lamportDecimal = Number(reserveLamport) / 1e9;
-    //     const currentPrice = lamportDecimal / tokenAmountDecimal;
-    //     console.log("currentPrice", currentPrice);
-    //     const tokenPriceInSol = currentPrice / Math.pow(10, TOKEN_DECIMALS);
-    //     const tokenPriceUSD =
-    //       currentPrice > 0
-    //         ? tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)
-    //         : 0;
-    //     const tokenWithMarketData = await calculateTokenMarketData(
-    //         tokenWithSupply,
-    //         solPrice,
-    //         env,
-    //          )
+        // Calculate price based on reserves
+        const TOKEN_DECIMALS = tokenWithSupply?.tokenDecimals || 6;
+        const SOL_DECIMALS = 9;
+        const tokenAmountDecimal =
+          Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS);
+        const lamportDecimal = Number(reserveLamport) / 1e9;
+        const currentPrice = lamportDecimal / tokenAmountDecimal;
+        console.log("currentPrice", currentPrice);
+        const tokenPriceInSol = currentPrice / Math.pow(10, TOKEN_DECIMALS);
+        const tokenPriceUSD =
+          currentPrice > 0
+            ? tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)
+            : 0;
+        tokenWithSupply.tokenPriceUSD = tokenPriceUSD;
+        tokenWithSupply.currentPrice = currentPrice
         
-    //     const marketCapUSD = tokenWithMarketData.marketCapUSD
+        const tokenWithMarketData = await calculateTokenMarketData(
+            tokenWithSupply,
+            solPrice,
+            env,
+        )
+        console.log("tokenWithMarketData", tokenWithMarketData)
         
-    //     // Save to the swap table for historical records
-    //     const swapRecord = {
-    //       id: crypto.randomUUID(),
-    //       tokenMint: mintAddress,
-    //       user: user,
-    //       type: direction === "0" ? "buy" : "sell",
-    //       direction: parseInt(direction),
-    //       amountIn: Number(amount),
-    //       amountOut: Number(amountOut),
-    //       price:
-    //         direction === "1"
-    //           ? Number(amountOut) /
-    //             Math.pow(10, SOL_DECIMALS) /
-    //             (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) // Sell price (SOL/token)
-    //           : Number(amount) /
-    //             Math.pow(10, SOL_DECIMALS) /
-    //             (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)), // Buy price (SOL/token),
-    //       txId: signature,
-    //       timestamp: new Date().toISOString(),
-    //     };
+        const marketCapUSD = tokenWithMarketData.marketCapUSD
+        
+        // Save to the swap table for historical records
+        const swapRecord = {
+          id: crypto.randomUUID(),
+          tokenMint: mintAddress,
+          user: user,
+          type: direction === "0" ? "buy" : "sell",
+          direction: parseInt(direction),
+          amountIn: Number(amount),
+          amountOut: Number(amountOut),
+          price:
+            direction === "1"
+              ? Number(amountOut) /
+                Math.pow(10, SOL_DECIMALS) /
+                (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) // Sell price (SOL/token)
+              : Number(amount) /
+                Math.pow(10, SOL_DECIMALS) /
+                (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)), // Buy price (SOL/token),
+          txId: signature,
+          timestamp: new Date().toISOString(),
+        };
 
-    //     // Insert the swap record
-    //     const db = getDB(env);
-    //     await db.insert(swaps).values(swapRecord);
-    //     logger.log(
-    //       `Saved swap: ${direction === "0" ? "buy" : "sell"} for ${mintAddress}`,
-    //     );
+        // Insert the swap record
+        const db = getDB(env);
+        await db.insert(swaps).values(swapRecord);
+        logger.log(
+          `Saved swap: ${direction === "0" ? "buy" : "sell"} for ${mintAddress}`,
+        );
 
-    //     // Update token data in database
-    //     const token = await db
-    //       .update(tokens)
-    //       .set({
-    //         reserveAmount: Number(reserveToken),
-    //         reserveLamport: Number(reserveLamport),
-    //         currentPrice: currentPrice,
-    //         liquidity:
-    //           (Number(reserveLamport) / 1e9) * solPrice +
-    //           (Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS)) *
-    //             tokenPriceUSD,
-    //         marketCapUSD,
-    //         tokenPriceUSD,
-    //         solPriceUSD: solPrice,
-    //         curveProgress:
-    //           ((Number(reserveLamport) - Number(env.VIRTUAL_RESERVES)) /
-    //             (Number(env.CURVE_LIMIT) - Number(env.VIRTUAL_RESERVES))) *
-    //           100,
-    //         txId: signature,
-    //         lastUpdated: new Date().toISOString(),
-    //         volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${
-    //           direction === "1"
-    //             ? (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) *
-    //               tokenPriceUSD
-    //             : (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)) *
-    //               tokenPriceUSD
-    //         }`,
-    //       })
-    //       .where(eq(tokens.mint, mintAddress))
-    //       .returning();
-    //     const newToken = token[0];
+        // Update token data in database
+        const token = await db
+          .update(tokens)
+          .set({
+            reserveAmount: Number(reserveToken),
+            reserveLamport: Number(reserveLamport),
+            currentPrice: currentPrice,
+            liquidity:
+              (Number(reserveLamport) / 1e9) * solPrice +
+              (Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS)) *
+                tokenPriceUSD,
+            marketCapUSD,
+            tokenPriceUSD,
+            solPriceUSD: solPrice,
+            curveProgress:
+              ((Number(reserveLamport) - Number(env.VIRTUAL_RESERVES)) /
+                (Number(env.CURVE_LIMIT) - Number(env.VIRTUAL_RESERVES))) *
+              100,
+            txId: signature,
+            lastUpdated: new Date().toISOString(),
+            volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${
+              direction === "1"
+                ? (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) *
+                  tokenPriceUSD
+                : (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)) *
+                  tokenPriceUSD
+            }`,
+          })
+          .where(eq(tokens.mint, mintAddress))
+          .returning();
+        const newToken = token[0];
 
-    //     /** Point System  modification*/
-    //     const usdVolume =
-    //       swapRecord.type === "buy"
-    //         ? (swapRecord.amountOut / Math.pow(10, TOKEN_DECIMALS)) *
-    //           tokenPriceUSD
-    //         : (swapRecord.amountIn / Math.pow(10, TOKEN_DECIMALS)) *
-    //           tokenPriceUSD;
+        /** Point System  modification*/
+        const usdVolume =
+          swapRecord.type === "buy"
+            ? (swapRecord.amountOut / Math.pow(10, TOKEN_DECIMALS)) *
+              tokenPriceUSD
+            : (swapRecord.amountIn / Math.pow(10, TOKEN_DECIMALS)) *
+              tokenPriceUSD;
 
-    //     const bondStatus =
-    //       newToken?.status === "bonded" ? "postbond" : "prebond";
-    //     if (swapRecord.type === "buy") {
-    //       await awardUserPoints(env, swapRecord.user, {
-    //         type: bondStatus === "prebond" ? "prebond_buy" : "postbond_buy",
-    //         usdVolume,
-    //       });
-    //     } else {
-    //       await awardUserPoints(env, swapRecord.user, {
-    //         type: bondStatus === "prebond" ? "prebond_sell" : "postbond_sell",
-    //         usdVolume,
-    //       });
-    //     }
-    //     // volume bonus
-    //     await awardUserPoints(env, swapRecord.user, {
-    //       type: "trade_volume_bonus",
-    //       usdVolume,
-    //     });
+        const bondStatus =
+          newToken?.status === "bonded" ? "postbond" : "prebond";
+        if (swapRecord.type === "buy") {
+          await awardUserPoints(env, swapRecord.user, {
+            type: bondStatus === "prebond" ? "prebond_buy" : "postbond_buy",
+            usdVolume,
+          });
+        } else {
+          await awardUserPoints(env, swapRecord.user, {
+            type: bondStatus === "prebond" ? "prebond_sell" : "postbond_sell",
+            usdVolume,
+          });
+        }
+        // volume bonus
+        await awardUserPoints(env, swapRecord.user, {
+          type: "trade_volume_bonus",
+          usdVolume,
+        });
 
-    //     //first buyer
-    //     if (swapRecord.type === "buy") {
-    //       // check if this is the very first swap on this mint
-    //       const count = await db
-    //         .select()
-    //         .from(swaps)
-    //         .where(eq(swaps.tokenMint, mintAddress))
-    //         .limit(2)
-    //         .execute();
-    //       if (count.length === 1) {
-    //         await awardUserPoints(env, swapRecord.user, {
-    //           type: "first_buyer",
-    //         });
-    //       }
-    //     }
+        //first buyer
+        if (swapRecord.type === "buy") {
+          // check if this is the very first swap on this mint
+          const count = await db
+            .select()
+            .from(swaps)
+            .where(eq(swaps.tokenMint, mintAddress))
+            .limit(2)
+            .execute();
+          if (count.length === 1) {
+            await awardUserPoints(env, swapRecord.user, {
+              type: "first_buyer",
+            });
+          }
+        }
 
-    //     /** End of point system */
+        /** End of point system */
 
-    //     // Update holders data immediately after a swap
-    //     await updateHoldersCache(env, mintAddress);
+        // Update holders data immediately after a swap
+        await updateHoldersCache(env, mintAddress);
 
-    //     // Emit event to all clients via WebSocket
-    //     await wsClient.emit(`token-${mintAddress}`, "newSwap", {
-    //       ...swapRecord,
-    //       mint: mintAddress, // Add mint field for compatibility
-    //     });
+        // Emit event to all clients via WebSocket
+        await wsClient.emit(`token-${mintAddress}`, "newSwap", {
+          ...swapRecord,
+          mint: mintAddress, // Add mint field for compatibility
+        });
 
-    //     const latestCandle = await getLatestCandle(
-    //       env,
-    //       swapRecord.tokenMint,
-    //       swapRecord,
-    //     );
+        const latestCandle = await getLatestCandle(
+          env,
+          swapRecord.tokenMint,
+          swapRecord,
+        );
 
-    //     // Emit the new candle data
-    //     await wsClient
-    //       .to(`token-${swapRecord.tokenMint}`)
-    //       .emit("newCandle", latestCandle);
+        // Emit the new candle data
+        await wsClient
+          .to(`token-${swapRecord.tokenMint}`)
+          .emit("newCandle", latestCandle);
 
-    //     // Emit the updated token data with enriched featured score
-    //     const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
+        // Emit the updated token data with enriched featured score
+        const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
 
-    //     // Create enriched token data with featuredScore
-    //     const enrichedToken = {
-    //       ...newToken,
-    //       featuredScore: calculateFeaturedScore(
-    //         newToken,
-    //         maxVolume,
-    //         maxHolders,
-    //       ),
-    //     };
+        // Create enriched token data with featuredScore
+        const enrichedToken = {
+          ...newToken,
+          featuredScore: calculateFeaturedScore(
+            newToken,
+            maxVolume,
+            maxHolders,
+          ),
+        };
 
-    //     await wsClient
-    //       .to(`token-${swapRecord.tokenMint}`)
-    //       .emit("updateToken", enrichedToken);
+        await wsClient
+          .to(`token-${swapRecord.tokenMint}`)
+          .emit("updateToken", enrichedToken);
 
-    //     await wsClient.to("global").emit("updateToken", enrichedToken);
+        await wsClient.to("global").emit("updateToken", enrichedToken);
 
-    //     result = { found: true, tokenAddress: mintAddress, event: "swap" };
-    //   } catch (error) {
-    //     logger.error("Error processing swap event:", error);
-    //   }
-    // }
+        result = { found: true, tokenAddress: mintAddress, event: "swap" };
+      } catch (error) {
+        logger.error("Error processing swap event:", error);
+      }
+    }
 
     // Handle migration/curve completion events
     if (completeEventLog && mintLog) {
