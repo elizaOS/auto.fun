@@ -352,7 +352,7 @@ export async function processTransactionLogs(
           Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS);
         const lamportDecimal = Number(reserveLamport) / 1e9;
         const currentPrice = lamportDecimal / tokenAmountDecimal;
-
+        console.log("currentPrice", currentPrice);
         const tokenPriceInSol = currentPrice / Math.pow(10, TOKEN_DECIMALS);
         const tokenPriceUSD =
           currentPrice > 0
@@ -361,9 +361,11 @@ export async function processTransactionLogs(
         const tokenWithMarketData =  await calculateTokenMarketData(
             tokenWithSupply,
             tokenPriceUSD,
-            env)
+            env,
+             )
         
-          const marketCapUSD = tokenWithMarketData.marketCapUSD
+        const marketCapUSD = tokenWithMarketData.marketCapUSD
+        
 
         console.log(tokenPriceInSol, tokenPriceUSD, marketCapUSD);
 

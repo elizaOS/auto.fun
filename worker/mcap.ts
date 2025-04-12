@@ -15,6 +15,8 @@ import {
   shouldUpdateSupply,
   updateTokenSupplyFromChain,
 } from "./tokenSupplyHelpers";
+import { BN, Program } from "@coral-xyz/anchor";
+
 
 // Constants
 const PYTHNET_CLUSTER_NAME: PythCluster = "pythnet";
@@ -192,9 +194,14 @@ export async function calculateTokenMarketData(
 
     // Calculate market cap
     if (token.tokenSupplyUiAmount) {
-      if (tokenWithMarketData.tokenPriceUSD) {
-        tokenWithMarketData.marketCapUSD =
-          Number(token.tokenSupplyUiAmount) * tokenWithMarketData.tokenPriceUSD;
+      if (tokenWithMarketData.tokenPriceUSD) { 
+        console.log("tokenPrice", token.currentPrice)
+        console.log("tokeSuppy", token.tokenSupplyUiAmount);
+        console.log("tokenPriceUSD", tokenWithMarketData.tokenPriceUSD);
+         tokenWithMarketData.marketCapUSD =
+          new BN(token.tokenSupplyUiAmount)
+            .mul(new BN(tokenWithMarketData.tokenPriceUSD))
+            .toNumber();
       }
     }
 
