@@ -10,7 +10,7 @@ use anchor_lang::prelude::*;
 use state::Config;
 // use crate::errors::PumpfunError;
 
-declare_id!("2P7CKAgY6SWXscAee1JsCrKXeK1ZpiMkTiBH7YdJvvBD");
+declare_id!("AnAYdVXqbS87U1DzzuRR4dnooNv7GjfqnSUEVmaKH8xL");
 
 #[program]
 pub mod autofun {

@@ -18,14 +18,6 @@ import { Autofun } from '../target/types/autofun';
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
-  // The program ID taken from your IDL "address" field.
-  const programId = new web3.PublicKey('2P7CKAgY6SWXscAee1JsCrKXeK1ZpiMkTiBH7YdJvvBD');
-
-  // Read the IDL file (assuming it is in the same directory with name "autofun.json")
-  const idlPath = path.resolve( __dirname,'../target/idl/autofun.json');
-  const idlText = fs.readFileSync(idlPath, 'utf8');
-  const idl = JSON.parse(idlText);
-
   // Instantiate the program using the IDL and programId.
   const program = anchor.workspace.Autofun as Program<Autofun>;
 
@@ -66,10 +58,10 @@ import { Autofun } from '../target/types/autofun';
     teamWallet: new anchor.web3.PublicKey(
       "FfNhJtoWL6Nk9UkiZiitYifcBMFUicaJswKj6CFdFNSa"
     ),
-    initBondingCurve: new BN(10000).toNumber(),
+    initBondingCurve: new BN(.01 * anchor.web3.LAMPORTS_PER_SOL).toNumber(),
     platformBuyFee: new BN(100),
     platformSellFee: new BN(100),
-    curveLimit: new BN(1 * anchor.web3.LAMPORTS_PER_SOL),
+    curveLimit: new BN(2 * anchor.web3.LAMPORTS_PER_SOL),
     lamportAmountConfig: { range: { min: new BN(0.01 * anchor.web3.LAMPORTS_PER_SOL), max: new BN(100 * anchor.web3.LAMPORTS_PER_SOL) } },
     tokenSupplyConfig: { range: { min: new BN(1000000), max: new BN(1000000000) } },
     tokenDecimalsConfig: { range: { min: 6, max: 9 } }

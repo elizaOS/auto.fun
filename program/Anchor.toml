@@ -6,18 +6,18 @@ resolution = true
 skip-lint = true
 
 [programs.devnet]
-autofun = "55tUgwgVSexDgyH98rSKQpk5DqEaYb5q4hJHX7v474eB"
-raydium_vault = "DQSdW1kA1BjqRs44ZNR6kze4ZQdzc3jJZHZY1GwXAUSQ"
+autofun = "AnAYdVXqbS87U1DzzuRR4dnooNv7GjfqnSUEVmaKH8xL"
+raydium_vault = "Bi9TwwuBFf15mVVgfVjh4oz65QAGAAo793ioFfX9ugAR"
 
 [programs.mainnet]
-autofun = "2P7CKAgY6SWXscAee1JsCrKXeK1ZpiMkTiBH7YdJvvBD"
+autofun = "AnAYdVXqbS87U1DzzuRR4dnooNv7GjfqnSUEVmaKH8xL"
 raydium_vault = "Bi9TwwuBFf15mVVgfVjh4oz65QAGAAo793ioFfX9ugAR"
 
 [registry]
 url = "https://staked.helius-rpc.com?api-key=3e7503c3-c6b2-44ac-98d4-c309cbcb4074"
 
 [provider]
-cluster = "Mainnet"
+cluster = "mainnet"
 wallet = "./id.json"
 
 [scripts]

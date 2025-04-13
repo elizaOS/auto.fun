@@ -1,84 +1,121 @@
+// check-admin.ts
 import * as anchor from '@coral-xyz/anchor';
 import { Program, web3 } from '@coral-xyz/anchor';
-import * as fs from 'fs';
 import path from 'path';
-import { Autofun } from './target/types/autofun';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Autofun } from '../target/types/autofun'; // Import the generated types
+import { RaydiumVault } from '../target/types/raydium_vault';
+import BN from 'bn.js'; // Import BN for handling large numbers
 
 // Set environment variables programmatically
 process.env.ANCHOR_PROVIDER_URL = 'https://api.mainnet-beta.solana.com'; // or your preferred cluster
-process.env.ANCHOR_WALLET = path.resolve(__dirname, './id.json'); // path to your wallet file
+process.env.ANCHOR_WALLET = path.resolve(__dirname, '../id.json'); // path to your wallet file
 
 (async () => {
-  // Set up the provider from the environment variables (e.g., ANCHOR_PROVIDER_URL, ANCHOR_WALLET)
+  // Set up the provider from the environment variables
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
-  // Load the IDL; adjust the path as needed.
-  const idlPath = path.resolve(__dirname, './target/idl/autofun.json');
-  const idlText = fs.readFileSync(idlPath, 'utf8');
-  const idl = JSON.parse(idlText);
+  // Instantiate the program using the generated types
+  const autofunProgram = anchor.workspace.Autofun as Program<Autofun>;
+  const raydiumVaultProgram = anchor.workspace.RaydiumVault as Program<RaydiumVault>;
 
-  // The program ID (taken from your IDL "address" field)
-  const programId = new web3.PublicKey('2P7CKAgY6SWXscAee1JsCrKXeK1ZpiMkTiBH7YdJvvBD');
-
-  // Instantiate the program using Anchor's Program class.
-  const program = anchor.workspace.Autofun as Program<Autofun>;
-
-  // Derive the config PDA using the seed "config" (the bytes for "config" are [99, 111, 110, 102, 105, 103])
+  // Derive the config PDA using the seed "config"
   const [configPDA] = web3.PublicKey.findProgramAddressSync(
     [Buffer.from("config")],
-    program.programId
+    autofunProgram.programId
   );
-  
-  console.log("Config PDA:", configPDA.toBase58());
+
+  const [globalVaultPDA] = web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("global")],
+    autofunProgram.programId
+  );
+
+  // Derive the global WSOL account PDA using the seeds
+  const globalWsolSeed = Buffer.from([
+    6, 221, 246, 225, 215, 101, 161, 147,
+    217, 203, 225, 70, 206, 235, 121, 172,
+    28, 180, 133, 237, 95, 91, 55, 145,
+    58, 140, 245, 133, 126, 255, 0, 169
+  ]);
+
+  // The native mint account is provided in the IDL.
+  const nativeMint = new web3.PublicKey("So11111111111111111111111111111111111111112");
+
+  const [globalWsolAccountPDA] = web3.PublicKey.findProgramAddressSync(
+    [globalVaultPDA.toBuffer(), globalWsolSeed, nativeMint.toBuffer()],
+    autofunProgram.programId
+  );
+
+  // Derive the vault config PDA using the seed "raydium_vault_config"
+  const [vaultConfigPDA] = web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("raydium_vault_config")],
+    raydiumVaultProgram.programId
+  );
 
   // Fetch the account info using the provider's connection.
-  const accountInfo = await provider.connection.getAccountInfo(configPDA, 'confirmed');
-  if (!accountInfo) {
+  const autofunConfigPDA = await provider.connection.getAccountInfo(configPDA, 'confirmed');
+  const globalVaultAccountInfo = await provider.connection.getAccountInfo(globalVaultPDA, 'confirmed');
+  const globalWsolAccountInfo = await provider.connection.getAccountInfo(globalWsolAccountPDA, 'confirmed');
+  const vaultAccountInfo = await provider.connection.getAccountInfo(vaultConfigPDA, 'confirmed');
+
+  // Check each account individually and log if not found
+  if (!autofunConfigPDA) {
     console.error("Config account not found for PDA:", configPDA.toBase58());
-    return;
-  }
-
-  // Log raw account data for debugging
-  console.log("Raw account data:", accountInfo.data);
-
-  try {
-    // Decode the account data using the Anchor coder.
-    const decodedConfig = program.coder.accounts.decode("Config", accountInfo.data);
-    console.log("Decoded Config Account:", decodedConfig);
-  } catch (error) {
-    console.error("Error decoding account data:", error);
-  }
-})();
-
-// Initialize connection to the Solana cluster
-const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
-
-// Function to check if an account is initialized
-async function checkAccountInitialization(accountPubkey: PublicKey) {
-  try {
-    const accountInfo = await connection.getAccountInfo(accountPubkey);
-    if (accountInfo) {
-      console.log(`Account ${accountPubkey.toBase58()} is initialized.`);
-      console.log('Account data length:', accountInfo.data.length);
-    } else {
-      console.log(`Account ${accountPubkey.toBase58()} is not initialized.`);
+  } else {
+    try {
+      const decodedAutofunConfig = autofunProgram.coder.accounts.decode("config", autofunConfigPDA.data);
+      console.log("-------------------------------- Autofun Config --------------------------------");
+      console.log("Config PDA:", configPDA.toBase58());
+      console.log("Current Admin:", decodedAutofunConfig.authority.toString());
+      console.log("Pending Admin:", decodedAutofunConfig.pendingAuthority.toString());
+      console.log("Team Wallet:", decodedAutofunConfig.teamWallet.toString());
+      console.log("Init Bonding Curve:", decodedAutofunConfig.initBondingCurve);
+      console.log("Platform Buy Fee:", new BN(decodedAutofunConfig.platformBuyFee).toString());
+      console.log("Platform Sell Fee:", new BN(decodedAutofunConfig.platformSellFee).toString());
+      console.log("Curve Limit:", new BN(decodedAutofunConfig.curveLimit).toString());
+      console.log("Lamport Amount Config:", {
+        min: new BN(decodedAutofunConfig.lamportAmountConfig.range.min).toString(),
+        max: new BN(decodedAutofunConfig.lamportAmountConfig.range.max).toString(),
+      });
+      console.log("Token Supply Config:", {
+        min: new BN(decodedAutofunConfig.tokenSupplyConfig.range.min).toString(),
+        max: new BN(decodedAutofunConfig.tokenSupplyConfig.range.max).toString(),
+      });
+      console.log("Token Decimals Config:", {
+        min: decodedAutofunConfig.tokenDecimalsConfig.range.min,
+        max: decodedAutofunConfig.tokenDecimalsConfig.range.max,
+      });
+    } catch (error) {
+      console.error("Error decoding config account data:", error);
     }
-  } catch (error) {
-    console.error(`Error fetching account info for ${accountPubkey.toBase58()}:`, error);
   }
-}
 
-// Main function to check all relevant accounts
-(async () => {
-  // Replace these with your actual PDA values
-  const configPDA = new PublicKey('AkqKEiKgTWWAbVBWDtGzH32xx6CXd4d9NwgVDjgParBj');
-  const globalVaultPDA = new PublicKey('2YmvA7xvrRTvMDWau7s4XSMQzk1sTt516NMBccCTkySQ');
-  const globalWsolAccountPDA = new PublicKey('HfwboaGVhKq5XdPgEgdjXT1hWUiEZZ7EBa17Pa5LBUB7');
+  if (!globalVaultAccountInfo) {
+    console.error("Global vault account not found for PDA:", globalVaultPDA.toBase58());
+  } else {
+    // Decode and log global vault account data if needed
+    console.log("Global Vault PDA:", globalVaultPDA.toBase58());
+  }
 
-  console.log('Checking account initialization status...');
-  await checkAccountInitialization(configPDA);
-  await checkAccountInitialization(globalVaultPDA);
-  await checkAccountInitialization(globalWsolAccountPDA);
+  if (!globalWsolAccountInfo) {
+    console.error("Global WSOL account not found for PDA:", globalWsolAccountPDA.toBase58());
+  } else {
+    // Decode and log global WSOL account data if needed
+    console.log("Global WSOL Account PDA:", globalWsolAccountPDA.toBase58());
+  }
+
+  if (!vaultAccountInfo) {
+    console.error("Vault config account not found for PDA:", vaultConfigPDA.toBase58());
+  } else {
+    try {
+      const decodedVaultConfig = raydiumVaultProgram.coder.accounts.decode("vaultConfig", vaultAccountInfo.data);
+      console.log("-------------------------------- Vault Config --------------------------------");
+      console.log("Vault Config PDA:", vaultConfigPDA.toBase58());
+      console.log("Executor Authority:", decodedVaultConfig.executorAuthority.toString());
+      console.log("Emergency Authority:", decodedVaultConfig.emergencyAuthority.toString());
+      console.log("Manager Authority:", decodedVaultConfig.managerAuthority.toString());
+    } catch (error) {
+      console.error("Error decoding vault config account data:", error);
+    }
+  }
 })();
