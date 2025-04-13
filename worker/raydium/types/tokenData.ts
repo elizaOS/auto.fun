@@ -53,6 +53,7 @@ export interface TokenData {
   image: string;
   twitter?: string;
   telegram?: string;
+  farcaster?: string;
   website?: string;
   discord?: string;
   description?: string;
@@ -95,6 +96,10 @@ export interface TokenData {
   withdrawnAmounts?: WithdrawnAmountsData;
   poolInfo?: PoolInfoData;
   lockLpTxId?: string;
+  tokenSupply?: string;
+  tokenSupplyUiAmount?: number;
+  tokenDecimals?: number;
+  lastSupplyUpdate?: string;
 }
 
 export interface TokenDBData {
@@ -105,6 +110,7 @@ export interface TokenDBData {
   image?: string;
   twitter?: string;
   telegram?: string;
+  farcaster?: string;
   website?: string;
   discord?: string;
   description?: string;

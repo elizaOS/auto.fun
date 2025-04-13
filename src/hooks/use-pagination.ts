@@ -15,7 +15,7 @@ type PaginationOptions<TOutput, TInput> = {
   endpoint: string;
   page: number;
   limit: number;
-  validationSchema: z.ZodSchema<TOutput, z.ZodTypeDef, TInput>;
+  validationSchema?: z.ZodSchema<TOutput, z.ZodTypeDef, TInput>;
   sortBy: keyof TOutput;
   sortOrder: "asc" | "desc";
   itemsPropertyName: string;
@@ -33,10 +33,10 @@ const fetchPaginatedData = async <
   endpoint,
   page,
   limit,
-  validationSchema,
   sortBy,
   sortOrder,
   itemsPropertyName,
+  validationSchema,
 }: PaginationOptions<TOutput, TInput>): Promise<PaginatedResponse<TOutput>> => {
   const queryParams = new URLSearchParams({
     limit: limit.toString(),
@@ -49,17 +49,19 @@ const fetchPaginatedData = async <
 
   const nonValidatedResponse = await fetcher(queryEndpoint, "GET");
 
-  const response = z
-    .object({
-      [itemsPropertyName]: z.array(validationSchema),
-      page: z.number(),
-      totalPages: z.number(),
-      total: z.number(),
-    })
-    .parse(nonValidatedResponse);
+  const response = nonValidatedResponse as any;
+
+  console.log("response", response);
+
+  // Validate each item in the response with the provided schema if it exists
+  const validatedItems = response[itemsPropertyName]
+    ? (response[itemsPropertyName] as unknown[]).map((item) =>
+        validationSchema ? validationSchema.parse(item) : (item as TOutput),
+      )
+    : [];
 
   return {
-    items: response[itemsPropertyName] as TOutput[],
+    items: validatedItems,
     page: response.page as number,
     totalPages: response.totalPages as number,
     hasMore: (response.page as number) < (response.totalPages as number),
@@ -121,8 +123,8 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
           page,
           sortBy,
           sortOrder,
-          validationSchema,
           itemsPropertyName,
+          validationSchema,
         });
 
         setFetchedData(result.items);

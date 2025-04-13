@@ -177,4 +177,3 @@ export const sendNftTo = async (
 export const isDevnet = (connection: anchor.web3.Connection): boolean => {
   return connection.rpcEndpoint == devnetEndpoint;
 };
-

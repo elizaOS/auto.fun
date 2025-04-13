@@ -543,7 +543,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
         </div>
         <div className="pb-3.5 px-3.5">
           <h3 className="text-xl text-center text-white font-satoshi font-medium">
-            Connect a Solana wallet to continue
+            Connect a Solana Wallet to Continue
           </h3>
           <div className="my-4 flex justify-center">
             <SkeletonImage

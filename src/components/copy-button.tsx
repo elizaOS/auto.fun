@@ -30,6 +30,7 @@ const CopyButton: React.FC<CopyButtonProps> = ({ text }) => {
       onClick={handleCopy}
       className="flex items-center text-xs text-[#8c8c8c] hover:text-white transition-colors cursor-pointer"
       aria-label="copy"
+      type="button"
     >
       {copied ? (
         <span>Copied!</span>

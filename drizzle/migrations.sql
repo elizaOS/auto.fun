@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT,
   address TEXT NOT NULL UNIQUE,
   points INTEGER NOT NULL DEFAULT 0,
-  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  reward_points INTEGER NOT NULL DEFAULT 0
 );
 
 -- Create tokens table
@@ -46,6 +47,7 @@ CREATE TABLE IF NOT EXISTS tokens (
   telegram TEXT,
   website TEXT,
   discord TEXT,
+  farcaster TEXT,
   agent_link TEXT,
   description TEXT,
   mint TEXT NOT NULL UNIQUE,
@@ -87,7 +89,11 @@ CREATE TABLE IF NOT EXISTS tokens (
   withdrawn_amounts TEXT,
   pool_info TEXT,
   lock_lp_tx_id TEXT,
-  imported INTEGER NOT NULL DEFAULT 0
+  imported INTEGER DEFAULT 0,
+  token_supply TEXT DEFAULT "1000000000000000",
+  token_supply_ui_amount INTEGER DEFAULT 1000000000,
+  token_decimals INTEGER DEFAULT 6,
+  last_supply_update TEXT
 );
 
 -- Create swaps table
@@ -247,4 +253,4 @@ CREATE INDEX IF NOT EXISTS idx_cache_prices_expires ON cache_prices(expires_at);
 CREATE INDEX IF NOT EXISTS idx_token_agents_mint ON token_agents(token_mint);
 CREATE INDEX IF NOT EXISTS idx_token_agents_owner ON token_agents(owner_address);
 CREATE INDEX IF NOT EXISTS idx_token_agents_official ON token_agents(official);
-CREATE INDEX IF NOT EXISTS idx_token_agents_user_id ON token_agents(twitter_user_id); 
+CREATE INDEX IF NOT EXISTS idx_token_agents_user_id ON token_agents(twitter_user_id);

@@ -1,5 +1,6 @@
 import Button from "@/components/button";
 import FrontpageHeader from "@/components/frontpage-header";
+// import FrontpageHeader from "@/components/frontpage-header";
 import GridListSwitcher from "@/components/grid-list-switcher";
 import GridView from "@/components/grid-view";
 import Loader from "@/components/loader";

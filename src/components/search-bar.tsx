@@ -5,50 +5,50 @@ import { getSearchTokens } from "@/utils/api";
 import { useQuery } from "@tanstack/react-query";
 import { debounce } from "lodash";
 import { Search } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import CopyButton from "./copy-button";
 
 export default function SearchBar() {
-  const [searchResults, setSearchResults] = useState<IToken[] | []>([]);
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  
   useOutsideClickDetection([ref], () => {
     setShowSearchResults(false);
-    setSearchResults([]);
   });
 
   const query = useQuery({
-    queryKey: ["search-tokens", search],
+    queryKey: ["search-tokens", searchQuery],
     queryFn: async () => {
-      const data = await getSearchTokens({ search });
+      if (!searchQuery || searchQuery.length < 2) return { tokens: [] };
+      const data = await getSearchTokens({ search: searchQuery });
       return data as { tokens: IToken[] };
     },
+    enabled: searchQuery.length >= 2,
+    staleTime: 30000,
   });
 
-  const tokens = query.data?.tokens ?? [];
-  useEffect(() => {
-    setSearchResults(tokens);
-  }, [tokens]);
-
-  const handleSearch = useRef(
-    debounce((query: string) => {
-      setSearch(query);
+  const debouncedSetSearchQuery = useCallback(
+    debounce((value: string) => {
+      setSearchQuery(value);
     }, 300),
-  ).current;
+    []
+  );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
+    setSearchInput(value);
     setShowSearchResults(true);
-    handleSearch(value);
+    debouncedSetSearchQuery(value);
   };
 
   useEffect(() => {
     return () => {
-      handleSearch.cancel();
+      debouncedSetSearchQuery.cancel();
     };
-  }, [handleSearch]);
+  }, [debouncedSetSearchQuery]);
 
   return (
     <div className="relative w-full max-w-full sm:max-w-2xl md:max-w-3xl lg:w-[400px] xl:w-[600px]">
@@ -56,7 +56,7 @@ export default function SearchBar() {
         <Search className="w-6 h-6 text-[#8C8C8C] group-hover:text-[#2FD345] shrink-0" />
         <input
           type="text"
-          value={search}
+          value={searchInput}
           onChange={handleInputChange}
           placeholder="Symbol or Address..."
           className="flex-1 select-none bg-transparent text-base font-medium text-[#8C8C8C] placeholder-[#8C8C8C] focus:outline-none hover:placeholder-white focus:placeholder-white transition-colors"
@@ -75,12 +75,12 @@ export default function SearchBar() {
             <div className="text-autofun-background-action-highlight">
               Searching for tokens...
             </div>
-          ) : searchResults.length === 0 ? (
+          ) : query.data?.tokens.length === 0 ? (
             <div className="text-autofun-background-action-highlight">
               No tokens found.
             </div>
           ) : (
-            searchResults.map((token: IToken) => (
+            query.data?.tokens.map((token: IToken) => (
               <AgentSearchResult
                 key={token.mint}
                 id={token.mint}

@@ -11,7 +11,6 @@ import Trade from "@/components/trade";
 import { TradingViewChart } from "@/components/trading-view-chart";
 import TransactionsAndHolders from "@/components/txs-and-holders";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
-import { Tooltip } from "react-tooltip";
 import { IToken } from "@/types";
 import {
   abbreviateNumber,
@@ -21,15 +20,15 @@ import {
   LAMPORTS_PER_SOL,
 } from "@/utils";
 import { getToken, queryClient } from "@/utils/api";
-import { fetchTokenMarketMetrics } from "@/utils/blockchain";
+import { env } from "@/utils/env";
 import { getSocket } from "@/utils/socket";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Globe, Info as InfoCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
-import { toast } from "react-toastify";
-import { env } from "@/utils/env";
+import { Tooltip } from "react-tooltip";
+import { twMerge } from "tailwind-merge";
 
 const socket = getSocket();
 
@@ -49,6 +48,17 @@ export default function Page() {
     return "chart";
   });
 
+  const [signature, setSignature] = useState<string | undefined>(undefined);
+
+  const onSwapCompleted = (signature: string) => {
+    console.log("onSwapCompleted", onSwapCompleted);
+    setSignature(signature);
+    queryClient.invalidateQueries({ queryKey: ["token", address] });
+    setTimeout(() => {
+      setSignature(undefined);
+    }, 1000);
+  };
+
   // Save active tab to localStorage when it changes
   useEffect(() => {
     if (address) {
@@ -64,7 +74,7 @@ export default function Page() {
       try {
         // Fetch token data from API
         console.log(`Token page: Fetching token data for ${address}`);
-        return await getToken({ address });
+        return await getToken({ address, signature });
       } catch (error) {
         console.error(`Token page: Error fetching token data:`, error);
         throw error;
@@ -83,53 +93,7 @@ export default function Page() {
     return () => {
       socket.off("updateToken");
     };
-  }, []);
-
-  // Fetch token market metrics from blockchain
-  const metricsQuery = useQuery({
-    queryKey: ["blockchain-metrics", address],
-    queryFn: async () => {
-      if (!address) throw new Error("No address passed");
-      try {
-        console.log(`Token page: Fetching blockchain metrics for ${address}`);
-        // Add loading toast for better user feedback
-        // toast.info("Fetching real-time blockchain data...", {
-        //   position: "bottom-right",
-        //   autoClose: 3000,
-        // });
-
-        const metrics = await fetchTokenMarketMetrics(address);
-        console.log(`Token page: Received blockchain metrics:`, metrics);
-
-        // Validate the data - if all values are 0, it might indicate an issue
-        const hasValidData =
-          metrics.marketCapUSD > 0 ||
-          metrics.currentPrice > 0 ||
-          metrics.volume24h > 0;
-
-        if (!hasValidData) {
-          console.warn(
-            `Token page: Blockchain metrics may be invalid - all key values are 0`,
-          );
-        }
-
-        return metrics;
-      } catch (error) {
-        console.error(`Token page: Error fetching blockchain metrics:`, error);
-        toast.error(
-          "Error fetching real-time blockchain data. Using cached values.",
-          {
-            position: "bottom-right",
-            autoClose: 5000,
-          },
-        );
-        return null;
-      }
-    },
-    enabled: !!address,
-    refetchInterval: 30_000, // Longer interval for blockchain queries
-    staleTime: 60000, // Data stays fresh for 1 minute
-  });
+  }, [address]);
 
   useEffect(() => {
     socket.emit("subscribe", address);
@@ -139,16 +103,15 @@ export default function Page() {
     };
   }, [address]);
 
+  // Always use tokenState to ensure component updates when token data changes
   const token = tokenQuery?.data as IToken;
-  const metrics = metricsQuery?.data;
 
   // Use real blockchain data if available, otherwise fall back to API data
-  const solPriceUSD =
-    metrics?.solPriceUSD || contextSolPrice || token?.solPriceUSD || 0;
-  const currentPrice = metrics?.currentPrice || token?.currentPrice || 0;
-  const tokenPriceUSD = metrics?.tokenPriceUSD || token?.tokenPriceUSD || 0;
-  const marketCapUSD = metrics?.marketCapUSD || token?.marketCapUSD || 0;
-  const volume24h = token?.volume24h || metrics?.volume24h || 0;
+  const solPriceUSD = contextSolPrice || token?.solPriceUSD || 0;
+  const currentPrice = token?.currentPrice || 0;
+  const tokenPriceUSD = token?.tokenPriceUSD || 0;
+  // const marketCapUSD = token?.marketCapUSD || 0;
+  const volume24h = token?.volume24h || 0;
   // const holderCount = metrics?.holderCount || token?.holderCount || 0;
 
   // For bonding curve calculations, still use token data
@@ -157,55 +120,13 @@ export default function Page() {
   const graduationMarketCap = finalTokenUSDPrice * 1_000_000_000;
 
   // Calculate negative reserve status
-  const negativeReserve =
-    token && token.reserveLamport - token.virtualReserves < 0
-      ? (token.reserveLamport - token.virtualReserves) / LAMPORTS_PER_SOL
-      : null;
+  // const negativeReserve =
+  //   token && token.reserveLamport - token.virtualReserves < 0
+  //     ? (token.reserveLamport - token.virtualReserves) / LAMPORTS_PER_SOL
+  //     : null;
 
   // Add debug logging
-  console.log("Token data from API:", {
-    mint: token?.mint,
-    name: token?.name,
-    currentPrice: token?.currentPrice,
-    tokenPriceUSD: token?.tokenPriceUSD,
-    solPriceUSD: token?.solPriceUSD,
-    marketCapUSD: token?.marketCapUSD,
-    volume24h: token?.volume24h,
-    holderCount: token?.holderCount,
-    status: token?.status,
-    // Add more detailed token data
-    reserveAmount: token?.reserveAmount,
-    reserveLamport: token?.reserveLamport,
-    virtualReserves: token?.virtualReserves,
-    curveProgress: token?.curveProgress,
-    negativeReserve,
-  });
-
-  console.log("Blockchain metrics:", metrics);
-
-  console.log("Using calculated values:", {
-    solPriceFromContext: contextSolPrice,
-    finalSolPrice: solPriceUSD,
-    finalTokenPrice,
-    finalTokenUSDPrice,
-    graduationMarketCap,
-    metricsAvailable: !!metrics,
-    metricsLoading: metricsQuery.isLoading,
-    metricsError: metricsQuery.isError,
-  });
-
-  // If the blockchain fetch failed or returned default values, add a warning
-  useEffect(() => {
-    if (metricsQuery.isSuccess && metrics) {
-      const allZeros =
-        !metrics.marketCapUSD && !metrics.currentPrice && !metrics.volume24h;
-      if (allZeros) {
-        console.warn(
-          `WARNING: Blockchain metrics returned all zeros for token ${token?.mint}. This might indicate an error in data retrieval.`,
-        );
-      }
-    }
-  }, [metricsQuery.isSuccess, metrics, token?.mint]);
+  console.log("Token data from API:", token);
 
   if (tokenQuery?.isLoading) {
     return <Loader />;
@@ -232,13 +153,24 @@ export default function Page() {
     );
   }
 
+  // this is for testing purpose only, untill we have implemented partner tokens
+  const parntnerMintList = [
+    "B6t4KWk4MTGadFwzwTorAv5fmxw7v2bS7J74dRkw8FUN",
+    "78c5zQY31XJ38U1TdH6WWEaa4AgxDPXq5fJr2q5rgFUN",
+  ];
+  const isPartner = parntnerMintList.includes(address as string);
+
   return (
     <div className="flex flex-col gap-3">
       {/* Top Stats Section - Full Width */}
       <div className="w-full py-10 flex flex-wrap justify-between">
         <TopPageItem
           title="Market Cap"
-          value={marketCapUSD > 0 ? abbreviateNumber(marketCapUSD) : "-"}
+          value={
+            tokenPriceUSD * token?.tokenSupplyUiAmount > 0
+              ? abbreviateNumber(tokenPriceUSD * token?.tokenSupplyUiAmount)
+              : "-"
+          }
         />
         <TopPageItem
           title="24hr Volume"
@@ -284,9 +216,37 @@ export default function Page() {
               </div>
 
               {/* Token name overlapping at top - with drop shadow */}
-              <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 via-black/25 to-transparent px-3 py-2.5">
+              <div
+                className={twMerge(
+                  isPartner
+                    ? "from-autofun-background-action-highlight/10 via-autofun-background-action-highlight/10"
+                    : "from-black/50 via-black/25",
+                  "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5",
+                )}
+              >
                 <div className="flex items-center justify-between w-full">
-                  <div className="flex flex-row items-center gap-1">
+                  <div className="flex space-x-2  flex-row items-center gap-1">
+                    {isPartner ? (
+                      <>
+                        <div
+                          id="partner-token"
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <img
+                            src="/verified.svg"
+                            className="size-6"
+                            alt="verified-mark"
+                          />
+                        </div>
+
+                        <Tooltip
+                          anchorSelect="#partner-token"
+                          content="Verified by Auto.fun"
+                          place="top-start"
+                          noArrow
+                        />
+                      </>
+                    ) : null}
                     <h3 className="capitalize text-white text-2xl font-bold font-satoshi leading-tight truncate pr-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                       {token?.name}
                     </h3>
@@ -497,7 +457,7 @@ export default function Page() {
         {/* Right Column - 25% - Trading and Bonding Curve */}
         <div className="w-full lg:w-1/4 flex flex-col gap-3">
           {/* Trade Component - Now at the top */}
-          <Trade token={token} />
+          <Trade token={token} onSwapCompleted={onSwapCompleted} />
 
           {/* Bonding Curve */}
           {token?.imported === 0 && (

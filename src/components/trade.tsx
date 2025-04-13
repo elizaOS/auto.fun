@@ -3,16 +3,20 @@ import { useTokenBalance } from "@/hooks/use-token-balance";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { IToken } from "@/types";
 import { formatNumber } from "@/utils";
-import { fetchTokenMarketMetrics } from "@/utils/blockchain";
 import { useProgram } from "@/utils/program";
 import { getSwapAmount } from "@/utils/swapUtils";
-import { useQuery } from "@tanstack/react-query";
 import { Info, Wallet } from "lucide-react";
 import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
 
-export default function Trade({ token }: { token: IToken }) {
+export default function Trade({
+  token,
+  onSwapCompleted,
+}: {
+  token: IToken;
+  onSwapCompleted: (signature: string) => void;
+}) {
   const { solPrice: contextSolPrice } = useSolPriceContext();
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
@@ -20,38 +24,17 @@ export default function Trade({ token }: { token: IToken }) {
   );
   const [slippage, setSlippage] = useState<number>(2);
 
-  // Fetch real-time blockchain metrics for this token
-  const metricsQuery = useQuery({
-    queryKey: ["blockchain-metrics", token?.mint],
-    queryFn: async () => {
-      if (!token?.mint) return null;
-      try {
-        console.log(`Trade: Fetching blockchain metrics for ${token.mint}`);
-        return await fetchTokenMarketMetrics(token.mint);
-      } catch (error) {
-        console.error(`Trade: Error fetching blockchain metrics:`, error);
-        return null;
-      }
-    },
-    enabled: !!token?.mint,
-    refetchInterval: 30_000, // Longer interval for blockchain queries
-    staleTime: 60000, // Data stays fresh for 1 minute
-  });
-
   const program = useProgram();
 
   // Use blockchain data if available, otherwise fall back to token data
-  const metrics = metricsQuery?.data;
-  const solanaPrice =
-    metrics?.solPriceUSD || contextSolPrice || token?.solPriceUSD || 0;
-  const currentPrice = metrics?.currentPrice || token?.currentPrice || 0;
-  const tokenPriceUSD = metrics?.tokenPriceUSD || token?.tokenPriceUSD || 0;
+  const solanaPrice = contextSolPrice || token?.solPriceUSD || 0;
+  const currentPrice = token?.currentPrice || 0;
+  const tokenPriceUSD = token?.tokenPriceUSD || 0;
 
   console.log("Trade component using prices:", {
     solanaPrice,
     currentPrice,
     tokenPriceUSD,
-    metricsAvailable: !!metrics,
   });
 
   const { solBalance, tokenBalance } = useTokenBalance({ tokenId: token.mint });
@@ -103,12 +86,14 @@ export default function Trade({ token }: { token: IToken }) {
   const onSwap = async () => {
     if (!sellingAmount) return;
 
-    await executeSwap({
+    const res = (await executeSwap({
       amount: sellingAmount,
       style: isTokenSelling ? "sell" : "buy",
       tokenAddress: token.mint,
       token,
-    });
+    })) as { signature: string };
+
+    onSwapCompleted(res.signature);
   };
 
   return (
@@ -294,14 +279,7 @@ export default function Trade({ token }: { token: IToken }) {
                 Value:
               </span>
               <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                {formatNumber(tokenBalance * currentPrice, false, true)} SOL
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                Price USD:
-              </span>
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                {formatNumber(tokenBalance * currentPrice, false, true)} SOL /{" "}
                 {formatNumber(
                   tokenBalance * currentPrice * solanaPrice,
                   true,

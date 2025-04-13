@@ -971,7 +971,7 @@ export default function CommunityTab() {
       console.log("Sending image to API:", `${env.apiUrl}/api/share/tweet`);
 
       // Get auth token for the app (separate from Twitter token)
-      const authToken = localStorage.getItem("authToken");
+      // const authToken = localStorage.getItem("authToken");
 
       // Send the upload request
       const uploadResponse = await fetch(`${env.apiUrl}/api/share/tweet`, {
@@ -979,7 +979,7 @@ export default function CommunityTab() {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           // Include wallet auth token if available in a custom header
-          ...(authToken ? { "X-Auth-Token": `Bearer ${authToken}` } : {}),
+          // ...(authToken ? { "X-Auth-Token": `Bearer ${authToken}` } : {}),
         },
         body: formData,
         credentials: "include",
@@ -1034,7 +1034,7 @@ export default function CommunityTab() {
       console.log("Using media ID:", mediaId);
 
       // Get auth token for the app (separate from Twitter token)
-      const authToken = localStorage.getItem("authToken");
+      // const authToken = localStorage.getItem("authToken");
 
       const response = await fetch(`${env.apiUrl}/api/share/tweet`, {
         method: "POST",
@@ -1042,7 +1042,7 @@ export default function CommunityTab() {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
           // Include wallet auth token if available in a custom header
-          ...(authToken ? { "X-Auth-Token": `Bearer ${authToken}` } : {}),
+          // ...(authToken ? { "X-Auth-Token": `Bearer ${authToken}` } : {}),
         },
         body: JSON.stringify({
           text,
