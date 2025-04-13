@@ -461,7 +461,7 @@ export default function Page() {
 
           {/* Bonding Curve */}
           {token?.imported === 0 && (
-            <div className="flex flex-col gap-3.5">
+            <div className="flex flex-col gap-3.5 p-2">
               <div className="flex justify-between gap-3.5 items-center">
                 <p className="font-medium font-satoshi">Progress</p>
                 <Tooltip anchorSelect="#tooltip">
@@ -475,8 +475,36 @@ export default function Page() {
                   id="tooltip"
                 />
               </div>
-              <div>
-                <BondingCurveBar progress={token?.curveProgress} />
+              <div className="relative w-full h-8 overflow-hidden">
+                {/* Background layer */}
+                <img 
+                  src="/token/progressunder.svg" 
+                  alt="Progress bar background"
+                  className="absolute left-0 top-0 w-full h-full object-cover"
+                />
+                {/* Progress layer with dynamic width */}
+                <div 
+                  className="absolute left-0 top-0 h-full"
+                  style={{
+                    width: `${Math.min(100, token?.curveProgress || 0)}%`
+                  }}
+                >
+                  <img 
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover'
+                    }}
+                    src="/token/progress.svg" 
+                    alt="Progress indicator"
+                  />
+                </div>
+                {/* Percentage text */}
+                <div className="absolute right-2 top-0 h-full flex items-center">
+                  <span className="text-white font-medium font-dm-mono text-sm">
+                    {(token?.curveProgress || 0).toFixed(0)}%
+                  </span>
+                </div>
               </div>
               {token?.status !== "migrated" ? (
                 <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">
