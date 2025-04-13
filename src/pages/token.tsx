@@ -25,12 +25,56 @@ import { getSocket } from "@/utils/socket";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Globe, Info as InfoCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useParams } from "react-router";
 import { Tooltip } from "react-tooltip";
 import { twMerge } from "tailwind-merge";
 
+// Remove CSS styles
+// const styles = `
+//   .token-ellipsis:before {
+//     float: right;
+//     content: attr(data-tail);
+//   }
+//
+//   .token-ellipsis {
+//     white-space: nowrap;
+//     text-overflow: ellipsis;
+//     overflow: hidden;
+//   }
+// `;
+
 const socket = getSocket();
+
+// Add a custom component for middle ellipsis
+function MiddleEllipsis({ text, suffix = "auto" }: { text?: string, suffix?: string }) {
+  const elementRef = useRef<HTMLDivElement>(null);
+  const [showFull, setShowFull] = useState(false);
+
+  useEffect(() => {
+    if (!elementRef.current) return;
+
+    const observer = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        setShowFull(entry.contentRect.width > 420);
+      }
+    });
+
+    observer.observe(elementRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  if (!text) return null;
+  
+  const prefix = text.substring(0, 8);
+  const _suffix = text.substring(text.length - 8);
+  
+  return (
+    <div ref={elementRef} className="font-dm-mono text-center" title={text}>
+      {showFull ? text : `${prefix}...${_suffix}`}
+    </div>
+  );
+}
 
 export default function Page() {
   const params = useParams();
@@ -289,8 +333,8 @@ export default function Page() {
                 </span>
               </div>
               <div className="bg-autofun-background-input flex justify-between py-2 px-3 min-w-0 w-full gap-2">
-                <span className="w-0 flex-1 min-w-0 block text-base text-autofun-text-secondary truncate">
-                  {token?.mint}
+                <span className="mx-auto w-0 flex-1 min-w-0 block text-base text-autofun-text-secondary">
+                  <MiddleEllipsis text={token?.mint} suffix="auto" />
                 </span>
                 <CopyButton text={token?.mint} />
               </div>
