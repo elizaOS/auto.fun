@@ -6,7 +6,7 @@ resolution = true
 skip-lint = true
 
 [programs.devnet]
-autofun = "AnAYdVXqbS87U1DzzuRR4dnooNv7GjfqnSUEVmaKH8xL"
+autofun = "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ"
 raydium_vault = "Bi9TwwuBFf15mVVgfVjh4oz65QAGAAo793ioFfX9ugAR"
 
 [programs.mainnet]
@@ -27,10 +27,12 @@ test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 test_change_claimer = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/changeClaimer.ts"
 test_claim = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/claim.ts"
 test_deposit = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/deposit.ts"
-test_init = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/initialize.ts"
+test_init = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/initRayVault.ts"
 test_nft_balance = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/checkBalance.ts"
 test_withdraw = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/withdraw.ts"
 update_state = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/updateState.ts"
+launch_token = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/launchToken.ts"
+change_vault_exec = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/changeVaultExec.ts"
 
 [test]
 startup_wait = 10000

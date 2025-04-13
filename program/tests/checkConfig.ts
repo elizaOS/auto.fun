@@ -1,14 +1,9 @@
 // check-admin.ts
 import * as anchor from '@coral-xyz/anchor';
 import { Program, web3 } from '@coral-xyz/anchor';
-import path from 'path';
 import { Autofun } from '../target/types/autofun'; // Import the generated types
 import { RaydiumVault } from '../target/types/raydium_vault';
 import BN from 'bn.js'; // Import BN for handling large numbers
-
-// Set environment variables programmatically
-process.env.ANCHOR_PROVIDER_URL = 'https://api.mainnet-beta.solana.com'; // or your preferred cluster
-process.env.ANCHOR_WALLET = path.resolve(__dirname, '../id.json'); // path to your wallet file
 
 (async () => {
   // Set up the provider from the environment variables
@@ -55,7 +50,6 @@ process.env.ANCHOR_WALLET = path.resolve(__dirname, '../id.json'); // path to yo
   // Fetch the account info using the provider's connection.
   const autofunConfigPDA = await provider.connection.getAccountInfo(configPDA, 'confirmed');
   const globalVaultAccountInfo = await provider.connection.getAccountInfo(globalVaultPDA, 'confirmed');
-  const globalWsolAccountInfo = await provider.connection.getAccountInfo(globalWsolAccountPDA, 'confirmed');
   const vaultAccountInfo = await provider.connection.getAccountInfo(vaultConfigPDA, 'confirmed');
 
   // Check each account individually and log if not found
@@ -70,16 +64,16 @@ process.env.ANCHOR_WALLET = path.resolve(__dirname, '../id.json'); // path to yo
       console.log("Pending Admin:", decodedAutofunConfig.pendingAuthority.toString());
       console.log("Team Wallet:", decodedAutofunConfig.teamWallet.toString());
       console.log("Init Bonding Curve:", decodedAutofunConfig.initBondingCurve);
-      console.log("Platform Buy Fee:", new BN(decodedAutofunConfig.platformBuyFee).toString());
-      console.log("Platform Sell Fee:", new BN(decodedAutofunConfig.platformSellFee).toString());
-      console.log("Curve Limit:", new BN(decodedAutofunConfig.curveLimit).toString());
+      console.log("Platform Buy Fee:", new BN(decodedAutofunConfig.platformBuyFee).toNumber());
+      console.log("Platform Sell Fee:", new BN(decodedAutofunConfig.platformSellFee).toNumber());
+      console.log("Curve Limit:", new BN(decodedAutofunConfig.curveLimit).toNumber());
       console.log("Lamport Amount Config:", {
-        min: new BN(decodedAutofunConfig.lamportAmountConfig.range.min).toString(),
-        max: new BN(decodedAutofunConfig.lamportAmountConfig.range.max).toString(),
+        min: new BN(decodedAutofunConfig.lamportAmountConfig.range.min).toNumber(),
+        max: new BN(decodedAutofunConfig.lamportAmountConfig.range.max).toNumber(),
       });
       console.log("Token Supply Config:", {
-        min: new BN(decodedAutofunConfig.tokenSupplyConfig.range.min).toString(),
-        max: new BN(decodedAutofunConfig.tokenSupplyConfig.range.max).toString(),
+        min: new BN(decodedAutofunConfig.tokenSupplyConfig.range.min).toNumber(),
+        max: new BN(decodedAutofunConfig.tokenSupplyConfig.range.max).toNumber(),
       });
       console.log("Token Decimals Config:", {
         min: decodedAutofunConfig.tokenDecimalsConfig.range.min,
@@ -97,12 +91,7 @@ process.env.ANCHOR_WALLET = path.resolve(__dirname, '../id.json'); // path to yo
     console.log("Global Vault PDA:", globalVaultPDA.toBase58());
   }
 
-  if (!globalWsolAccountInfo) {
-    console.error("Global WSOL account not found for PDA:", globalWsolAccountPDA.toBase58());
-  } else {
-    // Decode and log global WSOL account data if needed
-    console.log("Global WSOL Account PDA:", globalWsolAccountPDA.toBase58());
-  }
+  console.log("Global WSOL Account PDA:", globalWsolAccountPDA.toBase58());
 
   if (!vaultAccountInfo) {
     console.error("Vault config account not found for PDA:", vaultConfigPDA.toBase58());

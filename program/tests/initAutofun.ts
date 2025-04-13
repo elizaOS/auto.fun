@@ -1,19 +1,8 @@
 import * as anchor from '@coral-xyz/anchor';
 import { Program, web3, BN } from '@coral-xyz/anchor';
-import * as fs from 'fs';
-import path from 'path';
-import { Keypair } from '@solana/web3.js';
 import { Autofun } from '../target/types/autofun';
 
 (async () => {
-    // Read the keypair from the JSON file
-  const keypairPath = path.resolve(__dirname, '../../program/id.json');
-  const secretKeyString = fs.readFileSync(keypairPath, 'utf8');
-  const secretKey = Uint8Array.from(JSON.parse(secretKeyString));
-
-  // Create a Keypair from the secret key
-  const keypair = Keypair.fromSecretKey(secretKey);
-
   // Set up the Anchor provider (e.g., env variables and wallet)
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
@@ -58,12 +47,12 @@ import { Autofun } from '../target/types/autofun';
     teamWallet: new anchor.web3.PublicKey(
       "FfNhJtoWL6Nk9UkiZiitYifcBMFUicaJswKj6CFdFNSa"
     ),
-    initBondingCurve: new BN(.01 * anchor.web3.LAMPORTS_PER_SOL).toNumber(),
+    initBondingCurve: new BN(100),
     platformBuyFee: new BN(100),
     platformSellFee: new BN(100),
-    curveLimit: new BN(2 * anchor.web3.LAMPORTS_PER_SOL),
+    curveLimit: new BN(1130000000),
     lamportAmountConfig: { range: { min: new BN(0.01 * anchor.web3.LAMPORTS_PER_SOL), max: new BN(100 * anchor.web3.LAMPORTS_PER_SOL) } },
-    tokenSupplyConfig: { range: { min: new BN(1000000), max: new BN(1000000000) } },
+    tokenSupplyConfig: { range: { min: new BN(5000), max: new BN(1000000000000000) } },
     tokenDecimalsConfig: { range: { min: 6, max: 9 } }
   };
 
@@ -76,7 +65,7 @@ import { Autofun } from '../target/types/autofun';
   // Send the configure transaction.
   try {
     const txSignature = await program.methods.configure(newConfig).accounts({
-      payer: keypair.publicKey,
+      payer: provider.wallet.publicKey,
       config: configPDA,
       global_vault: globalVault,
       global_wsol_account: globalWsolAccount,
@@ -84,7 +73,7 @@ import { Autofun } from '../target/types/autofun';
       system_program: web3.SystemProgram.programId,
       token_program: new web3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
       associated_token_program: new web3.PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
-    }).signers([keypair]).rpc();
+    }).rpc();
 
     console.log("Transaction sent successfully!");
     console.log("Signature:", txSignature);

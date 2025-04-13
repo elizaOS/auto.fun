@@ -1,358 +1,126 @@
-# AutoFun - Solana Program
+# Auto.Fun Program
 
-AutoFun is a powerful Solana program built with Anchor that enables automated token creation and management through innovative bonding curve mechanics and virtual liquidity reserves.
+## Overview
+
+Auto.Fun is a Solana-based program designed to facilitate token launches and manage bonding curves. This project leverages the Anchor framework for Solana smart contract development. Additionally, it integrates with the Raydium Vault for enhanced liquidity management.
+
+## Features
+
+- **Token Launch**: Initialize and launch new tokens with specified metadata and supply.
+- **Bonding Curve Management**: Manage token bonding curves with configurable parameters.
+- **Authority Management**: Nominate and accept new authorities for program governance.
+- **Raydium Vault Integration**: Utilize Raydium Vault for liquidity provision and management.
 
 ## Prerequisites
 
-Before building and running this project, ensure you have the following installed:
-
-1. [Solana CLI Tools](https://docs.solana.com/cli/install-solana-cli-tools)
-   ```bash
-   sh -c "$(curl -sSfL https://release.solana.com/v1.18.4/install)"
-   ```
-
-2. [Anchor](https://www.anchor-lang.com/docs/installation)
-   ```bash
-   cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
-   avm install latest
-   avm use latest
-   ```
-
-3. [Rust](https://www.rust-lang.org/tools/install)
-   ```bash
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   ```
-
-4. [Bun](https://bun.sh/docs/installation)
-   ```bash
-   curl -fsSL https://bun.sh/install | bash
-   ```
+- [Node.js](https://nodejs.org/) (version 14 or later)
+- [Yarn](https://yarnpkg.com/)
+- [Rust](https://www.rust-lang.org/tools/install) (with nightly toolchain)
+- [Solana CLI](https://docs.solana.com/cli/install-solana-cli-tools)
 
 ## Setup
 
-1. Install dependencies:
+1. **Clone the Repository**
+
    ```bash
-   bun install
+   git clone https://github.com/yourusername/auto.fun.git
+   cd auto.fun/program
    ```
 
-2. Build the program:
+2. **Install Dependencies**
+
    ```bash
-   bun run build
+   yarn install
    ```
 
-## Troubleshooting
+3. **Configure Environment**
 
-If you encounter issues with the build process:
+   - Copy `.env.example` to `.env` and fill in the necessary environment variables.
 
-1. Ensure Solana CLI tools are in your PATH:
+4. **Build the Program**
+
    ```bash
-   export PATH="/home/solana/.local/share/solana/install/active_release/bin:$PATH"
+   yarn build
    ```
 
-2. Verify your Rust toolchain:
-   ```bash
-   rustup toolchain install nightly
-   rustup default nightly
-   ```
+5. **Deploy the Program**
 
-3. Check Anchor version:
-   ```bash
-   anchor --version
-   ```
+   - For Devnet:
 
-4. Verify Solana CLI tools:
-   ```bash
-   solana --version
-   cargo-build-sbf --version
-   ```
+     ```bash
+     yarn deploy:autofun_dev
+     yarn deploy:vault_dev
+     ```
 
-## Installation
+   - For Mainnet:
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-username/auto.fun.git
-   cd auto.fun
-   ```
+     ```bash
+     yarn deploy:autofun_main
+     yarn deploy:vault_main
+     ```
 
-2. Set up your Solana keypair if you don't have one already:
-   ```bash
-   solana-keygen new
-   ```
+## Usage
 
-3. Update the Anchor.toml file with your wallet path:
-   ```toml
-   [provider]
-   cluster = "https://devnet.helius-rpc.com/?api-key=YOUR_API_KEY"
-   wallet = "/path/to/your/keypair.json"
-   ```
+### Initialize Auto.Fun & Raydium Vault
 
-## Deployment
+To initialize the `autofun` and `raydium_vault` programs, use the `initAutofun.ts` and `initRayVault.ts` script:
 
-### Building the Program
+- For Devnet:
 
-1. Build the program:
-   ```bash
-   cd program
-   anchor build
-   ```
+  ```bash
+  yarn init:autofun_dev
+  yarn init:vault_dev
+  ```
 
-2. Get the program ID:
-   ```bash
-   solana address -k target/deploy/autofun-keypair.json
-   ```
+- For Mainnet:
 
-3. Update the program ID in the following files:
-   - `program/autofun/src/lib.rs` - Update the `declare_id!()` macro
-   - `program/Anchor.toml` - Update the program ID in the `[programs]` section
+  ```bash
+  yarn init:autofun_main
+  yarn init:vault_main
+  ```
 
-4. Build again after updating the program ID:
-   ```bash
-   anchor build
-   ```
+### Verify Your Initialization
 
-### Deploying to Devnet
+It is *recommended* to check your initialization after using the `checkConfig.ts` script:
 
-1. Ensure you have SOL in your wallet on devnet:
-   ```bash
-   solana airdrop 2 --url devnet
-   ```
+- For Devnet:
 
-2. Deploy the program:
-   ```bash
-   anchor deploy --provider.cluster devnet
-   ```
+  ```bash
+  yarn check_config:dev
+  ```
 
-### Deploying to Mainnet
+- For Mainnet:
 
-1. Make sure you have sufficient SOL in your wallet on mainnet:
-   ```bash
-   solana balance --url mainnet-beta
-   ```
+  ```bash
+  yarn check_config:main
+  ```
 
-2. Deploy to mainnet:
-   ```bash
-   anchor deploy --provider.cluster mainnet-beta
-   ```
+### Launch a Token
 
-## Configuration
-
-After deployment, you need to initialize the program by calling the `configure` method:
-
-### Configuration Parameters
-
-The `Config` structure has the following important fields:
-
-- `authority`: The public key of the admin account
-- `team_wallet`: The wallet to receive fees and agent distributions
-- `init_bonding_curve`: The bonding curve initialization percentage
-- `platform_buy_fee`: Fee percentage for buy operations (in basis points)
-- `platform_sell_fee`: Fee percentage for sell operations (in basis points)
-- `curve_limit`: Maximum lamports to complete the bonding curve
-- `lamport_amount_config`: Configuration for lamport amounts in range or enum format
-- `token_supply_config`: Configuration for token supply in range or enum format
-- `token_decimals_config`: Configuration for token decimals in range or enum format
-
-These are typically defined in the `.env` vars
-
-### Devnet:
-```
-VITE_VIRTUAL_RESERVES=2800000000 # 2.8 SOL
-VIRTUAL_RESERVES=2800000000 # 2.8 SOL
-CURVE_LIMIT=11300000000 # 11.3 SOL
-# ...and others for fees etc.
-```
-### Mainnet:
-```
-VITE_VIRTUAL_RESERVES=28000000000 # 28 SOL
-VIRTUAL_RESERVES=28000000000 # 28 SOL
-CURVE_LIMIT=11300000000 # 113 SOL
-# ...and others for fees etc.
-```
-
-### Using the CLI (with TypeScript)
-
-Create a TypeScript file to initialize the program configuration:
-
-```typescript
-// configure.ts
-import * as anchor from '@coral-xyz/anchor';
-import { Program } from '@coral-xyz/anchor';
-import { Keypair, PublicKey, Connection } from '@solana/web3.js';
-import { Autofun } from './types/autofun'; // Your generated types
-
-async function main() {
-  // Connection to Solana cluster
-  const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
-  
-  // Set up the wallet
-  const wallet = new anchor.Wallet(Keypair.fromSecretKey(
-    // Load your keypair
-    Uint8Array.from(JSON.parse(require('fs').readFileSync('/path/to/keypair.json', 'utf-8')))
-  ));
-  
-  // Set up provider
-  const provider = new anchor.AnchorProvider(connection, wallet, {
-    preflightCommitment: 'confirmed',
-  });
-  
-  // Load the program
-  const programId = new PublicKey('aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ');
-  const program = new Program<Autofun>(
-    require('./target/idl/autofun.json'),
-    programId,
-    provider
-  );
-  
-  // Create the configuration object
-  const config = {
-    authority: wallet.publicKey,
-    pendingAuthority: wallet.publicKey,
-    teamWallet: new PublicKey('YOUR_TEAM_WALLET_ADDRESS'),
-    initBondingCurve: 0.8, // 80%
-    platformBuyFee: new anchor.BN(300), // 3% in basis points
-    platformSellFee: new anchor.BN(300), // 3% in basis points
-    curveLimit: new anchor.BN(1000 * anchor.web3.LAMPORTS_PER_SOL), // 1000 SOL
-    lamportAmountConfig: {
-      range: {
-        min: new anchor.BN(0.01 * anchor.web3.LAMPORTS_PER_SOL), // 0.01 SOL minimum
-        max: new anchor.BN(100 * anchor.web3.LAMPORTS_PER_SOL), // 100 SOL maximum
-      }
-    },
-    tokenSupplyConfig: {
-      range: {
-        min: new anchor.BN(1000000), // Minimum token supply
-        max: new anchor.BN(1000000000), // Maximum token supply
-      }
-    },
-    tokenDecimalsConfig: {
-      enum: [6, 9], // Allowed token decimal values
-    },
-  };
-  
-  // Find the config PDA
-  const [configPda] = PublicKey.findProgramAddressSync(
-    [anchor.utils.bytes.utf8.encode('config')],
-    program.programId
-  );
-  
-  // Call the configure instruction
-  try {
-    const tx = await program.methods
-      .configure(config)
-      .accounts({
-        config: configPda,
-        authority: wallet.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
-      .rpc();
-    
-    console.log('Configuration successful. Transaction:', tx);
-  } catch (error) {
-    console.error('Error configuring the program:', error);
-  }
-}
-
-main();
-```
-
-Run the configuration script:
+To launch a token, use the `launchToken.ts` script:
 
 ```bash
-ts-node configure.ts
+yarn launch:dev
 ```
 
-### Launching a Token
+### Manage Raydium Vault
 
-After configuring the program, you can launch a token using the `launch` or `launchAndSwap` methods:
+To interact with the Raydium Vault, use the provided scripts:
 
-```typescript
-// launch.ts
-async function launchToken() {
-  // ... (Setup code similar to configure.ts)
-  
-  // Token parameters
-  const decimals = 9;
-  const tokenSupply = new anchor.BN(1000000000); // 1 billion tokens
-  const virtualLamportReserves = new anchor.BN(10 * anchor.web3.LAMPORTS_PER_SOL); // 10 SOL virtual reserves
-  const name = "My Token";
-  const symbol = "MTK";
-  const uri = "https://example.com/metadata.json";
-  
-  // Get PDAs and find necessary accounts
-  // ... (Code to find PDAs and create necessary keypairs)
-  
-  // Launch the token
-  try {
-    const tx = await program.methods
-      .launch(
-        decimals,
-        tokenSupply,
-        virtualLamportReserves,
-        name,
-        symbol,
-        uri
-      )
-      .accounts({
-        // Specify all required accounts
-        // ...
-      })
-      .rpc();
-    
-    console.log('Token launch successful. Transaction:', tx);
-  } catch (error) {
-    console.error('Error launching token:', error);
-  }
-}
+- **Change Vault Executor**:
 
-launchToken();
+  ```bash
+  yarn changeVaultExec:dev
+  ```
+
+### Run Tests
+
+To run the test suite, execute:
+
+```bash
+yarn test:dev
 ```
 
-## Admin Operations
+## Contributing
 
-### Transferring Ownership
-
-The program uses a two-step process for transferring ownership:
-
-1. Current authority nominates a new authority:
-   ```typescript
-   await program.methods
-     .nominateAuthority(newAuthorityPublicKey)
-     .accounts({
-       config: configPda,
-       authority: wallet.publicKey,
-     })
-     .rpc();
-   ```
-
-2. New authority accepts the nomination:
-   ```typescript
-   // Run by the new authority
-   await program.methods
-     .acceptAuthority()
-     .accounts({
-       config: configPda,
-       authority: newAuthorityPublicKey,
-     })
-     .rpc();
-   ```
-
-### Withdrawing Funds
-
-The admin can withdraw tokens and SOL from the program:
-
-```typescript
-await program.methods
-  .withdraw()
-  .accounts({
-    config: configPda,
-    authority: wallet.publicKey,
-    // Specify other required accounts
-  })
-  .rpc();
-```
-
-## Common Issues and Troubleshooting
-
-- **Insufficient Balance**: Ensure your wallet has enough SOL for deployment and transactions.
-- **Program ID Mismatch**: Double-check that you've updated the program ID in all required locations.
-- **Permission Denied**: Only the authority can perform admin operations.
+Contributions are welcome! Please fork the repository and submit a pull request for any improvements or bug fixes.

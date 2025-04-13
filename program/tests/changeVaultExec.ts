@@ -1,11 +1,6 @@
 import * as anchor from '@coral-xyz/anchor';
 import { Program } from '@coral-xyz/anchor';
 import { RaydiumVault } from '../target/types/raydium_vault';
-import path from 'path';
-
-// Set environment variables programmatically
-process.env.ANCHOR_PROVIDER_URL = 'https://api.mainnet-beta.solana.com'; // or your preferred cluster
-process.env.ANCHOR_WALLET = path.resolve(__dirname, '../id.json'); // path to your wallet file
 
 (async () => {
   // Set up the provider from the environment variables
@@ -25,10 +20,15 @@ process.env.ANCHOR_WALLET = path.resolve(__dirname, '../id.json'); // path to yo
   const newExecutorAuthority = new anchor.web3.PublicKey('42fg4k89w81wp7a4Nt9nvjunfg5WScLeo6tvp44Kjpy7'); // Replace with the actual new executor public key
 
   // Call the change_executor_authority function
-  await raydiumProgram.methods.changeExecutorAuthority(newExecutorAuthority).accounts({
+  try {
+  const txSignature = await raydiumProgram.methods.changeExecutorAuthority(newExecutorAuthority).accounts({
     authority: provider.wallet.publicKey, // Current manager authority
     vaultConfig: vaultConfigPDA,
   }).rpc();
 
-  console.log("Executor authority changed successfully.");
+  console.log("Transaction sent successfully!");
+  console.log("Signature:", txSignature);
+  } catch (error) {
+    console.error("Error changing executor authority:", error);
+  }
 })();
