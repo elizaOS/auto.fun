@@ -1,4 +1,3 @@
-import BondingCurveBar from "@/components/bonding-curve-bar";
 import Button from "@/components/button";
 import CopyButton from "@/components/copy-button";
 import Loader from "@/components/loader";
@@ -25,12 +24,56 @@ import { getSocket } from "@/utils/socket";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Globe, Info as InfoCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { Tooltip } from "react-tooltip";
 import { twMerge } from "tailwind-merge";
 
+// Remove CSS styles
+// const styles = `
+//   .token-ellipsis:before {
+//     float: right;
+//     content: attr(data-tail);
+//   }
+//
+//   .token-ellipsis {
+//     white-space: nowrap;
+//     text-overflow: ellipsis;
+//     overflow: hidden;
+//   }
+// `;
+
 const socket = getSocket();
+
+// Add a custom component for middle ellipsis
+function MiddleEllipsis({ text }: { text?: string; suffix?: string }) {
+  const elementRef = useRef<HTMLDivElement>(null);
+  const [showFull, setShowFull] = useState(false);
+
+  useEffect(() => {
+    if (!elementRef.current) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setShowFull(entry.contentRect.width > 420);
+      }
+    });
+
+    observer.observe(elementRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  if (!text) return null;
+
+  const prefix = text.substring(0, 8);
+  const suffix = text.substring(text.length - 8);
+
+  return (
+    <div ref={elementRef} className="font-dm-mono text-center" title={text}>
+      {showFull ? text : `${prefix}...${suffix}`}
+    </div>
+  );
+}
 
 export default function Page() {
   const params = useParams();
@@ -289,8 +332,8 @@ export default function Page() {
                 </span>
               </div>
               <div className="bg-autofun-background-input flex justify-between py-2 px-3 min-w-0 w-full gap-2">
-                <span className="w-0 flex-1 min-w-0 block text-base text-autofun-text-secondary truncate">
-                  {token?.mint}
+                <span className="mx-auto w-0 flex-1 min-w-0 block text-base text-autofun-text-secondary">
+                  <MiddleEllipsis text={token?.mint} />
                 </span>
                 <CopyButton text={token?.mint} />
               </div>
@@ -461,7 +504,7 @@ export default function Page() {
 
           {/* Bonding Curve */}
           {token?.imported === 0 && (
-            <div className="flex flex-col gap-3.5">
+            <div className="flex flex-col gap-3.5 p-2">
               <div className="flex justify-between gap-3.5 items-center">
                 <p className="font-medium font-satoshi">Progress</p>
                 <Tooltip anchorSelect="#tooltip">
@@ -475,8 +518,36 @@ export default function Page() {
                   id="tooltip"
                 />
               </div>
-              <div>
-                <BondingCurveBar progress={token?.curveProgress} />
+              <div className="relative w-full h-8 overflow-hidden">
+                {/* Background layer */}
+                <img
+                  src="/token/progressunder.svg"
+                  alt="Progress bar background"
+                  className="absolute left-0 top-0 w-full h-full object-cover"
+                />
+                {/* Progress layer with dynamic width */}
+                <div
+                  className="absolute left-0 top-0 h-full"
+                  style={{
+                    width: `${Math.min(100, token?.curveProgress || 0)}%`,
+                  }}
+                >
+                  <img
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                    src="/token/progress.svg"
+                    alt="Progress indicator"
+                  />
+                </div>
+                {/* Percentage text */}
+                <div className="absolute right-2 top-0 h-full flex items-center">
+                  <span className="text-white font-medium font-dm-mono text-sm">
+                    {(token?.curveProgress || 0).toFixed(0)}%
+                  </span>
+                </div>
               </div>
               {token?.status !== "migrated" ? (
                 <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">

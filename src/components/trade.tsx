@@ -52,6 +52,27 @@ export default function Trade({
 
   const [convertedAmount, setConvertedAmount] = useState(0);
 
+  const isButtonDisabled = (amount: number | string) => {
+    if (typeof amount === "string") {
+      // For percentage buttons, check if balance is 0
+      return balance === 0;
+    } else {
+      // For fixed amount buttons, check if amount exceeds balance
+      return amount > balance;
+    }
+  };
+
+  const handleBalanceSelection = (amount: number | string) => {
+    if (typeof amount === "string") {
+      // Handle percentage
+      const percentage = parseFloat(amount) / 100;
+      setSellingAmount(balance * percentage);
+    } else {
+      // Handle fixed amount
+      setSellingAmount(amount);
+    }
+  };
+
   const handleSellAmountChange = async (amount: number) => {
     if (!program) return;
 
@@ -127,17 +148,42 @@ export default function Trade({
             </button>
           </div>
 
+          {/* Balance and Value */}
+          <div className={`flex flex-col gap-4 my-4 mx-2`}>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                Balance:
+              </span>
+              <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                {formatNumber(tokenBalance, false, true)} {token?.ticker}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                Value:
+              </span>
+              <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                {formatNumber(tokenBalance * currentPrice, false, true)} SOL /{" "}
+                {formatNumber(
+                  tokenBalance * currentPrice * solanaPrice,
+                  true,
+                  false,
+                )}
+              </span>
+            </div>
+          </div>
+
           <div className="flex flex-col mt-4">
             {/* Selling */}
             <div
               className={twMerge([
-                "flex flex-col py-3 px-4 gap-[18px] transition-colors duration-200",
+                "flex flex-col py-1 px-2 gap-[18px] transition-colors duration-200",
                 error ? "border-autofun-text-error" : "",
               ])}
             >
-              <div className="flex justify-between gap-3">
+              <div className="flex justify-between gap-3 relative">
                 <input
-                  className="text-4xl truncate font-dm-mono text-white w-3/4 outline-none"
+                  className="text-6xl w-full p-4 truncate border-b-1 border-autofun-background-input hover:border-white focus:border-white font-dm-mono text-white w-3/4 outline-none"
                   min={0}
                   type="number"
                   onChange={({ target }) =>
@@ -146,17 +192,83 @@ export default function Trade({
                   value={sellingAmount}
                   placeholder="0"
                 />
-                <div className="w-fit shrink-0">
+                <div className="w-fit absolute right-4 top-[50%] translate-y-[-50%]">
                   <TokenDisplay token={token} isSolana={!isTokenSelling} />
+                  <Balance
+                    token={token}
+                    isSolana={!isTokenSelling}
+                    setSellingAmount={setSellingAmount}
+                    balance={isTokenSelling ? tokenBalance : solBalance}
+                  />
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-2">
-                <Balance
-                  token={token}
-                  isSolana={!isTokenSelling}
-                  setSellingAmount={setSellingAmount}
-                  balance={isTokenSelling ? tokenBalance : solBalance}
-                />
+
+              {/* Balance Selection Buttons */}
+              <div className="flex flex-col gap-3">
+                <div className="flex gap-1 mt-1 w-full">
+                  <button
+                    onClick={() => handleBalanceSelection(0)}
+                    className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Reset
+                  </button>
+                  {!isTokenSelling ? (
+                    <>
+                      <button
+                        onClick={() => handleBalanceSelection(0.1)}
+                        disabled={isButtonDisabled(0.1)}
+                        className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        0.1
+                      </button>
+                      <button
+                        onClick={() => handleBalanceSelection(0.5)}
+                        disabled={isButtonDisabled(0.5)}
+                        className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        0.5
+                      </button>
+                      <button
+                        onClick={() => handleBalanceSelection(1.0)}
+                        disabled={isButtonDisabled(1.0)}
+                        className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        1.0
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => handleBalanceSelection("25")}
+                        disabled={isButtonDisabled("25")}
+                        className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        25%
+                      </button>
+                      <button
+                        onClick={() => handleBalanceSelection("50")}
+                        disabled={isButtonDisabled("50")}
+                        className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        50%
+                      </button>
+                      <button
+                        onClick={() => handleBalanceSelection("75")}
+                        disabled={isButtonDisabled("75")}
+                        className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        75%
+                      </button>
+                      <button
+                        onClick={() => handleBalanceSelection("100")}
+                        disabled={isButtonDisabled("100")}
+                        className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        100%
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -166,9 +278,9 @@ export default function Trade({
               <div className="relative flex uppercase items-center gap-2">
                 {displayMinReceived}
                 <img
-                  src={isTokenSelling ? "/solana.png" : token?.image || ""}
+                  src={isTokenSelling ? "/solana.svg" : token?.image || ""}
                   alt={isTokenSelling ? "SOL" : token?.name || "token"}
-                  className="rounded-full size-4"
+                  className="size-6 m-2"
                 />
                 {isTokenSelling ? "SOL" : token?.ticker}
               </div>
@@ -188,6 +300,35 @@ export default function Trade({
                 {isTokenSelling ? token?.ticker : "SOL"}
               </p>
             </div>
+          </div>
+
+          {/* Slippage Input */}
+          <div className="mx-4 mb-2 flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                Slippage:
+              </span>
+              <div className="relative flex items-center">
+                <input
+                  type="number"
+                  min="0.1"
+                  max="100"
+                  step="0.1"
+                  value={slippage}
+                  onChange={(e) => setSlippage(Number(e.target.value))}
+                  className="w-16 py-1 pl-2 pr-6 bg-[#1a1a1a] border-b border-white/50 hover:border-white focus:border-white font-dm-mono text-autofun-text-secondary text-right"
+                />
+                <span className="absolute right-2 text-sm font-dm-mono text-autofun-text-secondary">
+                  %
+                </span>
+              </div>
+            </div>
+            {slippage > 3 ? (
+              <p className="text-orange-500 font-dm-mono text-xs">
+                Your transaction may be frontrun and result in an unfavorable
+                trade
+              </p>
+            ) : null}
           </div>
 
           {/* Swap Button - Now in the left column below Min Received */}
@@ -232,63 +373,6 @@ export default function Trade({
             </button>
           </div>
         </div>
-
-        {/* RIGHT COLUMN - Advanced Settings & Info - Takes 2/5 of the space on md screens */}
-        <div className="col-span-1 md:col-span-1 lg:col-span-1">
-          {/* Slippage Input */}
-          <div className="mb-4 flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                Slippage:
-              </span>
-              <div className="relative flex items-center">
-                <input
-                  type="number"
-                  min="0.1"
-                  max="100"
-                  step="0.1"
-                  value={slippage}
-                  onChange={(e) => setSlippage(Number(e.target.value))}
-                  className="w-16 py-1 pl-2 pr-6 bg-[#1a1a1a] border-b border-white/50 hover:border-white focus:border-white font-dm-mono text-autofun-text-secondary text-right"
-                />
-                <span className="absolute right-2 text-sm font-dm-mono text-autofun-text-secondary">
-                  %
-                </span>
-              </div>
-            </div>
-            {slippage > 3 ? (
-              <p className="text-orange-500 font-dm-mono text-xs">
-                Your transaction may be frontrun and result in an unfavorable
-                trade
-              </p>
-            ) : null}
-          </div>
-
-          {/* Balance and Value */}
-          <div className={`flex flex-col gap-4 mb-4`}>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                Balance:
-              </span>
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                {formatNumber(tokenBalance, false, true)} {token?.ticker}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                Value:
-              </span>
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                {formatNumber(tokenBalance * currentPrice, false, true)} SOL /{" "}
-                {formatNumber(
-                  tokenBalance * currentPrice * solanaPrice,
-                  true,
-                  false,
-                )}
-              </span>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -302,13 +386,13 @@ const TokenDisplay = ({
   isSolana?: boolean;
 }) => {
   return (
-    <div className="flex items-center gap-2 p-2 select-none">
+    <div className="flex items-center justify-end mb-4">
       <SkeletonImage
-        src={isSolana ? "/solana.png" : token?.image || ""}
+        src={isSolana ? "/solana.svg" : token?.image || ""}
         alt={token?.name || "token"}
-        className="rounded-full size-6"
+        className="size-6"
       />
-      <span className="text-base uppercase font-dm-mono tracking-wider">
+      <span className="text-xl uppercase font-dm-mono tracking-wider font-bold">
         {isSolana ? "SOL" : token?.ticker}
       </span>
     </div>
@@ -342,10 +426,12 @@ const Balance = ({
         }
       }}
     >
-      <Wallet className="text-autofun-text-secondary size-[18px]" />
-      <span className="text-sm font-dm-mono text-autofun-text-secondary uppercase">
-        {formattedBalance} {isSolana ? "SOL" : token?.ticker}
-      </span>
+      <div className="flex gap-1 justify-end w-full">
+        <Wallet className="text-autofun-text-secondary size-[18px]" />
+        <span className="text-sm font-dm-mono text-autofun-text-secondary uppercase">
+          {formattedBalance} {isSolana ? "SOL" : token?.ticker}
+        </span>
+      </div>
     </div>
   );
 };

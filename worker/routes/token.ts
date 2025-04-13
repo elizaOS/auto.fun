@@ -1432,7 +1432,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     // Set default values for critical fields if they're missing
     const TOKEN_DECIMALS = token.tokenDecimals || 6;
     const defaultReserveAmount = 1000000000000; // 1 trillion (default token supply)
-    const defaultReserveLamport = Number(c.env.VIRTUAL_RESERVES || 28000000000) ; // 2.8 SOL (default reserve / 28 in mainnet)
+    const defaultReserveLamport = 28000000000; // 2.8 SOL (default reserve)
 
     // Make sure reserveAmount and reserveLamport have values
     token.reserveAmount = token.reserveAmount || defaultReserveAmount;

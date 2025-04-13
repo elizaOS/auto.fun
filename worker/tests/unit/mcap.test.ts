@@ -35,7 +35,7 @@ const createTestEnv = (withPrivateKey = false): Env => {
     DECIMALS: "6",
     PROGRAM_ID: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
     TOKEN_SUPPLY: "1000000000000000",
-    VIRTUAL_RESERVES: "28000000000",
+    VIRTUAL_RESERVES: "280000000000",
     CURVE_LIMIT: "113000000000",
     FAL_API_KEY: "test-fal-api-key",
     SWAP_FEE: "100",
