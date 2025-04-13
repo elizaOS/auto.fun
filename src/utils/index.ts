@@ -69,6 +69,7 @@ function toSubscript(num: number): string {
     "7": "\u2087",
     "8": "\u2088",
     "9": "\u2089",
+    "-": "\u207B",
   };
   return num
     .toString()
@@ -85,8 +86,8 @@ export const formatNumberSubscript = (num: number): string => {
     num = Math.abs(num);
   }
 
-  // Round to 9 decimal places
-  num = Number(num.toFixed(10));
+  // Round to 11 decimal places #mainnet tests
+  num = Number(num.toFixed(11));
 
   if (num >= 1) {
     return sign + num.toString();
