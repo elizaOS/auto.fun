@@ -1,4 +1,3 @@
-import BondingCurveBar from "@/components/bonding-curve-bar";
 import Button from "@/components/button";
 import CopyButton from "@/components/copy-button";
 import Loader from "@/components/loader";
@@ -25,7 +24,7 @@ import { getSocket } from "@/utils/socket";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Globe, Info as InfoCircle } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { Tooltip } from "react-tooltip";
 import { twMerge } from "tailwind-merge";
@@ -47,14 +46,14 @@ import { twMerge } from "tailwind-merge";
 const socket = getSocket();
 
 // Add a custom component for middle ellipsis
-function MiddleEllipsis({ text, suffix = "auto" }: { text?: string, suffix?: string }) {
+function MiddleEllipsis({ text }: { text?: string; suffix?: string }) {
   const elementRef = useRef<HTMLDivElement>(null);
   const [showFull, setShowFull] = useState(false);
 
   useEffect(() => {
     if (!elementRef.current) return;
 
-    const observer = new ResizeObserver(entries => {
+    const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         setShowFull(entry.contentRect.width > 420);
       }
@@ -65,13 +64,13 @@ function MiddleEllipsis({ text, suffix = "auto" }: { text?: string, suffix?: str
   }, []);
 
   if (!text) return null;
-  
+
   const prefix = text.substring(0, 8);
-  const _suffix = text.substring(text.length - 8);
-  
+  const suffix = text.substring(text.length - 8);
+
   return (
     <div ref={elementRef} className="font-dm-mono text-center" title={text}>
-      {showFull ? text : `${prefix}...${_suffix}`}
+      {showFull ? text : `${prefix}...${suffix}`}
     </div>
   );
 }
@@ -334,7 +333,7 @@ export default function Page() {
               </div>
               <div className="bg-autofun-background-input flex justify-between py-2 px-3 min-w-0 w-full gap-2">
                 <span className="mx-auto w-0 flex-1 min-w-0 block text-base text-autofun-text-secondary">
-                  <MiddleEllipsis text={token?.mint} suffix="auto" />
+                  <MiddleEllipsis text={token?.mint} />
                 </span>
                 <CopyButton text={token?.mint} />
               </div>
@@ -521,25 +520,25 @@ export default function Page() {
               </div>
               <div className="relative w-full h-8 overflow-hidden">
                 {/* Background layer */}
-                <img 
-                  src="/token/progressunder.svg" 
+                <img
+                  src="/token/progressunder.svg"
                   alt="Progress bar background"
                   className="absolute left-0 top-0 w-full h-full object-cover"
                 />
                 {/* Progress layer with dynamic width */}
-                <div 
+                <div
                   className="absolute left-0 top-0 h-full"
                   style={{
-                    width: `${Math.min(100, token?.curveProgress || 0)}%`
+                    width: `${Math.min(100, token?.curveProgress || 0)}%`,
                   }}
                 >
-                  <img 
+                  <img
                     style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover'
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
                     }}
-                    src="/token/progress.svg" 
+                    src="/token/progress.svg"
                     alt="Progress indicator"
                   />
                 </div>
