@@ -78,7 +78,6 @@ export default function CommunityTab() {
   const [twitterCredentials, setTwitterCredentials] =
     useState<TwitterCredentials | null>(null);
   const [hasGeneratedForToken, setHasGeneratedForToken] = useState(false);
-  const [tokenBalance, setTokenBalance] = useState<number | null>(null);
 
   // Mode selection state
   const [generationMode, setGenerationMode] = useState<"fast" | "pro">("fast");
@@ -135,12 +134,12 @@ export default function CommunityTab() {
   const tokenMint = detectedTokenMint;
 
   // Use the proper hook to get token balance AFTER tokenMint is declared
-  const { tokenBalance: hookTokenBalance } = useTokenBalance({ tokenId: tokenMint || "" });
+  const { tokenBalance } = useTokenBalance({ tokenId: tokenMint || "" });
 
   useEffect(() => {
-    console.log("**** tokenBalance from hook:", hookTokenBalance);
+    console.log("**** tokenBalance from hook:", tokenBalance);
     console.log("**** manualTokenBalance:", manualTokenBalance);
-  }, [hookTokenBalance, manualTokenBalance]);
+  }, [tokenBalance, manualTokenBalance]);
 
   // --- Fetch Real Token Info & Agents ---
   useEffect(() => {
@@ -318,7 +317,7 @@ export default function CommunityTab() {
 
     // Check token balance requirements based on mode
     const requiredBalance = generationMode === "pro" ? 10000 : 1000;
-    if ((hookTokenBalance ?? 0) < requiredBalance) {
+    if ((tokenBalance ?? 0) < requiredBalance) {
       toast.error(
         `You need at least ${requiredBalance.toLocaleString()} tokens to generate images in ${generationMode} mode`,
       );
@@ -548,7 +547,7 @@ export default function CommunityTab() {
 
     // Check token balance requirements based on mode
     const requiredBalance = generationMode === "pro" ? 100000 : 10000;
-    if ((hookTokenBalance ?? 0) < requiredBalance) {
+    if ((tokenBalance ?? 0) < requiredBalance) {
       toast.error(
         `You need at least ${requiredBalance.toLocaleString()} tokens to generate videos in ${generationMode} mode`,
       );
@@ -1297,7 +1296,7 @@ export default function CommunityTab() {
     // Check token balance requirements
     // Audio requires at least 10k tokens
     const requiredBalance = 10000;
-    if ((hookTokenBalance ?? 0) < requiredBalance) {
+    if ((tokenBalance ?? 0) < requiredBalance) {
       toast.error(
         `You need at least ${requiredBalance.toLocaleString()} tokens to generate audio`,
       );
@@ -1658,19 +1657,19 @@ export default function CommunityTab() {
                   isGenerating ||
                   (communityTab === "Image" &&
                     (!userPrompt.trim() ||
-                      (hookTokenBalance ?? 0) <
+                      (tokenBalance ?? 0) <
                         (generationMode === "pro" ? 10000 : 1000))) ||
                   (communityTab === "Video" &&
                     videoMode === "text" &&
                     (!userPrompt.trim() ||
-                      (hookTokenBalance ?? 0) <
+                      (tokenBalance ?? 0) <
                         (generationMode === "fast" ? 10000 : 100000))) ||
                   (communityTab === "Video" &&
                     videoMode === "image" &&
                     (!selectedImageForVideo ||
-                      (hookTokenBalance ?? 0) <
+                      (tokenBalance ?? 0) <
                         (generationMode === "fast" ? 10000 : 100000))) ||
-                  (communityTab === "Audio" && (hookTokenBalance ?? 0) < 10000)
+                  (communityTab === "Audio" && (tokenBalance ?? 0) < 10000)
                 }
                 className="transition-colors disabled:opacity-50 flex items-center mx-2 h-12 cursor-pointer"
               >
@@ -1789,7 +1788,7 @@ export default function CommunityTab() {
 
             {/* Token balance message */}
             {communityTab === "Image" &&
-              (hookTokenBalance ?? 0) <
+              (tokenBalance ?? 0) <
                 (generationMode === "pro" ? 10000 : 1000) && (
                 <div className="text-sm text-yellow-500 -mt-2">
                   <p>
@@ -1801,7 +1800,7 @@ export default function CommunityTab() {
               )}
 
             {communityTab === "Video" &&
-              (hookTokenBalance ?? 0) <
+              (tokenBalance ?? 0) <
                 (generationMode === "fast" ? 10000 : 100000) && (
                 <div className="text-sm text-yellow-500 -mt-2">
                   <p>
@@ -1812,7 +1811,7 @@ export default function CommunityTab() {
                 </div>
               )}
 
-            {communityTab === "Audio" && (hookTokenBalance ?? 0) < 10000 && (
+            {communityTab === "Audio" && (tokenBalance ?? 0) < 10000 && (
               <div className="text-sm text-yellow-500 -mt-2">
                 <p>
                   You need to hold at least 10,000 tokens to generate audio.
@@ -1854,7 +1853,7 @@ export default function CommunityTab() {
                           <div className="flex items-start gap-4 h-24">
                             <button
                               onClick={generateImage}
-                              disabled={isGenerating || (hookTokenBalance ?? 0) < (generationMode === "pro" ? 10000 : 1000)}
+                              disabled={isGenerating || (tokenBalance ?? 0) < (generationMode === "pro" ? 10000 : 1000)}
                               className="text-black text-7xl font-bold uppercase tracking-widest hover:bg-[#03FF24]/90 transition-colors px-12 py-6 shadow-[11px_11px_0px_0px_#1B8D29] h-[85%] flex items-center"
                               style={{ backgroundColor: '#03FF24' }}
                             >
@@ -1862,7 +1861,7 @@ export default function CommunityTab() {
                             </button>
                             <button
                               onClick={generateImage}
-                              disabled={isGenerating || (hookTokenBalance ?? 0) < (generationMode === "pro" ? 10000 : 1000)}
+                              disabled={isGenerating || (tokenBalance ?? 0) < (generationMode === "pro" ? 10000 : 1000)}
                               className="h-full flex items-center"
                             >
                               <img
