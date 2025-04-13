@@ -4,67 +4,13 @@ AutoFun is a powerful Solana program built with Anchor that enables automated to
 
 ## Prerequisites
 
-Before building and running this project, ensure you have the following installed:
+Before you can deploy and configure the AutoFun program, ensure you have the following installed:
 
-1. [Solana CLI Tools](https://docs.solana.com/cli/install-solana-cli-tools)
-   ```bash
-   sh -c "$(curl -sSfL https://release.solana.com/v1.18.4/install)"
-   ```
-
-2. [Anchor](https://www.anchor-lang.com/docs/installation)
-   ```bash
-   cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
-   avm install latest
-   avm use latest
-   ```
-
-3. [Rust](https://www.rust-lang.org/tools/install)
-   ```bash
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   ```
-
-4. [Bun](https://bun.sh/docs/installation)
-   ```bash
-   curl -fsSL https://bun.sh/install | bash
-   ```
-
-## Setup
-
-1. Install dependencies:
-   ```bash
-   bun install
-   ```
-
-2. Build the program:
-   ```bash
-   bun run build
-   ```
-
-## Troubleshooting
-
-If you encounter issues with the build process:
-
-1. Ensure Solana CLI tools are in your PATH:
-   ```bash
-   export PATH="/home/solana/.local/share/solana/install/active_release/bin:$PATH"
-   ```
-
-2. Verify your Rust toolchain:
-   ```bash
-   rustup toolchain install nightly
-   rustup default nightly
-   ```
-
-3. Check Anchor version:
-   ```bash
-   anchor --version
-   ```
-
-4. Verify Solana CLI tools:
-   ```bash
-   solana --version
-   cargo-build-sbf --version
-   ```
+- [Rust](https://www.rust-lang.org/tools/install) (1.70.0 or later)
+- [Solana CLI](https://docs.solana.com/cli/install-solana-cli-tools) (1.16.0 or later)
+- [Anchor CLI](https://www.anchor-lang.com/docs/installation) (0.30.1 or later)
+- [Node.js](https://nodejs.org/) (18.x or later)
+- [Bun](https://bun.sh/) (1.2.5 or later)
 
 ## Installation
 
@@ -74,12 +20,17 @@ If you encounter issues with the build process:
    cd auto.fun
    ```
 
-2. Set up your Solana keypair if you don't have one already:
+2. Install dependencies:
+   ```bash
+   bun install
+   ```
+
+3. Set up your Solana keypair if you don't have one already:
    ```bash
    solana-keygen new
    ```
 
-3. Update the Anchor.toml file with your wallet path:
+4. Update the Anchor.toml file with your wallet path:
    ```toml
    [provider]
    cluster = "https://devnet.helius-rpc.com/?api-key=YOUR_API_KEY"
