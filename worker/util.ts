@@ -21,11 +21,10 @@ import { SEED_BONDING_CURVE, SEED_CONFIG } from "./constant";
 import { getDB, Token, tokenHolders, tokens } from "./db";
 import { Env } from "./env";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
-import { initSolanaConfig } from "./solana";
+import { initSolanaConfig, getProgram } from "./solana";
 import { Autofun } from "./target/types/autofun";
 import { getWebSocketClient } from "./websocket-client";
-import anchor from "@coral-xyz/anchor";
-
+import {Wallet} from "./tokenSupplyHelpers/customWallet";
 /**
  * Converts a decimal fee (e.g., 0.05 for 5%) to basis points (5% = 500 basis points)
  */
@@ -208,21 +207,17 @@ export async function createNewTokenData(
       [Buffer.from(SEED_BONDING_CURVE), new PublicKey(tokenAddress).toBytes()],
       solanaConfig.programId,
     );
-
-    // Fetch the account data directly using the connection instead of Anchor program
-    const bondingCurveAccountInfo =
-      await solanaConfig.connection.getAccountInfo(bondingCurvePda);
-
-    // Simple structure for the bondingCurve account data
-    let bondingCurveAccount: any = null;
-    if (bondingCurveAccountInfo && bondingCurveAccountInfo.data) {
-      // Parse the account data based on the expected structure
-      const dataView = new DataView(bondingCurveAccountInfo.data.buffer);
-      bondingCurveAccount = {
-        reserveToken: BigInt(dataView.getBigUint64(8, true)), // Adjust offset based on your account structure
-        reserveLamport: BigInt(dataView.getBigUint64(16, true)), // Adjust offset based on your account structure
-      };
+    if (!solanaConfig.wallet) {
+      throw new Error("Wallet not found in Solana config");
     }
+    const program = getProgram(
+      solanaConfig.connection,
+      new Wallet(solanaConfig.wallet),
+    )
+    // Fetch the account data directly using the connection instead of Anchor program
+    const bondingCurveAccount = await program.account.bondingCurve.fetchNullable(
+      bondingCurvePda
+    );
 
     let additionalMetadata: TokenMetadataJson | null = null;
     try {
@@ -245,6 +240,11 @@ export async function createNewTokenData(
         `Bonding curve account not found for token ${tokenAddress}`,
       );
     }
+    console.log("bondingCurveAccount", bondingCurveAccount);
+    console.log("reserveToken", Number(bondingCurveAccount.reserveToken))
+    console.log("reserveLamport", Number(bondingCurveAccount.reserveLamport))
+    console.log("curveLimit", Number(bondingCurveAccount.curveLimit))
+    
 
     const currentPrice =
       Number(bondingCurveAccount.reserveToken) > 0
@@ -253,12 +253,15 @@ export async function createNewTokenData(
           (Number(bondingCurveAccount.reserveToken) /
             Math.pow(10, TOKEN_DECIMALS))
         : 0;
+    console.log("currentPrice", currentPrice);
 
     const tokenPriceInSol = currentPrice / Math.pow(10, TOKEN_DECIMALS);
+    console.log("tokenPriceInSol", tokenPriceInSol);
     const tokenPriceUSD =
       currentPrice > 0
         ? tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)
         : 0;
+    console.log("tokenPriceUSD", tokenPriceUSD);
 
     // Get TOKEN_SUPPLY from env if available, otherwise use default
     const tokenSupply = env?.TOKEN_SUPPLY
@@ -266,6 +269,7 @@ export async function createNewTokenData(
       : 1000000000000000;
     const marketCapUSD =
       (tokenSupply / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD;
+    console.log("marketCapUSD", marketCapUSD);
 
     // Get virtual reserves from env if available, otherwise use default
     const virtualReserves = env?.VIRTUAL_RESERVES
@@ -355,7 +359,7 @@ export async function bulkUpdatePartialTokens(
 
   // Process each token in parallel
   const updatedTokensPromises = tokens.map((token) =>
-    calculateTokenMarketData(token, solPrice),
+    calculateTokenMarketData(token, solPrice, env),
   );
 
   // Wait for all updates to complete
