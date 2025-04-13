@@ -99,6 +99,7 @@ export default function CommunityTab() {
     name: string;
     symbol: string;
     image?: string;
+    description?: string;
   } | null>(null);
 
   // Get token mint from URL params with better fallback logic
@@ -161,7 +162,8 @@ export default function CommunityTab() {
         setTokenInfo({ 
           name: infoData.name, 
           symbol: infoData.symbol,
-          image: infoData.image 
+          image: infoData.image,
+          description: infoData.description 
         });
         console.log("Token info received:", infoData);
         
@@ -1504,6 +1506,10 @@ export default function CommunityTab() {
       setCommunityTab("Image");
       setGeneratedImage(null);
       setProcessingStatus("idle");
+      // Set the user prompt back to the token's description when switching to Image tab
+      if (tokenInfo?.description) {
+        setUserPrompt(tokenInfo.description);
+      }
     };
     imageButton.className = communityTab === "Image" ? "active-tab" : "";
 
@@ -1521,6 +1527,7 @@ export default function CommunityTab() {
       setCommunityTab("Video");
       setGeneratedImage(null);
       setProcessingStatus("idle");
+      setUserPrompt(""); // Clear input when switching to Video tab
     };
     videoButton.className = communityTab === "Video" ? "active-tab" : "";
 
@@ -1538,6 +1545,7 @@ export default function CommunityTab() {
       setCommunityTab("Audio");
       setGeneratedImage(null);
       setProcessingStatus("idle");
+      setUserPrompt(""); // Clear input when switching to Audio tab
     };
     audioButton.className = communityTab === "Audio" ? "active-tab" : "";
 
@@ -1588,20 +1596,52 @@ export default function CommunityTab() {
   }, [communityTab]); // Re-run when tab changes
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Generation interface */}
-      <div className="flex flex-col gap-4">
-        {/* Main generation controls - consistent across all media types */}
-        <div className="flex flex-col gap-4 w-full">
-          {/* Controls row - consistent for all media types */}
-          <div className="flex items-end py-3">
-            {/* Input field with dynamic placeholder based on tab */}
-            <input
-              type="text"
-              value={userPrompt}
-              onChange={(e) => setUserPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !isGenerating) {
+    <div className="flex flex-col">
+      <div className="flex flex-col md:flex-row gap-4">
+        {/* Content Area */}
+        <div className="flex flex-col grow w-full">
+          {/* Main generation controls - consistent across all media types */}
+          <div className="flex flex-col gap-4 w-full">
+            {/* Controls row - consistent for all media types */}
+            <div className="flex items-end py-3">
+              {/* Input field with dynamic placeholder based on tab */}
+              <input
+                type="text"
+                value={userPrompt}
+                onChange={(e) => setUserPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !isGenerating) {
+                    if (communityTab === "Image") {
+                      generateImage();
+                    } else if (communityTab === "Video") {
+                      if (videoMode === "text") {
+                        generateVideo();
+                      } else if (
+                        videoMode === "image" &&
+                        selectedImageForVideo
+                      ) {
+                        generateVideo(true, selectedImageForVideo);
+                      }
+                    } else if (communityTab === "Audio") {
+                      generateAudio();
+                    }
+                  }
+                }}
+                placeholder={
+                  communityTab === "Image"
+                    ? "Enter a concept like 'a halloween token about arnold schwarzenegger'"
+                    : communityTab === "Video"
+                      ? videoMode === "text"
+                        ? "Enter a concept for your video"
+                        : "Enter a description for your video (optional)"
+                      : "Optional: describe the musical style (e.g., 'upbeat electronic with retro synths')"
+                }
+                className="flex-1 h-10 border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white px-2 text-base leading-10"
+              />
+
+              {/* Generate button with dynamic behavior based on tab */}
+              <button
+                onClick={() => {
                   if (communityTab === "Image") {
                     generateImage();
                   } else if (communityTab === "Video") {
@@ -1613,167 +1653,366 @@ export default function CommunityTab() {
                   } else if (communityTab === "Audio") {
                     generateAudio();
                   }
+                }}
+                disabled={
+                  isGenerating ||
+                  (communityTab === "Image" &&
+                    (!userPrompt.trim() ||
+                      (hookTokenBalance ?? 0) <
+                        (generationMode === "pro" ? 10000 : 1000))) ||
+                  (communityTab === "Video" &&
+                    videoMode === "text" &&
+                    (!userPrompt.trim() ||
+                      (hookTokenBalance ?? 0) <
+                        (generationMode === "fast" ? 10000 : 100000))) ||
+                  (communityTab === "Video" &&
+                    videoMode === "image" &&
+                    (!selectedImageForVideo ||
+                      (hookTokenBalance ?? 0) <
+                        (generationMode === "fast" ? 10000 : 100000))) ||
+                  (communityTab === "Audio" && (hookTokenBalance ?? 0) < 10000)
                 }
-              }}
-              placeholder={
-                communityTab === "Image"
-                  ? "Enter a concept like 'a halloween token about arnold schwarzenegger'"
-                  : communityTab === "Video"
-                    ? videoMode === "text"
-                      ? "Enter a concept for your video"
-                      : "Enter a description for your video (optional)"
-                    : "Optional: describe the musical style (e.g., 'upbeat electronic with retro synths')"
-              }
-              className="flex-1 h-10 border-b border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white px-2 text-base leading-10"
-            />
-
-            {/* Generate button with dynamic behavior based on tab */}
-            <button
-              onClick={() => {
-                if (communityTab === "Image") {
-                  generateImage();
-                } else if (communityTab === "Video") {
-                  if (videoMode === "text") {
-                    generateVideo();
-                  } else if (videoMode === "image" && selectedImageForVideo) {
-                    generateVideo(true, selectedImageForVideo);
+                className="transition-colors disabled:opacity-50 flex items-center mx-2 h-12 cursor-pointer"
+              >
+                <img
+                  src={
+                    isGenerating
+                      ? "/create/generating.svg"
+                      : "/create/generateup.svg"
                   }
-                } else if (communityTab === "Audio") {
-                  generateAudio();
-                }
-              }}
-              disabled={
-                isGenerating ||
-                (communityTab === "Image" &&
-                  (!userPrompt.trim() ||
-                    (hookTokenBalance ?? 0) <
-                      (generationMode === "pro" ? 10000 : 1000))) ||
-                (communityTab === "Video" &&
-                  videoMode === "text" &&
-                  (!userPrompt.trim() ||
-                    (hookTokenBalance ?? 0) <
-                      (generationMode === "fast" ? 10000 : 100000))) ||
-                (communityTab === "Video" &&
-                  videoMode === "image" &&
-                  (!selectedImageForVideo ||
-                    (hookTokenBalance ?? 0) <
-                      (generationMode === "fast" ? 10000 : 100000))) ||
-                (communityTab === "Audio" && (hookTokenBalance ?? 0) < 10000)
-              }
-              className="transition-colors disabled:opacity-50 flex items-center mx-2 h-12 cursor-pointer"
-            >
-              <img
-                src={
-                  isGenerating
-                    ? "/create/generating.svg"
-                    : "/create/generateup.svg"
-                }
-                alt="Generate"
-                className="h-12 w-auto"
-                onMouseDown={(e) => {
-                  if (!isGenerating)
-                    (e.target as HTMLImageElement).src =
-                      "/create/generatedown.svg";
-                }}
-                onMouseUp={(e) => {
-                  if (!isGenerating)
-                    (e.target as HTMLImageElement).src =
-                      "/create/generateup.svg";
-                }}
-                onDragStart={(e) => e.preventDefault()}
-                onMouseOut={(e) => {
-                  if (!isGenerating)
-                    (e.target as HTMLImageElement).src =
-                      "/create/generateup.svg";
-                }}
-              />
-            </button>
+                  alt="Generate"
+                  className="h-12 w-auto"
+                  onMouseDown={(e) => {
+                    if (!isGenerating)
+                      (e.target as HTMLImageElement).src =
+                        "/create/generatedown.svg";
+                  }}
+                  onMouseUp={(e) => {
+                    if (!isGenerating)
+                      (e.target as HTMLImageElement).src =
+                        "/create/generateup.svg";
+                  }}
+                  onDragStart={(e) => e.preventDefault()}
+                  onMouseOut={(e) => {
+                    if (!isGenerating)
+                      (e.target as HTMLImageElement).src =
+                        "/create/generateup.svg";
+                  }}
+                />
+              </button>
 
-            {/* Fast/Pro mode buttons - only show for Image and Video */}
-            {communityTab !== "Audio" && (
-              <div className="flex space-x-1 h-10">
-                <button
-                  onClick={() => setGenerationMode("fast")}
-                  className="cursor-pointer h-10"
-                >
-                  <img
-                    src={
-                      generationMode === "fast"
-                        ? "/token/faston.svg"
-                        : "/token/fastoff.svg"
-                    }
-                    alt="Fast mode"
-                    className="h-10 w-auto cursor-pointer"
-                  />
-                </button>
-                <button
-                  onClick={() => setGenerationMode("pro")}
-                  className="cursor-pointer h-10"
-                >
-                  <img
-                    src={
-                      generationMode === "pro"
-                        ? "/token/proon.svg"
-                        : "/token/prooff.svg"
-                    }
-                    alt="Pro mode"
-                    className="h-10 w-auto cursor-pointer"
-                  />
-                </button>
+              {/* Fast/Pro mode buttons - only show for Image and Video */}
+              {communityTab !== "Audio" && (
+                <div className="flex space-x-1 h-10">
+                  <button
+                    onClick={() => setGenerationMode("fast")}
+                    className="cursor-pointer h-10"
+                  >
+                    <img
+                      src={
+                        generationMode === "fast"
+                          ? "/token/faston.svg"
+                          : "/token/fastoff.svg"
+                      }
+                      alt="Fast mode"
+                      className="h-10 w-auto cursor-pointer"
+                    />
+                  </button>
+                  <button
+                    onClick={() => setGenerationMode("pro")}
+                    className="cursor-pointer h-10"
+                  >
+                    <img
+                      src={
+                        generationMode === "pro"
+                          ? "/token/proon.svg"
+                          : "/token/prooff.svg"
+                      }
+                      alt="Pro mode"
+                      className="h-10 w-auto cursor-pointer"
+                    />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Video-specific options */}
+            {communityTab === "Video" && (
+              <div className="px-4">
+                {/* Image upload area for image-to-video */}
+                {videoMode === "image" && (
+                  <div className="border-2 border-dashed border-gray-600 p-4 rounded-md mb-4">
+                    {selectedImageForVideo ? (
+                      <div className="relative">
+                        <img
+                          src={selectedImageForVideo}
+                          alt="Selected image"
+                          className="max-w-full max-h-[300px] mx-auto"
+                        />
+                        <button
+                          onClick={() => setSelectedImageForVideo(null)}
+                          className="absolute top-2 right-2 bg-black/70 p-1 rounded-full cursor-pointer"
+                          title="Remove image"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <label className="cursor-pointer">
+                          <div className="mb-2">
+                            {imageUploadLoading
+                              ? "Uploading..."
+                              : "Drop an image here or click to upload"}
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                            disabled={imageUploadLoading}
+                          />
+                          <div className="text-blue-400 hover:text-blue-300 text-sm">
+                            {imageUploadLoading ? (
+                              <div className="animate-pulse">Processing...</div>
+                            ) : (
+                              "Browse files"
+                            )}
+                          </div>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        </div>
-      </div>
 
-      {communityTab === "Image" ? (
-        <div className="relative w-full aspect-square">
-          {isGenerating ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <Loader />
-              <div className="mt-4 text-autofun-text-secondary font-dm-mono">
-                Generating your image...
+            {/* Token balance message */}
+            {communityTab === "Image" &&
+              (hookTokenBalance ?? 0) <
+                (generationMode === "pro" ? 10000 : 1000) && (
+                <div className="text-sm text-yellow-500 -mt-2">
+                  <p>
+                    You need to hold at least{" "}
+                    {generationMode === "pro" ? "10,000" : "1,000"} tokens to
+                    generate images in {generationMode} mode.
+                  </p>
+                </div>
+              )}
+
+            {communityTab === "Video" &&
+              (hookTokenBalance ?? 0) <
+                (generationMode === "fast" ? 10000 : 100000) && (
+                <div className="text-sm text-yellow-500 -mt-2">
+                  <p>
+                    You need to hold at least{" "}
+                    {generationMode === "fast" ? "10,000" : "100,000"} tokens to
+                    generate videos in {generationMode} mode.
+                  </p>
+                </div>
+              )}
+
+            {communityTab === "Audio" && (hookTokenBalance ?? 0) < 10000 && (
+              <div className="text-sm text-yellow-500 -mt-2">
+                <p>
+                  You need to hold at least 10,000 tokens to generate audio.
+                </p>
               </div>
-            </div>
-          ) : (
-            <>
-              <div className="absolute inset-0">
-                <img
-                  src={generatedImage || tokenInfo?.image}
-                  alt={tokenInfo?.name}
-                  className={`w-full h-full object-cover ${!generatedImage ? 'blur-[8px] brightness-50' : ''}`}
-                />
-              </div>
-              {!generatedImage && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="flex items-start gap-4 h-24">
-                    <button
-                      onClick={generateImage}
-                      disabled={isGenerating || (hookTokenBalance ?? 0) < (generationMode === "pro" ? 10000 : 1000)}
-                      className="text-black text-7xl font-bold uppercase tracking-widest hover:bg-[#03FF24]/90 transition-colors px-12 py-6 shadow-[11px_11px_0px_0px_#1B8D29] h-[85%] flex items-center"
-                      style={{ backgroundColor: '#03FF24' }}
+            )}
+
+            {/* Generated content display area */}
+            <div className="flex flex-col relative">
+              {processingStatus === "processing" ? (
+                <div className="flex items-center justify-center w-full h-[600px]">
+                  <div className="flex flex-col items-center">
+                    <Loader />
+                    <div className="mt-4 text-autofun-text-secondary font-dm-mono">
+                      Processing...
+                    </div>
+                  </div>
+                </div>
+              ) : communityTab === "Image" ? (
+                <div className="relative w-full aspect-square">
+                  {isGenerating ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <Loader />
+                      <div className="mt-4 text-autofun-text-secondary font-dm-mono">
+                        Generating your image...
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="absolute inset-0">
+                        <img
+                          src={generatedImage || tokenInfo?.image}
+                          alt={tokenInfo?.name}
+                          className={`w-full h-full object-cover ${!generatedImage ? 'blur-[8px] brightness-50' : ''}`}
+                        />
+                      </div>
+                      {!generatedImage && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="flex items-start gap-4 h-24">
+                            <button
+                              onClick={generateImage}
+                              disabled={isGenerating || (hookTokenBalance ?? 0) < (generationMode === "pro" ? 10000 : 1000)}
+                              className="text-black text-7xl font-bold uppercase tracking-widest hover:bg-[#03FF24]/90 transition-colors px-12 py-6 shadow-[11px_11px_0px_0px_#1B8D29] h-[85%] flex items-center"
+                              style={{ backgroundColor: '#03FF24' }}
+                            >
+                              PRESS
+                            </button>
+                            <button
+                              onClick={generateImage}
+                              disabled={isGenerating || (hookTokenBalance ?? 0) < (generationMode === "pro" ? 10000 : 1000)}
+                              className="h-full flex items-center"
+                            >
+                              <img
+                                src="/token/faston.svg"
+                                alt="Fast mode"
+                                className="h-full w-auto"
+                              />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* Display area based on media type */}
+                  {communityTab === "Audio" &&
+                  generatedImage &&
+                  processingStatus === "processed" ? (
+                    <div className="border border-gray-700 p-4">
+                      <audio
+                        src={generatedImage}
+                        controls
+                        className="w-full"
+                        autoPlay
+                      ></audio>
+                    </div>
+                  ) : communityTab === "Video" &&
+                    generatedImage &&
+                    processingStatus === "processed" ? (
+                    <div className="border border-gray-700">
+                      <video
+                        src={generatedImage}
+                        controls
+                        className="w-full max-h-[500px]"
+                        autoPlay
+                        loop
+                        muted
+                      ></video>
+                    </div>
+                  ) : generatedImage ? (
+                    <div
+                      className="max-w-[100%] aspect-square w-full"
+                      style={{
+                        backgroundImage: `url(${generatedImage})`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }}
+                    ></div>
+                  ) : null}
+                </>
+              )}
+
+              {/* Download and share buttons - show for all processed media */}
+              {generatedImage && processingStatus === "processed" && (
+                <div className="w-full flex items-center justify-between p-2 bg-gradient-to-t from-black/80 to-transparent">
+                  {shareError && (
+                    <div className="text-red-500 text-sm bg-black/50 p-1 rounded">
+                      {shareError}
+                    </div>
+                  )}
+                  <div className="ml-auto flex gap-2">
+                    <Button
+                      size="small"
+                      variant="outline"
+                      onClick={downloadMedia}
+                      disabled={processingStatus !== "processed"}
                     >
-                      PRESS
-                    </button>
-                    <button
-                      onClick={generateImage}
-                      disabled={isGenerating || (hookTokenBalance ?? 0) < (generationMode === "pro" ? 10000 : 1000)}
-                      className="h-full flex items-center"
+                      Download
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="secondary"
+                      onClick={shareOnX}
+                      disabled={processingStatus !== "processed" || isSharing}
                     >
-                      <img
-                        src="/token/faston.svg"
-                        alt="Fast mode"
-                        className="h-full w-auto"
-                      />
-                    </button>
+                      {isSharing ? "Sharing..." : "Share on X"}
+                    </Button>
                   </div>
                 </div>
               )}
-            </>
-          )}
+            </div>
+          </div>
         </div>
-      ) : (
-        <div className="relative w-full aspect-square bg-autofun-background-input" />
+      </div>
+      {isShareModalOpen && generatedImage && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
+          <div className="bg-autofun-background-primary p-6 w-full max-w-lg relative text-white font-dm-mono border-4 border-[#2FD345] shadow-xl">
+            <button
+              onClick={() => setIsShareModalOpen(false)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-white cursor-pointer"
+              aria-label="Close modal"
+            >
+              <X size={20} />
+            </button>
+            <h2 className="text-xl font-semibold mb-4 text-[#03FF24]">
+              Share on X
+            </h2>
+
+            <div className="mb-4 border border-gray-600 overflow-hidden">
+              <img
+                src={generatedImage}
+                alt="Generated content to share"
+                className="w-full object-contain bg-gray-700"
+              />
+            </div>
+
+            <div className="mb-4">
+              <label
+                htmlFor="shareText"
+                className="block text-sm font-medium text-gray-300 mb-1"
+              >
+                Tweet Text
+              </label>
+              <textarea
+                id="shareText"
+                value={modalShareText}
+                onChange={(e) => setModalShareText(e.target.value)}
+                maxLength={280}
+                className="w-full p-2 bg-autofun-background-secondary text-sm border-b border-gray-400 focus:border-white focus:outline-none resize-none"
+                placeholder="Edit your tweet text..."
+              />
+              <p className="text-xs text-gray-400 mt-1 text-right">
+                {modalShareText.length} / 280
+              </p>
+            </div>
+
+            {shareError && (
+              <p className="text-red-500 text-sm mb-3">Error: {shareError}</p>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => setIsShareModalOpen(false)}
+                disabled={isPostingTweet}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={confirmAndPostShare}
+                disabled={isPostingTweet || !modalShareText.trim()}
+              >
+                {isPostingTweet ? "Posting..." : "Confirm & Post"}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
