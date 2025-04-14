@@ -30,12 +30,15 @@ import {
   releaseMigrationLock,
   LockResult,
 } from "./migrations";
+import {Wallet} from "@coral-xyz/anchor/dist/cjs/provider";
+import { skip } from "node:test";
+import { sign } from "crypto";
 
 export class TokenMigrator {
   constructor(
     public env: Env,
     public connection: Connection,
-    public wallet: Keypair,
+    public wallet: Wallet,
     public program: Program<RaydiumVault>,
     public autofunProgram: Program<Autofun>,
     public provider: AnchorProvider,
@@ -75,7 +78,7 @@ export class TokenMigrator {
           this.sendNftToManagerMultisig(
             token,
             token.nftMinted?.split(",")[1] ?? "",
-            this.wallet,
+            this.wallet.payer as Keypair,
             new PublicKey(this.env.MANAGER_MULTISIG_ADDRESS!),
           ).then((result) => result),
       },
@@ -98,6 +101,7 @@ export class TokenMigrator {
 
   async migrateToken(token: TokenData): Promise<void> {
     try {
+      console.log(`[Migrate] Starting migration for token ${token.mint}`);
       if (token.migration) {
         const migrationData =
           typeof token.migration === "string"
@@ -113,15 +117,17 @@ export class TokenMigrator {
       token.migration = token.migration || {};
       const ws = getWebSocketClient(this.env);
       const lockAcquired = await acquireMigrationLock(this.env, token);
-      if (!lockAcquired) {
-        logger.log(
-          `[Migrate] Unable to acquire lock for token ${token.mint}. Deferring to resume operation.`,
-        );
-        await this.callResumeWorker(token);
-        return;
-      }
+      // if (!lockAcquired) {
+      //   logger.log(
+      //     `[Migrate] Unable to acquire lock for token ${token.mint}. Deferring to resume operation.`,
+      //   );
+      //   await this.callResumeWorker(token);
+      //   return;
+      // }
+     
       const steps = this.getMigrationSteps();
       for (const step of steps) {
+
         if (token.migration[step.name]?.status === "success") {
           logger.log(
             `[Migrate] ${step.name} already processed for token ${token.mint}`,
@@ -151,7 +157,7 @@ export class TokenMigrator {
         status: "migration_failed",
         lastUpdated: new Date().toISOString(),
       });
-      this.callResumeWorker(token);
+      // this.callResumeWorker(token);
     }
   }
 
@@ -225,12 +231,18 @@ export class TokenMigrator {
       throw new Error("No withdrawn amounts found for pool creation");
 
     const mintConstantFee = new BN(6 * 1e9); // 6 SOL
-    const withdrawnTokensBN = new BN(withdrawnAmounts.withdrawnTokens);
-    const withdrawnSolBN = new BN(withdrawnAmounts.withdrawnSol);
 
-    const solFeeAmount = withdrawnSolBN.sub(mintConstantFee);
+    const withdrawnTokensBN = new BN(withdrawnAmounts.withdrawnTokens);
+    console.log("withdrawnSol", withdrawnAmounts.withdrawnSol);
+    const withdrawnSolBN = new BN(withdrawnAmounts.withdrawnSol);
+   
+
+    // const solFeeAmount = withdrawnSolBN.sub(mintConstantFee);
+    const solFeeAmount = new BN(0);
+
     const remainingTokens = withdrawnTokensBN;
     const remainingSol = withdrawnSolBN.sub(solFeeAmount);
+    console.log("remainingSol", remainingSol.toString());
 
     logger.log(`[Pool] Creating pool for token ${token.mint}`);
     const poolCreation = await raydium.cpmm.createPool({
@@ -276,10 +288,11 @@ export class TokenMigrator {
     poolKeys: any,
     primaryAmount: any,
   ): Promise<{ txId: string; nftMint: string }> {
+    console.log("Performing primary LP lock", primaryAmount.toString());
     const { execute: lockExecutePrimary, extInfo: lockExtInfoPrimary } =
       await raydium.cpmm.lockLp({
         poolInfo,
-        poolKeys,
+        // poolKeys, //devnet only
         lpAmount: primaryAmount,
         withMetadata: true,
         txVersion,
@@ -287,15 +300,15 @@ export class TokenMigrator {
           units: 300000,
           microLamports: 0.0001 * 1e9,
         },
-        programId:
-          raydium.cluster === "devnet"
-            ? DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM
-            : CREATE_CPMM_POOL_PROGRAM,
-        authProgram:
-          raydium.cluster === "devnet" ? DEV_LOCK_CPMM_AUTH : LOCK_CPMM_AUTH,
+        // programId:
+        //   raydium.cluster === "devnet"
+        //     ? DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM
+        //     : CREATE_CPMM_POOL_PROGRAM,
+        // authProgram:
+        //   raydium.cluster === "devnet" ? DEV_LOCK_CPMM_AUTH : LOCK_CPMM_AUTH,
       });
     const { txId: lockTxIdPrimary } = (await retryOperation(
-      () => lockExecutePrimary({ sendAndConfirm: true }),
+      () => lockExecutePrimary({ skipPreflight: false }),
       3,
       2000,
     )) as LockResult;
@@ -311,10 +324,12 @@ export class TokenMigrator {
     poolKeys: any,
     secondaryAmount: any,
   ): Promise<{ txId: string; nftMint: string }> {
+    console.log("Performing Secondat LP lock", secondaryAmount.toString());
+
     const { execute: lockExecuteSecondary, extInfo: lockExtInfoSecondary } =
       await raydium.cpmm.lockLp({
         poolInfo,
-        poolKeys,
+        // poolKeys,
         lpAmount: secondaryAmount,
         withMetadata: true,
         txVersion,
@@ -322,15 +337,15 @@ export class TokenMigrator {
           units: 300000,
           microLamports: 0.0001 * 1e9,
         },
-        programId:
-          raydium.cluster === "devnet"
-            ? DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM
-            : CREATE_CPMM_POOL_PROGRAM,
-        authProgram:
-          raydium.cluster === "devnet" ? DEV_LOCK_CPMM_AUTH : LOCK_CPMM_AUTH,
+        // programId:
+        //   raydium.cluster === "devnet"
+        //     ? DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM
+        //     : CREATE_CPMM_POOL_PROGRAM,
+        // authProgram:
+        //   raydium.cluster === "devnet" ? DEV_LOCK_CPMM_AUTH : LOCK_CPMM_AUTH,
       });
     const { txId: lockTxIdSecondary } = (await retryOperation(
-      () => lockExecuteSecondary({ sendAndConfirm: true }),
+      () => lockExecuteSecondary({ skipPreflight: false }),
       3,
       2000,
     )) as LockResult;
@@ -347,6 +362,7 @@ export class TokenMigrator {
     const raydium = await initSdk({ env: this.env, loadToken: false });
     const poolId = token.marketId;
     const poolInfoResult = await this.fetchPoolInfoWithRetry(raydium, poolId);
+    console.log("poolInfoResult", poolInfoResult);
     const poolInfo = poolInfoResult.poolInfo;
     const poolKeys = poolInfoResult.poolKeys;
 
@@ -414,6 +430,12 @@ export class TokenMigrator {
     signerWallet: Keypair,
     multisig: PublicKey,
   ): Promise<{ txId: string; extraData: object }> {
+    console.log("Sending NFT to manager multisig", nftMinted);
+    if (!signerWallet) { 
+      signerWallet = Keypair.fromSecretKey(
+        Uint8Array.from(JSON.parse(this.env.WALLET_PRIVATE_KEY!)),
+      );
+    }
     const txSignature = await sendNftTo(
       signerWallet,
       multisig,
@@ -432,9 +454,13 @@ export class TokenMigrator {
     nftMinted: string,
     claimer_address: PublicKey,
   ): Promise<{ txId: string; extraData: object }> {
+    console.log("Depositing NFT to Raydium vault", nftMinted);
+    const signerWallet = this.wallet.payer ?? Keypair.fromSecretKey(
+      Uint8Array.from(JSON.parse(this.env.WALLET_PRIVATE_KEY!)),
+    );
     const txSignature = await depositToRaydiumVault(
       this.provider,
-      this.wallet,
+      signerWallet,
       this.program,
       new PublicKey(nftMinted), // 90% NFT
       claimer_address,

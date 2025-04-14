@@ -12,13 +12,14 @@ import {
   LOCK_CP_AUTH_SEED,
 } from "./pdas";
 import { RaydiumVault } from "./types/raydium_vault";
+import { retryOperation } from "./utils";
 
 export async function depositToRaydiumVault(
   provider: anchor.AnchorProvider,
   signerWallet: anchor.web3.Keypair,
   program: Program<RaydiumVault>,
   position_nft: anchor.web3.PublicKey,
-  claimer_address: anchor.web3.PublicKey,
+  claimer_address: anchor.web3.PublicKey
 ) {
   try {
     anchor.setProvider(provider);
@@ -27,7 +28,7 @@ export async function depositToRaydiumVault(
     const user_position = getUserPosition(program.programId, position_nft);
     const from_account = spl.getAssociatedTokenAddressSync(
       position_nft,
-      signerWallet.publicKey,
+      signerWallet.publicKey
     );
     const nft_token_faucet = getNftTokenFaucet(program.programId, position_nft);
     const accounts = {
@@ -45,9 +46,22 @@ export async function depositToRaydiumVault(
 
     const txSignature = await call.rpc();
     console.log("Transaction Signature", txSignature);
-    await program.provider.connection.getParsedTransaction(txSignature, {
-      commitment: "confirmed",
-    });
+    const latestBlockhash = await provider.connection.getLatestBlockhash();
+
+    await retryOperation(
+      async () => {
+        await provider.connection.confirmTransaction(
+          {
+            signature:txSignature,
+            blockhash: latestBlockhash.blockhash,
+            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+          },
+          "finalized"
+        );
+      },
+      3, // 3 attempts
+      2000 // 2 seconds delay
+    );
     return txSignature;
   } catch (error) {
     console.error("Error in depositRaydiumVault:", error);
@@ -59,7 +73,7 @@ export async function changeClaimer(
   program: Program<RaydiumVault>,
   signerWallet: anchor.web3.Keypair,
   position_nft: anchor.web3.PublicKey,
-  new_claimer_address: anchor.web3.PublicKey,
+  new_claimer_address: anchor.web3.PublicKey
 ) {
   const vault_config = getVaultConfig(program.programId);
   const user_position = getUserPosition(program.programId, position_nft);
@@ -84,13 +98,13 @@ export async function changeClaimer(
 export async function emergencyWithdraw(
   program: Program<RaydiumVault>,
   signerWallet: anchor.web3.Keypair,
-  position_nft: anchor.web3.PublicKey,
+  position_nft: anchor.web3.PublicKey
 ) {
   const vault_config = getVaultConfig(program.programId);
   const user_position = getUserPosition(program.programId, position_nft);
   const to_account = spl.getAssociatedTokenAddressSync(
     position_nft,
-    signerWallet.publicKey,
+    signerWallet.publicKey
   );
   const nft_token_faucet = getNftTokenFaucet(program.programId, position_nft);
   const accounts = {
@@ -117,15 +131,15 @@ export async function claim(
   signerWallet: anchor.web3.Keypair,
   position_nft: anchor.web3.PublicKey,
   poolId: anchor.web3.PublicKey,
-  connection: anchor.web3.Connection,
+  connection: anchor.web3.Connection
 ) {
   const vault_config = getVaultConfig(program.programId);
   const [locked_authority] = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from(LOCK_CP_AUTH_SEED)],
-    LOCKING_PROGRAM,
+    LOCKING_PROGRAM
   );
   const CPSWAP_AUTH_SEED = Buffer.from(
-    anchor.utils.bytes.utf8.encode("vault_and_lp_mint_auth_seed"),
+    anchor.utils.bytes.utf8.encode("vault_and_lp_mint_auth_seed")
   );
   const user_position = getUserPosition(program.programId, position_nft);
   const nft_token_faucet = getNftTokenFaucet(program.programId, position_nft);
@@ -135,7 +149,7 @@ export async function claim(
   const locked_liquidity = getLockedLiquidity(position_nft); // using default LOCKING_PROGRAM
   const [cp_authority] = anchor.web3.PublicKey.findProgramAddressSync(
     [CPSWAP_AUTH_SEED],
-    cpmm_program,
+    cpmm_program
   );
 
   const raydium = await Raydium.load({
@@ -153,17 +167,17 @@ export async function claim(
   const pool_state = new anchor.web3.PublicKey(poolId.toString());
   const lp_mint = new anchor.web3.PublicKey(poolInfoJson.lpMint.address);
   const vault0_mint = new anchor.web3.PublicKey(
-    poolInfo.mintA.address.toString(),
+    poolInfo.mintA.address.toString()
   );
   const vault1_mint = new anchor.web3.PublicKey(
-    poolInfo.mintB.address.toString(),
+    poolInfo.mintB.address.toString()
   );
   const cpmm_pool_key = await raydium.cpmm.getCpmmPoolKeys(poolId.toString());
   const token0_vault = new anchor.web3.PublicKey(
-    cpmm_pool_key.vault.A.toString(),
+    cpmm_pool_key.vault.A.toString()
   );
   const token1_vault = new anchor.web3.PublicKey(
-    cpmm_pool_key.vault.B.toString(),
+    cpmm_pool_key.vault.B.toString()
   );
 
   // Ensure associated token accounts exist
@@ -171,32 +185,32 @@ export async function claim(
     connection,
     signerWallet,
     vault0_mint,
-    signerWallet.publicKey,
+    signerWallet.publicKey
   );
   await spl.getOrCreateAssociatedTokenAccount(
     connection,
     signerWallet,
     vault1_mint,
-    signerWallet.publicKey,
+    signerWallet.publicKey
   );
 
   const recv_token0_account = spl.getAssociatedTokenAddressSync(
     vault0_mint,
     signerWallet.publicKey,
     true,
-    spl.TOKEN_PROGRAM_ID,
+    spl.TOKEN_PROGRAM_ID
   );
   const recv_token1_account = spl.getAssociatedTokenAddressSync(
     vault1_mint,
     signerWallet.publicKey,
     true,
-    spl.TOKEN_PROGRAM_ID,
+    spl.TOKEN_PROGRAM_ID
   );
   const locked_lp_vault = spl.getAssociatedTokenAddressSync(
     lp_mint,
     locked_authority,
     true,
-    spl.TOKEN_PROGRAM_ID,
+    spl.TOKEN_PROGRAM_ID
   );
   const accounts = {
     authority: signerWallet.publicKey,
@@ -239,37 +253,37 @@ export async function checkBalance(
   connection: anchor.web3.Connection,
   signerWallet: anchor.web3.Keypair,
   position_nft: anchor.web3.PublicKey,
-  claimer_address: anchor.web3.PublicKey,
+  claimer_address: anchor.web3.PublicKey
 ) {
   await spl.getOrCreateAssociatedTokenAccount(
     connection,
     signerWallet,
     position_nft,
-    signerWallet.publicKey,
+    signerWallet.publicKey
   );
   await spl.getOrCreateAssociatedTokenAccount(
     connection,
     signerWallet,
     position_nft,
-    claimer_address,
+    claimer_address
   );
   const position_nft_account_signer = spl.getAssociatedTokenAddressSync(
     position_nft,
-    signerWallet.publicKey,
+    signerWallet.publicKey
   );
   const position_nft_account_claimer = spl.getAssociatedTokenAddressSync(
     position_nft,
-    claimer_address,
+    claimer_address
   );
 
   console.log(
     "signer balance: ",
     (await connection.getTokenAccountBalance(position_nft_account_signer)).value
-      .amount,
+      .amount
   );
   console.log(
     "claimer balance: ",
     (await connection.getTokenAccountBalance(position_nft_account_claimer))
-      .value.amount,
+      .value.amount
   );
 }
