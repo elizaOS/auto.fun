@@ -79,6 +79,12 @@ export default function CommunityTab() {
     useState<TwitterCredentials | null>(null);
   const [hasGeneratedForToken, setHasGeneratedForToken] = useState(false);
 
+  // Pregenerated images that were generated automatically for this token
+  const [additionalImages, setAdditionalImages] = useState<string[]>([]);
+  const [isLoadingAdditionalImages, setIsLoadingAdditionalImages] =
+    useState(false);
+  const [placeholderImage, setPlaceholderImage] = useState<string | null>(null);
+
   // Mode selection state
   const [generationMode, setGenerationMode] = useState<"fast" | "pro">("fast");
 
@@ -133,6 +139,66 @@ export default function CommunityTab() {
   // Use detected token mint instead of directly from params
   const tokenMint = detectedTokenMint;
 
+  // Fetch pregenerated images for this token
+  useEffect(() => {
+    const fetchAdditionalImages = async () => {
+      if (!tokenMint || !API_BASE_URL) {
+        return;
+      }
+
+      setIsLoadingAdditionalImages(true);
+
+      try {
+        // Check for generated images in the server's R2 storage
+        const response = await fetch(
+          `${API_BASE_URL}/api/check-generated-images/${tokenMint}`,
+        );
+
+        if (response.ok) {
+          const data = (await response.json()) as {
+            hasImages?: boolean;
+            count?: number;
+            pattern?: string;
+          };
+
+          if (data.hasImages && data.count && data.count > 0) {
+            // Build image URLs based on the pattern, using the API endpoint
+            const imageUrls = [];
+            const count = Math.min(data.count, 3); // Only use up to 3 images as placeholders
+            for (let i = 1; i <= count; i++) {
+              // If we're running locally, use the API endpoint
+              if (API_BASE_URL.includes('localhost')) {
+                imageUrls.push(
+                  `${API_BASE_URL}/api/image/generation-${tokenMint}-${i}.jpg`,
+                );
+              } else {
+                // Otherwise, use the R2 public URL
+                imageUrls.push(
+                  `${env.r2PublicUrl}/generations/${tokenMint}/gen-${i}.jpg`,
+                );
+              }
+            }
+
+            setAdditionalImages(imageUrls);
+            console.log("Found additional generated images:", imageUrls);
+          } else {
+            setAdditionalImages([]);
+          }
+        } else {
+          // If the API fails, don't try to guess
+          setAdditionalImages([]);
+        }
+      } catch (error) {
+        console.error("Error fetching additional images:", error);
+        setAdditionalImages([]);
+      } finally {
+        setIsLoadingAdditionalImages(false);
+      }
+    };
+
+    fetchAdditionalImages();
+  }, [tokenMint]);
+
   // Use the proper hook to get token balance AFTER tokenMint is declared
   const { tokenBalance } = useTokenBalance({ tokenId: tokenMint || "" });
 
@@ -152,20 +218,24 @@ export default function CommunityTab() {
 
       try {
         console.log(`Fetching token info for ${tokenMint}...`);
-        const infoResponse = await fetch(`${API_BASE_URL}/api/token/${tokenMint}`);
+        const infoResponse = await fetch(
+          `${API_BASE_URL}/api/token/${tokenMint}`,
+        );
         console.log("Token info response:", infoResponse);
         if (!infoResponse.ok) {
-          throw new Error(`Failed to fetch token info: ${infoResponse.statusText}`);
+          throw new Error(
+            `Failed to fetch token info: ${infoResponse.statusText}`,
+          );
         }
         const infoData = (await infoResponse.json()) as TokenInfoResponse;
-        setTokenInfo({ 
-          name: infoData.name, 
+        setTokenInfo({
+          name: infoData.name,
           symbol: infoData.symbol,
           image: infoData.image,
-          description: infoData.description 
+          description: infoData.description,
         });
         console.log("Token info received:", infoData);
-        
+
         // Set the user prompt to the token's description if available
         if (infoData.description) {
           setUserPrompt(infoData.description);
@@ -1594,6 +1664,42 @@ export default function CommunityTab() {
     };
   }, [communityTab]); // Re-run when tab changes
 
+  // Sets the placeholder image to randomly select one image
+  useEffect(() => {
+    if (!generatedImage && additionalImages.length > 0) {
+      // Select a random image from available images instead of always using the first one
+      const randomIndex = Math.floor(Math.random() * additionalImages.length);
+      const randomImage = additionalImages[randomIndex];
+
+      // Verify the image loads
+      const img = new Image();
+      img.onload = () => {
+        setPlaceholderImage(randomImage);
+      };
+      img.onerror = () => {
+        // If random image fails, try the others sequentially
+        const imageLoaders = additionalImages
+          .filter((_, i) => i !== randomIndex) // Skip the one that just failed
+          .map((url) => {
+            return new Promise((resolve) => {
+              const img = new Image();
+              img.onload = () => resolve(url);
+              img.onerror = () => resolve(null);
+              img.src = url;
+            });
+          });
+
+        Promise.all(imageLoaders).then((results) => {
+          const validImage = results.find((url) => url !== null);
+          if (validImage) {
+            setPlaceholderImage(validImage as string);
+          }
+        });
+      };
+      img.src = randomImage;
+    }
+  }, [generatedImage, additionalImages]);
+
   return (
     <div className="flex flex-col">
       <div className="flex flex-col md:flex-row gap-4">
@@ -1843,34 +1949,17 @@ export default function CommunityTab() {
                     <>
                       <div className="absolute inset-0">
                         <img
-                          src={generatedImage || tokenInfo?.image}
+                          src={
+                            generatedImage ||
+                            placeholderImage ||
+                            tokenInfo?.image
+                          }
                           alt={tokenInfo?.name}
-                          className={`w-full h-full object-cover ${!generatedImage ? 'blur-[8px] brightness-50' : ''}`}
+                          className={`w-full h-full object-cover`}
                         />
                       </div>
                       {!generatedImage && (
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="flex items-start gap-4 h-24">
-                            <button
-                              onClick={generateImage}
-                              disabled={isGenerating || (tokenBalance ?? 0) < (generationMode === "pro" ? 10000 : 1000)}
-                              className="text-black text-7xl font-bold uppercase tracking-widest hover:bg-[#03FF24]/90 transition-colors px-12 py-6 shadow-[11px_11px_0px_0px_#1B8D29] h-[85%] flex items-center"
-                              style={{ backgroundColor: '#03FF24' }}
-                            >
-                              PRESS
-                            </button>
-                            <button
-                              onClick={generateImage}
-                              disabled={isGenerating || (tokenBalance ?? 0) < (generationMode === "pro" ? 10000 : 1000)}
-                              className="h-full flex items-center"
-                            >
-                              <img
-                                src="/token/faston.svg"
-                                alt="Fast mode"
-                                className="h-full w-auto"
-                              />
-                            </button>
-                          </div>
                         </div>
                       )}
                     </>

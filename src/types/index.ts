@@ -81,7 +81,7 @@ export const TokenSchema = z
     website: z.string().nullish(),
     tokenPriceUSD: z.number().nullish(),
     tokenSupplyUiAmount: z.preprocess((val) => {
-      if (typeof val === 'string') {
+      if (typeof val === "string") {
         const num = Number(val);
         return isNaN(num) ? 0 : num;
       }
@@ -108,7 +108,7 @@ export const TokenSchema = z
     txId: z.string().nullish(),
     lastUpdated: z.string().datetime().nullish(),
     imported: z.preprocess((val) => {
-      if (typeof val === 'string') {
+      if (typeof val === "string") {
         const num = Number(val);
         return isNaN(num) ? 0 : num;
       }
