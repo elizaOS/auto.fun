@@ -1,0 +1,202 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+body {
+  background-color: rgb(10, 10, 10);
+}
+
+@layer base {
+  .border,
+  .border-t,
+  .border-r,
+  .border-b,
+  .border-l {
+    border-color: #262626;
+  }
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("./assets/fonts/Satoshi-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("./assets/fonts/Satoshi-Medium.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "DMMono";
+  src: url("./assets/fonts/DMMono-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "DMMono";
+  src: url("./assets/fonts/DMMono-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+}
+
+@layer base {
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+/* Add wallet dropdown styles */
+.wallet-dropdown {
+  position: relative;
+}
+
+.wallet-dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 50;
+  min-width: 200px;
+  background-color: #171717;
+  border: 1px solid #262626;
+  border-radius: 6px;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.wallet-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.wallet-dropdown-item:hover {
+  background-color: #262626;
+}
+
+.wallet-dropdown-item svg {
+  color: #8c8c8c;
+}
+
+/* Add wallet button styles */
+.wallet-button {
+  background-color: #171717;
+  border: 1px solid #262626;
+  border-radius: 6px;
+  color: white;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.wallet-button:hover {
+  background-color: #262626;
+}
+
+.wallet-button img {
+  width: 20px;
+  height: 20px;
+}
+
+input:focus-visible {
+  outline: none;
+}
+
+textarea:focus-visible {
+  outline: none;
+}
+
+:root {
+  /* Base background colors */
+  --toastify-color-light: #171717; /* autofun.background.card */
+  --toastify-color-dark: #171717; /* autofun.background.primary */
+
+  /* Toast status colors */
+  --toastify-color-info: #707070; /* autofun.stroke.light */
+  --toastify-color-success: #03ff24; /* autofun.icon.highlight */
+  --toastify-color-warning: #8c8c8c; /* autofun.text.secondary */
+  --toastify-color-error: #872c2c; /* autofun.text.error */
+  --toastify-color-transparent: rgba(
+    23,
+    23,
+    23,
+    0.7
+  ); /* based on autofun.background.card */
+
+  /* Icon colors (matching status colors) */
+  --toastify-icon-color-info: var(--toastify-color-info);
+  --toastify-icon-color-success: var(--toastify-color-success);
+  --toastify-icon-color-warning: var(--toastify-color-warning);
+  --toastify-icon-color-error: var(--toastify-color-error);
+
+  /* Container and toast dimensions */
+  --toastify-container-width: fit-content;
+  --toastify-toast-width: 320px;
+  --toastify-toast-offset: 16px;
+  --toastify-toast-top: max(
+    var(--toastify-toast-offset),
+    env(safe-area-inset-top)
+  );
+  --toastify-toast-right: max(
+    var(--toastify-toast-offset),
+    env(safe-area-inset-right)
+  );
+  --toastify-toast-left: max(
+    var(--toastify-toast-offset),
+    env(safe-area-inset-left)
+  );
+  --toastify-toast-bottom: max(
+    var(--toastify-toast-offset),
+    env(safe-area-inset-bottom)
+  );
+
+  /* Toast appearance */
+  --toastify-toast-background: #171717; /* autofun.background.card */
+  --toastify-toast-padding: 14px;
+  --toastify-toast-min-height: 64px;
+  --toastify-toast-max-height: 800px;
+  --toastify-toast-bd-radius: 6px;
+  --toastify-toast-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+  --toastify-font-family: sans-serif;
+  --toastify-z-index: 9999;
+
+  /* Text colors */
+  --toastify-text-color-light: #ffffff; /* autofun.text.primary */
+  --toastify-text-color-dark: #ffffff; /* autofun.text.primary */
+
+  /* Colored toast text (ensuring legibility on colored backgrounds) */
+  --toastify-text-color-info: #ffffff;
+  --toastify-text-color-success: #ffffff;
+  --toastify-text-color-warning: #ffffff;
+  --toastify-text-color-error: #ffffff;
+
+  /* Spinner colors */
+  --toastify-spinner-color: #505050; /* autofun.text/ icon.disabled */
+  --toastify-spinner-color-empty-area: #171717; /* autofun.background.card */
+
+  /* Progress bar colors */
+  --toastify-color-progress-light: linear-gradient(to right, #03ff24, #8c8c8c);
+  --toastify-color-progress-dark: linear-gradient(to right, #03ff24, #8c8c8c);
+  --toastify-color-progress-info: var(--toastify-color-info);
+  --toastify-color-progress-success: var(--toastify-color-success);
+  --toastify-color-progress-warning: var(--toastify-color-warning);
+  --toastify-color-progress-error: var(--toastify-color-error);
+  /* Control the opacity of the progress trail */
+  --toastify-color-progress-bgo: 0.2;
+}
+
+button {
+  cursor: pointer;
+}
