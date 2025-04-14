@@ -64,21 +64,26 @@ export default function Page() {
         </div>
       </div>
       <div className="flex flex-col flex-1">
-        {!query?.isLoading ? (
-          <Fragment>
-            {activeTab === "grid" ? (
-              <div className="my-6">
-                <GridView data={query?.items || []} />
-              </div>
-            ) : (
-              <div className="mb-2">
-                <TableView data={query?.items || []} />
-              </div>
-            )}
-          </Fragment>
-        ) : (
-          <Loader />
-        )}
+      {!query?.isLoading ? (
+  <Fragment>
+    {query?.items?.length === 0 ? (
+      <div className="text-center text-muted-foreground my-6">
+        No token to be displayed
+      </div>
+    ) : activeTab === "grid" ? (
+      <div className="my-6">
+        <GridView data={query?.items || []} />
+      </div>
+    ) : (
+      <div className="mb-2">
+        <TableView data={query?.items || []} />
+      </div>
+    )}
+  </Fragment>
+) : (
+  <Loader />
+)}
+
         <Pagination
           pagination={{
             hasMore: query?.hasNextPage,
