@@ -528,9 +528,9 @@ export const getRpcUrl = (env: any, forceMainnet: boolean = false) => {
   const apiKey =
     env.NETWORK === "devnet"
       ? env.DEVNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
-        "7f068738-8b88-4a91-b2a9-99b00f716717"
+        "67ea9085-1406-4db8-8872-38ac77950d7a"
       : env.MAINNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
-        "7f068738-8b88-4a91-b2a9-99b00f716717";
+        "67ea9085-1406-4db8-8872-38ac77950d7a";
 
   const result = `${baseUrl}?api-key=${apiKey}`;
 
@@ -547,7 +547,7 @@ export const getMainnetRpcUrl = (env: any) => {
   const apiKey =
     env.MAINNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
     env.VITE_MAINNET_RPC_URL?.split("api-key=")[1] ||
-    "7f068738-8b88-4a91-b2a9-99b00f716717";
+    "67ea9085-1406-4db8-8872-38ac77950d7a";
 
   const mainnetUrl = `${baseUrl}?api-key=${apiKey}`;
 
@@ -562,7 +562,7 @@ export const getDevnetRpcUrl = (env: any) => {
   const apiKey =
     env.DEVNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
     env.VITE_DEVNET_RPC_URL?.split("api-key=")[1] ||
-    "7f068738-8b88-4a91-b2a9-99b00f716717";
+    "67ea9085-1406-4db8-8872-38ac77950d7a";
 
   const devnetUrl = `${baseUrl}?api-key=${apiKey}`;
 
