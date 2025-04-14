@@ -4,10 +4,14 @@ interface CustomWallet {
   publicKey: PublicKey;
   signTransaction: (tx: any) => Promise<any>;
   signAllTransactions: (txs: any[]) => Promise<any[]>;
+  payer: Keypair;
 }
 
 export class Wallet implements CustomWallet {
-  constructor(private keypair: Keypair) {}
+  public payer: Keypair;
+  constructor(private keypair: Keypair) {
+    this.payer = keypair;
+  }
 
   get publicKey() {
     return this.keypair.publicKey;
@@ -25,4 +29,3 @@ export class Wallet implements CustomWallet {
     return txs;
   }
 }
-

@@ -5,6 +5,7 @@ import {
   ParsedAccountData,
   PublicKey,
 } from "@solana/web3.js";
+import { AnchorProvider, Program, setProvider } from "@coral-xyz/anchor";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
@@ -21,7 +22,6 @@ import {
 import { Env } from "../env";
 import { logger } from "../logger";
 import { getSOLPrice, calculateTokenMarketData } from "../mcap";
-import { getToken } from "../raydium/migration/migrations";
 import {
   applyFeaturedSort,
   calculateFeaturedScore,
@@ -33,7 +33,6 @@ import {
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { ImportedToken } from "../importedToken";
-import { handleSignature } from "../tokenSupplyHelpers";
 import { generateAdditionalTokenImages } from "./generation";
 
 // Define the router with environment typing
@@ -644,15 +643,15 @@ async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-        { name: "mainnet", url: mainnetUrl },
-        { name: "devnet", url: devnetUrl },
-      ]
+      { name: "mainnet", url: mainnetUrl },
+      { name: "devnet", url: devnetUrl },
+    ]
     : [
-        {
-          name: c.env.NETWORK || "devnet",
-          url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-        },
-      ];
+      {
+        name: c.env.NETWORK || "devnet",
+        url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+      },
+    ];
 
   logger.log(
     `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
@@ -1510,7 +1509,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     // Set default values for critical fields if they're missing
     const TOKEN_DECIMALS = token.tokenDecimals || 6;
     const defaultReserveAmount = 1000000000000; // 1 trillion (default token supply)
-    const defaultReserveLamport = Number(c.env.VIRTUAL_RESERVES || 28000000000) ; // 2.8 SOL (default reserve / 28 in mainnet)
+    const defaultReserveLamport = Number(c.env.VIRTUAL_RESERVES || 28000000000); // 2.8 SOL (default reserve / 28 in mainnet)
 
     // Make sure reserveAmount and reserveLamport have values
     token.reserveAmount = token.reserveAmount || defaultReserveAmount;
@@ -1557,8 +1556,8 @@ tokenRouter.get("/token/:mint", async (c) => {
       token.status === "migrated"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-            (token.curveLimit - token.virtualReserves)) *
-          100;
+          (token.curveLimit - token.virtualReserves)) *
+        100;
 
     // Get token holders count
     const holdersCountQuery = await db
@@ -2216,6 +2215,8 @@ tokenRouter.post("/token/:mint/update", async (c) => {
     );
   }
 });
+
+
 
 tokenRouter.get("/token/:mint/agents", async (c) => {
   try {

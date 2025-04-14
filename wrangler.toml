@@ -21,6 +21,8 @@ binding = "DB"
 database_name = "autofun"
 database_id = "b086a46c-b1c3-4eec-8eca-2abea542e45b"
 
+cpu_ms = 300_000 # CPU time limit for the worker (300ms)
+
 # R2 bucket for storage
 [[r2_buckets]]
 binding = "R2"

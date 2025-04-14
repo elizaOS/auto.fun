@@ -2,7 +2,7 @@ import {
   ExecutionContext,
   ScheduledEvent,
 } from "@cloudflare/workers-types/experimental";
-import { Connection, PublicKey } from "@solana/web3.js";
+import { Connection, PublicKey, Keypair } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
 import { getLatestCandle } from "./chart";
 import { getDB, swaps, Token, tokens, vanityKeypairs } from "./db";
@@ -22,6 +22,13 @@ import bs58 from "bs58";
 import { TokenData, TokenDBData } from "../worker/raydium/types/tokenData";
 import { awardUserPoints, awardGraduationPoints } from "./points/helpers";
 import { getToken } from "./raydium/migration/migrations";
+import { TokenMigrator } from "./raydium/migration/migrateToken";
+import { Program, AnchorProvider } from "@coral-xyz/anchor";
+import { Wallet } from "./tokenSupplyHelpers/customWallet";
+import { RaydiumVault } from "./raydium/types/raydium_vault";
+import * as raydium_vault_IDL from "./raydium/raydium_vault.json";
+import { Autofun } from "./target/types/autofun";
+import * as IDL from "./target/idl/autofun.json";
 
 // Store the last processed signature to avoid duplicate processing
 let lastProcessedSignature: string | null = null;
@@ -39,7 +46,7 @@ function convertTokenDataToDBData(
         : tokenData.migration,
     withdrawnAmounts:
       tokenData.withdrawnAmounts &&
-      typeof tokenData.withdrawnAmounts !== "string"
+        typeof tokenData.withdrawnAmounts !== "string"
         ? JSON.stringify(tokenData.withdrawnAmounts)
         : tokenData.withdrawnAmounts,
     poolInfo:
@@ -388,11 +395,11 @@ export async function processTransactionLogs(
           price:
             direction === "1"
               ? Number(amountOut) /
-                Math.pow(10, SOL_DECIMALS) /
-                (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) // Sell price (SOL/token)
+              Math.pow(10, SOL_DECIMALS) /
+              (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) // Sell price (SOL/token)
               : Number(amount) /
-                Math.pow(10, SOL_DECIMALS) /
-                (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)), // Buy price (SOL/token),
+              Math.pow(10, SOL_DECIMALS) /
+              (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)), // Buy price (SOL/token),
           txId: signature,
           timestamp: new Date().toISOString(),
         };
@@ -414,7 +421,7 @@ export async function processTransactionLogs(
             liquidity:
               (Number(reserveLamport) / 1e9) * solPrice +
               (Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS)) *
-                tokenPriceUSD,
+              tokenPriceUSD,
             marketCapUSD,
             tokenPriceUSD,
             solPriceUSD: solPrice,
@@ -424,13 +431,12 @@ export async function processTransactionLogs(
               100,
             txId: signature,
             lastUpdated: new Date().toISOString(),
-            volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${
-              direction === "1"
+            volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${direction === "1"
                 ? (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) *
-                  tokenPriceUSD
+                tokenPriceUSD
                 : (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)) *
-                  tokenPriceUSD
-            }`,
+                tokenPriceUSD
+              }`,
           })
           .where(eq(tokens.mint, mintAddress))
           .returning();
@@ -440,9 +446,9 @@ export async function processTransactionLogs(
         const usdVolume =
           swapRecord.type === "buy"
             ? (swapRecord.amountOut / Math.pow(10, TOKEN_DECIMALS)) *
-              tokenPriceUSD
+            tokenPriceUSD
             : (swapRecord.amountIn / Math.pow(10, TOKEN_DECIMALS)) *
-              tokenPriceUSD;
+            tokenPriceUSD;
 
         const bondStatus =
           newToken?.status === "bonded" ? "postbond" : "prebond";
@@ -567,6 +573,41 @@ export async function processTransactionLogs(
           status: "migrating",
           lastUpdated: new Date().toISOString(),
         };
+
+        const connection = new Connection(
+          env.NETWORK === "devnet"
+            ? env.DEVNET_SOLANA_RPC_URL
+            : env.MAINNET_SOLANA_RPC_URL
+        );
+        const wallet = Keypair.fromSecretKey(
+          Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY))
+        );
+        const provider = new AnchorProvider(
+          connection,
+          new Wallet(wallet),
+          AnchorProvider.defaultOptions()
+        );
+        const program = new Program<RaydiumVault>(
+          raydium_vault_IDL as any,
+          provider
+        );
+        const autofunProgram = new Program<Autofun>(IDL as any, provider);
+
+        const tokenMigrator = new TokenMigrator(
+          env,
+          connection,
+          new Wallet(wallet),
+          program,
+          autofunProgram,
+          provider
+        );
+        const token = await getToken(env, mintAddress);
+        if (!token) {
+          logger.error(`Token not found in database: ${mintAddress}`);
+          return result;
+        }
+        tokenMigrator.migrateToken(token);
+
         /** Point System */
         await awardGraduationPoints(env, mintAddress);
         /** End of point system */
