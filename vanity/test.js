@@ -10,11 +10,11 @@ async function testVanityGenerator() {
     const rootText = await rootResponse.text();
     console.log(`Root response: ${rootText}`);
     
-    // Test the auto endpoint (generates a key ending with "auto")
-    console.log('\nTesting /test-auto endpoint...');
+    // Test the endpoint (generates a key ending with "FUN")
+    console.log('\nTesting /test-grind endpoint...');
     console.log('This may take some time depending on the complexity of the target...');
     
-    const autoResponse = await fetch(`${WORKER_URL}/test-auto`);
+    const autoResponse = await fetch(`${WORKER_URL}/test-grind`);
     
     if (!autoResponse.ok) {
       throw new Error(`Error from server: ${autoResponse.status} ${autoResponse.statusText}`);
@@ -31,7 +31,7 @@ async function testVanityGenerator() {
     console.log('\nTesting /grind endpoint with prefix search...');
     
     const prefixRequest = {
-      target: "auto",
+      target: "FUN",
       case_insensitive: false,
       position: "suffix"
     };
@@ -62,7 +62,7 @@ async function testVanityGenerator() {
     console.log('\nTesting /grind endpoint with anywhere search...');
     
     const anywhereRequest = {
-      target: "auto",
+      target: "FUN",
       case_insensitive: false,
       position: "anywhere"
     };

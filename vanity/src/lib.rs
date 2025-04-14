@@ -12,13 +12,13 @@ pub async fn main(req: Request, _env: Env, _ctx: worker::Context) -> Result<Resp
     match url.path() {
         "/" => handle_root().await,
         "/grind" if req.method() == Method::Post => handle_grind(req).await,
-        "/test-auto" => handle_test_auto().await,
+        "/test-grind" => handle_test_auto().await,
         _ => Response::error("Not Found", 404),
     }
 }
 
 async fn handle_root() -> Result<Response> {
-    Response::ok("Vanity Solana Address Generator - POST to /grind or GET /test-auto for a test")
+    Response::ok("Vanity Solana Address Generator - POST to /grind or GET /test-grind for a test")
 }
 
 // Handler for the vanity address generation endpoint
@@ -40,7 +40,7 @@ async fn handle_grind(mut req: Request) -> Result<Response> {
 async fn handle_test_auto() -> Result<Response> {
     // Create a vanity request for a key with the suffix "auto"
     let request = VanityRequest {
-        target: "auto".to_string(),
+        target: "FUN".to_string(),
         case_insensitive: Some(false),
         position: Some("suffix".to_string()),
     };

@@ -22,9 +22,21 @@ export default function Trade({
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
     undefined,
   );
+  const [buyAmount, setBuyAmount] = useState<number | undefined>(undefined);
+  const [sellAmount, setSellAmount] = useState<number | undefined>(undefined);
   const [slippage, setSlippage] = useState<number>(2);
 
   const program = useProgram();
+
+  // Format number to 3 decimal places and remove trailing zeros
+  const formatAmount = (amount: number): number => {
+    if (Number.isInteger(amount)) return amount;
+    // Convert to string with 3 decimal places
+    const formatted = amount.toFixed(3);
+    // Remove trailing zeros and decimal point if needed
+    const clean = formatted.replace(/\.?0+$/, '');
+    return parseFloat(clean);
+  };
 
   // Use blockchain data if available, otherwise fall back to token data
   const solanaPrice = contextSolPrice || token?.solPriceUSD || 0;
@@ -77,6 +89,11 @@ export default function Trade({
     if (!program) return;
 
     setSellingAmount(amount);
+    if (isTokenSelling) {
+      setSellAmount(amount);
+    } else {
+      setBuyAmount(amount);
+    }
 
     const style = isTokenSelling ? 1 : 0;
     const convertedAmount = isTokenSelling ? amount * 1e6 : amount * 1e9;
@@ -125,7 +142,12 @@ export default function Trade({
           {/* BUY/SELL Toggle Buttons */}
           <div className="flex justify-between items-end w-full">
             <button
-              onClick={() => setIsTokenSelling(false)}
+              onClick={() => {
+                if (isTokenSelling) {
+                  setSellingAmount(buyAmount !== undefined ? buyAmount : formatAmount(convertedAmount));
+                }
+                setIsTokenSelling(false);
+              }}
               className="flex items-center justify-center w-1/2 translate-x-[0.12em] cursor-pointer"
             >
               <img
@@ -135,7 +157,12 @@ export default function Trade({
               />
             </button>
             <button
-              onClick={() => setIsTokenSelling(true)}
+              onClick={() => {
+                if (!isTokenSelling) {
+                  setSellingAmount(sellAmount !== undefined ? sellAmount : formatAmount(convertedAmount));
+                }
+                setIsTokenSelling(true);
+              }}
               className="flex items-center justify-center w-1/2 translate-x-[-0.12em] cursor-pointer"
             >
               <img
@@ -173,7 +200,7 @@ export default function Trade({
             </div>
           </div>
 
-          <div className="flex flex-col mt-4">
+          <div className="flex flex-col">
             {/* Selling */}
             <div
               className={twMerge([
@@ -181,14 +208,17 @@ export default function Trade({
                 error ? "border-autofun-text-error" : "",
               ])}
             >
-              <div className="flex justify-between gap-3 relative">
+              <div className="flex justify-between gap-3 relative border-b-1 border-autofun-background-input hover:border-white focus:border-white ">
                 <input
-                  className="text-6xl w-full p-4 truncate border-b-1 border-autofun-background-input hover:border-white focus:border-white font-dm-mono text-white w-3/4 outline-none"
+                  className={`${isTokenSelling ? 'text-4xl' : 'text-6xl'} p-4 overflow-clip font-dm-mono text-white w-3/4 outline-none`}
                   min={0}
                   type="number"
-                  onChange={({ target }) =>
-                    handleSellAmountChange(Number(target.value))
-                  }
+                  onChange={({ target }) => {
+                    const value = target.value;
+                    const [whole, decimal] = value.split('.');
+                    const formattedValue = decimal ? `${whole}.${decimal.slice(0,2)}` : value;
+                    handleSellAmountChange(Number(formattedValue));
+                  }}
                   value={sellingAmount}
                   placeholder="0"
                 />

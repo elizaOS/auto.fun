@@ -53,6 +53,8 @@ export const TVChartContainer = ({
           "header_widget",
           "timeframes_toolbar",
           "header_chart_type",
+          "volume_force_overlay",
+          "use_localstorage_for_settings",
         ],
         disabled_features: [
           ...disabledFeatures,
@@ -61,8 +63,6 @@ export const TVChartContainer = ({
           "header_compare",
           "header_undo_redo",
           "header_screenshot",
-          "use_localstorage_for_settings",
-          "volume_force_overlay",
         ],
         client_id: "tradingview.com",
         user_id: "public_user_id",
