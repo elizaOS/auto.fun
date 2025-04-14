@@ -42,7 +42,6 @@
 //       CODEX_API_KEY: process.env.CODEX_API_KEY || "",
 //       R2: {} as R2Bucket,
 //       R2_PUBLIC_URL: process.env.R2_PUBLIC_URL || "",
-//       ASSET_URL: process.env.ASSET_URL || "",
 //       VITE_API_URL: process.env.VITE_API_URL || "",
 //       FAL_API_KEY: process.env.FAL_API_KEY || "",
 //       AI: { run: async (model: string, inputs: any) => ({}) },

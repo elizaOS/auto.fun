@@ -27,7 +27,7 @@ export interface Env {
   // Cloudflare R2 storage
   R2: R2Bucket;
   R2_PUBLIC_URL: string;
-  ASSET_URL: string; // URL for accessing cached assets
+  API_URL: string; // URL for self, for accessing cached assets
   VITE_API_URL: string; // API URL fallback for assets
   FAL_API_KEY: string;
   LOCAL_DEV: string;
