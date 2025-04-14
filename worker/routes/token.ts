@@ -8,7 +8,7 @@ import {
 import { and, desc, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
-import { monitorSpecificToken, processTransactionLogs } from "../cron";
+import { monitorSpecificToken } from "../cron";
 import {
   getDB,
   swaps,
@@ -19,9 +19,9 @@ import {
   vanityKeypairs,
 } from "../db";
 import { Env } from "../env";
+import { ExternalToken } from "../externalToken";
 import { logger } from "../logger";
-import { getSOLPrice, calculateTokenMarketData } from "../mcap";
-import { getToken } from "../raydium/migration/migrations";
+import { getSOLPrice } from "../mcap";
 import {
   applyFeaturedSort,
   calculateFeaturedScore,
@@ -32,8 +32,6 @@ import {
   getRpcUrl,
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
-import { ImportedToken } from "../importedToken";
-import { handleSignature } from "../tokenSupplyHelpers";
 import { generateAdditionalTokenImages } from "./generation";
 
 // Define the router with environment typing
@@ -809,10 +807,11 @@ export async function processTokenUpdateEvent(
 export async function updateHoldersCache(
   env: Env,
   mint: string,
+  imported: boolean = false,
 ): Promise<number> {
   try {
     // Use the utility function to get the RPC URL with proper API key
-    const connection = new Connection(getRpcUrl(env));
+    const connection = new Connection(getRpcUrl(env, imported));
     const db = getDB(env);
 
     // Get all token accounts for this mint using getParsedProgramAccounts
@@ -1504,13 +1503,13 @@ tokenRouter.get("/token/:mint", async (c) => {
     // const refreshHolders = c.req.query("refresh_holders") === "true";
     // if (refreshHolders) {
     logger.log(`Refreshing holders data for token ${mint}`);
-    await updateHoldersCache(c.env, mint);
+    await updateHoldersCache(c.env, mint, token.imported);
     // }
 
     // Set default values for critical fields if they're missing
     const TOKEN_DECIMALS = token.tokenDecimals || 6;
     const defaultReserveAmount = 1000000000000; // 1 trillion (default token supply)
-    const defaultReserveLamport = Number(c.env.VIRTUAL_RESERVES || 28000000000) ; // 2.8 SOL (default reserve / 28 in mainnet)
+    const defaultReserveLamport = Number(c.env.VIRTUAL_RESERVES || 28000000000); // 2.8 SOL (default reserve / 28 in mainnet)
 
     // Make sure reserveAmount and reserveLamport have values
     token.reserveAmount = token.reserveAmount || defaultReserveAmount;
@@ -1905,8 +1904,8 @@ tokenRouter.post("/create-token", async (c) => {
       };
 
       if (imported) {
-        const importedToken = new ImportedToken(c.env, mintAddress);
-        const { marketData } = await importedToken.updateAllData();
+        const importedToken = new ExternalToken(c.env, mintAddress);
+        const { marketData } = await importedToken.registerWebhook();
         Object.assign(tokenData, marketData.newTokenData);
       } else {
         // For non-imported tokens, generate additional images in the background
@@ -1947,7 +1946,7 @@ tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
     // );
 
     // Update holders for this specific token
-    const holderCount = await updateHoldersCache(c.env, mint);
+    const holderCount = await updateHoldersCache(c.env, mint, token.imported);
 
     return c.json({
       success: true,

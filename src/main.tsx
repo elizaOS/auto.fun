@@ -15,7 +15,11 @@ import CallbackPage from "./pages/callback";
 import PageNotFound from "./pages/not-found";
 
 // if the date is before 2025-04-15, redirect to the old website
-if (new Date() < new Date("2024-04-16T14:00:00-07:00") && !window.location.search.includes("dev") && !window.location.hostname.includes("localhost")) {
+if (
+  new Date() < new Date("2024-04-16T14:00:00-07:00") &&
+  !window.location.search.includes("dev") &&
+  !window.location.hostname.includes("localhost")
+) {
   window.location.href = "https://x.com/autodotfun";
 }
 

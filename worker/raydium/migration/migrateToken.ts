@@ -30,7 +30,7 @@ import {
   releaseMigrationLock,
   LockResult,
 } from "./migrations";
-import {Wallet} from "@coral-xyz/anchor/dist/cjs/provider";
+import { Wallet } from "@coral-xyz/anchor/dist/cjs/provider";
 import { skip } from "node:test";
 import { sign } from "crypto";
 
@@ -124,10 +124,9 @@ export class TokenMigrator {
       //   await this.callResumeWorker(token);
       //   return;
       // }
-     
+
       const steps = this.getMigrationSteps();
       for (const step of steps) {
-
         if (token.migration[step.name]?.status === "success") {
           logger.log(
             `[Migrate] ${step.name} already processed for token ${token.mint}`,
@@ -235,7 +234,6 @@ export class TokenMigrator {
     const withdrawnTokensBN = new BN(withdrawnAmounts.withdrawnTokens);
     console.log("withdrawnSol", withdrawnAmounts.withdrawnSol);
     const withdrawnSolBN = new BN(withdrawnAmounts.withdrawnSol);
-   
 
     // const solFeeAmount = withdrawnSolBN.sub(mintConstantFee);
     const solFeeAmount = new BN(0);
@@ -431,7 +429,7 @@ export class TokenMigrator {
     multisig: PublicKey,
   ): Promise<{ txId: string; extraData: object }> {
     console.log("Sending NFT to manager multisig", nftMinted);
-    if (!signerWallet) { 
+    if (!signerWallet) {
       signerWallet = Keypair.fromSecretKey(
         Uint8Array.from(JSON.parse(this.env.WALLET_PRIVATE_KEY!)),
       );
@@ -455,9 +453,11 @@ export class TokenMigrator {
     claimer_address: PublicKey,
   ): Promise<{ txId: string; extraData: object }> {
     console.log("Depositing NFT to Raydium vault", nftMinted);
-    const signerWallet = this.wallet.payer ?? Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(this.env.WALLET_PRIVATE_KEY!)),
-    );
+    const signerWallet =
+      this.wallet.payer ??
+      Keypair.fromSecretKey(
+        Uint8Array.from(JSON.parse(this.env.WALLET_PRIVATE_KEY!)),
+      );
     const txSignature = await depositToRaydiumVault(
       this.provider,
       signerWallet,

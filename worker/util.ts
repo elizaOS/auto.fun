@@ -24,7 +24,7 @@ import { calculateTokenMarketData, getSOLPrice } from "./mcap";
 import { initSolanaConfig, getProgram } from "./solana";
 import { Autofun } from "./target/types/autofun";
 import { getWebSocketClient } from "./websocket-client";
-import {Wallet} from "./tokenSupplyHelpers/customWallet";
+import { Wallet } from "./tokenSupplyHelpers/customWallet";
 /**
  * Converts a decimal fee (e.g., 0.05 for 5%) to basis points (5% = 500 basis points)
  */
@@ -213,11 +213,10 @@ export async function createNewTokenData(
     const program = getProgram(
       solanaConfig.connection,
       new Wallet(solanaConfig.wallet),
-    )
-    // Fetch the account data directly using the connection instead of Anchor program
-    const bondingCurveAccount = await program.account.bondingCurve.fetchNullable(
-      bondingCurvePda
     );
+    // Fetch the account data directly using the connection instead of Anchor program
+    const bondingCurveAccount =
+      await program.account.bondingCurve.fetchNullable(bondingCurvePda);
 
     let additionalMetadata: TokenMetadataJson | null = null;
     try {
@@ -241,10 +240,9 @@ export async function createNewTokenData(
       );
     }
     console.log("bondingCurveAccount", bondingCurveAccount);
-    console.log("reserveToken", Number(bondingCurveAccount.reserveToken))
-    console.log("reserveLamport", Number(bondingCurveAccount.reserveLamport))
-    console.log("curveLimit", Number(bondingCurveAccount.curveLimit))
-    
+    console.log("reserveToken", Number(bondingCurveAccount.reserveToken));
+    console.log("reserveLamport", Number(bondingCurveAccount.reserveLamport));
+    console.log("curveLimit", Number(bondingCurveAccount.curveLimit));
 
     const currentPrice =
       Number(bondingCurveAccount.reserveToken) > 0
@@ -515,11 +513,11 @@ export const withdrawTx = async (
 };
 
 // Get RPC URL based on the environment
-export const getRpcUrl = (env: any) => {
+export const getRpcUrl = (env: any, forceMainnet: boolean = false) => {
   // Extract the base URL and ensure we use the correct API key
   let baseUrl;
 
-  if (env.NETWORK === "devnet") {
+  if (forceMainnet || env.NETWORK === "devnet") {
     baseUrl = "https://devnet.helius-rpc.com/";
   } else {
     // Default to mainnet

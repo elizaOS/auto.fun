@@ -34,7 +34,7 @@ export default function Trade({
     // Convert to string with 3 decimal places
     const formatted = amount.toFixed(3);
     // Remove trailing zeros and decimal point if needed
-    const clean = formatted.replace(/\.?0+$/, '');
+    const clean = formatted.replace(/\.?0+$/, "");
     return parseFloat(clean);
   };
 
@@ -144,7 +144,11 @@ export default function Trade({
             <button
               onClick={() => {
                 if (isTokenSelling) {
-                  setSellingAmount(buyAmount !== undefined ? buyAmount : formatAmount(convertedAmount));
+                  setSellingAmount(
+                    buyAmount !== undefined
+                      ? buyAmount
+                      : formatAmount(convertedAmount),
+                  );
                 }
                 setIsTokenSelling(false);
               }}
@@ -159,7 +163,11 @@ export default function Trade({
             <button
               onClick={() => {
                 if (!isTokenSelling) {
-                  setSellingAmount(sellAmount !== undefined ? sellAmount : formatAmount(convertedAmount));
+                  setSellingAmount(
+                    sellAmount !== undefined
+                      ? sellAmount
+                      : formatAmount(convertedAmount),
+                  );
                 }
                 setIsTokenSelling(true);
               }}
@@ -210,13 +218,15 @@ export default function Trade({
             >
               <div className="flex justify-between gap-3 relative border-b-1 border-autofun-background-input hover:border-white focus:border-white ">
                 <input
-                  className={`${isTokenSelling ? 'text-4xl' : 'text-6xl'} p-4 overflow-clip font-dm-mono text-white w-3/4 outline-none`}
+                  className={`${isTokenSelling ? "text-4xl" : "text-6xl"} p-4 overflow-clip font-dm-mono text-white w-3/4 outline-none`}
                   min={0}
                   type="number"
                   onChange={({ target }) => {
                     const value = target.value;
-                    const [whole, decimal] = value.split('.');
-                    const formattedValue = decimal ? `${whole}.${decimal.slice(0,2)}` : value;
+                    const [whole, decimal] = value.split(".");
+                    const formattedValue = decimal
+                      ? `${whole}.${decimal.slice(0, 2)}`
+                      : value;
                     handleSellAmountChange(Number(formattedValue));
                   }}
                   value={sellingAmount}

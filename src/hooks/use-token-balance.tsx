@@ -46,23 +46,19 @@ export const useTokenBalance = ({ tokenId }: { tokenId: string }) => {
     if (!publicKey || !connection || !program) return;
 
     const fetchTokenBalance = async () => {
-      try {
-        const tokenMint = new PublicKey(tokenId);
-        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-          publicKey,
-          { mint: tokenMint },
-        );
+      console.log("Fetching token balance for", tokenId);
+      const tokenMint = new PublicKey(tokenId);
+      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+        publicKey,
+        { mint: tokenMint },
+      );
 
-        const balance =
-          tokenAccounts.value.length > 0
-            ? tokenAccounts.value[0].account.data.parsed.info.tokenAmount
-                .uiAmount
-            : 0;
+      const balance =
+        tokenAccounts.value.length > 0
+          ? tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount
+          : 0;
 
-        setTokenBalance(balance);
-      } catch (error) {
-        console.error("Error fetching token balance:", error);
-      }
+      setTokenBalance(balance);
     };
 
     fetchTokenBalance();

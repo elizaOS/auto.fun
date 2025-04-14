@@ -25,4 +25,3 @@ export class Wallet implements CustomWallet {
     return txs;
   }
 }
-
