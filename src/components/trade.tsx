@@ -390,7 +390,7 @@ const TokenDisplay = ({
       <SkeletonImage
         src={isSolana ? "/solana.svg" : token?.image || ""}
         alt={token?.name || "token"}
-        className="size-6"
+        className="size-4"
       />
       <span className="text-xl uppercase font-dm-mono tracking-wider font-bold">
         {isSolana ? "SOL" : token?.ticker}

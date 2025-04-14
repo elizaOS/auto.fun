@@ -267,8 +267,8 @@ export default function Page() {
                   "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5",
                 )}
               >
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex space-x-2  flex-row items-center gap-1">
+                <div className="flex flex-wrap items-center justify-start w-full gap-2">
+                  <div className="flex flex-wrap items-center gap-1">
                     {isPartner ? (
                       <>
                         <div
@@ -281,7 +281,6 @@ export default function Page() {
                             alt="verified-mark"
                           />
                         </div>
-
                         <Tooltip
                           anchorSelect="#partner-token"
                           content="Verified by Auto.fun"
@@ -290,7 +289,7 @@ export default function Page() {
                         />
                       </>
                     ) : null}
-                    <h3 className="capitalize text-white text-2xl font-bold font-satoshi leading-tight truncate pr-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                    <h3 className="capitalize text-white text-xl sm:text-2xl font-bold font-satoshi leading-tight truncate pr-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] max-w-[180px] sm:max-w-none">
                       {token?.name}
                     </h3>
                     <Tooltip anchorSelect="#view-on-solscan">
@@ -304,7 +303,7 @@ export default function Page() {
                       <ExternalLink className="size-5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
                     </Link>
                   </div>
-                  <div className="shrink-0 ml-1">
+                  <div className="shrink-0 ml-auto">
                     <TokenStatus token={token} />
                   </div>
                 </div>
