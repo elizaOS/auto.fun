@@ -41,15 +41,11 @@ const WalletButton = () => {
       typeof window !== "undefined" &&
       window.solana?.isPhantom
     ) {
-      try {
-        // Create a fresh adapter to get the icon
-        const adapter = new PhantomWalletAdapter();
-        // PhantomWalletAdapter initializes immediately with the icon property
-        if (adapter.icon) {
-          setWalletIcon(adapter.icon);
-        }
-      } catch (e) {
-        console.error("Error creating wallet adapter for icon:", e);
+      // Create a fresh adapter to get the icon
+      const adapter = new PhantomWalletAdapter();
+      // PhantomWalletAdapter initializes immediately with the icon property
+      if (adapter.icon) {
+        setWalletIcon(adapter.icon);
       }
     }
   }, [connected, isAuthenticated, walletIcon]);
@@ -106,22 +102,18 @@ const WalletButton = () => {
         window.solana &&
         window.solana.isPhantom
       ) {
-        try {
-          window.solana
-            .connect()
-            .then((_response: any) => {
-              // Try to load icon if not yet loaded
-              if (!walletIcon) {
-                const adapter = new PhantomWalletAdapter();
-                if (adapter.icon) {
-                  setWalletIcon(adapter.icon);
-                }
+        window.solana
+          .connect()
+          .then((_response: any) => {
+            // Try to load icon if not yet loaded
+            if (!walletIcon) {
+              const adapter = new PhantomWalletAdapter();
+              if (adapter.icon) {
+                setWalletIcon(adapter.icon);
               }
-            })
-            .catch((err: any) => console.error("Error auto-connecting:", err));
-        } catch (e) {
-          console.error("Error during auto-connect attempt:", e);
-        }
+            }
+          })
+          .catch((err: any) => console.error("Error auto-connecting:", err));
       }
     }
   }, [
@@ -142,22 +134,18 @@ const WalletButton = () => {
         window.solana.isPhantom &&
         !window.solana.publicKey
       ) {
-        try {
-          window.solana
-            .connect()
-            .then(() => {
-              // Try to load icon if not yet loaded
-              if (!walletIcon) {
-                const adapter = new PhantomWalletAdapter();
-                if (adapter.icon) {
-                  setWalletIcon(adapter.icon);
-                }
+        window.solana
+          .connect()
+          .then(() => {
+            // Try to load icon if not yet loaded
+            if (!walletIcon) {
+              const adapter = new PhantomWalletAdapter();
+              if (adapter.icon) {
+                setWalletIcon(adapter.icon);
               }
-            })
-            .catch((err: any) => console.error("Error auto-connecting:", err));
-        } catch (e) {
-          console.error("Error during auto-connect attempt:", e);
-        }
+            }
+          })
+          .catch((err: any) => console.error("Error auto-connecting:", err));
       }
     }
   }, [isAuthenticated, isAuthenticating, authToken, walletIcon]);
@@ -179,13 +167,9 @@ const WalletButton = () => {
 
   // Handle disconnect with proper cleanup
   const handleDisconnect = async () => {
-    try {
-      signOut(); // This will handle both adapter and direct Phantom disconnection
-      setMenuOpen(false);
-      setWalletIcon(null);
-    } catch (error) {
-      console.error("Error disconnecting wallet:", error);
-    }
+    signOut(); // This will handle both adapter and direct Phantom disconnection
+    setMenuOpen(false);
+    setWalletIcon(null);
   };
 
   // Determine button text based on connection state

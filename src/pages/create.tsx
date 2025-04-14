@@ -2274,19 +2274,13 @@ export const Create = () => {
       }
 
       // Wait for token creation to be confirmed
-      try {
-        console.log("Waiting for token creation confirmation...");
-        await waitForTokenCreation(tokenMint);
-        console.log("Token creation confirmed");
+      console.log("Waiting for token creation confirmation...");
+      await waitForTokenCreation(tokenMint);
+      console.log("Token creation confirmed");
 
-        // Trigger confetti to celebrate successful minting
-        if (window.createConfettiFireworks) {
-          window.createConfettiFireworks();
-        }
-      } catch (waitError) {
-        console.error("Error waiting for token creation:", waitError);
-        // We still continue to the token page even if this fails
-        console.warn("Continuing despite token creation confirmation failure");
+      // Trigger confetti to celebrate successful minting
+      if (window.createConfettiFireworks) {
+        window.createConfettiFireworks();
       }
 
       // Clear imported token data from localStorage if it exists

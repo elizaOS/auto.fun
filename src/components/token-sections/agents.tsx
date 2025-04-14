@@ -155,7 +155,6 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
         if (!agentsResponse.ok) {
           // Try to get error message from body (use responseText now)
           let errorMsg = `Failed to fetch token agents: ${agentsResponse.statusText}`;
-          try {
             const errorBody = JSON.parse(responseText); // Parse the logged text
             if (
               errorBody &&
@@ -165,9 +164,6 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
             ) {
               errorMsg = (errorBody as any).error;
             }
-          } catch (e) {
-            /* Ignore if body isn't json */
-          }
           throw new Error(errorMsg);
         }
 
@@ -284,7 +280,6 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
         return;
       }
 
-      try {
         // Ensure wallet is connected before proceeding
         if (!publicKey) {
           // Check if this is being called from callback - if so, we may need to wait for wallet connection
@@ -368,7 +363,6 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
             errorText,
           );
 
-          try {
             // Try to parse error as JSON
             const errorData = JSON.parse(errorText);
 
@@ -399,10 +393,6 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
               }
               return;
             }
-          } catch (parseError) {
-            // If JSON parsing fails, use the raw text
-            console.error("Error parsing JSON response:", parseError);
-          }
 
           throw new Error(errorText || "Failed to connect Twitter agent");
         }
@@ -467,12 +457,6 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
             .catch((error) => console.error("Error refreshing agents:", error))
             .finally(() => setIsAgentsLoading(false));
         }, 1000);
-      } catch (error) {
-        console.error("Failed to connect Twitter agent:", error);
-        toast.error(
-          `Failed to connect: ${error instanceof Error ? error.message : "Unknown error"}`,
-        );
-      }
     },
     [tokenMint, publicKey, API_BASE_URL, setTokenAgents, setIsAgentsLoading],
   );

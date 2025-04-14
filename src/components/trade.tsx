@@ -389,7 +389,7 @@ export default function Trade({
             >
               <img
                 src={
-                  isExecutingSwap ? "/token/swapping.svg" : "/token/swapup.svg"
+                  isExecutingSwap ? "/token/swapdown.svg" : "/token/swapup.svg"
                 }
                 alt="Generate"
                 className="w-full"
