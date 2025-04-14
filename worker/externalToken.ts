@@ -3,6 +3,7 @@ import {
   AlertRecurrence,
   EventDisplayType,
   SwapEventData,
+  TokenPairEventType,
 } from "@codex-data/sdk/dist/sdk/generated/graphql";
 import { Env } from "./env";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
@@ -30,8 +31,8 @@ export class ExternalToken {
     this.env = env;
   }
 
-  public async register(): Promise<void> {
-    const securityToken = process.env.CODEX_WEBHOOK_AUTH_TOKEN;
+  public async registerWebhook() {
+    const securityToken = this.env.CODEX_WEBHOOK_AUTH_TOKEN;
     if (!securityToken) {
       throw new Error("missing CODEX_WEBHOOK_AUTH_TOKEN env var");
     }
@@ -39,24 +40,26 @@ export class ExternalToken {
     try {
       await this.sdk.mutations.createWebhooks({
         input: {
-          priceWebhooksInput: {
+          tokenPairEventWebhooksInput: {
             webhooks: [
               {
                 alertRecurrence: AlertRecurrence.Indefinite,
-                callbackUrl: `${this.env.VITE_API_URL}/api/codex-webhook`,
+                // callbackUrl: `${this.env.VITE_API_URL}/api/codex-webhook`,
+                callbackUrl: `https://out-charitable-remain-declined.trycloudflare.com/api/codex-webhook`,
                 conditions: {
                   tokenAddress: {
                     eq: this.mint,
                   },
                   networkId: {
-                    eq: SOLANA_NETWORK_ID,
+                    oneOf: [SOLANA_NETWORK_ID],
                   },
-                  priceUsd: {
-                    gte: "0",
-                  },
+                  eventType: {
+                    oneOf: [TokenPairEventType.Buy, TokenPairEventType.Sell]
+                  }
                 },
                 name: this.mint,
                 securityToken,
+                deduplicate: true
               },
             ],
           },
@@ -64,7 +67,8 @@ export class ExternalToken {
       });
 
       // Fetch and store initial data
-      await this.updateAllData();
+      const updatedData = await this.updateAllData();
+      return updatedData
     } catch (error) {
       console.error(`Failed to register token ${this.mint}:`, error);
       throw error;

@@ -1854,7 +1854,7 @@ tokenRouter.post("/create-token", async (c) => {
 
       if (imported) {
         const importedToken = new ExternalToken(c.env, mintAddress);
-        const { marketData } = await importedToken.updateAllData();
+        const { marketData } = await importedToken.registerWebhook();
         Object.assign(tokenData, marketData.newTokenData);
       }
 
