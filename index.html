@@ -1,12 +1,78 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Autofun</title>
+    <meta charset="utf-8" />
+    <title>autodotfun</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="stylesheet" type="text/css" href="/css/simple_console.css" />
+    <style type="text/css" media="screen">
+      html,
+      body {
+        padding: 0;
+        margin: 0;
+        font-size: 1em;
+        line-height: 1.2;
+        font-family: "Simple Console", monospace;
+        background-color: black;
+        height: 100%;
+        overflow: hidden;
+      }
+      pre {
+        position: absolute;
+        margin: 0;
+        padding: 0;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        font-family: inherit;
+        font-size: 16px;
+      }
+      pre span:empty {
+        display: none;
+      }
+      img {
+        position: fixed;
+        display: block;
+        margin: 0 auto;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        height: 100px;
+      }
+      /* Responsive adjustments */
+      @media screen and (max-width: 768px) {
+        pre {
+          font-size: 8px; /* Smaller font on mobile */
+        }
+        img {
+          height: 80px; /* Slightly smaller logo on mobile */
+        }
+      }
+    </style>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <pre>
+		    <img src="./logo.jpg" />
+	  </pre>
+    <script type="module">
+      import { run } from "./run.js";
+      import * as program from "./spiral.js";
+      run(program, { element: document.querySelector("pre") })
+        .then(function (e) {
+          console.log(e);
+        })
+        .catch(function (e) {
+          console.warn(e.message);
+          console.log(e.error);
+        });
+    </script>
   </body>
 </html>
