@@ -15,7 +15,7 @@ import {
 import { Env } from "../env";
 import { logger } from "../logger";
 import { MediaGeneration } from "../types";
-import { uploadToCloudflare } from "../uploader";
+import { uploadGeneratedImage } from "../uploader";
 import { getRpcUrl } from "../util";
 import { createTokenPrompt } from "./generation-prompts/create-token";
 import { enhancePrompt } from "./generation-prompts/enhance-prompt";
@@ -2433,6 +2433,86 @@ async function generateEnhancedPrompt(
 
     // Return a fallback that combines the inputs directly
     return `${tokenMetadata.name} (${tokenMetadata.symbol}): ${userPrompt}`;
+  }
+}
+
+// Function to generate additional images for a token
+export async function generateAdditionalTokenImages(
+  env: Env,
+  tokenMint: string,
+  description: string,
+): Promise<void> {
+  try {
+    logger.log(`Generating additional images for token ${tokenMint}`);
+
+    // Generate enhanced prompts for each image
+    const enhancedPrompts = await Promise.all([
+      generateEnhancedPrompt(
+        env,
+        description,
+        { name: "", symbol: "", description },
+        MediaType.IMAGE,
+      ),
+      generateEnhancedPrompt(
+        env,
+        description,
+        { name: "", symbol: "", description },
+        MediaType.IMAGE,
+      ),
+      generateEnhancedPrompt(
+        env,
+        description,
+        { name: "", symbol: "", description },
+        MediaType.IMAGE,
+      ),
+    ]);
+
+    // Generate and upload each image in parallel
+    await Promise.all(
+      enhancedPrompts.map(async (prompt, index) => {
+        if (!prompt) {
+          logger.error(
+            `Failed to generate enhanced prompt ${index + 1} for token ${tokenMint}`,
+          );
+          return;
+        }
+
+        try {
+          // Generate the image
+          const imageResult = await generateMedia(env, {
+            prompt,
+            type: MediaType.IMAGE,
+          });
+
+          if (!imageResult?.data?.images?.[0]?.url) {
+            throw new Error("No image URL in generation result");
+          }
+
+          // Convert data URL to buffer
+          const imageUrl = imageResult.data.images[0].url;
+          const base64Data = imageUrl.split(",")[1];
+          const imageBuffer = Buffer.from(base64Data, "base64");
+
+          // Upload to R2 with predictable path
+          await uploadGeneratedImage(env, imageBuffer, tokenMint, index + 1);
+          logger.log(
+            `Successfully generated and uploaded image ${index + 1} for token ${tokenMint}`,
+          );
+        } catch (error) {
+          logger.error(
+            `Error generating/uploading image ${index + 1} for token ${tokenMint}:`,
+            error,
+          );
+        }
+      }),
+    );
+
+    logger.log(`Completed generating additional images for token ${tokenMint}`);
+  } catch (error) {
+    logger.error(
+      `Error in generateAdditionalTokenImages for ${tokenMint}:`,
+      error,
+    );
   }
 }
 

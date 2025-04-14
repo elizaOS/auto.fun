@@ -34,6 +34,7 @@ import {
 import { getWebSocketClient } from "../websocket-client";
 import { ImportedToken } from "../importedToken";
 import { handleSignature } from "../tokenSupplyHelpers";
+import { generateAdditionalTokenImages } from "./generation";
 
 // Define the router with environment typing
 const tokenRouter = new Hono<{
@@ -58,8 +59,25 @@ tokenRouter.get("/image/:filename", async (c) => {
       return c.json({ error: "R2 storage is not available" }, 500);
     }
 
-    // IMPORTANT: Use the correct path - all files are in token-images directory
-    const imageKey = `token-images/${filename}`;
+    // Check if this is a special generation image request
+    // Format: generation-[mint]-[number].jpg
+    const generationMatch = filename.match(
+      /^generation-([A-Za-z0-9]{32,44})-([1-9][0-9]*)\.jpg$/,
+    );
+
+    let imageKey;
+    if (generationMatch) {
+      const [_, mint, number] = generationMatch;
+      // This is a special request for a generation image
+      imageKey = `generations/${mint}/gen-${number}.jpg`;
+      logger.log(
+        `[/image/:filename] Detected generation image request: ${imageKey}`,
+      );
+    } else {
+      // Regular image request
+      imageKey = `token-images/${filename}`;
+    }
+
     logger.log(
       `[/image/:filename] Attempting to get object from R2 key: ${imageKey}`,
     );
@@ -72,16 +90,17 @@ tokenRouter.get("/image/:filename", async (c) => {
 
       // DEBUG: List files in the token-images directory to help diagnose issues
       try {
+        const prefix = imageKey.split("/")[0] + "/";
         const objects = await c.env.R2.list({
-          prefix: "token-images/",
+          prefix,
           limit: 10,
         });
         logger.log(
-          `[/image/:filename] Files in token-images directory: ${objects.objects.map((o) => o.key).join(", ")}`,
+          `[/image/:filename] Files in ${prefix} directory: ${objects.objects.map((o) => o.key).join(", ")}`,
         );
       } catch (listError) {
         logger.error(
-          `[/image/:filename] Error listing files in token-images: ${listError}`,
+          `[/image/:filename] Error listing files in directory: ${listError}`,
         );
       }
 
@@ -975,8 +994,25 @@ tokenRouter.get("/image/:filename", async (c) => {
       return c.json({ error: "R2 storage is not available" }, 500);
     }
 
-    // IMPORTANT: Use the correct path - all files are in token-images directory
-    const imageKey = `token-images/${filename}`;
+    // Check if this is a special generation image request
+    // Format: generation-[mint]-[number].jpg
+    const generationMatch = filename.match(
+      /^generation-([A-Za-z0-9]{32,44})-([1-9][0-9]*)\.jpg$/,
+    );
+
+    let imageKey;
+    if (generationMatch) {
+      const [_, mint, number] = generationMatch;
+      // This is a special request for a generation image
+      imageKey = `generations/${mint}/gen-${number}.jpg`;
+      logger.log(
+        `[/image/:filename] Detected generation image request: ${imageKey}`,
+      );
+    } else {
+      // Regular image request
+      imageKey = `token-images/${filename}`;
+    }
+
     logger.log(
       `[/image/:filename] Attempting to get object from R2 key: ${imageKey}`,
     );
@@ -989,16 +1025,17 @@ tokenRouter.get("/image/:filename", async (c) => {
 
       // DEBUG: List files in the token-images directory to help diagnose issues
       try {
+        const prefix = imageKey.split("/")[0] + "/";
         const objects = await c.env.R2.list({
-          prefix: "token-images/",
+          prefix,
           limit: 10,
         });
         logger.log(
-          `[/image/:filename] Files in token-images directory: ${objects.objects.map((o) => o.key).join(", ")}`,
+          `[/image/:filename] Files in ${prefix} directory: ${objects.objects.map((o) => o.key).join(", ")}`,
         );
       } catch (listError) {
         logger.error(
-          `[/image/:filename] Error listing files in token-images: ${listError}`,
+          `[/image/:filename] Error listing files in directory: ${listError}`,
         );
       }
 
@@ -1422,6 +1459,47 @@ tokenRouter.get("/token/:mint", async (c) => {
       return c.json(updatedToken[0]);
     }
 
+    // Check for additional images and generate if needed
+    // This will run in the background without delaying the response
+    if (Number(token.imported) === 0) {
+      try {
+        // Check if generation images exist
+        const generationImagesPrefix = `generations/${mint}/`;
+        let hasGenerationImages = false;
+
+        if (c.env.R2) {
+          const objects = await c.env.R2.list({
+            prefix: generationImagesPrefix,
+            limit: 1,
+          });
+
+          hasGenerationImages = objects.objects.length > 0;
+          logger.log(
+            `Token ${mint} has generation images: ${hasGenerationImages}`,
+          );
+
+          if (!hasGenerationImages) {
+            // Generate additional images in the background
+            c.executionCtx.waitUntil(
+              generateAdditionalTokenImages(
+                c.env,
+                mint,
+                token.description || "",
+              ),
+            );
+            logger.log(
+              `Initiated background generation of additional images for token ${mint}`,
+            );
+          }
+        }
+      } catch (imageCheckError) {
+        logger.error(
+          `Error checking for generation images: ${imageCheckError}`,
+        );
+        // Don't block the response if this check fails
+      }
+    }
+
     // Only refresh holder data if explicitly requested
     // const refreshHolders = c.req.query("refresh_holders") === "true";
     // if (refreshHolders) {
@@ -1766,46 +1844,13 @@ tokenRouter.post("/create-token", async (c) => {
       .limit(1);
 
     if (existingToken && existingToken.length > 0) {
-      // Update all fields if token exists
-      await db
-        .update(tokens)
-        .set({
-          name: name || existingToken[0].name,
-          ticker: symbol || existingToken[0].ticker,
-          description: description || existingToken[0].description,
-          twitter: twitter || existingToken[0].twitter,
-          telegram: telegram || existingToken[0].telegram,
-          website: website || existingToken[0].website,
-          discord: discord || existingToken[0].discord,
-          image: imageUrl || existingToken[0].image,
-          url: metadataUrl || existingToken[0].url,
-          lastUpdated: new Date().toISOString(),
-        })
-        .where(eq(tokens.mint, mintAddress));
-
-      logger.log(`Updated token ${mintAddress} with new data`);
-
-      // Return the updated token
-      const updatedToken = {
-        ...existingToken[0],
-        name: name || existingToken[0].name,
-        ticker: symbol || existingToken[0].ticker,
-        description: description || existingToken[0].description,
-        twitter: twitter || existingToken[0].twitter,
-        telegram: telegram || existingToken[0].telegram,
-        website: website || existingToken[0].website,
-        discord: discord || existingToken[0].discord,
-        image: imageUrl || existingToken[0].image,
-        url: metadataUrl || existingToken[0].url,
-        imported: existingToken[0].imported || 0,
-      };
-
-      return c.json({
-        success: true,
-        tokenFound: true,
-        message: "Token exists and data updated",
-        token: updatedToken,
-      });
+      return c.json(
+        {
+          error: "Token already exists",
+          token: existingToken[0],
+        },
+        409,
+      );
     }
 
     try {
@@ -1836,7 +1881,7 @@ tokenRouter.post("/create-token", async (c) => {
         createdAt: now,
         lastUpdated: now,
         txId: txId || "create-" + tokenId,
-        imported: importedValue.toString(),
+        imported: importedValue,
       });
 
       // For response, include just what we need
@@ -1863,50 +1908,24 @@ tokenRouter.post("/create-token", async (c) => {
         const importedToken = new ImportedToken(c.env, mintAddress);
         const { marketData } = await importedToken.updateAllData();
         Object.assign(tokenData, marketData.newTokenData);
+      } else {
+        // For non-imported tokens, generate additional images in the background
+        c.executionCtx.waitUntil(
+          generateAdditionalTokenImages(c.env, mintAddress, description || ""),
+        );
       }
 
-      // Emit WebSocket event
-      try {
-        const wsClient = getWebSocketClient(c.env);
-        await wsClient.emit("global", "newToken", {
-          ...tokenData,
-          timestamp: new Date(),
-        });
-        logger.log(`WebSocket event emitted for token ${mintAddress}`);
-      } catch (wsError) {
-        // Don't fail if WebSocket fails
-        logger.error(`WebSocket error: ${wsError}`);
-      }
-
-      return c.json({
-        success: true,
-        token: tokenData,
-        message: "Token created successfully",
-      });
-    } catch (dbError) {
-      logger.error(`Database error creating token: ${dbError}`);
+      return c.json({ success: true, token: tokenData });
+    } catch (error) {
+      logger.error("Error creating token:", error);
       return c.json(
-        {
-          success: false,
-          error: "Failed to create token in database",
-          details:
-            dbError instanceof Error
-              ? dbError.message
-              : "Unknown database error",
-        },
+        { error: "Failed to create token record", details: error },
         500,
       );
     }
   } catch (error) {
-    logger.error("Error creating token:", error);
-    return c.json(
-      {
-        success: false,
-        error: "Failed to create token",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      500,
-    );
+    logger.error("Error in create-token endpoint:", error);
+    return c.json({ error: "Internal server error", details: error }, 500);
   }
 });
 
@@ -2946,6 +2965,74 @@ tokenRouter.post("/vanity-keypair", async (c) => {
           error instanceof Error
             ? error.message
             : "Failed to process vanity keypair request",
+      },
+      500,
+    );
+  }
+});
+
+// Check for generated images on a token by mint address in R2
+tokenRouter.get("/check-generated-images/:mint", async (c) => {
+  try {
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    if (!c.env.R2) {
+      logger.error("R2 storage is not available");
+      return c.json({ images: [] }, 200); // Return empty list if R2 not available
+    }
+
+    // Check for generated images in R2
+    const generationImagesPrefix = `generations/${mint}/`;
+    logger.log(
+      `Checking for generated images with prefix: ${generationImagesPrefix}`,
+    );
+
+    // Try to list objects with the given prefix
+    try {
+      const objects = await c.env.R2.list({
+        prefix: generationImagesPrefix,
+        limit: 10, // Reasonable limit
+      });
+
+      // Extract the filenames from the full paths
+      const imageKeys = objects.objects.map((obj) => {
+        const parts = obj.key.split("/");
+        return parts[parts.length - 1]; // Get just the filename
+      });
+
+      logger.log(
+        `Found ${imageKeys.length} generated images for token ${mint}`,
+      );
+
+      // For security, we don't return the full image keys but just the existence
+      // and let the frontend construct URLs based on naming conventions
+      return c.json({
+        success: true,
+        hasImages: imageKeys.length > 0,
+        count: imageKeys.length,
+        pattern:
+          imageKeys.length > 0
+            ? `generations/${mint}/gen-[1-${imageKeys.length}].jpg`
+            : null,
+      });
+    } catch (error) {
+      logger.error(`Error listing generated images: ${error}`);
+      return c.json({
+        success: false,
+        hasImages: false,
+        error: "Failed to list generated images",
+      });
+    }
+  } catch (error) {
+    logger.error(`Error checking generated images: ${error}`);
+    return c.json(
+      {
+        success: false,
+        hasImages: false,
+        error: "Server error",
       },
       500,
     );
