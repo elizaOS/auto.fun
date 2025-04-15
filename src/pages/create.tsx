@@ -1027,7 +1027,6 @@ export const Create = () => {
       return () => clearTimeout(timeoutId);
     }
     // Note: We're ignoring the linter warnings about dependencies here
-     
   }, [activeTab, isGeneratingVanity, vanityResult, vanitySuffix, suffixError]);
 
   // Update mode-specific state when main form changes
@@ -2587,7 +2586,10 @@ export const Create = () => {
           if (token.image) {
             // Transform R2 URLs to use local endpoint if needed
             let imageUrl = token.image;
-            if (imageUrl.includes("r2.dev") && env.apiUrl?.includes("localhost")) {
+            if (
+              imageUrl.includes("r2.dev") &&
+              env.apiUrl?.includes("localhost")
+            ) {
               // Extract the filename from the R2 URL
               const filename = imageUrl.split("/").pop();
               // Use local endpoint instead
