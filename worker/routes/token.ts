@@ -1502,14 +1502,14 @@ tokenRouter.get("/token/:mint", async (c) => {
     // Only refresh holder data if explicitly requested
     // const refreshHolders = c.req.query("refresh_holders") === "true";
     // if (refreshHolders) {
+    const imported = Number(token.imported) === 1;
     logger.log(`Refreshing holders data for token ${mint}`);
-    await updateHoldersCache(c.env, mint, token.imported);
+    await updateHoldersCache(c.env, mint, imported);
     // }
 
     // Set default values for critical fields if they're missing
     const TOKEN_DECIMALS = token.tokenDecimals || 6;
     const defaultReserveAmount = 1000000000000; // 1 trillion (default token supply)
-    const defaultReserveLamport = Number(c.env.VIRTUAL_RESERVES || 28000000000); // 2.8 SOL (default reserve / 28 in mainnet)
     const defaultReserveLamport = Number(c.env.VIRTUAL_RESERVES || 28000000000); // 2.8 SOL (default reserve / 28 in mainnet)
 
     // Make sure reserveAmount and reserveLamport have values
@@ -1948,7 +1948,8 @@ tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
     // );
 
     // Update holders for this specific token
-    const holderCount = await updateHoldersCache(c.env, mint, token.imported);
+    const imported = Number(c.req.query("imported") || 0) === 1;
+    const holderCount = await updateHoldersCache(c.env, mint, imported);
 
     return c.json({
       success: true,
