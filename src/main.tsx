@@ -21,26 +21,24 @@ if (
   !window.location.hostname.includes("localhost")
 ) {
   window.location.href = "https://x.com/autodotfun";
-}
- else {
-
-createRoot(document.getElementById("root")!).render(
-  <BrowserRouter>
-    <Routes>
-      <Route element={<Layout />}>
-        <Route index element={<Homepage />} />
-        <Route path="/support" element={<Support />} />
-        <Route path="/terms-of-service" element={<TermsOfService />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-        <Route path="/fees" element={<Fees />} />
-        <Route path="/token/:address" element={<Token />} />
-        <Route path="/create" element={<Create />} />
-        <Route path="/testing" element={<Testing />} />
-        <Route path="/callback" element={<CallbackPage />} />
-        <Route path="*" element={<PageNotFound />} />
-      </Route>
-    </Routes>
-  </BrowserRouter>,
-);
+} else {
+  createRoot(document.getElementById("root")!).render(
+    <BrowserRouter>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<Homepage />} />
+          <Route path="/support" element={<Support />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/fees" element={<Fees />} />
+          <Route path="/token/:address" element={<Token />} />
+          <Route path="/create" element={<Create />} />
+          <Route path="/testing" element={<Testing />} />
+          <Route path="/callback" element={<CallbackPage />} />
+          <Route path="*" element={<PageNotFound />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>,
+  );
 }

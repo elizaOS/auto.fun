@@ -2,7 +2,7 @@ import { env } from "@/utils/env";
 import { useCallback, useEffect, useState, useRef } from "react"; // Added useRef
 // --- Vanity Generator Logic ---
 // Import the worker using Vite's ?worker syntax
-import InlineVanityWorker from '@/workers/vanityWorker?worker&inline';
+import InlineVanityWorker from "@/workers/vanityWorker?worker&inline";
 
 // Storage keys
 const STORAGE_KEY = "twitter-oauth-token";
@@ -27,7 +27,13 @@ type VanityResult = {
   secretKey: string;
 };
 type WorkerMessage =
-  | { type: "found"; workerId: number; publicKey: string; secretKey: string; validated: boolean }
+  | {
+      type: "found";
+      workerId: number;
+      publicKey: string;
+      secretKey: string;
+      validated: boolean;
+    }
   | { type: "progress"; workerId: number; count: number }
   | { type: "error"; workerId: number; error: string };
 
@@ -47,7 +53,9 @@ export default function TwitterSharePage() {
   // --- Vanity Generator State ---
   const [vanitySuffix, setVanitySuffix] = useState("fun");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [vanityLogs, setVanityLogs] = useState<string[]>(["Ready to start generating."]);
+  const [vanityLogs, setVanityLogs] = useState<string[]>([
+    "Ready to start generating.",
+  ]);
   const [vanityResult, setVanityResult] = useState<VanityResult | null>(null);
   const [totalAttempts, setTotalAttempts] = useState(0);
   const [generationRate, setGenerationRate] = useState(0);
@@ -59,15 +67,14 @@ export default function TwitterSharePage() {
   // --- Helper to add logs ---
   const addVanityLog = useCallback((message: string) => {
     setVanityLogs((prevLogs) => {
-        // Keep logs reasonable, e.g., max 100 entries
-        const newLogs = [...prevLogs, message];
-        if (newLogs.length > 100) {
-            return newLogs.slice(newLogs.length - 100);
-        }
-        return newLogs;
+      // Keep logs reasonable, e.g., max 100 entries
+      const newLogs = [...prevLogs, message];
+      if (newLogs.length > 100) {
+        return newLogs.slice(newLogs.length - 100);
+      }
+      return newLogs;
     });
   }, []);
-
 
   // --- Twitter Effects & Logic ---
   useEffect(() => {
@@ -116,7 +123,9 @@ export default function TwitterSharePage() {
           }
           localStorage.removeItem(PENDING_SHARE_KEY);
         } catch (error) {
-          setShareError(error instanceof Error ? error.message : "Failed to process share");
+          setShareError(
+            error instanceof Error ? error.message : "Failed to process share",
+          );
         }
       }
       globalThis.history.replaceState({}, "", globalThis.location.pathname);
@@ -131,31 +140,38 @@ export default function TwitterSharePage() {
     setShareError(null);
   }, []);
 
-  const handleTwitterShare = useCallback(async ( // Added useCallback wrapper
-    text: string,
-    imageData: string,
-    creds: Credentials,
-  ) => {
-    try {
-      if (creds.expiresAt < Date.now()) {
-        setTokenStatus("expired");
-        throw new Error("Twitter authentication expired. Please log in again.");
-      }
-      setShareError(null);
+  const handleTwitterShare = useCallback(
+    async (
+      // Added useCallback wrapper
+      text: string,
+      imageData: string,
+      creds: Credentials,
+    ) => {
       try {
-        const mediaId = await uploadImage(imageData, creds.accessToken);
-        await postTweet(text, mediaId, creds.accessToken);
-        setShareSuccess(true);
+        if (creds.expiresAt < Date.now()) {
+          setTokenStatus("expired");
+          throw new Error(
+            "Twitter authentication expired. Please log in again.",
+          );
+        }
+        setShareError(null);
+        try {
+          const mediaId = await uploadImage(imageData, creds.accessToken);
+          await postTweet(text, mediaId, creds.accessToken);
+          setShareSuccess(true);
+        } catch (error) {
+          setShareError(
+            error instanceof Error ? error.message : "Share failed",
+          );
+          throw error;
+        }
       } catch (error) {
         setShareError(error instanceof Error ? error.message : "Share failed");
         throw error;
       }
-    } catch (error) {
-      setShareError(error instanceof Error ? error.message : "Share failed");
-      throw error;
-    }
-  }, [setTokenStatus, setShareError, setShareSuccess]); // Added dependencies
-
+    },
+    [setTokenStatus, setShareError, setShareSuccess],
+  ); // Added dependencies
 
   const handleShare = useCallback(async () => {
     if (apiUrlStatus !== "ok") {
@@ -179,10 +195,15 @@ export default function TwitterSharePage() {
       if (credentials && tokenStatus === "valid") {
         await handleTwitterShare(shareText, dummyImage, credentials);
       } else {
-        const pendingShare: PendingShare = { text: shareText, imageData: dummyImage };
+        const pendingShare: PendingShare = {
+          text: shareText,
+          imageData: dummyImage,
+        };
         localStorage.setItem(PENDING_SHARE_KEY, JSON.stringify(pendingShare));
         const apiUrl = env.apiUrl;
-        if (!apiUrl) { throw new Error("API URL is not configured."); }
+        if (!apiUrl) {
+          throw new Error("API URL is not configured.");
+        }
         globalThis.location.href = `${apiUrl}/api/share/oauth/request_token`;
       }
     } catch (error) {
@@ -192,51 +213,69 @@ export default function TwitterSharePage() {
     }
   }, [credentials, apiUrlStatus, tokenStatus, logout, handleTwitterShare]); // Added handleTwitterShare
 
-  const uploadImage = useCallback(async (imageData: string, accessToken: string): Promise<string> => {
-    try {
-      const response = await fetch(imageData);
-      const blob = await response.blob();
-      const formData = new FormData();
-      formData.append("media", blob, "share-image.png");
+  const uploadImage = useCallback(
+    async (imageData: string, accessToken: string): Promise<string> => {
+      try {
+        const response = await fetch(imageData);
+        const blob = await response.blob();
+        const formData = new FormData();
+        formData.append("media", blob, "share-image.png");
 
-      const uploadResponse = await fetch(`${env.apiUrl}/api/share/tweet`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
-        body: formData,
-      });
+        const uploadResponse = await fetch(`${env.apiUrl}/api/share/tweet`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}` },
+          body: formData,
+        });
 
-      if (!uploadResponse.ok) {
-        const errorText = await uploadResponse.text();
-        throw new Error(`Failed to upload image: ${errorText}`);
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          throw new Error(`Failed to upload image: ${errorText}`);
+        }
+
+        const responseData = (await uploadResponse.json()) as {
+          success: boolean;
+          mediaId: string;
+        };
+        if (!responseData.mediaId) {
+          throw new Error("No media ID received");
+        }
+        return responseData.mediaId;
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("expired")) {
+          setTokenStatus("expired");
+        }
+        throw error;
       }
+    },
+    [setTokenStatus],
+  ); // Added setTokenStatus dependency
 
-      const responseData = (await uploadResponse.json()) as { success: boolean; mediaId: string };
-      if (!responseData.mediaId) { throw new Error("No media ID received"); }
-      return responseData.mediaId;
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("expired")) { setTokenStatus("expired"); }
-      throw error;
-    }
-  }, [setTokenStatus]); // Added setTokenStatus dependency
+  const postTweet = useCallback(
+    async (text: string, mediaId: string, accessToken: string) => {
+      try {
+        const response = await fetch(`${env.apiUrl}/api/share/tweet`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ text, mediaId }),
+        });
 
-  const postTweet = useCallback(async (text: string, mediaId: string, accessToken: string) => {
-    try {
-      const response = await fetch(`${env.apiUrl}/api/share/tweet`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ text, mediaId }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to post tweet: ${errorText}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to post tweet: ${errorText}`);
+        }
+        return await response.json();
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("expired")) {
+          setTokenStatus("expired");
+        }
+        throw error;
       }
-      return await response.json();
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("expired")) { setTokenStatus("expired"); }
-      throw error;
-    }
-  }, [setTokenStatus]); // Added setTokenStatus dependency
+    },
+    [setTokenStatus],
+  ); // Added setTokenStatus dependency
 
   const createDummyImage = async (): Promise<string> => {
     return "https://auto.fun/example.png";
@@ -248,17 +287,21 @@ export default function TwitterSharePage() {
     if (!isGenerating) return;
     addVanityLog("ℹ️ Stopping workers...");
     workersRef.current.forEach((worker) => {
-        // Send stop message first
+      // Send stop message first
+      try {
+        worker.postMessage("stop");
+      } catch (e) {
+        console.warn("Couldn't send stop message to worker", e);
+      }
+      // Then terminate after a short delay or immediately
+      // Using terminate directly is more forceful if postMessage isn't reliable
+      setTimeout(() => {
         try {
-             worker.postMessage('stop');
+          worker.terminate();
         } catch (e) {
-             console.warn("Couldn't send stop message to worker", e);
+          // do nothing
         }
-        // Then terminate after a short delay or immediately
-        // Using terminate directly is more forceful if postMessage isn't reliable
-         setTimeout(() => {
-            try { worker.terminate(); } catch(e){}
-         }, 100); // Short delay to allow worker to potentially finish current task gracefully
+      }, 100); // Short delay to allow worker to potentially finish current task gracefully
     });
     workersRef.current = [];
     setIsGenerating(false);
@@ -269,9 +312,13 @@ export default function TwitterSharePage() {
       logUpdateTimerRef.current = null;
     }
 
-    const elapsed = startTimeRef.current ? ((Date.now() - startTimeRef.current) / 1000).toFixed(2) : 0;
+    const elapsed = startTimeRef.current
+      ? ((Date.now() - startTimeRef.current) / 1000).toFixed(2)
+      : 0;
     const attempts = totalAttempts.toLocaleString(); // Format here for the log
-    addVanityLog(`ℹ️ Generation stopped after ${elapsed} seconds and ${attempts} attempts.`);
+    addVanityLog(
+      `ℹ️ Generation stopped after ${elapsed} seconds and ${attempts} attempts.`,
+    );
   }, [isGenerating, addVanityLog, totalAttempts]); // Removed totalAttempts from dep array as it's captured, added it back for the final log
 
   const startVanityGeneration = useCallback(() => {
@@ -303,31 +350,43 @@ export default function TwitterSharePage() {
         console.log("Worker created:", worker);
 
         worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
-           // Use isGenerating ref to check current state, avoid stale closure
-           if (!workersRef.current.includes(worker) && event.data.type !== 'found') return; // Ignore messages if stopped/terminated
+          // Use isGenerating ref to check current state, avoid stale closure
+          if (
+            !workersRef.current.includes(worker) &&
+            event.data.type !== "found"
+          )
+            return; // Ignore messages if stopped/terminated
 
           const data = event.data;
           switch (data.type) {
             case "found":
               if (data.validated) {
-                 addVanityLog(`✅ Worker ${data.workerId} found match!`);
-                 addVanityLog(`   Address: ${data.publicKey}`);
-                 addVanityLog(`   Secret Key: [REDACTED]`); // Don't log the secret key
-                 console.log("Found Secret Key:", data.secretKey); // Log to console only for debugging
-                setVanityResult({ publicKey: data.publicKey, secretKey: data.secretKey });
+                addVanityLog(`✅ Worker ${data.workerId} found match!`);
+                addVanityLog(`   Address: ${data.publicKey}`);
+                addVanityLog(`   Secret Key: [REDACTED]`); // Don't log the secret key
+                console.log("Found Secret Key:", data.secretKey); // Log to console only for debugging
+                setVanityResult({
+                  publicKey: data.publicKey,
+                  secretKey: data.secretKey,
+                });
               } else {
-                 addVanityLog(`⚠️ Worker ${data.workerId} found potential match but validation failed. Ignoring.`);
-                 console.warn("Validation failed for keypair:", data);
+                addVanityLog(
+                  `⚠️ Worker ${data.workerId} found potential match but validation failed. Ignoring.`,
+                );
+                console.warn("Validation failed for keypair:", data);
               }
               stopVanityGeneration(); // Stop all workers on find
               break;
             case "progress":
-               attemptBatchRef.current += data.count;
+              attemptBatchRef.current += data.count;
               break;
             case "error":
-               addVanityLog(`❌ Worker ${data.workerId} error: ${data.error}`);
-               // Log the specific error received from the worker
-               console.error(`Error message from worker ${data.workerId}:`, data.error);
+              addVanityLog(`❌ Worker ${data.workerId} error: ${data.error}`);
+              // Log the specific error received from the worker
+              console.error(
+                `Error message from worker ${data.workerId}:`,
+                data.error,
+              );
               // Optionally stop all if one worker fails critically
               // stopVanityGeneration();
               break;
@@ -335,170 +394,193 @@ export default function TwitterSharePage() {
         };
 
         worker.onerror = (err) => {
-           // Log the entire error event for more details
-           console.error(`Worker ${i} fatal error event:`, err);
-           addVanityLog(`❌ Worker ${i} fatal error: ${err.message || 'Unknown error (check console)'}`);
+          // Log the entire error event for more details
+          console.error(`Worker ${i} fatal error event:`, err);
+          addVanityLog(
+            `❌ Worker ${i} fatal error: ${err.message || "Unknown error (check console)"}`,
+          );
           // Remove the failing worker
-          workersRef.current = workersRef.current.filter(w => w !== worker);
+          workersRef.current = workersRef.current.filter((w) => w !== worker);
           // Check if isGenerating is still true before declaring all workers failed
           if (workersRef.current.length === 0 && isGenerating) {
-             addVanityLog('❌ All workers failed! Stopping generation.');
+            addVanityLog("❌ All workers failed! Stopping generation.");
             stopVanityGeneration();
           }
-           // Terminate the worker instance explicitly, just in case
-           try { worker.terminate(); } catch(e){}
+          // Terminate the worker instance explicitly, just in case
+          try {
+            worker.terminate();
+          } catch (e) {
+            // do nothing
+          }
         };
 
         // Start the worker
         worker.postMessage({ suffix, workerId: i });
         workersRef.current.push(worker);
       } catch (workerError) {
-         addVanityLog(`❌ Failed to create worker ${i}: ${workerError instanceof Error ? workerError.message : String(workerError)}`);
-         console.error(`Failed to create worker ${i}:`, workerError); // Log full error
+        addVanityLog(
+          `❌ Failed to create worker ${i}: ${workerError instanceof Error ? workerError.message : String(workerError)}`,
+        );
+        console.error(`Failed to create worker ${i}:`, workerError); // Log full error
       }
     }
 
     if (workersRef.current.length > 0) {
-       addVanityLog(`ℹ️ Successfully started ${workersRef.current.length} workers.`);
+      addVanityLog(
+        `ℹ️ Successfully started ${workersRef.current.length} workers.`,
+      );
       // Start timer to update rate periodically
       logUpdateTimerRef.current = setInterval(() => {
         const currentAttemptsInBatch = attemptBatchRef.current;
         attemptBatchRef.current = 0; // Reset batch count
 
         // Update total attempts using functional update to avoid stale state
-        setTotalAttempts(prevTotal => prevTotal + currentAttemptsInBatch);
+        setTotalAttempts((prevTotal) => prevTotal + currentAttemptsInBatch);
 
         // Calculate rate based on the potentially updated total attempts
-        setTotalAttempts(currentTotal => {
-             const elapsedTime = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : 1;
-             setGenerationRate(elapsedTime > 0 ? Math.round(currentTotal / elapsedTime) : 0);
-             return currentTotal; // Return the same value, just using the callback for timing
+        setTotalAttempts((currentTotal) => {
+          const elapsedTime = startTimeRef.current
+            ? (Date.now() - startTimeRef.current) / 1000
+            : 1;
+          setGenerationRate(
+            elapsedTime > 0 ? Math.round(currentTotal / elapsedTime) : 0,
+          );
+          return currentTotal; // Return the same value, just using the callback for timing
         });
-
-
       }, 1000); // Update rate every second
-
     } else {
-       addVanityLog('❌ Failed to start any workers. Stopping generation.');
+      addVanityLog("❌ Failed to start any workers. Stopping generation.");
       setIsGenerating(false); // Ensure state is reset
       startTimeRef.current = null;
     }
   }, [vanitySuffix, isGenerating, addVanityLog, stopVanityGeneration]); // Removed totalAttempts from deps
 
-
-   // Cleanup workers on component unmount
+  // Cleanup workers on component unmount
   useEffect(() => {
     // Store the ref value in a variable before returning the cleanup function
     const workersToTerminate = workersRef.current;
     const timerToClear = logUpdateTimerRef.current;
     return () => {
-        console.log("Unmounting testing page, terminating workers...");
-        workersToTerminate.forEach((worker) => {
-            try { worker.postMessage('stop'); } catch(e) {}
-            try { worker.terminate(); } catch(e){}
-        });
-        workersRef.current = []; // Clear the ref on unmount
-        if (timerToClear) {
-            clearInterval(timerToClear);
+      console.log("Unmounting testing page, terminating workers...");
+      workersToTerminate.forEach((worker) => {
+        try {
+          worker.postMessage("stop");
+        } catch (e) {
+          console.warn("Couldn't send stop message to worker", e);
         }
+        try {
+          worker.terminate();
+        } catch (e) {
+          console.warn("Couldn't terminate worker", e);
+        }
+      });
+      workersRef.current = []; // Clear the ref on unmount
+      if (timerToClear) {
+        clearInterval(timerToClear);
+      }
     };
   }, []); // Run only on mount and unmount
-
 
   // --- Render ---
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-900 text-white">
       {/* --- Twitter Share Section --- */}
       <div className="w-full max-w-md mb-12">
-          <h1 className="text-4xl font-bold mb-8 text-[#00FF04] text-center">
-            Twitter Share Demo
-          </h1>
+        <h1 className="text-4xl font-bold mb-8 text-[#00FF04] text-center">
+          Twitter Share Demo
+        </h1>
 
-          {/* Display image to share */}
-          <div className="mb-8 border border-gray-700 rounded-lg overflow-hidden w-full">
-            <img
-              src="https://auto.fun/example.png"
-              alt="Share Preview"
-              className="w-full h-auto"
-            />
-          </div>
+        {/* Display image to share */}
+        <div className="mb-8 border border-gray-700 rounded-lg overflow-hidden w-full">
+          <img
+            src="https://auto.fun/example.png"
+            alt="Share Preview"
+            className="w-full h-auto"
+          />
+        </div>
 
-          {/* Auth status */}
-          {credentials && (
-            <div className="mb-4 p-3 bg-gray-800 rounded-lg w-full">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-gray-400 text-sm">Logged in:</span>
-                  <span className="font-mono ml-2 text-sm">{credentials.userId}</span>
-                  <span className="ml-2 text-xs">
-                    {tokenStatus === "valid" ? (
-                      <span className="text-green-400">✓ Valid</span>
-                    ) : (
-                      <span className="text-red-400">⚠ Expired</span>
-                    )}
-                  </span>
-                </div>
-                <button
-                  onClick={logout}
-                  className="text-red-400 hover:text-red-300 px-2 py-1 text-sm"
-                >
-                  Logout
-                </button>
+        {/* Auth status */}
+        {credentials && (
+          <div className="mb-4 p-3 bg-gray-800 rounded-lg w-full">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-gray-400 text-sm">Logged in:</span>
+                <span className="font-mono ml-2 text-sm">
+                  {credentials.userId}
+                </span>
+                <span className="ml-2 text-xs">
+                  {tokenStatus === "valid" ? (
+                    <span className="text-green-400">✓ Valid</span>
+                  ) : (
+                    <span className="text-red-400">⚠ Expired</span>
+                  )}
+                </span>
               </div>
-            </div>
-          )}
-
-          {/* API configuration status */}
-          {apiUrlStatus === "error" && (
-            <div className="mb-4 p-3 bg-red-800/30 border border-red-600 rounded-lg w-full text-red-300 text-sm">
-              <p>Twitter API configuration error</p>
-              <p className="text-xs mt-1">
-                Check VITE_API_URL environment variable
-              </p>
-            </div>
-          )}
-
-          {/* Share button */}
-          <div className="text-center">
               <button
-                onClick={handleShare}
-                disabled={
-                  isSharing || apiUrlStatus === "error" || tokenStatus === "expired"
-                }
-                className="bg-[#00FF04] hover:bg-[#00FF04]/80 text-black font-bold py-3 px-6 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={logout}
+                className="text-red-400 hover:text-red-300 px-2 py-1 text-sm"
               >
-                {isSharing
-                  ? "Sharing..."
-                  : credentials
-                    ? "Share on Twitter"
-                    : "Connect & Share on Twitter"}
+                Logout
               </button>
+            </div>
           </div>
+        )}
 
-          {/* Success message */}
-          {shareSuccess && (
-            <div className="mt-6 p-4 bg-green-800/20 border border-green-600 rounded-lg text-green-400 w-full text-sm">
-              Successfully shared to Twitter!
+        {/* API configuration status */}
+        {apiUrlStatus === "error" && (
+          <div className="mb-4 p-3 bg-red-800/30 border border-red-600 rounded-lg w-full text-red-300 text-sm">
+            <p>Twitter API configuration error</p>
+            <p className="text-xs mt-1">
+              Check VITE_API_URL environment variable
+            </p>
+          </div>
+        )}
+
+        {/* Share button */}
+        <div className="text-center">
+          <button
+            onClick={handleShare}
+            disabled={
+              isSharing || apiUrlStatus === "error" || tokenStatus === "expired"
+            }
+            className="bg-[#00FF04] hover:bg-[#00FF04]/80 text-black font-bold py-3 px-6 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSharing
+              ? "Sharing..."
+              : credentials
+                ? "Share on Twitter"
+                : "Connect & Share on Twitter"}
+          </button>
+        </div>
+
+        {/* Success message */}
+        {shareSuccess && (
+          <div className="mt-6 p-4 bg-green-800/20 border border-green-600 rounded-lg text-green-400 w-full text-sm">
+            Successfully shared to Twitter!
+          </div>
+        )}
+
+        {/* Error message */}
+        {shareError && (
+          <div className="mt-6 p-4 bg-red-800/20 border border-red-600 rounded-lg text-red-400 w-full text-sm">
+            {shareError}
+          </div>
+        )}
+
+        {/* Debug section */}
+        <div className="mt-8 p-4 bg-gray-800 rounded-lg w-full text-xs text-gray-400">
+          <h3 className="font-bold mb-2">Debug Information</h3>
+          <div>API URL: {env.apiUrl || "Not set"}</div>
+          <div>
+            Auth Status: {credentials ? "Authenticated" : "Not authenticated"}
+          </div>
+          <div>Token Status: {tokenStatus}</div>
+          {credentials && (
+            <div>
+              Token Expires: {new Date(credentials.expiresAt).toLocaleString()}
             </div>
           )}
-
-          {/* Error message */}
-          {shareError && (
-            <div className="mt-6 p-4 bg-red-800/20 border border-red-600 rounded-lg text-red-400 w-full text-sm">
-              {shareError}
-            </div>
-          )}
-
-          {/* Debug section */}
-          <div className="mt-8 p-4 bg-gray-800 rounded-lg w-full text-xs text-gray-400">
-            <h3 className="font-bold mb-2">Debug Information</h3>
-            <div>API URL: {env.apiUrl || "Not set"}</div>
-            <div>Auth Status: {credentials ? "Authenticated" : "Not authenticated"}</div>
-            <div>Token Status: {tokenStatus}</div>
-            {credentials && (
-              <div>Token Expires: {new Date(credentials.expiresAt).toLocaleString()}</div>
-            )}
-          </div>
+        </div>
       </div>
 
       {/* --- Solana Vanity Address Generator Section --- */}
@@ -507,11 +589,14 @@ export default function TwitterSharePage() {
           Solana Vanity Address Generator
         </h2>
         <p className="text-center text-gray-400 mb-6 text-sm">
-          Generate a Solana address ending with a specific suffix. Runs locally in your browser using Web Workers.
+          Generate a Solana address ending with a specific suffix. Runs locally
+          in your browser using Web Workers.
         </p>
 
         <div className="flex items-center gap-4 mb-4 bg-gray-800 p-4 rounded-lg">
-          <label htmlFor="suffix" className="text-gray-300 font-medium">Suffix:</label>
+          <label htmlFor="suffix" className="text-gray-300 font-medium">
+            Suffix:
+          </label>
           <input
             type="text"
             id="suffix"
@@ -538,13 +623,23 @@ export default function TwitterSharePage() {
 
         {/* Status/Logs Display */}
         <div className="mb-4 p-4 bg-gray-800 rounded-lg border border-gray-700 h-64 overflow-y-auto text-sm font-mono">
-          <p className="text-gray-400 mb-2">Status: {isGenerating ? `Generating... (Rate: ${generationRate.toLocaleString()}/sec)` : "Idle"}</p>
-          <p className="text-gray-400 mb-4">Total Attempts: {totalAttempts.toLocaleString()}</p>
+          <p className="text-gray-400 mb-2">
+            Status:{" "}
+            {isGenerating
+              ? `Generating... (Rate: ${generationRate.toLocaleString()}/sec)`
+              : "Idle"}
+          </p>
+          <p className="text-gray-400 mb-4">
+            Total Attempts: {totalAttempts.toLocaleString()}
+          </p>
           <pre className="whitespace-pre-wrap break-words">
             {vanityLogs.map((log, index) => (
-                 <div key={index} className={`${log.startsWith('✅') ? 'text-green-400' : log.startsWith('❌') ? 'text-red-400' : log.startsWith('⚠️') ? 'text-yellow-400': 'text-gray-300'}`}>
-                     {log}
-                 </div>
+              <div
+                key={index}
+                className={`${log.startsWith("✅") ? "text-green-400" : log.startsWith("❌") ? "text-red-400" : log.startsWith("⚠️") ? "text-yellow-400" : "text-gray-300"}`}
+              >
+                {log}
+              </div>
             ))}
           </pre>
         </div>
@@ -554,22 +649,27 @@ export default function TwitterSharePage() {
           <div className="p-4 bg-green-800/20 border border-green-600 rounded-lg text-green-300">
             <h3 className="font-bold mb-2">🎉 Success! Keypair Found:</h3>
             <p className="font-mono break-all mb-1">
-              <strong className="text-green-200">Address:</strong> {vanityResult.publicKey}
+              <strong className="text-green-200">Address:</strong>{" "}
+              {vanityResult.publicKey}
             </p>
             <p className="font-mono break-all">
-              <strong className="text-green-200">Secret Key:</strong> {vanityResult.secretKey}
+              <strong className="text-green-200">Secret Key:</strong>{" "}
+              {vanityResult.secretKey}
             </p>
             <p className="text-xs mt-3 text-green-400">
-              Save the <strong className="font-bold">Secret Key</strong> securely. You can import it into wallets like Phantom.
+              Save the <strong className="font-bold">Secret Key</strong>{" "}
+              securely. You can import it into wallets like Phantom.
             </p>
           </div>
         )}
 
-         <div className="mt-6 text-xs text-gray-500 text-center p-3 bg-yellow-900/20 border border-yellow-700 rounded-lg">
-            <strong>Disclaimer:</strong> This tool generates keys locally in your browser. No data is sent externally. However, for managing significant assets, always prefer official, well-audited Solana software and hardware wallets. Handle generated secret keys with extreme care.
-          </div>
+        <div className="mt-6 text-xs text-gray-500 text-center p-3 bg-yellow-900/20 border border-yellow-700 rounded-lg">
+          <strong>Disclaimer:</strong> This tool generates keys locally in your
+          browser. No data is sent externally. However, for managing significant
+          assets, always prefer official, well-audited Solana software and
+          hardware wallets. Handle generated secret keys with extreme care.
+        </div>
       </div>
-
     </div>
   );
 }
