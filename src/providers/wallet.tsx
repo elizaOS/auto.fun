@@ -25,6 +25,15 @@ export const Wallet = ({ children }: PropsWithChildren) => {
 
       const tryDirectConnection = async () => {
         try {
+          // Only attempt connection if we have clear indicators of previous connection
+          const hasStoredWallet = localStorage.getItem("walletName");
+          const hasStoredAuth = localStorage.getItem("walletAuth");
+          
+          if (!hasStoredWallet && !hasStoredAuth) {
+            console.log("No stored wallet data found, skipping auto-connection");
+            return;
+          }
+
           // Check if Phantom wallet is detected
           if (window.solana && window.solana.isPhantom) {
             console.log("Detected Phantom wallet in window object");
@@ -32,9 +41,8 @@ export const Wallet = ({ children }: PropsWithChildren) => {
             // Check for our enhanced wallet auth storage
             let walletAddress = null;
             try {
-              const walletAuthStr = localStorage.getItem("walletAuth");
-              if (walletAuthStr) {
-                const walletAuth = JSON.parse(walletAuthStr);
+              if (hasStoredAuth) {
+                const walletAuth = JSON.parse(hasStoredAuth);
                 if (walletAuth.walletAddress) {
                   walletAddress = walletAuth.walletAddress;
                   console.log("Found stored wallet address:", walletAddress);
