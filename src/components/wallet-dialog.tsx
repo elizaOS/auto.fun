@@ -32,7 +32,6 @@ export const WalletModal: FC<WalletModalProps> = () => {
     connect,
     publicKey,
     signMessage,
-    wallet: connectedWallet,
   } = useWallet();
   const { visible, setVisible } = useWalletModal();
   const { setAuthToken } = useAuthentication();
