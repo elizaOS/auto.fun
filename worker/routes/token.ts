@@ -642,15 +642,15 @@ async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-        { name: "mainnet", url: mainnetUrl },
-        { name: "devnet", url: devnetUrl },
-      ]
+      { name: "mainnet", url: mainnetUrl },
+      { name: "devnet", url: devnetUrl },
+    ]
     : [
-        {
-          name: c.env.NETWORK || "devnet",
-          url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-        },
-      ];
+      {
+        name: c.env.NETWORK || "devnet",
+        url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+      },
+    ];
 
   logger.log(
     `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
@@ -1502,8 +1502,9 @@ tokenRouter.get("/token/:mint", async (c) => {
     // Only refresh holder data if explicitly requested
     // const refreshHolders = c.req.query("refresh_holders") === "true";
     // if (refreshHolders) {
+    const imported = Number(token.imported) === 1;
     logger.log(`Refreshing holders data for token ${mint}`);
-    await updateHoldersCache(c.env, mint, token.imported);
+    await updateHoldersCache(c.env, mint, imported);
     // }
 
     // Set default values for critical fields if they're missing
@@ -1556,8 +1557,8 @@ tokenRouter.get("/token/:mint", async (c) => {
       token.status === "migrated"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-            (token.curveLimit - token.virtualReserves)) *
-          100;
+          (token.curveLimit - token.virtualReserves)) *
+        100;
 
     // Get token holders count
     const holdersCountQuery = await db
@@ -1856,6 +1857,7 @@ tokenRouter.post("/create-token", async (c) => {
       // Create token data with all required fields from the token schema
       const now = new Date().toISOString();
       const tokenId = crypto.randomUUID();
+      console.log("****** imported ******\n", imported);
 
       // Convert imported to number (1 for true, 0 for false)
       const importedValue = imported === true ? 1 : 0;
@@ -1875,7 +1877,7 @@ tokenRouter.post("/create-token", async (c) => {
         website: website || "",
         discord: discord || "",
         creator: user.publicKey || "unknown",
-        status: "active",
+        status: imported ? "locked" : "active",
         tokenPriceUSD: 0.00000001,
         createdAt: now,
         lastUpdated: now,
@@ -1896,7 +1898,7 @@ tokenRouter.post("/create-token", async (c) => {
         website: website || "",
         discord: discord || "",
         creator: user.publicKey || "unknown",
-        status: "active",
+        status: imported ? "locked" : "active",
         url: metadataUrl || "",
         image: imageUrl || "",
         createdAt: now,
@@ -1906,6 +1908,7 @@ tokenRouter.post("/create-token", async (c) => {
       if (imported) {
         const importedToken = new ExternalToken(c.env, mintAddress);
         const { marketData } = await importedToken.registerWebhook();
+        importedToken.fetchHistoricalSwapData()
         Object.assign(tokenData, marketData.newTokenData);
       } else {
         // For non-imported tokens, generate additional images in the background
@@ -1946,7 +1949,8 @@ tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
     // );
 
     // Update holders for this specific token
-    const holderCount = await updateHoldersCache(c.env, mint, token.imported);
+    const imported = Number(c.req.query("imported") || 0) === 1;
+    const holderCount = await updateHoldersCache(c.env, mint, imported);
 
     return c.json({
       success: true,

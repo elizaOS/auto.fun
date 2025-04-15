@@ -94,7 +94,7 @@ export class ExternalToken {
     const marketData = await this.updateMarketData();
 
     const [swapData, holderData] = await Promise.all([
-      this.updateSwapData(true),
+      this.updateLatestSwapData(),
       this.updateHolderData(marketData.tokenSupply),
     ]);
 
@@ -121,6 +121,8 @@ export class ExternalToken {
       liquidity: token.liquidity ? Number(token.liquidity) : 0,
       tokenPriceUSD: token.priceUSD ? Number(token.priceUSD) : 0,
       holderCount: token.holders,
+      tokenSupplyUiAmount: tokenSupply,
+      decimals: token.token?.decimals ?? 9,
       // time of import
       createdAt: new Date().toISOString(),
 
@@ -155,15 +157,15 @@ export class ExternalToken {
 
     const allHolders = tokenSupply
       ? codexHolders.items.map(
-          (holder): TokenHolderInsert => ({
-            id: crypto.randomUUID(),
-            mint: this.mint,
-            address: holder.address,
-            amount: holder.shiftedBalance,
-            percentage: (holder.shiftedBalance / tokenSupply) * 100,
-            lastUpdated: now,
-          }),
-        )
+        (holder): TokenHolderInsert => ({
+          id: crypto.randomUUID(),
+          mint: this.mint,
+          address: holder.address,
+          amount: holder.shiftedBalance,
+          percentage: (holder.shiftedBalance / tokenSupply) * 100,
+          lastUpdated: now,
+        }),
+      )
       : [];
 
     allHolders.sort((a, b) => b.percentage - a.percentage);
@@ -186,15 +188,76 @@ export class ExternalToken {
 
     return holders;
   }
+  // fetch and update swap data
+  public async updateLatestSwapData(): Promise<ProcessedSwap[]> {
+    const BATCH_LIMIT = 200;
+    let cursor: string | undefined | null = undefined;
 
-  public async updateSwapData(fetchHistorical: boolean = false) {
-    const allProcessedSwaps: ProcessedSwap[] = [];
+    const { getTokenEvents } = await this.sdk.queries.getTokenEvents({
+      query: {
+        address: this.mint,
+        networkId: SOLANA_NETWORK_ID,
+        eventDisplayType: [EventDisplayType.Buy, EventDisplayType.Sell],
+      },
+      limit: BATCH_LIMIT,
+      ...(cursor ? { cursor } : {}),
+    });
+
+    const codexSwaps = getTokenEvents?.items ?? [];
+    const processedSwaps = codexSwaps
+      .filter((codexSwap): codexSwap is NonNullable<typeof codexSwap> => !!codexSwap)
+      .map((codexSwap): ProcessedSwap | null => {
+        const swapData = codexSwap.data as SwapEventData;
+        const commonData = {
+          id: crypto.randomUUID(),
+          tokenMint: this.mint,
+          txId: codexSwap.transactionHash,
+          timestamp: new Date(codexSwap.timestamp * 1000).toISOString(),
+          user: codexSwap.maker || "",
+        };
+
+        switch (codexSwap.eventDisplayType) {
+          case EventDisplayType.Buy:
+            return {
+              ...commonData,
+              type: "buy",
+              direction: 0,
+              amountIn: -Number(swapData.amount1 || 0) * LAMPORTS_PER_SOL,
+              amountOut: Number(swapData.amount0 || 0) * 1e6,
+              price: swapData.priceUsd ? Number(swapData.priceUsd) : 0,
+            };
+          case EventDisplayType.Sell:
+            return {
+              ...commonData,
+              type: "sell",
+              direction: 1,
+              amountIn: -Number(swapData.amount0 || 0) * 1e6,
+              amountOut: Number(swapData.amount1 || 0) * LAMPORTS_PER_SOL,
+              price: swapData.priceUsd ? Number(swapData.priceUsd) : 0,
+            };
+          default:
+            return null;
+        }
+      })
+      .filter((swap): swap is NonNullable<typeof swap> => !!swap);
+
+    if (processedSwaps.length > 0) {
+      await this.insertProcessedSwaps(processedSwaps);
+      await this.wsClient.to(`token-${this.mint}`).emit("newSwap", processedSwaps);
+    }
+
+    console.log(`[worker] Updated latest batch for ${this.mint}. Fetched: ${processedSwaps.length} swaps.`);
+    return processedSwaps;
+  }
+
+  // fetch and update historical swap data
+  // call only once when we import the token
+  public async fetchHistoricalSwapData(): Promise<void> {
+    const BATCH_LIMIT = 200;
     let hasMore = true;
-    let cursor: string | undefined | null = undefined; // Use cursor based on linter feedback
+    let cursor: string | undefined | null = undefined;
 
-    console.log(
-      `Starting swap update for ${this.mint}. Historical fetch: ${fetchHistorical}`,
-    );
+    console.log(`Starting historical update for ${this.mint}`);
 
     while (hasMore) {
       const { getTokenEvents } = await this.sdk.queries.getTokenEvents({
@@ -203,45 +266,35 @@ export class ExternalToken {
           networkId: SOLANA_NETWORK_ID,
           eventDisplayType: [EventDisplayType.Buy, EventDisplayType.Sell],
         },
-        limit: 200, // Adjust limit as needed/allowed
-        // --- Potential Pagination Parameter ---
-        // Adjust this based on actual Codex SDK parameter name
-        // Use cursor for pagination
-        ...(cursor ? { cursor: cursor } : {}),
+        limit: BATCH_LIMIT,
+        ...(cursor ? { cursor } : {}),
       });
 
       const codexSwaps = getTokenEvents?.items ?? [];
-      // --- Check for more data ---
-      // Adjust this based on actual Codex SDK response structure
-      // Use cursor from the response
       const currentCursor = getTokenEvents?.cursor;
-      hasMore = fetchHistorical && !!currentCursor && codexSwaps.length > 0;
-      cursor = currentCursor;
 
       console.log(
-        `Fetched ${codexSwaps.length} swaps for ${this.mint}. Has more: ${hasMore}, Next cursor: ${cursor}`,
+        `[worker] Historical: Fetched ${codexSwaps.length} swaps for ${this.mint}. Next cursor: ${currentCursor}`
       );
 
-      if (codexSwaps.length === 0) {
-        // No swaps in this batch, stop if historical, or break if just recent fetch
-        if (!fetchHistorical) hasMore = false; // Stop if only fetching recent and got 0
+      // Exit the loop if no data or when we fetch less than the limit (end of data)
+      if (codexSwaps.length === 0 || codexSwaps.length < BATCH_LIMIT) {
+        hasMore = false;
+      }
+
+      // Prevent infinite loop if the cursor does not change.
+      if (cursor && currentCursor === cursor) {
+        console.warn("[worker] Historical: Cursor did not change. Exiting to prevent infinite loop.");
         break;
       }
 
       const processedSwaps = codexSwaps
-        .filter(
-          (codexSwap): codexSwap is NonNullable<typeof codexSwap> =>
-            !!codexSwap,
-        )
+        .filter((codexSwap): codexSwap is NonNullable<typeof codexSwap> => !!codexSwap)
         .map((codexSwap): ProcessedSwap | null => {
-          // Add explicit return type
           const swapData = codexSwap.data as SwapEventData;
-
-          // Common data
-          // Use ProcessedSwap type for structure
           const commonData = {
-            id: crypto.randomUUID(), // Add unique ID
-            tokenMint: this.mint, // Use tokenMint to match schema
+            id: crypto.randomUUID(),
+            tokenMint: this.mint,
             txId: codexSwap.transactionHash,
             timestamp: new Date(codexSwap.timestamp * 1000).toISOString(),
             user: codexSwap.maker || "",
@@ -272,63 +325,43 @@ export class ExternalToken {
         })
         .filter((swap): swap is NonNullable<typeof swap> => !!swap);
 
-      allProcessedSwaps.push(...processedSwaps);
-
-      // If not fetching historical data, stop after the first batch
-      if (!fetchHistorical) {
-        hasMore = false;
-      }
-    } // End while(hasMore)
-
-    console.log(
-      `Finished fetching swaps for ${this.mint}. Total fetched: ${allProcessedSwaps.length}`,
-    );
-
-    // --- Start Added Logic ---
-    if (allProcessedSwaps.length > 0) {
-      const MAX_SQLITE_PARAMETERS = 100;
-      // Ensure we reference a swap if available to get keys, otherwise use default
-      const parametersPerSwap = allProcessedSwaps[0]
-        ? Object.keys(allProcessedSwaps[0]).length
-        : 10;
-      const batchSize = Math.floor(MAX_SQLITE_PARAMETERS / parametersPerSwap);
-
-      // Sort swaps by timestamp ascending before inserting
-      allProcessedSwaps.sort(
-        (a, b) =>
-          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-      );
-
-      console.log(
-        `Inserting ${allProcessedSwaps.length} swaps for ${this.mint} in batches of ${batchSize}`,
-      );
-      let insertedCount = 0;
-      for (let i = 0; i < allProcessedSwaps.length; i += batchSize) {
-        const batch = allProcessedSwaps.slice(i, i + batchSize);
-        // Use ON CONFLICT DO NOTHING to avoid inserting duplicate txIds
-        const result = await this.db
-          .insert(swaps)
-          .values(batch)
-          .onConflictDoNothing()
-          .returning({ insertedId: swaps.id });
-        insertedCount += result.length; // Count how many were actually inserted (not ignored by ON CONFLICT)
+      if (processedSwaps.length > 0) {
+        await this.insertProcessedSwaps(processedSwaps);
+        await this.wsClient.to(`token-${this.mint}`).emit("newSwap", processedSwaps);
       }
 
-      console.log(
-        `Actually inserted ${insertedCount} new swaps for ${this.mint}`,
-      );
-
-      // Emit only newly inserted swaps if possible, otherwise all fetched for this update cycle
-      // For simplicity now, emitting all fetched ones from this potentially historical update.
-      // A more refined approach might query the DB for swaps inserted in this run.
-      if (allProcessedSwaps.length > 0) {
-        await this.wsClient
-          .to(`token-${this.mint}`)
-          .emit("newSwap", allProcessedSwaps);
-      }
+      // Update the cursor for the next batch
+      cursor = currentCursor;
     }
-    // --- End Added Logic ---
 
-    return allProcessedSwaps; // Return all processed swaps from this run
+    console.log(`Historical update complete for ${this.mint}`);
   }
+
+  // save the processed swaps to the database
+  private async insertProcessedSwaps(processedSwaps: ProcessedSwap[]): Promise<void> {
+    if (processedSwaps.length === 0) return;
+
+    const MAX_SQLITE_PARAMETERS = 100;
+    const parametersPerSwap = Object.keys(processedSwaps[0]).length;
+    const batchSize = Math.floor(MAX_SQLITE_PARAMETERS / parametersPerSwap) || processedSwaps.length;
+
+    // Sort swaps by ascending timestamp
+    processedSwaps.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    console.log(`Inserting ${processedSwaps.length} swaps in batches of ${batchSize} for ${this.mint}`);
+
+    let insertedCount = 0;
+    for (let i = 0; i < processedSwaps.length; i += batchSize) {
+      const batch = processedSwaps.slice(i, i + batchSize);
+      const result = await this.db
+        .insert(swaps)
+        .values(batch)
+        .onConflictDoNothing()
+        .returning({ insertedId: swaps.id });
+      insertedCount += result.length;
+    }
+    console.log(`Actually inserted ${insertedCount} new swaps for ${this.mint}`);
+  }
+
+
 }
