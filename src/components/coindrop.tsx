@@ -1139,7 +1139,7 @@ const CoinDrop = ({ imageUrl, onCancel }: CoinDropProps) => {
 
   return (
     <div
-      className="fixed top-0 left-0 w-full h-full overflow-hidden z-50 pointer-events-none"
+      className="absolute top-0 left-0 w-full h-full overflow-hidden z-50 pointer-events-none"
       ref={containerRef}
     >
       {isLoading && (

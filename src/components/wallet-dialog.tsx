@@ -112,10 +112,10 @@ export const WalletModal: FC<WalletModalProps> = () => {
           // First select the wallet
           console.log("Selecting wallet:", wallet.adapter.name);
           await select(wallet.adapter.name);
-          
+
           // Wait for selection to complete and wallet to be ready
           await new Promise((resolve) => setTimeout(resolve, 1000));
-          
+
           // Check if wallet is selected before attempting connection
           if (!wallet.adapter.connected && !connectedWallet) {
             console.log("Connecting via adapter...");

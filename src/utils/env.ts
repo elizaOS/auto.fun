@@ -39,8 +39,7 @@ const unparsedEnv = {
     (import.meta.env.VITE_SOLANA_NETWORK === "devnet"
       ? import.meta.env.VITE_DEVNET_RPC_URL
       : import.meta.env.VITE_MAINNET_RPC_URL) || import.meta.env.VITE_RPC_URL,
-  rpcUrlMainnet:
-    import.meta.env.VITE_MAINNET_RPC_URL,
+  rpcUrlMainnet: import.meta.env.VITE_MAINNET_RPC_URL,
   virtualReserves: import.meta.env.VITE_VIRTUAL_RESERVES,
   tokenSupply: import.meta.env.VITE_TOKEN_SUPPLY,
   decimals: import.meta.env.VITE_DECIMALS,
@@ -54,7 +53,6 @@ const unparsedEnv = {
     import.meta.env.R2_PUBLIC_URL ||
     "https://pub-75e2227bb40747d9b8b21df85a33efa7.r2.dev",
 } as const;
-
 
 const envSchema = z.object({
   solanaNetwork: z.string().min(1),

@@ -1,6 +1,6 @@
 import axios from "axios";
 import { logger } from "./logger";
-import { Codex } from '@codex-data/sdk';
+import { Codex } from "@codex-data/sdk";
 
 export interface CodexTokenEvent {
   eventDisplayType: string;
@@ -394,7 +394,7 @@ async function fetchCodexBarsChunk(
     //     volume
     //   }
     // }`;
-    const response = await codexService.send(
+    const response = (await codexService.send(
       `query GetBars($symbol: String!, $from: Int!, $to: Int!, $resolution: String!) {
         getBars(
           symbol: $symbol
@@ -421,7 +421,7 @@ async function fetchCodexBarsChunk(
         to: endTimestamp,
         resolution: resolution,
       },
-    ) as any;
+    )) as any;
 
     // const response = await axios.post(
     //   apiUrl,

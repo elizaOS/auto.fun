@@ -1,11 +1,9 @@
-import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
-import { BN, Program } from "@coral-xyz/anchor";
-import { Autofun } from "@/utils/program";
-import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
-import { associatedAddress } from "@coral-xyz/anchor/dist/cjs/utils/token";
-import { env } from "@/utils/env";
-import { ConfigAccount } from "@/types";
 import { getConfigAccount } from "@/hooks/use-config-account";
+import { ConfigAccount } from "@/types";
+import { env } from "@/utils/env";
+import { Autofun } from "@/utils/program";
+import { BN, Program } from "@coral-xyz/anchor";
+import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
 
 /**
  * Converts a decimal fee (e.g., 0.05 for 5%) to basis points (5% = 500 basis points)
@@ -265,7 +263,7 @@ export const getJupiterSwapIx = async (
   amount: number,
   style: number, // 0 for buy; 1 for sell
   slippageBps: number = 100,
-  connection: Connection,
+  _connection: Connection,
 ) => {
   // Jupiter uses the following constant to represent SOL
   const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";

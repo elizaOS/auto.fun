@@ -229,7 +229,7 @@ export async function fetchPriceChartData(
         resolution,
         undefined,
         undefined,
-        env
+        env,
       );
 
       // For 120 minute resolution, we need to combine 2 x 60m candles
@@ -351,7 +351,7 @@ export function getCandleData(priceFeeds: PriceFeedInfo[], range: number) {
     let en = priceHistory[pIndex].price;
     let vol = 0;
     const prevIndex = pIndex;
-    for (; pIndex < priceHistory.length;) {
+    for (; pIndex < priceHistory.length; ) {
       if (hi < priceHistory[pIndex].price) hi = priceHistory[pIndex].price;
       if (lo > priceHistory[pIndex].price) lo = priceHistory[pIndex].price;
       en = priceHistory[pIndex].price;

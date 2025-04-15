@@ -71,10 +71,7 @@ export const useSwap = () => {
 
     const ixs = [];
     if (token?.status === "locked") {
-      const mainnetConnection = new Connection(
-        env.rpcUrlMainnet,
-        "confirmed",
-      ); // this is always mainnet
+      const mainnetConnection = new Connection(env.rpcUrlMainnet, "confirmed"); // this is always mainnet
       // Use Jupiter API when tokens are locked
       const ixsJupiterSwap = await getJupiterSwapIx(
         wallet.publicKey,
@@ -140,10 +137,13 @@ export const useSwap = () => {
     if (!wallet.publicKey || !wallet.signTransaction || !program) {
       throw new Error("Wallet not connected or missing required methods");
     }
-    let curve
+    let curve;
     if (token?.status !== "locked") {
       const [bondingCurvePda] = PublicKey.findProgramAddressSync(
-        [Buffer.from(SEED_BONDING_CURVE), new PublicKey(tokenAddress).toBytes()],
+        [
+          Buffer.from(SEED_BONDING_CURVE),
+          new PublicKey(tokenAddress).toBytes(),
+        ],
         program.programId,
       );
       curve = await program.account.bondingCurve.fetch(bondingCurvePda);

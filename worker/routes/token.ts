@@ -642,15 +642,15 @@ async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-      { name: "mainnet", url: mainnetUrl },
-      { name: "devnet", url: devnetUrl },
-    ]
+        { name: "mainnet", url: mainnetUrl },
+        { name: "devnet", url: devnetUrl },
+      ]
     : [
-      {
-        name: c.env.NETWORK || "devnet",
-        url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-      },
-    ];
+        {
+          name: c.env.NETWORK || "devnet",
+          url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+        },
+      ];
 
   logger.log(
     `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
@@ -1557,8 +1557,8 @@ tokenRouter.get("/token/:mint", async (c) => {
       token.status === "migrated"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-          (token.curveLimit - token.virtualReserves)) *
-        100;
+            (token.curveLimit - token.virtualReserves)) *
+          100;
 
     // Get token holders count
     const holdersCountQuery = await db
@@ -1908,7 +1908,7 @@ tokenRouter.post("/create-token", async (c) => {
       if (imported) {
         const importedToken = new ExternalToken(c.env, mintAddress);
         const { marketData } = await importedToken.registerWebhook();
-        importedToken.fetchHistoricalSwapData()
+        importedToken.fetchHistoricalSwapData();
         Object.assign(tokenData, marketData.newTokenData);
       } else {
         // For non-imported tokens, generate additional images in the background

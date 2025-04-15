@@ -157,15 +157,15 @@ export class ExternalToken {
 
     const allHolders = tokenSupply
       ? codexHolders.items.map(
-        (holder): TokenHolderInsert => ({
-          id: crypto.randomUUID(),
-          mint: this.mint,
-          address: holder.address,
-          amount: holder.shiftedBalance,
-          percentage: (holder.shiftedBalance / tokenSupply) * 100,
-          lastUpdated: now,
-        }),
-      )
+          (holder): TokenHolderInsert => ({
+            id: crypto.randomUUID(),
+            mint: this.mint,
+            address: holder.address,
+            amount: holder.shiftedBalance,
+            percentage: (holder.shiftedBalance / tokenSupply) * 100,
+            lastUpdated: now,
+          }),
+        )
       : [];
 
     allHolders.sort((a, b) => b.percentage - a.percentage);
@@ -191,7 +191,7 @@ export class ExternalToken {
   // fetch and update swap data
   public async updateLatestSwapData(): Promise<ProcessedSwap[]> {
     const BATCH_LIMIT = 200;
-    let cursor: string | undefined | null = undefined;
+    const cursor: string | undefined | null = undefined;
 
     const { getTokenEvents } = await this.sdk.queries.getTokenEvents({
       query: {
@@ -205,7 +205,9 @@ export class ExternalToken {
 
     const codexSwaps = getTokenEvents?.items ?? [];
     const processedSwaps = codexSwaps
-      .filter((codexSwap): codexSwap is NonNullable<typeof codexSwap> => !!codexSwap)
+      .filter(
+        (codexSwap): codexSwap is NonNullable<typeof codexSwap> => !!codexSwap,
+      )
       .map((codexSwap): ProcessedSwap | null => {
         const swapData = codexSwap.data as SwapEventData;
         const commonData = {
@@ -243,10 +245,14 @@ export class ExternalToken {
 
     if (processedSwaps.length > 0) {
       await this.insertProcessedSwaps(processedSwaps);
-      await this.wsClient.to(`token-${this.mint}`).emit("newSwap", processedSwaps);
+      await this.wsClient
+        .to(`token-${this.mint}`)
+        .emit("newSwap", processedSwaps);
     }
 
-    console.log(`[worker] Updated latest batch for ${this.mint}. Fetched: ${processedSwaps.length} swaps.`);
+    console.log(
+      `[worker] Updated latest batch for ${this.mint}. Fetched: ${processedSwaps.length} swaps.`,
+    );
     return processedSwaps;
   }
 
@@ -274,7 +280,7 @@ export class ExternalToken {
       const currentCursor = getTokenEvents?.cursor;
 
       console.log(
-        `[worker] Historical: Fetched ${codexSwaps.length} swaps for ${this.mint}. Next cursor: ${currentCursor}`
+        `[worker] Historical: Fetched ${codexSwaps.length} swaps for ${this.mint}. Next cursor: ${currentCursor}`,
       );
 
       // Exit the loop if no data or when we fetch less than the limit (end of data)
@@ -284,12 +290,17 @@ export class ExternalToken {
 
       // Prevent infinite loop if the cursor does not change.
       if (cursor && currentCursor === cursor) {
-        console.warn("[worker] Historical: Cursor did not change. Exiting to prevent infinite loop.");
+        console.warn(
+          "[worker] Historical: Cursor did not change. Exiting to prevent infinite loop.",
+        );
         break;
       }
 
       const processedSwaps = codexSwaps
-        .filter((codexSwap): codexSwap is NonNullable<typeof codexSwap> => !!codexSwap)
+        .filter(
+          (codexSwap): codexSwap is NonNullable<typeof codexSwap> =>
+            !!codexSwap,
+        )
         .map((codexSwap): ProcessedSwap | null => {
           const swapData = codexSwap.data as SwapEventData;
           const commonData = {
@@ -327,7 +338,9 @@ export class ExternalToken {
 
       if (processedSwaps.length > 0) {
         await this.insertProcessedSwaps(processedSwaps);
-        await this.wsClient.to(`token-${this.mint}`).emit("newSwap", processedSwaps);
+        await this.wsClient
+          .to(`token-${this.mint}`)
+          .emit("newSwap", processedSwaps);
       }
 
       // Update the cursor for the next batch
@@ -338,17 +351,26 @@ export class ExternalToken {
   }
 
   // save the processed swaps to the database
-  private async insertProcessedSwaps(processedSwaps: ProcessedSwap[]): Promise<void> {
+  private async insertProcessedSwaps(
+    processedSwaps: ProcessedSwap[],
+  ): Promise<void> {
     if (processedSwaps.length === 0) return;
 
     const MAX_SQLITE_PARAMETERS = 100;
     const parametersPerSwap = Object.keys(processedSwaps[0]).length;
-    const batchSize = Math.floor(MAX_SQLITE_PARAMETERS / parametersPerSwap) || processedSwaps.length;
+    const batchSize =
+      Math.floor(MAX_SQLITE_PARAMETERS / parametersPerSwap) ||
+      processedSwaps.length;
 
     // Sort swaps by ascending timestamp
-    processedSwaps.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    processedSwaps.sort(
+      (a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    );
 
-    console.log(`Inserting ${processedSwaps.length} swaps in batches of ${batchSize} for ${this.mint}`);
+    console.log(
+      `Inserting ${processedSwaps.length} swaps in batches of ${batchSize} for ${this.mint}`,
+    );
 
     let insertedCount = 0;
     for (let i = 0; i < processedSwaps.length; i += batchSize) {
@@ -360,8 +382,8 @@ export class ExternalToken {
         .returning({ insertedId: swaps.id });
       insertedCount += result.length;
     }
-    console.log(`Actually inserted ${insertedCount} new swaps for ${this.mint}`);
+    console.log(
+      `Actually inserted ${insertedCount} new swaps for ${this.mint}`,
+    );
   }
-
-
 }
