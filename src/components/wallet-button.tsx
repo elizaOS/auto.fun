@@ -23,7 +23,6 @@ const WalletButton = () => {
     isAuthenticated,
     signOut,
     isAuthenticating,
-    authToken,
     walletAddress,
   } = useAuthentication();
   const { user } = useUser();
