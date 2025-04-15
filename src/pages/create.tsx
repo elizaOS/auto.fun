@@ -1793,7 +1793,6 @@ export const Create = () => {
         // Set the prompt text so it can be reused
         if (setPrompt) setPrompt(token.prompt);
         if (onPromptChange) onPromptChange(token.prompt);
-
         // If we have an image URL, use it directly
         if (token.image) {
           // Transform R2 URLs to use local endpoint if needed
@@ -2588,7 +2587,7 @@ export const Create = () => {
           if (token.image) {
             // Transform R2 URLs to use local endpoint if needed
             let imageUrl = token.image;
-            if (imageUrl.includes("r2.dev")) {
+            if (imageUrl.includes("r2.dev") && env.apiUrl?.includes("localhost")) {
               // Extract the filename from the R2 URL
               const filename = imageUrl.split("/").pop();
               // Use local endpoint instead
