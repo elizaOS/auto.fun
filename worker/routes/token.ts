@@ -1908,6 +1908,7 @@ tokenRouter.post("/create-token", async (c) => {
       if (imported) {
         const importedToken = new ExternalToken(c.env, mintAddress);
         const { marketData } = await importedToken.registerWebhook();
+        importedToken.fetchHistoricalSwapData()
         Object.assign(tokenData, marketData.newTokenData);
       } else {
         // For non-imported tokens, generate additional images in the background
