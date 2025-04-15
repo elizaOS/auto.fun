@@ -17,7 +17,7 @@ export const Footer = () => {
       <Link to={"https://x.com/autodotfun"} target="_blank">
         <div className="size-7 p-0 grid place-items-center select-none">
           <div className="m-auto">
-            <SkeletonImage
+            <img
               src="/x-gray.svg"
               height={22}
               width={24}
