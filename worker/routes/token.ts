@@ -644,15 +644,15 @@ async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-        { name: "mainnet", url: mainnetUrl },
-        { name: "devnet", url: devnetUrl },
-      ]
+      { name: "mainnet", url: mainnetUrl },
+      { name: "devnet", url: devnetUrl },
+    ]
     : [
-        {
-          name: c.env.NETWORK || "devnet",
-          url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-        },
-      ];
+      {
+        name: c.env.NETWORK || "devnet",
+        url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+      },
+    ];
 
   logger.log(
     `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
@@ -1510,7 +1510,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     // Set default values for critical fields if they're missing
     const TOKEN_DECIMALS = token.tokenDecimals || 6;
     const defaultReserveAmount = 1000000000000; // 1 trillion (default token supply)
-    const defaultReserveLamport = Number(c.env.VIRTUAL_RESERVES || 28000000000) ; // 2.8 SOL (default reserve / 28 in mainnet)
+    const defaultReserveLamport = Number(c.env.VIRTUAL_RESERVES || 28000000000); // 2.8 SOL (default reserve / 28 in mainnet)
 
     // Make sure reserveAmount and reserveLamport have values
     token.reserveAmount = token.reserveAmount || defaultReserveAmount;
@@ -1557,8 +1557,8 @@ tokenRouter.get("/token/:mint", async (c) => {
       token.status === "migrated"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-            (token.curveLimit - token.virtualReserves)) *
-          100;
+          (token.curveLimit - token.virtualReserves)) *
+        100;
 
     // Get token holders count
     const holdersCountQuery = await db
@@ -1857,6 +1857,7 @@ tokenRouter.post("/create-token", async (c) => {
       // Create token data with all required fields from the token schema
       const now = new Date().toISOString();
       const tokenId = crypto.randomUUID();
+      console.log("****** imported ******\n", imported);
 
       // Convert imported to number (1 for true, 0 for false)
       const importedValue = imported === true ? 1 : 0;
@@ -1876,7 +1877,7 @@ tokenRouter.post("/create-token", async (c) => {
         website: website || "",
         discord: discord || "",
         creator: user.publicKey || "unknown",
-        status: "active",
+        status: imported ? "locked" : "active",
         tokenPriceUSD: 0.00000001,
         createdAt: now,
         lastUpdated: now,
@@ -1897,7 +1898,7 @@ tokenRouter.post("/create-token", async (c) => {
         website: website || "",
         discord: discord || "",
         creator: user.publicKey || "unknown",
-        status: "active",
+        status: imported ? "locked" : "active",
         url: metadataUrl || "",
         image: imageUrl || "",
         createdAt: now,
@@ -1906,7 +1907,7 @@ tokenRouter.post("/create-token", async (c) => {
 
       if (imported) {
         const importedToken = new ImportedToken(c.env, mintAddress);
-        const { marketData } = await importedToken.updateAllData();
+        const { marketData } = await importedToken.updateAllData({ firstRun: true });
         Object.assign(tokenData, marketData.newTokenData);
       } else {
         // For non-imported tokens, generate additional images in the background

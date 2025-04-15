@@ -16,6 +16,7 @@ import { getConfigAccount } from "./use-config-account";
 import { useMevProtection } from "./use-mev-protection";
 import { useSlippage } from "./use-slippage";
 import { useTransactionSpeed } from "./use-transaction-speed";
+import { env } from "@/utils/env";
 
 interface SwapParams {
   style: "buy" | "sell";
@@ -71,8 +72,9 @@ export const useSwap = () => {
     const ixs = [];
     if (token?.status === "locked") {
       const mainnetConnection = new Connection(
-        "https://mainnet.helius-rpc.com/?api-key=156e83be-b359-4f60-8abb-c6a17fd3ff5f",
-      );
+        env.rpcUrlMainnet,
+        "confirmed",
+      ); // this is always mainnet
       // Use Jupiter API when tokens are locked
       const ixsJupiterSwap = await getJupiterSwapIx(
         wallet.publicKey,
@@ -138,19 +140,21 @@ export const useSwap = () => {
     if (!wallet.publicKey || !wallet.signTransaction || !program) {
       throw new Error("Wallet not connected or missing required methods");
     }
-
-    const [bondingCurvePda] = PublicKey.findProgramAddressSync(
-      [Buffer.from(SEED_BONDING_CURVE), new PublicKey(tokenAddress).toBytes()],
-      program.programId,
-    );
-    const curve = await program.account.bondingCurve.fetch(bondingCurvePda);
+    let curve
+    if (token?.status !== "locked") {
+      const [bondingCurvePda] = PublicKey.findProgramAddressSync(
+        [Buffer.from(SEED_BONDING_CURVE), new PublicKey(tokenAddress).toBytes()],
+        program.programId,
+      );
+      curve = await program.account.bondingCurve.fetch(bondingCurvePda);
+    }
 
     const ixs = await createSwapIx({
       style,
       amount,
       tokenAddress,
-      reserveLamport: curve.reserveLamport.toNumber(),
-      reserveToken: curve.reserveToken.toNumber(),
+      reserveLamport: curve ? curve.reserveLamport.toNumber() : 0,
+      reserveToken: curve ? curve.reserveToken.toNumber() : 0,
       token,
     });
 

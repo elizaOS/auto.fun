@@ -271,7 +271,7 @@ export const getJupiterSwapIx = async (
   const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
 
   // @TODO token address is static for now because our project is not deployed to mainnet yet
-  const tokenMintAddress = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
+  const tokenMintAddress = _token.toBase58(); // "9n4nbM75f5Ui3i7g1d8v2c3e6b7e4a4a4a4a4a4a4a4a"; // USDC mint address
   const inputMint = style === 0 ? SOL_MINT_ADDRESS : tokenMintAddress;
   const outputMint = style === 0 ? tokenMintAddress : SOL_MINT_ADDRESS;
 
@@ -279,7 +279,7 @@ export const getJupiterSwapIx = async (
   const feePercent = 0.2;
   const feeBps = feePercent * 100;
   // Add platform fee to the quote
-  const quoteUrl = `https://api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=${slippageBps}&restrictIntermediateTokens=true&platformFeeBps=${feeBps}`;
+  const quoteUrl = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=${slippageBps}&restrictIntermediateTokens=true&platformFeeBps=${feeBps}`; // this needs to change to a paid version
   const quoteRes = await fetch(quoteUrl);
 
   if (!quoteRes.ok) {
@@ -287,35 +287,37 @@ export const getJupiterSwapIx = async (
     throw new Error(`Failed to fetch quote from Jupiter: ${errorMsg}`);
   }
   const quoteResponse = await quoteRes.json();
-
+  console.log("dev address", env.devAddress);
   // 2. Build the swap transaction by POSTing to Jupiter's swap endpoint.
-  const feeAccount = associatedAddress({
-    mint: new PublicKey(tokenMintAddress),
-    owner: new PublicKey(env.devAddress),
-  });
+  // const feeAccount = associatedAddress({
+  //   mint: new PublicKey(SOL_MINT_ADDRESS),
+  //   owner: new PublicKey(env.devAddress),
+  // });
 
-  const feeAccountData = await connection.getAccountInfo(feeAccount);
+  //To do {*/ Malibu */}: reactivate the fee once the fee address is set up (before launch)
 
-  const additionalIxs = [];
-  if (!feeAccountData) {
-    // Create the fee account
-    const createFeeAccountIx = createAssociatedTokenAccountInstruction(
-      user,
-      feeAccount,
-      new PublicKey(env.devAddress),
-      new PublicKey(tokenMintAddress),
-    );
-    additionalIxs.push(createFeeAccountIx);
-  }
+  // const feeAccountData = await connection.getAccountInfo(feeAccount);
 
-  const swapUrl = "https://api.jup.ag/swap/v1/swap";
+  const additionalIxs = [] as any;
+  // if (!feeAccountData) {
+  //   // Create the fee account
+  //   const createFeeAccountIx = createAssociatedTokenAccountInstruction(
+  //     user,
+  //     feeAccount,
+  //     new PublicKey(env.devAddress),
+  //     new PublicKey(tokenMintAddress),
+  //   );
+  //   additionalIxs.push(createFeeAccountIx);
+  // }
+
+  const swapUrl = "https://lite-api.jup.ag/swap/v1/swap";
   const body = {
     quoteResponse,
     userPublicKey: user.toBase58(),
     asLegacyTransaction: true,
     dynamicComputeUnitLimit: true,
     dynamicSlippage: true,
-    feeAccount: feeAccount.toBase58(),
+    // feeAccount: feeAccount.toBase58(),
   };
   const swapRes = await fetch(swapUrl, {
     method: "POST",
