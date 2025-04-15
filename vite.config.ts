@@ -43,9 +43,6 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
-  define: {
-    global: "window",
-  },
   // Explicitly include node built-ins for browser compatibility
   optimizeDeps: {
     esbuildOptions: {
