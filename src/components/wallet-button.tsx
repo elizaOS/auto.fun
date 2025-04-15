@@ -88,68 +88,6 @@ const WalletButton = () => {
     };
   }, []);
 
-  // When walletAddress changes, try to reconnect
-  useEffect(() => {
-    if (
-      walletAddress &&
-      !publicKey &&
-      !hasDirectPhantomConnection &&
-      !isAuthenticating
-    ) {
-      // Try to connect directly to Phantom if available
-      if (
-        typeof window !== "undefined" &&
-        window.solana &&
-        window.solana.isPhantom
-      ) {
-        window.solana
-          .connect()
-          .then((_response: any) => {
-            // Try to load icon if not yet loaded
-            if (!walletIcon) {
-              const adapter = new PhantomWalletAdapter();
-              if (adapter.icon) {
-                setWalletIcon(adapter.icon);
-              }
-            }
-          })
-          .catch((err: any) => console.error("Error auto-connecting:", err));
-      }
-    }
-  }, [
-    walletAddress,
-    publicKey,
-    hasDirectPhantomConnection,
-    isAuthenticating,
-    walletIcon,
-  ]);
-
-  // Try to connect wallet on load if we have a token but no connection
-  useEffect(() => {
-    if (!isAuthenticated && !isAuthenticating && authToken) {
-      // Try to connect directly to Phantom if available
-      if (
-        typeof window !== "undefined" &&
-        window.solana &&
-        window.solana.isPhantom &&
-        !window.solana.publicKey
-      ) {
-        window.solana
-          .connect()
-          .then(() => {
-            // Try to load icon if not yet loaded
-            if (!walletIcon) {
-              const adapter = new PhantomWalletAdapter();
-              if (adapter.icon) {
-                setWalletIcon(adapter.icon);
-              }
-            }
-          })
-          .catch((err: any) => console.error("Error auto-connecting:", err));
-      }
-    }
-  }, [isAuthenticated, isAuthenticating, authToken, walletIcon]);
-
   // Handle copy wallet address
   const handleCopyAddress = async () => {
     if (displayPublicKey) {
@@ -257,15 +195,12 @@ const WalletButton = () => {
     );
   }
 
-  // If not authenticated, show connect button
+  // If not authenticated, show the connect button
   return (
     <Button
       size="large"
-      onClick={() => {
-        setVisible(true);
-      }}
+      onClick={() => setVisible(true)}
       disabled={connecting || isAuthenticating}
-      className="min-w-[150px]"
     >
       {buttonText}
     </Button>
