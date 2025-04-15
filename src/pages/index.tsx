@@ -68,7 +68,7 @@ export default function Page() {
           <Fragment>
             {query?.items?.length === 0 ? (
               <div className="text-center text-muted-foreground my-6">
-                No token to be displayed
+                No tokens to be displayed
               </div>
             ) : activeTab === "grid" ? (
               <div className="my-6">
