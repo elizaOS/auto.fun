@@ -39,6 +39,8 @@ const unparsedEnv = {
     (import.meta.env.VITE_SOLANA_NETWORK === "devnet"
       ? import.meta.env.VITE_DEVNET_RPC_URL
       : import.meta.env.VITE_MAINNET_RPC_URL) || import.meta.env.VITE_RPC_URL,
+  rpcUrlMainnet:
+    import.meta.env.VITE_MAINNET_RPC_URL,
   virtualReserves: import.meta.env.VITE_VIRTUAL_RESERVES,
   tokenSupply: import.meta.env.VITE_TOKEN_SUPPLY,
   decimals: import.meta.env.VITE_DECIMALS,
