@@ -1,16 +1,25 @@
 import {
-  ExecutionContext,
-  ScheduledEvent,
+  ExecutionContext
 } from "@cloudflare/workers-types/experimental";
-import { Connection, PublicKey, Keypair } from "@solana/web3.js";
+import { AnchorProvider, Program } from "@coral-xyz/anchor";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
+import { TokenData, TokenDBData } from "../worker/raydium/types/tokenData";
 import { getLatestCandle } from "./chart";
-import { getDB, swaps, Token, tokens, vanityKeypairs } from "./db";
+import { getDB, swaps, Token, tokens } from "./db";
 import { Env } from "./env";
 import { logger } from "./logger";
-import { getSOLPrice, calculateTokenMarketData } from "./mcap";
+import { calculateTokenMarketData, getSOLPrice } from "./mcap";
+import { awardGraduationPoints, awardUserPoints } from "./points/helpers";
+import { TokenMigrator } from "./raydium/migration/migrateToken";
+import { getToken } from "./raydium/migration/migrations";
+import * as raydium_vault_IDL from "./raydium/raydium_vault.json";
+import { RaydiumVault } from "./raydium/types/raydium_vault";
 import { checkAndReplenishTokens } from "./routes/generation";
 import { updateHoldersCache } from "./routes/token";
+import * as IDL from "./target/idl/autofun.json";
+import { Autofun } from "./target/types/autofun";
+import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import {
   bulkUpdatePartialTokens,
   calculateFeaturedScore,
@@ -18,17 +27,6 @@ import {
   getFeaturedMaxValues,
 } from "./util";
 import { getWebSocketClient } from "./websocket-client";
-import bs58 from "bs58";
-import { TokenData, TokenDBData } from "../worker/raydium/types/tokenData";
-import { awardUserPoints, awardGraduationPoints } from "./points/helpers";
-import { getToken } from "./raydium/migration/migrations";
-import { TokenMigrator } from "./raydium/migration/migrateToken";
-import { Program, AnchorProvider } from "@coral-xyz/anchor";
-import { Wallet } from "./tokenSupplyHelpers/customWallet";
-import { RaydiumVault } from "./raydium/types/raydium_vault";
-import * as raydium_vault_IDL from "./raydium/raydium_vault.json";
-import { Autofun } from "./target/types/autofun";
-import * as IDL from "./target/idl/autofun.json";
 
 // Store the last processed signature to avoid duplicate processing
 let lastProcessedSignature: string | null = null;
@@ -830,242 +828,6 @@ export async function monitorTokenEvents(env: Env): Promise<void> {
   logger.log("Token event monitoring completed");
 }
 
-// --- Vanity Keypair Generation ---
-const MIN_VANITY_KEYPAIR_BUFFER = 100;
-const TARGET_VANITY_KEYPAIR_BUFFER = 150; // Target slightly higher than min
-const VANITY_SUFFIX = "FUN";
-const MAX_KEYPAIRS_PER_CRON_RUN = 50; // Maximum keypairs to generate per cron run
-const MAX_CONCURRENT_KEYPAIR_REQUESTS = 5; // Reduced from 10 to 5 for more stability
-
-export async function manageVanityKeypairs(env: Env): Promise<void> {
-  logger.log("[VANITY] Checking vanity keypair buffer...");
-  const db = getDB(env);
-
-  // Count unused keypairs
-  const countResult = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(vanityKeypairs)
-    .where(eq(vanityKeypairs.used, 0));
-
-  // Also count total keypairs for full stats
-  const totalResult = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(vanityKeypairs);
-
-  const currentCount = countResult[0]?.count || 0;
-  const totalCount = totalResult[0]?.count || 0;
-  const usedCount = totalCount - currentCount;
-
-  logger.log(
-    `[VANITY] Current stats: ${currentCount} unused out of ${totalCount} total keypairs (${usedCount} used)`,
-  );
-
-  // Determine the vanity service URL based on environment
-  const vanityServiceUrl =
-    env.NODE_ENV === "development"
-      ? "http://localhost:8888/grind"
-      : "https://vanity.autofun.workers.dev/grind";
-
-  // Start timing
-  const startTime = Date.now();
-
-  // Calculate how many keypairs we need to generate
-  const keypairsToGenerate = Math.min(
-    MAX_KEYPAIRS_PER_CRON_RUN,
-    currentCount < MIN_VANITY_KEYPAIR_BUFFER
-      ? TARGET_VANITY_KEYPAIR_BUFFER - currentCount
-      : 0,
-  );
-
-  if (keypairsToGenerate <= 0) {
-    logger.log(
-      `[VANITY] Buffer full (${currentCount}/${MIN_VANITY_KEYPAIR_BUFFER}). Not generating any keypairs.`,
-    );
-    return;
-  }
-
-  logger.log(`[VANITY] Will generate ${keypairsToGenerate} keypairs this run`);
-
-  let successfullyGenerated = 0;
-
-  // Define the concurrency limit
-  const maxConcurrent = MAX_CONCURRENT_KEYPAIR_REQUESTS;
-
-  // Function to generate and save a single keypair
-  async function generateAndSaveKeypair(index: number): Promise<boolean> {
-    logger.log(
-      `[VANITY] Requesting keypair ${index + 1}/${keypairsToGenerate}...`,
-    );
-
-    // Request a single keypair from the vanity service
-    const response = await fetch(vanityServiceUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        target: VANITY_SUFFIX,
-        case_insensitive: false,
-        position: "suffix",
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      logger.error(
-        `[VANITY] Vanity service error ${response.status}: ${errorText}`,
-      );
-      return false;
-    }
-
-    const result = await response.json();
-
-    // Validate the keypair data
-    if (!result.pubkey || !result.private_key) {
-      logger.error(
-        `[VANITY] Invalid keypair format: ${JSON.stringify(result)}`,
-      );
-      return false;
-    }
-
-    // Log success
-    logger.log(
-      `[VANITY] Generated keypair ending with "${VANITY_SUFFIX}" in ${result.attempts || "unknown"} attempts: ${result.pubkey}`,
-    );
-
-    // Check if this keypair is already in the database before proceeding
-    const existingCheck = await db
-      .select()
-      .from(vanityKeypairs)
-      .where(eq(vanityKeypairs.address, result.pubkey))
-      .limit(1);
-
-    if (existingCheck && existingCheck.length > 0) {
-      logger.warn(
-        `[VANITY] Keypair ${result.pubkey} already exists in database, skipping`,
-      );
-      return false;
-    }
-
-    // IMPORTANT: Make sure we have valid Base58 format from the vanity service
-    const privateKeyBytes = bs58.decode(result.private_key);
-
-    // Verify the private key is exactly 64 bytes (required by Solana)
-    if (privateKeyBytes.length !== 64) {
-      logger.error(
-        `[VANITY] Invalid private key length: ${privateKeyBytes.length} bytes (expected 64 bytes)`,
-      );
-      return false;
-    }
-
-    // Convert to Base64 for storage to ensure consistent handling
-    const privateKeyBase64 = Buffer.from(privateKeyBytes).toString("base64");
-
-    // Verify the keypair is valid by trying to recreate it
-    // We need to import the Keypair class here since it's not available at the module level
-    const { Keypair } = await import("@solana/web3.js");
-    const recreatedKeypair = Keypair.fromSecretKey(privateKeyBytes);
-    const recreatedPubkey = recreatedKeypair.publicKey.toString();
-
-    // Verify the public key matches what the vanity service returned
-    if (recreatedPubkey !== result.pubkey) {
-      logger.error(`[VANITY] Keypair verification failed: public key mismatch`);
-      logger.error(
-        `[VANITY] Expected: ${result.pubkey}, Got: ${recreatedPubkey}`,
-      );
-      return false;
-    }
-
-    logger.log(`[VANITY] Keypair verification successful: ${result.pubkey}`);
-
-    // Create keypair object with Base64-encoded secret key
-    const keypair = {
-      id: crypto.randomUUID(),
-      address: result.pubkey,
-      secretKey: privateKeyBase64,
-      createdAt: new Date().toISOString(),
-      used: 0,
-    };
-
-    // CRITICAL: Insert this keypair DIRECTLY with a DEDICATED database connection
-    // This is the most important part - no transactions, no batching, just a direct insert
-    // We're using the main db connection, NOT creating a new one to avoid
-    // potential connection pool issues
-    await db.insert(vanityKeypairs).values(keypair);
-
-    // Log successful insert
-    logger.log(
-      `[VANITY] ✓ SAVED KEYPAIR DIRECTLY TO DATABASE: ${result.pubkey}`,
-    );
-    return true;
-  }
-
-  // Use a completely different approach with a managed promise pool
-  let generatedCount = 0;
-  let processingPromises: Promise<boolean>[] = [];
-
-  for (let i = 0; i < keypairsToGenerate; i++) {
-    // Add this task to our managed promise pool
-    processingPromises.push(
-      (async () => {
-        const success = await generateAndSaveKeypair(i);
-        if (success) {
-          // Only log once after we've completed a successful generation
-          generatedCount++;
-          logger.log(
-            `[VANITY] Progress: ${generatedCount}/${keypairsToGenerate} keypairs generated (${Math.round((generatedCount / keypairsToGenerate) * 100)}%)`,
-          );
-        }
-        return success;
-      })(),
-    );
-
-    // Process in batches to limit concurrency
-    if (
-      processingPromises.length >= maxConcurrent ||
-      i === keypairsToGenerate - 1
-    ) {
-      // Wait for all current promises to complete before adding more
-      const results = await Promise.all(processingPromises);
-      // Count successful generations
-      successfullyGenerated += results.filter(Boolean).length;
-      // Clear the promise array for the next batch
-      processingPromises = [];
-
-      // Log the progress after each batch
-      logger.log(
-        `[VANITY] Batch complete: ${successfullyGenerated}/${keypairsToGenerate} keypairs generated so far`,
-      );
-
-      // Do a database check after each batch to verify
-      const dbCheckCount = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(vanityKeypairs)
-        .where(eq(vanityKeypairs.used, 0));
-
-      const currentDbCount = dbCheckCount[0]?.count || 0;
-      logger.log(
-        `[VANITY] Database verification: ${currentDbCount} unused keypairs now in database`,
-      );
-    }
-  }
-
-  const totalTime = (Date.now() - startTime) / 1000;
-  logger.log(
-    `[VANITY] Completed generation of ${successfullyGenerated}/${keypairsToGenerate} keypairs in ${totalTime.toFixed(1)}s`,
-  );
-
-  // Get updated counts
-  const updatedCount = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(vanityKeypairs)
-    .where(eq(vanityKeypairs.used, 0));
-
-  logger.log(
-    `[VANITY] Final buffer status: ${updatedCount[0]?.count || 0}/${MIN_VANITY_KEYPAIR_BUFFER} unused keypairs`,
-  );
-}
-
 export async function cron(
   env: Env,
   ctx: ExecutionContext | { cron: string },
@@ -1116,9 +878,6 @@ export async function cron(
       })(),
       (async () => {
         await checkAndReplenishTokens(env);
-      })(),
-      (async () => {
-        await manageVanityKeypairs(env);
       })(),
     ]);
   } catch (error) {

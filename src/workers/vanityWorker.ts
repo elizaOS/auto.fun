@@ -79,13 +79,12 @@ self.onmessage = (
           secretKey.set(publicKey, 32);
 
           if (validateKeypair(privateKey, publicKey, secretKey)) {
-            const secretKeyBs58 = bs58.default.encode(secretKey);
             console.log(`Worker ${workerId}: Found valid match!`);
             self.postMessage({
               type: "found",
               workerId,
               publicKey: publicKeyBs58,
-              secretKey: secretKeyBs58,
+              secretKey: Array.from(secretKey),
               validated: true,
             });
             running = false;
