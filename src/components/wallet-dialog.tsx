@@ -85,18 +85,33 @@ export const WalletModal: FC<WalletModalProps> = () => {
       let directConnectionSuccessful = false;
       if (isPhantom && window.solana && window.solana.isPhantom) {
         console.log("Using direct Phantom connection via window.solana");
-        // Check if already connected
-        if (window.solana.publicKey) {
-          console.log("Phantom already connected, skipping connect() call.");
-          directConnectionSuccessful = true;
-        } else {
-          // Not connected, attempt connection
-          console.log("Connecting to Phantom directly");
-          const response = await connect();
-          console.log("Direct connection to Phantom successful", response);
+        try {
+          // First select the wallet
+          await select(wallet.adapter.name);
+          
+          // Then attempt connection
+          if (!window.solana.publicKey) {
+            console.log("Connecting to Phantom directly");
+            const response = await window.solana.connect();
+            console.log("Direct connection to Phantom successful", response);
+          } else {
+            console.log("Phantom already connected");
+          }
+          
           directConnectionSuccessful = true;
           // Wait a moment for connection to register
           await new Promise((resolve) => setTimeout(resolve, 500));
+        } catch (err) {
+          console.error("Error during Phantom connection:", err);
+          // Fall back to adapter connection
+          try {
+            await select(wallet.adapter.name);
+            await connect();
+            directConnectionSuccessful = true;
+          } catch (fallbackErr) {
+            console.error("Fallback connection failed:", fallbackErr);
+            throw new Error("Failed to connect to wallet");
+          }
         }
       }
 
