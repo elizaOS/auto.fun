@@ -1,4 +1,5 @@
 # Logs
+vanity/target
 logs
 *.log
 npm-debug.log*
