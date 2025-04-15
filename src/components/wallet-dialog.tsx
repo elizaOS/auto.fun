@@ -75,218 +75,65 @@ export const WalletModal: FC<WalletModalProps> = () => {
       localStorage.setItem("walletName", JSON.stringify(wallet.adapter.name));
       console.log("Selected wallet:", wallet.adapter.name);
 
-      // Connect - use a direct approach for Phantom wallet
-      const isPhantom = wallet.adapter.name.toLowerCase().includes("phantom");
-      console.log(
-        `Connecting to ${isPhantom ? "Phantom" : wallet.adapter.name} wallet...`,
-      );
-
-      // Try direct connection for Phantom wallet
-      let directConnectionSuccessful = false;
-      if (isPhantom && window.solana && window.solana.isPhantom) {
-        console.log("Using direct Phantom connection via window.solana");
-        // Check if already connected
-        if (window.solana.publicKey) {
-          console.log("Phantom already connected, skipping connect() call.");
-          directConnectionSuccessful = true;
-        } else {
-          // Not connected, attempt connection
-          console.log("Connecting to Phantom directly");
-          try {
-            const response = await window.solana.connect();
-            console.log("Direct connection to Phantom successful", response);
-            directConnectionSuccessful = true;
-            // Wait a moment for connection to register
-            await new Promise((resolve) => setTimeout(resolve, 500));
-          } catch (err) {
-            console.error("Direct Phantom connection failed:", err);
-            directConnectionSuccessful = false;
-          }
-        }
-      }
-
-      // If direct connection failed, try adapter approach
-      if (!directConnectionSuccessful) {
-        console.log("Attempting adapter connection...");
-        try {
-          // First select the wallet
-          console.log("Selecting wallet:", wallet.adapter.name);
-          await select(wallet.adapter.name);
-          
-          // Wait for selection to complete and wallet to be ready
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          
-          // Check if wallet is selected before attempting connection
-          if (!wallet.adapter.connected && !connectedWallet) {
-            console.log("Connecting via adapter...");
-            await connect();
-            console.log("Adapter connection successful");
-          } else {
-            console.log("Wallet already connected via adapter");
-          }
-        } catch (err) {
-          console.error("Adapter connection failed:", err);
-          throw err;
-        }
-      }
+      // Always use adapter approach for consistency
+      console.log(`Connecting to ${wallet.adapter.name} wallet...`);
+      
+      // Select the wallet first
+      await select(wallet.adapter.name);
+      
+      // Wait a moment for selection to register
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      
+      // Connect using the adapter
+      await connect();
+      console.log("Adapter connection successful");
 
       // Wait for the public key to be available with timeout
       const maxWaitTime = 10000; // 10 seconds max
       const startTime = Date.now();
 
-      // Use direct Phantom publicKey if available, otherwise use adapter
-      let finalPublicKey =
-        isPhantom && window.solana && window.solana.publicKey
-          ? window.solana.publicKey
-          : publicKey;
-
-      while (!finalPublicKey && Date.now() - startTime < maxWaitTime) {
+      while (!publicKey && Date.now() - startTime < maxWaitTime) {
         console.log("Waiting for publicKey...");
-
-        // Check for direct Phantom publicKey first
-        if (isPhantom && window.solana && window.solana.publicKey) {
-          console.log("Found publicKey from window.solana.publicKey");
-          finalPublicKey = window.solana.publicKey;
-          break;
-        }
-
-        // Check adapter publicKey
-        if (publicKey) {
-          finalPublicKey = publicKey;
-          break;
-        }
-
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
-      if (!finalPublicKey) {
+      if (!publicKey) {
         console.error("Failed to get publicKey after connection");
         throw new Error("Wallet connected but no public key available");
       }
 
-      // Convert window.solana.publicKey to string if needed
-      const publicKeyStr =
-        typeof finalPublicKey === "string"
-          ? finalPublicKey
-          : finalPublicKey.toString();
-
+      const publicKeyStr = publicKey.toString();
       console.log("Using publicKey for authentication:", publicKeyStr);
 
       /** Nonce generation */
       const nonce = String(Math.floor(new Date().getTime() / 1000.0));
 
-      // For signing, prefer direct Phantom signMessage when available
-      let signatureBytes: Uint8Array;
-      let siwsMessage;
-      let messageText: string;
+      // Use adapter signing
+      if (!signMessage) throw new Error("signMessage method not available");
+      console.log("Using adapter signing");
 
-      if (isPhantom && window.solana && window.solana.signMessage) {
-        console.log("Using direct Phantom signMessage");
-        const payload = new Payload();
-        payload.domain = window.location.host;
-        payload.address = publicKeyStr;
-        payload.uri = window.location.origin;
-        payload.statement = `Sign this message for authenticating with nonce: ${nonce}`;
-        payload.version = "1";
-        payload.chainId = 1;
-        payload.nonce = nonce;
+      const payload = new Payload();
+      payload.domain = window.location.host;
+      payload.address = publicKeyStr;
+      payload.uri = window.location.origin;
+      payload.statement = `Sign this message for authenticating with nonce: ${nonce}`;
+      payload.version = "1";
+      payload.chainId = 1;
+      payload.nonce = nonce;
 
-        siwsMessage = new SIWS({ payload });
-        messageText = siwsMessage.prepareMessage();
-        console.log("Message to sign:", messageText);
-        const messageEncoded = new TextEncoder().encode(messageText);
+      const siwsMessage = new SIWS({ payload });
+      const messageText = siwsMessage.prepareMessage();
+      const messageEncoded = new TextEncoder().encode(messageText);
 
-        // Use direct Phantom signing
-        console.log("Calling window.solana.signMessage...");
-        const signatureResponse = await window.solana.signMessage(
-          messageEncoded,
-          "utf8",
-        );
-        console.log(
-          "Direct Phantom signing successful, response type:",
-          typeof signatureResponse,
-        );
-        console.log("Response:", signatureResponse);
-
-        // Handle different signature formats - Phantom may return the signature directly or in an object
-        if (signatureResponse instanceof Uint8Array) {
-          console.log(
-            "Response is Uint8Array, length:",
-            signatureResponse.length,
-          );
-          signatureBytes = signatureResponse;
-        } else if (
-          typeof signatureResponse === "object" &&
-          signatureResponse !== null
-        ) {
-          console.log("Response is object:", Object.keys(signatureResponse));
-
-          // Use a type assertion to handle signature property access
-          type PhantomSignatureResponse = {
-            signature?: Uint8Array;
-            data?: Uint8Array;
-          };
-
-          const typedResponse = signatureResponse as PhantomSignatureResponse;
-
-          // Check if it has a signature property
-          if (typedResponse.signature instanceof Uint8Array) {
-            console.log(
-              "Found signature property of type:",
-              typeof typedResponse.signature,
-            );
-            signatureBytes = typedResponse.signature;
-          } else if (typedResponse.data instanceof Uint8Array) {
-            console.log(
-              "Found data property, length:",
-              typedResponse.data.length,
-            );
-            signatureBytes = typedResponse.data;
-          } else {
-            console.error(
-              "Object does not contain valid signature property:",
-              signatureResponse,
-            );
-            throw new Error("Missing or invalid signature in wallet response");
-          }
-        } else {
-          console.error(
-            "Unexpected signature format:",
-            typeof signatureResponse,
-            signatureResponse,
-          );
-          throw new Error("Unrecognized signature format from Phantom wallet");
-        }
-      } else {
-        // Use adapter signing
-        if (!signMessage) throw new Error("signMessage method not available");
-        console.log("Using adapter signing");
-
-        const payload = new Payload();
-        payload.domain = window.location.host;
-        payload.address = publicKeyStr;
-        payload.uri = window.location.origin;
-        payload.statement = `Sign this message for authenticating with nonce: ${nonce}`;
-        payload.version = "1";
-        payload.chainId = 1;
-        payload.nonce = nonce;
-
-        siwsMessage = new SIWS({ payload });
-        messageText = siwsMessage.prepareMessage();
-        const messageEncoded = new TextEncoder().encode(messageText);
-
-        const adaptorSignature = await signMessage(messageEncoded);
-        if (adaptorSignature instanceof Uint8Array) {
-          signatureBytes = adaptorSignature;
-        } else {
-          throw new Error("Adapter signing did not return a Uint8Array");
-        }
+      const adaptorSignature = await signMessage(messageEncoded);
+      if (!(adaptorSignature instanceof Uint8Array)) {
+        throw new Error("Adapter signing did not return a Uint8Array");
       }
 
       console.log("Message signed successfully, authenticating with server...");
 
       // Encode the signature for sending to the server
-      const signatureHex = bs58.encode(signatureBytes);
+      const signatureHex = bs58.encode(adaptorSignature);
       console.log(
         "Successfully encoded signature to base58:",
         signatureHex.substring(0, 10) + "...",
@@ -350,10 +197,9 @@ export const WalletModal: FC<WalletModalProps> = () => {
         );
 
         // Store token in both formats for compatibility
-        // 1. Directly as authToken (old method) - without JSON.stringify for JWT tokens
         setAuthToken(authData.token);
 
-        // 2. In enhanced walletAuth storage structure
+        // Store in enhanced walletAuth storage structure
         const authStorage = {
           token: authData.token,
           walletAddress: authData.user?.address || publicKeyStr,
@@ -363,64 +209,12 @@ export const WalletModal: FC<WalletModalProps> = () => {
         try {
           localStorage.setItem("walletAuth", JSON.stringify(authStorage));
           console.log("Stored wallet auth data with token in localStorage");
-
-          // Double check it was stored correctly
-          const storedData = localStorage.getItem("walletAuth");
-          if (storedData) {
-            try {
-              const parsed = JSON.parse(storedData);
-              if (parsed.token !== authData.token) {
-                console.error(
-                  "Token storage verification failed - tokens don't match",
-                );
-              } else {
-                console.log("Token storage verification successful");
-              }
-            } catch (e) {
-              console.error("Error parsing stored token for verification:", e);
-            }
-          } else {
-            console.error(
-              "Token storage verification failed - no data found after storage",
-            );
-          }
         } catch (e) {
           console.error("Error storing wallet auth data:", e);
         }
       } else {
         console.warn("No token received from server during authentication");
-        // Generate a fallback token for compatibility
-        const walletAddress =
-          wallet?.adapter?.publicKey?.toString() ||
-          (window.solana?.publicKey
-            ? window.solana.publicKey.toString()
-            : null);
-
-        if (walletAddress) {
-          console.log("Creating fallback authentication token");
-          const walletSpecificToken = `wallet_${walletAddress}_${Date.now()}`;
-
-          // Store in both formats
-          setAuthToken(walletSpecificToken);
-
-          const authStorage = {
-            token: walletSpecificToken,
-            walletAddress: walletAddress,
-            timestamp: Date.now(),
-          };
-
-          try {
-            localStorage.setItem("walletAuth", JSON.stringify(authStorage));
-            console.log("Stored fallback wallet auth data in localStorage");
-          } catch (e) {
-            console.error("Error storing fallback wallet auth data:", e);
-          }
-        } else {
-          console.error(
-            "Cannot create fallback token: No wallet address available",
-          );
-          throw new Error("Authentication error: No wallet address available");
-        }
+        throw new Error("Authentication error: No token received from server");
       }
 
       return true;
@@ -429,7 +223,6 @@ export const WalletModal: FC<WalletModalProps> = () => {
       setVisible(false);
     },
     onError: (e) => {
-      // TODO - Replace for proper toaster again
       console.error("Connection error:", e);
     },
   });
