@@ -105,8 +105,8 @@ export const WalletModal: FC<WalletModalProps> = () => {
         }
       }
 
-      // If direct connection failed or this isn't Phantom, try adapter approach
-      if (!directConnectionSuccessful || !connectedWallet) {
+      // If direct connection failed, try adapter approach
+      if (!directConnectionSuccessful) {
         console.log("Attempting adapter connection...");
         try {
           // First select the wallet
@@ -117,7 +117,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
           await new Promise((resolve) => setTimeout(resolve, 1000));
           
           // Check if wallet is selected before attempting connection
-          if (!wallet.adapter.connected) {
+          if (!wallet.adapter.connected && !connectedWallet) {
             console.log("Connecting via adapter...");
             await connect();
             console.log("Adapter connection successful");
