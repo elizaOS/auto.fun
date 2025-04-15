@@ -13,6 +13,20 @@ export const Wallet = ({ children }: PropsWithChildren) => {
   const endpoint = env.rpcUrl || "https://api.devnet.solana.com";
   const [autoConnectAttempted, setAutoConnectAttempted] = useState(false);
 
+  // Add cleanup effect
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const walletAuth = localStorage.getItem("walletAuth");
+      const authToken = localStorage.getItem("authToken");
+      if (!walletAuth && !authToken) {
+        setAutoConnectAttempted(false);
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
   // Initialize wallet adapters
   const wallets = useMemo(() => {
     return [new PhantomWalletAdapter()];

@@ -90,64 +90,64 @@ const WalletButton = () => {
 
   // When walletAddress changes, try to reconnect
   useEffect(() => {
-    if (
-      walletAddress &&
-      !publicKey &&
-      !hasDirectPhantomConnection &&
-      !isAuthenticating
-    ) {
-      // Try to connect directly to Phantom if available
-      if (
-        typeof window !== "undefined" &&
-        window.solana &&
-        window.solana.isPhantom
-      ) {
-        window.solana
-          .connect()
-          .then((_response: any) => {
-            // Try to load icon if not yet loaded
-            if (!walletIcon) {
-              const adapter = new PhantomWalletAdapter();
-              if (adapter.icon) {
-                setWalletIcon(adapter.icon);
-              }
-            }
-          })
-          .catch((err: any) => console.error("Error auto-connecting:", err));
+    const checkAndConnect = async () => {
+      // Verify token is still valid
+      const walletAuth = localStorage.getItem("walletAuth");
+      const authToken = localStorage.getItem("authToken");
+      
+      if (!walletAuth && !authToken) {
+        return; // No valid tokens, don't attempt connection
       }
-    }
-  }, [
-    walletAddress,
-    publicKey,
-    hasDirectPhantomConnection,
-    isAuthenticating,
-    walletIcon,
-  ]);
+
+      if (walletAddress && !publicKey && !hasDirectPhantomConnection && !isAuthenticating) {
+        if (window.solana && window.solana.isPhantom) {
+          window.solana
+            .connect()
+            .then((_response: any) => {
+              if (!walletIcon) {
+                const adapter = new PhantomWalletAdapter();
+                if (adapter.icon) {
+                  setWalletIcon(adapter.icon);
+                }
+              }
+            })
+            .catch((err: any) => console.error("Error auto-connecting:", err));
+        }
+      }
+    };
+
+    checkAndConnect();
+  }, [walletAddress, publicKey, hasDirectPhantomConnection, isAuthenticating, walletIcon]);
 
   // Try to connect wallet on load if we have a token but no connection
   useEffect(() => {
-    if (!isAuthenticated && !isAuthenticating && authToken) {
-      // Try to connect directly to Phantom if available
-      if (
-        typeof window !== "undefined" &&
-        window.solana &&
-        window.solana.isPhantom &&
-        !window.solana.publicKey
-      ) {
-        window.solana
-          .connect()
-          .then(() => {
-            // Try to load icon if not yet loaded
-            if (!walletIcon) {
-              const adapter = new PhantomWalletAdapter();
-              if (adapter.icon) {
-                setWalletIcon(adapter.icon);
-              }
-            }
-          })
-          .catch((err: any) => console.error("Error auto-connecting:", err));
+    const checkAndConnect = async () => {
+      // Verify token is still valid
+      const walletAuth = localStorage.getItem("walletAuth");
+      const authToken = localStorage.getItem("authToken");
+      
+      if (!walletAuth && !authToken) {
+        return; // No valid tokens, don't attempt connection
       }
-    }
+
+      if (!isAuthenticated && !isAuthenticating && authToken) {
+        if (window.solana && window.solana.isPhantom && !window.solana.publicKey) {
+          window.solana
+            .connect()
+            .then(() => {
+              if (!walletIcon) {
+                const adapter = new PhantomWalletAdapter();
+                if (adapter.icon) {
+                  setWalletIcon(adapter.icon);
+                }
+              }
+            })
+            .catch((err: any) => console.error("Error auto-connecting:", err));
+        }
+      }
+    };
+
+    checkAndConnect();
   }, [isAuthenticated, isAuthenticating, authToken, walletIcon]);
 
   // Handle copy wallet address
