@@ -1994,11 +1994,10 @@ export async function generatePreGeneratedTokens(env: Env) {
       );
 
       // Construct URL based on environment (like /upload does)
-      const assetBaseUrl = env.API_URL?.includes('localhost') 
-        ? env.API_URL 
-        : env.R2_PUBLIC_URL;
-      // We need the *filename* part for the /api/image route, not the full R2 key
-      finalImageUrl = `${assetBaseUrl}/api/image/${imageFilename}`;
+      const r2PublicUrl = "https://pub-75e2227bb40747d9b8b21df85a33efa7.r2.dev";
+      finalImageUrl = env.API_URL?.includes('localhost')
+        ? `${env.API_URL}/api/image/${imageFilename}`
+        : `${r2PublicUrl}/${imageKey}`;
       logger.log(
         `[PreGen Upload] Constructed final image URL: ${finalImageUrl}`,
       );
