@@ -92,36 +92,22 @@ export const WalletModal: FC<WalletModalProps> = () => {
         } else {
           // Not connected, attempt connection
           console.log("Connecting to Phantom directly");
-          try {
-            const response = await window.solana.connect();
-            console.log("Direct connection to Phantom successful", response);
-            directConnectionSuccessful = true;
-            // Wait a moment for connection to register
-            await new Promise((resolve) => setTimeout(resolve, 500));
-          } catch (err) {
-            console.error("Direct Phantom connection failed:", err);
-            directConnectionSuccessful = false;
-          }
+          const response = await connect();
+          console.log("Direct connection to Phantom successful", response);
+          directConnectionSuccessful = true;
+          // Wait a moment for connection to register
+          await new Promise((resolve) => setTimeout(resolve, 500));
         }
       }
 
       // If direct connection failed or this isn't Phantom, try adapter approach
-      if (!directConnectionSuccessful) {
-        console.log("Attempting adapter connection...");
-        try {
-          // First select the wallet
-          await select(wallet.adapter.name);
-          // Wait for selection to complete
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          
-          // Then connect
-          console.log("Connecting via adapter...");
-          await connect();
-          console.log("Adapter connection successful");
-        } catch (err) {
-          console.error("Adapter connection failed:", err);
-          throw err;
-        }
+      if (!directConnectionSuccessful && !connectedWallet) {
+        console.log("Direct connection unsuccessful, trying adapter approach");
+        await select(wallet.adapter.name);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        console.log("Connecting via adapter...");
+        await connect();
+        console.log("Adapter connection successful");
       }
 
       // Wait for the public key to be available with timeout
