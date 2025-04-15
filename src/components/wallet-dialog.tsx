@@ -106,7 +106,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
       }
 
       // If direct connection failed or this isn't Phantom, try adapter approach
-      if (!directConnectionSuccessful) {
+      if (!directConnectionSuccessful || !connectedWallet) {
         console.log("Attempting adapter connection...");
         try {
           // First select the wallet
