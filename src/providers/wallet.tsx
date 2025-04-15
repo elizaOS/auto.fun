@@ -98,7 +98,7 @@ export const Wallet = ({ children }: PropsWithChildren) => {
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider
         wallets={wallets}
-        autoConnect={true}
+        autoConnect={false}
         localStorageKey="walletName"
         onError={(error) => {
           console.error("Wallet adapter error:", error);
