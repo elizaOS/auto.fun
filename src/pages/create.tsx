@@ -911,7 +911,7 @@ export const Create = () => {
   console.log("balance", balance);
 
   // Calculate max SOL the user can spend (leave 0.05 SOL for transaction fees)
-  const maxUserSol = balance ? Math.max(0, balance - 0.05) : 0;
+  const maxUserSol = balance ? Math.max(0, Number(balance) - 0.05) : 0;
   // Use the smaller of MAX_INITIAL_SOL or the user's max available SOL
   const maxInputSol = Math.min(MAX_INITIAL_SOL, maxUserSol);
 

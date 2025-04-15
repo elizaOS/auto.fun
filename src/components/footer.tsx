@@ -1,5 +1,4 @@
 import { Link } from "react-router";
-import SkeletonImage from "./skeleton-image";
 
 export const Footer = () => {
   return (
