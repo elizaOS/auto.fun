@@ -92,11 +92,16 @@ export const WalletModal: FC<WalletModalProps> = () => {
         } else {
           // Not connected, attempt connection
           console.log("Connecting to Phantom directly");
-          const response = await connect();
-          console.log("Direct connection to Phantom successful", response);
-          directConnectionSuccessful = true;
-          // Wait a moment for connection to register
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          try {
+            const response = await window.solana.connect();
+            console.log("Direct connection to Phantom successful", response);
+            directConnectionSuccessful = true;
+            // Wait a moment for connection to register
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          } catch (err) {
+            console.error("Direct Phantom connection failed:", err);
+            directConnectionSuccessful = false;
+          }
         }
       }
 
