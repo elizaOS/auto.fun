@@ -6,14 +6,16 @@ import { logger } from "./logger";
 export const allowedOrigins = [
   "https://api-dev.autofun.workers.dev",
   "https://api.autofun.workers.dev",
-  "https://develop.autofun.pages.dev",
-  "https://autofun.pages.dev",
-  "https://*.autofun.pages.dev",
+  "https://develop.auto-fun.pages.dev",
+  "https://auto-fun.pages.dev",
+  "https://*.auto-fun.pages.dev",
   "http://localhost:3000",
   "http://localhost:3001",
   "http://localhost:3420",
   "https://auto.fun",
   "https://dev.auto.fun",
+  "https://api.auto.fun",
+  "https://api-dev.auto.fun",
   "*",
 ];
 

@@ -15,26 +15,31 @@ import CallbackPage from "./pages/callback";
 import PageNotFound from "./pages/not-found";
 
 // if the date is before 2025-04-15, redirect to the old website
-if (new Date() < new Date("2024-04-16T14:00:00-07:00") && !window.location.search.includes("dev") && !window.location.hostname.includes("localhost")) {
+if (
+  window.location.hostname.includes("auto.fun") &&
+  new Date() < new Date("2025-04-17T00:00:00Z") &&
+  !window.location.search.includes("dev") &&
+  !window.location.hostname.includes("localhost")
+) {
   window.location.href = "https://x.com/autodotfun";
+} else {
+  createRoot(document.getElementById("root")!).render(
+    <BrowserRouter>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<Homepage />} />
+          <Route path="/support" element={<Support />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/fees" element={<Fees />} />
+          <Route path="/token/:address" element={<Token />} />
+          <Route path="/create" element={<Create />} />
+          <Route path="/testing" element={<Testing />} />
+          <Route path="/callback" element={<CallbackPage />} />
+          <Route path="*" element={<PageNotFound />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>,
+  );
 }
-
-createRoot(document.getElementById("root")!).render(
-  <BrowserRouter>
-    <Routes>
-      <Route element={<Layout />}>
-        <Route index element={<Homepage />} />
-        <Route path="/support" element={<Support />} />
-        <Route path="/terms-of-service" element={<TermsOfService />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-        <Route path="/fees" element={<Fees />} />
-        <Route path="/token/:address" element={<Token />} />
-        <Route path="/create" element={<Create />} />
-        <Route path="/testing" element={<Testing />} />
-        <Route path="/callback" element={<CallbackPage />} />
-        <Route path="*" element={<PageNotFound />} />
-      </Route>
-    </Routes>
-  </BrowserRouter>,
-);

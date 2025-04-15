@@ -155,18 +155,14 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
         if (!agentsResponse.ok) {
           // Try to get error message from body (use responseText now)
           let errorMsg = `Failed to fetch token agents: ${agentsResponse.statusText}`;
-          try {
-            const errorBody = JSON.parse(responseText); // Parse the logged text
-            if (
-              errorBody &&
-              typeof errorBody === "object" &&
-              "error" in errorBody &&
-              typeof (errorBody as any).error === "string"
-            ) {
-              errorMsg = (errorBody as any).error;
-            }
-          } catch (e) {
-            /* Ignore if body isn't json */
+          const errorBody = JSON.parse(responseText); // Parse the logged text
+          if (
+            errorBody &&
+            typeof errorBody === "object" &&
+            "error" in errorBody &&
+            typeof (errorBody as any).error === "string"
+          ) {
+            errorMsg = (errorBody as any).error;
           }
           throw new Error(errorMsg);
         }
@@ -284,195 +280,176 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
         return;
       }
 
-      try {
-        // Ensure wallet is connected before proceeding
-        if (!publicKey) {
-          // Check if this is being called from callback - if so, we may need to wait for wallet connection
-          const isFromCallback =
-            localStorage.getItem(AGENT_INTENT_KEY) === tokenMint;
+      // Ensure wallet is connected before proceeding
+      if (!publicKey) {
+        // Check if this is being called from callback - if so, we may need to wait for wallet connection
+        const isFromCallback =
+          localStorage.getItem(AGENT_INTENT_KEY) === tokenMint;
 
-          if (isFromCallback) {
-            // In callback flow, retry after a short delay to allow wallet to connect
-            console.log(
-              "No wallet connected yet during callback flow, waiting briefly...",
+        if (isFromCallback) {
+          // In callback flow, retry after a short delay to allow wallet to connect
+          console.log(
+            "No wallet connected yet during callback flow, waiting briefly...",
+          );
+          await new Promise((resolve) => setTimeout(resolve, 500));
+
+          // Check again after delay
+          if (!publicKey) {
+            console.error(
+              "Wallet still not connected after delay. publicKey state:",
+              publicKey,
             );
-            await new Promise((resolve) => setTimeout(resolve, 500));
-
-            // Check again after delay
-            if (!publicKey) {
-              console.error(
-                "Wallet still not connected after delay. publicKey state:",
-                publicKey,
-              );
-              toast.error(
-                "Wallet not connected. Cannot link agent. Please connect your wallet and try again.",
-              );
-              return;
-            }
-          } else {
-            toast.error("Wallet not connected. Cannot link agent.");
+            toast.error(
+              "Wallet not connected. Cannot link agent. Please connect your wallet and try again.",
+            );
             return;
           }
+        } else {
+          toast.error("Wallet not connected. Cannot link agent.");
+          return;
         }
+      }
 
-        // Get the auth token - this is the key issue
-        const authToken = localStorage.getItem("authToken");
+      // Get the auth token - this is the key issue
+      const authToken = localStorage.getItem("authToken");
 
-        if (!authToken) {
-          console.error("Auth token missing. Cookies may not be properly set.");
-          toast.error(
-            "Authentication token missing. Please reconnect your wallet.",
+      if (!authToken) {
+        console.error("Auth token missing. Cookies may not be properly set.");
+        toast.error(
+          "Authentication token missing. Please reconnect your wallet.",
+        );
+        return;
+      }
+
+      console.log("Connecting Twitter agent with credentials:", {
+        userId: creds.userId,
+        username: creds.username || "unknown",
+        tokenMint,
+        walletAddress: publicKey.toString(),
+        hasAuthToken: !!authToken,
+        authTokenStart: authToken.substring(0, 10) + "...",
+      });
+
+      // Use the combined endpoint to connect the Twitter agent
+      const response = await fetch(
+        `${API_BASE_URL}/api/token/${tokenMint}/connect-twitter-agent`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
+            userId: creds.userId,
+            accessToken: creds.accessToken,
+            walletAddress: publicKey.toString(), // Explicitly include wallet address
+            username: creds.username, // Include username if available
+          }),
+          credentials: "include",
+        },
+      );
+
+      // Log response info for debugging
+      console.log(
+        `Agent connection response: ${response.status} ${response.statusText}`,
+      );
+
+      // Check response status
+      if (!response.ok) {
+        // Try to get detailed error information
+        const errorText = await response.text();
+        console.error("Twitter agent connection failed. Response:", errorText);
+
+        // Try to parse error as JSON
+        const errorData = JSON.parse(errorText);
+
+        // Handle conflict specifically (already connected)
+        if (response.status === 409 && errorData.agent) {
+          console.warn("Agent already exists:", errorData.agent);
+          // Add to local state if not already there
+          setTokenAgents((prev) =>
+            prev.find((a) => a.id === errorData.agent.id)
+              ? prev
+              : [...prev, errorData.agent as TokenAgent],
+          );
+
+          toast.info(
+            "This Twitter account is already connected to this token.",
           );
           return;
         }
 
-        console.log("Connecting Twitter agent with credentials:", {
-          userId: creds.userId,
-          username: creds.username || "unknown",
-          tokenMint,
-          walletAddress: publicKey.toString(),
-          hasAuthToken: !!authToken,
-          authTokenStart: authToken.substring(0, 10) + "...",
-        });
-
-        // Use the combined endpoint to connect the Twitter agent
-        const response = await fetch(
-          `${API_BASE_URL}/api/token/${tokenMint}/connect-twitter-agent`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${authToken}`,
-            },
-            body: JSON.stringify({
-              userId: creds.userId,
-              accessToken: creds.accessToken,
-              walletAddress: publicKey.toString(), // Explicitly include wallet address
-              username: creds.username, // Include username if available
-            }),
-            credentials: "include",
-          },
-        );
-
-        // Log response info for debugging
-        console.log(
-          `Agent connection response: ${response.status} ${response.statusText}`,
-        );
-
-        // Check response status
-        if (!response.ok) {
-          // Try to get detailed error information
-          const errorText = await response.text();
-          console.error(
-            "Twitter agent connection failed. Response:",
-            errorText,
-          );
-
-          try {
-            // Try to parse error as JSON
-            const errorData = JSON.parse(errorText);
-
-            // Handle conflict specifically (already connected)
-            if (response.status === 409 && errorData.agent) {
-              console.warn("Agent already exists:", errorData.agent);
-              // Add to local state if not already there
-              setTokenAgents((prev) =>
-                prev.find((a) => a.id === errorData.agent.id)
-                  ? prev
-                  : [...prev, errorData.agent as TokenAgent],
-              );
-
-              toast.info(
-                "This Twitter account is already connected to this token.",
-              );
-              return;
-            }
-
-            if (errorData.error) {
-              // If authentication error, give more specific guidance
-              if (response.status === 401) {
-                toast.error(
-                  "Authentication error. Please reconnect your wallet and try again.",
-                );
-              } else {
-                throw new Error(errorData.error);
-              }
-              return;
-            }
-          } catch (parseError) {
-            // If JSON parsing fails, use the raw text
-            console.error("Error parsing JSON response:", parseError);
+        if (errorData.error) {
+          // If authentication error, give more specific guidance
+          if (response.status === 401) {
+            toast.error(
+              "Authentication error. Please reconnect your wallet and try again.",
+            );
+          } else {
+            throw new Error(errorData.error);
           }
-
-          throw new Error(errorText || "Failed to connect Twitter agent");
+          return;
         }
 
-        console.log("Twitter agent connection successful, parsing response...");
-
-        // Try to parse response as JSON
-        let responseData: any; // Use any type to handle various response formats
-        try {
-          responseData = await response.json();
-          console.log("Response data:", responseData);
-        } catch (parseError) {
-          console.error("Error parsing agent response:", parseError);
-          throw new Error("Error parsing server response");
-        }
-
-        let newAgent: TokenAgent;
-
-        // Handle different response formats
-        if (responseData && responseData.id) {
-          // Response is the agent directly
-          newAgent = responseData as TokenAgent;
-        } else if (
-          responseData &&
-          responseData.agent &&
-          responseData.agent.id
-        ) {
-          // Response has an agent property
-          newAgent = responseData.agent as TokenAgent;
-        } else {
-          throw new Error("Invalid agent data in server response");
-        }
-
-        console.log("Agent successfully connected:", newAgent);
-
-        // Update local state with the agent
-        setTokenAgents((prev) => {
-          // Avoid adding duplicates
-          if (prev.find((a) => a.id === newAgent.id)) {
-            return prev;
-          }
-          return [...prev, newAgent];
-        });
-
-        toast.success("Twitter account successfully connected as an agent!");
-
-        // Refresh the agents list after connection
-        setTimeout(() => {
-          console.log("Refreshing agents list...");
-          // Trigger a re-fetch of agents list
-          setIsAgentsLoading(true);
-
-          fetch(`${API_BASE_URL}/api/token/${tokenMint}/agents`)
-            .then((response) => response.json())
-            .then((data) => {
-              const responseData = data as TokenAgentsResponse;
-              if (responseData.agents && Array.isArray(responseData.agents)) {
-                setTokenAgents(responseData.agents);
-                console.log("Agents list refreshed:", responseData.agents);
-              }
-            })
-            .catch((error) => console.error("Error refreshing agents:", error))
-            .finally(() => setIsAgentsLoading(false));
-        }, 1000);
-      } catch (error) {
-        console.error("Failed to connect Twitter agent:", error);
-        toast.error(
-          `Failed to connect: ${error instanceof Error ? error.message : "Unknown error"}`,
-        );
+        throw new Error(errorText || "Failed to connect Twitter agent");
       }
+
+      console.log("Twitter agent connection successful, parsing response...");
+
+      // Try to parse response as JSON
+      let responseData: any; // Use any type to handle various response formats
+      try {
+        responseData = await response.json();
+        console.log("Response data:", responseData);
+      } catch (parseError) {
+        console.error("Error parsing agent response:", parseError);
+        throw new Error("Error parsing server response");
+      }
+
+      let newAgent: TokenAgent;
+
+      // Handle different response formats
+      if (responseData && responseData.id) {
+        // Response is the agent directly
+        newAgent = responseData as TokenAgent;
+      } else if (responseData && responseData.agent && responseData.agent.id) {
+        // Response has an agent property
+        newAgent = responseData.agent as TokenAgent;
+      } else {
+        throw new Error("Invalid agent data in server response");
+      }
+
+      console.log("Agent successfully connected:", newAgent);
+
+      // Update local state with the agent
+      setTokenAgents((prev) => {
+        // Avoid adding duplicates
+        if (prev.find((a) => a.id === newAgent.id)) {
+          return prev;
+        }
+        return [...prev, newAgent];
+      });
+
+      toast.success("Twitter account successfully connected as an agent!");
+
+      // Refresh the agents list after connection
+      setTimeout(() => {
+        console.log("Refreshing agents list...");
+        // Trigger a re-fetch of agents list
+        setIsAgentsLoading(true);
+
+        fetch(`${API_BASE_URL}/api/token/${tokenMint}/agents`)
+          .then((response) => response.json())
+          .then((data) => {
+            const responseData = data as TokenAgentsResponse;
+            if (responseData.agents && Array.isArray(responseData.agents)) {
+              setTokenAgents(responseData.agents);
+              console.log("Agents list refreshed:", responseData.agents);
+            }
+          })
+          .catch((error) => console.error("Error refreshing agents:", error))
+          .finally(() => setIsAgentsLoading(false));
+      }, 1000);
     },
     [tokenMint, publicKey, API_BASE_URL, setTokenAgents, setIsAgentsLoading],
   );

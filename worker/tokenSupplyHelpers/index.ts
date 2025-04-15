@@ -16,12 +16,12 @@ export async function handleSignature(
   env: Env,
   signature: string,
   token: any,
-  solPriceUSD: number
+  solPriceUSD: number,
 ) {
   const connection = new Connection(
     env.NETWORK === "devnet"
       ? env.DEVNET_SOLANA_RPC_URL
-      : env.MAINNET_SOLANA_RPC_URL
+      : env.MAINNET_SOLANA_RPC_URL,
   );
 
   // finalize
@@ -43,7 +43,7 @@ export async function handleSignature(
     token,
     signature,
     solPriceUSD,
-    logs
+    logs,
   );
   if (metrics) {
     logger.log(`Swap metrics for ${metrics.mintAddress}:`, metrics);
@@ -56,7 +56,7 @@ async function processSwapLog(
   token: any,
   signature: string,
   solPriceUSD: number,
-  logs: string[]
+  logs: string[],
 ) {
   try {
     const wsClient = getWebSocketClient(env);
@@ -76,7 +76,7 @@ async function processSwapLog(
       if (
         !mintAddress ||
         !/^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
-          mintAddress
+          mintAddress,
         )
       ) {
         logger.error(`Invalid mint address format: ${mintAddress}`);
@@ -208,7 +208,7 @@ async function processSwapLog(
         featuredScore: calculateFeaturedScore(
           newToken[0],
           maxVolume,
-          maxHolders
+          maxHolders,
         ),
       };
       // Emit event to all clients via WebSocket
@@ -244,7 +244,7 @@ export function shouldUpdateSupply(token: any): boolean {
 
 export async function updateTokenSupplyFromChain(
   env: Env,
-  tokenMint: string
+  tokenMint: string,
 ): Promise<{
   tokenSupply: string;
   tokenSupplyUiAmount: number;
@@ -255,13 +255,13 @@ export async function updateTokenSupplyFromChain(
     env.NETWORK === "mainnet"
       ? env.MAINNET_SOLANA_RPC_URL
       : env.DEVNET_SOLANA_RPC_URL,
-    "confirmed"
+    "confirmed",
   );
   // retry in case it fails once
   const supplyResponse = await retryOperation(
     () => connection.getTokenSupply(new PublicKey(tokenMint)),
     2,
-    5000
+    5000,
   );
   if (!supplyResponse || !supplyResponse.value) {
     throw new Error(`Failed to fetch token supply for ${tokenMint}`);
@@ -293,7 +293,7 @@ export async function updateTokenSupplyFromChain(
 async function isValidSwapTx(
   connection: Connection,
   signature: string,
-  mint: string
+  mint: string,
 ): Promise<boolean> {
   const tx = await connection.getTransaction(signature, {
     maxSupportedTransactionVersion: 0,
@@ -316,7 +316,7 @@ export async function processLastValidSwap(
   env: Env,
   token: any,
   solPriceUSD: number,
-  limit = 5
+  limit = 5,
 ): Promise<void> {
   const rpcUrl =
     env.NETWORK === "devnet"

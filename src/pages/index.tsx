@@ -66,7 +66,11 @@ export default function Page() {
       <div className="flex flex-col flex-1">
         {!query?.isLoading ? (
           <Fragment>
-            {activeTab === "grid" ? (
+            {query?.items?.length === 0 ? (
+              <div className="text-center text-muted-foreground my-6">
+                No token to be displayed
+              </div>
+            ) : activeTab === "grid" ? (
               <div className="my-6">
                 <GridView data={query?.items || []} />
               </div>
@@ -79,6 +83,7 @@ export default function Page() {
         ) : (
           <Loader />
         )}
+
         <Pagination
           pagination={{
             hasMore: query?.hasNextPage,

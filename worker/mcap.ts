@@ -148,6 +148,8 @@ export async function calculateTokenMarketData(
   // Copy the token to avoid modifying the original
   const tokenWithMarketData = { ...token };
 
+  console.log("tokenWithMarketData", tokenWithMarketData);
+
   console.log("solPrice", solPrice);
 
   try {

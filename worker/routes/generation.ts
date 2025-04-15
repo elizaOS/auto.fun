@@ -1995,7 +1995,7 @@ export async function generatePreGeneratedTokens(env: Env) {
 
       // Construct URL based on environment (like /upload does)
       const assetBaseUrl =
-        env.ASSET_URL || env.VITE_API_URL || "http://localhost:8787"; // Default to localhost for safety
+        env.API_URL || env.VITE_API_URL || "http://localhost:8787"; // Default to localhost for safety
       // We need the *filename* part for the /api/image route, not the full R2 key
       finalImageUrl = `${assetBaseUrl}/api/image/${imageFilename}`;
       logger.log(

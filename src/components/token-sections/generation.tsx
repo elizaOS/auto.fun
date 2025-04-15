@@ -77,12 +77,12 @@ export default function CommunityTab() {
   const [shareError, setShareError] = useState<string | null>(null);
   const [twitterCredentials, setTwitterCredentials] =
     useState<TwitterCredentials | null>(null);
-  const [hasGeneratedForToken, setHasGeneratedForToken] = useState(false);
+  // const [hasGeneratedForToken, setHasGeneratedForToken] = useState(false);
 
   // Pregenerated images that were generated automatically for this token
   const [additionalImages, setAdditionalImages] = useState<string[]>([]);
-  const [isLoadingAdditionalImages, setIsLoadingAdditionalImages] =
-    useState(false);
+  // const [isLoadingAdditionalImages, setIsLoadingAdditionalImages] =
+  //   useState(false);
   const [placeholderImage, setPlaceholderImage] = useState<string | null>(null);
 
   // Mode selection state
@@ -146,7 +146,7 @@ export default function CommunityTab() {
         return;
       }
 
-      setIsLoadingAdditionalImages(true);
+      // setIsLoadingAdditionalImages(true);
 
       try {
         // Check for generated images in the server's R2 storage
@@ -167,7 +167,7 @@ export default function CommunityTab() {
             const count = Math.min(data.count, 3); // Only use up to 3 images as placeholders
             for (let i = 1; i <= count; i++) {
               // If we're running locally, use the API endpoint
-              if (API_BASE_URL.includes('localhost')) {
+              if (API_BASE_URL.includes("localhost")) {
                 imageUrls.push(
                   `${API_BASE_URL}/api/image/generation-${tokenMint}-${i}.jpg`,
                 );
@@ -192,7 +192,7 @@ export default function CommunityTab() {
         console.error("Error fetching additional images:", error);
         setAdditionalImages([]);
       } finally {
-        setIsLoadingAdditionalImages(false);
+        // setIsLoadingAdditionalImages(false);
       }
     };
 
@@ -1959,8 +1959,7 @@ export default function CommunityTab() {
                         />
                       </div>
                       {!generatedImage && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                        </div>
+                        <div className="absolute inset-0 flex items-center justify-center"></div>
                       )}
                     </>
                   )}

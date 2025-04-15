@@ -10,7 +10,6 @@ Before you can deploy and configure the AutoFun program, ensure you have the fol
 - [Solana CLI](https://docs.solana.com/cli/install-solana-cli-tools) (1.16.0 or later)
 - [Anchor CLI](https://www.anchor-lang.com/docs/installation) (0.30.1 or later)
 - [Node.js](https://nodejs.org/) (18.x or later)
-- [Bun](https://bun.sh/) (1.2.5 or later)
 
 ## Installation
 
@@ -22,7 +21,7 @@ Before you can deploy and configure the AutoFun program, ensure you have the fol
 
 2. Install dependencies:
    ```bash
-   bun install
+   npm install
    ```
 
 3. Set up your Solana keypair if you don't have one already:

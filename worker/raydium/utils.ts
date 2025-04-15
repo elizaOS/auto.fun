@@ -7,7 +7,7 @@ import {
   Transaction,
   VersionedTransaction,
   TransactionMessage,
-  TransactionInstruction
+  TransactionInstruction,
 } from "@solana/web3.js";
 
 export const fixedPoint = parseFloat("1000000000");
@@ -18,11 +18,11 @@ export const nftFaucetSeed = "raydium_vault_nft_seed";
 
 /// USDC
 const token0 = new anchor.web3.PublicKey(
-  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
 );
 
 export const claimer_address_0 = new anchor.web3.PublicKey(
-  "6HHoqvXfNF1aQpwhn4k13CL7iyzFpjghLhG2eBG6xMVV"
+  "6HHoqvXfNF1aQpwhn4k13CL7iyzFpjghLhG2eBG6xMVV",
 );
 
 const devnetEndpoint = "https://api.devnet.solana.com";
@@ -30,7 +30,7 @@ const devnetEndpoint = "https://api.devnet.solana.com";
 export async function retryOperation<T>(
   operation: () => Promise<T>,
   maxRetries: number,
-  delay: number
+  delay: number,
 ): Promise<T> {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
@@ -47,7 +47,7 @@ export const sendSolTo = async (
   amount: any,
   signerWallet: any,
   recvWallet: anchor.web3.PublicKey,
-  connection: anchor.web3.Connection
+  connection: anchor.web3.Connection,
 ) => {
   const beforeBal = await connection.getBalance(recvWallet);
   console.log("beforeBal: ", parseFloat(beforeBal.toString()) / fixedPoint);
@@ -56,7 +56,7 @@ export const sendSolTo = async (
       fromPubkey: signerWallet.publicKey,
       toPubkey: recvWallet,
       lamports: amount,
-    })
+    }),
   );
 
   try {
@@ -77,15 +77,15 @@ export const sendTokenTo = async (
   signerWallet: any,
   recvWallet: anchor.web3.PublicKey,
   tokenAddress: anchor.web3.PublicKey,
-  connection: anchor.web3.Connection
+  connection: anchor.web3.Connection,
 ) => {
   const signerTokenAccount = spl.getAssociatedTokenAddressSync(
     tokenAddress,
-    signerWallet.publicKey
+    signerWallet.publicKey,
   );
   const bobTokenAccount = spl.getAssociatedTokenAddressSync(
     tokenAddress,
-    recvWallet
+    recvWallet,
   );
 
   const beforeSignerBal =
@@ -99,8 +99,8 @@ export const sendTokenTo = async (
       signerWallet.publicKey,
       amount,
       [],
-      spl.TOKEN_PROGRAM_ID
-    )
+      spl.TOKEN_PROGRAM_ID,
+    ),
   );
   const signature = await connection.sendTransaction(transaction, [
     signerWallet,
@@ -116,29 +116,29 @@ export const sendNftTo = async (
   signerWallet: Keypair,
   recvWallet: anchor.web3.PublicKey,
   nftMinted: anchor.web3.PublicKey,
-  connection: anchor.web3.Connection
+  connection: anchor.web3.Connection,
 ) => {
   try {
     // Derive the associated token addresses
     const signerTokenAccount = spl.getAssociatedTokenAddressSync(
       nftMinted,
-      signerWallet.publicKey
+      signerWallet.publicKey,
     );
     const bobTokenAccount = spl.getAssociatedTokenAddressSync(
       nftMinted,
-      recvWallet
+      recvWallet,
     );
     // 1) If recipient ATA doesn't exist, create it
     const toAtaInfo = await connection.getAccountInfo(bobTokenAccount);
     const instructions = [] as TransactionInstruction[];
     if (!toAtaInfo) {
       instructions.push(
-      spl.createAssociatedTokenAccountInstruction(
-        signerWallet.publicKey, // payer
-        bobTokenAccount,
-        recvWallet,
-        nftMinted // mint
-        ) as any // Type assertion to avoid type error
+        spl.createAssociatedTokenAccountInstruction(
+          signerWallet.publicKey, // payer
+          bobTokenAccount,
+          recvWallet,
+          nftMinted, // mint
+        ) as any, // Type assertion to avoid type error
       );
     }
 
@@ -149,7 +149,7 @@ export const sendNftTo = async (
       signerWallet.publicKey,
       1, // transferring one NFT (1 token)
       [],
-      spl.TOKEN_PROGRAM_ID
+      spl.TOKEN_PROGRAM_ID,
     );
     instructions.push(transferIx);
 
@@ -181,11 +181,11 @@ export const sendNftTo = async (
             blockhash: latestBlockhash.blockhash,
             lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
           },
-          "finalized"
+          "finalized",
         );
       },
       3, // 3 attempts
-      2000 // 2 seconds delay
+      2000, // 2 seconds delay
     );
     return signature;
   } catch (error) {
