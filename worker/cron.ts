@@ -1,6 +1,4 @@
-import {
-  ExecutionContext
-} from "@cloudflare/workers-types/experimental";
+import { ExecutionContext } from "@cloudflare/workers-types/experimental";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";

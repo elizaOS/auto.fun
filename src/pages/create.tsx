@@ -3,19 +3,17 @@ import { EmptyState } from "@/components/empty-state";
 import useAuthentication from "@/hooks/use-authentication";
 import { useCreateToken } from "@/hooks/use-create-token";
 import { useSolBalance } from "@/hooks/use-token-balance";
+import { HomepageTokenSchema } from "@/hooks/use-tokens";
 import { getAuthToken } from "@/utils/auth";
 import { env } from "@/utils/env";
-import { useWallet } from "@solana/wallet-adapter-react";
-import { Keypair } from "@solana/web3.js";
+import { getSocket } from "@/utils/socket";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { data, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
-import { useConnection } from "@solana/wallet-adapter-react";
-import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { getSocket } from "@/utils/socket";
-import { HomepageTokenSchema } from "@/hooks/use-tokens";
 // Import the worker using Vite's ?worker syntax
 import InlineVanityWorker from "@/workers/vanityWorker?worker&inline"; // Added import
 
@@ -33,17 +31,6 @@ enum FormTab {
 
 // LocalStorage key for tab state
 const TAB_STATE_KEY = "auto_fun_active_tab";
-
-// --- API Response Types ---
-// interface VanityKeypairResponse { // Removed - Will generate client-side
-//   publicKey: string;
-//   secretKey: number[];
-// }
-
-interface ApiErrorResponse {
-  error?: string;
-}
-// --- End API Response Types ---
 
 interface UploadResponse {
   success: boolean;
@@ -545,9 +532,7 @@ const FormImageInput = ({
                     <input
                       type="text"
                       value={tickerValue || ""}
-                      onChange={(e) =>
-                        onTickerChange(e.target.value)
-                      }
+                      onChange={(e) => onTickerChange(e.target.value)}
                       placeholder="TICKER"
                       maxLength={16}
                       onFocus={() => setTickerInputFocused(true)}
@@ -1020,6 +1005,31 @@ export const Create = () => {
     setSuffixError(null);
   }, [activeTab]); // Added stopVanityGeneration
 
+  // Automatically start vanity generation when in non-import tab
+  useEffect(() => {
+    // Only auto-start if:
+    // 1. Not on Import tab
+    // 2. Not already generating
+    // 3. Don't have a result yet
+    // 4. Have a valid suffix (default or user-entered)
+    if (
+      activeTab !== FormTab.IMPORT &&
+      !isGeneratingVanity &&
+      !vanityResult &&
+      vanitySuffix.trim() &&
+      !suffixError
+    ) {
+      // Short delay to allow UI to render first
+      const timeoutId = setTimeout(() => {
+        startVanityGeneration();
+      }, 500);
+
+      return () => clearTimeout(timeoutId);
+    }
+    // Note: We're ignoring the linter warnings about dependencies here
+     
+  }, [activeTab, isGeneratingVanity, vanityResult, vanitySuffix, suffixError]);
+
   // Update mode-specific state when main form changes
   useEffect(() => {
     if (activeTab === FormTab.AUTO) {
@@ -1143,7 +1153,7 @@ export const Create = () => {
       } else {
         setErrors((prev) => ({
           ...prev,
-          [field]: `${field.charAt(0).toUpperCase() + field.slice(1)} is required`,
+          [field]: `${field.charAt(0) + field.slice(1)} is required`,
         }));
       }
     }
@@ -1873,7 +1883,7 @@ export const Create = () => {
 
   // --- Vanity Generation Functions --- (Copied and adapted)
   const stopVanityGeneration = useCallback(() => {
-    // if (!isGeneratingVanity) return;
+    if (!isGeneratingVanityRef.current) return; // Use ref to check if actually running
     console.log("Stopping vanity workers...");
     setIsGeneratingVanity(false); // Set state immediately
     workersRef.current.forEach((worker) => {
@@ -1897,17 +1907,23 @@ export const Create = () => {
       clearInterval(displayUpdateIntervalRef.current);
       displayUpdateIntervalRef.current = null;
     }
-    // Reset display if stopped without finding
-    if (!vanityResult) {
-      // setDisplayedPublicKey("--- Generate a vanity address ---");
-    } else {
-      setDisplayedPublicKey(vanityResult.publicKey); // Ensure final result is shown
-    }
+    // --- REMOVED DISPLAY UPDATE LOGIC FROM HERE ---
+    // if (!vanityResult) {
+    //   setDisplayedPublicKey("--- Generate a vanity address ---");
+    // } else {
+    //   setDisplayedPublicKey(vanityResult.publicKey); // Don't reset display here
+    // }
     console.log("Vanity generation stopped.");
-  }, [isGeneratingVanity, vanityResult]); // Added vanityResult dependency
+  }, []); // Removed isGeneratingVanity and vanityResult dependency
 
   const startVanityGeneration = useCallback(() => {
     const suffix = vanitySuffix.trim();
+
+    console.log("vanitySuffix", vanitySuffix);
+
+    setVanityResult(null); // <-- Add this line to clear the previous result
+    setDisplayedPublicKey("Generating..."); // Reset display immediately
+
     let currentError = null;
 
     // 1. Validation
@@ -1922,8 +1938,7 @@ export const Create = () => {
     // 2. Warnings
     if (!currentError) {
       if (suffix.length === 5) {
-        currentError =
-          "Warning: 5-letter suffix may take 24+ hours to find!";
+        currentError = "Warning: 5-letter suffix may take 24+ hours to find!";
         toast.warn(currentError);
       } else if (suffix.length === 4) {
         currentError = "Note: 4-letter suffix may take some time to find.";
@@ -1932,25 +1947,29 @@ export const Create = () => {
     }
 
     setSuffixError(currentError);
-    if (currentError && !currentError.startsWith("Warning") && !currentError.startsWith("Note")) {
-        return; // Stop if it's a blocking error
+    if (
+      currentError &&
+      !currentError.startsWith("Warning") &&
+      !currentError.startsWith("Note")
+    ) {
+      return; // Stop if it's a blocking error
     }
-
 
     // Stop previous generation if any
     stopVanityGeneration();
-    setVanityResult(null); // Clear previous result
 
     setIsGeneratingVanity(true);
-    setDisplayedPublicKey("Generating..."); // Initial display
 
     const numWorkers = navigator.hardwareConcurrency || 4;
-    console.log(`Starting ${numWorkers} vanity workers for suffix: "${suffix}"`);
+    console.log(
+      `Starting ${numWorkers} vanity workers for suffix: "${suffix}"`,
+    );
     startTimeRef.current = Date.now();
     workersRef.current = [];
 
     // Start rolling display effect
-    const base58Chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+    const base58Chars =
+      "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
     const generateRandomString = (length: number) => {
       let result = "";
       for (let i = 0; i < length; i++) {
@@ -1980,12 +1999,17 @@ export const Create = () => {
           console.log("data", data);
           switch (data.type) {
             case "found":
-              console.log(`Worker ${data.workerId} found valid match: ${data.publicKey}`);
+              console.log(
+                `Worker ${data.workerId} found valid match: ${data.publicKey}`,
+              );
               if (data.validated) {
                 // Construct Keypair from secret key array
                 const secretKeyUint8Array = new Uint8Array(data.secretKey);
                 if (secretKeyUint8Array.length !== 64) {
-                  console.error("Worker sent invalid secret key length:", secretKeyUint8Array.length);
+                  console.error(
+                    "Worker sent invalid secret key length:",
+                    secretKeyUint8Array.length,
+                  );
                   // Handle error - maybe try next result? For now, stop.
                   stopVanityGeneration();
                   setSuffixError("Received invalid key from generator.");
@@ -1994,15 +2018,17 @@ export const Create = () => {
                 const foundKeypair = Keypair.fromSecretKey(secretKeyUint8Array);
                 console.log("*** FOUND KEYPAIR ***");
 
-                 // Double-check the derived public key matches
-                 if (foundKeypair.publicKey.toString() !== data.publicKey) {
+                // Double-check the derived public key matches
+                if (foundKeypair.publicKey.toString() !== data.publicKey) {
                   console.log("*** FAILURE ***");
-                    console.error("Public key mismatch between worker and derived key!");
-                    setSuffixError("Key validation mismatch.");
-                    stopVanityGeneration(); // Stop on critical error
-                    return;
-                 }
-                 console.log("*** SUCCESS ***");
+                  console.error(
+                    "Public key mismatch between worker and derived key!",
+                  );
+                  setSuffixError("Key validation mismatch.");
+                  stopVanityGeneration(); // Stop on critical error
+                  return;
+                }
+                console.log("*** SUCCESS ***");
 
                 setVanityResult({
                   publicKey: data.publicKey,
@@ -2012,7 +2038,9 @@ export const Create = () => {
                 stopVanityGeneration(); // Stop all workers
                 console.log("*** STOPPED VANITY GENERATION ***");
               } else {
-                console.warn(`Worker ${data.workerId} found potential match but validation failed.`);
+                console.warn(
+                  `Worker ${data.workerId} found potential match but validation failed.`,
+                );
                 // Keep searching
               }
               break;
@@ -2028,15 +2056,22 @@ export const Create = () => {
           }
         };
 
-        worker.onerror = (err) => {
+        worker.onerror = (err: any) => {
           console.error(`Worker ${i} fatal error:`, err);
           setSuffixError(`Worker ${i} failed: ${err.message || "Unknown"}`);
           workersRef.current = workersRef.current.filter((w) => w !== worker);
-          if (workersRef.current.length === 0 && isGeneratingVanityRef.current) {
-             setSuffixError("All vanity generators failed!");
-             stopVanityGeneration();
+          if (
+            workersRef.current.length === 0 &&
+            isGeneratingVanityRef.current
+          ) {
+            setSuffixError("All vanity generators failed!");
+            stopVanityGeneration();
           }
-           try { worker.terminate(); } catch (e) { /* ignore */ }
+          try {
+            worker.terminate();
+          } catch (e) {
+            /* ignore */
+          }
         };
 
         worker.postMessage({ suffix, workerId: i });
@@ -2052,36 +2087,34 @@ export const Create = () => {
       setIsGeneratingVanity(false);
       setDisplayedPublicKey("--- Error starting generator ---");
       if (displayUpdateIntervalRef.current) {
-         clearInterval(displayUpdateIntervalRef.current);
-         displayUpdateIntervalRef.current = null;
+        clearInterval(displayUpdateIntervalRef.current);
+        displayUpdateIntervalRef.current = null;
       }
       startTimeRef.current = null;
     } else {
-       console.log(`Successfully started ${workersRef.current.length} workers.`);
-       // Optional: Start stats timer
+      console.log(`Successfully started ${workersRef.current.length} workers.`);
+      // Optional: Start stats timer
     }
   }, [vanitySuffix, stopVanityGeneration]); // Removed isGeneratingVanity as we use ref
 
-   // Use a ref for isGeneratingVanity inside callbacks to avoid stale closures
-   const isGeneratingVanityRef = useRef(isGeneratingVanity);
-   useEffect(() => {
-     isGeneratingVanityRef.current = isGeneratingVanity;
-   }, [isGeneratingVanity]);
-
+  // Use a ref for isGeneratingVanity inside callbacks to avoid stale closures
+  const isGeneratingVanityRef = useRef(isGeneratingVanity);
+  useEffect(() => {
+    isGeneratingVanityRef.current = isGeneratingVanity;
+  }, [isGeneratingVanity]);
 
   // Submit form to backend
   const submitFormToBackend = async () => {
     try {
       // --- Check for Vanity Keypair --- START
-       if (!vanityResult?.publicKey || !vanityResult?.secretKey) {
-         toast.error("Please generate a vanity address first.");
-         return;
-       }
+      if (!vanityResult?.publicKey || !vanityResult?.secretKey) {
+        toast.error("Please generate a vanity address first.");
+        return;
+      }
       const mintKeypair = vanityResult.secretKey;
       const tokenMint = vanityResult.publicKey;
       console.log("Using client-generated vanity keypair:", tokenMint);
       // --- Check for Vanity Keypair --- END
-
 
       setIsCreating(true);
       setCreationStage("initializing");
@@ -2237,7 +2270,10 @@ export const Create = () => {
         try {
           console.log("Uploading image and metadata...");
           // Pass the client-generated tokenMint to uploadImage
-          const uploadResult = await uploadImage({ ...tokenMetadata, tokenMint });
+          const uploadResult = await uploadImage({
+            ...tokenMetadata,
+            tokenMint,
+          });
           imageUrl = uploadResult.imageUrl;
           metadataUrl = uploadResult.metadataUrl;
 
@@ -2448,10 +2484,10 @@ export const Create = () => {
     if (!form.description) newErrors.description = "Description is required";
 
     // Validate vanity keypair generation for non-import tabs
-     if (activeTab !== FormTab.IMPORT && (!vanityResult || isGeneratingVanity)) {
-       toast.error("Please generate and wait for a vanity address.");
-       return;
-     }
+    if (activeTab !== FormTab.IMPORT && (!vanityResult || isGeneratingVanity)) {
+      toast.error("Please generate and wait for a vanity address.");
+      return;
+    }
 
     // Validate SOL balance - skip this check for imported tokens
     if (
@@ -2463,7 +2499,6 @@ export const Create = () => {
         "Insufficient SOL balance (need 0.05 SOL for fees)";
       toast.error("You don't have enough SOL to create this token");
     }
-
 
     // Check if there are any errors
     if (
@@ -2698,34 +2733,41 @@ export const Create = () => {
     };
   }, [autoForm.imageUrl]);
 
-    // Cleanup vanity workers on component unmount
-    useEffect(() => {
-        // Store the refs in variables before returning the cleanup function
-        const workersToTerminate = workersRef.current;
-        const timerToClear = displayUpdateIntervalRef.current;
+  // Cleanup vanity workers on component unmount
+  useEffect(() => {
+    // Store the refs in variables before returning the cleanup function
+    const workersToTerminate = workersRef.current;
+    const timerToClear = displayUpdateIntervalRef.current;
 
-        return () => {
-            console.log("Unmounting Create page, stopping vanity generation...");
-            // Use the stored variables in the cleanup function
-            workersToTerminate.forEach(worker => {
-                try { worker.postMessage("stop"); } catch (e) { /* ignore */ }
-                try { worker.terminate(); } catch (e) { /* ignore */ }
-            });
-            if (timerToClear) {
-                clearInterval(timerToClear);
-            }
-            // Clear the refs directly - this part is fine
-            workersRef.current = [];
-            displayUpdateIntervalRef.current = null;
-        };
-    }, []); // Empty dependency array ensures this runs only on mount and unmount
-
+    return () => {
+      console.log("Unmounting Create page, stopping vanity generation...");
+      // Use the stored variables in the cleanup function
+      workersToTerminate.forEach((worker) => {
+        try {
+          worker.postMessage("stop");
+        } catch (e) {
+          /* ignore */
+        }
+        try {
+          worker.terminate();
+        } catch (e) {
+          /* ignore */
+        }
+      });
+      if (timerToClear) {
+        clearInterval(timerToClear);
+      }
+      // Clear the refs directly - this part is fine
+      workersRef.current = [];
+      displayUpdateIntervalRef.current = null;
+    };
+  }, []); // Empty dependency array ensures this runs only on mount and unmount
 
   const canLaunch = () => {
     if (!publicKey) return false;
     if (activeTab === FormTab.IMPORT) {
-        // For import, we just need the form data loaded
-        return hasStoredToken && !isImporting;
+      // For import, we just need the form data loaded
+      return hasStoredToken && !isImporting;
     }
     // For Auto/Manual, need valid form, generated vanity key, and enough SOL
     const initialSol = parseFloat(form.initialSol) || 0;
@@ -2736,11 +2778,12 @@ export const Create = () => {
       isFormValid && // Checks name, symbol, desc, initialSol errors
       hasVanityKey &&
       !Object.values(errors).some(
-        (error) => error && !["userPrompt", "importAddress", "percentage"].includes(error) // Ignore non-blocking errors
+        (error) =>
+          error &&
+          !["userPrompt", "importAddress", "percentage"].includes(error), // Ignore non-blocking errors
       )
     );
   };
-
 
   // Add handler for coin drop cancellation
   const handleCoinDropCancel = useCallback(() => {
@@ -2790,8 +2833,8 @@ export const Create = () => {
           setCreationStage("validating");
           setCreationStep("Confirming token creation on-chain...");
         } else if (message.includes("Creating token on-chain...")) {
-             setCreationStage("creating");
-             setCreationStep("Creating token on-chain...");
+          setCreationStage("creating");
+          setCreationStep("Creating token on-chain...");
         }
       }
     };
@@ -2919,18 +2962,6 @@ export const Create = () => {
                       handleChange("importAddress", e.target.value)
                     }
                     alt="Generate" // This alt doesn't make sense here
-                    onMouseDown={(e) => {
-                      // These mouse handlers seem misplaced from a button
-                    }}
-                    onMouseUp={(e) => {
-                      // ...
-                    }}
-                    onDragStart={(e) => {
-                      // ...
-                    }}
-                    onMouseOut={(e) => {
-                      // ...
-                    }}
                     onPaste={handleImportAddressPaste}
                     placeholder="Enter any Solana token address (mint)"
                     className="flex-1 truncate my-2 p-0 border-b-2 pb-2.5 border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
@@ -3085,7 +3116,9 @@ export const Create = () => {
 
               {/* Description Field */}
               {activeTab === FormTab.IMPORT ? (
-                <span className={`bg-transparent text-white text-xl font-bold focus:outline-none px-1 py-0.5 mb-4`}>
+                <span
+                  className={`bg-transparent text-white text-xl font-bold focus:outline-none px-1 py-0.5 mb-4`}
+                >
                   {form.description}
                 </span>
               ) : (
@@ -3099,7 +3132,12 @@ export const Create = () => {
                   placeholder="Description"
                   maxLength={2000}
                   error={errors.description}
-                  onClick={() => generateAll(promptFunctions.setPrompt, promptFunctions.onPromptChange)} // Pass prompt fns
+                  onClick={() =>
+                    generateAll(
+                      promptFunctions.setPrompt,
+                      promptFunctions.onPromptChange,
+                    )
+                  } // Pass prompt fns
                   isLoading={isGenerating && generatingField === "description"}
                 />
               )}
@@ -3108,58 +3146,122 @@ export const Create = () => {
             {/* Vanity Address Section (Only for Auto/Manual) */}
             {activeTab !== FormTab.IMPORT && (
               <div className="flex flex-col gap-2 border border-neutral-800 p-4">
-                 <label className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
-                    Contract Address
-                 </label>
-                  {/* Display Area */}
-                  <div className="font-mono text-sm break-all p-2 bg-[#0F0F0F] border border-neutral-700 min-h-[2.5em] flex items-center justify-center">
-                      {isGeneratingVanity
-                        ? <span className="animate-pulse">{displayedPublicKey}</span>
-                        : vanityResult
-                          ? <span className="text-green-400">{displayedPublicKey}</span>
-                          : <span className="text-neutral-500">{displayedPublicKey}</span>
-                      }
-                  </div>
-                  <div className="flex justify-end">
-                      <span className="text-xs text-neutral-500 p-4">Suffix</span>
-                  <input
-                      type="text"
-                      value={vanitySuffix}
-                      onChange={(e) => setVanitySuffix(e.target.value)} // Force uppercase
-                      placeholder="FUN"
-                      maxLength={5}
-                      className={`bg-autofun-background-input w-20 py-1.5 px-2 ${suffixError && !suffixError.startsWith("Warning") && !suffixError.startsWith("Note") ? 'border-red-500' : ''} text-white text-center font-mono focus:outline-none focus:border-white disabled:opacity-50`}
-                      disabled={isGeneratingVanity}
-                      />
-                    <button
-                        type="button"
-                        onClick={startVanityGeneration}
-                        disabled={isGeneratingVanity}
-                        className="bg-[#03FF24] ml-2 text-black px-3 py-1 rounded-md text-sm font-bold hover:bg-opacity-80 disabled:opacity-50"
-                    >
-                        {isGeneratingVanity ? "Generating..." : vanityResult ? "Reroll" : "Generate"}
-                    </button>
-                    {isGeneratingVanity && (
-                        <button
-                        type="button"
-                        onClick={stopVanityGeneration}
-                        className="bg-red-600 text-white px-3 py-1 rounded-md text-sm font-bold hover:bg-opacity-80"
-                      >
-                        Stop
-                      </button>
+                <label className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
+                  Contract Address
+                </label>
+                {/* Display Area */}
+                <div className="font-mono text-xl break-all min-h-[2.5em] flex items-center justify-center">
+                  <span className="mr-2">
+                    {isGeneratingVanity ? (
+                      <span className="animate-pulse">
+                        {displayedPublicKey.slice(0, -vanitySuffix.length)}
+                        <strong>
+                          {displayedPublicKey.slice(-vanitySuffix.length)}
+                        </strong>
+                      </span>
+                    ) : vanityResult ? (
+                      <span className="text-green-400">
+                        {displayedPublicKey.slice(0, -vanitySuffix.length)}
+                        <strong>
+                          {displayedPublicKey.slice(-vanitySuffix.length)}
+                        </strong>
+                      </span>
+                    ) : (
+                      <span className="text-neutral-500">
+                        {displayedPublicKey.slice(0, -vanitySuffix.length)}
+                        <strong>
+                          {displayedPublicKey.slice(-vanitySuffix.length)}
+                        </strong>
+                      </span>
                     )}
-                    </div>
-                    <p className="ml-auto mr-auto text-xs text-neutral-500 mt-1">More than 3 characters will require more time to generate.</p>
-                  {/* Error/Warning Display */}
-                  {suffixError && (
-                      <div className={`text-xs ${suffixError.startsWith("Warning") || suffixError.startsWith("Note") ? 'text-yellow-400' : 'text-red-500'} mt-1`}>
-                          {suffixError}
-                      </div>
-                  )}
+                  </span>
+                </div>
 
+                <div className="flex items-center gap-2 mx-auto">
+                  <span className="text-white text-xs"> Suffix: </span>
+                  <input
+                    type="text"
+                    value={vanitySuffix}
+                    onChange={(e) => setVanitySuffix(e.target.value)} // Force uppercase
+                    placeholder="FUN"
+                    maxLength={5}
+                    className={`bg-autofun-background-input w-20 py-1.5 px-2 ${suffixError && !suffixError.startsWith("Warning") && !suffixError.startsWith("Note") ? "border-red-500" : ""} text-white text-center font-mono focus:outline-none focus:border-white disabled:opacity-50`}
+                    disabled={isGeneratingVanity}
+                  />
+
+                  {isGeneratingVanity ? (
+                    <button
+                      type="button"
+                      onClick={stopVanityGeneration}
+                      className="bg-red-600 flex items-center justify-center w-8 h-8 text-white rounded-md hover:bg-red-700"
+                    >
+                      {/* Stop icon (square) */}
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 14 14"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <rect width="14" height="14" fill="black" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        stopVanityGeneration(); // Stop existing workers first
+                        // Use a small timeout to allow state updates from stop to settle
+                        setTimeout(() => {
+                          startVanityGeneration(); // Then start with the new suffix
+                        }, 50);
+                      }}
+                      className={`${vanityResult ? "bg-[#444]" : "bg-[#03FF24]"} text-black p-2 rounded-md hover:opacity-80 flex items-center justify-center`}
+                    >
+                      {vanityResult ? (
+                        /* Reroll icon (circular arrow) */
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M14 8C14 4.68629 11.3137 2 8 2C4.68629 2 2 4.68629 2 8C2 11.3137 4.68629 14 8 14"
+                            stroke="white"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                          />
+                          <path
+                            d="M11 11L14 8L11 5"
+                            stroke="white"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      ) : (
+                        <span className="font-bold">Generate</span>
+                      )}
+                    </button>
+                  )}
+                </div>
+                <p className="mx-auto text-xs text-neutral-500 mt-1">
+                  Choose a custom suffix for your contract address (max 4
+                  characters)
+                </p>
+
+                {/* Error/Warning Display */}
+                {suffixError && (
+                  <div
+                    className={`text-xs ${suffixError.startsWith("Warning") || suffixError.startsWith("Note") ? "text-yellow-400" : "text-red-500"} mt-1`}
+                  >
+                    {suffixError}
+                  </div>
+                )}
               </div>
             )}
-
 
             {/* Buy Section (Hide for Import) */}
             {activeTab !== FormTab.IMPORT && (
@@ -3169,7 +3271,9 @@ export const Create = () => {
                     Buy
                     <span className="inline-block ml-1 cursor-help">
                       <Icons.Info className="h-4 w-4 text-[#8c8c8c] hover:text-white" />
-                      <div className="absolute hidden group-hover:block right-0 bottom-8 p-3 text-xs normal-case bg-black border border-neutral-800 rounded-md shadow-lg z-10 w-64"> {/* Added width */}
+                      <div className="absolute hidden group-hover:block right-0 bottom-8 p-3 text-xs normal-case bg-black border border-neutral-800 rounded-md shadow-lg z-10 w-64">
+                        {" "}
+                        {/* Added width */}
                         <p className="text-white mb-2">
                           Choose how much of the token you want to buy on
                           launch:
@@ -3211,25 +3315,34 @@ export const Create = () => {
                           let decimalPart = parts[1] || "";
 
                           // Limit whole part length (e.g., 2 digits for SOL up to 99)
-                          if (wholePart.length > String(Math.floor(MAX_INITIAL_SOL)).length) {
-                             wholePart = wholePart.slice(0, String(Math.floor(MAX_INITIAL_SOL)).length);
+                          if (
+                            wholePart.length >
+                            String(Math.floor(MAX_INITIAL_SOL)).length
+                          ) {
+                            wholePart = wholePart.slice(
+                              0,
+                              String(Math.floor(MAX_INITIAL_SOL)).length,
+                            );
                           }
                           // Limit decimal part length
-                          if (decimalPart.length > 2) { // Allow 2 decimal places
+                          if (decimalPart.length > 2) {
+                            // Allow 2 decimal places
                             decimalPart = decimalPart.slice(0, 2);
                           }
 
-                          value = decimalPart ? `${wholePart}.${decimalPart}` : wholePart;
+                          value = decimalPart
+                            ? `${wholePart}.${decimalPart}`
+                            : wholePart;
 
-                           // Final numeric check against maxInputSol
+                          // Final numeric check against maxInputSol
                           const numValue = parseFloat(value);
-                           if (!isNaN(numValue)) {
-                               if (numValue < 0) value = "0";
-                               else if (numValue > maxInputSol) value = maxInputSol.toString();
-                           } else if (value !== "") {
-                               value = "0"; // Reset invalid non-empty strings
-                           }
-
+                          if (!isNaN(numValue)) {
+                            if (numValue < 0) value = "0";
+                            else if (numValue > maxInputSol)
+                              value = maxInputSol.toString();
+                          } else if (value !== "") {
+                            value = "0"; // Reset invalid non-empty strings
+                          }
 
                           handleChange("initialSol", value || "0"); // Ensure it's not empty string for state
                           setBuyValue(value); // Update local buyValue state
@@ -3240,7 +3353,9 @@ export const Create = () => {
                         className="w-26 pr-10 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white bg-transparent" // Added bg-transparent
                       />
 
-                      <span className="absolute right-0 top-0 bottom-0 flex items-center text-white text-xl font-medium pointer-events-none"> {/* Adjusted positioning */}
+                      <span className="absolute right-0 top-0 bottom-0 flex items-center text-white text-xl font-medium pointer-events-none">
+                        {" "}
+                        {/* Adjusted positioning */}
                         SOL
                       </span>
                     </div>
@@ -3258,96 +3373,229 @@ export const Create = () => {
                 )}
 
                 {/* Balance information */}
-                 <div className="mt-2 text-right text-xs text-neutral-400">
-                    Balance: {solBalance?.toFixed(2) ?? "0.00"} SOL
-                    {isAuthenticated && isFormValid && insufficientBalance && (
-                      <div className="text-red-500 mt-1">
-                          Insufficient SOL balance (need ~0.01 SOL for mint + buy amount)
+                <div className="mt-2 text-right text-xs text-neutral-400">
+                  Balance: {solBalance?.toFixed(2) ?? "0.00"} SOL
+                  {isAuthenticated && isFormValid && insufficientBalance && (
+                    <div className="text-red-500 mt-1">
+                      Insufficient SOL balance (need ~0.01 SOL for mint + buy
+                      amount)
+                    </div>
+                  )}
+                  {Number(buyValue) === maxInputSol &&
+                    maxInputSol < MAX_INITIAL_SOL && (
+                      <div className="text-yellow-500 mt-1">
+                        Maximum amount based on your balance
                       </div>
-                    )}
-                    {Number(buyValue) === maxInputSol && maxInputSol < MAX_INITIAL_SOL && (
-                        <div className="text-yellow-500 mt-1">
-                            Maximum amount based on your balance
-                        </div>
                     )}
                 </div>
               </div>
             )}
 
-             {/* Launch Button */}
-             <div className="flex flex-col items-center gap-3 mt-4"> {/* Added margin-top */}
-                <button
-                  type="submit"
-                  className="p-0 transition-colors cursor-pointer disabled:opacity-50 select-none"
-                   disabled={!canLaunch() || isSubmitting}
-                >
-                  <img
-                    src={
-                      isSubmitting || isCreating // Show launching if submitting or creating
-                        ? "/create/launching.svg"
-                        : "/create/launchup.svg"
-                    }
-                    alt="Launch"
-                    className="h-32 pr-4 mb-4 select-none pointer-events-none" // Removed mouse handlers, handle state via disabled/src
-                  />
-                </button>
-
-                 {/* Validation/Auth Messages */}
-                 {!isAuthenticated ? (
-                     <p className="text-red-500 text-center text-sm">
-                         Please connect your wallet to create a token.
-                     </p>
-                 ) : !canLaunch() && !isSubmitting && activeTab !== FormTab.IMPORT ? ( // Show only if not launchable and not submitting
-                      <p className="text-red-500 text-center text-sm">
-                         Please fill required fields, ensure sufficient SOL, and generate a vanity address.
-                     </p>
-                  ) : !canLaunch() && !isSubmitting && activeTab === FormTab.IMPORT ? (
-                     <p className="text-red-500 text-center text-sm">
-                        Please load token data via the import field above.
-                     </p>
-                  ) : null
-                 }
-
-              </div>
-
-
+            {/* Launch Button */}
+            <div className="flex flex-col items-center gap-3 mt-4">
+              {" "}
+              {/* Added margin-top */}
+              <button
+                type="submit"
+                className="p-0 transition-colors cursor-pointer disabled:opacity-50 select-none"
+                disabled={!canLaunch() || isSubmitting}
+              >
+                <img
+                  src={
+                    isSubmitting || isCreating // Show launching if submitting or creating
+                      ? "/create/launching.svg"
+                      : "/create/launchup.svg"
+                  }
+                  alt="Launch"
+                  className="h-32 pr-4 mb-4 select-none pointer-events-none" // Removed mouse handlers, handle state via disabled/src
+                />
+              </button>
+              {/* Validation/Auth Messages */}
+              {!isAuthenticated ? (
+                <p className="text-red-500 text-center text-sm">
+                  Please connect your wallet to create a token.
+                </p>
+              ) : !canLaunch() &&
+                !isSubmitting &&
+                activeTab !== FormTab.IMPORT ? ( // Show only if not launchable and not submitting
+                <p className="text-red-500 text-center text-sm">
+                  Please fill required fields, ensure sufficient SOL, and
+                  generate a vanity address.
+                </p>
+              ) : !canLaunch() &&
+                !isSubmitting &&
+                activeTab === FormTab.IMPORT ? (
+                <p className="text-red-500 text-center text-sm">
+                  Please load token data via the import field above.
+                </p>
+              ) : null}
+            </div>
           </div>
         )}
-
       </form>
 
       {/* Creation Loading Modal */}
       {isCreating && (
-        <div className="fixed inset-0 flex items-center justify-center z-[60] bg-black/70 backdrop-blur-sm"> {/* Added background */}
-          <div className="bg-[#1A1A1A] p-6 rounded-lg shadow-xl max-w-md w-full border border-neutral-700"> {/* Enhanced styling */}
-            <div className="flex items-center flex-col gap-4"> {/* Increased gap */}
-              {/* Rotating Logo */}
-               <div style={{ width: "100px", height: "100px", perspective: "1000px" }}> {/* Adjusted size */}
-                 <div style={{ width: "100%", height: "100%", position: "relative", transformStyle: "preserve-3d", transition: "transform 0.7s cubic-bezier(0.45, 0, 0.55, 1)", transform: `rotateY(${rotation}deg)` }}>
-                   {/* Simplified logo display - single image */}
-                   {[0, 90, 180, 270].map(deg => (
-                       <div key={deg} style={{ position: "absolute", width: "100%", height: "100%", backfaceVisibility: "hidden", display: "flex", justifyContent: "center", alignItems: "center", overflow: "hidden", transform: `rotateY(${deg}deg) translateZ(50px)` }}>
-                           <img src="/logo.svg" alt={`logo face ${deg}`} style={{ height: "80%", width: "80%", objectFit: "contain" }} />
-                       </div>
-                   ))}
-                 </div>
-               </div>
-               {/* Status Text */}
-               <p className="font-dm-mono text-lg text-[#03FF24] animate-pulse"> {/* Enhanced styling */}
-                 {creationStep || "Initializing..."}
-               </p>
-               {creationStage === "confirming" && (
-                 <p className="font-dm-mono text-sm text-neutral-400">
-                   Please confirm the transaction in your wallet
-                 </p>
-               )}
-                 {/* Optional Cancel Button? Could be tricky with async operations */}
-                 {/* <button onClick={handleCoinDropCancel} className="mt-4 text-neutral-500 text-xs hover:text-white">Cancel</button> */}
-             </div>
-           </div>
-         </div>
-       )}
-     </div>
-   );
- };
- export default Create;
+        <div className="fixed inset-0 flex items-center justify-center z-[60]">
+          <div className="bg-[#1A1A1A]/80 p-6 rounded-lg shadow-lg max-w-md w-full">
+            <div className="flex items-center flex-col gap-3">
+              <div
+                style={{
+                  width: "128px",
+                  height: "128px",
+                  perspective: "1000px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    position: "relative",
+                    transformStyle: "preserve-3d",
+                    transition: "transform 0.5s ease",
+                    transform: `rotateY(${rotation}deg)`,
+                  }}
+                >
+                  {/* Front face - left half */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      width: "100%",
+                      height: "100%",
+                      backfaceVisibility: "hidden",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      overflow: "hidden",
+                      transform: "rotateY(0deg) translateZ(64px)",
+                    }}
+                  >
+                    <img
+                      src="/logo_wide.svg"
+                      alt="logo front"
+                      style={{
+                        height: "100%",
+                        width: "256px",
+                        objectFit: "cover",
+                        objectPosition: "-3% 0",
+                      }}
+                    />
+                  </div>
+
+                  {/* Right face - right half */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      width: "100%",
+                      height: "100%",
+                      backfaceVisibility: "hidden",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      overflow: "hidden",
+                      transform: "rotateY(90deg) translateZ(64px)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: "100%",
+                        overflow: "hidden",
+                        position: "relative",
+                      }}
+                    >
+                      <img
+                        src="/logo_wide.svg"
+                        alt="logo right"
+                        style={{
+                          position: "absolute",
+                          height: "100%",
+                          width: "256px",
+                          right: 0,
+                          objectFit: "cover",
+                          objectPosition: "100% 0",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Back face - left half */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      width: "100%",
+                      height: "100%",
+                      backfaceVisibility: "hidden",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      overflow: "hidden",
+                      transform: "rotateY(180deg) translateZ(64px)",
+                    }}
+                  >
+                    <img
+                      src="/logo_wide.svg"
+                      alt="logo back"
+                      style={{
+                        height: "100%",
+                        width: "256px",
+                        objectFit: "cover",
+                        objectPosition: "-3% 0",
+                      }}
+                    />
+                  </div>
+
+                  {/* Left face - right half */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      width: "100%",
+                      height: "100%",
+                      backfaceVisibility: "hidden",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      overflow: "hidden",
+                      transform: "rotateY(270deg) translateZ(64px)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: "100%",
+                        overflow: "hidden",
+                        position: "relative",
+                      }}
+                    >
+                      <img
+                        src="/logo_wide.svg"
+                        alt="logo left"
+                        style={{
+                          position: "absolute",
+                          height: "100%",
+                          width: "256px",
+                          right: 0,
+                          objectFit: "cover",
+                          objectPosition: "100% 0",
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <p className="font-dm-mono text-base text-autofun-text-secondary">
+                {creationStep}
+              </p>
+              {creationStage === "confirming" && (
+                <p className="font-dm-mono text-sm text-autofun-text-secondary/80">
+                  Please confirm the transaction in your wallet
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+export default Create;

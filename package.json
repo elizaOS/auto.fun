@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "postinstall": "cd vendor/udf && npm install && cd ../../ && bash ./scripts/postinstall.sh",
-    "dev": "npm run copy-dotenv && export NODE_ENV=development && npm run migrate:local && concurrently --kill-others-on-fail --names \"vite,worker,cron,webhook\" --prefix-colors \"blue,green,yellow,magenta,cyan\" \"vite\" \"wrangler dev --env development --test-scheduled\" \"npm run dev:cron-watch\" \"npm run dev:mock-helius-webhook\"",
+    "dev": "npm run copy-dotenv && export NODE_ENV=development && npm run migrate:local && concurrently --kill-others-on-fail --names \"vite,worker,cron,webhook\" --prefix-colors \"blue,green,yellow,magenta\" \"vite\" \"wrangler dev --env development --test-scheduled\" \"npm run dev:cron-watch\" \"npm run dev:mock-helius-webhook\"",
     "dev:cron-watch": "node scripts/cron-watcher.js",
     "dev:helius-webhook": "node scripts/setup-webhook.js",
     "dev:mock-helius-webhook": "node scripts/mock-helius-webhook.js",
