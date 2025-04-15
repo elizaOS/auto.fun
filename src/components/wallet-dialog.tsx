@@ -75,6 +75,10 @@ export const WalletModal: FC<WalletModalProps> = () => {
       localStorage.setItem("walletName", JSON.stringify(wallet.adapter.name));
       console.log("Selected wallet:", wallet.adapter.name);
 
+      // Always select the wallet first
+      await select(wallet.adapter.name);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       // Connect - use a direct approach for Phantom wallet
       const isPhantom = wallet.adapter.name.toLowerCase().includes("phantom");
       console.log(
@@ -100,34 +104,15 @@ export const WalletModal: FC<WalletModalProps> = () => {
             await new Promise((resolve) => setTimeout(resolve, 500));
           } catch (err) {
             console.error("Direct Phantom connection failed:", err);
-            directConnectionSuccessful = false;
           }
         }
       }
 
-      // If direct connection failed, try adapter approach
-      if (!directConnectionSuccessful) {
-        console.log("Attempting adapter connection...");
-        try {
-          // First select the wallet
-          console.log("Selecting wallet:", wallet.adapter.name);
-          await select(wallet.adapter.name);
-
-          // Wait for selection to complete and wallet to be ready
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-
-          // Check if wallet is selected before attempting connection
-          if (!wallet.adapter.connected && !connectedWallet) {
-            console.log("Connecting via adapter...");
-            await connect();
-            console.log("Adapter connection successful");
-          } else {
-            console.log("Wallet already connected via adapter");
-          }
-        } catch (err) {
-          console.error("Adapter connection failed:", err);
-          throw err;
-        }
+      // If direct connection failed or this isn't Phantom, try adapter approach
+      if (!directConnectionSuccessful && !connectedWallet) {
+        console.log("Direct connection unsuccessful, trying adapter approach");
+        await connect();
+        console.log("Adapter connection successful");
       }
 
       // Wait for the public key to be available with timeout
