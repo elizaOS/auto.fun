@@ -7,15 +7,12 @@ import { ChevronDown, Copy, LogOut, Trophy, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import Button from "./button";
-
-// Force re-initialization of PhantomWalletAdapter
-import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
 import { useSolBalance } from "@/hooks/use-token-balance";
 import SkeletonImage from "./skeleton-image";
 
 const WalletButton = () => {
   const navigate = useNavigate();
-  const { publicKey, connecting, wallet, connected } = useWallet();
+  const { publicKey, connecting, wallet } = useWallet();
   const solBalance = useSolBalance();
 
   const { setVisible } = useWalletModal();
@@ -23,7 +20,6 @@ const WalletButton = () => {
     isAuthenticated,
     signOut,
     isAuthenticating,
-    authToken,
     walletAddress,
   } = useAuthentication();
   const { user } = useUser();
