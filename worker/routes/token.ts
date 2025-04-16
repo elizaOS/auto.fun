@@ -2036,20 +2036,20 @@ tokenRouter.get("/swaps/:mint", async (c) => {
 tokenRouter.post("/token/:mint/update", async (c) => {
   try {
     console.log("****** token/:mint/update ******\n");
-    console.log(c)
+    // console.log(c)
     // Get auth headers and extract from cookies
-    const authHeader = c.req.header("Authorization") || "none";
-    const publicKeyCookie = getCookie(c, "publicKey");
-    const authTokenCookie = getCookie(c, "auth_token");
+    // const authHeader = c.req.header("Authorization") || "none";
+    // const publicKeyCookie = getCookie(c, "publicKey");
+    // const authTokenCookie = getCookie(c, "auth_token");
 
-    logger.log("Token update request received");
-    logger.log("Authorization header:", authHeader);
-    logger.log("Auth cookie present:", !!authTokenCookie);
-    logger.log("PublicKey cookie:", publicKeyCookie);
+    // logger.log("Token update request received");
+    // logger.log("Authorization header:", authHeader);
+    // logger.log("Auth cookie present:", !!authTokenCookie);
+    // logger.log("PublicKey cookie:", publicKeyCookie);
 
     // Require authentication
     const user = c.get("user");
-    console.log("User from context:", user);
+    // console.log("User from context:", user);
 
     if (!user) {
       logger.error("Authentication required - no user in context");
