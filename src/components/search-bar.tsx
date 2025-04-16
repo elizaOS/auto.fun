@@ -51,26 +51,23 @@ export default function SearchBar() {
   }, [debouncedSetSearchQuery]);
 
   return (
-    <div className="relative w-full max-w-full sm:max-w-2xl md:max-w-3xl lg:w-[400px] xl:w-[600px]">
-      <div className="flex w-full items-center h-11 px-3 gap-2 bg-[#171717] border border-[#262626] hover:border-[#2FD345]/50 focus-within:border-[#2FD345]/50 transition-colors">
+    <div className="relative min-w-[140px] max-w-full lg:w-[400px] xl:w-[600px]">
+      <div className="flex w-full items-center h-11 px-3 bg-[#171717] border border-[#262626] hover:border-[#2FD345]/50 focus-within:border-[#2FD345]/50 transition-colors">
         <Search className="w-6 h-6 text-[#8C8C8C] group-hover:text-[#2FD345] shrink-0" />
         <input
           type="text"
           value={searchInput}
           onChange={handleInputChange}
-          placeholder="Symbol or Address..."
-          className="flex-1 select-none bg-transparent text-base font-medium text-[#8C8C8C] placeholder-[#8C8C8C] focus:outline-none hover:placeholder-white focus:placeholder-white transition-colors"
+          placeholder="Search"
+          className="flex-1 select-none bg-transparent text-base font-medium text-[#8C8C8C] placeholder-[#8C8C8C] focus:outline-none hover:placeholder-white focus:placeholder-white transition-colors md:w-auto w-[50px]"
         />
       </div>
 
       {showSearchResults && (
         <div
-          className="absolute w-full p-3.5 bg-[#171717] border border-[#262626] flex flex-col gap-3 mt-2 max-h-[60vh] overflow-auto shadow-lg"
+          className="absolute min-w-[290px] w-full p-2 bg-[#171717] border border-[#262626] flex flex-col gap-3 mt-2 max-h-[60vh] overflow-auto shadow-lg"
           ref={ref}
         >
-          <div className="text-[16px] font-normal leading-none tracking-widest">
-            Tokens
-          </div>
           {query.isFetching ? (
             <div className="text-autofun-background-action-highlight">
               Searching for tokens...

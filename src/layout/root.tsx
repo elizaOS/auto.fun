@@ -19,9 +19,9 @@ export default function Layout() {
   return (
     <QueryClientProvider client={queryClient}>
       <Providers>
-        <div className="min-h-screen bg-autofun-background-primary text-autofun-text-primary flex flex-col font-satoshi antialiased px-4">
+        <div className="min-h-screen bg-autofun-background-primary text-autofun-text-primary flex flex-col font-satoshi antialiased">
           <Header />
-          <main className="flex-grow">
+          <main className="flex-grow px-2">
             <Outlet />
             <BreakpointIndicator />
             <ToastContainer position="bottom-right" theme="dark" />

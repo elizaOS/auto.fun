@@ -3,8 +3,9 @@ import SkeletonImage from "./skeleton-image";
 
 export const Footer = () => {
   return (
-    <div className="flex flex-wrap gap-2 items-center py-4 justify-between">
-      <img className="w-auto h-7" src="/logo_wide.svg" alt="logo" />
+    <div className="flex flex-col gap-2">
+      <img className="w-auto h-16 mt-16 mb-16" src="/dice.svg" alt="logo" />
+    <div className="flex flex-wrap gap-2 items-center py-4 justify-between px-2">
       <div className="flex items-center gap-2.5 mx-auto py-2.5">
         <FooterLink href="/privacy-policy" title="Privacy" />
         <div className="w-[1px] h-4 bg-autofun-stroke-light" />
@@ -13,8 +14,7 @@ export const Footer = () => {
         <FooterLink href="/fees" title="Fees" />
         <div className="w-[1px] h-4 bg-autofun-stroke-light" />
         <FooterLink title="Support" href="/support" />
-      </div>
-      <Link to={"https://x.com/autodotfun"} target="_blank">
+        <Link to={"https://x.com/autodotfun"} target="_blank">
         <div className="size-7 p-0 grid place-items-center select-none">
           <div className="m-auto">
             <SkeletonImage
@@ -27,6 +27,8 @@ export const Footer = () => {
           </div>
         </div>
       </Link>
+      </div>
+      </div>
     </div>
   );
 };

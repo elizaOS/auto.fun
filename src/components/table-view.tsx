@@ -21,11 +21,23 @@ export function TableView({ data }: { data: IToken[] }) {
       <TableHeader>
         <TableRow className="bg-transparent">
           <TableHead className="w-[500px]">Coin</TableHead>
-          <TableHead className="text-left">Market Cap</TableHead>
-          <TableHead className="text-left">24H Volume</TableHead>
-          <TableHead className="text-left">Holders Count</TableHead>
-          <TableHead className="text-left">Bonding Curve</TableHead>
-          <TableHead className="text-right">Creation Time</TableHead>
+          <TableHead className="text-left">
+            <span className="hidden md:inline">Market Cap</span>
+            <span className="md:hidden">MCap</span>
+          </TableHead>
+          <TableHead className="text-left">
+            <span className="hidden md:inline">24H Volume</span>
+            <span className="md:hidden">24H</span>
+          </TableHead>
+          <TableHead className="text-left">
+            <span className="hidden md:inline">Holders</span>
+            <span className="md:hidden">Hold</span>
+          </TableHead>
+          <TableHead className="text-left">
+            <span className="hidden md:inline">Bonding Curve</span>
+            <span className="md:hidden">Bonding</span>
+          </TableHead>
+          <TableHead className="text-right">Age</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -37,7 +49,7 @@ export function TableView({ data }: { data: IToken[] }) {
               onClick={() => navigate(`/token/${token.mint}`)}
             >
               <TableCell>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
                   <div className="relative size-[50px] bg-[#262626] overflow-hidden">
                     <SkeletonImage
                       src={token?.image || "/logo.png"}
@@ -81,7 +93,17 @@ export function TableView({ data }: { data: IToken[] }) {
                 </div>
               </TableCell>
               <TableCell className="text-right">
-                {fromNow(token.createdAt)}
+                {fromNow(token.createdAt)
+                  .replace(" ago", "")
+                  .replace(" days", "d")
+                  .replace(" hours", "hr")
+                  .replace(" minutes", "m")
+                  .replace(" seconds", "s")
+                  .replace(" day", "d")
+                  .replace(" hour", "hr")
+                  .replace(" minute", "m")
+                  .replace(" second", "s")
+                  .trim()}
               </TableCell>
             </TableRow>
           );

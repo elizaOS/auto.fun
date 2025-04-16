@@ -446,7 +446,7 @@ const FormImageInput = ({
             <button
               type="button"
               onClick={handleCancel}
-              className="mt-4 text-[#03FF24] px-4 py-2 rounded-lg font-bold transition-colors"
+              className="mt-4 text-[#03FF24] px-4 py-2 font-bold transition-colors"
             >
               Cancel
             </button>
@@ -2913,7 +2913,7 @@ export const Create = () => {
                       : "/create/generateup.svg"
                   }
                   alt="Generate"
-                  className="w-40 mb-2"
+                  className="w-24 ml-2"
                   onMouseDown={(e) => {
                     const img = e.target as HTMLImageElement;
                     if (!isProcessingPrompt) {
@@ -2983,7 +2983,7 @@ export const Create = () => {
                           : "/create/importup.svg"
                       }
                       alt="Import"
-                      className="w-40 mb-2"
+                      className="w-32 mb-2"
                       onMouseDown={(e) => {
                         const img = e.target as HTMLImageElement;
                         if (!isImporting) {
@@ -3022,7 +3022,7 @@ export const Create = () => {
                 {/* Enhanced import status with clearer guidance */}
                 {importStatus && (
                   <div
-                    className={`p-3 border rounded-md mb-4 ${
+                    className={`p-3 border  mb-4 ${
                       importStatus.type === "error"
                         ? "border-red-500 bg-red-950/20 text-red-400"
                         : importStatus.type === "warning"
@@ -3145,12 +3145,12 @@ export const Create = () => {
 
             {/* Vanity Address Section (Only for Auto/Manual) */}
             {activeTab !== FormTab.IMPORT && (
-              <div className="flex flex-col gap-2 border border-neutral-800 p-4">
+              <div className="flex flex-col gap-2">
                 <label className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
-                  Contract Address
+                  Generate Contract Address
                 </label>
                 {/* Display Area */}
-                <div className="font-mono text-xl break-all min-h-[2.5em] flex items-center justify-center">
+                <div className="font-mono text-xs md:text-lg lg:text-xl break-all min-h-[2.5em] flex items-center justify-center">
                   <span className="mr-2">
                     {isGeneratingVanity ? (
                       <span className="animate-pulse">
@@ -3178,7 +3178,6 @@ export const Create = () => {
                 </div>
 
                 <div className="flex items-center gap-2 mx-auto">
-                  <span className="text-white text-xs"> Suffix: </span>
                   <input
                     type="text"
                     value={vanitySuffix}
@@ -3193,7 +3192,7 @@ export const Create = () => {
                     <button
                       type="button"
                       onClick={stopVanityGeneration}
-                      className="bg-red-600 flex items-center justify-center w-8 h-8 text-white rounded-md hover:bg-red-700"
+                      className="bg-red-600 flex items-center justify-center w-8 h-8 text-white hover:bg-red-700"
                     >
                       {/* Stop icon (square) */}
                       <svg
@@ -3216,40 +3215,57 @@ export const Create = () => {
                           startVanityGeneration(); // Then start with the new suffix
                         }, 50);
                       }}
-                      className={`${vanityResult ? "bg-[#444]" : "bg-[#03FF24]"} text-black p-2 rounded-md hover:opacity-80 flex items-center justify-center`}
+                      className={`${vanityResult ? "bg-[#444]" : "bg-[#03FF24]"} text-black p-2 hover:opacity-80 flex items-center justify-center`}
                     >
-                      {vanityResult ? (
-                        /* Reroll icon (circular arrow) */
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 16 16"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            d="M14 8C14 4.68629 11.3137 2 8 2C4.68629 2 2 4.68629 2 8C2 11.3137 4.68629 14 8 14"
-                            stroke="white"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                          />
-                          <path
-                            d="M11 11L14 8L11 5"
-                            stroke="white"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      ) : (
-                        <span className="font-bold">Generate</span>
-                      )}
+                                    <button
+                type="button"
+                onClick={generateFromPrompt}
+                disabled={isProcessingPrompt || !userPrompt.trim()}
+                className="p-0 transition-colors disabled:opacity-50"
+              >
+                <img
+                  src={
+                    isProcessingPrompt
+                      ? "/create/generating.svg"
+                      : "/create/generateup.svg"
+                  }
+                  alt="Generate"
+                  className="w-24 ml-2"
+                  onMouseDown={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    if (!isProcessingPrompt) {
+                      img.src = "/create/generatedown.svg";
+                    }
+                  }}
+                  onMouseUp={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    if (!isProcessingPrompt) {
+                      img.src = "/create/generateup.svg";
+                    }
+                  }}
+                  onDragStart={(e) => {
+                    e.preventDefault();
+                    const img = e.target as HTMLImageElement;
+                    if (!isProcessingPrompt) {
+                      img.src = "/create/generateup.svg";
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    e.preventDefault();
+                    const img = e.target as HTMLImageElement;
+                    if (!isProcessingPrompt) {
+                      img.src = "/create/generateup.svg";
+                    }
+                  }}
+                />
+              </button>
                     </button>
                   )}
                 </div>
-                <p className="mx-auto text-xs text-neutral-500 mt-1">
-                  Choose a custom suffix for your contract address (max 4
-                  characters)
+                <p className="mx-auto text-center text-xs text-neutral-500 mt-1">
+                  Choose a custom suffix
+                  <br />
+                  Longer suffixes are slower to generate
                 </p>
 
                 {/* Error/Warning Display */}
@@ -3271,7 +3287,7 @@ export const Create = () => {
                     Buy
                     <span className="inline-block ml-1 cursor-help">
                       <Icons.Info className="h-4 w-4 text-[#8c8c8c] hover:text-white" />
-                      <div className="absolute hidden group-hover:block right-0 bottom-8 p-3 text-xs normal-case bg-black border border-neutral-800 rounded-md shadow-lg z-10 w-64">
+                      <div className="absolute hidden group-hover:block right-0 bottom-8 p-3 text-xs normal-case bg-black border border-neutral-800 shadow-lg z-10 w-64">
                         {" "}
                         {/* Added width */}
                         <p className="text-white mb-2">
@@ -3407,7 +3423,7 @@ export const Create = () => {
                       : "/create/launchup.svg"
                   }
                   alt="Launch"
-                  className="h-32 pr-4 mb-4 select-none pointer-events-none" // Removed mouse handlers, handle state via disabled/src
+                  className="h-32 mb-4 select-none pointer-events-none" // Removed mouse handlers, handle state via disabled/src
                 />
               </button>
               {/* Validation/Auth Messages */}
@@ -3437,7 +3453,7 @@ export const Create = () => {
       {/* Creation Loading Modal */}
       {isCreating && (
         <div className="fixed inset-0 flex items-center justify-center z-[60]">
-          <div className="bg-[#1A1A1A]/80 p-6 rounded-lg shadow-lg max-w-md w-full">
+          <div className="bg-[#1A1A1A]/80 p-6 shadow-lg max-w-md w-full">
             <div className="flex items-center flex-col gap-3">
               <div
                 style={{

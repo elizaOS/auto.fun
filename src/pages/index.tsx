@@ -35,11 +35,17 @@ export default function Page() {
   return (
     <div className="w-full min-h-[50vh]">
       {/* Header Section */}
-      <FrontpageHeader tokens={headerTokens} />
+      {/* Show FrontpageHeader on desktop, logo on mobile */}
+      <div className="hidden md:block">
+        <FrontpageHeader tokens={headerTokens} />
+      </div>
+      <div className="md:hidden flex justify-center items-center py-8">
+        <img src="/logo_wide.svg" alt="Logo" className="w-4/5 max-w-[400px]" />
+      </div>
       {/* Top Navigation */}
-      <div className="flex justify-between gap-2 flex-wrap-reverse md:flex-wrap">
+      <div className="flex justify-between gap-1 flex-wrap-reverse md:flex-wrap">
         <GridListSwitcher />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <Button
             variant={sortBy === "all" ? "primary" : "outline"}
             onClick={() => setSortBy("all")}
@@ -51,7 +57,7 @@ export default function Page() {
             variant={sortBy === "marketCap" ? "primary" : "outline"}
             onClick={() => setSortBy("marketCap")}
           >
-            Market Cap
+            Price
           </Button>
 
           {/* TODO: change to toggle button for newest/oldest */}
@@ -59,7 +65,7 @@ export default function Page() {
             variant={sortBy === "newest" ? "primary" : "outline"}
             onClick={() => setSortBy("newest")}
           >
-            Creation Time
+            New
           </Button>
         </div>
       </div>

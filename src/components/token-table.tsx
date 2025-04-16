@@ -32,7 +32,7 @@ const columns = [
     },
   }),
   columnHelper.accessor("tokensHeld", {
-    header: "Token Amount",
+    header: "Amount",
     cell: ({ cell }) => cell.getValue().toLocaleString(),
   }),
   columnHelper.accessor("solValue", {
