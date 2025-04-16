@@ -2190,12 +2190,7 @@ tokenRouter.post("/token/:mint/update", async (c) => {
     logger.log("Token updated successfully");
     if (tokenData[0]?.imported === 0) {
       try {
-        logger.log(
-          "uploading to r2",
-          c.env.R2_PUBLIC_URL,
-          c.env.VITE_API_URL,
-          c.env.NODE_ENV,
-        );
+
         // 1) fetch the existing JSON
         const originalUrl = tokenData[0].url;
         if (originalUrl) {
