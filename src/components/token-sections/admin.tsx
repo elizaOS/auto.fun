@@ -7,7 +7,6 @@ import { useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import CopyButton from "../copy-button";
 import { Icons } from "../icons";
-import { getAuthToken } from "@/utils/auth";
 
 type FormData = {
   links: {
@@ -53,7 +52,7 @@ export default function AdminTab() {
 
   // Extract token mint from URL if not found in params
   const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(
-    null
+    null,
   );
 
   // Effect to detect token mint from various sources (similar to community tab)
@@ -215,7 +214,7 @@ export default function AdminTab() {
     } catch (error) {
       console.error("Error updating token:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to update token"
+        error instanceof Error ? error.message : "Failed to update token",
       );
     } finally {
       setIsSaving(false);

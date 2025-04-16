@@ -643,15 +643,15 @@ async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-      { name: "mainnet", url: mainnetUrl },
-      { name: "devnet", url: devnetUrl },
-    ]
+        { name: "mainnet", url: mainnetUrl },
+        { name: "devnet", url: devnetUrl },
+      ]
     : [
-      {
-        name: c.env.NETWORK || "devnet",
-        url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-      },
-    ];
+        {
+          name: c.env.NETWORK || "devnet",
+          url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+        },
+      ];
 
   logger.log(
     `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
@@ -1558,8 +1558,8 @@ tokenRouter.get("/token/:mint", async (c) => {
       token.status === "migrated"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-          (token.curveLimit - token.virtualReserves)) *
-        100;
+            (token.curveLimit - token.virtualReserves)) *
+          100;
 
     // Get token holders count
     const holdersCountQuery = await db
@@ -2190,12 +2190,11 @@ tokenRouter.post("/token/:mint/update", async (c) => {
     logger.log("Token updated successfully");
     if (tokenData[0]?.imported === 0) {
       try {
-
         // 1) fetch the existing JSON
         const originalUrl = tokenData[0].url;
         if (originalUrl) {
           const url = new URL(originalUrl);
-          const parts = url.pathname.split("/")
+          const parts = url.pathname.split("/");
           // grab only the filename portion
           const filename = parts.pop();
           if (!filename) throw new Error("Could not parse metadata filename");
@@ -2208,11 +2207,13 @@ tokenRouter.post("/token/:mint/update", async (c) => {
           json.properties.twitter = body.twitter ?? json.properties.twitter;
           json.properties.telegram = body.telegram ?? json.properties.telegram;
           json.properties.discord = body.discord ?? json.properties.discord;
-          json.properties.farcaster = body.farcaster ?? json.properties.farcaster;
+          json.properties.farcaster =
+            body.farcaster ?? json.properties.farcaster;
           // const stored = await c.env.R2.get(objectKey);
 
           // 3) Serialize back to an ArrayBuffer
-          const buf = new TextEncoder().encode(JSON.stringify(json)).buffer as ArrayBuffer;
+          const buf = new TextEncoder().encode(JSON.stringify(json))
+            .buffer as ArrayBuffer;
 
           // 4) Overwrite the same key in R2
           await c.env.R2.put(objectKey, buf, {
@@ -2220,8 +2221,9 @@ tokenRouter.post("/token/:mint/update", async (c) => {
             customMetadata: { publicAccess: "true" },
           });
 
-
-          logger.log(`Overwrote R2 object at key ${objectKey}; URL remains ${originalUrl}`);
+          logger.log(
+            `Overwrote R2 object at key ${objectKey}; URL remains ${originalUrl}`,
+          );
         }
       } catch (e) {
         logger.error("Failed to re‑upload metadata JSON:", e);

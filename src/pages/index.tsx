@@ -57,7 +57,8 @@ export default function Page() {
             variant={sortBy === "marketCap" ? "primary" : "outline"}
             onClick={() => setSortBy("marketCap")}
           >
-            Market Cap
+            <span className="hidden sm:inline">Market Cap</span>
+            <span className="sm:hidden">MCap</span>
           </Button>
 
           {/* TODO: change to toggle button for newest/oldest */}

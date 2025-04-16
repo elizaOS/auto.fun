@@ -14,7 +14,10 @@ export const shortenAddress = (address: string) => {
   return address.slice(0, 3) + "..." + address.slice(-3);
 };
 
-export const abbreviateNumber = (num: number, withoutCurrency: boolean = false): string => {
+export const abbreviateNumber = (
+  num: number,
+  withoutCurrency: boolean = false,
+): string => {
   const absNum = Math.abs(Number(num));
   if (absNum < 1000) return formatNumber(num);
 
@@ -27,7 +30,6 @@ export const abbreviateNumber = (num: number, withoutCurrency: boolean = false):
 
   return `${withoutCurrency ? "" : "$"}${(num < 0 ? "-" : "") + formatted + unit}`;
 };
-
 
 export const formatNumber = (
   num: number,
