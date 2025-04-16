@@ -124,7 +124,11 @@ export async function uploadToCloudflare(
 
       const apiPath = options.isJson ? "metadata" : "image";
       // Ensure proper path formatting - don't URL encode here as R2 handles this
-      const publicUrl = `${env.VITE_API_URL}/api/${apiPath}/${objectKey}`;
+      const objectPath = options.isJson ? "token-metadata" : "token-images";
+
+      const publicUrl = env.VITE_API_URL?.includes('localhost')
+        ? `${env.VITE_API_URL}/api/${apiPath}/${objectKey}`
+        : `${env.R2_PUBLIC_URL}/${objectPath}/${objectKey}`;
 
       // Log file in development mode
       logUploadedFile(env, objectKey, publicUrl);
