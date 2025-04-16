@@ -172,7 +172,10 @@ export default function CommunityTab() {
                 process.env.NODE_ENV,
               );
               // If we're running locally, use the API endpoint
-              if (API_BASE_URL.includes("localhost")) {
+              if (
+                API_BASE_URL.includes("localhost") ||
+                API_BASE_URL.includes("127.0.0.1")
+              ) {
                 imageUrls.push(
                   `${API_BASE_URL}/api/image/generation-${tokenMint}-${i}.jpg`,
                 );

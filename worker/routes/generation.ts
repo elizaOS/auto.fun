@@ -19,6 +19,7 @@ import { uploadGeneratedImage } from "../uploader";
 import { getRpcUrl } from "../util";
 import { createTokenPrompt } from "./generation-prompts/create-token";
 import { enhancePrompt } from "./generation-prompts/enhance-prompt";
+import { Buffer } from "node:buffer"; // Added for image decoding
 
 // Enum for media types
 export enum MediaType {
@@ -1468,8 +1469,8 @@ async function generateTokenOnDemand(
   try {
     logger.log("Generating a token on demand...");
 
-    // Use our improved generateMetadata function with retry
-    const metadata = await generateMetadata(env);
+    // Step 1: Generate Metadata
+    const metadata = await generateMetadata(env); // Assuming generateMetadata handles its own retries
 
     if (!metadata) {
       return {
@@ -1482,37 +1483,144 @@ async function generateTokenOnDemand(
       `Successfully generated token metadata: ${metadata.name} (${metadata.symbol})`,
     );
 
-    // Generate the image for this token
-    let imageUrl = "";
-    try {
-      // Generate image using our existing function
-      const imageResult = await generateMedia(env, {
-        prompt: metadata.prompt,
-        type: MediaType.IMAGE,
-      });
+    // Step 2: Generate and Upload Image with Retry Logic
+    let finalImageUrl = "";
+    const maxImageRetries = 3;
+    let imageAttempt = 0;
 
-      if (
-        imageResult &&
-        imageResult.data &&
-        imageResult.data.images &&
-        imageResult.data.images.length > 0
-      ) {
-        imageUrl = imageResult.data.images[0].url;
-        logger.log(`Generated image URL: ${imageUrl}`);
-      } else {
-        logger.warn(
-          "Image generation result doesn't contain expected image data",
-        );
-      }
-    } catch (imageError) {
-      logger.error(
-        `Error generating image for token ${metadata.name}:`,
-        imageError,
+    while (imageAttempt < maxImageRetries && !finalImageUrl) {
+      imageAttempt++;
+      logger.log(
+        `Generating/uploading image for token ${metadata.name}, attempt ${imageAttempt}/${maxImageRetries}...`,
       );
-      // Continue without image
+      try {
+        // Generate image using our existing function
+        const imageResult = await generateMedia(env, {
+          prompt: metadata.prompt,
+          type: MediaType.IMAGE,
+          // Consider setting mode: 'fast' if CF AI is preferred and available
+        });
+
+        // Determine the source URL (could be data URI or direct URL)
+        let sourceImageUrl = "";
+        if (imageResult?.data?.images?.[0]?.url) {
+          // Common structure, potentially CF AI data URI
+          sourceImageUrl = imageResult.data.images[0].url;
+        } else if (imageResult?.image?.url) {
+          // Structure for Fal ultra
+          sourceImageUrl = imageResult.image.url;
+        } else if (typeof imageResult?.url === "string") {
+          // Other direct URL structures
+          sourceImageUrl = imageResult.url;
+        }
+
+        if (!sourceImageUrl) {
+          throw new Error(
+            "Image generation result did not contain a valid URL or data URI.",
+          );
+        }
+
+        // Process based on URL type
+        if (sourceImageUrl.startsWith("data:image")) {
+          logger.log(
+            `[Attempt ${imageAttempt}] Received data URI, preparing for R2 upload...`,
+          );
+
+          // Decode and Upload Data URI (Adapted from generatePreGeneratedTokens)
+          const imageMatch = sourceImageUrl.match(
+            /^data:(image\/[a-z+]+);base64,(.*)$/,
+          );
+          if (!imageMatch) {
+            throw new Error("Invalid image data URI format for upload.");
+          }
+          const contentType = imageMatch[1];
+          const base64Data = imageMatch[2];
+          const imageBuffer = Buffer.from(base64Data, "base64");
+
+          let extension = ".jpg"; // Default extension
+          if (contentType.includes("png")) extension = ".png";
+          else if (contentType.includes("gif")) extension = ".gif";
+          else if (contentType.includes("svg")) extension = ".svg";
+          else if (contentType.includes("webp")) extension = ".webp";
+
+          const imageFilename = `${crypto.randomUUID()}${extension}`;
+          const imageKey = `token-images/${imageFilename}`; // Consistent R2 prefix
+
+          if (!env.R2) {
+            throw new Error(
+              "R2 storage (env.R2) is not configured. Cannot upload image.",
+            );
+          }
+
+          logger.log(
+            `[Attempt ${imageAttempt}] Uploading image to R2 with key: ${imageKey}`,
+          );
+          await env.R2.put(imageKey, imageBuffer, {
+            httpMetadata: {
+              contentType,
+              cacheControl: "public, max-age=31536000", // 1 year cache
+            },
+          });
+
+          // Construct the final public URL
+          const r2PublicUrl = env.R2_PUBLIC_URL;
+          if (!r2PublicUrl) {
+            throw new Error(
+              "R2_PUBLIC_URL environment variable is not set. Cannot construct public image URL.",
+            );
+          }
+          finalImageUrl =
+            env.API_URL?.includes("localhost") ||
+            env.API_URL?.includes("127.0.0.1")
+              ? `${env.API_URL}/api/image/${imageFilename}` // Assumes a local proxy endpoint exists
+              : `${r2PublicUrl.replace(/\/$/, "")}/${imageKey}`; // Ensure no double slash
+
+          logger.log(
+            `[Attempt ${imageAttempt}] R2 Upload successful. Final URL: ${finalImageUrl}`,
+          );
+        } else if (sourceImageUrl.startsWith("http")) {
+          // Assume it's a publicly accessible URL (e.g., from Fal.ai)
+          logger.log(
+            `[Attempt ${imageAttempt}] Using direct public URL from generation result: ${sourceImageUrl}`,
+          );
+          finalImageUrl = sourceImageUrl;
+        } else {
+          // Handle unexpected formats
+          throw new Error(
+            `Generated image source is not a data URI or HTTP(S) URL: ${sourceImageUrl.substring(0, 60)}...`,
+          );
+        }
+      } catch (error) {
+        logger.error(
+          `[Attempt ${imageAttempt}] Error during image generation/upload:`,
+          error,
+        );
+        // Check if it's the last attempt
+        if (imageAttempt >= maxImageRetries) {
+          logger.error(
+            "Max image generation/upload retries reached. Failing token generation.",
+          );
+          // finalImageUrl remains empty, loop will terminate
+        } else {
+          // Wait briefly before the next retry
+          await new Promise((resolve) =>
+            setTimeout(resolve, 500 * imageAttempt),
+          ); // Exponential backoff factor
+        }
+      }
+    } // End while loop
+
+    // Step 3: Check if image processing was successful
+    if (!finalImageUrl) {
+      // All retries failed
+      return {
+        success: false,
+        error:
+          "Failed to generate and upload token image after multiple attempts",
+      };
     }
 
-    // Create token object
+    // Step 4: Create Token Object and Save to DB (only if image succeeded)
     const tokenId = crypto.randomUUID();
     const onDemandToken = {
       id: tokenId,
@@ -1520,40 +1628,46 @@ async function generateTokenOnDemand(
       ticker: metadata.symbol,
       description: metadata.description,
       prompt: metadata.prompt,
-      image: imageUrl,
+      image: finalImageUrl, // Use the successfully obtained URL
       createdAt: new Date().toISOString(),
       used: 0,
     };
 
-    // Store in database for future use (do this in background)
+    // Store in database for future use (run in background)
     const db = getDB(env);
     ctx.waitUntil(
       (async () => {
         try {
           await db.insert(preGeneratedTokens).values({
             id: tokenId,
-            name: metadata.name,
-            ticker: metadata.symbol,
-            description: metadata.description,
-            prompt: metadata.prompt,
-            image: imageUrl,
-            createdAt: new Date().toISOString(),
-            used: 0,
+            name: onDemandToken.name,
+            ticker: onDemandToken.ticker,
+            description: onDemandToken.description,
+            prompt: onDemandToken.prompt,
+            image: onDemandToken.image, // Ensure the final URL is saved
+            createdAt: onDemandToken.createdAt,
+            used: onDemandToken.used,
           });
           logger.log(
-            `Generated and saved on-demand token: ${metadata.name} (${metadata.symbol})`,
+            `Generated and saved on-demand token: ${metadata.name} (${metadata.symbol}) with image ${finalImageUrl}`,
           );
         } catch (err) {
-          logger.error("Error saving on-demand token:", err);
+          logger.error("Error saving on-demand token to database:", err);
+          // Note: If DB save fails, the token exists but isn't in preGeneratedTokens.
+          // Consider if additional error handling/cleanup is needed here.
         }
       })(),
     );
 
     return { success: true, token: onDemandToken };
   } catch (error) {
-    logger.error("Error generating token on demand:", error);
-
-    return { success: false, error: "Failed to generate token" };
+    logger.error("Unhandled error during generateTokenOnDemand:", error);
+    // Ensure a structured error response
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "An unknown error occurred",
+    };
   }
 }
 
@@ -1986,21 +2100,34 @@ export async function generatePreGeneratedTokens(env: Env) {
       }
 
       logger.log(`[PreGen Upload] Attempting R2 put for key: ${imageKey}`);
-      await env.R2.put(imageKey, imageBuffer, {
+      const res = await env.R2.put(imageKey, imageBuffer, {
         httpMetadata: { contentType, cacheControl: "public, max-age=31536000" },
       });
+      // log the public url from the respnse
+      console.log("****** RES", res);
       logger.log(
         `[PreGen Upload] Image successfully uploaded to R2: ${imageKey}`,
       );
 
       // Construct URL based on environment (like /upload does)
-      const r2PublicUrl = "https://pub-30f52db29266428495af0c1aea206af1.r2.dev";
-      finalImageUrl = env.API_URL?.includes("localhost")
-        ? `${env.API_URL}/api/image/${imageFilename}`
-        : `${r2PublicUrl}/${imageKey}`;
-      logger.log(
-        `[PreGen Upload] Constructed final image URL: ${finalImageUrl}`,
-      );
+      const r2PublicUrl = env.R2_PUBLIC_URL;
+      if (!r2PublicUrl) {
+        logger.error(
+          "[PreGen Upload] R2_PUBLIC_URL environment variable is not set. Cannot construct public image URL.",
+        );
+        // Depending on desired behavior, you might want to return or throw here
+        // For now, we'll set finalImageUrl to empty and let the DB step handle it (or fail)
+      } else {
+        // Only construct the URL if the base URL is available
+        finalImageUrl =
+          env.API_URL?.includes("localhost") ||
+          env.API_URL?.includes("127.0.0.1")
+            ? `${env.API_URL}/api/image/${imageFilename}`
+            : `${r2PublicUrl.replace(/\/$/, "")}/${imageKey}`; // Ensure no double slash
+        logger.log(
+          `[PreGen Upload] Constructed final image URL: ${finalImageUrl}`,
+        );
+      }
     } catch (uploadError) {
       logger.error(
         `[PreGen Upload] Error during image upload for ${metadata.name}:`,

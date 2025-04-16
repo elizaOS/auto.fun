@@ -852,7 +852,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
               >
                 {isConnectingAgent
                   ? "Connecting..."
-                  : "Create and Connect an Agent With"}
+                  : "Create an Eliza agent on"}
                 <div className="relative">
                   <img
                     src="/fleek-logo.svg"

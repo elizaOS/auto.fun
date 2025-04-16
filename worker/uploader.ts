@@ -128,7 +128,8 @@ export async function uploadToCloudflare(
 
       const isDevelopment =
         env.NODE_ENV === "development" ||
-        env.VITE_API_URL?.includes("localhost");
+        (env.VITE_API_URL?.includes("localhost") &&
+          env.VITE_API_URL?.includes("127.0.0.1"));
       logger.log(
         "uploading to r2",
         env.R2_PUBLIC_URL,

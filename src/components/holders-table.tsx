@@ -63,7 +63,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
                     target="_blank"
                     className="hover:text-autofun-text-highlight"
                   >
-                    {shortenAddress(holder?.address)}
+                    {holder?.address === import.meta.env.VITE_BONDING_CURVE_ADDRESS ? "Bonding Curve" : shortenAddress(holder?.address)}
                   </Link>
                 </TableCell>
                 <TableCell className="text-right">

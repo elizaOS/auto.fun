@@ -19,7 +19,8 @@ if (
   window.location.hostname.includes("auto.fun") &&
   new Date() < new Date("2025-04-17T00:00:00Z") &&
   !window.location.search.includes("dev") &&
-  !window.location.hostname.includes("localhost")
+  !window.location.hostname.includes("localhost") &&
+  !window.location.hostname.includes("127.0.0.1")
 ) {
   window.location.href = "https://x.com/autodotfun";
 } else {

@@ -2698,7 +2698,8 @@ export const Create = () => {
             let imageUrl = token.image;
             if (
               imageUrl.includes("r2.dev") &&
-              env.apiUrl?.includes("localhost")
+              env.apiUrl?.includes("localhost") &&
+              env.apiUrl?.includes("127.0.0.1")
             ) {
               // Extract the filename from the R2 URL
               const filename = imageUrl.split("/").pop();
