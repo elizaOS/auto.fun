@@ -11,6 +11,7 @@ export const allowedOrigins = [
   "https://develop.autofun.pages.dev",
   "https://autofun.pages.dev",
   "https://*.auto-fun.pages.dev",
+  "https://develop.autofun.pages.dev",
   "http://localhost:3000",
   "http://localhost:3001",
   "http://localhost:3420",
@@ -19,6 +20,7 @@ export const allowedOrigins = [
   "https://api.auto.fun",
   "https://api-dev.auto.fun",
   "https://develop.autofun.pages.dev",
+  "https://fix-develop-create.auto-fun.pages.dev",
   "*",
 ];
 
