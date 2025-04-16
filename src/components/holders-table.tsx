@@ -38,7 +38,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
           <TableHead>Account</TableHead>
           <TableHead className="text-right">Amount</TableHead>
           <TableHead className="text-right">%</TableHead>
-          <TableHead className="text-right" />
+          <TableHead className="text-right">View</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

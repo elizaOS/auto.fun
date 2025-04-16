@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 export const useSolBalance = () => {
   const [solBalance, setSolBalance] = useState(0);
+  const [error, setError] = useState<string>("");
 
   const { connection } = useConnection();
   const { publicKey } = useWallet();
@@ -14,9 +15,13 @@ export const useSolBalance = () => {
 
     const fetchSolBalance = async () => {
       try {
+        if (error) {
+          setError("");
+        }
         const balance = await connection.getBalance(publicKey);
         setSolBalance(balance / 1e9);
       } catch (error) {
+        setError("Error");
         console.error("Error fetching SOL balance:", error);
       }
     };
@@ -30,7 +35,7 @@ export const useSolBalance = () => {
     };
   }, [publicKey, connection]);
 
-  return solBalance;
+  return error ? error : solBalance;
 };
 
 export const useTokenBalance = ({ tokenId }: { tokenId: string }) => {

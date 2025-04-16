@@ -52,7 +52,7 @@ export default function Trade({
   const { solBalance, tokenBalance } = useTokenBalance({ tokenId: token.mint });
   const balance = isTokenSelling ? tokenBalance : solBalance;
 
-  const insufficientBalance = (sellingAmount || 0) > balance;
+  const insufficientBalance = Number(sellingAmount || 0) > Number(balance);
 
   const [error] = useState<string | undefined>("");
 
@@ -70,7 +70,7 @@ export default function Trade({
       return balance === 0;
     } else {
       // For fixed amount buttons, check if amount exceeds balance
-      return amount > balance;
+      return amount > Number(balance);
     }
   };
 
@@ -78,7 +78,7 @@ export default function Trade({
     if (typeof amount === "string") {
       // Handle percentage
       const percentage = parseFloat(amount) / 100;
-      setSellingAmount(balance * percentage);
+      setSellingAmount(Number(balance) * percentage);
     } else {
       // Handle fixed amount
       setSellingAmount(amount);
@@ -238,7 +238,7 @@ export default function Trade({
                     token={token}
                     isSolana={!isTokenSelling}
                     setSellingAmount={setSellingAmount}
-                    balance={isTokenSelling ? tokenBalance : solBalance}
+                    balance={isTokenSelling ? tokenBalance : Number(solBalance)}
                   />
                 </div>
               </div>
@@ -336,7 +336,7 @@ export default function Trade({
             <div className="flex items-center gap-2">
               <Info className="text-red-600 size-4" />
               <p className="text-red-600 text-xs font-dm-mono">
-                Insufficient Funds: You have {balance.toFixed(4) || "0"}{" "}
+                Insufficient Funds: You have {Number(balance).toFixed(4) || "0"}{" "}
                 {isTokenSelling ? token?.ticker : "SOL"}
               </p>
             </div>

@@ -911,7 +911,7 @@ export const Create = () => {
   console.log("balance", balance);
 
   // Calculate max SOL the user can spend (leave 0.05 SOL for transaction fees)
-  const maxUserSol = balance ? Math.max(0, balance - 0.05) : 0;
+  const maxUserSol = balance ? Math.max(0, Number(balance) - 0.05) : 0;
   // Use the smaller of MAX_INITIAL_SOL or the user's max available SOL
   const maxInputSol = Math.min(MAX_INITIAL_SOL, maxUserSol);
 
@@ -1027,7 +1027,6 @@ export const Create = () => {
       return () => clearTimeout(timeoutId);
     }
     // Note: We're ignoring the linter warnings about dependencies here
-     
   }, [activeTab, isGeneratingVanity, vanityResult, vanitySuffix, suffixError]);
 
   // Update mode-specific state when main form changes
@@ -1793,7 +1792,6 @@ export const Create = () => {
         // Set the prompt text so it can be reused
         if (setPrompt) setPrompt(token.prompt);
         if (onPromptChange) onPromptChange(token.prompt);
-
         // If we have an image URL, use it directly
         if (token.image) {
           // Transform R2 URLs to use local endpoint if needed
@@ -2588,7 +2586,10 @@ export const Create = () => {
           if (token.image) {
             // Transform R2 URLs to use local endpoint if needed
             let imageUrl = token.image;
-            if (imageUrl.includes("r2.dev")) {
+            if (
+              imageUrl.includes("r2.dev") &&
+              env.apiUrl?.includes("localhost")
+            ) {
               // Extract the filename from the R2 URL
               const filename = imageUrl.split("/").pop();
               // Use local endpoint instead

@@ -40,7 +40,10 @@ export const Wallet = ({ children }: PropsWithChildren) => {
                 if (walletAuth.walletAddress) {
                   walletAddress = walletAuth.walletAddress;
                   hasValidAuth = true;
-                  console.log("Found valid wallet auth with address:", walletAddress);
+                  console.log(
+                    "Found valid wallet auth with address:",
+                    walletAddress,
+                  );
                 } else {
                   console.log("Wallet auth found but no address present");
                 }
@@ -60,13 +63,15 @@ export const Wallet = ({ children }: PropsWithChildren) => {
               hasDirectConnection,
               hasValidAuth,
               walletAddress,
-              publicKey: window.solana.publicKey?.toString()
+              publicKey: window.solana.publicKey?.toString(),
             });
 
             // Only attempt auto-connect if we have valid auth
             if (hasValidAuth) {
               if (!hasDirectConnection) {
-                console.log("Attempting auto-connect - no direct connection but valid auth exists");
+                console.log(
+                  "Attempting auto-connect - no direct connection but valid auth exists",
+                );
                 try {
                   const response = await window.solana.connect();
                   console.log(
@@ -79,9 +84,13 @@ export const Wallet = ({ children }: PropsWithChildren) => {
                     walletAddress &&
                     response.publicKey.toString() === walletAddress
                   ) {
-                    console.log("Auto-connected wallet matches saved wallet address");
+                    console.log(
+                      "Auto-connected wallet matches saved wallet address",
+                    );
                   } else {
-                    console.log("Auto-connected wallet address does not match saved address");
+                    console.log(
+                      "Auto-connected wallet address does not match saved address",
+                    );
                   }
                 } catch (err) {
                   console.error("Auto-connect failed:", err);
@@ -99,7 +108,9 @@ export const Wallet = ({ children }: PropsWithChildren) => {
                 ) {
                   console.log("Connected wallet matches saved wallet address");
                 } else {
-                  console.log("Connected wallet address does not match saved address");
+                  console.log(
+                    "Connected wallet address does not match saved address",
+                  );
                 }
               }
             } else {
@@ -118,7 +129,7 @@ export const Wallet = ({ children }: PropsWithChildren) => {
     } else {
       console.log("Auto-connect check skipped:", {
         isWindowDefined: typeof window !== "undefined",
-        autoConnectAttempted
+        autoConnectAttempted,
       });
     }
   }, [autoConnectAttempted]);
