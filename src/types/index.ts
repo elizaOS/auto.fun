@@ -87,6 +87,7 @@ export const TokenSchema = z
       }
       return val;
     }, z.number()),
+    tokenDecimals: z.number().nullish(),
     nftMinted: z.string().nullish(),
     lockId: z.string().nullish(),
     lockedAmount: z.string().nullish(),
@@ -189,4 +190,4 @@ declare global {
   }
 }
 
-export {};
+export { };

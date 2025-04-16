@@ -204,6 +204,42 @@ export const getSwapAmount = async (
   return estimatedOutput;
 };
 
+
+export const getSwapAmountJupiter = async (
+  tokenMintAddress: string,
+  amount: number,
+  style: number, // 0 for buy; 1 for sell
+  slippageBps: number = 100,
+) => {
+  try {
+    // Jupiter uses the following constant to represent SOL
+    const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
+
+    // @TODO token address is static for now because our project is not deployed to mainnet yet
+    const inputMint = style === 0 ? SOL_MINT_ADDRESS : tokenMintAddress;
+    const outputMint = style === 0 ? tokenMintAddress : SOL_MINT_ADDRESS;
+
+    // 1. Get a quote from Jupiter.
+    const feePercent = 0.2;
+    const feeBps = feePercent * 100;
+    // Add platform fee to the quote
+    const quoteUrl = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=${slippageBps}&restrictIntermediateTokens=true&platformFeeBps=${feeBps}`; // this needs to change to a paid version
+    const quoteRes = await fetch(quoteUrl);
+
+    if (!quoteRes.ok) {
+      const errorMsg = await quoteRes.text();
+      throw new Error(`Failed to fetch quote from Jupiter: ${errorMsg}`);
+    }
+    const quoteResponse = (await quoteRes.json()) as { outAmount: string };
+    console.log(quoteResponse, "quoteResponse");
+    const estimatedOutput = quoteResponse.outAmount;
+    return Number(estimatedOutput);
+  } catch (error) {
+    console.error("Error fetching swap amount from Jupiter:", error);
+    return 0;
+  }
+};
+
 export const swapIx = async (
   user: PublicKey,
   token: PublicKey,

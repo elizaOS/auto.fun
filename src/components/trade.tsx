@@ -4,7 +4,7 @@ import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { IToken } from "@/types";
 import { formatNumber } from "@/utils";
 import { useProgram } from "@/utils/program";
-import { getSwapAmount } from "@/utils/swapUtils";
+import { getSwapAmount, getSwapAmountJupiter } from "@/utils/swapUtils";
 import { Info, Wallet } from "lucide-react";
 import { useState } from "react";
 import { twMerge } from "tailwind-merge";
@@ -20,7 +20,7 @@ export default function Trade({
   const { solPrice: contextSolPrice } = useSolPriceContext();
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
-    undefined,
+    undefined
   );
   const [buyAmount, setBuyAmount] = useState<number | undefined>(undefined);
   const [sellAmount, setSellAmount] = useState<number | undefined>(undefined);
@@ -59,7 +59,7 @@ export default function Trade({
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status,
+    token?.status
   );
 
   const [convertedAmount, setConvertedAmount] = useState(0);
@@ -96,18 +96,29 @@ export default function Trade({
     }
 
     const style = isTokenSelling ? 1 : 0;
-    const convertedAmount = isTokenSelling ? amount * 1e6 : amount * 1e9;
-    const decimals = isTokenSelling ? 1e9 : 1e6;
-    const swapAmount = await getSwapAmount(
-      program,
-      convertedAmount,
-      style,
-      // TODO: these values from the backend seem incorrect,
-      // they are not dynamically calculated but instead use the
-      // default values leading to slightly incorrect calculations
-      token.reserveAmount,
-      token.reserveLamport,
-    );
+    const convertedAmount = isTokenSelling
+      ? amount * (token?.tokenDecimals || 1e6)
+      : amount * 1e9;
+    const decimals = isTokenSelling
+      ? 1e9
+      : token?.tokenDecimals
+        ? 10 ** token?.tokenDecimals
+        : 1e6;
+
+    console.log(token?.status, "status");
+    const swapAmount =
+      token?.status === "locked"
+        ? await getSwapAmountJupiter(token.mint, convertedAmount, style, 100)
+        : await getSwapAmount(
+            program,
+            convertedAmount,
+            style,
+            // TODO: these values from the backend seem incorrect,
+            // they are not dynamically calculated but instead use the
+            // default values leading to slightly incorrect calculations
+            token.reserveAmount,
+            token.reserveLamport
+          );
     setConvertedAmount(swapAmount / decimals);
   };
 
@@ -147,7 +158,7 @@ export default function Trade({
                   setSellingAmount(
                     buyAmount !== undefined
                       ? buyAmount
-                      : formatAmount(convertedAmount),
+                      : formatAmount(convertedAmount)
                   );
                 }
                 setIsTokenSelling(false);
@@ -166,7 +177,7 @@ export default function Trade({
                   setSellingAmount(
                     sellAmount !== undefined
                       ? sellAmount
-                      : formatAmount(convertedAmount),
+                      : formatAmount(convertedAmount)
                   );
                 }
                 setIsTokenSelling(true);
@@ -202,7 +213,7 @@ export default function Trade({
                 {formatNumber(
                   tokenBalance * currentPrice * solanaPrice,
                   true,
-                  false,
+                  false
                 )}
               </span>
             </div>

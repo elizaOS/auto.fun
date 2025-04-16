@@ -130,7 +130,7 @@ export class ExternalToken {
       tokenPriceUSD: token.priceUSD ? Number(token.priceUSD) : 0,
       holderCount: token.holders,
       tokenSupplyUiAmount: tokenSupply,
-      decimals: token.token?.decimals ?? 9,
+      tokenDecimals: token.token?.decimals ?? 9,
       // time of import
       createdAt: new Date().toISOString(),
 
