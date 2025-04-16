@@ -21,6 +21,7 @@ import { uploadToCloudflare } from "./uploader";
 import { WebSocketDO, allowedOrigins, createTestSwap } from "./websocket";
 import { getWebSocketClient } from "./websocket-client";
 import { getSOLPrice } from "./mcap";
+// import { startMonitoringBatch } from "./tokenSupplyHelpers/monitoring";
 
 // Define a simple interface for the scheduled event object
 interface ScheduledEvent {
@@ -460,8 +461,28 @@ export default {
         logger.error("Invalid scheduled event format:", event);
         return;
       }
+      {/* Malibu: We might need to add this in the future */ }
+      // ctx.waitUntil(
+      //   (async () => {
+      //     try {
+      //       const { processed, total } = await startMonitoringBatch(env, 5);
+      //       logger.info(`Scheduled monitoring: processed ${processed}/${total}`);
+      //     } catch (err) {
+      //       logger.error("Error in batch monitoring:", err);
+      //     }
+      //   })()
+      // );
 
+      // ctx.waitUntil(
+      //   (async () => {
+      //     try {
       await cron(env, event);
+      logger.info("Cron job completed");
+      //     } catch (err) {
+      //       logger.error("Error in cron job:", err);
+      //     }
+      //   })()
+      // );
     } catch (error) {
       logger.error("Error in scheduled handler:", error);
     }
