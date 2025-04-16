@@ -7,7 +7,7 @@ import { ChevronDown, Copy, LogOut, Trophy, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import Button from "./button";
-
+import { abbreviateNumber } from "@/utils";
 // Force re-initialization of PhantomWalletAdapter
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
 import { useSolBalance } from "@/hooks/use-token-balance";
@@ -227,7 +227,10 @@ const WalletButton = () => {
               </li>
               <li className="opacity-50 px-4 py-2 text-sm text-white flex items-center gap-2">
                 <Trophy size={16} />
-                <span>{user?.points ?? 0} points</span>
+                <span>
+                  {user?.points ? abbreviateNumber(user?.points, true) : 0}{" "}
+                  points
+                </span>
               </li>
               <li
                 className="px-4 py-2 text-sm text-white hover:bg-[#262626] cursor-pointer flex items-center gap-2"
