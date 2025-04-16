@@ -82,7 +82,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
         try {
           localStorage.setItem(
             "walletName",
-            JSON.stringify(wallet.adapter.name)
+            JSON.stringify(wallet.adapter.name),
           );
           console.log("Selected wallet:", wallet.adapter.name);
         } catch (e) {
@@ -92,7 +92,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
         // Connect - use a direct approach for Phantom wallet
         const isPhantom = wallet.adapter.name.toLowerCase().includes("phantom");
         console.log(
-          `Connecting to ${isPhantom ? "Phantom" : wallet.adapter.name} wallet...`
+          `Connecting to ${isPhantom ? "Phantom" : wallet.adapter.name} wallet...`,
         );
 
         // Try direct connection for Phantom wallet
@@ -104,7 +104,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
             try {
               if (window.solana.publicKey) {
                 console.log(
-                  "Phantom already has publicKey, refreshing connection"
+                  "Phantom already has publicKey, refreshing connection",
                 );
               } else {
                 console.log("Connecting to Phantom directly");
@@ -129,7 +129,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
         // If direct connection failed or this isn't Phantom, try adapter approach
         if (!directConnectionSuccessful && !connectedWallet) {
           console.log(
-            "Direct connection unsuccessful, trying adapter approach"
+            "Direct connection unsuccessful, trying adapter approach",
           );
           // Select and connect via adapter
           try {
@@ -147,7 +147,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
               throw error;
             } else {
               console.log(
-                "Using successful direct connection despite adapter error"
+                "Using successful direct connection despite adapter error",
               );
             }
           }
@@ -224,11 +224,11 @@ export const WalletModal: FC<WalletModalProps> = () => {
             console.log("Calling window.solana.signMessage...");
             const signatureResponse = await window.solana.signMessage(
               messageEncoded,
-              "utf8"
+              "utf8",
             );
             console.log(
               "Direct Phantom signing successful, response type:",
-              typeof signatureResponse
+              typeof signatureResponse,
             );
             console.log("Response:", signatureResponse);
 
@@ -236,7 +236,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
             if (signatureResponse instanceof Uint8Array) {
               console.log(
                 "Response is Uint8Array, length:",
-                signatureResponse.length
+                signatureResponse.length,
               );
               signatureBytes = signatureResponse;
             } else if (
@@ -245,7 +245,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
             ) {
               console.log(
                 "Response is object:",
-                Object.keys(signatureResponse)
+                Object.keys(signatureResponse),
               );
 
               // Use a type assertion to handle signature property access
@@ -261,32 +261,32 @@ export const WalletModal: FC<WalletModalProps> = () => {
               if (typedResponse.signature instanceof Uint8Array) {
                 console.log(
                   "Found signature property of type:",
-                  typeof typedResponse.signature
+                  typeof typedResponse.signature,
                 );
                 signatureBytes = typedResponse.signature;
               } else if (typedResponse.data instanceof Uint8Array) {
                 console.log(
                   "Found data property, length:",
-                  typedResponse.data.length
+                  typedResponse.data.length,
                 );
                 signatureBytes = typedResponse.data;
               } else {
                 console.error(
                   "Object does not contain valid signature property:",
-                  signatureResponse
+                  signatureResponse,
                 );
                 throw new Error(
-                  "Missing or invalid signature in wallet response"
+                  "Missing or invalid signature in wallet response",
                 );
               }
             } else {
               console.error(
                 "Unexpected signature format:",
                 typeof signatureResponse,
-                signatureResponse
+                signatureResponse,
               );
               throw new Error(
-                "Unrecognized signature format from Phantom wallet"
+                "Unrecognized signature format from Phantom wallet",
               );
             }
           } catch (signingError) {
@@ -332,7 +332,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
         }
 
         console.log(
-          "Message signed successfully, authenticating with server..."
+          "Message signed successfully, authenticating with server...",
         );
 
         // Encode the signature for sending to the server
@@ -344,14 +344,14 @@ export const WalletModal: FC<WalletModalProps> = () => {
           signatureHex = bs58.encode(signatureBytes);
           console.log(
             "Successfully encoded signature to base58:",
-            signatureHex.substring(0, 10) + "..."
+            signatureHex.substring(0, 10) + "...",
           );
         } catch (error) {
           const encodingError = error as Error;
           console.error("Error encoding signature:", encodingError.message);
           console.error("Signature type:", typeof signatureBytes);
           throw new Error(
-            "Failed to encode signature: " + encodingError.message
+            "Failed to encode signature: " + encodingError.message,
           );
         }
 
@@ -409,7 +409,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
               ? "JWT"
               : authData.token.startsWith("wallet_")
                 ? "wallet_prefix"
-                : "unknown"
+                : "unknown",
           );
 
           // Store token in both formats for compatibility
@@ -434,7 +434,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
                 const parsed = JSON.parse(storedData);
                 if (parsed.token !== authData.token) {
                   console.error(
-                    "Token storage verification failed - tokens don't match"
+                    "Token storage verification failed - tokens don't match",
                   );
                 } else {
                   console.log("Token storage verification successful");
@@ -442,12 +442,12 @@ export const WalletModal: FC<WalletModalProps> = () => {
               } catch (e) {
                 console.error(
                   "Error parsing stored token for verification:",
-                  e
+                  e,
                 );
               }
             } else {
               console.error(
-                "Token storage verification failed - no data found after storage"
+                "Token storage verification failed - no data found after storage",
               );
             }
           } catch (e) {
@@ -483,10 +483,10 @@ export const WalletModal: FC<WalletModalProps> = () => {
             }
           } else {
             console.error(
-              "Cannot create fallback token: No wallet address available"
+              "Cannot create fallback token: No wallet address available",
             );
             throw new Error(
-              "Authentication error: No wallet address available"
+              "Authentication error: No wallet address available",
             );
           }
         }
@@ -510,7 +510,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
     (wallet: Wallet) => {
       mutation.mutate({ wallet });
     },
-    [mutation]
+    [mutation],
   );
 
   return (
