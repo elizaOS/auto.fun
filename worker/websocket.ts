@@ -21,6 +21,7 @@ export const allowedOrigins = [
   "https://api-dev.auto.fun",
   "https://develop.autofun.pages.dev",
   "https://fix-develop-create.auto-fun.pages.dev",
+  "https://fix-develop-create.autofun.pages.dev",
   "*",
 ];
 
