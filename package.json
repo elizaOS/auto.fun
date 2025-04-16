@@ -114,6 +114,7 @@
     "@solana/spl-token": "^0.4.13"
   },
   "optionalDependencies": {
+    "@cloudflare/workerd-linux-64": "^1.20250416.0",
     "@rollup/rollup-linux-x64-gnu": "^4.38.0",
     "@tailwindcss/oxide-linux-arm64-musl": "^4.1.4",
     "@tailwindcss/oxide-linux-x64-gnu": "^4.1.4",
