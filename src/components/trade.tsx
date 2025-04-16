@@ -20,7 +20,7 @@ export default function Trade({
   const { solPrice: contextSolPrice } = useSolPriceContext();
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
   const [sellingAmount, setSellingAmount] = useState<number | undefined>(
-    undefined
+    undefined,
   );
   const [buyAmount, setBuyAmount] = useState<number | undefined>(undefined);
   const [sellAmount, setSellAmount] = useState<number | undefined>(undefined);
@@ -59,7 +59,7 @@ export default function Trade({
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status
+    token?.status,
   );
 
   const [convertedAmount, setConvertedAmount] = useState(0);
@@ -117,7 +117,7 @@ export default function Trade({
             // they are not dynamically calculated but instead use the
             // default values leading to slightly incorrect calculations
             token.reserveAmount,
-            token.reserveLamport
+            token.reserveLamport,
           );
     setConvertedAmount(swapAmount / decimals);
   };
@@ -158,7 +158,7 @@ export default function Trade({
                   setSellingAmount(
                     buyAmount !== undefined
                       ? buyAmount
-                      : formatAmount(convertedAmount)
+                      : formatAmount(convertedAmount),
                   );
                 }
                 setIsTokenSelling(false);
@@ -177,7 +177,7 @@ export default function Trade({
                   setSellingAmount(
                     sellAmount !== undefined
                       ? sellAmount
-                      : formatAmount(convertedAmount)
+                      : formatAmount(convertedAmount),
                   );
                 }
                 setIsTokenSelling(true);
@@ -213,7 +213,7 @@ export default function Trade({
                 {formatNumber(
                   tokenBalance * currentPrice * solanaPrice,
                   true,
-                  false
+                  false,
                 )}
               </span>
             </div>

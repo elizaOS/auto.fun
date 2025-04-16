@@ -204,7 +204,6 @@ export const getSwapAmount = async (
   return estimatedOutput;
 };
 
-
 export const getSwapAmountJupiter = async (
   tokenMintAddress: string,
   amount: number,

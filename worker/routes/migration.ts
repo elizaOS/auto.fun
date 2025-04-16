@@ -87,7 +87,7 @@ migrationRouter.post("/migration/resume", async (c) => {
   }
 });
 
-// claim endpoint 
+// claim endpoint
 migrationRouter.post("/claimFees", async (c) => {
   try {
     const user = c.get("user");
@@ -105,7 +105,13 @@ migrationRouter.post("/claimFees", async (c) => {
       .limit(1);
 
     const token = await c.req.json();
-    if (!token || !token.mint || !token.nftMinted || !token.marketId || !token.creator) {
+    if (
+      !token ||
+      !token.mint ||
+      !token.nftMinted ||
+      !token.marketId ||
+      !token.creator
+    ) {
       return c.json({ error: "Invalid token data provided" }, 400);
     }
 
@@ -115,7 +121,7 @@ migrationRouter.post("/claimFees", async (c) => {
     }
 
     const nftMint = token.nftMinted?.split(",")[0];
-    const poolId = token.marketId
+    const poolId = token.marketId;
     // Create connection based on the environment setting.
     const connection = new Connection(
       c.env.NETWORK === "devnet"
@@ -146,8 +152,8 @@ migrationRouter.post("/claimFees", async (c) => {
       wallet,
       new PublicKey(nftMint),
       new PublicKey(poolId),
-      connection
-    )
+      connection,
+    );
     // Return a success response.
     return c.json({
       status: "Claim invocation processed",

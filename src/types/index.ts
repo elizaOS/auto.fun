@@ -190,4 +190,4 @@ declare global {
   }
 }
 
-export { };
+export {};
