@@ -240,7 +240,7 @@ export default function Trade({
                       : value;
                     handleSellAmountChange(Number(formattedValue));
                   }}
-                  value={sellingAmount}
+                  value={sellingAmount === 0 ? "" : sellingAmount}
                   placeholder="0"
                 />
                 <div className="w-fit absolute right-4 top-[50%] translate-y-[-50%]">
