@@ -108,7 +108,7 @@ export default function Trade({
     console.log(token?.status, "status");
     const swapAmount =
       token?.status === "locked"
-        ? await getSwapAmountJupiter(token.mint, convertedAmount, style, 100)
+        ? await getSwapAmountJupiter(token.mint, convertedAmount, style, 0)
         : await getSwapAmount(
             program,
             convertedAmount,
