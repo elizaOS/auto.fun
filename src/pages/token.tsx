@@ -543,7 +543,7 @@ export default function Page() {
                   </div>
                   {/* Percentage text */}
                   <div className="absolute right-2 top-0 h-full flex items-center">
-                    <span className="text-white font-medium font-dm-mono text-sm">
+                    <span className="text-black font-bold font-dm-mono text-sm">
                       {(token?.curveProgress || 0).toFixed(0)}%
                     </span>
                   </div>
