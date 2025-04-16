@@ -9,7 +9,6 @@ import { WalletReadyState } from "@solana/wallet-adapter-base";
 import type { Wallet } from "@solana/wallet-adapter-react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useMutation } from "@tanstack/react-query";
-import { PhantomWalletName } from "@solana/wallet-adapter-wallets";
 import { Payload, SIWS } from "@web3auth/sign-in-with-solana";
 import type { FC, ReactNode } from "react";
 import { useCallback, useEffect, useMemo } from "react";
