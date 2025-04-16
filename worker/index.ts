@@ -461,7 +461,9 @@ export default {
         logger.error("Invalid scheduled event format:", event);
         return;
       }
-      {/* Malibu: We might need to add this in the future */ }
+      {
+        /* Malibu: We might need to add this in the future */
+      }
       // ctx.waitUntil(
       //   (async () => {
       //     try {

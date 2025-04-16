@@ -90,7 +90,6 @@ const WebhookTokenPairEvent = z.object({
   }),
 });
 
-
 router.post("/codex-webhook", async (c) => {
   const body = await c.req.json();
 
@@ -118,17 +117,15 @@ router.post("/codex-webhook", async (c) => {
   const amounts =
     swap.eventDisplayType === "Buy"
       ? {
-        amountIn: -Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
-        amountOut: Number(swap.data.amount0 || 0) * 1e6,
-      }
+          amountIn: -Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
+          amountOut: Number(swap.data.amount0 || 0) * 1e6,
+        }
       : {
-        amountIn: -Number(swap.data.amount0 || 0) * 1e6,
-        amountOut: Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
-      };
+          amountIn: -Number(swap.data.amount0 || 0) * 1e6,
+          amountOut: Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
+        };
   const tokenMint =
-    swap.eventDisplayType === "Buy"
-      ? swap.token1Address
-      : swap.token0Address
+    swap.eventDisplayType === "Buy" ? swap.token1Address : swap.token0Address;
   const newSwaps = await db
     .insert(swaps)
     .values({
@@ -145,11 +142,7 @@ router.post("/codex-webhook", async (c) => {
     .returning();
 
   const wsClient = getWebSocketClient(c.env);
-  await getLatestCandle(
-    c.env,
-    tokenMint,
-    swap
-  )
+  await getLatestCandle(c.env, tokenMint, swap);
   const ext = new ExternalToken(c.env, tokenMint);
   await ext.updateMarketAndHolders();
 
@@ -159,7 +152,6 @@ router.post("/codex-webhook", async (c) => {
     message: "Completed",
   });
 });
-
 
 // Start monitoring batch
 router.post("/codex-start-monitoring", async (c) => {

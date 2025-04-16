@@ -126,8 +126,15 @@ export async function uploadToCloudflare(
       // Ensure proper path formatting - don't URL encode here as R2 handles this
       const objectPath = options.isJson ? "token-metadata" : "token-images";
 
-      const isDevelopment = env.NODE_ENV === "development" || env.VITE_API_URL?.includes("localhost");
-      logger.log("uploading to r2", env.R2_PUBLIC_URL, env.VITE_API_URL, env.NODE_ENV);
+      const isDevelopment =
+        env.NODE_ENV === "development" ||
+        env.VITE_API_URL?.includes("localhost");
+      logger.log(
+        "uploading to r2",
+        env.R2_PUBLIC_URL,
+        env.VITE_API_URL,
+        env.NODE_ENV,
+      );
       const publicUrl = isDevelopment
         ? `${env.VITE_API_URL}/api/${apiPath}/${objectKey}`
         : `${env.R2_PUBLIC_URL}/${objectPath}/${objectKey}`;
