@@ -166,6 +166,11 @@ export default function CommunityTab() {
             const imageUrls = [];
             const count = Math.min(data.count, 3); // Only use up to 3 images as placeholders
             for (let i = 1; i <= count; i++) {
+              console.log(
+                "API_BASE_URL and NODE_ENV",
+                API_BASE_URL,
+                process.env.NODE_ENV,
+              );
               // If we're running locally, use the API endpoint
               if (API_BASE_URL.includes("localhost")) {
                 imageUrls.push(

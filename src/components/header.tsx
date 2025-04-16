@@ -75,26 +75,27 @@ export default function Header() {
       </div>
 
       {/* mobile menu */}
-      <div className={`sticky block md:hidden z-50 w-full ${pathname === "/create" ? "bg-transparent" : "bg-[#171717]"}`}>
+      <div
+        className={`sticky block md:hidden z-50 w-full ${pathname === "/create" ? "bg-transparent" : "bg-[#171717]"}`}
+      >
         <div className="flex items-center justify-between lg:hidden w-full py-2 px-2">
           <Link to="/" className="shrink-0" aria-label="Auto.fun frontpage">
             <img className="h-11 w-15 sm:w-auto" src="/logo.svg" alt="logo" />
           </Link>
           {pathname !== "/create" && (
-
-<>
-          <div className="flex-1 mx-2">
-            <SearchBar />
-          </div>
-          <Link to="/create" className="mr-2">
-            <Button className="cursor-pointer flex items-center text-base text-autofun-text-highlight font-bold font-satoshi justify-center px-2 sm:px-4 py-1 sm:py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345]">
-              <span className="hidden md:inline">New Coin</span>{" "}
-              <img
-                src="/nav/stars.svg"
-                alt="stars"
-                className="text-[#2FD345]"
-              />
-            </Button>
+            <>
+              <div className="flex-1 mx-2">
+                <SearchBar />
+              </div>
+              <Link to="/create" className="mr-2">
+                <Button className="cursor-pointer flex items-center text-base text-autofun-text-highlight font-bold font-satoshi justify-center px-2 sm:px-4 py-1 sm:py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345]">
+                  <span className="hidden md:inline">New Coin</span>{" "}
+                  <img
+                    src="/nav/stars.svg"
+                    alt="stars"
+                    className="text-[#2FD345]"
+                  />
+                </Button>
               </Link>
             </>
           )}

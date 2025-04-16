@@ -229,7 +229,7 @@ export default function Trade({
             >
               <div className="flex justify-between gap-3 relative border-b-1 border-autofun-background-input hover:border-white focus:border-white ">
                 <input
-                  className={`${isTokenSelling ? "text-4xl" : "text-6xl"} p-4 overflow-clip font-dm-mono text-white w-3/4 outline-none`}
+                  className="text-6xl p-4 overflow-clip font-dm-mono text-white w-3/4 outline-none"
                   min={0}
                   type="number"
                   onChange={({ target }) => {

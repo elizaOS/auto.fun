@@ -305,6 +305,8 @@ shareRouter.use("*", async (c, next) => {
     "https://auto-fun.pages.dev",
     "https://develop.autofun.pages.dev",
     "https://autofun.pages.dev",
+    // todo: remove this
+    "https://fix-develop-create.autofun.pages.dev",
   ];
 
   const origin = c.req.header("Origin");
