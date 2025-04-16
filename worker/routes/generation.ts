@@ -1994,7 +1994,7 @@ export async function generatePreGeneratedTokens(env: Env) {
       );
 
       // Construct URL based on environment (like /upload does)
-      const r2PublicUrl = "https://pub-75e2227bb40747d9b8b21df85a33efa7.r2.dev";
+      const r2PublicUrl = "https://pub-30f52db29266428495af0c1aea206af1.r2.dev";
       finalImageUrl = env.API_URL?.includes("localhost")
         ? `${env.API_URL}/api/image/${imageFilename}`
         : `${r2PublicUrl}/${imageKey}`;
