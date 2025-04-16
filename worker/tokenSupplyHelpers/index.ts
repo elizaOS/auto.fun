@@ -12,6 +12,20 @@ import {
   createNewTokenData,
   getFeaturedMaxValues,
 } from "../util";
+
+
+export async function getAllLockedTokens(
+  env: Env,
+) {
+  const db = getDB(env);
+  const tokenData = await db
+    .select()
+    .from(tokens)
+    .where(eq(tokens.status, "locked"))
+    .limit(1);
+  return tokenData;
+}
+
 export async function handleSignature(
   env: Env,
   signature: string,
@@ -154,11 +168,11 @@ async function processSwapLog(
         price:
           direction === "1"
             ? Number(amountOut) /
-              Math.pow(10, 9) /
-              (Number(amount) / Math.pow(10, token.tokenDecimals)) // Sell price (SOL/token)
+            Math.pow(10, 9) /
+            (Number(amount) / Math.pow(10, token.tokenDecimals)) // Sell price (SOL/token)
             : Number(amount) /
-              Math.pow(10, 9) /
-              (Number(amountOut) / Math.pow(10, token.tokenDecimals)), // Buy price (SOL/token),
+            Math.pow(10, 9) /
+            (Number(amountOut) / Math.pow(10, token.tokenDecimals)), // Buy price (SOL/token),
         txId: signature,
         timestamp: new Date().toISOString(),
       };
@@ -173,7 +187,7 @@ async function processSwapLog(
           liquidity:
             (Number(reserveLamport) / 1e9) * solPriceUSD +
             (Number(reserveToken) / Math.pow(10, token.tokenDecimals)) *
-              tokenPriceUSD,
+            tokenPriceUSD,
           marketCapUSD,
           tokenPriceUSD,
           solPriceUSD: solPriceUSD,
@@ -183,20 +197,19 @@ async function processSwapLog(
             100,
           txId: signature,
           lastUpdated: new Date().toISOString(),
-          volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${
-            direction === "1"
-              ? (Number(amount) / Math.pow(10, token.tokenDecimals)) *
-                tokenPriceUSD
-              : (Number(amountOut) / Math.pow(10, token.tokenDecimals)) *
-                tokenPriceUSD
-          }`,
+          volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${direction === "1"
+            ? (Number(amount) / Math.pow(10, token.tokenDecimals)) *
+            tokenPriceUSD
+            : (Number(amountOut) / Math.pow(10, token.tokenDecimals)) *
+            tokenPriceUSD
+            }`,
           priceChange24h,
           // Conditionally set price24hAgo & lastPriceUpdate
           ...(shouldReset24h
             ? {
-                price24hAgo: tokenPriceUSD,
-                lastPriceUpdate: slotTime,
-              }
+              price24hAgo: tokenPriceUSD,
+              lastPriceUpdate: slotTime,
+            }
             : {}),
         })
         .where(eq(tokens.mint, mintAddress))
