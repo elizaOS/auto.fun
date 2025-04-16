@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { Env } from "../env";
 import { z } from "zod";
-import { fetchPriceChartData } from "../chart";
+import { fetchPriceChartData, getLatestCandle } from "../chart";
 import { logger } from "../logger";
 
 const router = new Hono<{
