@@ -8,6 +8,8 @@ export const allowedOrigins = [
   "https://api.autofun.workers.dev",
   "https://develop.auto-fun.pages.dev",
   "https://auto-fun.pages.dev",
+  "https://develop.autofun.pages.dev",
+  "https://autofun.pages.dev",
   "https://*.auto-fun.pages.dev",
   "http://localhost:3000",
   "http://localhost:3001",

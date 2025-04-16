@@ -44,7 +44,7 @@ VIRTUAL_RESERVES = "28000000000"
 CURVE_LIMIT = "11300000000"
 R2_PUBLIC_URL = "https://pub-30f52db29266428495af0c1aea206af1.r2.dev"
 NODE_ENV = "production"
-MAINNET_FRONTEND_URL="https://auto-fun.pages.dev"
+MAINNET_FRONTEND_URL="https://auto.fun"
 DEVNET_FRONTEND_URL="https://develop.auto-fun.pages.dev"
 AUTH_TOKEN_SALT = "autofun-wallet-auth-salt-replace-in-production" # Salt for hashing auth tokens
 

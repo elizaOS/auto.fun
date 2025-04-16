@@ -190,10 +190,10 @@ const WalletButton = () => {
       <div className="relative" ref={dropdownRef}>
         <Button
           size="large"
-          className="px-3"
+          className="p-2 md:px-3"
           onClick={() => setMenuOpen(!menuOpen)}
         >
-          <div className="flex items-center gap-2.5 justify-between m-auto">
+          <div className="flex items-center md:gap-2.5 justify-between m-auto">
             <span className="font-satoshi font-medium">
               {shortenAddress(displayPublicKey.toString())}
             </span>
@@ -204,6 +204,7 @@ const WalletButton = () => {
                 height={18}
                 width={18}
                 alt={`wallet_icon_${wallet?.adapter?.name || "phantom"}`}
+                className="hidden md:inline"
               />
             )}
             <ChevronDown className="size-5 text-autofun-icon-secondary" />
