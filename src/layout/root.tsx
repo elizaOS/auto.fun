@@ -21,7 +21,7 @@ export default function Layout() {
       <Providers>
         <div className="min-h-screen bg-autofun-background-primary text-autofun-text-primary flex flex-col font-satoshi antialiased">
           <Header />
-          <main className="flex-grow px-2">
+          <main className="flex-grow px-2 md:px-4">
             <Outlet />
             <BreakpointIndicator />
             <ToastContainer position="bottom-right" theme="dark" />

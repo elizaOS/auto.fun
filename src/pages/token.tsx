@@ -249,9 +249,9 @@ export default function Page() {
       </div>
 
       {/* Three Column Layout */}
-      <div className="flex flex-wrap-reverse lg:flex-nowrap gap-4">
+      <div className="flex flex-col lg:flex-row lg:flex-nowrap gap-4">
         {/* Left Column - 25% - Token Info */}
-        <div className="w-full lg:w-1/4 flex flex-col gap-3">
+        <div className="w-full lg:w-1/4 flex flex-col gap-3 order-1 lg:order-1">
           <div className="pt-0 flex flex-col gap-3">
             <div className="relative overflow-hidden">
               <div className="w-full aspect-square">
@@ -413,7 +413,7 @@ export default function Page() {
         </div>
 
         {/* Middle Column - 50% - Tabs for Chart and AI Create */}
-        <div className="w-full lg:w-1/2 flex flex-col gap-3">
+        <div className="w-full lg:w-1/2 flex flex-col gap-3 order-3 lg:order-2">
           <div className="overflow-hidden relative">
             <div className="flex flex-col">
               {/* Green stroke above tab section */}
@@ -497,96 +497,97 @@ export default function Page() {
         </div>
 
         {/* Right Column - 25% - Trading and Bonding Curve */}
-        <div className="w-full lg:w-1/4 flex flex-col gap-3">
+        <div className="w-full lg:w-1/4 flex flex-col md:flex-row lg:flex-col gap-3 order-2 lg:order-3">
           {/* Trade Component - Now at the top */}
           <Trade token={token} onSwapCompleted={onSwapCompleted} />
-
-          {/* Bonding Curve */}
-          {token?.imported === 0 && (
-            <div className="flex flex-col gap-3.5 p-2">
-              <div className="flex justify-between gap-3.5 items-center">
-                <p className="font-medium font-satoshi">Progress</p>
-                <Tooltip anchorSelect="#tooltip">
-                  <span>
-                    When the market cap reaches the graduation threshold, the
-                    coin's liquidity will transition to Raydium.
-                  </span>
-                </Tooltip>
-                <InfoCircle
-                  className="size-5 text-autofun-text-secondary"
-                  id="tooltip"
-                />
-              </div>
-              <div className="relative w-full h-8 overflow-hidden">
-                {/* Background layer */}
-                <img
-                  src="/token/progressunder.svg"
-                  alt="Progress bar background"
-                  className="absolute left-0 top-0 w-full h-full object-cover"
-                />
-                {/* Progress layer with dynamic width */}
-                <div
-                  className="absolute left-0 top-0 h-full"
-                  style={{
-                    width: `${Math.min(100, token?.curveProgress || 0)}%`,
-                  }}
-                >
-                  <img
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
-                    src="/token/progress.svg"
-                    alt="Progress indicator"
+          <div className="flex flex-col gap-3">
+            {/* Bonding Curve */}
+            {token?.imported === 0 && (
+              <div className="flex flex-col gap-3.5 p-2">
+                <div className="flex justify-between gap-3.5 items-center">
+                  <p className="font-medium font-satoshi">Progress</p>
+                  <Tooltip anchorSelect="#tooltip">
+                    <span>
+                      When the market cap reaches the graduation threshold, the
+                      coin's liquidity will transition to Raydium.
+                    </span>
+                  </Tooltip>
+                  <InfoCircle
+                    className="size-5 text-autofun-text-secondary"
+                    id="tooltip"
                   />
                 </div>
-                {/* Percentage text */}
-                <div className="absolute right-2 top-0 h-full flex items-center">
-                  <span className="text-white font-medium font-dm-mono text-sm">
-                    {(token?.curveProgress || 0).toFixed(0)}%
+                <div className="relative w-full h-8 overflow-hidden">
+                  {/* Background layer */}
+                  <img
+                    src="/token/progressunder.svg"
+                    alt="Progress bar background"
+                    className="absolute left-0 top-0 w-full h-full object-cover"
+                  />
+                  {/* Progress layer with dynamic width */}
+                  <div
+                    className="absolute left-0 top-0 h-full"
+                    style={{
+                      width: `${Math.min(100, token?.curveProgress || 0)}%`,
+                    }}
+                  >
+                    <img
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                      src="/token/progress.svg"
+                      alt="Progress indicator"
+                    />
+                  </div>
+                  {/* Percentage text */}
+                  <div className="absolute right-2 top-0 h-full flex items-center">
+                    <span className="text-white font-medium font-dm-mono text-sm">
+                      {(token?.curveProgress || 0).toFixed(0)}%
+                    </span>
+                  </div>
+                </div>
+                {token?.status !== "migrated" ? (
+                  <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">
+                    Graduate this coin at{" "}
+                    {formatNumber(graduationMarketCap, true)} market cap.{"\n"}
+                    There is{" "}
+                    {formatNumber(
+                      (token?.reserveLamport - token?.virtualReserves) /
+                        LAMPORTS_PER_SOL,
+                      true,
+                      true,
+                    )}{" "}
+                    SOL in the bonding curve.
+                  </p>
+                ) : null}
+              </div>
+            )}
+
+            {/* Price Display - Now below bonding curve */}
+            <div className="py-4 px-3">
+              <div className="flex justify-between flex-row md:flex-col lg:flex-row">
+                <div className="flex flex-col gap-1 items-center py-4">
+                  <span className="font-dm-mono text-autofun-text-secondary">
+                    Price USD
+                  </span>
+                  <span className="text-xl font-dm-mono text-autofun-text-primary">
+                    {tokenPriceUSD
+                      ? formatNumberSubscript(tokenPriceUSD)
+                      : "$0.00"}
                   </span>
                 </div>
-              </div>
-              {token?.status !== "migrated" ? (
-                <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">
-                  Graduate this coin at{" "}
-                  {formatNumber(graduationMarketCap, true)} market cap.{"\n"}
-                  There is{" "}
-                  {formatNumber(
-                    (token?.reserveLamport - token?.virtualReserves) /
-                      LAMPORTS_PER_SOL,
-                    true,
-                    true,
-                  )}{" "}
-                  SOL in the bonding curve.
-                </p>
-              ) : null}
-            </div>
-          )}
-
-          {/* Price Display - Now below bonding curve */}
-          <div className="py-4 px-3">
-            <div className="flex justify-between">
-              <div className="flex flex-col gap-1 items-center">
-                <span className="font-dm-mono text-autofun-text-secondary">
-                  Price USD
-                </span>
-                <span className="text-xl font-dm-mono text-autofun-text-primary">
-                  {tokenPriceUSD
-                    ? formatNumberSubscript(tokenPriceUSD)
-                    : "$0.00"}
-                </span>
-              </div>
-              <div className="flex flex-col gap-1 items-center">
-                <span className="font-dm-mono text-autofun-text-secondary">
-                  Price SOL
-                </span>
-                <span className="text-xl font-dm-mono text-autofun-text-primary">
-                  {currentPrice
-                    ? formatNumberSubscript(currentPrice)
-                    : "0.00000000"}
-                </span>
+                <div className="flex flex-col gap-1 items-center py-4">
+                  <span className="font-dm-mono text-autofun-text-secondary">
+                    Price SOL
+                  </span>
+                  <span className="text-xl font-dm-mono text-autofun-text-primary">
+                    {currentPrice
+                      ? formatNumberSubscript(currentPrice)
+                      : "0.00000000"}
+                  </span>
+                </div>
               </div>
             </div>
           </div>

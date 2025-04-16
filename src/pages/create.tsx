@@ -3188,80 +3188,52 @@ export const Create = () => {
                     className={`bg-autofun-background-input w-20 py-1.5 px-2 ${suffixError && !suffixError.startsWith("Warning") && !suffixError.startsWith("Note") ? "border-red-500" : ""} text-white text-center font-mono focus:outline-none focus:border-white disabled:opacity-50`}
                     disabled={isGeneratingVanity}
                   />
-
-                  {isGeneratingVanity ? (
-                    <button
-                      type="button"
-                      onClick={stopVanityGeneration}
-                      className="bg-red-600 flex items-center justify-center w-8 h-8 text-white hover:bg-red-700"
-                    >
-                      {/* Stop icon (square) */}
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 14 14"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <rect width="14" height="14" fill="black" />
-                      </svg>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        stopVanityGeneration(); // Stop existing workers first
-                        // Use a small timeout to allow state updates from stop to settle
-                        setTimeout(() => {
-                          startVanityGeneration(); // Then start with the new suffix
-                        }, 50);
+                  <button
+                    type="button"
+                    onClick={() => {
+                      stopVanityGeneration(); // Stop existing workers first
+                      // Use a small timeout to allow state updates from stop to settle
+                      setTimeout(() => {
+                        startVanityGeneration(); // Then start with the new suffix
+                      }, 50);
+                    }}
+                  >
+                    <img
+                      src={
+                        isProcessingPrompt
+                          ? "/create/generating.svg"
+                          : "/create/generateup.svg"
+                      }
+                      alt="Generate"
+                      className="w-24 ml-2"
+                      onMouseDown={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        if (!isProcessingPrompt) {
+                          img.src = "/create/generatedown.svg";
+                        }
                       }}
-                      className={`${vanityResult ? "bg-[#444]" : "bg-[#03FF24]"} text-black p-2 hover:opacity-80 flex items-center justify-center`}
-                    >
-                                    <button
-                type="button"
-                onClick={generateFromPrompt}
-                disabled={isProcessingPrompt || !userPrompt.trim()}
-                className="p-0 transition-colors disabled:opacity-50"
-              >
-                <img
-                  src={
-                    isProcessingPrompt
-                      ? "/create/generating.svg"
-                      : "/create/generateup.svg"
-                  }
-                  alt="Generate"
-                  className="w-24 ml-2"
-                  onMouseDown={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    if (!isProcessingPrompt) {
-                      img.src = "/create/generatedown.svg";
-                    }
-                  }}
-                  onMouseUp={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    if (!isProcessingPrompt) {
-                      img.src = "/create/generateup.svg";
-                    }
-                  }}
-                  onDragStart={(e) => {
-                    e.preventDefault();
-                    const img = e.target as HTMLImageElement;
-                    if (!isProcessingPrompt) {
-                      img.src = "/create/generateup.svg";
-                    }
-                  }}
-                  onMouseOut={(e) => {
-                    e.preventDefault();
-                    const img = e.target as HTMLImageElement;
-                    if (!isProcessingPrompt) {
-                      img.src = "/create/generateup.svg";
-                    }
-                  }}
-                />
-              </button>
-                    </button>
-                  )}
+                      onMouseUp={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        if (!isProcessingPrompt) {
+                          img.src = "/create/generateup.svg";
+                        }
+                      }}
+                      onDragStart={(e) => {
+                        e.preventDefault();
+                        const img = e.target as HTMLImageElement;
+                        if (!isProcessingPrompt) {
+                          img.src = "/create/generateup.svg";
+                        }
+                      }}
+                      onMouseOut={(e) => {
+                        e.preventDefault();
+                        const img = e.target as HTMLImageElement;
+                        if (!isProcessingPrompt) {
+                          img.src = "/create/generateup.svg";
+                        }
+                      }}
+                    />
+                  </button>
                 </div>
                 <p className="mx-auto text-center text-xs text-neutral-500 mt-1">
                   Choose a custom suffix

@@ -1,11 +1,8 @@
 import WalletButton from "@/components/wallet-button";
 import useAuthentication from "@/hooks/use-authentication";
-import { CloseButton, Dialog, DialogPanel } from "@headlessui/react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
-import { twMerge } from "tailwind-merge";
 import Button from "./button";
 import SearchBar from "./search-bar";
 
@@ -31,12 +28,6 @@ export default function Header() {
     });
   }
 
-  const mobileNavLinks = [
-    { title: "Privacy Policy", href: "privacy-policy" },
-    { title: "Terms of Service", href: "/terms-of-service" },
-    { title: "Fees", href: "fees" },
-  ];
-
   useEffect(() => {
     if (drawerOpen) {
       setDrawerOpen(false);
@@ -50,7 +41,12 @@ export default function Header() {
           <div className="flex items-center select-none">
             <Link to="/" className="mr-6" aria-label="Auto.fun frontpage">
               <img
-                className="size-20 pointer-events-none"
+                className="hidden md:block size-20 pointer-events-none"
+                src="/logo_wide.svg"
+                alt="logo"
+              />
+              <img
+                className="block md:hidden size-20 pointer-events-none"
                 src="/logo.svg"
                 alt="logo"
               />
@@ -81,16 +77,12 @@ export default function Header() {
       {/* mobile menu */}
       <div className="sticky block md:hidden bg-[#171717] z-50 w-full">
         <div className="flex items-center justify-between lg:hidden w-full py-2 px-2">
-            <Link to="/" className="shrink-0" aria-label="Auto.fun frontpage">
-              <img
-                className="h-11 w-15 sm:w-auto"
-                src="/logo.svg"
-                alt="logo"
-              />
-            </Link>
-            <div className="flex-1 mx-2">
-              <SearchBar />
-            </div>
+          <Link to="/" className="shrink-0" aria-label="Auto.fun frontpage">
+            <img className="h-11 w-15 sm:w-auto" src="/logo.svg" alt="logo" />
+          </Link>
+          <div className="flex-1 mx-2">
+            <SearchBar />
+          </div>
           <WalletButton />
         </div>
       </div>
