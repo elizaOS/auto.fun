@@ -41,7 +41,7 @@ export class TokenMigrator {
     public program: Program<RaydiumVault>,
     public autofunProgram: Program<Autofun>,
     public provider: AnchorProvider,
-  ) {}
+  ) { }
   FEE_PERCENTAGE = 10; // 10% fee for pool creation
 
   async scheduleNextInvocation(token: TokenData): Promise<void> {
@@ -285,17 +285,17 @@ export class TokenMigrator {
     if (!withdrawnAmounts)
       throw new Error("No withdrawn amounts found for pool creation");
 
-    const mintConstantFee = new BN(6 * 1e9); // 6 SOL
+    const mintConstantFee = new BN(Number(this.env.FIXED_FEE ?? 6) * 1e9); // 6 SOL
 
     const withdrawnTokensBN = new BN(withdrawnAmounts.withdrawnTokens);
     console.log("withdrawnSol", withdrawnAmounts.withdrawnSol);
     const withdrawnSolBN = new BN(withdrawnAmounts.withdrawnSol);
 
-    // const solFeeAmount = withdrawnSolBN.sub(mintConstantFee);
-    const solFeeAmount = new BN(0);
+
 
     const remainingTokens = withdrawnTokensBN;
-    const remainingSol = withdrawnSolBN.sub(solFeeAmount);
+    const remainingSol = withdrawnSolBN.sub(mintConstantFee);
+    {/* Todo: Malibu - we need to add a step at the end to send the mintConstantFee Sol to the fee wallet - for now it will stay in the wallet*/ }
     console.log("remainingSol", remainingSol.toString());
 
     logger.log(`[Pool] Creating pool for token ${token.mint}`);
