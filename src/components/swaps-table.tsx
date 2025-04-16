@@ -42,6 +42,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
   };
 
   return (
+    <div className="max-h-[800px] overflow-y-auto">
     <Table
       className="border-0 !rounded-0 !border-spacing-y-0"
       onMouseEnter={() => setPause(true)}
@@ -107,7 +108,10 @@ export default function SwapsTable({ token }: { token: IToken }) {
                     {fromNow(swap?.timestamp)}
                   </TableCell>
                   <TableCell>
-                    <Link to={env.getTransactionUrl(swap.txId)} target="_blank">
+                    <Link
+                      to={env.getTransactionUrl(swap.txId)}
+                      target="_blank"
+                    >
                       <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary" />
                     </Link>
                   </TableCell>
@@ -135,5 +139,6 @@ export default function SwapsTable({ token }: { token: IToken }) {
         )}
       </TableBody>
     </Table>
+  </div>
   );
 }
