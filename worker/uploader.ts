@@ -89,7 +89,7 @@ export async function uploadToCloudflare(
     try {
       // Create R2 upload and timeout promises
       const uploadPromise = new Promise<void>((resolve, reject) => {
-        const objectPath = options.isJson ? "token-metadata" : "token-images";
+        const objectPath = options.isJson ? "metadata" : "generations";
 
         // Check if R2 is available
         if (!env.R2) {
@@ -123,10 +123,10 @@ export async function uploadToCloudflare(
       await Promise.race([uploadPromise, timeoutPromise]);
 
       const apiPath = options.isJson ? "metadata" : "image";
-      // Ensure proper path formatting - don't URL encode here as R2 handles this
-      const objectPath = options.isJson ? "token-metadata" : "token-images";
+      const objectPath = options.isJson ? "metadata" : "generations";
 
-      const publicUrl = env.VITE_API_URL && env.VITE_API_URL.includes('localhost')
+      const isDevelopment = env.NODE_ENV === "development" || env.VITE_API_URL?.includes("localhost");
+      const publicUrl = isDevelopment
         ? `${env.VITE_API_URL}/api/${apiPath}/${objectKey}`
         : `${env.R2_PUBLIC_URL}/${objectPath}/${objectKey}`;
 
