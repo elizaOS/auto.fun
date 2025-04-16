@@ -33,6 +33,7 @@ import {
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { generateAdditionalTokenImages } from "./generation";
+import { uploadToCloudflare } from "../uploader";
 
 // Define the router with environment typing
 const tokenRouter = new Hono<{
@@ -642,15 +643,15 @@ async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-        { name: "mainnet", url: mainnetUrl },
-        { name: "devnet", url: devnetUrl },
-      ]
+      { name: "mainnet", url: mainnetUrl },
+      { name: "devnet", url: devnetUrl },
+    ]
     : [
-        {
-          name: c.env.NETWORK || "devnet",
-          url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-        },
-      ];
+      {
+        name: c.env.NETWORK || "devnet",
+        url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+      },
+    ];
 
   logger.log(
     `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
@@ -1557,8 +1558,8 @@ tokenRouter.get("/token/:mint", async (c) => {
       token.status === "migrated"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-            (token.curveLimit - token.virtualReserves)) *
-          100;
+          (token.curveLimit - token.virtualReserves)) *
+        100;
 
     // Get token holders count
     const holdersCountQuery = await db
@@ -2034,6 +2035,8 @@ tokenRouter.get("/swaps/:mint", async (c) => {
 
 tokenRouter.post("/token/:mint/update", async (c) => {
   try {
+    console.log("****** token/:mint/update ******\n");
+    console.log(c)
     // Get auth headers and extract from cookies
     const authHeader = c.req.header("Authorization") || "none";
     const publicKeyCookie = getCookie(c, "publicKey");
@@ -2046,6 +2049,7 @@ tokenRouter.post("/token/:mint/update", async (c) => {
 
     // Require authentication
     const user = c.get("user");
+    console.log("User from context:", user);
 
     if (!user) {
       logger.error("Authentication required - no user in context");
@@ -2184,7 +2188,50 @@ tokenRouter.post("/token/:mint/update", async (c) => {
       .where(eq(tokens.mint, mint));
 
     logger.log("Token updated successfully");
+    if (tokenData[0]?.imported === 0) {
+      try {
+        logger.log(
+          "uploading to r2",
+          c.env.R2_PUBLIC_URL,
+          c.env.VITE_API_URL,
+          c.env.NODE_ENV,
+        );
+        // 1) fetch the existing JSON
+        const originalUrl = tokenData[0].url;
+        if (originalUrl) {
+          const url = new URL(originalUrl);
+          const parts = url.pathname.split("/")
+          // grab only the filename portion
+          const filename = parts.pop();
+          if (!filename) throw new Error("Could not parse metadata filename");
+          const objectKey = `token-metadata/${filename}`;
+          // 2) Fetch
+          const res = await fetch(originalUrl);
+          const json = await res.json();
+          json.properties = json.properties || {};
+          json.properties.website = body.website ?? json.properties.website;
+          json.properties.twitter = body.twitter ?? json.properties.twitter;
+          json.properties.telegram = body.telegram ?? json.properties.telegram;
+          json.properties.discord = body.discord ?? json.properties.discord;
+          json.properties.farcaster = body.farcaster ?? json.properties.farcaster;
+          // const stored = await c.env.R2.get(objectKey);
 
+          // 3) Serialize back to an ArrayBuffer
+          const buf = new TextEncoder().encode(JSON.stringify(json)).buffer as ArrayBuffer;
+
+          // 4) Overwrite the same key in R2
+          await c.env.R2.put(objectKey, buf, {
+            httpMetadata: { contentType: "application/json" },
+            customMetadata: { publicAccess: "true" },
+          });
+
+
+          logger.log(`Overwrote R2 object at key ${objectKey}; URL remains ${originalUrl}`);
+        }
+      } catch (e) {
+        logger.error("Failed to re‑upload metadata JSON:", e);
+      }
+    }
     // Get the updated token data
     const updatedToken = await db
       .select()
