@@ -2616,7 +2616,11 @@ export const Create = () => {
     }
 
     // Submit form to backend
-    await submitImportFormToBackend();
+    if (activeTab !== FormTab.IMPORT) {
+      await submitFormToBackend();
+    } else {
+      await submitImportFormToBackend();
+    }
   };
 
   // Fetch pre-generated token on mount for Auto mode
