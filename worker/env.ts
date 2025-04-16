@@ -70,4 +70,5 @@ export interface Env {
   // Add ADMIN_ADDRESSES to the Env interface
   ADMIN_ADDRESSES?: string;
   MANAGER_MULTISIG_ADDRESS: string;
+  MONITOR_KV: KVNamespace;
 }

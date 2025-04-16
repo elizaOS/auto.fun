@@ -31,6 +31,7 @@ import {
   LockResult,
 } from "./migrations";
 import { Wallet } from "../../tokenSupplyHelpers/customWallet";
+import { ExternalToken } from "../../externalToken";
 
 export class TokenMigrator {
   constructor(
@@ -40,7 +41,7 @@ export class TokenMigrator {
     public program: Program<RaydiumVault>,
     public autofunProgram: Program<Autofun>,
     public provider: AnchorProvider,
-  ) {}
+  ) { }
   FEE_PERCENTAGE = 10; // 10% fee for pool creation
 
   async scheduleNextInvocation(token: TokenData): Promise<void> {
@@ -166,6 +167,9 @@ export class TokenMigrator {
           lockedAt: token.lockedAt,
           lastUpdated: new Date().toISOString(),
         });
+        // start monitoring the token 
+        const ext = new ExternalToken(this.env, token.mint);
+        await ext.registerWebhook();
         await releaseMigrationLock(this.env, token);
       }
       const step = currentStep || steps[0];
@@ -206,6 +210,8 @@ export class TokenMigrator {
         status: "migrating",
         lastUpdated: new Date().toISOString(),
       });
+      // on error call the step again
+      await this.scheduleNextInvocation(token);
       // this.callResumeWorker(token);
     }
   }

@@ -6,6 +6,9 @@ import crypto from "crypto";
 import { getDB, swaps } from "../db";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { getWebSocketClient } from "../websocket-client";
+import { startMonitoringBatch } from "../tokenSupplyHelpers/monitoring";
+import { getLatestCandle } from "../chart";
+import { ExternalToken } from "../externalToken";
 
 const router = new Hono<{
   Bindings: Env;
@@ -18,6 +21,7 @@ const router = new Hono<{
  * listen to transaction logs for our program from helius
  */
 router.post("/webhook", async (c) => {
+  console.log("helius webhook received");
   // value is configured in helius webhook dashboard
   const authorization = c.req.header("Authorization");
 
@@ -86,6 +90,7 @@ const WebhookTokenPairEvent = z.object({
   }),
 });
 
+
 router.post("/codex-webhook", async (c) => {
   const body = await c.req.json();
 
@@ -113,14 +118,17 @@ router.post("/codex-webhook", async (c) => {
   const amounts =
     swap.eventDisplayType === "Buy"
       ? {
-          amountIn: -Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
-          amountOut: Number(swap.data.amount0 || 0) * 1e6,
-        }
+        amountIn: -Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
+        amountOut: Number(swap.data.amount0 || 0) * 1e6,
+      }
       : {
-          amountIn: -Number(swap.data.amount0 || 0) * 1e6,
-          amountOut: Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
-        };
-
+        amountIn: -Number(swap.data.amount0 || 0) * 1e6,
+        amountOut: Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
+      };
+  const tokenMint =
+    swap.eventDisplayType === "Buy"
+      ? swap.token1Address
+      : swap.token0Address
   const newSwaps = await db
     .insert(swaps)
     .values({
@@ -128,10 +136,7 @@ router.post("/codex-webhook", async (c) => {
       direction: swap.eventDisplayType === "Buy" ? 0 : 1,
       price: Number(swap.token0ValueUsd),
       timestamp: new Date(swap.timestamp * 1000).toISOString(),
-      tokenMint:
-        swap.eventDisplayType === "Buy"
-          ? swap.token1Address
-          : swap.token0Address,
+      tokenMint,
       txId: swap.transactionHash,
       type: swap.eventDisplayType === "Buy" ? "buy" : "sell",
       user: swap.maker,
@@ -140,12 +145,42 @@ router.post("/codex-webhook", async (c) => {
     .returning();
 
   const wsClient = getWebSocketClient(c.env);
+  await getLatestCandle(
+    c.env,
+    tokenMint,
+    swap
+  )
+  const ext = new ExternalToken(c.env, tokenMint);
+  await ext.updateMarketAndHolders();
 
   await wsClient.to(`token-${swap.token0Address}`).emit("newSwap", newSwaps[0]);
 
   return c.json({
     message: "Completed",
   });
+});
+
+
+// Start monitoring batch
+router.post("/codex-start-monitoring", async (c) => {
+  const { processed, total } = await startMonitoringBatch(c.env, 10);
+  return c.json({
+    message:
+      processed === 0 && total > 0
+        ? "Seeded or already complete"
+        : `Processed ${processed} tokens, cursor now ${await c.env.MONITOR_KV.get("lockedCursor")}/${total}`,
+  });
+});
+
+// Status Endpoint
+router.get("/codex-monitor-status", async (c) => {
+  const kv = c.env.MONITOR_KV;
+  const rawList = await kv.get("lockedList");
+  const rawCursor = await kv.get("lockedCursor");
+  if (!rawList) return c.json({ seeded: false });
+  const mints: string[] = JSON.parse(rawList);
+  const cursor = parseInt(rawCursor || "0", 10);
+  return c.json({ seeded: true, total: mints.length, processed: cursor });
 });
 
 export default router;
