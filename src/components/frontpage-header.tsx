@@ -1102,7 +1102,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       )}
 
       {/* Token Data Display */}
-      {selectedTokenData && (
+      {/* {selectedTokenData && (
         <div
           className="absolute bg-autofun-background-card p-4 shadow-lg z-10 w-[320px]"
           // @ts-ignore
@@ -1191,7 +1191,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
             </div>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 };
