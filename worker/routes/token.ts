@@ -1453,6 +1453,7 @@ tokenRouter.get("/token/:mint", async (c) => {
         .set({
           solPriceUSD: solPrice,
           currentPrice: (token.tokenPriceUSD || 0) / solPrice,
+          marketCapUSD: (token.tokenPriceUSD || 0) * (token.tokenSupplyUiAmount || 0),
         })
         .where(eq(tokens.mint, mint))
         .returning();
