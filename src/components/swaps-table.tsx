@@ -102,7 +102,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
                       {formatSwapAmount(swap.solAmount, !isBuy)}
                     </TableCell>
                     <TableCell className="text-left">
-                      {formatSwapAmount(swap.tokenAmount, isBuy)}
+                      {formatSwapAmount(swap.tokenAmount, true)}
                     </TableCell>
                     <TableCell className="text-left">
                       {fromNow(swap?.timestamp)}
