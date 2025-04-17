@@ -39,7 +39,7 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
 
       // Fast linear animation - no fancy easing
       const currentDisplayValue = Math.round(
-        startValue + (targetValue - startValue) * progress
+        startValue + (targetValue - startValue) * progress,
       );
       setDisplayedValue(currentDisplayValue);
 
