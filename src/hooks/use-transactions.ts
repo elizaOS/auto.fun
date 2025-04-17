@@ -27,7 +27,7 @@ const TransactionSchema = z
 export type Transaction = z.infer<typeof TransactionSchema>;
 
 export const useTransactions = ({ tokenId }: { tokenId: string }) => {
-  const pageSize = 30;
+  const pageSize = 20;
   const pagination = usePagination({
     endpoint: `/api/swaps/${tokenId}`,
     limit: pageSize,
