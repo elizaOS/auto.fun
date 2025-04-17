@@ -3306,6 +3306,7 @@ export const Create = () => {
                   src={
                     isSubmitting || isCreating // Show launching if submitting or creating
                       ? "/create/launching.svg"
+                      : activeTab === FormTab.IMPORT ? "/create/importup-thick.svg"
                       : "/create/launchup.svg"
                   }
                   alt="Launch"
