@@ -16,7 +16,6 @@ import { twMerge } from "tailwind-merge";
 
 export function TableView({ data }: { data: IToken[] }) {
   const navigate = useNavigate();
-  console.log(data);
   return (
     <Table>
       <TableHeader>
