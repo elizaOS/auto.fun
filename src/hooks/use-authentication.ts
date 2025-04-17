@@ -391,11 +391,7 @@ export default function useAuthentication() {
                   }
 
                   // If we have a direct wallet connection, create a new token
-                  if (connectedPublicKey) {
-                    console.log(
-                      "Have wallet connection, will create new token"
-                    );
-                  } else {
+                  if (!connectedPublicKey) {
                     signOut();
                     setIsAuthenticating(false);
                     return;

@@ -2100,7 +2100,6 @@ export const Create = () => {
 
       setIsSubmitting(true);
 
-      // Ensure wallet is connected
       if (!publicKey) {
         throw new Error("Wallet not connected");
       }
