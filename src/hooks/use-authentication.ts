@@ -31,7 +31,7 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
           authToken = walletAuthData.token;
           console.log(
             "Using auth token from walletAuth:",
-            authToken.substring(0, 20) + "..."
+            authToken.substring(0, 20) + "...",
           );
           console.log(
             "Token format:",
@@ -39,7 +39,7 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
               ? "JWT"
               : authToken.startsWith("wallet_")
                 ? "wallet_prefix"
-                : "unknown"
+                : "unknown",
           );
         }
       } catch (parseError) {
@@ -55,7 +55,7 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
           authToken = JSON.parse(storedAuthToken);
           console.log(
             "Using auth token from authToken:",
-            authToken.substring(0, 20) + "..."
+            authToken.substring(0, 20) + "...",
           );
           console.log(
             "Token format:",
@@ -63,7 +63,7 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
               ? "JWT"
               : authToken.startsWith("wallet_")
                 ? "wallet_prefix"
-                : "unknown"
+                : "unknown",
           );
         } catch (parseError) {
           console.error("Error parsing stored auth token:", parseError);
@@ -85,7 +85,7 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     headers.set("Authorization", tokenWithBearer);
     console.log(
       "Set Authorization header for request:",
-      tokenWithBearer.substring(0, 30) + "..."
+      tokenWithBearer.substring(0, 30) + "...",
     );
   } else {
     console.log("No auth token found for request to:", url);
@@ -107,7 +107,7 @@ export default function useAuthentication() {
   const { publicKey, connected, disconnect: adapterDisconnect } = useWallet();
   const [authToken, setAuthToken] = useLocalStorage<string | null>(
     "authToken",
-    null
+    null,
   );
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [userPrivileges, setUserPrivileges] = useState<string[]>([]);
@@ -174,7 +174,7 @@ export default function useAuthentication() {
 
   // The stored wallet address from token
   const [storedWalletAddress, setStoredWalletAddress] = useState<string | null>(
-    authToken ? getWalletAddressFromToken(authToken) : null
+    authToken ? getWalletAddressFromToken(authToken) : null,
   );
 
   // Consider connected if:
@@ -216,7 +216,7 @@ export default function useAuthentication() {
       if (adapterDisconnect) {
         try {
           adapterDisconnect().catch((e) =>
-            console.error("Error disconnecting adapter:", e)
+            console.error("Error disconnecting adapter:", e),
           );
         } catch (e) {
           console.error("Error disconnecting adapter:", e);
@@ -229,7 +229,7 @@ export default function useAuthentication() {
           window.solana
             .disconnect()
             .catch((e: Error) =>
-              console.error("Error disconnecting Phantom:", e)
+              console.error("Error disconnecting Phantom:", e),
             );
         } catch (e) {
           console.error("Error disconnecting Phantom:", e);
@@ -339,7 +339,7 @@ export default function useAuthentication() {
                   walletAddressFromStorage = walletAuthData.walletAddress;
                   console.log(
                     "Found auth token in walletAuth:",
-                    token.substring(0, 20) + "..."
+                    token.substring(0, 20) + "...",
                   );
                 }
               } catch (parseError) {
@@ -355,7 +355,7 @@ export default function useAuthentication() {
                   token = JSON.parse(storedAuthToken);
                   console.log(
                     "Found auth token in authToken:",
-                    token.substring(0, 20) + "..."
+                    token.substring(0, 20) + "...",
                   );
                 } catch (parseError) {
                   console.error("Error parsing stored auth token:", parseError);
@@ -376,7 +376,7 @@ export default function useAuthentication() {
                 : `Bearer ${token}`;
               console.log(
                 "Using token with Authorization header:",
-                bearerToken.substring(0, 30) + "..."
+                bearerToken.substring(0, 30) + "...",
               );
 
               const headers = new Headers();
@@ -388,11 +388,11 @@ export default function useAuthentication() {
                   method: "GET",
                   headers,
                   credentials: "include", // For backward compatibility
-                }
+                },
               );
 
               console.log(
-                `Auth status check response: ${authCheckResponse.status}`
+                `Auth status check response: ${authCheckResponse.status}`,
               );
 
               if (authCheckResponse.ok) {
@@ -405,7 +405,7 @@ export default function useAuthentication() {
                   "Auth status from server:",
                   statusData?.authenticated
                     ? "Authenticated"
-                    : "Not authenticated"
+                    : "Not authenticated",
                 );
 
                 // If authenticated, update local state
@@ -435,7 +435,7 @@ export default function useAuthentication() {
                   return;
                 } else {
                   console.log(
-                    "Server says we're not authenticated despite having a token"
+                    "Server says we're not authenticated despite having a token",
                   );
                   // Log headers in a way that's compatible with all browser versions
                   console.log("Response headers:");
@@ -450,7 +450,7 @@ export default function useAuthentication() {
                       `${env.apiUrl}/api/auth-status`,
                       {
                         method: "GET",
-                      }
+                      },
                     );
 
                     if (retryResponse.ok) {
@@ -462,7 +462,7 @@ export default function useAuthentication() {
                         "Retry auth check result:",
                         retryData?.authenticated
                           ? "Authenticated"
-                          : "Not authenticated"
+                          : "Not authenticated",
                       );
 
                       if (retryData?.authenticated) {
@@ -481,19 +481,19 @@ export default function useAuthentication() {
 
                     // If retry failed, continue with normal flow
                     console.log(
-                      "Retry also failed, proceeding with normal flow"
+                      "Retry also failed, proceeding with normal flow",
                     );
                   } catch (retryError) {
                     console.error(
                       "Error during auth status retry:",
-                      retryError
+                      retryError,
                     );
                   }
 
                   // If we have a direct wallet connection, create a new token
                   if (connectedPublicKey) {
                     console.log(
-                      "Have wallet connection, will create new token"
+                      "Have wallet connection, will create new token",
                     );
                   } else {
                     // Otherwise sign out
@@ -506,7 +506,7 @@ export default function useAuthentication() {
               } else {
                 console.warn(
                   "Auth status check failed:",
-                  authCheckResponse.status
+                  authCheckResponse.status,
                 );
                 // Log headers in a way that's compatible with all browser versions
                 console.log("Response headers:");
@@ -517,7 +517,7 @@ export default function useAuthentication() {
             } catch (checkError) {
               console.error(
                 "Error checking auth status with server:",
-                checkError
+                checkError,
               );
             }
           }
@@ -587,7 +587,7 @@ export default function useAuthentication() {
       !isAuthenticating
     ) {
       console.log(
-        "Have auth token but wallet not connected - will try to reconnect via auto-connect"
+        "Have auth token but wallet not connected - will try to reconnect via auto-connect",
       );
 
       // If we have window.solana available, try to directly connect Phantom
@@ -603,7 +603,7 @@ export default function useAuthentication() {
             .then((response: any) => {
               console.log(
                 "Direct reconnection successful:",
-                response.publicKey.toString()
+                response.publicKey.toString(),
               );
             })
             .catch((err: any) => {
