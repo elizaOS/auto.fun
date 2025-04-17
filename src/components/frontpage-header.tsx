@@ -171,8 +171,13 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const dicePositionsRef = useRef<THREE.Vector3[]>([]);
   const [selectedCube, setSelectedCube] = useState<THREE.Mesh | null>(null);
-  const [selectedTokenData, setSelectedTokenData] = useState<IToken | null>(null);
-  const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
+  const [selectedTokenData, setSelectedTokenData] = useState<IToken | null>(
+    null,
+  );
+  const [clickPosition, setClickPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
 
   // Store selected tokens and their addresses for navigation
   const [selectedTokens, setSelectedTokens] = useState<
@@ -193,11 +198,11 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   // Add function to format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
     const year = date.getFullYear().toString().slice(-2);
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const hours = date.getHours().toString().padStart(2, "0");
+    const minutes = date.getMinutes().toString().padStart(2, "0");
     return `${month}/${day}/${year} ${hours}:${minutes}`;
   };
 
@@ -290,7 +295,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     if (rect) {
       setClickPosition({
         x: event.clientX - rect.left,
-        y: event.clientY - rect.top
+        y: event.clientY - rect.top,
       });
     }
 
@@ -371,7 +376,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       const data = await getToken({ address: tokenAddress });
       setSelectedTokenData(data as IToken);
     } catch (error) {
-      console.error('Error fetching token data:', error);
+      console.error("Error fetching token data:", error);
     }
   };
 
@@ -451,7 +456,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
     return {
       left: `${left}px`,
-      top: `${top}px`
+      top: `${top}px`,
     };
   };
 
@@ -1079,7 +1084,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
       {/* Token Data Display */}
       {selectedTokenData && (
-        <div 
+        <div
           className="absolute bg-autofun-background-card p-4 shadow-lg z-10 w-[320px]"
           style={getDisplayPosition()}
         >
@@ -1101,14 +1106,18 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
                   />
                 </div>
                 <div className="flex flex-col">
-                  <h3 className="text-lg font-bold text-autofun-text-primary">{selectedTokenData.name}</h3>
-                  <span className="text-sm text-autofun-text-secondary">${selectedTokenData.ticker}</span>
-                  <span className="text-xs text-autofun-text-secondary">Created: {formatDate(selectedTokenData.createdAt)}</span>
+                  <h3 className="text-lg font-bold text-autofun-text-primary">
+                    {selectedTokenData.name}
+                  </h3>
+                  <span className="text-sm text-autofun-text-secondary">
+                    ${selectedTokenData.ticker}
+                  </span>
+                  <span className="text-xs text-autofun-text-secondary">
+                    Created: {formatDate(selectedTokenData.createdAt)}
+                  </span>
                 </div>
               </div>
-              <Link
-                to={`/token/${selectedTokenData.mint}`}
-              >
+              <Link to={`/token/${selectedTokenData.mint}`}>
                 <button className="py-0.5 px-2 bg-[#03ff24] text-black font-bold uppercase tracking-wide text-xs">
                   Trade
                 </button>
@@ -1118,25 +1127,33 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
             {/* Market Data Grid */}
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
-                <span className="text-sm text-autofun-text-secondary">Price USD</span>
+                <span className="text-sm text-autofun-text-secondary">
+                  Price USD
+                </span>
                 <span className="text-xl font-dm-mono text-autofun-text-highlight">
                   ${selectedTokenData.currentPrice?.toFixed(6) || "0.000000"}
                 </span>
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-sm text-autofun-text-secondary">Market Cap</span>
+                <span className="text-sm text-autofun-text-secondary">
+                  Market Cap
+                </span>
                 <span className="text-xl font-dm-mono text-autofun-text-highlight">
                   ${selectedTokenData.marketCapUSD?.toFixed(2) || "0.00"}
                 </span>
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-sm text-autofun-text-secondary">24h Volume</span>
+                <span className="text-sm text-autofun-text-secondary">
+                  24h Volume
+                </span>
                 <span className="text-xl font-dm-mono text-autofun-text-highlight">
                   ${selectedTokenData.volume24h?.toFixed(2) || "0.00"}
                 </span>
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-sm text-autofun-text-secondary">Holders</span>
+                <span className="text-sm text-autofun-text-secondary">
+                  Holders
+                </span>
                 <span className="text-xl font-dm-mono text-autofun-text-highlight">
                   {selectedTokenData.holderCount || "0"}
                 </span>
