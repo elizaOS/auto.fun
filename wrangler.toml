@@ -66,12 +66,13 @@ API_URL = "https://api.autofun.workers.dev"
 NODE_ENV = "production"
 NETWORK = "mainnet"
 PROGRAM_ID = "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ"
+TOKEN_SUPPLY = "1000000000000000"
 
 # Copy vars to development environment
 [env.development.vars]
 NETWORK = "devnet"
 DECIMALS = "6"
-TOKEN_SUPPLY = "100000000000000"
+TOKEN_SUPPLY = "1000000000000000"
 VIRTUAL_RESERVES = "2800000000"
 CURVE_LIMIT = "11300000000"
 R2_PUBLIC_URL = "https://pub-75e2227bb40747d9b8b21df85a33efa7.r2.dev"
