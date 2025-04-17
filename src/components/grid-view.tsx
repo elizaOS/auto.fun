@@ -35,7 +35,7 @@ export default function GridView({ data }: { data: IToken[] }) {
               <div className="flex flex-col w-full min-w-0 z-10">
                 <div className="absolute bottom-0 right-0 p-2 px-3 inline-flex justify-start items-center gap-2 min-w-0">
                   <div className="justify-start text-autofun-text-highlight text-xl font-medium font-dm-mono leading-7 truncate drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
-                    {abbreviateNumber(token.marketCapUSD)}
+                    MC {abbreviateNumber(token.marketCapUSD)}
                   </div>
                 </div>
               </div>
