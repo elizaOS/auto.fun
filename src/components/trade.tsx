@@ -39,7 +39,6 @@ export default function Trade({
   // Use blockchain data if available, otherwise fall back to token data
   const solanaPrice = contextSolPrice || token?.solPriceUSD || 0;
   const currentPrice = token?.currentPrice || 0;
-  const tokenPriceUSD = token?.tokenPriceUSD || 0;
 
   const { solBalance, tokenBalance } = useTokenBalance({ tokenId: token.mint });
   const balance = isTokenSelling ? tokenBalance : solBalance;
