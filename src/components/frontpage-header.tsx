@@ -463,8 +463,6 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     // Mark as initialized to prevent re-initialization
     sceneInitializedRef.current = true;
 
-    console.log("Initializing dice physics scene");
-
     // Get container dimensions
     const containerWidth = containerRef.current.clientWidth;
     const containerHeight = 300; // Fixed height

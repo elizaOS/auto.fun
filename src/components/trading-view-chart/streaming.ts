@@ -90,7 +90,6 @@ export function subscribeOnStream(
     pairIndex,
   } as SubscriptionItem;
   channelToSubscription.set(pairIndex, subscriptionItem);
-  console.log("[subscribeBars]: Subscribe to streaming. Channel:", pairIndex);
 }
 
 export function unsubscribeFromStream(subscriberUID: string) {
@@ -111,11 +110,6 @@ export function unsubscribeFromStream(subscriberUID: string) {
       subscriptionItem.handlers.splice(handlerIndex, 1);
 
       if (subscriptionItem.handlers.length === 0) {
-        // Unsubscribe from the channel if it was the last handler
-        console.log(
-          "[unsubscribeBars]: Unsubscribe from streaming. Channel:",
-          pairIndex,
-        );
         channelToSubscription.delete(pairIndex);
         break;
       }

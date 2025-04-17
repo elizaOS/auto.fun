@@ -25,22 +25,15 @@ export function useUser() {
       }
 
       try {
-        console.log("Fetching user data with auth token...");
-
-        // Use fetchWithAuth instead of regular fetch to include the JWT token
         const response = await fetchWithAuth(`${env.apiUrl}/api/auth-status`, {
           method: "GET",
         });
 
         if (response.ok) {
           const data = (await response.json()) as AuthStatus;
-          console.log("Auth status response:", data);
-
           if (data.authenticated && data.user) {
-            console.log("User authenticated, setting user data");
             return { user: data.user, authenticated: data.authenticated };
           } else {
-            console.log("User not authenticated or no user data");
             return { authenticated: data.authenticated };
           }
         } else {

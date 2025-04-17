@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 // Storage keys
 const STORAGE_KEY = "twitter-oauth-token";
 const OAUTH_REDIRECT_ORIGIN_KEY = "OAUTH_REDIRECT_ORIGIN"; // Key for storing the original path
-const AGENT_INTENT_KEY = "connect_agent_intent"; // For agent connection intent
-const PENDING_SHARE_KEY = "pending-twitter-share"; // For sharing intent
+// const AGENT_INTENT_KEY = "connect_agent_intent"; // For agent connection intent
+// const PENDING_SHARE_KEY = "pending-twitter-share"; // For sharing intent
 
 // Types
 type Credentials = {
@@ -40,13 +40,6 @@ export default function CallbackPage() {
       const error = params.get("error");
       const errorDescription = params.get("error_description");
 
-      console.log("OAuth callback received with params:", {
-        code: code ? `${code.substring(0, 10)}...` : null,
-        state,
-        error,
-        errorDescription,
-      });
-
       setDebugInfo({
         code: code ? "Received" : "Missing",
         state: state || "Missing",
@@ -66,11 +59,6 @@ export default function CallbackPage() {
 
       if (code && state) {
         try {
-          console.log(
-            "Making callback request to:",
-            `${env.apiUrl}/api/share/oauth/callback`,
-          );
-
           const response = await fetch(
             `${env.apiUrl}/api/share/oauth/callback?code=${code}&state=${state}`,
             { credentials: "include" },
@@ -95,10 +83,8 @@ export default function CallbackPage() {
           }
 
           const data = (await response.json()) as OAuthResponse;
-          console.log("Received OAuth response with token data");
 
           if (data.access_token && data.refresh_token) {
-            console.log("Received valid tokens, storing credentials");
             const credentials: Credentials = {
               userId: data.userId || "default_user",
               accessToken: data.access_token,
@@ -109,31 +95,6 @@ export default function CallbackPage() {
             };
 
             localStorage.setItem(STORAGE_KEY, JSON.stringify(credentials));
-
-            // Log the credentials we're storing (mask sensitive parts)
-            console.log("Stored credentials:", {
-              userId: credentials.userId,
-              username: credentials.username || "unknown",
-              accessToken: credentials.accessToken.substring(0, 10) + "...",
-              refreshToken: credentials.refreshToken.substring(0, 5) + "...",
-              expiresAt: new Date(credentials.expiresAt).toLocaleString(),
-            });
-
-            // Check if we should reconnect wallet
-            const authToken = localStorage.getItem("authToken");
-            if (!authToken) {
-              console.log("Warning: No wallet authentication token found");
-            }
-
-            // Check for intent keys
-            const hasAgentIntent = localStorage.getItem(AGENT_INTENT_KEY);
-            const hasPendingShare = localStorage.getItem(PENDING_SHARE_KEY);
-
-            console.log("Auth intent check:", {
-              hasAgentIntent: !!hasAgentIntent,
-              hasPendingShare: !!hasPendingShare,
-              hasAuthToken: !!authToken,
-            });
 
             // --- Dynamic Redirect Logic ---
             // Retrieve the original path, default to root '/' if not found
@@ -146,9 +107,6 @@ export default function CallbackPage() {
             const redirectUrl = new URL(redirectOrigin, window.location.origin);
             redirectUrl.searchParams.set("fresh_auth", "true"); // Add the flag
 
-            console.log(
-              `Redirecting to original location: ${redirectUrl.toString()}`,
-            );
             window.location.href = redirectUrl.toString(); // Redirect dynamically
             // --- End Dynamic Redirect Logic ---
           } else {
