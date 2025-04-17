@@ -45,7 +45,7 @@ const columns = [
       const mint = cell.getValue();
 
       return (
-        <Link to={`/coin/${mint}`} className="flex justify-end">
+        <Link to={`/token/${mint}`} className="flex justify-end">
           <svg
             width="17"
             height="17"
@@ -89,7 +89,7 @@ export const TokenTable = ({ tokens }: { tokens: ProfileToken[] }) => {
                 >
                   {flexRender(
                     header.column.columnDef.header,
-                    header.getContext(),
+                    header.getContext()
                   )}
                 </th>
               ))}

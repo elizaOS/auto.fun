@@ -293,18 +293,30 @@ export const useProfile = () => {
   const getCreatedTokens = useCreatedTokens();
 
   const fetchProfile = useCallback(async () => {
+    setIsLoading(true)
+    setIsError(false)
+
+    let tokensHeld: ProfileToken[] = []
+    let tokensCreated: ProfileToken[] = []
+
     try {
-      const tokensHeld = await getOwnedTokens();
-      const tokensCreated = await getCreatedTokens();
-
-      setData({ tokensHeld, tokensCreated });
-    } catch {
-      setIsError(true);
-    } finally {
-      setIsLoading(false);
+      tokensHeld = await getOwnedTokens()
+    } catch (err) {
+      console.error("getOwnedTokens failed:", err)
     }
-  }, [getCreatedTokens, getOwnedTokens]);
 
+    try {
+      tokensCreated = await getCreatedTokens()
+    } catch (err) {
+      console.error("getCreatedTokens failed:", err)
+    }
+    // always update the state even if one fails
+    setData({ tokensHeld, tokensCreated })
+    setIsLoading(false)
+  }, [getOwnedTokens, getCreatedTokens])
+  useEffect(() => {
+    console.log("profile data updated:", data);
+  }, [data]);
   useEffect(() => {
     if (!publicKey) return;
 
