@@ -198,18 +198,6 @@ export default function Page() {
       {/* Top Stats Section - Full Width */}
       <div className="w-full py-10 flex flex-wrap justify-between">
         <TopPageItem
-          title="Market Cap"
-          value={
-            tokenPriceUSD * token?.tokenSupplyUiAmount > 0
-              ? abbreviateNumber(tokenPriceUSD * token?.tokenSupplyUiAmount)
-              : "-"
-          }
-        />
-        <TopPageItem
-          title="24hr Volume"
-          value={volume24h > 0 ? abbreviateNumber(volume24h) : "0"}
-        />
-        <TopPageItem
           title="Age"
           value={
             token?.createdAt
@@ -233,6 +221,18 @@ export default function Page() {
                           .replace("second", "s")
                           .trim()
                           .trim()
+              : "-"
+          }
+        />
+        <TopPageItem
+          title="24hr Volume"
+          value={volume24h > 0 ? abbreviateNumber(volume24h) : "0"}
+        />
+        <TopPageItem
+          title="Market Cap"
+          value={
+            tokenPriceUSD * token?.tokenSupplyUiAmount > 0
+              ? abbreviateNumber(tokenPriceUSD * token?.tokenSupplyUiAmount)
               : "-"
           }
         />
