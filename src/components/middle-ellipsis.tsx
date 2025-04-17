@@ -5,7 +5,7 @@ interface MiddleEllipsisProps {
   suffixProp?: string;
 }
 
-export default function MiddleEllipsis({ text, suffixProp }: MiddleEllipsisProps) {
+export default function MiddleEllipsis({ text }: MiddleEllipsisProps) {
   const elementRef = useRef<HTMLDivElement>(null);
   const [showFull, setShowFull] = useState(false);
 

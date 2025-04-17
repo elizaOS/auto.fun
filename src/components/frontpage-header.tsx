@@ -429,7 +429,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   useEffect(() => {
     if (selectedTokenData && clickPosition && popupRef.current) {
       const position = getDisplayPosition();
-      if (position.left && position.top) {
+      if (position?.left && position?.top) {
         setPopupPosition(position);
       }
     }
