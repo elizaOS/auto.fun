@@ -2132,11 +2132,11 @@ export const Create = () => {
           console.log("Token update authority:", tokenData.updateAuthority);
           console.log("Token creators:", tokenData.creators);
 
-          if (!isCreatorNow) {
-            throw new Error(
-              "You need to connect with the token's creator wallet to register it"
-            );
-          }
+          // if (!isCreatorNow) {
+          //   throw new Error(
+          //     "You need to connect with the token's creator wallet to register it"
+          //   );
+          // }
 
           // Show coin drop animation
           setShowCoinDrop(true);
@@ -2170,7 +2170,11 @@ export const Create = () => {
               discord: form.links.discord,
               imageUrl: tokenData.image || "",
               metadataUrl: tokenData.metadataUri || "",
-              creator: tokenData.updateAuthority || tokenData.creators[0] || "",
+              creator:
+                tokenData.updateAuthority ||
+                tokenData.creators ||
+                tokenData.mintAuthority ||
+                "",
               // Include the import flag to indicate this is an imported token
               imported: true,
             }),
