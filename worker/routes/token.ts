@@ -1453,6 +1453,7 @@ tokenRouter.get("/token/:mint", async (c) => {
         .set({
           solPriceUSD: solPrice,
           currentPrice: (token.tokenPriceUSD || 0) / solPrice,
+          marketCapUSD: (token.tokenPriceUSD || 0) * (token.tokenSupplyUiAmount || 0),
         })
         .where(eq(tokens.mint, mint))
         .returning();
@@ -2579,7 +2580,7 @@ tokenRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
                   });
 
                   // Set the URL to our cached version
-                  twitterImageUrl = `${c.env.API_URL || c.env.VITE_API_URL}/api/twitter-image/${imageId}`;
+                  twitterImageUrl = `${c.env.API_URL}/api/twitter-image/${imageId}`;
                   logger.log(
                     `Cached Twitter profile image at: ${twitterImageUrl}`,
                   );

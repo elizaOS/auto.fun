@@ -129,12 +129,20 @@ export default function Page() {
   useEffect(() => {
     const socket = getSocket();
 
-    socket.on("updateToken", (token: any) =>
-      queryClient.setQueryData(["token", address], token),
-    );
+    // Create a handler function that checks if the token matches the current address
+    const handleTokenUpdate = (token: any) => {
+      // Only update if the token address matches the current page
+      if (token.mint === address) {
+        queryClient.setQueryData(["token", address], token);
+      }
+    };
+
+    // Add the event listener with our filtered handler
+    socket.on("updateToken", handleTokenUpdate);
 
     return () => {
-      socket.off("updateToken");
+      // Remove the specific handler when cleaning up
+      socket.off("updateToken", handleTokenUpdate);
     };
   }, [address]);
 
@@ -524,7 +532,7 @@ export default function Page() {
                   <img
                     src="/token/progressunder.svg"
                     alt="Progress bar background"
-                    className="absolute left-0 top-0 w-full h-full object-cover"
+                    className="absolute left-0 top-0 w-full h-full object-cover blur-xs"
                   />
                   {/* Progress layer with dynamic width */}
                   <div
@@ -545,7 +553,7 @@ export default function Page() {
                   </div>
                   {/* Percentage text */}
                   <div className="absolute right-2 top-0 h-full flex items-center">
-                    <span className="text-black font-bold font-dm-mono text-sm">
+                    <span className="text-autofun-text-secondary font-bold font-dm-mono text-[16px]">
                       {(token?.curveProgress || 0).toFixed(0)}%
                     </span>
                   </div>

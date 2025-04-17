@@ -59,7 +59,7 @@ export class ExternalToken {
             webhooks: [
               {
                 alertRecurrence: AlertRecurrence.Indefinite,
-                callbackUrl: `${this.env.VITE_API_URL}/api/codex-webhook`,
+                callbackUrl: `${this.env.API_URL}/api/codex-webhook`,
                 // callbackUrl: `https://out-charitable-remain-declined.trycloudflare.com/api/codex-webhook`,
                 conditions: {
                   tokenAddress: {
@@ -121,18 +121,22 @@ export class ExternalToken {
     const creationTime = createdAt
       ? new Date(createdAt * 1000).toISOString()
       : new Date().toISOString();
-    const tokenSupply = token.token?.info?.circulatingSupply
+    const tokenSupplyUi = token.token?.info?.circulatingSupply
       ? Number(token.token?.info?.circulatingSupply)
       : 0;
-
+    const tokenDecimals = token.token?.decimals ?? 9;
+    const tokenSupply = tokenSupplyUi
+      ? Number(tokenSupplyUi) * (10 ** tokenDecimals)
+      : 1_000_000_000 * 1e9; // 1 billion tokens with 9 decimals
     const newTokenData = {
       marketCapUSD: token.marketCap ? Number(token.marketCap) : 0,
       volume24h: token.volume24 ? Number(token.volume24) : 0,
       liquidity: token.liquidity ? Number(token.liquidity) : 0,
       tokenPriceUSD: token.priceUSD ? Number(token.priceUSD) : 0,
       holderCount: token.holders,
-      tokenSupplyUiAmount: tokenSupply,
-      tokenDecimals: token.token?.decimals ?? 9,
+      tokenSupplyUiAmount: tokenSupplyUi,
+      tokenSupply: tokenSupply.toString(),
+      tokenDecimals: tokenDecimals,
       // time of import
       createdAt: creationTime,
 

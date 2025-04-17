@@ -11,6 +11,7 @@ pnpm-lock.yaml
 stats.html
 .env
 .env.test
+bun.lock
 
 node_modules
 dist
