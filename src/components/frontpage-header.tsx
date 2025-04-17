@@ -1115,7 +1115,6 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
             ✕
           </button>
           <div className="flex flex-col gap-3">
-            {/* Token Header */}
             <div className="flex items-center justify-between pr-8">
               <div className="flex items-center gap-2">
                 <div className="w-14 h-14 overflow-hidden">
@@ -1144,7 +1143,6 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
               </Link>
             </div>
 
-            {/* Contract address */}
             <div className="flex items-center gap-1 -my-1">
               <span className="text-[10px] text-autofun-text-secondary truncate">
                 {selectedTokenData.mint}
@@ -1154,7 +1152,6 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
               </div>
             </div>
 
-            {/* Market Data Grid */}
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
                 <span className="text-sm text-autofun-text-secondary">
