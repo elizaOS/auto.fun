@@ -39,7 +39,7 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
 
       // Fast linear animation - no fancy easing
       const currentDisplayValue = Math.round(
-        startValue + (targetValue - startValue) * progress,
+        startValue + (targetValue - startValue) * progress
       );
       setDisplayedValue(currentDisplayValue);
 
@@ -71,9 +71,7 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
       <div className="absolute left-0 h-full w-full bg-autofun-stroke-primary" />
       {/* Progress */}
       <div
-        className={`absolute left-0 h-full ${
-          width === 100 ? "bg-autofun-text-highlight" : "bg-white"
-        } z-20 transition-all duration-1500 ease-in-out flex items-center justify-end`}
+        className={`absolute left-0 h-full bg-autofun-text-highlight z-20 transition-all duration-1500 ease-in-out flex items-center justify-end`}
         style={{
           width: `${width}%`,
           transition:
