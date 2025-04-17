@@ -42,7 +42,6 @@ export default function Page() {
       </div>
       {/* Top Navigation */}
       <div className="flex justify-between gap-1 flex-wrap-reverse md:flex-wrap">
-        <GridListSwitcher />
         <div className="flex items-center gap-1">
           <Button
             variant={sortBy === "all" ? "primary" : "outline"}
@@ -67,6 +66,7 @@ export default function Page() {
             New
           </Button>
         </div>
+        <GridListSwitcher />
       </div>
       <div className="flex flex-col flex-1">
         {!query?.isLoading ? (
