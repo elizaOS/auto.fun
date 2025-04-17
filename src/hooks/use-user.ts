@@ -38,10 +38,10 @@ export function useUser() {
 
           if (data.authenticated && data.user) {
             console.log("User authenticated, setting user data");
-            return data.user;
+            return { user: data.user, authenticated: data.authenticated };
           } else {
             console.log("User not authenticated or no user data");
-            return null;
+            return { authenticated: data.authenticated };
           }
         } else {
           console.error("Error response from auth-status:", response.status);
@@ -54,7 +54,8 @@ export function useUser() {
     },
   });
 
-  const user: User | null | undefined = query?.data;
+  const user: User | null | undefined = query?.data?.user;
+  const authenticated: boolean = query?.data?.authenticated ? true : false;
 
-  return { user, isLoading: query?.isPending, query };
+  return { user, authenticated, isLoading: query?.isPending, query };
 }
