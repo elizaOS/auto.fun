@@ -61,6 +61,11 @@ binding = "AI"
 [env.development.triggers]
 crons = ["*/1 * * * *"] # Run every 1 minute
 
+[env.production.vars]
+API_URL = "https://api.autofun.workers.dev"
+NODE_ENV = "production"
+NETWORK = "mainnet"
+
 # Copy vars to development environment
 [env.development.vars]
 NETWORK = "devnet"
@@ -75,6 +80,7 @@ DEVNET_FRONTEND_URL="https://develop.auto-fun.pages.dev"
 AUTH_TOKEN_SALT = "autofun-wallet-auth-salt-dev-env" # Salt for hashing auth tokens in dev
 MAINNET_SOLANA_RPC_URL="https://mainnet.helius-rpc.com/?api-key=09d840c8-81f4-445d-8b63-a1cc8469cb57"
 DEVNET_SOLANA_RPC_URL="https://devnet.helius-rpc.com/?api-key=09d840c8-81f4-445d-8b63-a1cc8469cb57"
+API_URL = "https://api-dev.autofun.workers.dev"
 
 # D1 Database for development
 [[env.development.d1_databases]]
@@ -117,3 +123,20 @@ binding = "AI"
 [[env.production.kv_namespaces]]
 binding = "AUTH_TOKENS"
 id = "91bc4666a62044ba816c53a9b2116281"
+
+# D1 Database for production
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "autofun"
+database_id = "b086a46c-b1c3-4eec-8eca-2abea542e45b"
+
+# R2 bucket for storage
+[[env.production.r2_buckets]]
+binding = "R2"
+bucket_name = "autofun-storage"
+
+# KV namespace for auth tokens
+[[env.production.kv_namespaces]]
+binding = "AUTH_TOKENS"
+id = "91bc4666a62044ba816c53a9b2116281"
+preview_id = "d2622b59f8dd431eb2468732a5053649"
