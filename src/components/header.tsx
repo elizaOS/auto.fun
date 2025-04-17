@@ -87,13 +87,13 @@ export default function Header() {
               <div className="flex-1 mx-2">
                 <SearchBar />
               </div>
-              <Link to="/create" className="mr-2">
-                <Button className="cursor-pointer flex items-center text-base text-autofun-text-highlight font-bold font-satoshi justify-center px-2 sm:px-4 py-1 sm:py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345]">
+              <Link to="/create" className="mr-2 shrink-0">
+                <Button className="cursor-pointer shrink-0 flex items-center text-base text-autofun-text-highlight font-bold font-satoshi justify-center px-2 sm:px-4 py-1 sm:py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345]">
                   <span className="hidden md:inline">New Coin</span>{" "}
                   <img
                     src="/nav/stars.svg"
                     alt="stars"
-                    className="text-[#2FD345]"
+                    className="text-[#2FD345] shrink-0"
                   />
                 </Button>
               </Link>
