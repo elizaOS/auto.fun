@@ -41,7 +41,7 @@ export class TokenMigrator {
     public program: Program<RaydiumVault>,
     public autofunProgram: Program<Autofun>,
     public provider: AnchorProvider,
-  ) { }
+  ) {}
   FEE_PERCENTAGE = 10; // 10% fee for pool creation
 
   async scheduleNextInvocation(token: TokenData): Promise<void> {
@@ -126,9 +126,8 @@ export class TokenMigrator {
       {
         name: "collectFees",
         eventName: "feesCollected",
-        fn: (token: any) =>
-          this.collectFee(token).then((result) => result),
-      }
+        fn: (token: any) => this.collectFee(token).then((result) => result),
+      },
     ];
   }
 
@@ -540,9 +539,7 @@ export class TokenMigrator {
     return { txId: "finalized" };
   }
 
-  async collectFee(
-    token: any,
-  ): Promise<{ txId: string; extraData: object }> {
+  async collectFee(token: any): Promise<{ txId: string; extraData: object }> {
     console.log("Collecting fee for token", token.mint);
     const mintConstantFee = new BN(Number(this.env.FIXED_FEE ?? 6) * 1e9); // 6 SOL
     const feeWallet = new PublicKey(this.env.ACCOUNT_FEE_MULTISIG!);

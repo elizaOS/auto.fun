@@ -322,10 +322,8 @@ export const getJupiterSwapIx = async (
   const quoteResponse = await quoteRes.json();
   console.log("dev address", env.devAddress);
 
-
   const additionalIxs = [] as any;
-  const feeAcount = env.feeVault
-
+  const feeAcount = env.feeVault;
 
   const swapUrl = "https://lite-api.jup.ag/swap/v1/swap";
   const body = {

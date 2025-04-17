@@ -1826,7 +1826,7 @@ tokenRouter.post("/create-token", async (c) => {
       imageUrl,
       metadataUrl,
       imported,
-      creator
+      creator,
     } = body;
 
     const mintAddress = tokenMint || mint;

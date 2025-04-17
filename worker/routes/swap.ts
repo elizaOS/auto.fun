@@ -4,12 +4,7 @@ import { z } from "zod";
 import { fetchPriceChartData, getLatestCandle } from "../chart";
 import { logger } from "../logger";
 import { and, desc, eq, sql } from "drizzle-orm";
-import {
-  getDB,
-  TokenHolder,
-  tokenHolders,
-  tokens,
-} from "../db";
+import { getDB, TokenHolder, tokenHolders, tokens } from "../db";
 const router = new Hono<{
   Bindings: Env;
   Variables: {
@@ -56,14 +51,10 @@ router.post("/creator-tokens", async (c) => {
   const tokensCreated = await db
     .select()
     .from(tokens)
-    .where(and(
-      eq(tokens.creator, user.publicKey),
-      eq(tokens.imported, 0),
-    )).orderBy(desc(tokens.createdAt));
+    .where(and(eq(tokens.creator, user.publicKey), eq(tokens.imported, 0)))
+    .orderBy(desc(tokens.createdAt));
   // return tokensCreated
   return c.json({ tokens: tokensCreated });
-
 });
-
 
 export default router;

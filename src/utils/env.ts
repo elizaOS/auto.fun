@@ -41,7 +41,8 @@ const unparsedEnv = {
       : import.meta.env.VITE_MAINNET_RPC_URL) || import.meta.env.VITE_RPC_URL,
   rpcUrlMainnet: import.meta.env.VITE_MAINNET_RPC_URL,
   virtualReserves: import.meta.env.VITE_VIRTUAL_RESERVES,
-  finalTokenPrice: import.meta.env.VITE_FINAL_TOKEN_PRICE || "4.5100194181788156e-8",
+  finalTokenPrice:
+    import.meta.env.VITE_FINAL_TOKEN_PRICE || "4.5100194181788156e-8",
   tokenSupply: import.meta.env.VITE_TOKEN_SUPPLY,
   feeVault: import.meta.env.VITE_FEE_VAULT,
   decimals: import.meta.env.VITE_DECIMALS,

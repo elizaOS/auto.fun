@@ -278,28 +278,30 @@ const useCreatedTokens = () => {
     const autofunTokenAccounts = await removeNonAutofunTokens(tokenAccounts);
     // === 4) Map into ProfileToken[] ===
     const profileTokens: ProfileToken[] = tokens.map((t) => {
-      const mint = t.mint; // Extract mint property
+      // const mint = t.mint; // Extract mint property
       // parse the mint
       const mintPubkey = new PublicKey(t.mint);
 
       // find the account with this mint (if any)
       const account = tokenAccounts.find((acct) =>
-        acct.mint.equals(mintPubkey)
+        acct.mint.equals(mintPubkey),
       );
 
-      const reserveLamport
-        = autofunTokenAccounts.find(
-          (acct) => acct.tokenAccount.mint.equals(mintPubkey),
-        )?.bondingCurveAccount.reserveLamport.toNumber() ?? 0;
-      const solValue = account?.amount ? calculateAmountOutSell(
-        reserveLamport,
-        Number(account?.amount ?? 0),
-        6,
-        1,
-        autofunTokenAccounts.find(
-          (acct) => acct.tokenAccount.mint.equals(mintPubkey),
-        )?.bondingCurveAccount.reserveToken.toNumber() ?? 0,
-      ) / LAMPORTS_PER_SOL : 0;
+      const reserveLamport =
+        autofunTokenAccounts
+          .find((acct) => acct.tokenAccount.mint.equals(mintPubkey))
+          ?.bondingCurveAccount.reserveLamport.toNumber() ?? 0;
+      const solValue = account?.amount
+        ? calculateAmountOutSell(
+            reserveLamport,
+            Number(account?.amount ?? 0),
+            6,
+            1,
+            autofunTokenAccounts
+              .find((acct) => acct.tokenAccount.mint.equals(mintPubkey))
+              ?.bondingCurveAccount.reserveToken.toNumber() ?? 0,
+          ) / LAMPORTS_PER_SOL
+        : 0;
 
       return {
         image: t.image,
@@ -307,19 +309,16 @@ const useCreatedTokens = () => {
         ticker: t.ticker,
         mint: t.mint,
         // safe‐cast the amount or fall back to zero
-        tokensHeld: account?.amount ? (BigInt(account?.amount) / BigInt(10 ** t.tokenDecimals)) : BigInt(0),
+        tokensHeld: account?.amount
+          ? BigInt(account?.amount) / BigInt(10 ** t.tokenDecimals)
+          : BigInt(0),
         solValue: solValue,
-      }
+      };
     });
 
     console.log("profileTokens", profileTokens);
     return profileTokens;
-  }, [
-    publicKey,
-    env.apiUrl,
-    getTokenAccounts,
-    removeNonAutofunTokens,
-  ]);
+  }, [publicKey, env.apiUrl, getTokenAccounts, removeNonAutofunTokens]);
 
   return fetchTokens;
 };
@@ -338,27 +337,27 @@ export const useProfile = () => {
   const getCreatedTokens = useCreatedTokens();
 
   const fetchProfile = useCallback(async () => {
-    setIsLoading(true)
-    setIsError(false)
+    setIsLoading(true);
+    setIsError(false);
 
-    let tokensHeld: ProfileToken[] = []
-    let tokensCreated: ProfileToken[] = []
+    let tokensHeld: ProfileToken[] = [];
+    let tokensCreated: ProfileToken[] = [];
 
     try {
-      tokensHeld = await getOwnedTokens()
+      tokensHeld = await getOwnedTokens();
     } catch (err) {
-      console.error("getOwnedTokens failed:", err)
+      console.error("getOwnedTokens failed:", err);
     }
 
     try {
-      tokensCreated = await getCreatedTokens()
+      tokensCreated = await getCreatedTokens();
     } catch (err) {
-      console.error("getCreatedTokens failed:", err)
+      console.error("getCreatedTokens failed:", err);
     }
     // always update the state even if one fails
-    setData({ tokensHeld, tokensCreated })
-    setIsLoading(false)
-  }, [getOwnedTokens, getCreatedTokens])
+    setData({ tokensHeld, tokensCreated });
+    setIsLoading(false);
+  }, [getOwnedTokens, getCreatedTokens]);
 
   useEffect(() => {
     if (!publicKey) return;

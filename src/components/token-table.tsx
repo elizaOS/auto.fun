@@ -89,7 +89,7 @@ export const TokenTable = ({ tokens }: { tokens: ProfileToken[] }) => {
                 >
                   {flexRender(
                     header.column.columnDef.header,
-                    header.getContext()
+                    header.getContext(),
                   )}
                 </th>
               ))}
