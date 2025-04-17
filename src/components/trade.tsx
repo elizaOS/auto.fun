@@ -9,6 +9,7 @@ import { Info, Wallet } from "lucide-react";
 import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Trade({
   token,
@@ -19,9 +20,7 @@ export default function Trade({
 }) {
   const { solPrice: contextSolPrice } = useSolPriceContext();
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
-  const [sellingAmount, setSellingAmount] = useState<number | undefined>(
-    undefined,
-  );
+
   const [buyAmount, setBuyAmount] = useState<number | undefined>(undefined);
   const [sellAmount, setSellAmount] = useState<number | undefined>(undefined);
   const [slippage, setSlippage] = useState<number>(2);
@@ -43,26 +42,18 @@ export default function Trade({
   const currentPrice = token?.currentPrice || 0;
   const tokenPriceUSD = token?.tokenPriceUSD || 0;
 
-  console.log("Trade component using prices:", {
-    solanaPrice,
-    currentPrice,
-    tokenPriceUSD,
-  });
-
   const { solBalance, tokenBalance } = useTokenBalance({ tokenId: token.mint });
   const balance = isTokenSelling ? tokenBalance : solBalance;
 
-  const insufficientBalance = Number(sellingAmount || 0) > Number(balance);
+  const insufficientBalance = Number(sellAmount || 0) > Number(balance);
 
   const [error] = useState<string | undefined>("");
 
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status,
+    token?.status
   );
-
-  const [convertedAmount, setConvertedAmount] = useState(0);
 
   const isButtonDisabled = (amount: number | string) => {
     if (typeof amount === "string") {
@@ -78,64 +69,88 @@ export default function Trade({
     if (typeof amount === "string") {
       // Handle percentage
       const percentage = parseFloat(amount) / 100;
-      setSellingAmount(Number(balance) * percentage);
+      setSellAmount(Number(balance) * percentage);
+      displayhMinReceivedQuery.refetch();
     } else {
       // Handle fixed amount
-      setSellingAmount(amount);
+      setSellAmount(amount);
+      displayhMinReceivedQuery.refetch();
     }
+
+    displayhMinReceivedQuery.refetch();
   };
 
   const handleSellAmountChange = async (amount: number) => {
-    if (!program) return;
-
-    setSellingAmount(amount);
+    setSellAmount(amount);
     if (isTokenSelling) {
       setSellAmount(amount);
     } else {
       setBuyAmount(amount);
     }
-
-    const style = isTokenSelling ? 1 : 0;
-    const convertedAmountT = isTokenSelling
-      ? amount * (token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6)
-      : amount * 1e9;
-    const decimals = isTokenSelling
-      ? 1e9
-      : token?.tokenDecimals
-        ? 10 ** token?.tokenDecimals
-        : 1e6;
-
-    const swapAmount =
-      token?.status === "locked"
-        ? await getSwapAmountJupiter(token.mint, convertedAmountT, style, 0)
-        : await getSwapAmount(
-            program,
-            convertedAmountT,
-            style,
-            // TODO: these values from the backend seem incorrect,
-            // they are not dynamically calculated but instead use the
-            // default values leading to slightly incorrect calculations
-            token.reserveAmount,
-            token.reserveLamport,
-          );
-
-    setConvertedAmount(swapAmount / decimals);
   };
 
-  // const displayConvertedAmount = isTokenSelling
-  //   ? convertedAmount
-  //   : formatNumber(convertedAmount, false, true);
+  const displayhMinReceivedQuery = useQuery({
+    queryKey: [
+      "min-received",
+      isTokenSelling,
+      sellAmount,
+      sellAmount,
+      buyAmount,
+      solanaPrice,
+      tokenPriceUSD,
+    ],
+    queryFn: async (): Promise<{
+      displayMinReceived: string;
+      convertedAmount: number;
+    }> => {
+      if (!program) return { displayMinReceived: "0", convertedAmount: 0 };
+      const style = isTokenSelling ? 1 : 0;
+      const amount = isTokenSelling ? sellAmount : buyAmount;
+      if (!amount) return { displayMinReceived: "0", convertedAmount: 0 };
 
-  const minReceived = convertedAmount * (1 - slippage / 100);
-  const displayMinReceived = isTokenSelling
-    ? formatNumber(minReceived, false, true)
-    : formatNumber(minReceived, false, true);
+      const convertedAmountT = isTokenSelling
+        ? amount * (token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6)
+        : amount * 1e9;
+
+      const decimals = isTokenSelling
+        ? 1e9
+        : token?.tokenDecimals
+          ? 10 ** token?.tokenDecimals
+          : 1e6;
+
+      const swapAmount =
+        token?.status === "locked"
+          ? await getSwapAmountJupiter(token.mint, convertedAmountT, style, 0)
+          : await getSwapAmount(
+              program,
+              convertedAmountT,
+              style,
+              // TODO: these values from the backend seem incorrect,
+              // they are not dynamically calculated but instead use the
+              // default values leading to slightly incorrect calculations
+              token.reserveAmount,
+              token.reserveLamport
+            );
+
+      const convertedAmount = swapAmount / decimals;
+      const minReceived = convertedAmount * (1 - slippage / 100);
+      const displayMinReceived = isTokenSelling
+        ? formatNumber(minReceived, false, true)
+        : formatNumber(minReceived, false, true);
+
+      return { displayMinReceived, convertedAmount };
+    },
+  });
+
+  const displayMinReceived =
+    displayhMinReceivedQuery?.data?.displayMinReceived || "0";
+  const convertedAmount = displayhMinReceivedQuery?.data?.convertedAmount || 0;
 
   const onSwap = async () => {
-    if (!sellingAmount) return;
+    if (!sellAmount) return;
 
     const res = (await executeSwap({
-      amount: sellingAmount,
+      amount: sellAmount,
       style: isTokenSelling ? "sell" : "buy",
       tokenAddress: token.mint,
       token,
@@ -154,10 +169,10 @@ export default function Trade({
             <button
               onClick={() => {
                 if (isTokenSelling) {
-                  setSellingAmount(
+                  setSellAmount(
                     buyAmount !== undefined
                       ? buyAmount
-                      : formatAmount(convertedAmount),
+                      : formatAmount(convertedAmount)
                   );
                 }
                 setIsTokenSelling(false);
@@ -173,10 +188,10 @@ export default function Trade({
             <button
               onClick={() => {
                 if (!isTokenSelling) {
-                  setSellingAmount(
+                  setSellAmount(
                     sellAmount !== undefined
                       ? sellAmount
-                      : formatAmount(convertedAmount),
+                      : formatAmount(convertedAmount)
                   );
                 }
                 setIsTokenSelling(true);
@@ -212,7 +227,7 @@ export default function Trade({
                 {formatNumber(
                   tokenBalance * currentPrice * solanaPrice,
                   true,
-                  false,
+                  false
                 )}
               </span>
             </div>
@@ -244,7 +259,7 @@ export default function Trade({
                       : value;
                     handleSellAmountChange(Number(formattedValue));
                   }}
-                  value={sellingAmount === 0 ? "" : sellingAmount}
+                  value={sellAmount === 0 ? "" : sellAmount}
                   placeholder="0"
                 />
                 <div className="w-fit absolute right-4 top-[50%] translate-y-[-50%]">
@@ -252,7 +267,7 @@ export default function Trade({
                   <Balance
                     token={token}
                     isSolana={!isTokenSelling}
-                    setSellingAmount={setSellingAmount}
+                    setSellAmount={setSellAmount}
                     balance={isTokenSelling ? tokenBalance : Number(solBalance)}
                   />
                 </div>
@@ -393,8 +408,8 @@ export default function Trade({
                 isDisabled ||
                 insufficientBalance ||
                 isExecutingSwap ||
-                !sellingAmount ||
-                sellingAmount === 0
+                !sellAmount ||
+                sellAmount === 0
               }
               onClick={onSwap}
               className={twMerge([
@@ -457,12 +472,12 @@ const TokenDisplay = ({
 const Balance = ({
   token,
   isSolana,
-  setSellingAmount,
+  setSellAmount,
   balance,
 }: {
   token?: IToken;
   isSolana?: boolean;
-  setSellingAmount?: any;
+  setSellAmount?: any;
   balance: number;
 }) => {
   const formattedBalance = isSolana
@@ -473,11 +488,11 @@ const Balance = ({
     <div
       className={twMerge([
         "flex items-center gap-2 select-none shrink-0",
-        setSellingAmount ? "cursor-pointer" : "",
+        setSellAmount ? "cursor-pointer" : "",
       ])}
       onClick={() => {
-        if (balance && setSellingAmount) {
-          setSellingAmount(balance);
+        if (balance && setSellAmount) {
+          setSellAmount(balance);
         }
       }}
     >
