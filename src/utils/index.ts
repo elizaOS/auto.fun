@@ -19,7 +19,7 @@ export const abbreviateNumber = (
   withoutCurrency: boolean = false,
 ): string => {
   const absNum = Math.abs(Number(num));
-  if (absNum < 1000) return formatNumber(num);
+  if (absNum < 1000) return formatNumber(num, false, withoutCurrency);
 
   const units = ["K", "M", "B", "T"];
   let exponent = Math.floor(Math.log10(absNum) / 3);
