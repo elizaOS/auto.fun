@@ -17,7 +17,7 @@ import { TokenMetadata } from "../types/form.type";
 // Import the worker using Vite's ?worker syntax
 import InlineVanityWorker from "@/workers/vanityWorker?worker&inline"; // Added import
 
-const MAX_INITIAL_SOL = isDevnet ? 25 : 2.5;
+const MAX_INITIAL_SOL = isDevnet ? 28 : 2.8;
 // Use the token supply and virtual reserves from environment or fallback to defaults
 const TOKEN_SUPPLY = Number(env.tokenSupply) || 1000000000000000;
 const VIRTUAL_RESERVES = Number(env.virtualReserves) || 2800000000;
