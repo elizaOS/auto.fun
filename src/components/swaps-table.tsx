@@ -51,7 +51,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
   };
 
   return (
-    <div className="max-h-[800px] overflow-y-auto">
+    <div className="space-y-12 max-h-[800px] overflow-y-auto">
       <Table
         className="border-0 !rounded-0 !border-spacing-y-0"
         onMouseEnter={() => setPause(true)}
@@ -84,7 +84,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
             data
               .filter(
                 (swap, index, self) =>
-                  index === self.findIndex((t) => t.txId === swap.txId),
+                  index === self.findIndex((t) => t.txId === swap.txId)
               )
               .map((swap) => {
                 const isBuy = swap.type === "Buy";
@@ -149,18 +149,20 @@ export default function SwapsTable({ token }: { token: IToken }) {
           )}
         </TableBody>
       </Table>
-      <Pagination
-        pagination={{
-          hasMore: hasNextPage,
-          page: currentPage,
-          total: totalItems,
-          totalPages: totalPages,
-        }}
-        onPageChange={(pageNumber: number) => {
-          if (isLoading) return;
-          goToPage(pageNumber);
-        }}
-      />
+      <div className="grid place-content-center">
+        <Pagination
+          pagination={{
+            hasMore: hasNextPage,
+            page: currentPage,
+            total: totalItems,
+            totalPages: totalPages,
+          }}
+          onPageChange={(pageNumber: number) => {
+            if (isLoading) return;
+            goToPage(pageNumber);
+          }}
+        />
+      </div>
     </div>
   );
 }
