@@ -84,7 +84,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
             data
               .filter(
                 (swap, index, self) =>
-                  index === self.findIndex((t) => t.txId === swap.txId)
+                  index === self.findIndex((t) => t.txId === swap.txId),
               )
               .map((swap) => {
                 const isBuy = swap.type === "Buy";
