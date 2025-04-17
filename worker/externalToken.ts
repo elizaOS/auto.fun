@@ -59,7 +59,7 @@ export class ExternalToken {
             webhooks: [
               {
                 alertRecurrence: AlertRecurrence.Indefinite,
-                callbackUrl: `${this.env.VITE_API_URL}/api/codex-webhook`,
+                callbackUrl: `${this.env.API_URL}/api/codex-webhook`,
                 // callbackUrl: `https://out-charitable-remain-declined.trycloudflare.com/api/codex-webhook`,
                 conditions: {
                   tokenAddress: {

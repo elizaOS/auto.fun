@@ -2579,7 +2579,7 @@ tokenRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
                   });
 
                   // Set the URL to our cached version
-                  twitterImageUrl = `${c.env.API_URL || c.env.VITE_API_URL}/api/twitter-image/${imageId}`;
+                  twitterImageUrl = `${c.env.API_URL}/api/twitter-image/${imageId}`;
                   logger.log(
                     `Cached Twitter profile image at: ${twitterImageUrl}`,
                   );

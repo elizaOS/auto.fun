@@ -232,6 +232,11 @@ export default function Trade({
                   className="text-6xl p-4 overflow-clip font-dm-mono text-white w-3/4 outline-none"
                   min={0}
                   type="number"
+                  onKeyDown={(e) => {
+                    if (e.key === "-" || e.code === "Minus") {
+                      e.preventDefault();
+                    }
+                  }}
                   onChange={({ target }) => {
                     const value = target.value;
                     const [whole, decimal] = value.split(".");

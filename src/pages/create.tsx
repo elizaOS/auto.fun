@@ -736,6 +736,7 @@ export const Create = () => {
     onPromptChange: ((prompt: string) => void) | null;
   }>({ setPrompt: null, onPromptChange: null });
   const { mutateAsync: createTokenOnChainAsync } = useCreateToken();
+  const [maxSolReached, setMaxSolReached] = useState<boolean>(false);
 
   // Import-related state
   const [isImporting, setIsImporting] = useState(false);
@@ -779,47 +780,6 @@ export const Create = () => {
       setHasStoredToken(false);
     }
   }, [activeTab]);
-
-  // Effect to check imported token data and wallet authorization when wallet changes
-  useEffect(() => {
-    if (activeTab === FormTab.IMPORT && publicKey) {
-      const storedTokenData = localStorage.getItem("import_token_data");
-      if (storedTokenData) {
-        try {
-          const tokenData = JSON.parse(storedTokenData) as TokenSearchData;
-
-          // Check if the current wallet is authorized to create this token
-          // In dev mode, always allow any wallet to register
-          const isCreatorWallet =
-            tokenData.isCreator !== undefined
-              ? tokenData.isCreator
-              : (tokenData.updateAuthority &&
-                  tokenData.updateAuthority === publicKey.toString()) ||
-                (tokenData.creators &&
-                  tokenData.creators.includes(publicKey.toString()));
-
-          // Update import status based on wallet authorization
-          if (!isCreatorWallet) {
-            setImportStatus({
-              type: "warning",
-              message:
-                "Please connect with the token's creator wallet to register it.",
-            });
-          } else {
-            // Success message - different in dev mode if not the creator
-            const message =
-              "Successfully loaded token data for " + tokenData.name;
-            setImportStatus({
-              type: "success",
-              message,
-            });
-          }
-        } catch (error) {
-          console.error("Error parsing stored token data:", error);
-        }
-      }
-    }
-  }, [activeTab, publicKey]);
 
   // Effect to populate form with token data if it exists
   useEffect(() => {
@@ -1631,25 +1591,6 @@ export const Create = () => {
           }
           setCoinDropImageUrl(tokenData.image);
         }
-
-        // Check if the current wallet is authorized to create this token
-        const isCreatorWallet =
-          tokenData.isCreator !== undefined
-            ? tokenData.isCreator
-            : (tokenData.updateAuthority &&
-                tokenData.updateAuthority === publicKey.toString()) ||
-              (tokenData.creators &&
-                tokenData.creators.includes(publicKey.toString()));
-
-        // Success message - ready to register
-        const message = !isCreatorWallet
-          ? "Development Mode: You can register this token without being the creator wallet."
-          : "Token data loaded successfully. You can now register this token.";
-
-        setImportStatus({
-          type: "success",
-          message,
-        });
       } catch (fetchError) {
         console.error("API Error:", fetchError);
 
@@ -3451,6 +3392,8 @@ export const Create = () => {
                             if (numValue < 0) value = "0";
                             else if (numValue > maxInputSol)
                               value = maxInputSol.toString();
+
+                            setMaxSolReached(numValue >= maxInputSol);
                           } else if (value !== "") {
                             value = "0"; // Reset invalid non-empty strings
                           }
@@ -3463,7 +3406,6 @@ export const Create = () => {
                         step="0.01"
                         className="w-26 pr-10 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white bg-transparent" // Added bg-transparent
                       />
-
                       <span className="absolute right-0 top-0 bottom-0 flex items-center text-white text-xl font-medium pointer-events-none">
                         {" "}
                         {/* Adjusted positioning */}
@@ -3473,6 +3415,11 @@ export const Create = () => {
                     {/* {solPrice && Number(buyValue) > 0 && ( ... )} */}
                   </div>
                 </div>
+                {maxSolReached && (
+                  <p className="text-red-500 text-sm mt-1 text-center">
+                    Maximum initial {maxInputSol} SOL buy reached
+                  </p>
+                )}
                 {parseFloat(buyValue as string) > 0 && (
                   <div className="text-right text-xs text-neutral-400">
                     ≈{" "}
