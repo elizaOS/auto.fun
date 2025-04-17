@@ -180,6 +180,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     x: number;
     y: number;
   } | null>(null);
+  // @ts-ignore
   const [popupPosition, setPopupPosition] = useState<{
     left: string;
     top: string;
@@ -1104,6 +1105,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       {selectedTokenData && (
         <div
           className="absolute bg-autofun-background-card p-4 shadow-lg z-10 w-[320px]"
+          // @ts-ignore
           style={getDisplayPosition()}
         >
           <button
@@ -1135,7 +1137,6 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
                   </span>
                 </div>
               </div>
-              <Link to={`/token/${selectedTokenData.mint}`}>
               <Link to={`/token/${selectedTokenData.mint}`}>
                 <button className="py-0.5 px-2 bg-[#03ff24] text-black font-bold uppercase tracking-wide text-xs">
                   Trade
