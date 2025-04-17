@@ -159,14 +159,54 @@ const useGetProfileTokens = () => {
           if (!metadata) return null;
 
           const { name, symbol, uri } = decodeMetadata(metadata.data);
-          let image: string | null = null;
 
+          // Skip if URI is not HTTPS
+          if (!uri.startsWith("https://")) {
+            console.warn(
+              `Skipping non-HTTPS metadata URI for token ${name}: ${uri}`,
+            );
+            return null;
+          }
+
+          let image: string | null = null;
           try {
-            const response = await fetch(uri);
-            const json = (await response.json()) as { image?: string };
-            image = json.image || null;
+            // Add timeout to fetch request
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+            const response = await fetch(uri, {
+              signal: controller.signal,
+            }).finally(() => clearTimeout(timeoutId));
+
+            if (!response.ok) {
+              if (response.status === 404) {
+                console.warn(`Metadata not found for token ${name} at ${uri}`);
+                return null;
+              }
+              console.warn(
+                `Failed to fetch metadata for token ${name}: ${response.status}`,
+              );
+              return null;
+            }
+
+            const json = (await response.json()) as Record<string, unknown>;
+            if (
+              typeof json === "object" &&
+              json !== null &&
+              "image" in json &&
+              typeof json.image === "string"
+            ) {
+              image = json.image;
+            }
           } catch (error) {
-            console.error(`Error fetching metadata for token ${name}:`, error);
+            if (error instanceof Error && error.name === "AbortError") {
+              console.warn(
+                `Metadata fetch timed out for token ${name} at ${uri}`,
+              );
+            } else {
+              console.warn(`Error fetching metadata for token ${name}:`, error);
+            }
+            return null;
           }
 
           const tokensHeld =
@@ -235,46 +275,90 @@ const useCreatedTokens = () => {
 
   const getTokenAccounts = useTokenAccounts();
   const removeNonAutofunTokens = useRemoveNonAutofunTokens();
-  const getTokenMetadata = useTokenMetadata();
-  const getProfileTokens = useGetProfileTokens();
-
-  const fetchTokens = useCallback(async () => {
+  const fetchTokens = useCallback(async (): Promise<ProfileToken[]> => {
     if (!publicKey) {
       throw new Error("user not connected to wallet");
     }
 
-    // Replace womboApi with fetch
-    const response = await fetch(`/api/tokens?creator=${publicKey}`);
+    // === 1) Build headers ===
+    const authToken = localStorage.getItem("authToken");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(authToken
+        ? { Authorization: `Bearer ${JSON.parse(authToken)}` }
+        : {}),
+    };
+
+    // === 2) Fetch the raw tokens list ===
+    const response = await fetch(`${env.apiUrl}/api/creator-tokens`, {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: JSON.stringify({ creator: publicKey.toBase58() }),
+    });
     if (!response.ok) {
       throw new Error(`Failed to fetch: ${response.statusText}`);
     }
-    const data = (await response.json()) as { tokens: Array<{ mint: string }> };
-    const tokens = data.tokens;
 
+    const { tokens } = (await response.json()) as {
+      tokens: Array<{
+        id: string;
+        name: string;
+        ticker: string;
+        image: string | null;
+        mint: string;
+        tokenDecimals: number;
+      }>;
+    };
+
+    console.log("tokens", tokens);
+
+    // === 3) Pull your on‐chain token accounts **once** ===
     const tokenAccounts = await getTokenAccounts();
-    const createdTokenAccounts = tokenAccounts.filter((account) =>
-      tokens.find(
-        (token: { mint: string }) => token.mint === account.mint.toBase58(),
-      ),
-    );
-    const autofunTokenAccounts =
-      await removeNonAutofunTokens(createdTokenAccounts);
+    const autofunTokenAccounts = await removeNonAutofunTokens(tokenAccounts);
+    // === 4) Map into ProfileToken[] ===
+    const profileTokens: ProfileToken[] = tokens.map((t) => {
+      // const mint = t.mint; // Extract mint property
+      // parse the mint
+      const mintPubkey = new PublicKey(t.mint);
 
-    const metadataAccounts = await getTokenMetadata(autofunTokenAccounts);
+      // find the account with this mint (if any)
+      const account = tokenAccounts.find((acct) =>
+        acct.mint.equals(mintPubkey),
+      );
 
-    const profileTokens = await getProfileTokens(
-      autofunTokenAccounts,
-      metadataAccounts,
-    );
+      const reserveLamport =
+        autofunTokenAccounts
+          .find((acct) => acct.tokenAccount.mint.equals(mintPubkey))
+          ?.bondingCurveAccount.reserveLamport.toNumber() ?? 0;
+      const solValue = account?.amount
+        ? calculateAmountOutSell(
+            reserveLamport,
+            Number(account?.amount ?? 0),
+            6,
+            1,
+            autofunTokenAccounts
+              .find((acct) => acct.tokenAccount.mint.equals(mintPubkey))
+              ?.bondingCurveAccount.reserveToken.toNumber() ?? 0,
+          ) / LAMPORTS_PER_SOL
+        : 0;
 
+      return {
+        image: t.image,
+        name: t.name,
+        ticker: t.ticker,
+        mint: t.mint,
+        // safe‐cast the amount or fall back to zero
+        tokensHeld: account?.amount
+          ? BigInt(account?.amount) / BigInt(10 ** t.tokenDecimals)
+          : BigInt(0),
+        solValue: solValue,
+      };
+    });
+
+    console.log("profileTokens", profileTokens);
     return profileTokens;
-  }, [
-    getProfileTokens,
-    getTokenAccounts,
-    getTokenMetadata,
-    publicKey,
-    removeNonAutofunTokens,
-  ]);
+  }, [publicKey, env.apiUrl, getTokenAccounts, removeNonAutofunTokens]);
 
   return fetchTokens;
 };
@@ -293,17 +377,27 @@ export const useProfile = () => {
   const getCreatedTokens = useCreatedTokens();
 
   const fetchProfile = useCallback(async () => {
-    try {
-      const tokensHeld = await getOwnedTokens();
-      const tokensCreated = await getCreatedTokens();
+    setIsLoading(true);
+    setIsError(false);
 
-      setData({ tokensHeld, tokensCreated });
-    } catch {
-      setIsError(true);
-    } finally {
-      setIsLoading(false);
+    let tokensHeld: ProfileToken[] = [];
+    let tokensCreated: ProfileToken[] = [];
+
+    try {
+      tokensHeld = await getOwnedTokens();
+    } catch (err) {
+      console.error("getOwnedTokens failed:", err);
     }
-  }, [getCreatedTokens, getOwnedTokens]);
+
+    try {
+      tokensCreated = await getCreatedTokens();
+    } catch (err) {
+      console.error("getCreatedTokens failed:", err);
+    }
+    // always update the state even if one fails
+    setData({ tokensHeld, tokensCreated });
+    setIsLoading(false);
+  }, [getOwnedTokens, getCreatedTokens]);
 
   useEffect(() => {
     if (!publicKey) return;

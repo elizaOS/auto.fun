@@ -14,12 +14,14 @@ import generationRouter, { checkAndReplenishTokens } from "./routes/generation";
 import messagesRouter from "./routes/messages";
 import shareRouter from "./routes/share";
 import swapRouter from "./routes/swap";
-import heliusWebhookRouter from "./routes/helius-webhook";
+import webhookRouter from "./routes/webhooks";
 import tokenRouter, { processSwapEvent } from "./routes/token";
+import migrationRouter from "./routes/migration";
 import { uploadToCloudflare } from "./uploader";
 import { WebSocketDO, allowedOrigins, createTestSwap } from "./websocket";
 import { getWebSocketClient } from "./websocket-client";
 import { getSOLPrice } from "./mcap";
+// import { startMonitoringBatch } from "./tokenSupplyHelpers/monitoring";
 
 // Define a simple interface for the scheduled event object
 interface ScheduledEvent {
@@ -101,7 +103,8 @@ api.route("/", messagesRouter);
 api.route("/", authRouter);
 api.route("/", swapRouter);
 api.route("/share", shareRouter);
-api.route("/", heliusWebhookRouter);
+api.route("/", webhookRouter);
+api.route("/", migrationRouter);
 
 // Root paths for health checks
 app.get("/", (c) => c.json({ status: "ok" }));
@@ -458,8 +461,30 @@ export default {
         logger.error("Invalid scheduled event format:", event);
         return;
       }
+      {
+        /* Malibu: We might need to add this in the future */
+      }
+      // ctx.waitUntil(
+      //   (async () => {
+      //     try {
+      //       const { processed, total } = await startMonitoringBatch(env, 5);
+      //       logger.info(`Scheduled monitoring: processed ${processed}/${total}`);
+      //     } catch (err) {
+      //       logger.error("Error in batch monitoring:", err);
+      //     }
+      //   })()
+      // );
 
+      // ctx.waitUntil(
+      //   (async () => {
+      //     try {
       await cron(env, event);
+      logger.info("Cron job completed");
+      //     } catch (err) {
+      //       logger.error("Error in cron job:", err);
+      //     }
+      //   })()
+      // );
     } catch (error) {
       logger.error("Error in scheduled handler:", error);
     }

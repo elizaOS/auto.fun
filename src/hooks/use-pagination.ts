@@ -36,6 +36,7 @@ const fetchPaginatedData = async <
   sortBy,
   sortOrder,
   itemsPropertyName,
+  validationSchema,
 }: PaginationOptions<TOutput, TInput>): Promise<PaginatedResponse<TOutput>> => {
   const queryParams = new URLSearchParams({
     limit: limit.toString(),
@@ -54,7 +55,9 @@ const fetchPaginatedData = async <
 
   // Validate each item in the response with the provided schema if it exists
   const validatedItems = response[itemsPropertyName]
-    ? (response[itemsPropertyName] as unknown[]).map((item) => item as TOutput)
+    ? (response[itemsPropertyName] as unknown[]).map((item) =>
+        validationSchema ? validationSchema.parse(item) : (item as TOutput),
+      )
     : [];
 
   return {

@@ -2,6 +2,7 @@ import * as CANNON from "cannon-es";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { IToken } from "@/types";
+import { getToken } from "@/utils/api";
 
 // Add TypeScript declaration for CANNON to fix the errors
 declare module "cannon-es" {
@@ -166,10 +167,22 @@ interface DiceRollerProps {
 
 const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const dicePositionsRef = useRef<THREE.Vector3[]>([]);
-  // const [dicePositions, setDicePositions] = useState<THREE.Vector3[]>([]);
-  // const [diceInitialized, setDiceInitialized] = useState(false);
+  const [selectedCube, setSelectedCube] = useState<THREE.Mesh | null>(null);
+  const [selectedTokenData, setSelectedTokenData] = useState<IToken | null>(
+    null,
+  );
+  const [clickPosition, setClickPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  // @ts-ignore
+  const [popupPosition, setPopupPosition] = useState<{
+    left: string;
+    top: string;
+  } | null>(null);
 
   // Store selected tokens and their addresses for navigation
   const [selectedTokens, setSelectedTokens] = useState<
@@ -271,8 +284,16 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   const handleContainerClick = (event: React.MouseEvent) => {
     if (isLoading) return;
 
-    // Get container bounds for raycaster
+    // Store click position relative to the container
     const rect = containerRef.current?.getBoundingClientRect();
+    if (rect) {
+      setClickPosition({
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+      });
+    }
+
+    // Get container bounds for raycaster
     if (!rect || !cameraRef.current || !sceneRef.current) return;
 
     // Calculate normalized mouse position
@@ -296,11 +317,60 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       const tokenAddress = clickedDie.userData?.tokenAddress;
 
       if (tokenAddress) {
-        // window.location.href = `/token/${tokenAddress}`;
-        applyForceToAllDice(event.nativeEvent);
+        // If we already have a selected cube, deselect it
+        if (selectedCube) {
+          // Remove glow effect
+          if (Array.isArray(selectedCube.material)) {
+            selectedCube.material.forEach((mat) => {
+              if (mat instanceof THREE.MeshStandardMaterial) {
+                mat.emissiveIntensity = 0.3;
+              }
+            });
+          }
+          setSelectedCube(null);
+          setSelectedTokenData(null);
+        } else {
+          // Select the new cube
+          setSelectedCube(clickedDie);
+          // Add glow effect
+          if (Array.isArray(clickedDie.material)) {
+            clickedDie.material.forEach((mat) => {
+              if (mat instanceof THREE.MeshStandardMaterial) {
+                mat.emissiveIntensity = 1.0;
+              }
+            });
+          }
+          // Fetch token data
+          fetchTokenData(tokenAddress);
+        }
       }
     } else {
-      applyForceToAllDice(event.nativeEvent);
+      // If clicking background and we have a selected cube, deselect it
+      if (selectedCube) {
+        // Remove glow effect
+        if (Array.isArray(selectedCube.material)) {
+          selectedCube.material.forEach((mat) => {
+            if (mat instanceof THREE.MeshStandardMaterial) {
+              mat.emissiveIntensity = 0.3;
+            }
+          });
+        }
+        setSelectedCube(null);
+        setSelectedTokenData(null);
+      } else {
+        // Only apply force if no cube is selected
+        applyForceToAllDice(event.nativeEvent);
+      }
+    }
+  };
+
+  // Function to fetch token data
+  const fetchTokenData = async (tokenAddress: string) => {
+    try {
+      const data = await getToken({ address: tokenAddress });
+      setSelectedTokenData(data as IToken);
+    } catch (error) {
+      console.error("Error fetching token data:", error);
     }
   };
 
@@ -333,6 +403,51 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         (Math.random() - 0.5) * 10,
       );
     }
+  };
+
+  // Update popup position when mounted or click position changes
+  useEffect(() => {
+    if (selectedTokenData && clickPosition && popupRef.current) {
+      const position = getDisplayPosition();
+      if (position?.left && position?.top) {
+        setPopupPosition(position);
+      }
+    }
+  }, [selectedTokenData, clickPosition, popupRef.current]);
+
+  // Function to calculate display position
+  const getDisplayPosition = () => {
+    if (!clickPosition || !containerRef.current || !popupRef.current) {
+      return null;
+    }
+
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const popupHeight = popupRef.current.offsetHeight;
+    const popupWidth = 320;
+    const padding = 15;
+
+    // Calculate initial position centered on click
+    let left = clickPosition.x - popupWidth / 2;
+    let top = clickPosition.y - popupHeight / 2;
+
+    // Adjust if it would overflow right edge
+    if (left + popupWidth > containerRect.width) {
+      left = containerRect.width - popupWidth - padding;
+    }
+
+    // Adjust if it would overflow bottom edge
+    if (top + popupHeight > containerRect.height) {
+      top = containerRect.height - popupHeight - padding;
+    }
+
+    // Ensure it doesn't go off the left or top edges
+    left = Math.max(padding, left);
+    top = Math.max(padding, top);
+
+    return {
+      left: `${left}px`,
+      top: `${top}px`,
+    };
   };
 
   useEffect(() => {
@@ -956,6 +1071,95 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
           Loading...
         </div>
       )}
+
+      {/* Token Data Display */}
+      {/* {selectedTokenData && (
+        <div
+          className="absolute bg-autofun-background-card p-4 shadow-lg z-10 w-[320px]"
+          // @ts-ignore
+          style={getDisplayPosition()}
+        >
+          <button
+            onClick={handleCloseTokenData}
+            className="absolute top-2 right-3 text-autofun-text-secondary hover:text-autofun-text-primary"
+          >
+            ✕
+          </button>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between pr-8">
+              <div className="flex items-center gap-2">
+                <div className="w-14 h-14 overflow-hidden">
+                  <img
+                    src={selectedTokenData.image}
+                    alt={selectedTokenData.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <h3 className="text-lg font-bold text-autofun-text-primary">
+                    {selectedTokenData.name}
+                  </h3>
+                  <span className="text-sm text-autofun-text-secondary">
+                    ${selectedTokenData.ticker}
+                  </span>
+                  <span className="text-xs text-autofun-text-secondary">
+                    Created: {formatDate(selectedTokenData.createdAt)}
+                  </span>
+                </div>
+              </div>
+              <Link to={`/token/${selectedTokenData.mint}`}>
+                <button className="py-0.5 px-2 bg-[#03ff24] text-black font-bold uppercase tracking-wide text-xs">
+                  Trade
+                </button>
+              </Link>
+            </div>
+
+            <div className="flex items-center gap-1 -my-1">
+              <span className="text-[10px] text-autofun-text-secondary truncate">
+                {selectedTokenData.mint}
+              </span>
+              <div onClick={(e) => e.stopPropagation()} className="scale-75">
+                <CopyButton text={selectedTokenData.mint} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-autofun-text-secondary">
+                  Price USD
+                </span>
+                <span className="text-xl font-dm-mono text-autofun-text-highlight">
+                  ${selectedTokenData.currentPrice?.toFixed(6) || "0.000000"}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-autofun-text-secondary">
+                  Market Cap
+                </span>
+                <span className="text-xl font-dm-mono text-autofun-text-highlight">
+                  ${selectedTokenData.marketCapUSD?.toFixed(2) || "0.00"}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-autofun-text-secondary">
+                  24h Volume
+                </span>
+                <span className="text-xl font-dm-mono text-autofun-text-highlight">
+                  ${selectedTokenData.volume24h?.toFixed(2) || "0.00"}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-autofun-text-secondary">
+                  Holders
+                </span>
+                <span className="text-xl font-dm-mono text-autofun-text-highlight">
+                  {selectedTokenData.holderCount || "0"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )} */}
     </div>
   );
 };

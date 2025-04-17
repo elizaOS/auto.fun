@@ -14,7 +14,10 @@ export const shortenAddress = (address: string) => {
   return address.slice(0, 3) + "..." + address.slice(-3);
 };
 
-export const abbreviateNumber = (num: number): string => {
+export const abbreviateNumber = (
+  num: number,
+  withoutCurrency: boolean = false,
+): string => {
   const absNum = Math.abs(Number(num));
   if (absNum < 1000) return formatNumber(num);
 
@@ -25,7 +28,7 @@ export const abbreviateNumber = (num: number): string => {
   const scaled = absNum / Math.pow(1000, exponent);
   const formatted = scaled % 1 === 0 ? scaled.toString() : scaled.toFixed(1);
 
-  return `$${(num < 0 ? "-" : "") + formatted + unit}`;
+  return `${withoutCurrency ? "" : "$"}${(num < 0 ? "-" : "") + formatted + unit}`;
 };
 
 export const formatNumber = (
@@ -69,6 +72,7 @@ function toSubscript(num: number): string {
     "7": "\u2087",
     "8": "\u2088",
     "9": "\u2089",
+    "-": "\u207B",
   };
   return num
     .toString()
@@ -85,8 +89,8 @@ export const formatNumberSubscript = (num: number): string => {
     num = Math.abs(num);
   }
 
-  // Round to 9 decimal places
-  num = Number(num.toFixed(10));
+  // Round to 11 decimal places #mainnet tests
+  num = Number(num.toFixed(11));
 
   if (num >= 1) {
     return sign + num.toString();
@@ -114,6 +118,11 @@ export const sleep = (ms: number) => {
 };
 
 export const isFromDomain = (url: string, domain: string): boolean => {
+  // if url does not have http or https, add it
+  if (!url.startsWith("http") && !url.startsWith("https")) {
+    url = "https://" + url;
+  }
+
   try {
     const parsedUrl = new URL(url);
     return (

@@ -50,8 +50,6 @@ export default function Profile() {
     }
   }, [selectedTab, tokens.tokensCreated, tokens.tokensHeld]);
 
-  if (isLoading) return <Loader />;
-
   return (
     <div className="flex flex-col flex-1 mt-32 max-w-4xl w-full m-auto">
       <div className="text-white text-[32px] font-medium leading-9 mb-6 font-satoshi">
@@ -73,7 +71,13 @@ export default function Profile() {
         </Button>
       </div>
 
-      <TokenTable tokens={tableTokens} />
+      {isLoading ? (
+        <div className="flex justify-center items-center min-h-[200px]">
+          <Loader />
+        </div>
+      ) : (
+        <TokenTable tokens={tableTokens} />
+      )}
     </div>
   );
 }

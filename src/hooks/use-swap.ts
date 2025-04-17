@@ -16,6 +16,7 @@ import { getConfigAccount } from "./use-config-account";
 import { useMevProtection } from "./use-mev-protection";
 import { useSlippage } from "./use-slippage";
 import { useTransactionSpeed } from "./use-transaction-speed";
+import { env } from "@/utils/env";
 
 interface SwapParams {
   style: "buy" | "sell";
@@ -53,7 +54,9 @@ export const useSwap = () => {
 
     // Convert SOL to lamports (1 SOL = 1e9 lamports)
     const amountLamports = Math.floor(amount * 1e9);
-    const amountTokens = Math.floor(amount * 1e6);
+    const amountTokens = Math.floor(
+      amount * (token?.tokenDecimals ? 10 ** token.tokenDecimals : 1e6),
+    );
 
     console.log("swapping:", {
       style,
@@ -70,9 +73,7 @@ export const useSwap = () => {
 
     const ixs = [];
     if (token?.status === "locked") {
-      const mainnetConnection = new Connection(
-        "https://mainnet.helius-rpc.com/?api-key=156e83be-b359-4f60-8abb-c6a17fd3ff5f",
-      );
+      const mainnetConnection = new Connection(env.rpcUrlMainnet, "confirmed"); // this is always mainnet
       // Use Jupiter API when tokens are locked
       const ixsJupiterSwap = await getJupiterSwapIx(
         wallet.publicKey,
@@ -138,19 +139,24 @@ export const useSwap = () => {
     if (!wallet.publicKey || !wallet.signTransaction || !program) {
       throw new Error("Wallet not connected or missing required methods");
     }
-
-    const [bondingCurvePda] = PublicKey.findProgramAddressSync(
-      [Buffer.from(SEED_BONDING_CURVE), new PublicKey(tokenAddress).toBytes()],
-      program.programId,
-    );
-    const curve = await program.account.bondingCurve.fetch(bondingCurvePda);
+    let curve;
+    if (token?.status !== "locked") {
+      const [bondingCurvePda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from(SEED_BONDING_CURVE),
+          new PublicKey(tokenAddress).toBytes(),
+        ],
+        program.programId,
+      );
+      curve = await program.account.bondingCurve.fetch(bondingCurvePda);
+    }
 
     const ixs = await createSwapIx({
       style,
       amount,
       tokenAddress,
-      reserveLamport: curve.reserveLamport.toNumber(),
-      reserveToken: curve.reserveToken.toNumber(),
+      reserveLamport: curve ? curve.reserveLamport.toNumber() : 0,
+      reserveToken: curve ? curve.reserveToken.toNumber() : 0,
       token,
     });
 
@@ -163,7 +169,7 @@ export const useSwap = () => {
     const simulation = await connection.simulateTransaction(tx);
     console.log("Simulation logs:", simulation.value.logs);
     if (simulation.value.err) {
-      console.error("Simulation failed:", simulation.value.err.toString());
+      console.error("Simulation failed:", JSON.stringify(simulation.value.err));
       throw new Error(`Transaction simulation failed: ${simulation.value.err}`);
     }
 
@@ -195,9 +201,11 @@ export const useSwap = () => {
 
   return {
     executeSwap: async (...params: Parameters<typeof executeSwap>) => {
+      let signature: string | undefined;
       try {
         setIsExecuting(true);
-        const { signature } = await executeSwap(...params);
+        const res = await executeSwap(...params);
+        signature = res.signature;
         if (signature) {
           toast.info(`Transaction sent: ${signature.slice(0, 8)}...`);
         } else {
@@ -208,6 +216,7 @@ export const useSwap = () => {
       } finally {
         setIsExecuting(false);
       }
+      return { signature };
     },
     isExecuting,
   };

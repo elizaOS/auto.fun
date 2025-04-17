@@ -3,21 +3,21 @@ import { EmptyState } from "@/components/empty-state";
 import useAuthentication from "@/hooks/use-authentication";
 import { useCreateToken } from "@/hooks/use-create-token";
 import { useSolBalance } from "@/hooks/use-token-balance";
+import { HomepageTokenSchema } from "@/hooks/use-tokens";
 import { getAuthToken } from "@/utils/auth";
-import { env } from "@/utils/env";
-import { useWallet } from "@solana/wallet-adapter-react";
-import { Keypair } from "@solana/web3.js";
+import { env, isDevnet } from "@/utils/env";
+import { getSocket } from "@/utils/socket";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
-import { useConnection } from "@solana/wallet-adapter-react";
-import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { getSocket } from "@/utils/socket";
-import { HomepageTokenSchema } from "@/hooks/use-tokens";
+// Import the worker using Vite's ?worker syntax
+import InlineVanityWorker from "@/workers/vanityWorker?worker&inline"; // Added import
 
-const MAX_INITIAL_SOL = 45;
+const MAX_INITIAL_SOL = isDevnet ? 2.8 : 28;
 // Use the token supply and virtual reserves from environment or fallback to defaults
 const TOKEN_SUPPLY = Number(env.tokenSupply) || 1000000000000000;
 const VIRTUAL_RESERVES = Number(env.virtualReserves) || 2800000000;
@@ -31,17 +31,6 @@ enum FormTab {
 
 // LocalStorage key for tab state
 const TAB_STATE_KEY = "auto_fun_active_tab";
-
-// --- API Response Types ---
-interface VanityKeypairResponse {
-  publicKey: string;
-  secretKey: number[];
-}
-
-interface ApiErrorResponse {
-  error?: string;
-}
-// --- End API Response Types ---
 
 interface UploadResponse {
   success: boolean;
@@ -97,6 +86,25 @@ interface TokenSearchData {
   isCreator?: boolean;
   updateAuthority?: string;
 }
+
+// Vanity Generator Types (Copied from testing.tsx)
+type VanityResult = {
+  publicKey: string;
+  secretKey: Keypair; // Store the Keypair object directly
+};
+type WorkerMessage =
+  | {
+      type: "found";
+      workerId: number;
+      publicKey: string;
+      secretKey: number[]; // Worker sends array
+      validated: boolean;
+    }
+  | { type: "progress"; workerId: number; count: number }
+  | { type: "error"; workerId: number; error: string };
+
+// Base58 characters
+const BASE58_REGEX = /^[1-9A-HJ-NP-Za-km-z]+$/;
 
 // Form Components
 export const FormInput = ({
@@ -438,7 +446,7 @@ const FormImageInput = ({
             <button
               type="button"
               onClick={handleCancel}
-              className="mt-4 text-[#03FF24] px-4 py-2 rounded-lg font-bold transition-colors"
+              className="mt-4 text-[#03FF24] px-4 py-2 font-bold transition-colors"
             >
               Cancel
             </button>
@@ -524,9 +532,7 @@ const FormImageInput = ({
                     <input
                       type="text"
                       value={tickerValue || ""}
-                      onChange={(e) =>
-                        onTickerChange(e.target.value.toUpperCase())
-                      }
+                      onChange={(e) => onTickerChange(e.target.value)}
                       placeholder="TICKER"
                       maxLength={16}
                       onFocus={() => setTickerInputFocused(true)}
@@ -630,62 +636,46 @@ const uploadImage = async (metadata: TokenMetadata) => {
 
   console.log("Preparing metadata:", basicMetadata);
 
-  try {
-    const response = await fetch(env.apiUrl + "/api/upload", {
-      method: "POST",
-      headers,
-      credentials: "include",
-      body: JSON.stringify({
-        image: metadata.imageBase64,
-        metadata: {
-          name: metadata.name,
-          symbol: metadata.symbol,
-          description: metadata.description,
-          twitter: metadata.links.twitter,
-          telegram: metadata.links.telegram,
-          website: metadata.links.website,
-          discord: metadata.links.discord,
-          agentLink: metadata.links.agentLink,
-        },
-      }),
-    });
+  const response = await fetch(env.apiUrl + "/api/upload", {
+    method: "POST",
+    headers,
+    credentials: "include",
+    body: JSON.stringify({
+      image: metadata.imageBase64,
+      metadata: {
+        name: metadata.name,
+        symbol: metadata.symbol,
+        description: metadata.description,
+        twitter: metadata.links.twitter,
+        telegram: metadata.links.telegram,
+        website: metadata.links.website,
+        discord: metadata.links.discord,
+      },
+    }),
+  });
 
-    if (!response.ok) {
-      // Specifically handle authentication errors
-      if (response.status === 401) {
-        throw new Error(
-          "Authentication required. Please connect your wallet and try again.",
-        );
-      }
-      throw new Error("Failed to upload image: " + (await response.text()));
+  if (!response.ok) {
+    // Specifically handle authentication errors
+    if (response.status === 401) {
+      throw new Error(
+        "Authentication required. Please connect your wallet and try again.",
+      );
     }
-
-    const result = (await response.json()) as UploadResponse;
-
-    // Verify metadata URL exists, if not create a fallback
-    if (!result.metadataUrl || result.metadataUrl === "undefined") {
-      console.warn("No metadata URL returned from server, using fallback URL");
-
-      // Generate a fallback URL using the mint address or a UUID
-      result.metadataUrl = `https://metadata.auto.fun/${metadata.tokenMint || crypto.randomUUID()}.json`;
-      console.log("Using fallback metadata URL:", result.metadataUrl);
-    }
-
-    return result;
-  } catch (error) {
-    console.error("Error uploading:", error);
-
-    // In case of upload error, return a placeholder URL
-    const tokenMint = metadata.tokenMint || crypto.randomUUID();
-    const fallbackUrl = `https://metadata.auto.fun/${tokenMint}.json`;
-
-    console.log("Upload failed, using fallback URLs");
-    return {
-      success: false,
-      imageUrl: "",
-      metadataUrl: fallbackUrl,
-    };
+    throw new Error("Failed to upload image: " + (await response.text()));
   }
+
+  const result = (await response.json()) as UploadResponse;
+
+  // Verify metadata URL exists, if not create a fallback
+  if (!result.metadataUrl || result.metadataUrl === "undefined") {
+    console.warn("No metadata URL returned from server, using fallback URL");
+
+    // Generate a fallback URL using the mint address or a UUID
+    result.metadataUrl = `https://metadata.auto.fun/${metadata.tokenMint || crypto.randomUUID()}.json`;
+    console.log("Using fallback metadata URL:", result.metadataUrl);
+  }
+
+  return result;
 };
 
 const waitForTokenCreation = async (mint: string, timeout = 80_000) => {
@@ -765,6 +755,22 @@ export const Create = () => {
   });
   const [userPrompt, setUserPrompt] = useState("");
   const [isProcessingPrompt, setIsProcessingPrompt] = useState(false);
+
+  // --- Vanity Generator State --- (Copied and adapted)
+  const [vanitySuffix, setVanitySuffix] = useState("FUN"); // Default FUN
+  const [isGeneratingVanity, setIsGeneratingVanity] = useState(false);
+  const [vanityResult, setVanityResult] = useState<VanityResult | null>(null);
+  const [displayedPublicKey, setDisplayedPublicKey] = useState<string>(
+    "--- Generate a vanity address ---",
+  ); // Placeholder
+  const [suffixError, setSuffixError] = useState<string | null>(null);
+  const workersRef = useRef<Worker[]>([]);
+  const startTimeRef = useRef<number | null>(null);
+  const displayUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Optional: For displaying stats
+  // const [totalAttempts, setTotalAttempts] = useState(0);
+  // const [generationRate, setGenerationRate] = useState(0);
+  // const attemptBatchRef = useRef<number>(0);
 
   // Effect to clear import token data if not in import tab
   useEffect(() => {
@@ -864,13 +870,13 @@ export const Create = () => {
     symbol: "",
     description: "",
     prompt: "",
-    initialSol: "2",
+    initialSol: "0",
     links: {
       twitter: "",
       telegram: "",
       website: "",
       discord: "",
-      agentLink: "",
+      farcaster: "",
     },
     importAddress: "",
   });
@@ -905,7 +911,7 @@ export const Create = () => {
   console.log("balance", balance);
 
   // Calculate max SOL the user can spend (leave 0.05 SOL for transaction fees)
-  const maxUserSol = balance ? Math.max(0, balance - 0.05) : 0;
+  const maxUserSol = balance ? Math.max(0, Number(balance) - 0.05) : 0;
   // Use the smaller of MAX_INITIAL_SOL or the user's max available SOL
   const maxInputSol = Math.min(MAX_INITIAL_SOL, maxUserSol);
 
@@ -992,7 +998,36 @@ export const Create = () => {
         setImageFile(manualForm.imageFile);
       }
     }
-  }, [activeTab]);
+    // Reset vanity state when switching tabs
+    stopVanityGeneration();
+    setVanityResult(null);
+    setDisplayedPublicKey("--- Generate a vanity address ---");
+    setSuffixError(null);
+  }, [activeTab]); // Added stopVanityGeneration
+
+  // Automatically start vanity generation when in non-import tab
+  useEffect(() => {
+    // Only auto-start if:
+    // 1. Not on Import tab
+    // 2. Not already generating
+    // 3. Don't have a result yet
+    // 4. Have a valid suffix (default or user-entered)
+    if (
+      activeTab !== FormTab.IMPORT &&
+      !isGeneratingVanity &&
+      !vanityResult &&
+      vanitySuffix.trim() &&
+      !suffixError
+    ) {
+      // Short delay to allow UI to render first
+      const timeoutId = setTimeout(() => {
+        startVanityGeneration();
+      }, 500);
+
+      return () => clearTimeout(timeoutId);
+    }
+    // Note: We're ignoring the linter warnings about dependencies here
+  }, [activeTab, isGeneratingVanity, vanityResult, vanitySuffix, suffixError]);
 
   // Update mode-specific state when main form changes
   useEffect(() => {
@@ -1117,7 +1152,7 @@ export const Create = () => {
       } else {
         setErrors((prev) => ({
           ...prev,
-          [field]: `${field.charAt(0).toUpperCase() + field.slice(1)} is required`,
+          [field]: `${field.charAt(0) + field.slice(1)} is required`,
         }));
       }
     }
@@ -1645,8 +1680,7 @@ export const Create = () => {
     }
 
     // Check if it's valid base58 (Solana addresses use base58)
-    const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
-    return base58Regex.test(address.trim());
+    return BASE58_REGEX.test(address.trim());
   };
 
   // Handle paste in the import address field
@@ -1758,7 +1792,6 @@ export const Create = () => {
         // Set the prompt text so it can be reused
         if (setPrompt) setPrompt(token.prompt);
         if (onPromptChange) onPromptChange(token.prompt);
-
         // If we have an image URL, use it directly
         if (token.image) {
           // Transform R2 URLs to use local endpoint if needed
@@ -1846,9 +1879,352 @@ export const Create = () => {
     [setIsGenerating, setGeneratingField],
   );
 
+  // --- Vanity Generation Functions --- (Copied and adapted)
+  const stopVanityGeneration = useCallback(() => {
+    if (!isGeneratingVanityRef.current) return; // Use ref to check if actually running
+    console.log("Stopping vanity workers...");
+    setIsGeneratingVanity(false); // Set state immediately
+    workersRef.current.forEach((worker) => {
+      try {
+        worker.postMessage("stop"); // Attempt graceful stop
+      } catch (e) {
+        console.warn("Couldn't send stop message to worker", e);
+      }
+      // Terminate after a delay, ensures state update propagates
+      setTimeout(() => {
+        try {
+          worker.terminate();
+        } catch (e) {
+          /* ignore */
+        }
+      }, 100);
+    });
+    workersRef.current = [];
+    startTimeRef.current = null;
+    if (displayUpdateIntervalRef.current) {
+      clearInterval(displayUpdateIntervalRef.current);
+      displayUpdateIntervalRef.current = null;
+    }
+    // --- REMOVED DISPLAY UPDATE LOGIC FROM HERE ---
+    // if (!vanityResult) {
+    //   setDisplayedPublicKey("--- Generate a vanity address ---");
+    // } else {
+    //   setDisplayedPublicKey(vanityResult.publicKey); // Don't reset display here
+    // }
+    console.log("Vanity generation stopped.");
+  }, []); // Removed isGeneratingVanity and vanityResult dependency
+
+  const startVanityGeneration = useCallback(() => {
+    const suffix = vanitySuffix.trim();
+
+    console.log("vanitySuffix", vanitySuffix);
+
+    setVanityResult(null); // <-- Add this line to clear the previous result
+    setDisplayedPublicKey("Generating..."); // Reset display immediately
+
+    let currentError = null;
+
+    // 1. Validation
+    if (!suffix) {
+      currentError = "Suffix cannot be empty.";
+    } else if (suffix.length > 5) {
+      currentError = "Suffix cannot be longer than 5 characters.";
+    } else if (!BASE58_REGEX.test(suffix)) {
+      currentError = "Suffix contains invalid Base58 characters.";
+    }
+
+    // 2. Warnings
+    if (!currentError) {
+      if (suffix.length === 5) {
+        currentError = "Warning: 5-letter suffix may take 24+ hours to find!";
+        toast.warn(currentError);
+      } else if (suffix.length === 4) {
+        currentError = "Note: 4-letter suffix may take some time to find.";
+        toast.info(currentError);
+      }
+    }
+
+    setSuffixError(currentError);
+    if (
+      currentError &&
+      !currentError.startsWith("Warning") &&
+      !currentError.startsWith("Note")
+    ) {
+      return; // Stop if it's a blocking error
+    }
+
+    // Stop previous generation if any
+    stopVanityGeneration();
+
+    setIsGeneratingVanity(true);
+
+    const numWorkers = navigator.hardwareConcurrency || 4;
+    console.log(
+      `Starting ${numWorkers} vanity workers for suffix: "${suffix}"`,
+    );
+    startTimeRef.current = Date.now();
+    workersRef.current = [];
+
+    // Start rolling display effect
+    const base58Chars =
+      "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+    const generateRandomString = (length: number) => {
+      let result = "";
+      for (let i = 0; i < length; i++) {
+        result += base58Chars.charAt(
+          Math.floor(Math.random() * base58Chars.length),
+        );
+      }
+      return result;
+    };
+
+    displayUpdateIntervalRef.current = setInterval(() => {
+      // Generate a random prefix matching Solana address length minus suffix length
+      const prefixLength = 44 - suffix.length;
+      const randomPrefix = generateRandomString(prefixLength);
+      setDisplayedPublicKey(`${randomPrefix}${suffix}`);
+    }, 100); // Update display frequently
+
+    for (let i = 0; i < numWorkers; i++) {
+      try {
+        const worker = new InlineVanityWorker();
+        worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
+          // Check generation state *inside* the handler
+          if (!isGeneratingVanityRef.current) return;
+
+          const data = event.data;
+          console.log("*** SUCCESS ***");
+          console.log("data", data);
+          switch (data.type) {
+            case "found":
+              console.log(
+                `Worker ${data.workerId} found valid match: ${data.publicKey}`,
+              );
+              if (data.validated) {
+                // Construct Keypair from secret key array
+                const secretKeyUint8Array = new Uint8Array(data.secretKey);
+                if (secretKeyUint8Array.length !== 64) {
+                  console.error(
+                    "Worker sent invalid secret key length:",
+                    secretKeyUint8Array.length,
+                  );
+                  // Handle error - maybe try next result? For now, stop.
+                  stopVanityGeneration();
+                  setSuffixError("Received invalid key from generator.");
+                  return;
+                }
+                const foundKeypair = Keypair.fromSecretKey(secretKeyUint8Array);
+                console.log("*** FOUND KEYPAIR ***");
+
+                // Double-check the derived public key matches
+                if (foundKeypair.publicKey.toString() !== data.publicKey) {
+                  console.log("*** FAILURE ***");
+                  console.error(
+                    "Public key mismatch between worker and derived key!",
+                  );
+                  setSuffixError("Key validation mismatch.");
+                  stopVanityGeneration(); // Stop on critical error
+                  return;
+                }
+                console.log("*** SUCCESS ***");
+
+                setVanityResult({
+                  publicKey: data.publicKey,
+                  secretKey: foundKeypair,
+                });
+                setDisplayedPublicKey(data.publicKey); // Show final result
+                stopVanityGeneration(); // Stop all workers
+                console.log("*** STOPPED VANITY GENERATION ***");
+              } else {
+                console.warn(
+                  `Worker ${data.workerId} found potential match but validation failed.`,
+                );
+                // Keep searching
+              }
+              break;
+            case "progress":
+              // Optional: Update stats
+              // attemptBatchRef.current += data.count;
+              break;
+            case "error":
+              console.error(`Worker ${data.workerId} error: ${data.error}`);
+              // Optional: Stop all if one worker fails critically?
+              // stopVanityGeneration();
+              break;
+          }
+        };
+
+        worker.onerror = (err: any) => {
+          console.error(`Worker ${i} fatal error:`, err);
+          setSuffixError(`Worker ${i} failed: ${err.message || "Unknown"}`);
+          workersRef.current = workersRef.current.filter((w) => w !== worker);
+          if (
+            workersRef.current.length === 0 &&
+            isGeneratingVanityRef.current
+          ) {
+            setSuffixError("All vanity generators failed!");
+            stopVanityGeneration();
+          }
+          try {
+            worker.terminate();
+          } catch (e) {
+            /* ignore */
+          }
+        };
+
+        worker.postMessage({ suffix, workerId: i });
+        workersRef.current.push(worker);
+      } catch (workerError) {
+        console.error(`Failed to create worker ${i}:`, workerError);
+        setSuffixError(`Failed to start generator worker ${i}.`);
+      }
+    }
+
+    if (workersRef.current.length === 0) {
+      setSuffixError("Could not start any vanity generator workers.");
+      setIsGeneratingVanity(false);
+      setDisplayedPublicKey("--- Error starting generator ---");
+      if (displayUpdateIntervalRef.current) {
+        clearInterval(displayUpdateIntervalRef.current);
+        displayUpdateIntervalRef.current = null;
+      }
+      startTimeRef.current = null;
+    } else {
+      console.log(`Successfully started ${workersRef.current.length} workers.`);
+      // Optional: Start stats timer
+    }
+  }, [vanitySuffix, stopVanityGeneration]); // Removed isGeneratingVanity as we use ref
+
+  // Use a ref for isGeneratingVanity inside callbacks to avoid stale closures
+  const isGeneratingVanityRef = useRef(isGeneratingVanity);
+  useEffect(() => {
+    isGeneratingVanityRef.current = isGeneratingVanity;
+  }, [isGeneratingVanity]);
+
+  // submitFormToBackend import
+  const submitImportFormToBackend = async () => {
+    try {
+      setIsSubmitting(true);
+
+      // Ensure wallet is connected
+      if (!publicKey) {
+        throw new Error("Wallet not connected");
+      }
+
+      // Check if we're working with imported token data - ONLY do this check for IMPORT tab
+      const storedTokenData = localStorage.getItem("import_token_data");
+      if (storedTokenData && activeTab === FormTab.IMPORT) {
+        try {
+          const tokenData = JSON.parse(storedTokenData);
+
+          console.log("Processing imported token:", tokenData);
+          console.log("Current wallet:", publicKey?.toString());
+
+          // Check if the current wallet has permission to create this token
+          // In dev mode, skip this check and allow any wallet to register
+          const isCreatorNow =
+            (tokenData.updateAuthority &&
+              tokenData.updateAuthority === publicKey.toString()) ||
+            (tokenData.creators &&
+              tokenData.creators.includes(publicKey.toString()));
+
+          console.log("Creator wallet check result:", isCreatorNow);
+          console.log("Token update authority:", tokenData.updateAuthority);
+          console.log("Token creators:", tokenData.creators);
+
+          // if (!isCreatorNow) {
+          //   throw new Error(
+          //     "You need to connect with the token's creator wallet to register it"
+          //   );
+          // }
+
+          // Show coin drop animation
+          setShowCoinDrop(true);
+
+          // Get auth token from localStorage with quote handling
+          const authToken = getAuthToken();
+
+          // Prepare headers
+          const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+          };
+
+          if (authToken) {
+            headers["Authorization"] = `Bearer ${authToken}`;
+          }
+
+          // Create token record via API
+          const createResponse = await fetch(env.apiUrl + "/api/create-token", {
+            method: "POST",
+            headers,
+            credentials: "include",
+            body: JSON.stringify({
+              tokenMint: tokenData.mint,
+              mint: tokenData.mint,
+              name: form.name,
+              symbol: form.symbol,
+              description: form.description,
+              twitter: form.links.twitter,
+              telegram: form.links.telegram,
+              website: form.links.website,
+              discord: form.links.discord,
+              imageUrl: tokenData.image || "",
+              metadataUrl: tokenData.metadataUri || "",
+              creator:
+                tokenData.updateAuthority ||
+                tokenData.creators ||
+                tokenData.mintAuthority ||
+                "",
+              // Include the import flag to indicate this is an imported token
+              imported: true,
+            }),
+          });
+
+          if (!createResponse.ok) {
+            const errorData = (await createResponse.json()) as {
+              error?: string;
+            };
+            throw new Error(errorData.error || "Failed to create token entry");
+          }
+
+          // Clear imported token data from localStorage
+          localStorage.removeItem("import_token_data");
+          setHasStoredToken(false);
+
+          // Trigger confetti to celebrate successful registration
+          if (window.createConfettiFireworks) {
+            window.createConfettiFireworks();
+          }
+
+          // Redirect to token page
+          navigate(`/token/${tokenData.mint}`);
+          return;
+        } catch (error) {
+          console.error("Error handling imported token:", error);
+          if (error instanceof Error) {
+            throw error; // Re-throw if it's a permission error
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error submitting import form:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   // Submit form to backend
   const submitFormToBackend = async () => {
     try {
+      // --- Check for Vanity Keypair --- START
+      if (!vanityResult?.publicKey || !vanityResult?.secretKey) {
+        toast.error("Please generate a vanity address first.");
+        return;
+      }
+      const mintKeypair = vanityResult.secretKey;
+      const tokenMint = vanityResult.publicKey;
+      console.log("Using client-generated vanity keypair:", tokenMint);
+      // --- Check for Vanity Keypair --- END
+
       setIsCreating(true);
       setCreationStage("initializing");
       setCreationStep("Preparing token creation...");
@@ -1923,7 +2299,6 @@ export const Create = () => {
               telegram: form.links.telegram,
               website: form.links.website,
               discord: form.links.discord,
-              agentLink: "",
               imageUrl: tokenData.image || "",
               metadataUrl: tokenData.metadataUri || "",
               // Include the import flag to indicate this is an imported token
@@ -1960,133 +2335,11 @@ export const Create = () => {
 
       // For AUTO and MANUAL tabs, we proceed with the regular token creation flow
 
-      // --- Fetch Vanity Keypair from Backend --- START
-      let tokenMint: string;
-      let mintKeypair: Keypair;
-      try {
-        console.log("Fetching vanity keypair from backend...");
-        const authToken = getAuthToken();
-        if (!authToken) {
-          throw new Error(
-            "Authentication token not found. Please reconnect wallet.",
-          );
-        }
-
-        const vanityResponse = await fetch(`${env.apiUrl}/api/vanity-keypair`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          credentials: "include", // Include cookies if needed for session/auth
-          body: JSON.stringify({ address: publicKey.toString() }),
-        });
-
-        if (!vanityResponse.ok) {
-          let errorMsg = "Failed to obtain vanity keypair.";
-          try {
-            const errorData = (await vanityResponse.json()) as ApiErrorResponse; // Type assertion
-            errorMsg = errorData.error || errorMsg;
-          } catch (e) {
-            /* Ignore parsing error */
-          }
-
-          if (vanityResponse.status === 403) {
-            errorMsg =
-              "A non-zero SOL balance is required to obtain a vanity keypair.";
-          } else if (
-            vanityResponse.status === 503 ||
-            vanityResponse.status === 404
-          ) {
-            errorMsg =
-              "No vanity keypairs currently available, please try again shortly.";
-          }
-
-          throw new Error(errorMsg);
-        }
-
-        const responseData =
-          (await vanityResponse.json()) as VanityKeypairResponse;
-        console.log("Response data:", responseData);
-
-        // Ensure we have both address and secretKey in the response
-        if (
-          !responseData.publicKey ||
-          !responseData.secretKey ||
-          !Array.isArray(responseData.secretKey)
-        ) {
-          console.error("Invalid keypair response from server:", responseData);
-          throw new Error(
-            "Invalid keypair format: missing address or secretKey",
-          );
-        }
-
-        const { publicKey: vanityAddress, secretKey: secretKeyArray } =
-          responseData;
-        tokenMint = vanityAddress;
-
-        console.log(
-          "Received keypair from API:",
-          `Address: ${vanityAddress}`,
-          `Secret key length: ${secretKeyArray?.length || 0} bytes`,
-        );
-
-        // Convert the number array to Uint8Array for Solana
-        const secretKeyUint8Array = new Uint8Array(secretKeyArray);
-
-        // Verify length is exactly 64 bytes
-        if (secretKeyUint8Array.length !== 64) {
-          throw new Error(
-            `Invalid secret key length: ${secretKeyUint8Array.length} bytes (expected 64 bytes)`,
-          );
-        }
-
-        // Create the keypair using Solana's fromSecretKey method
-        try {
-          mintKeypair = Keypair.fromSecretKey(secretKeyUint8Array);
-
-          // Get the public key from the keypair - this is the deterministic, correct value
-          const derivedPublicKey = mintKeypair.publicKey.toString();
-
-          console.log(
-            `Derived public key from secret key: ${derivedPublicKey}`,
-          );
-
-          // Check if they match, but don't throw an error if they don't - use the derived one
-          if (derivedPublicKey !== vanityAddress) {
-            console.warn(
-              `Public key mismatch - API returned: ${vanityAddress}, derived: ${derivedPublicKey}`,
-            );
-            console.warn(
-              "Using the derived public key from the secret key for safety",
-            );
-            // Update tokenMint to use the derived public key which is guaranteed to be correct
-            tokenMint = derivedPublicKey;
-          } else {
-            console.log(
-              "Public key validation successful - API and derived keys match",
-            );
-          }
-
-          console.log("Successfully created Solana keypair from secret key");
-        } catch (keypairError) {
-          console.error("Failed to create Solana keypair:", keypairError);
-          throw new Error("Invalid keypair format received from server");
-        }
-
-        console.log("Successfully obtained vanity keypair:", tokenMint);
-      } catch (error) {
-        console.error("Error fetching vanity keypair:", error);
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Could not get vanity keypair.",
-        );
-        setIsSubmitting(false); // Stop submission
-        setShowCoinDrop(false); // Hide animation if it started
-        return; // Exit the function
-      }
-      // --- Fetch Vanity Keypair from Backend --- END
+      // --- Fetch Vanity Keypair from Backend --- REMOVED
+      // let tokenMint: string; // Defined above from vanityResult
+      // let mintKeypair: Keypair; // Defined above from vanityResult
+      // try { ... } catch (error) { ... }
+      // --- Fetch Vanity Keypair from Backend --- REMOVED
 
       // Convert image to base64 if exists
       let media_base64: string | null = null;
@@ -2108,7 +2361,7 @@ export const Create = () => {
           ...form.links,
         },
         imageBase64: media_base64 || null,
-        tokenMint,
+        tokenMint, // Use client-generated mint address
         decimals: 9,
         supply: 1000000000000000,
         freezeAuthority: publicKey?.toBase58() || "",
@@ -2125,7 +2378,11 @@ export const Create = () => {
       if (media_base64) {
         try {
           console.log("Uploading image and metadata...");
-          const uploadResult = await uploadImage(tokenMetadata);
+          // Pass the client-generated tokenMint to uploadImage
+          const uploadResult = await uploadImage({
+            ...tokenMetadata,
+            tokenMint,
+          });
           imageUrl = uploadResult.imageUrl;
           metadataUrl = uploadResult.metadataUrl;
 
@@ -2183,6 +2440,7 @@ export const Create = () => {
       // Create token on-chain
       try {
         console.log("Creating token on-chain...");
+        // Pass the client-generated mintKeypair
         await createTokenOnChain(tokenMetadata, mintKeypair, metadataUrl);
         console.log("Token created on-chain successfully");
       } catch (onChainError) {
@@ -2215,7 +2473,7 @@ export const Create = () => {
                 decimals: 9, // Ensure decimals is 9
                 supply: 1000000000000000, // Set explicit supply
               };
-
+              // Pass the client-generated mintKeypair again
               await createTokenOnChain(retryMetadata, mintKeypair, metadataUrl);
               console.log("Token created successfully on retry");
               // Continue with token creation flow...
@@ -2276,19 +2534,13 @@ export const Create = () => {
       }
 
       // Wait for token creation to be confirmed
-      try {
-        console.log("Waiting for token creation confirmation...");
-        await waitForTokenCreation(tokenMint);
-        console.log("Token creation confirmed");
+      console.log("Waiting for token creation confirmation...");
+      await waitForTokenCreation(tokenMint); // Use client-generated mint
+      console.log("Token creation confirmed");
 
-        // Trigger confetti to celebrate successful minting
-        if (window.createConfettiFireworks) {
-          window.createConfettiFireworks();
-        }
-      } catch (waitError) {
-        console.error("Error waiting for token creation:", waitError);
-        // We still continue to the token page even if this fails
-        console.warn("Continuing despite token creation confirmation failure");
+      // Trigger confetti to celebrate successful minting
+      if (window.createConfettiFireworks) {
+        window.createConfettiFireworks();
       }
 
       // Clear imported token data from localStorage if it exists
@@ -2296,7 +2548,7 @@ export const Create = () => {
       setHasStoredToken(false);
 
       // Redirect to token page using the mint public key
-      navigate(`/token/${tokenMint}`);
+      navigate(`/token/${tokenMint}`); // Use client-generated mint
 
       // After transaction confirmation
       setCreationStage("confirming");
@@ -2323,6 +2575,8 @@ export const Create = () => {
       setIsCreating(false);
       setCreationStep("");
       setCreationStage("initializing");
+      // Ensure coin drop is hidden on error
+      setShowCoinDrop(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -2338,7 +2592,13 @@ export const Create = () => {
     if (!form.symbol) newErrors.symbol = "Symbol is required";
     if (!form.description) newErrors.description = "Description is required";
 
-    // Validate SOL balance - skip this check for imported tokens in dev mode
+    // Validate vanity keypair generation for non-import tabs
+    if (activeTab !== FormTab.IMPORT && (!vanityResult || isGeneratingVanity)) {
+      toast.error("Please generate and wait for a vanity address.");
+      return;
+    }
+
+    // Validate SOL balance - skip this check for imported tokens
     if (
       isAuthenticated &&
       insufficientBalance &&
@@ -2361,7 +2621,11 @@ export const Create = () => {
     }
 
     // Submit form to backend
-    await submitFormToBackend();
+    if (activeTab !== FormTab.IMPORT) {
+      await submitFormToBackend();
+    } else {
+      await submitImportFormToBackend();
+    }
   };
 
   // Fetch pre-generated token on mount for Auto mode
@@ -2437,7 +2701,11 @@ export const Create = () => {
           if (token.image) {
             // Transform R2 URLs to use local endpoint if needed
             let imageUrl = token.image;
-            if (imageUrl.includes("r2.dev")) {
+            if (
+              imageUrl.includes("r2.dev") &&
+              env.apiUrl?.includes("localhost") &&
+              env.apiUrl?.includes("127.0.0.1")
+            ) {
               // Extract the filename from the R2 URL
               const filename = imageUrl.split("/").pop();
               // Use local endpoint instead
@@ -2582,17 +2850,67 @@ export const Create = () => {
     };
   }, [autoForm.imageUrl]);
 
+  // Cleanup vanity workers on component unmount
+  useEffect(() => {
+    // Store the refs in variables before returning the cleanup function
+    const workersToTerminate = workersRef.current;
+    const timerToClear = displayUpdateIntervalRef.current;
+
+    return () => {
+      console.log("Unmounting Create page, stopping vanity generation...");
+      // Use the stored variables in the cleanup function
+      workersToTerminate.forEach((worker) => {
+        try {
+          worker.postMessage("stop");
+        } catch (e) {
+          /* ignore */
+        }
+        try {
+          worker.terminate();
+        } catch (e) {
+          /* ignore */
+        }
+      });
+      if (timerToClear) {
+        clearInterval(timerToClear);
+      }
+      // Clear the refs directly - this part is fine
+      workersRef.current = [];
+      displayUpdateIntervalRef.current = null;
+    };
+  }, []); // Empty dependency array ensures this runs only on mount and unmount
+
   const canLaunch = () => {
     if (!publicKey) return false;
+    if (activeTab === FormTab.IMPORT) {
+      // For import, we just need the form data loaded
+      return hasStoredToken && !isImporting;
+    }
+    // For Auto/Manual, need valid form, generated vanity key, and enough SOL
     const initialSol = parseFloat(form.initialSol) || 0;
-    const hasEnoughSol = solBalance >= initialSol;
-    return hasEnoughSol && !Object.values(errors).some((error) => error);
+    const hasEnoughSol = solBalance >= initialSol + 0.01; // Add buffer for mint cost
+    const hasVanityKey = !!vanityResult?.publicKey && !isGeneratingVanity;
+    return (
+      hasEnoughSol &&
+      isFormValid && // Checks name, symbol, desc, initialSol errors
+      hasVanityKey &&
+      !Object.values(errors).some(
+        (error) =>
+          error &&
+          !["userPrompt", "importAddress", "percentage"].includes(error), // Ignore non-blocking errors
+      )
+    );
   };
 
   // Add handler for coin drop cancellation
   const handleCoinDropCancel = useCallback(() => {
     setShowCoinDrop(false);
-    setIsSubmitting(false);
+    setIsSubmitting(false); // Also reset submitting state
+    setIsCreating(false); // Reset creating state
+    setCreationStage("initializing"); // Reset creation stage
+    setCreationStep("");
+    // Consider stopping vanity generation if cancelled here?
+    // stopVanityGeneration();
   }, []);
 
   const [isCreating, setIsCreating] = useState(false);
@@ -2631,6 +2949,9 @@ export const Create = () => {
         } else if (message.includes("waiting for creation from token mint")) {
           setCreationStage("validating");
           setCreationStep("Confirming token creation on-chain...");
+        } else if (message.includes("Creating token on-chain...")) {
+          setCreationStage("creating");
+          setCreationStep("Creating token on-chain...");
         }
       }
     };
@@ -2670,6 +2991,7 @@ export const Create = () => {
           <div className="flex justify-between items-center text-lg w-full shrink">
             {Object.values(FormTab).map((tab, _) => (
               <button
+                key={tab} // Added key
                 type="button"
                 className={`uppercase font-satoshi font-medium transition-colors duration-200 cursor-pointer select-none ${
                   activeTab === tab
@@ -2708,7 +3030,7 @@ export const Create = () => {
                       : "/create/generateup.svg"
                   }
                   alt="Generate"
-                  className="w-40 mb-2"
+                  className="w-24 ml-2"
                   onMouseDown={(e) => {
                     const img = e.target as HTMLImageElement;
                     if (!isProcessingPrompt) {
@@ -2756,33 +3078,7 @@ export const Create = () => {
                     onChange={(e) =>
                       handleChange("importAddress", e.target.value)
                     }
-                    alt="Generate"
-                    onMouseDown={(e) => {
-                      const img = e.target as HTMLImageElement;
-                      if (!isProcessingPrompt) {
-                        img.src = "/create/generatedown.svg";
-                      }
-                    }}
-                    onMouseUp={(e) => {
-                      const img = e.target as HTMLImageElement;
-                      if (!isProcessingPrompt) {
-                        img.src = "/create/generateup.svg";
-                      }
-                    }}
-                    onDragStart={(e) => {
-                      e.preventDefault();
-                      const img = e.target as HTMLImageElement;
-                      if (!isProcessingPrompt) {
-                        img.src = "/create/generateup.svg";
-                      }
-                    }}
-                    onMouseOut={(e) => {
-                      e.preventDefault();
-                      const img = e.target as HTMLImageElement;
-                      if (!isProcessingPrompt) {
-                        img.src = "/create/generateup.svg";
-                      }
-                    }}
+                    alt="Generate" // This alt doesn't make sense here
                     onPaste={handleImportAddressPaste}
                     placeholder="Enter any Solana token address (mint)"
                     className="flex-1 truncate my-2 p-0 border-b-2 pb-2.5 border-b-[#03FF24] text-white bg-transparent focus:outline-none focus:border-b-white"
@@ -2804,7 +3100,7 @@ export const Create = () => {
                           : "/create/importup.svg"
                       }
                       alt="Import"
-                      className="w-40 mb-2"
+                      className="w-32 mb-2"
                       onMouseDown={(e) => {
                         const img = e.target as HTMLImageElement;
                         if (!isImporting) {
@@ -2843,7 +3139,7 @@ export const Create = () => {
                 {/* Enhanced import status with clearer guidance */}
                 {importStatus && (
                   <div
-                    className={`p-3 border rounded-md mb-4 ${
+                    className={`p-3 border  mb-4 ${
                       importStatus.type === "error"
                         ? "border-red-500 bg-red-950/20 text-red-400"
                         : importStatus.type === "warning"
@@ -2888,37 +3184,25 @@ export const Create = () => {
                 )}
 
                 {/* Remove this section as it's redundant with the form below */}
-                {hasStoredToken && !importStatus && (
-                  <div className="mt-4 p-3 border border-neutral-700 rounded-md bg-black/30">
-                    <h3 className="text-white font-medium mb-2">
-                      Imported Token Details
-                    </h3>
-                    <p className="text-neutral-400 text-sm mb-4">
-                      These details have been loaded from the token's metadata.
-                    </p>
-                  </div>
-                )}
+                {/* {hasStoredToken && !importStatus && ( ... )} */}
               </div>
             </div>
           </div>
         )}
 
-        {/* Two-column layout for form fields and image (conditionally shown based on tab) */}
+        {/* Form Section (Image, Desc, Vanity, Buy, Launch) */}
         {(activeTab === FormTab.MANUAL ||
           (activeTab === FormTab.AUTO && hasGeneratedToken) ||
           (activeTab === FormTab.IMPORT && hasStoredToken)) && (
           <div className="grid gap-4">
-            {/* Form fields - REMOVE THE NAME AND TICKER INPUTS, KEEP ONLY DESCRIPTION */}
+            {/* Image & Core Fields */}
             <div className="flex flex-col gap-3">
-              {/* Image with overlay inputs for name/ticker */}
+              {/* Image with overlay inputs */}
               <FormImageInput
                 onChange={(file) => {
                   if (activeTab === FormTab.MANUAL) {
                     setImageFile(file);
-                    setManualForm((prev) => ({
-                      ...prev,
-                      imageFile: file,
-                    }));
+                    setManualForm((prev) => ({ ...prev, imageFile: file }));
                   }
                 }}
                 onPromptChange={handlePromptChange}
@@ -2944,35 +3228,147 @@ export const Create = () => {
                 onNameChange={(value) => handleChange("name", value)}
                 tickerValue={form.symbol}
                 onTickerChange={(value) => handleChange("symbol", value)}
-                key={`image-input-${activeTab}`} // Force complete rerender on tab change
+                key={`image-input-${activeTab}`} // Force rerender on tab change
               />
+
+              {/* Description Field */}
+              {activeTab === FormTab.IMPORT ? (
+                <span
+                  className={`bg-transparent text-white text-xl font-bold focus:outline-none px-1 py-0.5 mb-4`}
+                >
+                  {form.description}
+                </span>
+              ) : (
+                <FormTextArea
+                  value={form.description}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    handleChange("description", e.target.value)
+                  }
+                  label="Description"
+                  minRows={1}
+                  placeholder="Description"
+                  maxLength={2000}
+                  error={errors.description}
+                  onClick={() =>
+                    generateAll(
+                      promptFunctions.setPrompt,
+                      promptFunctions.onPromptChange,
+                    )
+                  } // Pass prompt fns
+                  isLoading={isGenerating && generatingField === "description"}
+                />
+              )}
             </div>
 
-            {activeTab === FormTab.IMPORT && (
-              <span
-                className={`bg-transparent text-white text-xl font-bold focus:outline-none px-1 py-0.5 mb-4`}
-              >
-                {form.description}
-              </span>
-            )}
-
+            {/* Vanity Address Section (Only for Auto/Manual) */}
             {activeTab !== FormTab.IMPORT && (
-              <FormTextArea
-                value={form.description}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                  handleChange("description", e.target.value)
-                }
-                label="Description"
-                minRows={1}
-                placeholder="Description"
-                maxLength={2000}
-                error={errors.description}
-                onClick={() => generateAll()}
-                isLoading={isGenerating && generatingField === "description"}
-              />
+              <div className="flex flex-col gap-2">
+                <label className="text-whitem py-1.5 uppercase text-sm font-medium tracking-wider">
+                  Generate Contract Address
+                </label>
+                {/* Display Area */}
+                <div className="font-mono text-xs md:text-lg lg:text-xl break-all min-h-[2.5em] flex items-center justify-center">
+                  <span className="mr-2">
+                    {isGeneratingVanity ? (
+                      <span className="animate-pulse">
+                        {displayedPublicKey.slice(0, -vanitySuffix.length)}
+                        <strong>
+                          {displayedPublicKey.slice(-vanitySuffix.length)}
+                        </strong>
+                      </span>
+                    ) : vanityResult ? (
+                      <span className="text-green-400">
+                        {displayedPublicKey.slice(0, -vanitySuffix.length)}
+                        <strong>
+                          {displayedPublicKey.slice(-vanitySuffix.length)}
+                        </strong>
+                      </span>
+                    ) : (
+                      <span className="text-neutral-500">
+                        {displayedPublicKey.slice(0, -vanitySuffix.length)}
+                        <strong>
+                          {displayedPublicKey.slice(-vanitySuffix.length)}
+                        </strong>
+                      </span>
+                    )}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 mx-auto">
+                  <input
+                    type="text"
+                    value={vanitySuffix}
+                    onChange={(e) => setVanitySuffix(e.target.value)} // Force uppercase
+                    placeholder="FUN"
+                    maxLength={5}
+                    className={`bg-autofun-background-input w-20 py-1.5 px-2 ${suffixError && !suffixError.startsWith("Warning") && !suffixError.startsWith("Note") ? "border-red-500" : ""} text-white text-center font-mono focus:outline-none focus:border-white disabled:opacity-50`}
+                    disabled={isGeneratingVanity}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      stopVanityGeneration(); // Stop existing workers first
+                      // Use a small timeout to allow state updates from stop to settle
+                      setTimeout(() => {
+                        startVanityGeneration(); // Then start with the new suffix
+                      }, 50);
+                    }}
+                  >
+                    <img
+                      src={
+                        isProcessingPrompt
+                          ? "/create/generating.svg"
+                          : "/create/generateup.svg"
+                      }
+                      alt="Generate"
+                      className="w-24 ml-2"
+                      onMouseDown={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        if (!isProcessingPrompt) {
+                          img.src = "/create/generatedown.svg";
+                        }
+                      }}
+                      onMouseUp={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        if (!isProcessingPrompt) {
+                          img.src = "/create/generateup.svg";
+                        }
+                      }}
+                      onDragStart={(e) => {
+                        e.preventDefault();
+                        const img = e.target as HTMLImageElement;
+                        if (!isProcessingPrompt) {
+                          img.src = "/create/generateup.svg";
+                        }
+                      }}
+                      onMouseOut={(e) => {
+                        e.preventDefault();
+                        const img = e.target as HTMLImageElement;
+                        if (!isProcessingPrompt) {
+                          img.src = "/create/generateup.svg";
+                        }
+                      }}
+                    />
+                  </button>
+                </div>
+                <p className="mx-auto text-center text-xs text-neutral-500 mt-1">
+                  Choose a custom suffix
+                  <br />
+                  Longer suffixes are slower to generate
+                </p>
+
+                {/* Error/Warning Display */}
+                {suffixError && (
+                  <div
+                    className={`text-xs ${suffixError.startsWith("Warning") || suffixError.startsWith("Note") ? "text-yellow-400" : "text-red-500"} mt-1`}
+                  >
+                    {suffixError}
+                  </div>
+                )}
+              </div>
             )}
 
-            {/* Hide Buy section when in IMPORT tab */}
+            {/* Buy Section (Hide for Import) */}
             {activeTab !== FormTab.IMPORT && (
               <div className="flex flex-col gap-3 justify-end uppercase">
                 <div className="flex flex-row gap-3 justify-end uppercase">
@@ -2980,7 +3376,9 @@ export const Create = () => {
                     Buy
                     <span className="inline-block ml-1 cursor-help">
                       <Icons.Info className="h-4 w-4 text-[#8c8c8c] hover:text-white" />
-                      <div className="absolute hidden group-hover:block right-0 bottom-8 p-3 text-xs normal-case bg-black border border-neutral-800 rounded-md shadow-lg z-10">
+                      <div className="absolute hidden group-hover:block right-0 bottom-8 p-3 text-xs normal-case bg-black border border-neutral-800 shadow-lg z-10 w-64">
+                        {" "}
+                        {/* Added width */}
                         <p className="text-white mb-2">
                           Choose how much of the token you want to buy on
                           launch:
@@ -3001,6 +3399,12 @@ export const Create = () => {
                             increases with more SOL.
                           </p>
                         </div>
+                        <div className="border-t border-neutral-800 pt-2 mt-1">
+                          <p className="text-neutral-400 text-xs">
+                            Maximum supply of 50% can be purchased prior to coin
+                            launch
+                          </p>
+                        </div>
                       </div>
                     </span>
                   </span>
@@ -3015,50 +3419,58 @@ export const Create = () => {
                           const decimalCount = (value.match(/\./g) || [])
                             .length;
                           if (decimalCount > 1) {
-                            value = value.replace(/\.+$/, "");
+                            value = value.substring(0, value.lastIndexOf(".")); // Keep only first decimal
                           }
                           const parts = value.split(".");
-                          let wholePart = parts[0];
+                          let wholePart = parts[0] || "0"; // Default to 0 if empty
                           let decimalPart = parts[1] || "";
-                          if (wholePart.length > 2) {
-                            wholePart = wholePart.slice(0, 2);
+
+                          // Limit whole part length (e.g., 2 digits for SOL up to 99)
+                          if (
+                            wholePart.length >
+                            String(Math.floor(MAX_INITIAL_SOL)).length
+                          ) {
+                            wholePart = wholePart.slice(
+                              0,
+                              String(Math.floor(MAX_INITIAL_SOL)).length,
+                            );
                           }
+                          // Limit decimal part length
                           if (decimalPart.length > 2) {
+                            // Allow 2 decimal places
                             decimalPart = decimalPart.slice(0, 2);
                           }
+
                           value = decimalPart
                             ? `${wholePart}.${decimalPart}`
                             : wholePart;
-                          if (value.length > 5) {
-                            value = value.slice(0, 5);
-                          }
+
+                          // Final numeric check against maxInputSol
                           const numValue = parseFloat(value);
-                          if (
-                            value !== "" &&
-                            !isNaN(numValue) &&
-                            numValue > maxInputSol
-                          ) {
-                            value = maxInputSol.toString();
+                          if (!isNaN(numValue)) {
+                            if (numValue < 0) value = "0";
+                            else if (numValue > maxInputSol)
+                              value = maxInputSol.toString();
+                          } else if (value !== "") {
+                            value = "0"; // Reset invalid non-empty strings
                           }
 
-                          handleChange("initialSol", value);
-                          setBuyValue(value);
+                          handleChange("initialSol", value || "0"); // Ensure it's not empty string for state
+                          setBuyValue(value); // Update local buyValue state
                         }}
                         min="0"
                         max={maxInputSol.toString()}
                         step="0.01"
-                        className="w-26 pr-10 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white"
+                        className="w-26 pr-10 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white bg-transparent" // Added bg-transparent
                       />
 
-                      <span className="absolute right-0 text-white text-xl font-medium">
+                      <span className="absolute right-0 top-0 bottom-0 flex items-center text-white text-xl font-medium pointer-events-none">
+                        {" "}
+                        {/* Adjusted positioning */}
                         SOL
                       </span>
                     </div>
-                    {/* {solPrice && Number(buyValue) > 0 && (
-                        <div className="text-right text-xs text-neutral-400 mt-1">
-                          ≈ ${solValueUsd} USD
-                        </div>
-                      )} */}
+                    {/* {solPrice && Number(buyValue) > 0 && ( ... )} */}
                   </div>
                 </div>
                 {parseFloat(buyValue as string) > 0 && (
@@ -3073,11 +3485,11 @@ export const Create = () => {
 
                 {/* Balance information */}
                 <div className="mt-2 text-right text-xs text-neutral-400">
-                  {/* Your balance:{" "}
-                    {balance?.data?.formattedBalance?.toFixed(2) || "0.00"} SOL */}
+                  Balance: {solBalance?.toFixed(2) ?? "0.00"} SOL
                   {isAuthenticated && isFormValid && insufficientBalance && (
                     <div className="text-red-500 mt-1">
-                      You don't have enough SOL in your wallet
+                      Insufficient SOL balance (need ~0.01 SOL for mint + buy
+                      amount)
                     </div>
                   )}
                   {Number(buyValue) === maxInputSol &&
@@ -3089,69 +3501,54 @@ export const Create = () => {
                 </div>
               </div>
             )}
-          </div>
-        )}
 
-        {/* Launch Button - Only shown if form is valid or in appropriate tabs */}
-        {(activeTab === FormTab.MANUAL ||
-          (activeTab === FormTab.AUTO && hasGeneratedToken) ||
-          (activeTab === FormTab.IMPORT && hasStoredToken)) && (
-          <div className="flex flex-col items-center gap-3">
-            <button
-              type="submit"
-              className="p-0 transition-colors cursor-pointer disabled:opacity-50 select-none"
-              disabled={!canLaunch() || isSubmitting || !isAuthenticated}
-            >
-              <img
-                src={
-                  isSubmitting
-                    ? "/create/launching.svg"
-                    : "/create/launchup.svg"
-                }
-                alt="Launch"
-                className="h-32 pr-4 mb-4 select-none pointer-events-none"
-                onMouseDown={(e) => {
-                  const img = e.target as HTMLImageElement;
-                  if (!isSubmitting) {
-                    img.src = "/create/launchdown.svg";
-                  } else {
-                    img.src = "/create/launching.svg";
+            {/* Launch Button */}
+            <div className="flex flex-col items-center gap-3 mt-4">
+              {" "}
+              {/* Added margin-top */}
+              <button
+                type="submit"
+                className="p-0 transition-colors cursor-pointer disabled:opacity-50 select-none"
+                disabled={!canLaunch() || isSubmitting}
+              >
+                <img
+                  src={
+                    isSubmitting || isCreating // Show launching if submitting or creating
+                      ? "/create/launching.svg"
+                      : "/create/launchup.svg"
                   }
-                }}
-                onMouseUp={(e) => {
-                  const img = e.target as HTMLImageElement;
-                  img.src = "/create/launchup.svg";
-                }}
-                onDragStart={(e) => {
-                  e.preventDefault();
-                  const img = e.target as HTMLImageElement;
-                  img.src = "/create/launchup.svg";
-                }}
-                onMouseOut={(e) => {
-                  e.preventDefault();
-                  const img = e.target as HTMLImageElement;
-                  img.src = "/create/launchup.svg";
-                }}
-              />
-            </button>
-
-            {isAuthenticated && !isFormValid && (
-              <p className="text-red-500 text-center text-sm">
-                Please fill in all required fields
-              </p>
-            )}
-            {!isAuthenticated && (
-              <p className="text-red-500 text-center text-sm">
-                Please connect your wallet to create a token
-              </p>
-            )}
+                  alt="Launch"
+                  className="h-32 mb-4 select-none pointer-events-none" // Removed mouse handlers, handle state via disabled/src
+                />
+              </button>
+              {/* Validation/Auth Messages */}
+              {!isAuthenticated ? (
+                <p className="text-red-500 text-center text-sm">
+                  Please connect your wallet to create a token.
+                </p>
+              ) : !canLaunch() &&
+                !isSubmitting &&
+                activeTab !== FormTab.IMPORT ? ( // Show only if not launchable and not submitting
+                <p className="text-red-500 text-center text-sm">
+                  Please fill required fields, ensure sufficient SOL, and
+                  generate a vanity address.
+                </p>
+              ) : !canLaunch() &&
+                !isSubmitting &&
+                activeTab === FormTab.IMPORT ? (
+                <p className="text-red-500 text-center text-sm">
+                  Please load token data via the import field above.
+                </p>
+              ) : null}
+            </div>
           </div>
         )}
       </form>
 
+      {/* Creation Loading Modal */}
       {isCreating && (
         <div className="fixed inset-0 flex items-center justify-center z-[60]">
-          <div className="bg-[#1A1A1A]/80 p-6 rounded-lg shadow-lg max-w-md w-full">
+          <div className="bg-[#1A1A1A]/80 p-6 shadow-lg max-w-md w-full">
             <div className="flex items-center flex-col gap-3">
               <div
                 style={{
@@ -3303,11 +3700,6 @@ export const Create = () => {
               {creationStage === "confirming" && (
                 <p className="font-dm-mono text-sm text-autofun-text-secondary/80">
                   Please confirm the transaction in your wallet
-                </p>
-              )}
-              {creationStage === "validating" && (
-                <p className="font-dm-mono text-sm text-autofun-text-secondary/80">
-                  This may take a few moments
                 </p>
               )}
             </div>

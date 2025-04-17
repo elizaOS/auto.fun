@@ -50,4 +50,4 @@ EOF
 
 # Finally, run the dev command
 echo "Starting development server..."
-bun run dev 
+npm run dev 

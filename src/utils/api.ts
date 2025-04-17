@@ -47,11 +47,13 @@ export const fetcher = async (
 export const getToken = async ({
   address,
   bypassCache = false,
+  signature,
 }: {
   address: string;
   bypassCache?: boolean;
+  signature?: string;
 }) => {
-  const endpoint = `/api/token/${address}`;
+  const endpoint = `/api/token/${address}${signature ? `?signature=${signature}` : ""}`;
 
   try {
     console.log(
@@ -61,6 +63,8 @@ export const getToken = async ({
     // TODO - Figure out why this broke
     // const data = rawData as Record<string, any>;
     // const transformedData = HomepageTokenSchema.parse(data);
+
+    console.log("rawData", rawData);
 
     return rawData;
   } catch (error) {

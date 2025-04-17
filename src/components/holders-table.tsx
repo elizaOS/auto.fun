@@ -38,7 +38,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
           <TableHead>Account</TableHead>
           <TableHead className="text-right">Amount</TableHead>
           <TableHead className="text-right">%</TableHead>
-          <TableHead className="text-right" />
+          <TableHead className="text-right">View</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -63,7 +63,10 @@ export default function HoldersTable({ token }: { token: IToken }) {
                     target="_blank"
                     className="hover:text-autofun-text-highlight"
                   >
-                    {shortenAddress(holder?.address)}
+                    {holder?.address ===
+                    import.meta.env.VITE_BONDING_CURVE_ADDRESS
+                      ? "Bonding Curve"
+                      : shortenAddress(holder?.address)}
                   </Link>
                 </TableCell>
                 <TableCell className="text-right">

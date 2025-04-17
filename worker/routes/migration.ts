@@ -1,0 +1,169 @@
+import { Wallet } from "../tokenSupplyHelpers/customWallet";
+import { RaydiumVault } from "../raydium/types/raydium_vault";
+import * as raydium_vault_IDL from "../raydium/raydium_vault.json";
+import { Autofun } from "../target/types/autofun";
+import * as IDL from "../target/idl/autofun.json";
+import { TokenMigrator } from "../raydium/migration/migrateToken";
+import { Hono } from "hono";
+import { Env } from "../env";
+import { logger } from "../logger";
+import { Connection, Keypair } from "@solana/web3.js";
+import { AnchorProvider, Program } from "@coral-xyz/anchor";
+import { PublicKey } from "@solana/web3.js";
+import { claim } from "../raydium/raydiumVault";
+import { getDB, users } from "../db";
+import { eq } from "drizzle-orm";
+
+const migrationRouter = new Hono<{
+  Bindings: Env;
+  Variables: {
+    user?: { publicKey: string } | null;
+  };
+}>();
+
+// middleware to check if the request is authorized
+migrationRouter.use("/migration", async (c, next) => {
+  const authHeader = c.req.header("Authorization");
+  const apiKey = authHeader ? authHeader.split(" ")[1] : null;
+  if (!apiKey || apiKey !== c.env.JWT_SECRET) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  await next();
+});
+
+migrationRouter.post("/migration/resume", async (c) => {
+  try {
+    const token = await c.req.json();
+    if (!token || !token.mint) {
+      return c.json({ error: "Invalid token data provided" }, 400);
+    }
+
+    // Create connection based on the environment setting.
+    const connection = new Connection(
+      c.env.NETWORK === "devnet"
+        ? c.env.DEVNET_SOLANA_RPC_URL
+        : c.env.MAINNET_SOLANA_RPC_URL,
+    );
+
+    // Create a wallet using the secret from env.
+    const wallet = Keypair.fromSecretKey(
+      Uint8Array.from(JSON.parse(c.env.WALLET_PRIVATE_KEY)),
+    );
+
+    // Build an Anchor provider.
+    const provider = new AnchorProvider(
+      connection,
+      new Wallet(wallet),
+      AnchorProvider.defaultOptions(),
+    );
+
+    const program = new Program<RaydiumVault>(
+      raydium_vault_IDL as any,
+      provider,
+    );
+    const autofunProgram = new Program<Autofun>(IDL as any, provider);
+
+    // Create an instance of TokenMigrator.
+    const tokenMigrator = new TokenMigrator(
+      c.env,
+      connection,
+      new Wallet(wallet),
+      program,
+      autofunProgram,
+      provider,
+    );
+
+    // Call migrateToken: process the next migration step.
+    await tokenMigrator.migrateToken(token);
+
+    // Return a success response.
+    return c.json({
+      status: "Migration invocation processed",
+      tokenMint: token.mint,
+    });
+  } catch (error) {
+    logger.error("Error in migration resume endpoint:", error);
+    return c.json({ error: "Failed to process migration invocation" }, 500);
+  }
+});
+
+// claim endpoint
+migrationRouter.post("/claimFees", async (c) => {
+  try {
+    const user = c.get("user");
+
+    // requireAuth middleware ensures user exists, but let's double-check
+    if (!user) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    const db = getDB(c.env);
+    const userInfo = await db
+      .select()
+      .from(users)
+      .where(eq(users.address, user.publicKey))
+      .limit(1);
+
+    const token = await c.req.json();
+    if (
+      !token ||
+      !token.mint ||
+      !token.nftMinted ||
+      !token.marketId ||
+      !token.creator
+    ) {
+      return c.json({ error: "Invalid token data provided" }, 400);
+    }
+
+    //check if the user is the creator of the token
+    if (userInfo.length === 0 || userInfo[0].address !== token.creator) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
+    const nftMint = token.nftMinted?.split(",")[0];
+    const poolId = token.marketId;
+    // Create connection based on the environment setting.
+    const connection = new Connection(
+      c.env.NETWORK === "devnet"
+        ? c.env.DEVNET_SOLANA_RPC_URL
+        : c.env.MAINNET_SOLANA_RPC_URL,
+    );
+
+    // Create a wallet using the secret from env.
+    const wallet = Keypair.fromSecretKey(
+      Uint8Array.from(JSON.parse(c.env.WALLET_PRIVATE_KEY)),
+    );
+
+    // Build an Anchor provider.
+    const provider = new AnchorProvider(
+      connection,
+      new Wallet(wallet),
+      AnchorProvider.defaultOptions(),
+    );
+
+    const program = new Program<RaydiumVault>(
+      raydium_vault_IDL as any,
+      provider,
+    );
+
+    // Call the claim Function.
+    const txSignature = await claim(
+      program,
+      wallet,
+      new PublicKey(nftMint),
+      new PublicKey(poolId),
+      connection,
+    );
+    // Return a success response.
+    return c.json({
+      status: "Claim invocation processed",
+      tokenMint: token.mint,
+      txSignature,
+    });
+  } catch (error) {
+    logger.error("Error in claim fees endpoint:", error);
+    return c.json({ error: "Failed to process claim invocation" }, 500);
+  }
+});
+
+export default migrationRouter;

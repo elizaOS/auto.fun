@@ -109,7 +109,9 @@ export const WalletModal: FC<WalletModalProps> = () => {
                 console.log("Connecting to Phantom directly");
               }
 
-              const response = await connect();
+              // Use the window.solana object directly
+              const response = await window.solana.connect();
+              select(wallet.adapter.name);
               console.log("Direct connection to Phantom successful", response);
               directConnectionSuccessful = true;
 
@@ -131,7 +133,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
           // Select and connect via adapter
           try {
             console.log("Selecting wallet via adapter...");
-            await select(wallet.adapter.name);
+            select(wallet.adapter.name);
             await new Promise((resolve) => setTimeout(resolve, 1000));
             console.log("Connecting via adapter...");
             await connect();

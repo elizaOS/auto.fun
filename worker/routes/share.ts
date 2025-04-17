@@ -297,10 +297,17 @@ const shareRouter = new Hono<{
 // Enable CORS
 shareRouter.use("*", async (c, next) => {
   const allowedOrigins = [
-    c.req.header("Origin") || "localhost:5173",
-    "https://basedorbiased.vercel.app",
-    "http://localhost:5173",
-    "https://basedorbiased.app",
+    c.req.header("Origin"),
+    "http://localhost:3000",
+    "https://auto.fun",
+    "https://*.auto.fun",
+    "https://develop.auto.fun",
+    "https://develop.auto-fun.pages.dev",
+    "https://auto-fun.pages.dev",
+    "https://develop.autofun.pages.dev",
+    "https://autofun.pages.dev",
+    // todo: remove this
+    "https://fix-develop-create.autofun.pages.dev",
   ];
 
   const origin = c.req.header("Origin");

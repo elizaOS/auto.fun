@@ -7,6 +7,7 @@ import {
   Transaction,
   VersionedTransaction,
   TransactionMessage,
+  TransactionInstruction,
 } from "@solana/web3.js";
 
 export const fixedPoint = parseFloat("1000000000");
@@ -63,12 +64,15 @@ export const sendSolTo = async (
       signerWallet,
     ]);
     console.log("confirmed transaction with signature ", signature);
+    const afterBal = await connection.getBalance(recvWallet);
+    console.log("afterBal: ", parseFloat(afterBal.toString()) / fixedPoint);
+    return signature;
   } catch (error: any) {
     console.log("transaction failed: ", error);
   }
 
-  const afterBal = await connection.getBalance(recvWallet);
-  console.log("afterBal: ", parseFloat(afterBal.toString()) / fixedPoint);
+  // const afterBal = await connection.getBalance(recvWallet);
+  // console.log("afterBal: ", parseFloat(afterBal.toString()) / fixedPoint);
 };
 
 export const sendTokenTo = async (
@@ -127,6 +131,19 @@ export const sendNftTo = async (
       nftMinted,
       recvWallet,
     );
+    // 1) If recipient ATA doesn't exist, create it
+    const toAtaInfo = await connection.getAccountInfo(bobTokenAccount);
+    const instructions = [] as TransactionInstruction[];
+    if (!toAtaInfo) {
+      instructions.push(
+        spl.createAssociatedTokenAccountInstruction(
+          signerWallet.publicKey, // payer
+          bobTokenAccount,
+          recvWallet,
+          nftMinted, // mint
+        ) as any, // Type assertion to avoid type error
+      );
+    }
 
     // Create the transfer instruction
     const transferIx = spl.createTransferInstruction(
@@ -137,6 +154,7 @@ export const sendNftTo = async (
       [],
       spl.TOKEN_PROGRAM_ID,
     );
+    instructions.push(transferIx);
 
     // Get the latest blockhash needed for the transaction
     const latestBlockhash = await connection.getLatestBlockhash();
@@ -145,7 +163,7 @@ export const sendNftTo = async (
     const messageV0 = new TransactionMessage({
       payerKey: signerWallet.publicKey,
       recentBlockhash: latestBlockhash.blockhash,
-      instructions: [transferIx],
+      instructions: instructions,
     }).compileToV0Message();
 
     // Build the versioned transaction
@@ -158,15 +176,20 @@ export const sendNftTo = async (
     const signature = await connection.sendTransaction(transaction);
 
     // Confirm the transaction using the latest blockhash context
-    await connection.confirmTransaction(
-      {
-        signature,
-        blockhash: latestBlockhash.blockhash,
-        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+    await retryOperation(
+      async () => {
+        await connection.confirmTransaction(
+          {
+            signature,
+            blockhash: latestBlockhash.blockhash,
+            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+          },
+          "finalized",
+        );
       },
-      "confirmed",
+      3, // 3 attempts
+      2000, // 2 seconds delay
     );
-
     return signature;
   } catch (error) {
     console.error("Error in sendNftTo:", error);

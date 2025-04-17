@@ -12,6 +12,7 @@ import {
   LOCK_CP_AUTH_SEED,
 } from "./pdas";
 import { RaydiumVault } from "./types/raydium_vault";
+import { retryOperation } from "./utils";
 
 export async function depositToRaydiumVault(
   provider: anchor.AnchorProvider,
@@ -45,9 +46,22 @@ export async function depositToRaydiumVault(
 
     const txSignature = await call.rpc();
     console.log("Transaction Signature", txSignature);
-    await program.provider.connection.getParsedTransaction(txSignature, {
-      commitment: "confirmed",
-    });
+    const latestBlockhash = await provider.connection.getLatestBlockhash();
+
+    await retryOperation(
+      async () => {
+        await provider.connection.confirmTransaction(
+          {
+            signature: txSignature,
+            blockhash: latestBlockhash.blockhash,
+            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+          },
+          "finalized",
+        );
+      },
+      3, // 3 attempts
+      2000, // 2 seconds delay
+    );
     return txSignature;
   } catch (error) {
     console.error("Error in depositRaydiumVault:", error);
@@ -229,9 +243,22 @@ export async function claim(
 
   const txSignature = await call.rpc();
   console.log("Transaction Signature", txSignature);
-  await program.provider.connection.getParsedTransaction(txSignature, {
-    commitment: "confirmed",
-  });
+  const latestBlockhash = await connection.getLatestBlockhash();
+
+  await retryOperation(
+    async () => {
+      await connection.confirmTransaction(
+        {
+          signature: txSignature,
+          blockhash: latestBlockhash.blockhash,
+          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+        },
+        "confirmed",
+      );
+    },
+    3, // 3 attempts
+    2000, // 2 seconds delay
+  );
   return txSignature;
 }
 

@@ -19,6 +19,7 @@ import {
   vanityKeypairs,
 } from "../db";
 import { Env } from "../env";
+import { ExternalToken } from "../externalToken";
 import { logger } from "../logger";
 import { getSOLPrice } from "../mcap";
 import {
@@ -31,7 +32,8 @@ import {
   getRpcUrl,
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
-import { ImportedToken } from "../importedToken";
+import { generateAdditionalTokenImages } from "./generation";
+import { uploadToCloudflare } from "../uploader";
 
 // Define the router with environment typing
 const tokenRouter = new Hono<{
@@ -56,8 +58,25 @@ tokenRouter.get("/image/:filename", async (c) => {
       return c.json({ error: "R2 storage is not available" }, 500);
     }
 
-    // IMPORTANT: Use the correct path - all files are in token-images directory
-    const imageKey = `token-images/${filename}`;
+    // Check if this is a special generation image request
+    // Format: generation-[mint]-[number].jpg
+    const generationMatch = filename.match(
+      /^generation-([A-Za-z0-9]{32,44})-([1-9][0-9]*)\.jpg$/,
+    );
+
+    let imageKey;
+    if (generationMatch) {
+      const [_, mint, number] = generationMatch;
+      // This is a special request for a generation image
+      imageKey = `generations/${mint}/gen-${number}.jpg`;
+      logger.log(
+        `[/image/:filename] Detected generation image request: ${imageKey}`,
+      );
+    } else {
+      // Regular image request
+      imageKey = `token-images/${filename}`;
+    }
+
     logger.log(
       `[/image/:filename] Attempting to get object from R2 key: ${imageKey}`,
     );
@@ -70,16 +89,17 @@ tokenRouter.get("/image/:filename", async (c) => {
 
       // DEBUG: List files in the token-images directory to help diagnose issues
       try {
+        const prefix = imageKey.split("/")[0] + "/";
         const objects = await c.env.R2.list({
-          prefix: "token-images/",
+          prefix,
           limit: 10,
         });
         logger.log(
-          `[/image/:filename] Files in token-images directory: ${objects.objects.map((o) => o.key).join(", ")}`,
+          `[/image/:filename] Files in ${prefix} directory: ${objects.objects.map((o) => o.key).join(", ")}`,
         );
       } catch (listError) {
         logger.error(
-          `[/image/:filename] Error listing files in token-images: ${listError}`,
+          `[/image/:filename] Error listing files in directory: ${listError}`,
         );
       }
 
@@ -788,10 +808,11 @@ export async function processTokenUpdateEvent(
 export async function updateHoldersCache(
   env: Env,
   mint: string,
+  imported: boolean = false,
 ): Promise<number> {
   try {
     // Use the utility function to get the RPC URL with proper API key
-    const connection = new Connection(getRpcUrl(env));
+    const connection = new Connection(getRpcUrl(env, imported));
     const db = getDB(env);
 
     // Get all token accounts for this mint using getParsedProgramAccounts
@@ -973,8 +994,25 @@ tokenRouter.get("/image/:filename", async (c) => {
       return c.json({ error: "R2 storage is not available" }, 500);
     }
 
-    // IMPORTANT: Use the correct path - all files are in token-images directory
-    const imageKey = `token-images/${filename}`;
+    // Check if this is a special generation image request
+    // Format: generation-[mint]-[number].jpg
+    const generationMatch = filename.match(
+      /^generation-([A-Za-z0-9]{32,44})-([1-9][0-9]*)\.jpg$/,
+    );
+
+    let imageKey;
+    if (generationMatch) {
+      const [_, mint, number] = generationMatch;
+      // This is a special request for a generation image
+      imageKey = `generations/${mint}/gen-${number}.jpg`;
+      logger.log(
+        `[/image/:filename] Detected generation image request: ${imageKey}`,
+      );
+    } else {
+      // Regular image request
+      imageKey = `token-images/${filename}`;
+    }
+
     logger.log(
       `[/image/:filename] Attempting to get object from R2 key: ${imageKey}`,
     );
@@ -987,16 +1025,17 @@ tokenRouter.get("/image/:filename", async (c) => {
 
       // DEBUG: List files in the token-images directory to help diagnose issues
       try {
+        const prefix = imageKey.split("/")[0] + "/";
         const objects = await c.env.R2.list({
-          prefix: "token-images/",
+          prefix,
           limit: 10,
         });
         logger.log(
-          `[/image/:filename] Files in token-images directory: ${objects.objects.map((o) => o.key).join(", ")}`,
+          `[/image/:filename] Files in ${prefix} directory: ${objects.objects.map((o) => o.key).join(", ")}`,
         );
       } catch (listError) {
         logger.error(
-          `[/image/:filename] Error listing files in token-images: ${listError}`,
+          `[/image/:filename] Error listing files in directory: ${listError}`,
         );
       }
 
@@ -1051,8 +1090,9 @@ tokenRouter.get("/image/:filename", async (c) => {
 tokenRouter.get("/tokens", async (c) => {
   try {
     const queryParams = c.req.query();
+    const isSearching = !!queryParams.search;
 
-    const limit = parseInt(queryParams.limit as string) || 50;
+    const limit = isSearching ? 5 : parseInt(queryParams.limit as string) || 50;
     const page = parseInt(queryParams.page as string) || 1;
     const skip = (page - 1) * limit;
 
@@ -1377,6 +1417,7 @@ tokenRouter.get("/token/:mint/price", async (c) => {
 });
 
 tokenRouter.get("/token/:mint", async (c) => {
+  console.log("token/:mint");
   try {
     const mint = c.req.param("mint");
 
@@ -1418,17 +1459,59 @@ tokenRouter.get("/token/:mint", async (c) => {
       return c.json(updatedToken[0]);
     }
 
+    // Check for additional images and generate if needed
+    // This will run in the background without delaying the response
+    if (Number(token.imported) === 0) {
+      try {
+        // Check if generation images exist
+        const generationImagesPrefix = `generations/${mint}/`;
+        let hasGenerationImages = false;
+
+        if (c.env.R2) {
+          const objects = await c.env.R2.list({
+            prefix: generationImagesPrefix,
+            limit: 1,
+          });
+
+          hasGenerationImages = objects.objects.length > 0;
+          logger.log(
+            `Token ${mint} has generation images: ${hasGenerationImages}`,
+          );
+
+          if (!hasGenerationImages) {
+            // Generate additional images in the background
+            c.executionCtx.waitUntil(
+              generateAdditionalTokenImages(
+                c.env,
+                mint,
+                token.description || "",
+              ),
+            );
+            logger.log(
+              `Initiated background generation of additional images for token ${mint}`,
+            );
+          }
+        }
+      } catch (imageCheckError) {
+        logger.error(
+          `Error checking for generation images: ${imageCheckError}`,
+        );
+        // Don't block the response if this check fails
+      }
+    }
+
     // Only refresh holder data if explicitly requested
     // const refreshHolders = c.req.query("refresh_holders") === "true";
     // if (refreshHolders) {
+    const imported = Number(token.imported) === 1;
     logger.log(`Refreshing holders data for token ${mint}`);
-    await updateHoldersCache(c.env, mint);
+    await updateHoldersCache(c.env, mint, imported);
     // }
 
     // Set default values for critical fields if they're missing
-    const TOKEN_DECIMALS = Number(c.env.DECIMALS || 6);
+    const TOKEN_DECIMALS = token.tokenDecimals || 6;
     const defaultReserveAmount = 1000000000000; // 1 trillion (default token supply)
-    const defaultReserveLamport = 2800000000; // 2.8 SOL (default reserve)
+    const defaultReserveLamport = Number(c.env.VIRTUAL_RESERVES || 28000000000); // 2.8 SOL (default reserve / 28 in mainnet)
 
     // Make sure reserveAmount and reserveLamport have values
     token.reserveAmount = token.reserveAmount || defaultReserveAmount;
@@ -1450,25 +1533,21 @@ tokenRouter.get("/token/:mint", async (c) => {
         ? tokenPriceInSol * solPrice * Math.pow(10, TOKEN_DECIMALS)
         : 0;
 
+    // const tokenMarketData = await calculateTokenMarketData(token, solPrice, c.env);
+
     // Update solPriceUSD
     token.solPriceUSD = solPrice;
 
-    // Use TOKEN_SUPPLY from env if available, otherwise use reserveAmount
-    const tokenSupply = c.env.TOKEN_SUPPLY
-      ? Number(c.env.TOKEN_SUPPLY)
-      : token.reserveAmount;
-
     // Calculate or update marketCapUSD if we have tokenPriceUSD
-    token.marketCapUSD =
-      (tokenSupply / Math.pow(10, TOKEN_DECIMALS)) * token.tokenPriceUSD;
+    token.marketCapUSD = token.tokenPriceUSD * (token.tokenSupplyUiAmount || 0);
 
     // Get virtualReserves and curveLimit from env or set defaults
     const virtualReserves = c.env.VIRTUAL_RESERVES
       ? Number(c.env.VIRTUAL_RESERVES)
-      : 2800000000;
+      : 28000000000;
     const curveLimit = c.env.CURVE_LIMIT
       ? Number(c.env.CURVE_LIMIT)
-      : 11300000000;
+      : 113000000000;
 
     // Update virtualReserves and curveLimit
     token.virtualReserves = token.virtualReserves || virtualReserves;
@@ -1513,6 +1592,10 @@ tokenRouter.get("/token/:mint", async (c) => {
         lastUpdated: new Date().toISOString(),
       })
       .where(eq(tokens.mint, mint));
+
+    console.log("currentPrice", token.currentPrice);
+    console.log("tokenPriceUSD", token.tokenPriceUSD);
+    console.log("marketCapUSD", token.marketCapUSD);
 
     // Format response with additional data
     return c.json(token);
@@ -1737,11 +1820,13 @@ tokenRouter.post("/create-token", async (c) => {
       description,
       twitter,
       telegram,
+      farcaster,
       website,
       discord,
       imageUrl,
       metadataUrl,
       imported,
+      creator,
     } = body;
 
     const mintAddress = tokenMint || mint;
@@ -1761,52 +1846,20 @@ tokenRouter.post("/create-token", async (c) => {
       .limit(1);
 
     if (existingToken && existingToken.length > 0) {
-      // Update all fields if token exists
-      await db
-        .update(tokens)
-        .set({
-          name: name || existingToken[0].name,
-          ticker: symbol || existingToken[0].ticker,
-          description: description || existingToken[0].description,
-          twitter: twitter || existingToken[0].twitter,
-          telegram: telegram || existingToken[0].telegram,
-          website: website || existingToken[0].website,
-          discord: discord || existingToken[0].discord,
-          image: imageUrl || existingToken[0].image,
-          url: metadataUrl || existingToken[0].url,
-          lastUpdated: new Date().toISOString(),
-        })
-        .where(eq(tokens.mint, mintAddress));
-
-      logger.log(`Updated token ${mintAddress} with new data`);
-
-      // Return the updated token
-      const updatedToken = {
-        ...existingToken[0],
-        name: name || existingToken[0].name,
-        ticker: symbol || existingToken[0].ticker,
-        description: description || existingToken[0].description,
-        twitter: twitter || existingToken[0].twitter,
-        telegram: telegram || existingToken[0].telegram,
-        website: website || existingToken[0].website,
-        discord: discord || existingToken[0].discord,
-        image: imageUrl || existingToken[0].image,
-        url: metadataUrl || existingToken[0].url,
-        imported: existingToken[0].imported || 0,
-      };
-
-      return c.json({
-        success: true,
-        tokenFound: true,
-        message: "Token exists and data updated",
-        token: updatedToken,
-      });
+      return c.json(
+        {
+          error: "Token already exists",
+          token: existingToken[0],
+        },
+        409,
+      );
     }
 
     try {
       // Create token data with all required fields from the token schema
       const now = new Date().toISOString();
       const tokenId = crypto.randomUUID();
+      console.log("****** imported ******\n", imported);
 
       // Convert imported to number (1 for true, 0 for false)
       const importedValue = imported === true ? 1 : 0;
@@ -1822,15 +1875,16 @@ tokenRouter.post("/create-token", async (c) => {
         description: description || "",
         twitter: twitter || "",
         telegram: telegram || "",
+        farcaster: farcaster || "",
         website: website || "",
         discord: discord || "",
-        creator: user.publicKey || "unknown",
-        status: "active",
-        tokenPriceUSD: 0,
+        creator: creator ? creator : user.publicKey || "unknown",
+        status: imported ? "locked" : "active",
+        tokenPriceUSD: 0.00000001,
         createdAt: now,
         lastUpdated: now,
         txId: txId || "create-" + tokenId,
-        imported: importedValue.toString(),
+        imported: importedValue,
       });
 
       // For response, include just what we need
@@ -1842,10 +1896,11 @@ tokenRouter.post("/create-token", async (c) => {
         description: description || "",
         twitter: twitter || "",
         telegram: telegram || "",
+        farcaster: farcaster || "",
         website: website || "",
         discord: discord || "",
         creator: user.publicKey || "unknown",
-        status: "active",
+        status: imported ? "locked" : "active",
         url: metadataUrl || "",
         image: imageUrl || "",
         createdAt: now,
@@ -1853,53 +1908,28 @@ tokenRouter.post("/create-token", async (c) => {
       };
 
       if (imported) {
-        const importedToken = new ImportedToken(c.env, mintAddress);
-        const { marketData } = await importedToken.updateAllData();
+        const importedToken = new ExternalToken(c.env, mintAddress);
+        const { marketData } = await importedToken.registerWebhook();
+        importedToken.fetchHistoricalSwapData();
         Object.assign(tokenData, marketData.newTokenData);
+      } else {
+        // For non-imported tokens, generate additional images in the background
+        c.executionCtx.waitUntil(
+          generateAdditionalTokenImages(c.env, mintAddress, description || ""),
+        );
       }
 
-      // Emit WebSocket event
-      try {
-        const wsClient = getWebSocketClient(c.env);
-        await wsClient.emit("global", "newToken", {
-          ...tokenData,
-          timestamp: new Date(),
-        });
-        logger.log(`WebSocket event emitted for token ${mintAddress}`);
-      } catch (wsError) {
-        // Don't fail if WebSocket fails
-        logger.error(`WebSocket error: ${wsError}`);
-      }
-
-      return c.json({
-        success: true,
-        token: tokenData,
-        message: "Token created successfully",
-      });
-    } catch (dbError) {
-      logger.error(`Database error creating token: ${dbError}`);
+      return c.json({ success: true, token: tokenData });
+    } catch (error) {
+      logger.error("Error creating token:", error);
       return c.json(
-        {
-          success: false,
-          error: "Failed to create token in database",
-          details:
-            dbError instanceof Error
-              ? dbError.message
-              : "Unknown database error",
-        },
+        { error: "Failed to create token record", details: error },
         500,
       );
     }
   } catch (error) {
-    logger.error("Error creating token:", error);
-    return c.json(
-      {
-        success: false,
-        error: "Failed to create token",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      500,
-    );
+    logger.error("Error in create-token endpoint:", error);
+    return c.json({ error: "Internal server error", details: error }, 500);
   }
 });
 
@@ -1921,7 +1951,8 @@ tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
     // );
 
     // Update holders for this specific token
-    const holderCount = await updateHoldersCache(c.env, mint);
+    const imported = Number(c.req.query("imported") || 0) === 1;
+    const holderCount = await updateHoldersCache(c.env, mint, imported);
 
     return c.json({
       success: true,
@@ -2005,18 +2036,21 @@ tokenRouter.get("/swaps/:mint", async (c) => {
 
 tokenRouter.post("/token/:mint/update", async (c) => {
   try {
+    console.log("****** token/:mint/update ******\n");
+    // console.log(c)
     // Get auth headers and extract from cookies
-    const authHeader = c.req.header("Authorization") || "none";
-    const publicKeyCookie = getCookie(c, "publicKey");
-    const authTokenCookie = getCookie(c, "auth_token");
+    // const authHeader = c.req.header("Authorization") || "none";
+    // const publicKeyCookie = getCookie(c, "publicKey");
+    // const authTokenCookie = getCookie(c, "auth_token");
 
-    logger.log("Token update request received");
-    logger.log("Authorization header:", authHeader);
-    logger.log("Auth cookie present:", !!authTokenCookie);
-    logger.log("PublicKey cookie:", publicKeyCookie);
+    // logger.log("Token update request received");
+    // logger.log("Authorization header:", authHeader);
+    // logger.log("Auth cookie present:", !!authTokenCookie);
+    // logger.log("PublicKey cookie:", publicKeyCookie);
 
     // Require authentication
     const user = c.get("user");
+    // console.log("User from context:", user);
 
     if (!user) {
       logger.error("Authentication required - no user in context");
@@ -2149,12 +2183,53 @@ tokenRouter.post("/token/:mint/update", async (c) => {
         twitter: body.twitter ?? tokenData[0].twitter,
         telegram: body.telegram ?? tokenData[0].telegram,
         discord: body.discord ?? tokenData[0].discord,
+        farcaster: body.farcaster ?? tokenData[0].farcaster,
         lastUpdated: new Date().toISOString(),
       })
       .where(eq(tokens.mint, mint));
 
     logger.log("Token updated successfully");
+    if (tokenData[0]?.imported === 0) {
+      try {
+        // 1) fetch the existing JSON
+        const originalUrl = tokenData[0].url;
+        if (originalUrl) {
+          const url = new URL(originalUrl);
+          const parts = url.pathname.split("/");
+          // grab only the filename portion
+          const filename = parts.pop();
+          if (!filename) throw new Error("Could not parse metadata filename");
+          const objectKey = `token-metadata/${filename}`;
+          // 2) Fetch
+          const res = await fetch(originalUrl);
+          const json = await res.json();
+          json.properties = json.properties || {};
+          json.properties.website = body.website ?? json.properties.website;
+          json.properties.twitter = body.twitter ?? json.properties.twitter;
+          json.properties.telegram = body.telegram ?? json.properties.telegram;
+          json.properties.discord = body.discord ?? json.properties.discord;
+          json.properties.farcaster =
+            body.farcaster ?? json.properties.farcaster;
+          // const stored = await c.env.R2.get(objectKey);
 
+          // 3) Serialize back to an ArrayBuffer
+          const buf = new TextEncoder().encode(JSON.stringify(json))
+            .buffer as ArrayBuffer;
+
+          // 4) Overwrite the same key in R2
+          await c.env.R2.put(objectKey, buf, {
+            httpMetadata: { contentType: "application/json" },
+            customMetadata: { publicAccess: "true" },
+          });
+
+          logger.log(
+            `Overwrote R2 object at key ${objectKey}; URL remains ${originalUrl}`,
+          );
+        }
+      } catch (e) {
+        logger.error("Failed to re‑upload metadata JSON:", e);
+      }
+    }
     // Get the updated token data
     const updatedToken = await db
       .select()
@@ -2504,7 +2579,7 @@ tokenRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
                   });
 
                   // Set the URL to our cached version
-                  twitterImageUrl = `${c.env.ASSET_URL || c.env.VITE_API_URL}/api/twitter-image/${imageId}`;
+                  twitterImageUrl = `${c.env.API_URL || c.env.VITE_API_URL}/api/twitter-image/${imageId}`;
                   logger.log(
                     `Cached Twitter profile image at: ${twitterImageUrl}`,
                   );
@@ -2938,6 +3013,74 @@ tokenRouter.post("/vanity-keypair", async (c) => {
           error instanceof Error
             ? error.message
             : "Failed to process vanity keypair request",
+      },
+      500,
+    );
+  }
+});
+
+// Check for generated images on a token by mint address in R2
+tokenRouter.get("/check-generated-images/:mint", async (c) => {
+  try {
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    if (!c.env.R2) {
+      logger.error("R2 storage is not available");
+      return c.json({ images: [] }, 200); // Return empty list if R2 not available
+    }
+
+    // Check for generated images in R2
+    const generationImagesPrefix = `generations/${mint}/`;
+    logger.log(
+      `Checking for generated images with prefix: ${generationImagesPrefix}`,
+    );
+
+    // Try to list objects with the given prefix
+    try {
+      const objects = await c.env.R2.list({
+        prefix: generationImagesPrefix,
+        limit: 10, // Reasonable limit
+      });
+
+      // Extract the filenames from the full paths
+      const imageKeys = objects.objects.map((obj) => {
+        const parts = obj.key.split("/");
+        return parts[parts.length - 1]; // Get just the filename
+      });
+
+      logger.log(
+        `Found ${imageKeys.length} generated images for token ${mint}`,
+      );
+
+      // For security, we don't return the full image keys but just the existence
+      // and let the frontend construct URLs based on naming conventions
+      return c.json({
+        success: true,
+        hasImages: imageKeys.length > 0,
+        count: imageKeys.length,
+        pattern:
+          imageKeys.length > 0
+            ? `generations/${mint}/gen-[1-${imageKeys.length}].jpg`
+            : null,
+      });
+    } catch (error) {
+      logger.error(`Error listing generated images: ${error}`);
+      return c.json({
+        success: false,
+        hasImages: false,
+        error: "Failed to list generated images",
+      });
+    }
+  } catch (error) {
+    logger.error(`Error checking generated images: ${error}`);
+    return c.json(
+      {
+        success: false,
+        hasImages: false,
+        error: "Server error",
       },
       500,
     );

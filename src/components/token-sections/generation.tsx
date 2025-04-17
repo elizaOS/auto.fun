@@ -5,6 +5,7 @@ import { useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import Button from "../button";
 import { useTokenBalance } from "@/hooks/use-token-balance";
+import Loader from "../loader";
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
@@ -58,7 +59,8 @@ type PendingShare = {
 interface TokenInfoResponse {
   name: string;
   symbol: string;
-  // Add other expected fields if needed
+  description?: string;
+  image?: string;
 }
 
 export default function CommunityTab() {
@@ -75,6 +77,13 @@ export default function CommunityTab() {
   const [shareError, setShareError] = useState<string | null>(null);
   const [twitterCredentials, setTwitterCredentials] =
     useState<TwitterCredentials | null>(null);
+  // const [hasGeneratedForToken, setHasGeneratedForToken] = useState(false);
+
+  // Pregenerated images that were generated automatically for this token
+  const [additionalImages, setAdditionalImages] = useState<string[]>([]);
+  // const [isLoadingAdditionalImages, setIsLoadingAdditionalImages] =
+  //   useState(false);
+  const [placeholderImage, setPlaceholderImage] = useState<string | null>(null);
 
   // Mode selection state
   const [generationMode, setGenerationMode] = useState<"fast" | "pro">("fast");
@@ -94,6 +103,8 @@ export default function CommunityTab() {
   const [tokenInfo, setTokenInfo] = useState<{
     name: string;
     symbol: string;
+    image?: string;
+    description?: string;
   } | null>(null);
 
   // Get token mint from URL params with better fallback logic
@@ -128,6 +139,74 @@ export default function CommunityTab() {
   // Use detected token mint instead of directly from params
   const tokenMint = detectedTokenMint;
 
+  // Fetch pregenerated images for this token
+  useEffect(() => {
+    const fetchAdditionalImages = async () => {
+      if (!tokenMint || !API_BASE_URL) {
+        return;
+      }
+
+      // setIsLoadingAdditionalImages(true);
+
+      try {
+        // Check for generated images in the server's R2 storage
+        const response = await fetch(
+          `${API_BASE_URL}/api/check-generated-images/${tokenMint}`,
+        );
+
+        if (response.ok) {
+          const data = (await response.json()) as {
+            hasImages?: boolean;
+            count?: number;
+            pattern?: string;
+          };
+
+          if (data.hasImages && data.count && data.count > 0) {
+            // Build image URLs based on the pattern, using the API endpoint
+            const imageUrls = [];
+            const count = Math.min(data.count, 3); // Only use up to 3 images as placeholders
+            for (let i = 1; i <= count; i++) {
+              console.log(
+                "API_BASE_URL and NODE_ENV",
+                API_BASE_URL,
+                process.env.NODE_ENV,
+              );
+              // If we're running locally, use the API endpoint
+              if (
+                API_BASE_URL.includes("localhost") ||
+                API_BASE_URL.includes("127.0.0.1")
+              ) {
+                imageUrls.push(
+                  `${API_BASE_URL}/api/image/generation-${tokenMint}-${i}.jpg`,
+                );
+              } else {
+                // Otherwise, use the R2 public URL
+                imageUrls.push(
+                  `${env.r2PublicUrl}/generations/${tokenMint}/gen-${i}.jpg`,
+                );
+              }
+            }
+
+            setAdditionalImages(imageUrls);
+            console.log("Found additional generated images:", imageUrls);
+          } else {
+            setAdditionalImages([]);
+          }
+        } else {
+          // If the API fails, don't try to guess
+          setAdditionalImages([]);
+        }
+      } catch (error) {
+        console.error("Error fetching additional images:", error);
+        setAdditionalImages([]);
+      } finally {
+        // setIsLoadingAdditionalImages(false);
+      }
+    };
+
+    fetchAdditionalImages();
+  }, [tokenMint]);
+
   // Use the proper hook to get token balance AFTER tokenMint is declared
   const { tokenBalance } = useTokenBalance({ tokenId: tokenMint || "" });
 
@@ -142,11 +221,10 @@ export default function CommunityTab() {
       if (!tokenMint || !API_BASE_URL) {
         console.log("Skipping fetch: No tokenMint or API_BASE_URL");
         setTokenInfo(null);
-        return; // Don't fetch if mint is not available
+        return;
       }
 
       try {
-        // Fetch Token Info
         console.log(`Fetching token info for ${tokenMint}...`);
         const infoResponse = await fetch(
           `${API_BASE_URL}/api/token/${tokenMint}`,
@@ -158,9 +236,18 @@ export default function CommunityTab() {
           );
         }
         const infoData = (await infoResponse.json()) as TokenInfoResponse;
-        // TODO: Add validation here (e.g., using Zod)
-        setTokenInfo({ name: infoData.name, symbol: infoData.symbol });
+        setTokenInfo({
+          name: infoData.name,
+          symbol: infoData.symbol,
+          image: infoData.image,
+          description: infoData.description,
+        });
         console.log("Token info received:", infoData);
+
+        // Set the user prompt to the token's description if available
+        if (infoData.description) {
+          setUserPrompt(infoData.description);
+        }
       } catch (error) {
         console.error("Error fetching token info:", error);
         setTokenInfo(null);
@@ -168,7 +255,7 @@ export default function CommunityTab() {
     };
 
     fetchTokenData();
-  }, [tokenMint]); // Re-fetch when tokenMint changes
+  }, [tokenMint]);
   // --- End Fetch Real Token Info & Agents ---
 
   // Check for Twitter credentials on mount
@@ -355,7 +442,14 @@ export default function CommunityTab() {
 
       // Add auth token if available
       if (authToken) {
-        headers["Authorization"] = `Bearer ${authToken}`;
+        try {
+          headers["Authorization"] = `Bearer ${JSON.parse(authToken)}`;
+        } catch (e) {
+          console.error("Failed to parse auth token from localStorage:", e);
+          toast.error("Authentication error. Please try logging in again.");
+          setIsGenerating(false);
+          return;
+        }
       }
 
       // Call the API endpoint that enhances the prompt and generates an image
@@ -583,7 +677,14 @@ export default function CommunityTab() {
 
       // Add auth token if available
       if (authToken) {
-        headers["Authorization"] = `Bearer ${authToken}`;
+        try {
+          headers["Authorization"] = `Bearer ${JSON.parse(authToken)}`;
+        } catch (e) {
+          console.error("Failed to parse auth token from localStorage:", e);
+          toast.error("Authentication error. Please try logging in again.");
+          setIsGenerating(false);
+          return;
+        }
       }
 
       // Prepare request body
@@ -971,7 +1072,7 @@ export default function CommunityTab() {
       console.log("Sending image to API:", `${env.apiUrl}/api/share/tweet`);
 
       // Get auth token for the app (separate from Twitter token)
-      const authToken = localStorage.getItem("authToken");
+      // const authToken = localStorage.getItem("authToken");
 
       // Send the upload request
       const uploadResponse = await fetch(`${env.apiUrl}/api/share/tweet`, {
@@ -979,7 +1080,7 @@ export default function CommunityTab() {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           // Include wallet auth token if available in a custom header
-          ...(authToken ? { "X-Auth-Token": `Bearer ${authToken}` } : {}),
+          // ...(authToken ? { "X-Auth-Token": `Bearer ${authToken}` } : {}),
         },
         body: formData,
         credentials: "include",
@@ -1034,7 +1135,7 @@ export default function CommunityTab() {
       console.log("Using media ID:", mediaId);
 
       // Get auth token for the app (separate from Twitter token)
-      const authToken = localStorage.getItem("authToken");
+      // const authToken = localStorage.getItem("authToken");
 
       const response = await fetch(`${env.apiUrl}/api/share/tweet`, {
         method: "POST",
@@ -1042,7 +1143,7 @@ export default function CommunityTab() {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
           // Include wallet auth token if available in a custom header
-          ...(authToken ? { "X-Auth-Token": `Bearer ${authToken}` } : {}),
+          // ...(authToken ? { "X-Auth-Token": `Bearer ${authToken}` } : {}),
         },
         body: JSON.stringify({
           text,
@@ -1332,7 +1433,14 @@ export default function CommunityTab() {
 
       // Add auth token if available
       if (authToken) {
-        headers["Authorization"] = `Bearer ${authToken}`;
+        try {
+          headers["Authorization"] = `Bearer ${JSON.parse(authToken)}`;
+        } catch (e) {
+          console.error("Failed to parse auth token from localStorage:", e);
+          toast.error("Authentication error. Please try logging in again.");
+          setIsGenerating(false);
+          return;
+        }
       }
 
       // Prepare request body
@@ -1496,6 +1604,10 @@ export default function CommunityTab() {
       setCommunityTab("Image");
       setGeneratedImage(null);
       setProcessingStatus("idle");
+      // Set the user prompt back to the token's description when switching to Image tab
+      if (tokenInfo?.description) {
+        setUserPrompt(tokenInfo.description);
+      }
     };
     imageButton.className = communityTab === "Image" ? "active-tab" : "";
 
@@ -1513,6 +1625,7 @@ export default function CommunityTab() {
       setCommunityTab("Video");
       setGeneratedImage(null);
       setProcessingStatus("idle");
+      setUserPrompt(""); // Clear input when switching to Video tab
     };
     videoButton.className = communityTab === "Video" ? "active-tab" : "";
 
@@ -1530,6 +1643,7 @@ export default function CommunityTab() {
       setCommunityTab("Audio");
       setGeneratedImage(null);
       setProcessingStatus("idle");
+      setUserPrompt(""); // Clear input when switching to Audio tab
     };
     audioButton.className = communityTab === "Audio" ? "active-tab" : "";
 
@@ -1578,6 +1692,42 @@ export default function CommunityTab() {
       }
     };
   }, [communityTab]); // Re-run when tab changes
+
+  // Sets the placeholder image to randomly select one image
+  useEffect(() => {
+    if (!generatedImage && additionalImages.length > 0) {
+      // Select a random image from available images instead of always using the first one
+      const randomIndex = Math.floor(Math.random() * additionalImages.length);
+      const randomImage = additionalImages[randomIndex];
+
+      // Verify the image loads
+      const img = new Image();
+      img.onload = () => {
+        setPlaceholderImage(randomImage);
+      };
+      img.onerror = () => {
+        // If random image fails, try the others sequentially
+        const imageLoaders = additionalImages
+          .filter((_, i) => i !== randomIndex) // Skip the one that just failed
+          .map((url) => {
+            return new Promise((resolve) => {
+              const img = new Image();
+              img.onload = () => resolve(url);
+              img.onerror = () => resolve(null);
+              img.src = url;
+            });
+          });
+
+        Promise.all(imageLoaders).then((results) => {
+          const validImage = results.find((url) => url !== null);
+          if (validImage) {
+            setPlaceholderImage(validImage as string);
+          }
+        });
+      };
+      img.src = randomImage;
+    }
+  }, [generatedImage, additionalImages]);
 
   return (
     <div className="flex flex-col">
@@ -1807,8 +1957,41 @@ export default function CommunityTab() {
             {/* Generated content display area */}
             <div className="flex flex-col relative">
               {processingStatus === "processing" ? (
-                <div className="flex items-center justify-center max-w-[600px] max-h-[600px]">
-                  <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#03FF24]"></div>
+                <div className="flex items-center justify-center w-full h-[600px]">
+                  <div className="flex flex-col items-center">
+                    <Loader />
+                    <div className="mt-4 text-autofun-text-secondary font-dm-mono">
+                      Processing...
+                    </div>
+                  </div>
+                </div>
+              ) : communityTab === "Image" ? (
+                <div className="relative w-full aspect-square">
+                  {isGenerating ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <Loader />
+                      <div className="mt-4 text-autofun-text-secondary font-dm-mono">
+                        Generating your image...
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="absolute inset-0">
+                        <img
+                          src={
+                            generatedImage ||
+                            placeholderImage ||
+                            tokenInfo?.image
+                          }
+                          alt={tokenInfo?.name}
+                          className={`w-full h-full object-cover`}
+                        />
+                      </div>
+                      {!generatedImage && (
+                        <div className="absolute inset-0 flex items-center justify-center"></div>
+                      )}
+                    </>
+                  )}
                 </div>
               ) : (
                 <>

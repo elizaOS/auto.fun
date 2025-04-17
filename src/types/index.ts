@@ -75,10 +75,19 @@ export const TokenSchema = z
     discord: z.string().nullish(),
     twitter: z.string().nullish(),
     telegram: z.string().nullish(),
+    farcaster: z.string().nullish(),
     creator: z.string(),
     volume24h: z.number().nullish(),
     website: z.string().nullish(),
     tokenPriceUSD: z.number().nullish(),
+    tokenSupplyUiAmount: z.preprocess((val) => {
+      if (typeof val === "string") {
+        const num = Number(val);
+        return isNaN(num) ? 0 : num;
+      }
+      return val;
+    }, z.number()),
+    tokenDecimals: z.number().nullish(),
     nftMinted: z.string().nullish(),
     lockId: z.string().nullish(),
     lockedAmount: z.string().nullish(),
@@ -99,7 +108,13 @@ export const TokenSchema = z
     lastPriceUpdate: z.string().datetime().nullish(),
     txId: z.string().nullish(),
     lastUpdated: z.string().datetime().nullish(),
-    imported: z.number().nullish(),
+    imported: z.preprocess((val) => {
+      if (typeof val === "string") {
+        const num = Number(val);
+        return isNaN(num) ? 0 : num;
+      }
+      return val;
+    }, z.number().nullish()),
   })
   .transform((data) => ({
     ...data,
@@ -126,6 +141,7 @@ export const TokenSchema = z
     solPriceUSD: data.solPriceUSD != null ? Number(data.solPriceUSD) : 0,
     status: data.status || "active",
     telegram: data.telegram || "",
+    farcaster: data.farcaster || "",
     ticker: data.ticker,
     tokenPriceUSD: data.tokenPriceUSD != null ? Number(data.tokenPriceUSD) : 0,
     twitter: data.twitter || "",
@@ -158,6 +174,7 @@ export type ConfigAccount = {
 
 declare global {
   interface Window {
+    // @ts-ignore
     solana?: {
       isPhantom?: boolean;
       signMessage?: (

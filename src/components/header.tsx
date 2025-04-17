@@ -1,22 +1,17 @@
-import { Link, useLocation } from "react-router";
-import { twMerge } from "tailwind-merge";
-import SearchBar from "./search-bar";
-import Button from "./button";
-import { CloseButton, Dialog, DialogPanel } from "@headlessui/react";
-import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
 import WalletButton from "@/components/wallet-button";
-import { useWallet } from "@solana/wallet-adapter-react";
 import useAuthentication from "@/hooks/use-authentication";
-import { useSolBalance } from "@/hooks/use-token-balance";
-import SkeletonImage from "./skeleton-image";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router";
+import Button from "./button";
+import SearchBar from "./search-bar";
 
 export default function Header() {
   const { pathname } = useLocation();
   const { publicKey } = useWallet();
   const { isAuthenticated } = useAuthentication();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const solBalance = useSolBalance();
+  // const solBalance = useSolBalance();
 
   const mobileNavItems = [
     { icon: "/nav/stars.svg", title: "Create Token", href: "/create" },
@@ -33,12 +28,6 @@ export default function Header() {
     });
   }
 
-  const mobileNavLinks = [
-    { title: "Privacy Policy", href: "privacy-policy" },
-    { title: "Terms of Service", href: "/terms-of-service" },
-    { title: "Fees", href: "fees" },
-  ];
-
   useEffect(() => {
     if (drawerOpen) {
       setDrawerOpen(false);
@@ -47,13 +36,18 @@ export default function Header() {
 
   return (
     <>
-      <div className="hidden md:block w-full z-50">
+      <div className="hidden md:block w-full z-50 px-4">
         <div className="flex flex-row items-center justify-between w-full">
           <div className="flex items-center select-none">
             <Link to="/" className="mr-6" aria-label="Auto.fun frontpage">
               <img
-                className="size-20 pointer-events-none"
+                className="hidden md:block size-20 pointer-events-none"
                 src="/logo_wide.svg"
+                alt="logo"
+              />
+              <img
+                className="block md:hidden size-20 pointer-events-none"
+                src="/logo.svg"
                 alt="logo"
               />
             </Link>
@@ -63,23 +57,6 @@ export default function Header() {
               <>
                 <SearchBar />
 
-                {isAuthenticated ? (
-                  <Button size="large" className="cursor-default!">
-                    <div className="flex items-center gap-2 justify-between">
-                      <span className="max-w-24 w-full grow truncate">
-                        {solBalance}
-                      </span>
-                      <SkeletonImage
-                        parentClassName="w-5 h-5 shrink-0"
-                        src="/solana.png"
-                        width={32}
-                        height={32}
-                        alt="solana_logo"
-                        className="w-5 h-5"
-                      />
-                    </div>
-                  </Button>
-                ) : null}
                 <Link to="/create">
                   <Button className="cursor-pointer flex items-center text-base text-autofun-text-highlight font-bold font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345] min-w-34">
                     New Coin{" "}
@@ -98,90 +75,31 @@ export default function Header() {
       </div>
 
       {/* mobile menu */}
-      <div className="sticky block md:hidden bg-[#171717] border-b py-4 z-50">
-        <div className="flex items-center mx-4 space-x-2 sm:space-x-4 lg:hidden ">
+      <div
+        className={`sticky block md:hidden z-50 w-full ${pathname === "/create" ? "bg-transparent" : "bg-[#171717]"}`}
+      >
+        <div className="flex items-center justify-between lg:hidden w-full py-2 px-2">
           <Link to="/" className="shrink-0" aria-label="Auto.fun frontpage">
-            <img
-              className="h-11 w-15 sm:w-auto"
-              src="/logo_wide.svg"
-              alt="logo"
-            />
+            <img className="h-11 w-15 sm:w-auto" src="/logo.svg" alt="logo" />
           </Link>
-          <div className="flex-1">
-            <SearchBar />
-          </div>
-          <div className="shrink-0">
-            {drawerOpen ? (
-              <CloseButton>
-                <X className="size-[30px]" />
-              </CloseButton>
-            ) : (
-              <Menu
-                className="size-[30px]"
-                onClick={() => setDrawerOpen(true)}
-              />
-            )}
-          </div>
-          <Dialog
-            open={drawerOpen}
-            onClose={() => setDrawerOpen(false)}
-            className="relative md:hidden"
-          >
-            <div className="fixed inset-0 overflow-hidden">
-              <div className="inset-0 overflow-hidden">
-                <div className="pointer-events-none fixed inset-y-0 flex w-full">
-                  <DialogPanel className="pointer-events-auto mt-[77px] relative w-full max-w-[310px] ml-auto">
-                    <div className="flex w-full h-full flex-col overflow-y-hidden bg-[#171717] py-0 shadow-xl">
-                      <div className="relative flex flex-col py-4 px-6 gap-3">
-                        <WalletButton />
-                        <div>
-                          {mobileNavItems.map((item, index) => (
-                            <Link
-                              className={twMerge([
-                                pathname === item.href ? "text-white" : "",
-                                "font-satoshi text-[20px] gap-2 flex text-[#8C8C8C] w-fit hover:text-white py-3",
-                              ])}
-                              key={index}
-                              to={item.href}
-                            >
-                              <img
-                                className="hover:text-[#03FF24]"
-                                src={item.icon}
-                                height={20}
-                                width={20}
-                                alt="nav-icons"
-                              />
-                              {item.title}
-                            </Link>
-                          ))}
-                        </div>
-                        <div className="border-b border-white/10"></div>
-                        <div className="flex flex-col">
-                          {mobileNavLinks.map((item, index) => (
-                            <Link
-                              className="text-[16px] text-[#8C8C8C] w-fit hover:text-white py-3"
-                              key={index}
-                              to={item.href}
-                            >
-                              {item.title}
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="absolute bottom-20 flex flex-row items-center w-full px-6 gap-4 text-[#8C8C8C] text-center bg-[#171717]">
-                        <img
-                          src="/nav/X-icon.svg"
-                          height={40}
-                          width={40}
-                          alt="x-icon"
-                        />
-                      </div>
-                    </div>
-                  </DialogPanel>
-                </div>
+          {pathname !== "/create" && (
+            <>
+              <div className="flex-1 mx-2">
+                <SearchBar />
               </div>
-            </div>
-          </Dialog>
+              <Link to="/create" className="mr-2">
+                <Button className="cursor-pointer flex items-center text-base text-autofun-text-highlight font-bold font-satoshi justify-center px-2 sm:px-4 py-1 sm:py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345]">
+                  <span className="hidden md:inline">New Coin</span>{" "}
+                  <img
+                    src="/nav/stars.svg"
+                    alt="stars"
+                    className="text-[#2FD345]"
+                  />
+                </Button>
+              </Link>
+            </>
+          )}
+          <WalletButton />
         </div>
       </div>
     </>

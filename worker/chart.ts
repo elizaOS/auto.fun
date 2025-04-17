@@ -93,6 +93,9 @@ export async function getLatestCandle(env: Env, tokenMint: string, swap: any) {
         candleStart,
         candleStart + candlePeriod,
         "1", // 1 minute candles
+        undefined,
+        undefined,
+        env,
       );
 
       if (candles.length > 0) {
@@ -224,6 +227,9 @@ export async function fetchPriceChartData(
         Math.floor(start / 1000),
         Math.floor(end / 1000),
         resolution,
+        undefined,
+        undefined,
+        env,
       );
 
       // For 120 minute resolution, we need to combine 2 x 60m candles

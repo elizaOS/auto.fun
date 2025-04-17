@@ -46,8 +46,6 @@ export const disabledFeaturesOnMobile: ChartingLibraryFeatureset[] = [
 ];
 
 export const disabledFeatures: ChartingLibraryFeatureset[] = [
-  "volume_force_overlay",
-  "create_volume_indicator_by_default",
   "header_compare",
   "display_market_status",
   "show_interval_dialog_on_key_press",
@@ -56,10 +54,10 @@ export const disabledFeatures: ChartingLibraryFeatureset[] = [
   "popup_hints",
   // "use_localstorage_for_settings",
   // "right_bar_stays_on_scroll",
-  // "symbol_info",
 ];
 export const enabledFeatures: ChartingLibraryFeatureset[] = [
-  "side_toolbar_in_fullscreen_mode",
+  "create_volume_indicator_by_default",
+  "volume_force_overlay",
   "side_toolbar_in_fullscreen_mode",
   "header_in_fullscreen_mode",
   "items_favoriting",
@@ -67,4 +65,5 @@ export const enabledFeatures: ChartingLibraryFeatureset[] = [
   "study_symbol_ticker_description",
   "study_overlay_compare_legend_option",
   "go_to_date",
+  "symbol_info",
 ];

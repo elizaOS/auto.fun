@@ -6,15 +6,21 @@ import { logger } from "./logger";
 export const allowedOrigins = [
   "https://api-dev.autofun.workers.dev",
   "https://api.autofun.workers.dev",
+  "https://develop.auto-fun.pages.dev",
+  "https://auto-fun.pages.dev",
   "https://develop.autofun.pages.dev",
   "https://autofun.pages.dev",
-  "https://*.autofun.pages.dev",
+  "https://*.auto-fun.pages.dev",
+  "https://develop.autofun.pages.dev",
   "http://localhost:3000",
   "http://localhost:3001",
   "http://localhost:3420",
   "https://auto.fun",
+  "https://*.auto.fun",
   "https://dev.auto.fun",
-  "*",
+  "https://api.auto.fun",
+  "https://api-dev.auto.fun",
+  "https://fix-develop-create.auto-fun.pages.dev",
 ];
 
 // Define a custom WebSocket type that includes CloudflareWebSocket functionality

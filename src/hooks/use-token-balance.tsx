@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 export const useSolBalance = () => {
   const [solBalance, setSolBalance] = useState(0);
+  const [error, setError] = useState<string>("");
 
   const { connection } = useConnection();
   const { publicKey } = useWallet();
@@ -14,9 +15,13 @@ export const useSolBalance = () => {
 
     const fetchSolBalance = async () => {
       try {
+        if (error) {
+          setError("");
+        }
         const balance = await connection.getBalance(publicKey);
         setSolBalance(balance / 1e9);
       } catch (error) {
+        setError("Error");
         console.error("Error fetching SOL balance:", error);
       }
     };
@@ -30,7 +35,7 @@ export const useSolBalance = () => {
     };
   }, [publicKey, connection]);
 
-  return solBalance;
+  return error ? error : solBalance;
 };
 
 export const useTokenBalance = ({ tokenId }: { tokenId: string }) => {
@@ -46,23 +51,19 @@ export const useTokenBalance = ({ tokenId }: { tokenId: string }) => {
     if (!publicKey || !connection || !program) return;
 
     const fetchTokenBalance = async () => {
-      try {
-        const tokenMint = new PublicKey(tokenId);
-        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-          publicKey,
-          { mint: tokenMint },
-        );
+      console.log("Fetching token balance for", tokenId);
+      const tokenMint = new PublicKey(tokenId);
+      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+        publicKey,
+        { mint: tokenMint },
+      );
 
-        const balance =
-          tokenAccounts.value.length > 0
-            ? tokenAccounts.value[0].account.data.parsed.info.tokenAmount
-                .uiAmount
-            : 0;
+      const balance =
+        tokenAccounts.value.length > 0
+          ? tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount
+          : 0;
 
-        setTokenBalance(balance);
-      } catch (error) {
-        console.error("Error fetching token balance:", error);
-      }
+      setTokenBalance(balance);
     };
 
     fetchTokenBalance();

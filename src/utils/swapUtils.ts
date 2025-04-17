@@ -1,11 +1,9 @@
-import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
-import { BN, Program } from "@coral-xyz/anchor";
-import { Autofun } from "@/utils/program";
-import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
-import { associatedAddress } from "@coral-xyz/anchor/dist/cjs/utils/token";
-import { env } from "@/utils/env";
-import { ConfigAccount } from "@/types";
 import { getConfigAccount } from "@/hooks/use-config-account";
+import { ConfigAccount } from "@/types";
+import { env } from "@/utils/env";
+import { Autofun } from "@/utils/program";
+import { BN, Program } from "@coral-xyz/anchor";
+import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
 
 /**
  * Converts a decimal fee (e.g., 0.05 for 5%) to basis points (5% = 500 basis points)
@@ -27,6 +25,23 @@ export function calculateAmountOutSell(
   platformSellFee: number,
   reserveToken: number,
 ): number {
+  console.log(
+    "calculateAmountOutSell",
+    reserveLamport,
+    amount,
+    _tokenDecimals,
+    platformSellFee,
+    reserveToken,
+  );
+
+  // Input validation
+  if (reserveLamport < 0)
+    throw new Error("reserveLamport must be non-negative");
+  if (amount < 0) throw new Error("amount must be non-negative");
+  if (platformSellFee < 0)
+    throw new Error("platformSellFee must be non-negative");
+  if (reserveToken < 0) throw new Error("reserveToken must be non-negative");
+
   const feeBasisPoints = convertToBasisPoints(platformSellFee);
   const amountBN = new BN(amount);
 
@@ -36,8 +51,10 @@ export function calculateAmountOutSell(
     .div(new BN(10000));
 
   // For selling tokens: amount_out = reserve_lamport * adjusted_amount / (reserve_token + adjusted_amount)
-  const numerator = new BN(reserveLamport).mul(adjustedAmount);
-  const denominator = new BN(reserveToken).add(adjustedAmount);
+  const numerator = new BN(reserveLamport.toString()).mul(adjustedAmount);
+  const denominator = new BN(reserveToken.toString()).add(adjustedAmount);
+
+  if (denominator.isZero()) throw new Error("Division by zero");
 
   return numerator.div(denominator).toNumber();
 }
@@ -111,18 +128,23 @@ function calculateAmountOutBuy(
   reserveLamport: number,
   platformBuyFee: number,
 ): number {
-  const feeBasisPoints = convertToBasisPoints(platformBuyFee);
+  const reserveTokenBN2 = new BN(reserveToken.toString());
+  console.log("reserveTokenBN2", reserveTokenBN2.toString());
+  const feeBasisPoints = new BN(convertToBasisPoints(platformBuyFee));
   const amountBN = new BN(amount);
 
-  // Apply fee: adjusted_amount = amount * (10000 - fee_basis_points) / 10000
   const adjustedAmount = amountBN
-    .mul(new BN(10000 - feeBasisPoints))
+    .mul(new BN(10000))
+    .sub(feeBasisPoints)
     .div(new BN(10000));
 
-  const numerator = new BN(reserveToken).mul(adjustedAmount);
-  const denominator = new BN(reserveLamport).add(adjustedAmount);
+  const reserveTokenBN = new BN(reserveToken.toString());
 
-  return numerator.div(denominator).toNumber();
+  const numerator = (reserveTokenBN as any).mul(adjustedAmount);
+  const denominator = new BN(reserveLamport.toString()).add(adjustedAmount);
+
+  const out = numerator.div(denominator).toNumber();
+  return out;
 }
 
 const FEE_BASIS_POINTS = 10000;
@@ -180,6 +202,41 @@ export const getSwapAmount = async (
   console.log("swap amount:", estimatedOutput);
 
   return estimatedOutput;
+};
+
+export const getSwapAmountJupiter = async (
+  tokenMintAddress: string,
+  amount: number,
+  style: number, // 0 for buy; 1 for sell
+  slippageBps: number = 100,
+) => {
+  try {
+    // Jupiter uses the following constant to represent SOL
+    const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
+
+    // @TODO token address is static for now because our project is not deployed to mainnet yet
+    const inputMint = style === 0 ? SOL_MINT_ADDRESS : tokenMintAddress;
+    const outputMint = style === 0 ? tokenMintAddress : SOL_MINT_ADDRESS;
+
+    // 1. Get a quote from Jupiter.
+    const feePercent = 0.2;
+    const feeBps = feePercent * 100;
+    // Add platform fee to the quote
+    const quoteUrl = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=${slippageBps}&restrictIntermediateTokens=true&platformFeeBps=${feeBps}`; // this needs to change to a paid version
+    const quoteRes = await fetch(quoteUrl);
+
+    if (!quoteRes.ok) {
+      const errorMsg = await quoteRes.text();
+      throw new Error(`Failed to fetch quote from Jupiter: ${errorMsg}`);
+    }
+    const quoteResponse = (await quoteRes.json()) as { outAmount: string };
+    console.log(quoteResponse, "quoteResponse");
+    const estimatedOutput = quoteResponse.outAmount;
+    return Number(estimatedOutput);
+  } catch (error) {
+    console.error("Error fetching swap amount from Jupiter:", error);
+    return 0;
+  }
 };
 
 export const swapIx = async (
@@ -241,13 +298,13 @@ export const getJupiterSwapIx = async (
   amount: number,
   style: number, // 0 for buy; 1 for sell
   slippageBps: number = 100,
-  connection: Connection,
+  _connection: Connection,
 ) => {
   // Jupiter uses the following constant to represent SOL
   const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
 
   // @TODO token address is static for now because our project is not deployed to mainnet yet
-  const tokenMintAddress = "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
+  const tokenMintAddress = _token.toBase58(); // "9n4nbM75f5Ui3i7g1d8v2c3e6b7e4a4a4a4a4a4a4a4a4a"; // USDC mint address
   const inputMint = style === 0 ? SOL_MINT_ADDRESS : tokenMintAddress;
   const outputMint = style === 0 ? tokenMintAddress : SOL_MINT_ADDRESS;
 
@@ -255,7 +312,7 @@ export const getJupiterSwapIx = async (
   const feePercent = 0.2;
   const feeBps = feePercent * 100;
   // Add platform fee to the quote
-  const quoteUrl = `https://api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=${slippageBps}&restrictIntermediateTokens=true&platformFeeBps=${feeBps}`;
+  const quoteUrl = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=${slippageBps}&restrictIntermediateTokens=true&platformFeeBps=${feeBps}`; // this needs to change to a paid version
   const quoteRes = await fetch(quoteUrl);
 
   if (!quoteRes.ok) {
@@ -263,35 +320,17 @@ export const getJupiterSwapIx = async (
     throw new Error(`Failed to fetch quote from Jupiter: ${errorMsg}`);
   }
   const quoteResponse = await quoteRes.json();
+  console.log("dev address", env.devAddress);
 
-  // 2. Build the swap transaction by POSTing to Jupiter's swap endpoint.
-  const feeAccount = associatedAddress({
-    mint: new PublicKey(tokenMintAddress),
-    owner: new PublicKey(env.devAddress),
-  });
+  const additionalIxs = [] as any;
 
-  const feeAccountData = await connection.getAccountInfo(feeAccount);
-
-  const additionalIxs = [];
-  if (!feeAccountData) {
-    // Create the fee account
-    const createFeeAccountIx = createAssociatedTokenAccountInstruction(
-      user,
-      feeAccount,
-      new PublicKey(env.devAddress),
-      new PublicKey(tokenMintAddress),
-    );
-    additionalIxs.push(createFeeAccountIx);
-  }
-
-  const swapUrl = "https://api.jup.ag/swap/v1/swap";
+  const swapUrl = "https://lite-api.jup.ag/swap/v1/swap";
   const body = {
     quoteResponse,
     userPublicKey: user.toBase58(),
     asLegacyTransaction: true,
     dynamicComputeUnitLimit: true,
     dynamicSlippage: true,
-    feeAccount: feeAccount.toBase58(),
   };
   const swapRes = await fetch(swapUrl, {
     method: "POST",

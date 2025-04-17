@@ -7,13 +7,17 @@ import { ChevronDown, Copy, LogOut, Trophy, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import Button from "./button";
-
+import { abbreviateNumber } from "@/utils";
 // Force re-initialization of PhantomWalletAdapter
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
+import { useSolBalance } from "@/hooks/use-token-balance";
+import SkeletonImage from "./skeleton-image";
 
 const WalletButton = () => {
   const navigate = useNavigate();
   const { publicKey, connecting, wallet, connected } = useWallet();
+  const solBalance = useSolBalance();
+
   const { setVisible } = useWalletModal();
   const {
     isAuthenticated,
@@ -37,15 +41,11 @@ const WalletButton = () => {
       typeof window !== "undefined" &&
       window.solana?.isPhantom
     ) {
-      try {
-        // Create a fresh adapter to get the icon
-        const adapter = new PhantomWalletAdapter();
-        // PhantomWalletAdapter initializes immediately with the icon property
-        if (adapter.icon) {
-          setWalletIcon(adapter.icon);
-        }
-      } catch (e) {
-        console.error("Error creating wallet adapter for icon:", e);
+      // Create a fresh adapter to get the icon
+      const adapter = new PhantomWalletAdapter();
+      // PhantomWalletAdapter initializes immediately with the icon property
+      if (adapter.icon) {
+        setWalletIcon(adapter.icon);
       }
     }
   }, [connected, isAuthenticated, walletIcon]);
@@ -102,22 +102,18 @@ const WalletButton = () => {
         window.solana &&
         window.solana.isPhantom
       ) {
-        try {
-          window.solana
-            .connect()
-            .then((_response) => {
-              // Try to load icon if not yet loaded
-              if (!walletIcon) {
-                const adapter = new PhantomWalletAdapter();
-                if (adapter.icon) {
-                  setWalletIcon(adapter.icon);
-                }
+        window.solana
+          .connect()
+          .then((_response: any) => {
+            // Try to load icon if not yet loaded
+            if (!walletIcon) {
+              const adapter = new PhantomWalletAdapter();
+              if (adapter.icon) {
+                setWalletIcon(adapter.icon);
               }
-            })
-            .catch((err) => console.error("Error auto-connecting:", err));
-        } catch (e) {
-          console.error("Error during auto-connect attempt:", e);
-        }
+            }
+          })
+          .catch((err: any) => console.error("Error auto-connecting:", err));
       }
     }
   }, [
@@ -138,22 +134,18 @@ const WalletButton = () => {
         window.solana.isPhantom &&
         !window.solana.publicKey
       ) {
-        try {
-          window.solana
-            .connect()
-            .then(() => {
-              // Try to load icon if not yet loaded
-              if (!walletIcon) {
-                const adapter = new PhantomWalletAdapter();
-                if (adapter.icon) {
-                  setWalletIcon(adapter.icon);
-                }
+        window.solana
+          .connect()
+          .then(() => {
+            // Try to load icon if not yet loaded
+            if (!walletIcon) {
+              const adapter = new PhantomWalletAdapter();
+              if (adapter.icon) {
+                setWalletIcon(adapter.icon);
               }
-            })
-            .catch((err) => console.error("Error auto-connecting:", err));
-        } catch (e) {
-          console.error("Error during auto-connect attempt:", e);
-        }
+            }
+          })
+          .catch((err: any) => console.error("Error auto-connecting:", err));
       }
     }
   }, [isAuthenticated, isAuthenticating, authToken, walletIcon]);
@@ -175,13 +167,9 @@ const WalletButton = () => {
 
   // Handle disconnect with proper cleanup
   const handleDisconnect = async () => {
-    try {
-      signOut(); // This will handle both adapter and direct Phantom disconnection
-      setMenuOpen(false);
-      setWalletIcon(null);
-    } catch (error) {
-      console.error("Error disconnecting wallet:", error);
-    }
+    signOut(); // This will handle both adapter and direct Phantom disconnection
+    setMenuOpen(false);
+    setWalletIcon(null);
   };
 
   // Determine button text based on connection state
@@ -202,10 +190,10 @@ const WalletButton = () => {
       <div className="relative" ref={dropdownRef}>
         <Button
           size="large"
-          className="px-3"
+          className="p-2 md:px-3"
           onClick={() => setMenuOpen(!menuOpen)}
         >
-          <div className="flex items-center gap-2.5 justify-between m-auto">
+          <div className="flex items-center md:gap-2.5 justify-between m-auto">
             <span className="font-satoshi font-medium">
               {shortenAddress(displayPublicKey.toString())}
             </span>
@@ -216,6 +204,7 @@ const WalletButton = () => {
                 height={18}
                 width={18}
                 alt={`wallet_icon_${wallet?.adapter?.name || "phantom"}`}
+                className="hidden md:inline"
               />
             )}
             <ChevronDown className="size-5 text-autofun-icon-secondary" />
@@ -225,9 +214,23 @@ const WalletButton = () => {
         {menuOpen && (
           <div className="absolute z-50 right-0 mt-2 bg-[#171717] border border-[#262626] shadow-lg overflow-hidden w-48">
             <ul className="py-2">
+              <li className="opacity-50 px-4 py-2 text-sm text-white flex items-centerjustofy-between gap-2">
+                <SkeletonImage
+                  parentClassName="w-4 h-4"
+                  src="/solana.svg"
+                  width={32}
+                  height={32}
+                  alt="solana_logo"
+                  className="w-4 h-4 inline"
+                />
+                {Number(solBalance).toFixed(2)}
+              </li>
               <li className="opacity-50 px-4 py-2 text-sm text-white flex items-center gap-2">
                 <Trophy size={16} />
-                <span>{user?.points ?? 0} points</span>
+                <span>
+                  {user?.points ? abbreviateNumber(user?.points, true) : 0}{" "}
+                  points
+                </span>
               </li>
               <li
                 className="px-4 py-2 text-sm text-white hover:bg-[#262626] cursor-pointer flex items-center gap-2"

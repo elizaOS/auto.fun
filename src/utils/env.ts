@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const isDevnet = import.meta.env.VITE_SOLANA_NETWORK === "devnet";
+export const isDevnet = import.meta.env.VITE_SOLANA_NETWORK === "devnet";
 
 console.log("isDevnet", isDevnet);
 console.log(
@@ -15,7 +15,6 @@ console.log(
   "import.meta.env.VITE_MAINNET_RPC_URL",
   import.meta.env.VITE_MAINNET_RPC_URL,
 );
-console.log("import.meta.env.VITE_RPC_URL", import.meta.env.VITE_RPC_URL);
 console.log("import.meta.env.VITE_API_URL", import.meta.env.VITE_API_URL);
 console.log(
   "import.meta.env.VITE_DEV_API_URL",
@@ -40,8 +39,12 @@ const unparsedEnv = {
     (import.meta.env.VITE_SOLANA_NETWORK === "devnet"
       ? import.meta.env.VITE_DEVNET_RPC_URL
       : import.meta.env.VITE_MAINNET_RPC_URL) || import.meta.env.VITE_RPC_URL,
+  rpcUrlMainnet: import.meta.env.VITE_MAINNET_RPC_URL,
   virtualReserves: import.meta.env.VITE_VIRTUAL_RESERVES,
+  finalTokenPrice:
+    import.meta.env.VITE_FINAL_TOKEN_PRICE || "4.5100194181788156e-8",
   tokenSupply: import.meta.env.VITE_TOKEN_SUPPLY,
+  feeVault: import.meta.env.VITE_FEE_VAULT,
   decimals: import.meta.env.VITE_DECIMALS,
   solanaNetwork: import.meta.env.VITE_SOLANA_NETWORK,
   apiUrl: isDevnet
@@ -49,17 +52,26 @@ const unparsedEnv = {
     : import.meta.env.VITE_API_URL,
   devAddress: import.meta.env.VITE_DEV_ADDRESS,
   appEnv: process.env.NODE_ENV,
+  r2PublicUrl:
+    import.meta.env.R2_PUBLIC_URL ||
+    "https://pub-75e2227bb40747d9b8b21df85a33efa7.r2.dev",
 } as const;
+
+console.log("unparsedEnv", unparsedEnv);
 
 const envSchema = z.object({
   solanaNetwork: z.string().min(1),
   rpcUrl: z.string().min(1),
+  rpcUrlMainnet: z.string().min(1),
   virtualReserves: z.string().min(1),
+  finalTokenPrice: z.string().min(1),
   tokenSupply: z.string().min(1),
   decimals: z.string().min(1),
   apiUrl: z.string().min(1),
   devAddress: z.string().min(1),
+  feeVault: z.string().min(1),
   appEnv: z.enum(["development", "production"]),
+  r2PublicUrl: z.string().min(1),
 });
 
 const parsedEnv = envSchema.parse(unparsedEnv);

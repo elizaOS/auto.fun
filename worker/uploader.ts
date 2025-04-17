@@ -124,7 +124,17 @@ export async function uploadToCloudflare(
 
       const apiPath = options.isJson ? "metadata" : "image";
       // Ensure proper path formatting - don't URL encode here as R2 handles this
-      const publicUrl = `${env.VITE_API_URL}/api/${apiPath}/${objectKey}`;
+      const objectPath = options.isJson ? "token-metadata" : "token-images";
+
+      logger.log(
+        "uploading to r2",
+        env.R2_PUBLIC_URL,
+        env.VITE_API_URL,
+        env.NODE_ENV,
+      );
+      const publicUrl = env.VITE_API_URL?.includes("localhost")
+        ? `${env.VITE_API_URL}/api/${apiPath}/${objectKey}`
+        : `${env.R2_PUBLIC_URL}/${objectPath}/${objectKey}`;
 
       // Log file in development mode
       logUploadedFile(env, objectKey, publicUrl);
@@ -160,5 +170,95 @@ export async function uploadToCloudflare(
     logUploadedFile(env, objectKey, fallbackUrl);
 
     return fallbackUrl;
+  }
+}
+
+// Function to upload a generated image to a predictable path for a token
+export async function uploadGeneratedImage(
+  env: Env,
+  data: ArrayBuffer | object,
+  tokenMint: string,
+  generationNumber: number,
+  options: {
+    contentType?: string;
+    timeout?: number;
+  } = {},
+) {
+  // Apply a default timeout of 15 seconds
+  const timeout = options.timeout || 15000;
+
+  // Create predictable path based on token mint and generation number
+  const objectKey = `generations/${tokenMint}/gen-${generationNumber}.jpg`;
+
+  // Set the appropriate content type
+  const contentType = options.contentType || "image/jpeg";
+
+  try {
+    // Prepare data for upload
+    let objectData: ArrayBuffer;
+    if (data instanceof ArrayBuffer) {
+      objectData = data;
+    } else if (
+      data instanceof Uint8Array ||
+      data instanceof Uint8ClampedArray
+    ) {
+      objectData = data.buffer as ArrayBuffer;
+    } else {
+      const jsonString = JSON.stringify(data);
+      objectData = new TextEncoder().encode(jsonString).buffer as ArrayBuffer;
+    }
+
+    try {
+      // Create R2 upload and timeout promises
+      const uploadPromise = new Promise<void>((resolve, reject) => {
+        if (!env.R2) {
+          reject(new Error("R2 is not available"));
+          return;
+        }
+
+        // Perform the upload
+        env.R2.put(objectKey, objectData, {
+          httpMetadata: {
+            contentType,
+            cacheControl: "public, max-age=31536000",
+          },
+          customMetadata: {
+            publicAccess: "true",
+            tokenMint: tokenMint,
+            generationNumber: generationNumber.toString(),
+          },
+        })
+          .then(() => {
+            resolve();
+          })
+          .catch((e) => {
+            reject(e);
+          });
+      });
+
+      const timeoutPromise = new Promise<void>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error("Upload timed out"));
+        }, timeout);
+      });
+
+      // Race the promises to implement timeout
+      await Promise.race([uploadPromise, timeoutPromise]);
+
+      // Construct the public URL
+      const publicUrl = `${env.R2_PUBLIC_URL}/${objectKey}`;
+
+      // Log file in development mode
+      logUploadedFile(env, objectKey, publicUrl);
+
+      logger.log(`Successfully uploaded generated image to R2: ${publicUrl}`);
+      return publicUrl;
+    } catch (r2Error) {
+      logger.error("Cloudflare R2 upload failed:", r2Error);
+      throw r2Error;
+    }
+  } catch (error) {
+    logger.error("Error in uploadGeneratedImage:", error);
+    throw error;
   }
 }

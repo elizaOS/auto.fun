@@ -17,8 +17,8 @@ autofun = "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "https://devnet.helius-rpc.com/?api-key=7f068738-8b88-4a91-b2a9-99b00f716717"
-wallet = "/Users/cjk/Documents/Github/serlaunchalot/key/uu.json"
+cluster = "https://devnet.helius-rpc.com/?api-key=67ea9085-1406-4db8-8872-38ac77950d7a"
+wallet = "./uu.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json --bail -t 1000000 tests/**/*.ts"

@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { Env } from "../env";
 import { z } from "zod";
-import { fetchPriceChartData } from "../chart";
+import { fetchPriceChartData, getLatestCandle } from "../chart";
 import { logger } from "../logger";
-
+import { and, desc, eq, sql } from "drizzle-orm";
+import { getDB, TokenHolder, tokenHolders, tokens } from "../db";
 const router = new Hono<{
   Bindings: Env;
   Variables: {
@@ -38,6 +39,22 @@ router.get("/chart/:pairIndex/:start/:end/:range/:token", async (c) => {
       c.json({ error: "Internal server error" }, 500);
     }
   }
+});
+// add /creator-tokens to get tokens created by a user
+router.post("/creator-tokens", async (c) => {
+  const user = c.get("user");
+
+  if (!user) {
+    return c.json({ message: "Unauthorized" }, 401);
+  }
+  const db = getDB(c.env);
+  const tokensCreated = await db
+    .select()
+    .from(tokens)
+    .where(and(eq(tokens.creator, user.publicKey), eq(tokens.imported, 0)))
+    .orderBy(desc(tokens.createdAt));
+  // return tokensCreated
+  return c.json({ tokens: tokensCreated });
 });
 
 export default router;

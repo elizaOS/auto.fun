@@ -1,4 +1,3 @@
-import BondingCurveBar from "@/components/bonding-curve-bar";
 import Button from "@/components/button";
 import CopyButton from "@/components/copy-button";
 import Loader from "@/components/loader";
@@ -11,7 +10,6 @@ import Trade from "@/components/trade";
 import { TradingViewChart } from "@/components/trading-view-chart";
 import TransactionsAndHolders from "@/components/txs-and-holders";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
-import { Tooltip } from "react-tooltip";
 import { IToken } from "@/types";
 import {
   abbreviateNumber,
@@ -21,18 +19,61 @@ import {
   LAMPORTS_PER_SOL,
 } from "@/utils";
 import { getToken, queryClient } from "@/utils/api";
-import { fetchTokenMarketMetrics } from "@/utils/blockchain";
+import { env } from "@/utils/env";
 import { getSocket } from "@/utils/socket";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Globe, Info as InfoCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
-import { toast } from "react-toastify";
-import { env } from "@/utils/env";
+import { Tooltip } from "react-tooltip";
 import { twMerge } from "tailwind-merge";
 
+// Remove CSS styles
+// const styles = `
+//   .token-ellipsis:before {
+//     float: right;
+//     content: attr(data-tail);
+//   }
+//
+//   .token-ellipsis {
+//     white-space: nowrap;
+//     text-overflow: ellipsis;
+//     overflow: hidden;
+//   }
+// `;
+
 const socket = getSocket();
+
+// Add a custom component for middle ellipsis
+function MiddleEllipsis({ text }: { text?: string; suffix?: string }) {
+  const elementRef = useRef<HTMLDivElement>(null);
+  const [showFull, setShowFull] = useState(false);
+
+  useEffect(() => {
+    if (!elementRef.current) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setShowFull(entry.contentRect.width > 420);
+      }
+    });
+
+    observer.observe(elementRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  if (!text) return null;
+
+  const prefix = text.substring(0, 8);
+  const suffix = text.substring(text.length - 8);
+
+  return (
+    <div ref={elementRef} className="font-dm-mono text-center" title={text}>
+      {showFull ? text : `${prefix}...${suffix}`}
+    </div>
+  );
+}
 
 export default function Page() {
   const params = useParams();
@@ -50,6 +91,17 @@ export default function Page() {
     return "chart";
   });
 
+  const [signature, setSignature] = useState<string | undefined>(undefined);
+
+  const onSwapCompleted = (signature: string) => {
+    console.log("onSwapCompleted", onSwapCompleted);
+    setSignature(signature);
+    queryClient.invalidateQueries({ queryKey: ["token", address] });
+    setTimeout(() => {
+      setSignature(undefined);
+    }, 1000);
+  };
+
   // Save active tab to localStorage when it changes
   useEffect(() => {
     if (address) {
@@ -65,7 +117,7 @@ export default function Page() {
       try {
         // Fetch token data from API
         console.log(`Token page: Fetching token data for ${address}`);
-        return await getToken({ address });
+        return await getToken({ address, signature });
       } catch (error) {
         console.error(`Token page: Error fetching token data:`, error);
         throw error;
@@ -77,60 +129,22 @@ export default function Page() {
   useEffect(() => {
     const socket = getSocket();
 
-    socket.on("updateToken", (token: any) =>
-      queryClient.setQueryData(["token", address], token),
-    );
+    // Create a handler function that checks if the token matches the current address
+    const handleTokenUpdate = (token: any) => {
+      // Only update if the token address matches the current page
+      if (token.mint === address) {
+        queryClient.setQueryData(["token", address], token);
+      }
+    };
+
+    // Add the event listener with our filtered handler
+    socket.on("updateToken", handleTokenUpdate);
 
     return () => {
-      socket.off("updateToken");
+      // Remove the specific handler when cleaning up
+      socket.off("updateToken", handleTokenUpdate);
     };
-  }, []);
-
-  // Fetch token market metrics from blockchain
-  const metricsQuery = useQuery({
-    queryKey: ["blockchain-metrics", address],
-    queryFn: async () => {
-      if (!address) throw new Error("No address passed");
-      try {
-        console.log(`Token page: Fetching blockchain metrics for ${address}`);
-        // Add loading toast for better user feedback
-        // toast.info("Fetching real-time blockchain data...", {
-        //   position: "bottom-right",
-        //   autoClose: 3000,
-        // });
-
-        const metrics = await fetchTokenMarketMetrics(address);
-        console.log(`Token page: Received blockchain metrics:`, metrics);
-
-        // Validate the data - if all values are 0, it might indicate an issue
-        const hasValidData =
-          metrics.marketCapUSD > 0 ||
-          metrics.currentPrice > 0 ||
-          metrics.volume24h > 0;
-
-        if (!hasValidData) {
-          console.warn(
-            `Token page: Blockchain metrics may be invalid - all key values are 0`,
-          );
-        }
-
-        return metrics;
-      } catch (error) {
-        console.error(`Token page: Error fetching blockchain metrics:`, error);
-        toast.error(
-          "Error fetching real-time blockchain data. Using cached values.",
-          {
-            position: "bottom-right",
-            autoClose: 5000,
-          },
-        );
-        return null;
-      }
-    },
-    enabled: !!address,
-    refetchInterval: 30_000, // Longer interval for blockchain queries
-    staleTime: 60000, // Data stays fresh for 1 minute
-  });
+  }, [address]);
 
   useEffect(() => {
     socket.emit("subscribe", address);
@@ -140,73 +154,30 @@ export default function Page() {
     };
   }, [address]);
 
+  // Always use tokenState to ensure component updates when token data changes
   const token = tokenQuery?.data as IToken;
-  const metrics = metricsQuery?.data;
 
   // Use real blockchain data if available, otherwise fall back to API data
-  const solPriceUSD =
-    metrics?.solPriceUSD || contextSolPrice || token?.solPriceUSD || 0;
-  const currentPrice = metrics?.currentPrice || token?.currentPrice || 0;
-  const tokenPriceUSD = metrics?.tokenPriceUSD || token?.tokenPriceUSD || 0;
-  const marketCapUSD = metrics?.marketCapUSD || token?.marketCapUSD || 0;
-  const volume24h = token?.volume24h || metrics?.volume24h || 0;
+  const solPriceUSD = contextSolPrice || token?.solPriceUSD || 0;
+  const currentPrice = token?.currentPrice || 0;
+  const tokenPriceUSD = token?.tokenPriceUSD || 0;
+  // const marketCapUSD = token?.marketCapUSD || 0;
+  const volume24h = token?.volume24h || 0;
   // const holderCount = metrics?.holderCount || token?.holderCount || 0;
 
   // For bonding curve calculations, still use token data
-  const finalTokenPrice = 0.00000045; // Approximated final value from the bonding curve configuration (This can only be estimated)
+  const finalTokenPrice = Number(env.finalTokenPrice ?? 0.000000451);
   const finalTokenUSDPrice = finalTokenPrice * solPriceUSD;
   const graduationMarketCap = finalTokenUSDPrice * 1_000_000_000;
 
   // Calculate negative reserve status
-  const negativeReserve =
-    token && token.reserveLamport - token.virtualReserves < 0
-      ? (token.reserveLamport - token.virtualReserves) / LAMPORTS_PER_SOL
-      : null;
+  // const negativeReserve =
+  //   token && token.reserveLamport - token.virtualReserves < 0
+  //     ? (token.reserveLamport - token.virtualReserves) / LAMPORTS_PER_SOL
+  //     : null;
 
   // Add debug logging
-  console.log("Token data from API:", {
-    mint: token?.mint,
-    name: token?.name,
-    currentPrice: token?.currentPrice,
-    tokenPriceUSD: token?.tokenPriceUSD,
-    solPriceUSD: token?.solPriceUSD,
-    marketCapUSD: token?.marketCapUSD,
-    volume24h: token?.volume24h,
-    holderCount: token?.holderCount,
-    status: token?.status,
-    // Add more detailed token data
-    reserveAmount: token?.reserveAmount,
-    reserveLamport: token?.reserveLamport,
-    virtualReserves: token?.virtualReserves,
-    curveProgress: token?.curveProgress,
-    negativeReserve,
-  });
-
-  console.log("Blockchain metrics:", metrics);
-
-  console.log("Using calculated values:", {
-    solPriceFromContext: contextSolPrice,
-    finalSolPrice: solPriceUSD,
-    finalTokenPrice,
-    finalTokenUSDPrice,
-    graduationMarketCap,
-    metricsAvailable: !!metrics,
-    metricsLoading: metricsQuery.isLoading,
-    metricsError: metricsQuery.isError,
-  });
-
-  // If the blockchain fetch failed or returned default values, add a warning
-  useEffect(() => {
-    if (metricsQuery.isSuccess && metrics) {
-      const allZeros =
-        !metrics.marketCapUSD && !metrics.currentPrice && !metrics.volume24h;
-      if (allZeros) {
-        console.warn(
-          `WARNING: Blockchain metrics returned all zeros for token ${token?.mint}. This might indicate an error in data retrieval.`,
-        );
-      }
-    }
-  }, [metricsQuery.isSuccess, metrics, token?.mint]);
+  console.log("Token data from API:", token);
 
   if (tokenQuery?.isLoading) {
     return <Loader />;
@@ -246,7 +217,11 @@ export default function Page() {
       <div className="w-full py-10 flex flex-wrap justify-between">
         <TopPageItem
           title="Market Cap"
-          value={marketCapUSD > 0 ? abbreviateNumber(marketCapUSD) : "-"}
+          value={
+            tokenPriceUSD * token?.tokenSupplyUiAmount > 0
+              ? abbreviateNumber(tokenPriceUSD * token?.tokenSupplyUiAmount)
+              : "-"
+          }
         />
         <TopPageItem
           title="24hr Volume"
@@ -282,9 +257,9 @@ export default function Page() {
       </div>
 
       {/* Three Column Layout */}
-      <div className="flex flex-wrap lg:flex-nowrap gap-4">
+      <div className="flex flex-col lg:flex-row lg:flex-nowrap gap-4">
         {/* Left Column - 25% - Token Info */}
-        <div className="w-full lg:w-1/4 flex flex-col gap-3">
+        <div className="w-full lg:w-1/4 flex flex-col gap-3 order-1 lg:order-1">
           <div className="pt-0 flex flex-col gap-3">
             <div className="relative overflow-hidden">
               <div className="w-full aspect-square">
@@ -300,8 +275,8 @@ export default function Page() {
                   "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5",
                 )}
               >
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex space-x-2  flex-row items-center gap-1">
+                <div className="flex flex-wrap items-center justify-start w-full gap-2">
+                  <div className="flex flex-wrap items-center gap-1">
                     {isPartner ? (
                       <>
                         <div
@@ -314,7 +289,6 @@ export default function Page() {
                             alt="verified-mark"
                           />
                         </div>
-
                         <Tooltip
                           anchorSelect="#partner-token"
                           content="Verified by Auto.fun"
@@ -323,7 +297,7 @@ export default function Page() {
                         />
                       </>
                     ) : null}
-                    <h3 className="capitalize text-white text-2xl font-bold font-satoshi leading-tight truncate pr-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                    <h3 className="capitalize text-white text-xl sm:text-2xl font-bold font-satoshi leading-tight truncate pr-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] max-w-[180px] sm:max-w-none">
                       {token?.name}
                     </h3>
                     <Tooltip anchorSelect="#view-on-solscan">
@@ -337,7 +311,7 @@ export default function Page() {
                       <ExternalLink className="size-5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
                     </Link>
                   </div>
-                  <div className="shrink-0 ml-1">
+                  <div className="shrink-0 ml-auto">
                     <TokenStatus token={token} />
                   </div>
                 </div>
@@ -365,8 +339,8 @@ export default function Page() {
                 </span>
               </div>
               <div className="bg-autofun-background-input flex justify-between py-2 px-3 min-w-0 w-full gap-2">
-                <span className="w-0 flex-1 min-w-0 block text-base text-autofun-text-secondary truncate">
-                  {token?.mint}
+                <span className="mx-auto w-0 flex-1 min-w-0 block text-base text-autofun-text-secondary">
+                  <MiddleEllipsis text={token?.mint} />
                 </span>
                 <CopyButton text={token?.mint} />
               </div>
@@ -442,12 +416,14 @@ export default function Page() {
                   </div>
                 );
               })()}
-            {token?.creator === normalizedWallet && <AdminSection />}
+            {token?.creator === normalizedWallet && !token?.imported && (
+              <AdminSection />
+            )}
           </div>
         </div>
 
         {/* Middle Column - 50% - Tabs for Chart and AI Create */}
-        <div className="w-full lg:w-1/2 flex flex-col gap-3">
+        <div className="w-full lg:w-1/2 flex flex-col gap-3 order-3 lg:order-2">
           <div className="overflow-hidden relative">
             <div className="flex flex-col">
               {/* Green stroke above tab section */}
@@ -531,68 +507,97 @@ export default function Page() {
         </div>
 
         {/* Right Column - 25% - Trading and Bonding Curve */}
-        <div className="w-full lg:w-1/4 flex flex-col gap-3">
+        <div className="w-full lg:w-1/4 flex flex-col md:flex-row lg:flex-col gap-3 order-2 lg:order-3">
           {/* Trade Component - Now at the top */}
-          <Trade token={token} />
+          <Trade token={token} onSwapCompleted={onSwapCompleted} />
+          <div className="flex flex-col gap-3">
+            {/* Bonding Curve */}
+            {token?.imported === 0 && (
+              <div className="flex flex-col gap-3.5 p-2">
+                <div className="flex justify-between gap-3.5 items-center">
+                  <p className="font-medium font-satoshi">Progress</p>
+                  <Tooltip anchorSelect="#tooltip">
+                    <span>
+                      When the market cap reaches the graduation threshold, the
+                      coin's liquidity will transition to Raydium.
+                    </span>
+                  </Tooltip>
+                  <InfoCircle
+                    className="size-5 text-autofun-text-secondary"
+                    id="tooltip"
+                  />
+                </div>
+                <div className="relative w-full h-8 overflow-hidden">
+                  {/* Background layer */}
+                  <img
+                    src="/token/progressunder.svg"
+                    alt="Progress bar background"
+                    className="absolute left-0 top-0 w-full h-full object-cover blur-xs"
+                  />
+                  {/* Progress layer with dynamic width */}
+                  <div
+                    className="absolute left-0 top-0 h-full"
+                    style={{
+                      width: `${Math.min(100, token?.curveProgress || 0)}%`,
+                    }}
+                  >
+                    <img
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                      src="/token/progress.svg"
+                      alt="Progress indicator"
+                    />
+                  </div>
+                  {/* Percentage text */}
+                  <div className="absolute right-2 top-0 h-full flex items-center">
+                    <span className="text-autofun-text-secondary font-bold font-dm-mono text-[16px]">
+                      {(token?.curveProgress || 0).toFixed(0)}%
+                    </span>
+                  </div>
+                </div>
+                {token?.status !== "migrated" ? (
+                  <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">
+                    Graduate this coin at{" "}
+                    {formatNumber(graduationMarketCap, true)} market cap.{"\n"}
+                    There is{" "}
+                    {formatNumber(
+                      (token?.reserveLamport - token?.virtualReserves) /
+                        LAMPORTS_PER_SOL,
+                      true,
+                      true,
+                    )}{" "}
+                    SOL in the bonding curve.
+                  </p>
+                ) : null}
+              </div>
+            )}
 
-          {/* Bonding Curve */}
-          {token?.imported === 0 && (
-            <div className="flex flex-col gap-3.5">
-              <div className="flex justify-between gap-3.5 items-center">
-                <p className="font-medium font-satoshi">Progress</p>
-                <Tooltip anchorSelect="#tooltip">
-                  <span>
-                    When the market cap reaches the graduation threshold, the
-                    coin's liquidity will transition to Raydium.
+            {/* Price Display - Now below bonding curve */}
+            <div className="py-4 px-3">
+              <div className="flex justify-between flex-row md:flex-col lg:flex-row">
+                <div className="flex flex-col gap-1 items-center py-4">
+                  <span className="font-dm-mono text-autofun-text-secondary">
+                    Price USD
                   </span>
-                </Tooltip>
-                <InfoCircle
-                  className="size-5 text-autofun-text-secondary"
-                  id="tooltip"
-                />
-              </div>
-              <div>
-                <BondingCurveBar progress={token?.curveProgress} />
-              </div>
-              {token?.status !== "migrated" ? (
-                <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">
-                  Graduate this coin at{" "}
-                  {formatNumber(graduationMarketCap, true)} market cap.{"\n"}
-                  There is{" "}
-                  {formatNumber(
-                    (token?.reserveLamport - token?.virtualReserves) /
-                      LAMPORTS_PER_SOL,
-                    true,
-                    true,
-                  )}{" "}
-                  SOL in the bonding curve.
-                </p>
-              ) : null}
-            </div>
-          )}
-
-          {/* Price Display - Now below bonding curve */}
-          <div className="py-4 px-3">
-            <div className="flex justify-between">
-              <div className="flex flex-col gap-1 items-center">
-                <span className="font-dm-mono text-autofun-text-secondary">
-                  Price USD
-                </span>
-                <span className="text-xl font-dm-mono text-autofun-text-primary">
-                  {tokenPriceUSD
-                    ? formatNumberSubscript(tokenPriceUSD)
-                    : "$0.00"}
-                </span>
-              </div>
-              <div className="flex flex-col gap-1 items-center">
-                <span className="font-dm-mono text-autofun-text-secondary">
-                  Price SOL
-                </span>
-                <span className="text-xl font-dm-mono text-autofun-text-primary">
-                  {currentPrice
-                    ? formatNumberSubscript(currentPrice)
-                    : "0.00000000"}
-                </span>
+                  <span className="text-xl font-dm-mono text-autofun-text-primary">
+                    {tokenPriceUSD
+                      ? formatNumberSubscript(tokenPriceUSD)
+                      : "$0.00"}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1 items-center py-4">
+                  <span className="font-dm-mono text-autofun-text-secondary">
+                    Price SOL
+                  </span>
+                  <span className="text-xl font-dm-mono text-autofun-text-primary">
+                    {currentPrice
+                      ? formatNumberSubscript(currentPrice)
+                      : "0.00000000"}
+                  </span>
+                </div>
               </div>
             </div>
           </div>

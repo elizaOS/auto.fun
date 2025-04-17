@@ -1,5 +1,6 @@
 import axios from "axios";
 import { logger } from "./logger";
+import { Codex } from "@codex-data/sdk";
 
 export interface CodexTokenEvent {
   eventDisplayType: string;
@@ -373,49 +374,85 @@ async function fetchCodexBarsChunk(
   env?: any,
 ): Promise<CandleData[]> {
   try {
-    const query = `query {
-      getBars(
-        query: {
-          symbol: "${symbol}",
-          from: ${startTimestamp},
-          to: ${endTimestamp},
-          resolution: ${resolution}
-        },
-        quoteToken: "${quoteToken}"
-      ) {
-        o
-        h
-        l
-        c
-        v
-        volume
-      }
-    }`;
-
-    const response = await axios.post(
-      apiUrl,
-      { query, variables: {} },
+    // fix codex chart
+    const codexService = new Codex(env?.CODEX_API_KEY || "");
+    // const query = `query {
+    //   getBars(
+    //     query: {
+    //       symbol: "${symbol}",
+    //       from: ${startTimestamp},
+    //       to: ${endTimestamp},
+    //       resolution: ${resolution}
+    //     },
+    //     quoteToken: "${quoteToken}"
+    //   ) {
+    //     o
+    //     h
+    //     l
+    //     c
+    //     v
+    //     volume
+    //   }
+    // }`;
+    const response = (await codexService.send(
+      `query GetBars($symbol: String!, $from: Int!, $to: Int!, $resolution: String!) {
+        getBars(
+          symbol: $symbol
+          from: $from
+          to: $to
+          resolution: $resolution
+          quoteToken: token1
+        ) {
+          o
+          h
+          l
+          c
+          v
+          volume
+          liquidity
+          buyVolume
+          sellVolume
+          transactions
+        }
+      }`,
       {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: env?.CODEX_API_KEY || "",
-        },
+        symbol: symbol,
+        from: startTimestamp,
+        to: endTimestamp,
+        resolution: resolution,
       },
-    );
+    )) as any;
+
+    // const response = await axios.post(
+    //   apiUrl,
+    //   { query, variables: {} },
+    //   {
+    //     headers: {
+    //       "Content-Type": "application/json",
+    //       Authorization: env?.CODEX_API_KEY || "",
+    //     },
+    //   },
+    // );
 
     // Add error handling for missing data
-    if (!response.data || !response.data.data || !response.data.data.getBars) {
-      logger.error("Invalid response from Codex API:", response.data);
+    // if (!response.data || !response.data.data || !response.data.data.getBars) {
+    //   logger.error("Invalid response from Codex API:", response.data);
 
-      // If we have error information in the response, log it
-      if (response.data && response.data.errors) {
-        logger.error("Codex API errors:", response.data.errors);
-      }
+    //   // If we have error information in the response, log it
+    //   if (response.data && response.data.errors) {
+    //     logger.error("Codex API errors:", response.data.errors);
+    //   }
+
+    //   return [];
+    // }
+
+    if (!(response as any)?.getBars) {
+      logger.error("Invalid response from Codex API:", response);
 
       return [];
     }
-
-    const barsData = response.data.data.getBars as CodexBarsResponse;
+    // const barsData = response.data.data.getBars as CodexBarsResponse;
+    const barsData = response.getBars as CodexBarsResponse;
 
     if (!barsData || !barsData.o || barsData.o.length === 0) {
       return [];
