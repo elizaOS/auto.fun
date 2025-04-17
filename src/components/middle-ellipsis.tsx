@@ -32,4 +32,4 @@ export default function MiddleEllipsis({ text }: MiddleEllipsisProps) {
       {showFull ? text : `${prefix}...${suffix}`}
     </div>
   );
-} 
+}
