@@ -241,7 +241,7 @@ const FormImageInput = ({
   setGeneratingField: (value: string | null) => void;
   onPromptFunctionsChange: (
     setPrompt: (prompt: string) => void,
-    onPromptChange: (prompt: string) => void,
+    onPromptChange: (prompt: string) => void
   ) => void;
   onPreviewChange?: (previewUrl: string | null) => void;
   imageUrl?: string | null;
@@ -255,7 +255,7 @@ const FormImageInput = ({
   const [preview, setPreview] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
   const [lastGeneratedImage, setLastGeneratedImage] = useState<string | null>(
-    null,
+    null
   );
   const promptDebounceRef = useRef<number | null>(null);
   const hasDirectlySetPreview = useRef<boolean>(false);
@@ -291,7 +291,7 @@ const FormImageInput = ({
         onPromptChange(value);
       }, 500);
     },
-    [onPromptChange],
+    [onPromptChange]
   );
 
   // Update lastGeneratedImage only when preview changes
@@ -317,7 +317,7 @@ const FormImageInput = ({
       setPrompt(value);
       debouncedPromptChange(value);
     },
-    [debouncedPromptChange],
+    [debouncedPromptChange]
   );
 
   const handleCancel = useCallback(() => {
@@ -343,7 +343,7 @@ const FormImageInput = ({
         // Check file size (limit to 5MB)
         if (file.size > 5 * 1024 * 1024) {
           toast.error(
-            "File is too large. Please select an image less than 5MB.",
+            "File is too large. Please select an image less than 5MB."
           );
           return;
         }
@@ -356,7 +356,7 @@ const FormImageInput = ({
         onChange(file);
       }
     },
-    [onChange],
+    [onChange]
   );
 
   // Handle drag & drop
@@ -377,7 +377,7 @@ const FormImageInput = ({
         // Check file size (limit to 5MB)
         if (file.size > 5 * 1024 * 1024) {
           toast.error(
-            "File is too large. Please select an image less than 5MB.",
+            "File is too large. Please select an image less than 5MB."
           );
           return;
         }
@@ -390,7 +390,7 @@ const FormImageInput = ({
         onChange(file);
       }
     },
-    [onChange],
+    [onChange]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -605,7 +605,7 @@ const uploadImage = async (metadata: TokenMetadata) => {
   const filename = `${safeName}${extension}`;
 
   console.log(
-    `Uploading image as ${filename} with content type ${contentType}`,
+    `Uploading image as ${filename} with content type ${contentType}`
   );
 
   // Get auth token from localStorage with quote handling
@@ -658,7 +658,7 @@ const uploadImage = async (metadata: TokenMetadata) => {
     // Specifically handle authentication errors
     if (response.status === 401) {
       throw new Error(
-        "Authentication required. Please connect your wallet and try again.",
+        "Authentication required. Please connect your wallet and try again."
       );
     }
     throw new Error("Failed to upload image: " + (await response.text()));
@@ -761,7 +761,7 @@ export const Create = () => {
   const [isGeneratingVanity, setIsGeneratingVanity] = useState(false);
   const [vanityResult, setVanityResult] = useState<VanityResult | null>(null);
   const [displayedPublicKey, setDisplayedPublicKey] = useState<string>(
-    "--- Generate a vanity address ---",
+    "--- Generate a vanity address ---"
   ); // Placeholder
   const [suffixError, setSuffixError] = useState<string | null>(null);
   const workersRef = useRef<Worker[]>([]);
@@ -942,7 +942,7 @@ export const Create = () => {
         : "LOCAL_DEV=true";
     console.log(
       `%c[DEV MODE via ${source}] SOL balance check bypassed for imported tokens in development mode`,
-      "color: green; font-weight: bold",
+      "color: green; font-weight: bold"
     );
   }
 
@@ -960,7 +960,7 @@ export const Create = () => {
 
   // Store a reference to the FormImageInput's setPreview function
   const previewSetterRef = useRef<((preview: string | null) => void) | null>(
-    null,
+    null
   );
 
   // Create ref to track image URL creation to prevent infinite loops
@@ -1194,7 +1194,7 @@ export const Create = () => {
   const createTokenOnChain = async (
     tokenMetadata: TokenMetadata,
     mintKeypair: Keypair,
-    metadataUrl: string,
+    metadataUrl: string
   ) => {
     try {
       if (!publicKey) {
@@ -1208,7 +1208,7 @@ export const Create = () => {
       // Ensure we have a valid metadata URL
       if (!metadataUrl || metadataUrl === "undefined" || metadataUrl === "") {
         console.warn(
-          "No metadata URL provided, generating minimal metadata...",
+          "No metadata URL provided, generating minimal metadata..."
         );
 
         // Create minimal metadata and upload it
@@ -1259,7 +1259,7 @@ export const Create = () => {
       const txId = mintKeypair.publicKey.toString();
       console.log(
         "Token created on-chain successfully with mint address:",
-        txId,
+        txId
       );
       return txId;
     } catch (error) {
@@ -1273,10 +1273,10 @@ export const Create = () => {
           error.message.includes("Error Number: 102"))
       ) {
         console.error(
-          "Transaction failed due to instruction deserialization error.",
+          "Transaction failed due to instruction deserialization error."
         );
         console.error(
-          "This is likely due to parameter mismatch with the on-chain program.",
+          "This is likely due to parameter mismatch with the on-chain program."
         );
 
         // Try to log relevant parameters
@@ -1293,7 +1293,7 @@ export const Create = () => {
         }
 
         throw new Error(
-          "Failed to create token: instruction format mismatch with on-chain program. Please try again or contact support.",
+          "Failed to create token: instruction format mismatch with on-chain program. Please try again or contact support."
         );
       }
 
@@ -1387,7 +1387,7 @@ export const Create = () => {
       if (promptFunctions.setPrompt) {
         console.log(
           "Setting promptFunctions.setPrompt with:",
-          data.metadata.prompt,
+          data.metadata.prompt
         );
         promptFunctions.setPrompt(data.metadata.prompt);
       } else {
@@ -1397,7 +1397,7 @@ export const Create = () => {
       if (promptFunctions.onPromptChange) {
         console.log(
           "Calling promptFunctions.onPromptChange with:",
-          data.metadata.prompt,
+          data.metadata.prompt
         );
         promptFunctions.onPromptChange(data.metadata.prompt);
       } else {
@@ -1407,7 +1407,7 @@ export const Create = () => {
       // Step 2: Generate image with the generated prompt
       console.log(
         "Requesting image generation with prompt:",
-        data.metadata.prompt,
+        data.metadata.prompt
       );
 
       // Temporarily set the generating state
@@ -1453,7 +1453,7 @@ export const Create = () => {
         const imageBlob = await fetch(imageData.mediaUrl).then((r) => {
           if (!r.ok)
             throw new Error(
-              `Failed to fetch image: ${r.status} ${r.statusText}`,
+              `Failed to fetch image: ${r.status} ${r.statusText}`
             );
           return r.blob();
         });
@@ -1501,7 +1501,7 @@ export const Create = () => {
       setHasGeneratedToken(true);
 
       console.log(
-        "=== Token generation from prompt completed successfully ===",
+        "=== Token generation from prompt completed successfully ==="
       );
     } catch (error) {
       console.error("Error generating from prompt:", error);
@@ -1511,7 +1511,7 @@ export const Create = () => {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to generate token from prompt. Please try again.",
+          : "Failed to generate token from prompt. Please try again."
       );
     } finally {
       setIsProcessingPrompt(false);
@@ -1593,11 +1593,11 @@ export const Create = () => {
             // If we can't parse the error, show a more friendly message
             if (response.status === 404) {
               throw new Error(
-                "The token doesn't exist or doesn't have metadata.",
+                "The token doesn't exist or doesn't have metadata."
               );
             } else {
               throw new Error(
-                `Server error (${response.status}): Unable to retrieve token data.`,
+                `Server error (${response.status}): Unable to retrieve token data.`
               );
             }
           }
@@ -1685,7 +1685,7 @@ export const Create = () => {
 
   // Handle paste in the import address field
   const handleImportAddressPaste = (
-    e: React.ClipboardEvent<HTMLInputElement>,
+    e: React.ClipboardEvent<HTMLInputElement>
   ) => {
     const pastedText = e.clipboardData.getData("text");
 
@@ -1730,7 +1730,7 @@ export const Create = () => {
   const generateAll = useCallback(
     async (
       setPrompt?: ((prompt: string) => void) | null,
-      onPromptChange?: ((prompt: string) => void) | null,
+      onPromptChange?: ((prompt: string) => void) | null
     ) => {
       try {
         setIsGenerating(true);
@@ -1869,14 +1869,14 @@ export const Create = () => {
         toast.error(
           error instanceof Error
             ? error.message
-            : "Failed to generate metadata. Please try again.",
+            : "Failed to generate metadata. Please try again."
         );
       } finally {
         setIsGenerating(false);
         setGeneratingField(null);
       }
     },
-    [setIsGenerating, setGeneratingField],
+    [setIsGenerating, setGeneratingField]
   );
 
   // --- Vanity Generation Functions --- (Copied and adapted)
@@ -1960,7 +1960,7 @@ export const Create = () => {
 
     const numWorkers = navigator.hardwareConcurrency || 4;
     console.log(
-      `Starting ${numWorkers} vanity workers for suffix: "${suffix}"`,
+      `Starting ${numWorkers} vanity workers for suffix: "${suffix}"`
     );
     startTimeRef.current = Date.now();
     workersRef.current = [];
@@ -1972,7 +1972,7 @@ export const Create = () => {
       let result = "";
       for (let i = 0; i < length; i++) {
         result += base58Chars.charAt(
-          Math.floor(Math.random() * base58Chars.length),
+          Math.floor(Math.random() * base58Chars.length)
         );
       }
       return result;
@@ -1998,7 +1998,7 @@ export const Create = () => {
           switch (data.type) {
             case "found":
               console.log(
-                `Worker ${data.workerId} found valid match: ${data.publicKey}`,
+                `Worker ${data.workerId} found valid match: ${data.publicKey}`
               );
               if (data.validated) {
                 // Construct Keypair from secret key array
@@ -2006,7 +2006,7 @@ export const Create = () => {
                 if (secretKeyUint8Array.length !== 64) {
                   console.error(
                     "Worker sent invalid secret key length:",
-                    secretKeyUint8Array.length,
+                    secretKeyUint8Array.length
                   );
                   // Handle error - maybe try next result? For now, stop.
                   stopVanityGeneration();
@@ -2020,7 +2020,7 @@ export const Create = () => {
                 if (foundKeypair.publicKey.toString() !== data.publicKey) {
                   console.log("*** FAILURE ***");
                   console.error(
-                    "Public key mismatch between worker and derived key!",
+                    "Public key mismatch between worker and derived key!"
                   );
                   setSuffixError("Key validation mismatch.");
                   stopVanityGeneration(); // Stop on critical error
@@ -2037,7 +2037,7 @@ export const Create = () => {
                 console.log("*** STOPPED VANITY GENERATION ***");
               } else {
                 console.warn(
-                  `Worker ${data.workerId} found potential match but validation failed.`,
+                  `Worker ${data.workerId} found potential match but validation failed.`
                 );
                 // Keep searching
               }
@@ -2134,7 +2134,7 @@ export const Create = () => {
 
           // if (!isCreatorNow) {
           //   throw new Error(
-          //     "You need to connect with the token's creator wallet to register it",
+          //     "You need to connect with the token's creator wallet to register it"
           //   );
           // }
 
@@ -2170,6 +2170,11 @@ export const Create = () => {
               discord: form.links.discord,
               imageUrl: tokenData.image || "",
               metadataUrl: tokenData.metadataUri || "",
+              creator:
+                tokenData.updateAuthority ||
+                tokenData.creators ||
+                tokenData.mintAuthority ||
+                "",
               // Include the import flag to indicate this is an imported token
               imported: true,
             }),
@@ -2261,7 +2266,7 @@ export const Create = () => {
           // For imported tokens, create a token entry in the database
           console.log(
             "Creating token entry for imported token:",
-            tokenData.mint,
+            tokenData.mint
           );
 
           // Show coin drop animation
@@ -2385,7 +2390,7 @@ export const Create = () => {
           if (!metadataUrl || metadataUrl === "undefined") {
             console.error(
               "Upload succeeded but metadata URL is invalid:",
-              metadataUrl,
+              metadataUrl
             );
             // Fallback: generate a unique metadata URL based on mint address
             metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
@@ -2414,7 +2419,7 @@ export const Create = () => {
           metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
           console.log(
             "Using default metadata URL for imported token:",
-            metadataUrl,
+            metadataUrl
           );
         }
       } else if (!media_base64 && !metadataUrl) {
@@ -2422,7 +2427,7 @@ export const Create = () => {
         metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
         console.log(
           "No image provided, using default metadata URL:",
-          metadataUrl,
+          metadataUrl
         );
       }
 
@@ -2459,7 +2464,7 @@ export const Create = () => {
               // Wait a moment before retrying
               await new Promise((resolve) => setTimeout(resolve, 1000));
               toast.info(
-                "Retrying token creation with different parameters...",
+                "Retrying token creation with different parameters..."
               );
 
               // Modify token metadata for retry
@@ -2491,7 +2496,7 @@ export const Create = () => {
         try {
           console.log(
             "Marking pre-generated token as used:",
-            currentPreGeneratedTokenId,
+            currentPreGeneratedTokenId
           );
 
           // Get auth token from localStorage with quote handling
@@ -2520,7 +2525,7 @@ export const Create = () => {
           });
 
           console.log(
-            "Successfully marked token as used and removed duplicates",
+            "Successfully marked token as used and removed duplicates"
           );
         } catch (error) {
           console.error("Error marking pre-generated token as used:", error);
@@ -2565,7 +2570,7 @@ export const Create = () => {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to create token. Please try again.",
+          : "Failed to create token. Please try again."
       );
       setIsCreating(false);
       setCreationStep("");
@@ -2650,7 +2655,7 @@ export const Create = () => {
               method: "GET",
               headers,
               credentials: "include",
-            },
+            }
           );
 
           if (!response.ok) {
@@ -2892,7 +2897,7 @@ export const Create = () => {
       !Object.values(errors).some(
         (error) =>
           error &&
-          !["userPrompt", "importAddress", "percentage"].includes(error), // Ignore non-blocking errors
+          !["userPrompt", "importAddress", "percentage"].includes(error) // Ignore non-blocking errors
       )
     );
   };
@@ -3247,7 +3252,7 @@ export const Create = () => {
                   onClick={() =>
                     generateAll(
                       promptFunctions.setPrompt,
-                      promptFunctions.onPromptChange,
+                      promptFunctions.onPromptChange
                     )
                   } // Pass prompt fns
                   isLoading={isGenerating && generatingField === "description"}
@@ -3421,7 +3426,7 @@ export const Create = () => {
                           ) {
                             wholePart = wholePart.slice(
                               0,
-                              String(Math.floor(MAX_INITIAL_SOL)).length,
+                              String(Math.floor(MAX_INITIAL_SOL)).length
                             );
                           }
                           // Limit decimal part length
@@ -3466,7 +3471,7 @@ export const Create = () => {
                   <div className="text-right text-xs text-neutral-400">
                     ≈{" "}
                     {calculatePercentage(
-                      calculateTokensFromSol(parseFloat(buyValue as string)),
+                      calculateTokensFromSol(parseFloat(buyValue as string))
                     ).toFixed(2)}{" "}
                     % of supply
                   </div>

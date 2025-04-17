@@ -43,6 +43,7 @@ const unparsedEnv = {
   virtualReserves: import.meta.env.VITE_VIRTUAL_RESERVES,
   finalTokenPrice: import.meta.env.VITE_FINAL_TOKEN_PRICE || "4.5100194181788156e-8",
   tokenSupply: import.meta.env.VITE_TOKEN_SUPPLY,
+  feeVault: import.meta.env.VITE_FEE_VAULT,
   decimals: import.meta.env.VITE_DECIMALS,
   solanaNetwork: import.meta.env.VITE_SOLANA_NETWORK,
   apiUrl: isDevnet
@@ -67,6 +68,7 @@ const envSchema = z.object({
   decimals: z.string().min(1),
   apiUrl: z.string().min(1),
   devAddress: z.string().min(1),
+  feeVault: z.string().min(1),
   appEnv: z.enum(["development", "production"]),
   r2PublicUrl: z.string().min(1),
 });

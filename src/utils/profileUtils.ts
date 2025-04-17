@@ -235,44 +235,89 @@ const useCreatedTokens = () => {
 
   const getTokenAccounts = useTokenAccounts();
   const removeNonAutofunTokens = useRemoveNonAutofunTokens();
-  const getTokenMetadata = useTokenMetadata();
-  const getProfileTokens = useGetProfileTokens();
-
-  const fetchTokens = useCallback(async () => {
+  const fetchTokens = useCallback(async (): Promise<ProfileToken[]> => {
     if (!publicKey) {
       throw new Error("user not connected to wallet");
     }
 
-    // Replace womboApi with fetch
-    const response = await fetch(`/api/tokens?creator=${publicKey}`);
+    // === 1) Build headers ===
+    const authToken = localStorage.getItem("authToken");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(authToken
+        ? { Authorization: `Bearer ${JSON.parse(authToken)}` }
+        : {}),
+    };
+
+    // === 2) Fetch the raw tokens list ===
+    const response = await fetch(`${env.apiUrl}/api/creator-tokens`, {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: JSON.stringify({ creator: publicKey.toBase58() }),
+    });
     if (!response.ok) {
       throw new Error(`Failed to fetch: ${response.statusText}`);
     }
-    const data = (await response.json()) as { tokens: Array<{ mint: string }> };
-    const tokens = data.tokens;
 
+    const { tokens } = (await response.json()) as {
+      tokens: Array<{
+        id: string;
+        name: string;
+        ticker: string;
+        image: string | null;
+        mint: string;
+        tokenDecimals: number;
+      }>;
+    };
+
+    console.log("tokens", tokens);
+
+    // === 3) Pull your on‐chain token accounts **once** ===
     const tokenAccounts = await getTokenAccounts();
-    const createdTokenAccounts = tokenAccounts.filter((account) =>
-      tokens.find(
-        (token: { mint: string }) => token.mint === account.mint.toBase58(),
-      ),
-    );
-    const autofunTokenAccounts =
-      await removeNonAutofunTokens(createdTokenAccounts);
+    const autofunTokenAccounts = await removeNonAutofunTokens(tokenAccounts);
+    // === 4) Map into ProfileToken[] ===
+    const profileTokens: ProfileToken[] = tokens.map((t) => {
+      const mint = t.mint; // Extract mint property
+      // parse the mint
+      const mintPubkey = new PublicKey(t.mint);
 
-    const metadataAccounts = await getTokenMetadata(autofunTokenAccounts);
+      // find the account with this mint (if any)
+      const account = tokenAccounts.find((acct) =>
+        acct.mint.equals(mintPubkey)
+      );
 
-    const profileTokens = await getProfileTokens(
-      autofunTokenAccounts,
-      metadataAccounts,
-    );
+      const reserveLamport
+        = autofunTokenAccounts.find(
+          (acct) => acct.tokenAccount.mint.equals(mintPubkey),
+        )?.bondingCurveAccount.reserveLamport.toNumber() ?? 0;
+      const solValue = account?.amount ? calculateAmountOutSell(
+        reserveLamport,
+        Number(account?.amount ?? 0),
+        6,
+        1,
+        autofunTokenAccounts.find(
+          (acct) => acct.tokenAccount.mint.equals(mintPubkey),
+        )?.bondingCurveAccount.reserveToken.toNumber() ?? 0,
+      ) / LAMPORTS_PER_SOL : 0;
 
+      return {
+        image: t.image,
+        name: t.name,
+        ticker: t.ticker,
+        mint: t.mint,
+        // safe‐cast the amount or fall back to zero
+        tokensHeld: account?.amount ? (BigInt(account?.amount) / BigInt(10 ** t.tokenDecimals)) : BigInt(0),
+        solValue: solValue,
+      }
+    });
+
+    console.log("profileTokens", profileTokens);
     return profileTokens;
   }, [
-    getProfileTokens,
-    getTokenAccounts,
-    getTokenMetadata,
     publicKey,
+    env.apiUrl,
+    getTokenAccounts,
     removeNonAutofunTokens,
   ]);
 

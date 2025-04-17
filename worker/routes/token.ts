@@ -1826,6 +1826,7 @@ tokenRouter.post("/create-token", async (c) => {
       imageUrl,
       metadataUrl,
       imported,
+      creator
     } = body;
 
     const mintAddress = tokenMint || mint;
@@ -1877,7 +1878,7 @@ tokenRouter.post("/create-token", async (c) => {
         farcaster: farcaster || "",
         website: website || "",
         discord: discord || "",
-        creator: user.publicKey || "unknown",
+        creator: creator ? creator : user.publicKey || "unknown",
         status: imported ? "locked" : "active",
         tokenPriceUSD: 0.00000001,
         createdAt: now,
