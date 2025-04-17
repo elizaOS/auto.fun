@@ -55,7 +55,7 @@ export const useSwap = () => {
     // Convert SOL to lamports (1 SOL = 1e9 lamports)
     const amountLamports = Math.floor(amount * 1e9);
     const amountTokens = Math.floor(
-      amount * (token?.tokenDecimals ? 10 ** token.tokenDecimals : 1e6)
+      amount * (token?.tokenDecimals ? 10 ** token.tokenDecimals : 1e6),
     );
 
     // Convert string style ("buy" or "sell") to numeric style (0 for buy; 1 for sell)
@@ -71,7 +71,7 @@ export const useSwap = () => {
         style === "buy" ? amountLamports : amountTokens,
         numericStyle,
         slippageBps,
-        mainnetConnection
+        mainnetConnection,
       );
 
       ixs.push(...ixsJupiterSwap);
@@ -86,7 +86,7 @@ export const useSwap = () => {
         program,
         reserveToken,
         reserveLamport,
-        await getConfigAccount(program)
+        await getConfigAccount(program),
       );
 
       ixs.push(ix);
@@ -136,7 +136,7 @@ export const useSwap = () => {
           Buffer.from(SEED_BONDING_CURVE),
           new PublicKey(tokenAddress).toBytes(),
         ],
-        program.programId
+        program.programId,
       );
       curve = await program.account.bondingCurve.fetch(bondingCurvePda);
     }
@@ -194,7 +194,7 @@ export const useSwap = () => {
           toast.info(`Transaction sent: ${signature.slice(0, 8)}...`);
         } else {
           toast.warning(
-            "Transaction potentially sent, but signature was not received."
+            "Transaction potentially sent, but signature was not received.",
           );
         }
       } finally {

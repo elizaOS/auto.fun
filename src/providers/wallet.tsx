@@ -58,11 +58,11 @@ export const Wallet = ({ children }: PropsWithChildren) => {
                     response.publicKey.toString() === walletAddress
                   ) {
                     console.log(
-                      "Auto-connected wallet matches saved wallet address"
+                      "Auto-connected wallet matches saved wallet address",
                     );
                   } else {
                     console.log(
-                      "Auto-connected wallet address does not match saved address"
+                      "Auto-connected wallet address does not match saved address",
                     );
                   }
                 } catch (err) {

@@ -2256,7 +2256,6 @@ export const Create = () => {
           if (imageUrl) {
             setCoinDropImageUrl(imageUrl);
           }
-
         } catch (uploadError) {
           console.error("Error uploading image:", uploadError);
           throw new Error("Failed to upload token image");

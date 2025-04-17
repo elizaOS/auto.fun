@@ -75,7 +75,7 @@ export default function useAuthentication() {
   const { publicKey, connected, disconnect: adapterDisconnect } = useWallet();
   const [authToken, setAuthToken] = useLocalStorage<string | null>(
     "authToken",
-    null
+    null,
   );
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [userPrivileges, setUserPrivileges] = useState<string[]>([]);
@@ -140,7 +140,7 @@ export default function useAuthentication() {
 
   // The stored wallet address from token
   const [storedWalletAddress, setStoredWalletAddress] = useState<string | null>(
-    authToken ? getWalletAddressFromToken(authToken) : null
+    authToken ? getWalletAddressFromToken(authToken) : null,
   );
 
   // Consider connected if:
@@ -177,7 +177,7 @@ export default function useAuthentication() {
       if (adapterDisconnect) {
         try {
           adapterDisconnect().catch((e) =>
-            console.error("Error disconnecting adapter:", e)
+            console.error("Error disconnecting adapter:", e),
           );
         } catch (e) {
           console.error("Error disconnecting adapter:", e);
@@ -190,7 +190,7 @@ export default function useAuthentication() {
           window.solana
             .disconnect()
             .catch((e: Error) =>
-              console.error("Error disconnecting Phantom:", e)
+              console.error("Error disconnecting Phantom:", e),
             );
         } catch (e) {
           console.error("Error disconnecting Phantom:", e);
@@ -322,7 +322,7 @@ export default function useAuthentication() {
                   method: "GET",
                   headers,
                   credentials: "include", // For backward compatibility
-                }
+                },
               );
 
               if (authCheckResponse.ok) {
@@ -362,7 +362,7 @@ export default function useAuthentication() {
                       `${env.apiUrl}/api/auth-status`,
                       {
                         method: "GET",
-                      }
+                      },
                     );
 
                     if (retryResponse.ok) {
@@ -386,7 +386,7 @@ export default function useAuthentication() {
                   } catch (retryError) {
                     console.error(
                       "Error during auth status retry:",
-                      retryError
+                      retryError,
                     );
                   }
 
@@ -400,13 +400,13 @@ export default function useAuthentication() {
               } else {
                 console.warn(
                   "Auth status check failed:",
-                  authCheckResponse.status
+                  authCheckResponse.status,
                 );
               }
             } catch (checkError) {
               console.error(
                 "Error checking auth status with server:",
-                checkError
+                checkError,
               );
             }
           }

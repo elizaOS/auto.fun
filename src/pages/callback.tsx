@@ -61,7 +61,7 @@ export default function CallbackPage() {
         try {
           const response = await fetch(
             `${env.apiUrl}/api/share/oauth/callback?code=${code}&state=${state}`,
-            { credentials: "include" }
+            { credentials: "include" },
           );
 
           if (!response.ok) {
@@ -70,7 +70,7 @@ export default function CallbackPage() {
               "Auth callback error response:",
               errorText,
               "Status:",
-              response.status
+              response.status,
             );
             setDebugInfo((prev) => ({
               ...prev,
@@ -78,7 +78,7 @@ export default function CallbackPage() {
               responseError: errorText,
             }));
             throw new Error(
-              `Authentication failed: ${response.statusText} - ${errorText}`
+              `Authentication failed: ${response.statusText} - ${errorText}`,
             );
           }
 
@@ -117,7 +117,7 @@ export default function CallbackPage() {
         } catch (error) {
           console.error("Authentication error:", error);
           setError(
-            error instanceof Error ? error.message : "Authentication failed"
+            error instanceof Error ? error.message : "Authentication failed",
           );
         }
       } else {

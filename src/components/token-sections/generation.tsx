@@ -1393,7 +1393,6 @@ export default function CommunityTab() {
         throw new Error("Failed to parse server response");
       }
 
-
       // Validate response
       if (!data || typeof data !== "object") {
         throw new Error("Invalid response format");

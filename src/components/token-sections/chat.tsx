@@ -175,8 +175,7 @@ export default function CommunityTab() {
         ) as TwitterCredentials;
 
         // Check if token is expired
-        if (parsedCredentials.expiresAt < Date.now()) {
-        } else {
+        if (parsedCredentials.expiresAt > Date.now()) {
           setTwitterCredentials(parsedCredentials);
         }
       } catch (error) {
@@ -480,7 +479,6 @@ export default function CommunityTab() {
     setShareError(null);
 
     try {
-
       // In a real implementation, we would fetch the token metadata if not available
       const tokenMetadata = {
         name: tokenInfo?.name || "Example Token",
