@@ -442,7 +442,14 @@ export default function CommunityTab() {
 
       // Add auth token if available
       if (authToken) {
-        headers["Authorization"] = `Bearer ${authToken}`;
+        try {
+          headers["Authorization"] = `Bearer ${JSON.parse(authToken)}`;
+        } catch (e) {
+          console.error("Failed to parse auth token from localStorage:", e);
+          toast.error("Authentication error. Please try logging in again.");
+          setIsGenerating(false);
+          return;
+        }
       }
 
       // Call the API endpoint that enhances the prompt and generates an image
@@ -670,7 +677,14 @@ export default function CommunityTab() {
 
       // Add auth token if available
       if (authToken) {
-        headers["Authorization"] = `Bearer ${authToken}`;
+        try {
+          headers["Authorization"] = `Bearer ${JSON.parse(authToken)}`;
+        } catch (e) {
+          console.error("Failed to parse auth token from localStorage:", e);
+          toast.error("Authentication error. Please try logging in again.");
+          setIsGenerating(false);
+          return;
+        }
       }
 
       // Prepare request body
@@ -1419,7 +1433,14 @@ export default function CommunityTab() {
 
       // Add auth token if available
       if (authToken) {
-        headers["Authorization"] = `Bearer ${authToken}`;
+        try {
+          headers["Authorization"] = `Bearer ${JSON.parse(authToken)}`;
+        } catch (e) {
+          console.error("Failed to parse auth token from localStorage:", e);
+          toast.error("Authentication error. Please try logging in again.");
+          setIsGenerating(false);
+          return;
+        }
       }
 
       // Prepare request body
