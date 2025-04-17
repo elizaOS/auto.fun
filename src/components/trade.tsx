@@ -21,7 +21,6 @@ export default function Trade({
   const { solPrice: contextSolPrice } = useSolPriceContext();
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
 
-  const [buyAmount, setBuyAmount] = useState<number | undefined>(undefined);
   const [sellAmount, setSellAmount] = useState<number | undefined>(undefined);
   const [slippage, setSlippage] = useState<number>(2);
 
@@ -65,39 +64,13 @@ export default function Trade({
     }
   };
 
-  const handleBalanceSelection = (amount: number | string) => {
-    if (typeof amount === "string") {
-      // Handle percentage
-      const percentage = parseFloat(amount) / 100;
-      setSellAmount(Number(balance) * percentage);
-      displayhMinReceivedQuery.refetch();
-    } else {
-      // Handle fixed amount
-      setSellAmount(amount);
-      displayhMinReceivedQuery.refetch();
-    }
-
-    displayhMinReceivedQuery.refetch();
-  };
-
-  const handleSellAmountChange = async (amount: number) => {
-    setSellAmount(amount);
-    if (isTokenSelling) {
-      setSellAmount(amount);
-    } else {
-      setBuyAmount(amount);
-    }
-  };
-
   const displayhMinReceivedQuery = useQuery({
     queryKey: [
       "min-received",
+      token?.mint,
       isTokenSelling,
       sellAmount,
-      sellAmount,
-      buyAmount,
-      solanaPrice,
-      tokenPriceUSD,
+      currentPrice,
     ],
     queryFn: async (): Promise<{
       displayMinReceived: string;
@@ -105,7 +78,7 @@ export default function Trade({
     }> => {
       if (!program) return { displayMinReceived: "0", convertedAmount: 0 };
       const style = isTokenSelling ? 1 : 0;
-      const amount = isTokenSelling ? sellAmount : buyAmount;
+      const amount = sellAmount;
       if (!amount) return { displayMinReceived: "0", convertedAmount: 0 };
 
       const convertedAmountT = isTokenSelling
@@ -133,7 +106,9 @@ export default function Trade({
             );
 
       const convertedAmount = swapAmount / decimals;
+
       const minReceived = convertedAmount * (1 - slippage / 100);
+
       const displayMinReceived = isTokenSelling
         ? formatNumber(minReceived, false, true)
         : formatNumber(minReceived, false, true);
@@ -169,11 +144,7 @@ export default function Trade({
             <button
               onClick={() => {
                 if (isTokenSelling) {
-                  setSellAmount(
-                    buyAmount !== undefined
-                      ? buyAmount
-                      : formatAmount(convertedAmount)
-                  );
+                  setSellAmount(formatAmount(convertedAmount));
                 }
                 setIsTokenSelling(false);
               }}
@@ -257,7 +228,8 @@ export default function Trade({
                     const formattedValue = decimal
                       ? `${whole}.${decimal.slice(0, 2)}`
                       : value;
-                    handleSellAmountChange(Number(formattedValue));
+
+                    setSellAmount(Number(formattedValue));
                   }}
                   value={sellAmount === 0 ? "" : sellAmount}
                   placeholder="0"
@@ -277,65 +249,39 @@ export default function Trade({
               <div className="flex flex-col gap-3">
                 <div className="flex gap-1 mt-1 w-full">
                   <button
-                    onClick={() => handleBalanceSelection(0)}
+                    onClick={() => setSellAmount(0)}
                     className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Reset
                   </button>
                   {!isTokenSelling ? (
                     <>
-                      <button
-                        onClick={() => handleBalanceSelection(0.1)}
-                        disabled={isButtonDisabled(0.1)}
-                        className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        0.1
-                      </button>
-                      <button
-                        onClick={() => handleBalanceSelection(0.5)}
-                        disabled={isButtonDisabled(0.5)}
-                        className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        0.5
-                      </button>
-                      <button
-                        onClick={() => handleBalanceSelection(1.0)}
-                        disabled={isButtonDisabled(1.0)}
-                        className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        1.0
-                      </button>
+                      {[0.1, 0.5, 1.0].map((but, _) => (
+                        <button
+                          onClick={() => {
+                            setSellAmount(but);
+                          }}
+                          disabled={isButtonDisabled(but)}
+                          className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {String(but)}
+                        </button>
+                      ))}
                     </>
                   ) : (
                     <>
-                      <button
-                        onClick={() => handleBalanceSelection("25")}
-                        disabled={isButtonDisabled("25")}
-                        className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        25%
-                      </button>
-                      <button
-                        onClick={() => handleBalanceSelection("50")}
-                        disabled={isButtonDisabled("50")}
-                        className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        50%
-                      </button>
-                      <button
-                        onClick={() => handleBalanceSelection("75")}
-                        disabled={isButtonDisabled("75")}
-                        className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        75%
-                      </button>
-                      <button
-                        onClick={() => handleBalanceSelection("100")}
-                        disabled={isButtonDisabled("100")}
-                        className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        100%
-                      </button>
+                      {["25", "50", "75", "100"].map((perc, _) => (
+                        <button
+                          onClick={() => {
+                            const percentage = parseFloat(perc) / 100;
+                            setSellAmount(Number(balance) * percentage);
+                          }}
+                          disabled={isButtonDisabled("25")}
+                          className="flex-1 px-2 py-1 text-sm font-dm-mono text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {perc}%
+                        </button>
+                      ))}
                     </>
                   )}
                 </div>
