@@ -126,7 +126,7 @@ export class ExternalToken {
       : 0;
     const tokenDecimals = token.token?.decimals ?? 9;
     const tokenSupply = tokenSupplyUi
-      ? Number(tokenSupplyUi) * (10 ** tokenDecimals)
+      ? Number(tokenSupplyUi) * 10 ** tokenDecimals
       : 1_000_000_000 * 1e9; // 1 billion tokens with 9 decimals
     const newTokenData = {
       marketCapUSD: token.marketCap ? Number(token.marketCap) : 0,

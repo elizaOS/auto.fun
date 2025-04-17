@@ -15,6 +15,9 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
   const [displayedValue, setDisplayedValue] = useState<number>(0);
   const animationFrameRef = useRef<number | null>(null);
 
+  // Ensure progress is not negative
+  progress = Math.max(progress, 0);
+
   // Set up the animation effect when progress changes
   useEffect(() => {
     const targetValue = Number(normalizedProgress(progress));
@@ -62,6 +65,20 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
     };
   }, [progress, displayedValue]);
 
+  // Helper function to decide percentage indicator position
+  const getPercentagePosition = () => {
+    if (width <= 45) {
+      // When progress is low, keep percentage to the right
+      return `${width + 2}%`;
+    } else if (width >= 55) {
+      // When progress is high, position percentage inside the bar
+      return `${Math.min(width - 10, 88)}%`;
+    } else {
+      // Transition zone - prevent the text from straddling the boundary
+      return `${width < 50 ? width + 2 : width - 10}%`;
+    }
+  };
+
   return (
     <div className="relative w-full z-0 h-8">
       {/* Add keyframes style */}
@@ -69,11 +86,10 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
 
       {/* Background */}
       <div className="absolute left-0 h-full w-full bg-autofun-stroke-primary" />
+
       {/* Progress */}
       <div
-        className={`absolute left-0 h-full ${
-          width === 100 ? "bg-autofun-text-highlight" : "bg-white"
-        } z-20 transition-all duration-1500 ease-in-out flex items-center justify-end`}
+        className="absolute left-0 h-full bg-autofun-text-highlight z-20 transition-all duration-1500 ease-in-out"
         style={{
           width: `${width}%`,
           transition:
@@ -81,20 +97,24 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
           animation:
             width === 100 ? "subtle-pulse 2s infinite ease-in-out" : "none",
         }}
+      />
+
+      {/* Percentage indicator - position changes based on progress */}
+      <div
+        className="absolute h-full flex items-center z-30"
+        style={{
+          left: getPercentagePosition(),
+          transition: "left 1.5s ease-in-out",
+        }}
       >
-        <span className="text-black font-medium font-dm-mono text-sm mr-2">
+        <span
+          className={`font-medium font-dm-mono text-sm px-1 ${
+            width >= 50 ? "text-black" : "text-autofun-text-secondary"
+          }`}
+        >
           {displayedValue}%
         </span>
       </div>
-
-      {/* Percentage indicator (appears when progress bar is too small) */}
-      {width < 15 && (
-        <div className="absolute right-0 h-full flex items-center z-30">
-          <span className="text-autofun-text-secondary font-medium font-dm-mono text-sm mr-2">
-            {displayedValue}%
-          </span>
-        </div>
-      )}
     </div>
   );
 }
