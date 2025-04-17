@@ -64,13 +64,16 @@ export const sendSolTo = async (
       signerWallet,
     ]);
     console.log("confirmed transaction with signature ", signature);
+    const afterBal = await connection.getBalance(recvWallet);
+    console.log("afterBal: ", parseFloat(afterBal.toString()) / fixedPoint);
+    return signature
   } catch (error: any) {
     console.log("transaction failed: ", error);
   }
 
-  const afterBal = await connection.getBalance(recvWallet);
-  console.log("afterBal: ", parseFloat(afterBal.toString()) / fixedPoint);
-};
+  // const afterBal = await connection.getBalance(recvWallet);
+  // console.log("afterBal: ", parseFloat(afterBal.toString()) / fixedPoint);
+}
 
 export const sendTokenTo = async (
   amount: any,

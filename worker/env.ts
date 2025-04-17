@@ -72,4 +72,5 @@ export interface Env {
   MANAGER_MULTISIG_ADDRESS: string;
   MONITOR_KV: KVNamespace;
   FIXED_FEE: string;
+  ACCOUNT_FEE_MULTISIG: string;
 }

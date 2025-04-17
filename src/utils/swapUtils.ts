@@ -321,27 +321,11 @@ export const getJupiterSwapIx = async (
   }
   const quoteResponse = await quoteRes.json();
   console.log("dev address", env.devAddress);
-  // 2. Build the swap transaction by POSTing to Jupiter's swap endpoint.
-  // const feeAccount = associatedAddress({
-  //   mint: new PublicKey(SOL_MINT_ADDRESS),
-  //   owner: new PublicKey(env.devAddress),
-  // });
 
-  //To do {*/ Malibu */}: reactivate the fee once the fee address is set up (before launch)
-
-  // const feeAccountData = await connection.getAccountInfo(feeAccount);
 
   const additionalIxs = [] as any;
-  // if (!feeAccountData) {
-  //   // Create the fee account
-  //   const createFeeAccountIx = createAssociatedTokenAccountInstruction(
-  //     user,
-  //     feeAccount,
-  //     new PublicKey(env.devAddress),
-  //     new PublicKey(tokenMintAddress),
-  //   );
-  //   additionalIxs.push(createFeeAccountIx);
-  // }
+  const feeAcount = env.feeVault
+
 
   const swapUrl = "https://lite-api.jup.ag/swap/v1/swap";
   const body = {
@@ -350,7 +334,7 @@ export const getJupiterSwapIx = async (
     asLegacyTransaction: true,
     dynamicComputeUnitLimit: true,
     dynamicSlippage: true,
-    // feeAccount: feeAccount.toBase58(),
+    feeAccount: feeAcount,
   };
   const swapRes = await fetch(swapUrl, {
     method: "POST",

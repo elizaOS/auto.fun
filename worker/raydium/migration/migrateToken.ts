@@ -16,7 +16,7 @@ import { withdrawTx, execWithdrawTx } from "../withdraw";
 import { NATIVE_MINT } from "@solana/spl-token";
 import { Env } from "../../env";
 import { depositToRaydiumVault } from "../raydiumVault";
-import { sendNftTo } from "../utils";
+import { sendNftTo, sendSolTo } from "../utils";
 import { retryOperation } from "../utils";
 import { RaydiumVault } from "../types/raydium_vault";
 import { getWebSocketClient } from "../../websocket-client";
@@ -41,7 +41,7 @@ export class TokenMigrator {
     public program: Program<RaydiumVault>,
     public autofunProgram: Program<Autofun>,
     public provider: AnchorProvider,
-  ) {}
+  ) { }
   FEE_PERCENTAGE = 10; // 10% fee for pool creation
 
   async scheduleNextInvocation(token: TokenData): Promise<void> {
@@ -123,6 +123,12 @@ export class TokenMigrator {
         name: "finalize",
         fn: this.finalizeMigration.bind(this),
       },
+      {
+        name: "collectFees",
+        eventName: "feesCollected",
+        fn: (token: any) =>
+          this.collectFee(token).then((result) => result),
+      }
     ];
   }
 
@@ -157,6 +163,8 @@ export class TokenMigrator {
         ? steps.find((step) => step.name === token.migration?.lastStep)
         : undefined;
 
+      //
+
       // If all steps are done, finalize and update token.
       if (currentStep && currentStep?.name === "finalize") {
         token.status = "locked";
@@ -178,7 +186,7 @@ export class TokenMigrator {
       );
       await executeMigrationStep(this.env, token, step);
       // call scheduleNextInvocation to schedule the next step if not done yet.
-      if (step.name !== "finalize") {
+      if (step.name !== "collectFees") {
         logger.log(
           `[Migrate] Scheduling next invocation for token ${token.mint}`,
         );
@@ -530,6 +538,26 @@ export class TokenMigrator {
 
   async finalizeMigration(token: any): Promise<{ txId: string }> {
     return { txId: "finalized" };
+  }
+
+  async collectFee(
+    token: any,
+  ): Promise<{ txId: string; extraData: object }> {
+    console.log("Collecting fee for token", token.mint);
+    const mintConstantFee = new BN(Number(this.env.FIXED_FEE ?? 6) * 1e9); // 6 SOL
+    const feeWallet = new PublicKey(this.env.ACCOUNT_FEE_MULTISIG!);
+    const signerWallet =
+      this.wallet.payer ??
+      Keypair.fromSecretKey(
+        Uint8Array.from(JSON.parse(this.env.WALLET_PRIVATE_KEY!)),
+      );
+    const txSignature = await sendSolTo(
+      mintConstantFee,
+      signerWallet,
+      feeWallet,
+      this.connection,
+    );
+    return { txId: txSignature ?? "", extraData: {} };
   }
 
   private async fetchPoolInfoWithRetry(
