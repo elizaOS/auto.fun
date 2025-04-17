@@ -332,7 +332,7 @@ export const getJupiterSwapIx = async (
     asLegacyTransaction: true,
     dynamicComputeUnitLimit: true,
     dynamicSlippage: true,
-    feeAccount: feeAcount,
+    // feeAccount: feeAcount,
   };
   const swapRes = await fetch(swapUrl, {
     method: "POST",
