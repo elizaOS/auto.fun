@@ -41,7 +41,7 @@ const unparsedEnv = {
       : import.meta.env.VITE_MAINNET_RPC_URL) || import.meta.env.VITE_RPC_URL,
   rpcUrlMainnet: import.meta.env.VITE_MAINNET_RPC_URL,
   virtualReserves: import.meta.env.VITE_VIRTUAL_RESERVES,
-  finalTokenPrice: import.meta.env.VITE_FINAL_TOKEN_PRICE,
+  finalTokenPrice: import.meta.env.VITE_FINAL_TOKEN_PRICE || "4.5100194181788156e-8",
   tokenSupply: import.meta.env.VITE_TOKEN_SUPPLY,
   decimals: import.meta.env.VITE_DECIMALS,
   solanaNetwork: import.meta.env.VITE_SOLANA_NETWORK,
@@ -54,6 +54,8 @@ const unparsedEnv = {
     import.meta.env.R2_PUBLIC_URL ||
     "https://pub-30f52db29266428495af0c1aea206af1.r2.dev",
 } as const;
+
+console.log("unparsedEnv", unparsedEnv);
 
 const envSchema = z.object({
   solanaNetwork: z.string().min(1),
