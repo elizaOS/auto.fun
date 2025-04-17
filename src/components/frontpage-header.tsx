@@ -1080,7 +1080,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       {/* Token Data Display */}
       {selectedTokenData && (
         <div 
-          className="absolute bg-autofun-background-card p-4 rounded-lg shadow-lg z-10 w-[320px]"
+          className="absolute bg-autofun-background-card p-4 shadow-lg z-10 w-[320px]"
           style={getDisplayPosition()}
         >
           <button
@@ -1110,7 +1110,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
                 to={`/token/${selectedTokenData.mint}`}
               >
                 <button className="py-0.5 px-2 bg-[#03ff24] text-black font-bold uppercase tracking-wide text-xs">
-                  View
+                  Trade
                 </button>
               </Link>
             </div>
