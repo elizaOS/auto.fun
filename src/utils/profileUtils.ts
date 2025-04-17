@@ -314,9 +314,7 @@ export const useProfile = () => {
     setData({ tokensHeld, tokensCreated })
     setIsLoading(false)
   }, [getOwnedTokens, getCreatedTokens])
-  useEffect(() => {
-    console.log("profile data updated:", data);
-  }, [data]);
+
   useEffect(() => {
     if (!publicKey) return;
 
