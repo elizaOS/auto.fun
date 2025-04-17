@@ -662,8 +662,8 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
     // Load textures for dice
     const textureLoader = new THREE.TextureLoader();
+    textureLoader.crossOrigin = "anonymous";
 
-    // Use default placeholder if we don't have enough tokens
     const fallbackTexture = "header/placeholder/logo.jpg";
 
     // Helper function to create materials for a die with the same texture on all sides
