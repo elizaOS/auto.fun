@@ -118,11 +118,8 @@ export default function CommunityTab() {
 
   // Effect to detect token mint from various sources
   useEffect(() => {
-    console.log("URL params mint:", urlTokenMint);
-
     // First try from URL params (most reliable)
     if (urlTokenMint) {
-      console.log("Using token mint from URL params:", urlTokenMint);
       setDetectedTokenMint(urlTokenMint);
       return;
     }
@@ -130,7 +127,6 @@ export default function CommunityTab() {
     // If not in params, try to extract from pathname
     const pathMatch = location.pathname.match(/\/token\/([A-Za-z0-9]{32,44})/);
     if (pathMatch && pathMatch[1]) {
-      console.log("Extracted token mint from pathname:", pathMatch[1]);
       setDetectedTokenMint(pathMatch[1]);
       return;
     }
@@ -166,11 +162,6 @@ export default function CommunityTab() {
             const imageUrls = [];
             const count = Math.min(data.count, 3); // Only use up to 3 images as placeholders
             for (let i = 1; i <= count; i++) {
-              console.log(
-                "API_BASE_URL and NODE_ENV",
-                API_BASE_URL,
-                process.env.NODE_ENV,
-              );
               // If we're running locally, use the API endpoint
               if (
                 API_BASE_URL.includes("localhost") ||
@@ -188,7 +179,6 @@ export default function CommunityTab() {
             }
 
             setAdditionalImages(imageUrls);
-            console.log("Found additional generated images:", imageUrls);
           } else {
             setAdditionalImages([]);
           }
@@ -210,26 +200,18 @@ export default function CommunityTab() {
   // Use the proper hook to get token balance AFTER tokenMint is declared
   const { tokenBalance } = useTokenBalance({ tokenId: tokenMint || "" });
 
-  useEffect(() => {
-    console.log("**** tokenBalance from hook:", tokenBalance);
-    console.log("**** manualTokenBalance:", manualTokenBalance);
-  }, [tokenBalance, manualTokenBalance]);
-
   // --- Fetch Real Token Info & Agents ---
   useEffect(() => {
     const fetchTokenData = async () => {
       if (!tokenMint || !API_BASE_URL) {
-        console.log("Skipping fetch: No tokenMint or API_BASE_URL");
         setTokenInfo(null);
         return;
       }
 
       try {
-        console.log(`Fetching token info for ${tokenMint}...`);
         const infoResponse = await fetch(
           `${API_BASE_URL}/api/token/${tokenMint}`,
         );
-        console.log("Token info response:", infoResponse);
         if (!infoResponse.ok) {
           throw new Error(
             `Failed to fetch token info: ${infoResponse.statusText}`,
@@ -242,7 +224,6 @@ export default function CommunityTab() {
           image: infoData.image,
           description: infoData.description,
         });
-        console.log("Token info received:", infoData);
 
         // Set the user prompt to the token's description if available
         if (infoData.description) {
@@ -266,7 +247,6 @@ export default function CommunityTab() {
       return;
     }
 
-    console.log("Checking for Twitter credentials...");
     const storedCredentials = localStorage.getItem(STORAGE_KEY);
     if (storedCredentials) {
       try {
@@ -276,19 +256,16 @@ export default function CommunityTab() {
 
         // Check if token is expired
         if (parsedCredentials.expiresAt < Date.now()) {
-          console.log(
+          console.warn(
             "Twitter token has expired, user needs to re-authenticate",
           );
         } else {
           setTwitterCredentials(parsedCredentials);
-          console.log("Valid Twitter credentials loaded from storage");
         }
       } catch (error) {
         console.error("Failed to parse stored Twitter credentials", error);
         localStorage.removeItem(STORAGE_KEY);
       }
-    } else {
-      console.log("No Twitter credentials found in storage");
     }
 
     // In a real implementation, we would fetch token agents from the API
@@ -299,8 +276,6 @@ export default function CommunityTab() {
     const freshAuth = urlParams.get("fresh_auth") === "true";
 
     if (freshAuth) {
-      console.log("Detected fresh Twitter authentication");
-
       // Check if we have a pending share
       const pendingShareData = localStorage.getItem(PENDING_SHARE_KEY);
       if (pendingShareData) {
@@ -311,15 +286,10 @@ export default function CommunityTab() {
 
           if (storedCreds) {
             const parsedCreds = JSON.parse(storedCreds) as TwitterCredentials;
-            console.log("Found fresh credentials and pending share pieces");
             setTwitterCredentials(parsedCreds);
 
             // --- Regenerate Text & Open Modal on Callback ---
             setTimeout(() => {
-              console.log(
-                "Regenerating share text and opening modal after authentication",
-              );
-
               // Regenerate the share text using stored pieces
               const regeneratedText = generateShareText(
                 { name: share.tokenName, symbol: share.tokenSymbol }, // Use stored token info
@@ -345,8 +315,6 @@ export default function CommunityTab() {
             error instanceof Error ? error.message : "Failed to process share",
           );
         }
-      } else {
-        console.log("No pending share found after authentication");
       }
 
       // Clean up URL (remove fresh_auth param)
@@ -359,21 +327,6 @@ export default function CommunityTab() {
       window.history.replaceState({}, "", currentUrl.pathname + location.hash);
     }
   }, [tokenMint, generatedImage]);
-
-  // Fetch token agents (in a real implementation)
-  // const fetchTokenAgents = async (mint: string) => {
-  //   try {
-  //     // In a real implementation, this would be an API call
-  //     // const response = await fetch(`${env.apiUrl}/api/token/${mint}/agents`);
-  //     // if (response.ok) {
-  //     //   const agents = await response.json();
-  //     //   setTokenAgents(agents);
-  //     // }
-  //     console.log(`Fetching agents for token ${mint}`);
-  //   } catch (error) {
-  //     console.error("Error fetching token agents:", error);
-  //   }
-  // };
 
   // Generate image function
   const generateImage = async () => {
@@ -408,10 +361,6 @@ export default function CommunityTab() {
     setShareError(null);
 
     try {
-      console.log(
-        `Generating ${generationMode} image for token ${tokenMint} with prompt: ${userPrompt}`,
-      );
-
       // In a real implementation, we would fetch the token metadata if not available
       // For now, we'll use mock token data or fetch from the page's context
       const tokenMetadata = {
@@ -433,7 +382,6 @@ export default function CommunityTab() {
 
       // Log API URL to help debug
       const apiUrl = `${env.apiUrl}/api/enhance-and-generate`;
-      console.log("Calling API endpoint:", apiUrl);
 
       // Create headers
       const headers: Record<string, string> = {
@@ -466,14 +414,11 @@ export default function CommunityTab() {
         credentials: "include", // Important to include credentials for auth cookies
       });
 
-      // Log response status and headers for debugging
-      console.log("Response status:", response.status);
       // Headers object doesn't have a standard iterator, so we'll get keys and values manually
       const headerObj: Record<string, string> = {};
       response.headers.forEach((value, key) => {
         headerObj[key] = value;
       });
-      console.log("Response headers:", headerObj);
 
       // Handle error responses
       if (!response.ok) {
@@ -548,12 +493,8 @@ export default function CommunityTab() {
         }
       } catch (jsonError) {
         console.error("Error parsing JSON response:", jsonError);
-        const textResponse = await response.text();
-        console.log("Raw text response:", textResponse);
         throw new Error("Failed to parse server response");
       }
-
-      console.log("API response:", data);
 
       // Make sure we have the expected fields
       if (!data || typeof data !== "object") {
@@ -565,25 +506,15 @@ export default function CommunityTab() {
         if (data.mediaUrl.startsWith("data:")) {
           // It's already a data URL, use directly
           setGeneratedImage(data.mediaUrl);
-          console.log(
-            "Using data URL directly:",
-            data.mediaUrl.substring(0, 50) + "...",
-          );
         } else {
           // It's a URL, make sure it's absolute
           const fullUrl = data.mediaUrl.startsWith("http")
             ? data.mediaUrl
             : `${env.apiUrl}${data.mediaUrl.startsWith("/") ? "" : "/"}${data.mediaUrl}`;
-
-          console.log("Using image URL:", fullUrl);
           setGeneratedImage(fullUrl);
         }
 
         setProcessingStatus("processed");
-
-        if (data.enhancedPrompt) {
-          console.log("Enhanced prompt:", data.enhancedPrompt);
-        }
 
         if (data.remainingGenerations !== undefined) {
           toast.success(
@@ -645,10 +576,6 @@ export default function CommunityTab() {
     setShareError(null);
 
     try {
-      console.log(
-        `Generating ${generationMode} video for token ${tokenMint} with prompt: ${userPrompt}`,
-      );
-
       // In a real implementation, we would fetch the token metadata if not available
       const tokenMetadata = {
         name: tokenInfo?.name || "Example Token",
@@ -668,7 +595,6 @@ export default function CommunityTab() {
 
       // API endpoint
       const apiUrl = `${env.apiUrl}/api/enhance-and-generate`;
-      console.log("Calling API endpoint:", apiUrl);
 
       // Create headers
       const headers: Record<string, string> = {
@@ -709,13 +635,10 @@ export default function CommunityTab() {
         credentials: "include",
       });
 
-      // Log response status
-      console.log("Response status:", response.status);
       const headerObj: Record<string, string> = {};
       response.headers.forEach((value, key) => {
         headerObj[key] = value;
       });
-      console.log("Response headers:", headerObj);
 
       // Handle error responses
       if (!response.ok) {
@@ -787,12 +710,7 @@ export default function CommunityTab() {
         }
       } catch (jsonError) {
         console.error("Error parsing JSON response:", jsonError);
-        const textResponse = await response.text();
-        console.log("Raw text response:", textResponse);
-        throw new Error("Failed to parse server response");
       }
-
-      console.log("API response:", data);
 
       // Validate response
       if (!data || typeof data !== "object") {
@@ -805,14 +723,9 @@ export default function CommunityTab() {
           ? data.mediaUrl
           : `${env.apiUrl}${data.mediaUrl.startsWith("/") ? "" : "/"}${data.mediaUrl}`;
 
-        console.log("Using video URL:", fullUrl);
         setGeneratedImage(fullUrl); // We'll reuse this state for videos too
 
         setProcessingStatus("processed");
-
-        if (data.enhancedPrompt) {
-          console.log("Enhanced prompt:", data.enhancedPrompt);
-        }
 
         if (data.remainingGenerations !== undefined) {
           toast.success(
@@ -855,7 +768,6 @@ export default function CommunityTab() {
   const generateShareText = (
     currentTokenInfo: { name: string; symbol: string } | null,
   ): string => {
-    console.log("currentTokenInfo", currentTokenInfo);
     const name = currentTokenInfo?.name || "this token";
     const symbol = currentTokenInfo?.symbol
       ? `$${currentTokenInfo.symbol}`
@@ -897,28 +809,13 @@ export default function CommunityTab() {
     setShareError(null);
 
     try {
-      // --- Generate Dynamic Share Text ---
       const shareText = generateShareText(tokenInfo);
-      // --- End Generate Dynamic Share Text ---
-
-      console.log(
-        "Starting image share process, generated text:",
-        shareText.substring(0, 50),
-      );
-      console.log("Image data type:", typeof generatedImage);
-
       if (twitterCredentials && twitterCredentials.expiresAt > Date.now()) {
-        console.log(
-          "User already authenticated with Twitter. Opening share modal...",
-        );
         // --- Open Modal Directly ---
         setModalShareText(shareText); // Use generated text
         setIsShareModalOpen(true);
         // --- End Open Modal Directly ---
       } else {
-        console.log(
-          "User not authenticated with Twitter, storing pending share and origin",
-        );
         // Store the pending share and redirect to auth
         const pendingShare: PendingShare = {
           // Store pieces needed to regenerate text later
@@ -938,7 +835,6 @@ export default function CommunityTab() {
         const pathWithAnchor =
           currentPath + (currentPath.includes("#") ? "" : "#generation");
         localStorage.setItem(OAUTH_REDIRECT_ORIGIN_KEY, pathWithAnchor);
-        console.log("Stored origin path for redirect:", pathWithAnchor);
 
         // Redirect to OAuth
         const apiUrl = env.apiUrl;
@@ -975,20 +871,12 @@ export default function CommunityTab() {
         );
       }
 
-      console.log("Processing Twitter share from modal/callback");
       setShareError(null);
 
-      // First upload the image
-      console.log("Step 1: Uploading image to Twitter");
       const mediaId = await uploadImage(imageData, creds.accessToken);
-      console.log("Image uploaded successfully, media ID:", mediaId);
 
-      // Then post the tweet with the image
-      console.log("Step 2: Posting tweet with image");
       await postTweet(text, mediaId, creds.accessToken);
-      console.log("Tweet posted successfully");
 
-      // Show success notification
       toast.success("Successfully shared to Twitter!");
     } catch (error) {
       console.error("Twitter share failed:", error);
@@ -1026,15 +914,6 @@ export default function CommunityTab() {
     accessToken: string,
   ): Promise<string> => {
     try {
-      console.log(
-        "Uploading image to Twitter with image data type:",
-        typeof imageData,
-      );
-      console.log(
-        "Image data starts with:",
-        imageData.substring(0, 50) + "...",
-      );
-
       let blob;
 
       // Convert image data to blob - different handling based on data format
@@ -1056,20 +935,14 @@ export default function CommunityTab() {
         blob = new Blob(byteArrays, {
           type: imageData.split(";")[0].split(":")[1],
         });
-        console.log("Created blob from data URL, size:", blob.size);
       } else {
-        // It's a URL, fetch and convert to blob
-        console.log("Fetching image from URL:", imageData);
         const response = await fetch(imageData);
         blob = await response.blob();
-        console.log("Fetched image blob, size:", blob.size);
       }
 
       // Create FormData and append the image
       const formData = new FormData();
       formData.append("media", blob, "share-image.png");
-
-      console.log("Sending image to API:", `${env.apiUrl}/api/share/tweet`);
 
       // Get auth token for the app (separate from Twitter token)
       // const authToken = localStorage.getItem("authToken");
@@ -1131,9 +1004,6 @@ export default function CommunityTab() {
     accessToken: string,
   ) => {
     try {
-      console.log("Posting tweet with text:", text);
-      console.log("Using media ID:", mediaId);
-
       // Get auth token for the app (separate from Twitter token)
       // const authToken = localStorage.getItem("authToken");
 
@@ -1216,8 +1086,6 @@ export default function CommunityTab() {
       return;
     }
 
-    console.log("**** checkTokenBalance running");
-
     try {
       // Get stored auth token if available
       const authToken = localStorage.getItem("authToken");
@@ -1238,7 +1106,6 @@ export default function CommunityTab() {
 
         if (response.ok) {
           const data = (await response.json()) as { balance?: number };
-          console.log("**** API balance response:", data);
           if (data.balance !== undefined) {
             const formattedBalance = Number(data.balance);
             // Store as backup
@@ -1265,9 +1132,6 @@ export default function CommunityTab() {
       // Check each network we decided to look at
       for (const network of networksToCheck) {
         try {
-          console.log(
-            `Checking token balance on ${network.name} (${network.url})`,
-          );
           const connection = new Connection(network.url);
 
           // Get token accounts owned by user for this mint
@@ -1293,9 +1157,6 @@ export default function CommunityTab() {
           if (networkBalance > 0) {
             totalBalance = networkBalance; // Use this balance
             foundOnNetwork = network.name;
-            console.log(
-              `Found balance of ${networkBalance} tokens on ${network.name}`,
-            );
             break; // Stop checking other networks
           }
         } catch (networkError) {
@@ -1401,10 +1262,6 @@ export default function CommunityTab() {
     setShareError(null);
 
     try {
-      console.log(
-        `Generating audio for token ${tokenMint} with mode: ${audioMode}`,
-      );
-
       // Get token metadata
       const tokenMetadata = {
         name: tokenInfo?.name || "Example Token",
@@ -1424,8 +1281,6 @@ export default function CommunityTab() {
 
       // API endpoint
       const apiUrl = `${env.apiUrl}/api/enhance-and-generate`;
-      console.log("Calling API endpoint:", apiUrl);
-
       // Create headers
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -1460,13 +1315,10 @@ export default function CommunityTab() {
         credentials: "include",
       });
 
-      // Log response status
-      console.log("Response status:", response.status);
       const headerObj: Record<string, string> = {};
       response.headers.forEach((value, key) => {
         headerObj[key] = value;
       });
-      console.log("Response headers:", headerObj);
 
       // Handle error responses
       if (!response.ok) {
@@ -1538,12 +1390,9 @@ export default function CommunityTab() {
         }
       } catch (jsonError) {
         console.error("Error parsing JSON response:", jsonError);
-        const textResponse = await response.text();
-        console.log("Raw text response:", textResponse);
         throw new Error("Failed to parse server response");
       }
 
-      console.log("API response:", data);
 
       // Validate response
       if (!data || typeof data !== "object") {
@@ -1556,14 +1405,8 @@ export default function CommunityTab() {
           ? data.mediaUrl
           : `${env.apiUrl}${data.mediaUrl.startsWith("/") ? "" : "/"}${data.mediaUrl}`;
 
-        console.log("Using audio URL:", fullUrl);
         setGeneratedImage(fullUrl); // We'll reuse this state for audio too
-
         setProcessingStatus("processed");
-
-        if (data.enhancedPrompt) {
-          console.log("Enhanced prompt:", data.enhancedPrompt);
-        }
 
         if (data.remainingGenerations !== undefined) {
           toast.success(

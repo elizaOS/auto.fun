@@ -276,7 +276,6 @@ const FormImageInput = ({
   // Update preview from imageUrl prop if provided
   useEffect(() => {
     if (imageUrl && !preview && !hasDirectlySetPreview.current) {
-      console.log("Setting preview from imageUrl prop:", imageUrl);
       setPreview(imageUrl);
     }
   }, [imageUrl, preview]);

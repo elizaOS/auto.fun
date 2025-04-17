@@ -55,18 +55,8 @@ export const useSwap = () => {
     // Convert SOL to lamports (1 SOL = 1e9 lamports)
     const amountLamports = Math.floor(amount * 1e9);
     const amountTokens = Math.floor(
-      amount * (token?.tokenDecimals ? 10 ** token.tokenDecimals : 1e6),
+      amount * (token?.tokenDecimals ? 10 ** token.tokenDecimals : 1e6)
     );
-
-    console.log("swapping:", {
-      style,
-      amount,
-      tokenAddress,
-      token,
-      reserveToken,
-      reserveLamport,
-      slippageBps,
-    });
 
     // Convert string style ("buy" or "sell") to numeric style (0 for buy; 1 for sell)
     const numericStyle = style === "buy" ? 0 : 1;
@@ -81,7 +71,7 @@ export const useSwap = () => {
         style === "buy" ? amountLamports : amountTokens,
         numericStyle,
         slippageBps,
-        mainnetConnection,
+        mainnetConnection
       );
 
       ixs.push(...ixsJupiterSwap);
@@ -96,7 +86,7 @@ export const useSwap = () => {
         program,
         reserveToken,
         reserveLamport,
-        await getConfigAccount(program),
+        await getConfigAccount(program)
       );
 
       ixs.push(ix);
@@ -146,7 +136,7 @@ export const useSwap = () => {
           Buffer.from(SEED_BONDING_CURVE),
           new PublicKey(tokenAddress).toBytes(),
         ],
-        program.programId,
+        program.programId
       );
       curve = await program.account.bondingCurve.fetch(bondingCurvePda);
     }
@@ -165,11 +155,10 @@ export const useSwap = () => {
     tx.feePayer = wallet.publicKey;
     tx.recentBlockhash = blockhash;
 
-    console.log("Simulating transaction...");
+    // TODO - @deprecated — Instead, call simulateTransaction with * VersionedTransaction and SimulateTransactionConfig parameters
     const simulation = await connection.simulateTransaction(tx);
-    console.log("Simulation logs:", simulation.value.logs);
+
     if (simulation.value.err) {
-      console.error("Simulation failed:", JSON.stringify(simulation.value.err));
       throw new Error(`Transaction simulation failed: ${simulation.value.err}`);
     }
 
@@ -177,7 +166,6 @@ export const useSwap = () => {
 
     // If protection is enabled, use Jito to send the transaction
     if (isProtectionEnabled) {
-      console.log("Sending transaction through Jito for MEV protection...");
       try {
         const jitoResponse = await sendTxUsingJito({
           serializedTx: versionedTx.serialize(),
@@ -186,16 +174,12 @@ export const useSwap = () => {
         return { signature: jitoResponse.result, confirmation: null };
       } catch (error) {
         console.error("Failed to send through Jito:", error);
-        // Fallback to regular transaction sending if Jito fails
         const signature = await wallet.sendTransaction(versionedTx, connection);
-        console.log("Transaction sent (fallback), signature:", signature);
         return { signature, confirmation: null };
       }
     }
 
-    // Regular transaction sending if protection is not enabled
     const signature = await wallet.sendTransaction(versionedTx, connection);
-    console.log("Transaction sent, signature:", signature);
     return { signature, confirmation: null };
   };
 
@@ -210,7 +194,7 @@ export const useSwap = () => {
           toast.info(`Transaction sent: ${signature.slice(0, 8)}...`);
         } else {
           toast.warning(
-            "Transaction potentially sent, but signature was not received.",
+            "Transaction potentially sent, but signature was not received."
           );
         }
       } finally {
