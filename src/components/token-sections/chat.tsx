@@ -82,6 +82,7 @@ export default function CommunityTab() {
   const [generationMode, setGenerationMode] = useState<"fast" | "pro">("fast");
 
   // We can keep this for debugging but it's no longer the primary balance source
+  // @ts-ignore
   const [manualTokenBalance, setManualTokenBalance] = useState<number | null>(
     null,
   );

@@ -43,11 +43,9 @@ export const fetcher = async (
 
 export const getToken = async ({
   address,
-  bypassCache = false,
   signature,
 }: {
   address: string;
-  bypassCache?: boolean;
   signature?: string;
 }) => {
   const endpoint = `/api/token/${address}${signature ? `?signature=${signature}` : ""}`;
@@ -65,11 +63,9 @@ export const getToken = async ({
 };
 
 export const getTokenHolders = async ({
-  address,
-  bypassCache = false,
+  address
 }: {
   address: string;
-  bypassCache?: boolean;
 }) => {
   try {
     const endpoint = `/api/token/${address}/holders`;

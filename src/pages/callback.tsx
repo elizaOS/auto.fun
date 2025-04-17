@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 // Storage keys
 const STORAGE_KEY = "twitter-oauth-token";
 const OAUTH_REDIRECT_ORIGIN_KEY = "OAUTH_REDIRECT_ORIGIN"; // Key for storing the original path
-const AGENT_INTENT_KEY = "connect_agent_intent"; // For agent connection intent
-const PENDING_SHARE_KEY = "pending-twitter-share"; // For sharing intent
+// const AGENT_INTENT_KEY = "connect_agent_intent"; // For agent connection intent
+// const PENDING_SHARE_KEY = "pending-twitter-share"; // For sharing intent
 
 // Types
 type Credentials = {

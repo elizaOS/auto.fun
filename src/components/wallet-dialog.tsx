@@ -11,7 +11,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useMutation } from "@tanstack/react-query";
 import { Payload, SIWS } from "@web3auth/sign-in-with-solana";
 import type { FC, ReactNode } from "react";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 export interface WalletModalProviderProps {
   children: ReactNode;
@@ -36,21 +36,6 @@ export const WalletModal: FC<WalletModalProps> = () => {
   } = useWallet();
   const { visible, setVisible } = useWalletModal();
   const { setAuthToken } = useAuthentication();
-
-  // Check for previously selected wallet in localStorage when modal opens
-  useEffect(() => {
-    if (visible) {
-      try {
-        const storedWalletName = localStorage.getItem("walletName");
-        if (storedWalletName) {
-          // Found a previously selected wallet - parse from JSON
-          const parsedWalletName = JSON.parse(storedWalletName);
-        }
-      } catch (e) {
-        console.error("Error reading from localStorage:", e);
-      }
-    }
-  }, [visible]);
 
   const [installedWallets] = useMemo(() => {
     const installed: Wallet[] = [];
@@ -95,8 +80,6 @@ export const WalletModal: FC<WalletModalProps> = () => {
           try {
             // Force disconnect first to ensure a clean connection
             try {
-              // Use the window.solana object directly
-              const response = await window.solana.connect();
               select(wallet.adapter.name);
               directConnectionSuccessful = true;
 

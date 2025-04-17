@@ -619,20 +619,6 @@ const uploadImage = async (metadata: TokenMetadata) => {
     headers["Authorization"] = `Bearer ${authToken}`;
   }
 
-  // Create minimal metadata if none provided
-  const basicMetadata = {
-    name: metadata.name,
-    symbol: metadata.symbol,
-    description: metadata.description || `${metadata.name} token`,
-    image: "pending", // Will be updated with actual URL
-    external_url: metadata.links.website || "",
-    properties: {
-      files: [{ type: "image/png", uri: "pending" }],
-      category: "image",
-      creators: [{ address: metadata.mintAuthority, share: 100 }],
-    },
-  };
-
   const response = await fetch(env.apiUrl + "/api/upload", {
     method: "POST",
     headers,
@@ -1172,15 +1158,6 @@ export const Create = () => {
         console.warn(
           "No metadata URL provided, generating minimal metadata...",
         );
-
-        // Create minimal metadata and upload it
-        const minimalMetadata = {
-          name: tokenMetadata.name,
-          symbol: tokenMetadata.symbol,
-          description: tokenMetadata.description || "",
-          image: tokenMetadata.imageBase64 ? "pending" : "",
-          external_url: tokenMetadata.links.website || "",
-        };
 
         // Upload minimal metadata
         const uploadResult = await uploadImage(tokenMetadata);
@@ -1994,20 +1971,6 @@ export const Create = () => {
       if (storedTokenData && activeTab === FormTab.IMPORT) {
         try {
           const tokenData = JSON.parse(storedTokenData);
-
-          // Check if the current wallet has permission to create this token
-          // In dev mode, skip this check and allow any wallet to register
-          const isCreatorNow =
-            (tokenData.updateAuthority &&
-              tokenData.updateAuthority === publicKey.toString()) ||
-            (tokenData.creators &&
-              tokenData.creators.includes(publicKey.toString()));
-
-          // if (!isCreatorNow) {
-          //   throw new Error(
-          //     "You need to connect with the token's creator wallet to register it"
-          //   );
-          // }
 
           // Show coin drop animation
           setShowCoinDrop(true);
