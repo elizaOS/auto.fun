@@ -293,7 +293,7 @@ export async function processSwapEvent(
 
 function normalizeIpfsUri(
   uri: string,
-  gateway: string = "https://ipfs.io"
+  gateway: string = "https://ipfs.io",
 ): string {
   const gw = gateway.replace(/\/$/, "");
 
@@ -317,9 +317,15 @@ async function processTokenInfo(
   requestor: string,
 ) {
   // Program IDs
-  const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
-  const TOKEN_2022_PROGRAM_ID = new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
-  const METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+  const TOKEN_PROGRAM_ID = new PublicKey(
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+  );
+  const TOKEN_2022_PROGRAM_ID = new PublicKey(
+    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+  );
+  const METADATA_PROGRAM_ID = new PublicKey(
+    "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
+  );
 
   // Validate SPL / SPL-2022
   const isSplToken = tokenInfo.owner.equals(TOKEN_PROGRAM_ID);
@@ -327,7 +333,7 @@ async function processTokenInfo(
   if (!isSplToken && !isSpl2022) {
     return c.json(
       { error: `Not a valid SPL token. Owner: ${tokenInfo.owner}` },
-      400
+      400,
     );
   }
 
@@ -347,7 +353,9 @@ async function processTokenInfo(
 
   // 1) SPL-2022 tokenMetadata extension
   if (isSpl2022 && parsed.extensions) {
-    const ext = parsed.extensions.find((e: any) => e.extension === "tokenMetadata")?.state;
+    const ext = parsed.extensions.find(
+      (e: any) => e.extension === "tokenMetadata",
+    )?.state;
     if (ext) {
       tokenName = ext.name || "";
       tokenSymbol = ext.symbol || "";
@@ -382,8 +390,12 @@ async function processTokenInfo(
   // 3) Metaplex metadata PDA fallback (only if not found via SPL-2022 ext)
   if (!foundMetadata) {
     const [metaAddr] = PublicKey.findProgramAddressSync(
-      [Buffer.from("metadata"), METADATA_PROGRAM_ID.toBuffer(), mintPublicKey.toBuffer()],
-      METADATA_PROGRAM_ID
+      [
+        Buffer.from("metadata"),
+        METADATA_PROGRAM_ID.toBuffer(),
+        mintPublicKey.toBuffer(),
+      ],
+      METADATA_PROGRAM_ID,
     );
     const metaAccount = await connection.getAccountInfo(metaAddr);
     if (metaAccount?.data.length) {
@@ -393,7 +405,10 @@ async function processTokenInfo(
       const readField = () => {
         const len = buf[offset];
         offset += 1;
-        const str = buf.slice(offset, offset + len).toString("utf8").replace(/\0/g, "");
+        const str = buf
+          .slice(offset, offset + len)
+          .toString("utf8")
+          .replace(/\0/g, "");
         offset += len + 3; // skip padding
         return str.trim();
       };
@@ -420,7 +435,8 @@ async function processTokenInfo(
 
   // Defaults for missing values
   if (!tokenName) tokenName = `Token ${mintPublicKey.toBase58().slice(0, 8)}`;
-  if (!tokenSymbol) tokenSymbol = mintPublicKey.toBase58().slice(0, 4).toUpperCase();
+  if (!tokenSymbol)
+    tokenSymbol = mintPublicKey.toBase58().slice(0, 4).toUpperCase();
 
   // Creator check
   const isLocalDev = c.env.LOCAL_DEV === "true" || c.env.LOCAL_DEV === true;
@@ -476,15 +492,15 @@ async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-      { name: "mainnet", url: mainnetUrl },
-      { name: "devnet", url: devnetUrl },
-    ]
+        { name: "mainnet", url: mainnetUrl },
+        { name: "devnet", url: devnetUrl },
+      ]
     : [
-      {
-        name: c.env.NETWORK || "devnet",
-        url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-      },
-    ];
+        {
+          name: c.env.NETWORK || "devnet",
+          url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+        },
+      ];
 
   logger.log(
     `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
@@ -1391,8 +1407,8 @@ tokenRouter.get("/token/:mint", async (c) => {
       token.status === "migrated"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-          (token.curveLimit - token.virtualReserves)) *
-        100;
+            (token.curveLimit - token.virtualReserves)) *
+          100;
 
     // Get token holders count
     const holdersCountQuery = await db
