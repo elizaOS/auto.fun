@@ -295,21 +295,17 @@ function normalizeIpfsUri(
   uri: string,
   gateway: string = "https://ipfs.io"
 ): string {
-  // Ensure no trailing slash on gateway
   const gw = gateway.replace(/\/$/, "");
 
   const m1 = uri.match(/^ipfs:\/\/(.+)$/i);
   if (m1) {
     return `${gw}/ipfs/${m1[1]}`;
   }
-
-
   const m2 = uri.match(/^https?:\/\/[^\/]+\/(ipfs|ipns)\/(.+)$/i);
   if (m2) {
     return `${gw}/${m2[1]}/${m2[2]}`;
   }
 
-  // 3) otherwise, return it unchanged
   return uri;
 }
 // Helper function to process token info after finding it on a network
