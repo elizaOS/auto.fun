@@ -17,3 +17,103 @@ bucket = "./dist"
 # Cron triggers
 [triggers]
 crons = ["*/1 * * * *"] # Run every 1 minute
+
+# D1 Database for production
+[[d1_databases]]
+binding = "DB"
+database_name = "autofun"
+database_id = "b086a46c-b1c3-4eec-8eca-2abea542e45b"
+
+# R2 bucket for storage
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "autofun-storage"
+
+# KV namespace for auth tokens
+[[kv_namespaces]]
+binding = "AUTH_TOKENS"
+id = "91bc4666a62044ba816c53a9b2116281"
+preview_id = "d2622b59f8dd431eb2468732a5053649"
+
+# Socket.io Durable Objects
+[durable_objects]
+bindings = [
+  { name = "WEBSOCKET_DO", class_name = "WebSocketDO" }
+]
+
+# Migration tags
+[[migrations]]
+tag = "v1"
+
+# Development environment configuration
+[env.development]
+name = "api-dev"
+# Site configuration for development
+[env.development.site]
+bucket = "./dist"
+
+# Add AI binding for development - fix to object format
+[env.development.ai]
+binding = "AI"
+
+# Development environment doesn't use cron triggers
+# to avoid the ENOENT utime error with registry/api
+[env.development.triggers]
+crons = ["*/1 * * * *"] # Run every 1 minute
+
+# Copy vars to development environment
+[env.development.vars]
+NETWORK = "devnet"
+DECIMALS = "6"
+TOKEN_SUPPLY = "100000000000000"
+VIRTUAL_RESERVES = "280000000"
+CURVE_LIMIT = "11300000000"
+R2_PUBLIC_URL = "https://pub-30f52db29266428495af0c1aea206af1.r2.dev"
+NODE_ENV = "development"
+MAINNET_FRONTEND_URL="https://auto-fun.pages.dev"
+DEVNET_FRONTEND_URL="https://develop.auto-fun.pages.dev"
+AUTH_TOKEN_SALT = "autofun-wallet-auth-salt-dev-env" # Salt for hashing auth tokens in dev
+MAINNET_SOLANA_RPC_URL="https://mainnet.helius-rpc.com/?api-key=09d840c8-81f4-445d-8b63-a1cc8469cb57"
+DEVNET_SOLANA_RPC_URL="https://devnet.helius-rpc.com/?api-key=09d840c8-81f4-445d-8b63-a1cc8469cb57"
+
+# D1 Database for development
+[[env.development.d1_databases]]
+binding = "DB"
+database_name = "autofun-dev"
+database_id = "9d80bef0-48e8-482b-928a-8d9398f6fa04"
+
+# KV namespace for auth tokens in development
+[[env.development.kv_namespaces]]
+binding = "AUTH_TOKENS"
+id = "41026322740f476eb6aa38bbb96cc210"
+preview_id = "fe77e6014ebd4cd583d9f2efa53bf3c8"
+
+# Add R2 bucket for development
+[[env.development.r2_buckets]]
+binding = "R2"
+bucket_name = "autofun-storage-dev"
+
+# Add Socket.io Durable Objects for development
+[env.development.durable_objects]
+bindings = [
+  { name = "WEBSOCKET_DO", class_name = "WebSocketDO" }
+]
+
+# Add migrations for development environment
+[[env.development.migrations]]
+tag = "v1"
+
+# Production environment configuration
+[env.production]
+name = "api"
+
+# Add AI binding for production - fix to object format
+[env.production.ai]
+binding = "AI"
+
+# The production database is already defined in the default configuration
+
+# KV namespace for auth tokens in production (same as default)
+[[env.production.kv_namespaces]]
+binding = "AUTH_TOKENS"
+id = "91bc4666a62044ba816c53a9b2116281"
