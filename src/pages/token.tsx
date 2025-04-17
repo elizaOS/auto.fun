@@ -129,12 +129,20 @@ export default function Page() {
   useEffect(() => {
     const socket = getSocket();
 
-    socket.on("updateToken", (token: any) =>
-      queryClient.setQueryData(["token", address], token),
-    );
+    // Create a handler function that checks if the token matches the current address
+    const handleTokenUpdate = (token: any) => {
+      // Only update if the token address matches the current page
+      if (token.mint === address) {
+        queryClient.setQueryData(["token", address], token);
+      }
+    };
+
+    // Add the event listener with our filtered handler
+    socket.on("updateToken", handleTokenUpdate);
 
     return () => {
-      socket.off("updateToken");
+      // Remove the specific handler when cleaning up
+      socket.off("updateToken", handleTokenUpdate);
     };
   }, [address]);
 
