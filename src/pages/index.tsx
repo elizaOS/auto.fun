@@ -99,6 +99,7 @@ export default function Page() {
           onPageChange={(pageNumber: number) => {
             if (query?.isLoading) return;
             query?.goToPage(pageNumber);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
         />
       </div>
