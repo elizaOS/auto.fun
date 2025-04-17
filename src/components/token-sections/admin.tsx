@@ -7,7 +7,6 @@ import { useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import CopyButton from "../copy-button";
 import { Icons } from "../icons";
-import { getAuthToken } from "@/utils/auth";
 
 type FormData = {
   links: {
