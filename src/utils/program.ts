@@ -12,7 +12,7 @@ export const SEED_BONDING_CURVE = "bonding_curve";
  * IDL can be found at `target/idl/autofun.json`.
  */
 export type Autofun = {
-  address: "AnAYdVXqbS87U1DzzuRR4dnooNv7GjfqnSUEVmaKH8xL";
+  address: "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ";
   metadata: {
     name: "autofun";
     version: "0.1.0";
@@ -2018,7 +2018,7 @@ export type Autofun = {
 };
 
 export const IDL = {
-  address: "AnAYdVXqbS87U1DzzuRR4dnooNv7GjfqnSUEVmaKH8xL",
+  address: "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ",
   metadata: {
     name: "autofun",
     version: "0.1.0",

@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/raydium_vault.json`.
  */
 export type RaydiumVault = {
-  address: "Bi9TwwuBFf15mVVgfVjh4oz65QAGAAo793ioFfX9ugAR";
+  address: "D3JRxfEhXafUXwyG45yXAfQ8yfSEYpqEpzJUaiWmJXEi";
   metadata: {
     name: "raydiumVault";
     version: "0.1.0";
