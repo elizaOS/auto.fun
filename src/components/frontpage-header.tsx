@@ -299,10 +299,10 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     // Store click position relative to the container
     const rect = containerRef.current?.getBoundingClientRect();
     if (rect) {
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      console.log("Click position:", { x, y }); // Debug log
-      setClickPosition({ x, y });
+      setClickPosition({
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+      });
     }
 
     // Get container bounds for raycaster
@@ -1103,9 +1103,8 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       {/* Token Data Display */}
       {selectedTokenData && (
         <div
-          ref={popupRef}
-          className="absolute bg-autofun-background-card p-4 shadow-lg z-10 w-[320px] animate-fade-in"
-          style={popupPosition || {}}
+          className="absolute bg-autofun-background-card p-4 shadow-lg z-10 w-[320px]"
+          style={getDisplayPosition()}
         >
           <button
             onClick={handleCloseTokenData}
@@ -1131,11 +1130,12 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
                   <span className="text-sm text-autofun-text-secondary">
                     ${selectedTokenData.ticker}
                   </span>
-                  <span className="text-[10px] text-autofun-text-secondary">
+                  <span className="text-xs text-autofun-text-secondary">
                     Created: {formatDate(selectedTokenData.createdAt)}
                   </span>
                 </div>
               </div>
+              <Link to={`/token/${selectedTokenData.mint}`}>
               <Link to={`/token/${selectedTokenData.mint}`}>
                 <button className="py-0.5 px-2 bg-[#03ff24] text-black font-bold uppercase tracking-wide text-xs">
                   Trade
@@ -1154,36 +1154,36 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
             </div>
 
             {/* Market Data Grid */}
-            <div className="grid grid-cols-2 gap-1.5">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-autofun-text-secondary">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-autofun-text-secondary">
                   Price USD
                 </span>
-                <span className="text-lg font-dm-mono text-autofun-text-highlight">
+                <span className="text-xl font-dm-mono text-autofun-text-highlight">
                   ${selectedTokenData.currentPrice?.toFixed(6) || "0.000000"}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-autofun-text-secondary">
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-autofun-text-secondary">
                   Market Cap
                 </span>
-                <span className="text-lg font-dm-mono text-autofun-text-highlight">
+                <span className="text-xl font-dm-mono text-autofun-text-highlight">
                   ${selectedTokenData.marketCapUSD?.toFixed(2) || "0.00"}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-autofun-text-secondary">
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-autofun-text-secondary">
                   24h Volume
                 </span>
-                <span className="text-lg font-dm-mono text-autofun-text-highlight">
+                <span className="text-xl font-dm-mono text-autofun-text-highlight">
                   ${selectedTokenData.volume24h?.toFixed(2) || "0.00"}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-autofun-text-secondary">
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-autofun-text-secondary">
                   Holders
                 </span>
-                <span className="text-lg font-dm-mono text-autofun-text-highlight">
+                <span className="text-xl font-dm-mono text-autofun-text-highlight">
                   {selectedTokenData.holderCount || "0"}
                 </span>
               </div>

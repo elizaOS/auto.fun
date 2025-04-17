@@ -2,6 +2,7 @@ import { env } from "@/utils/env";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useLocalStorage } from "@uidotdev/usehooks";
 import { useEffect, useState } from "react";
+import { useUser } from "./use-user";
 
 // This global variable helps us avoid multiple API calls across instances
 let checkStatusCalled = false;
@@ -110,6 +111,7 @@ export default function useAuthentication() {
   );
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [userPrivileges, setUserPrivileges] = useState<string[]>([]);
+  const user = useUser();
 
   // Enhance setAuthToken to ensure it's also directly set in localStorage
   const setAuthTokenWithStorage = (token: string | null) => {
@@ -180,6 +182,7 @@ export default function useAuthentication() {
   // 2. Either the wallet is connected directly, OR through the window.solana object
   const isAuthenticated =
     !!authToken &&
+    user &&
     (connected || hasDirectPhantomConnection || !!storedWalletAddress);
 
   // Clean sign out process
