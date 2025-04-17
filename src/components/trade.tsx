@@ -10,6 +10,7 @@ import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
 import { useQuery } from "@tanstack/react-query";
+import { BN } from "bn.js";
 
 export default function Trade({
   token,
@@ -51,7 +52,7 @@ export default function Trade({
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status,
+    token?.status
   );
 
   const isButtonDisabled = (amount: number | string) => {
@@ -102,18 +103,23 @@ export default function Trade({
               // they are not dynamically calculated but instead use the
               // default values leading to slightly incorrect calculations
               token.reserveAmount,
-              token.reserveLamport,
+              token.reserveLamport
             );
 
-      const convertedAmount = swapAmount / decimals;
+      const convertedAmount = new BN(swapAmount).div(new BN(decimals));
 
-      const minReceived = convertedAmount * (1 - slippage / 100);
+      const minReceived = convertedAmount
+        .mul(new BN(1).sub(new BN(slippage).div(new BN(100))))
+        .toNumber();
 
       const displayMinReceived = isTokenSelling
         ? formatNumber(minReceived, false, true)
         : formatNumber(minReceived, false, true);
 
-      return { displayMinReceived, convertedAmount };
+      return {
+        displayMinReceived,
+        convertedAmount: convertedAmount.toNumber(),
+      };
     },
   });
 
@@ -162,7 +168,7 @@ export default function Trade({
                   setSellAmount(
                     sellAmount !== undefined
                       ? sellAmount
-                      : formatAmount(convertedAmount),
+                      : formatAmount(convertedAmount)
                   );
                 }
                 setIsTokenSelling(true);
@@ -198,7 +204,7 @@ export default function Trade({
                 {formatNumber(
                   tokenBalance * currentPrice * solanaPrice,
                   true,
-                  false,
+                  false
                 )}
               </span>
             </div>
@@ -292,7 +298,9 @@ export default function Trade({
             <div className="flex items-center p-4 gap-2 justify-between text-sm font-dm-mono text-autofun-text-secondary w-full">
               <span>Min Received:</span>
               <div className="relative flex uppercase items-center gap-2">
-                {displayMinReceived}
+                {displayhMinReceivedQuery?.isError
+                  ? "Error"
+                  : displayMinReceived}
                 <img
                   src={isTokenSelling ? "/solana.svg" : token?.image || ""}
                   alt={isTokenSelling ? "SOL" : token?.name || "token"}
