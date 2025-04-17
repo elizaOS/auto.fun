@@ -736,7 +736,7 @@ export const Create = () => {
     onPromptChange: ((prompt: string) => void) | null;
   }>({ setPrompt: null, onPromptChange: null });
   const { mutateAsync: createTokenOnChainAsync } = useCreateToken();
-  const [maxSolReached, setMaxSolReached] = useState<boolean>(false)
+  const [maxSolReached, setMaxSolReached] = useState<boolean>(false);
 
   // Import-related state
   const [isImporting, setIsImporting] = useState(false);
@@ -3453,7 +3453,7 @@ export const Create = () => {
                             else if (numValue > maxInputSol)
                               value = maxInputSol.toString();
 
-                              setMaxSolReached(numValue >= maxInputSol);
+                            setMaxSolReached(numValue >= maxInputSol);
                           } else if (value !== "") {
                             value = "0"; // Reset invalid non-empty strings
                           }
@@ -3476,11 +3476,11 @@ export const Create = () => {
                   </div>
                 </div>
                 {maxSolReached && (
-  <p className="text-red-500 text-sm mt-1 text-center">
-    Maximum initial {maxInputSol} SOL buy reached
-  </p>
-)}         
-       {parseFloat(buyValue as string) > 0 && (
+                  <p className="text-red-500 text-sm mt-1 text-center">
+                    Maximum initial {maxInputSol} SOL buy reached
+                  </p>
+                )}
+                {parseFloat(buyValue as string) > 0 && (
                   <div className="text-right text-xs text-neutral-400">
                     ≈{" "}
                     {calculatePercentage(
