@@ -113,6 +113,7 @@ export default function useAuthentication() {
   const [userPrivileges, setUserPrivileges] = useState<string[]>([]);
   const { user } = useUser();
 
+  
   console.log({ user });
   // Enhance setAuthToken to ensure it's also directly set in localStorage
   const setAuthTokenWithStorage = (token: string | null) => {
