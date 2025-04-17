@@ -15,10 +15,11 @@ import { twMerge } from "tailwind-merge";
 // import PausedIndicator from "./paused-indicator";
 import { useTransactions } from "@/hooks/use-transactions";
 import { env } from "@/utils/env";
+import Pagination from "./pagination";
 
 export default function SwapsTable({ token }: { token: IToken }) {
   const { /*paused,*/ setPause } = usePause();
-  const { items: data, isLoading } = useTransactions({ tokenId: token.mint });
+  const { items: data, goToPage, isLoading, currentPage, hasNextPage, totalItems, totalPages  } = useTransactions({ tokenId: token.mint });
 
   // Helper to format swap amounts based on type
   const formatSwapAmount = (amount: number | string, isToken: boolean) => {
@@ -140,6 +141,18 @@ export default function SwapsTable({ token }: { token: IToken }) {
           )}
         </TableBody>
       </Table>
+      <Pagination
+          pagination={{
+            hasMore: hasNextPage,
+            page: currentPage,
+            total: totalItems,
+            totalPages: totalPages,
+          }}
+          onPageChange={(pageNumber: number) => {
+            if (isLoading) return;
+            goToPage(pageNumber);
+          }}
+        />
     </div>
   );
 }
