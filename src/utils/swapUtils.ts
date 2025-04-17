@@ -304,7 +304,7 @@ export const getJupiterSwapIx = async (
   const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
 
   // @TODO token address is static for now because our project is not deployed to mainnet yet
-  const tokenMintAddress = _token.toBase58(); // "9n4nbM75f5Ui3i7g1d8v2c3e6b7e4a4a4a4a4a4a4a4a"; // USDC mint address
+  const tokenMintAddress = _token.toBase58(); // "9n4nbM75f5Ui3i7g1d8v2c3e6b7e4a4a4a4a4a4a4a4a4a"; // USDC mint address
   const inputMint = style === 0 ? SOL_MINT_ADDRESS : tokenMintAddress;
   const outputMint = style === 0 ? tokenMintAddress : SOL_MINT_ADDRESS;
 
@@ -323,7 +323,6 @@ export const getJupiterSwapIx = async (
   console.log("dev address", env.devAddress);
 
   const additionalIxs = [] as any;
-  const feeAcount = env.feeVault;
 
   const swapUrl = "https://lite-api.jup.ag/swap/v1/swap";
   const body = {
@@ -332,7 +331,6 @@ export const getJupiterSwapIx = async (
     asLegacyTransaction: true,
     dynamicComputeUnitLimit: true,
     dynamicSlippage: true,
-    // feeAccount: feeAcount,
   };
   const swapRes = await fetch(swapUrl, {
     method: "POST",

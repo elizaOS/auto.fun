@@ -14,7 +14,7 @@ const columns = [
     id: "token",
     header: "Token",
     cell: ({ row }) => {
-      const { image, name, ticker } = row.original;
+      const { image, name, ticker, mint } = row.original;
 
       return (
         <div className="flex gap-2 items-center">
@@ -23,10 +23,11 @@ const columns = [
             alt="token image"
             className="h-4 w-4 rounded-full"
           />
-          <div>
+
+          <Link to={`/token/${mint}`} className="hover:text-blue-500">
             <span>{name}</span>{" "}
             <span className="text-[#8C8C8C]">${ticker}</span>
-          </div>
+          </Link>
         </div>
       );
     },

@@ -300,6 +300,7 @@ shareRouter.use("*", async (c, next) => {
     c.req.header("Origin"),
     "http://localhost:3000",
     "https://auto.fun",
+    "https://*.auto.fun",
     "https://develop.auto.fun",
     "https://develop.auto-fun.pages.dev",
     "https://auto-fun.pages.dev",
