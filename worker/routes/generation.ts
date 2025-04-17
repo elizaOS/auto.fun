@@ -696,10 +696,7 @@ app.post("/:mint/generate", async (c) => {
               mode === "pro"
                 ? TOKEN_OWNERSHIP.SLOW_MODE_MINIMUM
                 : TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
-          } else if (
-            validatedData.type === MediaType.IMAGE &&
-            mode === "pro"
-          ) {
+          } else if (validatedData.type === MediaType.IMAGE && mode === "pro") {
             minimumRequired = TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
           }
 
