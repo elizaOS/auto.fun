@@ -3,8 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { IToken } from "@/types";
 import { getToken } from "@/utils/api";
-import { Link } from "react-router-dom";
-import CopyButton from "./copy-button";
 
 // Add TypeScript declaration for CANNON to fix the errors
 declare module "cannon-es" {
@@ -202,17 +200,6 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   // Add a ref to track if tokens have been processed initially
   const tokensProcessedRef = useRef(false);
 
-  // Add function to format date
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-    const day = date.getDate().toString().padStart(2, "0");
-    const year = date.getFullYear().toString().slice(-2);
-    const hours = date.getHours().toString().padStart(2, "0");
-    const minutes = date.getMinutes().toString().padStart(2, "0");
-    return `${month}/${day}/${year} ${hours}:${minutes}`;
-  };
-
   useEffect(() => {
     // Skip token processing if we've already done initial setup and the scene is initialized
     if (tokensProcessedRef.current && sceneInitializedRef.current) return;
@@ -384,22 +371,6 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       setSelectedTokenData(data as IToken);
     } catch (error) {
       console.error("Error fetching token data:", error);
-    }
-  };
-
-  // Function to close the token data display
-  const handleCloseTokenData = () => {
-    if (selectedCube) {
-      // Remove glow effect
-      if (Array.isArray(selectedCube.material)) {
-        selectedCube.material.forEach((mat) => {
-          if (mat instanceof THREE.MeshStandardMaterial) {
-            mat.emissiveIntensity = 0.3;
-          }
-        });
-      }
-      setSelectedCube(null);
-      setSelectedTokenData(null);
     }
   };
 
