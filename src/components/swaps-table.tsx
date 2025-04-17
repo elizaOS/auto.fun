@@ -75,7 +75,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
             data
               .filter(
                 (swap, index, self) =>
-                  index === self.findIndex((t) => t.txId === swap.txId),
+                  index === self.findIndex((t) => t.txId === swap.txId)
               )
               .map((swap) => {
                 const isBuy = swap.type === "Buy";
@@ -102,7 +102,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
                       {formatSwapAmount(swap.solAmount, !isBuy)}
                     </TableCell>
                     <TableCell className="text-left">
-                      {formatSwapAmount(swap.tokenAmount, isBuy)}
+                      {formatSwapAmount(swap.tokenAmount, true)}
                     </TableCell>
                     <TableCell className="text-left">
                       {fromNow(swap?.timestamp)}
