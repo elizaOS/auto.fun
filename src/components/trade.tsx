@@ -10,7 +10,6 @@ import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
 import { useQuery } from "@tanstack/react-query";
-import { BN } from "bn.js";
 
 export default function Trade({
   token,
@@ -106,20 +105,15 @@ export default function Trade({
               token.reserveLamport
             );
 
-      const convertedAmount = new BN(swapAmount).div(new BN(decimals));
+      const convertedAmount = swapAmount / decimals;
 
-      const minReceived = convertedAmount
-        .mul(new BN(1).sub(new BN(slippage).div(new BN(100))))
-        .toNumber();
+      const minReceived = convertedAmount * (1 - slippage / 100);
 
       const displayMinReceived = isTokenSelling
         ? formatNumber(minReceived, false, true)
         : formatNumber(minReceived, false, true);
 
-      return {
-        displayMinReceived,
-        convertedAmount: convertedAmount.toNumber(),
-      };
+      return { displayMinReceived, convertedAmount };
     },
   });
 
