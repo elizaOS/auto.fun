@@ -147,7 +147,7 @@ export async function checkTokenOwnership(
   env: Env,
   mint: string,
   publicKey: string,
-  mode: "fast" | "slow" = "fast",
+  mode: "fast" | "pro" = "fast",
   mediaType: MediaType = MediaType.IMAGE,
 ): Promise<{ allowed: boolean; message?: string }> {
   try {
@@ -180,10 +180,10 @@ export async function checkTokenOwnership(
 
     if (mediaType === MediaType.VIDEO || mediaType === MediaType.AUDIO) {
       minimumRequired =
-        mode === "slow"
+        mode === "pro"
           ? TOKEN_OWNERSHIP.SLOW_MODE_MINIMUM
           : TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
-    } else if (mediaType === MediaType.IMAGE && mode === "slow") {
+    } else if (mediaType === MediaType.IMAGE && mode === "pro") {
       minimumRequired = TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
     }
 
@@ -336,7 +336,7 @@ export async function generateMedia(
     guidance_scale?: number;
     width?: number;
     height?: number;
-    mode?: "fast" | "slow";
+    mode?: "fast" | "pro";
     image_url?: string; // For image-to-video
     lyrics?: string; // For music generation
   },
@@ -416,7 +416,7 @@ export async function generateMedia(
     throw new Error(
       `Failed to generate image after ${maxRetries} attempts: ${lastError?.message}`,
     );
-  } else if (data.type === MediaType.IMAGE && data.mode === "slow") {
+  } else if (data.type === MediaType.IMAGE && data.mode === "pro") {
     // Use flux-pro ultra for slow high-quality image generation
     generationPromise = fal.subscribe("fal-ai/flux-pro/v1.1-ultra", {
       input: {
@@ -438,7 +438,7 @@ export async function generateMedia(
   } else if (data.type === MediaType.VIDEO && data.image_url) {
     // Image-to-video generation
     const model =
-      data.mode === "slow"
+      data.mode === "pro"
         ? "fal-ai/pixverse/v4/image-to-video"
         : "fal-ai/pixverse/v4/image-to-video/fast";
 
@@ -460,7 +460,7 @@ export async function generateMedia(
   } else if (data.type === MediaType.VIDEO) {
     // Text-to-video generation
     const model =
-      data.mode === "slow"
+      data.mode === "pro"
         ? "fal-ai/pixverse/v4/text-to-video"
         : "fal-ai/pixverse/v4/text-to-video/fast";
 
@@ -551,7 +551,7 @@ const MediaGenerationRequestSchema = z.object({
   width: z.number().min(512).max(1024).optional().default(512),
   height: z.number().min(512).max(1024).optional().default(512),
   // New options
-  mode: z.enum(["fast", "slow"]).optional().default("fast"),
+  mode: z.enum(["fast", "pro"]).optional().default("fast"),
   image_url: z.string().optional(), // For image-to-video
   lyrics: z.string().optional(), // For music generation with lyrics
 });
@@ -693,13 +693,10 @@ app.post("/:mint/generate", async (c) => {
             validatedData.type === MediaType.AUDIO
           ) {
             minimumRequired =
-              mode === "slow"
+              mode === "pro"
                 ? TOKEN_OWNERSHIP.SLOW_MODE_MINIMUM
                 : TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
-          } else if (
-            validatedData.type === MediaType.IMAGE &&
-            mode === "slow"
-          ) {
+          } else if (validatedData.type === MediaType.IMAGE && mode === "pro") {
             minimumRequired = TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
           }
 
@@ -2244,7 +2241,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
       mediaType: z
         .enum([MediaType.IMAGE, MediaType.VIDEO, MediaType.AUDIO])
         .default(MediaType.IMAGE),
-      mode: z.enum(["fast", "slow"]).default("fast"),
+      mode: z.enum(["fast", "pro"]).default("fast"),
       image_url: z.string().optional(), // For image-to-video
       lyrics: z.string().optional(), // For music generation
     });
@@ -2352,10 +2349,10 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
       let minimumRequired = TOKEN_OWNERSHIP.DEFAULT_MINIMUM;
       if (mediaType === MediaType.VIDEO || mediaType === MediaType.AUDIO) {
         minimumRequired =
-          mode === "slow"
+          mode === "pro"
             ? TOKEN_OWNERSHIP.SLOW_MODE_MINIMUM
             : TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
-      } else if (mediaType === MediaType.IMAGE && mode === "slow") {
+      } else if (mediaType === MediaType.IMAGE && mode === "pro") {
         minimumRequired = TOKEN_OWNERSHIP.FAST_MODE_MINIMUM;
       }
 

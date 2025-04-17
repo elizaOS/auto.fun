@@ -780,47 +780,6 @@ export const Create = () => {
     }
   }, [activeTab]);
 
-  // Effect to check imported token data and wallet authorization when wallet changes
-  useEffect(() => {
-    if (activeTab === FormTab.IMPORT && publicKey) {
-      const storedTokenData = localStorage.getItem("import_token_data");
-      if (storedTokenData) {
-        try {
-          const tokenData = JSON.parse(storedTokenData) as TokenSearchData;
-
-          // Check if the current wallet is authorized to create this token
-          // In dev mode, always allow any wallet to register
-          const isCreatorWallet =
-            tokenData.isCreator !== undefined
-              ? tokenData.isCreator
-              : (tokenData.updateAuthority &&
-                  tokenData.updateAuthority === publicKey.toString()) ||
-                (tokenData.creators &&
-                  tokenData.creators.includes(publicKey.toString()));
-
-          // Update import status based on wallet authorization
-          if (!isCreatorWallet) {
-            setImportStatus({
-              type: "warning",
-              message:
-                "Please connect with the token's creator wallet to register it.",
-            });
-          } else {
-            // Success message - different in dev mode if not the creator
-            const message =
-              "Successfully loaded token data for " + tokenData.name;
-            setImportStatus({
-              type: "success",
-              message,
-            });
-          }
-        } catch (error) {
-          console.error("Error parsing stored token data:", error);
-        }
-      }
-    }
-  }, [activeTab, publicKey]);
-
   // Effect to populate form with token data if it exists
   useEffect(() => {
     if (activeTab === FormTab.IMPORT) {
@@ -1631,25 +1590,6 @@ export const Create = () => {
           }
           setCoinDropImageUrl(tokenData.image);
         }
-
-        // Check if the current wallet is authorized to create this token
-        const isCreatorWallet =
-          tokenData.isCreator !== undefined
-            ? tokenData.isCreator
-            : (tokenData.updateAuthority &&
-                tokenData.updateAuthority === publicKey.toString()) ||
-              (tokenData.creators &&
-                tokenData.creators.includes(publicKey.toString()));
-
-        // Success message - ready to register
-        const message = !isCreatorWallet
-          ? "Development Mode: You can register this token without being the creator wallet."
-          : "Token data loaded successfully. You can now register this token.";
-
-        setImportStatus({
-          type: "success",
-          message,
-        });
       } catch (fetchError) {
         console.error("API Error:", fetchError);
 
