@@ -62,11 +62,7 @@ export const getToken = async ({
   }
 };
 
-export const getTokenHolders = async ({
-  address
-}: {
-  address: string;
-}) => {
+export const getTokenHolders = async ({ address }: { address: string }) => {
   try {
     const endpoint = `/api/token/${address}/holders`;
     const data = await fetcher(endpoint, "GET");
