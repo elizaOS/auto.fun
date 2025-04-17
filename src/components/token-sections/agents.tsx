@@ -49,7 +49,6 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
   // const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [componentMounted, setComponentMounted] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
 
   // --- Token Agents State ---
   const [tokenAgents, setTokenAgents] = useState<TokenAgent[]>([]);
