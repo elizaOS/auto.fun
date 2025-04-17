@@ -96,8 +96,8 @@ export default function Trade({
     }
 
     const style = isTokenSelling ? 1 : 0;
-    const convertedAmount = isTokenSelling
-      ? amount * (token?.tokenDecimals || 1e6)
+    const convertedAmountT = isTokenSelling
+      ? amount * (token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6)
       : amount * 1e9;
     const decimals = isTokenSelling
       ? 1e9
@@ -105,13 +105,12 @@ export default function Trade({
         ? 10 ** token?.tokenDecimals
         : 1e6;
 
-    console.log(token?.status, "status");
     const swapAmount =
       token?.status === "locked"
-        ? await getSwapAmountJupiter(token.mint, convertedAmount, style, 0)
+        ? await getSwapAmountJupiter(token.mint, convertedAmountT, style, 0)
         : await getSwapAmount(
             program,
-            convertedAmount,
+            convertedAmountT,
             style,
             // TODO: these values from the backend seem incorrect,
             // they are not dynamically calculated but instead use the
@@ -119,6 +118,7 @@ export default function Trade({
             token.reserveAmount,
             token.reserveLamport,
           );
+
     setConvertedAmount(swapAmount / decimals);
   };
 
@@ -126,7 +126,6 @@ export default function Trade({
   //   ? convertedAmount
   //   : formatNumber(convertedAmount, false, true);
 
-  // Calculate minimum amount received with slippage
   const minReceived = convertedAmount * (1 - slippage / 100);
   const displayMinReceived = isTokenSelling
     ? formatNumber(minReceived, false, true)
