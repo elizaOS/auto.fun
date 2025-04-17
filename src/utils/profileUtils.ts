@@ -311,8 +311,6 @@ const useCreatedTokens = () => {
       }>;
     };
 
-    console.log("tokens", tokens);
-
     // === 3) Pull your on‐chain token accounts **once** ===
     const tokenAccounts = await getTokenAccounts();
     const autofunTokenAccounts = await removeNonAutofunTokens(tokenAccounts);
@@ -356,7 +354,6 @@ const useCreatedTokens = () => {
       };
     });
 
-    console.log("profileTokens", profileTokens);
     return profileTokens;
   }, [publicKey, env.apiUrl, getTokenAccounts, removeNonAutofunTokens]);
 

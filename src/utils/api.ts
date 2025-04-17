@@ -20,8 +20,6 @@ export const fetcher = async (
       body: body ? JSON.stringify(body) : undefined,
     });
 
-    console.log(`API Request: ${method} ${env.apiUrl}${endpoint}`);
-
     if (!response.ok) {
       if (response.status === 401) {
         console.warn(`Authentication required for ${endpoint}`);
@@ -36,7 +34,6 @@ export const fetcher = async (
     }
 
     const result = await response.json();
-    console.log(`API Response: ${endpoint} - Status: ${response.status}`);
     return result;
   } catch (error) {
     console.error(`API Request Failed: ${endpoint}`, error);
@@ -56,16 +53,10 @@ export const getToken = async ({
   const endpoint = `/api/token/${address}${signature ? `?signature=${signature}` : ""}`;
 
   try {
-    console.log(
-      `Fetching token data for ${address} (bypass_cache: ${bypassCache})`,
-    );
     const rawData = await fetcher(endpoint, "GET");
     // TODO - Figure out why this broke
     // const data = rawData as Record<string, any>;
     // const transformedData = HomepageTokenSchema.parse(data);
-
-    console.log("rawData", rawData);
-
     return rawData;
   } catch (error) {
     console.error(`Error fetching token data: ${error}`);
@@ -82,9 +73,6 @@ export const getTokenHolders = async ({
 }) => {
   try {
     const endpoint = `/api/token/${address}/holders`;
-    console.log(
-      `Fetching holders for ${address} (bypass_cache: ${bypassCache})`,
-    );
     const data = await fetcher(endpoint, "GET");
     return data;
   } catch (error) {

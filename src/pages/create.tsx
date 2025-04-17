@@ -633,8 +633,6 @@ const uploadImage = async (metadata: TokenMetadata) => {
     },
   };
 
-  console.log("Preparing metadata:", basicMetadata);
-
   const response = await fetch(env.apiUrl + "/api/upload", {
     method: "POST",
     headers,
@@ -671,22 +669,17 @@ const uploadImage = async (metadata: TokenMetadata) => {
 
     // Generate a fallback URL using the mint address or a UUID
     result.metadataUrl = `https://metadata.auto.fun/${metadata.tokenMint || crypto.randomUUID()}.json`;
-    console.log("Using fallback metadata URL:", result.metadataUrl);
   }
 
   return result;
 };
 
 const waitForTokenCreation = async (mint: string, timeout = 80_000) => {
-  console.log("waiting for creation from token mint:", mint);
-
   return new Promise<void>((resolve, reject) => {
     const socket = getSocket();
 
     const newTokenListener = (token: unknown) => {
-      console.log("got new token:", JSON.stringify(token));
       const { mint: newMint } = HomepageTokenSchema.parse(token);
-      console.log("new token successfully parsed");
       if (newMint === mint) {
         clearTimeout(timerId);
         socket.off("newToken", newTokenListener);
@@ -735,7 +728,6 @@ export const Create = () => {
     onPromptChange: ((prompt: string) => void) | null;
   }>({ setPrompt: null, onPromptChange: null });
   const { mutateAsync: createTokenOnChainAsync } = useCreateToken();
-  const [maxSolReached, setMaxSolReached] = useState<boolean>(false);
 
   // Import-related state
   const [isImporting, setIsImporting] = useState(false);
@@ -779,6 +771,47 @@ export const Create = () => {
       setHasStoredToken(false);
     }
   }, [activeTab]);
+
+  // Effect to check imported token data and wallet authorization when wallet changes
+  useEffect(() => {
+    if (activeTab === FormTab.IMPORT && publicKey) {
+      const storedTokenData = localStorage.getItem("import_token_data");
+      if (storedTokenData) {
+        try {
+          const tokenData = JSON.parse(storedTokenData) as TokenSearchData;
+
+          // Check if the current wallet is authorized to create this token
+          // In dev mode, always allow any wallet to register
+          const isCreatorWallet =
+            tokenData.isCreator !== undefined
+              ? tokenData.isCreator
+              : (tokenData.updateAuthority &&
+                  tokenData.updateAuthority === publicKey.toString()) ||
+                (tokenData.creators &&
+                  tokenData.creators.includes(publicKey.toString()));
+
+          // Update import status based on wallet authorization
+          if (!isCreatorWallet) {
+            setImportStatus({
+              type: "warning",
+              message:
+                "Please connect with the token's creator wallet to register it.",
+            });
+          } else {
+            // Success message - different in dev mode if not the creator
+            const message =
+              "Successfully loaded token data for " + tokenData.name;
+            setImportStatus({
+              type: "success",
+              message,
+            });
+          }
+        } catch (error) {
+          console.error("Error parsing stored token data:", error);
+        }
+      }
+    }
+  }, [activeTab, publicKey]);
 
   // Effect to populate form with token data if it exists
   useEffect(() => {
@@ -863,47 +896,17 @@ export const Create = () => {
   >(null);
 
   const [buyValue, setBuyValue] = useState(form.initialSol || 0);
-  const wallet = useWallet();
-  console.log("wallet", wallet);
+
   const balance = useSolBalance();
 
-  console.log("balance", balance);
-
-  // Calculate max SOL the user can spend (leave 0.05 SOL for transaction fees)
   const maxUserSol = balance ? Math.max(0, Number(balance) - 0.05) : 0;
   // Use the smaller of MAX_INITIAL_SOL or the user's max available SOL
   const maxInputSol = Math.min(MAX_INITIAL_SOL, maxUserSol);
 
-  // Calculate dollar value based on SOL price
-  // const solValueUsd =
-  //   solPrice && buyValue ? (Number(buyValue) * solPrice).toFixed(2) : "0.00";
-
-  console.log("buyValue", buyValue);
-  console.log("balance", balance);
-
-  // Log development mode and active tab for debugging
-  console.log("VITE_SOLANA_NETWORK:", env.solanaNetwork);
-  console.log("Active tab:", activeTab);
-
-  // Skip balance check for imported tokens in development mode
   const insufficientBalance =
     activeTab === FormTab.IMPORT
       ? false
       : Number(buyValue) > Number(balance || 0) - 0.05;
-
-  console.log("Insufficient balance:", insufficientBalance);
-
-  // Show a message in the console for developers when bypassing balance check
-  if (activeTab === FormTab.IMPORT) {
-    const source =
-      env.solanaNetwork === "devnet"
-        ? "VITE_SOLANA_NETWORK=devnet"
-        : "LOCAL_DEV=true";
-    console.log(
-      `%c[DEV MODE via ${source}] SOL balance check bypassed for imported tokens in development mode`,
-      "color: green; font-weight: bold",
-    );
-  }
 
   // Error state
   const [errors, setErrors] = useState({
@@ -1179,13 +1182,9 @@ export const Create = () => {
           external_url: tokenMetadata.links.website || "",
         };
 
-        console.log("Generated minimal metadata:", minimalMetadata);
-
         // Upload minimal metadata
         const uploadResult = await uploadImage(tokenMetadata);
         metadataUrl = uploadResult.metadataUrl;
-
-        console.log("Uploaded minimal metadata, URL:", metadataUrl);
       }
 
       console.log("Creating token on-chain with parameters:", {
@@ -1214,12 +1213,7 @@ export const Create = () => {
         return;
       }
 
-      // Return the mint address as transaction ID
       const txId = mintKeypair.publicKey.toString();
-      console.log(
-        "Token created on-chain successfully with mint address:",
-        txId,
-      );
       return txId;
     } catch (error) {
       console.error("Error creating token on-chain:", error);
@@ -1237,14 +1231,6 @@ export const Create = () => {
         console.error(
           "This is likely due to parameter mismatch with the on-chain program.",
         );
-
-        // Try to log relevant parameters
-        console.log("Debug information:");
-        console.log("- Token name:", tokenMetadata.name);
-        console.log("- Token symbol:", tokenMetadata.symbol);
-        console.log("- Metadata URL:", metadataUrl);
-        console.log("- Decimals:", tokenMetadata.decimals);
-        console.log("- Mint public key:", mintKeypair.publicKey.toString());
 
         // Trigger the flush animation on error
         if (window.flushCoins) {
@@ -1281,11 +1267,8 @@ export const Create = () => {
     }));
 
     setIsProcessingPrompt(true);
-    console.log("=== Starting token generation process ===");
 
     try {
-      console.log("Generating token from prompt:", userPrompt);
-
       // Get auth token from localStorage with quote handling
       const authToken = getAuthToken();
 
@@ -1298,8 +1281,6 @@ export const Create = () => {
         headers["Authorization"] = `Bearer ${authToken}`;
       }
 
-      // Step 1: Generate metadata with user's prompt
-      console.log("Requesting metadata generation...");
       const response = await fetch(env.apiUrl + "/api/generate-metadata", {
         method: "POST",
         headers,
@@ -1320,10 +1301,6 @@ export const Create = () => {
         throw new Error("Invalid response from the metadata generation API");
       }
 
-      console.log("Successfully generated metadata:", data.metadata);
-
-      // Update form with generated data
-      console.log("Updating form with generated metadata");
       setForm((prev) => ({
         ...prev,
         name: data.metadata.name,
@@ -1344,30 +1321,16 @@ export const Create = () => {
 
       // Set the prompt text so it can be reused
       if (promptFunctions.setPrompt) {
-        console.log(
-          "Setting promptFunctions.setPrompt with:",
-          data.metadata.prompt,
-        );
         promptFunctions.setPrompt(data.metadata.prompt);
       } else {
         console.warn("promptFunctions.setPrompt is not available");
       }
 
       if (promptFunctions.onPromptChange) {
-        console.log(
-          "Calling promptFunctions.onPromptChange with:",
-          data.metadata.prompt,
-        );
         promptFunctions.onPromptChange(data.metadata.prompt);
       } else {
         console.warn("promptFunctions.onPromptChange is not available");
       }
-
-      // Step 2: Generate image with the generated prompt
-      console.log(
-        "Requesting image generation with prompt:",
-        data.metadata.prompt,
-      );
 
       // Temporarily set the generating state
       setIsGenerating(true);
@@ -1404,11 +1367,7 @@ export const Create = () => {
         throw new Error("Image generation API returned invalid data");
       }
 
-      console.log("Successfully generated image URL:", imageData.mediaUrl);
-
-      // Convert image URL to File object
       try {
-        console.log("Fetching image blob from URL");
         const imageBlob = await fetch(imageData.mediaUrl).then((r) => {
           if (!r.ok)
             throw new Error(
@@ -1416,21 +1375,14 @@ export const Create = () => {
             );
           return r.blob();
         });
-
-        console.log("Creating File object from blob");
         const imageFile = new File([imageBlob], "generated-image.png", {
           type: "image/png",
         });
 
-        console.log("Setting imageFile state");
         // Reset the flag before setting the new image file
         hasCreatedUrlFromImage.current = false;
         setImageFile(imageFile);
-
-        // Also create a preview URL for display
-        console.log("Creating object URL for display");
         const previewUrl = URL.createObjectURL(imageBlob);
-        console.log("Setting coinDropImageUrl:", previewUrl);
         setCoinDropImageUrl(previewUrl);
 
         // Update autoForm with the image URL
@@ -1441,7 +1393,6 @@ export const Create = () => {
 
         // Directly update the preview in FormImageInput
         if (previewSetterRef.current) {
-          console.log("Directly setting preview in FormImageInput");
           previewSetterRef.current(previewUrl);
         } else {
           console.warn("previewSetterRef.current is not available");
@@ -1450,18 +1401,12 @@ export const Create = () => {
         console.error("Error processing generated image:", imageError);
         throw new Error("Failed to process the generated image");
       } finally {
-        // Reset generating state
-        console.log("Resetting generating state");
         setIsGenerating(false);
         setGeneratingField(null);
       }
 
       // Set hasGeneratedToken to true after successful generation
       setHasGeneratedToken(true);
-
-      console.log(
-        "=== Token generation from prompt completed successfully ===",
-      );
     } catch (error) {
       console.error("Error generating from prompt:", error);
       // Reset generating state in case of error
@@ -1590,6 +1535,25 @@ export const Create = () => {
           }
           setCoinDropImageUrl(tokenData.image);
         }
+
+        // Check if the current wallet is authorized to create this token
+        const isCreatorWallet =
+          tokenData.isCreator !== undefined
+            ? tokenData.isCreator
+            : (tokenData.updateAuthority &&
+                tokenData.updateAuthority === publicKey.toString()) ||
+              (tokenData.creators &&
+                tokenData.creators.includes(publicKey.toString()));
+
+        // Success message - ready to register
+        const message = !isCreatorWallet
+          ? "Development Mode: You can register this token without being the creator wallet."
+          : "Token data loaded successfully. You can now register this token.";
+
+        setImportStatus({
+          type: "success",
+          message,
+        });
       } catch (fetchError) {
         console.error("API Error:", fetchError);
 
@@ -1822,7 +1786,6 @@ export const Create = () => {
   // --- Vanity Generation Functions --- (Copied and adapted)
   const stopVanityGeneration = useCallback(() => {
     if (!isGeneratingVanityRef.current) return; // Use ref to check if actually running
-    console.log("Stopping vanity workers...");
     setIsGeneratingVanity(false); // Set state immediately
     workersRef.current.forEach((worker) => {
       try {
@@ -1845,20 +1808,10 @@ export const Create = () => {
       clearInterval(displayUpdateIntervalRef.current);
       displayUpdateIntervalRef.current = null;
     }
-    // --- REMOVED DISPLAY UPDATE LOGIC FROM HERE ---
-    // if (!vanityResult) {
-    //   setDisplayedPublicKey("--- Generate a vanity address ---");
-    // } else {
-    //   setDisplayedPublicKey(vanityResult.publicKey); // Don't reset display here
-    // }
-    console.log("Vanity generation stopped.");
   }, []); // Removed isGeneratingVanity and vanityResult dependency
 
   const startVanityGeneration = useCallback(() => {
     const suffix = vanitySuffix.trim();
-
-    console.log("vanitySuffix", vanitySuffix);
-
     setVanityResult(null); // <-- Add this line to clear the previous result
     setDisplayedPublicKey("Generating..."); // Reset display immediately
 
@@ -1899,9 +1852,6 @@ export const Create = () => {
     setIsGeneratingVanity(true);
 
     const numWorkers = navigator.hardwareConcurrency || 4;
-    console.log(
-      `Starting ${numWorkers} vanity workers for suffix: "${suffix}"`,
-    );
     startTimeRef.current = Date.now();
     workersRef.current = [];
 
@@ -1933,13 +1883,8 @@ export const Create = () => {
           if (!isGeneratingVanityRef.current) return;
 
           const data = event.data;
-          console.log("*** SUCCESS ***");
-          console.log("data", data);
           switch (data.type) {
             case "found":
-              console.log(
-                `Worker ${data.workerId} found valid match: ${data.publicKey}`,
-              );
               if (data.validated) {
                 // Construct Keypair from secret key array
                 const secretKeyUint8Array = new Uint8Array(data.secretKey);
@@ -1954,11 +1899,9 @@ export const Create = () => {
                   return;
                 }
                 const foundKeypair = Keypair.fromSecretKey(secretKeyUint8Array);
-                console.log("*** FOUND KEYPAIR ***");
 
                 // Double-check the derived public key matches
                 if (foundKeypair.publicKey.toString() !== data.publicKey) {
-                  console.log("*** FAILURE ***");
                   console.error(
                     "Public key mismatch between worker and derived key!",
                   );
@@ -1966,7 +1909,6 @@ export const Create = () => {
                   stopVanityGeneration(); // Stop on critical error
                   return;
                 }
-                console.log("*** SUCCESS ***");
 
                 setVanityResult({
                   publicKey: data.publicKey,
@@ -1974,7 +1916,6 @@ export const Create = () => {
                 });
                 setDisplayedPublicKey(data.publicKey); // Show final result
                 stopVanityGeneration(); // Stop all workers
-                console.log("*** STOPPED VANITY GENERATION ***");
               } else {
                 console.warn(
                   `Worker ${data.workerId} found potential match but validation failed.`,
@@ -2029,9 +1970,6 @@ export const Create = () => {
         displayUpdateIntervalRef.current = null;
       }
       startTimeRef.current = null;
-    } else {
-      console.log(`Successfully started ${workersRef.current.length} workers.`);
-      // Optional: Start stats timer
     }
   }, [vanitySuffix, stopVanityGeneration]); // Removed isGeneratingVanity as we use ref
 
@@ -2057,9 +1995,6 @@ export const Create = () => {
         try {
           const tokenData = JSON.parse(storedTokenData);
 
-          console.log("Processing imported token:", tokenData);
-          console.log("Current wallet:", publicKey?.toString());
-
           // Check if the current wallet has permission to create this token
           // In dev mode, skip this check and allow any wallet to register
           const isCreatorNow =
@@ -2067,10 +2002,6 @@ export const Create = () => {
               tokenData.updateAuthority === publicKey.toString()) ||
             (tokenData.creators &&
               tokenData.creators.includes(publicKey.toString()));
-
-          console.log("Creator wallet check result:", isCreatorNow);
-          console.log("Token update authority:", tokenData.updateAuthority);
-          console.log("Token creators:", tokenData.creators);
 
           // if (!isCreatorNow) {
           //   throw new Error(
@@ -2162,8 +2093,6 @@ export const Create = () => {
       }
       const mintKeypair = vanityResult.secretKey;
       const tokenMint = vanityResult.publicKey;
-      console.log("Using client-generated vanity keypair:", tokenMint);
-      // --- Check for Vanity Keypair --- END
 
       setIsCreating(true);
       setCreationStage("initializing");
@@ -2181,10 +2110,6 @@ export const Create = () => {
       if (storedTokenData && activeTab === FormTab.IMPORT) {
         try {
           const tokenData = JSON.parse(storedTokenData);
-
-          console.log("Processing imported token:", tokenData);
-          console.log("Current wallet:", publicKey?.toString());
-
           // Check if the current wallet has permission to create this token
           // In dev mode, skip this check and allow any wallet to register
           const isCreatorNow =
@@ -2202,12 +2127,6 @@ export const Create = () => {
           //     "You need to connect with the token's creator wallet to register it",
           //   );
           // }
-
-          // For imported tokens, create a token entry in the database
-          console.log(
-            "Creating token entry for imported token:",
-            tokenData.mint,
-          );
 
           // Show coin drop animation
           setShowCoinDrop(true);
@@ -2317,8 +2236,6 @@ export const Create = () => {
 
       if (media_base64) {
         try {
-          console.log("Uploading image and metadata...");
-          // Pass the client-generated tokenMint to uploadImage
           const uploadResult = await uploadImage({
             ...tokenMetadata,
             tokenMint,
@@ -2334,9 +2251,6 @@ export const Create = () => {
             );
             // Fallback: generate a unique metadata URL based on mint address
             metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
-            console.log("Using fallback metadata URL:", metadataUrl);
-          } else {
-            console.log("Metadata URL from upload:", metadataUrl);
           }
 
           // Update the coin drop image to use the final uploaded URL
@@ -2344,8 +2258,6 @@ export const Create = () => {
             setCoinDropImageUrl(imageUrl);
           }
 
-          console.log("Image uploaded successfully:", imageUrl);
-          console.log("Metadata URL:", metadataUrl);
         } catch (uploadError) {
           console.error("Error uploading image:", uploadError);
           throw new Error("Failed to upload token image");
@@ -2365,10 +2277,6 @@ export const Create = () => {
       } else if (!media_base64 && !metadataUrl) {
         // No image provided, generate minimal metadata URL
         metadataUrl = `https://metadata.auto.fun/${tokenMint}.json`;
-        console.log(
-          "No image provided, using default metadata URL:",
-          metadataUrl,
-        );
       }
 
       // Double-check that we have a valid metadata URL
@@ -2382,7 +2290,6 @@ export const Create = () => {
         console.log("Creating token on-chain...");
         // Pass the client-generated mintKeypair
         await createTokenOnChain(tokenMetadata, mintKeypair, metadataUrl);
-        console.log("Token created on-chain successfully");
       } catch (onChainError) {
         console.error("Error creating token on-chain:", onChainError);
 
@@ -2415,8 +2322,6 @@ export const Create = () => {
               };
               // Pass the client-generated mintKeypair again
               await createTokenOnChain(retryMetadata, mintKeypair, metadataUrl);
-              console.log("Token created successfully on retry");
-              // Continue with token creation flow...
             } catch (retryError) {
               console.error("Retry also failed:", retryError);
               // Continue to error handling below
@@ -2434,11 +2339,6 @@ export const Create = () => {
       // If we have a pre-generated token ID, mark it as used and remove duplicates
       if (currentPreGeneratedTokenId && activeTab === FormTab.AUTO) {
         try {
-          console.log(
-            "Marking pre-generated token as used:",
-            currentPreGeneratedTokenId,
-          );
-
           // Get auth token from localStorage with quote handling
           const authToken = getAuthToken();
 
@@ -2463,20 +2363,13 @@ export const Create = () => {
               concept: activeTab === FormTab.AUTO ? userPrompt : null,
             }),
           });
-
-          console.log(
-            "Successfully marked token as used and removed duplicates",
-          );
         } catch (error) {
           console.error("Error marking pre-generated token as used:", error);
           // Continue with token creation even if this fails
         }
       }
 
-      // Wait for token creation to be confirmed
-      console.log("Waiting for token creation confirmation...");
-      await waitForTokenCreation(tokenMint); // Use client-generated mint
-      console.log("Token creation confirmed");
+      await waitForTokenCreation(tokenMint);
 
       // Trigger confetti to celebrate successful minting
       if (window.createConfettiFireworks) {
@@ -2487,7 +2380,6 @@ export const Create = () => {
       localStorage.removeItem("import_token_data");
       setHasStoredToken(false);
 
-      // Redirect to token page using the mint public key
       navigate(`/token/${tokenMint}`); // Use client-generated mint
 
       // After transaction confirmation
@@ -2797,8 +2689,6 @@ export const Create = () => {
     const timerToClear = displayUpdateIntervalRef.current;
 
     return () => {
-      console.log("Unmounting Create page, stopping vanity generation...");
-      // Use the stored variables in the cleanup function
       workersToTerminate.forEach((worker) => {
         try {
           worker.postMessage("stop");
@@ -3391,8 +3281,6 @@ export const Create = () => {
                             if (numValue < 0) value = "0";
                             else if (numValue > maxInputSol)
                               value = maxInputSol.toString();
-
-                            setMaxSolReached(numValue >= maxInputSol);
                           } else if (value !== "") {
                             value = "0"; // Reset invalid non-empty strings
                           }
@@ -3405,6 +3293,7 @@ export const Create = () => {
                         step="0.01"
                         className="w-26 pr-10 text-white text-xl font-medium text-right inline border-b border-b-[#424242] focus:outline-none focus:border-white bg-transparent" // Added bg-transparent
                       />
+
                       <span className="absolute right-0 top-0 bottom-0 flex items-center text-white text-xl font-medium pointer-events-none">
                         {" "}
                         {/* Adjusted positioning */}
@@ -3414,11 +3303,6 @@ export const Create = () => {
                     {/* {solPrice && Number(buyValue) > 0 && ( ... )} */}
                   </div>
                 </div>
-                {maxSolReached && (
-                  <p className="text-red-500 text-sm mt-1 text-center">
-                    Maximum initial {maxInputSol} SOL buy reached
-                  </p>
-                )}
                 {parseFloat(buyValue as string) > 0 && (
                   <div className="text-right text-xs text-neutral-400">
                     ≈{" "}
