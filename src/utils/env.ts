@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const isDevnet = import.meta.env.VITE_SOLANA_NETWORK === "devnet";
+export const isDevnet = import.meta.env.VITE_SOLANA_NETWORK === "devnet";
 
 console.log("isDevnet", isDevnet);
 console.log(

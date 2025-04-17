@@ -5,7 +5,7 @@ import { useCreateToken } from "@/hooks/use-create-token";
 import { useSolBalance } from "@/hooks/use-token-balance";
 import { HomepageTokenSchema } from "@/hooks/use-tokens";
 import { getAuthToken } from "@/utils/auth";
-import { env } from "@/utils/env";
+import { env, isDevnet } from "@/utils/env";
 import { getSocket } from "@/utils/socket";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
@@ -17,7 +17,7 @@ import { TokenMetadata } from "../types/form.type";
 // Import the worker using Vite's ?worker syntax
 import InlineVanityWorker from "@/workers/vanityWorker?worker&inline"; // Added import
 
-const MAX_INITIAL_SOL = 42.5;
+const MAX_INITIAL_SOL = isDevnet ? 25 : 2.5;
 // Use the token supply and virtual reserves from environment or fallback to defaults
 const TOKEN_SUPPLY = Number(env.tokenSupply) || 1000000000000000;
 const VIRTUAL_RESERVES = Number(env.virtualReserves) || 2800000000;

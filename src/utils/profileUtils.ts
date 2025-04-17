@@ -159,10 +159,12 @@ const useGetProfileTokens = () => {
           if (!metadata) return null;
 
           const { name, symbol, uri } = decodeMetadata(metadata.data);
-          
+
           // Skip if URI is not HTTPS
-          if (!uri.startsWith('https://')) {
-            console.warn(`Skipping non-HTTPS metadata URI for token ${name}: ${uri}`);
+          if (!uri.startsWith("https://")) {
+            console.warn(
+              `Skipping non-HTTPS metadata URI for token ${name}: ${uri}`,
+            );
             return null;
           }
 
@@ -173,7 +175,7 @@ const useGetProfileTokens = () => {
             const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
             const response = await fetch(uri, {
-              signal: controller.signal
+              signal: controller.signal,
             }).finally(() => clearTimeout(timeoutId));
 
             if (!response.ok) {
@@ -181,17 +183,26 @@ const useGetProfileTokens = () => {
                 console.warn(`Metadata not found for token ${name} at ${uri}`);
                 return null;
               }
-              console.warn(`Failed to fetch metadata for token ${name}: ${response.status}`);
+              console.warn(
+                `Failed to fetch metadata for token ${name}: ${response.status}`,
+              );
               return null;
             }
-            
-            const json = await response.json() as Record<string, unknown>;
-            if (typeof json === 'object' && json !== null && 'image' in json && typeof json.image === 'string') {
+
+            const json = (await response.json()) as Record<string, unknown>;
+            if (
+              typeof json === "object" &&
+              json !== null &&
+              "image" in json &&
+              typeof json.image === "string"
+            ) {
               image = json.image;
             }
           } catch (error) {
-            if (error instanceof Error && error.name === 'AbortError') {
-              console.warn(`Metadata fetch timed out for token ${name} at ${uri}`);
+            if (error instanceof Error && error.name === "AbortError") {
+              console.warn(
+                `Metadata fetch timed out for token ${name} at ${uri}`,
+              );
             } else {
               console.warn(`Error fetching metadata for token ${name}:`, error);
             }

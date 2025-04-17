@@ -54,7 +54,9 @@ export const useSwap = () => {
 
     // Convert SOL to lamports (1 SOL = 1e9 lamports)
     const amountLamports = Math.floor(amount * 1e9);
-    const amountTokens = Math.floor(amount * (token?.tokenDecimals ? (10 ** token.tokenDecimals) : 1e6));
+    const amountTokens = Math.floor(
+      amount * (token?.tokenDecimals ? 10 ** token.tokenDecimals : 1e6),
+    );
 
     console.log("swapping:", {
       style,
