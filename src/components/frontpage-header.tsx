@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { IToken } from "@/types";
 import { getToken } from "@/utils/api";
 import { Link } from "react-router-dom";
+import CopyButton from "./copy-button";
 
 // Add TypeScript declaration for CANNON to fix the errors
 declare module "cannon-es" {
@@ -168,11 +169,13 @@ interface DiceRollerProps {
 
 const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const dicePositionsRef = useRef<THREE.Vector3[]>([]);
   const [selectedCube, setSelectedCube] = useState<THREE.Mesh | null>(null);
   const [selectedTokenData, setSelectedTokenData] = useState<IToken | null>(null);
   const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
+  const [popupPosition, setPopupPosition] = useState<{ left: string; top: string } | null>(null);
 
   // Store selected tokens and their addresses for navigation
   const [selectedTokens, setSelectedTokens] = useState<
@@ -285,13 +288,13 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   const handleContainerClick = (event: React.MouseEvent) => {
     if (isLoading) return;
 
-    // Store click position
+    // Store click position relative to the container
     const rect = containerRef.current?.getBoundingClientRect();
     if (rect) {
-      setClickPosition({
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top
-      });
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      console.log('Click position:', { x, y }); // Debug log
+      setClickPosition({ x, y });
     }
 
     // Get container bounds for raycaster
@@ -422,27 +425,39 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     }
   };
 
+  // Update popup position when mounted or click position changes
+  useEffect(() => {
+    if (selectedTokenData && clickPosition && popupRef.current) {
+      const position = getDisplayPosition();
+      if (position.left && position.top) {
+        setPopupPosition(position);
+      }
+    }
+  }, [selectedTokenData, clickPosition, popupRef.current]);
+
   // Function to calculate display position
   const getDisplayPosition = () => {
-    if (!clickPosition || !containerRef.current) return {};
+    if (!clickPosition || !containerRef.current || !popupRef.current) {
+      return null;
+    }
 
     const containerRect = containerRef.current.getBoundingClientRect();
-    const displayWidth = 320; // Approximate width of the display
-    const displayHeight = 200; // Approximate height of the display
-    const padding = 20; // Padding from edges
+    const popupHeight = popupRef.current.offsetHeight;
+    const popupWidth = 320;
+    const padding = 15;
 
-    // Calculate initial position
-    let left = clickPosition.x;
-    let top = clickPosition.y;
+    // Calculate initial position centered on click
+    let left = clickPosition.x - (popupWidth / 2);
+    let top = clickPosition.y - (popupHeight / 2);
 
     // Adjust if it would overflow right edge
-    if (left + displayWidth > containerRect.width) {
-      left = containerRect.width - displayWidth - padding;
+    if (left + popupWidth > containerRect.width) {
+      left = containerRect.width - popupWidth - padding;
     }
 
     // Adjust if it would overflow bottom edge
-    if (top + displayHeight > containerRect.height) {
-      top = containerRect.height - displayHeight - padding;
+    if (top + popupHeight > containerRect.height) {
+      top = containerRect.height - popupHeight - padding;
     }
 
     // Ensure it doesn't go off the left or top edges
@@ -1080,12 +1095,13 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       {/* Token Data Display */}
       {selectedTokenData && (
         <div 
-          className="absolute bg-autofun-background-card p-4 shadow-lg z-10 w-[320px]"
-          style={getDisplayPosition()}
+          ref={popupRef}
+          className="absolute bg-autofun-background-card p-4 shadow-lg z-10 w-[320px] animate-fade-in"
+          style={popupPosition || {}}
         >
           <button
             onClick={handleCloseTokenData}
-            className="absolute top-2 right-2 text-autofun-text-secondary hover:text-autofun-text-primary"
+            className="absolute top-2 right-3 text-autofun-text-secondary hover:text-autofun-text-primary"
           >
             ✕
           </button>
@@ -1093,7 +1109,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
             {/* Token Header */}
             <div className="flex items-center justify-between pr-8">
               <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-full overflow-hidden">
+                <div className="w-14 h-14 overflow-hidden">
                   <img
                     src={selectedTokenData.image}
                     alt={selectedTokenData.name}
@@ -1103,7 +1119,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
                 <div className="flex flex-col">
                   <h3 className="text-lg font-bold text-autofun-text-primary">{selectedTokenData.name}</h3>
                   <span className="text-sm text-autofun-text-secondary">${selectedTokenData.ticker}</span>
-                  <span className="text-xs text-autofun-text-secondary">Created: {formatDate(selectedTokenData.createdAt)}</span>
+                  <span className="text-[10px] text-autofun-text-secondary">Created: {formatDate(selectedTokenData.createdAt)}</span>
                 </div>
               </div>
               <Link
@@ -1115,29 +1131,39 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
               </Link>
             </div>
 
+            {/* Contract address */}
+            <div className="flex items-center gap-1 -my-1">
+              <span className="text-[10px] text-autofun-text-secondary truncate">
+                {selectedTokenData.mint}
+              </span>
+              <div onClick={(e) => e.stopPropagation()} className="scale-75">
+                <CopyButton text={selectedTokenData.mint} />
+              </div>
+            </div>
+
             {/* Market Data Grid */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <span className="text-sm text-autofun-text-secondary">Price USD</span>
-                <span className="text-xl font-dm-mono text-autofun-text-highlight">
+            <div className="grid grid-cols-2 gap-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-autofun-text-secondary">Price USD</span>
+                <span className="text-lg font-dm-mono text-autofun-text-highlight">
                   ${selectedTokenData.currentPrice?.toFixed(6) || "0.000000"}
                 </span>
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-sm text-autofun-text-secondary">Market Cap</span>
-                <span className="text-xl font-dm-mono text-autofun-text-highlight">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-autofun-text-secondary">Market Cap</span>
+                <span className="text-lg font-dm-mono text-autofun-text-highlight">
                   ${selectedTokenData.marketCapUSD?.toFixed(2) || "0.00"}
                 </span>
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-sm text-autofun-text-secondary">24h Volume</span>
-                <span className="text-xl font-dm-mono text-autofun-text-highlight">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-autofun-text-secondary">24h Volume</span>
+                <span className="text-lg font-dm-mono text-autofun-text-highlight">
                   ${selectedTokenData.volume24h?.toFixed(2) || "0.00"}
                 </span>
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-sm text-autofun-text-secondary">Holders</span>
-                <span className="text-xl font-dm-mono text-autofun-text-highlight">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-autofun-text-secondary">Holders</span>
+                <span className="text-lg font-dm-mono text-autofun-text-highlight">
                   {selectedTokenData.holderCount || "0"}
                 </span>
               </div>
