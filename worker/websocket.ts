@@ -6,8 +6,6 @@ import { logger } from "./logger";
 export const allowedOrigins = [
   "https://api-dev.autofun.workers.dev",
   "https://api.autofun.workers.dev",
-  "https://develop.auto-fun.pages.dev",
-  "https://auto-fun.pages.dev",
   "https://develop.autofun.pages.dev",
   "https://autofun.pages.dev",
   "https://*.auto-fun.pages.dev",
@@ -18,8 +16,13 @@ export const allowedOrigins = [
   "https://auto.fun",
   "https://*.auto.fun",
   "https://dev.auto.fun",
+  "https://develop.auto.fun",
   "https://api.auto.fun",
   "https://api-dev.auto.fun",
+  "https://autofun.tech",
+  "https://develop.autofun.tech",
+  "https://api.autofun.tech",
+  "https://api-dev.autofun.tech",
   "https://fix-develop-create.auto-fun.pages.dev",
 ];
 
@@ -173,7 +176,7 @@ export class WebSocketDO {
   // Handle client-to-server messages
   private async handleClientMessage(
     clientId: string,
-    message: any,
+    message: any
   ): Promise<void> {
     if (!message || !message.event) return;
 
@@ -246,7 +249,7 @@ export class WebSocketDO {
         JSON.stringify({
           event: roomName.startsWith("token-") ? "subscribed" : "joined",
           data: { room: roomName },
-        }),
+        })
       );
     }
   }
@@ -274,7 +277,7 @@ export class WebSocketDO {
         JSON.stringify({
           event: roomName.startsWith("token-") ? "unsubscribed" : "left",
           data: { room: roomName },
-        }),
+        })
       );
     }
   }
@@ -328,7 +331,7 @@ export class WebSocketDO {
     roomName: string,
     event: string,
     data: any,
-    excludeClientId?: string,
+    excludeClientId?: string
   ): Promise<void> {
     const message = JSON.stringify({ event, data });
     const clients = this.rooms.get(roomName);
@@ -374,7 +377,7 @@ export class WebSocketDO {
         }),
         {
           headers: { "Content-Type": "application/json" },
-        },
+        }
       );
     } catch (error) {
       logger.error("Error broadcasting message:", error);
@@ -386,7 +389,7 @@ export class WebSocketDO {
         {
           status: 500,
           headers: { "Content-Type": "application/json" },
-        },
+        }
       );
     }
   }
@@ -418,7 +421,7 @@ export class WebSocketDO {
           {
             status: 404,
             headers: { "Content-Type": "application/json" },
-          },
+          }
         );
       }
 
@@ -431,7 +434,7 @@ export class WebSocketDO {
         }),
         {
           headers: { "Content-Type": "application/json" },
-        },
+        }
       );
     } catch (error) {
       logger.error("Error sending direct message:", error);
@@ -443,7 +446,7 @@ export class WebSocketDO {
         {
           status: 500,
           headers: { "Content-Type": "application/json" },
-        },
+        }
       );
     }
   }

@@ -50,7 +50,7 @@ type TwitterCredentials = {
 
 type PendingShare = {
   // Store pieces needed to regenerate text
-  imageData: string;
+  imageData: string; // This will store the URL of the image to share
   tokenName: string;
   tokenSymbol: string;
 };
@@ -68,7 +68,7 @@ export default function CommunityTab() {
   const [communityTab, setCommunityTab] = useState<ICommunityTabs>("Image");
   const [userPrompt, setUserPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null); // Stores URL of user-generated media
   const [processingStatus, setProcessingStatus] = useState<
     "idle" | "processing" | "processed" | "failed"
   >("idle");
@@ -83,7 +83,7 @@ export default function CommunityTab() {
   const [additionalImages, setAdditionalImages] = useState<string[]>([]);
   // const [isLoadingAdditionalImages, setIsLoadingAdditionalImages] =
   //   useState(false);
-  const [placeholderImage, setPlaceholderImage] = useState<string | null>(null);
+  const [placeholderImage, setPlaceholderImage] = useState<string | null>(null); // Stores URL of the currently displayed placeholder
 
   // Mode selection state
   const [generationMode, setGenerationMode] = useState<"fast" | "pro">("fast");
@@ -98,6 +98,9 @@ export default function CommunityTab() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [modalShareText, setModalShareText] = useState("");
   const [isPostingTweet, setIsPostingTweet] = useState(false); // Loading state for modal post
+  const [imageForShareModal, setImageForShareModal] = useState<string | null>(
+    null,
+  ); // State to hold the specific image URL for the modal
   // --- End Modal State ---
 
   // --- Token Info State ---
@@ -297,8 +300,8 @@ export default function CommunityTab() {
               );
               setModalShareText(regeneratedText);
 
-              // Set the image
-              setGeneratedImage(share.imageData);
+              // Set the image URL for the modal using the stored URL
+              setImageForShareModal(share.imageData);
 
               // Open the modal
               setIsShareModalOpen(true);
@@ -327,7 +330,7 @@ export default function CommunityTab() {
       // Preserve hash/anchor when cleaning up URL
       window.history.replaceState({}, "", currentUrl.pathname + location.hash);
     }
-  }, [tokenMint, generatedImage]);
+  }, [tokenMint]); // Removed generatedImage dependency as modal now uses imageForShareModal
 
   // Generate image function
   const generateImage = async () => {
@@ -359,6 +362,7 @@ export default function CommunityTab() {
     setIsGenerating(true);
     setProcessingStatus("processing");
     setGeneratedImage(null); // Clear previous image
+    setPlaceholderImage(null); // Clear placeholder when starting generation
     setShareError(null);
 
     try {
@@ -397,6 +401,7 @@ export default function CommunityTab() {
           console.error("Failed to parse auth token from localStorage:", e);
           toast.error("Authentication error. Please try logging in again.");
           setIsGenerating(false);
+          setProcessingStatus("failed"); // Set status to failed
           return;
         }
       }
@@ -536,6 +541,11 @@ export default function CommunityTab() {
       toast.error(
         error instanceof Error ? error.message : "Failed to generate image",
       );
+      // Re-set placeholder if generation failed and we have additional images
+      if (additionalImages.length > 0 && !placeholderImage) {
+        const randomIndex = Math.floor(Math.random() * additionalImages.length);
+        setPlaceholderImage(additionalImages[randomIndex]);
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -574,6 +584,7 @@ export default function CommunityTab() {
     setIsGenerating(true);
     setProcessingStatus("processing");
     setGeneratedImage(null); // Clear previous media
+    setPlaceholderImage(null); // Clear placeholder when starting generation
     setShareError(null);
 
     try {
@@ -610,6 +621,7 @@ export default function CommunityTab() {
           console.error("Failed to parse auth token from localStorage:", e);
           toast.error("Authentication error. Please try logging in again.");
           setIsGenerating(false);
+          setProcessingStatus("failed"); // Set status to failed
           return;
         }
       }
@@ -711,6 +723,7 @@ export default function CommunityTab() {
         }
       } catch (jsonError) {
         console.error("Error parsing JSON response:", jsonError);
+        throw new Error("Failed to parse server response");
       }
 
       // Validate response
@@ -747,6 +760,11 @@ export default function CommunityTab() {
       toast.error(
         error instanceof Error ? error.message : "Failed to generate video",
       );
+      // Re-set placeholder if generation failed and we have additional images
+      if (additionalImages.length > 0 && !placeholderImage) {
+        const randomIndex = Math.floor(Math.random() * additionalImages.length);
+        setPlaceholderImage(additionalImages[randomIndex]);
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -794,12 +812,22 @@ export default function CommunityTab() {
   };
   // --- End Tweet Templates & Generator ---
 
-  // Share on X function
+  // Share on X function - determines which image to share
   const shareOnX = useCallback(async () => {
-    if (!generatedImage) {
-      setShareError("No image to share");
+    // Determine which image URL to use: generated or placeholder
+    const imageToShare =
+      generatedImage && processingStatus === "processed"
+        ? generatedImage
+        : placeholderImage && !generatedImage && communityTab === "Image" // Only allow placeholder share on Image tab
+          ? placeholderImage
+          : null;
+
+    if (!imageToShare) {
+      setShareError("No image available to share");
+      toast.error("No image available to share");
       return;
     }
+
     // Ensure token info is loaded
     if (!tokenInfo) {
       toast.warn("Token information still loading, please wait a moment.");
@@ -811,16 +839,18 @@ export default function CommunityTab() {
 
     try {
       const shareText = generateShareText(tokenInfo);
+
       if (twitterCredentials && twitterCredentials.expiresAt > Date.now()) {
         // --- Open Modal Directly ---
         setModalShareText(shareText); // Use generated text
+        setImageForShareModal(imageToShare); // Set the correct image URL for the modal
         setIsShareModalOpen(true);
         // --- End Open Modal Directly ---
       } else {
         // Store the pending share and redirect to auth
         const pendingShare: PendingShare = {
           // Store pieces needed to regenerate text later
-          imageData: generatedImage,
+          imageData: imageToShare, // Store the URL of the image being shared
           tokenName: tokenInfo.name,
           tokenSymbol: tokenInfo.symbol,
         };
@@ -846,24 +876,35 @@ export default function CommunityTab() {
         window.location.href = `${apiUrl}/api/share/oauth/request_token`;
       }
     } catch (error) {
-      console.error("Share failed", error);
+      console.error("Share initiation failed", error);
       setShareError(error instanceof Error ? error.message : "Share failed");
       toast.error(
         `Share initiation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
+      setIsSharing(false); // Ensure sharing state is reset on error
     } finally {
-      setIsSharing(false); // Stop loading state as we are either showing modal or redirecting
+      // Don't set isSharing false here if opening modal, modal button handles it
+      // Reset sharing state only if redirecting OR if modal didn't open due to error
+      if (!isShareModalOpen) {
+         setIsSharing(false);
+      }
     }
-  }, [generatedImage, tokenInfo]);
+  }, [
+    generatedImage,
+    placeholderImage,
+    tokenInfo,
+    twitterCredentials,
+    processingStatus,
+    communityTab, // Add communityTab dependency
+  ]);
 
-  // Handle Twitter sharing (called FROM the modal or callback)
+  // Handle Twitter posting logic (called by confirmAndPostShare)
   const handleShareOnX = async (
     text: string,
-    imageData: string,
+    imageData: string, // Takes the specific image URL to post
     creds: TwitterCredentials,
   ) => {
     // This function is now primarily for the actual posting logic
-    // It will be called by `confirmAndPostShare`
     try {
       // Double-check if credentials expired
       if (creds.expiresAt < Date.now()) {
@@ -889,29 +930,36 @@ export default function CommunityTab() {
     }
   };
 
-  // --- New function to handle modal confirmation ---
+  // --- Function called by the modal confirmation button ---
   const confirmAndPostShare = async () => {
-    if (!generatedImage || !twitterCredentials) {
+    // Use the image URL stored for the modal
+    if (!imageForShareModal || !twitterCredentials) {
       toast.error("Missing image or authentication for sharing.");
       return;
     }
 
     setIsPostingTweet(true);
+    setIsSharing(true); // Also set the main sharing flag
     try {
-      await handleShareOnX(modalShareText, generatedImage, twitterCredentials);
+      await handleShareOnX(
+        modalShareText,
+        imageForShareModal,
+        twitterCredentials,
+      );
       setIsShareModalOpen(false); // Close modal on success
     } catch (error) {
       // Error is already handled/logged in handleShareOnX
       // Keep modal open on error
     } finally {
       setIsPostingTweet(false);
+      setIsSharing(false); // Clear main sharing flag
     }
   };
-  // --- End new function ---
+  // --- End function ---
 
   // Upload image to Twitter
   const uploadImage = async (
-    imageData: string,
+    imageData: string, // Expects a URL (data: or http:)
     accessToken: string,
   ): Promise<string> => {
     try {
@@ -920,30 +968,28 @@ export default function CommunityTab() {
       // Convert image data to blob - different handling based on data format
       if (imageData.startsWith("data:")) {
         // It's a data URL, extract the base64 data and convert to blob
-        const base64Data = imageData.split(",")[1];
-        const byteCharacters = atob(base64Data);
-        const byteArrays = [];
-
-        for (let i = 0; i < byteCharacters.length; i += 512) {
-          const slice = byteCharacters.slice(i, i + 512);
-          const byteNumbers = new Array(slice.length);
-          for (let j = 0; j < slice.length; j++) {
-            byteNumbers[j] = slice.charCodeAt(j);
-          }
-          byteArrays.push(new Uint8Array(byteNumbers));
-        }
-
-        blob = new Blob(byteArrays, {
-          type: imageData.split(";")[0].split(":")[1],
-        });
+        const base64Response = await fetch(imageData);
+        blob = await base64Response.blob();
       } else {
+        // It's a regular URL, fetch it
         const response = await fetch(imageData);
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch image for upload: ${response.statusText}`,
+          );
+        }
         blob = await response.blob();
       }
 
       // Create FormData and append the image
       const formData = new FormData();
-      formData.append("media", blob, "share-image.png");
+      // Determine filename based on type (though Twitter might ignore it)
+      const filename = blob.type.startsWith("video/")
+        ? "share-video.mp4"
+        : blob.type.startsWith("audio/")
+          ? "share-audio.mp3"
+          : "share-image.png";
+      formData.append("media", blob, filename);
 
       // Get auth token for the app (separate from Twitter token)
       // const authToken = localStorage.getItem("authToken");
@@ -963,12 +1009,12 @@ export default function CommunityTab() {
       if (!uploadResponse.ok) {
         const errorText = await uploadResponse.text();
         console.error(
-          "Image upload failed with status:",
+          "Media upload failed with status:",
           uploadResponse.status,
         );
         console.error("Error response body:", errorText);
         // Attempt to parse JSON error if possible
-        let detailedError = `Failed to upload image: ${uploadResponse.statusText}`;
+        let detailedError = `Failed to upload media: ${uploadResponse.statusText}`;
         try {
           const jsonError = JSON.parse(errorText);
           if (jsonError.error) {
@@ -1035,28 +1081,50 @@ export default function CommunityTab() {
     }
   };
 
-  // Add download functionality for any media type
+  // Add download functionality for any media type - uses generated or placeholder
   const downloadMedia = useCallback(async () => {
-    if (!generatedImage) {
-      toast.error("No media to download");
+    // Determine which media URL to use based on current state
+    const mediaToDownload =
+      generatedImage && processingStatus === "processed" // Generated media takes priority
+        ? generatedImage
+        : placeholderImage && communityTab === "Image" // Only download placeholder if it's an image and no generated one exists
+          ? placeholderImage
+          : null;
+
+    if (!mediaToDownload) {
+      toast.error("No media available to download");
       return;
     }
 
     try {
       // Convert the URL to a blob
-      const response = await fetch(generatedImage);
+      const response = await fetch(mediaToDownload);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch media: ${response.statusText}`);
+      }
       const blob = await response.blob();
 
       // Determine file extension based on media type and content type
-      let extension = ".png";
-      const contentType = response.headers.get("content-type");
-      if (contentType?.includes("video")) {
+      let extension = ".png"; // Default for images
+      const contentType = response.headers.get("content-type") || blob.type; // Use blob type as fallback
+
+      if (
+        communityTab === "Video" ||
+        (contentType && contentType.includes("video"))
+      ) {
         extension = ".mp4";
-      } else if (contentType?.includes("audio")) {
+      } else if (
+        communityTab === "Audio" ||
+        (contentType && contentType.includes("audio"))
+      ) {
         extension = ".mp3";
       } else if (contentType === "image/jpeg") {
         extension = ".jpg";
-      }
+      } else if (contentType === "image/gif") {
+        extension = ".gif";
+      } else if (contentType === "image/webp") {
+        extension = ".webp";
+      } // Add more image types if needed
 
       // Create a URL for the blob
       const blobUrl = window.URL.createObjectURL(blob);
@@ -1064,7 +1132,9 @@ export default function CommunityTab() {
       // Create an anchor element for download
       const a = document.createElement("a");
       a.href = blobUrl;
-      a.download = `generated-${communityTab.toLowerCase()}-${Date.now()}${extension}`;
+      // Use token symbol or mint in filename if available
+      const filenameBase = tokenInfo?.symbol || tokenMint || "generated";
+      a.download = `${filenameBase}-${communityTab.toLowerCase()}-${Date.now()}${extension}`;
 
       // Trigger the download
       document.body.appendChild(a);
@@ -1079,7 +1149,14 @@ export default function CommunityTab() {
       console.error(`Error downloading ${communityTab.toLowerCase()}:`, error);
       toast.error(`Failed to download ${communityTab.toLowerCase()}`);
     }
-  }, [generatedImage, communityTab]);
+  }, [
+    generatedImage,
+    placeholderImage,
+    communityTab,
+    processingStatus,
+    tokenInfo?.symbol,
+    tokenMint,
+  ]);
 
   // Add function to check token balance
   const checkTokenBalance = async () => {
@@ -1260,6 +1337,7 @@ export default function CommunityTab() {
     setIsGenerating(true);
     setProcessingStatus("processing");
     setGeneratedImage(null); // Clear previous media
+    setPlaceholderImage(null); // Clear placeholder when starting generation
     setShareError(null);
 
     try {
@@ -1295,6 +1373,7 @@ export default function CommunityTab() {
           console.error("Failed to parse auth token from localStorage:", e);
           toast.error("Authentication error. Please try logging in again.");
           setIsGenerating(false);
+          setProcessingStatus("failed"); // Set status to failed
           return;
         }
       }
@@ -1427,6 +1506,11 @@ export default function CommunityTab() {
       toast.error(
         error instanceof Error ? error.message : "Failed to generate audio",
       );
+      // Re-set placeholder if generation failed and we have additional images
+      if (additionalImages.length > 0 && !placeholderImage) {
+        const randomIndex = Math.floor(Math.random() * additionalImages.length);
+        setPlaceholderImage(additionalImages[randomIndex]);
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -1451,6 +1535,11 @@ export default function CommunityTab() {
       if (tokenInfo?.description) {
         setUserPrompt(tokenInfo.description);
       }
+      // Re-select placeholder if available
+      if (additionalImages.length > 0 && !placeholderImage) {
+        const randomIndex = Math.floor(Math.random() * additionalImages.length);
+        setPlaceholderImage(additionalImages[randomIndex]);
+      }
     };
     imageButton.className = communityTab === "Image" ? "active-tab" : "";
 
@@ -1469,6 +1558,7 @@ export default function CommunityTab() {
       setGeneratedImage(null);
       setProcessingStatus("idle");
       setUserPrompt(""); // Clear input when switching to Video tab
+      setPlaceholderImage(null); // Clear placeholder for video/audio
     };
     videoButton.className = communityTab === "Video" ? "active-tab" : "";
 
@@ -1487,6 +1577,7 @@ export default function CommunityTab() {
       setGeneratedImage(null);
       setProcessingStatus("idle");
       setUserPrompt(""); // Clear input when switching to Audio tab
+      setPlaceholderImage(null); // Clear placeholder for video/audio
     };
     audioButton.className = communityTab === "Audio" ? "active-tab" : "";
 
@@ -1534,11 +1625,17 @@ export default function CommunityTab() {
         styleElem.remove();
       }
     };
-  }, [communityTab]); // Re-run when tab changes
+  }, [communityTab, additionalImages, tokenInfo?.description]); // Rerun when tab, additional images, or token description changes
 
-  // Sets the placeholder image to randomly select one image
+  // Sets the placeholder image to randomly select one image, only for Image tab
   useEffect(() => {
-    if (!generatedImage && additionalImages.length > 0) {
+    // Only set placeholder if on Image tab, no generated image exists, and we have additional images
+    if (
+      communityTab === "Image" &&
+      !generatedImage &&
+      additionalImages.length > 0 &&
+      !placeholderImage // Avoid resetting if one is already chosen
+    ) {
       // Select a random image from available images instead of always using the first one
       const randomIndex = Math.floor(Math.random() * additionalImages.length);
       const randomImage = additionalImages[randomIndex];
@@ -1549,15 +1646,19 @@ export default function CommunityTab() {
         setPlaceholderImage(randomImage);
       };
       img.onerror = () => {
+        console.warn(`Placeholder image failed to load: ${randomImage}`);
         // If random image fails, try the others sequentially
         const imageLoaders = additionalImages
           .filter((_, i) => i !== randomIndex) // Skip the one that just failed
           .map((url) => {
-            return new Promise((resolve) => {
-              const img = new Image();
-              img.onload = () => resolve(url);
-              img.onerror = () => resolve(null);
-              img.src = url;
+            return new Promise<string | null>((resolve) => {
+              const imgLoader = new Image();
+              imgLoader.onload = () => resolve(url);
+              imgLoader.onerror = () => {
+                console.warn(`Placeholder image failed to load: ${url}`);
+                resolve(null);
+              };
+              imgLoader.src = url;
             });
           });
 
@@ -1569,8 +1670,27 @@ export default function CommunityTab() {
         });
       };
       img.src = randomImage;
+    } else if (communityTab !== "Image") {
+      // Clear placeholder if not on Image tab
+      setPlaceholderImage(null);
     }
-  }, [generatedImage, additionalImages]);
+  }, [generatedImage, additionalImages, communityTab, tokenInfo?.image]);
+
+  // Determine the image source to display
+  const displayImageSource =
+    generatedImage || placeholderImage || tokenInfo?.image;
+
+  // Condition to show download/share buttons
+  const isProcessing = processingStatus === 'processing'; // Explicitly check if it IS processing
+
+  const shouldShowActions =
+    // Show if generated media is processed successfully
+    (generatedImage && processingStatus === "processed") ||
+    // OR Show if placeholder is visible (only on Image tab and not generating)
+    (communityTab === "Image" &&
+      placeholderImage &&
+      !generatedImage &&
+      !isProcessing); // Use the negation of the explicit check
 
   return (
     <div className="flex flex-col">
@@ -1800,7 +1920,8 @@ export default function CommunityTab() {
             {/* Generated content display area */}
             <div className="flex flex-col relative">
               {processingStatus === "processing" ? (
-                <div className="flex items-center justify-center w-full h-[600px]">
+                // --- Processing Loader ---
+                <div className="flex items-center justify-center w-full h-[400px] sm:h-[500px] md:h-[600px]">
                   <div className="flex flex-col items-center">
                     <Loader />
                     <div className="mt-4 text-autofun-text-secondary font-dm-mono">
@@ -1809,78 +1930,94 @@ export default function CommunityTab() {
                   </div>
                 </div>
               ) : communityTab === "Image" ? (
-                <div className="relative w-full aspect-square">
-                  {isGenerating ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                // --- Image Display ---
+                <div className="relative w-full aspect-square bg-black">
+                  {isGenerating ? ( // Show loader overlay during generation phase specifically
+                    <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/70">
                       <Loader />
                       <div className="mt-4 text-autofun-text-secondary font-dm-mono">
                         Generating your image...
                       </div>
                     </div>
+                  ): null}
+                  { displayImageSource ? (
+                    <img
+                      key={displayImageSource} // Add key to force re-render on source change
+                      src={displayImageSource}
+                      alt={
+                        generatedImage
+                          ? "Generated Image"
+                          : placeholderImage
+                            ? "Pregenerated Image"
+                            : tokenInfo?.name || "Token Image"
+                      }
+                      className={`w-full h-full object-contain ${isGenerating ? 'opacity-30' : ''}`} // Dim image when generating loader is shown
+                      onError={(e) => {
+                        // Handle potential image load errors, maybe show fallback
+                        console.error("Image failed to load:", e.currentTarget.src);
+                        // Optionally set a fallback image or style
+                        e.currentTarget.style.display = 'none'; // Hide broken image
+                        // Maybe show a text error in the parent div
+                        const parent = e.currentTarget.parentElement;
+                        if (parent && !parent.querySelector('.image-error-message')) {
+                          const errorDiv = document.createElement('div');
+                          errorDiv.className = 'absolute inset-0 flex items-center justify-center text-red-500 image-error-message';
+                          errorDiv.textContent = 'Image failed to load';
+                          parent.appendChild(errorDiv);
+                        }
+                      }}
+                    />
                   ) : (
-                    <>
-                      <div className="absolute inset-0">
-                        <img
-                          src={
-                            generatedImage ||
-                            placeholderImage ||
-                            tokenInfo?.image
-                          }
-                          alt={tokenInfo?.name}
-                          className={`w-full h-full object-cover`}
-                        />
-                      </div>
-                      {!generatedImage && (
-                        <div className="absolute inset-0 flex items-center justify-center"></div>
-                      )}
-                    </>
+                    // Fallback if no image source is available
+                    <div className="absolute inset-0 flex items-center justify-center text-gray-500">
+                      No image available
+                    </div>
                   )}
                 </div>
+              ) : communityTab === "Audio" &&
+                generatedImage &&
+                processingStatus === "processed" ? (
+                // --- Audio Player ---
+                <div className="border border-gray-700 p-4 bg-black">
+                  <audio
+                    src={generatedImage}
+                    controls
+                    className="w-full"
+                    autoPlay
+                  >
+                    Your browser does not support the audio element.
+                  </audio>
+                </div>
+              ) : communityTab === "Video" &&
+                generatedImage &&
+                processingStatus === "processed" ? (
+                // --- Video Player ---
+                <div className="border border-gray-700 bg-black">
+                  <video
+                    src={generatedImage}
+                    controls
+                    className="w-full max-h-[500px]"
+                    autoPlay
+                    loop
+                    muted // Muted for autoplay policy compliance
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                </div>
               ) : (
-                <>
-                  {/* Display area based on media type */}
-                  {communityTab === "Audio" &&
-                  generatedImage &&
-                  processingStatus === "processed" ? (
-                    <div className="border border-gray-700 p-4">
-                      <audio
-                        src={generatedImage}
-                        controls
-                        className="w-full"
-                        autoPlay
-                      ></audio>
-                    </div>
-                  ) : communityTab === "Video" &&
-                    generatedImage &&
-                    processingStatus === "processed" ? (
-                    <div className="border border-gray-700">
-                      <video
-                        src={generatedImage}
-                        controls
-                        className="w-full max-h-[500px]"
-                        autoPlay
-                        loop
-                        muted
-                      ></video>
-                    </div>
-                  ) : generatedImage ? (
-                    <div
-                      className="max-w-[100%] aspect-square w-full"
-                      style={{
-                        backgroundImage: `url(${generatedImage})`,
-                        backgroundSize: "cover",
-                        backgroundPosition: "center",
-                      }}
-                    ></div>
-                  ) : null}
-                </>
+                // --- Placeholder for Video/Audio before generation ---
+                <div className="flex items-center justify-center w-full h-[400px] sm:h-[500px] md:h-[600px] bg-gray-900 text-gray-500">
+                  {communityTab === "Video"
+                    ? "Generate a video"
+                    : "Generate audio"}
+                </div>
               )}
 
-              {/* Download and share buttons - show for all processed media */}
-              {generatedImage && processingStatus === "processed" && (
-                <div className="w-full flex items-center justify-between p-2 bg-gradient-to-t from-black/80 to-transparent">
+              {/* Download and share buttons */}
+              {shouldShowActions && (
+                <div className="w-full flex items-center justify-between p-2 bg-gradient-to-t from-black/80 to-transparent absolute bottom-0 left-0 right-0">
                   {shareError && (
-                    <div className="text-red-500 text-sm bg-black/50 p-1 rounded">
+                    <div className="text-red-500 text-sm bg-black/50 p-1 rounded mr-auto">
                       {shareError}
                     </div>
                   )}
@@ -1889,7 +2026,8 @@ export default function CommunityTab() {
                       size="small"
                       variant="outline"
                       onClick={downloadMedia}
-                      disabled={processingStatus !== "processed"}
+                      // Disable if processing
+                      disabled={isProcessing}
                     >
                       Download
                     </Button>
@@ -1897,7 +2035,10 @@ export default function CommunityTab() {
                       size="small"
                       variant="secondary"
                       onClick={shareOnX}
-                      disabled={processingStatus !== "processed" || isSharing}
+                      // Disable if already sharing or processing
+                      disabled={
+                        isSharing || isProcessing
+                      }
                     >
                       {isSharing ? "Sharing..." : "Share on X"}
                     </Button>
@@ -1908,11 +2049,16 @@ export default function CommunityTab() {
           </div>
         </div>
       </div>
-      {isShareModalOpen && generatedImage && (
+      {/* --- Share Modal --- */}
+      {isShareModalOpen && imageForShareModal && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
           <div className="bg-autofun-background-primary p-6 w-full max-w-lg relative text-white font-dm-mono border-4 border-[#2FD345] shadow-xl">
             <button
-              onClick={() => setIsShareModalOpen(false)}
+              onClick={() => {
+                setIsShareModalOpen(false);
+                setImageForShareModal(null); // Clear image on close
+                setIsSharing(false); // Ensure sharing state is reset if modal is cancelled
+              }}
               className="absolute top-3 right-3 text-gray-400 hover:text-white cursor-pointer"
               aria-label="Close modal"
             >
@@ -1922,11 +2068,12 @@ export default function CommunityTab() {
               Share on X
             </h2>
 
-            <div className="mb-4 border border-gray-600 overflow-hidden">
+            {/* Display the image passed to the modal */}
+            <div className="mb-4 border border-gray-600 overflow-hidden max-h-[300px] flex justify-center items-center bg-gray-800">
               <img
-                src={generatedImage}
-                alt="Generated content to share"
-                className="w-full object-contain bg-gray-700"
+                src={imageForShareModal}
+                alt="Content to share"
+                className="w-auto h-auto max-w-full max-h-[300px] object-contain"
               />
             </div>
 
@@ -1944,6 +2091,7 @@ export default function CommunityTab() {
                 maxLength={280}
                 className="w-full p-2 bg-autofun-background-secondary text-sm border-b border-gray-400 focus:border-white focus:outline-none resize-none"
                 placeholder="Edit your tweet text..."
+                rows={3} // Give a bit more space
               />
               <p className="text-xs text-gray-400 mt-1 text-right">
                 {modalShareText.length} / 280
@@ -1957,8 +2105,12 @@ export default function CommunityTab() {
             <div className="flex justify-end gap-3">
               <Button
                 variant="secondary"
-                onClick={() => setIsShareModalOpen(false)}
-                disabled={isPostingTweet}
+                onClick={() => {
+                  setIsShareModalOpen(false);
+                  setImageForShareModal(null); // Clear image on cancel
+                  setIsSharing(false); // Ensure sharing state is reset
+                }}
+                disabled={isPostingTweet} // Disable cancel if posting is in progress
               >
                 Cancel
               </Button>
