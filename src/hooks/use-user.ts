@@ -1,7 +1,7 @@
 import { env } from "@/utils/env";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useEffect, useState } from "react";
 import { fetchWithAuth } from "./use-authentication";
+import { useQuery } from "@tanstack/react-query";
 
 interface User {
   address: string;
@@ -17,17 +17,13 @@ interface AuthStatus {
 
 export function useUser() {
   const { publicKey } = useWallet();
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchUser = async () => {
+  const query = useQuery({
+    queryKey: ["user", publicKey],
+    queryFn: async () => {
       if (!publicKey) {
-        setUser(null);
-        return;
+        return null;
       }
 
-      setIsLoading(true);
       try {
         console.log("Fetching user data with auth token...");
 
@@ -42,25 +38,23 @@ export function useUser() {
 
           if (data.authenticated && data.user) {
             console.log("User authenticated, setting user data");
-            setUser(data.user);
+            return data.user;
           } else {
             console.log("User not authenticated or no user data");
-            setUser(null);
+            return null;
           }
         } else {
           console.error("Error response from auth-status:", response.status);
-          setUser(null);
+          return null;
         }
       } catch (error) {
         console.error("Error fetching user:", error);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
+        return null;
       }
-    };
+    },
+  });
 
-    fetchUser();
-  }, [publicKey]);
+  const user: User | null | undefined = query?.data;
 
-  return { user, isLoading };
+  return { user, isLoading: query?.isPending, query };
 }
