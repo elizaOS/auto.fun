@@ -129,11 +129,11 @@ export async function uploadToCloudflare(
       logger.log(
         "uploading to r2",
         env.R2_PUBLIC_URL,
-        env.VITE_API_URL,
+        env.API_URL,
         env.NODE_ENV,
       );
-      const publicUrl = env.VITE_API_URL?.includes("localhost")
-        ? `${env.VITE_API_URL}/api/${apiPath}/${objectKey}`
+      const publicUrl = env.API_URL?.includes("localhost")
+        ? `${env.API_URL}/api/${apiPath}/${objectKey}`
         : `${env.R2_PUBLIC_URL}/${objectPath}/${objectKey}`;
 
       // Log file in development mode
