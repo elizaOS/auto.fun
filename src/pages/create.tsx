@@ -3401,7 +3401,8 @@ export const Create = () => {
                         </div>
                         <div className="border-t border-neutral-800 pt-2 mt-1">
                           <p className="text-neutral-400 text-xs">
-                          Maximum supply of 50% can be purchased prior to coin launch
+                            Maximum supply of 50% can be purchased prior to coin
+                            launch
                           </p>
                         </div>
                       </div>
