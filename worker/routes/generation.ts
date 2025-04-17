@@ -1633,6 +1633,17 @@ async function generateTokenOnDemand(
       used: 0,
     };
 
+    // check if finalImageUrl is a valid URL
+    if (!finalImageUrl.startsWith("http")) {
+      throw new Error("Invalid image URL: " + finalImageUrl);
+    }
+
+    // check if finalImageUrl exists and is a valid image
+    const imageResponse = await fetch(finalImageUrl);
+    if (!imageResponse.ok) {
+      throw new Error("Invalid image URL: " + finalImageUrl);
+    }
+
     // Store in database for future use (run in background)
     const db = getDB(env);
     ctx.waitUntil(
