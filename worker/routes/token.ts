@@ -291,23 +291,6 @@ export async function processSwapEvent(
   }
 }
 
-function normalizeIpfsUri(
-  uri: string,
-  gateway: string = "https://ipfs.io",
-): string {
-  const gw = gateway.replace(/\/$/, "");
-
-  const m1 = uri.match(/^ipfs:\/\/(.+)$/i);
-  if (m1) {
-    return `${gw}/ipfs/${m1[1]}`;
-  }
-  const m2 = uri.match(/^https?:\/\/[^\/]+\/(ipfs|ipns)\/(.+)$/i);
-  if (m2) {
-    return `${gw}/${m2[1]}/${m2[2]}`;
-  }
-
-  return uri;
-}
 // Helper function to process token info after finding it on a network
 async function processTokenInfo(
   c: any,
@@ -316,33 +299,44 @@ async function processTokenInfo(
   connection: Connection,
   requestor: string,
 ) {
-  // Program IDs
+  // Check program ID to verify this is an SPL token
   const TOKEN_PROGRAM_ID = new PublicKey(
     "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
   );
   const TOKEN_2022_PROGRAM_ID = new PublicKey(
     "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
   );
-  const METADATA_PROGRAM_ID = new PublicKey(
-    "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
-  );
 
-  // Validate SPL / SPL-2022
   const isSplToken = tokenInfo.owner.equals(TOKEN_PROGRAM_ID);
-  const isSpl2022 = tokenInfo.owner.equals(TOKEN_2022_PROGRAM_ID);
-  if (!isSplToken && !isSpl2022) {
+  const isSPL2022 = tokenInfo.owner.equals(TOKEN_2022_PROGRAM_ID);
+
+  if (!isSplToken && !isSPL2022) {
     return c.json(
-      { error: `Not a valid SPL token. Owner: ${tokenInfo.owner}` },
+      {
+        error: "Not a valid SPL token. Owner: " + tokenInfo.owner.toString(),
+      },
       400,
     );
   }
 
-  // Fetch mint account details
-  const mintAcc = await connection.getParsedAccountInfo(mintPublicKey);
-  const parsed = (mintAcc.value?.data as any)?.parsed?.info || {};
-  const decimals = parsed.decimals ?? 9;
-  const mintAuthority = parsed.mintAuthority ?? null;
+  logger.log(`[search-token] Token owner: ${tokenInfo.owner.toString()}`);
+  logger.log(`[search-token] Token is SPL-2022: ${isSPL2022}`);
 
+  // Get mint info - decimals and authorities
+  const mintInfo = await connection.getParsedAccountInfo(mintPublicKey);
+  logger.log(
+    `[search-token] Mint info: ${JSON.stringify(mintInfo.value?.data)}`,
+  );
+
+  // Extract basic token info
+  const parsedData = (mintInfo.value?.data as any)?.parsed;
+  const decimals = parsedData?.info?.decimals || 9;
+  const mintAuthority = parsedData?.info?.mintAuthority || null;
+
+  logger.log(`[search-token] Decimals: ${decimals}`);
+  logger.log(`[search-token] Mint authority: ${mintAuthority}`);
+
+  // Initialize variables for token data
   let tokenName = "";
   let tokenSymbol = "";
   let uri = "";
@@ -351,45 +345,88 @@ async function processTokenInfo(
   let updateAuthority: string | null = null;
   let foundMetadata = false;
 
-  // 1) SPL-2022 tokenMetadata extension
-  if (isSpl2022 && parsed.extensions) {
-    const ext = parsed.extensions.find(
-      (e: any) => e.extension === "tokenMetadata",
-    )?.state;
-    if (ext) {
-      tokenName = ext.name || "";
-      tokenSymbol = ext.symbol || "";
-      uri = ext.uri || "";
-      updateAuthority = ext.updateAuthority || null;
+  // For SPL-2022 tokens, check for token metadata extension first
+  if (isSPL2022 && parsedData?.info?.extensions) {
+    logger.log(`[search-token] Checking SPL-2022 extensions for metadata`);
+
+    // Find the tokenMetadata extension if it exists
+    const metadataExt = parsedData.info.extensions.find(
+      (ext: any) => ext.extension === "tokenMetadata",
+    );
+
+    if (metadataExt && metadataExt.state) {
+      logger.log(
+        `[search-token] Found tokenMetadata extension: ${JSON.stringify(metadataExt.state)}`,
+      );
+
+      // Extract metadata directly from the extension
+      tokenName = metadataExt.state.name || "";
+      tokenSymbol = metadataExt.state.symbol || "";
+      uri = metadataExt.state.uri || "";
+      updateAuthority = metadataExt.state.updateAuthority || null;
+
+      logger.log(
+        `[search-token] SPL-2022 metadata - Name: ${tokenName}, Symbol: ${tokenSymbol}`,
+      );
+      logger.log(`[search-token] SPL-2022 metadata - URI: ${uri}`);
+      logger.log(
+        `[search-token] SPL-2022 metadata - Update Authority: ${updateAuthority}`,
+      );
+
       foundMetadata = true;
+
+      // Now fetch additional metadata from the URI if available
+      if (uri) {
+        logger.log(`[search-token] Fetching metadata from URI: ${uri}`);
+        const uriResponse = await fetch(uri);
+
+        if (uriResponse.ok) {
+          const uriText = await uriResponse.text();
+          logger.log(`[search-token] URI response: ${uriText}`);
+
+          try {
+            const uriData = JSON.parse(uriText);
+            logger.log(
+              `[search-token] Parsed URI data: ${JSON.stringify(uriData)}`,
+            );
+
+            // Extract image and description if available
+            if (uriData.image) {
+              imageUrl = uriData.image;
+              logger.log(`[search-token] Found image URL in URI: ${imageUrl}`);
+            }
+
+            if (uriData.description) {
+              description = uriData.description;
+              logger.log(
+                `[search-token] Found description in URI: ${description}`,
+              );
+            }
+          } catch (parseError) {
+            logger.error(
+              `[search-token] Error parsing URI JSON: ${parseError}`,
+            );
+          }
+        } else {
+          logger.error(
+            `[search-token] Failed to fetch URI: ${uriResponse.status} ${uriResponse.statusText}`,
+          );
+        }
+      }
+    } else {
+      logger.log(
+        `[search-token] No tokenMetadata extension found in SPL-2022 token`,
+      );
     }
   }
 
-  // Helper to fetch JSON with timeout & fail‐safe
-  async function safeFetchJson(url: string) {
-    if (!/^https?:\/\//i.test(url)) throw new Error("unsupported URI");
-    const ctrl = new AbortController();
-    const to = setTimeout(() => ctrl.abort(), 5_000);
-    const res = await fetch(url, { signal: ctrl.signal });
-    clearTimeout(to);
-    if (!res.ok) throw new Error(`status ${res.status}`);
-    return res.json();
-  }
-
-  // 2) Fetch off‑chain JSON if URI exists
-  if (uri) {
-    try {
-      const meta = await safeFetchJson(normalizeIpfsUri(uri));
-      if (meta.image) imageUrl = normalizeIpfsUri(meta.image);
-      if (meta.description) description = meta.description;
-    } catch (e: any) {
-      console.error(`[search-token] URI fetch/parse error: ${e.message}`);
-    }
-  }
-
-  // 3) Metaplex metadata PDA fallback (only if not found via SPL-2022 ext)
+  // Only try to get Metaplex metadata if we didn't find it in SPL-2022 extensions
   if (!foundMetadata) {
-    const [metaAddr] = PublicKey.findProgramAddressSync(
+    // Get metadata PDA
+    const METADATA_PROGRAM_ID = new PublicKey(
+      "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
+    );
+    const [metadataAddress] = PublicKey.findProgramAddressSync(
       [
         Buffer.from("metadata"),
         METADATA_PROGRAM_ID.toBuffer(),
@@ -397,72 +434,186 @@ async function processTokenInfo(
       ],
       METADATA_PROGRAM_ID,
     );
-    const metaAccount = await connection.getAccountInfo(metaAddr);
-    if (metaAccount?.data.length) {
-      const buf = metaAccount.data;
-      updateAuthority = new PublicKey(buf.slice(1, 33)).toBase58();
-      let offset = 1 + 32 + 32;
-      const readField = () => {
-        const len = buf[offset];
-        offset += 1;
-        const str = buf
-          .slice(offset, offset + len)
-          .toString("utf8")
-          .replace(/\0/g, "");
-        offset += len + 3; // skip padding
-        return str.trim();
-      };
-      tokenName = readField();
-      tokenSymbol = readField();
-      uri = readField();
+
+    logger.log(
+      `[search-token] Metadata address: ${metadataAddress.toString()}`,
+    );
+
+    // Get metadata account data - direct read from chain with no fallbacks
+    const metadataAccount = await connection.getAccountInfo(metadataAddress);
+    if (!metadataAccount || metadataAccount.data.length === 0) {
+      // For SPL-2022 tokens, we already checked extensions so this is just a warning
+      // For regular SPL tokens, this is an error
+      if (isSPL2022) {
+        logger.warn(
+          `[search-token] No Metaplex metadata found for SPL-2022 token: ${mintPublicKey.toString()}`,
+        );
+      } else {
+        logger.error(
+          `[search-token] No metadata found for token: ${mintPublicKey.toString()}`,
+        );
+        return c.json({ error: "No metadata found for this token" }, 404);
+      }
+    } else {
+      // We found Metaplex metadata
+      logger.log(
+        `[search-token] Metadata account found, data length: ${metadataAccount.data.length} bytes`,
+      );
+      logger.log(
+        `[search-token] Raw metadata (hex): ${Buffer.from(metadataAccount.data).toString("hex")}`,
+      );
+
+      // Direct metadata extraction
+      updateAuthority = new PublicKey(
+        metadataAccount.data.slice(1, 33),
+      ).toString();
+      logger.log(`[search-token] Update authority: ${updateAuthority}`);
+
+      // Calculate offsets for variable-length fields
+      let offset = 1 + 32 + 32; // Skip version byte + update authority + mint
+
+      // Extract name length and value
+      const nameLength = metadataAccount.data[offset];
+      offset += 1;
+      const nameData = metadataAccount.data.slice(offset, offset + nameLength);
+      tokenName = nameData.toString("utf8").replace(/\0/g, "").trim();
+      logger.log(
+        `[search-token] Token name: ${tokenName} (${nameLength} bytes)`,
+      );
+      offset += nameLength;
+
+      // Extract symbol - needs to account for padding between fields
+      offset += 3; // Skip padding bytes before length
+      const symbolLength = metadataAccount.data[offset];
+      offset += 1;
+      const symbolData = metadataAccount.data.slice(
+        offset,
+        offset + symbolLength,
+      );
+      tokenSymbol = symbolData.toString("utf8").replace(/\0/g, "").trim();
+      logger.log(
+        `[search-token] Token symbol: ${tokenSymbol} (${symbolLength} bytes)`,
+      );
+      offset += symbolLength;
+
+      // Extract URI
+      offset += 3; // Skip padding bytes before length
+      const uriLength = metadataAccount.data[offset];
+      offset += 1;
+      const uriData = metadataAccount.data.slice(offset, offset + uriLength);
+      uri = uriData.toString("utf8").replace(/\0/g, "").trim();
+      logger.log(`[search-token] Metadata URI: ${uri} (${uriLength} bytes)`);
+
       foundMetadata = true;
 
-      // fetch JSON again if uri changed
+      // Now fetch additional metadata from the URI if available
       if (uri) {
-        try {
-          uri = normalizeIpfsUri(uri);
-          const meta = await safeFetchJson(uri);
-          if (meta.image) imageUrl = normalizeIpfsUri(meta.image);
-          if (meta.description) description = meta.description;
-        } catch (e: any) {
-          logger.error(`[search-token] URI fetch/parse error`, e.message);
+        logger.log(`[search-token] Fetching metadata from URI: ${uri}`);
+        const uriResponse = await fetch(uri);
+
+        if (uriResponse.ok) {
+          const uriText = await uriResponse.text();
+          logger.log(`[search-token] URI response: ${uriText}`);
+
+          try {
+            const uriData = JSON.parse(uriText);
+            logger.log(
+              `[search-token] Parsed URI data: ${JSON.stringify(uriData)}`,
+            );
+
+            // Extract image and description if available
+            if (uriData.image) {
+              imageUrl = uriData.image;
+              logger.log(`[search-token] Found image URL in URI: ${imageUrl}`);
+            }
+
+            if (uriData.description) {
+              description = uriData.description;
+              logger.log(
+                `[search-token] Found description in URI: ${description}`,
+              );
+            }
+          } catch (parseError) {
+            logger.error(
+              `[search-token] Error parsing URI JSON: ${parseError}`,
+            );
+          }
+        } else {
+          logger.error(
+            `[search-token] Failed to fetch URI: ${uriResponse.status} ${uriResponse.statusText}`,
+          );
         }
       }
-    } else if (!isSpl2022) {
-      return c.json({ error: "No metadata found for this token" }, 404);
     }
   }
 
-  // Defaults for missing values
-  if (!tokenName) tokenName = `Token ${mintPublicKey.toBase58().slice(0, 8)}`;
-  if (!tokenSymbol)
-    tokenSymbol = mintPublicKey.toBase58().slice(0, 4).toUpperCase();
+  // If we still didn't find metadata from either source, throw error
+  if (!foundMetadata && !isSPL2022) {
+    return c.json({ error: "No metadata found for this token" }, 404);
+  }
 
-  // Creator check
+  // For SPL-2022 tokens, we still consider them valid even without metadata
+  // since they might not use the tokenMetadata extension
+
+  // Check if we're in development mode
   const isLocalDev = c.env.LOCAL_DEV === "true" || c.env.LOCAL_DEV === true;
+
+  // Determine if requestor is the creator/authority
+  // In development mode, always allow any token to be imported
   const isCreator = isLocalDev
     ? true
     : updateAuthority === requestor || mintAuthority === requestor;
 
-  // Final payload
+  logger.log(`[search-token] Is local development mode? ${isLocalDev}`);
+  logger.log(`[search-token] LOCAL_DEV value: ${c.env.LOCAL_DEV}`);
+  logger.log(`[search-token] Is requestor the creator? ${isCreator}`);
+  logger.log(`[search-token] Request wallet: ${requestor}`);
+  logger.log(`[search-token] Update authority: ${updateAuthority}`);
+  logger.log(`[search-token] Mint authority: ${mintAuthority}`);
+
+  // Debug log for final creator check result
+  if (isLocalDev) {
+    logger.log(
+      `[search-token] Bypassing creator check in development mode. Anyone can import this token.`,
+    );
+  } else if (isCreator) {
+    logger.log(
+      `[search-token] Creator check passed - requestor is the token creator.`,
+    );
+  } else {
+    logger.log(
+      `[search-token] Creator check failed - requestor is not the token creator.`,
+    );
+  }
+
+  // If we don't have names yet (possible for SPL-2022 without tokenMetadata), use defaults
+  if (!tokenName) {
+    tokenName = `Token ${mintPublicKey.toString().slice(0, 8)}`;
+  }
+  if (!tokenSymbol) {
+    tokenSymbol = mintPublicKey.toString().slice(0, 4).toUpperCase();
+  }
+
+  // Return the token data
   const tokenData = {
-    mint: mintPublicKey.toBase58(),
     name: tokenName,
     symbol: tokenSymbol,
-    description: description || `${tokenName} (${tokenSymbol})`,
+    description: description || `Token ${tokenName} (${tokenSymbol})`,
+    mint: mintPublicKey.toString(),
+    updateAuthority: updateAuthority,
+    mintAuthority: mintAuthority || null,
+    creator: updateAuthority || mintAuthority || null,
+    isCreator: isCreator,
     metadataUri: uri,
     image: imageUrl,
-    decimals,
-    updateAuthority,
-    mintAuthority,
-    creator: updateAuthority || mintAuthority || null,
-    isCreator,
-    tokenType: isSpl2022 ? "spl-2022" : "spl-token",
+    tokenType: isSPL2022 ? "spl-2022" : "spl-token",
+    decimals: decimals,
     needsWalletSwitch: !isCreator,
   };
 
-  console.log(`[search-token] Final token data`, tokenData);
-  return c.json(tokenData, 200);
+  logger.log(`[search-token] Final token data: ${JSON.stringify(tokenData)}`);
+
+  return c.json(tokenData);
 }
 
 // Helper to check token balance directly on blockchain
