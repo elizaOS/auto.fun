@@ -171,6 +171,7 @@ interface AdminToken extends IToken {
   id: string;
   featured?: boolean;
   verified?: boolean;
+  hidden?: boolean;
 }
 
 interface SocialLinks {
@@ -195,6 +196,7 @@ function AdminTokenDetails({ address }: { address: string }) {
           id: tokenData.txId || tokenData.mint.substring(0, 8), // Use txId or first 8 chars of mint as ID
           featured: (tokenData as any).featured || false,
           verified: (tokenData as any).verified || false,
+          hidden: (tokenData as any).hidden || false,
         } as AdminToken;
       } catch (error) {
         console.error(`Error fetching token data:`, error);
@@ -225,24 +227,6 @@ function AdminTokenDetails({ address }: { address: string }) {
       });
     }
   }, [tokenQuery.data]);
-
-  // Mutation for updating token status
-  const updateStatusMutation = useMutation({
-    mutationFn: async (newStatus: string) => {
-      return await fetcher(`/api/token/${address}/update`, "POST", {
-        status: newStatus,
-      });
-    },
-    onSuccess: () => {
-      toast.success(`Token status updated successfully`);
-      tokenQuery.refetch(); // Refetch token data after update
-    },
-    onError: (error) => {
-      toast.error(
-        `Failed to update token status: ${error instanceof Error ? error.message : "Unknown error"}`
-      );
-    },
-  });
 
   // Mutation for updating token social links
   const updateSocialLinksMutation = useMutation({
@@ -304,12 +288,25 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
   });
 
-  const handleToggleStatus = () => {
-    if (!tokenQuery.data) return;
-    // Toggle between active and locked (since suspended is not in TTokenStatus)
-    const newStatus = tokenQuery.data.status === "active" ? "locked" : "active";
-    updateStatusMutation.mutate(newStatus);
-  };
+  // Mutation for toggling hidden status
+  const toggleHiddenMutation = useMutation({
+    mutationFn: async () => {
+      return await fetcher(`/api/admin/tokens/${address}/hidden`, "POST", {
+        hidden: tokenQuery.data ? !tokenQuery.data.hidden : false,
+      });
+    },
+    onSuccess: () => {
+      toast.success(
+        `Token ${tokenQuery.data?.hidden ? "unhidden" : "hidden"} successfully`
+      );
+      tokenQuery.refetch(); // Refetch token data after update
+    },
+    onError: (error) => {
+      toast.error(
+        `Failed to update hidden status: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    },
+  });
 
   // Show loading state while fetching token data
   if (tokenQuery.isLoading) {
@@ -440,6 +437,18 @@ function AdminTokenDetails({ address }: { address: string }) {
                 }`}
               >
                 {token.verified ? "Yes" : "No"}
+              </span>
+            </div>
+            <div>
+              <span className="text-autofun-text-secondary">Hidden:</span>
+              <span
+                className={`ml-2 px-2 py-1 rounded-full text-xs ${
+                  token.hidden
+                    ? "bg-purple-900 text-purple-300"
+                    : "bg-gray-900 text-gray-300"
+                }`}
+              >
+                {token.hidden ? "Yes" : "No"}
               </span>
             </div>
           </div>
@@ -680,18 +689,18 @@ function AdminTokenDetails({ address }: { address: string }) {
 
         <button
           className={`px-4 py-2 ${
-            token.status === "active"
-              ? "bg-yellow-900 text-yellow-300 hover:bg-yellow-800"
-              : "bg-green-900 text-green-300 hover:bg-green-800"
+            token.hidden
+              ? "bg-purple-900 text-purple-300 hover:bg-purple-800"
+              : "bg-gray-900 text-gray-300 hover:bg-gray-800"
           } `}
-          onClick={handleToggleStatus}
-          disabled={updateStatusMutation.isPending}
+          onClick={() => toggleHiddenMutation.mutate()}
+          disabled={toggleHiddenMutation.isPending}
         >
-          {updateStatusMutation.isPending
+          {toggleHiddenMutation.isPending
             ? "Processing..."
-            : token.status === "active"
-              ? "Lock Token"
-              : "Activate Token"}
+            : token.hidden
+              ? "Unhide Token"
+              : "Hide Token"}
         </button>
       </div>
     </div>

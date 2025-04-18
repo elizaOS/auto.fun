@@ -240,6 +240,66 @@ adminRouter.patch("/tokens/:mint/verified", requireAdmin, async (c) => {
   }
 });
 
+// Route to set hidden flag on tokens
+adminRouter.patch("/tokens/:mint/hidden", requireAdmin, async (c) => {
+  try {
+    const mint = c.req.param("mint");
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    const body = await c.req.json();
+    const { hidden } = body;
+
+    if (hidden === undefined || typeof hidden !== "boolean") {
+      return c.json({ error: "Hidden flag must be a boolean" }, 400);
+    }
+
+    const db = getDB(c.env);
+
+    // Check if token exists
+    const tokenData = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    if (!tokenData || tokenData.length === 0) {
+      return c.json({ error: "Token not found" }, 404);
+    }
+
+    // Update the hidden field directly
+    await db
+      .update(tokens)
+      .set({
+        hidden: hidden ? 1 : 0,
+        lastUpdated: new Date().toISOString(),
+      })
+      .where(eq(tokens.mint, mint));
+
+    logger.log(`Admin set hidden flag to ${hidden} for token ${mint}`);
+
+    // Get the updated token data
+    const updatedToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    return c.json({
+      success: true,
+      message: `Token hidden flag set to ${hidden}`,
+      token: updatedToken[0],
+    });
+  } catch (error) {
+    logger.error("Error setting token hidden flag:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
+
 // Route to set a user to suspended
 adminRouter.post("/users/:address/suspended", requireAdmin, async (c) => {
   try {
