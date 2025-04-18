@@ -5,7 +5,7 @@ import {
   ParsedAccountData,
   PublicKey,
 } from "@solana/web3.js";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import { monitorSpecificToken } from "../cron";
@@ -1099,6 +1099,9 @@ tokenRouter.get("/tokens", async (c) => {
     // Get search, status, creator params for filtering
     const search = queryParams.search as string;
     const status = queryParams.status as string;
+    const hideImported = queryParams.hideImported
+      ? Number(queryParams.hideImported)
+      : (0 as number);
     const creator = queryParams.creator as string;
     const sortBy = search
       ? "marketCapUSD"
@@ -1160,6 +1163,10 @@ tokenRouter.get("/tokens", async (c) => {
 
         if (creator) {
           tokensQuery = tokensQuery.where(eq(tokens.creator, creator));
+        }
+
+        if (hideImported) {
+          tokensQuery = tokensQuery.where(ne(tokens.imported, 1));
         }
 
         if (search) {
@@ -1234,6 +1241,10 @@ tokenRouter.get("/tokens", async (c) => {
                ${tokens.ticker} LIKE ${"%" + search + "%"} OR 
                ${tokens.mint} LIKE ${"%" + search + "%"})`,
         );
+      }
+
+      if (hideImported) {
+        finalQuery = countQuery.where(ne(tokens.imported, 1));
       }
 
       const totalCountResult = await finalQuery;

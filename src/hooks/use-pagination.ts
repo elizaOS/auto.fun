@@ -19,6 +19,7 @@ type PaginationOptions<TOutput, TInput> = {
   sortBy: keyof TOutput;
   sortOrder: "asc" | "desc";
   itemsPropertyName: string;
+  hideImported?: number;
 };
 
 export type UsePaginationOptions<TOutput = object, TInput = TOutput> = Omit<
@@ -37,12 +38,14 @@ const fetchPaginatedData = async <
   sortOrder,
   itemsPropertyName,
   validationSchema,
+  hideImported,
 }: PaginationOptions<TOutput, TInput>): Promise<PaginatedResponse<TOutput>> => {
   const queryParams = new URLSearchParams({
     limit: limit.toString(),
     page: page.toString(),
     sortBy: sortBy.toString(),
     sortOrder: sortOrder.toString(),
+    hideImported: hideImported ? "1" : "0",
   });
 
   const queryEndpoint = `${endpoint}?${queryParams.toString()}`;
@@ -101,6 +104,7 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
   sortOrder,
   enabled = true,
   useUrlState = false,
+  hideImported,
 }: UsePaginationOptions<TOutput, TInput>) => {
   const { page, setPage } = usePage({ useUrlState });
   const [hasMore, setHasMore] = useState(false);
@@ -123,6 +127,7 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
           sortOrder,
           itemsPropertyName,
           validationSchema,
+          hideImported
         });
 
         setFetchedData(result.items);

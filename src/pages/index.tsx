@@ -17,7 +17,7 @@ export default function Page() {
   const [activeTab] = useViewMode();
   const [sortBy, setSortBy] = useFilter();
 
-  const query = useTokens(sortBy);
+  const query = useTokens(sortBy, true);
 
   useEffect(() => {
     getSocket().emit("subscribeGlobal");

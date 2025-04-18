@@ -18,11 +18,12 @@ export const HomepageFeaturedSchema = HomepageTokenSchema.and(
 
 export type HomepageSortBy = "all" | "marketCap" | "newest" | "oldest";
 
-export const useHomepageAll = (enabled: boolean) => {
+export const useHomepageAll = (enabled: boolean, hideImported?: boolean) => {
   const pageSize = 24;
   const pagination = usePagination({
     endpoint: "/api/tokens",
     limit: pageSize,
+    hideImported: hideImported ? 1 : 0,
     validationSchema: HomepageFeaturedSchema,
     itemsPropertyName: "tokens",
     sortBy: "featuredScore",
@@ -70,11 +71,15 @@ export const useHomepageAll = (enabled: boolean) => {
   return pagination;
 };
 
-export const useHomepageMarketCap = (enabled: boolean) => {
+export const useHomepageMarketCap = (
+  enabled: boolean,
+  hideImported?: boolean,
+) => {
   const pageSize = 24;
   const pagination = usePagination({
     endpoint: "/api/tokens",
     limit: pageSize,
+    hideImported: hideImported ? 1 : 0,
     validationSchema: HomepageTokenSchema,
     itemsPropertyName: "tokens",
     sortBy: "marketCapUSD",
@@ -121,11 +126,12 @@ export const useHomepageMarketCap = (enabled: boolean) => {
   return pagination;
 };
 
-export const useHomepageNewest = (enabled: boolean) => {
+export const useHomepageNewest = (enabled: boolean, hideImported?: boolean) => {
   const pageSize = 24;
   const pagination = usePagination({
     endpoint: "/api/tokens",
     limit: pageSize,
+    hideImported: hideImported ? 1 : 0,
     validationSchema: HomepageTokenSchema,
     itemsPropertyName: "tokens",
     sortBy: "createdAt",
@@ -170,11 +176,12 @@ export const useHomepageNewest = (enabled: boolean) => {
   return pagination;
 };
 
-export const useHomepageOldest = (enabled: boolean) => {
+export const useHomepageOldest = (enabled: boolean, hideImported?: boolean) => {
   const pageSize = 24;
   const pagination = usePagination({
     endpoint: "/api/tokens",
     limit: pageSize,
+    hideImported: hideImported ? 1 : 0,
     validationSchema: HomepageTokenSchema,
     itemsPropertyName: "tokens",
     sortBy: "createdAt",
@@ -223,11 +230,14 @@ export const useHomepageOldest = (enabled: boolean) => {
   return pagination;
 };
 
-export const useTokens = (sortBy: HomepageSortBy) => {
-  const allTokens = useHomepageAll(sortBy === "all");
-  const marketCapTokens = useHomepageMarketCap(sortBy === "marketCap");
-  const newestTokens = useHomepageNewest(sortBy === "newest");
-  const oldestTokens = useHomepageOldest(sortBy === "oldest");
+export const useTokens = (sortBy: HomepageSortBy, hideImported: boolean) => {
+  const allTokens = useHomepageAll(sortBy === "all", hideImported);
+  const marketCapTokens = useHomepageMarketCap(
+    sortBy === "marketCap",
+    hideImported,
+  );
+  const newestTokens = useHomepageNewest(sortBy === "newest", hideImported);
+  const oldestTokens = useHomepageOldest(sortBy === "oldest", hideImported);
 
   useEffect(() => {
     getSocket().emit("subscribeGlobal");
