@@ -113,6 +113,8 @@ router.post("/codex-webhook", async (c) => {
 
   const swap = webhookBody.data.event;
   // const db = getDB(c.env);
+  // Determine which token index (0 or 1) this event is for
+  const tokenIndex = swap.eventType2.startsWith("Token1") ? 1 : 0;
 
   // const amounts =
   //   swap.eventDisplayType === "Buy"
@@ -124,8 +126,9 @@ router.post("/codex-webhook", async (c) => {
   //         amountIn: -Number(swap.data.amount0 || 0) * 1e6,
   //         amountOut: Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
   //       };
-  const tokenMint =
-    swap.eventDisplayType === "Buy" ? swap.token1Address : swap.token0Address;
+  const tokenMint = tokenIndex === 1
+    ? swap.token1Address
+    : swap.token0Address;
   // const newSwaps = await db
   //   .insert(swaps)
   //   .values({
