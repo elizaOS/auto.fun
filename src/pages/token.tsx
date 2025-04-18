@@ -21,6 +21,7 @@ import {
   LAMPORTS_PER_SOL,
 } from "@/utils";
 import { getToken, queryClient } from "@/utils/api";
+import { getAuthToken } from "@/utils/auth";
 import { env } from "@/utils/env";
 import { getSocket } from "@/utils/socket";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -176,10 +177,21 @@ export default function Page() {
     }
 
     try {
+      const authToken = getAuthToken();
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      }
+
       const response = await fetch(`${env.apiUrl}/api/claimFees`, {
         method: "POST",
         credentials: "include",
         body: JSON.stringify({ tokenMint: token?.mint }),
+        headers,
       });
 
       if (!response.ok) {
@@ -286,7 +298,7 @@ export default function Page() {
                   isPartner
                     ? "from-autofun-background-action-highlight/10 via-autofun-background-action-highlight/10"
                     : "from-black/50 via-black/25",
-                  "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5",
+                  "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5"
                 )}
               >
                 <div className="flex flex-wrap items-center justify-start w-full gap-2">
@@ -537,7 +549,7 @@ export default function Page() {
                   {formatNumber(
                     tokenBalance * currentPrice * solanaPrice,
                     true,
-                    false,
+                    false
                   )}
                 </span>
               </div>
@@ -599,7 +611,7 @@ export default function Page() {
                       (token?.reserveLamport - token?.virtualReserves) /
                         LAMPORTS_PER_SOL,
                       true,
-                      true,
+                      true
                     )}{" "}
                     SOL in the bonding curve.
                   </p>
