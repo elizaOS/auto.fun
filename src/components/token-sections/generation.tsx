@@ -225,7 +225,7 @@ export default function CommunityTab() {
           );
         }
         const infoData = (await infoResponse.json()) as TokenInfoResponse;
-        console.log("infoData", infoData)
+        console.log("infoData", infoData);
         setTokenInfo(infoData);
 
         // Set the user prompt to the token's description if available
@@ -782,7 +782,7 @@ export default function CommunityTab() {
     "Unleashing creativity with {TOKEN_NAME} ({TOKEN_SYMBOL}) @autodotfun",
     "Art meets blockchain: {TOKEN_NAME} ({TOKEN_SYMBOL}) @autodotfun",
     "Generated pure magic for {TOKEN_NAME} ({TOKEN_SYMBOL}) @autodotfun",
-    "Bringing {TOKEN_NAME} ({TOKEN_SYMBOL}) to life on @autodotfun!"
+    "Bringing {TOKEN_NAME} ({TOKEN_SYMBOL}) to life on @autodotfun!",
   ];
 
   const generateShareText = (
@@ -792,8 +792,8 @@ export default function CommunityTab() {
     const ticker = currentTokenInfo?.ticker
       ? `$${currentTokenInfo.ticker}`
       : "";
-      
-    console.log("currentTokenInfo", currentTokenInfo)
+
+    console.log("currentTokenInfo", currentTokenInfo);
 
     // Select a random template
     const template =
@@ -841,7 +841,7 @@ export default function CommunityTab() {
     setShareError(null);
 
     try {
-      console.log("tokenInfo", tokenInfo)
+      console.log("tokenInfo", tokenInfo);
       const shareText = generateShareText(tokenInfo);
 
       if (twitterCredentials && twitterCredentials.expiresAt > Date.now()) {
