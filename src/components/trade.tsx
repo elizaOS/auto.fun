@@ -371,7 +371,7 @@ export default function Trade({
                   isExecutingSwap ? "/token/swapdown.svg" : "/token/swapup.svg"
                 }
                 alt="Generate"
-                className={twMerge([!isAuthenticated ? "pointer-events-none grayscale blur-xs select-none" : "", "w-full"])}
+                className={twMerge([!isAuthenticated ? "cursor-not-allowed grayscale blur-xs select-none" : "", "w-full"])}
                 onMouseDown={(e) => {
                   if (!isExecutingSwap) {
                     (e.target as HTMLImageElement).src = "/token/swapdown.svg";
