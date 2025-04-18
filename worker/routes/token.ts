@@ -1195,7 +1195,7 @@ tokenRouter.get("/tokens", async (c) => {
         // Handle "featured" sort as a special case
         if (sortBy === "featured") {
           /** If tokens have featured, they should appear first */
-          tokensQuery = tokensQuery.orderBy(desc(tokens.featured));
+          // tokensQuery = tokensQuery.orderBy(desc(tokens.featured));
 
           // // Apply the weighted sort with the max values
           tokensQuery = applyFeaturedSort(
