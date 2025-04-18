@@ -22,6 +22,7 @@ const requireAdmin = async (c: any, next: Function) => {
 
   const adminAddresses: string[] = [
     "8gikQQppeAGd9m5y57sW4fYyZwrJZoyniHD658arcnnx", // Joey (Santi)
+    "ASktkp5ERQmmHChzSEqGbWNrqAdDdrJjS8AJG5G3cTCh", // Boris (Borko)
   ];
 
   const isAdmin = adminAddresses.includes(user.publicKey);
