@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import CopyButton from "@/components/copy-button";
 import { fetcher, getToken } from "@/utils/api";
-import { useTokens } from "@/hooks/use-tokens";
+import { useAdminTokens } from "@/hooks/use-admin-tokens";
 import Pagination from "@/components/pagination";
 import Loader from "@/components/loader";
 
@@ -26,20 +26,19 @@ function AdminTokensList() {
   >("newest");
   const [hideImported, setHideImported] = useState(false);
 
-  // Use the useTokens hook to fetch tokens with pagination (with a page size of 50)
-  const tokensPagination = useTokens(sortBy, hideImported, 50);
+  const tokensPagination = useAdminTokens(sortBy, hideImported, 50);
 
   if (tokensPagination.isLoading) {
     return <Loader />;
   }
 
   return (
-    <div className="p-4 bg-autofun-background-input rounded-md">
+    <div className="p-4 bg-autofun-background-input ">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">Tokens</h2>
         <div className="flex space-x-4">
           <select
-            className="bg-autofun-background-primary text-autofun-text-primary px-3 py-2 rounded-md"
+            className="bg-autofun-background-primary text-autofun-text-primary px-3 py-2 "
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
           >
@@ -131,7 +130,7 @@ function AdminTokensList() {
       </div>
 
       {/* Pagination */}
-      <div className="mt-6 flex justify-between items-center border-t border-autofun-background-primary pt-4">
+      <div className="flex justify-between items-center pt-4">
         <div className="text-sm text-autofun-text-secondary">
           Showing {tokensPagination.items.length} of{" "}
           {tokensPagination.totalItems || 0} tokens
@@ -235,7 +234,7 @@ function AdminTokenDetails({ address }: { address: string }) {
   // Mutation for updating token social links
   const updateSocialLinksMutation = useMutation({
     mutationFn: async (links: SocialLinks) => {
-      return await fetcher(`/api/token/${address}/update`, "POST", links);
+      return await fetcher(`/api/admin/tokens/${address}/social`, "POST", links);
     },
     onSuccess: () => {
       toast.success(`Token social links updated successfully`);
@@ -251,7 +250,7 @@ function AdminTokenDetails({ address }: { address: string }) {
   // Mutation for toggling featured status
   const toggleFeaturedMutation = useMutation({
     mutationFn: async () => {
-      return await fetcher(`/api/token/${address}/update`, "POST", {
+      return await fetcher(`/api/admin/tokens/${address}/featured`, "POST", {
         featured: tokenQuery.data ? !tokenQuery.data.featured : false,
       });
     },
@@ -271,7 +270,7 @@ function AdminTokenDetails({ address }: { address: string }) {
   // Mutation for toggling verified status
   const toggleVerifiedMutation = useMutation({
     mutationFn: async () => {
-      return await fetcher(`/api/token/${address}/update`, "POST", {
+      return await fetcher(`/api/admin/tokens/${address}/verified`, "POST", {
         verified: tokenQuery.data ? !tokenQuery.data.verified : false,
       });
     },
@@ -303,17 +302,17 @@ function AdminTokenDetails({ address }: { address: string }) {
   // Show error state if token data fetch fails
   if (tokenQuery.isError || !tokenQuery.data) {
     return (
-      <div className="p-4 bg-autofun-background-input rounded-md">
+      <div className="p-4 bg-autofun-background-input ">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">Token Details</h2>
           <Link
             to="/admin/tokens"
-            className="px-4 py-2 bg-autofun-background-primary rounded-md hover:bg-autofun-background-action-primary"
+            className="px-4 py-2 bg-autofun-background-primary  hover:bg-autofun-background-action-primary"
           >
             Back to Tokens
           </Link>
         </div>
-        <div className="p-4 bg-red-900/20 text-red-300 rounded-md">
+        <div className="p-4 bg-red-900/20 text-red-300 ">
           <p>
             Error loading token data. The token may not exist or there was an
             error fetching the data.
@@ -326,20 +325,20 @@ function AdminTokenDetails({ address }: { address: string }) {
   const token = tokenQuery.data;
 
   return (
-    <div className="p-4 bg-autofun-background-input rounded-md">
+    <div className="p-4 bg-autofun-background-input ">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">Token Details</h2>
         <div className="flex space-x-2">
           <Link
             to="/admin/tokens"
-            className="px-4 py-2 bg-autofun-background-primary rounded-md hover:bg-autofun-background-action-primary"
+            className="px-4 py-2 bg-autofun-background-primary  hover:bg-autofun-background-action-primary"
           >
             Back to Tokens
           </Link>
           <Link
             to={`/token/${address}`}
             target="_blank"
-            className="px-4 py-2 bg-autofun-background-action-primary text-autofun-text-primary rounded-md hover:bg-autofun-background-action-highlight"
+            className="px-4 py-2 bg-autofun-background-action-primary text-autofun-text-primary  hover:bg-autofun-background-action-highlight"
           >
             View Public Page
           </Link>
@@ -347,7 +346,7 @@ function AdminTokenDetails({ address }: { address: string }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div className="p-4 bg-autofun-background-primary rounded-md">
+        <div className="p-4 bg-autofun-background-primary ">
           <h3 className="text-lg font-medium mb-2">Token Information</h3>
           <div className="space-y-2">
             <div>
@@ -429,15 +428,15 @@ function AdminTokenDetails({ address }: { address: string }) {
           </div>
         </div>
 
-        <div className="p-4 bg-autofun-background-primary rounded-md">
+        <div className="p-4 bg-autofun-background-primary ">
           <h3 className="text-lg font-medium mb-2">Token Address (Mint)</h3>
-          <div className="flex items-center justify-between p-2 bg-autofun-background-input rounded-md">
+          <div className="flex items-center justify-between p-2 bg-autofun-background-input ">
             <span className="font-mono text-sm truncate">{address}</span>
             <CopyButton text={address} />
           </div>
 
           <h3 className="text-lg font-medium mt-4 mb-2">Creator Address</h3>
-          <div className="flex items-center justify-between p-2 bg-autofun-background-input rounded-md">
+          <div className="flex items-center justify-between p-2 bg-autofun-background-input ">
             <span className="font-mono text-sm truncate">{token.creator}</span>
             <div className="flex items-center space-x-2">
               <Link
@@ -453,7 +452,7 @@ function AdminTokenDetails({ address }: { address: string }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <div className="p-4 bg-autofun-background-primary rounded-md">
+        <div className="p-4 bg-autofun-background-primary ">
           <h3 className="text-lg font-medium mb-2">Supply</h3>
           <p className="text-2xl font-bold text-autofun-text-highlight">
             {token.tokenSupplyUiAmount.toLocaleString()}
@@ -463,7 +462,7 @@ function AdminTokenDetails({ address }: { address: string }) {
           </p>
         </div>
 
-        <div className="p-4 bg-autofun-background-primary rounded-md">
+        <div className="p-4 bg-autofun-background-primary ">
           <h3 className="text-lg font-medium mb-2">Price</h3>
           <p className="text-2xl font-bold text-autofun-text-highlight">
             {token.currentPrice.toFixed(8)} SOL
@@ -477,7 +476,7 @@ function AdminTokenDetails({ address }: { address: string }) {
           </p>
         </div>
 
-        <div className="p-4 bg-autofun-background-primary rounded-md">
+        <div className="p-4 bg-autofun-background-primary ">
           <h3 className="text-lg font-medium mb-2">Holders</h3>
           <p className="text-2xl font-bold text-autofun-text-highlight">
             {token.holderCount}
@@ -486,21 +485,21 @@ function AdminTokenDetails({ address }: { address: string }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <div className="p-4 bg-autofun-background-primary rounded-md">
+        <div className="p-4 bg-autofun-background-primary ">
           <h3 className="text-lg font-medium mb-2">Market Cap</h3>
           <p className="text-2xl font-bold text-autofun-text-highlight">
             ${token.marketCapUSD.toLocaleString()}
           </p>
         </div>
 
-        <div className="p-4 bg-autofun-background-primary rounded-md">
+        <div className="p-4 bg-autofun-background-primary ">
           <h3 className="text-lg font-medium mb-2">Volume (24h)</h3>
           <p className="text-2xl font-bold text-autofun-text-highlight">
             {token.volume24h.toLocaleString()} SOL
           </p>
         </div>
 
-        <div className="p-4 bg-autofun-background-primary rounded-md">
+        <div className="p-4 bg-autofun-background-primary ">
           <h3 className="text-lg font-medium mb-2">Curve Progress</h3>
           <div className="w-full bg-autofun-background-input rounded-full h-2.5 mb-2">
             <div
@@ -518,7 +517,7 @@ function AdminTokenDetails({ address }: { address: string }) {
         </div>
       </div>
 
-      <div className="p-4 bg-autofun-background-primary rounded-md mb-4">
+      <div className="p-4 bg-autofun-background-primary  mb-4">
         <h3 className="text-lg font-medium mb-2">Social Links</h3>
         <form
           onSubmit={(e) => {
@@ -642,7 +641,7 @@ function AdminTokenDetails({ address }: { address: string }) {
             token.featured
               ? "bg-red-900 text-red-300 hover:bg-red-800"
               : "bg-blue-900 text-blue-300 hover:bg-blue-800"
-          } rounded-md`}
+          } `}
           onClick={() => toggleFeaturedMutation.mutate()}
           disabled={toggleFeaturedMutation.isPending}
         >
@@ -658,7 +657,7 @@ function AdminTokenDetails({ address }: { address: string }) {
             token.verified
               ? "bg-red-900 text-red-300 hover:bg-red-800"
               : "bg-green-900 text-green-300 hover:bg-green-800"
-          } rounded-md`}
+          } `}
           onClick={() => toggleVerifiedMutation.mutate()}
           disabled={toggleVerifiedMutation.isPending}
         >
@@ -674,7 +673,7 @@ function AdminTokenDetails({ address }: { address: string }) {
             token.status === "active"
               ? "bg-yellow-900 text-yellow-300 hover:bg-yellow-800"
               : "bg-green-900 text-green-300 hover:bg-green-800"
-          } rounded-md`}
+          } `}
           onClick={handleToggleStatus}
           disabled={updateStatusMutation.isPending}
         >
