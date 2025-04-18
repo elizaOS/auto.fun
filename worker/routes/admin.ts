@@ -20,17 +20,10 @@ const requireAdmin = async (c: any, next: Function) => {
     return c.json({ error: "Authentication required" }, 401);
   }
 
-  // Check if user has admin privileges
-  // This is a simplified check - in a real app, you'd check against a database of admin users
-  // or use a more sophisticated role-based system
-
-  // For now, we'll use a hardcoded list of admin addresses
-  // In a production environment, this should be stored in a database or environment variable
   const adminAddresses: string[] = [
-    "8gikQQppeAGd9m5y57sW4fYyZwrJZoyniHD658arcnnx",
+    "8gikQQppeAGd9m5y57sW4fYyZwrJZoyniHD658arcnnx", // Joey (Santi)
   ];
 
-  // Check if the user's public key is in the admin list
   const isAdmin = adminAddresses.includes(user.publicKey);
   if (!isAdmin) {
     return c.json({ error: "Admin privileges required" }, 403);
@@ -63,7 +56,7 @@ adminRouter.patch("/tokens/:mint/social", requireAdmin, async (c) => {
       .limit(1);
 
     if (!tokenData || tokenData.length === 0) {
-      return c.json({ error: "Token not found" }, 404);
+      return c.json({ error: "Token not found" }, 400);
     }
 
     // Update token with the new social links
