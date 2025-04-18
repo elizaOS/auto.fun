@@ -180,31 +180,6 @@ export default function Trade({
             </button>
           </div>
 
-          {/* Balance and Value */}
-          <div className={`flex flex-col gap-4 my-4 mx-2`}>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                Balance:
-              </span>
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                {formatNumber(tokenBalance, false, true)} {token?.ticker}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                Value:
-              </span>
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                {formatNumber(tokenBalance * currentPrice, false, true)} SOL /{" "}
-                {formatNumber(
-                  tokenBalance * currentPrice * solanaPrice,
-                  true,
-                  false,
-                )}
-              </span>
-            </div>
-          </div>
-
           <div className="flex flex-col">
             {/* Selling */}
             <div

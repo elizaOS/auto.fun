@@ -333,7 +333,7 @@ const CoinDrop = ({ imageUrl, onCancel }: CoinDropProps) => {
 
     // Physics world - updated to be more similar to dice physics
     const world = new CANNON.World();
-    world.gravity.set(0, -9.8 * 40, 0); // Less extreme gravity for more natural bounces
+    world.gravity.set(0, -9.8 * 100, 0); // Less extreme gravity for more natural bounces
     world.broadphase = new CANNON.NaiveBroadphase();
     world.solver.iterations = 10; // Increased like dice for better collision resolution
     world.allowSleep = true; // Very important for performance
