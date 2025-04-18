@@ -194,7 +194,12 @@ export default function Trade({
                   min={0}
                   type="number"
                   onKeyDown={(e) => {
-                    if (e.key === "-" || e.code === "Minus") {
+                    if (
+                      e.key === "-" ||
+                      e.code === "Minus" ||
+                      e.key === "e" ||
+                      e.key === "E"
+                    ) {
                       e.preventDefault();
                     }
                   }}
