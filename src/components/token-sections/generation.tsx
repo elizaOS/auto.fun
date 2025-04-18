@@ -886,7 +886,7 @@ export default function CommunityTab() {
       // Don't set isSharing false here if opening modal, modal button handles it
       // Reset sharing state only if redirecting OR if modal didn't open due to error
       if (!isShareModalOpen) {
-         setIsSharing(false);
+        setIsSharing(false);
       }
     }
   }, [
@@ -1681,7 +1681,7 @@ export default function CommunityTab() {
     generatedImage || placeholderImage || tokenInfo?.image;
 
   // Condition to show download/share buttons
-  const isProcessing = processingStatus === 'processing'; // Explicitly check if it IS processing
+  const isProcessing = processingStatus === "processing"; // Explicitly check if it IS processing
 
   const shouldShowActions =
     // Show if generated media is processed successfully
@@ -1939,8 +1939,8 @@ export default function CommunityTab() {
                         Generating your image...
                       </div>
                     </div>
-                  ): null}
-                  { displayImageSource ? (
+                  ) : null}
+                  {displayImageSource ? (
                     <img
                       key={displayImageSource} // Add key to force re-render on source change
                       src={displayImageSource}
@@ -1951,18 +1951,25 @@ export default function CommunityTab() {
                             ? "Pregenerated Image"
                             : tokenInfo?.name || "Token Image"
                       }
-                      className={`w-full h-full object-contain ${isGenerating ? 'opacity-30' : ''}`} // Dim image when generating loader is shown
+                      className={`w-full h-full object-contain ${isGenerating ? "opacity-30" : ""}`} // Dim image when generating loader is shown
                       onError={(e) => {
                         // Handle potential image load errors, maybe show fallback
-                        console.error("Image failed to load:", e.currentTarget.src);
+                        console.error(
+                          "Image failed to load:",
+                          e.currentTarget.src,
+                        );
                         // Optionally set a fallback image or style
-                        e.currentTarget.style.display = 'none'; // Hide broken image
+                        e.currentTarget.style.display = "none"; // Hide broken image
                         // Maybe show a text error in the parent div
                         const parent = e.currentTarget.parentElement;
-                        if (parent && !parent.querySelector('.image-error-message')) {
-                          const errorDiv = document.createElement('div');
-                          errorDiv.className = 'absolute inset-0 flex items-center justify-center text-red-500 image-error-message';
-                          errorDiv.textContent = 'Image failed to load';
+                        if (
+                          parent &&
+                          !parent.querySelector(".image-error-message")
+                        ) {
+                          const errorDiv = document.createElement("div");
+                          errorDiv.className =
+                            "absolute inset-0 flex items-center justify-center text-red-500 image-error-message";
+                          errorDiv.textContent = "Image failed to load";
                           parent.appendChild(errorDiv);
                         }
                       }}
@@ -2036,9 +2043,7 @@ export default function CommunityTab() {
                       variant="secondary"
                       onClick={shareOnX}
                       // Disable if already sharing or processing
-                      disabled={
-                        isSharing || isProcessing
-                      }
+                      disabled={isSharing || isProcessing}
                     >
                       {isSharing ? "Sharing..." : "Share on X"}
                     </Button>

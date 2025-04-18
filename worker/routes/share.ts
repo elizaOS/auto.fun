@@ -68,7 +68,7 @@ async function generateCodeChallenge(codeVerifier: string): Promise<string> {
 async function fetchUserTweets(
   userId: string,
   accessToken: string,
-  useTestData: boolean = false
+  useTestData: boolean = false,
 ): Promise<TwitterMessage[]> {
   const userTimelineUrl = `https://api.twitter.com/2/users/${userId}/tweets?max_results=100&tweet.fields=created_at,author_id,conversation_id,in_reply_to_user_id&exclude=retweets,replies`;
 
@@ -80,7 +80,7 @@ async function fetchUserTweets(
 
   if (!twitterResponse.ok) {
     throw new TwitterAPIError(
-      `Failed to fetch tweets: ${await twitterResponse.text()}`
+      `Failed to fetch tweets: ${await twitterResponse.text()}`,
     );
   }
 
@@ -106,7 +106,7 @@ async function fetchUserTweets(
 async function fetchTwitterUser(
   userId: string,
   accessToken: string,
-  useTestData: boolean = false
+  useTestData: boolean = false,
 ): Promise<string> {
   logger.log("Fetching user info for:", userId);
 
@@ -125,7 +125,7 @@ async function fetchTwitterUser(
 
     if (!meResponse.ok) {
       throw new TwitterAPIError(
-        `Failed to fetch user data: ${await meResponse.text()}`
+        `Failed to fetch user data: ${await meResponse.text()}`,
       );
     }
 
@@ -172,7 +172,7 @@ async function fetchTwitterUser(
 async function storeOAuthState(
   env: Env,
   state: string,
-  codeVerifier: string
+  codeVerifier: string,
 ): Promise<void> {
   const db = getDB(env);
   const expiresAt = new Date(Date.now() + 600_000); // 10 minutes
@@ -191,7 +191,7 @@ async function storeOAuthState(
 
 async function getOAuthState(
   env: Env,
-  state: string
+  state: string,
 ): Promise<{ codeVerifier: string; expiresAt: Date } | null> {
   try {
     const db = getDB(env);
@@ -220,7 +220,7 @@ async function storeAccessToken(
   env: Env,
   token: string,
   refresh: string,
-  expiresIn: number
+  expiresIn: number,
 ): Promise<void> {
   const db = getDB(env);
   const expiresAt = new Date(Date.now() + expiresIn * 1000);
@@ -261,7 +261,7 @@ async function updateAccessToken(
   env: Env,
   token: string,
   refresh: string,
-  expiresIn: number
+  expiresIn: number,
 ): Promise<void> {
   const db = getDB(env);
   const expiresAt = new Date(Date.now() + expiresIn * 1000);
@@ -318,12 +318,12 @@ shareRouter.use("*", async (c, next) => {
 
   c.header(
     "Access-Control-Allow-Origin",
-    allowedOrigins.includes(origin!) ? origin! : allowedOrigins[0]
+    allowedOrigins.includes(origin!) ? origin! : allowedOrigins[0],
   );
   c.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   c.header(
     "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, X-Requested-With"
+    "Content-Type, Authorization, X-Requested-With",
   );
   c.header("Access-Control-Allow-Credentials", "true");
 
@@ -429,7 +429,7 @@ shareRouter.get("/oauth/callback", async (c) => {
       c.env,
       data.access_token,
       data.refresh_token,
-      data.expires_in
+      data.expires_in,
     );
 
     return c.json({
@@ -486,7 +486,7 @@ shareRouter.post("/oauth/refresh", async (c) => {
       c.env,
       data.access_token,
       data.refresh_token,
-      data.expires_in
+      data.expires_in,
     );
 
     return c.json({
@@ -527,14 +527,14 @@ shareRouter.post("/process", async (c) => {
     const twitterUserId = await fetchTwitterUser(
       requestBody.userId,
       accessToken,
-      useTestData
+      useTestData,
     );
     logger.log("twitterUserId", twitterUserId);
 
     const tweets = await fetchUserTweets(
       twitterUserId,
       accessToken,
-      useTestData
+      useTestData,
     );
     logger.log("tweets", tweets);
 
@@ -639,7 +639,7 @@ shareRouter.post("/tweet", async (c) => {
         "https://upload.twitter.com/1.1/media/upload.json",
         { ...oauthParams, ...initParams },
         c.env.TWITTER_API_SECRET,
-        c.env.TWITTER_ACCESS_TOKEN_SECRET
+        c.env.TWITTER_ACCESS_TOKEN_SECRET,
       );
 
       const initHeader = generateAuthHeader(oauthParams, initSignature);
@@ -656,7 +656,7 @@ shareRouter.post("/tweet", async (c) => {
             "Content-Type": "application/x-www-form-urlencoded",
           },
           body: initBody,
-        }
+        },
       );
 
       const initResponseText = await initResponse.text();
@@ -675,7 +675,7 @@ shareRouter.post("/tweet", async (c) => {
       } catch (e) {
         logger.error("Failed to parse INIT response:", e);
         throw new Error(
-          `Failed to parse Twitter API response: ${initResponseText}`
+          `Failed to parse Twitter API response: ${initResponseText}`,
         );
       }
 
@@ -698,7 +698,7 @@ shareRouter.post("/tweet", async (c) => {
         const chunk = mediaBase64.slice(start, end);
 
         logger.log(
-          `Uploading chunk ${i + 1}/${totalChunks}, size: ${chunk.length}`
+          `Uploading chunk ${i + 1}/${totalChunks}, size: ${chunk.length}`,
         );
 
         // APPEND for each chunk
@@ -714,7 +714,7 @@ shareRouter.post("/tweet", async (c) => {
           "https://upload.twitter.com/1.1/media/upload.json",
           { ...oauthParams, ...appendParams },
           c.env.TWITTER_API_SECRET,
-          c.env.TWITTER_ACCESS_TOKEN_SECRET
+          c.env.TWITTER_ACCESS_TOKEN_SECRET,
         );
 
         const appendHeader = generateAuthHeader(oauthParams, appendSignature);
@@ -730,13 +730,13 @@ shareRouter.post("/tweet", async (c) => {
               "Content-Type": "application/x-www-form-urlencoded",
             },
             body: appendBody,
-          }
+          },
         );
 
         const appendResponseText = await appendResponse.text();
         logger.log(
           `APPEND chunk ${i + 1} response status:`,
-          appendResponse.status
+          appendResponse.status,
         );
 
         if (appendResponseText) {
@@ -746,7 +746,7 @@ shareRouter.post("/tweet", async (c) => {
         if (!appendResponse.ok) {
           logger.error(`APPEND chunk ${i + 1} failed:`, appendResponseText);
           throw new Error(
-            `APPEND chunk ${i + 1} failed: ${appendResponseText}`
+            `APPEND chunk ${i + 1} failed: ${appendResponseText}`,
           );
         }
       }
@@ -762,7 +762,7 @@ shareRouter.post("/tweet", async (c) => {
         "https://upload.twitter.com/1.1/media/upload.json",
         { ...oauthParams, ...finalizeParams },
         c.env.TWITTER_API_SECRET,
-        c.env.TWITTER_ACCESS_TOKEN_SECRET
+        c.env.TWITTER_ACCESS_TOKEN_SECRET,
       );
 
       const finalizeHeader = generateAuthHeader(oauthParams, finalizeSignature);
@@ -778,7 +778,7 @@ shareRouter.post("/tweet", async (c) => {
             "Content-Type": "application/x-www-form-urlencoded",
           },
           body: finalizeBody,
-        }
+        },
       );
 
       const finalizeResponseText = await finalizeResponse.text();
@@ -796,7 +796,7 @@ shareRouter.post("/tweet", async (c) => {
       } catch (e) {
         logger.error("Failed to parse FINALIZE response:", e);
         throw new Error(
-          `Failed to parse Twitter API finalize response: ${finalizeResponseText}`
+          `Failed to parse Twitter API finalize response: ${finalizeResponseText}`,
         );
       }
 
@@ -819,7 +819,7 @@ shareRouter.post("/tweet", async (c) => {
         "Posting tweet with text:",
         text.substring(0, 30) + "...",
         "and media ID:",
-        mediaId
+        mediaId,
       );
 
       const timestamp = Math.floor((Date.now() - 43200000) / 1000).toString();
@@ -844,7 +844,7 @@ shareRouter.post("/tweet", async (c) => {
         "https://api.twitter.com/2/tweets",
         { ...oauthParams },
         c.env.TWITTER_API_SECRET,
-        c.env.TWITTER_ACCESS_TOKEN_SECRET
+        c.env.TWITTER_ACCESS_TOKEN_SECRET,
       );
 
       const authHeader = generateAuthHeader(oauthParams, signature);
@@ -866,7 +866,7 @@ shareRouter.post("/tweet", async (c) => {
           "Tweet creation failed:",
           errorText,
           "Status:",
-          tweetResponse.status
+          tweetResponse.status,
         );
         throw new Error(`Failed to create tweet: ${errorText}`);
       }
@@ -901,7 +901,7 @@ shareRouter.post("/tweet", async (c) => {
  */
 function generateAuthHeader(
   oauthParams: Record<string, string>,
-  signature: string
+  signature: string,
 ): string {
   return (
     "OAuth " +
@@ -911,7 +911,7 @@ function generateAuthHeader(
     })
       .map(
         ([key, value]) =>
-          `${encodeURIComponent(key)}="${encodeURIComponent(value)}"`
+          `${encodeURIComponent(key)}="${encodeURIComponent(value)}"`,
       )
       .join(", ")
   );
@@ -921,7 +921,7 @@ function encodeRFC3986(str: string): string {
   return encodeURIComponent(str)
     .replace(
       /[!'()*]/g,
-      (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`
+      (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
     )
     .replace(/\%20/g, "+");
 }
@@ -931,7 +931,7 @@ async function generateOAuth1Signature(
   url: string,
   params: Record<string, string>,
   consumerSecret: string,
-  tokenSecret: string
+  tokenSecret: string,
 ): Promise<string> {
   const paramString = Object.entries(params)
     .sort(([a], [b]) => a.localeCompare(b))
@@ -952,10 +952,10 @@ async function generateOAuth1Signature(
       new TextEncoder().encode(signingKey),
       { name: "HMAC", hash: "SHA-1" },
       false,
-      ["sign"]
+      ["sign"],
     )
     .then((key) =>
-      crypto.subtle.sign("HMAC", key, new TextEncoder().encode(signatureBase))
+      crypto.subtle.sign("HMAC", key, new TextEncoder().encode(signatureBase)),
     );
 
   return btoa(String.fromCharCode(...new Uint8Array(signature)));
@@ -982,7 +982,7 @@ shareRouter.get("/twitter-user", async (c) => {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
 
     if (!profileResponse.ok) {

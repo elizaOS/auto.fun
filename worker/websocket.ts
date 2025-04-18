@@ -176,7 +176,7 @@ export class WebSocketDO {
   // Handle client-to-server messages
   private async handleClientMessage(
     clientId: string,
-    message: any
+    message: any,
   ): Promise<void> {
     if (!message || !message.event) return;
 
@@ -249,7 +249,7 @@ export class WebSocketDO {
         JSON.stringify({
           event: roomName.startsWith("token-") ? "subscribed" : "joined",
           data: { room: roomName },
-        })
+        }),
       );
     }
   }
@@ -277,7 +277,7 @@ export class WebSocketDO {
         JSON.stringify({
           event: roomName.startsWith("token-") ? "unsubscribed" : "left",
           data: { room: roomName },
-        })
+        }),
       );
     }
   }
@@ -331,7 +331,7 @@ export class WebSocketDO {
     roomName: string,
     event: string,
     data: any,
-    excludeClientId?: string
+    excludeClientId?: string,
   ): Promise<void> {
     const message = JSON.stringify({ event, data });
     const clients = this.rooms.get(roomName);
@@ -377,7 +377,7 @@ export class WebSocketDO {
         }),
         {
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
     } catch (error) {
       logger.error("Error broadcasting message:", error);
@@ -389,7 +389,7 @@ export class WebSocketDO {
         {
           status: 500,
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
     }
   }
@@ -421,7 +421,7 @@ export class WebSocketDO {
           {
             status: 404,
             headers: { "Content-Type": "application/json" },
-          }
+          },
         );
       }
 
@@ -434,7 +434,7 @@ export class WebSocketDO {
         }),
         {
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
     } catch (error) {
       logger.error("Error sending direct message:", error);
@@ -446,7 +446,7 @@ export class WebSocketDO {
         {
           status: 500,
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
     }
   }

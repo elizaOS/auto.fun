@@ -674,7 +674,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
           textureLoader.crossOrigin = "anonymous";
         }
 
-        const texture = textureLoader.load(
+        textureLoader.load(
           tokenImage,
           (texture) => {
             // Success callback - only resolve here
@@ -702,7 +702,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
             console.warn("Error loading texture:", error);
 
             // Load fallback texture if the token image fails
-            const fallback = textureLoader.load(
+            textureLoader.load(
               fallbackTexture, // Make sure this variable is defined
               (fallbackTex) => {
                 fallbackTex.colorSpace = THREE.SRGBColorSpace;
