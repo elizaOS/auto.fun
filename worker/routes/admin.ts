@@ -36,7 +36,7 @@ const requireAdmin = async (c: any, next: Function) => {
 adminRouter.use("*", verifyAuth);
 
 // Route to update a token's social links
-adminRouter.patch("/tokens/:mint/social", requireAdmin, async (c) => {
+adminRouter.post("/tokens/:mint/social", requireAdmin, async (c) => {
   try {
     const mint = c.req.param("mint");
     if (!mint || mint.length < 32 || mint.length > 44) {
@@ -96,7 +96,7 @@ adminRouter.patch("/tokens/:mint/social", requireAdmin, async (c) => {
 });
 
 // Route to set featured flag on tokens
-adminRouter.patch("/tokens/:mint/featured", requireAdmin, async (c) => {
+adminRouter.post("/tokens/:mint/featured", requireAdmin, async (c) => {
   try {
     const mint = c.req.param("mint");
     if (!mint || mint.length < 32 || mint.length > 44) {
@@ -155,7 +155,7 @@ adminRouter.patch("/tokens/:mint/featured", requireAdmin, async (c) => {
 });
 
 // Route to set verified flag on tokens
-adminRouter.patch("/tokens/:mint/verified", requireAdmin, async (c) => {
+adminRouter.post("/tokens/:mint/verified", requireAdmin, async (c) => {
   try {
     const mint = c.req.param("mint");
     if (!mint || mint.length < 32 || mint.length > 44) {
@@ -214,7 +214,7 @@ adminRouter.patch("/tokens/:mint/verified", requireAdmin, async (c) => {
 });
 
 // Route to set hidden flag on tokens
-adminRouter.patch("/tokens/:mint/hidden", requireAdmin, async (c) => {
+adminRouter.post("/tokens/:mint/hidden", requireAdmin, async (c) => {
   try {
     const mint = c.req.param("mint");
     if (!mint || mint.length < 32 || mint.length > 44) {
