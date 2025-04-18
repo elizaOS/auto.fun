@@ -52,7 +52,7 @@ export default function Trade({
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status,
+    token?.status
   );
 
   const isButtonDisabled = (amount: number | string) => {
@@ -103,7 +103,7 @@ export default function Trade({
               // they are not dynamically calculated but instead use the
               // default values leading to slightly incorrect calculations
               token.reserveAmount,
-              token.reserveLamport,
+              token.reserveLamport
             );
 
       const convertedAmount = swapAmount / decimals;
@@ -163,7 +163,7 @@ export default function Trade({
                   setSellAmount(
                     sellAmount !== undefined
                       ? sellAmount
-                      : formatAmount(convertedAmount),
+                      : formatAmount(convertedAmount)
                   );
                 }
                 setIsTokenSelling(true);
@@ -199,7 +199,7 @@ export default function Trade({
                 {formatNumber(
                   tokenBalance * currentPrice * solanaPrice,
                   true,
-                  false,
+                  false
                 )}
               </span>
             </div>
@@ -373,7 +373,7 @@ export default function Trade({
                 alt="Generate"
                 className={twMerge([
                   !isAuthenticated
-                    ? "cursor-not-allowed grayscale blur-xs select-none"
+                    ? "cursor-not-allowed grayscale select-none"
                     : "",
                   "w-full",
                 ])}
@@ -398,7 +398,7 @@ export default function Trade({
           </div>
         </div>
         {!isAuthenticated ? (
-          <div className="text-center text-red-500 text-xl">
+          <div className="text-center text-autofun-text-highlight font-dm-mono">
             Connect your wallet to proceed with trading
           </div>
         ) : null}
