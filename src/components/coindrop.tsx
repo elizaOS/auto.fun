@@ -186,6 +186,7 @@ const CoinDrop = ({ imageUrl, onCancel }: CoinDropProps) => {
   const floorMeshRef = useRef<THREE.Mesh | null>(null);
   const isFlushingRef = useRef<boolean>(false);
   const wallBodiesRef = useRef<CANNON.Body[]>([]);
+  const [documentHeight, setDocumentHeight] = useState(0); // State for document height
 
   // Add new function to handle cancellation animation
   const flushCoins = useCallback(() => {
@@ -282,6 +283,34 @@ const CoinDrop = ({ imageUrl, onCancel }: CoinDropProps) => {
     };
   }, [flushCoins]);
 
+  // Effect to set container height to document height
+  useEffect(() => {
+    const updateHeight = () => {
+      // Ensure we are running in a browser environment
+      if (typeof window !== "undefined" && typeof document !== "undefined") {
+        setDocumentHeight(document.documentElement.scrollHeight);
+      }
+    };
+
+    // Initial calculation
+    updateHeight();
+
+    // Update on resize
+    window.addEventListener("resize", updateHeight);
+
+    // Optional: More robust update using ResizeObserver if needed
+    // const resizeObserver = new ResizeObserver(updateHeight);
+    // resizeObserver.observe(document.documentElement);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener("resize", updateHeight);
+      // if (resizeObserver) {
+      //   resizeObserver.disconnect();
+      // }
+    };
+  }, []); // Empty dependency array ensures this runs once on mount and cleans up on unmount
+
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -304,7 +333,7 @@ const CoinDrop = ({ imageUrl, onCancel }: CoinDropProps) => {
 
     // Physics world - updated to be more similar to dice physics
     const world = new CANNON.World();
-    world.gravity.set(0, -9.8 * 40, 0); // Less extreme gravity for more natural bounces
+    world.gravity.set(0, -9.8 * 100, 0); // Less extreme gravity for more natural bounces
     world.broadphase = new CANNON.NaiveBroadphase();
     world.solver.iterations = 10; // Increased like dice for better collision resolution
     world.allowSleep = true; // Very important for performance
@@ -1133,8 +1162,9 @@ const CoinDrop = ({ imageUrl, onCancel }: CoinDropProps) => {
 
   return (
     <div
-      className="absolute top-0 left-0 w-full h-[200vh] overflow-hidden z-50 pointer-events-none"
+      className="absolute top-0 left-0 w-full overflow-hidden z-50 pointer-events-none"
       ref={containerRef}
+      style={{ height: documentHeight > 0 ? `${documentHeight}px` : "100vh" }}
     >
       {isLoading && (
         <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-black bg-opacity-75 text-white text-xl z-20">

@@ -27,7 +27,7 @@ import {
 import { getWebSocketClient } from "./websocket-client";
 
 // Store the last processed signature to avoid duplicate processing
-let lastProcessedSignature: string | null = null;
+const lastProcessedSignature: string | null = null;
 
 function convertTokenDataToDBData(
   tokenData: Partial<TokenData>,
@@ -561,272 +561,6 @@ export async function processTransactionLogs(
   return result;
 }
 
-// Function to specifically check for a recently created token
-export async function monitorSpecificToken(
-  env: Env,
-  tokenMint: string,
-): Promise<{ found: boolean; message: string }> {
-  logger.log(`Looking for specific token: ${tokenMint}`);
-
-  const wsClient = getWebSocketClient(env);
-  const connection = new Connection(
-    env.NETWORK === "devnet"
-      ? env.DEVNET_SOLANA_RPC_URL
-      : env.MAINNET_SOLANA_RPC_URL,
-  );
-
-  // Validate programId first since we'll always need this
-  const programId = new PublicKey(env.PROGRAM_ID);
-
-  // First check if token already exists in DB
-  const db = getDB(env);
-  const existingTokens = await db
-    .select()
-    .from(tokens)
-    .where(eq(tokens.mint, tokenMint));
-
-  if (existingTokens.length > 0) {
-    logger.log(`Token ${tokenMint} already exists in database`);
-    return { found: true, message: "Token already exists in database" };
-  }
-
-  // Skip token signature check if we know the token mint is likely not a valid PublicKey
-  let tokenPubkey: PublicKey | null = null;
-  let tokenSignatures: { signature: string }[] = [];
-  const isValidBase58 =
-    /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
-      tokenMint,
-    );
-
-  if (isValidBase58) {
-    // Try to create a PublicKey, but we'll continue even if this fails
-    tokenPubkey = new PublicKey(tokenMint);
-
-    // Only attempt to get signatures if PublicKey creation succeeded
-    tokenSignatures = await connection.getSignaturesForAddress(
-      tokenPubkey,
-      { limit: 5 },
-      "confirmed",
-    );
-    logger.log(`Successfully queried signatures for token ${tokenMint}`);
-  } else {
-    logger.log(
-      `Token ${tokenMint} contains invalid base58 characters, skipping direct token lookup`,
-    );
-  }
-
-  // Get program signatures - this should work even if token signatures failed
-  const programSignatures = await connection.getSignaturesForAddress(
-    programId,
-    { limit: 20 }, // Check more program signatures
-    "confirmed",
-  );
-  logger.log(`Found ${programSignatures.length} program signatures to check`);
-
-  // Combine all signatures to check
-  const signatures = [...tokenSignatures, ...programSignatures];
-
-  if (signatures.length === 0) {
-    logger.log(`No signatures found for token or program`);
-
-    // Create a basic token record anyway since the user is requesting it
-    logger.log(
-      `No signatures found, but creating basic token record for ${tokenMint}`,
-    );
-
-    // Create a basic token record with all required fields
-    const now = new Date().toISOString();
-    const tokenData = {
-      id: crypto.randomUUID(),
-      mint: tokenMint,
-      name: `Token ${tokenMint.slice(0, 8)}`,
-      ticker: "TOKEN",
-      url: "",
-      image: "",
-      creator: "unknown", // Will be updated later when we find the transaction
-      status: "active",
-      tokenPriceUSD: 0,
-      createdAt: now,
-      lastUpdated: now,
-      txId: "",
-    };
-
-    // Insert directly instead of using updateTokenInDB
-    await db.insert(tokens).values(tokenData);
-
-    // Emit event
-    await wsClient.emit("global", "newToken", {
-      ...tokenData,
-      timestamp: new Date(),
-    });
-
-    return {
-      found: true,
-      message: "Token added to database but details will be updated later",
-    };
-  }
-
-  // Process all signatures to find our token
-  for (const signatureInfo of signatures) {
-    const tx = await connection.getTransaction(signatureInfo.signature, {
-      maxSupportedTransactionVersion: 0,
-    });
-
-    if (!tx || !tx.meta || tx.meta.err) continue;
-
-    // Extract logs
-    const logs = tx.meta.logMessages || [];
-
-    // Check if this transaction contains logs mentioning our token
-    // We use a safer approach here that doesn't rely on includes()
-    const relevantLogs = logs.filter((log) => {
-      // Search for exact token mint by splitting and checking each segment
-      const segments = log.split(/[\s:,()[\]{}]+/);
-      if (segments.some((segment) => segment === tokenMint)) {
-        return true;
-      }
-
-      // Also include logs with specific event markers
-      return log.includes("NewToken:") || log.includes("Mint:");
-    });
-
-    if (relevantLogs.length > 0) {
-      logger.log(
-        `Found ${relevantLogs.length} relevant logs for ${tokenMint} in tx ${signatureInfo.signature}`,
-      );
-
-      // Process the transaction logs
-      const result = await processTransactionLogs(
-        env,
-        logs,
-        signatureInfo.signature,
-        wsClient,
-      );
-
-      // Check exact match when tokenAddress is available, otherwise
-      // create a token record anyway since we found related logs
-      if (result.found) {
-        if (result.tokenAddress === tokenMint) {
-          logger.log(
-            `Successfully processed token ${tokenMint} from transaction ${signatureInfo.signature}`,
-          );
-          return {
-            found: true,
-            message: `Token found and processed (${result.event})`,
-          };
-        } else {
-          logger.log(
-            `Found a token in transaction, but not the one we're looking for. Found ${result.tokenAddress} vs ${tokenMint}`,
-          );
-        }
-      }
-    }
-  }
-
-  // If we get here, we didn't find a matching token in transactions
-  // But we should still create a basic record for it
-  logger.log(
-    `No matching transaction found, but creating basic token record for ${tokenMint}`,
-  );
-
-  // Create a basic token record with all required fields
-  const now = new Date().toISOString();
-  const tokenData = {
-    id: crypto.randomUUID(),
-    mint: tokenMint,
-    name: `Token ${tokenMint.slice(0, 8)}`,
-    ticker: "TOKEN",
-    url: "",
-    image: "",
-    creator: "unknown", // Will be updated later when we find the transaction
-    status: "active",
-    tokenPriceUSD: 0,
-    createdAt: now,
-    lastUpdated: now,
-    txId: "",
-  };
-
-  // Insert directly instead of using updateTokenInDB
-  await db.insert(tokens).values(tokenData);
-
-  // Emit event
-  await wsClient.emit("global", "newToken", {
-    ...tokenData,
-    timestamp: new Date(),
-  });
-
-  return {
-    found: true,
-    message: "Token added to database but details will be updated later",
-  };
-}
-
-export async function monitorTokenEvents(env: Env): Promise<void> {
-  logger.log("Running token event monitoring...");
-  const wsClient = getWebSocketClient(env);
-
-  // Create connection to Solana
-  const connection = new Connection(
-    env.NETWORK === "devnet"
-      ? env.DEVNET_SOLANA_RPC_URL
-      : env.MAINNET_SOLANA_RPC_URL,
-  );
-
-  // Validate program ID is a proper base58 string before creating PublicKey
-  if (!env.PROGRAM_ID) {
-    logger.error("PROGRAM_ID environment variable is not set");
-    return;
-  }
-
-  // Check if program ID is a valid base58 string
-  const isValidBase58 =
-    /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
-      env.PROGRAM_ID,
-    );
-  if (!isValidBase58) {
-    logger.error(
-      `Invalid PROGRAM_ID format: ${env.PROGRAM_ID} - contains non-base58 characters`,
-    );
-    return;
-  }
-
-  // Get program ID from environment with try/catch
-  const programId = new PublicKey(env.PROGRAM_ID);
-
-  // Get recent signatures for the program
-  const signatures = await connection.getSignaturesForAddress(
-    programId,
-    { limit: 10 }, // Adjust limit as needed
-    "confirmed",
-  );
-
-  // Process signatures from newest to oldest
-  for (let i = 0; i < signatures.length; i++) {
-    const signatureInfo = signatures[i];
-
-    // Skip if we've already processed this signature
-    if (lastProcessedSignature === signatureInfo.signature) break;
-
-    // If this is the first signature in the list, save it as our marker
-    if (i === 0) lastProcessedSignature = signatureInfo.signature;
-
-    // Get the transaction
-    const tx = await connection.getTransaction(signatureInfo.signature, {
-      maxSupportedTransactionVersion: 0,
-    });
-
-    if (!tx || !tx.meta || tx.meta.err) continue;
-
-    // Extract logs
-    const logs = tx.meta.logMessages || [];
-
-    // Process the logs to find and handle events
-    await processTransactionLogs(env, logs, signatureInfo.signature, wsClient);
-  }
-
-  logger.log("Token event monitoring completed");
-}
-
 export async function cron(
   env: Env,
   ctx: ExecutionContext | { cron: string },
@@ -837,51 +571,53 @@ export async function cron(
     // For scheduled triggers, the ctx should have a 'cron' property
     const isScheduledEvent = "cron" in ctx && typeof ctx.cron === "string";
 
-    // if (!isScheduledEvent) {
-    //   logger.warn("Rejected direct call to cron function - not triggered by scheduler");
-    //   return; // Exit early without running the scheduled tasks
-    // }
+    if (!isScheduledEvent) {
+      logger.warn(
+        "Rejected direct call to cron function - not triggered by scheduler",
+      );
+      return; // Exit early without running the scheduled tasks
+    }
 
     // Log the cron pattern being executed
     const cronPattern = (ctx as { cron: string }).cron;
     logger.log(`Running scheduled tasks for cron pattern: ${cronPattern}...`);
-
-    // Then update token prices
-    const db = getDB(env);
-    const activeTokens = await db
-      .select()
-      .from(tokens)
-      .where(eq(tokens.status, "active"));
-
-    await Promise.all([
-      (async () => {
-        const updatedTokens = await bulkUpdatePartialTokens(activeTokens, env);
-        logger.log(`Updated prices for ${updatedTokens.length} tokens`);
-      })(),
-      (async () => {
-        // Update holder data for each active token
-        for (const token of activeTokens) {
-          try {
-            if (token.mint) {
-              logger.log(`Updating holder data for token: ${token.mint}`);
-              const holderCount = await updateHoldersCache(env, token.mint);
-              logger.log(
-                `Updated holders for ${token.mint}: ${holderCount} holders`,
-              );
-            }
-          } catch (err) {
-            logger.error(
-              `Error updating holders for token ${token.mint}:`,
-              err,
-            );
-          }
-        }
-      })(),
-      (async () => {
-        await checkAndReplenishTokens(env);
-      })(),
-    ]);
+    await updateTokens(env);
   } catch (error) {
     logger.error("Error in cron job:", error);
   }
+}
+
+export async function updateTokens(env: Env) {
+  // Then update token prices
+  const db = getDB(env);
+  const activeTokens = await db
+    .select()
+    .from(tokens)
+    .where(eq(tokens.status, "active"));
+
+  await Promise.all([
+    (async () => {
+      const updatedTokens = await bulkUpdatePartialTokens(activeTokens, env);
+      logger.log(`Updated prices for ${updatedTokens.length} tokens`);
+    })(),
+    (async () => {
+      // Update holder data for each active token
+      for (const token of activeTokens) {
+        try {
+          if (token.mint) {
+            logger.log(`Updating holder data for token: ${token.mint}`);
+            const holderCount = await updateHoldersCache(env, token.mint);
+            logger.log(
+              `Updated holders for ${token.mint}: ${holderCount} holders`,
+            );
+          }
+        } catch (err) {
+          logger.error(`Error updating holders for token ${token.mint}:`, err);
+        }
+      }
+    })(),
+    (async () => {
+      await checkAndReplenishTokens(env);
+    })(),
+  ]);
 }

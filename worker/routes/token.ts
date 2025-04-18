@@ -7,11 +7,8 @@ import {
 } from "@solana/web3.js";
 import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
-import { getCookie } from "hono/cookie";
-import { monitorSpecificToken } from "../cron";
 import {
   getDB,
-  swaps,
   tokenAgents,
   TokenHolder,
   tokenHolders,
@@ -24,17 +21,17 @@ import { logger } from "../logger";
 import { getSOLPrice } from "../mcap";
 import {
   applyFeaturedSort,
+  bulkUpdatePartialTokens,
   calculateFeaturedScore,
   getDevnetRpcUrl,
   getFeaturedMaxValues,
   getFeaturedScoreExpression,
   getMainnetRpcUrl,
   getRpcUrl,
-  bulkUpdatePartialTokens, // Added import
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { generateAdditionalTokenImages } from "./generation";
-import { uploadToCloudflare } from "../uploader";
+import { updateTokens } from "../cron";
 
 // Define the router with environment typing
 const tokenRouter = new Hono<{
@@ -1192,6 +1189,11 @@ tokenRouter.get("/tokens", async (c) => {
             maxHolders,
             sortOrder,
           );
+
+          /** If tokens have featured, they should appear first */
+          tokensQuery = tokensQuery.orderBy(
+            sql`${tokens.featured} DESC NULLS LAST`,
+          );
         } else {
           // For other columns, safely map to actual db columns
           const validSortColumns = {
@@ -1527,7 +1529,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     // if (refreshHolders) {
     const imported = Number(token.imported) === 1;
     logger.log(`Refreshing holders data for token ${mint}`);
-    await updateHoldersCache(c.env, mint, imported);
+    c.executionCtx.waitUntil(updateHoldersCache(c.env, mint, imported));
     // }
 
     // Set default values for critical fields if they're missing
@@ -1740,47 +1742,7 @@ tokenRouter.post("/create-token", async (c) => {
       logger.log(
         `Triggering immediate price and holder update for token: ${mintAddress}`,
       );
-      c.executionCtx.waitUntil(
-        (async () => {
-          try {
-            // Need to fetch the token data we just inserted to pass to bulkUpdatePartialTokens
-            const insertedToken = await db
-              .select()
-              .from(tokens)
-              .where(eq(tokens.mint, mintAddress))
-              .limit(1);
-
-            if (insertedToken.length > 0) {
-              await bulkUpdatePartialTokens([insertedToken[0]], c.env);
-              logger.log(
-                `Background price update complete for: ${mintAddress}`,
-              );
-            } else {
-              logger.warn(
-                `Could not find token ${mintAddress} immediately after insert for background price update.`,
-              );
-            }
-          } catch (err) {
-            logger.error(
-              `Error during background price update for ${mintAddress}:`,
-              err,
-            );
-          }
-        })(),
-      );
-      c.executionCtx.waitUntil(
-        (async () => {
-          try {
-            await updateHoldersCache(c.env, mintAddress, importedValue === 1);
-            logger.log(`Background holder update complete for: ${mintAddress}`);
-          } catch (err) {
-            logger.error(
-              `Error during background holder update for ${mintAddress}:`,
-              err,
-            );
-          }
-        })(),
-      );
+      c.executionCtx.waitUntil(updateTokens(c.env));
 
       if (imported) {
         const importedToken = new ExternalToken(c.env, mintAddress);
@@ -1789,15 +1751,15 @@ tokenRouter.post("/create-token", async (c) => {
         c.executionCtx.waitUntil(importedToken.fetchHistoricalSwapData());
         // Merge any immediately available market data
         Object.assign(tokenData, marketData.newTokenData);
-      } else {
-        // For non-imported tokens, generate additional images in the background
-        logger.log(
-          `Triggering background image generation for new token: ${mintAddress}`,
-        );
-        c.executionCtx.waitUntil(
-          generateAdditionalTokenImages(c.env, mintAddress, description || ""),
-        );
       }
+
+      // For non-imported tokens, generate additional images in the background
+      logger.log(
+        `Triggering background image generation for new token: ${mintAddress}`,
+      );
+      c.executionCtx.waitUntil(
+        generateAdditionalTokenImages(c.env, mintAddress, description || ""),
+      );
 
       return c.json({ success: true, token: tokenData });
     } catch (error) {

@@ -65,15 +65,21 @@ crons = ["*/1 * * * *"] # Run every 1 minute
 API_URL = "https://api.auto.fun"
 NODE_ENV = "production"
 NETWORK = "mainnet"
-PROGRAM_ID = "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ"
 TOKEN_SUPPLY = "1000000000000000"
 DEVNET_FRONTEND_URL = "https://develop.autofun.tech"
 MAINNET_FRONTEND_URL = "https://autofun.tech"
 DECIMALS = "6"
-VIRTUAL_RESERVES = "28000000000"
-CURVE_LIMIT = "113000000000"
 VITE_R2_PUBLIC_URL = "https://storage.autofun.tech"
 R2_PUBLIC_URL = "https://storage.autofun.tech"
+VITE_SOLANA_NETWORK="mainnet"
+HELIUS_WEBHOOK_AUTH_TOKEN="mainnet"
+CODEX_WEBHOOK_AUTH_TOKEN="mainnet"
+VITE_VIRTUAL_RESERVES="100"
+PROGRAM_ID="AnAYdVXqbS87U1DzzuRR4dnooNv7GjfqnSUEVmaKH8xL"
+VITE_DEV_ADDRESS="AnAYdVXqbS87U1DzzuRR4dnooNv7GjfqnSUEVmaKH8xL"
+VIRTUAL_RESERVES="100"
+CURVE_LIMIT="1130000000"
+FIXED_FEE=0
 
 # Copy vars to development environment
 [env.development.vars]

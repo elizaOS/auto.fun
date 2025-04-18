@@ -3110,7 +3110,7 @@ export const Create = () => {
                   >
                     <img
                       src={
-                        isProcessingPrompt
+                        isGeneratingVanity
                           ? "/create/generating.svg"
                           : "/create/generateup.svg"
                       }
@@ -3118,27 +3118,27 @@ export const Create = () => {
                       className="w-24 ml-2"
                       onMouseDown={(e) => {
                         const img = e.target as HTMLImageElement;
-                        if (!isProcessingPrompt) {
+                        if (!isGeneratingVanity) {
                           img.src = "/create/generatedown.svg";
                         }
                       }}
                       onMouseUp={(e) => {
                         const img = e.target as HTMLImageElement;
-                        if (!isProcessingPrompt) {
+                        if (!isGeneratingVanity) {
                           img.src = "/create/generateup.svg";
                         }
                       }}
                       onDragStart={(e) => {
                         e.preventDefault();
                         const img = e.target as HTMLImageElement;
-                        if (!isProcessingPrompt) {
+                        if (!isGeneratingVanity) {
                           img.src = "/create/generateup.svg";
                         }
                       }}
                       onMouseOut={(e) => {
                         e.preventDefault();
                         const img = e.target as HTMLImageElement;
-                        if (!isProcessingPrompt) {
+                        if (!isGeneratingVanity) {
                           img.src = "/create/generateup.svg";
                         }
                       }}

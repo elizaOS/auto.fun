@@ -104,9 +104,7 @@ migrationRouter.post("/claimFees", async (c) => {
       .where(eq(users.address, user.publicKey))
       .limit(1);
     const body = await c.req.json();
-    const {
-      tokenMint
-    } = body;
+    const { tokenMint } = body;
     const token = await db
       .select()
       .from(tokens)
@@ -243,7 +241,6 @@ migrationRouter.get("/checkBalance", async (c) => {
     logger.error("Error in checkBalance endpoint:", error);
     return c.json({ error: "Failed to process checkBalance invocation" }, 500);
   }
-}
-);
+});
 
 export default migrationRouter;

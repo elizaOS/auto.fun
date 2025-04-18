@@ -13,6 +13,7 @@ import BondingCurveBar from "./bonding-curve-bar";
 import CopyButton from "./copy-button";
 import SkeletonImage from "./skeleton-image";
 import { twMerge } from "tailwind-merge";
+import Verified from "./verified";
 
 export function TableView({ data }: { data: IToken[] }) {
   const navigate = useNavigate();
@@ -68,6 +69,7 @@ export function TableView({ data }: { data: IToken[] }) {
                       <div className="text-autofun-text-secondary text-base font-normal font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0">
                         ${token.ticker}
                       </div>
+                      <Verified isVerified={token?.verified ? true : false} />
                     </div>
                     <div className="flex items-center gap-1.5">
                       <div className="text-autofun-text-secondary text-xs font-normal font-dm-mono">

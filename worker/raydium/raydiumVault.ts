@@ -298,10 +298,7 @@ export async function checkBalance(
   const claimerBalance = await connection.getTokenAccountBalance(
     position_nft_account_claimer,
   );
-  console.log(
-    "claimer balance: ",
-    (claimerBalance).value.amount,
-  );
+  console.log("claimer balance: ", claimerBalance.value.amount);
   if (claimerBalance.value.amount === "0") {
     console.log("claimer balance: ", claimerBalance.value.amount);
     return;
@@ -310,5 +307,4 @@ export async function checkBalance(
   const formattedBalance = parseFloat(claimerBalance.value.amount) / 10 ** 9;
   console.log("Formatted balance: ", formattedBalance);
   return formattedBalance;
-
 }
