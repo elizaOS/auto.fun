@@ -54,9 +54,7 @@ const unparsedEnv = {
     : import.meta.env.VITE_API_URL,
   devAddress: import.meta.env.VITE_DEV_ADDRESS,
   appEnv: process.env.NODE_ENV,
-  r2PublicUrl:
-    import.meta.env.R2_PUBLIC_URL ||
-    "https://pub-75e2227bb40747d9b8b21df85a33efa7.r2.dev",
+  r2PublicUrl: import.meta.env.VITE_R2_PUBLIC_URL,
 } as const;
 
 console.log("unparsedEnv", unparsedEnv);
