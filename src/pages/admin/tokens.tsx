@@ -169,9 +169,9 @@ import { formatNumber } from "@/utils";
 // Extended token interface with admin-specific fields
 interface AdminToken extends IToken {
   id: string;
-  featured?: boolean;
-  verified?: boolean;
-  hidden?: boolean;
+  featured: number;
+  verified: number;
+  hidden: number;
 }
 
 interface SocialLinks {
