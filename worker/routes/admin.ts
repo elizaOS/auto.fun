@@ -98,7 +98,7 @@ adminRouter.patch("/tokens/:mint/social", requireAdmin, async (c) => {
     logger.error("Error updating token social links:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -167,7 +167,7 @@ adminRouter.patch("/tokens/:mint/featured", requireAdmin, async (c) => {
     logger.error("Error setting token featured flag:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -236,7 +236,7 @@ adminRouter.patch("/tokens/:mint/verified", requireAdmin, async (c) => {
     logger.error("Error setting token verified flag:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -304,7 +304,7 @@ adminRouter.post("/users/:address/suspended", requireAdmin, async (c) => {
     logger.error("Error setting user suspended flag:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -332,7 +332,7 @@ adminRouter.get("/users/:address", requireAdmin, async (c) => {
 
     // Check if user is suspended (has [SUSPENDED] prefix in name)
     const user = userData[0];
-    const isSuspended = user.name ? user.name.startsWith('[SUSPENDED]') : false;
+    const isSuspended = user.name ? user.name.startsWith("[SUSPENDED]") : false;
 
     // Add empty arrays for tokensCreated, tokensHeld, and transactions if they don't exist
     // This prevents "Cannot read properties of undefined (reading 'length')" errors
@@ -343,14 +343,14 @@ adminRouter.get("/users/:address", requireAdmin, async (c) => {
         tokensCreated: [],
         tokensHeld: [],
         transactions: [],
-        totalVolume: 0
-      }
+        totalVolume: 0,
+      },
     });
   } catch (error) {
     logger.error("Error getting user:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -372,7 +372,7 @@ adminRouter.get("/users/:address/tokens", requireAdmin, async (c) => {
     logger.error("Error getting user tokens:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -381,38 +381,38 @@ adminRouter.get("/users/:address/tokens", requireAdmin, async (c) => {
 adminRouter.get("/stats", requireAdmin, async (c) => {
   try {
     const db = getDB(c.env);
-    
+
     // Get total user count
     const userCountResult = await db
       .select({ count: sql`count(*)` })
       .from(users);
     const userCount = Number(userCountResult[0]?.count || 0);
-    
+
     // Get total token count
     const tokenCountResult = await db
       .select({ count: sql`count(*)` })
       .from(tokens);
     const tokenCount = Number(tokenCountResult[0]?.count || 0);
-    
+
     // Calculate 24h volume by summing the volume24h field from all tokens
     // In a real app, this would likely come from a transactions table with proper date filtering
     const volumeResult = await db
       .select({ totalVolume: sql`SUM(volume24h)` })
       .from(tokens);
     const volume24h = Number(volumeResult[0]?.totalVolume || 0);
-    
+
     return c.json({
       stats: {
         userCount,
         tokenCount,
-        volume24h
-      }
+        volume24h,
+      },
     });
   } catch (error) {
     logger.error("Error getting admin stats:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -442,15 +442,15 @@ adminRouter.get("/users", requireAdmin, async (c) => {
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(
         () => reject(new Error("Database query timed out")),
-        timeoutDuration
-      )
+        timeoutDuration,
+      ),
     );
 
     const countTimeoutPromise = new Promise<number>((_, reject) =>
       setTimeout(
         () => reject(new Error("Count query timed out")),
-        timeoutDuration / 2
-      )
+        timeoutDuration / 2,
+      ),
     );
 
     const db = getDB(c.env);
@@ -462,9 +462,9 @@ adminRouter.get("/users", requireAdmin, async (c) => {
         const allUsersColumns = Object.fromEntries(
           Object.entries(users)
             .filter(
-              ([key, value]) => typeof value === "object" && "name" in value
+              ([key, value]) => typeof value === "object" && "name" in value,
             )
-            .map(([key, value]) => [key, value])
+            .map(([key, value]) => [key, value]),
         );
 
         // Start with a basic query
@@ -475,7 +475,7 @@ adminRouter.get("/users", requireAdmin, async (c) => {
           usersQuery = usersQuery.where(sql`${users.name} LIKE '[SUSPENDED]%'`);
         } else {
           usersQuery = usersQuery.where(
-            sql`${users.name} NOT LIKE '[SUSPENDED]%' OR ${users.name} IS NULL`
+            sql`${users.name} NOT LIKE '[SUSPENDED]%' OR ${users.name} IS NULL`,
           );
         }
 
@@ -483,7 +483,7 @@ adminRouter.get("/users", requireAdmin, async (c) => {
           // This is a simplified implementation - in production you'd use a proper search mechanism
           usersQuery = usersQuery.where(
             sql`(${users.name} LIKE ${"%" + search + "%"} OR 
-                 ${users.address} LIKE ${"%" + search + "%"})`
+                 ${users.address} LIKE ${"%" + search + "%"})`,
           );
         }
 
@@ -525,14 +525,14 @@ adminRouter.get("/users", requireAdmin, async (c) => {
         finalQuery = countQuery.where(sql`${users.name} LIKE '[SUSPENDED]%'`);
       } else {
         finalQuery = countQuery.where(
-          sql`${users.name} NOT LIKE '[SUSPENDED]%' OR ${users.name} IS NULL`
+          sql`${users.name} NOT LIKE '[SUSPENDED]%' OR ${users.name} IS NULL`,
         );
       }
 
       if (search) {
         finalQuery = countQuery.where(
           sql`(${users.name} LIKE ${"%" + search + "%"} OR 
-               ${users.address} LIKE ${"%" + search + "%"})`
+               ${users.address} LIKE ${"%" + search + "%"})`,
         );
       }
 
@@ -562,7 +562,7 @@ adminRouter.get("/users", requireAdmin, async (c) => {
       tokensCreated: [],
       tokensHeld: [],
       transactions: [],
-      totalVolume: 0
+      totalVolume: 0,
     }));
 
     return c.json({

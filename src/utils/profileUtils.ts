@@ -360,7 +360,7 @@ const useCreatedTokens = () => {
   return fetchTokens;
 };
 
-export const useProfile = (address?: string) => {
+export const useProfile = () => {
   const [data, setData] = useState<{
     tokensHeld: ProfileToken[];
     tokensCreated: ProfileToken[];
@@ -372,9 +372,6 @@ export const useProfile = (address?: string) => {
   const { connection } = useConnection();
   const getOwnedTokens = useOwnedTokens();
   const getCreatedTokens = useCreatedTokens();
-  
-  // Use provided address or fall back to wallet's publicKey
-  const profileAddress = address ? new PublicKey(address) : publicKey;
 
   const fetchProfile = useCallback(async () => {
     setIsLoading(true);
@@ -400,23 +397,17 @@ export const useProfile = (address?: string) => {
   }, [getOwnedTokens, getCreatedTokens]);
 
   useEffect(() => {
-    if (!profileAddress) return;
+    if (!publicKey) return;
 
-    // Only set up account change listener if we're using the connected wallet's public key
-    let id: number | undefined;
-    if (!address) {
-      // update profile automatically when the user's wallet account changes
-      id = connection.onAccountChange(profileAddress, fetchProfile);
-    }
+    // update profile automatically when the user's wallet account changes
+    const id = connection.onAccountChange(publicKey, fetchProfile);
 
     fetchProfile();
 
     return () => {
-      if (id !== undefined) {
-        connection.removeAccountChangeListener(id);
-      }
+      connection.removeAccountChangeListener(id);
     };
-  }, [connection, fetchProfile, getCreatedTokens, getOwnedTokens, profileAddress, address]);
+  }, [connection, fetchProfile, getCreatedTokens, getOwnedTokens, publicKey]);
 
   return { data, isLoading, isError };
 };

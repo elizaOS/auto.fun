@@ -7,7 +7,6 @@ import { fetcher } from "@/utils/api";
 import { useAdminUsers } from "@/hooks/use-admin-users";
 import Loader from "@/components/loader";
 import Pagination from "@/components/pagination";
-import { useProfile } from "@/utils/profileUtils";
 
 // Type definitions
 interface User {
@@ -97,9 +96,12 @@ function AdminUsersList() {
             </label>
           </div>
         </div>
-        
+
         <div className="w-full bg-autofun-background-primary p-3 rounded">
-          <form onSubmit={handleGoToUser} className="flex items-center space-x-2">
+          <form
+            onSubmit={handleGoToUser}
+            className="flex items-center space-x-2"
+          >
             <div className="flex-grow">
               <input
                 type="text"
@@ -200,17 +202,32 @@ function AdminUserDetails({ address }: { address: string }) {
     queryFn: async () => {
       const response = (await fetcher(
         `/api/admin/users/${address}`,
-        "GET"
+        "GET",
       )) as { user: User };
       return response.user;
     },
   });
 
-  // Use the profile hook with the address parameter
-  const { data: profileData, isLoading: profileLoading } = useProfile(address);
+  // Mutation for updating user suspended status
+  const updateStatusMutation = useMutation({
+    mutationFn: async (suspended: boolean) => {
+      return await fetcher(`/api/admin/users/${address}/suspended`, "POST", {
+        suspended,
+      });
+    },
+    onSuccess: () => {
+      toast.success(`User status updated successfully`);
+      userQuery.refetch(); // Refetch user data after update
+    },
+    onError: (error) => {
+      toast.error(
+        `Failed to update user status: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    },
+  });
 
   // If loading, show a loader
-  if (userQuery.isLoading || profileLoading) {
+  if (userQuery.isLoading) {
     return <Loader />;
   }
 
@@ -238,24 +255,6 @@ function AdminUserDetails({ address }: { address: string }) {
   }
 
   const user = userQuery.data;
-
-  // Mutation for updating user suspended status
-  const updateStatusMutation = useMutation({
-    mutationFn: async (suspended: boolean) => {
-      return await fetcher(`/api/admin/users/${address}/suspended`, "POST", {
-        suspended,
-      });
-    },
-    onSuccess: () => {
-      toast.success(`User status updated successfully`);
-      userQuery.refetch(); // Refetch user data after update
-    },
-    onError: (error) => {
-      toast.error(
-        `Failed to update user status: ${error instanceof Error ? error.message : "Unknown error"}`
-      );
-    },
-  });
 
   // Check if user is suspended based on name prefix
   const isSuspended = user.name?.startsWith("[SUSPENDED]") || false;
@@ -352,26 +351,28 @@ function AdminUserDetails({ address }: { address: string }) {
 
       <div className="p-4 bg-autofun-background-primary mb-4">
         <h3 className="text-lg font-medium mb-2">Tokens Created</h3>
-        {profileData.tokensCreated && profileData.tokensCreated.length > 0 ? (
+        {user.tokensCreated && user.tokensCreated.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-autofun-background-input">
+                  <th className="text-left p-2">ID</th>
                   <th className="text-left p-2">Name</th>
                   <th className="text-left p-2">Ticker</th>
-                  <th className="text-left p-2">SOL Value</th>
+                  <th className="text-left p-2">Created</th>
                   <th className="text-left p-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {profileData.tokensCreated.map((token) => (
+                {user.tokensCreated.map((token: TokenCreated) => (
                   <tr
-                    key={token.mint}
+                    key={token.id}
                     className="border-b border-autofun-background-input"
                   >
+                    <td className="p-2">{token.id}</td>
                     <td className="p-2">{token.name}</td>
                     <td className="p-2">{token.ticker}</td>
-                    <td className="p-2">{token.solValue.toLocaleString()} SOL</td>
+                    <td className="p-2">{token.createdAt}</td>
                     <td className="p-2">
                       <div className="flex items-center space-x-2">
                         <Link
@@ -395,28 +396,26 @@ function AdminUserDetails({ address }: { address: string }) {
 
       <div className="p-4 bg-autofun-background-primary mb-4">
         <h3 className="text-lg font-medium mb-2">Tokens Held</h3>
-        {profileData.tokensHeld && profileData.tokensHeld.length > 0 ? (
+        {user.tokensHeld && user.tokensHeld.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-autofun-background-input">
                   <th className="text-left p-2">Token</th>
                   <th className="text-left p-2">Ticker</th>
-                  <th className="text-left p-2">Amount</th>
-                  <th className="text-left p-2">SOL Value</th>
+                  <th className="text-left p-2">Balance</th>
                   <th className="text-left p-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {profileData.tokensHeld.map((token) => (
+                {user.tokensHeld.map((token: TokenHeld) => (
                   <tr
                     key={token.mint}
                     className="border-b border-autofun-background-input"
                   >
                     <td className="p-2">{token.name}</td>
                     <td className="p-2">{token.ticker}</td>
-                    <td className="p-2">{token.tokensHeld.toString()}</td>
-                    <td className="p-2">{token.solValue.toLocaleString()} SOL</td>
+                    <td className="p-2">{token.balance.toLocaleString()}</td>
                     <td className="p-2">
                       <div className="flex items-center space-x-2">
                         <Link

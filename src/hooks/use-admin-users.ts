@@ -2,7 +2,7 @@ import { usePagination } from "./use-pagination";
 
 export const useAdminUsers = (
   showSuspended: boolean = false,
-  limit: number = 50
+  limit: number = 50,
 ) => {
   return usePagination({
     endpoint: "/api/admin/users",

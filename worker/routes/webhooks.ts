@@ -148,16 +148,13 @@ router.post("/codex-webhook", async (c) => {
   const token = await db
     .select()
     .from(tokens)
-    .where(
-      eq(tokens.mint, tokenMint),
-    )
+    .where(eq(tokens.mint, tokenMint));
   if (!token || token.length === 0) {
     // do nothing since the token is not in the table
     return c.json({
       message: "Token not in db",
     });
   }
-
 
   const wsClient = getWebSocketClient(c.env);
 

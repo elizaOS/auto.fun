@@ -85,13 +85,14 @@ function AdminTokensList() {
                 <td className="p-2">
                   <div className="flex items-center space-x-2">
                     {token.image && (
-                      <img 
-                        src={token.image} 
-                        alt={token.name} 
+                      <img
+                        src={token.image}
+                        alt={token.name}
                         className="w-6 h-6 rounded-full object-cover"
                         onError={(e) => {
                           // Replace broken images with a placeholder
-                          (e.target as HTMLImageElement).src = '/placeholder.png';
+                          (e.target as HTMLImageElement).src =
+                            "/placeholder.png";
                         }}
                       />
                     )}
@@ -241,7 +242,7 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
     onError: (error) => {
       toast.error(
-        `Failed to update token status: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to update token status: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     },
   });
@@ -249,7 +250,11 @@ function AdminTokenDetails({ address }: { address: string }) {
   // Mutation for updating token social links
   const updateSocialLinksMutation = useMutation({
     mutationFn: async (links: SocialLinks) => {
-      return await fetcher(`/api/admin/tokens/${address}/social`, "POST", links);
+      return await fetcher(
+        `/api/admin/tokens/${address}/social`,
+        "POST",
+        links,
+      );
     },
     onSuccess: () => {
       toast.success(`Token social links updated successfully`);
@@ -257,7 +262,7 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
     onError: (error) => {
       toast.error(
-        `Failed to update social links: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to update social links: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     },
   });
@@ -271,13 +276,13 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
     onSuccess: () => {
       toast.success(
-        `Token ${tokenQuery.data?.featured ? "removed from" : "added to"} featured tokens`
+        `Token ${tokenQuery.data?.featured ? "removed from" : "added to"} featured tokens`,
       );
       tokenQuery.refetch(); // Refetch token data after update
     },
     onError: (error) => {
       toast.error(
-        `Failed to update featured status: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to update featured status: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     },
   });
@@ -291,13 +296,13 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
     onSuccess: () => {
       toast.success(
-        `Token ${tokenQuery.data?.verified ? "unverified" : "verified"} successfully`
+        `Token ${tokenQuery.data?.verified ? "unverified" : "verified"} successfully`,
       );
       tokenQuery.refetch(); // Refetch token data after update
     },
     onError: (error) => {
       toast.error(
-        `Failed to update verified status: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to update verified status: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     },
   });

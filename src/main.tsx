@@ -44,6 +44,6 @@ if (
           <Route path="*" element={<PageNotFound />} />
         </Route>
       </Routes>
-    </BrowserRouter>
+    </BrowserRouter>,
   );
 }
