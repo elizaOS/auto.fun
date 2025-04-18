@@ -25,6 +25,8 @@ router.post("/webhook", async (c) => {
   console.log("helius webhook received");
   // value is configured in helius webhook dashboard
   const authorization = c.req.header("Authorization");
+  console.log("Authorization", authorization);
+  console.log("HELUS_WEBHOOK_AUTH_TOKEN", c.env.HELIUS_WEBHOOK_AUTH_TOKEN);
 
   if (authorization !== c.env.HELIUS_WEBHOOK_AUTH_TOKEN) {
     return c.json(
