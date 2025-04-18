@@ -144,6 +144,7 @@ export async function executeMigrationStep(
     mint: token.mint,
     migration: token.migration,
     lastUpdated: new Date().toISOString(),
+    status: "migrating",
     ...result.extraData,
   };
   await updateTokenInDB(env, tokenData);
