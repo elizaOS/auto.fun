@@ -132,6 +132,7 @@ export default function Trade({
     })) as { signature: string };
 
     onSwapCompleted(res.signature);
+    setSellAmount(0)
   };
 
   return (
