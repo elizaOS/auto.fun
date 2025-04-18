@@ -9,6 +9,7 @@ import { getWebSocketClient } from "../websocket-client";
 import { startMonitoringBatch } from "../tokenSupplyHelpers/monitoring";
 import { getLatestCandle } from "../chart";
 import { ExternalToken } from "../externalToken";
+import { eq, and } from "drizzle-orm";
 
 const router = new Hono<{
   Bindings: Env;
@@ -143,6 +144,25 @@ router.post("/codex-webhook", async (c) => {
   //     ...amounts,
   //   })
   //   .returning();
+
+  //check if we have the token in the db
+  const db = getDB(c.env);
+  const token = await db
+    .select()
+    .from(swaps)
+    .where(
+      and(
+        eq(swaps.tokenMint, tokenMint),
+        eq(swaps.txId, swap.transactionHash),
+      ),
+    )
+  if (!token || token.length === 0) {
+    // do nothing since the token is not in the table
+    return c.json({
+      message: "Token not in db",
+    });
+  }
+
 
   const wsClient = getWebSocketClient(c.env);
 
