@@ -57,8 +57,6 @@ const unparsedEnv = {
   r2PublicUrl: import.meta.env.VITE_R2_PUBLIC_URL,
 } as const;
 
-console.log("unparsedEnv", unparsedEnv);
-
 const envSchema = z.object({
   solanaNetwork: z.string().min(1),
   rpcUrl: z.string().min(1),

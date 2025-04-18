@@ -38,22 +38,6 @@ interface ChartResponse {
 export const DEV_TEST_TOKEN_ADDRESS =
   "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
 
-// Constants
-const MAX_CONCURRENT_UPDATES = 3; // Maximum concurrent holder updates
-
-// const VALID_PROGRAM_ID = new Set(
-//   [
-//     CREATE_CPMM_POOL_PROGRAM.toBase58(),
-//     DEV_CREATE_CPMM_POOL_PROGRAM.toBase58()
-//   ])
-// const isValidCpmm = (id: string) => VALID_PROGRAM_ID.has(id)
-
-// Default values for when env is not available
-export const DEFAULT_TOKEN_SUPPLY = "1000000000000000";
-export const DEFAULT_DECIMALS = 6;
-export const DEFAULT_VIRTUAL_RESERVES = "100000000";
-export const DEFAULT_CURVE_LIMIT = "1000000000";
-
 export interface PriceFeedInfo {
   price: number;
   timestamp: Date;
