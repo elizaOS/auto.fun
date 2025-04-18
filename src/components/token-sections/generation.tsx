@@ -59,7 +59,7 @@ type PendingShare = {
 // --- Expected API Response Types ---
 interface TokenInfoResponse {
   name: string;
-  symbol: string;
+  ticker: string;
   description?: string;
   image?: string;
 }
@@ -109,7 +109,7 @@ export default function CommunityTab() {
   // --- Token Info State ---
   const [tokenInfo, setTokenInfo] = useState<{
     name: string;
-    symbol: string;
+    ticker: string;
     image?: string;
     description?: string;
   } | null>(null);
@@ -225,12 +225,8 @@ export default function CommunityTab() {
           );
         }
         const infoData = (await infoResponse.json()) as TokenInfoResponse;
-        setTokenInfo({
-          name: infoData.name,
-          symbol: infoData.symbol,
-          image: infoData.image,
-          description: infoData.description,
-        });
+        console.log("infoData", infoData)
+        setTokenInfo(infoData);
 
         // Set the user prompt to the token's description if available
         if (infoData.description) {
@@ -299,7 +295,7 @@ export default function CommunityTab() {
             setTimeout(() => {
               // Regenerate the share text using stored pieces
               const regeneratedText = generateShareText(
-                { name: share.tokenName, symbol: share.tokenSymbol }, // Use stored token info
+                { name: share.tokenName, ticker: share.tokenSymbol }, // Use stored token info
               );
               setModalShareText(regeneratedText);
 
@@ -373,7 +369,7 @@ export default function CommunityTab() {
       // For now, we'll use mock token data or fetch from the page's context
       const tokenMetadata = {
         name: tokenInfo?.name || "Example Token",
-        symbol: tokenInfo?.symbol || "XMPL",
+        ticker: tokenInfo?.ticker || "XMPL",
         description: "An example token for demonstration purposes",
         prompt: "A colorful digital token with a unique design",
       };
@@ -594,7 +590,7 @@ export default function CommunityTab() {
       // In a real implementation, we would fetch the token metadata if not available
       const tokenMetadata = {
         name: tokenInfo?.name || "Example Token",
-        symbol: tokenInfo?.symbol || "XMPL",
+        ticker: tokenInfo?.ticker || "XMPL",
         description: "An example token for demonstration purposes",
         prompt: "A colorful digital token with a unique design",
       };
@@ -774,25 +770,30 @@ export default function CommunityTab() {
 
   // --- Tweet Templates & Generator ---
   const tweetTemplates = [
-    "Check out this AI image for {TOKEN_NAME} (${TOKEN_SYMBOL})! #AICrypto",
-    "I generated this for ${TOKEN_SYMBOL} ({TOKEN_NAME}) using AI! #AIart #Crypto",
-    "AI magic for {TOKEN_NAME} (${TOKEN_SYMBOL}). What do you think?",
-    "My AI creation for ${TOKEN_SYMBOL}. #TokenArt",
-    "Generated with AI for {TOKEN_NAME}!",
-    "Vibing with this AI art for ${TOKEN_SYMBOL}.",
-    "This is {TOKEN_NAME} (${TOKEN_SYMBOL}) as interpreted by AI.",
-    "AI generated image for ${TOKEN_SYMBOL}.",
-    "From thought to picture for {TOKEN_NAME}, via AI! #AI #Blockchain",
-    "${TOKEN_SYMBOL} AI Generation!",
+    "Hottest project on @autodotfun! {TOKEN_NAME} ({TOKEN_SYMBOL})!",
+    "LFG!!! {TOKEN_SYMBOL} ({TOKEN_NAME}) @autodotfun",
+    "Let's make magic with {TOKEN_NAME} ({TOKEN_SYMBOL}) @autodotfun",
+    "Check out what I created with {TOKEN_NAME} ({TOKEN_SYMBOL}) on @autodotfun!",
+    "Just generated some amazing art for {TOKEN_NAME} ({TOKEN_SYMBOL}) @autodotfun",
+    "Loving the vibes of {TOKEN_NAME} ({TOKEN_SYMBOL}) on @autodotfun!",
+    "Created something special with {TOKEN_NAME} ({TOKEN_SYMBOL}) @autodotfun",
+    "This {TOKEN_NAME} ({TOKEN_SYMBOL}) generation on @autodotfun is 🔥",
+    "Check out my latest {TOKEN_NAME} ({TOKEN_SYMBOL}) creation @autodotfun",
+    "Unleashing creativity with {TOKEN_NAME} ({TOKEN_SYMBOL}) @autodotfun",
+    "Art meets blockchain: {TOKEN_NAME} ({TOKEN_SYMBOL}) @autodotfun",
+    "Generated pure magic for {TOKEN_NAME} ({TOKEN_SYMBOL}) @autodotfun",
+    "Bringing {TOKEN_NAME} ({TOKEN_SYMBOL}) to life on @autodotfun!"
   ];
 
   const generateShareText = (
-    currentTokenInfo: { name: string; symbol: string } | null,
+    currentTokenInfo: { name: string; ticker: string } | null,
   ): string => {
     const name = currentTokenInfo?.name || "this token";
-    const symbol = currentTokenInfo?.symbol
-      ? `$${currentTokenInfo.symbol}`
+    const ticker = currentTokenInfo?.ticker
+      ? `$${currentTokenInfo.ticker}`
       : "";
+      
+    console.log("currentTokenInfo", currentTokenInfo)
 
     // Select a random template
     const template =
@@ -801,7 +802,7 @@ export default function CommunityTab() {
     // Replace placeholders
     let text = template
       .replace(/{TOKEN_NAME}/g, name)
-      .replace(/{TOKEN_SYMBOL}/g, symbol);
+      .replace(/{TOKEN_SYMBOL}/g, ticker);
 
     // Basic truncation if needed (Twitter limit is 280)
     if (text.length > 280) {
@@ -840,6 +841,7 @@ export default function CommunityTab() {
     setShareError(null);
 
     try {
+      console.log("tokenInfo", tokenInfo)
       const shareText = generateShareText(tokenInfo);
 
       if (twitterCredentials && twitterCredentials.expiresAt > Date.now()) {
@@ -854,7 +856,7 @@ export default function CommunityTab() {
           // Store pieces needed to regenerate text later
           imageData: imageToShare, // Store the URL of the image being shared
           tokenName: tokenInfo.name,
-          tokenSymbol: tokenInfo.symbol,
+          tokenSymbol: tokenInfo.ticker,
         };
         localStorage.setItem(PENDING_SHARE_KEY, JSON.stringify(pendingShare));
 
@@ -1134,8 +1136,8 @@ export default function CommunityTab() {
       // Create an anchor element for download
       const a = document.createElement("a");
       a.href = blobUrl;
-      // Use token symbol or mint in filename if available
-      const filenameBase = tokenInfo?.symbol || tokenMint || "generated";
+      // Use token ticker or mint in filename if available
+      const filenameBase = tokenInfo?.ticker || tokenMint || "generated";
       a.download = `${filenameBase}-${communityTab.toLowerCase()}-${Date.now()}${extension}`;
 
       // Trigger the download
@@ -1156,7 +1158,7 @@ export default function CommunityTab() {
     placeholderImage,
     communityTab,
     processingStatus,
-    tokenInfo?.symbol,
+    tokenInfo?.ticker,
     tokenMint,
   ]);
 
@@ -1346,7 +1348,7 @@ export default function CommunityTab() {
       // Get token metadata
       const tokenMetadata = {
         name: tokenInfo?.name || "Example Token",
-        symbol: tokenInfo?.symbol || "XMPL",
+        ticker: tokenInfo?.ticker || "XMPL",
         description: "An example token for demonstration purposes",
         prompt: "A colorful digital token with a unique design",
       };
