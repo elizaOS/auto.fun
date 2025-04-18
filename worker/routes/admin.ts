@@ -4,7 +4,6 @@ import { getDB, tokens, users } from "../db";
 import { logger } from "../logger";
 import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { verifyAuth } from "../auth";
-import { handleAdminUserTokens } from "./admin-user-tokens";
 
 // Define the router with environment typing
 const adminRouter = new Hono<{
@@ -348,28 +347,6 @@ adminRouter.get("/users/:address", requireAdmin, async (c) => {
     });
   } catch (error) {
     logger.error("Error getting user:", error);
-    return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
-  }
-});
-
-// Route to get user tokens (held and created)
-adminRouter.get("/users/:address/tokens", requireAdmin, async (c) => {
-  try {
-    const address = c.req.param("address");
-    if (!address || address.length < 32 || address.length > 44) {
-      return c.json({ error: "Invalid wallet address" }, 400);
-    }
-
-    // Create a simple request object
-    const request = new Request(c.req.url);
-
-    // Use the handleAdminUserTokens function to fetch user tokens
-    return await handleAdminUserTokens(request, c.env, address);
-  } catch (error) {
-    logger.error("Error getting user tokens:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
       500,
