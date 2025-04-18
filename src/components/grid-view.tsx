@@ -3,6 +3,7 @@ import { IToken } from "@/types";
 import { abbreviateNumber, fromNow } from "@/utils";
 import { Link } from "react-router";
 import { Tooltip } from "react-tooltip";
+import Verified from "./verified";
 
 export default function GridView({ data }: { data: IToken[] }) {
   // this is for testing purpose only, untill we have implemented partner tokens
@@ -23,13 +24,14 @@ export default function GridView({ data }: { data: IToken[] }) {
           >
             <div className="flex flex-col min-w-0 relative">
               <div className="absolute left-0 bottom-0 p-2 px-3 min-w-0 z-10">
-                <div className="flex justify-end items-end w-full min-w-0">
+                <div className="flex justify-end items-center gap-2 w-full min-w-0">
                   {/* <div className="capitalize text-autofun-text-primary text-base font-medium font-satoshi leading-normal truncate min-w-0 drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)]">
                   {token.name}
                 </div> */}
                   <div className="text-autofun-text-primary text-lg font-bold font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0 drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
                     ${token.ticker}
                   </div>
+                  <Verified isVerified={token?.verified ? true : false} />
                 </div>
               </div>
               <div className="flex flex-col w-full min-w-0 z-10">
