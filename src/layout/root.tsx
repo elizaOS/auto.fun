@@ -8,9 +8,13 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router";
 import { ToastContainer } from "react-toastify";
+import ReactGA from "react-ga";
 
 export default function Layout() {
   const { pathname } = useLocation();
+
+  ReactGA.initialize("GTM-M5CGF8KQ");
+  ReactGA.pageview(window.location.pathname + window.location.search);
 
   useEffect(() => {
     window.scrollTo(0, 0);
