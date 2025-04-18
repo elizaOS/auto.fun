@@ -126,9 +126,7 @@ router.post("/codex-webhook", async (c) => {
   //         amountIn: -Number(swap.data.amount0 || 0) * 1e6,
   //         amountOut: Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
   //       };
-  const tokenMint = tokenIndex === 1
-    ? swap.token1Address
-    : swap.token0Address;
+  const tokenMint = tokenIndex === 1 ? swap.token1Address : swap.token0Address;
   // const newSwaps = await db
   //   .insert(swaps)
   //   .values({
@@ -148,15 +146,12 @@ router.post("/codex-webhook", async (c) => {
 
   const ext = new ExternalToken(c.env, tokenMint);
   //  we just call this to update the last 20 swaps in the db
-  await ext.updateLatestSwapData(20)
+  await ext.updateLatestSwapData(20);
   const latestCandle = await getLatestCandle(c.env, tokenMint, swap);
 
   await ext.updateMarketAndHolders();
 
-
-  await wsClient
-    .to(`token-${tokenMint}`)
-    .emit("newCandle", latestCandle);
+  await wsClient.to(`token-${tokenMint}`).emit("newCandle", latestCandle);
   return c.json({
     message: "Completed",
   });

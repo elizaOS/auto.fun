@@ -8,12 +8,12 @@ export type Token = z.infer<typeof TokenSchema>;
 export const HomepageTokenSchema = TokenSchema.and(
   z.object({
     numComments: z.number().default(0),
-  })
+  }),
 );
 export const HomepageFeaturedSchema = HomepageTokenSchema.and(
   z.object({
     featuredScore: z.number(),
-  })
+  }),
 );
 
 export type HomepageSortBy = "all" | "marketCap" | "newest" | "oldest";
@@ -39,7 +39,7 @@ export const useHomepageAll = (enabled: boolean, hideImported?: boolean) => {
     const onTokenEvent = (token: unknown) => {
       const newToken = HomepageFeaturedSchema.parse(token);
       const existingToken = pagination.items.find(
-        (token) => token.mint === newToken.mint
+        (token) => token.mint === newToken.mint,
       );
 
       if (existingToken) {
@@ -73,7 +73,7 @@ export const useHomepageAll = (enabled: boolean, hideImported?: boolean) => {
 
 export const useHomepageMarketCap = (
   enabled: boolean,
-  hideImported?: boolean
+  hideImported?: boolean,
 ) => {
   const pageSize = 24;
   const pagination = usePagination({
@@ -95,7 +95,7 @@ export const useHomepageMarketCap = (
     const onTokenEvent = (token: unknown) => {
       const newToken = HomepageTokenSchema.parse(token);
       const existingTokenIndex = pagination.items.findIndex(
-        (token) => token.mint === newToken.mint
+        (token) => token.mint === newToken.mint,
       );
       if (existingTokenIndex !== -1) {
         const itemsCopy = [...pagination.items];
@@ -155,14 +155,14 @@ export const useHomepageNewest = (enabled: boolean, hideImported?: boolean) => {
     socket.on("updateToken", (token) => {
       const updatedToken = HomepageTokenSchema.parse(token);
       const existingToken = pagination.items.find(
-        (item) => item.mint === updatedToken.mint
+        (item) => item.mint === updatedToken.mint,
       );
 
       if (existingToken) {
         pagination.setItems((items) =>
           items.map((token) =>
-            token.mint === updatedToken.mint ? updatedToken : token
-          )
+            token.mint === updatedToken.mint ? updatedToken : token,
+          ),
         );
       }
     });
@@ -209,14 +209,14 @@ export const useHomepageOldest = (enabled: boolean, hideImported?: boolean) => {
     socket.on("updateToken", (token) => {
       const updatedToken = HomepageTokenSchema.parse(token);
       const existingToken = pagination.items.find(
-        (item) => item.mint === updatedToken.mint
+        (item) => item.mint === updatedToken.mint,
       );
 
       if (existingToken) {
         pagination.setItems((items) =>
           items.map((token) =>
-            token.mint === updatedToken.mint ? updatedToken : token
-          )
+            token.mint === updatedToken.mint ? updatedToken : token,
+          ),
         );
       }
     });
@@ -234,7 +234,7 @@ export const useTokens = (sortBy: HomepageSortBy, hideImported: boolean) => {
   const allTokens = useHomepageAll(sortBy === "all", hideImported);
   const marketCapTokens = useHomepageMarketCap(
     sortBy === "marketCap",
-    hideImported
+    hideImported,
   );
   const newestTokens = useHomepageNewest(sortBy === "newest", hideImported);
   const oldestTokens = useHomepageOldest(sortBy === "oldest", hideImported);
