@@ -102,7 +102,7 @@ export function TableView({ data }: { data: IToken[] }) {
                   .replace(" minutes", "m")
                   .replace(" seconds", "s")
                   .replace(" day", "d")
-                  .replace(" hour", "hr")
+                  .replace("an hour", "1hr")
                   .replace(" minute", "m")
                   .replace(" second", "s")
                   .trim()}
