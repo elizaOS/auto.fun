@@ -212,7 +212,7 @@ class AutoFunWebSocketClient {
 }
 
 // Example usage
-const apiUrl = "https://api.auto.fun"; // Or 'https://api-dev.autofun.workers.dev'
+const apiUrl = "https://api.auto.fun"; // Or 'https://api-dev.auto.fun'
 const wsClient = new AutoFunWebSocketClient(apiUrl);
 
 // Subscribe to a token
