@@ -51,10 +51,10 @@ export const useHomepageAll = (
           ...items.filter((item) => item.mint !== newToken.mint),
         ]);
       } else if (
-        (newToken.featuredScore || 0) >=
-          (pagination.items[pagination.items.length - 1].featuredScore || 0) &&
-        (newToken.featuredScore || 0) <=
-          (pagination.items[0].featuredScore || 0)
+        (newToken?.featuredScore || 0) >=
+          (pagination.items[pagination.items.length - 1]?.featuredScore || 0) &&
+        (newToken?.featuredScore || 0) <=
+          (pagination.items[0]?.featuredScore || 0)
       ) {
         pagination.setItems((items) => [
           newToken,

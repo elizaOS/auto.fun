@@ -1198,12 +1198,12 @@ tokenRouter.get("/tokens", async (c) => {
           tokensQuery = tokensQuery.orderBy(desc(tokens.featured));
 
           // // Apply the weighted sort with the max values
-          // tokensQuery = applyFeaturedSort(
-          //   tokensQuery,
-          //   maxVolume,
-          //   maxHolders,
-          //   sortOrder
-          // );
+          tokensQuery = applyFeaturedSort(
+            tokensQuery,
+            maxVolume,
+            maxHolders,
+            sortOrder,
+          );
         } else {
           // Use the mapped column or default to createdAt
           const sortColumn =

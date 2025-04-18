@@ -88,4 +88,6 @@ export const env = {
     `https://solscan.io/token/${tokenAddress}#trades?cluster=${parsedEnv.solanaNetwork}`,
   getTokenURL: (tokenAddress: string) =>
     `https://solscan.io/token/${tokenAddress}?cluster=${parsedEnv.solanaNetwork}`,
+  getRaydiumURL: (tokenAddress: string) =>
+    `https://www.raydium.io/swap?inputMint=sol&outputMint=${tokenAddress}`,
 };
