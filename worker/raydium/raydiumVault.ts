@@ -294,9 +294,21 @@ export async function checkBalance(
     (await connection.getTokenAccountBalance(position_nft_account_signer)).value
       .amount,
   );
+
+  const claimerBalance = await connection.getTokenAccountBalance(
+    position_nft_account_claimer,
+  );
   console.log(
     "claimer balance: ",
-    (await connection.getTokenAccountBalance(position_nft_account_claimer))
-      .value.amount,
+    (claimerBalance).value.amount,
   );
+  if (claimerBalance.value.amount === "0") {
+    console.log("claimer balance: ", claimerBalance.value.amount);
+    return;
+  }
+  // return formatted balance
+  const formattedBalance = parseFloat(claimerBalance.value.amount) / 10 ** 9;
+  console.log("Formatted balance: ", formattedBalance);
+  return formattedBalance;
+
 }
