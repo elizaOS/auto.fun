@@ -10,8 +10,8 @@ import { logger } from "../logger";
 import { Connection, Keypair } from "@solana/web3.js";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
-import { claim } from "../raydium/raydiumVault";
-import { getDB, users } from "../db";
+import { claim, checkBalance } from "../raydium/raydiumVault";
+import { getDB, users, tokens } from "../db";
 import { eq } from "drizzle-orm";
 
 const migrationRouter = new Hono<{
@@ -103,8 +103,17 @@ migrationRouter.post("/claimFees", async (c) => {
       .from(users)
       .where(eq(users.address, user.publicKey))
       .limit(1);
+    const body = await c.req.json();
+    const {
+      tokenMint
+    } = body;
+    const token = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, tokenMint))
+      .limit(1)
+      .then((result) => result[0]);
 
-    const token = await c.req.json();
     if (
       !token ||
       !token.mint ||
@@ -112,7 +121,7 @@ migrationRouter.post("/claimFees", async (c) => {
       !token.marketId ||
       !token.creator
     ) {
-      return c.json({ error: "Invalid token data provided" }, 400);
+      return c.json({ error: "Invalid token data or token not found " }, 400);
     }
 
     //check if the user is the creator of the token
@@ -165,5 +174,76 @@ migrationRouter.post("/claimFees", async (c) => {
     return c.json({ error: "Failed to process claim invocation" }, 500);
   }
 });
+
+// checkBalance endpoint
+migrationRouter.get("/checkBalance", async (c) => {
+  try {
+    const user = c.get("user");
+    const tokenMint = c.req.query("tokenMint");
+    if (!tokenMint) {
+      return c.json({ error: "Token mint address is required" }, 400);
+    }
+
+    // requireAuth middleware ensures user exists, but let's double-check
+    if (!user) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    const db = getDB(c.env);
+    const userInfo = await db
+      .select()
+      .from(users)
+      .where(eq(users.address, user.publicKey))
+      .limit(1);
+
+    if (userInfo.length === 0) {
+      return c.json({ error: "User not found" }, 404);
+    }
+    // get the token
+    const token = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, tokenMint))
+      .limit(1)
+      .then((result) => result[0]);
+    if (!token) {
+      return c.json({ error: "Token not found" }, 404);
+    }
+    // check if the user is the creator of the token
+    if (userInfo[0].address !== token.creator) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+    const positionNft = token.nftMinted?.split(",")[0];
+
+    if (!positionNft) {
+      return c.json({ error: "Position NFT not found" }, 404);
+    }
+
+    // Create a wallet using the secret from env.
+    const wallet = Keypair.fromSecretKey(
+      Uint8Array.from(JSON.parse(c.env.WALLET_PRIVATE_KEY)),
+    );
+
+    // Create connection based on the environment setting.
+    const connection = new Connection(
+      c.env.NETWORK === "devnet"
+        ? c.env.DEVNET_SOLANA_RPC_URL
+        : c.env.MAINNET_SOLANA_RPC_URL,
+    );
+
+    const checkBalanceResult = await checkBalance(
+      connection,
+      wallet,
+      new PublicKey(positionNft),
+      new PublicKey(user.publicKey),
+    );
+
+    return c.json({ balance: checkBalanceResult });
+  } catch (error) {
+    logger.error("Error in checkBalance endpoint:", error);
+    return c.json({ error: "Failed to process checkBalance invocation" }, 500);
+  }
+}
+);
 
 export default migrationRouter;
