@@ -761,7 +761,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
                     disabled={isDisconnecting}
                     variant="outline"
                     size="small"
-                    className="!px-2 text-red-500 hover:text-red-400 hover:bg-red-950/20 mx-auto w-72"
+                    className="text-red-500 hover:text-red-400 hover:bg-red-950/20 mx-auto w-full"
                   >
                     <LogOut size={16} className="mr-1" />
                     Disconnect X Account
@@ -777,7 +777,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
                       isAgentsLoading ||
                       !!agentsError
                     }
-                    className="mx-auto mt-2 w-72"
+                    className="mx-auto mt-2 w-full"
                     variant="tab"
                   >
                     {isConnectingAgent ? "Connecting..." : "Connect as agent"}
@@ -790,7 +790,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
                 disabled={
                   isConnectingAgent || !tokenMint || isAgentsLoading // || !!agentsError
                 }
-                className="mx-auto h-fit w-72"
+                className="mx-auto h-fit w-full"
                 variant="tab"
               >
                 {isConnectingAgent ? "Connecting..." : "Connect X Account"}
@@ -806,7 +806,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
               <Button
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
-                className={`flex flex-col items-center gap-2 w-72 mx-auto border-[#03FF24] border-2 h-fit hover:bg-[#03FF24] hover:font-bold ${
+                className={`flex flex-col items-center gap-2 w-full mx-auto border-[#03FF24] border-2 h-fit hover:bg-[#03FF24] hover:font-bold ${
                   isHovered ? "text-black" : ""
                 }`}
                 style={{
