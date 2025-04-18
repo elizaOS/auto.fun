@@ -1,5 +1,4 @@
 -- Migration file for D1 database
-
 CREATE TABLE IF NOT EXISTS oauth_verifiers (
   id TEXT PRIMARY KEY,
   state TEXT NOT NULL,
@@ -107,7 +106,7 @@ CREATE TABLE IF NOT EXISTS swaps (
   amount_out INTEGER NOT NULL,
   price_impact INTEGER,
   price INTEGER NOT NULL,
-  tx_id TEXT NOT NULL,
+  tx_id TEXT NOT NULL UNIQUE,
   timestamp INTEGER NOT NULL DEFAULT (unixepoch()),
   FOREIGN KEY (token_mint) REFERENCES tokens(mint)
 );
@@ -229,28 +228,40 @@ CREATE TABLE IF NOT EXISTS token_agents (
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_tokens_creator ON tokens(creator);
+
 CREATE INDEX IF NOT EXISTS idx_tokens_status ON tokens(status);
+
 CREATE INDEX IF NOT EXISTS idx_tokens_market_cap ON tokens(market_cap_usd);
 
 CREATE INDEX IF NOT EXISTS idx_swaps_token_mint ON swaps(token_mint);
+
 CREATE INDEX IF NOT EXISTS idx_swaps_timestamp ON swaps(timestamp);
 
 CREATE INDEX IF NOT EXISTS idx_messages_token_mint ON messages(token_mint);
+
 CREATE INDEX IF NOT EXISTS idx_messages_parent_id ON messages(parent_id);
+
 CREATE INDEX IF NOT EXISTS idx_messages_author ON messages(author);
 
 CREATE INDEX IF NOT EXISTS idx_message_likes_message_id ON message_likes(message_id);
+
 CREATE INDEX IF NOT EXISTS idx_message_likes_user ON message_likes(user_address);
 
 CREATE INDEX IF NOT EXISTS idx_token_holders_mint ON token_holders(mint);
+
 CREATE INDEX IF NOT EXISTS idx_token_holders_amount ON token_holders(amount);
 
 CREATE INDEX IF NOT EXISTS idx_cache_prices_type ON cache_prices(type);
+
 CREATE INDEX IF NOT EXISTS idx_cache_prices_symbol ON cache_prices(symbol);
+
 CREATE INDEX IF NOT EXISTS idx_cache_prices_expires ON cache_prices(expires_at);
 
 -- Create indexes for token_agents
 CREATE INDEX IF NOT EXISTS idx_token_agents_mint ON token_agents(token_mint);
+
 CREATE INDEX IF NOT EXISTS idx_token_agents_owner ON token_agents(owner_address);
+
 CREATE INDEX IF NOT EXISTS idx_token_agents_official ON token_agents(official);
+
 CREATE INDEX IF NOT EXISTS idx_token_agents_user_id ON token_agents(twitter_user_id);
