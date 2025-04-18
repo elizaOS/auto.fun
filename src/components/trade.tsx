@@ -51,7 +51,7 @@ export default function Trade({
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status,
+    token?.status
   );
 
   const isButtonDisabled = (amount: number | string) => {
@@ -102,7 +102,7 @@ export default function Trade({
               // they are not dynamically calculated but instead use the
               // default values leading to slightly incorrect calculations
               token.reserveAmount,
-              token.reserveLamport,
+              token.reserveLamport
             );
 
       const convertedAmount = swapAmount / decimals;
@@ -132,7 +132,7 @@ export default function Trade({
     })) as { signature: string };
 
     onSwapCompleted(res.signature);
-    setSellAmount(0)
+    setSellAmount(0);
   };
 
   return (
@@ -163,7 +163,7 @@ export default function Trade({
                   setSellAmount(
                     sellAmount !== undefined
                       ? sellAmount
-                      : formatAmount(convertedAmount),
+                      : formatAmount(convertedAmount)
                   );
                 }
                 setIsTokenSelling(true);
@@ -194,7 +194,12 @@ export default function Trade({
                   min={0}
                   type="number"
                   onKeyDown={(e) => {
-                    if (e.key === "-" || e.code === "Minus") {
+                    if (
+                      e.key === "-" ||
+                      e.code === "Minus" ||
+                      e.key === "e" ||
+                      e.key === "E"
+                    ) {
                       e.preventDefault();
                     }
                   }}
