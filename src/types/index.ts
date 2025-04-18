@@ -183,7 +183,7 @@ declare global {
       isPhantom?: boolean;
       signMessage?: (
         message: Uint8Array,
-        encoding: string
+        encoding: string,
       ) => Promise<Uint8Array>;
       connect: () => Promise<{ publicKey: string }>;
       disconnect?: () => Promise<void>;
