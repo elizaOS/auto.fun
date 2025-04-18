@@ -490,19 +490,21 @@ export async function generateMedia(
     if (data.lyrics) {
       // Use diffrhythm for music generation with lyrics
       const formattedLyrics = formatLyricsForDiffrhythm(data.lyrics);
-      
+
       const input = {
         lyrics: formattedLyrics,
-        reference_audio_url: data.reference_audio_url || "https://storage.googleapis.com/falserverless/model_tests/diffrythm/rock_en.wav",
+        reference_audio_url:
+          data.reference_audio_url ||
+          "https://storage.googleapis.com/falserverless/model_tests/diffrythm/rock_en.wav",
         style_prompt: data.style_prompt || "pop",
         music_duration: data.music_duration || "95s",
         cfg_strength: data.cfg_strength || 4,
         scheduler: data.scheduler || "euler",
-        num_inference_steps: data.num_inference_steps || 32
+        num_inference_steps: data.num_inference_steps || 32,
       };
-      
-      console.log('DiffRhythm input:', JSON.stringify(input, null, 2));
-      
+
+      console.log("DiffRhythm input:", JSON.stringify(input, null, 2));
+
       generationPromise = fal.subscribe("fal-ai/diffrhythm", {
         input,
         logs: true,
@@ -515,19 +517,19 @@ export async function generateMedia(
 
       // Return the audio URL and lyrics from the result
       const result = await Promise.race([generationPromise, timeoutPromise]);
-      console.log('DiffRhythm result:', JSON.stringify(result, null, 2));
-      
+      console.log("DiffRhythm result:", JSON.stringify(result, null, 2));
+
       if (!result.data?.audio?.url) {
-        throw new Error('No audio URL in response');
+        throw new Error("No audio URL in response");
       }
 
       return {
         data: {
           audio: {
             url: result.data.audio.url,
-            lyrics: data.lyrics // Include the original lyrics
-          }
-        }
+            lyrics: data.lyrics, // Include the original lyrics
+          },
+        },
       };
     } else {
       // Generate lyrics first, then use them to generate the song
@@ -536,25 +538,27 @@ export async function generateMedia(
         {
           name: data.prompt.split(":")[0] || "",
           symbol: data.prompt.split(":")[1]?.trim() || "",
-          description: data.prompt.split(":")[2]?.trim() || ""
+          description: data.prompt.split(":")[2]?.trim() || "",
         },
-        data.style_prompt
+        data.style_prompt,
       );
 
       // Now use the generated lyrics to create the song
       const formattedLyrics = formatLyricsForDiffrhythm(lyrics);
-      
+
       const input = {
         lyrics: formattedLyrics,
-        reference_audio_url: data.reference_audio_url || "https://storage.googleapis.com/falserverless/model_tests/diffrythm/rock_en.wav",
+        reference_audio_url:
+          data.reference_audio_url ||
+          "https://storage.googleapis.com/falserverless/model_tests/diffrythm/rock_en.wav",
         style_prompt: data.style_prompt || "pop",
         music_duration: data.music_duration || "95s",
         cfg_strength: data.cfg_strength || 4,
         scheduler: data.scheduler || "euler",
-        num_inference_steps: data.num_inference_steps || 32
+        num_inference_steps: data.num_inference_steps || 32,
       };
 
-      console.log('DiffRhythm input:', JSON.stringify(input, null, 2));
+      console.log("DiffRhythm input:", JSON.stringify(input, null, 2));
 
       generationPromise = fal.subscribe("fal-ai/diffrhythm", {
         input,
@@ -568,19 +572,19 @@ export async function generateMedia(
 
       // Return the audio URL and lyrics from the result
       const result = await Promise.race([generationPromise, timeoutPromise]);
-      console.log('DiffRhythm result:', JSON.stringify(result, null, 2));
-      
+      console.log("DiffRhythm result:", JSON.stringify(result, null, 2));
+
       if (!result.data?.audio?.url) {
-        throw new Error('No audio URL in response');
+        throw new Error("No audio URL in response");
       }
 
       return {
         data: {
           audio: {
             url: result.data.audio.url,
-            lyrics: lyrics // Include the generated lyrics
-          }
-        }
+            lyrics: lyrics, // Include the generated lyrics
+          },
+        },
       };
     }
   }
@@ -2756,24 +2760,26 @@ export async function generateAdditionalTokenImages(
 // Helper function to format lyrics for diffrhythm
 function formatLyricsForDiffrhythm(lyrics: string): string {
   // Split lyrics into lines and clean up
-  const lines = lyrics.split('\n').filter(line => line.trim() !== '');
-  
+  const lines = lyrics.split("\n").filter((line) => line.trim() !== "");
+
   // Process lines to ensure proper format
   const formattedLines: string[] = [];
   let currentTime = 0;
-  
+
   for (const line of lines) {
     // Skip empty lines and metadata
-    if (!line.trim() || 
-        line.toLowerCase().includes('here\'s a song') ||
-        line.toLowerCase().includes('outro') ||
-        line.toLowerCase().includes('verse') ||
-        line.toLowerCase().includes('chorus') ||
-        line.toLowerCase().includes('bridge') ||
-        line.includes('**')) {
+    if (
+      !line.trim() ||
+      line.toLowerCase().includes("here's a song") ||
+      line.toLowerCase().includes("outro") ||
+      line.toLowerCase().includes("verse") ||
+      line.toLowerCase().includes("chorus") ||
+      line.toLowerCase().includes("bridge") ||
+      line.includes("**")
+    ) {
       continue;
     }
-    
+
     // If line has a timestamp, use it
     if (line.match(/\[\d{2}:\d{2}\.\d{2}\]/)) {
       const match = line.match(/\[(\d{2}:\d{2}\.\d{2})\](.*)/);
@@ -2789,15 +2795,15 @@ function formatLyricsForDiffrhythm(lyrics: string): string {
       const minutes = Math.floor(currentTime / 60);
       const seconds = Math.floor(currentTime % 60);
       const milliseconds = Math.floor((currentTime % 1) * 100);
-      const timestamp = `[${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}]`;
+      const timestamp = `[${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${milliseconds.toString().padStart(2, "0")}]`;
       formattedLines.push(`${timestamp}${line.trim()}`);
       currentTime += 3.2; // Add 3.2 seconds between lines (matching example spacing)
     }
   }
 
   // Join lines with newlines
-  const formattedLyrics = formattedLines.join('\n');
-  console.log('Formatted lyrics:', formattedLyrics);
+  const formattedLyrics = formattedLines.join("\n");
+  console.log("Formatted lyrics:", formattedLyrics);
   return formattedLyrics;
 }
 
@@ -2809,12 +2815,12 @@ async function generateLyrics(
     symbol: string;
     description?: string;
   },
-  stylePrompt?: string
+  stylePrompt?: string,
 ): Promise<string> {
   try {
     const systemPrompt = `You are a creative songwriter. Create lyrics for a song about the token "${tokenMetadata.name}" (${tokenMetadata.symbol}). 
     The song should capture the essence of the token's description: "${tokenMetadata.description}".
-    ${stylePrompt ? `The musical style should be: ${stylePrompt}` : ''}
+    ${stylePrompt ? `The musical style should be: ${stylePrompt}` : ""}
     
     Format the lyrics with timestamps in the format [MM:SS.mm] at the start of each line.
     Include at least two sections: a verse and a chorus.
@@ -2845,34 +2851,34 @@ async function generateLyrics(
 
     // Ensure the lyrics have proper formatting
     let lyrics = response.response.trim();
-    
+
     // Add section markers if they're missing
-    if (!lyrics.includes('[verse]')) {
+    if (!lyrics.includes("[verse]")) {
       lyrics = `[verse]\n${lyrics}`;
     }
-    if (!lyrics.includes('[chorus]')) {
+    if (!lyrics.includes("[chorus]")) {
       lyrics = `[chorus]\n${lyrics}`;
     }
-    
+
     // Add timestamps if they're missing
-    const lines = lyrics.split('\n');
+    const lines = lyrics.split("\n");
     let currentTime = 0;
-    const formattedLines = lines.map(line => {
-      if (line.startsWith('[') && !line.match(/\[\d{2}:\d{2}\.\d{2}\]/)) {
+    const formattedLines = lines.map((line) => {
+      if (line.startsWith("[") && !line.match(/\[\d{2}:\d{2}\.\d{2}\]/)) {
         return line; // Keep section markers as is
       }
       if (!line.match(/\[\d{2}:\d{2}\.\d{2}\]/)) {
         const minutes = Math.floor(currentTime / 60);
         const seconds = Math.floor(currentTime % 60);
         const milliseconds = Math.floor((currentTime % 1) * 100);
-        const timestamp = `[${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}]`;
+        const timestamp = `[${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${milliseconds.toString().padStart(2, "0")}]`;
         currentTime += 2.5; // Add 2.5 seconds between lines
         return `${timestamp} ${line}`;
       }
       return line;
     });
-    
-    return formattedLines.join('\n');
+
+    return formattedLines.join("\n");
   } catch (error) {
     logger.error("Error generating lyrics:", error);
     throw error;

@@ -1153,24 +1153,24 @@ tokenRouter.get("/tokens", async (c) => {
           })
           .from(tokens) as any;
 
-    // Apply filters
-    if (status) {
-      tokensQuery = tokensQuery.where(eq(tokens.status, status));
-    } else {
-      // By default, don't show pending tokens
-      tokensQuery = tokensQuery.where(sql`${tokens.status} != 'pending'`);
-    }
+        // Apply filters
+        if (status) {
+          tokensQuery = tokensQuery.where(eq(tokens.status, status));
+        } else {
+          // By default, don't show pending tokens
+          tokensQuery = tokensQuery.where(sql`${tokens.status} != 'pending'`);
+        }
 
-    if (creator) {
-      tokensQuery = tokensQuery.where(eq(tokens.creator, creator));
-    }
+        if (creator) {
+          tokensQuery = tokensQuery.where(eq(tokens.creator, creator));
+        }
 
-    if (hideImported) {
-      tokensQuery = tokensQuery.where(ne(tokens.imported, 1));
-    }
+        if (hideImported) {
+          tokensQuery = tokensQuery.where(ne(tokens.imported, 1));
+        }
 
-    // By default, don't show hidden tokens
-    tokensQuery = tokensQuery.where(sql`(${tokens.hidden} != 1)`);
+        // By default, don't show hidden tokens
+        tokensQuery = tokensQuery.where(sql`(${tokens.hidden} != 1)`);
 
         if (search) {
           // This is a simplified implementation - in production you'd use a proper search mechanism
@@ -1251,7 +1251,9 @@ tokenRouter.get("/tokens", async (c) => {
       }
 
       // By default, don't count hidden tokens
-      finalQuery = countQuery.where(sql`(${tokens.hidden} = 0 OR ${tokens.hidden} IS NULL)`);
+      finalQuery = countQuery.where(
+        sql`(${tokens.hidden} = 0 OR ${tokens.hidden} IS NULL)`,
+      );
 
       const totalCountResult = await finalQuery;
       return Number(totalCountResult[0]?.count || 0);

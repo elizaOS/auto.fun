@@ -765,7 +765,6 @@ export const Create = () => {
       if (storedTokenData) {
         try {
           // const tokenData = JSON.parse(storedTokenData) as TokenSearchData;
-
           // // Check if the current wallet is authorized to create this token
           // // In dev mode, always allow any wallet to register
           // const isCreatorWallet =
@@ -775,7 +774,6 @@ export const Create = () => {
           //         tokenData.updateAuthority === publicKey.toString()) ||
           //       (tokenData.creators &&
           //         tokenData.creators.includes(publicKey.toString()));
-
           // // Update import status based on wallet authorization
           // if (!isCreatorWallet) {
           //   setImportStatus({

@@ -162,7 +162,9 @@ export default function Page() {
   const finalTokenUSDPrice = finalTokenPrice * solPriceUSD;
   const graduationMarketCap = finalTokenUSDPrice * 1_000_000_000;
 
-  const { tokenBalance } = useTokenBalance({ tokenId: (token?.mint || params?.address as string) });
+  const { tokenBalance } = useTokenBalance({
+    tokenId: token?.mint || (params?.address as string),
+  });
   const solanaPrice = contextSolPrice || token?.solPriceUSD || 0;
 
   if (tokenQuery?.isLoading) {
@@ -258,7 +260,7 @@ export default function Page() {
                   isPartner
                     ? "from-autofun-background-action-highlight/10 via-autofun-background-action-highlight/10"
                     : "from-black/50 via-black/25",
-                  "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5"
+                  "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5",
                 )}
               >
                 <div className="flex flex-wrap items-center justify-start w-full gap-2">
@@ -497,31 +499,30 @@ export default function Page() {
           {/* Trade Component - Now at the top */}
           <Trade token={token} onSwapCompleted={onSwapCompleted} />
           <div className="flex flex-col gap-3 md:min-w-[400px]">
-
-          {/* Balance and Value */}
-          <div className={`flex flex-col gap-4 my-4 mx-2`}>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                Balance:
-              </span>
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                {formatNumber(tokenBalance, false, true)} {token?.ticker}
-              </span>
+            {/* Balance and Value */}
+            <div className={`flex flex-col gap-4 my-4 mx-2`}>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                  Balance:
+                </span>
+                <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                  {formatNumber(tokenBalance, false, true)} {token?.ticker}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                  Value:
+                </span>
+                <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                  {formatNumber(tokenBalance * currentPrice, false, true)} SOL /{" "}
+                  {formatNumber(
+                    tokenBalance * currentPrice * solanaPrice,
+                    true,
+                    false,
+                  )}
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                Value:
-              </span>
-              <span className="text-sm font-dm-mono text-autofun-text-secondary">
-                {formatNumber(tokenBalance * currentPrice, false, true)} SOL /{" "}
-                {formatNumber(
-                  tokenBalance * currentPrice * solanaPrice,
-                  true,
-                  false,
-                )}
-              </span>
-            </div>
-          </div>
 
             {/* Bonding Curve */}
             {token?.imported === 0 && (
@@ -579,7 +580,7 @@ export default function Page() {
                       (token?.reserveLamport - token?.virtualReserves) /
                         LAMPORTS_PER_SOL,
                       true,
-                      true
+                      true,
                     )}{" "}
                     SOL in the bonding curve.
                   </p>

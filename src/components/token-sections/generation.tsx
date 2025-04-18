@@ -70,7 +70,6 @@ export default function CommunityTab() {
   const [userPrompt, setUserPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-  const [generatedLyrics, setGeneratedLyrics] = useState<string | null>(null);
   const [editableLyrics, setEditableLyrics] = useState<string | null>(null);
   const [isEditingLyrics, setIsEditingLyrics] = useState(false);
   const [processingStatus, setProcessingStatus] = useState<
@@ -366,7 +365,6 @@ export default function CommunityTab() {
     setIsGenerating(true);
     setProcessingStatus("processing");
     setGeneratedImage(null); // Clear previous image
-    setGeneratedLyrics(null);
     setPlaceholderImage(null); // Clear placeholder when starting generation
     setShareError(null);
 
@@ -525,7 +523,6 @@ export default function CommunityTab() {
           setGeneratedImage(fullUrl);
         }
 
-        setGeneratedLyrics(data.lyrics);
         setProcessingStatus("processed");
 
         if (data.remainingGenerations !== undefined) {
@@ -590,7 +587,6 @@ export default function CommunityTab() {
     setIsGenerating(true);
     setProcessingStatus("processing");
     setGeneratedImage(null); // Clear previous media
-    setGeneratedLyrics(null);
     setPlaceholderImage(null); // Clear placeholder when starting generation
     setShareError(null);
 
@@ -745,7 +741,6 @@ export default function CommunityTab() {
           : `${env.apiUrl}${data.mediaUrl.startsWith("/") ? "" : "/"}${data.mediaUrl}`;
 
         setGeneratedImage(fullUrl); // We'll reuse this state for videos too
-        setGeneratedLyrics(data.lyrics);
         setProcessingStatus("processed");
 
         if (data.remainingGenerations !== undefined) {
@@ -1344,7 +1339,6 @@ export default function CommunityTab() {
     setIsGenerating(true);
     setProcessingStatus("processing");
     setGeneratedImage(null); // Clear previous media
-    setGeneratedLyrics(null);
     setPlaceholderImage(null); // Clear placeholder when starting generation
     setShareError(null);
 
@@ -1498,7 +1492,6 @@ export default function CommunityTab() {
           : `${env.apiUrl}${data.mediaUrl.startsWith("/") ? "" : "/"}${data.mediaUrl}`;
 
         setGeneratedImage(fullUrl); // We'll reuse this state for audio too
-        setGeneratedLyrics(data.lyrics);
         setEditableLyrics(data.lyrics);
         setProcessingStatus("processed");
 
@@ -2010,7 +2003,7 @@ export default function CommunityTab() {
                         className="w-full h-full object-cover rounded-lg"
                       />
                     </div>
-                    
+
                     {/* Lyrics */}
                     <div className="w-full md:w-1/2 h-[400px] relative">
                       <div className="absolute top-0 right-0 z-10 flex gap-2">
@@ -2018,7 +2011,9 @@ export default function CommunityTab() {
                           <>
                             <CopyButton text={editableLyrics} />
                             <button
-                              onClick={() => setIsEditingLyrics(!isEditingLyrics)}
+                              onClick={() =>
+                                setIsEditingLyrics(!isEditingLyrics)
+                              }
                               className="p-1 bg-gray-700 rounded hover:bg-gray-600"
                             >
                               {isEditingLyrics ? "Save" : "Edit"}
@@ -2048,7 +2043,7 @@ export default function CommunityTab() {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Audio Player */}
                   <div className="w-full">
                     <audio

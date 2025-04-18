@@ -49,7 +49,7 @@ const fetchPaginatedData = async <
     sortOrder: sortOrder.toString(),
     hideImported: hideImported ? "1" : "0",
   });
-  
+
   // Add any additional parameters to the query string
   if (additionalParams) {
     Object.entries(additionalParams).forEach(([key, value]) => {
@@ -119,11 +119,11 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
   // Extract additional parameters (excluding known parameters)
   const additionalParams: Record<string, string> = {};
   Object.entries(rest).forEach(([key, value]) => {
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       additionalParams[key] = value;
-    } else if (typeof value === 'boolean') {
+    } else if (typeof value === "boolean") {
       additionalParams[key] = String(value);
-    } else if (typeof value === 'number') {
+    } else if (typeof value === "number") {
       additionalParams[key] = String(value);
     }
   });
