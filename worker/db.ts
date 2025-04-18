@@ -147,6 +147,7 @@ export const users = sqliteTable("users", {
   points: integer("points").notNull().default(0),
   rewardPoints: integer("reward_points").notNull().default(0),
   createdAt: text("created_at", { mode: "text" }).notNull(),
+  suspended: integer("suspended").notNull().default(0), // 0 = not suspended, 1 = suspended
 });
 
 // VanityKeypair schema

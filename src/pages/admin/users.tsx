@@ -150,14 +150,12 @@ function AdminUsersList() {
                 <td className="p-2">
                   <span
                     className={`px-2 py-1 rounded-full text-xs ${
-                      user.name?.startsWith("[SUSPENDED]")
+                      user.suspended
                         ? "bg-red-900 text-red-300"
                         : "bg-green-900 text-green-300"
                     }`}
                   >
-                    {user.name?.startsWith("[SUSPENDED]")
-                      ? "suspended"
-                      : "active"}
+                    {user.suspended ? "suspended" : "active"}
                   </span>
                 </td>
                 <td className="p-2">
@@ -256,8 +254,8 @@ function AdminUserDetails({ address }: { address: string }) {
 
   const user = userQuery.data;
 
-  // Check if user is suspended based on name prefix
-  const isSuspended = user.name?.startsWith("[SUSPENDED]") || false;
+  // Check if user is suspended based on the suspended field
+  const isSuspended = user.suspended || false;
 
   const handleToggleStatus = () => {
     updateStatusMutation.mutate(!isSuspended);

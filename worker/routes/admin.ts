@@ -268,20 +268,11 @@ adminRouter.post("/users/:address/suspended", requireAdmin, async (c) => {
       return c.json({ error: "User not found" }, 404);
     }
 
-    // Since the 'suspended' flag doesn't exist in the schema,
-    // we'll use a naming convention in the 'name' field to indicate suspended users
-    // We'll prefix the name with '[SUSPENDED]' if the user is suspended
-    const currentName = userData[0].name || address.substring(0, 8);
-    const newName = suspended
-      ? currentName.startsWith("[SUSPENDED]")
-        ? currentName
-        : `[SUSPENDED] ${currentName}`
-      : currentName.replace("[SUSPENDED] ", "");
-
+    // Update the suspended field directly
     await db
       .update(users)
       .set({
-        name: newName,
+        suspended: suspended ? 1 : 0,
       })
       .where(eq(users.address, address));
 
@@ -294,10 +285,17 @@ adminRouter.post("/users/:address/suspended", requireAdmin, async (c) => {
       .where(eq(users.address, address))
       .limit(1);
 
+    // For backward compatibility, also check if the name has the [SUSPENDED] prefix
+    // and include a suspended property in the response
+    const isSuspended = updatedUser[0].suspended === 1;
+
     return c.json({
       success: true,
       message: `User suspended flag set to ${suspended}`,
-      user: updatedUser[0],
+      user: {
+        ...updatedUser[0],
+        suspended: isSuspended,
+      },
     });
   } catch (error) {
     logger.error("Error setting user suspended flag:", error);
@@ -329,16 +327,22 @@ adminRouter.get("/users/:address", requireAdmin, async (c) => {
       return c.json({ error: "User not found" }, 404);
     }
 
-    // Check if user is suspended (has [SUSPENDED] prefix in name)
+    // Get suspended status from the suspended field
     const user = userData[0];
-    const isSuspended = user.name ? user.name.startsWith("[SUSPENDED]") : false;
+    const isSuspended = user.suspended === 1;
+
+    // For backward compatibility, also check if the name has the [SUSPENDED] prefix
+    const isNameSuspended = user.name ? user.name.startsWith("[SUSPENDED]") : false;
+    
+    // Use the suspended field if it's set, otherwise fall back to the name check
+    const finalSuspendedStatus = isSuspended || isNameSuspended;
 
     // Add empty arrays for tokensCreated, tokensHeld, and transactions if they don't exist
     // This prevents "Cannot read properties of undefined (reading 'length')" errors
     return c.json({
       user: {
         ...user,
-        suspended: isSuspended,
+        suspended: finalSuspendedStatus,
         tokensCreated: [],
         tokensHeld: [],
         transactions: [],
@@ -447,12 +451,15 @@ adminRouter.get("/users", requireAdmin, async (c) => {
         // Start with a basic query
         let usersQuery = db.select(allUsersColumns).from(users) as any;
 
-        // Apply filters for suspended users (checking name field for [SUSPENDED] prefix)
+        // Apply filters for suspended users using the suspended field
+        // For backward compatibility, also check the name prefix
         if (showSuspended) {
-          usersQuery = usersQuery.where(sql`${users.name} LIKE '[SUSPENDED]%'`);
+          usersQuery = usersQuery.where(
+            sql`${users.suspended} = 1 OR ${users.name} LIKE '[SUSPENDED]%'`
+          );
         } else {
           usersQuery = usersQuery.where(
-            sql`${users.name} NOT LIKE '[SUSPENDED]%' OR ${users.name} IS NULL`
+            sql`(${users.suspended} = 0 OR ${users.suspended} IS NULL) AND (${users.name} NOT LIKE '[SUSPENDED]%' OR ${users.name} IS NULL)`
           );
         }
 
@@ -499,10 +506,12 @@ adminRouter.get("/users", requireAdmin, async (c) => {
       let finalQuery: any = countQuery;
 
       if (showSuspended) {
-        finalQuery = countQuery.where(sql`${users.name} LIKE '[SUSPENDED]%'`);
+        finalQuery = countQuery.where(
+          sql`${users.suspended} = 1 OR ${users.name} LIKE '[SUSPENDED]%'`
+        );
       } else {
         finalQuery = countQuery.where(
-          sql`${users.name} NOT LIKE '[SUSPENDED]%' OR ${users.name} IS NULL`
+          sql`(${users.suspended} = 0 OR ${users.suspended} IS NULL) AND (${users.name} NOT LIKE '[SUSPENDED]%' OR ${users.name} IS NULL)`
         );
       }
 
