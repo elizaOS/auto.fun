@@ -566,7 +566,17 @@ export default function Page() {
                     )}{" "}
                     SOL in the bonding curve.
                   </p>
-                ) : null}
+                ) : (
+                  env.solanaNetwork !== "devnet" && (
+                    <Link
+                      to={env.getRaydiumURL(token?.mint)}
+                      target="_blank"
+                      className="text-autofun-text-secondary hover:text-autofun-text-primary"
+                    >
+                      View on Raydium
+                    </Link>
+                  )
+                )}
               </div>
             )}
 
