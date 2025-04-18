@@ -17,6 +17,7 @@ import swapRouter from "./routes/swap";
 import webhookRouter from "./routes/webhooks";
 import tokenRouter, { processSwapEvent } from "./routes/token";
 import migrationRouter from "./routes/migration";
+import adminRouter from "./routes/admin";
 import { uploadToCloudflare } from "./uploader";
 import { WebSocketDO, createTestSwap } from "./websocket";
 import { getWebSocketClient } from "./websocket-client";
@@ -100,6 +101,7 @@ api.route("/", swapRouter);
 api.route("/share", shareRouter);
 api.route("/", webhookRouter);
 api.route("/", migrationRouter);
+api.route("/admin", adminRouter);
 
 // Root paths for health checks
 app.get("/", (c) => c.json({ status: "ok" }));

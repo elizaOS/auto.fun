@@ -9,6 +9,7 @@ import TokenStatus from "@/components/token-status";
 import Trade from "@/components/trade";
 import { TradingViewChart } from "@/components/trading-view-chart";
 import TransactionsAndHolders from "@/components/txs-and-holders";
+import { useTokenBalance } from "@/hooks/use-token-balance";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { IToken } from "@/types";
 import {
@@ -161,6 +162,11 @@ export default function Page() {
   const finalTokenUSDPrice = finalTokenPrice * solPriceUSD;
   const graduationMarketCap = finalTokenUSDPrice * 1_000_000_000;
 
+  const { tokenBalance } = useTokenBalance({
+    tokenId: token?.mint || (params?.address as string),
+  });
+  const solanaPrice = contextSolPrice || token?.solPriceUSD || 0;
+
   if (tokenQuery?.isLoading) {
     return <Loader />;
   }
@@ -198,6 +204,18 @@ export default function Page() {
       {/* Top Stats Section - Full Width */}
       <div className="w-full py-10 flex flex-wrap justify-between">
         <TopPageItem
+          title="Market Cap"
+          value={
+            tokenPriceUSD * token?.tokenSupplyUiAmount > 0
+              ? abbreviateNumber(tokenPriceUSD * token?.tokenSupplyUiAmount)
+              : "-"
+          }
+        />
+        <TopPageItem
+          title="24hr Volume"
+          value={volume24h > 0 ? abbreviateNumber(volume24h) : "0"}
+        />
+        <TopPageItem
           title="Age"
           value={
             token?.createdAt
@@ -221,18 +239,6 @@ export default function Page() {
                           .replace("second", "s")
                           .trim()
                           .trim()
-              : "-"
-          }
-        />
-        <TopPageItem
-          title="24hr Volume"
-          value={volume24h > 0 ? abbreviateNumber(volume24h) : "0"}
-        />
-        <TopPageItem
-          title="Market Cap"
-          value={
-            tokenPriceUSD * token?.tokenSupplyUiAmount > 0
-              ? abbreviateNumber(tokenPriceUSD * token?.tokenSupplyUiAmount)
               : "-"
           }
         />
@@ -492,7 +498,32 @@ export default function Page() {
         <div className="w-full lg:w-1/4 flex flex-col md:flex-row lg:flex-col gap-3 order-2 lg:order-3">
           {/* Trade Component - Now at the top */}
           <Trade token={token} onSwapCompleted={onSwapCompleted} />
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 md:min-w-[400px]">
+            {/* Balance and Value */}
+            <div className={`flex flex-col gap-4 my-4 mx-2`}>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                  Balance:
+                </span>
+                <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                  {formatNumber(tokenBalance, false, true)} {token?.ticker}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                  Value:
+                </span>
+                <span className="text-sm font-dm-mono text-autofun-text-secondary">
+                  {formatNumber(tokenBalance * currentPrice, false, true)} SOL /{" "}
+                  {formatNumber(
+                    tokenBalance * currentPrice * solanaPrice,
+                    true,
+                    false,
+                  )}
+                </span>
+              </div>
+            </div>
+
             {/* Bonding Curve */}
             {token?.imported === 0 && (
               <div className="flex flex-col gap-3.5 p-2">

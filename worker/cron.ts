@@ -852,10 +852,12 @@ export async function cron(
       .select()
       .from(tokens)
       .where(eq(tokens.status, "active"));
-    const updatedTokens = await bulkUpdatePartialTokens(activeTokens, env);
-    logger.log(`Updated prices for ${updatedTokens.length} tokens`);
 
     await Promise.all([
+      (async () => {
+        const updatedTokens = await bulkUpdatePartialTokens(activeTokens, env);
+        logger.log(`Updated prices for ${updatedTokens.length} tokens`);
+      })(),
       (async () => {
         // Update holder data for each active token
         for (const token of activeTokens) {

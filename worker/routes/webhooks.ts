@@ -3,12 +3,13 @@ import { Env } from "../env";
 import { processTransactionLogs } from "../cron";
 import { z } from "zod";
 import crypto from "crypto";
-import { getDB, swaps } from "../db";
+import { getDB, swaps, tokens } from "../db";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { getWebSocketClient } from "../websocket-client";
 import { startMonitoringBatch } from "../tokenSupplyHelpers/monitoring";
 import { getLatestCandle } from "../chart";
 import { ExternalToken } from "../externalToken";
+import { eq, and } from "drizzle-orm";
 
 const router = new Hono<{
   Bindings: Env;
@@ -24,6 +25,8 @@ router.post("/webhook", async (c) => {
   console.log("helius webhook received");
   // value is configured in helius webhook dashboard
   const authorization = c.req.header("Authorization");
+  console.log("Authorization", authorization);
+  console.log("HELUS_WEBHOOK_AUTH_TOKEN", c.env.HELIUS_WEBHOOK_AUTH_TOKEN);
 
   if (authorization !== c.env.HELIUS_WEBHOOK_AUTH_TOKEN) {
     return c.json(
@@ -126,9 +129,7 @@ router.post("/codex-webhook", async (c) => {
   //         amountIn: -Number(swap.data.amount0 || 0) * 1e6,
   //         amountOut: Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
   //       };
-  const tokenMint = tokenIndex === 1
-    ? swap.token1Address
-    : swap.token0Address;
+  const tokenMint = tokenIndex === 1 ? swap.token1Address : swap.token0Address;
   // const newSwaps = await db
   //   .insert(swaps)
   //   .values({
@@ -144,19 +145,29 @@ router.post("/codex-webhook", async (c) => {
   //   })
   //   .returning();
 
+  //check if we have the token in the db
+  const db = getDB(c.env);
+  const token = await db
+    .select()
+    .from(tokens)
+    .where(eq(tokens.mint, tokenMint));
+  if (!token || token.length === 0) {
+    // do nothing since the token is not in the table
+    return c.json({
+      message: "Token not in db",
+    });
+  }
+
   const wsClient = getWebSocketClient(c.env);
 
   const ext = new ExternalToken(c.env, tokenMint);
   //  we just call this to update the last 20 swaps in the db
-  await ext.updateLatestSwapData(20)
+  await ext.updateLatestSwapData(20);
   const latestCandle = await getLatestCandle(c.env, tokenMint, swap);
 
   await ext.updateMarketAndHolders();
 
-
-  await wsClient
-    .to(`token-${tokenMint}`)
-    .emit("newCandle", latestCandle);
+  await wsClient.to(`token-${tokenMint}`).emit("newCandle", latestCandle);
   return c.json({
     message: "Completed",
   });

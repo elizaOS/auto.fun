@@ -287,7 +287,7 @@ const CoinDrop = ({ imageUrl, onCancel }: CoinDropProps) => {
 
     // Get container dimensions - use full viewport
     const containerWidth = window.innerWidth;
-    const containerHeight = window.innerHeight;
+    const containerHeight = window.innerHeight * 2;
 
     // Set up box dimensions based on screen size - EXACT WINDOW SIZE
     boxWidthRef.current = containerWidth;
@@ -1133,7 +1133,7 @@ const CoinDrop = ({ imageUrl, onCancel }: CoinDropProps) => {
 
   return (
     <div
-      className="absolute top-0 left-0 w-full h-full overflow-hidden z-50 pointer-events-none"
+      className="absolute top-0 left-0 w-full h-[200vh] overflow-hidden z-50 pointer-events-none"
       ref={containerRef}
     >
       {isLoading && (

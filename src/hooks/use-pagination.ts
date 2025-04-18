@@ -19,6 +19,8 @@ type PaginationOptions<TOutput, TInput> = {
   sortBy: keyof TOutput;
   sortOrder: "asc" | "desc";
   itemsPropertyName: string;
+  hideImported?: number;
+  additionalParams?: Record<string, string>;
 };
 
 export type UsePaginationOptions<TOutput = object, TInput = TOutput> = Omit<
@@ -37,13 +39,23 @@ const fetchPaginatedData = async <
   sortOrder,
   itemsPropertyName,
   validationSchema,
+  hideImported,
+  additionalParams,
 }: PaginationOptions<TOutput, TInput>): Promise<PaginatedResponse<TOutput>> => {
   const queryParams = new URLSearchParams({
     limit: limit.toString(),
     page: page.toString(),
     sortBy: sortBy.toString(),
     sortOrder: sortOrder.toString(),
+    hideImported: hideImported ? "1" : "0",
   });
+
+  // Add any additional parameters to the query string
+  if (additionalParams) {
+    Object.entries(additionalParams).forEach(([key, value]) => {
+      queryParams.append(key, value);
+    });
+  }
 
   const queryEndpoint = `${endpoint}?${queryParams.toString()}`;
 
@@ -101,7 +113,20 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
   sortOrder,
   enabled = true,
   useUrlState = false,
+  hideImported,
+  ...rest
 }: UsePaginationOptions<TOutput, TInput>) => {
+  // Extract additional parameters (excluding known parameters)
+  const additionalParams: Record<string, string> = {};
+  Object.entries(rest).forEach(([key, value]) => {
+    if (typeof value === "string") {
+      additionalParams[key] = value;
+    } else if (typeof value === "boolean") {
+      additionalParams[key] = String(value);
+    } else if (typeof value === "number") {
+      additionalParams[key] = String(value);
+    }
+  });
   const { page, setPage } = usePage({ useUrlState });
   const [hasMore, setHasMore] = useState(false);
   const [totalPages, setTotalPages] = useState(1);
@@ -123,6 +148,8 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
           sortOrder,
           itemsPropertyName,
           validationSchema,
+          hideImported,
+          additionalParams,
         });
 
         setFetchedData(result.items);
@@ -146,6 +173,9 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
       sortBy,
       sortOrder,
       validationSchema,
+      hideImported,
+      // Include additionalParams in the dependency array to reload when they change
+      JSON.stringify(additionalParams),
     ],
   );
 

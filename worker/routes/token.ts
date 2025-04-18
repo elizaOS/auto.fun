@@ -5,7 +5,7 @@ import {
   ParsedAccountData,
   PublicKey,
 } from "@solana/web3.js";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import { monitorSpecificToken } from "../cron";
@@ -30,6 +30,7 @@ import {
   getFeaturedScoreExpression,
   getMainnetRpcUrl,
   getRpcUrl,
+  bulkUpdatePartialTokens, // Added import
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 import { generateAdditionalTokenImages } from "./generation";
@@ -1099,6 +1100,9 @@ tokenRouter.get("/tokens", async (c) => {
     // Get search, status, creator params for filtering
     const search = queryParams.search as string;
     const status = queryParams.status as string;
+    const hideImported = queryParams.hideImported
+      ? Number(queryParams.hideImported)
+      : (0 as number);
     const creator = queryParams.creator as string;
     const sortBy = search
       ? "marketCapUSD"
@@ -1161,6 +1165,13 @@ tokenRouter.get("/tokens", async (c) => {
         if (creator) {
           tokensQuery = tokensQuery.where(eq(tokens.creator, creator));
         }
+
+        if (hideImported) {
+          tokensQuery = tokensQuery.where(ne(tokens.imported, 1));
+        }
+
+        // By default, don't show hidden tokens
+        tokensQuery = tokensQuery.where(sql`(${tokens.hidden} != 1)`);
 
         if (search) {
           // This is a simplified implementation - in production you'd use a proper search mechanism
@@ -1235,6 +1246,15 @@ tokenRouter.get("/tokens", async (c) => {
                ${tokens.mint} LIKE ${"%" + search + "%"})`,
         );
       }
+
+      if (hideImported) {
+        finalQuery = countQuery.where(ne(tokens.imported, 1));
+      }
+
+      // By default, don't count hidden tokens
+      finalQuery = countQuery.where(
+        sql`(${tokens.hidden} = 0 OR ${tokens.hidden} IS NULL)`,
+      );
 
       const totalCountResult = await finalQuery;
       return Number(totalCountResult[0]?.count || 0);
@@ -1609,201 +1629,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     );
   }
 });
-
-tokenRouter.post("/check-token", async (c) => {
-  try {
-    // Require authentication
-    const user = c.get("user");
-    if (!user) {
-      return c.json({ error: "Authentication required" }, 401);
-    }
-
-    // Get token from request
-    const body = await c.req.json();
-    const { tokenMint, imageUrl, metadataUrl } = body;
-    if (!tokenMint) {
-      return c.json({ error: "Token mint address is required" }, 400);
-    }
-
-    logger.log(`Manual token check requested for: ${tokenMint}`);
-
-    // Basic token format validation - allow wider range of characters for testing
-    // But still enforce basic length rules
-    if (
-      typeof tokenMint !== "string" ||
-      tokenMint.length < 30 ||
-      tokenMint.length > 50
-    ) {
-      logger.warn(`Invalid token mint format (wrong length): ${tokenMint}`);
-      return c.json(
-        {
-          success: false,
-          tokenFound: false,
-          message: "Invalid token mint address length",
-        },
-        400,
-      );
-    }
-
-    // First check if token exists in DB regardless of validity
-    const db = getDB(c.env);
-    const existingToken = await db
-      .select()
-      .from(tokens)
-      .where(eq(tokens.mint, tokenMint))
-      .limit(1);
-
-    if (existingToken && existingToken.length > 0) {
-      // If we have new image or metadata URLs, update the token
-      if (
-        (imageUrl || metadataUrl) &&
-        (existingToken[0].image === "" || existingToken[0].url === "")
-      ) {
-        await db
-          .update(tokens)
-          .set({
-            image: imageUrl || existingToken[0].image || "",
-            url: metadataUrl || existingToken[0].url || "",
-            lastUpdated: new Date().toISOString(),
-          })
-          .where(eq(tokens.mint, tokenMint));
-
-        logger.log(`Updated image and metadata URLs for token ${tokenMint}`);
-
-        // Return the updated token
-        const updatedToken = {
-          ...existingToken[0],
-          image: imageUrl || existingToken[0].image || "",
-          url: metadataUrl || existingToken[0].url || "",
-        };
-
-        return c.json({
-          success: true,
-          tokenFound: true,
-          message: "Token exists and URLs updated",
-          token: updatedToken,
-        });
-      }
-
-      logger.log(`Token ${tokenMint} already exists in database`);
-      return c.json({
-        success: true,
-        tokenFound: true,
-        message: "Token already exists in database",
-        token: existingToken[0],
-      });
-    }
-
-    try {
-      // Try to create a simple record first if nothing exists
-      const now = new Date().toISOString();
-      const tokenId = crypto.randomUUID();
-
-      // Insert with all required fields from the schema
-      await db.insert(tokens).values({
-        id: tokenId,
-        mint: tokenMint,
-        name: `Token ${tokenMint.slice(0, 8)}`,
-        ticker: "TOKEN",
-        url: metadataUrl || "", // Use provided URL if available
-        image: imageUrl || "", // Use provided image if available
-        creator: user.publicKey || "unknown",
-        status: "active",
-        tokenPriceUSD: 0,
-        createdAt: now,
-        lastUpdated: now,
-        txId: "",
-      });
-
-      // For response, create a simplified token object
-      const tokenData = {
-        id: tokenId,
-        mint: tokenMint,
-        name: `Token ${tokenMint.slice(0, 8)}`,
-        ticker: "TOKEN",
-        creator: user.publicKey || "unknown",
-        status: "active",
-        url: metadataUrl || "",
-        image: imageUrl || "",
-        createdAt: now,
-      };
-
-      logger.log(`Created basic token record for ${tokenMint}`);
-
-      // Emit event to websocket clients
-      try {
-        const wsClient = getWebSocketClient(c.env);
-        await wsClient.emit("global", "newToken", {
-          ...tokenData,
-          timestamp: new Date(),
-        });
-        logger.log(`WebSocket event emitted for token ${tokenMint}`);
-      } catch (wsError) {
-        // Don't fail if WebSocket fails
-        logger.error(`WebSocket error: ${wsError}`);
-      }
-
-      // Now try monitoring to find more details
-      try {
-        // Run extended check to look for token on chain
-        const result = await monitorSpecificToken(c.env, tokenMint);
-
-        return c.json({
-          success: true,
-          tokenFound: true,
-          message: result.message || "Token added to database",
-          token: tokenData,
-        });
-      } catch (monitorError) {
-        // If monitoring fails, we still have the basic record
-        logger.error(`Error in monitorSpecificToken: ${monitorError}`);
-        return c.json({
-          success: true,
-          tokenFound: true,
-          message:
-            "Basic token record created, detailed info will update later",
-          token: tokenData,
-        });
-      }
-    } catch (dbError) {
-      logger.error(`Error creating token in database: ${dbError}`);
-
-      // Try monitoring anyway as fallback
-      try {
-        const result = await monitorSpecificToken(c.env, tokenMint);
-        return c.json({
-          success: result.found,
-          tokenFound: result.found,
-          message:
-            result.message ||
-            "Error creating database record but monitoring succeeded",
-        });
-      } catch (monitorError) {
-        logger.error(`Both database and monitoring failed: ${monitorError}`);
-        return c.json({
-          success: false,
-          tokenFound: false,
-          message: "Failed to create token record and monitoring failed",
-          error: `${dbError instanceof Error ? dbError.message : "Unknown database error"}`,
-        });
-      }
-    }
-  } catch (error) {
-    logger.error("Error checking token:", error);
-    return c.json(
-      {
-        success: false,
-        tokenFound: false,
-        error: "Failed to check token",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      500,
-    );
-  }
-});
-
 tokenRouter.post("/create-token", async (c) => {
-  console.log("****** create-token ******\n");
   try {
     // Require authentication
     const user = c.get("user");
@@ -1909,13 +1735,65 @@ tokenRouter.post("/create-token", async (c) => {
         imported: importedValue,
       };
 
+      // Trigger immediate updates for price and holders in the background
+      // for both imported and newly created tokens
+      logger.log(
+        `Triggering immediate price and holder update for token: ${mintAddress}`,
+      );
+      c.executionCtx.waitUntil(
+        (async () => {
+          try {
+            // Need to fetch the token data we just inserted to pass to bulkUpdatePartialTokens
+            const insertedToken = await db
+              .select()
+              .from(tokens)
+              .where(eq(tokens.mint, mintAddress))
+              .limit(1);
+
+            if (insertedToken.length > 0) {
+              await bulkUpdatePartialTokens([insertedToken[0]], c.env);
+              logger.log(
+                `Background price update complete for: ${mintAddress}`,
+              );
+            } else {
+              logger.warn(
+                `Could not find token ${mintAddress} immediately after insert for background price update.`,
+              );
+            }
+          } catch (err) {
+            logger.error(
+              `Error during background price update for ${mintAddress}:`,
+              err,
+            );
+          }
+        })(),
+      );
+      c.executionCtx.waitUntil(
+        (async () => {
+          try {
+            await updateHoldersCache(c.env, mintAddress, importedValue === 1);
+            logger.log(`Background holder update complete for: ${mintAddress}`);
+          } catch (err) {
+            logger.error(
+              `Error during background holder update for ${mintAddress}:`,
+              err,
+            );
+          }
+        })(),
+      );
+
       if (imported) {
         const importedToken = new ExternalToken(c.env, mintAddress);
         const { marketData } = await importedToken.registerWebhook();
-        importedToken.fetchHistoricalSwapData();
+        // Fetch historical data in the background
+        c.executionCtx.waitUntil(importedToken.fetchHistoricalSwapData());
+        // Merge any immediately available market data
         Object.assign(tokenData, marketData.newTokenData);
       } else {
         // For non-imported tokens, generate additional images in the background
+        logger.log(
+          `Triggering background image generation for new token: ${mintAddress}`,
+        );
         c.executionCtx.waitUntil(
           generateAdditionalTokenImages(c.env, mintAddress, description || ""),
         );
@@ -1965,72 +1843,6 @@ tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
     logger.error("Error updating holders data:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
-  }
-});
-
-tokenRouter.get("/swaps/:mint", async (c) => {
-  // logger.log(`Swaps endpoint called for mint: ${c.req.param("mint")}`);
-  try {
-    const mint = c.req.param("mint");
-
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
-
-    // Parse pagination parameters
-    const limit = parseInt(c.req.query("limit") || "50");
-    const page = parseInt(c.req.query("page") || "1");
-    const offset = (page - 1) * limit;
-
-    // Get the DB connection
-    const db = getDB(c.env);
-
-    // Get real swap data from the database
-    const swapsResult = await db
-      .select()
-      .from(swaps)
-      .where(eq(swaps.tokenMint, mint))
-      .orderBy(desc(swaps.timestamp))
-      .offset(offset)
-      .limit(limit);
-
-    // logger.log(`Found ${swapsResult.length} swaps for mint ${mint}`);
-
-    // Get total count for pagination
-    const totalSwapsQuery = await db
-      .select({ count: sql`count(*)` })
-      .from(swaps)
-      .where(eq(swaps.tokenMint, mint));
-
-    const totalSwaps = Number(totalSwapsQuery[0]?.count || 0);
-    const totalPages = Math.ceil(totalSwaps / limit);
-
-    // Format directions for better readability
-    const formattedSwaps = swapsResult.map((swap) => ({
-      ...swap,
-      directionText: swap.direction === 0 ? "buy" : "sell",
-    }));
-
-    const response = {
-      swaps: formattedSwaps,
-      page,
-      totalPages,
-      total: totalSwaps,
-    };
-
-    return c.json(response);
-  } catch (error) {
-    logger.error("Error in swaps history route:", error);
-    return c.json(
-      {
-        swaps: [],
-        page: 1,
-        totalPages: 0,
-        total: 0,
-        error: "Failed to fetch swap history",
-      },
       500,
     );
   }

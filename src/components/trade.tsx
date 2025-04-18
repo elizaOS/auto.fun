@@ -10,6 +10,7 @@ import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
 import { useQuery } from "@tanstack/react-query";
+import useAuthentication from "@/hooks/use-authentication";
 
 export default function Trade({
   token,
@@ -23,6 +24,7 @@ export default function Trade({
 
   const [sellAmount, setSellAmount] = useState<number | undefined>(undefined);
   const [slippage, setSlippage] = useState<number>(2);
+  const { isAuthenticated } = useAuthentication();
 
   const program = useProgram();
 
@@ -369,7 +371,12 @@ export default function Trade({
                   isExecutingSwap ? "/token/swapdown.svg" : "/token/swapup.svg"
                 }
                 alt="Generate"
-                className="w-full"
+                className={twMerge([
+                  !isAuthenticated
+                    ? "cursor-not-allowed grayscale blur-xs select-none"
+                    : "",
+                  "w-full",
+                ])}
                 onMouseDown={(e) => {
                   if (!isExecutingSwap) {
                     (e.target as HTMLImageElement).src = "/token/swapdown.svg";
@@ -390,6 +397,11 @@ export default function Trade({
             </button>
           </div>
         </div>
+        {!isAuthenticated ? (
+          <div className="text-center text-red-500 text-xl">
+            Connect your wallet to proceed with trading
+          </div>
+        ) : null}
       </div>
     </div>
   );
