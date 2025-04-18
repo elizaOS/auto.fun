@@ -480,7 +480,7 @@ export default function Page() {
         <div className="w-full lg:w-1/4 flex flex-col md:flex-row lg:flex-col gap-3 order-2 lg:order-3">
           {/* Trade Component - Now at the top */}
           <Trade token={token} onSwapCompleted={onSwapCompleted} />
-          <div className="flex flex-col gap-3 md:min-w-[400px]">
+          <div className="flex flex-col gap-3 md:min-w-[400px] lg:min-w-[0]">
             {/* Balance and Value */}
             <div className={`flex flex-col gap-4 my-4 mx-2`}>
               <div className="flex justify-between items-center">
