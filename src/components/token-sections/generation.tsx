@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 import Button from "../button";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import Loader from "../loader";
+import CopyButton from "../copy-button";
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
@@ -68,7 +69,10 @@ export default function CommunityTab() {
   const [communityTab, setCommunityTab] = useState<ICommunityTabs>("Image");
   const [userPrompt, setUserPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null); // Stores URL of user-generated media
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [generatedLyrics, setGeneratedLyrics] = useState<string | null>(null);
+  const [editableLyrics, setEditableLyrics] = useState<string | null>(null);
+  const [isEditingLyrics, setIsEditingLyrics] = useState(false);
   const [processingStatus, setProcessingStatus] = useState<
     "idle" | "processing" | "processed" | "failed"
   >("idle");
@@ -362,6 +366,7 @@ export default function CommunityTab() {
     setIsGenerating(true);
     setProcessingStatus("processing");
     setGeneratedImage(null); // Clear previous image
+    setGeneratedLyrics(null);
     setPlaceholderImage(null); // Clear placeholder when starting generation
     setShareError(null);
 
@@ -520,6 +525,7 @@ export default function CommunityTab() {
           setGeneratedImage(fullUrl);
         }
 
+        setGeneratedLyrics(data.lyrics);
         setProcessingStatus("processed");
 
         if (data.remainingGenerations !== undefined) {
@@ -584,6 +590,7 @@ export default function CommunityTab() {
     setIsGenerating(true);
     setProcessingStatus("processing");
     setGeneratedImage(null); // Clear previous media
+    setGeneratedLyrics(null);
     setPlaceholderImage(null); // Clear placeholder when starting generation
     setShareError(null);
 
@@ -738,7 +745,7 @@ export default function CommunityTab() {
           : `${env.apiUrl}${data.mediaUrl.startsWith("/") ? "" : "/"}${data.mediaUrl}`;
 
         setGeneratedImage(fullUrl); // We'll reuse this state for videos too
-
+        setGeneratedLyrics(data.lyrics);
         setProcessingStatus("processed");
 
         if (data.remainingGenerations !== undefined) {
@@ -1307,7 +1314,7 @@ export default function CommunityTab() {
   const [audioMode, _setAudioMode] = useState<"music" | "speech">("music");
 
   // Add this function to handle audio generation
-  const generateAudio = async () => {
+  const generateAudio = async (useExistingLyrics: boolean = false) => {
     if (!userPrompt && audioMode === "speech") return;
 
     // Check if wallet is connected
@@ -1337,6 +1344,7 @@ export default function CommunityTab() {
     setIsGenerating(true);
     setProcessingStatus("processing");
     setGeneratedImage(null); // Clear previous media
+    setGeneratedLyrics(null);
     setPlaceholderImage(null); // Clear placeholder when starting generation
     setShareError(null);
 
@@ -1386,6 +1394,11 @@ export default function CommunityTab() {
         mediaType: "audio",
         mode: "fast", // Audio only has one mode for now
       };
+
+      // Add lyrics if we're using existing ones
+      if (useExistingLyrics && editableLyrics) {
+        requestBody.lyrics = editableLyrics;
+      }
 
       // Call the API endpoint
       const response = await fetch(apiUrl, {
@@ -1485,6 +1498,8 @@ export default function CommunityTab() {
           : `${env.apiUrl}${data.mediaUrl.startsWith("/") ? "" : "/"}${data.mediaUrl}`;
 
         setGeneratedImage(fullUrl); // We'll reuse this state for audio too
+        setGeneratedLyrics(data.lyrics);
+        setEditableLyrics(data.lyrics);
         setProcessingStatus("processed");
 
         if (data.remainingGenerations !== undefined) {
@@ -1984,22 +1999,73 @@ export default function CommunityTab() {
               ) : communityTab === "Audio" &&
                 generatedImage &&
                 processingStatus === "processed" ? (
-                // --- Audio Player ---
-                <div className="border border-gray-700 p-4 bg-black">
-                  <audio
-                    src={generatedImage}
-                    controls
-                    className="w-full"
-                    autoPlay
-                  >
-                    Your browser does not support the audio element.
-                  </audio>
+                // --- Audio Player with Album Art and Lyrics ---
+                <div className="flex flex-col gap-4 border border-gray-700 p-4 bg-black mb-16">
+                  <div className="flex flex-col md:flex-row gap-4">
+                    {/* Album Art */}
+                    <div className="w-full md:w-1/2 aspect-square">
+                      <img
+                        src={tokenInfo?.image || "/logo.png"}
+                        alt="Album Art"
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                    </div>
+                    
+                    {/* Lyrics */}
+                    <div className="w-full md:w-1/2 h-[400px] relative">
+                      <div className="absolute top-0 right-0 z-10 flex gap-2">
+                        {editableLyrics && (
+                          <>
+                            <CopyButton text={editableLyrics} />
+                            <button
+                              onClick={() => setIsEditingLyrics(!isEditingLyrics)}
+                              className="p-1 bg-gray-700 rounded hover:bg-gray-600"
+                            >
+                              {isEditingLyrics ? "Save" : "Edit"}
+                            </button>
+                            <button
+                              onClick={() => generateAudio(true)}
+                              className="p-1 bg-gray-700 rounded hover:bg-gray-600"
+                              disabled={isGenerating}
+                            >
+                              Regenerate
+                            </button>
+                          </>
+                        )}
+                      </div>
+                      <div className="absolute inset-0 overflow-y-auto">
+                        {isEditingLyrics ? (
+                          <textarea
+                            value={editableLyrics || ""}
+                            onChange={(e) => setEditableLyrics(e.target.value)}
+                            className="w-full h-full p-2 bg-gray-800 text-white font-mono resize-none"
+                          />
+                        ) : (
+                          <div className="text-white font-mono whitespace-pre-line pt-8">
+                            {editableLyrics || "No lyrics available"}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Audio Player */}
+                  <div className="w-full">
+                    <audio
+                      src={generatedImage}
+                      controls
+                      className="w-full"
+                      autoPlay
+                    >
+                      Your browser does not support the audio element.
+                    </audio>
+                  </div>
                 </div>
               ) : communityTab === "Video" &&
                 generatedImage &&
                 processingStatus === "processed" ? (
                 // --- Video Player ---
-                <div className="border border-gray-700 bg-black">
+                <div className="border border-gray-700 bg-black mb-16">
                   <video
                     src={generatedImage}
                     controls
