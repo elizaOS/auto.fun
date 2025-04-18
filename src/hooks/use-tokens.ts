@@ -18,8 +18,7 @@ export const HomepageFeaturedSchema = HomepageTokenSchema.and(
 
 export type HomepageSortBy = "all" | "marketCap" | "newest" | "oldest";
 
-export const useHomepageAll = (enabled: boolean, hideImported?: boolean) => {
-  const pageSize = 24;
+export const useHomepageAll = (enabled: boolean, hideImported?: boolean, pageSize: number = 24) => {
   const pagination = usePagination({
     endpoint: "/api/tokens",
     limit: pageSize,
@@ -74,8 +73,8 @@ export const useHomepageAll = (enabled: boolean, hideImported?: boolean) => {
 export const useHomepageMarketCap = (
   enabled: boolean,
   hideImported?: boolean,
+  pageSize: number = 24
 ) => {
-  const pageSize = 24;
   const pagination = usePagination({
     endpoint: "/api/tokens",
     limit: pageSize,
@@ -126,8 +125,7 @@ export const useHomepageMarketCap = (
   return pagination;
 };
 
-export const useHomepageNewest = (enabled: boolean, hideImported?: boolean) => {
-  const pageSize = 24;
+export const useHomepageNewest = (enabled: boolean, hideImported?: boolean, pageSize: number = 24) => {
   const pagination = usePagination({
     endpoint: "/api/tokens",
     limit: pageSize,
@@ -176,8 +174,7 @@ export const useHomepageNewest = (enabled: boolean, hideImported?: boolean) => {
   return pagination;
 };
 
-export const useHomepageOldest = (enabled: boolean, hideImported?: boolean) => {
-  const pageSize = 24;
+export const useHomepageOldest = (enabled: boolean, hideImported?: boolean, pageSize: number = 24) => {
   const pagination = usePagination({
     endpoint: "/api/tokens",
     limit: pageSize,
@@ -230,14 +227,15 @@ export const useHomepageOldest = (enabled: boolean, hideImported?: boolean) => {
   return pagination;
 };
 
-export const useTokens = (sortBy: HomepageSortBy, hideImported: boolean) => {
-  const allTokens = useHomepageAll(sortBy === "all", hideImported);
+export const useTokens = (sortBy: HomepageSortBy, hideImported: boolean, pageSize: number = 24) => {
+  const allTokens = useHomepageAll(sortBy === "all", hideImported, pageSize);
   const marketCapTokens = useHomepageMarketCap(
     sortBy === "marketCap",
     hideImported,
+    pageSize
   );
-  const newestTokens = useHomepageNewest(sortBy === "newest", hideImported);
-  const oldestTokens = useHomepageOldest(sortBy === "oldest", hideImported);
+  const newestTokens = useHomepageNewest(sortBy === "newest", hideImported, pageSize);
+  const oldestTokens = useHomepageOldest(sortBy === "oldest", hideImported, pageSize);
 
   useEffect(() => {
     getSocket().emit("subscribeGlobal");

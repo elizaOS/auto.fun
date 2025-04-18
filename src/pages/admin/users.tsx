@@ -396,13 +396,7 @@ function AdminUserDetails({ address }: { address: string }) {
         </button>
       </div>
       
-      <div className="mt-4 p-4 bg-autofun-background-primary rounded-md">
-        <h3 className="text-lg font-medium mb-2">Admin Notes</h3>
-        <p className="text-sm text-autofun-text-secondary italic">
-          Most values on this page are read-only and are displayed for informational purposes.
-          Only certain fields like status can be modified by admins.
-        </p>
-      </div>
+      {/* Admin Notes section removed */}
     </div>
   );
 }
