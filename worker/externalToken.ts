@@ -178,15 +178,15 @@ export class ExternalToken {
 
     const allHolders = tokenSupply
       ? codexHolders.items.map(
-        (holder): TokenHolderInsert => ({
-          id: crypto.randomUUID(),
-          mint: this.mint,
-          address: holder.address,
-          amount: holder.shiftedBalance,
-          percentage: (holder.shiftedBalance / tokenSupply) * 100,
-          lastUpdated: now,
-        }),
-      )
+          (holder): TokenHolderInsert => ({
+            id: crypto.randomUUID(),
+            mint: this.mint,
+            address: holder.address,
+            amount: holder.shiftedBalance,
+            percentage: (holder.shiftedBalance / tokenSupply) * 100,
+            lastUpdated: now,
+          }),
+        )
       : [];
 
     allHolders.sort((a, b) => b.percentage - a.percentage);
@@ -210,7 +210,9 @@ export class ExternalToken {
     return holders;
   }
   // fetch and update swap data
-  public async updateLatestSwapData(BATCH_LIMIT = 200): Promise<ProcessedSwap[]> {
+  public async updateLatestSwapData(
+    BATCH_LIMIT = 200,
+  ): Promise<ProcessedSwap[]> {
     const cursor: string | undefined | null = undefined;
 
     const { getTokenEvents } = await this.sdk.queries.getTokenEvents({
@@ -240,7 +242,9 @@ export class ExternalToken {
           user: codexSwap.maker || "",
         };
         const priceUsdtotal = swapData.priceUsdTotal || 0;
-        const SolValue = priceUsdtotal ? Number(priceUsdtotal) / Number(solPrice) : 0;
+        const SolValue = priceUsdtotal
+          ? Number(priceUsdtotal) / Number(solPrice)
+          : 0;
         const baseAmount = Number(swapData.amount0 || 0);
 
         switch (codexSwap.eventDisplayType) {
