@@ -393,7 +393,7 @@ export default function Trade({
           </div>
         </div>
         {!isAuthenticated ? (
-          <div className="text-center text-red-500 text-xl">Please connect your wallet before making a trade</div>
+          <div className="text-center text-red-500 text-xl">Connect your wallet to proceed with trading</div>
         ): null}
       </div>
     </div>
