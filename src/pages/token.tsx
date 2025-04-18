@@ -94,7 +94,6 @@ export default function Page() {
   const [signature, setSignature] = useState<string | undefined>(undefined);
 
   const onSwapCompleted = (signature: string) => {
-    console.log("onSwapCompleted", onSwapCompleted);
     setSignature(signature);
     queryClient.invalidateQueries({ queryKey: ["token", address] });
     setTimeout(() => {
@@ -115,8 +114,6 @@ export default function Page() {
     queryFn: async () => {
       if (!address) throw new Error("No address passed");
       try {
-        // Fetch token data from API
-        console.log(`Token page: Fetching token data for ${address}`);
         return await getToken({ address, signature });
       } catch (error) {
         console.error(`Token page: Error fetching token data:`, error);
@@ -154,30 +151,15 @@ export default function Page() {
     };
   }, [address]);
 
-  // Always use tokenState to ensure component updates when token data changes
   const token = tokenQuery?.data as IToken;
 
-  // Use real blockchain data if available, otherwise fall back to API data
   const solPriceUSD = contextSolPrice || token?.solPriceUSD || 0;
   const currentPrice = token?.currentPrice || 0;
   const tokenPriceUSD = token?.tokenPriceUSD || 0;
-  // const marketCapUSD = token?.marketCapUSD || 0;
   const volume24h = token?.volume24h || 0;
-  // const holderCount = metrics?.holderCount || token?.holderCount || 0;
-
-  // For bonding curve calculations, still use token data
   const finalTokenPrice = Number(env.finalTokenPrice ?? 0.000000451);
   const finalTokenUSDPrice = finalTokenPrice * solPriceUSD;
   const graduationMarketCap = finalTokenUSDPrice * 1_000_000_000;
-
-  // Calculate negative reserve status
-  // const negativeReserve =
-  //   token && token.reserveLamport - token.virtualReserves < 0
-  //     ? (token.reserveLamport - token.virtualReserves) / LAMPORTS_PER_SOL
-  //     : null;
-
-  // Add debug logging
-  console.log("Token data from API:", token);
 
   if (tokenQuery?.isLoading) {
     return <Loader />;
@@ -216,18 +198,6 @@ export default function Page() {
       {/* Top Stats Section - Full Width */}
       <div className="w-full py-10 flex flex-wrap justify-between">
         <TopPageItem
-          title="Market Cap"
-          value={
-            tokenPriceUSD * token?.tokenSupplyUiAmount > 0
-              ? abbreviateNumber(tokenPriceUSD * token?.tokenSupplyUiAmount)
-              : "-"
-          }
-        />
-        <TopPageItem
-          title="24hr Volume"
-          value={volume24h > 0 ? abbreviateNumber(volume24h) : "0"}
-        />
-        <TopPageItem
           title="Age"
           value={
             token?.createdAt
@@ -251,6 +221,18 @@ export default function Page() {
                           .replace("second", "s")
                           .trim()
                           .trim()
+              : "-"
+          }
+        />
+        <TopPageItem
+          title="24hr Volume"
+          value={volume24h > 0 ? abbreviateNumber(volume24h) : "0"}
+        />
+        <TopPageItem
+          title="Market Cap"
+          value={
+            tokenPriceUSD * token?.tokenSupplyUiAmount > 0
+              ? abbreviateNumber(tokenPriceUSD * token?.tokenSupplyUiAmount)
               : "-"
           }
         />

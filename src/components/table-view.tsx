@@ -89,7 +89,9 @@ export function TableView({ data }: { data: IToken[] }) {
               <TableCell className="text-left">{token.holderCount}</TableCell>
               <TableCell className="text-left">
                 <div className="flex items-center gap-2 w-full">
-                  <BondingCurveBar progress={token.curveProgress} />
+                  {token.imported === 0 && (
+                    <BondingCurveBar progress={token.curveProgress} />
+                  )}
                 </div>
               </TableCell>
               <TableCell className="text-right">

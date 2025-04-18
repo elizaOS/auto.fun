@@ -62,11 +62,18 @@ binding = "AI"
 crons = ["*/1 * * * *"] # Run every 1 minute
 
 [env.production.vars]
-API_URL = "https://api.autofun.workers.dev"
+API_URL = "https://api.auto.fun"
 NODE_ENV = "production"
 NETWORK = "mainnet"
 PROGRAM_ID = "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ"
 TOKEN_SUPPLY = "1000000000000000"
+DEVNET_FRONTEND_URL = "https://develop.autofun.tech"
+MAINNET_FRONTEND_URL = "https://autofun.tech"
+DECIMALS = "6"
+VIRTUAL_RESERVES = "28000000000"
+CURVE_LIMIT = "113000000000"
+VITE_R2_PUBLIC_URL = "https://storage.autofun.tech"
+R2_PUBLIC_URL = "https://storage.autofun.tech"
 
 # Copy vars to development environment
 [env.development.vars]
@@ -75,14 +82,15 @@ DECIMALS = "6"
 TOKEN_SUPPLY = "1000000000000000"
 VIRTUAL_RESERVES = "2800000000"
 CURVE_LIMIT = "11300000000"
-R2_PUBLIC_URL = "https://pub-75e2227bb40747d9b8b21df85a33efa7.r2.dev"
+VITE_R2_PUBLIC_URL = "https://storage-dev.autofun.tech"
+R2_PUBLIC_URL = "https://storage-dev.autofun.tech"
 NODE_ENV = "development"
-MAINNET_FRONTEND_URL="https://auto-fun.pages.dev"
-DEVNET_FRONTEND_URL="https://develop.auto-fun.pages.dev"
+MAINNET_FRONTEND_URL="https://auto.fun"
+DEVNET_FRONTEND_URL="https://develop.auto.fun"
 AUTH_TOKEN_SALT = "autofun-wallet-auth-salt-dev-env" # Salt for hashing auth tokens in dev
 MAINNET_SOLANA_RPC_URL="https://mainnet.helius-rpc.com/?api-key=09d840c8-81f4-445d-8b63-a1cc8469cb57"
 DEVNET_SOLANA_RPC_URL="https://devnet.helius-rpc.com/?api-key=09d840c8-81f4-445d-8b63-a1cc8469cb57"
-API_URL = "https://api-dev.autofun.workers.dev"
+API_URL = "https://api-dev.auto.fun"
 PROGRAM_ID = "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ"
 
 # D1 Database for development
@@ -104,6 +112,11 @@ bucket_name = "autofun-storage-dev"
 
 # Add Socket.io Durable Objects for development
 [env.development.durable_objects]
+bindings = [
+  { name = "WEBSOCKET_DO", class_name = "WebSocketDO" }
+]
+
+[env.production.durable_objects]
 bindings = [
   { name = "WEBSOCKET_DO", class_name = "WebSocketDO" }
 ]
@@ -137,9 +150,3 @@ database_id = "b086a46c-b1c3-4eec-8eca-2abea542e45b"
 [[env.production.r2_buckets]]
 binding = "R2"
 bucket_name = "autofun-storage"
-
-# KV namespace for auth tokens
-[[env.production.kv_namespaces]]
-binding = "AUTH_TOKENS"
-id = "91bc4666a62044ba816c53a9b2116281"
-preview_id = "d2622b59f8dd431eb2468732a5053649"

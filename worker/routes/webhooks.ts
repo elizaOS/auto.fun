@@ -112,41 +112,44 @@ router.post("/codex-webhook", async (c) => {
   }
 
   const swap = webhookBody.data.event;
-  const db = getDB(c.env);
+  // const db = getDB(c.env);
 
-  const amounts =
-    swap.eventDisplayType === "Buy"
-      ? {
-          amountIn: -Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
-          amountOut: Number(swap.data.amount0 || 0) * 1e6,
-        }
-      : {
-          amountIn: -Number(swap.data.amount0 || 0) * 1e6,
-          amountOut: Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
-        };
+  // const amounts =
+  //   swap.eventDisplayType === "Buy"
+  //     ? {
+  //         amountIn: -Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
+  //         amountOut: Number(swap.data.amount0 || 0) * 1e6,
+  //       }
+  //     : {
+  //         amountIn: -Number(swap.data.amount0 || 0) * 1e6,
+  //         amountOut: Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
+  //       };
   const tokenMint =
     swap.eventDisplayType === "Buy" ? swap.token1Address : swap.token0Address;
-  const newSwaps = await db
-    .insert(swaps)
-    .values({
-      id: crypto.randomUUID(),
-      direction: swap.eventDisplayType === "Buy" ? 0 : 1,
-      price: Number(swap.token0ValueUsd),
-      timestamp: new Date(swap.timestamp * 1000).toISOString(),
-      tokenMint,
-      txId: swap.transactionHash,
-      type: swap.eventDisplayType === "Buy" ? "buy" : "sell",
-      user: swap.maker,
-      ...amounts,
-    })
-    .returning();
+  // const newSwaps = await db
+  //   .insert(swaps)
+  //   .values({
+  //     id: crypto.randomUUID(),
+  //     direction: swap.eventDisplayType === "Buy" ? 0 : 1,
+  //     price: Number(swap.token0ValueUsd),
+  //     timestamp: new Date(swap.timestamp * 1000).toISOString(),
+  //     tokenMint,
+  //     txId: swap.transactionHash,
+  //     type: swap.eventDisplayType === "Buy" ? "buy" : "sell",
+  //     user: swap.maker,
+  //     ...amounts,
+  //   })
+  //   .returning();
 
-  const wsClient = getWebSocketClient(c.env);
+  // const wsClient = getWebSocketClient(c.env);
+
   await getLatestCandle(c.env, tokenMint, swap);
   const ext = new ExternalToken(c.env, tokenMint);
   await ext.updateMarketAndHolders();
+  //  we just call this to update the last 20 swaps in the db
+  await ext.updateLatestSwapData(20)
 
-  await wsClient.to(`token-${swap.token0Address}`).emit("newSwap", newSwaps[0]);
+  // await wsClient.to(`token-${swap.token0Address}`).emit("newSwap", newSwaps[0]);
 
   return c.json({
     message: "Completed",

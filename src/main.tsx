@@ -16,8 +16,9 @@ import PageNotFound from "./pages/not-found";
 
 // if the date is before 2025-04-15, redirect to the old website
 if (
-  window.location.hostname.includes("auto.fun") &&
-  new Date() < new Date("2025-04-17T00:00:00Z") &&
+  (window.location.hostname.includes("auto.fun") ||
+    window.location.hostname.includes("autofun.tech")) &&
+  new Date() < new Date("2025-04-19T00:00:00Z") &&
   !window.location.search.includes("dev") &&
   !window.location.hostname.includes("localhost") &&
   !window.location.hostname.includes("127.0.0.1")

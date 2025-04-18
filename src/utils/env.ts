@@ -2,37 +2,39 @@ import { z } from "zod";
 
 export const isDevnet = import.meta.env.VITE_SOLANA_NETWORK === "devnet";
 
-console.log("isDevnet", isDevnet);
-console.log(
-  "import.meta.env.VITE_SOLANA_NETWORK",
-  import.meta.env.VITE_SOLANA_NETWORK,
-);
-console.log(
-  "import.meta.env.VITE_DEVNET_RPC_URL",
-  import.meta.env.VITE_DEVNET_RPC_URL,
-);
-console.log(
-  "import.meta.env.VITE_MAINNET_RPC_URL",
-  import.meta.env.VITE_MAINNET_RPC_URL,
-);
-console.log("import.meta.env.VITE_API_URL", import.meta.env.VITE_API_URL);
-console.log(
-  "import.meta.env.VITE_DEV_API_URL",
-  import.meta.env.VITE_DEV_API_URL,
-);
-console.log(
-  "import.meta.env.VITE_VIRTUAL_RESERVES",
-  import.meta.env.VITE_VIRTUAL_RESERVES,
-);
-console.log(
-  "import.meta.env.VITE_TOKEN_SUPPLY",
-  import.meta.env.VITE_TOKEN_SUPPLY,
-);
-console.log("import.meta.env.VITE_DECIMALS", import.meta.env.VITE_DECIMALS);
-console.log(
-  "import.meta.env.VITE_DEV_ADDRESS",
-  import.meta.env.VITE_DEV_ADDRESS,
-);
+if (isDevnet) {
+  console.log("isDevnet", isDevnet);
+  console.log(
+    "import.meta.env.VITE_SOLANA_NETWORK",
+    import.meta.env.VITE_SOLANA_NETWORK,
+  );
+  console.log(
+    "import.meta.env.VITE_DEVNET_RPC_URL",
+    import.meta.env.VITE_DEVNET_RPC_URL,
+  );
+  console.log(
+    "import.meta.env.VITE_MAINNET_RPC_URL",
+    import.meta.env.VITE_MAINNET_RPC_URL,
+  );
+  console.log("import.meta.env.VITE_API_URL", import.meta.env.VITE_API_URL);
+  console.log(
+    "import.meta.env.VITE_DEV_API_URL",
+    import.meta.env.VITE_DEV_API_URL,
+  );
+  console.log(
+    "import.meta.env.VITE_VIRTUAL_RESERVES",
+    import.meta.env.VITE_VIRTUAL_RESERVES,
+  );
+  console.log(
+    "import.meta.env.VITE_TOKEN_SUPPLY",
+    import.meta.env.VITE_TOKEN_SUPPLY,
+  );
+  console.log("import.meta.env.VITE_DECIMALS", import.meta.env.VITE_DECIMALS);
+  console.log(
+    "import.meta.env.VITE_DEV_ADDRESS",
+    import.meta.env.VITE_DEV_ADDRESS,
+  );
+}
 
 const unparsedEnv = {
   rpcUrl:
@@ -52,9 +54,7 @@ const unparsedEnv = {
     : import.meta.env.VITE_API_URL,
   devAddress: import.meta.env.VITE_DEV_ADDRESS,
   appEnv: process.env.NODE_ENV,
-  r2PublicUrl:
-    import.meta.env.R2_PUBLIC_URL ||
-    "https://pub-75e2227bb40747d9b8b21df85a33efa7.r2.dev",
+  r2PublicUrl: import.meta.env.VITE_R2_PUBLIC_URL,
 } as const;
 
 console.log("unparsedEnv", unparsedEnv);
@@ -91,5 +91,3 @@ export const env = {
   getTokenURL: (tokenAddress: string) =>
     `https://solscan.io/token/${tokenAddress}?cluster=${parsedEnv.solanaNetwork}`,
 };
-
-console.log("env", env);

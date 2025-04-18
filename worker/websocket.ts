@@ -2,36 +2,9 @@ import { DurableObjectState } from "@cloudflare/workers-types";
 import { Env } from "./env";
 import { logger } from "./logger";
 
-// Define allowed origins
-export const allowedOrigins = [
-  "https://api-dev.autofun.workers.dev",
-  "https://api.autofun.workers.dev",
-  "https://develop.auto-fun.pages.dev",
-  "https://auto-fun.pages.dev",
-  "https://develop.autofun.pages.dev",
-  "https://autofun.pages.dev",
-  "https://*.auto-fun.pages.dev",
-  "https://develop.autofun.pages.dev",
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "http://localhost:3420",
-  "https://auto.fun",
-  "https://*.auto.fun",
-  "https://dev.auto.fun",
-  "https://api.auto.fun",
-  "https://api-dev.auto.fun",
-  "https://fix-develop-create.auto-fun.pages.dev",
-];
-
 // Define a custom WebSocket type that includes CloudflareWebSocket functionality
 interface CloudflareWebSocket extends WebSocket {
   accept(): void;
-}
-
-// Define a WebSocketPair interface for Cloudflare
-interface WebSocketPair {
-  0: CloudflareWebSocket;
-  1: CloudflareWebSocket;
 }
 
 /**

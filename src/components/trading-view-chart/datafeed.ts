@@ -33,7 +33,6 @@ export function getDataFeed({
 }): IBasicDataFeed {
   return {
     onReady: (callback) => {
-      console.log("[onReady]: Method call");
       setTimeout(() => callback(configurationData));
     },
 
@@ -70,7 +69,6 @@ export function getDataFeed({
         listed_exchange: "",
       };
 
-      console.log("[resolveSymbol]: Symbol resolved", symbolName);
       setTimeout(() => onSymbolResolvedCallback(symbolInfo));
     },
 
@@ -128,7 +126,6 @@ export function getDataFeed({
           nextTime,
         });
       } catch (error) {
-        console.log("[getBars]: Get error", error);
         onErrorCallback(error as string);
       }
     },
@@ -140,15 +137,9 @@ export function getDataFeed({
       subscriberUID,
       onResetCacheNeededCallback,
     ) => {
-      console.log(
-        "[subscribeBars]: Method call with subscriberUID:",
-        subscriberUID,
-      );
-
       // Ensure we have the last bar from cache
       let lastBar = lastBarsCache.get(symbolInfo.name);
       if (!lastBar) {
-        console.log("[subscribeBars]: No last bar found");
         // Instead of creating a bar with zeros, we'll create a placeholder
         // but we won't actually display it until we get real data
         lastBar = {
@@ -194,10 +185,6 @@ export function getDataFeed({
     },
 
     unsubscribeBars: (subscriberUID) => {
-      console.log(
-        "[unsubscribeBars]: Method call with subscriberUID:",
-        subscriberUID,
-      );
       unsubscribeFromStream(subscriberUID);
     },
   };

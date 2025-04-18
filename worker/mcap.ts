@@ -5,7 +5,7 @@ import {
   getPythProgramKeyForCluster,
 } from "@pythnetwork/client";
 import { Connection } from "@solana/web3.js";
-import { eq, SQLWrapper } from "drizzle-orm";
+import { eq, SQLWrapper, and, ne } from "drizzle-orm";
 import { initSdk } from "./raydium";
 import { getDB, tokens } from "./db";
 import { Env } from "./env";
@@ -336,7 +336,7 @@ export async function updateMigratedTokenMarketData(env?: Env) {
     const migratedTokens = await db
       .select()
       .from(tokens)
-      .where(eq(tokens.status, "locked"));
+      .where(and(eq(tokens.status, "locked"), ne(tokens.imported, 1)));
 
     const tokenCount = migratedTokens.length;
     let successCount = 0;

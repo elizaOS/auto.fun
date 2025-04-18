@@ -343,11 +343,7 @@ export default function TwitterSharePage() {
 
     for (let i = 0; i < numWorkers; i++) {
       try {
-        // Instantiate worker using the imported module with ?worker suffix
-        // No need for { type: 'module' } here, Vite handles it.
-        console.log("Creating worker...");
         const worker = new InlineVanityWorker();
-        console.log("Worker created:", worker);
 
         worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
           // Use isGenerating ref to check current state, avoid stale closure
@@ -364,7 +360,6 @@ export default function TwitterSharePage() {
                 addVanityLog(`✅ Worker ${data.workerId} found match!`);
                 addVanityLog(`   Address: ${data.publicKey}`);
                 addVanityLog(`   Secret Key: [REDACTED]`); // Don't log the secret key
-                console.log("Found Secret Key:", data.secretKey); // Log to console only for debugging
                 setVanityResult({
                   publicKey: data.publicKey,
                   secretKey: data.secretKey,
@@ -461,7 +456,6 @@ export default function TwitterSharePage() {
     const workersToTerminate = workersRef.current;
     const timerToClear = logUpdateTimerRef.current;
     return () => {
-      console.log("Unmounting testing page, terminating workers...");
       workersToTerminate.forEach((worker) => {
         try {
           worker.postMessage("stop");

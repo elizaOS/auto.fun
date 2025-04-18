@@ -58,16 +58,6 @@ export const useSwap = () => {
       amount * (token?.tokenDecimals ? 10 ** token.tokenDecimals : 1e6),
     );
 
-    console.log("swapping:", {
-      style,
-      amount,
-      tokenAddress,
-      token,
-      reserveToken,
-      reserveLamport,
-      slippageBps,
-    });
-
     // Convert string style ("buy" or "sell") to numeric style (0 for buy; 1 for sell)
     const numericStyle = style === "buy" ? 0 : 1;
 
@@ -165,11 +155,10 @@ export const useSwap = () => {
     tx.feePayer = wallet.publicKey;
     tx.recentBlockhash = blockhash;
 
-    console.log("Simulating transaction...");
+    // TODO - @deprecated — Instead, call simulateTransaction with * VersionedTransaction and SimulateTransactionConfig parameters
     const simulation = await connection.simulateTransaction(tx);
-    console.log("Simulation logs:", simulation.value.logs);
+
     if (simulation.value.err) {
-      console.error("Simulation failed:", JSON.stringify(simulation.value.err));
       throw new Error(`Transaction simulation failed: ${simulation.value.err}`);
     }
 
@@ -177,7 +166,6 @@ export const useSwap = () => {
 
     // If protection is enabled, use Jito to send the transaction
     if (isProtectionEnabled) {
-      console.log("Sending transaction through Jito for MEV protection...");
       try {
         const jitoResponse = await sendTxUsingJito({
           serializedTx: versionedTx.serialize(),
@@ -186,16 +174,12 @@ export const useSwap = () => {
         return { signature: jitoResponse.result, confirmation: null };
       } catch (error) {
         console.error("Failed to send through Jito:", error);
-        // Fallback to regular transaction sending if Jito fails
         const signature = await wallet.sendTransaction(versionedTx, connection);
-        console.log("Transaction sent (fallback), signature:", signature);
         return { signature, confirmation: null };
       }
     }
 
-    // Regular transaction sending if protection is not enabled
     const signature = await wallet.sendTransaction(versionedTx, connection);
-    console.log("Transaction sent, signature:", signature);
     return { signature, confirmation: null };
   };
 

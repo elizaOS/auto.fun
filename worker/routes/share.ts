@@ -1,12 +1,13 @@
 import { createHash, randomBytes } from "crypto";
+import { eq } from "drizzle-orm";
 import { Hono } from "hono";
+import { StatusCode } from "hono/utils/http-status";
 import { nanoid } from "nanoid";
 import { z } from "zod";
+import { allowedOrigins } from "../allowedOrigins";
 import { accessTokens, getDB, oauthVerifiers } from "../db";
 import { Env } from "../env";
 import { logger } from "../logger";
-import { eq } from "drizzle-orm";
-import { StatusCode } from "hono/utils/http-status";
 
 /**
  * ------------------------------------------------------------------
@@ -296,20 +297,6 @@ const shareRouter = new Hono<{
 
 // Enable CORS
 shareRouter.use("*", async (c, next) => {
-  const allowedOrigins = [
-    c.req.header("Origin"),
-    "http://localhost:3000",
-    "https://auto.fun",
-    "https://*.auto.fun",
-    "https://develop.auto.fun",
-    "https://develop.auto-fun.pages.dev",
-    "https://auto-fun.pages.dev",
-    "https://develop.autofun.pages.dev",
-    "https://autofun.pages.dev",
-    // todo: remove this
-    "https://fix-develop-create.autofun.pages.dev",
-  ];
-
   const origin = c.req.header("Origin");
   await next();
 

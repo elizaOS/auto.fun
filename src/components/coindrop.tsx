@@ -851,11 +851,6 @@ const CoinDrop = ({ imageUrl, onCancel }: CoinDropProps) => {
       const y = 2 + Math.random() * 2; // Start high up in the container
       const z = (Math.random() - 0.5) * boxDepthRef.current * 0.9;
 
-      // Log coin creation with window-relative coordinates
-      console.log(
-        `Creating coin #${index} at position [${((x / boxWidthRef.current) * 100).toFixed(1)}%, ${((y / boxHeightRef.current) * 100).toFixed(1)}%, ${((z / boxDepthRef.current) * 100).toFixed(1)}%]`,
-      );
-
       // Set initial rotation
       const rotX = Math.random() * Math.PI;
       const rotZ = Math.random() * Math.PI;
@@ -1011,7 +1006,6 @@ const CoinDrop = ({ imageUrl, onCancel }: CoinDropProps) => {
             clearInterval(coinCreationIntervalRef.current);
             coinCreationIntervalRef.current = null;
             isCreatingCoinsRef.current = false;
-            console.log(`Finished creating ${coinCountRef.current} coins`);
           }
           return;
         }
