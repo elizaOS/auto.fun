@@ -3,7 +3,7 @@ import { Env } from "../env";
 import { processTransactionLogs } from "../cron";
 import { z } from "zod";
 import crypto from "crypto";
-import { getDB, swaps } from "../db";
+import { getDB, swaps, tokens } from "../db";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { getWebSocketClient } from "../websocket-client";
 import { startMonitoringBatch } from "../tokenSupplyHelpers/monitoring";
@@ -147,12 +147,9 @@ router.post("/codex-webhook", async (c) => {
   const db = getDB(c.env);
   const token = await db
     .select()
-    .from(swaps)
+    .from(tokens)
     .where(
-      and(
-        eq(swaps.tokenMint, tokenMint),
-        eq(swaps.txId, swap.transactionHash),
-      ),
+      eq(tokens.mint, tokenMint),
     )
   if (!token || token.length === 0) {
     // do nothing since the token is not in the table
