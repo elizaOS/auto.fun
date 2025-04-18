@@ -115,6 +115,8 @@ export const TokenSchema = z
       }
       return val;
     }, z.number().nullish()),
+    verified: z.number(),
+    featured: z.number(),
   })
   .transform((data) => ({
     ...data,
@@ -156,6 +158,8 @@ export const TokenSchema = z
     lastPriceUpdate: data.lastPriceUpdate || data.lastUpdated,
     lastVolumeReset: data.lastVolumeReset || data.lastUpdated,
     imported: data.imported != null ? Number(data.imported) : 0,
+    verified: data?.verified ? data?.verified : 0,
+    featured: data?.featured ? data?.featured : 0,
   }));
 
 export type IToken = z.infer<typeof TokenSchema>;

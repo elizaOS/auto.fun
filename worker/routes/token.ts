@@ -1189,6 +1189,11 @@ tokenRouter.get("/tokens", async (c) => {
             maxHolders,
             sortOrder,
           );
+
+          /** If tokens have featured, they should appear first */
+          tokensQuery = tokensQuery.orderBy(
+            sql`${tokens.featured} DESC NULLS LAST`,
+          );
         } else {
           // For other columns, safely map to actual db columns
           const validSortColumns = {
