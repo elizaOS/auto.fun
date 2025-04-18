@@ -48,6 +48,7 @@ export default function GridView({ data }: { data: IToken[] }) {
                 {fromNow(token.createdAt, true)}
               </div>
               <div className="w-full h-full aspect-square relative">
+                <div className="absolute inset-x-0 top-0 rotate-180 h-1/3 bg-gradient-to-t from-black/90 via-transparent to-transparent z-1" />
                 <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/90 to-transparent z-1" />
                 {isPartner ? (
                   <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-autofun-background-action-highlight/10 to-transparent z-1 p-4 font-bold">
