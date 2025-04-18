@@ -108,6 +108,11 @@ bindings = [
   { name = "WEBSOCKET_DO", class_name = "WebSocketDO" }
 ]
 
+[env.production.durable_objects]
+bindings = [
+  { name = "WEBSOCKET_DO", class_name = "WebSocketDO" }
+]
+
 # Add migrations for development environment
 [[env.development.migrations]]
 tag = "v1"
@@ -137,9 +142,3 @@ database_id = "b086a46c-b1c3-4eec-8eca-2abea542e45b"
 [[env.production.r2_buckets]]
 binding = "R2"
 bucket_name = "autofun-storage"
-
-# KV namespace for auth tokens
-[[env.production.kv_namespaces]]
-binding = "AUTH_TOKENS"
-id = "91bc4666a62044ba816c53a9b2116281"
-preview_id = "d2622b59f8dd431eb2468732a5053649"
