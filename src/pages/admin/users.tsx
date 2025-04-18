@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import CopyButton from "@/components/copy-button";
-import { env } from "@/utils/env";
 import { fetcher } from "@/utils/api";
 import { useAdminUsers } from "@/hooks/use-admin-users";
 import Loader from "@/components/loader";

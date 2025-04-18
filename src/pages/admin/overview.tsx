@@ -1,4 +1,3 @@
-import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetcher } from "@/utils/api";
 import Loader from "@/components/loader";
