@@ -5,7 +5,7 @@ import {
   ParsedAccountData,
   PublicKey,
 } from "@solana/web3.js";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import { monitorSpecificToken } from "../cron";
@@ -1099,6 +1099,9 @@ tokenRouter.get("/tokens", async (c) => {
     // Get search, status, creator params for filtering
     const search = queryParams.search as string;
     const status = queryParams.status as string;
+    const hideImported = queryParams.hideImported
+      ? Number(queryParams.hideImported)
+      : (0 as number);
     const creator = queryParams.creator as string;
     const sortBy = search
       ? "marketCapUSD"
@@ -1161,6 +1164,13 @@ tokenRouter.get("/tokens", async (c) => {
         if (creator) {
           tokensQuery = tokensQuery.where(eq(tokens.creator, creator));
         }
+
+        if (hideImported) {
+          tokensQuery = tokensQuery.where(ne(tokens.imported, 1));
+        }
+
+        // By default, don't show hidden tokens
+        tokensQuery = tokensQuery.where(sql`(${tokens.hidden} != 1)`);
 
         if (search) {
           // This is a simplified implementation - in production you'd use a proper search mechanism
@@ -1235,6 +1245,15 @@ tokenRouter.get("/tokens", async (c) => {
                ${tokens.mint} LIKE ${"%" + search + "%"})`,
         );
       }
+
+      if (hideImported) {
+        finalQuery = countQuery.where(ne(tokens.imported, 1));
+      }
+
+      // By default, don't count hidden tokens
+      finalQuery = countQuery.where(
+        sql`(${tokens.hidden} = 0 OR ${tokens.hidden} IS NULL)`,
+      );
 
       const totalCountResult = await finalQuery;
       return Number(totalCountResult[0]?.count || 0);
@@ -1453,6 +1472,8 @@ tokenRouter.get("/token/:mint", async (c) => {
         .set({
           solPriceUSD: solPrice,
           currentPrice: (token.tokenPriceUSD || 0) / solPrice,
+          marketCapUSD:
+            (token.tokenPriceUSD || 0) * (token.tokenSupplyUiAmount || 0),
         })
         .where(eq(tokens.mint, mint))
         .returning();
@@ -1963,72 +1984,6 @@ tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
     logger.error("Error updating holders data:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
-  }
-});
-
-tokenRouter.get("/swaps/:mint", async (c) => {
-  // logger.log(`Swaps endpoint called for mint: ${c.req.param("mint")}`);
-  try {
-    const mint = c.req.param("mint");
-
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
-
-    // Parse pagination parameters
-    const limit = parseInt(c.req.query("limit") || "50");
-    const page = parseInt(c.req.query("page") || "1");
-    const offset = (page - 1) * limit;
-
-    // Get the DB connection
-    const db = getDB(c.env);
-
-    // Get real swap data from the database
-    const swapsResult = await db
-      .select()
-      .from(swaps)
-      .where(eq(swaps.tokenMint, mint))
-      .orderBy(desc(swaps.timestamp))
-      .offset(offset)
-      .limit(limit);
-
-    // logger.log(`Found ${swapsResult.length} swaps for mint ${mint}`);
-
-    // Get total count for pagination
-    const totalSwapsQuery = await db
-      .select({ count: sql`count(*)` })
-      .from(swaps)
-      .where(eq(swaps.tokenMint, mint));
-
-    const totalSwaps = Number(totalSwapsQuery[0]?.count || 0);
-    const totalPages = Math.ceil(totalSwaps / limit);
-
-    // Format directions for better readability
-    const formattedSwaps = swapsResult.map((swap) => ({
-      ...swap,
-      directionText: swap.direction === 0 ? "buy" : "sell",
-    }));
-
-    const response = {
-      swaps: formattedSwaps,
-      page,
-      totalPages,
-      total: totalSwaps,
-    };
-
-    return c.json(response);
-  } catch (error) {
-    logger.error("Error in swaps history route:", error);
-    return c.json(
-      {
-        swaps: [],
-        page: 1,
-        totalPages: 0,
-        total: 0,
-        error: "Failed to fetch swap history",
-      },
       500,
     );
   }

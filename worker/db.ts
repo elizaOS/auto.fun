@@ -57,6 +57,10 @@ export const tokens = sqliteTable("tokens", {
   poolInfo: text("pool_info", { mode: "text" }), // Expected to store pool details (id, lpMint, baseVault, quoteVault)
   lockLpTxId: text("lock_lp_tx_id", { mode: "text" }),
   imported: integer("imported").default(0),
+  // Flag fields
+  featured: integer("featured").default(0), // 0 = not featured, 1 = featured
+  verified: integer("verified").default(0), // 0 = not verified, 1 = verified
+  hidden: integer("hidden").default(0), // 0 = not hidden, 1 = hidden
   // NEW: Token supply and decimals
   tokenSupply: text("token_supply", { mode: "text" }).default(
     "1000000000000000",
@@ -147,6 +151,7 @@ export const users = sqliteTable("users", {
   points: integer("points").notNull().default(0),
   rewardPoints: integer("reward_points").notNull().default(0),
   createdAt: text("created_at", { mode: "text" }).notNull(),
+  suspended: integer("suspended").notNull().default(0), // 0 = not suspended, 1 = suspended
 });
 
 // VanityKeypair schema

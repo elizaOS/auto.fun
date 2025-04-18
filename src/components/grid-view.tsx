@@ -12,7 +12,7 @@ export default function GridView({ data }: { data: IToken[] }) {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
       {data?.map((token: IToken, _: number) => {
         const isPartner = parntnerMintList.includes(token.mint);
         return (
@@ -33,9 +33,12 @@ export default function GridView({ data }: { data: IToken[] }) {
                 </div>
               </div>
               <div className="flex flex-col w-full min-w-0 z-10">
-                <div className="absolute bottom-0 right-0 p-2 px-3 inline-flex justify-start items-center gap-2 min-w-0">
-                  <div className="justify-start text-autofun-text-highlight text-xl font-medium font-dm-mono leading-7 truncate drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
-                    {abbreviateNumber(token.marketCapUSD)}
+                <div className="absolute flex flex-col bottom-0 right-0 p-2 px-3 items-end min-w-0">
+                  <div className="text-autofun-text-primary text-xl font-medium font-dm-mono leading-7 truncate drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
+                    Vol {abbreviateNumber(token.volume24h)}
+                  </div>
+                  <div className="text-autofun-text-highlight text-xl font-medium font-dm-mono leading-7 truncate drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
+                    MC {abbreviateNumber(token.marketCapUSD)}
                   </div>
                 </div>
               </div>

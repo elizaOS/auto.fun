@@ -17,9 +17,7 @@ export default function Page() {
   const [activeTab] = useViewMode();
   const [sortBy, setSortBy] = useFilter();
 
-  console.log(sortBy);
-  const query = useTokens(sortBy);
-  console.log("query:", query);
+  const query = useTokens(sortBy, true);
 
   useEffect(() => {
     getSocket().emit("subscribeGlobal");
@@ -44,7 +42,6 @@ export default function Page() {
       </div>
       {/* Top Navigation */}
       <div className="flex justify-between gap-1 flex-wrap-reverse md:flex-wrap">
-        <GridListSwitcher />
         <div className="flex items-center gap-1">
           <Button
             variant={sortBy === "all" ? "primary" : "outline"}
@@ -69,6 +66,7 @@ export default function Page() {
             New
           </Button>
         </div>
+        <GridListSwitcher />
       </div>
       <div className="flex flex-col flex-1">
         {!query?.isLoading ? (
@@ -101,6 +99,7 @@ export default function Page() {
           onPageChange={(pageNumber: number) => {
             if (query?.isLoading) return;
             query?.goToPage(pageNumber);
+            window.scrollTo({ top: 0, behavior: "smooth" });
           }}
         />
       </div>

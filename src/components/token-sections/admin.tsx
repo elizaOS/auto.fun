@@ -57,11 +57,8 @@ export default function AdminTab() {
 
   // Effect to detect token mint from various sources (similar to community tab)
   useEffect(() => {
-    console.log("URL params mint:", urlTokenMint);
-
     // First try from URL params (most reliable)
     if (urlTokenMint) {
-      console.log("Using token mint from URL params:", urlTokenMint);
       setDetectedTokenMint(urlTokenMint);
       return;
     }
@@ -69,13 +66,9 @@ export default function AdminTab() {
     // If not in params, try to extract from pathname
     const pathMatch = location.pathname.match(/\/token\/([A-Za-z0-9]{32,44})/);
     if (pathMatch && pathMatch[1]) {
-      console.log("Extracted token mint from pathname:", pathMatch[1]);
       setDetectedTokenMint(pathMatch[1]);
       return;
     }
-
-    // If still not found, check if we might be in a token context from parent component
-    console.log("Could not detect token mint from URL or path");
   }, [urlTokenMint, location.pathname]);
 
   const mint = detectedTokenMint;
@@ -116,18 +109,12 @@ export default function AdminTab() {
     const fetchTokenData = async () => {
       setIsLoading(true);
       try {
-        console.log(`Fetching token data for mint: ${mint}`);
         const response = await fetch(`${env.apiUrl}/api/token/${mint}`);
-
-        console.log("Token data response status:", response.status);
-
         if (!response.ok) {
           throw new Error(`Failed to fetch token data (${response.status})`);
         }
 
         const data = (await response.json()) as TokenData;
-        console.log("Token data fetched:", data);
-
         // Store original values
         setOriginalData({
           website: data.website || "",
@@ -179,8 +166,6 @@ export default function AdminTab() {
         headers["Authorization"] = `Bearer ${JSON.parse(authToken)}`;
       }
 
-      console.log("Sending update request with headers:", headers);
-
       // Create request payload with development override if needed
       const payload: Record<string, any> = {
         website: data.links.website,
@@ -196,8 +181,6 @@ export default function AdminTab() {
         body: JSON.stringify(payload),
         credentials: "include", // Important to include credentials for auth cookies
       });
-
-      console.log("Update response status:", response.status);
 
       if (!response.ok) {
         let errorMessage = "Failed to update token";

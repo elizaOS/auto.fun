@@ -339,6 +339,11 @@ export async function generateMedia(
     mode?: "fast" | "pro";
     image_url?: string; // For image-to-video
     lyrics?: string; // For music generation
+    reference_audio_url?: string;
+    style_prompt?: string;
+    music_duration?: string;
+    cfg_strength?: number;
+    scheduler?: string;
   },
 ) {
   // Set default timeout - shorter for tests
@@ -484,11 +489,24 @@ export async function generateMedia(
   } else if (data.type === MediaType.AUDIO) {
     if (data.lyrics) {
       // Use diffrhythm for music generation with lyrics
+      const formattedLyrics = formatLyricsForDiffrhythm(data.lyrics);
+
+      const input = {
+        lyrics: formattedLyrics,
+        reference_audio_url:
+          data.reference_audio_url ||
+          "https://storage.googleapis.com/falserverless/model_tests/diffrythm/rock_en.wav",
+        style_prompt: data.style_prompt || "pop",
+        music_duration: data.music_duration || "95s",
+        cfg_strength: data.cfg_strength || 4,
+        scheduler: data.scheduler || "euler",
+        num_inference_steps: data.num_inference_steps || 32,
+      };
+
+      console.log("DiffRhythm input:", JSON.stringify(input, null, 2));
+
       generationPromise = fal.subscribe("fal-ai/diffrhythm", {
-        input: {
-          lyrics: data.lyrics,
-          reference_audio_url: "https://example.com/reference.mp3", // Default reference URL
-        },
+        input,
         logs: true,
         onQueueUpdate: (update: any) => {
           if (update.status === "IN_PROGRESS") {
@@ -496,27 +514,79 @@ export async function generateMedia(
           }
         },
       });
-    } else {
-      // Default audio generation
-      generationPromise = fal.subscribe("fal-ai/stable-audio", {
-        input: {
-          prompt: data.prompt,
-          // Optional parameters passed if available
-          ...(data.duration_seconds
-            ? { duration: data.duration_seconds }
-            : { duration: 10 }),
+
+      // Return the audio URL and lyrics from the result
+      const result = await Promise.race([generationPromise, timeoutPromise]);
+      console.log("DiffRhythm result:", JSON.stringify(result, null, 2));
+
+      if (!result.data?.audio?.url) {
+        throw new Error("No audio URL in response");
+      }
+
+      return {
+        data: {
+          audio: {
+            url: result.data.audio.url,
+            lyrics: data.lyrics, // Include the original lyrics
+          },
         },
+      };
+    } else {
+      // Generate lyrics first, then use them to generate the song
+      const lyrics = await generateLyrics(
+        env,
+        {
+          name: data.prompt.split(":")[0] || "",
+          symbol: data.prompt.split(":")[1]?.trim() || "",
+          description: data.prompt.split(":")[2]?.trim() || "",
+        },
+        data.style_prompt,
+      );
+
+      // Now use the generated lyrics to create the song
+      const formattedLyrics = formatLyricsForDiffrhythm(lyrics);
+
+      const input = {
+        lyrics: formattedLyrics,
+        reference_audio_url:
+          data.reference_audio_url ||
+          "https://storage.googleapis.com/falserverless/model_tests/diffrythm/rock_en.wav",
+        style_prompt: data.style_prompt || "pop",
+        music_duration: data.music_duration || "95s",
+        cfg_strength: data.cfg_strength || 4,
+        scheduler: data.scheduler || "euler",
+        num_inference_steps: data.num_inference_steps || 32,
+      };
+
+      console.log("DiffRhythm input:", JSON.stringify(input, null, 2));
+
+      generationPromise = fal.subscribe("fal-ai/diffrhythm", {
+        input,
         logs: true,
         onQueueUpdate: (update: any) => {
           if (update.status === "IN_PROGRESS") {
-            console.log("Audio generation progress:", update.logs);
+            console.log("Music generation progress:", update.logs);
           }
         },
       });
-    }
 
-    // Race against timeout
-    return await Promise.race([generationPromise, timeoutPromise]);
+      // Return the audio URL and lyrics from the result
+      const result = await Promise.race([generationPromise, timeoutPromise]);
+      console.log("DiffRhythm result:", JSON.stringify(result, null, 2));
+
+      if (!result.data?.audio?.url) {
+        throw new Error("No audio URL in response");
+      }
+
+      return {
+        data: {
+          audio: {
+            url: result.data.audio.url,
+            lyrics: lyrics, // Include the generated lyrics
+          },
+        },
+      };
+    }
   }
 }
 
@@ -554,6 +624,11 @@ const MediaGenerationRequestSchema = z.object({
   mode: z.enum(["fast", "pro"]).optional().default("fast"),
   image_url: z.string().optional(), // For image-to-video
   lyrics: z.string().optional(), // For music generation with lyrics
+  reference_audio_url: z.string().optional(),
+  style_prompt: z.string().optional(),
+  music_duration: z.string().optional(),
+  cfg_strength: z.number().optional(),
+  scheduler: z.string().optional(),
 });
 
 // Token metadata generation validation schema
@@ -2441,8 +2516,13 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
       else if (mediaType === MediaType.AUDIO) {
         if (result.audio_file?.url) {
           mediaUrl = result.audio_file.url;
+        } else if (result.data?.audio_file?.url) {
+          // For diffrhythm model
+          mediaUrl = result.data.audio_file.url;
         } else if (result.output?.audio) {
           mediaUrl = result.output.audio;
+        } else if (result.data?.audio?.url) {
+          mediaUrl = result.data.audio.url;
         }
       }
       // Handle image result formats
@@ -2491,7 +2571,18 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
     }
 
     // Return successful response
-    return c.json({
+    interface GenerationResponse {
+      success: boolean;
+      mediaUrl: string;
+      enhancedPrompt: string;
+      originalPrompt: string;
+      generationId: string;
+      remainingGenerations: number;
+      resetTime: string;
+      lyrics?: string;
+    }
+
+    const response: GenerationResponse = {
       success: true,
       mediaUrl,
       enhancedPrompt,
@@ -2501,7 +2592,22 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
       resetTime: new Date(
         Date.now() + RATE_LIMITS[mediaType].COOLDOWN_PERIOD_MS,
       ).toISOString(),
-    });
+    };
+
+    // Add lyrics to response if available
+    if (mediaType === MediaType.AUDIO) {
+      if (result.data?.lyrics) {
+        response.lyrics = result.data.lyrics;
+      } else if (result.lyrics) {
+        response.lyrics = result.lyrics;
+      } else if (generationParams.lyrics) {
+        response.lyrics = generationParams.lyrics;
+      } else if (result.data?.audio?.lyrics) {
+        response.lyrics = result.data.audio.lyrics;
+      }
+    }
+
+    return c.json(response);
   } catch (error) {
     logger.error("Error in enhance-and-generate endpoint:", error);
     return c.json(
@@ -2648,6 +2754,134 @@ export async function generateAdditionalTokenImages(
       `Error in generateAdditionalTokenImages for ${tokenMint}:`,
       error,
     );
+  }
+}
+
+// Helper function to format lyrics for diffrhythm
+function formatLyricsForDiffrhythm(lyrics: string): string {
+  // Split lyrics into lines and clean up
+  const lines = lyrics.split("\n").filter((line) => line.trim() !== "");
+
+  // Process lines to ensure proper format
+  const formattedLines: string[] = [];
+  let currentTime = 0;
+
+  for (const line of lines) {
+    // Skip empty lines and metadata
+    if (
+      !line.trim() ||
+      line.toLowerCase().includes("here's a song") ||
+      line.toLowerCase().includes("outro") ||
+      line.toLowerCase().includes("verse") ||
+      line.toLowerCase().includes("chorus") ||
+      line.toLowerCase().includes("bridge") ||
+      line.includes("**")
+    ) {
+      continue;
+    }
+
+    // If line has a timestamp, use it
+    if (line.match(/\[\d{2}:\d{2}\.\d{2}\]/)) {
+      const match = line.match(/\[(\d{2}:\d{2}\.\d{2})\](.*)/);
+      if (match) {
+        const timestamp = match[1];
+        const lyric = match[2].trim();
+        if (lyric) {
+          formattedLines.push(`[${timestamp}]${lyric}`);
+        }
+      }
+    } else {
+      // If no timestamp, add one with proper spacing
+      const minutes = Math.floor(currentTime / 60);
+      const seconds = Math.floor(currentTime % 60);
+      const milliseconds = Math.floor((currentTime % 1) * 100);
+      const timestamp = `[${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${milliseconds.toString().padStart(2, "0")}]`;
+      formattedLines.push(`${timestamp}${line.trim()}`);
+      currentTime += 3.2; // Add 3.2 seconds between lines (matching example spacing)
+    }
+  }
+
+  // Join lines with newlines
+  const formattedLyrics = formattedLines.join("\n");
+  console.log("Formatted lyrics:", formattedLyrics);
+  return formattedLyrics;
+}
+
+// Helper function to generate lyrics using AI
+async function generateLyrics(
+  env: Env,
+  tokenMetadata: {
+    name: string;
+    symbol: string;
+    description?: string;
+  },
+  stylePrompt?: string,
+): Promise<string> {
+  try {
+    const systemPrompt = `You are a creative songwriter. Create lyrics for a song about the token "${tokenMetadata.name}" (${tokenMetadata.symbol}). 
+    The song should capture the essence of the token's description: "${tokenMetadata.description}".
+    ${stylePrompt ? `The musical style should be: ${stylePrompt}` : ""}
+    
+    Format the lyrics with timestamps in the format [MM:SS.mm] at the start of each line.
+    Include at least two sections: a verse and a chorus.
+    Each section should be marked with [verse] or [chorus] at the start.
+    Make the lyrics creative and engaging.
+    
+    Example format:
+    [verse]
+    [00:00.00] First line of verse
+    [00:02.50] Second line of verse
+    [00:05.00] Third line of verse
+    
+    [chorus]
+    [00:07.50] First line of chorus
+    [00:10.00] Second line of chorus
+    [00:12.50] Third line of chorus`;
+
+    const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt,
+        },
+      ],
+      max_tokens: 1000,
+      temperature: 0.8,
+    });
+
+    // Ensure the lyrics have proper formatting
+    let lyrics = response.response.trim();
+
+    // Add section markers if they're missing
+    if (!lyrics.includes("[verse]")) {
+      lyrics = `[verse]\n${lyrics}`;
+    }
+    if (!lyrics.includes("[chorus]")) {
+      lyrics = `[chorus]\n${lyrics}`;
+    }
+
+    // Add timestamps if they're missing
+    const lines = lyrics.split("\n");
+    let currentTime = 0;
+    const formattedLines = lines.map((line) => {
+      if (line.startsWith("[") && !line.match(/\[\d{2}:\d{2}\.\d{2}\]/)) {
+        return line; // Keep section markers as is
+      }
+      if (!line.match(/\[\d{2}:\d{2}\.\d{2}\]/)) {
+        const minutes = Math.floor(currentTime / 60);
+        const seconds = Math.floor(currentTime % 60);
+        const milliseconds = Math.floor((currentTime % 1) * 100);
+        const timestamp = `[${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${milliseconds.toString().padStart(2, "0")}]`;
+        currentTime += 2.5; // Add 2.5 seconds between lines
+        return `${timestamp} ${line}`;
+      }
+      return line;
+    });
+
+    return formattedLines.join("\n");
+  } catch (error) {
+    logger.error("Error generating lyrics:", error);
+    throw error;
   }
 }
 

@@ -3,12 +3,13 @@ import { Env } from "../env";
 import { processTransactionLogs } from "../cron";
 import { z } from "zod";
 import crypto from "crypto";
-import { getDB, swaps } from "../db";
+import { getDB, swaps, tokens } from "../db";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { getWebSocketClient } from "../websocket-client";
 import { startMonitoringBatch } from "../tokenSupplyHelpers/monitoring";
 import { getLatestCandle } from "../chart";
 import { ExternalToken } from "../externalToken";
+import { eq, and } from "drizzle-orm";
 
 const router = new Hono<{
   Bindings: Env;
@@ -112,42 +113,59 @@ router.post("/codex-webhook", async (c) => {
   }
 
   const swap = webhookBody.data.event;
-  const db = getDB(c.env);
+  // const db = getDB(c.env);
+  // Determine which token index (0 or 1) this event is for
+  const tokenIndex = swap.eventType2.startsWith("Token1") ? 1 : 0;
 
-  const amounts =
-    swap.eventDisplayType === "Buy"
-      ? {
-          amountIn: -Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
-          amountOut: Number(swap.data.amount0 || 0) * 1e6,
-        }
-      : {
-          amountIn: -Number(swap.data.amount0 || 0) * 1e6,
-          amountOut: Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
-        };
-  const tokenMint =
-    swap.eventDisplayType === "Buy" ? swap.token1Address : swap.token0Address;
-  const newSwaps = await db
-    .insert(swaps)
-    .values({
-      id: crypto.randomUUID(),
-      direction: swap.eventDisplayType === "Buy" ? 0 : 1,
-      price: Number(swap.token0ValueUsd),
-      timestamp: new Date(swap.timestamp * 1000).toISOString(),
-      tokenMint,
-      txId: swap.transactionHash,
-      type: swap.eventDisplayType === "Buy" ? "buy" : "sell",
-      user: swap.maker,
-      ...amounts,
-    })
-    .returning();
+  // const amounts =
+  //   swap.eventDisplayType === "Buy"
+  //     ? {
+  //         amountIn: -Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
+  //         amountOut: Number(swap.data.amount0 || 0) * 1e6,
+  //       }
+  //     : {
+  //         amountIn: -Number(swap.data.amount0 || 0) * 1e6,
+  //         amountOut: Number(swap.data.amount1 || 0) * LAMPORTS_PER_SOL,
+  //       };
+  const tokenMint = tokenIndex === 1 ? swap.token1Address : swap.token0Address;
+  // const newSwaps = await db
+  //   .insert(swaps)
+  //   .values({
+  //     id: crypto.randomUUID(),
+  //     direction: swap.eventDisplayType === "Buy" ? 0 : 1,
+  //     price: Number(swap.token0ValueUsd),
+  //     timestamp: new Date(swap.timestamp * 1000).toISOString(),
+  //     tokenMint,
+  //     txId: swap.transactionHash,
+  //     type: swap.eventDisplayType === "Buy" ? "buy" : "sell",
+  //     user: swap.maker,
+  //     ...amounts,
+  //   })
+  //   .returning();
+
+  //check if we have the token in the db
+  const db = getDB(c.env);
+  const token = await db
+    .select()
+    .from(tokens)
+    .where(eq(tokens.mint, tokenMint));
+  if (!token || token.length === 0) {
+    // do nothing since the token is not in the table
+    return c.json({
+      message: "Token not in db",
+    });
+  }
 
   const wsClient = getWebSocketClient(c.env);
-  await getLatestCandle(c.env, tokenMint, swap);
+
   const ext = new ExternalToken(c.env, tokenMint);
+  //  we just call this to update the last 20 swaps in the db
+  await ext.updateLatestSwapData(20);
+  const latestCandle = await getLatestCandle(c.env, tokenMint, swap);
+
   await ext.updateMarketAndHolders();
 
-  await wsClient.to(`token-${swap.token0Address}`).emit("newSwap", newSwaps[0]);
-
+  await wsClient.to(`token-${tokenMint}`).emit("newCandle", latestCandle);
   return c.json({
     message: "Completed",
   });

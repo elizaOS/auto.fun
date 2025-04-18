@@ -17,17 +17,13 @@ import swapRouter from "./routes/swap";
 import webhookRouter from "./routes/webhooks";
 import tokenRouter, { processSwapEvent } from "./routes/token";
 import migrationRouter from "./routes/migration";
+import adminRouter from "./routes/admin";
 import { uploadToCloudflare } from "./uploader";
-import { WebSocketDO, allowedOrigins, createTestSwap } from "./websocket";
+import { WebSocketDO, createTestSwap } from "./websocket";
 import { getWebSocketClient } from "./websocket-client";
 import { getSOLPrice } from "./mcap";
+import { allowedOrigins } from "./allowedOrigins";
 // import { startMonitoringBatch } from "./tokenSupplyHelpers/monitoring";
-
-// Define a simple interface for the scheduled event object
-interface ScheduledEvent {
-  cron: string;
-  scheduledTime: number;
-}
 
 const app = new Hono<{
   Bindings: Env;
@@ -105,6 +101,7 @@ api.route("/", swapRouter);
 api.route("/share", shareRouter);
 api.route("/", webhookRouter);
 api.route("/", migrationRouter);
+api.route("/admin", adminRouter);
 
 // Root paths for health checks
 app.get("/", (c) => c.json({ status: "ok" }));

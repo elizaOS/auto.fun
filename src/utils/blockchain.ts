@@ -53,7 +53,6 @@ class RequestQueue {
     if (this.requestsInWindow >= this.maxRequestsPerWindow) {
       // Wait until the current window expires
       const waitTime = this.rateWindow - (now - this.windowStartTime);
-      console.log(`Rate limiting: waiting ${waitTime}ms before next request`);
       await delay(waitTime + 100); // Add a small buffer
       this.windowStartTime = Date.now();
       this.requestsInWindow = 0;
@@ -68,9 +67,6 @@ class RequestQueue {
       resolve(result);
     } catch (error: any) {
       if (error.message?.includes("429") || error.toString().includes("429")) {
-        console.log(
-          "Rate limit hit (429). Adding request back to queue with backoff.",
-        );
         // Put the request back at the end of the queue
         this.queue.push({ fn, resolve, reject });
         // Wait with exponential backoff
@@ -168,10 +164,6 @@ export const fetchTokenHolders = async (
   tokenMint: string,
 ): Promise<{ holders: TokenHolder[]; total: number }> => {
   try {
-    console.log(
-      `Fetching token holders directly from blockchain for ${tokenMint}`,
-    );
-
     // Use cached holders data if available (2 minute cache)
     const cacheKey = `holders:${tokenMint}`;
     if (cache.tokenAccounts.has(cacheKey)) {
@@ -205,10 +197,6 @@ export const fetchTokenHolders = async (
             ],
           },
         ),
-    );
-
-    console.log(
-      `Found ${accounts.length} token accounts for mint ${tokenMint}`,
     );
 
     // Process accounts to extract holder information
@@ -287,10 +275,6 @@ export const fetchTokenTransactions = async (
           { limit: Math.min(limit * 2, 25) }, // Request fewer signatures to avoid rate limits
         ),
       60000, // 1 minute cache for signatures
-    );
-
-    console.log(
-      `Found ${signatures.length} recent signatures for mint ${tokenMint}`,
     );
 
     if (signatures.length === 0) {
@@ -422,13 +406,9 @@ export const fetchTokenChartData = async (
     const cacheKey = `chart:${tokenMint}:${from}:${to}:${resolution}`;
     const cachedData = cache.transactions.get(cacheKey);
     if (cachedData) {
-      console.log(`Using cached chart data for ${tokenMint}`);
       return cachedData;
     }
 
-    console.log(
-      `Fetching token chart data from blockchain for ${tokenMint} (resolution: ${resolution})`,
-    );
     const connection = getConnection();
 
     // Get more signatures for better data
@@ -443,8 +423,6 @@ export const fetchTokenChartData = async (
       60000, // 1 minute cache for signatures
     );
 
-    console.log(`Found ${signatures.length} signatures for chart data`);
-
     if (signatures.length === 0) {
       return { table: [], nextTime: null };
     }
@@ -455,10 +433,6 @@ export const fetchTokenChartData = async (
       const time = sig.blockTime;
       return time >= from && time <= to;
     });
-
-    console.log(
-      `Filtered to ${filteredSignatures.length} signatures in the time range`,
-    );
 
     // Process a reasonable batch of signatures to get good chart data
     const signaturesToProcess = filteredSignatures.slice(
@@ -583,13 +557,8 @@ export const fetchTokenChartData = async (
     }[];
 
     if (pricePoints.length === 0) {
-      console.log("No valid price points found in transactions");
       return { table: [], nextTime: null };
     }
-
-    console.log(
-      `Found ${pricePoints.length} valid price points for chart data`,
-    );
 
     // Sort price points by time
     pricePoints.sort((a, b) => a.time - b.time);

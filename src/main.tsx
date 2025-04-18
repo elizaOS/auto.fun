@@ -13,11 +13,13 @@ import Token from "./pages/token";
 import Testing from "./pages/testing";
 import CallbackPage from "./pages/callback";
 import PageNotFound from "./pages/not-found";
+import Admin from "./pages/admin";
 
 // if the date is before 2025-04-15, redirect to the old website
 if (
-  window.location.hostname.includes("auto.fun") &&
-  new Date() < new Date("2025-04-17T00:00:00Z") &&
+  (window.location.hostname.includes("auto.fun") ||
+    window.location.hostname.includes("autofun.tech")) &&
+  new Date() < new Date("2025-04-19T00:00:00Z") &&
   !window.location.search.includes("dev") &&
   !window.location.hostname.includes("localhost") &&
   !window.location.hostname.includes("127.0.0.1")
@@ -38,6 +40,7 @@ if (
           <Route path="/create" element={<Create />} />
           <Route path="/testing" element={<Testing />} />
           <Route path="/callback" element={<CallbackPage />} />
+          <Route path="/admin/*" element={<Admin />} />
           <Route path="*" element={<PageNotFound />} />
         </Route>
       </Routes>

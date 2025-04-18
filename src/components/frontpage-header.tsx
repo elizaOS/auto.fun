@@ -463,8 +463,6 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     // Mark as initialized to prevent re-initialization
     sceneInitializedRef.current = true;
 
-    console.log("Initializing dice physics scene");
-
     // Get container dimensions
     const containerWidth = containerRef.current.clientWidth;
     const containerHeight = 300; // Fixed height
@@ -664,59 +662,83 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
     // Load textures for dice
     const textureLoader = new THREE.TextureLoader();
+    textureLoader.crossOrigin = "anonymous";
 
-    // Use default placeholder if we don't have enough tokens
     const fallbackTexture = "header/placeholder/logo.jpg";
 
     // Helper function to create materials for a die with the same texture on all sides
     const createDieMaterialsWithSameTexture = (tokenImage: string) => {
       return new Promise<THREE.MeshStandardMaterial[]>((resolve) => {
-        const texture = textureLoader.load(
+        // Make sure textureLoader has crossOrigin set
+        if (!textureLoader.crossOrigin) {
+          textureLoader.crossOrigin = "anonymous";
+        }
+
+        textureLoader.load(
           tokenImage,
           (texture) => {
+            // Success callback - only resolve here
             texture.colorSpace = THREE.SRGBColorSpace;
             setIsLoading(false);
+
+            // Create materials with the successfully loaded texture
+            const materials = Array(6)
+              .fill(null)
+              .map(
+                () =>
+                  new THREE.MeshStandardMaterial({
+                    map: texture,
+                    roughness: 0.75,
+                    metalness: 0.2,
+                    emissiveMap: texture,
+                    emissiveIntensity: 0.3,
+                  }),
+              );
+
+            resolve(materials);
           },
           undefined,
           (error) => {
             console.warn("Error loading texture:", error);
+
             // Load fallback texture if the token image fails
-            const fallback = textureLoader.load(
-              fallbackTexture,
+            textureLoader.load(
+              fallbackTexture, // Make sure this variable is defined
               (fallbackTex) => {
                 fallbackTex.colorSpace = THREE.SRGBColorSpace;
                 setIsLoading(false);
+
+                // Resolve with fallback materials
+                resolve(
+                  Array(6).fill(
+                    new THREE.MeshStandardMaterial({
+                      map: fallbackTex,
+                      roughness: 1.0,
+                      metalness: 0.3,
+                      emissiveMap: fallbackTex,
+                      emissiveIntensity: 0.3,
+                    }),
+                  ),
+                );
               },
-            );
-            resolve(
-              Array(6).fill(
-                new THREE.MeshStandardMaterial({
-                  map: fallback,
-                  roughness: 1.0,
-                  metalness: 0.3,
-                  emissiveMap: fallback,
-                  emissiveIntensity: 0.3,
-                }),
-              ),
+              undefined,
+              (fallbackError) => {
+                // Handle fallback texture loading error
+                console.error("Fallback texture also failed:", fallbackError);
+                setIsLoading(false);
+
+                // Create a solid color material as last resort
+                const solidMaterial = new THREE.MeshStandardMaterial({
+                  color: 0x444444,
+                  roughness: 0.8,
+                  metalness: 0.2,
+                });
+
+                resolve(Array(6).fill(solidMaterial));
+              },
             );
           },
         );
-
-        // Create 6 sides with the same material
-        const materials = Array(6)
-          .fill(null)
-          .map(
-            () =>
-              new THREE.MeshStandardMaterial({
-                map: texture,
-                roughness: 0.75,
-                metalness: 0.2,
-                emissiveMap: texture,
-                emissiveIntensity: 0.3,
-              }),
-          );
-
-        resolve(materials);
       });
     };
 

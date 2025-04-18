@@ -64,14 +64,6 @@ const useCreateTokenMutation = () => {
         microLamports: 50000,
       });
 
-      console.log(
-        "minting token",
-        token_metadata.name,
-        token_metadata.symbol,
-        metadataUrl,
-        token_metadata.tokenMint,
-      );
-
       const tx =
         token_metadata.initialSol > 0
           ? await launchAndSwapTx(
