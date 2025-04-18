@@ -9,6 +9,7 @@ import TokenStatus from "@/components/token-status";
 import Trade from "@/components/trade";
 import { TradingViewChart } from "@/components/trading-view-chart";
 import TransactionsAndHolders from "@/components/txs-and-holders";
+import Verified from "@/components/verified";
 import { useTokenBalance } from "@/hooks/use-token-balance";
 import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { IToken } from "@/types";
@@ -260,34 +261,15 @@ export default function Page() {
                   isPartner
                     ? "from-autofun-background-action-highlight/10 via-autofun-background-action-highlight/10"
                     : "from-black/50 via-black/25",
-                  "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5",
+                  "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5"
                 )}
               >
                 <div className="flex flex-wrap items-center justify-start w-full gap-2">
-                  <div className="flex flex-wrap items-center gap-1">
-                    {isPartner ? (
-                      <>
-                        <div
-                          id="partner-token"
-                          className="flex items-center gap-2 cursor-pointer"
-                        >
-                          <img
-                            src="/verified.svg"
-                            className="size-6"
-                            alt="verified-mark"
-                          />
-                        </div>
-                        <Tooltip
-                          anchorSelect="#partner-token"
-                          content="Verified by Auto.fun"
-                          place="top-start"
-                          noArrow
-                        />
-                      </>
-                    ) : null}
-                    <h3 className="capitalize text-white text-xl sm:text-2xl font-bold font-satoshi leading-tight truncate pr-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] max-w-[180px] sm:max-w-none">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="capitalize text-white text-xl sm:text-2xl font-bold font-satoshi leading-tight truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] max-w-[180px] sm:max-w-none">
                       {token?.name}
                     </h3>
+                    <Verified isVerified={token?.verified ? true : false} />
                     <Tooltip anchorSelect="#view-on-solscan">
                       <span>View on Solscan</span>
                     </Tooltip>
@@ -518,7 +500,7 @@ export default function Page() {
                   {formatNumber(
                     tokenBalance * currentPrice * solanaPrice,
                     true,
-                    false,
+                    false
                   )}
                 </span>
               </div>
@@ -580,7 +562,7 @@ export default function Page() {
                       (token?.reserveLamport - token?.virtualReserves) /
                         LAMPORTS_PER_SOL,
                       true,
-                      true,
+                      true
                     )}{" "}
                     SOL in the bonding curve.
                   </p>
