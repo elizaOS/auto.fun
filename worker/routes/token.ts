@@ -1182,17 +1182,17 @@ tokenRouter.get("/tokens", async (c) => {
         // Apply sorting - map frontend sort values to actual DB columns
         // Handle "featured" sort as a special case
         if (sortBy === "featured") {
+          /** If tokens have featured, they should appear first */
+          tokensQuery = tokensQuery.orderBy(
+            sql`CASE WHEN ${tokens.featured} = 1 THEN 0 ELSE 1 END`,
+          );
+
           // Apply the weighted sort with the max values
           tokensQuery = applyFeaturedSort(
             tokensQuery,
             maxVolume,
             maxHolders,
             sortOrder,
-          );
-
-          /** If tokens have featured, they should appear first */
-          tokensQuery = tokensQuery.orderBy(
-            sql`${tokens.featured} DESC NULLS LAST`,
           );
         } else {
           // For other columns, safely map to actual db columns
