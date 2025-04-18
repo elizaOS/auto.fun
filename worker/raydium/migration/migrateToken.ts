@@ -41,7 +41,7 @@ export class TokenMigrator {
     public program: Program<RaydiumVault>,
     public autofunProgram: Program<Autofun>,
     public provider: AnchorProvider,
-  ) {}
+  ) { }
   FEE_PERCENTAGE = 10; // 10% fee for pool creation
 
   async scheduleNextInvocation(token: TokenData): Promise<void> {
@@ -541,6 +541,10 @@ export class TokenMigrator {
 
   async collectFee(token: any): Promise<{ txId: string; extraData: object }> {
     console.log("Collecting fee for token", token.mint);
+    if (this.env.FIXED_FEE === undefined || Number(this.env.FIXED_FEE) === 0) {
+      console.log("No fee to collect");
+      return { txId: "no_fee", extraData: {} };
+    }
     const mintConstantFee = new BN(Number(this.env.FIXED_FEE ?? 6) * 1e9); // 6 SOL
     const feeWallet = new PublicKey(this.env.ACCOUNT_FEE_MULTISIG!);
     const signerWallet =
