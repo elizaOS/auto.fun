@@ -1170,6 +1170,18 @@ tokenRouter.get("/tokens", async (c) => {
         // By default, don't show hidden tokens
         tokensQuery = tokensQuery.where(sql`(${tokens.hidden} != 1)`);
 
+        const validSortColumns = {
+          marketCapUSD: tokens.marketCapUSD,
+          createdAt: tokens.createdAt,
+          holderCount: tokens.holderCount,
+          tokenPriceUSD: tokens.tokenPriceUSD,
+          name: tokens.name,
+          ticker: tokens.ticker,
+          volume24h: tokens.volume24h,
+          curveProgress: tokens.curveProgress,
+          featured: tokens.featured,
+        };
+
         if (search) {
           // This is a simplified implementation - in production you'd use a proper search mechanism
           tokensQuery = tokensQuery.where(
@@ -1183,30 +1195,16 @@ tokenRouter.get("/tokens", async (c) => {
         // Handle "featured" sort as a special case
         if (sortBy === "featured") {
           /** If tokens have featured, they should appear first */
-          tokensQuery = tokensQuery.orderBy(
-            sql`CASE WHEN ${tokens.featured} = 1 THEN 0 ELSE 1 END`,
-          );
+          tokensQuery = tokensQuery.orderBy(desc(tokens.featured));
 
-          // Apply the weighted sort with the max values
-          tokensQuery = applyFeaturedSort(
-            tokensQuery,
-            maxVolume,
-            maxHolders,
-            sortOrder,
-          );
+          // // Apply the weighted sort with the max values
+          // tokensQuery = applyFeaturedSort(
+          //   tokensQuery,
+          //   maxVolume,
+          //   maxHolders,
+          //   sortOrder
+          // );
         } else {
-          // For other columns, safely map to actual db columns
-          const validSortColumns = {
-            marketCapUSD: tokens.marketCapUSD,
-            createdAt: tokens.createdAt,
-            holderCount: tokens.holderCount,
-            tokenPriceUSD: tokens.tokenPriceUSD,
-            name: tokens.name,
-            ticker: tokens.ticker,
-            volume24h: tokens.volume24h,
-            curveProgress: tokens.curveProgress,
-          };
-
           // Use the mapped column or default to createdAt
           const sortColumn =
             validSortColumns[sortBy as keyof typeof validSortColumns] ||
