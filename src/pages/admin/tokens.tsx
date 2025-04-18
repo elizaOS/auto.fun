@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import CopyButton from "@/components/copy-button";
 import { fetcher, getToken } from "@/utils/api";
+import { useTokens } from "@/hooks/use-tokens";
 import Pagination from "@/components/pagination";
 import Loader from "@/components/loader";
 
@@ -81,7 +82,22 @@ function AdminTokensList() {
                 className="border-b border-autofun-background-primary"
               >
                 <td className="p-2">{token.mint.substring(0, 8)}...</td>
-                <td className="p-2">{token.name}</td>
+                <td className="p-2">
+                  <div className="flex items-center space-x-2">
+                    {token.image && (
+                      <img 
+                        src={token.image} 
+                        alt={token.name} 
+                        className="w-6 h-6 rounded-full object-cover"
+                        onError={(e) => {
+                          // Replace broken images with a placeholder
+                          (e.target as HTMLImageElement).src = '/placeholder.png';
+                        }}
+                      />
+                    )}
+                    <span>{token.name}</span>
+                  </div>
+                </td>
                 <td className="p-2">{token.ticker}</td>
                 <td className="p-2">
                   {new Date(token.createdAt).toLocaleDateString()}
@@ -151,7 +167,6 @@ function AdminTokensList() {
 }
 
 import { IToken } from "@/types";
-import { useTokens } from "@/hooks/use-tokens";
 
 // Extended token interface with admin-specific fields
 interface AdminToken extends IToken {

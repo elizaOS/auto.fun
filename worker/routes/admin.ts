@@ -4,6 +4,7 @@ import { getDB, tokens, users } from "../db";
 import { logger } from "../logger";
 import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { verifyAuth } from "../auth";
+import { handleAdminUserTokens } from "./admin-user-tokens";
 
 // Define the router with environment typing
 const adminRouter = new Hono<{
@@ -241,7 +242,7 @@ adminRouter.patch("/tokens/:mint/verified", requireAdmin, async (c) => {
 });
 
 // Route to set a user to suspended
-adminRouter.patch("/users/:address/suspended", requireAdmin, async (c) => {
+adminRouter.post("/users/:address/suspended", requireAdmin, async (c) => {
   try {
     const address = c.req.param("address");
     if (!address || address.length < 32 || address.length > 44) {
@@ -333,15 +334,42 @@ adminRouter.get("/users/:address", requireAdmin, async (c) => {
     const user = userData[0];
     const isSuspended = user.name ? user.name.startsWith('[SUSPENDED]') : false;
 
-    // Return user data with additional suspended flag
+    // Add empty arrays for tokensCreated, tokensHeld, and transactions if they don't exist
+    // This prevents "Cannot read properties of undefined (reading 'length')" errors
     return c.json({
       user: {
         ...user,
-        suspended: isSuspended
+        suspended: isSuspended,
+        tokensCreated: [],
+        tokensHeld: [],
+        transactions: [],
+        totalVolume: 0
       }
     });
   } catch (error) {
     logger.error("Error getting user:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
+
+// Route to get user tokens (held and created)
+adminRouter.get("/users/:address/tokens", requireAdmin, async (c) => {
+  try {
+    const address = c.req.param("address");
+    if (!address || address.length < 32 || address.length > 44) {
+      return c.json({ error: "Invalid wallet address" }, 400);
+    }
+
+    // Create a simple request object
+    const request = new Request(c.req.url);
+
+    // Use the handleAdminUserTokens function to fetch user tokens
+    return await handleAdminUserTokens(request, c.env, address);
+  } catch (error) {
+    logger.error("Error getting user tokens:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
       500
@@ -528,8 +556,17 @@ adminRouter.get("/users", requireAdmin, async (c) => {
 
     const totalPages = Math.ceil(total / limit);
 
+    // Add empty arrays for tokensCreated, tokensHeld, and transactions for each user
+    const usersWithDefaults = usersResult.map((user: any) => ({
+      ...user,
+      tokensCreated: [],
+      tokensHeld: [],
+      transactions: [],
+      totalVolume: 0
+    }));
+
     return c.json({
-      users: usersResult,
+      users: usersWithDefaults,
       page,
       totalPages,
       total,
