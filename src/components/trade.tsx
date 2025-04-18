@@ -1,16 +1,15 @@
+import useAuthentication from "@/hooks/use-authentication";
 import { useSwap } from "@/hooks/use-swap";
 import { useTokenBalance } from "@/hooks/use-token-balance";
-import { useSolPriceContext } from "@/providers/use-sol-price-context";
 import { IToken } from "@/types";
 import { formatNumber } from "@/utils";
 import { useProgram } from "@/utils/program";
 import { getSwapAmount, getSwapAmountJupiter } from "@/utils/swapUtils";
+import { useQuery } from "@tanstack/react-query";
 import { Info, Wallet } from "lucide-react";
 import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
-import { useQuery } from "@tanstack/react-query";
-import useAuthentication from "@/hooks/use-authentication";
 
 export default function Trade({
   token,
@@ -19,7 +18,7 @@ export default function Trade({
   token: IToken;
   onSwapCompleted: (signature: string) => void;
 }) {
-  const { solPrice: contextSolPrice } = useSolPriceContext();
+  // const { solPrice: contextSolPrice } = useSolPriceContext();
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
 
   const [sellAmount, setSellAmount] = useState<number | undefined>(undefined);
@@ -39,7 +38,7 @@ export default function Trade({
   };
 
   // Use blockchain data if available, otherwise fall back to token data
-  const solanaPrice = contextSolPrice || token?.solPriceUSD || 0;
+  // const solanaPrice = contextSolPrice || token?.solPriceUSD || 0;
   const currentPrice = token?.currentPrice || 0;
 
   const { solBalance, tokenBalance } = useTokenBalance({ tokenId: token.mint });
