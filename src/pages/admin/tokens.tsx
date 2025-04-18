@@ -4,7 +4,6 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import CopyButton from "@/components/copy-button";
 import { fetcher, getToken } from "@/utils/api";
-import { useAdminTokens } from "@/hooks/use-admin-tokens";
 import Pagination from "@/components/pagination";
 import Loader from "@/components/loader";
 
@@ -26,7 +25,7 @@ function AdminTokensList() {
   >("newest");
   const [hideImported, setHideImported] = useState(false);
 
-  const tokensPagination = useAdminTokens(sortBy, hideImported, 50);
+  const tokensPagination = useTokens(sortBy, hideImported, 50);
 
   if (tokensPagination.isLoading) {
     return <Loader />;
@@ -152,6 +151,7 @@ function AdminTokensList() {
 }
 
 import { IToken } from "@/types";
+import { useTokens } from "@/hooks/use-tokens";
 
 // Extended token interface with admin-specific fields
 interface AdminToken extends IToken {

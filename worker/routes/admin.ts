@@ -349,6 +349,46 @@ adminRouter.get("/users/:address", requireAdmin, async (c) => {
   }
 });
 
+// Route to get admin statistics
+adminRouter.get("/stats", requireAdmin, async (c) => {
+  try {
+    const db = getDB(c.env);
+    
+    // Get total user count
+    const userCountResult = await db
+      .select({ count: sql`count(*)` })
+      .from(users);
+    const userCount = Number(userCountResult[0]?.count || 0);
+    
+    // Get total token count
+    const tokenCountResult = await db
+      .select({ count: sql`count(*)` })
+      .from(tokens);
+    const tokenCount = Number(tokenCountResult[0]?.count || 0);
+    
+    // Calculate 24h volume by summing the volume24h field from all tokens
+    // In a real app, this would likely come from a transactions table with proper date filtering
+    const volumeResult = await db
+      .select({ totalVolume: sql`SUM(volume24h)` })
+      .from(tokens);
+    const volume24h = Number(volumeResult[0]?.totalVolume || 0);
+    
+    return c.json({
+      stats: {
+        userCount,
+        tokenCount,
+        volume24h
+      }
+    });
+  } catch (error) {
+    logger.error("Error getting admin stats:", error);
+    return c.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      500
+    );
+  }
+});
+
 // Route to retrieve users in a paginated way
 adminRouter.get("/users", requireAdmin, async (c) => {
   try {
