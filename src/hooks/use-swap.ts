@@ -159,7 +159,9 @@ export const useSwap = () => {
     const simulation = await connection.simulateTransaction(tx);
 
     if (simulation.value.err) {
-      throw new Error(`Transaction simulation failed: ${simulation.value.err}`);
+      throw new Error(
+        `Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`,
+      );
     }
 
     const versionedTx = new VersionedTransaction(tx.compileMessage());
