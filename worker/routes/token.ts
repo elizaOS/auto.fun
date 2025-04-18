@@ -59,7 +59,7 @@ tokenRouter.get("/image/:filename", async (c) => {
     // Check if this is a special generation image request
     // Format: generation-[mint]-[number].jpg
     const generationMatch = filename.match(
-      /^generation-([A-Za-z0-9]{32,44})-([1-9][0-9]*)\.jpg$/
+      /^generation-([A-Za-z0-9]{32,44})-([1-9][0-9]*)\.jpg$/,
     );
 
     let imageKey;
@@ -68,7 +68,7 @@ tokenRouter.get("/image/:filename", async (c) => {
       // This is a special request for a generation image
       imageKey = `generations/${mint}/gen-${number}.jpg`;
       logger.log(
-        `[/image/:filename] Detected generation image request: ${imageKey}`
+        `[/image/:filename] Detected generation image request: ${imageKey}`,
       );
     } else {
       // Regular image request
@@ -76,13 +76,13 @@ tokenRouter.get("/image/:filename", async (c) => {
     }
 
     logger.log(
-      `[/image/:filename] Attempting to get object from R2 key: ${imageKey}`
+      `[/image/:filename] Attempting to get object from R2 key: ${imageKey}`,
     );
     const object = await c.env.R2.get(imageKey);
 
     if (!object) {
       logger.warn(
-        `[/image/:filename] Image not found in R2 for key: ${imageKey}`
+        `[/image/:filename] Image not found in R2 for key: ${imageKey}`,
       );
 
       // DEBUG: List files in the token-images directory to help diagnose issues
@@ -93,18 +93,18 @@ tokenRouter.get("/image/:filename", async (c) => {
           limit: 10,
         });
         logger.log(
-          `[/image/:filename] Files in ${prefix} directory: ${objects.objects.map((o) => o.key).join(", ")}`
+          `[/image/:filename] Files in ${prefix} directory: ${objects.objects.map((o) => o.key).join(", ")}`,
         );
       } catch (listError) {
         logger.error(
-          `[/image/:filename] Error listing files in directory: ${listError}`
+          `[/image/:filename] Error listing files in directory: ${listError}`,
         );
       }
 
       return c.json({ error: "Image not found" }, 404);
     }
     logger.log(
-      `[/image/:filename] Found object in R2: size=${object.size}, type=${object.httpMetadata?.contentType}`
+      `[/image/:filename] Found object in R2: size=${object.size}, type=${object.httpMetadata?.contentType}`,
     );
 
     // Determine appropriate content type
@@ -133,7 +133,7 @@ tokenRouter.get("/image/:filename", async (c) => {
     };
 
     logger.log(
-      `[/image/:filename] Serving ${filename} with type ${contentType}`
+      `[/image/:filename] Serving ${filename} with type ${contentType}`,
     );
     return new Response(data, {
       headers: {
@@ -155,7 +155,7 @@ tokenRouter.get("/metadata/:filename", async (c) => {
   const isTemp = c.req.query("temp") === "true";
 
   logger.log(
-    `[/metadata/:filename] Request received for filename: ${filename}, temp=${isTemp}`
+    `[/metadata/:filename] Request received for filename: ${filename}, temp=${isTemp}`,
   );
 
   try {
@@ -178,27 +178,27 @@ tokenRouter.get("/metadata/:filename", async (c) => {
       : `token-metadata-temp/${filename}`;
 
     logger.log(
-      `[/metadata/:filename] Checking primary location: ${primaryKey}`
+      `[/metadata/:filename] Checking primary location: ${primaryKey}`,
     );
     let object = await c.env.R2.get(primaryKey);
 
     // If not found in primary location, check fallback location
     if (!object) {
       logger.log(
-        `[/metadata/:filename] Not found in primary location, checking fallback: ${fallbackKey}`
+        `[/metadata/:filename] Not found in primary location, checking fallback: ${fallbackKey}`,
       );
       object = await c.env.R2.get(fallbackKey);
     }
 
     if (!object) {
       logger.error(
-        `[/metadata/:filename] Metadata not found in either location`
+        `[/metadata/:filename] Metadata not found in either location`,
       );
       return c.json({ error: "Metadata not found" }, 404);
     }
 
     logger.log(
-      `[/metadata/:filename] Found metadata: size=${object.size}, type=${object.httpMetadata?.contentType}`
+      `[/metadata/:filename] Found metadata: size=${object.size}, type=${object.httpMetadata?.contentType}`,
     );
 
     const contentType = object.httpMetadata?.contentType || "application/json";
@@ -218,7 +218,7 @@ tokenRouter.get("/metadata/:filename", async (c) => {
   } catch (error) {
     logger.error(
       `[/metadata/:filename] Error serving metadata ${filename}:`,
-      error
+      error,
     );
     return c.json({ error: "Failed to serve metadata JSON" }, 500);
   }
@@ -227,7 +227,7 @@ tokenRouter.get("/metadata/:filename", async (c) => {
 export async function processSwapEvent(
   env: Env,
   swap: any,
-  shouldEmitGlobal: boolean = true
+  shouldEmitGlobal: boolean = true,
 ): Promise<void> {
   try {
     // Get WebSocket client
@@ -255,7 +255,7 @@ export async function processSwapEvent(
       const featuredScore = calculateFeaturedScore(
         tokenData[0],
         maxVolume,
-        maxHolders
+        maxHolders,
       );
 
       // Add token data with featuredScore to the swap
@@ -295,14 +295,14 @@ async function processTokenInfo(
   mintPublicKey: PublicKey,
   tokenInfo: AccountInfo<Buffer>,
   connection: Connection,
-  requestor: string
+  requestor: string,
 ) {
   // Check program ID to verify this is an SPL token
   const TOKEN_PROGRAM_ID = new PublicKey(
-    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
   );
   const TOKEN_2022_PROGRAM_ID = new PublicKey(
-    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
   );
 
   const isSplToken = tokenInfo.owner.equals(TOKEN_PROGRAM_ID);
@@ -313,7 +313,7 @@ async function processTokenInfo(
       {
         error: "Not a valid SPL token. Owner: " + tokenInfo.owner.toString(),
       },
-      400
+      400,
     );
   }
 
@@ -323,7 +323,7 @@ async function processTokenInfo(
   // Get mint info - decimals and authorities
   const mintInfo = await connection.getParsedAccountInfo(mintPublicKey);
   logger.log(
-    `[search-token] Mint info: ${JSON.stringify(mintInfo.value?.data)}`
+    `[search-token] Mint info: ${JSON.stringify(mintInfo.value?.data)}`,
   );
 
   // Extract basic token info
@@ -349,12 +349,12 @@ async function processTokenInfo(
 
     // Find the tokenMetadata extension if it exists
     const metadataExt = parsedData.info.extensions.find(
-      (ext: any) => ext.extension === "tokenMetadata"
+      (ext: any) => ext.extension === "tokenMetadata",
     );
 
     if (metadataExt && metadataExt.state) {
       logger.log(
-        `[search-token] Found tokenMetadata extension: ${JSON.stringify(metadataExt.state)}`
+        `[search-token] Found tokenMetadata extension: ${JSON.stringify(metadataExt.state)}`,
       );
 
       // Extract metadata directly from the extension
@@ -364,11 +364,11 @@ async function processTokenInfo(
       updateAuthority = metadataExt.state.updateAuthority || null;
 
       logger.log(
-        `[search-token] SPL-2022 metadata - Name: ${tokenName}, Symbol: ${tokenSymbol}`
+        `[search-token] SPL-2022 metadata - Name: ${tokenName}, Symbol: ${tokenSymbol}`,
       );
       logger.log(`[search-token] SPL-2022 metadata - URI: ${uri}`);
       logger.log(
-        `[search-token] SPL-2022 metadata - Update Authority: ${updateAuthority}`
+        `[search-token] SPL-2022 metadata - Update Authority: ${updateAuthority}`,
       );
 
       foundMetadata = true;
@@ -385,7 +385,7 @@ async function processTokenInfo(
           try {
             const uriData = JSON.parse(uriText);
             logger.log(
-              `[search-token] Parsed URI data: ${JSON.stringify(uriData)}`
+              `[search-token] Parsed URI data: ${JSON.stringify(uriData)}`,
             );
 
             // Extract image and description if available
@@ -397,23 +397,23 @@ async function processTokenInfo(
             if (uriData.description) {
               description = uriData.description;
               logger.log(
-                `[search-token] Found description in URI: ${description}`
+                `[search-token] Found description in URI: ${description}`,
               );
             }
           } catch (parseError) {
             logger.error(
-              `[search-token] Error parsing URI JSON: ${parseError}`
+              `[search-token] Error parsing URI JSON: ${parseError}`,
             );
           }
         } else {
           logger.error(
-            `[search-token] Failed to fetch URI: ${uriResponse.status} ${uriResponse.statusText}`
+            `[search-token] Failed to fetch URI: ${uriResponse.status} ${uriResponse.statusText}`,
           );
         }
       }
     } else {
       logger.log(
-        `[search-token] No tokenMetadata extension found in SPL-2022 token`
+        `[search-token] No tokenMetadata extension found in SPL-2022 token`,
       );
     }
   }
@@ -422,7 +422,7 @@ async function processTokenInfo(
   if (!foundMetadata) {
     // Get metadata PDA
     const METADATA_PROGRAM_ID = new PublicKey(
-      "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+      "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
     );
     const [metadataAddress] = PublicKey.findProgramAddressSync(
       [
@@ -430,11 +430,11 @@ async function processTokenInfo(
         METADATA_PROGRAM_ID.toBuffer(),
         mintPublicKey.toBuffer(),
       ],
-      METADATA_PROGRAM_ID
+      METADATA_PROGRAM_ID,
     );
 
     logger.log(
-      `[search-token] Metadata address: ${metadataAddress.toString()}`
+      `[search-token] Metadata address: ${metadataAddress.toString()}`,
     );
 
     // Get metadata account data - direct read from chain with no fallbacks
@@ -444,26 +444,26 @@ async function processTokenInfo(
       // For regular SPL tokens, this is an error
       if (isSPL2022) {
         logger.warn(
-          `[search-token] No Metaplex metadata found for SPL-2022 token: ${mintPublicKey.toString()}`
+          `[search-token] No Metaplex metadata found for SPL-2022 token: ${mintPublicKey.toString()}`,
         );
       } else {
         logger.error(
-          `[search-token] No metadata found for token: ${mintPublicKey.toString()}`
+          `[search-token] No metadata found for token: ${mintPublicKey.toString()}`,
         );
         return c.json({ error: "No metadata found for this token" }, 404);
       }
     } else {
       // We found Metaplex metadata
       logger.log(
-        `[search-token] Metadata account found, data length: ${metadataAccount.data.length} bytes`
+        `[search-token] Metadata account found, data length: ${metadataAccount.data.length} bytes`,
       );
       logger.log(
-        `[search-token] Raw metadata (hex): ${Buffer.from(metadataAccount.data).toString("hex")}`
+        `[search-token] Raw metadata (hex): ${Buffer.from(metadataAccount.data).toString("hex")}`,
       );
 
       // Direct metadata extraction
       updateAuthority = new PublicKey(
-        metadataAccount.data.slice(1, 33)
+        metadataAccount.data.slice(1, 33),
       ).toString();
       logger.log(`[search-token] Update authority: ${updateAuthority}`);
 
@@ -476,7 +476,7 @@ async function processTokenInfo(
       const nameData = metadataAccount.data.slice(offset, offset + nameLength);
       tokenName = nameData.toString("utf8").replace(/\0/g, "").trim();
       logger.log(
-        `[search-token] Token name: ${tokenName} (${nameLength} bytes)`
+        `[search-token] Token name: ${tokenName} (${nameLength} bytes)`,
       );
       offset += nameLength;
 
@@ -486,11 +486,11 @@ async function processTokenInfo(
       offset += 1;
       const symbolData = metadataAccount.data.slice(
         offset,
-        offset + symbolLength
+        offset + symbolLength,
       );
       tokenSymbol = symbolData.toString("utf8").replace(/\0/g, "").trim();
       logger.log(
-        `[search-token] Token symbol: ${tokenSymbol} (${symbolLength} bytes)`
+        `[search-token] Token symbol: ${tokenSymbol} (${symbolLength} bytes)`,
       );
       offset += symbolLength;
 
@@ -516,7 +516,7 @@ async function processTokenInfo(
           try {
             const uriData = JSON.parse(uriText);
             logger.log(
-              `[search-token] Parsed URI data: ${JSON.stringify(uriData)}`
+              `[search-token] Parsed URI data: ${JSON.stringify(uriData)}`,
             );
 
             // Extract image and description if available
@@ -528,17 +528,17 @@ async function processTokenInfo(
             if (uriData.description) {
               description = uriData.description;
               logger.log(
-                `[search-token] Found description in URI: ${description}`
+                `[search-token] Found description in URI: ${description}`,
               );
             }
           } catch (parseError) {
             logger.error(
-              `[search-token] Error parsing URI JSON: ${parseError}`
+              `[search-token] Error parsing URI JSON: ${parseError}`,
             );
           }
         } else {
           logger.error(
-            `[search-token] Failed to fetch URI: ${uriResponse.status} ${uriResponse.statusText}`
+            `[search-token] Failed to fetch URI: ${uriResponse.status} ${uriResponse.statusText}`,
           );
         }
       }
@@ -572,15 +572,15 @@ async function processTokenInfo(
   // Debug log for final creator check result
   if (isLocalDev) {
     logger.log(
-      `[search-token] Bypassing creator check in development mode. Anyone can import this token.`
+      `[search-token] Bypassing creator check in development mode. Anyone can import this token.`,
     );
   } else if (isCreator) {
     logger.log(
-      `[search-token] Creator check passed - requestor is the token creator.`
+      `[search-token] Creator check passed - requestor is the token creator.`,
     );
   } else {
     logger.log(
-      `[search-token] Creator check failed - requestor is not the token creator.`
+      `[search-token] Creator check failed - requestor is not the token creator.`,
     );
   }
 
@@ -619,7 +619,7 @@ async function checkBlockchainTokenBalance(
   c,
   mint,
   address,
-  checkMultipleNetworks = false
+  checkMultipleNetworks = false,
 ) {
   // Initialize return data
   let balance = 0;
@@ -652,14 +652,14 @@ async function checkBlockchainTokenBalance(
       ];
 
   logger.log(
-    `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`
+    `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
   );
 
   // Try each network until we find a balance
   for (const network of networksToCheck) {
     try {
       logger.log(
-        `Checking ${network.name} (${network.url}) for token balance...`
+        `Checking ${network.name} (${network.url}) for token balance...`,
       );
       const connection = new Connection(network.url, "confirmed");
 
@@ -668,19 +668,19 @@ async function checkBlockchainTokenBalance(
       const userPublicKey = new PublicKey(address);
 
       logger.log(
-        `Getting token accounts for ${address} for mint ${mint} on ${network.name}`
+        `Getting token accounts for ${address} for mint ${mint} on ${network.name}`,
       );
 
       // Fetch token accounts with a simple RPC call
       const response = await connection.getTokenAccountsByOwner(
         userPublicKey,
         { mint: mintPublicKey },
-        { commitment: "confirmed" }
+        { commitment: "confirmed" },
       );
 
       // Log the number of accounts found
       logger.log(
-        `Found ${response.value.length} token accounts on ${network.name}`
+        `Found ${response.value.length} token accounts on ${network.name}`,
       );
 
       // If we have accounts, calculate total balance
@@ -703,12 +703,12 @@ async function checkBlockchainTokenBalance(
               const tokenAmount = Number(amount) / Math.pow(10, decimals);
               networkBalance += tokenAmount;
               logger.log(
-                `Account ${pubkey.toString()} has ${tokenAmount} tokens`
+                `Account ${pubkey.toString()} has ${tokenAmount} tokens`,
               );
             }
           } catch (balanceError) {
             logger.error(
-              `Error getting token account balance: ${balanceError}`
+              `Error getting token account balance: ${balanceError}`,
             );
             // Continue with other accounts
           }
@@ -719,12 +719,12 @@ async function checkBlockchainTokenBalance(
           balance = networkBalance;
           foundNetwork = network.name;
           logger.log(
-            `SUCCESS: Found balance of ${balance} tokens on ${foundNetwork}`
+            `SUCCESS: Found balance of ${balance} tokens on ${foundNetwork}`,
           );
           break; // Stop checking other networks once we find a balance
         } else {
           logger.log(
-            `No balance found on ${network.name} despite finding accounts`
+            `No balance found on ${network.name} despite finding accounts`,
           );
         }
       } else {
@@ -732,7 +732,7 @@ async function checkBlockchainTokenBalance(
       }
     } catch (netError) {
       logger.error(
-        `Error checking ${network.name} for token balance: ${netError}`
+        `Error checking ${network.name} for token balance: ${netError}`,
       );
       // Continue to next network
     }
@@ -740,7 +740,7 @@ async function checkBlockchainTokenBalance(
 
   // Return the balance information
   logger.log(
-    `Final result: Balance=${balance}, Network=${foundNetwork || "none"}`
+    `Final result: Balance=${balance}, Network=${foundNetwork || "none"}`,
   );
   return c.json({
     balance,
@@ -757,7 +757,7 @@ async function checkBlockchainTokenBalance(
 export async function processTokenUpdateEvent(
   env: Env,
   tokenData: any,
-  shouldEmitGlobal: boolean = false
+  shouldEmitGlobal: boolean = false,
 ): Promise<void> {
   try {
     // Get WebSocket client
@@ -777,7 +777,7 @@ export async function processTokenUpdateEvent(
     await wsClient.emit(
       `token-${tokenData.mint}`,
       "updateToken",
-      enrichedTokenData
+      enrichedTokenData,
     );
 
     if (process.env.DEBUG_WEBSOCKET) {
@@ -806,7 +806,7 @@ export async function processTokenUpdateEvent(
 export async function updateHoldersCache(
   env: Env,
   mint: string,
-  imported: boolean = false
+  imported: boolean = false,
 ): Promise<number> {
   try {
     // Use the utility function to get the RPC URL with proper API key
@@ -829,7 +829,7 @@ export async function updateHoldersCache(
             },
           },
         ],
-      }
+      },
     );
 
     if (!accounts || accounts.length === 0) {
@@ -995,7 +995,7 @@ tokenRouter.get("/image/:filename", async (c) => {
     // Check if this is a special generation image request
     // Format: generation-[mint]-[number].jpg
     const generationMatch = filename.match(
-      /^generation-([A-Za-z0-9]{32,44})-([1-9][0-9]*)\.jpg$/
+      /^generation-([A-Za-z0-9]{32,44})-([1-9][0-9]*)\.jpg$/,
     );
 
     let imageKey;
@@ -1004,7 +1004,7 @@ tokenRouter.get("/image/:filename", async (c) => {
       // This is a special request for a generation image
       imageKey = `generations/${mint}/gen-${number}.jpg`;
       logger.log(
-        `[/image/:filename] Detected generation image request: ${imageKey}`
+        `[/image/:filename] Detected generation image request: ${imageKey}`,
       );
     } else {
       // Regular image request
@@ -1012,13 +1012,13 @@ tokenRouter.get("/image/:filename", async (c) => {
     }
 
     logger.log(
-      `[/image/:filename] Attempting to get object from R2 key: ${imageKey}`
+      `[/image/:filename] Attempting to get object from R2 key: ${imageKey}`,
     );
     const object = await c.env.R2.get(imageKey);
 
     if (!object) {
       logger.warn(
-        `[/image/:filename] Image not found in R2 for key: ${imageKey}`
+        `[/image/:filename] Image not found in R2 for key: ${imageKey}`,
       );
 
       // DEBUG: List files in the token-images directory to help diagnose issues
@@ -1029,18 +1029,18 @@ tokenRouter.get("/image/:filename", async (c) => {
           limit: 10,
         });
         logger.log(
-          `[/image/:filename] Files in ${prefix} directory: ${objects.objects.map((o) => o.key).join(", ")}`
+          `[/image/:filename] Files in ${prefix} directory: ${objects.objects.map((o) => o.key).join(", ")}`,
         );
       } catch (listError) {
         logger.error(
-          `[/image/:filename] Error listing files in directory: ${listError}`
+          `[/image/:filename] Error listing files in directory: ${listError}`,
         );
       }
 
       return c.json({ error: "Image not found" }, 404);
     }
     logger.log(
-      `[/image/:filename] Found object in R2: size=${object.size}, type=${object.httpMetadata?.contentType}`
+      `[/image/:filename] Found object in R2: size=${object.size}, type=${object.httpMetadata?.contentType}`,
     );
 
     // Determine appropriate content type
@@ -1069,7 +1069,7 @@ tokenRouter.get("/image/:filename", async (c) => {
     };
 
     logger.log(
-      `[/image/:filename] Serving ${filename} with type ${contentType}`
+      `[/image/:filename] Serving ${filename} with type ${contentType}`,
     );
     return new Response(data, {
       headers: {
@@ -1113,15 +1113,15 @@ tokenRouter.get("/tokens", async (c) => {
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(
         () => reject(new Error("Database query timed out")),
-        timeoutDuration
-      )
+        timeoutDuration,
+      ),
     );
 
     const countTimeoutPromise = new Promise<number>((_, reject) =>
       setTimeout(
         () => reject(new Error("Count query timed out")),
-        timeoutDuration / 2
-      )
+        timeoutDuration / 2,
+      ),
     );
 
     const db = getDB(c.env);
@@ -1136,9 +1136,9 @@ tokenRouter.get("/tokens", async (c) => {
         const allTokensColumns = Object.fromEntries(
           Object.entries(tokens)
             .filter(
-              ([key, value]) => typeof value === "object" && "name" in value
+              ([key, value]) => typeof value === "object" && "name" in value,
             )
-            .map(([key, value]) => [key, value])
+            .map(([key, value]) => [key, value]),
         );
 
         // Start with a basic query that includes the weighted score
@@ -1175,7 +1175,7 @@ tokenRouter.get("/tokens", async (c) => {
           tokensQuery = tokensQuery.where(
             sql`(${tokens.name} LIKE ${"%" + search + "%"} OR 
                  ${tokens.ticker} LIKE ${"%" + search + "%"} OR 
-                 ${tokens.mint} LIKE ${"%" + search + "%"})`
+                 ${tokens.mint} LIKE ${"%" + search + "%"})`,
           );
         }
 
@@ -1184,7 +1184,7 @@ tokenRouter.get("/tokens", async (c) => {
         if (sortBy === "featured") {
           /** If tokens have featured, they should appear first */
           tokensQuery = tokensQuery.orderBy(
-            sql`CASE WHEN ${tokens.featured} = 1 THEN 0 ELSE 1 END`
+            sql`CASE WHEN ${tokens.featured} = 1 THEN 0 ELSE 1 END`,
           );
 
           // Apply the weighted sort with the max values
@@ -1192,7 +1192,7 @@ tokenRouter.get("/tokens", async (c) => {
             tokensQuery,
             maxVolume,
             maxHolders,
-            sortOrder
+            sortOrder,
           );
         } else {
           // For other columns, safely map to actual db columns
@@ -1245,7 +1245,7 @@ tokenRouter.get("/tokens", async (c) => {
         finalQuery = countQuery.where(
           sql`(${tokens.name} LIKE ${"%" + search + "%"} OR 
                ${tokens.ticker} LIKE ${"%" + search + "%"} OR 
-               ${tokens.mint} LIKE ${"%" + search + "%"})`
+               ${tokens.mint} LIKE ${"%" + search + "%"})`,
         );
       }
 
@@ -1255,7 +1255,7 @@ tokenRouter.get("/tokens", async (c) => {
 
       // By default, don't count hidden tokens
       finalQuery = countQuery.where(
-        sql`(${tokens.hidden} = 0 OR ${tokens.hidden} IS NULL)`
+        sql`(${tokens.hidden} = 0 OR ${tokens.hidden} IS NULL)`,
       );
 
       const totalCountResult = await finalQuery;
@@ -1325,7 +1325,7 @@ tokenRouter.post("/search-token", async (c) => {
     const tokenInfo = await connection.getAccountInfo(mintPublicKey);
     if (tokenInfo) {
       logger.log(
-        `[search-token] Found token on primary network (${c.env.NETWORK || "default"})`
+        `[search-token] Found token on primary network (${c.env.NETWORK || "default"})`,
       );
       // Continue with the token info we found
       return await processTokenInfo(
@@ -1333,7 +1333,7 @@ tokenRouter.post("/search-token", async (c) => {
         mintPublicKey,
         tokenInfo,
         connection,
-        requestor
+        requestor,
       );
     }
   } catch (error) {
@@ -1391,7 +1391,7 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
         total: 0,
         error: "Database error",
       },
-      500
+      500,
     );
   }
 });
@@ -1433,7 +1433,7 @@ tokenRouter.get("/token/:mint/price", async (c) => {
     logger.error(`Error getting token price: ${error}`);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -1499,7 +1499,7 @@ tokenRouter.get("/token/:mint", async (c) => {
 
           hasGenerationImages = objects.objects.length > 0;
           logger.log(
-            `Token ${mint} has generation images: ${hasGenerationImages}`
+            `Token ${mint} has generation images: ${hasGenerationImages}`,
           );
 
           if (!hasGenerationImages) {
@@ -1508,17 +1508,17 @@ tokenRouter.get("/token/:mint", async (c) => {
               generateAdditionalTokenImages(
                 c.env,
                 mint,
-                token.description || ""
-              )
+                token.description || "",
+              ),
             );
             logger.log(
-              `Initiated background generation of additional images for token ${mint}`
+              `Initiated background generation of additional images for token ${mint}`,
             );
           }
         }
       } catch (imageCheckError) {
         logger.error(
-          `Error checking for generation images: ${imageCheckError}`
+          `Error checking for generation images: ${imageCheckError}`,
         );
         // Don't block the response if this check fails
       }
@@ -1627,7 +1627,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     logger.error(`Error getting token: ${error}`);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -1681,7 +1681,7 @@ tokenRouter.post("/create-token", async (c) => {
           error: "Token already exists",
           token: existingToken[0],
         },
-        409
+        409,
       );
     }
 
@@ -1740,7 +1740,7 @@ tokenRouter.post("/create-token", async (c) => {
       // Trigger immediate updates for price and holders in the background
       // for both imported and newly created tokens
       logger.log(
-        `Triggering immediate price and holder update for token: ${mintAddress}`
+        `Triggering immediate price and holder update for token: ${mintAddress}`,
       );
       c.executionCtx.waitUntil(updateTokens(c.env));
 
@@ -1755,10 +1755,10 @@ tokenRouter.post("/create-token", async (c) => {
 
       // For non-imported tokens, generate additional images in the background
       logger.log(
-        `Triggering background image generation for new token: ${mintAddress}`
+        `Triggering background image generation for new token: ${mintAddress}`,
       );
       c.executionCtx.waitUntil(
-        generateAdditionalTokenImages(c.env, mintAddress, description || "")
+        generateAdditionalTokenImages(c.env, mintAddress, description || ""),
       );
 
       return c.json({ success: true, token: tokenData });
@@ -1766,7 +1766,7 @@ tokenRouter.post("/create-token", async (c) => {
       logger.error("Error creating token:", error);
       return c.json(
         { error: "Failed to create token record", details: error },
-        500
+        500,
       );
     }
   } catch (error) {
@@ -1805,7 +1805,7 @@ tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
     logger.error("Error updating holders data:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -1838,7 +1838,7 @@ tokenRouter.post("/token/:mint/update", async (c) => {
           if (body._devWalletOverride && c.env.NODE_ENV === "development") {
             logger.log(
               "DEVELOPMENT: Using wallet override:",
-              body._devWalletOverride
+              body._devWalletOverride,
             );
             c.set("user", { publicKey: body._devWalletOverride });
           } else {
@@ -1903,7 +1903,7 @@ tokenRouter.post("/token/:mint/update", async (c) => {
     try {
       // Try normalized comparison with PublicKey objects
       const normalizedWallet = new PublicKey(
-        authenticatedUser.publicKey
+        authenticatedUser.publicKey,
       ).toString();
       const normalizedCreator = new PublicKey(tokenData[0].creator).toString();
 
@@ -1944,7 +1944,7 @@ tokenRouter.post("/token/:mint/update", async (c) => {
           userAddress: authenticatedUser.publicKey,
           creatorAddress: tokenData[0].creator,
         },
-        403
+        403,
       );
     }
 
@@ -1999,7 +1999,7 @@ tokenRouter.post("/token/:mint/update", async (c) => {
           });
 
           logger.log(
-            `Overwrote R2 object at key ${objectKey}; URL remains ${originalUrl}`
+            `Overwrote R2 object at key ${objectKey}; URL remains ${originalUrl}`,
           );
         }
       } catch (e) {
@@ -2036,7 +2036,7 @@ tokenRouter.post("/token/:mint/update", async (c) => {
     logger.error("Error updating token:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -2058,7 +2058,7 @@ tokenRouter.get("/token/:mint/agents", async (c) => {
     // ** ADD Log: Check the agents data before sending **
     logger.log(
       `[GET /agents] Found agents for mint ${mint}:`,
-      JSON.stringify(agents)
+      JSON.stringify(agents),
     );
 
     // Return in the format expected by the frontend { agents: [...] }
@@ -2099,21 +2099,21 @@ tokenRouter.post("/token/:mint/agents", async (c) => {
       .where(
         and(
           eq(tokenAgents.tokenMint, mint),
-          eq(tokenAgents.twitterUserId, twitterUserId)
-        )
+          eq(tokenAgents.twitterUserId, twitterUserId),
+        ),
       )
       .limit(1);
 
     if (existingAgent && existingAgent.length > 0) {
       logger.warn(
-        `Agent creation attempt failed: Twitter user ${twitterUserId} already linked to token ${mint}`
+        `Agent creation attempt failed: Twitter user ${twitterUserId} already linked to token ${mint}`,
       );
       return c.json(
         {
           error: "This Twitter account is already connected to this token.",
           agent: existingAgent[0],
         },
-        409 // Conflict
+        409, // Conflict
       );
     }
 
@@ -2122,7 +2122,7 @@ tokenRouter.post("/token/:mint/agents", async (c) => {
     const twitterUserName = twitterUserId;
     const twitterImageUrl = "/default-avatar.png";
     logger.warn(
-      `Placeholder: Using mock Twitter data for user ID ${twitterUserId}`
+      `Placeholder: Using mock Twitter data for user ID ${twitterUserId}`,
     );
     // try {
     //   const twitterProfile = await fetchTwitterProfile(c.env, twitterUserId);
@@ -2169,7 +2169,7 @@ tokenRouter.post("/token/:mint/agents", async (c) => {
 
     const newAgent = result[0];
     logger.log(
-      `Successfully created agent link: Token ${mint}, Twitter ${twitterUserName}, Owner ${user.publicKey}`
+      `Successfully created agent link: Token ${mint}, Twitter ${twitterUserName}, Owner ${user.publicKey}`,
     );
 
     // TODO: Emit WebSocket event for new agent?
@@ -2187,7 +2187,7 @@ tokenRouter.post("/token/:mint/agents", async (c) => {
           error:
             "This Twitter account might already be linked elsewhere or a database conflict occurred.",
         },
-        409
+        409,
       );
     }
     return c.json(
@@ -2195,7 +2195,7 @@ tokenRouter.post("/token/:mint/agents", async (c) => {
         error:
           error instanceof Error ? error.message : "Failed to create agent",
       },
-      500
+      500,
     );
   }
 });
@@ -2232,18 +2232,18 @@ tokenRouter.delete("/token/:mint/agents/:agentId", async (c) => {
     if (!agentToDelete || agentToDelete.length === 0) {
       return c.json(
         { error: "Agent not found or does not belong to this token" },
-        404
+        404,
       );
     }
 
     // Check if the authenticated user is the owner of this agent link
     if (agentToDelete[0].ownerAddress !== user.publicKey) {
       logger.warn(
-        `Agent deletion attempt failed: User ${user.publicKey} tried to delete agent ${agentId} owned by ${agentToDelete[0].ownerAddress}`
+        `Agent deletion attempt failed: User ${user.publicKey} tried to delete agent ${agentId} owned by ${agentToDelete[0].ownerAddress}`,
       );
       return c.json(
         { error: "You can only remove agents you have connected." },
-        403 // Forbidden
+        403, // Forbidden
       );
     }
 
@@ -2256,13 +2256,13 @@ tokenRouter.delete("/token/:mint/agents/:agentId", async (c) => {
     if (!result || result.length === 0) {
       // This might happen if the agent was deleted between the select and delete calls
       logger.warn(
-        `Agent ${agentId} not found during deletion, possibly already deleted.`
+        `Agent ${agentId} not found during deletion, possibly already deleted.`,
       );
       return c.json({ error: "Agent not found during deletion attempt" }, 404);
     }
 
     logger.log(
-      `Successfully deleted agent: ID ${agentId}, Token ${mint}, User ${user.publicKey}`
+      `Successfully deleted agent: ID ${agentId}, Token ${mint}, User ${user.publicKey}`,
     );
 
     // TODO: Emit WebSocket event for agent removal?
@@ -2309,7 +2309,7 @@ tokenRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
-        }
+        },
       );
 
       if (profileResponse.ok) {
@@ -2331,7 +2331,7 @@ tokenRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
             // Replace '_normal' with '_400x400' to get a larger image
             const largeImageUrl = originalImageUrl.replace(
               "_normal",
-              "_400x400"
+              "_400x400",
             );
 
             try {
@@ -2357,7 +2357,7 @@ tokenRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
                   // Set the URL to our cached version
                   twitterImageUrl = `${c.env.API_URL}/api/twitter-image/${imageId}`;
                   logger.log(
-                    `Cached Twitter profile image at: ${twitterImageUrl}`
+                    `Cached Twitter profile image at: ${twitterImageUrl}`,
                   );
                 } else {
                   // If R2 is not available, use the original URL
@@ -2366,7 +2366,7 @@ tokenRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
                 }
               } else {
                 logger.warn(
-                  `Failed to fetch Twitter profile image: ${imageResponse.status}`
+                  `Failed to fetch Twitter profile image: ${imageResponse.status}`,
                 );
                 // Fall back to the original URL
                 twitterImageUrl = originalImageUrl;
@@ -2380,7 +2380,7 @@ tokenRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
         }
       } else {
         logger.warn(
-          `Twitter profile fetch failed with status: ${profileResponse.status}`
+          `Twitter profile fetch failed with status: ${profileResponse.status}`,
         );
         // Continue with default values - we don't want to fail the agent creation
         // just because we couldn't get user details
@@ -2398,21 +2398,21 @@ tokenRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
       .where(
         and(
           eq(tokenAgents.tokenMint, mint),
-          eq(tokenAgents.twitterUserId, twitterUserId)
-        )
+          eq(tokenAgents.twitterUserId, twitterUserId),
+        ),
       )
       .limit(1);
 
     if (existingAgent && existingAgent.length > 0) {
       logger.warn(
-        `Agent creation attempt failed: Twitter user ${twitterUserId} already linked to token ${mint}`
+        `Agent creation attempt failed: Twitter user ${twitterUserId} already linked to token ${mint}`,
       );
       return c.json(
         {
           error: "This Twitter account is already connected to this token.",
           agent: existingAgent[0],
         },
-        409 // Conflict
+        409, // Conflict
       );
     }
 
@@ -2451,7 +2451,7 @@ tokenRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
 
     const newAgent = result[0];
     logger.log(
-      `Successfully created agent link: Token ${mint}, Twitter ${twitterUserName}, Owner ${user.publicKey}`
+      `Successfully created agent link: Token ${mint}, Twitter ${twitterUserName}, Owner ${user.publicKey}`,
     );
 
     // TODO: Emit WebSocket event for new agent?
@@ -2466,7 +2466,7 @@ tokenRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
             ? error.message
             : "Failed to connect Twitter agent",
       },
-      500
+      500,
     );
   }
 });
@@ -2524,7 +2524,7 @@ tokenRouter.get("/twitter-image/:imageId", async (c) => {
             ? error.message
             : "Failed to serve Twitter profile image",
       },
-      500
+      500,
     );
   }
 });
@@ -2547,7 +2547,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
     const isLocalMode = mode === "local";
 
     logger.log(
-      `Checking token balance for ${address} on ${mint}, mode: ${isLocalMode ? "local" : "standard"}`
+      `Checking token balance for ${address} on ${mint}, mode: ${isLocalMode ? "local" : "standard"}`,
     );
 
     const db = getDB(c.env);
@@ -2557,7 +2557,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
       .select()
       .from(tokenHolders)
       .where(
-        and(eq(tokenHolders.mint, mint), eq(tokenHolders.address, address))
+        and(eq(tokenHolders.mint, mint), eq(tokenHolders.address, address)),
       )
       .limit(1);
 
@@ -2574,7 +2574,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
     // try to check the blockchain directly if LOCAL_DEV is enabled
     if (!token && (isLocalMode || (c.env as any).LOCAL_DEV === "true")) {
       logger.log(
-        `Token ${mint} not found in database, but in local/dev mode, trying blockchain lookup`
+        `Token ${mint} not found in database, but in local/dev mode, trying blockchain lookup`,
       );
       return await checkBlockchainTokenBalance(c, mint, address, isLocalMode);
     }
@@ -2621,7 +2621,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
     logger.error(`Error checking token balance: ${error}`);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500
+      500,
     );
   }
 });
@@ -2651,7 +2651,7 @@ tokenRouter.post("/vanity-keypair", async (c) => {
     } catch (e) {
       // If body can't be parsed, just use default options
       logger.log(
-        `[POST /vanity-keypair] No request body or invalid JSON, using defaults`
+        `[POST /vanity-keypair] No request body or invalid JSON, using defaults`,
       );
     }
 
@@ -2663,7 +2663,7 @@ tokenRouter.post("/vanity-keypair", async (c) => {
 
     const totalCount = countResult[0]?.count || 0;
     logger.log(
-      `[POST /vanity-keypair] Database reports ${totalCount} unused keypairs available`
+      `[POST /vanity-keypair] Database reports ${totalCount} unused keypairs available`,
     );
 
     // Try to find an unused keypair
@@ -2679,7 +2679,7 @@ tokenRouter.post("/vanity-keypair", async (c) => {
       // Double-check if there's a discrepancy between count and actual query
       if (totalCount > 0) {
         logger.warn(
-          `[POST /vanity-keypair] Discrepancy: Count reports ${totalCount} keypairs but query found none!`
+          `[POST /vanity-keypair] Discrepancy: Count reports ${totalCount} keypairs but query found none!`,
         );
 
         // Try a more direct query to check for any issue
@@ -2691,13 +2691,13 @@ tokenRouter.post("/vanity-keypair", async (c) => {
         console.log("allKeypairs", allKeypairs);
 
         logger.log(
-          `[POST /vanity-keypair] Sample of up to 5 keypairs from database: ${JSON.stringify(allKeypairs)}`
+          `[POST /vanity-keypair] Sample of up to 5 keypairs from database: ${JSON.stringify(allKeypairs)}`,
         );
       }
 
       // Generate a new keypair as fallback
       logger.log(
-        "[POST /vanity-keypair] Falling back to generating a new keypair"
+        "[POST /vanity-keypair] Falling back to generating a new keypair",
       );
       const generatedKeypair = Keypair.generate();
       const newKeypair = {
@@ -2737,7 +2737,7 @@ tokenRouter.post("/vanity-keypair", async (c) => {
     }
 
     logger.log(
-      `[POST /vanity-keypair] Found unused keypair: ${keypair.address}`
+      `[POST /vanity-keypair] Found unused keypair: ${keypair.address}`,
     );
 
     // Mark this keypair as used
@@ -2749,7 +2749,7 @@ tokenRouter.post("/vanity-keypair", async (c) => {
       .where(eq(vanityKeypairs.id, keypair.id));
 
     logger.log(
-      `[POST /vanity-keypair] Marked keypair ${keypair.address} as used by ${user.publicKey}`
+      `[POST /vanity-keypair] Marked keypair ${keypair.address} as used by ${user.publicKey}`,
     );
 
     // Convert secretKey from base64 to byte array for the client
@@ -2765,11 +2765,11 @@ tokenRouter.post("/vanity-keypair", async (c) => {
       secretKeyBytes = Array.from(secretKeyBuffer);
 
       logger.log(
-        `[POST /vanity-keypair] Successfully converted secretKey to array of length ${secretKeyBytes.length}`
+        `[POST /vanity-keypair] Successfully converted secretKey to array of length ${secretKeyBytes.length}`,
       );
     } catch (keyError) {
       logger.error(
-        `[POST /vanity-keypair] Error converting secretKey: ${keyError}`
+        `[POST /vanity-keypair] Error converting secretKey: ${keyError}`,
       );
       return c.json({ error: "Failed to process keypair" }, 500);
     }
@@ -2790,7 +2790,7 @@ tokenRouter.post("/vanity-keypair", async (c) => {
             ? error.message
             : "Failed to process vanity keypair request",
       },
-      500
+      500,
     );
   }
 });
@@ -2811,7 +2811,7 @@ tokenRouter.get("/check-generated-images/:mint", async (c) => {
     // Check for generated images in R2
     const generationImagesPrefix = `generations/${mint}/`;
     logger.log(
-      `Checking for generated images with prefix: ${generationImagesPrefix}`
+      `Checking for generated images with prefix: ${generationImagesPrefix}`,
     );
 
     // Try to list objects with the given prefix
@@ -2828,7 +2828,7 @@ tokenRouter.get("/check-generated-images/:mint", async (c) => {
       });
 
       logger.log(
-        `Found ${imageKeys.length} generated images for token ${mint}`
+        `Found ${imageKeys.length} generated images for token ${mint}`,
       );
 
       // For security, we don't return the full image keys but just the existence
@@ -2858,7 +2858,7 @@ tokenRouter.get("/check-generated-images/:mint", async (c) => {
         hasImages: false,
         error: "Server error",
       },
-      500
+      500,
     );
   }
 });
