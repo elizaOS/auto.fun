@@ -28,6 +28,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Globe, Info as InfoCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
+import { toast } from "react-toastify";
 import { Tooltip } from "react-tooltip";
 import { twMerge } from "tailwind-merge";
 
@@ -168,6 +169,30 @@ export default function Page() {
   });
   const solanaPrice = contextSolPrice || token?.solPriceUSD || 0;
 
+  const handleClaimFees = async () => {
+    if (!token?.mint || token?.creator !== normalizedWallet) {
+      toast.error("No token found");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${env.apiUrl}/api/claimFees`, {
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({ tokenMint: token?.mint }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to claim fees");
+      }
+
+      toast.success("Fees claimed successfully");
+    } catch (error) {
+      console.error("Error claiming fees:", error);
+      toast.error("Failed to claim fees");
+    }
+  };
+
   if (tokenQuery?.isLoading) {
     return <Loader />;
   }
@@ -302,18 +327,30 @@ export default function Page() {
             </div>
 
             {/* Contract address */}
-            <div className="flex">
-              <div className="size-10 inline-flex border-r shrink-0 bg-autofun-background-action-primary">
-                <span className="text-base font-dm-mono m-auto text-autofun-text-secondary">
-                  CA
-                </span>
+            <div className="flex flex-col gap-2">
+              <div className="flex">
+                <div className="size-10 inline-flex border-r shrink-0 bg-autofun-background-action-primary">
+                  <span className="text-base font-dm-mono m-auto text-autofun-text-secondary">
+                    CA
+                  </span>
+                </div>
+                <div className="bg-autofun-background-input flex justify-between py-2 px-3 min-w-0 w-full gap-2">
+                  <span className="mx-auto w-0 flex-1 min-w-0 block text-base text-autofun-text-secondary">
+                    <MiddleEllipsis text={token?.mint} />
+                  </span>
+                  <CopyButton text={token?.mint} />
+                </div>
               </div>
-              <div className="bg-autofun-background-input flex justify-between py-2 px-3 min-w-0 w-full gap-2">
-                <span className="mx-auto w-0 flex-1 min-w-0 block text-base text-autofun-text-secondary">
-                  <MiddleEllipsis text={token?.mint} />
-                </span>
-                <CopyButton text={token?.mint} />
-              </div>
+              {token?.creator === normalizedWallet && !token?.imported && (
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={handleClaimFees}
+                    className="cursor-pointer text-white text-center bg-transparent gap-x-3 border-2 hover:bg-autofun-background-action-highlight hover:text-black border-autofun-background-action-highlight flex px-8 py-1 mt-2 flex-row w-full items-center justify-center"
+                  >
+                    <span className="w-full text-center">Claim Fees</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Agents Section */}
