@@ -12,7 +12,7 @@ export const HomepageTokenSchema = TokenSchema.and(
 );
 export const HomepageFeaturedSchema = HomepageTokenSchema.and(
   z.object({
-    featuredScore: z.number(),
+    featuredScore: z.number().nullable(),
   }),
 );
 

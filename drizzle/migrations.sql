@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS users (
   address TEXT NOT NULL UNIQUE,
   points INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-  reward_points INTEGER NOT NULL DEFAULT 0
+  reward_points INTEGER NOT NULL DEFAULT 0,
+  suspended INTEGER NOT NULL DEFAULT 0 -- 0 = not suspended, 1 = suspended
 );
 
 -- Create tokens table
@@ -92,7 +93,10 @@ CREATE TABLE IF NOT EXISTS tokens (
   token_supply TEXT DEFAULT "1000000000000000",
   token_supply_ui_amount INTEGER DEFAULT 1000000000,
   token_decimals INTEGER DEFAULT 6,
-  last_supply_update TEXT
+  last_supply_update TEXT,
+  featured INTEGER DEFAULT 0,
+  verified INTEGER DEFAULT 0,
+  hidden INTEGER DEFAULT 0
 );
 
 -- Create swaps table
