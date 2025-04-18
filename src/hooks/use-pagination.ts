@@ -127,7 +127,7 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
           sortOrder,
           itemsPropertyName,
           validationSchema,
-          hideImported
+          hideImported,
         });
 
         setFetchedData(result.items);

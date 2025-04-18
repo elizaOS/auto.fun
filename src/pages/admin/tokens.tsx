@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import CopyButton from "@/components/copy-button";
 import { fetcher, getToken } from "@/utils/api";
-import { useAdminTokens } from "@/hooks/use-admin-tokens";
+import { useTokens } from "@/hooks/use-tokens";
 import Pagination from "@/components/pagination";
 import Loader from "@/components/loader";
 
@@ -26,7 +26,7 @@ function AdminTokensList() {
   >("newest");
   const [hideImported, setHideImported] = useState(false);
 
-  const tokensPagination = useAdminTokens(sortBy, hideImported, 50);
+  const tokensPagination = useTokens(sortBy, hideImported, 50);
 
   if (tokensPagination.isLoading) {
     return <Loader />;
@@ -82,7 +82,23 @@ function AdminTokensList() {
                 className="border-b border-autofun-background-primary"
               >
                 <td className="p-2">{token.mint.substring(0, 8)}...</td>
-                <td className="p-2">{token.name}</td>
+                <td className="p-2">
+                  <div className="flex items-center space-x-2">
+                    {token.image && (
+                      <img
+                        src={token.image}
+                        alt={token.name}
+                        className="w-6 h-6 rounded-full object-cover"
+                        onError={(e) => {
+                          // Replace broken images with a placeholder
+                          (e.target as HTMLImageElement).src =
+                            "/placeholder.png";
+                        }}
+                      />
+                    )}
+                    <span>{token.name}</span>
+                  </div>
+                </td>
                 <td className="p-2">{token.ticker}</td>
                 <td className="p-2">
                   {new Date(token.createdAt).toLocaleDateString()}
@@ -226,7 +242,7 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
     onError: (error) => {
       toast.error(
-        `Failed to update token status: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to update token status: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     },
   });
@@ -234,7 +250,11 @@ function AdminTokenDetails({ address }: { address: string }) {
   // Mutation for updating token social links
   const updateSocialLinksMutation = useMutation({
     mutationFn: async (links: SocialLinks) => {
-      return await fetcher(`/api/admin/tokens/${address}/social`, "POST", links);
+      return await fetcher(
+        `/api/admin/tokens/${address}/social`,
+        "POST",
+        links,
+      );
     },
     onSuccess: () => {
       toast.success(`Token social links updated successfully`);
@@ -242,7 +262,7 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
     onError: (error) => {
       toast.error(
-        `Failed to update social links: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to update social links: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     },
   });
@@ -256,13 +276,13 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
     onSuccess: () => {
       toast.success(
-        `Token ${tokenQuery.data?.featured ? "removed from" : "added to"} featured tokens`
+        `Token ${tokenQuery.data?.featured ? "removed from" : "added to"} featured tokens`,
       );
       tokenQuery.refetch(); // Refetch token data after update
     },
     onError: (error) => {
       toast.error(
-        `Failed to update featured status: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to update featured status: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     },
   });
@@ -276,13 +296,13 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
     onSuccess: () => {
       toast.success(
-        `Token ${tokenQuery.data?.verified ? "unverified" : "verified"} successfully`
+        `Token ${tokenQuery.data?.verified ? "unverified" : "verified"} successfully`,
       );
       tokenQuery.refetch(); // Refetch token data after update
     },
     onError: (error) => {
       toast.error(
-        `Failed to update verified status: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to update verified status: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     },
   });

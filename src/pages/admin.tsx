@@ -23,31 +23,31 @@ export default function Admin() {
       <h1 className="text-2xl font-bold">Admin Dashboard</h1>
 
       <div className="flex items-center gap-2 border-b border-autofun-background-action-primary pb-2">
-        <Link 
-          to="/admin" 
+        <Link
+          to="/admin"
           className={`px-4 py-2 rounded-t-md ${
-            isActive("/admin") && !currentPath.includes("/admin/") 
-              ? "bg-autofun-background-highlight text-black" 
+            isActive("/admin") && !currentPath.includes("/admin/")
+              ? "bg-autofun-background-highlight text-black"
               : "bg-autofun-background-primary hover:bg-autofun-background-action-primary"
           }`}
         >
           Overview
         </Link>
-        <Link 
-          to="/admin/users" 
+        <Link
+          to="/admin/users"
           className={`px-4 py-2 rounded-t-md ${
-            isActive("/admin/users") 
-              ? "bg-autofun-background-highlight text-black" 
+            isActive("/admin/users")
+              ? "bg-autofun-background-highlight text-black"
               : "bg-autofun-background-primary hover:bg-autofun-background-action-primary"
           }`}
         >
           Users
         </Link>
-        <Link 
-          to="/admin/tokens" 
+        <Link
+          to="/admin/tokens"
           className={`px-4 py-2 rounded-t-md ${
-            isActive("/admin/tokens") 
-              ? "bg-autofun-background-highlight text-black" 
+            isActive("/admin/tokens")
+              ? "bg-autofun-background-highlight text-black"
               : "bg-autofun-background-primary hover:bg-autofun-background-action-primary"
           }`}
         >
