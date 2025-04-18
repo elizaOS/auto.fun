@@ -52,7 +52,7 @@ export default function Trade({
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status
+    token?.status,
   );
 
   const isButtonDisabled = (amount: number | string) => {
@@ -103,7 +103,7 @@ export default function Trade({
               // they are not dynamically calculated but instead use the
               // default values leading to slightly incorrect calculations
               token.reserveAmount,
-              token.reserveLamport
+              token.reserveLamport,
             );
 
       const convertedAmount = swapAmount / decimals;
@@ -163,7 +163,7 @@ export default function Trade({
                   setSellAmount(
                     sellAmount !== undefined
                       ? sellAmount
-                      : formatAmount(convertedAmount)
+                      : formatAmount(convertedAmount),
                   );
                 }
                 setIsTokenSelling(true);
@@ -199,7 +199,7 @@ export default function Trade({
                 {formatNumber(
                   tokenBalance * currentPrice * solanaPrice,
                   true,
-                  false
+                  false,
                 )}
               </span>
             </div>
