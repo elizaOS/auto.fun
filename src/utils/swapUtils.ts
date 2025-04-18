@@ -1,6 +1,5 @@
 import { getConfigAccount } from "@/hooks/use-config-account";
 import { ConfigAccount } from "@/types";
-import { env } from "@/utils/env";
 import { Autofun } from "@/utils/program";
 import { BN, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
