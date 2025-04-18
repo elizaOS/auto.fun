@@ -1170,7 +1170,7 @@ tokenRouter.get("/tokens", async (c) => {
     }
 
     // By default, don't show hidden tokens
-    tokensQuery = tokensQuery.where(sql`(${tokens.hidden} = 0 OR ${tokens.hidden} IS NULL)`);
+    tokensQuery = tokensQuery.where(sql`(${tokens.hidden} != 1)`);
 
         if (search) {
           // This is a simplified implementation - in production you'd use a proper search mechanism
