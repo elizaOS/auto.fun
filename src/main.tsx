@@ -19,6 +19,7 @@ import Admin from "./pages/admin";
 if (
   (window.location.hostname.includes("auto.fun") ||
     window.location.hostname.includes("autofun.tech")) &&
+  !window.location.hostname.includes("develop.autofun.tech") &&
   !window.location.search.includes("callback") &&
   new Date() < new Date("2025-04-19T00:00:00Z") &&
   !window.location.search.includes("dev") &&
