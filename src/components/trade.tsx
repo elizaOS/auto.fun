@@ -347,7 +347,7 @@ export default function Trade({
                 alt="Generate"
                 className={twMerge([
                   !isAuthenticated
-                    ? "cursor-not-allowed grayscale blur-xs select-none"
+                    ? "cursor-not-allowed grayscale select-none"
                     : "",
                   "w-full",
                 ])}
@@ -372,7 +372,7 @@ export default function Trade({
           </div>
         </div>
         {!isAuthenticated ? (
-          <div className="text-center text-red-500 text-xl">
+          <div className="text-center text-autofun-text-highlight font-dm-mono">
             Connect your wallet to proceed with trading
           </div>
         ) : null}
