@@ -199,20 +199,10 @@ adminRouter.patch("/tokens/:mint/verified", requireAdmin, async (c) => {
       return c.json({ error: "Token not found" }, 404);
     }
 
-    // Since the 'verified' flag doesn't exist in the schema,
-    // we'll use the 'status' field to indicate verified tokens
-    // We'll append 'verified' to the status if it's verified
-    const currentStatus = tokenData[0].status || "active";
-    const newStatus = verified
-      ? currentStatus.includes("verified")
-        ? currentStatus
-        : `${currentStatus}-verified`
-      : currentStatus.replace("-verified", "");
-
     await db
       .update(tokens)
       .set({
-        status: newStatus,
+        verified: verified ? 1 : 0,
         lastUpdated: new Date().toISOString(),
       })
       .where(eq(tokens.mint, mint));
