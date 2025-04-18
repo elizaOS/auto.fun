@@ -1,5 +1,5 @@
 import { TokenData } from "../types/tokenData";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { getDB, tokens } from "../../db";
 import { Env } from "../../env";
 import { updateTokenInDB } from "../../cron";
@@ -238,4 +238,25 @@ export async function getMigrationState(env: Env, token: TokenData) {
     }
   }
   return null;
+}
+
+
+export async function getMigratingTokens(env: Env) {
+  // Get all tokens that are in the migration process (status migrating) but have migration as null
+  try {
+    const db = getDB(env);
+    const migratingTokens = await db
+      .select()
+      .from(tokens)
+      .where(and(
+        eq(tokens.status, "migrating"),
+      ))
+      .execute();
+    //
+
+  } catch (error) {
+    logger.error(`Error fetching migrating tokens: ${error}`);
+    throw new Error("Failed to fetch migrating tokens");
+  }
+
 }

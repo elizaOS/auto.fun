@@ -55,7 +55,7 @@ export class TokenMigrator {
     };
 
     try {
-      const response = await fetch(`${workerUrl}/migration/resume`, {
+      const response = await fetch(`${workerUrl}/api/migration/resume`, {
         method: "POST",
         headers,
         body: JSON.stringify(token),
@@ -180,9 +180,7 @@ export class TokenMigrator {
         await releaseMigrationLock(this.env, token);
       }
       const step = currentStep || steps[0];
-      logger.log(
-        `[Migrate] ${step.name} already processed for token ${token.mint}`,
-      );
+
       await executeMigrationStep(this.env, token, step);
       // call scheduleNextInvocation to schedule the next step if not done yet.
       if (step.name !== "collectFees") {
