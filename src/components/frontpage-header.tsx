@@ -760,7 +760,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         image: fallbackTexture,
       };
       const dieMaterials = await createDieMaterialsWithSameTexture(
-        tokenData.image,
+        `${tokenData.image}?rand=${new Date().getTime()}`,
       );
       const die = new THREE.Mesh(diceGeometry, dieMaterials);
 
