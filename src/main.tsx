@@ -15,7 +15,7 @@ import CallbackPage from "./pages/callback";
 import PageNotFound from "./pages/not-found";
 import Admin from "./pages/admin";
 
-// if the date is before 2025-04-15, redirect to the old website
+// if the date is before 2025-04-19, redirect to the old website
 if (
   (window.location.hostname.includes("auto.fun") ||
     window.location.hostname.includes("autofun.tech")) &&
