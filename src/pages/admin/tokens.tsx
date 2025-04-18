@@ -69,7 +69,6 @@ function AdminTokensList() {
               <th className="text-left p-2">Ticker</th>
               <th className="text-left p-2">Created</th>
               <th className="text-left p-2">Price (SOL)</th>
-              <th className="text-left p-2">Supply</th>
               <th className="text-left p-2">Volume (24h)</th>
               <th className="text-left p-2">Status</th>
               <th className="text-left p-2">Actions</th>
@@ -104,10 +103,7 @@ function AdminTokensList() {
                   {new Date(token.createdAt).toLocaleDateString()}
                 </td>
                 <td className="p-2">{token.currentPrice.toFixed(8)}</td>
-                <td className="p-2">
-                  {token.tokenSupplyUiAmount.toLocaleString()}
-                </td>
-                <td className="p-2">{token.volume24h.toLocaleString()}</td>
+                <td className="p-2">{formatNumber(token.volume24h)}</td>
                 <td className="p-2">
                   <span
                     className={`px-2 py-1 rounded-full text-xs ${
@@ -168,6 +164,7 @@ function AdminTokensList() {
 }
 
 import { IToken } from "@/types";
+import { formatNumber } from "@/utils";
 
 // Extended token interface with admin-specific fields
 interface AdminToken extends IToken {
@@ -242,7 +239,7 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
     onError: (error) => {
       toast.error(
-        `Failed to update token status: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to update token status: ${error instanceof Error ? error.message : "Unknown error"}`
       );
     },
   });
@@ -253,7 +250,7 @@ function AdminTokenDetails({ address }: { address: string }) {
       return await fetcher(
         `/api/admin/tokens/${address}/social`,
         "POST",
-        links,
+        links
       );
     },
     onSuccess: () => {
@@ -262,7 +259,7 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
     onError: (error) => {
       toast.error(
-        `Failed to update social links: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to update social links: ${error instanceof Error ? error.message : "Unknown error"}`
       );
     },
   });
@@ -276,13 +273,13 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
     onSuccess: () => {
       toast.success(
-        `Token ${tokenQuery.data?.featured ? "removed from" : "added to"} featured tokens`,
+        `Token ${tokenQuery.data?.featured ? "removed from" : "added to"} featured tokens`
       );
       tokenQuery.refetch(); // Refetch token data after update
     },
     onError: (error) => {
       toast.error(
-        `Failed to update featured status: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to update featured status: ${error instanceof Error ? error.message : "Unknown error"}`
       );
     },
   });
@@ -296,13 +293,13 @@ function AdminTokenDetails({ address }: { address: string }) {
     },
     onSuccess: () => {
       toast.success(
-        `Token ${tokenQuery.data?.verified ? "unverified" : "verified"} successfully`,
+        `Token ${tokenQuery.data?.verified ? "unverified" : "verified"} successfully`
       );
       tokenQuery.refetch(); // Refetch token data after update
     },
     onError: (error) => {
       toast.error(
-        `Failed to update verified status: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to update verified status: ${error instanceof Error ? error.message : "Unknown error"}`
       );
     },
   });
@@ -485,21 +482,14 @@ function AdminTokenDetails({ address }: { address: string }) {
         <div className="p-4 bg-autofun-background-primary ">
           <h3 className="text-lg font-medium mb-2">Price</h3>
           <p className="text-2xl font-bold text-autofun-text-highlight">
-            {token.currentPrice.toFixed(8)} SOL
-          </p>
-          <p className="text-xs text-autofun-text-secondary">
-            ${token.tokenPriceUSD.toFixed(6)} USD
-          </p>
-          <p className="text-xs text-autofun-text-secondary">
-            24h Change: {token.priceChange24h > 0 ? "+" : ""}
-            {token.priceChange24h}%
+            {formatNumber(token.currentPrice)}
           </p>
         </div>
 
         <div className="p-4 bg-autofun-background-primary ">
           <h3 className="text-lg font-medium mb-2">Holders</h3>
           <p className="text-2xl font-bold text-autofun-text-highlight">
-            {token.holderCount}
+            {token?.holderCount ? token?.holderCount : "N/A"}
           </p>
         </div>
       </div>
@@ -508,14 +498,14 @@ function AdminTokenDetails({ address }: { address: string }) {
         <div className="p-4 bg-autofun-background-primary ">
           <h3 className="text-lg font-medium mb-2">Market Cap</h3>
           <p className="text-2xl font-bold text-autofun-text-highlight">
-            ${token.marketCapUSD.toLocaleString()}
+            {formatNumber(token.marketCapUSD)}
           </p>
         </div>
 
         <div className="p-4 bg-autofun-background-primary ">
           <h3 className="text-lg font-medium mb-2">Volume (24h)</h3>
           <p className="text-2xl font-bold text-autofun-text-highlight">
-            {token.volume24h.toLocaleString()} SOL
+            {formatNumber(token.volume24h)}
           </p>
         </div>
 
@@ -528,7 +518,7 @@ function AdminTokenDetails({ address }: { address: string }) {
             ></div>
           </div>
           <p className="text-lg font-bold text-autofun-text-highlight">
-            {token.curveProgress}%
+            {token.curveProgress ? token.curveProgress.toFixed(1) : "-"}%
           </p>
           <p className="text-xs text-autofun-text-secondary">
             Reserve: {token.reserveLamport} SOL (Virtual:{" "}

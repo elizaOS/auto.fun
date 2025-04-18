@@ -2,10 +2,13 @@ import { Link, Route, Routes, useLocation } from "react-router-dom";
 import AdminOverview from "./admin/overview";
 import AdminUsers from "./admin/users";
 import AdminTokens from "./admin/tokens";
+import useAuthentication from "@/hooks/use-authentication";
 
 export default function Admin() {
   const location = useLocation();
   const currentPath = location.pathname;
+
+  const { isAuthenticated } = useAuthentication();
 
   // Helper function to determine if a link is active
   const isActive = (path: string) => {
@@ -17,6 +20,8 @@ export default function Admin() {
     }
     return false;
   };
+
+  if (!isAuthenticated) return <div className="text-white">Not allowed</div>;
 
   return (
     <div className="flex flex-col gap-4">

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetcher } from "@/utils/api";
 import Loader from "@/components/loader";
+import { formatNumber } from "@/utils";
 
 interface AdminStats {
   userCount: number;
@@ -52,7 +53,7 @@ export default function AdminOverview() {
         <div className="p-4 bg-autofun-background-primary ">
           <h3 className="text-lg font-medium mb-2">Volume</h3>
           <p className="text-2xl font-bold text-autofun-text-highlight">
-            {stats.volume24h.toLocaleString()} SOL
+            {formatNumber(stats.volume24h)}
           </p>
           <p className="text-sm text-autofun-text-secondary">24h volume</p>
         </div>
