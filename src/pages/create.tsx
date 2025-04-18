@@ -19,7 +19,7 @@ import InlineVanityWorker from "@/workers/vanityWorker?worker&inline"; // Added 
 
 const MAX_INITIAL_SOL = isDevnet ? 2.8 : 28;
 // Use the token supply and virtual reserves from environment or fallback to defaults
-const TOKEN_SUPPLY = Number(env.tokenSupply) || 1000000000000000;
+const TOKEN_SUPPLY = Number(env.tokenSupply) || 1000000000;
 const VIRTUAL_RESERVES = Number(env.virtualReserves) || 2800000000;
 
 // Tab types
