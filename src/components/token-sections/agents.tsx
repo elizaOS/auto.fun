@@ -1,5 +1,5 @@
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Trash2 } from "lucide-react";
+import { LogOut, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -13,7 +13,7 @@ const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
 // Storage keys for Twitter auth
 const STORAGE_KEY = "twitter-oauth-token";
 const AGENT_INTENT_KEY = "connect_agent_intent";
-// const OAUTH_REDIRECT_ORIGIN_KEY = "OAUTH_REDIRECT_ORIGIN"; // Key for storing the original path
+const OAUTH_REDIRECT_ORIGIN_KEY = "OAUTH_REDIRECT_ORIGIN"; // Key for storing the original path
 
 // Types for Twitter authentication
 type TwitterCredentials = {
@@ -46,7 +46,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
   const [twitterCredentials, setTwitterCredentials] =
     useState<TwitterCredentials | null>(null);
   const [isConnectingAgent, setIsConnectingAgent] = useState(false);
-  // const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [componentMounted, setComponentMounted] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -68,7 +68,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
 
   // Extract token mint from URL if not found in params
   const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(
-    null,
+    null
   );
 
   // Effect to detect token mint from various sources
@@ -104,7 +104,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
       if (storedCredentials) {
         try {
           const parsedCredentials = JSON.parse(
-            storedCredentials,
+            storedCredentials
           ) as TwitterCredentials;
           if (parsedCredentials.expiresAt > Date.now()) {
             setTwitterCredentials(parsedCredentials);
@@ -147,7 +147,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
         if (!agentsData || !Array.isArray(agentsData.agents)) {
           console.error(
             "Invalid agents data received after parsing:",
-            agentsData,
+            agentsData
           );
           throw new Error("Invalid response format when fetching agents.");
         }
@@ -158,7 +158,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
         setAgentsError(
           error instanceof Error
             ? error.message
-            : "Unknown error fetching agents",
+            : "Unknown error fetching agents"
         );
         setTokenAgents([]); // Clear agents on error
       } finally {
@@ -167,8 +167,83 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
     };
 
     fetchTokenData();
-  }, [tokenMint]);
+  }, [tokenMint]); // Re-fetch when tokenMint changes
+  // --- End Fetch Real Token Info & Agents ---
 
+  const disconnectTwitter = async () => {
+    try {
+      setIsDisconnecting(true);
+
+      // Remove from localStorage
+      localStorage.removeItem(STORAGE_KEY);
+
+      // Clear state
+      setTwitterCredentials(null);
+    } catch (error) {
+      toast.error("Failed to disconnect from X");
+      console.error("Disconnect error:", error);
+    } finally {
+      setIsDisconnecting(false);
+    }
+  };
+
+  const connectTwitter = async () => {
+    // Verify we have a token mint
+    if (!tokenMint) {
+      toast.error("No token mint found, cannot connect agent");
+      return;
+    }
+
+    // Ensure wallet is connected
+    if (!publicKey) {
+      toast.error("Please connect your wallet before connecting to X");
+      return;
+    }
+
+    try {
+      setIsConnectingAgent(true);
+
+      // If we already have credentials, connect the agent
+      if (twitterCredentials && twitterCredentials.expiresAt > Date.now()) {
+        await connectTwitterAgent(twitterCredentials);
+      } else {
+        console.log(
+          "Not authenticated, storing intent and redirecting for agent connection."
+        );
+        // Store the intent to connect agent and the token mint
+        localStorage.setItem(AGENT_INTENT_KEY, tokenMint);
+
+        // Store the current path before redirecting
+        const currentPath =
+          window.location.pathname +
+          window.location.search +
+          window.location.hash;
+
+        // Add agents anchor to the path
+        const pathWithAnchor =
+          currentPath + (currentPath.includes("#") ? "" : "#agents");
+        localStorage.setItem(OAUTH_REDIRECT_ORIGIN_KEY, pathWithAnchor);
+        console.log("Stored origin path for redirect:", pathWithAnchor);
+
+        // Redirect to OAuth
+        const apiUrl = env.apiUrl;
+        if (!apiUrl) {
+          throw new Error("API URL is not configured");
+        }
+
+        window.location.href = `${apiUrl}/api/share/oauth/request_token`;
+      }
+    } catch (error) {
+      console.error("Error connecting Twitter account:", error);
+      toast.error(
+        `Error: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    } finally {
+      setIsConnectingAgent(false);
+    }
+  };
+
+  // Connect Twitter agent with credentials
   const connectTwitterAgent = useCallback(
     async (creds: TwitterCredentials) => {
       if (!tokenMint) {
@@ -189,10 +264,10 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
           if (!publicKey) {
             console.error(
               "Wallet still not connected after delay. publicKey state:",
-              publicKey,
+              publicKey
             );
             toast.error(
-              "Wallet not connected. Cannot link agent. Please connect your wallet and try again.",
+              "Wallet not connected. Cannot link agent. Please connect your wallet and try again."
             );
             return;
           }
@@ -208,7 +283,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
       if (!authToken) {
         console.error("Auth token missing. Cookies may not be properly set.");
         toast.error(
-          "Authentication token missing. Please reconnect your wallet.",
+          "Authentication token missing. Please reconnect your wallet."
         );
         return;
       }
@@ -229,7 +304,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
             username: creds.username, // Include username if available
           }),
           credentials: "include",
-        },
+        }
       );
 
       // Check response status
@@ -248,11 +323,11 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
           setTokenAgents((prev) =>
             prev.find((a) => a.id === errorData.agent.id)
               ? prev
-              : [...prev, errorData.agent as TokenAgent],
+              : [...prev, errorData.agent as TokenAgent]
           );
 
           toast.info(
-            "This Twitter account is already connected to this token.",
+            "This Twitter account is already connected to this token."
           );
           return;
         }
@@ -261,7 +336,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
           // If authentication error, give more specific guidance
           if (response.status === 401) {
             toast.error(
-              "Authentication error. Please reconnect your wallet and try again.",
+              "Authentication error. Please reconnect your wallet and try again."
             );
           } else {
             throw new Error(errorData.error);
@@ -320,7 +395,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
           .finally(() => setIsAgentsLoading(false));
       }, 1000);
     },
-    [tokenMint, publicKey, API_BASE_URL, setTokenAgents, setIsAgentsLoading],
+    [tokenMint, publicKey, API_BASE_URL, setTokenAgents, setIsAgentsLoading]
   );
 
   // Remove agent function
@@ -340,7 +415,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
 
     if (!authToken) {
       toast.error(
-        "Authentication token missing. Please reconnect your wallet.",
+        "Authentication token missing. Please reconnect your wallet."
       );
       return;
     }
@@ -355,7 +430,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
             Authorization: `Bearer ${authToken}`,
           },
           credentials: "include",
-        },
+        }
       );
 
       if (!response.ok) {
@@ -377,21 +452,21 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
 
       // Update local state on success
       setTokenAgents((prev) =>
-        prev.filter((agent) => agent.id !== agentToRemove.id),
+        prev.filter((agent) => agent.id !== agentToRemove.id)
       );
 
       toast.success("Agent removed successfully");
     } catch (error) {
       console.error("Error removing agent:", error);
       toast.error(
-        `Failed to remove agent: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to remove agent: ${error instanceof Error ? error.message : "Unknown error"}`
       );
     }
   };
 
   // Sorted agents with officials at the top
   const sortedAgents = [...tokenAgents].sort((a, b) =>
-    a.official && !b.official ? -1 : !a.official && b.official ? 1 : 0,
+    a.official && !b.official ? -1 : !a.official && b.official ? 1 : 0
   );
 
   // Check if the callback is from a connect agent intent
@@ -423,7 +498,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
                     headers: {
                       Authorization: `Bearer ${parsedCreds.accessToken}`,
                     },
-                  },
+                  }
                 );
 
                 if (profileResponse.ok) {
@@ -450,7 +525,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
                     // Update both state and localStorage
                     localStorage.setItem(
                       STORAGE_KEY,
-                      JSON.stringify(updatedCreds),
+                      JSON.stringify(updatedCreds)
                     );
                     setTwitterCredentials(updatedCreds);
 
@@ -490,15 +565,15 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
                     window.history.replaceState(
                       {},
                       "",
-                      window.location.pathname + location.hash,
+                      window.location.pathname + location.hash
                     );
                   } catch (error) {
                     console.error(
                       "Error connecting agent from callback:",
-                      error,
+                      error
                     );
                     toast.error(
-                      `Failed to connect agent: ${error instanceof Error ? error.message : "Unknown error"}`,
+                      `Failed to connect agent: ${error instanceof Error ? error.message : "Unknown error"}`
                     );
                     // Still clean up on error
                     localStorage.removeItem(AGENT_INTENT_KEY);
@@ -513,7 +588,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
                   setTimeout(() => connectWithRetries(retriesLeft - 1), 1000);
                 } else {
                   toast.warn(
-                    "Your wallet connection wasn't ready. Please click 'Connect as agent' once your wallet is connected.",
+                    "Your wallet connection wasn't ready. Please click 'Connect as agent' once your wallet is connected."
                   );
                   // Don't clear the intent yet, so user can try again
                 }
@@ -528,20 +603,20 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
           } catch (error) {
             console.error("Failed to process agent connection", error);
             toast.error(
-              `Failed to connect agent: ${error instanceof Error ? error.message : "Unknown error"}`,
+              `Failed to connect agent: ${error instanceof Error ? error.message : "Unknown error"}`
             );
             // Clean up on error
             localStorage.removeItem(AGENT_INTENT_KEY);
           }
         } else {
           toast.error(
-            "Twitter credentials not found after authentication. Please try again.",
+            "Twitter credentials not found after authentication. Please try again."
           );
           localStorage.removeItem(AGENT_INTENT_KEY);
         }
       } else {
         toast.warning(
-          `Attempted to connect agent to wrong token. Please try again.`,
+          `Attempted to connect agent to wrong token. Please try again.`
         );
         localStorage.removeItem(AGENT_INTENT_KEY);
       }
@@ -549,9 +624,9 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
   }, [tokenMint, componentMounted, publicKey]); // connectTwitterAgent is already memoized
 
   // Check if user has a connected agent for this token
-  // const hasConnectedAgent = tokenAgents.some(
-  //   (agent) => publicKey && agent.ownerAddress === publicKey.toBase58(),
-  // );
+  const hasConnectedAgent = tokenAgents.some(
+    (agent) => publicKey && agent.ownerAddress === publicKey.toBase58()
+  );
 
   // Effect to process OAuth callback and update stored credentials with correct username
   useEffect(() => {
@@ -571,7 +646,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
               headers: {
                 Authorization: `Bearer ${twitterCredentials.accessToken}`,
               },
-            },
+            }
           );
 
           if (response.ok) {
@@ -600,13 +675,13 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
               // Update localStorage
               localStorage.setItem(
                 STORAGE_KEY,
-                JSON.stringify(updatedCredentials),
+                JSON.stringify(updatedCredentials)
               );
             }
           } else {
             console.error(
               "Failed to fetch Twitter user info:",
-              await response.text(),
+              await response.text()
             );
           }
         } catch (error) {
@@ -671,6 +746,58 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
       {isCreator && (
         <>
           <div className="mt-4">
+            {twitterCredentials && twitterCredentials.expiresAt > Date.now() ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-neutral-200">
+                    <span className="border border-[#03FF24] rounded-full w-2 h-2"></span>
+                    <span>
+                      Connected to X as @
+                      {twitterCredentials.username || twitterCredentials.userId}
+                    </span>
+                  </div>
+                  <Button
+                    onClick={disconnectTwitter}
+                    disabled={isDisconnecting}
+                    variant="outline"
+                    size="small"
+                    className="!px-2 text-red-500 hover:text-red-400 hover:bg-red-950/20 mx-auto w-72"
+                  >
+                    <LogOut size={16} className="mr-1" />
+                    Disconnect X Account
+                  </Button>
+                </div>
+
+                {!hasConnectedAgent && (
+                  <Button
+                    onClick={connectTwitter}
+                    disabled={
+                      isConnectingAgent ||
+                      !tokenMint ||
+                      isAgentsLoading ||
+                      !!agentsError
+                    }
+                    className="mx-auto mt-2 w-72"
+                    variant="tab"
+                  >
+                    {isConnectingAgent ? "Connecting..." : "Connect as agent"}
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <Button
+                onClick={connectTwitter}
+                disabled={
+                  isConnectingAgent || !tokenMint || isAgentsLoading // || !!agentsError
+                }
+                className="mx-auto h-fit w-72"
+                variant="tab"
+              >
+                {isConnectingAgent ? "Connecting..." : "Connect X Account"}
+              </Button>
+            )}
+          </div>
+          <div className="mt-4">
             <Link
               to="https://fleek.xyz/?referral=autofun"
               aria-label="fleek url"
@@ -679,7 +806,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
               <Button
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
-                className={`flex flex-col items-center gap-2 mx-auto border-[#03FF24] border-2 h-fit hover:bg-[#03FF24] hover:font-bold ${
+                className={`flex flex-col items-center gap-2 w-72 mx-auto border-[#03FF24] border-2 h-fit hover:bg-[#03FF24] hover:font-bold ${
                   isHovered ? "text-black" : ""
                 }`}
                 style={{
