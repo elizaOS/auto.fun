@@ -130,20 +130,10 @@ adminRouter.patch("/tokens/:mint/featured", requireAdmin, async (c) => {
       return c.json({ error: "Token not found" }, 404);
     }
 
-    // Since the 'featured' flag doesn't exist in the schema,
-    // we'll use the 'status' field to indicate featured tokens
-    // We'll append 'featured' to the status if it's featured
-    const currentStatus = tokenData[0].status || "active";
-    const newStatus = featured
-      ? currentStatus.includes("featured")
-        ? currentStatus
-        : `${currentStatus}-featured`
-      : currentStatus.replace("-featured", "");
-
     await db
       .update(tokens)
       .set({
-        status: newStatus,
+        featured: featured ? 1 : 0,
         lastUpdated: new Date().toISOString(),
       })
       .where(eq(tokens.mint, mint));
@@ -382,8 +372,10 @@ adminRouter.get("/users/:address", requireAdmin, async (c) => {
     const isSuspended = user.suspended === 1;
 
     // For backward compatibility, also check if the name has the [SUSPENDED] prefix
-    const isNameSuspended = user.name ? user.name.startsWith("[SUSPENDED]") : false;
-    
+    const isNameSuspended = user.name
+      ? user.name.startsWith("[SUSPENDED]")
+      : false;
+
     // Use the suspended field if it's set, otherwise fall back to the name check
     const finalSuspendedStatus = isSuspended || isNameSuspended;
 
