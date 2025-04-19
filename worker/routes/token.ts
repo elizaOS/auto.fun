@@ -1125,6 +1125,7 @@ tokenRouter.get("/tokens", async (c) => {
 
     // Get max values for normalization first - we need these for both the featuredScore and sorting
     const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
+
     const shouldHideImported = queryParams.hideImported
       ? Number(queryParams.hideImported) === 1
       : false;

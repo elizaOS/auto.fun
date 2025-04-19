@@ -984,8 +984,8 @@ export function getFeaturedScoreExpression(
 export function calculateFeaturedScore(
   token: {
     ticker: string;
-    featured?: number;
-    imported?: number;
+    featured: number | null;
+    imported: number | null;
     volume24h?: number | null;
     holderCount?: number | null;
   },
