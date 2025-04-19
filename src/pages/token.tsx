@@ -127,7 +127,10 @@ export default function Page() {
         throw error;
       }
     },
-    refetchInterval: 2000,
+    refetchInterval: 7500,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {
