@@ -29,7 +29,7 @@ export const useHomepageAll = (
     hideImported: 0,
     validationSchema: HomepageFeaturedSchema,
     itemsPropertyName: "tokens",
-    sortBy: "featuredScore",
+    sortBy: "featured",
     sortOrder: "desc",
     enabled,
   });
@@ -46,10 +46,11 @@ export const useHomepageAll = (
       );
 
       if (existingToken) {
-        pagination.setItems((items) => [
-          newToken,
-          ...items.filter((item) => item.mint !== newToken.mint),
-        ]);
+        pagination.setItems((items) =>
+          items.map((token) =>
+            token.mint === newToken.mint ? newToken : token,
+          ),
+        );
       } else if (
         (newToken?.featuredScore || 0) >=
           (pagination.items[pagination.items.length - 1]?.featuredScore || 0) &&
