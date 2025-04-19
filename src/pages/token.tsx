@@ -650,7 +650,7 @@ export default function Page() {
                       true,
                       true
                     )}{" "}
-                    of {isDevnet ? "11.3" : "113"} SOL in the bonding curve.
+                    SOL in the bonding curve.
                   </p>
                 ) : (
                   env.solanaNetwork !== "devnet" && (
