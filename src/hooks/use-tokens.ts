@@ -8,12 +8,12 @@ export type Token = z.infer<typeof TokenSchema>;
 export const HomepageTokenSchema = TokenSchema.and(
   z.object({
     numComments: z.number().default(0),
-  }),
+  })
 );
 export const HomepageFeaturedSchema = HomepageTokenSchema.and(
   z.object({
     featuredScore: z.number().nullable().optional(),
-  }),
+  })
 );
 
 export type HomepageSortBy = "all" | "marketCap" | "newest" | "oldest";
@@ -21,7 +21,7 @@ export type HomepageSortBy = "all" | "marketCap" | "newest" | "oldest";
 export const useHomepageAll = (
   enabled: boolean,
   hideImported?: boolean,
-  pageSize: number = 24,
+  pageSize: number = 24
 ) => {
   const pagination = usePagination({
     endpoint: "/api/tokens",
@@ -42,14 +42,15 @@ export const useHomepageAll = (
     const onTokenEvent = (token: unknown) => {
       const newToken = HomepageFeaturedSchema.parse(token);
       const existingToken = pagination.items.find(
-        (token) => token.mint === newToken.mint,
+        (token) => token.mint === newToken.mint
       );
 
       if (existingToken) {
-        pagination.setItems((items) => [
-          newToken,
-          ...items.filter((item) => item.mint !== newToken.mint),
-        ]);
+        pagination.setItems((items) =>
+          items.map((token) =>
+            token.mint === newToken.mint ? newToken : token
+          )
+        );
       } else if (
         (newToken?.featuredScore || 0) >=
           (pagination.items[pagination.items.length - 1]?.featuredScore || 0) &&
@@ -78,7 +79,7 @@ export const useHomepageAll = (
 export const useHomepageMarketCap = (
   enabled: boolean,
   hideImported?: boolean,
-  pageSize: number = 24,
+  pageSize: number = 24
 ) => {
   const pagination = usePagination({
     endpoint: "/api/tokens",
@@ -99,7 +100,7 @@ export const useHomepageMarketCap = (
     const onTokenEvent = (token: unknown) => {
       const newToken = HomepageTokenSchema.parse(token);
       const existingTokenIndex = pagination.items.findIndex(
-        (token) => token.mint === newToken.mint,
+        (token) => token.mint === newToken.mint
       );
       if (existingTokenIndex !== -1) {
         const itemsCopy = [...pagination.items];
@@ -133,7 +134,7 @@ export const useHomepageMarketCap = (
 export const useHomepageNewest = (
   enabled: boolean,
   hideImported?: boolean,
-  pageSize: number = 24,
+  pageSize: number = 24
 ) => {
   const pagination = usePagination({
     endpoint: "/api/tokens",
@@ -162,14 +163,14 @@ export const useHomepageNewest = (
     socket.on("updateToken", (token) => {
       const updatedToken = HomepageTokenSchema.parse(token);
       const existingToken = pagination.items.find(
-        (item) => item.mint === updatedToken.mint,
+        (item) => item.mint === updatedToken.mint
       );
 
       if (existingToken) {
         pagination.setItems((items) =>
           items.map((token) =>
-            token.mint === updatedToken.mint ? updatedToken : token,
-          ),
+            token.mint === updatedToken.mint ? updatedToken : token
+          )
         );
       }
     });
@@ -186,7 +187,7 @@ export const useHomepageNewest = (
 export const useHomepageOldest = (
   enabled: boolean,
   hideImported?: boolean,
-  pageSize: number = 24,
+  pageSize: number = 24
 ) => {
   const pagination = usePagination({
     endpoint: "/api/tokens",
@@ -219,14 +220,14 @@ export const useHomepageOldest = (
     socket.on("updateToken", (token) => {
       const updatedToken = HomepageTokenSchema.parse(token);
       const existingToken = pagination.items.find(
-        (item) => item.mint === updatedToken.mint,
+        (item) => item.mint === updatedToken.mint
       );
 
       if (existingToken) {
         pagination.setItems((items) =>
           items.map((token) =>
-            token.mint === updatedToken.mint ? updatedToken : token,
-          ),
+            token.mint === updatedToken.mint ? updatedToken : token
+          )
         );
       }
     });
@@ -243,23 +244,23 @@ export const useHomepageOldest = (
 export const useTokens = (
   sortBy: HomepageSortBy,
   hideImported: boolean,
-  pageSize: number = 24,
+  pageSize: number = 24
 ) => {
   const allTokens = useHomepageAll(sortBy === "all", hideImported, pageSize);
   const marketCapTokens = useHomepageMarketCap(
     sortBy === "marketCap",
     hideImported,
-    pageSize,
+    pageSize
   );
   const newestTokens = useHomepageNewest(
     sortBy === "newest",
     hideImported,
-    pageSize,
+    pageSize
   );
   const oldestTokens = useHomepageOldest(
     sortBy === "oldest",
     hideImported,
-    pageSize,
+    pageSize
   );
 
   useEffect(() => {
