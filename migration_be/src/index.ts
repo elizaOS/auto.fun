@@ -1,10 +1,8 @@
-import { Connection, PublicKey, Logs } from "@solana/web3.js";
-import fetch from "node-fetch";
+import { Connection, Logs, PublicKey } from "@solana/web3.js";
 import dotenv from "dotenv";
 
-import { processTransactionLogs } from "./processTransactionLogs";
 import { getDB } from "./db";
-import { checkMigratingTokens } from "./raydium/migration/migrations";
+import { processTransactionLogs } from "./processTransactionLogs";
 
 dotenv.config();
 
@@ -21,7 +19,6 @@ const RPC_URL = SOLANA_NETWORK === "devnet"
    ? process.env.DEVNET_SOLANA_RPC_URL
    : process.env.MAINNET_SOLANA_RPC_URL;
 const PROGRAM_ID = process.env.PROGRAM_ID!;
-const CF_EVENT_HOOK_URL = `${process.env.VITE_API_URL}/api/migration/update`;
 const CF_AUTH_TOKEN = process.env.HELIUS_WEBHOOK_AUTH_TOKEN!;
 
 if (!RPC_URL || !PROGRAM_ID || !CF_AUTH_TOKEN) {
