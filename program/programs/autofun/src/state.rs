@@ -107,14 +107,14 @@ pub trait BondingCurveAccount<'info> {
         system_program: &Program<'info, System>,
     ) -> Result<u64>;
 
+    // Calculate the output amount and the fee amount (in SOL) for a swap
     fn cal_amount_out(
         &self,
-        amount: u64,
-        token_one_decimals: u8,
+        amount: u64, // Input amount (tokens if selling, SOL if buying)
         direction: u8,
         platform_sell_fee: u128,
         platform_buy_fee: u128,
-    ) -> Result<(u64, u64)>;
+    ) -> Result<(u64, u64)>; // Returns (output_amount, fee_amount_in_sol)
 }
 
 impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
@@ -338,7 +338,7 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
         Ok(amount_out)
     }
 
-    // Returns -> Result<(output_amount, fee_amount_in_sol)>
+    // Calculate the output amount and the fee amount (in SOL) for a swap
     fn cal_amount_out(
         &self,
         amount: u64, // Input amount (tokens if selling, SOL if buying)
