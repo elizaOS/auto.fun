@@ -47,7 +47,7 @@ import { Autofun } from '../target/types/autofun';
     teamWallet: new anchor.web3.PublicKey(
       "FfNhJtoWL6Nk9UkiZiitYifcBMFUicaJswKj6CFdFNSa"
     ),
-    initBondingCurve: new BN(100),
+    initBondingCurve: 100,
     platformBuyFee: new BN(100),
     platformSellFee: new BN(100),
     curveLimit: new BN(1130000000),

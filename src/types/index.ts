@@ -115,8 +115,8 @@ export const TokenSchema = z
       }
       return val;
     }, z.number().nullish()),
-    verified: z.number().nullish(),
-    featured: z.number().nullish(),
+    verified: z.number(),
+    featured: z.number(),
   })
   .transform((data) => ({
     ...data,
