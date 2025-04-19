@@ -10,7 +10,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses = {
   primary: "border-2 border-[#2FD345] text-white",
-  outline: "bg-transparent border text-white",
+  outline: "bg-transparent border text-white border-2 border-transparent",
   ghost: "bg-transparent text-white border border-transparent",
   secondary:
     "bg-autofun-background-action-primary border text-autofun-text-highlight",
