@@ -24,7 +24,7 @@ import {
 } from "@/utils";
 import { getToken, queryClient } from "@/utils/api";
 import { getAuthToken } from "@/utils/auth";
-import { env } from "@/utils/env";
+import { env, isDevnet } from "@/utils/env";
 import { getSocket } from "@/utils/socket";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useQuery } from "@tanstack/react-query";
@@ -308,7 +308,7 @@ export default function Page() {
                   isPartner
                     ? "from-autofun-background-action-highlight/10 via-autofun-background-action-highlight/10"
                     : "from-black/50 via-black/25",
-                  "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5",
+                  "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5"
                 )}
               >
                 <div className="flex flex-wrap items-center justify-start w-full gap-2">
@@ -586,7 +586,7 @@ export default function Page() {
                   {formatNumber(
                     tokenBalance * currentPrice * solanaPrice,
                     true,
-                    false,
+                    false
                   )}
                 </span>
               </div>
@@ -641,16 +641,16 @@ export default function Page() {
                 </div>
                 {token?.status !== "migrated" ? (
                   <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">
-                    Graduate this coin at{" "}
-                    {formatNumber(graduationMarketCap, true)} market cap.{"\n"}
+                    {/* Graduate this coin at{" "}
+                    {formatNumber(graduationMarketCap, true)} market cap.{"\n"} */}
                     There is{" "}
                     {formatNumber(
                       (token?.reserveLamport - token?.virtualReserves) /
                         LAMPORTS_PER_SOL,
                       true,
-                      true,
+                      true
                     )}{" "}
-                    SOL in the bonding curve.
+                    of {isDevnet ? "11.3" : "113"} SOL in the bonding curve.
                   </p>
                 ) : (
                   env.solanaNetwork !== "devnet" && (
