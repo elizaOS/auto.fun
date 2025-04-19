@@ -272,7 +272,7 @@ export function getDB(env: Env) {
       tokenAgents,
       vanityGenerationInstances,
     };
-    return drizzle(env.DB as any, {
+    return drizzle(env.DB.withSession() as any, {
       schema: drizzleSchema,
     }) as DrizzleD1Database<typeof drizzleSchema>;
   } catch (error) {
