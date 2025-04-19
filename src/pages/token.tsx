@@ -24,7 +24,7 @@ import {
 } from "@/utils";
 import { getToken, queryClient } from "@/utils/api";
 import { getAuthToken } from "@/utils/auth";
-import { env, isDevnet } from "@/utils/env";
+import { env } from "@/utils/env";
 import { getSocket } from "@/utils/socket";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useQuery } from "@tanstack/react-query";
@@ -170,7 +170,6 @@ export default function Page() {
   const volume24h = token?.volume24h || 0;
   const finalTokenPrice = Number(env.finalTokenPrice ?? 0.000000451);
   const finalTokenUSDPrice = finalTokenPrice * solPriceUSD;
-  const graduationMarketCap = finalTokenUSDPrice * 1_000_000_000;
 
   const { tokenBalance } = useTokenBalance({
     tokenId: token?.mint || (params?.address as string),
