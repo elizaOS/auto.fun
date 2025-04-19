@@ -404,7 +404,6 @@ export class ExternalToken {
       const result = await this.db
         .insert(swaps)
         .values(batch)
-        .onConflictDoNothing({ target: [swaps.txId] })
         .onConflictDoNothing()
         .returning({ insertedId: swaps.id });
       insertedCount += result.length;
