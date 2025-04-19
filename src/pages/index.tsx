@@ -23,13 +23,17 @@ export default function Page() {
     getSocket().emit("subscribeGlobal");
   }, []);
 
-  // Memoize tokens for the header to prevent unnecessary rerenders when sorting changes
   const headerTokens = useMemo(() => {
-    // Only update on initial load or when tokens data structure fundamentally changes
-    // We're intentionally NOT including the tokens array itself in the dependency array
     return query?.items || [];
-  }, [query?.items]); // Only update when the data is actually refreshed from the server
+  }, [query?.items]);
 
+  const data = query?.items
+    ? query?.items.filter(
+        (item, index, self) =>
+          index === self.findIndex((t) => t.mint === item.mint)
+      )
+    : [];
+    
   return (
     <div className="w-full min-h-[50vh]">
       {/* Header Section */}
@@ -77,11 +81,11 @@ export default function Page() {
               </div>
             ) : activeTab === "grid" ? (
               <div className="my-6">
-                <GridView data={query?.items || []} />
+                <GridView data={data} />
               </div>
             ) : (
               <div className="mb-2">
-                <TableView data={query?.items || []} />
+                <TableView data={data} />
               </div>
             )}
           </Fragment>
