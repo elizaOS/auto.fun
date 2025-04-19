@@ -1,3 +1,7 @@
+PRAGMA journal_mode = WAL;
+
+PRAGMA synchronous = NORMAL;
+
 -- Migration file for D1 database
 CREATE TABLE IF NOT EXISTS oauth_verifiers (
   id TEXT PRIMARY KEY,
@@ -144,13 +148,16 @@ CREATE TABLE IF NOT EXISTS messages (
   FOREIGN KEY (parent_id) REFERENCES messages(id)
 );
 
+ALTER TABLE
+  token_holders RENAME TO token_holders_old;
+
 -- Create token holders table
 CREATE TABLE IF NOT EXISTS token_holders (
   id TEXT PRIMARY KEY,
   mint TEXT NOT NULL,
   address TEXT NOT NULL,
-  amount INTEGER NOT NULL,
-  percentage INTEGER NOT NULL,
+  amount REAL NULL,
+  percentage REAL NULL,
   last_updated INTEGER NOT NULL DEFAULT (unixepoch()),
   FOREIGN KEY (mint) REFERENCES tokens(mint),
   UNIQUE (mint, address)
@@ -239,3 +246,73 @@ CREATE INDEX IF NOT EXISTS idx_cache_prices_type ON cache_prices(type);
 CREATE INDEX IF NOT EXISTS idx_cache_prices_symbol ON cache_prices(symbol);
 
 CREATE INDEX IF NOT EXISTS idx_cache_prices_expires ON cache_prices(expires_at);
+
+CREATE INDEX IF NOT EXISTS idx_tokens_status_hidden_marketcap ON tokens(status, hidden, market_cap_usd DESC);
+
+CREATE INDEX IF NOT EXISTS idx_tokens_featured_hidden_marketcap ON tokens(featured, hidden, market_cap_usd DESC);
+
+CREATE INDEX IF NOT EXISTS idx_tokens_status_hidden_created ON tokens(status, hidden, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_tokens_status_hidden_holdercount ON tokens(status, hidden, holder_count DESC);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS tokens_fts USING fts5(
+  mint,
+  name,
+  ticker,
+  content = 'tokens',
+  content_rowid = 'rowid'
+);
+
+INSERT INTO
+  tokens_fts(tokens_fts)
+VALUES
+  ('rebuild');
+
+CREATE TRIGGER IF NOT EXISTS tokens_ai
+AFTER
+INSERT
+  ON tokens BEGIN
+INSERT INTO
+  tokens_fts(rowid, mint, name, ticker)
+VALUES
+  (new.rowid, new.mint, new.name, new.ticker);
+
+END;
+
+CREATE TRIGGER IF NOT EXISTS tokens_ad
+AFTER
+  DELETE ON tokens BEGIN
+INSERT INTO
+  tokens_fts(tokens_fts, rowid, mint, name, ticker)
+VALUES
+  (
+    'delete',
+    old.rowid,
+    old.mint,
+    old.name,
+    old.ticker
+  );
+
+END;
+
+CREATE TRIGGER IF NOT EXISTS tokens_au
+AFTER
+UPDATE
+  ON tokens BEGIN
+INSERT INTO
+  tokens_fts(tokens_fts, rowid, mint, name, ticker)
+VALUES
+  (
+    'delete',
+    old.rowid,
+    old.mint,
+    old.name,
+    old.ticker
+  );
+
+INSERT INTO
+  tokens_fts(rowid, mint, name, ticker)
+VALUES
+  (new.rowid, new.mint, new.name, new.ticker);
+
+END;
