@@ -152,7 +152,8 @@ CREATE TABLE IF NOT EXISTS token_holders (
   amount INTEGER NOT NULL,
   percentage INTEGER NOT NULL,
   last_updated INTEGER NOT NULL DEFAULT (unixepoch()),
-  FOREIGN KEY (mint) REFERENCES tokens(mint)
+  FOREIGN KEY (mint) REFERENCES tokens(mint),
+  UNIQUE (mint, address)
 );
 
 -- Create personalities table
