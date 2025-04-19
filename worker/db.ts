@@ -63,7 +63,7 @@ export const tokens = sqliteTable("tokens", {
   hidden: integer("hidden").default(0), // 0 = not hidden, 1 = hidden
   // NEW: Token supply and decimals
   tokenSupply: text("token_supply", { mode: "text" }).default(
-    "1000000000000000",
+    "1000000000000000"
   ), // As string to preserve precision
   tokenSupplyUiAmount: integer("token_supply_ui_amount").default(1000000000),
   tokenDecimals: integer("token_decimals").default(6),
@@ -135,10 +135,10 @@ export const personalities = sqliteTable("personalities", {
   name: text("name").notNull(),
   description: text("description"),
   createdAt: integer("created_at", { mode: "timestamp" }).default(
-    sql`CURRENT_TIMESTAMP`,
+    sql`CURRENT_TIMESTAMP`
   ),
   updatedAt: integer("updated_at", { mode: "timestamp" }).default(
-    sql`CURRENT_TIMESTAMP`,
+    sql`CURRENT_TIMESTAMP`
   ),
   deletedAt: integer("deleted_at", { mode: "timestamp" }),
 });
@@ -248,7 +248,7 @@ export const vanityGenerationInstances = sqliteTable(
     lastHeartbeat: text("last_heartbeat", { mode: "text" }),
     createdAt: text("created_at", { mode: "text" }).notNull(),
     updatedAt: text("updated_at", { mode: "text" }).notNull(),
-  },
+  }
 );
 
 export function getDB(env: Env) {
@@ -272,7 +272,7 @@ export function getDB(env: Env) {
       tokenAgents,
       vanityGenerationInstances,
     };
-    return drizzle(env.DB as any, {
+    return drizzle(env.DB.withSession() as any, {
       schema: drizzleSchema,
     }) as DrizzleD1Database<typeof drizzleSchema>;
   } catch (error) {
