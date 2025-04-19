@@ -20,6 +20,7 @@ import { sendNftTo, sendSolTo } from "../utils";
 import { retryOperation } from "../utils";
 import { RaydiumVault } from "../types/raydium_vault";
 import { Autofun } from "../../target/types/autofun";
+import { Autofun as AutofunProd } from "../../target/types/autofun_prod";
 import { TokenData } from "../types/tokenData";
 import {
   getMigrationState,
@@ -38,7 +39,7 @@ export class TokenMigrator {
     public connection: Connection,
     public wallet: Wallet,
     public program: Program<RaydiumVault>,
-    public autofunProgram: Program<Autofun>,
+    public autofunProgram: Program<Autofun | AutofunProd>,
     public provider: AnchorProvider,
   ) { }
   FEE_PERCENTAGE = 10; // 10% fee for pool creation

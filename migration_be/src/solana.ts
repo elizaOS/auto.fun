@@ -4,7 +4,9 @@ import { Env } from "./env";
 import { getRpcUrl } from "./utils";
 import { AnchorProvider, Program, setProvider } from "@coral-xyz/anchor";
 import { Autofun } from "./target/types/autofun";
+import { Autofun as AutofunProd } from "./target/types/autofun_prod";
 import * as idl from "./target/idl/autofun.json";
+import * as idlProd from "./target/idl/autofun_prod.json";
 
 // Initialize the Solana configuration with the provided environment
 export function initSolanaConfig(env?: Env) {
@@ -47,11 +49,14 @@ export function initSolanaConfig(env?: Env) {
   };
 }
 
-export const getProgram = (connection: Connection, wallet: any) => {
+export const getProgram = (connection: Connection, wallet: any, env: Env) => {
   const provider = new AnchorProvider(connection, wallet, {
     skipPreflight: true,
     commitment: "confirmed",
   });
 
-  return new Program<Autofun>(idl, provider);
+  return new Program<Autofun | AutofunProd>(
+    env.NETWORK === "devnet" ? idl : idlProd,
+    provider,
+  );
 };

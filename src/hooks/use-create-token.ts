@@ -12,7 +12,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { BN, Program } from "@coral-xyz/anchor";
 import { useMutation } from "@tanstack/react-query";
 import { TokenMetadata } from "@/types/form.type";
-import { Autofun, SEED_CONFIG, useProgram } from "@/utils/program";
+import { Autofun, AutofunProd, SEED_CONFIG, useProgram } from "@/utils/program";
 import { launchAndSwapTx } from "@/utils/swapUtils";
 import { env } from "@/utils/env";
 
@@ -28,7 +28,7 @@ const useCreateTokenMutation = () => {
       mintKeypair,
     }: {
       token_metadata: TokenMetadata;
-      program: Program<Autofun>;
+      program: Program<Autofun | AutofunProd>;
       connection: Connection;
       signTransaction: <T extends Transaction | VersionedTransaction>(
         transaction: T,

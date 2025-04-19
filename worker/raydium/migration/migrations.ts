@@ -11,7 +11,9 @@ import { TokenMigrator } from "../migration/migrateToken";
 import { RaydiumVault } from "../types/raydium_vault";
 import * as raydium_vault_IDL from "../raydium_vault.json";
 import { Autofun } from "../../target/types/autofun";
+import { Autofun as AutofunProd } from "../../target/types/autofun_prod";
 import * as IDL from "../../target/idl/autofun.json";
+import * as IDL_PROD from "../../target/idl/autofun_prod.json";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair } from "@solana/web3.js";
 import { Wallet } from "../../tokenSupplyHelpers/customWallet";
@@ -159,8 +161,6 @@ export async function executeMigrationStep(
   const nextStepName = nextStep ? nextStep.name : null;
   token.migration.lastStep = nextStepName ?? "done";
 
-
-
   await updateTokenInDB(env, tokenData);
   // await saveMigrationState(env, token, step.name);
 
@@ -280,7 +280,10 @@ export async function checkMigratingTokens(env: Env, limit: number) {
       raydium_vault_IDL as any,
       provider,
     );
-    const autofunProgram = new Program<Autofun>(IDL as any, provider);
+    const autofunProgram = new Program<Autofun | AutofunProd>(
+      env.NETWORK === "devnet" ? IDL : IDL_PROD,
+      provider,
+    );
 
     const tokenMigrator = new TokenMigrator(
       env,

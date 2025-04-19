@@ -60,6 +60,7 @@ export async function createNewTokenData(
       const program = getProgram(
          solanaConfig.connection,
          new Wallet(solanaConfig.wallet),
+         env as Env
       );
       // Fetch the account data directly using the connection instead of Anchor program
       const bondingCurveAccount =
