@@ -1402,6 +1402,15 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
 
     const db = getDB(c.env);
 
+    // Create a cache key based on the mint address and pagination parameters
+    const cacheKey = `token:${mint}:holders:limit=${limit}:page=${page}`;
+
+    // Try to get from cache first
+    const cachedData = await c.env.CACHE.get(cacheKey);
+    if (cachedData) {
+      return c.json(JSON.parse(cachedData));
+    }
+
     // Get holders from database directly
     // const holders = await db
     //   .select()
@@ -1436,12 +1445,19 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
     // Paginate results
     const paginatedHolders = holders.slice(offset, offset + limit);
 
-    return c.json({
+    const result = {
       holders: paginatedHolders,
       page: page,
       totalPages: Math.ceil(holders.length / limit),
       total: holders.length,
+    };
+
+    // Store the result in cache with 30-second TTL
+    await c.env.CACHE.put(cacheKey, JSON.stringify(result), {
+      expirationTtl: 30,
     });
+
+    return c.json(result);
   } catch (error) {
     logger.error(`Database error in token holders route: ${error}`);
     return c.json(
