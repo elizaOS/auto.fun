@@ -310,7 +310,7 @@ export async function checkMigratingTokens(env: Env, limit: number) {
 
     for (const token of finalList) {
       const tokenM = await getToken(env, token.mint);
-      await tokenMigrator.migrateToken(tokenM!);
+      // await tokenMigrator.migrateToken(tokenM!);
     }
 
   } catch (error) {

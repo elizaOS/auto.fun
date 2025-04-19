@@ -59,7 +59,7 @@ export class TokenMigrator {
       }
       await updateTokenInDB(this.env, token);
       setTimeout(() => {
-        this.migrateToken(token);
+        // this.migrateToken(token);
       }, delay);
 
     } catch (error) {
@@ -70,7 +70,7 @@ export class TokenMigrator {
   async callResumeWorker(token: TokenData) {
     try {
       await releaseMigrationLock(this.env, token);
-      await this.migrateToken(token);
+      // await this.migrateToken(token);
     } catch (error) {
       logger.error(
         `[Migrate] Error releasing lock for token ${token.mint}: ${error}`,
