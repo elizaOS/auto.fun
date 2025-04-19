@@ -1,9 +1,10 @@
+import { desc, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
-import { Env } from "../env";
-import { getDB, tokens, users } from "../db";
-import { logger } from "../logger";
-import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { verifyAuth } from "../auth";
+import { getDB, tokens, users } from "../db";
+import { Env } from "../env";
+import { logger } from "../logger";
+import { adminAddresses } from "./adminAddresses";
 
 // Define the router with environment typing
 const adminRouter = new Hono<{
@@ -19,12 +20,6 @@ const requireAdmin = async (c: any, next: Function) => {
   if (!user) {
     return c.json({ error: "Authentication required" }, 401);
   }
-
-  const adminAddresses: string[] = [
-    "8gikQQppeAGd9m5y57sW4fYyZwrJZoyniHD658arcnnx", // Joey (Santi)
-    "ASktkp5ERQmmHChzSEqGbWNrqAdDdrJjS8AJG5G3cTCh", // Boris (Borko)
-    "DScqtGwFoDTme2Rzdjpdb2w7CtuKc6Z8KF7hMhbx8ugQ", // Shaw
-  ];
 
   console.log("user", user);
 

@@ -35,6 +35,13 @@ import { toast } from "react-toastify";
 import { Tooltip } from "react-tooltip";
 import { twMerge } from "tailwind-merge";
 
+// List of admin wallet addresses (copied from worker/routes/adminAddresses.ts)
+const adminAddresses: string[] = [
+  "8gikQQppeAGd9m5y57sW4fYyZwrJZoyniHD658arcnnx", // Joey (Santi)
+  "ASktkp5ERQmmHChzSEqGbWNrqAdDdrJjS8AJG5G3cTCh", // Boris (Borko)
+  "DScqtGwFoDTme2Rzdjpdb2w7CtuKc6Z8KF7hMhbx8ugQ", // Shaw
+];
+
 // Remove CSS styles
 // const styles = `
 //   .token-ellipsis:before {
@@ -87,6 +94,10 @@ export default function Page() {
   const { publicKey } = useWallet();
   const normalizedWallet = publicKey?.toString();
   const { solPrice: contextSolPrice } = useSolPriceContext();
+
+  // ---- Moderator Check using hardcoded list ----
+  const isModerator = publicKey ? adminAddresses.includes(publicKey.toString()) : false;
+  // ---- End Moderator Check ----
 
   // Load active tab from localStorage or default to "chart"
   const [activeTab, setActiveTab] = useState<"chart" | "ai" | "chat">(() => {
@@ -441,7 +452,8 @@ export default function Page() {
                   </div>
                 );
               })()}
-            {token?.creator === normalizedWallet && !token?.imported && (
+            {/* Render AdminSection only for moderators and non-imported tokens */}
+            {isModerator && !token?.imported && (
               <AdminSection />
             )}
           </div>
