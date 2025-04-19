@@ -42,7 +42,9 @@ export function TableView({ data }: { data: IToken[] }) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {data?.map((token: IToken) => {
+        {data?.filter((token, index, self) => 
+          self.findIndex(t => t.mint === token.mint) === index
+        ).map((token: IToken) => {
           return (
             <TableRow
               key={token.mint}
