@@ -20,6 +20,7 @@ import {
   formatNumberSubscript,
   fromNow,
   LAMPORTS_PER_SOL,
+  resizeImage,
 } from "@/utils";
 import { getToken, queryClient } from "@/utils/api";
 import { getAuthToken } from "@/utils/auth";
@@ -292,7 +293,10 @@ export default function Page() {
           <div className="pt-0 flex flex-col gap-3">
             <div className="relative overflow-hidden">
               <div className="w-full aspect-square">
-                <SkeletonImage src={token?.image} alt="image" />
+                <SkeletonImage
+                  src={resizeImage(token?.image, 475, 475)}
+                  alt="image"
+                />
               </div>
 
               {/* Token name overlapping at top - with drop shadow */}
@@ -301,7 +305,7 @@ export default function Page() {
                   isPartner
                     ? "from-autofun-background-action-highlight/10 via-autofun-background-action-highlight/10"
                     : "from-black/50 via-black/25",
-                  "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5",
+                  "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5"
                 )}
               >
                 <div className="flex flex-wrap items-center justify-start w-full gap-2">
@@ -579,7 +583,7 @@ export default function Page() {
                   {formatNumber(
                     tokenBalance * currentPrice * solanaPrice,
                     true,
-                    false,
+                    false
                   )}
                 </span>
               </div>
@@ -641,7 +645,7 @@ export default function Page() {
                       (token?.reserveLamport - token?.virtualReserves) /
                         LAMPORTS_PER_SOL,
                       true,
-                      true,
+                      true
                     )}{" "}
                     SOL in the bonding curve.
                   </p>
