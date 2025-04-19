@@ -169,7 +169,6 @@ export default function Page() {
   const tokenPriceUSD = token?.tokenPriceUSD || 0;
   const volume24h = token?.volume24h || 0;
   const finalTokenPrice = Number(env.finalTokenPrice ?? 0.000000451);
-  const finalTokenUSDPrice = finalTokenPrice * solPriceUSD;
 
   const { tokenBalance } = useTokenBalance({
     tokenId: token?.mint || (params?.address as string),

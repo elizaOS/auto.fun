@@ -40,13 +40,15 @@ export const useTransactions = ({ tokenId }: { tokenId: string }) => {
   useEffect(() => {
     const socket = getSocket();
 
-    socket.on("newSwap", (transaction: unknown) => {
-      const newTransaction = TransactionSchema.parse(transaction);
+    socket.on("newSwap", (transaction: any) => {
+      const newTransaction = transaction?.map((a: any) =>
+        TransactionSchema.parse(a)
+      );
 
       if (pagination.currentPage !== 1) return;
 
       pagination.setItems((items) =>
-        [newTransaction, ...items].slice(0, pageSize),
+        [...newTransaction, ...items].slice(0, pageSize)
       );
     });
 
