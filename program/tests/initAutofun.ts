@@ -2,6 +2,8 @@ import * as anchor from '@coral-xyz/anchor';
 import { Program, web3, BN } from '@coral-xyz/anchor';
 import { Autofun } from '../target/types/autofun';
 
+console.log("ENV: ", process.env.ENV);
+
 (async () => {
   // Set up the Anchor provider (e.g., env variables and wallet)
   const provider = anchor.AnchorProvider.env();
@@ -9,6 +11,8 @@ import { Autofun } from '../target/types/autofun';
 
   // Instantiate the program using the IDL and programId.
   const program = anchor.workspace.Autofun as Program<Autofun>;
+
+  console.log("programId: ", program.programId.toBase58());
 
   // Derive the PDA for the "config" account.
   const [configPDA] = web3.PublicKey.findProgramAddressSync(
@@ -39,6 +43,8 @@ import { Autofun } from '../target/types/autofun';
     program.programId
   );
 
+  console.log("provider.wallet.publicKey: ", provider.wallet.publicKey.toBase58());
+
   // Define your new configuration data.
   // Adjust these fields as needed to your deployment requirements.
   const newConfig = {
@@ -50,7 +56,7 @@ import { Autofun } from '../target/types/autofun';
     initBondingCurve: 100,
     platformBuyFee: new BN(100),
     platformSellFee: new BN(100),
-    curveLimit: new BN(1130000000),
+    curveLimit: new BN(process.env.ENV === "dev" ? 11300000000 : 113000000000),
     lamportAmountConfig: { range: { min: new BN(0.01 * anchor.web3.LAMPORTS_PER_SOL), max: new BN(100 * anchor.web3.LAMPORTS_PER_SOL) } },
     tokenSupplyConfig: { range: { min: new BN(5000), max: new BN(1000000000000000) } },
     tokenDecimalsConfig: { range: { min: 6, max: 9 } }
@@ -62,18 +68,20 @@ import { Autofun } from '../target/types/autofun';
   console.log("Global Vault PDA:", globalVault.toBase58());
   console.log("Global WSOL Account PDA:", globalWsolAccount.toBase58());
 
+  const accounts= {
+    payer: provider.wallet.publicKey,
+    config: configPDA,
+    global_vault: globalVault,
+    global_wsol_account: globalWsolAccount,
+    native_mint: nativeMint,
+    system_program: web3.SystemProgram.programId,
+    token_program: new web3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+    associated_token_program: new web3.PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
+  }
+
   // Send the configure transaction.
   try {
-    const txSignature = await program.methods.configure(newConfig).accounts({
-      payer: provider.wallet.publicKey,
-      config: configPDA,
-      global_vault: globalVault,
-      global_wsol_account: globalWsolAccount,
-      native_mint: nativeMint,
-      system_program: web3.SystemProgram.programId,
-      token_program: new web3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
-      associated_token_program: new web3.PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
-    }).rpc();
+    const txSignature = await program.methods.configure(newConfig).accounts(accounts).rpc();
 
     console.log("Transaction sent successfully!");
     console.log("Signature:", txSignature);

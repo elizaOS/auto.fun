@@ -18,7 +18,7 @@ describe("raydium_vault", () => {
 
     it("Initialize Vault Config", async () => {
         let vaultConfig = {
-            executorAuthority: new anchor.web3.PublicKey("5KiXULuSJAALXTqucrcSNjcUsNbtqpDrKqzoXeTqsGFi"),
+            executorAuthority: new anchor.web3.PublicKey("autokr9cQkuzhEWg8X9ES6hparYc6wvrtydaHpgYqqY"),
             emergencyAuthority: signerWallet.publicKey,
             managerAuthority: signerWallet.publicKey,
         };
