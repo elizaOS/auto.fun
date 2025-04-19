@@ -7,6 +7,14 @@ import { getWebSocketClient } from "../../websocket-client";
 import { retryOperation } from "../utils";
 import { logger } from "../../logger";
 import { updateTokenSupplyFromChain } from "../../tokenSupplyHelpers";
+import { TokenMigrator } from "../migration/migrateToken";
+import { RaydiumVault } from "../types/raydium_vault";
+import * as raydium_vault_IDL from "../raydium_vault.json";
+import { Autofun } from "../../target/types/autofun";
+import * as IDL from "../../target/idl/autofun.json";
+import { AnchorProvider, Program } from "@coral-xyz/anchor";
+import { Connection, Keypair } from "@solana/web3.js";
+import { Wallet } from "../../tokenSupplyHelpers/customWallet";
 
 export interface LockResult {
   txId: string;
@@ -138,7 +146,7 @@ export async function executeMigrationStep(
     updatedAt: new Date().toISOString(),
   };
   Object.assign(token, result.extraData);
-
+  console.log(`${step.name} result:`, result);
   // Update the DB record
   const tokenData: Partial<TokenData> = {
     mint: token.mint,
@@ -147,6 +155,7 @@ export async function executeMigrationStep(
     status: "migrating",
     ...result.extraData,
   };
+
   await updateTokenInDB(env, tokenData);
   await saveMigrationState(env, token, step.name);
 
@@ -240,8 +249,7 @@ export async function getMigrationState(env: Env, token: TokenData) {
   return null;
 }
 
-export async function getMigratingTokens(env: Env) {
-  // Get all tokens that are in the migration process (status migrating) but have migration as null
+export async function checkMigratingTokens(env: Env, limit: number) {
   try {
     const db = getDB(env);
     const migratingTokens = await db
@@ -249,7 +257,50 @@ export async function getMigratingTokens(env: Env) {
       .from(tokens)
       .where(and(eq(tokens.status, "migrating")))
       .execute();
-    //
+
+    const connection = new Connection(
+      env.NETWORK === "devnet"
+        ? env.DEVNET_SOLANA_RPC_URL
+        : env.MAINNET_SOLANA_RPC_URL,
+    );
+    const wallet = Keypair.fromSecretKey(
+      Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY)),
+    );
+    const provider = new AnchorProvider(
+      connection,
+      new Wallet(wallet),
+      AnchorProvider.defaultOptions(),
+    );
+    const program = new Program<RaydiumVault>(
+      raydium_vault_IDL as any,
+      provider,
+    );
+    const autofunProgram = new Program<Autofun>(IDL as any, provider);
+
+    const tokenMigrator = new TokenMigrator(
+      env,
+      connection,
+      new Wallet(wallet),
+      program,
+      autofunProgram,
+      provider,
+    );
+
+    // Filter out tokens that have migration as null or empty object or migration.status is not locked
+    const filteredTokens = migratingTokens.filter((token) => {
+      const migration = token.migration ? JSON.parse(token.migration) : null;
+      return (
+        migration &&
+        (typeof migration === "object" || migration.status !== "locked")
+      );
+    });
+    // Limit the number of tokens to the specified limit
+    const finalList = filteredTokens.slice(0, limit);
+
+    for (const token of finalList) {
+      const tokenM = await getToken(env, token.mint);
+      await tokenMigrator.migrateToken(tokenM!);
+    }
   } catch (error) {
     logger.error(`Error fetching migrating tokens: ${error}`);
     throw new Error("Failed to fetch migrating tokens");

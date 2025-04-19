@@ -24,6 +24,7 @@ import { getWebSocketClient } from "./websocket-client";
 import { getSOLPrice } from "./mcap";
 import { allowedOrigins } from "./allowedOrigins";
 // import { startMonitoringBatch } from "./tokenSupplyHelpers/monitoring";
+import { checkMigratingTokens } from "./raydium/migration/migrations";
 
 const app = new Hono<{
   Bindings: Env;
