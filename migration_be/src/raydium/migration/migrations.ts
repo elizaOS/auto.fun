@@ -2,8 +2,7 @@ import { TokenData } from "../types/tokenData";
 import { eq, and } from "drizzle-orm";
 import { getDB, tokens } from "../../db";
 import { Env } from "../../env";
-import { updateTokenInDB } from "../../cron";
-import { getWebSocketClient } from "../../websocket-client";
+import { updateTokenInDB } from "../../processTransactionLogs";
 import { retryOperation } from "../utils";
 import { logger } from "../../logger";
 import { updateTokenSupplyFromChain } from "../../tokenSupplyHelpers";
@@ -15,6 +14,7 @@ import * as IDL from "../../target/idl/autofun.json";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair } from "@solana/web3.js";
 import { Wallet } from "../../tokenSupplyHelpers/customWallet";
+
 
 export interface LockResult {
   txId: string;
@@ -141,11 +141,12 @@ export async function executeMigrationStep(
 
   // Update token migration
   token.migration = token.migration ?? {};
-  token.migration[step.name] = {
+  (token.migration as any)[step.name] = {
     status: "success",
     txId: result.txId,
     updatedAt: new Date().toISOString(),
   };
+
   Object.assign(token, result.extraData);
   console.log(`${step.name} result:`, result);
   // Update the DB record
@@ -159,14 +160,12 @@ export async function executeMigrationStep(
   const nextStepName = nextStep ? nextStep.name : null;
   token.migration.lastStep = nextStepName ?? "done";
 
-
-
   await updateTokenInDB(env, tokenData);
-  // await saveMigrationState(env, token, step.name);
+  // await saveMigrationState(env, token, nextStepName ?? "done");
 
-  const ws = getWebSocketClient(env);
+  // const ws = getWebSocketClient(env);
   if (step.eventName) {
-    ws.to(`token-${token.mint}`).emit(step.eventName, token);
+    // ws.to(`token-${token.mint}`).emit(step.eventName, token);
   }
 
   logger.log(
@@ -254,14 +253,19 @@ export async function getMigrationState(env: Env, token: TokenData) {
   return null;
 }
 
+
 export async function checkMigratingTokens(env: Env, limit: number) {
   try {
     const db = getDB(env);
     const migratingTokens = await db
       .select()
       .from(tokens)
-      .where(and(eq(tokens.status, "migrating")))
+      .where(and(
+        eq(tokens.status, "migrating"),
+      ))
       .execute();
+    console.log("migratingTokens", migratingTokens.length);
+
 
     const connection = new Connection(
       env.NETWORK === "devnet"
@@ -291,7 +295,7 @@ export async function checkMigratingTokens(env: Env, limit: number) {
       provider,
     );
 
-    // Filter out tokens that have migration as null or empty object or migration.status is not locked
+    // Filter out tokens that have migration as null or empty object or migration.status is not locked 
     const filteredTokens = migratingTokens.filter((token) => {
       const migration = token.migration ? JSON.parse(token.migration) : null;
       return (
@@ -306,8 +310,10 @@ export async function checkMigratingTokens(env: Env, limit: number) {
       const tokenM = await getToken(env, token.mint);
       await tokenMigrator.migrateToken(tokenM!);
     }
+
   } catch (error) {
     logger.error(`Error fetching migrating tokens: ${error}`);
     throw new Error("Failed to fetch migrating tokens");
   }
+
 }
