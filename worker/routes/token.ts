@@ -1329,7 +1329,7 @@ tokenRouter.get("/tokens", async (c) => {
     };
 
     await c.env.CACHE.put(cacheKey, JSON.stringify(result), {
-      expirationTtl: 30,
+      expirationTtl: 60,
     });
 
     return c.json(result);
@@ -1456,7 +1456,7 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
 
     // Store the result in cache with 30-second TTL
     await c.env.CACHE.put(cacheKey, JSON.stringify(result), {
-      expirationTtl: 30,
+      expirationTtl: 60,
     });
 
     return c.json(result);
@@ -1710,7 +1710,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     console.log("marketCapUSD", token.marketCapUSD);
 
     await c.env.CACHE.put(cacheKey, JSON.stringify(token), {
-      expirationTtl: 10,
+      expirationTtl: 60,
     });
 
     return c.json(token);
