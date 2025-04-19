@@ -68,7 +68,7 @@ const fetchPaginatedData = async <
   // Validate each item in the response with the provided schema if it exists
   const validatedItems = response[itemsPropertyName]
     ? (response[itemsPropertyName] as unknown[]).map((item) =>
-        validationSchema ? validationSchema.parse(item) : (item as TOutput),
+        validationSchema ? validationSchema.parse(item) : (item as TOutput)
       )
     : [];
 
@@ -100,7 +100,7 @@ export const usePage = ({ useUrlState }: { useUrlState: boolean }) => {
         setSearchParams(newParams);
       }
     },
-    [searchParams, setSearchParams],
+    [searchParams, setSearchParams]
   );
 
   return { page, setPage: onPageChange };
@@ -174,9 +174,14 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
         hasMore: result.hasMore,
       };
     },
-    refetchInterval: refetchInterval ? refetchInterval : 5000,
+    refetchInterval: refetchInterval ? refetchInterval : 10000,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
+    staleTime: 5000,
+    placeholderData: (previousData) => previousData,
+    structuralSharing: true,
+    refetchOnReconnect: true,
+    retry: 3,
   });
 
   const fetchedData = query?.data?.fetchedData || [];
@@ -201,36 +206,35 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
       if (page < 1 || page > totalPages) return;
       setPage(pageNumber);
     },
-    [page, totalPages],
+    [page, totalPages]
   );
 
   const setItems = useCallback(
     (itemsOrUpdater: TOutput[] | ((prevItems: TOutput[]) => TOutput[])) => {
       if (typeof itemsOrUpdater === "function") {
-        queryClient.setQueryData(
-          queryKey,
-          (oldData: PaginatedResponse<TOutput> | undefined) => {
-            const prevItems = oldData?.items || [];
-            return {
-              ...(oldData || {}),
-              items: itemsOrUpdater(prevItems),
-            };
-          },
-        );
+        queryClient.setQueryData(queryKey, (oldData: any) => {
+          const prevItems = oldData.fetchedData || [];
+          return {
+            ...oldData,
+            fetchedData: itemsOrUpdater(prevItems),
+          };
+        });
       } else {
-        queryClient.setQueryData(queryKey, {
-          ...(fetchedData || {}),
-          items: itemsOrUpdater,
+        queryClient.setQueryData(queryKey, (oldData: any) => {
+          return {
+            ...oldData,
+            fetchedData: itemsOrUpdater,
+          };
         });
       }
     },
-    [queryKey, fetchedData],
+    [queryKey, queryClient]
   );
 
   return {
     items: fetchedData,
     setItems,
-    isLoading: query?.isPending,
+    isLoading: query?.isPending && !fetchedData.length,
     hasNextPage: hasMore,
     hasPreviousPage: page > 1,
     currentPage: page,
