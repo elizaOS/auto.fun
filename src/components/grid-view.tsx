@@ -1,6 +1,6 @@
 import SkeletonImage from "@/components/skeleton-image";
 import { IToken } from "@/types";
-import { abbreviateNumber, fromNow } from "@/utils";
+import { abbreviateNumber, fromNow, resizeImage } from "@/utils";
 import { Link } from "react-router";
 import { Tooltip } from "react-tooltip";
 import Verified from "./verified";
@@ -74,7 +74,7 @@ export default function GridView({ data }: { data: IToken[] }) {
                   </div>
                 ) : null}
                 <SkeletonImage
-                  src={token.image}
+                  src={resizeImage(token.image, 300, 300)}
                   alt="image"
                   className="w-full h-full object-cover z-[-1]"
                 />
