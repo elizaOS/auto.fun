@@ -8,12 +8,6 @@ interface User {
   solBalance?: number;
 }
 
-interface AuthStatus {
-  authenticated: boolean;
-  user?: User;
-  privileges?: string[];
-}
-
 export function useUser() {
   const { publicKey } = useWallet();
   const { authQuery } = useAuthentication();
@@ -27,9 +21,9 @@ export function useUser() {
 
       const authData = authQuery.data;
       if (authData?.authenticated) {
-        return { 
-          user: authData.user, 
-          authenticated: authData.authenticated 
+        return {
+          user: authData.user,
+          authenticated: authData.authenticated,
         };
       }
       return { authenticated: false };

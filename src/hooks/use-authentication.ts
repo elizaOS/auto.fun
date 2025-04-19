@@ -4,14 +4,6 @@ import { useLocalStorage } from "@uidotdev/usehooks";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-// This global variable helps us avoid multiple API calls across instances
-let checkStatusCalled = false;
-
-// Allow resetting the check status flag when needed
-export function resetAuthCheckStatus() {
-  checkStatusCalled = false;
-}
-
 // Helper function to send auth token in headers
 export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
   let authToken = null;
@@ -76,7 +68,10 @@ interface AuthStatus {
 
 export default function useAuthentication() {
   const { publicKey, connected, disconnect: adapterDisconnect } = useWallet();
-  const [authToken, setAuthToken] = useLocalStorage<string | null>("authToken", null);
+  const [authToken, setAuthToken] = useLocalStorage<string | null>(
+    "authToken",
+    null,
+  );
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [userPrivileges, setUserPrivileges] = useState<string[]>([]);
 
@@ -116,7 +111,13 @@ export default function useAuthentication() {
   );
 
   const authQuery = useQuery<AuthStatus>({
-    queryKey: ["auth-status", publicKey?.toString(), storedWalletAddress, connected, authToken],
+    queryKey: [
+      "auth-status",
+      publicKey?.toString(),
+      storedWalletAddress,
+      connected,
+      authToken,
+    ],
     queryFn: async () => {
       try {
         setIsAuthenticating(true);
@@ -125,7 +126,7 @@ export default function useAuthentication() {
         });
 
         if (response.ok) {
-          const data = await response.json() as AuthStatus;
+          const data = (await response.json()) as AuthStatus;
           if (data.authenticated) {
             if (data.privileges) {
               setUserPrivileges(data.privileges);
@@ -150,7 +151,7 @@ export default function useAuthentication() {
   const handleSuccessfulAuth = (token: string, userAddress: string) => {
     setAuthToken(token);
     setStoredWalletAddress(userAddress);
-    
+
     // Store expanded auth data
     const authStorage = {
       token,
@@ -170,8 +171,17 @@ export default function useAuthentication() {
 
   // Auto-reconnect if we have a token but wallet is not connected
   useEffect(() => {
-    if (authToken && !connected && !hasDirectPhantomConnection && !isAuthenticating) {
-      if (typeof window !== "undefined" && window.solana && window.solana.isPhantom) {
+    if (
+      authToken &&
+      !connected &&
+      !hasDirectPhantomConnection &&
+      !isAuthenticating
+    ) {
+      if (
+        typeof window !== "undefined" &&
+        window.solana &&
+        window.solana.isPhantom
+      ) {
         try {
           window.solana.connect().catch((err: any) => {
             console.error("Failed to reconnect directly:", err);
@@ -183,7 +193,9 @@ export default function useAuthentication() {
     }
   }, [authToken, connected, hasDirectPhantomConnection, isAuthenticating]);
 
-  const isAuthenticated = !!authToken && authQuery.data?.authenticated && 
+  const isAuthenticated =
+    !!authToken &&
+    authQuery.data?.authenticated &&
     (connected || hasDirectPhantomConnection || !!storedWalletAddress);
 
   const signOut = async () => {
