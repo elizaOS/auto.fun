@@ -1247,10 +1247,6 @@ tokenRouter.get("/tokens", async (c) => {
         );
       }
 
-      if (shouldHideImported) {
-        finalQuery = countQuery.where(ne(tokens.imported, 1));
-      }
-
       // By default, don't count hidden tokens
       finalQuery = countQuery.where(
         sql`(${tokens.hidden} = 0 OR ${tokens.hidden} IS NULL)`,
