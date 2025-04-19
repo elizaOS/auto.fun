@@ -210,6 +210,16 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
     (itemsOrUpdater: TOutput[] | ((prevItems: TOutput[]) => TOutput[])) => {
       if (typeof itemsOrUpdater === "function") {
         queryClient.setQueryData(queryKey, (oldData: any) => {
+          if (!oldData) {
+            // Handle case when oldData is null or undefined
+            const newItems = itemsOrUpdater([]);
+            return {
+              fetchedData: newItems,
+              totalPages: 0,
+              totalItems: newItems.length,
+              hasMore: false,
+            };
+          }
           const prevItems = oldData.fetchedData || [];
           return {
             ...oldData,
@@ -218,6 +228,15 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
         });
       } else {
         queryClient.setQueryData(queryKey, (oldData: any) => {
+          if (!oldData) {
+            // Handle case when oldData is null or undefined
+            return {
+              fetchedData: itemsOrUpdater,
+              totalPages: 0,
+              totalItems: itemsOrUpdater.length,
+              hasMore: false,
+            };
+          }
           return {
             ...oldData,
             fetchedData: itemsOrUpdater,
