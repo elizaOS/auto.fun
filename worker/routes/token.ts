@@ -1168,6 +1168,8 @@ tokenRouter.get("/tokens", async (c) => {
           tokensQuery = tokensQuery.where(sql`${tokens.imported} != 1`);
         }
 
+        console.log("shouldHideImported? ", shouldHideImported);
+
         // By default, don't show hidden tokens
         tokensQuery = tokensQuery.where(sql`(${tokens.hidden} != 1)`);
 

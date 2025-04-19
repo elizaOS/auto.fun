@@ -1014,6 +1014,10 @@ export function calculateFeaturedScore(
         ? 0.1
         : 1;
 
+  console.log("token.imported", token);
+  console.log("isFeatured", isFeatured);
+  console.log("isSpecialToken", isSpecialToken);
+
   // Calculate base score (volume + holders)
   const baseScore =
     (volume / normalizedMaxVolume) * 0.7 +

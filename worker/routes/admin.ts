@@ -26,6 +26,8 @@ const requireAdmin = async (c: any, next: Function) => {
     "DScqtGwFoDTme2Rzdjpdb2w7CtuKc6Z8KF7hMhbx8ugQ", // Shaw
   ];
 
+  console.log("user", user);
+
   const isAdmin = adminAddresses.includes(user.publicKey);
   if (!isAdmin) {
     return c.json({ error: "Admin privileges required" }, 403);
