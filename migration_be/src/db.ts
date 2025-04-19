@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import Database from "better-sqlite3";
 
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { Env } from "./env";
 
 // Token schema
@@ -102,14 +102,24 @@ export const fees = sqliteTable("fees", {
 });
 
 // TokenHolder schema
-export const tokenHolders = sqliteTable("token_holders", {
-   id: text("id").primaryKey(),
-   mint: text("mint").notNull(),
-   address: text("address").notNull(),
-   amount: real("amount").notNull(),
-   percentage: real("percentage").notNull(),
-   lastUpdated: text("last_updated", { mode: "text" }).notNull(),
-});
+export const tokenHolders = sqliteTable(
+   "token_holders",
+   {
+      id: text("id").primaryKey(),
+      mint: text("mint").notNull(),
+      address: text("address").notNull(),
+      amount: real("amount").notNull(),
+      percentage: real("percentage").notNull(),
+      lastUpdated: text("last_updated", { mode: "text" }).notNull(),
+   },
+   (table) => ({
+      // Enforce one row per mint+address
+      mintAddressUnique: uniqueIndex("idx_tokenholders_mint_address").on(
+         table.mint,
+         table.address
+      ),
+   })
+);
 
 // Create messages table without self-referencing first
 export const messages = sqliteTable("messages", {

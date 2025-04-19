@@ -15,7 +15,7 @@ import {
   Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, sql, inArray, and } from "drizzle-orm";
 import { CacheService } from "./cache";
 import { SEED_BONDING_CURVE, SEED_CONFIG } from "./constant";
 import { getDB, Token, tokenHolders, tokens } from "./db";
@@ -248,9 +248,9 @@ export async function createNewTokenData(
     const currentPrice =
       Number(bondingCurveAccount.reserveToken) > 0
         ? Number(bondingCurveAccount.reserveLamport) /
-          1e9 /
-          (Number(bondingCurveAccount.reserveToken) /
-            Math.pow(10, TOKEN_DECIMALS))
+        1e9 /
+        (Number(bondingCurveAccount.reserveToken) /
+          Math.pow(10, TOKEN_DECIMALS))
         : 0;
     console.log("currentPrice", currentPrice);
 
@@ -300,7 +300,7 @@ export async function createNewTokenData(
         (Number(bondingCurveAccount.reserveLamport) / 1e9) * solPrice +
         (Number(bondingCurveAccount.reserveToken) /
           Math.pow(10, TOKEN_DECIMALS)) *
-          tokenPriceUSD,
+        tokenPriceUSD,
       currentPrice:
         Number(bondingCurveAccount.reserveLamport) /
         1e9 /
@@ -529,9 +529,9 @@ export const getRpcUrl = (env: any, forceMainnet: boolean = false) => {
   const apiKey =
     env.NETWORK === "devnet"
       ? env.DEVNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
-        "67ea9085-1406-4db8-8872-38ac77950d7a"
+      "67ea9085-1406-4db8-8872-38ac77950d7a"
       : env.MAINNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
-        "67ea9085-1406-4db8-8872-38ac77950d7a";
+      "67ea9085-1406-4db8-8872-38ac77950d7a";
 
   const result = `${baseUrl}?api-key=${apiKey}`;
 
@@ -813,6 +813,8 @@ export function splitIntoLines(text?: string): string[] | undefined {
 
 export async function updateHoldersCache(env: Env, mint: string) {
   try {
+    const BATCH_DELETE_SIZE = 100;
+    const BATCH_INSERT_SIZE = 100;
     const db = getDB(env);
     const connection = new Connection(getRpcUrl(env));
 
@@ -864,15 +866,35 @@ export async function updateHoldersCache(env: Env, mint: string) {
       lastUpdated: new Date().toISOString(),
     }));
 
+    const existing = await db
+      .select({ id: tokenHolders.id })
+      .from(tokenHolders)
+      .where(eq(tokenHolders.mint, mint));
+
     // Remove old holders data
-    await db.delete(tokenHolders).where(eq(tokenHolders.mint, mint));
+    for (let i = 0; i < existing.length; i += BATCH_DELETE_SIZE) {
+      const batchIds = existing
+        .slice(i, i + BATCH_DELETE_SIZE)
+        .map((r) => r.id);
+
+      await db
+        .delete(tokenHolders)
+        .where(
+          and(
+            eq(tokenHolders.mint, mint),
+            inArray(tokenHolders.id, batchIds)
+          ),
+        );
+    }
 
     // Insert new holders data in batches of 100 to avoid SQLite parameter limits
     if (holderRecords.length > 0) {
-      const BATCH_SIZE = 100;
-      for (let i = 0; i < holderRecords.length; i += BATCH_SIZE) {
-        const batch = holderRecords.slice(i, i + BATCH_SIZE);
-        await db.insert(tokenHolders).values(batch);
+      for (let i = 0; i < holderRecords.length; i += BATCH_INSERT_SIZE) {
+        const batch = holderRecords.slice(i, i + BATCH_INSERT_SIZE);
+        await db
+          .insert(tokenHolders)
+          .values(batch)
+          .onConflictDoNothing();
       }
     }
 
