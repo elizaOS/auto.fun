@@ -20,6 +20,7 @@ import {
   formatNumberSubscript,
   fromNow,
   LAMPORTS_PER_SOL,
+  resizeImage,
 } from "@/utils";
 import { getToken, queryClient } from "@/utils/api";
 import { getAuthToken } from "@/utils/auth";
@@ -295,7 +296,10 @@ export default function Page() {
           <div className="pt-0 flex flex-col gap-3">
             <div className="relative overflow-hidden">
               <div className="w-full aspect-square">
-                <SkeletonImage src={token?.image} alt="image" />
+                <SkeletonImage
+                  src={resizeImage(token?.image, 475, 475)}
+                  alt="image"
+                />
               </div>
 
               {/* Token name overlapping at top - with drop shadow */}
