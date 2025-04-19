@@ -61,7 +61,6 @@ export const useTokenBalance = ({ tokenId }: { tokenId: string }) => {
         tokenAccounts.value.length > 0
           ? tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount
           : 0;
-      console.log("fetchTokenBalance", tokenId, balance);
 
       setTokenBalance(balance);
     };
