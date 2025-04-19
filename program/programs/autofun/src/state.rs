@@ -107,14 +107,14 @@ pub trait BondingCurveAccount<'info> {
         system_program: &Program<'info, System>,
     ) -> Result<u64>;
 
+    // Calculate the output amount and the fee amount (in SOL) for a swap
     fn cal_amount_out(
         &self,
-        amount: u64,
-        token_one_decimals: u8,
+        amount: u64, // Input amount (tokens if selling, SOL if buying)
         direction: u8,
         platform_sell_fee: u128,
         platform_buy_fee: u128,
-    ) -> Result<(u64, u64)>;
+    ) -> Result<(u64, u64)>; // Returns (output_amount, fee_amount_in_sol)
 }
 
 impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
@@ -200,87 +200,96 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
         };
 
         msg!("Mint: {:?} ", token_mint.key());
-        msg!("Swap: {:?} {:?} {:?}", user.key(), direction, amount_to_swap);
+        msg!("Swap: {:?} {:?} {:?} (Amount to Swap)", user.key(), direction, amount_to_swap);
 
-        // xy = k => Constant product formula
-        // (x + dx)(y - dy) = k
-        // y - dy = k / (x + dx)
-        // y - dy = xy / (x + dx)
-        // dy = y - (xy / (x + dx))
-        // dy = yx + ydx - xy / (x + dx)
-        // formula => dy = ydx / (x + dx)
+        // xy = k => Constant product formula logic moved to cal_amount_out
 
-        let (adjusted_amount, amount_out) = self.cal_amount_out(
+        let (amount_out, sol_fee) = self.cal_amount_out(
             amount_to_swap,
-            token_mint.decimals,
             direction,
             global_config.platform_sell_fee,
             global_config.platform_buy_fee,
         )?;
 
+        msg!("Amount Out: {:?}, SOL Fee: {:?}", amount_out, sol_fee);
+
         if amount_out < adjusted_minimum_receive {
             return Err(PumpfunError::ReturnAmountTooSmall.into());
         }
 
-        if direction == 1 {
+        if direction == 1 { // Selling Tokens for SOL
+            // amount_to_swap = input tokens
+            // amount_out = net SOL output
+            // sol_fee = fee in SOL
 
-            let new_reserves_one = self
+            let gross_sol_output = amount_out
+                .checked_add(sol_fee)
+                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
+
+            let new_reserve_token = self
                 .reserve_token
-                .checked_add(adjusted_amount)
+                .checked_add(amount_to_swap) // Add the full token amount received from user
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
 
-            let new_reserves_two = self
+            let new_reserve_lamport = self
                 .reserve_lamport
-                .checked_sub(amount_out)
+                .checked_sub(gross_sol_output) // Subtract the total SOL leaving the pool
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
 
-            self.update_reserves(global_config, new_reserves_one, new_reserves_two)?;
+            self.update_reserves(global_config, new_reserve_token, new_reserve_lamport)?;
 
-            msg! {"Reserves: {:?} {:?}", new_reserves_one, new_reserves_two};
+            msg! {"Reserves: {:?} {:?}", new_reserve_token, new_reserve_lamport};
 
+            // Transfer tokens from user to pool
             token_transfer_user(
                 user_ata.clone(),
                 user,
                 global_ata.clone(),
                 token_program,
-                adjusted_amount,
+                amount_to_swap, // Transfer the full input token amount
             )?;
 
+            // Transfer NET SOL from pool to user
             sol_transfer_with_signer(
-                source.clone(),
+                source.clone(), // global_vault
                 user.to_account_info(),
                 system_program,
                 signer,
-                amount_out,
+                amount_out, // Transfer net SOL amount
             )?;
 
-            //  transfer fee to team wallet
-            let fee_amount = amount_to_swap - adjusted_amount;
+            // Transfer SOL fee from pool to team wallet
+            if sol_fee > 0 {
+                sol_transfer_with_signer(
+                    source.clone(), // global_vault
+                    team_wallet.clone(),
+                    system_program,
+                    signer,
+                    sol_fee,
+                )?;
+            }
 
-            msg! {"fee: {:?}", fee_amount}
+        } else { // Buying Tokens with SOL
+            // amount_to_swap = input SOL used in calculation (potentially capped)
+            // amount_out = net token output
+            // sol_fee = fee in SOL
 
-            // msg!("SwapEvent: {:?} {:?} {:?}", user.key(), direction, amount_out);
+            let adjusted_sol_input = amount_to_swap
+                .checked_sub(sol_fee)
+                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?; // SOL used for actual swap after fee
 
-            token_transfer_user(
-                user_ata.clone(),
-                user,
-                team_wallet_ata.clone(),
-                token_program,
-                fee_amount,
-            )?;
-        } else {
-            let new_reserves_one = self
+            let new_reserve_token = self
                 .reserve_token
-                .checked_sub(amount_out)
+                .checked_sub(amount_out) // Subtract tokens leaving the pool
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
 
-            let new_reserves_two = self
+            let new_reserve_lamport = self
                 .reserve_lamport
-                .checked_add(amount_to_swap)
+                .checked_add(adjusted_sol_input) // Add SOL used for swap (amount_to_swap - fee)
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
 
             let is_completed =
-                self.update_reserves(global_config, new_reserves_one, new_reserves_two)?;
+                self.update_reserves(global_config, new_reserve_token, new_reserve_lamport)?;
 
             if is_completed {
                 emit!(CompleteEvent {
@@ -290,86 +299,121 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
                 });
             }
 
-            msg! {"Reserves: {:?} {:?}", new_reserves_one, new_reserves_two};
+            msg! {"Reserves: {:?} {:?}", new_reserve_token, new_reserve_lamport};
 
+            // Transfer tokens from pool to user
             token_transfer_with_signer(
                 global_ata.clone(),
                 source.clone(),
                 user_ata.clone(),
                 token_program,
                 signer,
-                amount_out,
+                amount_out, // Transfer the calculated token amount
             )?;
 
+            // Transfer SOL from user to pool
+            // User sends the full amount_to_swap (SOL potentially capped by curve limit)
             sol_transfer_from_user(user, source.clone(), system_program, amount_to_swap)?;
 
-            // msg!("SwapEvent: {:?} {:?} {:?}", user.key(), direction, amount_out);
-
-            //  transfer fee to team wallet
-            let fee_amount = amount_to_swap - adjusted_amount;
-            msg! {"fee: {:?}", fee_amount}
-
-            sol_transfer_from_user(user, team_wallet.clone(), system_program, fee_amount)?;
-
-            // Refund excess SOL directly back to user
-            if refund_amount > 0 {
-                sol_transfer_from_user(user, user.to_account_info(), system_program, refund_amount)?;
+            // Transfer SOL fee from pool to team wallet
+            // The fee was included in the amount_to_swap transferred from the user
+            if sol_fee > 0 {
+                sol_transfer_with_signer(
+                    source.clone(), // global_vault
+                    team_wallet.clone(),
+                    system_program,
+                    signer,
+                    sol_fee,
+                )?;
             }
+
+            // Handle refund: The user only sent amount_to_swap, not the original 'amount'.
+            // The difference (refund_amount) was never sent, so no on-chain refund needed.
+            // The previous refund transfer was redundant.
+            // if refund_amount > 0 {
+            //     sol_transfer_from_user(user, user.to_account_info(), system_program, refund_amount)?;
+            // }
         }
         msg!("SwapEvent: {:?} {:?} {:?}", user.key(), direction, amount_out);
         Ok(amount_out)
     }
 
+    // Calculate the output amount and the fee amount (in SOL) for a swap
     fn cal_amount_out(
         &self,
-        amount: u64,
-        _token_one_decimals: u8,
+        amount: u64, // Input amount (tokens if selling, SOL if buying)
         direction: u8,
         platform_sell_fee: u128,
         platform_buy_fee: u128,
     ) -> Result<(u64, u64)> {
-        // Convert percentage fees to basis points
-        let fee_basis_points = if direction == 1 {
-            platform_sell_fee
-        } else {
-            platform_buy_fee
-        };
-    
         let amount_u128 = amount as u128;
-        let adjusted_amount = amount_u128
-            .checked_mul(HUNDRED_PERCENT_BPS.checked_sub(fee_basis_points).ok_or(PumpfunError::OverflowOrUnderflowOccurred)?)
-            .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?
-            .checked_div(FEE_BASIS_POINTS)
-            .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
-    
-        let adjusted_amount = adjusted_amount as u64;
-    
-        let amount_out = if direction == 1 {
+
+        if direction == 1 {
             // Selling tokens for SOL: dy = (y * dx) / (x + dx)
+            // amount = dx (input tokens)
+            // y = reserve_lamport, x = reserve_token
+            if self.reserve_token == 0 || self.reserve_lamport == 0 {
+                 return Ok((0, 0)); // Avoid division by zero if pool is empty
+            }
+
             let numerator = (self.reserve_lamport as u128)
-                .checked_mul(adjusted_amount as u128)
+                .checked_mul(amount_u128)
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
-                
+
             let denominator = (self.reserve_token as u128)
-                .checked_add(adjusted_amount as u128)
+                .checked_add(amount_u128)
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
-                
-            (numerator.checked_div(denominator)
-                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?) as u64
+
+            let gross_sol_output = numerator
+                .checked_div(denominator)
+                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
+
+            // Calculate fee based on gross SOL output
+            let sol_fee = gross_sol_output
+                .checked_mul(platform_sell_fee)
+                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?
+                .checked_div(FEE_BASIS_POINTS)
+                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
+
+            let net_sol_output = gross_sol_output
+                .checked_sub(sol_fee)
+                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
+
+            Ok((net_sol_output as u64, sol_fee as u64))
+
         } else {
             // Buying tokens with SOL: dx = (x * dy) / (y + dy)
+            // amount = dy (input SOL)
+            // x = reserve_token, y = reserve_lamport
+             if self.reserve_token == 0 || self.reserve_lamport == 0 {
+                 return Ok((0, 0)); // Avoid division by zero if pool is empty, fee is also 0
+             }
+
+            // Calculate fee based on input SOL amount
+            let sol_fee = amount_u128
+                .checked_mul(platform_buy_fee)
+                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?
+                .checked_div(FEE_BASIS_POINTS)
+                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
+
+            let adjusted_sol_input = amount_u128
+                .checked_sub(sol_fee)
+                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
+
+            // Calculate token output based on adjusted SOL input
             let numerator = (self.reserve_token as u128)
-                .checked_mul(adjusted_amount as u128)
+                .checked_mul(adjusted_sol_input)
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
                 
             let denominator = (self.reserve_lamport as u128)
-                .checked_add(adjusted_amount as u128)
+                .checked_add(adjusted_sol_input)
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
                 
-            (numerator.checked_div(denominator)
-                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?) as u64
-        };
-    
-        Ok((adjusted_amount, amount_out))
+            let token_output = numerator
+                .checked_div(denominator)
+                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
+
+            Ok((token_output as u64, sol_fee as u64))
+        }
     }
 }
