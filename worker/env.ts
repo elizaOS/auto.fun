@@ -51,6 +51,7 @@ export interface Env {
   REDIS: KVNamespace;
   // KV namespace for auth tokens
   AUTH_TOKENS: KVNamespace;
+  CACHE: KVNamespace;
   // Auth token salt for hashing
   AUTH_TOKEN_SALT: string;
   // Frontend URL
