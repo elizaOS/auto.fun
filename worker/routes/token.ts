@@ -1097,9 +1097,6 @@ tokenRouter.get("/tokens", async (c) => {
     // Get search, status, creator params for filtering
     const search = queryParams.search as string;
     const status = queryParams.status as string;
-    const hideImported = queryParams.hideImported
-      ? Number(queryParams.hideImported)
-      : (0 as number);
     const creator = queryParams.creator as string;
     const sortBy = search
       ? "marketCapUSD"
@@ -1163,7 +1160,11 @@ tokenRouter.get("/tokens", async (c) => {
           tokensQuery = tokensQuery.where(eq(tokens.creator, creator));
         }
 
-        if (hideImported) {
+        const shouldHideImported = queryParams.hideImported
+          ? Number(queryParams.hideImported) === 1
+          : false;
+
+        if (shouldHideImported) {
           tokensQuery = tokensQuery.where(ne(tokens.imported, 1));
         }
 
