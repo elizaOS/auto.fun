@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { IToken } from "@/types";
 import { getToken } from "@/utils/api";
+import { resizeImage } from "@/utils";
 
 // Add TypeScript declaration for CANNON to fix the errors
 declare module "cannon-es" {
@@ -760,7 +761,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         image: fallbackTexture,
       };
       const dieMaterials = await createDieMaterialsWithSameTexture(
-        tokenData.image
+        resizeImage(tokenData.image, 100, 100)
       );
       const die = new THREE.Mesh(diceGeometry, dieMaterials);
 

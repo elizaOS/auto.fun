@@ -7,7 +7,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { IToken } from "@/types";
-import { formatNumber, fromNow, shortenAddress } from "@/utils";
+import { formatNumber, fromNow, resizeImage, shortenAddress } from "@/utils";
 import { useNavigate } from "react-router";
 import BondingCurveBar from "./bonding-curve-bar";
 import CopyButton from "./copy-button";
@@ -53,7 +53,11 @@ export function TableView({ data }: { data: IToken[] }) {
                 <div className="flex items-center gap-2">
                   <div className="relative size-[50px] bg-[#262626] overflow-hidden">
                     <SkeletonImage
-                      src={token?.image || "/logo.png"}
+                      src={
+                        token?.image
+                          ? resizeImage(token.image, 50, 50)
+                          : "/logo.png"
+                      }
                       alt={token?.name || "token"}
                       className={twMerge([
                         "w-full h-full object-cover",
