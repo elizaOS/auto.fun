@@ -291,24 +291,11 @@ api.post("/broadcast", async (c) => {
 
 api.get("/sol-price", async (c) => {
   try {
-    // Create a simple cache key
-    const cacheKey = "sol-price";
-
-    // Try to get from cache first
-    const cachedData = await c.env.CACHE.get(cacheKey);
-    if (cachedData) {
-      return c.json(JSON.parse(cachedData));
-    }
-
     // If not in cache, fetch the SOL price
     const price = await getSOLPrice(c.env);
 
     // Prepare the result
     const result = { price };
-
-    await c.env.CACHE.put(cacheKey, JSON.stringify(result), {
-      expirationTtl: 60,
-    });
 
     return c.json(result);
   } catch (error) {
