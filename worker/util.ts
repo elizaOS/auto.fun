@@ -1030,7 +1030,7 @@ export function calculateFeaturedScore(
     if (ageInMillis > 0) {
       const ageInYears = ageInMillis / (1000 * 60 * 60 * 24 * 365.25);
       // Apply exponential decay: weight = 0.5 ^ ageInYears
-      timeWeight = Math.pow(0.5, ageInYears);
+      timeWeight = Math.pow(0.1, ageInYears);
     }
   } catch (error) {
     logger.error(
