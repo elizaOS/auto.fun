@@ -127,7 +127,7 @@ export default function Page() {
         throw error;
       }
     },
-    refetchInterval: 20_000,
+    refetchInterval: 2000,
   });
 
   useEffect(() => {
@@ -208,11 +208,11 @@ export default function Page() {
     }
   };
 
-  if (tokenQuery?.isLoading) {
+  if (tokenQuery?.isPending) {
     return <Loader />;
   }
 
-  if (tokenQuery?.isError) {
+  if (!tokenQuery?.data && tokenQuery?.isError) {
     return (
       <div className="flex flex-col gap-4 items-center justify-center h-[50vh]">
         <h2 className="text-2xl font-bold text-autofun-text-primary">
