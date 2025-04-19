@@ -1,6 +1,13 @@
 import { sql } from "drizzle-orm";
 import { drizzle, DrizzleD1Database } from "drizzle-orm/d1";
-import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+  integer,
+  real,
+  sqliteTable,
+  text,
+  uniqueIndex,
+  index,
+} from "drizzle-orm/sqlite-core";
 import { Env } from "./env";
 
 // Token schema
@@ -68,7 +75,25 @@ export const tokens = sqliteTable("tokens", {
   tokenSupplyUiAmount: integer("token_supply_ui_amount").default(1000000000),
   tokenDecimals: integer("token_decimals").default(6),
   lastSupplyUpdate: text("last_supply_update"),
-});
+},
+  (table) => ({
+    // WHERE status!=pending AND hidden=0 ORDER BY market_cap_usd DESC
+    statusHiddenMarketcap: index(
+      "idx_tokens_status_hidden_marketcap"
+    ).on(table.status, table.hidden, table.marketCapUSD),
+    // Featured box on page 1: WHERE featured=1 AND hidden=0 ORDER BY market_cap_usd DESC
+    featuredHiddenMarketcap: index(
+      "idx_tokens_featured_hidden_marketcap"
+    ).on(table.featured, table.hidden, table.marketCapUSD),
+    // ORDER BY created_at
+    statusHiddenCreated: index(
+      "idx_tokens_status_hidden_created"
+    ).on(table.status, table.hidden, table.createdAt),
+    // ORDER BY holder_count
+    statusHiddenHolderCount: index(
+      "idx_tokens_status_hidden_holdercount"
+    ).on(table.status, table.hidden, table.holderCount),
+  }));
 
 // Swap schema
 export const swaps = sqliteTable("swaps", {
@@ -107,7 +132,16 @@ export const tokenHolders = sqliteTable("token_holders", {
   amount: real("amount").notNull(),
   percentage: real("percentage").notNull(),
   lastUpdated: text("last_updated", { mode: "text" }).notNull(),
-});
+},
+  (table) => ({
+    // Guarantee one row per mint+address
+    mintAddressUnique: uniqueIndex("idx_token_holders_mint_address").on(
+      table.mint,
+      table.address
+    ),
+    // Efficient lookup when filtering by mint
+    mintIndex: index("idx_token_holders_mint").on(table.mint),
+  }));
 
 // Create messages table without self-referencing first
 export const messages = sqliteTable("messages", {
