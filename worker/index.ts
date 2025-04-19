@@ -43,7 +43,7 @@ app.use(
     allowHeaders: ["Content-Type", "Authorization", "X-API-Key"],
     exposeHeaders: ["Content-Length"],
     maxAge: 60000,
-  }),
+  })
 );
 
 // Use the improved verifyAuth middleware
@@ -62,11 +62,11 @@ app.use("/__scheduled*", async (c, next) => {
 
   if (isBrowser) {
     logger.warn(
-      `Blocked browser access to __scheduled endpoint - User-Agent: ${userAgent}`,
+      `Blocked browser access to __scheduled endpoint - User-Agent: ${userAgent}`
     );
     return c.json(
       { error: "This endpoint is for internal Cloudflare use only" },
-      403,
+      403
     );
   }
 
@@ -89,7 +89,7 @@ api.use(
     allowHeaders: ["Content-Type", "Authorization", "X-API-Key"],
     exposeHeaders: ["Content-Length"],
     maxAge: 60000,
-  }),
+  })
 );
 
 // Use the improved verifyAuth middleware
@@ -136,7 +136,7 @@ api.post("/upload", async (c) => {
       logger.warn("Invalid image format:", body.image.substring(0, 50) + "...");
       return c.json(
         { error: "Invalid image format. Expected data URL format." },
-        400,
+        400
       );
     }
 
@@ -173,11 +173,11 @@ api.post("/upload", async (c) => {
     }
 
     const imageBuffer = Uint8Array.from(atob(imageData), (c) =>
-      c.charCodeAt(0),
+      c.charCodeAt(0)
     ).buffer;
 
     logger.log(
-      `Uploading image with content type: ${contentType}, filename: ${filename}`,
+      `Uploading image with content type: ${contentType}, filename: ${filename}`
     );
 
     // Upload image to Cloudflare R2
@@ -200,14 +200,14 @@ api.post("/upload", async (c) => {
         {
           isJson: true,
           filename: metadataFilename,
-        },
+        }
       );
       logger.log(`Metadata uploaded successfully: ${metadataUrl}`);
     }
 
     // Log success for debugging
     logger.log(
-      `Upload complete - Image: ${imageUrl}, Metadata: ${metadataUrl}`,
+      `Upload complete - Image: ${imageUrl}, Metadata: ${metadataUrl}`
     );
 
     return c.json({
@@ -224,7 +224,7 @@ api.post("/upload", async (c) => {
     logger.error("Error uploading to Cloudflare:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -254,7 +254,7 @@ api.get("/emit-test-swap/:tokenId", async (c) => {
       {
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      500,
+      500
     );
   }
 });
@@ -284,15 +284,34 @@ api.post("/broadcast", async (c) => {
       {
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      500,
+      500
     );
   }
 });
 
 api.get("/sol-price", async (c) => {
   try {
+    // Create a simple cache key
+    const cacheKey = "sol-price";
+
+    // Try to get from cache first
+    const cachedData = await c.env.CACHE.get(cacheKey);
+    if (cachedData) {
+      return c.json(JSON.parse(cachedData));
+    }
+
+    // If not in cache, fetch the SOL price
     const price = await getSOLPrice(c.env);
-    return c.json({ price });
+
+    // Prepare the result
+    const result = { price };
+
+    // Store in cache with 30-second TTL
+    await c.env.CACHE.put(cacheKey, JSON.stringify(result), {
+      expirationTtl: 30,
+    });
+
+    return c.json(result);
   } catch (error) {
     console.error("Error fetching SOL price:", error);
     return c.json({ error: "Failed to fetch SOL price" }, 500);
@@ -312,7 +331,7 @@ export default {
   async fetch(
     request: Request,
     env: Env,
-    ctx: ExecutionContext,
+    ctx: ExecutionContext
   ): Promise<Response> {
     // Initialize pre-generated tokens in the background
     ctx.waitUntil(checkAndReplenishTokens(env));
@@ -360,7 +379,7 @@ export default {
       } else {
         // For local development when Durable Objects aren't available
         logger.log(
-          "Using simplified WebSocket implementation for local development",
+          "Using simplified WebSocket implementation for local development"
         );
 
         try {
@@ -378,7 +397,7 @@ export default {
             JSON.stringify({
               event: "connected",
               data: { message: "Connected to development WebSocket server" },
-            }),
+            })
           );
 
           // Set up a simple echo handler
@@ -398,7 +417,7 @@ export default {
                     JSON.stringify({
                       event: "joined",
                       data: { room: "global" },
-                    }),
+                    })
                   );
                 } else if (message.event === "subscribe" && message.data) {
                   // Acknowledge token subscription
@@ -406,7 +425,7 @@ export default {
                     JSON.stringify({
                       event: "subscribed",
                       data: { room: `token-${message.data}` },
-                    }),
+                    })
                   );
                 }
 
@@ -415,7 +434,7 @@ export default {
                   JSON.stringify({
                     event: "echo",
                     data: message,
-                  }),
+                  })
                 );
               } catch (parseError) {
                 // If not valid JSON, just echo back as text
@@ -423,7 +442,7 @@ export default {
                   JSON.stringify({
                     event: "echo",
                     data: { text: event.data },
-                  }),
+                  })
                 );
               }
             } catch (error) {
@@ -444,7 +463,7 @@ export default {
             {
               status: 500,
               headers: corsHeaders,
-            },
+            }
           );
         }
       }
