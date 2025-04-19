@@ -306,9 +306,8 @@ api.get("/sol-price", async (c) => {
     // Prepare the result
     const result = { price };
 
-    // Store in cache with 30-second TTL
     await c.env.CACHE.put(cacheKey, JSON.stringify(result), {
-      expirationTtl: 30,
+      expirationTtl: 10,
     });
 
     return c.json(result);
