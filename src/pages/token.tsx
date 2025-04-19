@@ -641,8 +641,8 @@ export default function Page() {
                 </div>
                 {token?.status !== "migrated" ? (
                   <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">
-                    Graduate this coin at{" "}
-                    {formatNumber(graduationMarketCap, true)} market cap.{"\n"}
+                    {/* Graduate this coin at{" "}
+                    {formatNumber(graduationMarketCap, true)} market cap.{"\n"} */}
                     There is{" "}
                     {formatNumber(
                       (token?.reserveLamport - token?.virtualReserves) /
