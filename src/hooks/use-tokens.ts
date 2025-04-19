@@ -29,7 +29,7 @@ export const useHomepageAll = (
     hideImported: hideImported ? 1 : 0,
     validationSchema: HomepageFeaturedSchema,
     itemsPropertyName: "tokens",
-    sortBy: "featuredScore",
+    sortBy: "featured",
     sortOrder: "desc",
     enabled,
   });
