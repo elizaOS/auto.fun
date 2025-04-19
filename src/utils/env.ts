@@ -31,8 +31,8 @@ if (isDevnet) {
   );
   console.log("import.meta.env.VITE_DECIMALS", import.meta.env.VITE_DECIMALS);
   console.log(
-    "import.meta.env.VITE_DEV_ADDRESS",
-    import.meta.env.VITE_DEV_ADDRESS,
+    "import.meta.env.VITE_DEV_PROGRAM_ID",
+    import.meta.env.VITE_DEV_PROGRAM_ID,
   );
 }
 
@@ -52,7 +52,9 @@ const unparsedEnv = {
   apiUrl: isDevnet
     ? import.meta.env.VITE_DEV_API_URL || import.meta.env.VITE_API_URL
     : import.meta.env.VITE_API_URL,
-  devAddress: import.meta.env.VITE_DEV_ADDRESS,
+  programId: isDevnet
+    ? import.meta.env.VITE_DEV_PROGRAM_ID
+    : import.meta.env.VITE_PROGRAM_ID,
   appEnv: process.env.NODE_ENV,
   r2PublicUrl: import.meta.env.VITE_R2_PUBLIC_URL,
 } as const;
@@ -66,7 +68,7 @@ const envSchema = z.object({
   tokenSupply: z.string().min(1),
   decimals: z.string().min(1),
   apiUrl: z.string().min(1),
-  devAddress: z.string().min(1),
+  programId: z.string().min(1),
   feeVault: z.string().min(1),
   appEnv: z.enum(["development", "production"]),
   r2PublicUrl: z.string().min(1),
