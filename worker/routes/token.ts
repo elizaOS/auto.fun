@@ -1509,6 +1509,15 @@ tokenRouter.get("/token/:mint", async (c) => {
       return c.json({ error: "Invalid mint address" }, 400);
     }
 
+    // Create a cache key based on the mint address
+    const cacheKey = `token:${mint}`;
+
+    // Try to get from cache first
+    const cachedData = await c.env.CACHE.get(cacheKey);
+    if (cachedData) {
+      return c.json(JSON.parse(cachedData));
+    }
+
     // Get token data
     const db = getDB(c.env);
     const tokenData = await db
@@ -1682,7 +1691,10 @@ tokenRouter.get("/token/:mint", async (c) => {
     console.log("tokenPriceUSD", token.tokenPriceUSD);
     console.log("marketCapUSD", token.marketCapUSD);
 
-    // Format response with additional data
+    await c.env.CACHE.put(cacheKey, JSON.stringify(token), {
+      expirationTtl: 10,
+    });
+
     return c.json(token);
   } catch (error) {
     logger.error(`Error getting token: ${error}`);
@@ -1692,6 +1704,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     );
   }
 });
+
 tokenRouter.post("/create-token", async (c) => {
   try {
     // Require authentication
