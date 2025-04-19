@@ -46,7 +46,7 @@ export class TokenMigrator {
 
   async scheduleNextInvocation(token: TokenData): Promise<void> {
     // call migraeToken
-    // with a delay of 10 seconds
+
     const delay = 10000; // 10 seconds
     try {
       /// first unlock the migration
@@ -293,11 +293,10 @@ export class TokenMigrator {
       logger.error(`[Withdraw] On‐chain failed:`, onchainErr);
       throw onchainErr; // still bubble up so retryStep logic can catch it
     }
-
-    // 3) parse out your withdraw amounts
+    // parse out withdraw amounts
     const withdrawnAmounts = this.parseWithdrawLogs(logs);
 
-    // 4) fire & forget your CF D1 update
+    // send api call
     (async () => {
       try {
         await fetch(`${this.env.API_URL}/api/migration/update`, {
@@ -381,10 +380,9 @@ export class TokenMigrator {
 
     const remainingTokens = withdrawnTokensBN;
     const remainingSol = withdrawnSolBN.sub(mintConstantFee);
-    {
-      /* Todo: Malibu - we need to add a step at the end to send the mintConstantFee Sol to the fee wallet - for now it will stay in the wallet*/
-    }
+
     console.log("remainingSol", remainingSol.toString());
+
 
     logger.log(`[Pool] Creating pool for token ${token.mint}`);
     const poolCreation = await raydium.cpmm.createPool({
