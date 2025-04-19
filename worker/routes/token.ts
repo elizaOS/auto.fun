@@ -1165,7 +1165,7 @@ tokenRouter.get("/tokens", async (c) => {
         }
 
         if (shouldHideImported) {
-          tokensQuery = tokensQuery.where(ne(tokens.imported, 1));
+          tokensQuery = tokensQuery.where(eq(tokens.imported, 0));
         }
 
         // By default, don't show hidden tokens
