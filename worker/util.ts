@@ -988,6 +988,7 @@ export function calculateFeaturedScore(
     imported: number | null;
     volume24h?: number | null;
     holderCount?: number | null;
+    createdAt: string;
   },
   maxVolume: number,
   maxHolders: number,
@@ -1013,11 +1014,34 @@ export function calculateFeaturedScore(
         ? 0.1
         : 1;
 
-  return (
-    ((volume / normalizedMaxVolume) * 0.7 +
-      (holders / normalizedMaxHolders) * 0.3) *
-    importFactor
-  );
+  // Calculate base score (volume + holders)
+  const baseScore =
+    (volume / normalizedMaxVolume) * 0.7 +
+    (holders / normalizedMaxHolders) * 0.3;
+
+  // Calculate time weight
+  let timeWeight = 1; // Default weight
+  try {
+    const creationDate = new Date(token.createdAt);
+    const now = new Date();
+    const ageInMillis = now.getTime() - creationDate.getTime();
+
+    // Ensure age is not negative (for tokens created slightly in the future due to clock skew)
+    if (ageInMillis > 0) {
+      const ageInYears = ageInMillis / (1000 * 60 * 60 * 24 * 365.25);
+      // Apply exponential decay: weight = 0.5 ^ ageInYears
+      timeWeight = Math.pow(0.5, ageInYears);
+    }
+  } catch (error) {
+    logger.error(
+      `Error calculating time weight for token ${token.ticker}:`,
+      error,
+    );
+    // Keep default weight of 1 if parsing fails
+  }
+
+  // Apply import factor and time weight
+  return baseScore * importFactor * timeWeight;
 }
 
 /**

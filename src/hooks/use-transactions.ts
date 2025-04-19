@@ -44,7 +44,7 @@ export const useTransactions = ({ tokenId }: { tokenId: string }) => {
       let newTransactions: any = [];
       if (Array.isArray(transaction)) {
         newTransactions = transaction.map((item) =>
-          TransactionSchema.parse(item)
+          TransactionSchema.parse(item),
         );
       } else if (transaction && typeof transaction === "object") {
         newTransactions = [TransactionSchema.parse(transaction)];
@@ -55,7 +55,7 @@ export const useTransactions = ({ tokenId }: { tokenId: string }) => {
       if (pagination.currentPage !== 1) return;
 
       pagination.setItems((items) =>
-        [...newTransactions, ...items].slice(0, pageSize)
+        [...newTransactions, ...items].slice(0, pageSize),
       );
     });
 
