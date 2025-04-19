@@ -1088,6 +1088,14 @@ tokenRouter.get("/image/:filename", async (c) => {
 tokenRouter.get("/tokens", async (c) => {
   try {
     const queryParams = c.req.query();
+    // Create a cache key based on the query parameters
+    const cacheKey = `tokens:${JSON.stringify(queryParams)}`;
+
+    // Try to get from cache first
+    const cachedData = await c.env.CACHE.get(cacheKey);
+    if (cachedData) {
+      return c.json(JSON.parse(cachedData));
+    }
     const isSearching = !!queryParams.search;
 
     const limit = isSearching ? 5 : parseInt(queryParams.limit as string) || 50;
@@ -1310,14 +1318,19 @@ tokenRouter.get("/tokens", async (c) => {
         returnTokens.push(...filteredTokens.slice(0, remainingSpace));
       }
     }
-
-    return c.json({
+    const result = {
       tokens: returnTokens,
       page,
       totalPages,
       total,
       hasMore: page < totalPages,
+    };
+
+    await c.env.CACHE.put(cacheKey, JSON.stringify(result), {
+      expirationTtl: 30,
     });
+
+    return c.json(result);
   } catch (error) {
     logger.error("Error in token route:", error);
     // Return empty results rather than error
