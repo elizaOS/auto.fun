@@ -21,6 +21,7 @@ import {
   LAMPORTS_PER_SOL,
 } from "@/utils";
 import { getToken, queryClient } from "@/utils/api";
+import { getAuthToken } from "@/utils/auth";
 import { env } from "@/utils/env";
 import { getSocket } from "@/utils/socket";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -176,10 +177,21 @@ export default function Page() {
     }
 
     try {
+      const authToken = getAuthToken();
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      }
+
       const response = await fetch(`${env.apiUrl}/api/claimFees`, {
         method: "POST",
         credentials: "include",
         body: JSON.stringify({ tokenMint: token?.mint }),
+        headers,
       });
 
       if (!response.ok) {
