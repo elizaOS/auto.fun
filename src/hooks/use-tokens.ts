@@ -243,25 +243,16 @@ export const useHomepageOldest = (
 
 export const useTokens = (
   sortBy: HomepageSortBy,
-  hideImported: boolean,
   pageSize: number = 24
 ) => {
-  const allTokens = useHomepageAll(sortBy === "all", hideImported, pageSize);
+  const allTokens = useHomepageAll(sortBy === "all", false, pageSize);
   const marketCapTokens = useHomepageMarketCap(
     sortBy === "marketCap",
-    hideImported,
+    true,
     pageSize
   );
-  const newestTokens = useHomepageNewest(
-    sortBy === "newest",
-    hideImported,
-    pageSize
-  );
-  const oldestTokens = useHomepageOldest(
-    sortBy === "oldest",
-    hideImported,
-    pageSize
-  );
+  const newestTokens = useHomepageNewest(sortBy === "newest", true, pageSize);
+  const oldestTokens = useHomepageOldest(sortBy === "oldest", true, pageSize);
 
   useEffect(() => {
     getSocket().emit("subscribeGlobal");
