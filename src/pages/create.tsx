@@ -3106,11 +3106,13 @@ export const Create = () => {
                   <input
                     type="text"
                     value={vanitySuffix}
-                    onChange={(e) => setVanitySuffix(e.target.value)} // Force uppercase
+                    onChange={(e) => {
+                      stopVanityGeneration(); // Stop generation when suffix changes
+                      setVanitySuffix(e.target.value);
+                    }} // Force uppercase
                     placeholder="FUN"
                     maxLength={5}
                     className={`bg-autofun-background-input w-20 py-1.5 px-2 ${suffixError && !suffixError.startsWith("Warning") && !suffixError.startsWith("Note") ? "border-red-500" : ""} text-white text-center font-mono focus:outline-none focus:border-white disabled:opacity-50`}
-                    disabled={isGeneratingVanity}
                   />
                   <button
                     type="button"

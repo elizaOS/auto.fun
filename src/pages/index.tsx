@@ -30,10 +30,10 @@ export default function Page() {
   const data = query?.items
     ? query?.items.filter(
         (item, index, self) =>
-          index === self.findIndex((t) => t.mint === item.mint)
+          index === self.findIndex((t) => t.mint === item.mint),
       )
     : [];
-    
+
   return (
     <div className="w-full min-h-[50vh]">
       {/* Header Section */}
