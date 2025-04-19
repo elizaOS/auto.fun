@@ -96,7 +96,9 @@ export default function Page() {
   const { solPrice: contextSolPrice } = useSolPriceContext();
 
   // ---- Moderator Check using hardcoded list ----
-  const isModerator = publicKey ? adminAddresses.includes(publicKey.toString()) : false;
+  const isModerator = publicKey
+    ? adminAddresses.includes(publicKey.toString())
+    : false;
   // ---- End Moderator Check ----
 
   // Load active tab from localStorage or default to "chart"
@@ -453,9 +455,7 @@ export default function Page() {
                 );
               })()}
             {/* Render AdminSection only for moderators and non-imported tokens */}
-            {isModerator && !token?.imported && (
-              <AdminSection />
-            )}
+            {isModerator && !token?.imported && <AdminSection />}
           </div>
         </div>
 

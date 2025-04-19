@@ -202,12 +202,15 @@ export default function AdminTab() {
       };
 
       // **Important:** Use the dedicated admin endpoint for social links
-      const response = await fetch(`${env.apiUrl}/api/admin/tokens/${mint}/social`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payload),
-        credentials: "include", // Important to include credentials for auth cookies
-      });
+      const response = await fetch(
+        `${env.apiUrl}/api/admin/tokens/${mint}/social`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify(payload),
+          credentials: "include", // Important to include credentials for auth cookies
+        },
+      );
 
       if (!response.ok) {
         let errorMessage = "Failed to update token";
@@ -316,7 +319,9 @@ export default function AdminTab() {
 
   // ---- Moderator Check using hardcoded list ----
   const { publicKey } = useWallet();
-  const isModerator = publicKey ? adminAddresses.includes(publicKey.toString()) : false;
+  const isModerator = publicKey
+    ? adminAddresses.includes(publicKey.toString())
+    : false;
   // ---- End Moderator Check ----
 
   const queryClient = useQueryClient(); // Correctly initialize queryClient
@@ -471,59 +476,61 @@ export default function AdminTab() {
 
       {/* Moderator Actions Section */}
       <div className="mt-6 pt-4 border-t border-autofun-border">
-          <h4 className="text-md font-semibold mb-3 text-autofun-text-secondary">Moderator Actions</h4>
-          <div className="flex flex-wrap justify-start gap-2">
-              <button
-                  type="button" // Prevent form submission
-                  className={`px-4 py-2 text-sm rounded ${
-                      tokenStatus.featured
-                          ? "bg-red-700 text-red-100 hover:bg-red-600"
-                          : "bg-blue-700 text-blue-100 hover:bg-blue-600"
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  onClick={() => toggleFeaturedMutation.mutate()}
-                  disabled={toggleFeaturedMutation.isPending}
-              >
-                  {toggleFeaturedMutation.isPending
-                      ? "Processing..."
-                      : tokenStatus.featured
-                          ? "Remove Featured"
-                          : "Make Featured"}
-              </button>
+        <h4 className="text-md font-semibold mb-3 text-autofun-text-secondary">
+          Moderator Actions
+        </h4>
+        <div className="flex flex-wrap justify-start gap-2">
+          <button
+            type="button" // Prevent form submission
+            className={`px-4 py-2 text-sm rounded ${
+              tokenStatus.featured
+                ? "bg-red-700 text-red-100 hover:bg-red-600"
+                : "bg-blue-700 text-blue-100 hover:bg-blue-600"
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            onClick={() => toggleFeaturedMutation.mutate()}
+            disabled={toggleFeaturedMutation.isPending}
+          >
+            {toggleFeaturedMutation.isPending
+              ? "Processing..."
+              : tokenStatus.featured
+                ? "Remove Featured"
+                : "Make Featured"}
+          </button>
 
-              <button
-                  type="button" // Prevent form submission
-                  className={`px-4 py-2 text-sm rounded ${
-                      tokenStatus.verified
-                          ? "bg-red-700 text-red-100 hover:bg-red-600"
-                          : "bg-green-700 text-green-100 hover:bg-green-600"
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  onClick={() => toggleVerifiedMutation.mutate()}
-                  disabled={toggleVerifiedMutation.isPending}
-              >
-                  {toggleVerifiedMutation.isPending
-                      ? "Processing..."
-                      : tokenStatus.verified
-                          ? "Remove Verified"
-                          : "Make Verified"}
-              </button>
+          <button
+            type="button" // Prevent form submission
+            className={`px-4 py-2 text-sm rounded ${
+              tokenStatus.verified
+                ? "bg-red-700 text-red-100 hover:bg-red-600"
+                : "bg-green-700 text-green-100 hover:bg-green-600"
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            onClick={() => toggleVerifiedMutation.mutate()}
+            disabled={toggleVerifiedMutation.isPending}
+          >
+            {toggleVerifiedMutation.isPending
+              ? "Processing..."
+              : tokenStatus.verified
+                ? "Remove Verified"
+                : "Make Verified"}
+          </button>
 
-              <button
-                  type="button" // Prevent form submission
-                  className={`px-4 py-2 text-sm rounded ${
-                      tokenStatus.hidden
-                          ? "bg-yellow-700 text-yellow-100 hover:bg-yellow-600" // Use yellow for unhide
-                          : "bg-gray-700 text-gray-100 hover:bg-gray-600"
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  onClick={() => toggleHiddenMutation.mutate()}
-                  disabled={toggleHiddenMutation.isPending}
-              >
-                  {toggleHiddenMutation.isPending
-                      ? "Processing..."
-                      : tokenStatus.hidden
-                          ? "Unhide Token"
-                          : "Hide Token"}
-              </button>
-          </div>
+          <button
+            type="button" // Prevent form submission
+            className={`px-4 py-2 text-sm rounded ${
+              tokenStatus.hidden
+                ? "bg-yellow-700 text-yellow-100 hover:bg-yellow-600" // Use yellow for unhide
+                : "bg-gray-700 text-gray-100 hover:bg-gray-600"
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            onClick={() => toggleHiddenMutation.mutate()}
+            disabled={toggleHiddenMutation.isPending}
+          >
+            {toggleHiddenMutation.isPending
+              ? "Processing..."
+              : tokenStatus.hidden
+                ? "Unhide Token"
+                : "Hide Token"}
+          </button>
+        </div>
       </div>
     </form>
   );
