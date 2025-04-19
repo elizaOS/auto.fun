@@ -45,6 +45,7 @@ export default function Page() {
         <div className="flex items-center gap-1">
           <Button
             variant={sortBy === "all" ? "primary" : "outline"}
+            className={sortBy === "all" ? "bg-autofun-background-primary text-autofun-text-primary" : ""}
             onClick={() => setSortBy("all")}
           >
             {/* featured represents all */}
