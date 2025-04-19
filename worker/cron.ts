@@ -42,7 +42,7 @@ function convertTokenDataToDBData(
         : tokenData.migration,
     withdrawnAmounts:
       tokenData.withdrawnAmounts &&
-      typeof tokenData.withdrawnAmounts !== "string"
+        typeof tokenData.withdrawnAmounts !== "string"
         ? JSON.stringify(tokenData.withdrawnAmounts)
         : tokenData.withdrawnAmounts,
     poolInfo:
@@ -350,11 +350,11 @@ export async function processTransactionLogs(
       price:
         direction === "1"
           ? Number(amountOut) /
-            Math.pow(10, SOL_DECIMALS) /
-            (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) // Sell price (SOL/token)
+          Math.pow(10, SOL_DECIMALS) /
+          (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) // Sell price (SOL/token)
           : Number(amount) /
-            Math.pow(10, SOL_DECIMALS) /
-            (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)), // Buy price (SOL/token),
+          Math.pow(10, SOL_DECIMALS) /
+          (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)), // Buy price (SOL/token),
       txId: signature,
       timestamp: new Date().toISOString(),
     };
@@ -385,11 +385,10 @@ export async function processTransactionLogs(
           100,
         txId: signature,
         lastUpdated: new Date().toISOString(),
-        volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${
-          direction === "1"
+        volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${direction === "1"
             ? (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD
             : (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD
-        }`,
+          }`,
       })
       .where(eq(tokens.mint, mintAddress))
       .returning();
@@ -546,7 +545,7 @@ export async function processTransactionLogs(
     // Update in database
     await updateTokenInDB(env, tokenData);
     // migrate token
-    await tokenMigrator.migrateToken(token);
+    // await tokenMigrator.migrateToken(token);
 
     // Notify clients
     await wsClient.emit(`token-${mintAddress}`, "updateToken", tokenData);

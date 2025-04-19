@@ -13,6 +13,7 @@ import { PublicKey } from "@solana/web3.js";
 import { claim, checkBalance } from "../raydium/raydiumVault";
 import { getDB, users, tokens } from "../db";
 import { eq } from "drizzle-orm";
+import { getWebSocketClient } from "../websocket-client";
 
 const migrationRouter = new Hono<{
   Bindings: Env;
@@ -240,6 +241,50 @@ migrationRouter.get("/checkBalance", async (c) => {
   } catch (error) {
     logger.error("Error in checkBalance endpoint:", error);
     return c.json({ error: "Failed to process checkBalance invocation" }, 500);
+  }
+});
+
+migrationRouter.post("/migration/update", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { step, mint, migration, status, ...extra } = body;
+
+    if (!mint || migration === undefined) {
+      return c.json({ error: "mint and migration are required" }, 400);
+    }
+
+    // 2) normalize migration to string for storage
+    const migrationStr =
+      typeof migration === "string" ? migration : JSON.stringify(migration);
+
+    // 3) prepare update fields
+    const updateData: Record<string, any> = {
+      migration: migrationStr,
+      last_updated: new Date().toISOString(),
+    };
+    if (status) updateData.status = status;
+    if (extra.lockedAt) updateData.locked_at = extra.lockedAt;
+    Object.assign(updateData, extra);
+
+    // 4) write to db
+    const db = getDB(c.env);
+    const token = await db
+      .update(tokens)
+      .set(updateData)
+      .where(eq(tokens.mint, mint))
+      .execute();
+
+    // emit event to notify 
+    const ws = getWebSocketClient(c.env);
+
+    if (step === "finalize") {
+      ws.to(`token-${mint}`).emit("updateToken", token);
+
+    }
+    return c.json({ ok: true, mint });
+  } catch (err) {
+    logger.error("Error in /migration/update:", err);
+    return c.json({ error: "Failed to update migration state" }, 500);
   }
 });
 

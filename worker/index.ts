@@ -473,27 +473,16 @@ export default {
       //   })()
       // );
 
-      // resume migration 
-      ctx.waitUntil(
-        (async () => {
-          try {
-            await checkMigratingTokens(env, 2);
-          } catch (err) {
-            logger.error("Error in migration resume:", err);
-          }
-        })()
-      );
-
-      ctx.waitUntil(
-        (async () => {
-          try {
-            await cron(env, event);
-            logger.info("Cron job completed");
-          } catch (err) {
-            logger.error("Error in cron job:", err);
-          }
-        })()
-      );
+      // ctx.waitUntil(
+      //   (async () => {
+      //     try {
+      await cron(env, event);
+      logger.info("Cron job completed");
+      //     } catch (err) {
+      //       logger.error("Error in cron job:", err);
+      //     }
+      //   })()
+      // );
     } catch (error) {
       logger.error("Error in scheduled handler:", error);
     }
