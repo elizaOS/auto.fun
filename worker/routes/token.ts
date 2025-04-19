@@ -1276,8 +1276,42 @@ tokenRouter.get("/tokens", async (c) => {
 
     const totalPages = Math.ceil(total / limit);
 
+    let featuredTokens: any = [];
+    if (sortBy === "featured" && page === 1) {
+      featuredTokens = await db
+        .select()
+        .from(tokens)
+        .where(and(eq(tokens.featured, 1), eq(tokens.hidden, 0)))
+        .orderBy(desc(tokens.marketCapUSD));
+    }
+
+    const featuredLength = featuredTokens?.length || 0;
+    const returnTokens: typeof tokensResult = [];
+
+    // Add featured tokens first if they exist
+    if (featuredTokens && featuredTokens.length > 0) {
+      returnTokens.push(...featuredTokens);
+    }
+
+    // Filter out tokens that are already in featuredTokens
+    if (tokensResult && tokensResult.length > 0) {
+      const filteredTokens =
+        featuredTokens && featuredTokens.length > 0
+          ? tokensResult.filter(
+              (token) =>
+                !featuredTokens.some((featured) => featured.mint === token.mint)
+            )
+          : tokensResult;
+
+      // Add filtered tokens up to the limit
+      const remainingSpace = limit - featuredLength;
+      if (remainingSpace > 0) {
+        returnTokens.push(...filteredTokens.slice(0, remainingSpace));
+      }
+    }
+
     return c.json({
-      tokens: tokensResult,
+      tokens: returnTokens,
       page,
       totalPages,
       total,
