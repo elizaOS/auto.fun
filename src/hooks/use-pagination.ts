@@ -177,6 +177,8 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
     refetchInterval: refetchInterval ? refetchInterval : 5000,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    retry: 3,
   });
 
   const fetchedData = query?.data?.fetchedData || [];
@@ -207,30 +209,29 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
   const setItems = useCallback(
     (itemsOrUpdater: TOutput[] | ((prevItems: TOutput[]) => TOutput[])) => {
       if (typeof itemsOrUpdater === "function") {
-        queryClient.setQueryData(
-          queryKey,
-          (oldData: PaginatedResponse<TOutput> | undefined) => {
-            const prevItems = oldData?.items || [];
-            return {
-              ...(oldData || {}),
-              items: itemsOrUpdater(prevItems),
-            };
-          },
-        );
+        queryClient.setQueryData(queryKey, (oldData: any) => {
+          const prevItems = oldData.fetchedData || [];
+          return {
+            ...oldData,
+            fetchedData: itemsOrUpdater(prevItems),
+          };
+        });
       } else {
-        queryClient.setQueryData(queryKey, {
-          ...(fetchedData || {}),
-          items: itemsOrUpdater,
+        queryClient.setQueryData(queryKey, (oldData: any) => {
+          return {
+            ...oldData,
+            fetchedData: itemsOrUpdater,
+          };
         });
       }
     },
-    [queryKey, fetchedData],
+    [queryKey, queryClient],
   );
 
   return {
     items: fetchedData,
     setItems,
-    isLoading: query?.isPending,
+    isLoading: query?.isPending && !fetchedData.length,
     hasNextPage: hasMore,
     hasPreviousPage: page > 1,
     currentPage: page,
