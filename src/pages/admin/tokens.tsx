@@ -26,7 +26,7 @@ function AdminTokensList() {
   >("newest");
   const [hideImported, setHideImported] = useState(false);
 
-  const tokensPagination = useTokens(sortBy, hideImported, 50);
+  const tokensPagination = useTokens(sortBy, 50);
 
   if (tokensPagination?.isLoading) {
     return <Loader />;

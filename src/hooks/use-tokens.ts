@@ -241,22 +241,14 @@ export const useHomepageOldest = (
   return pagination;
 };
 
-export const useTokens = (
-  sortBy: HomepageSortBy,
-  hideImported: boolean,
-  pageSize: number = 24,
-) => {
-  const allTokens = useHomepageAll(sortBy === "all", hideImported, pageSize);
+export const useTokens = (sortBy: HomepageSortBy, pageSize: number = 24) => {
+  const allTokens = useHomepageAll(sortBy === "all", false, pageSize);
   const marketCapTokens = useHomepageMarketCap(
     sortBy === "marketCap",
-    hideImported,
+    true,
     pageSize,
   );
-  const newestTokens = useHomepageNewest(
-    sortBy === "newest",
-    hideImported,
-    pageSize,
-  );
+  const newestTokens = useHomepageNewest(sortBy === "newest", true, pageSize);
 
   useEffect(() => {
     getSocket().emit("subscribeGlobal");
