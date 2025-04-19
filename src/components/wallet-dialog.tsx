@@ -35,7 +35,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
     wallet: connectedWallet,
   } = useWallet();
   const { visible, setVisible } = useWalletModal();
-  const { setAuthToken } = useAuthentication();
+  const { handleSuccessfulAuth } = useAuthentication();
 
   const [installedWallets] = useMemo(() => {
     const installed: Wallet[] = [];
@@ -307,41 +307,9 @@ export const WalletModal: FC<WalletModalProps> = () => {
 
         const authData = (await authResponse.json()) as AuthResponse;
 
-        // Store the token
-        if (authData.token) {
-          // Store token in both formats for compatibility
-          // 1. Directly as authToken (old method) - without JSON.stringify for JWT tokens
-          setAuthToken(authData.token);
-
-          // 2. In enhanced walletAuth storage structure
-          const authStorage = {
-            token: authData.token,
-            walletAddress: authData.user?.address || publicKeyStr,
-            timestamp: Date.now(),
-          };
-
-          try {
-            localStorage.setItem("walletAuth", JSON.stringify(authStorage));
-            // Double check it was stored correctly
-            const storedData = localStorage.getItem("walletAuth");
-            if (storedData) {
-              try {
-                // @ts-ignore
-                const parsed = JSON.parse(storedData);
-              } catch (e) {
-                console.error(
-                  "Error parsing stored token for verification:",
-                  e,
-                );
-              }
-            } else {
-              console.error(
-                "Token storage verification failed - no data found after storage",
-              );
-            }
-          } catch (e) {
-            console.error("Error storing wallet auth data:", e);
-          }
+        // Store the token using the new handler
+        if (authData.token && authData.user?.address) {
+          handleSuccessfulAuth(authData.token, authData.user.address);
         } else {
           console.warn("No token received from server during authentication");
           // Generate a fallback token for compatibility
@@ -353,21 +321,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
 
           if (walletAddress) {
             const walletSpecificToken = `wallet_${walletAddress}_${Date.now()}`;
-
-            // Store in both formats
-            setAuthToken(walletSpecificToken);
-
-            const authStorage = {
-              token: walletSpecificToken,
-              walletAddress: walletAddress,
-              timestamp: Date.now(),
-            };
-
-            try {
-              localStorage.setItem("walletAuth", JSON.stringify(authStorage));
-            } catch (e) {
-              console.error("Error storing fallback wallet auth data:", e);
-            }
+            handleSuccessfulAuth(walletSpecificToken, walletAddress);
           } else {
             console.error(
               "Cannot create fallback token: No wallet address available",
@@ -388,7 +342,6 @@ export const WalletModal: FC<WalletModalProps> = () => {
       setVisible(false);
     },
     onError: (e) => {
-      // TODO - Replace for proper toaster again
       console.error("Connection error:", e);
     },
   });

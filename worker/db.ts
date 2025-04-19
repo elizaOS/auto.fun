@@ -1,74 +1,110 @@
 import { sql } from "drizzle-orm";
 import { drizzle, DrizzleD1Database } from "drizzle-orm/d1";
-import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+  integer,
+  real,
+  sqliteTable,
+  text,
+  uniqueIndex,
+  index,
+} from "drizzle-orm/sqlite-core";
 import { Env } from "./env";
 
 // Token schema
-export const tokens = sqliteTable("tokens", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  ticker: text("ticker").notNull(),
-  url: text("url").notNull(),
-  image: text("image").notNull(),
-  twitter: text("twitter"),
-  telegram: text("telegram"),
-  website: text("website"),
-  discord: text("discord"),
-  farcaster: text("farcaster"),
-  description: text("description"),
-  mint: text("mint").notNull().unique(),
-  creator: text("creator").notNull(),
-  nftMinted: text("nft_minted", { mode: "text" }),
-  lockId: text("lock_id", { mode: "text" }),
-  lockedAmount: text("locked_amount", { mode: "text" }),
-  lockedAt: text("locked_at", { mode: "text" }),
-  harvestedAt: text("harvested_at", { mode: "text" }),
-  status: text("status").notNull().default("active"),
-  createdAt: text("created_at", { mode: "text" }).notNull(),
-  lastUpdated: text("last_updated", { mode: "text" }).notNull(),
-  completedAt: text("completed_at", { mode: "text" }),
-  withdrawnAt: text("withdrawn_at", { mode: "text" }),
-  migratedAt: text("migrated_at", { mode: "text" }),
-  marketId: text("market_id", { mode: "text" }),
-  baseVault: text("base_vault", { mode: "text" }),
-  quoteVault: text("quote_vault", { mode: "text" }),
-  withdrawnAmount: real("withdrawn_amount"),
-  reserveAmount: real("reserve_amount"),
-  reserveLamport: real("reserve_lamport"),
-  virtualReserves: real("virtual_reserves"),
-  liquidity: real("liquidity"),
-  currentPrice: real("current_price"),
-  marketCapUSD: real("market_cap_usd"),
-  tokenPriceUSD: real("token_price_usd"),
-  solPriceUSD: real("sol_price_usd"),
-  curveProgress: real("curve_progress"),
-  curveLimit: real("curve_limit"),
-  priceChange24h: real("price_change_24h"),
-  price24hAgo: real("price_24h_ago"),
-  volume24h: real("volume_24h"),
-  inferenceCount: integer("inference_count"),
-  lastVolumeReset: text("last_volume_reset"),
-  lastPriceUpdate: text("last_price_update"),
-  holderCount: integer("holder_count"),
-  txId: text("tx_id"),
-  // New fields
-  migration: text("migration", { mode: "text" }), // object with withdraw, createPool, lockLP, finalize info
-  withdrawnAmounts: text("withdrawn_amounts", { mode: "text" }), // Expected to store { withdrawnSol, withdrawnTokens }
-  poolInfo: text("pool_info", { mode: "text" }), // Expected to store pool details (id, lpMint, baseVault, quoteVault)
-  lockLpTxId: text("lock_lp_tx_id", { mode: "text" }),
-  imported: integer("imported").default(0),
-  // Flag fields
-  featured: integer("featured").default(0), // 0 = not featured, 1 = featured
-  verified: integer("verified").default(0), // 0 = not verified, 1 = verified
-  hidden: integer("hidden").default(0), // 0 = not hidden, 1 = hidden
-  // NEW: Token supply and decimals
-  tokenSupply: text("token_supply", { mode: "text" }).default(
-    "1000000000000000",
-  ), // As string to preserve precision
-  tokenSupplyUiAmount: integer("token_supply_ui_amount").default(1000000000),
-  tokenDecimals: integer("token_decimals").default(6),
-  lastSupplyUpdate: text("last_supply_update"),
-});
+export const tokens = sqliteTable(
+  "tokens",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    ticker: text("ticker").notNull(),
+    url: text("url").notNull(),
+    image: text("image").notNull(),
+    twitter: text("twitter"),
+    telegram: text("telegram"),
+    website: text("website"),
+    discord: text("discord"),
+    farcaster: text("farcaster"),
+    description: text("description"),
+    mint: text("mint").notNull().unique(),
+    creator: text("creator").notNull(),
+    nftMinted: text("nft_minted", { mode: "text" }),
+    lockId: text("lock_id", { mode: "text" }),
+    lockedAmount: text("locked_amount", { mode: "text" }),
+    lockedAt: text("locked_at", { mode: "text" }),
+    harvestedAt: text("harvested_at", { mode: "text" }),
+    status: text("status").notNull().default("active"),
+    createdAt: text("created_at", { mode: "text" }).notNull(),
+    lastUpdated: text("last_updated", { mode: "text" }).notNull(),
+    completedAt: text("completed_at", { mode: "text" }),
+    withdrawnAt: text("withdrawn_at", { mode: "text" }),
+    migratedAt: text("migrated_at", { mode: "text" }),
+    marketId: text("market_id", { mode: "text" }),
+    baseVault: text("base_vault", { mode: "text" }),
+    quoteVault: text("quote_vault", { mode: "text" }),
+    withdrawnAmount: real("withdrawn_amount"),
+    reserveAmount: real("reserve_amount"),
+    reserveLamport: real("reserve_lamport"),
+    virtualReserves: real("virtual_reserves"),
+    liquidity: real("liquidity"),
+    currentPrice: real("current_price"),
+    marketCapUSD: real("market_cap_usd"),
+    tokenPriceUSD: real("token_price_usd"),
+    solPriceUSD: real("sol_price_usd"),
+    curveProgress: real("curve_progress"),
+    curveLimit: real("curve_limit"),
+    priceChange24h: real("price_change_24h"),
+    price24hAgo: real("price_24h_ago"),
+    volume24h: real("volume_24h"),
+    inferenceCount: integer("inference_count"),
+    lastVolumeReset: text("last_volume_reset"),
+    lastPriceUpdate: text("last_price_update"),
+    holderCount: integer("holder_count"),
+    txId: text("tx_id"),
+    // New fields
+    migration: text("migration", { mode: "text" }), // object with withdraw, createPool, lockLP, finalize info
+    withdrawnAmounts: text("withdrawn_amounts", { mode: "text" }), // Expected to store { withdrawnSol, withdrawnTokens }
+    poolInfo: text("pool_info", { mode: "text" }), // Expected to store pool details (id, lpMint, baseVault, quoteVault)
+    lockLpTxId: text("lock_lp_tx_id", { mode: "text" }),
+    imported: integer("imported").default(0),
+    // Flag fields
+    featured: integer("featured").default(0), // 0 = not featured, 1 = featured
+    verified: integer("verified").default(0), // 0 = not verified, 1 = verified
+    hidden: integer("hidden").default(0), // 0 = not hidden, 1 = hidden
+    // NEW: Token supply and decimals
+    tokenSupply: text("token_supply", { mode: "text" }).default(
+      "1000000000000000",
+    ), // As string to preserve precision
+    tokenSupplyUiAmount: integer("token_supply_ui_amount").default(1000000000),
+    tokenDecimals: integer("token_decimals").default(6),
+    lastSupplyUpdate: text("last_supply_update"),
+  },
+  (table) => ({
+    // WHERE status!=pending AND hidden=0 ORDER BY market_cap_usd DESC
+    statusHiddenMarketcap: index("idx_tokens_status_hidden_marketcap").on(
+      table.status,
+      table.hidden,
+      table.marketCapUSD,
+    ),
+    // Featured box on page 1: WHERE featured=1 AND hidden=0 ORDER BY market_cap_usd DESC
+    featuredHiddenMarketcap: index("idx_tokens_featured_hidden_marketcap").on(
+      table.featured,
+      table.hidden,
+      table.marketCapUSD,
+    ),
+    // ORDER BY created_at
+    statusHiddenCreated: index("idx_tokens_status_hidden_created").on(
+      table.status,
+      table.hidden,
+      table.createdAt,
+    ),
+    // ORDER BY holder_count
+    statusHiddenHolderCount: index("idx_tokens_status_hidden_holdercount").on(
+      table.status,
+      table.hidden,
+      table.holderCount,
+    ),
+  }),
+);
 
 // Swap schema
 export const swaps = sqliteTable("swaps", {
@@ -100,14 +136,26 @@ export const fees = sqliteTable("fees", {
 });
 
 // TokenHolder schema
-export const tokenHolders = sqliteTable("token_holders", {
-  id: text("id").primaryKey(),
-  mint: text("mint").notNull(),
-  address: text("address").notNull(),
-  amount: real("amount").notNull(),
-  percentage: real("percentage").notNull(),
-  lastUpdated: text("last_updated", { mode: "text" }).notNull(),
-});
+export const tokenHolders = sqliteTable(
+  "token_holders",
+  {
+    id: text("id").primaryKey(),
+    mint: text("mint").notNull(),
+    address: text("address").notNull(),
+    amount: real("amount").notNull(),
+    percentage: real("percentage").notNull(),
+    lastUpdated: text("last_updated", { mode: "text" }).notNull(),
+  },
+  (table) => ({
+    // Guarantee one row per mint+address
+    mintAddressUnique: uniqueIndex("idx_token_holders_mint_address").on(
+      table.mint,
+      table.address,
+    ),
+    // Efficient lookup when filtering by mint
+    mintIndex: index("idx_token_holders_mint").on(table.mint),
+  }),
+);
 
 // Create messages table without self-referencing first
 export const messages = sqliteTable("messages", {

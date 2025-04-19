@@ -291,8 +291,13 @@ api.post("/broadcast", async (c) => {
 
 api.get("/sol-price", async (c) => {
   try {
+    // If not in cache, fetch the SOL price
     const price = await getSOLPrice(c.env);
-    return c.json({ price });
+
+    // Prepare the result
+    const result = { price };
+
+    return c.json(result);
   } catch (error) {
     console.error("Error fetching SOL price:", error);
     return c.json({ error: "Failed to fetch SOL price" }, 500);

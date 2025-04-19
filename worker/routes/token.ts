@@ -1088,6 +1088,14 @@ tokenRouter.get("/image/:filename", async (c) => {
 tokenRouter.get("/tokens", async (c) => {
   try {
     const queryParams = c.req.query();
+    // Create a cache key based on the query parameters
+    const cacheKey = `tokens:${JSON.stringify(queryParams)}`;
+
+    // Try to get from cache first
+    const cachedData = await c.env.CACHE.get(cacheKey);
+    if (cachedData) {
+      return c.json(JSON.parse(cachedData));
+    }
     const isSearching = !!queryParams.search;
 
     const limit = isSearching ? 5 : parseInt(queryParams.limit as string) || 50;
@@ -1312,14 +1320,19 @@ tokenRouter.get("/tokens", async (c) => {
         returnTokens.push(...filteredTokens.slice(0, remainingSpace));
       }
     }
-
-    return c.json({
+    const result = {
       tokens: returnTokens,
       page,
       totalPages,
       total,
       hasMore: page < totalPages,
+    };
+
+    await c.env.CACHE.put(cacheKey, JSON.stringify(result), {
+      expirationTtl: 60,
     });
+
+    return c.json(result);
   } catch (error) {
     logger.error("Error in token route:", error);
     // Return empty results rather than error
@@ -1391,6 +1404,15 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
 
     const db = getDB(c.env);
 
+    // Create a cache key based on the mint address and pagination parameters
+    const cacheKey = `token:${mint}:holders:limit=${limit}:page=${page}`;
+
+    // Try to get from cache first
+    const cachedData = await c.env.CACHE.get(cacheKey);
+    if (cachedData) {
+      return c.json(JSON.parse(cachedData));
+    }
+
     // Get holders from database directly
     // const holders = await db
     //   .select()
@@ -1425,12 +1447,19 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
     // Paginate results
     const paginatedHolders = holders.slice(offset, offset + limit);
 
-    return c.json({
+    const result = {
       holders: paginatedHolders,
       page: page,
       totalPages: Math.ceil(holders.length / limit),
       total: holders.length,
+    };
+
+    // Store the result in cache with 30-second TTL
+    await c.env.CACHE.put(cacheKey, JSON.stringify(result), {
+      expirationTtl: 60,
     });
+
+    return c.json(result);
   } catch (error) {
     logger.error(`Database error in token holders route: ${error}`);
     return c.json(
@@ -1496,6 +1525,15 @@ tokenRouter.get("/token/:mint", async (c) => {
     // Validate mint address
     if (!mint || mint.length < 32 || mint.length > 44) {
       return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    // Create a cache key based on the mint address
+    const cacheKey = `token:${mint}`;
+
+    // Try to get from cache first
+    const cachedData = await c.env.CACHE.get(cacheKey);
+    if (cachedData) {
+      return c.json(JSON.parse(cachedData));
     }
 
     // Get token data
@@ -1671,7 +1709,10 @@ tokenRouter.get("/token/:mint", async (c) => {
     console.log("tokenPriceUSD", token.tokenPriceUSD);
     console.log("marketCapUSD", token.marketCapUSD);
 
-    // Format response with additional data
+    await c.env.CACHE.put(cacheKey, JSON.stringify(token), {
+      expirationTtl: 60,
+    });
+
     return c.json(token);
   } catch (error) {
     logger.error(`Error getting token: ${error}`);
@@ -1681,6 +1722,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     );
   }
 });
+
 tokenRouter.post("/create-token", async (c) => {
   try {
     // Require authentication
