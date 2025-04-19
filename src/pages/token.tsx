@@ -4,6 +4,7 @@ import Loader from "@/components/loader";
 import SkeletonImage from "@/components/skeleton-image";
 import AdminSection from "@/components/token-sections/admin";
 import AgentsSection from "@/components/token-sections/agents";
+import ChatSection from "@/components/token-sections/chat";
 import GenerationSection from "@/components/token-sections/generation";
 import TokenStatus from "@/components/token-status";
 import Trade from "@/components/trade";
@@ -87,10 +88,12 @@ export default function Page() {
   const { solPrice: contextSolPrice } = useSolPriceContext();
 
   // Load active tab from localStorage or default to "chart"
-  const [activeTab, setActiveTab] = useState<"chart" | "ai">(() => {
+  const [activeTab, setActiveTab] = useState<"chart" | "ai" | "chat">(() => {
     if (typeof window !== "undefined") {
       const savedTab = localStorage.getItem(`token-tab-${address}`);
-      return savedTab === "chart" || savedTab === "ai" ? savedTab : "chart";
+      return savedTab === "chart" || savedTab === "ai" || savedTab === "chat"
+        ? savedTab
+        : "chart";
     }
     return "chart";
   });
@@ -485,14 +488,36 @@ export default function Page() {
                     AI Create
                     <img
                       src={
-                        activeTab === "chart"
-                          ? "/token/createon.svg"
-                          : "/token/createoff.svg"
+                        activeTab === "ai"
+                          ? "/token/createoff.svg"
+                          : "/token/createon.svg"
                       }
                       className={`size-4 inline-block ml-1.5 ${
-                        activeTab === "chart" ? "text-black" : ""
+                        activeTab === "ai" ? "text-black" : "text-white"
                       }`}
                       alt="chart icon"
+                    />
+                  </button>
+                  <button
+                    className={`px-4 py-3 text-autofun-text-primary font-medium cursor-pointer ${
+                      activeTab === "chat"
+                        ? "bg-autofun-background-highlight text-black"
+                        : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
+                    }`}
+                    onClick={() => setActiveTab("chat")}
+                    style={{ marginTop: "-2px", paddingTop: "14px" }}
+                  >
+                    Chat
+                    <img
+                      src={
+                        activeTab === "chat"
+                          ? "/token/createoff.svg"
+                          : "/token/createon.svg"
+                      }
+                      className={`size-4 inline-block ml-1.5 ${
+                        activeTab === "chat" ? "text-black" : ""
+                      }`}
+                      alt="chat icon"
                     />
                   </button>
                 </div>
@@ -519,6 +544,11 @@ export default function Page() {
               {activeTab === "ai" && (
                 <div id="generation" className="scroll-mt-16">
                   <GenerationSection />
+                </div>
+              )}
+              {activeTab === "chat" && (
+                <div id="chat" className="mt-2">
+                  <ChatSection />
                 </div>
               )}
             </div>

@@ -117,7 +117,7 @@ export const messages = sqliteTable("messages", {
   message: text("message").notNull(),
   parentId: text("parent_id", { mode: "text" }),
   replyCount: integer("reply_count"),
-  likes: integer("likes").notNull().default(0),
+  tier: text("tier").notNull(),
   timestamp: text("timestamp").notNull(),
 });
 

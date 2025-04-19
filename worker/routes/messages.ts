@@ -259,8 +259,8 @@ messagesRouter.post("/messages/:mint", async (c) => {
       tokenMint: mint,
       author: user.publicKey,
       replyCount: 0,
-      likes: 0,
       timestamp: new Date().toISOString(),
+      tier: body.tier || null,
     };
 
     // Insert the message
@@ -279,80 +279,6 @@ messagesRouter.post("/messages/:mint", async (c) => {
     return c.json({ ...messageData, hasLiked: false });
   } catch (error) {
     logger.error("Error creating message:", error);
-    return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
-  }
-});
-
-// Like a message
-messagesRouter.post("/messages/:messageId/likes", async (c) => {
-  try {
-    // Require authentication
-    const user = c.get("user");
-    if (!user) {
-      return c.json({ error: "Authentication required" }, 401);
-    }
-
-    const messageId = c.req.param("messageId");
-    const userAddress = user.publicKey;
-
-    const db = getDB(c.env);
-
-    // Find the message
-    const message = await db
-      .select()
-      .from(messagesTable)
-      .where(eq(messages.id, messageId))
-      .limit(1);
-
-    if (message.length === 0) {
-      return c.json({ error: "Message not found" }, 404);
-    }
-
-    // Check if user already liked this message
-    const existingLike = await db
-      .select()
-      .from(messageLikes)
-      .where(
-        and(
-          eq(messageLikes.messageId, messageId),
-          eq(messageLikes.userAddress, userAddress),
-        ),
-      )
-      .limit(1);
-
-    if (existingLike.length > 0) {
-      return c.json({ error: "Already liked this message" }, 400);
-    }
-
-    // Create like record
-    await db.insert(messageLikes).values({
-      id: crypto.randomUUID(),
-      messageId,
-      userAddress,
-      timestamp: new Date().toISOString(),
-    });
-
-    // Increment message likes
-    await db
-      .update(messages)
-      .set({
-        likes: sql`${messages.likes} + 1`,
-      } as any)
-      .where(eq(messages.id, messageId));
-
-    // Get updated message
-    const updatedMessage = await db
-      .select()
-      .from(messagesTable)
-      .where(eq(messages.id, messageId))
-      .limit(1);
-
-    return c.json({ ...updatedMessage[0], hasLiked: true });
-  } catch (error) {
-    logger.error("Error liking message:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
       500,

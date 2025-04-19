@@ -4016,2201 +4016,1207 @@ export type Autofun = {
 };
 
 export const IDL_DEV = {
-  "address": "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ",
-  "metadata": {
-    "name": "autofun",
-    "version": "0.1.0",
-    "spec": "0.1.0",
-    "description": "Created with Anchor"
+  address: "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ",
+  metadata: {
+    name: "autofun",
+    version: "0.1.0",
+    spec: "0.1.0",
+    description: "Created with Anchor",
   },
-  "instructions": [
+  instructions: [
     {
-      "name": "accept_authority",
-      "discriminator": [
-        107,
-        86,
-        198,
-        91,
-        33,
-        12,
-        107,
-        160
-      ],
-      "accounts": [
+      name: "accept_authority",
+      discriminator: [107, 86, 198, 91, 33, 12, 107, 160],
+      accounts: [
         {
-          "name": "new_admin",
-          "writable": true,
-          "signer": true
+          name: "new_admin",
+          writable: true,
+          signer: true,
         },
         {
-          "name": "global_config",
-          "writable": true,
-          "pda": {
-            "seeds": [
+          name: "global_config",
+          writable: true,
+          pda: {
+            seeds: [
               {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
-        }
+                kind: "const",
+                value: [99, 111, 110, 102, 105, 103],
+              },
+            ],
+          },
+        },
       ],
-      "args": []
+      args: [],
     },
     {
-      "name": "configure",
-      "discriminator": [
-        245,
-        7,
-        108,
-        117,
-        95,
-        196,
-        54,
-        217
-      ],
-      "accounts": [
+      name: "configure",
+      discriminator: [245, 7, 108, 117, 95, 196, 54, 217],
+      accounts: [
         {
-          "name": "payer",
-          "writable": true,
-          "signer": true
+          name: "payer",
+          writable: true,
+          signer: true,
         },
         {
-          "name": "config",
-          "writable": true,
-          "pda": {
-            "seeds": [
+          name: "config",
+          writable: true,
+          pda: {
+            seeds: [
               {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "global_vault",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  108,
-                  111,
-                  98,
-                  97,
-                  108
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "global_wsol_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "global_vault"
+                kind: "const",
+                value: [99, 111, 110, 102, 105, 103],
               },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "native_mint"
-              }
             ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          },
         },
         {
-          "name": "native_mint",
-          "address": "So11111111111111111111111111111111111111112"
+          name: "global_vault",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "const",
+                value: [103, 108, 111, 98, 97, 108],
+              },
+            ],
+          },
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          name: "global_wsol_account",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "account",
+                path: "global_vault",
+              },
+              {
+                kind: "const",
+                value: [
+                  6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206,
+                  235, 121, 172, 28, 180, 133, 237, 95, 91, 55, 145, 58, 140,
+                  245, 133, 126, 255, 0, 169,
+                ],
+              },
+              {
+                kind: "account",
+                path: "native_mint",
+              },
+            ],
+            program: {
+              kind: "const",
+              value: [
+                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
+                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
+                219, 233, 248, 89,
+              ],
+            },
+          },
         },
         {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          name: "native_mint",
+          address: "So11111111111111111111111111111111111111112",
         },
         {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        }
+          name: "system_program",
+          address: "11111111111111111111111111111111",
+        },
+        {
+          name: "token_program",
+          address: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        },
+        {
+          name: "associated_token_program",
+          address: "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+        },
       ],
-      "args": [
+      args: [
         {
-          "name": "new_config",
-          "type": {
-            "defined": {
-              "name": "Config"
-            }
-          }
-        }
-      ]
+          name: "new_config",
+          type: {
+            defined: {
+              name: "Config",
+            },
+          },
+        },
+      ],
     },
     {
-      "name": "launch",
-      "discriminator": [
-        153,
-        241,
-        93,
-        225,
-        22,
-        69,
-        74,
-        61
+      name: "launch",
+      discriminator: [153, 241, 93, 225, 22, 69, 74, 61],
+      accounts: [
+        {
+          name: "global_config",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "const",
+                value: [99, 111, 110, 102, 105, 103],
+              },
+            ],
+          },
+        },
+        {
+          name: "global_vault",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "const",
+                value: [103, 108, 111, 98, 97, 108],
+              },
+            ],
+          },
+        },
+        {
+          name: "creator",
+          writable: true,
+          signer: true,
+        },
+        {
+          name: "token",
+          writable: true,
+          signer: true,
+        },
+        {
+          name: "bonding_curve",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "const",
+                value: [
+                  98, 111, 110, 100, 105, 110, 103, 95, 99, 117, 114, 118, 101,
+                ],
+              },
+              {
+                kind: "account",
+                path: "token",
+              },
+            ],
+          },
+        },
+        {
+          name: "token_metadata_account",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "const",
+                value: [109, 101, 116, 97, 100, 97, 116, 97],
+              },
+              {
+                kind: "const",
+                value: [
+                  11, 112, 101, 177, 227, 209, 124, 69, 56, 157, 82, 127, 107,
+                  4, 195, 205, 88, 184, 108, 115, 26, 160, 253, 181, 73, 182,
+                  209, 188, 3, 248, 41, 70,
+                ],
+              },
+              {
+                kind: "account",
+                path: "token",
+              },
+            ],
+            program: {
+              kind: "const",
+              value: [
+                11, 112, 101, 177, 227, 209, 124, 69, 56, 157, 82, 127, 107, 4,
+                195, 205, 88, 184, 108, 115, 26, 160, 253, 181, 73, 182, 209,
+                188, 3, 248, 41, 70,
+              ],
+            },
+          },
+        },
+        {
+          name: "global_token_account",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "account",
+                path: "global_vault",
+              },
+              {
+                kind: "const",
+                value: [
+                  6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206,
+                  235, 121, 172, 28, 180, 133, 237, 95, 91, 55, 145, 58, 140,
+                  245, 133, 126, 255, 0, 169,
+                ],
+              },
+              {
+                kind: "account",
+                path: "token",
+              },
+            ],
+            program: {
+              kind: "const",
+              value: [
+                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
+                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
+                219, 233, 248, 89,
+              ],
+            },
+          },
+        },
+        {
+          name: "system_program",
+          address: "11111111111111111111111111111111",
+        },
+        {
+          name: "rent",
+          address: "SysvarRent111111111111111111111111111111111",
+        },
+        {
+          name: "token_program",
+          address: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        },
+        {
+          name: "associated_token_program",
+          address: "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+        },
+        {
+          name: "mpl_token_metadata_program",
+          address: "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
+        },
+        {
+          name: "team_wallet",
+          writable: true,
+        },
+        {
+          name: "team_wallet_ata",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "account",
+                path: "team_wallet",
+              },
+              {
+                kind: "const",
+                value: [
+                  6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206,
+                  235, 121, 172, 28, 180, 133, 237, 95, 91, 55, 145, 58, 140,
+                  245, 133, 126, 255, 0, 169,
+                ],
+              },
+              {
+                kind: "account",
+                path: "token",
+              },
+            ],
+            program: {
+              kind: "const",
+              value: [
+                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
+                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
+                219, 233, 248, 89,
+              ],
+            },
+          },
+        },
       ],
-      "accounts": [
+      args: [
         {
-          "name": "global_config",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          name: "decimals",
+          type: "u8",
         },
         {
-          "name": "global_vault",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  108,
-                  111,
-                  98,
-                  97,
-                  108
-                ]
-              }
-            ]
-          }
+          name: "token_supply",
+          type: "u64",
         },
         {
-          "name": "creator",
-          "writable": true,
-          "signer": true
+          name: "virtual_lamport_reserves",
+          type: "u64",
         },
         {
-          "name": "token",
-          "writable": true,
-          "signer": true
+          name: "name",
+          type: "string",
         },
         {
-          "name": "bonding_curve",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  98,
-                  111,
-                  110,
-                  100,
-                  105,
-                  110,
-                  103,
-                  95,
-                  99,
-                  117,
-                  114,
-                  118,
-                  101
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "token"
-              }
-            ]
-          }
+          name: "symbol",
+          type: "string",
         },
         {
-          "name": "token_metadata_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  101,
-                  116,
-                  97,
-                  100,
-                  97,
-                  116,
-                  97
-                ]
-              },
-              {
-                "kind": "const",
-                "value": [
-                  11,
-                  112,
-                  101,
-                  177,
-                  227,
-                  209,
-                  124,
-                  69,
-                  56,
-                  157,
-                  82,
-                  127,
-                  107,
-                  4,
-                  195,
-                  205,
-                  88,
-                  184,
-                  108,
-                  115,
-                  26,
-                  160,
-                  253,
-                  181,
-                  73,
-                  182,
-                  209,
-                  188,
-                  3,
-                  248,
-                  41,
-                  70
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "token"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                11,
-                112,
-                101,
-                177,
-                227,
-                209,
-                124,
-                69,
-                56,
-                157,
-                82,
-                127,
-                107,
-                4,
-                195,
-                205,
-                88,
-                184,
-                108,
-                115,
-                26,
-                160,
-                253,
-                181,
-                73,
-                182,
-                209,
-                188,
-                3,
-                248,
-                41,
-                70
-              ]
-            }
-          }
+          name: "uri",
+          type: "string",
         },
-        {
-          "name": "global_token_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "global_vault"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "token"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "rent",
-          "address": "SysvarRent111111111111111111111111111111111"
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "mpl_token_metadata_program",
-          "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
-        },
-        {
-          "name": "team_wallet",
-          "writable": true
-        },
-        {
-          "name": "team_wallet_ata",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "team_wallet"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "token"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        }
       ],
-      "args": [
-        {
-          "name": "decimals",
-          "type": "u8"
-        },
-        {
-          "name": "token_supply",
-          "type": "u64"
-        },
-        {
-          "name": "virtual_lamport_reserves",
-          "type": "u64"
-        },
-        {
-          "name": "name",
-          "type": "string"
-        },
-        {
-          "name": "symbol",
-          "type": "string"
-        },
-        {
-          "name": "uri",
-          "type": "string"
-        }
-      ]
     },
     {
-      "name": "launch_and_swap",
-      "discriminator": [
-        67,
-        201,
-        190,
-        15,
-        185,
-        41,
-        47,
-        122
+      name: "launch_and_swap",
+      discriminator: [67, 201, 190, 15, 185, 41, 47, 122],
+      accounts: [
+        {
+          name: "global_config",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "const",
+                value: [99, 111, 110, 102, 105, 103],
+              },
+            ],
+          },
+        },
+        {
+          name: "global_vault",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "const",
+                value: [103, 108, 111, 98, 97, 108],
+              },
+            ],
+          },
+        },
+        {
+          name: "creator",
+          writable: true,
+          signer: true,
+        },
+        {
+          name: "token",
+          writable: true,
+          signer: true,
+        },
+        {
+          name: "bonding_curve",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "const",
+                value: [
+                  98, 111, 110, 100, 105, 110, 103, 95, 99, 117, 114, 118, 101,
+                ],
+              },
+              {
+                kind: "account",
+                path: "token",
+              },
+            ],
+          },
+        },
+        {
+          name: "token_metadata_account",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "const",
+                value: [109, 101, 116, 97, 100, 97, 116, 97],
+              },
+              {
+                kind: "const",
+                value: [
+                  11, 112, 101, 177, 227, 209, 124, 69, 56, 157, 82, 127, 107,
+                  4, 195, 205, 88, 184, 108, 115, 26, 160, 253, 181, 73, 182,
+                  209, 188, 3, 248, 41, 70,
+                ],
+              },
+              {
+                kind: "account",
+                path: "token",
+              },
+            ],
+            program: {
+              kind: "const",
+              value: [
+                11, 112, 101, 177, 227, 209, 124, 69, 56, 157, 82, 127, 107, 4,
+                195, 205, 88, 184, 108, 115, 26, 160, 253, 181, 73, 182, 209,
+                188, 3, 248, 41, 70,
+              ],
+            },
+          },
+        },
+        {
+          name: "global_token_account",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "account",
+                path: "global_vault",
+              },
+              {
+                kind: "const",
+                value: [
+                  6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206,
+                  235, 121, 172, 28, 180, 133, 237, 95, 91, 55, 145, 58, 140,
+                  245, 133, 126, 255, 0, 169,
+                ],
+              },
+              {
+                kind: "account",
+                path: "token",
+              },
+            ],
+            program: {
+              kind: "const",
+              value: [
+                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
+                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
+                219, 233, 248, 89,
+              ],
+            },
+          },
+        },
+        {
+          name: "team_wallet",
+          writable: true,
+        },
+        {
+          name: "team_wallet_ata",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "account",
+                path: "team_wallet",
+              },
+              {
+                kind: "const",
+                value: [
+                  6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206,
+                  235, 121, 172, 28, 180, 133, 237, 95, 91, 55, 145, 58, 140,
+                  245, 133, 126, 255, 0, 169,
+                ],
+              },
+              {
+                kind: "account",
+                path: "token",
+              },
+            ],
+            program: {
+              kind: "const",
+              value: [
+                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
+                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
+                219, 233, 248, 89,
+              ],
+            },
+          },
+        },
+        {
+          name: "user_ata",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "account",
+                path: "creator",
+              },
+              {
+                kind: "const",
+                value: [
+                  6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206,
+                  235, 121, 172, 28, 180, 133, 237, 95, 91, 55, 145, 58, 140,
+                  245, 133, 126, 255, 0, 169,
+                ],
+              },
+              {
+                kind: "account",
+                path: "token",
+              },
+            ],
+            program: {
+              kind: "const",
+              value: [
+                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
+                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
+                219, 233, 248, 89,
+              ],
+            },
+          },
+        },
+        {
+          name: "system_program",
+          address: "11111111111111111111111111111111",
+        },
+        {
+          name: "rent",
+          address: "SysvarRent111111111111111111111111111111111",
+        },
+        {
+          name: "token_program",
+          address: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        },
+        {
+          name: "associated_token_program",
+          address: "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+        },
+        {
+          name: "mpl_token_metadata_program",
+          address: "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
+        },
       ],
-      "accounts": [
+      args: [
         {
-          "name": "global_config",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
+          name: "decimals",
+          type: "u8",
         },
         {
-          "name": "global_vault",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  108,
-                  111,
-                  98,
-                  97,
-                  108
-                ]
-              }
-            ]
-          }
+          name: "token_supply",
+          type: "u64",
         },
         {
-          "name": "creator",
-          "writable": true,
-          "signer": true
+          name: "virtual_lamport_reserves",
+          type: "u64",
         },
         {
-          "name": "token",
-          "writable": true,
-          "signer": true
+          name: "name",
+          type: "string",
         },
         {
-          "name": "bonding_curve",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  98,
-                  111,
-                  110,
-                  100,
-                  105,
-                  110,
-                  103,
-                  95,
-                  99,
-                  117,
-                  114,
-                  118,
-                  101
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "token"
-              }
-            ]
-          }
+          name: "symbol",
+          type: "string",
         },
         {
-          "name": "token_metadata_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  101,
-                  116,
-                  97,
-                  100,
-                  97,
-                  116,
-                  97
-                ]
-              },
-              {
-                "kind": "const",
-                "value": [
-                  11,
-                  112,
-                  101,
-                  177,
-                  227,
-                  209,
-                  124,
-                  69,
-                  56,
-                  157,
-                  82,
-                  127,
-                  107,
-                  4,
-                  195,
-                  205,
-                  88,
-                  184,
-                  108,
-                  115,
-                  26,
-                  160,
-                  253,
-                  181,
-                  73,
-                  182,
-                  209,
-                  188,
-                  3,
-                  248,
-                  41,
-                  70
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "token"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                11,
-                112,
-                101,
-                177,
-                227,
-                209,
-                124,
-                69,
-                56,
-                157,
-                82,
-                127,
-                107,
-                4,
-                195,
-                205,
-                88,
-                184,
-                108,
-                115,
-                26,
-                160,
-                253,
-                181,
-                73,
-                182,
-                209,
-                188,
-                3,
-                248,
-                41,
-                70
-              ]
-            }
-          }
+          name: "uri",
+          type: "string",
         },
         {
-          "name": "global_token_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "global_vault"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "token"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          name: "swap_amount",
+          type: "u64",
         },
         {
-          "name": "team_wallet",
-          "writable": true
+          name: "minimum_receive_amount",
+          type: "u64",
         },
         {
-          "name": "team_wallet_ata",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "team_wallet"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "token"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          name: "deadline",
+          type: "i64",
         },
-        {
-          "name": "user_ata",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "creator"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "token"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "rent",
-          "address": "SysvarRent111111111111111111111111111111111"
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "mpl_token_metadata_program",
-          "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
-        }
       ],
-      "args": [
-        {
-          "name": "decimals",
-          "type": "u8"
-        },
-        {
-          "name": "token_supply",
-          "type": "u64"
-        },
-        {
-          "name": "virtual_lamport_reserves",
-          "type": "u64"
-        },
-        {
-          "name": "name",
-          "type": "string"
-        },
-        {
-          "name": "symbol",
-          "type": "string"
-        },
-        {
-          "name": "uri",
-          "type": "string"
-        },
-        {
-          "name": "swap_amount",
-          "type": "u64"
-        },
-        {
-          "name": "minimum_receive_amount",
-          "type": "u64"
-        },
-        {
-          "name": "deadline",
-          "type": "i64"
-        }
-      ],
-      "returns": "u64"
+      returns: "u64",
     },
     {
-      "name": "nominate_authority",
-      "discriminator": [
-        148,
-        182,
-        144,
-        91,
-        186,
-        12,
-        118,
-        18
-      ],
-      "accounts": [
+      name: "nominate_authority",
+      discriminator: [148, 182, 144, 91, 186, 12, 118, 18],
+      accounts: [
         {
-          "name": "admin",
-          "writable": true,
-          "signer": true
+          name: "admin",
+          writable: true,
+          signer: true,
         },
         {
-          "name": "global_config",
-          "writable": true,
-          "pda": {
-            "seeds": [
+          name: "global_config",
+          writable: true,
+          pda: {
+            seeds: [
               {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
-        }
+                kind: "const",
+                value: [99, 111, 110, 102, 105, 103],
+              },
+            ],
+          },
+        },
       ],
-      "args": [
+      args: [
         {
-          "name": "new_admin",
-          "type": "pubkey"
-        }
-      ]
+          name: "new_admin",
+          type: "pubkey",
+        },
+      ],
     },
     {
-      "name": "swap",
-      "discriminator": [
-        248,
-        198,
-        158,
-        145,
-        225,
-        117,
-        135,
-        200
-      ],
-      "accounts": [
+      name: "swap",
+      discriminator: [248, 198, 158, 145, 225, 117, 135, 200],
+      accounts: [
         {
-          "name": "global_config",
-          "pda": {
-            "seeds": [
+          name: "global_config",
+          pda: {
+            seeds: [
               {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "team_wallet",
-          "writable": true
-        },
-        {
-          "name": "team_wallet_ata",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "team_wallet"
+                kind: "const",
+                value: [99, 111, 110, 102, 105, 103],
               },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "token_mint"
-              }
             ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          },
         },
         {
-          "name": "bonding_curve",
-          "writable": true,
-          "pda": {
-            "seeds": [
+          name: "team_wallet",
+          writable: true,
+        },
+        {
+          name: "team_wallet_ata",
+          writable: true,
+          pda: {
+            seeds: [
               {
-                "kind": "const",
-                "value": [
-                  98,
-                  111,
-                  110,
-                  100,
-                  105,
-                  110,
-                  103,
-                  95,
-                  99,
-                  117,
-                  114,
-                  118,
-                  101
-                ]
+                kind: "account",
+                path: "team_wallet",
               },
               {
-                "kind": "account",
-                "path": "token_mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "global_vault",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  108,
-                  111,
-                  98,
-                  97,
-                  108
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "token_mint"
-        },
-        {
-          "name": "global_ata",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "global_vault"
+                kind: "const",
+                value: [
+                  6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206,
+                  235, 121, 172, 28, 180, 133, 237, 95, 91, 55, 145, 58, 140,
+                  245, 133, 126, 255, 0, 169,
+                ],
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                kind: "account",
+                path: "token_mint",
               },
-              {
-                "kind": "account",
-                "path": "token_mint"
-              }
             ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+            program: {
+              kind: "const",
+              value: [
+                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
+                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
+                219, 233, 248, 89,
+              ],
+            },
+          },
         },
         {
-          "name": "user_ata",
-          "writable": true,
-          "pda": {
-            "seeds": [
+          name: "bonding_curve",
+          writable: true,
+          pda: {
+            seeds: [
               {
-                "kind": "account",
-                "path": "user"
+                kind: "const",
+                value: [
+                  98, 111, 110, 100, 105, 110, 103, 95, 99, 117, 114, 118, 101,
+                ],
               },
               {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
+                kind: "account",
+                path: "token_mint",
               },
-              {
-                "kind": "account",
-                "path": "token_mint"
-              }
             ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          },
         },
         {
-          "name": "user",
-          "writable": true,
-          "signer": true
+          name: "global_vault",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "const",
+                value: [103, 108, 111, 98, 97, 108],
+              },
+            ],
+          },
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          name: "token_mint",
         },
         {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          name: "global_ata",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "account",
+                path: "global_vault",
+              },
+              {
+                kind: "const",
+                value: [
+                  6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206,
+                  235, 121, 172, 28, 180, 133, 237, 95, 91, 55, 145, 58, 140,
+                  245, 133, 126, 255, 0, 169,
+                ],
+              },
+              {
+                kind: "account",
+                path: "token_mint",
+              },
+            ],
+            program: {
+              kind: "const",
+              value: [
+                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
+                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
+                219, 233, 248, 89,
+              ],
+            },
+          },
         },
         {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        }
+          name: "user_ata",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "account",
+                path: "user",
+              },
+              {
+                kind: "const",
+                value: [
+                  6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206,
+                  235, 121, 172, 28, 180, 133, 237, 95, 91, 55, 145, 58, 140,
+                  245, 133, 126, 255, 0, 169,
+                ],
+              },
+              {
+                kind: "account",
+                path: "token_mint",
+              },
+            ],
+            program: {
+              kind: "const",
+              value: [
+                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
+                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
+                219, 233, 248, 89,
+              ],
+            },
+          },
+        },
+        {
+          name: "user",
+          writable: true,
+          signer: true,
+        },
+        {
+          name: "system_program",
+          address: "11111111111111111111111111111111",
+        },
+        {
+          name: "token_program",
+          address: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        },
+        {
+          name: "associated_token_program",
+          address: "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+        },
       ],
-      "args": [
+      args: [
         {
-          "name": "amount",
-          "type": "u64"
+          name: "amount",
+          type: "u64",
         },
         {
-          "name": "direction",
-          "type": "u8"
+          name: "direction",
+          type: "u8",
         },
         {
-          "name": "minimum_receive_amount",
-          "type": "u64"
+          name: "minimum_receive_amount",
+          type: "u64",
         },
         {
-          "name": "deadline",
-          "type": "i64"
-        }
+          name: "deadline",
+          type: "i64",
+        },
       ],
-      "returns": "u64"
+      returns: "u64",
     },
     {
-      "name": "withdraw",
-      "discriminator": [
-        183,
-        18,
-        70,
-        156,
-        148,
-        109,
-        161,
-        34
-      ],
-      "accounts": [
+      name: "withdraw",
+      discriminator: [183, 18, 70, 156, 148, 109, 161, 34],
+      accounts: [
         {
-          "name": "global_config",
-          "writable": true,
-          "pda": {
-            "seeds": [
+          name: "global_config",
+          writable: true,
+          pda: {
+            seeds: [
               {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "global_vault",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  108,
-                  111,
-                  98,
-                  97,
-                  108
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "admin",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "token_mint"
-        },
-        {
-          "name": "bonding_curve",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  98,
-                  111,
-                  110,
-                  100,
-                  105,
-                  110,
-                  103,
-                  95,
-                  99,
-                  117,
-                  114,
-                  118,
-                  101
-                ]
+                kind: "const",
+                value: [99, 111, 110, 102, 105, 103],
               },
-              {
-                "kind": "account",
-                "path": "token_mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "global_vault_ata",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "global_vault"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "token_mint"
-              }
             ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          },
         },
         {
-          "name": "admin_ata",
-          "writable": true,
-          "pda": {
-            "seeds": [
+          name: "global_vault",
+          writable: true,
+          pda: {
+            seeds: [
               {
-                "kind": "account",
-                "path": "admin"
+                kind: "const",
+                value: [103, 108, 111, 98, 97, 108],
               },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "token_mint"
-              }
             ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          },
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          name: "admin",
+          writable: true,
+          signer: true,
         },
         {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          name: "token_mint",
         },
         {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        }
+          name: "bonding_curve",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "const",
+                value: [
+                  98, 111, 110, 100, 105, 110, 103, 95, 99, 117, 114, 118, 101,
+                ],
+              },
+              {
+                kind: "account",
+                path: "token_mint",
+              },
+            ],
+          },
+        },
+        {
+          name: "global_vault_ata",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "account",
+                path: "global_vault",
+              },
+              {
+                kind: "const",
+                value: [
+                  6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206,
+                  235, 121, 172, 28, 180, 133, 237, 95, 91, 55, 145, 58, 140,
+                  245, 133, 126, 255, 0, 169,
+                ],
+              },
+              {
+                kind: "account",
+                path: "token_mint",
+              },
+            ],
+            program: {
+              kind: "const",
+              value: [
+                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
+                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
+                219, 233, 248, 89,
+              ],
+            },
+          },
+        },
+        {
+          name: "admin_ata",
+          writable: true,
+          pda: {
+            seeds: [
+              {
+                kind: "account",
+                path: "admin",
+              },
+              {
+                kind: "const",
+                value: [
+                  6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206,
+                  235, 121, 172, 28, 180, 133, 237, 95, 91, 55, 145, 58, 140,
+                  245, 133, 126, 255, 0, 169,
+                ],
+              },
+              {
+                kind: "account",
+                path: "token_mint",
+              },
+            ],
+            program: {
+              kind: "const",
+              value: [
+                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
+                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
+                219, 233, 248, 89,
+              ],
+            },
+          },
+        },
+        {
+          name: "system_program",
+          address: "11111111111111111111111111111111",
+        },
+        {
+          name: "token_program",
+          address: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        },
+        {
+          name: "associated_token_program",
+          address: "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+        },
       ],
-      "args": []
-    }
+      args: [],
+    },
   ],
-  "accounts": [
+  accounts: [
     {
-      "name": "BondingCurve",
-      "discriminator": [
-        23,
-        183,
-        248,
-        55,
-        96,
-        216,
-        172,
-        96
-      ]
+      name: "BondingCurve",
+      discriminator: [23, 183, 248, 55, 96, 216, 172, 96],
     },
     {
-      "name": "Config",
-      "discriminator": [
-        155,
-        12,
-        170,
-        224,
-        30,
-        250,
-        204,
-        130
-      ]
-    }
+      name: "Config",
+      discriminator: [155, 12, 170, 224, 30, 250, 204, 130],
+    },
   ],
-  "events": [
+  events: [
     {
-      "name": "CompleteEvent",
-      "discriminator": [
-        95,
-        114,
-        97,
-        156,
-        212,
-        46,
-        152,
-        8
-      ]
-    }
+      name: "CompleteEvent",
+      discriminator: [95, 114, 97, 156, 212, 46, 152, 8],
+    },
   ],
-  "errors": [
+  errors: [
     {
-      "code": 6000,
-      "name": "ValueTooSmall",
-      "msg": "ValueTooSmall"
+      code: 6000,
+      name: "ValueTooSmall",
+      msg: "ValueTooSmall",
     },
     {
-      "code": 6001,
-      "name": "ValueTooLarge",
-      "msg": "ValueTooLarge"
+      code: 6001,
+      name: "ValueTooLarge",
+      msg: "ValueTooLarge",
     },
     {
-      "code": 6002,
-      "name": "ValueInvalid",
-      "msg": "ValueInvalid"
+      code: 6002,
+      name: "ValueInvalid",
+      msg: "ValueInvalid",
     },
     {
-      "code": 6003,
-      "name": "IncorrectConfigAccount",
-      "msg": "IncorrectConfigAccount"
+      code: 6003,
+      name: "IncorrectConfigAccount",
+      msg: "IncorrectConfigAccount",
     },
     {
-      "code": 6004,
-      "name": "IncorrectAuthority",
-      "msg": "IncorrectAuthority"
+      code: 6004,
+      name: "IncorrectAuthority",
+      msg: "IncorrectAuthority",
     },
     {
-      "code": 6005,
-      "name": "OverflowOrUnderflowOccurred",
-      "msg": "Overflow or underflow occured"
+      code: 6005,
+      name: "OverflowOrUnderflowOccurred",
+      msg: "Overflow or underflow occured",
     },
     {
-      "code": 6006,
-      "name": "InvalidAmount",
-      "msg": "Amount is invalid"
+      code: 6006,
+      name: "InvalidAmount",
+      msg: "Amount is invalid",
     },
     {
-      "code": 6007,
-      "name": "IncorrectTeamWallet",
-      "msg": "Incorrect team wallet address"
+      code: 6007,
+      name: "IncorrectTeamWallet",
+      msg: "Incorrect team wallet address",
     },
     {
-      "code": 6008,
-      "name": "CurveNotCompleted",
-      "msg": "Curve is not completed"
+      code: 6008,
+      name: "CurveNotCompleted",
+      msg: "Curve is not completed",
     },
     {
-      "code": 6009,
-      "name": "CurveAlreadyCompleted",
-      "msg": "Can not swap after the curve is completed"
+      code: 6009,
+      name: "CurveAlreadyCompleted",
+      msg: "Can not swap after the curve is completed",
     },
     {
-      "code": 6010,
-      "name": "MintAuthorityEnabled",
-      "msg": "Mint authority should be revoked"
+      code: 6010,
+      name: "MintAuthorityEnabled",
+      msg: "Mint authority should be revoked",
     },
     {
-      "code": 6011,
-      "name": "FreezeAuthorityEnabled",
-      "msg": "Freeze authority should be revoked"
+      code: 6011,
+      name: "FreezeAuthorityEnabled",
+      msg: "Freeze authority should be revoked",
     },
     {
-      "code": 6012,
-      "name": "ReturnAmountTooSmall",
-      "msg": "Return amount is too small compared to the minimum received amount"
+      code: 6012,
+      name: "ReturnAmountTooSmall",
+      msg: "Return amount is too small compared to the minimum received amount",
     },
     {
-      "code": 6013,
-      "name": "TransactionExpired",
-      "msg": "Transaction expired"
+      code: 6013,
+      name: "TransactionExpired",
+      msg: "Transaction expired",
     },
     {
-      "code": 6014,
-      "name": "DecimalOverflow",
-      "msg": "Decimal overflow"
-    }
+      code: 6014,
+      name: "DecimalOverflow",
+      msg: "Decimal overflow",
+    },
   ],
-  "types": [
+  types: [
     {
-      "name": "AmountConfig",
-      "generics": [
+      name: "AmountConfig",
+      generics: [
         {
-          "kind": "type",
-          "name": "T"
-        }
+          kind: "type",
+          name: "T",
+        },
       ],
-      "type": {
-        "kind": "enum",
-        "variants": [
+      type: {
+        kind: "enum",
+        variants: [
           {
-            "name": "Range",
-            "fields": [
+            name: "Range",
+            fields: [
               {
-                "name": "min",
-                "type": {
-                  "option": {
-                    "generic": "T"
-                  }
-                }
+                name: "min",
+                type: {
+                  option: {
+                    generic: "T",
+                  },
+                },
               },
               {
-                "name": "max",
-                "type": {
-                  "option": {
-                    "generic": "T"
-                  }
-                }
-              }
-            ]
+                name: "max",
+                type: {
+                  option: {
+                    generic: "T",
+                  },
+                },
+              },
+            ],
           },
           {
-            "name": "Enum",
-            "fields": [
+            name: "Enum",
+            fields: [
               {
-                "vec": {
-                  "generic": "T"
-                }
-              }
-            ]
-          }
-        ]
-      }
+                vec: {
+                  generic: "T",
+                },
+              },
+            ],
+          },
+        ],
+      },
     },
     {
-      "name": "BondingCurve",
-      "type": {
-        "kind": "struct",
-        "fields": [
+      name: "BondingCurve",
+      type: {
+        kind: "struct",
+        fields: [
           {
-            "name": "token_mint",
-            "type": "pubkey"
+            name: "token_mint",
+            type: "pubkey",
           },
           {
-            "name": "creator",
-            "type": "pubkey"
+            name: "creator",
+            type: "pubkey",
           },
           {
-            "name": "init_lamport",
-            "type": "u64"
+            name: "init_lamport",
+            type: "u64",
           },
           {
-            "name": "reserve_lamport",
-            "type": "u64"
+            name: "reserve_lamport",
+            type: "u64",
           },
           {
-            "name": "reserve_token",
-            "type": "u64"
+            name: "reserve_token",
+            type: "u64",
           },
           {
-            "name": "curve_limit",
-            "type": "u64"
+            name: "curve_limit",
+            type: "u64",
           },
           {
-            "name": "is_completed",
-            "type": "bool"
-          }
-        ]
-      }
+            name: "is_completed",
+            type: "bool",
+          },
+        ],
+      },
     },
     {
-      "name": "CompleteEvent",
-      "type": {
-        "kind": "struct",
-        "fields": [
+      name: "CompleteEvent",
+      type: {
+        kind: "struct",
+        fields: [
           {
-            "name": "user",
-            "type": "pubkey"
+            name: "user",
+            type: "pubkey",
           },
           {
-            "name": "mint",
-            "type": "pubkey"
+            name: "mint",
+            type: "pubkey",
           },
           {
-            "name": "bonding_curve",
-            "type": "pubkey"
-          }
-        ]
-      }
+            name: "bonding_curve",
+            type: "pubkey",
+          },
+        ],
+      },
     },
     {
-      "name": "Config",
-      "type": {
-        "kind": "struct",
-        "fields": [
+      name: "Config",
+      type: {
+        kind: "struct",
+        fields: [
           {
-            "name": "authority",
-            "type": "pubkey"
+            name: "authority",
+            type: "pubkey",
           },
           {
-            "name": "pending_authority",
-            "type": "pubkey"
+            name: "pending_authority",
+            type: "pubkey",
           },
           {
-            "name": "team_wallet",
-            "type": "pubkey"
+            name: "team_wallet",
+            type: "pubkey",
           },
           {
-            "name": "init_bonding_curve",
-            "type": "f64"
+            name: "init_bonding_curve",
+            type: "f64",
           },
           {
-            "name": "platform_buy_fee",
-            "type": "u128"
+            name: "platform_buy_fee",
+            type: "u128",
           },
           {
-            "name": "platform_sell_fee",
-            "type": "u128"
+            name: "platform_sell_fee",
+            type: "u128",
           },
           {
-            "name": "curve_limit",
-            "type": "u64"
+            name: "curve_limit",
+            type: "u64",
           },
           {
-            "name": "lamport_amount_config",
-            "type": {
-              "defined": {
-                "name": "AmountConfig",
-                "generics": [
+            name: "lamport_amount_config",
+            type: {
+              defined: {
+                name: "AmountConfig",
+                generics: [
                   {
-                    "kind": "type",
-                    "type": "u64"
-                  }
-                ]
-              }
-            }
+                    kind: "type",
+                    type: "u64",
+                  },
+                ],
+              },
+            },
           },
           {
-            "name": "token_supply_config",
-            "type": {
-              "defined": {
-                "name": "AmountConfig",
-                "generics": [
+            name: "token_supply_config",
+            type: {
+              defined: {
+                name: "AmountConfig",
+                generics: [
                   {
-                    "kind": "type",
-                    "type": "u64"
-                  }
-                ]
-              }
-            }
+                    kind: "type",
+                    type: "u64",
+                  },
+                ],
+              },
+            },
           },
           {
-            "name": "token_decimals_config",
-            "type": {
-              "defined": {
-                "name": "AmountConfig",
-                "generics": [
+            name: "token_decimals_config",
+            type: {
+              defined: {
+                name: "AmountConfig",
+                generics: [
                   {
-                    "kind": "type",
-                    "type": "u8"
-                  }
-                ]
-              }
-            }
-          }
-        ]
-      }
-    }
-  ]
+                    kind: "type",
+                    type: "u8",
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      },
+    },
+  ],
 };
 
 export const IDL_PROD = {

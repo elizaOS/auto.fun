@@ -53,8 +53,10 @@ const unparsedEnv = {
     ? import.meta.env.VITE_DEV_API_URL || import.meta.env.VITE_API_URL
     : import.meta.env.VITE_API_URL,
   programId: isDevnet
-    ? (import.meta.env.VITE_DEV_PROGRAM_ID || "AnAYdVXqbS87U1DzzuRR4dnooNv7GjfqnSUEVmaKH8xL")
-    : (import.meta.env.VITE_PROGRAM_ID || "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ"),
+    ? import.meta.env.VITE_DEV_PROGRAM_ID ||
+      "AnAYdVXqbS87U1DzzuRR4dnooNv7GjfqnSUEVmaKH8xL"
+    : import.meta.env.VITE_PROGRAM_ID ||
+      "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ",
   appEnv: process.env.NODE_ENV,
   r2PublicUrl: import.meta.env.VITE_R2_PUBLIC_URL,
 } as const;

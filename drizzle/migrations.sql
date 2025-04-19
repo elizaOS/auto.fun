@@ -138,28 +138,10 @@ CREATE TABLE IF NOT EXISTS messages (
   message TEXT NOT NULL,
   parent_id TEXT,
   reply_count INTEGER NOT NULL DEFAULT 0,
-  likes INTEGER NOT NULL DEFAULT 0,
   timestamp INTEGER NOT NULL DEFAULT (unixepoch()),
+  tier TEXT,
   FOREIGN KEY (token_mint) REFERENCES tokens(mint),
   FOREIGN KEY (parent_id) REFERENCES messages(id)
-);
-
--- Create message likes table
-CREATE TABLE IF NOT EXISTS message_likes (
-  id TEXT PRIMARY KEY,
-  message_id TEXT NOT NULL,
-  user_address TEXT NOT NULL,
-  timestamp INTEGER NOT NULL DEFAULT (unixepoch()),
-  FOREIGN KEY (message_id) REFERENCES messages(id)
-);
-
--- Create vanity keypairs table
-CREATE TABLE IF NOT EXISTS vanity_keypairs (
-  id TEXT PRIMARY KEY,
-  address TEXT NOT NULL UNIQUE,
-  secret_key TEXT NOT NULL,
-  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-  used INTEGER NOT NULL DEFAULT 0
 );
 
 -- Create token holders table
@@ -247,10 +229,6 @@ CREATE INDEX IF NOT EXISTS idx_messages_parent_id ON messages(parent_id);
 
 CREATE INDEX IF NOT EXISTS idx_messages_author ON messages(author);
 
-CREATE INDEX IF NOT EXISTS idx_message_likes_message_id ON message_likes(message_id);
-
-CREATE INDEX IF NOT EXISTS idx_message_likes_user ON message_likes(user_address);
-
 CREATE INDEX IF NOT EXISTS idx_token_holders_mint ON token_holders(mint);
 
 CREATE INDEX IF NOT EXISTS idx_token_holders_amount ON token_holders(amount);
@@ -260,12 +238,3 @@ CREATE INDEX IF NOT EXISTS idx_cache_prices_type ON cache_prices(type);
 CREATE INDEX IF NOT EXISTS idx_cache_prices_symbol ON cache_prices(symbol);
 
 CREATE INDEX IF NOT EXISTS idx_cache_prices_expires ON cache_prices(expires_at);
-
--- Create indexes for token_agents
-CREATE INDEX IF NOT EXISTS idx_token_agents_mint ON token_agents(token_mint);
-
-CREATE INDEX IF NOT EXISTS idx_token_agents_owner ON token_agents(owner_address);
-
-CREATE INDEX IF NOT EXISTS idx_token_agents_official ON token_agents(official);
-
-CREATE INDEX IF NOT EXISTS idx_token_agents_user_id ON token_agents(twitter_user_id);

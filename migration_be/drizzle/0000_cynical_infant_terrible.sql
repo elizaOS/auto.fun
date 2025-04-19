@@ -48,13 +48,6 @@ CREATE TABLE `media_generations` (
 	`last_generation_reset` text
 );
 --> statement-breakpoint
-CREATE TABLE `message_likes` (
-	`id` text PRIMARY KEY NOT NULL,
-	`message_id` text NOT NULL,
-	`user_address` text NOT NULL,
-	`timestamp` text NOT NULL
-);
---> statement-breakpoint
 CREATE TABLE `messages` (
 	`id` text PRIMARY KEY NOT NULL,
 	`author` text NOT NULL,
@@ -62,8 +55,8 @@ CREATE TABLE `messages` (
 	`message` text NOT NULL,
 	`parent_id` text,
 	`reply_count` integer,
-	`likes` integer DEFAULT 0 NOT NULL,
-	`timestamp` text NOT NULL
+	`timestamp` text NOT NULL,
+	`tier` text
 );
 --> statement-breakpoint
 CREATE TABLE `oauth_verifiers` (
@@ -71,16 +64,6 @@ CREATE TABLE `oauth_verifiers` (
 	`state` text NOT NULL,
 	`code_verifier` text NOT NULL,
 	`expires_at` text NOT NULL
-);
---> statement-breakpoint
-CREATE UNIQUE INDEX `oauth_verifiers_state_unique` ON `oauth_verifiers` (`state`);--> statement-breakpoint
-CREATE TABLE `personalities` (
-	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-	`name` text NOT NULL,
-	`description` text,
-	`created_at` integer DEFAULT CURRENT_TIMESTAMP,
-	`updated_at` integer DEFAULT CURRENT_TIMESTAMP,
-	`deleted_at` integer
 );
 --> statement-breakpoint
 CREATE TABLE `pre_generated_tokens` (
@@ -109,16 +92,6 @@ CREATE TABLE `swaps` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `swaps_tx_id_unique` ON `swaps` (`tx_id`);--> statement-breakpoint
-CREATE TABLE `token_agents` (
-	`id` text PRIMARY KEY NOT NULL,
-	`token_mint` text NOT NULL,
-	`owner_address` text NOT NULL,
-	`twitter_user_id` text NOT NULL,
-	`twitter_user_name` text NOT NULL,
-	`twitter_image_url` text NOT NULL,
-	`official` integer DEFAULT 0 NOT NULL,
-	`created_at` text NOT NULL
-);
 --> statement-breakpoint
 CREATE TABLE `token_holders` (
 	`id` text PRIMARY KEY NOT NULL,
@@ -202,23 +175,3 @@ CREATE TABLE `users` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `users_address_unique` ON `users` (`address`);--> statement-breakpoint
-CREATE TABLE `vanity_generation_instances` (
-	`id` text PRIMARY KEY NOT NULL,
-	`instance_id` text,
-	`ip_address` text,
-	`status` text DEFAULT 'stopped' NOT NULL,
-	`job_id` text,
-	`last_heartbeat` text,
-	`created_at` text NOT NULL,
-	`updated_at` text NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE `vanity_keypairs` (
-	`id` text PRIMARY KEY NOT NULL,
-	`address` text NOT NULL,
-	`secret_key` text NOT NULL,
-	`created_at` text NOT NULL,
-	`used` integer DEFAULT 0 NOT NULL
-);
---> statement-breakpoint
-CREATE UNIQUE INDEX `vanity_keypairs_address_unique` ON `vanity_keypairs` (`address`);

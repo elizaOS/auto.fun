@@ -138,29 +138,15 @@ CREATE TABLE IF NOT EXISTS messages (
   message TEXT NOT NULL,
   parent_id TEXT,
   reply_count INTEGER NOT NULL DEFAULT 0,
-  likes INTEGER NOT NULL DEFAULT 0,
   timestamp INTEGER NOT NULL DEFAULT (unixepoch()),
   FOREIGN KEY (token_mint) REFERENCES tokens(mint),
-  FOREIGN KEY (parent_id) REFERENCES messages(id)
+  FOREIGN KEY (parent_id) REFERENCES messages(id),
+  tier TEXT
 );
 
--- Create message likes table
-CREATE TABLE IF NOT EXISTS message_likes (
-  id TEXT PRIMARY KEY,
-  message_id TEXT NOT NULL,
-  user_address TEXT NOT NULL,
-  timestamp INTEGER NOT NULL DEFAULT (unixepoch()),
-  FOREIGN KEY (message_id) REFERENCES messages(id)
-);
+-- Add tier column to messages if it doesn't exist
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS tier TEXT;
 
--- Create vanity keypairs table
-CREATE TABLE IF NOT EXISTS vanity_keypairs (
-  id TEXT PRIMARY KEY,
-  address TEXT NOT NULL UNIQUE,
-  secret_key TEXT NOT NULL,
-  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-  used INTEGER NOT NULL DEFAULT 0
-);
 
 -- Create token holders table
 CREATE TABLE IF NOT EXISTS token_holders (
@@ -171,16 +157,6 @@ CREATE TABLE IF NOT EXISTS token_holders (
   percentage INTEGER NOT NULL,
   last_updated INTEGER NOT NULL DEFAULT (unixepoch()),
   FOREIGN KEY (mint) REFERENCES tokens(mint)
-);
-
--- Create personalities table
-CREATE TABLE IF NOT EXISTS personalities (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  description TEXT,
-  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-  updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
-  deleted_at INTEGER
 );
 
 -- Create media generations table
@@ -216,20 +192,6 @@ CREATE TABLE IF NOT EXISTS cache_prices (
   expires_at INTEGER NOT NULL
 );
 
--- Create token_agents table
-CREATE TABLE IF NOT EXISTS token_agents (
-  id TEXT PRIMARY KEY,
-  token_mint TEXT NOT NULL,
-  owner_address TEXT NOT NULL,
-  twitter_user_id TEXT NOT NULL,
-  twitter_user_name TEXT NOT NULL,
-  twitter_image_url TEXT NOT NULL,
-  official INTEGER NOT NULL DEFAULT 0,
-  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-  FOREIGN KEY (token_mint) REFERENCES tokens(mint),
-  UNIQUE(token_mint, twitter_user_id)
-);
-
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_tokens_creator ON tokens(creator);
 
@@ -247,10 +209,6 @@ CREATE INDEX IF NOT EXISTS idx_messages_parent_id ON messages(parent_id);
 
 CREATE INDEX IF NOT EXISTS idx_messages_author ON messages(author);
 
-CREATE INDEX IF NOT EXISTS idx_message_likes_message_id ON message_likes(message_id);
-
-CREATE INDEX IF NOT EXISTS idx_message_likes_user ON message_likes(user_address);
-
 CREATE INDEX IF NOT EXISTS idx_token_holders_mint ON token_holders(mint);
 
 CREATE INDEX IF NOT EXISTS idx_token_holders_amount ON token_holders(amount);
@@ -261,11 +219,12 @@ CREATE INDEX IF NOT EXISTS idx_cache_prices_symbol ON cache_prices(symbol);
 
 CREATE INDEX IF NOT EXISTS idx_cache_prices_expires ON cache_prices(expires_at);
 
--- Create indexes for token_agents
-CREATE INDEX IF NOT EXISTS idx_token_agents_mint ON token_agents(token_mint);
+-- Add tier column to messages table (Assuming new messages will have it, adjust if data exists)
+-- Note: SQLite has limited ALTER TABLE support. Adding NOT NULL might require data migration steps if table is populated.
+-- ALTER TABLE messages ADD COLUMN tier TEXT NOT NULL DEFAULT '1k';
+-- A safer approach if unsure about existing data or need stricter validation later:
+ALTER TABLE messages ADD COLUMN tier TEXT;
+-- Manually update existing rows if needed, then enforce NOT NULL if desired.
 
-CREATE INDEX IF NOT EXISTS idx_token_agents_owner ON token_agents(owner_address);
-
-CREATE INDEX IF NOT EXISTS idx_token_agents_official ON token_agents(official);
-
-CREATE INDEX IF NOT EXISTS idx_token_agents_user_id ON token_agents(twitter_user_id);
+-- Add index for token mint and tier on messages table
+CREATE INDEX IF NOT EXISTS idx_messages_token_tier ON messages(token_mint, tier);
