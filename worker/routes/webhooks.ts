@@ -52,18 +52,17 @@ router.post("/webhook", async (c) => {
 
   c.executionCtx.waitUntil(
     (async () => {
-  
-  await Promise.all(
-    events.map((event) =>
-      processTransactionLogs(
-        c.env,
-        event.meta.logMessages,
-        event.transaction.signatures[0],
-      ),
-    ),
+      await Promise.all(
+        events.map((event) =>
+          processTransactionLogs(
+            c.env,
+            event.meta.logMessages,
+            event.transaction.signatures[0],
+          ),
+        ),
+      );
+    })(),
   );
-        
-  })());
 
   return c.json({
     message: "Completed",

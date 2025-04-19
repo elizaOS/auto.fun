@@ -48,9 +48,10 @@ export const useTokenBalance = ({ tokenId }: { tokenId: string }) => {
 
   // Get token balance
   useEffect(() => {
-    if (!publicKey || !connection || !program) return;
+    if (!publicKey || !connection || !program || !tokenId) return;
 
     const fetchTokenBalance = async () => {
+      console.log("fetchTokenBalance", tokenId);
       const tokenMint = new PublicKey(tokenId);
       const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
         publicKey,

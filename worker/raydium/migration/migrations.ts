@@ -240,7 +240,6 @@ export async function getMigrationState(env: Env, token: TokenData) {
   return null;
 }
 
-
 export async function getMigratingTokens(env: Env) {
   // Get all tokens that are in the migration process (status migrating) but have migration as null
   try {
@@ -248,15 +247,11 @@ export async function getMigratingTokens(env: Env) {
     const migratingTokens = await db
       .select()
       .from(tokens)
-      .where(and(
-        eq(tokens.status, "migrating"),
-      ))
+      .where(and(eq(tokens.status, "migrating")))
       .execute();
     //
-
   } catch (error) {
     logger.error(`Error fetching migrating tokens: ${error}`);
     throw new Error("Failed to fetch migrating tokens");
   }
-
 }

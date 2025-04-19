@@ -1967,9 +1967,8 @@ export const Create = () => {
       // Check if we're working with imported token data - ONLY do this check for IMPORT tab
       const storedTokenData = localStorage.getItem("import_token_data");
       if (storedTokenData && activeTab === FormTab.IMPORT) {
+        const tokenData = JSON.parse(storedTokenData);
         try {
-          const tokenData = JSON.parse(storedTokenData);
-
           // Show coin drop animation
           setShowCoinDrop(true);
 
@@ -2032,6 +2031,14 @@ export const Create = () => {
           navigate(`/token/${tokenData.mint}`);
           return;
         } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message.includes("Token already exists")
+          ) {
+            navigate(`/token/${tokenData.mint}`);
+            return;
+          }
+
           console.error("Error handling imported token:", error);
           if (error instanceof Error) {
             throw error; // Re-throw if it's a permission error
@@ -2068,8 +2075,8 @@ export const Create = () => {
       // Check if we're working with imported token data - ONLY do this check for IMPORT tab
       const storedTokenData = localStorage.getItem("import_token_data");
       if (storedTokenData && activeTab === FormTab.IMPORT) {
+        const tokenData = JSON.parse(storedTokenData);
         try {
-          const tokenData = JSON.parse(storedTokenData);
           // Check if the current wallet has permission to create this token
           // In dev mode, skip this check and allow any wallet to register
           const isCreatorNow =
@@ -2145,6 +2152,13 @@ export const Create = () => {
           navigate(`/token/${tokenData.mint}`);
           return;
         } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message.includes("Token already exists")
+          ) {
+            navigate(`/token/${tokenData.mint}`);
+            return;
+          }
           console.error("Error handling imported token:", error);
           if (error instanceof Error) {
             throw error; // Re-throw if it's a permission error
