@@ -30,7 +30,7 @@ export default function Page() {
   const data = query?.items
     ? query?.items.filter(
         (item, index, self) =>
-          index === self.findIndex((t) => t.mint === item.mint)
+          index === self.findIndex((t) => t.mint === item.mint),
       )
     : [];
 
