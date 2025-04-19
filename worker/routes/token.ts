@@ -1163,7 +1163,7 @@ tokenRouter.get("/tokens", async (c) => {
           tokensQuery = tokensQuery.where(eq(tokens.creator, creator));
         }
 
-        if (hideImported) {
+        if (hideImported > 0) {
           tokensQuery = tokensQuery.where(ne(tokens.imported, 1));
         }
 

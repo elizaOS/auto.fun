@@ -967,7 +967,13 @@ export function getFeaturedScoreExpression(
  * @returns Calculated weighted score
  */
 export function calculateFeaturedScore(
-  token: { volume24h?: number | null; holderCount?: number | null },
+  token: {
+    ticker: string;
+    featured?: number;
+    imported: number;
+    volume24h?: number | null;
+    holderCount?: number | null;
+  },
   maxVolume: number,
   maxHolders: number,
 ): number {
@@ -977,9 +983,25 @@ export function calculateFeaturedScore(
   const volume = token.volume24h || 0;
   const holders = token.holderCount || 0;
 
+  const isSpecialToken =
+    token.ticker.includes("ai16z") ||
+    token.ticker.includes("degenai") ||
+    token.ticker.includes("pxl");
+
+  const isFeatured = token.featured && token.featured > 0;
+
+  const importFactor = isSpecialToken
+    ? 2.5
+    : isFeatured
+      ? 2
+      : token.imported > 0
+        ? 0.1
+        : 1;
+
   return (
-    (volume / normalizedMaxVolume) * 0.7 +
-    (holders / normalizedMaxHolders) * 0.3
+    ((volume / normalizedMaxVolume) * 0.7 +
+      (holders / normalizedMaxHolders) * 0.3) *
+    importFactor
   );
 }
 

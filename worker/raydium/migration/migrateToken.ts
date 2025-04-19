@@ -35,7 +35,7 @@ export class TokenMigrator {
     public program: Program<RaydiumVault>,
     public autofunProgram: Program<Autofun | AutofunProd>,
     public provider: AnchorProvider,
-  ) { }
+  ) {}
   FEE_PERCENTAGE = 10; // 10% fee for pool creation
 
   async scheduleNextInvocation(token: TokenData): Promise<void> {

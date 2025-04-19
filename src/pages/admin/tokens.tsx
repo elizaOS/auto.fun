@@ -28,7 +28,7 @@ function AdminTokensList() {
 
   const tokensPagination = useTokens(sortBy, hideImported, 50);
 
-  if (tokensPagination.isLoading) {
+  if (tokensPagination?.isLoading) {
     return <Loader />;
   }
 
@@ -75,7 +75,7 @@ function AdminTokensList() {
             </tr>
           </thead>
           <tbody>
-            {tokensPagination.items.map((token: any) => (
+            {tokensPagination?.items?.map((token: any) => (
               <tr
                 key={token.mint}
                 className="border-b border-autofun-background-primary"
@@ -144,10 +144,10 @@ function AdminTokensList() {
       {/* Pagination */}
       <div className="flex justify-between items-center pt-4">
         <div className="text-sm text-autofun-text-secondary">
-          Showing {tokensPagination.items.length} of{" "}
-          {tokensPagination.totalItems || 0} tokens
+          Showing {tokensPagination?.items?.length || 0} of{" "}
+          {tokensPagination?.totalItems || 0} tokens
         </div>
-        {tokensPagination.totalPages > 1 && (
+        {tokensPagination?.totalPages && tokensPagination.totalPages > 1 && (
           <Pagination
             pagination={{
               page: tokensPagination.currentPage,

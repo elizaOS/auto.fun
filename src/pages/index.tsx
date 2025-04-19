@@ -91,10 +91,10 @@ export default function Page() {
 
         <Pagination
           pagination={{
-            hasMore: query?.hasNextPage,
-            page: query?.currentPage,
-            total: query?.totalItems,
-            totalPages: query?.totalPages,
+            hasMore: query?.hasNextPage || false,
+            page: query?.currentPage || 1,
+            total: query?.totalItems || 0,
+            totalPages: query?.totalPages || 1,
           }}
           onPageChange={(pageNumber: number) => {
             if (query?.isLoading) return;

@@ -20,13 +20,13 @@ export type HomepageSortBy = "all" | "marketCap" | "newest" | "oldest";
 
 export const useHomepageAll = (
   enabled: boolean,
-  hideImported?: boolean,
+  _hideImported?: boolean,
   pageSize: number = 24,
 ) => {
   const pagination = usePagination({
     endpoint: "/api/tokens",
     limit: pageSize,
-    hideImported: hideImported ? 1 : 0,
+    hideImported: 0,
     validationSchema: HomepageFeaturedSchema,
     itemsPropertyName: "tokens",
     sortBy: "featuredScore",
@@ -256,11 +256,6 @@ export const useTokens = (
     hideImported,
     pageSize,
   );
-  const oldestTokens = useHomepageOldest(
-    sortBy === "oldest",
-    hideImported,
-    pageSize,
-  );
 
   useEffect(() => {
     getSocket().emit("subscribeGlobal");
@@ -273,7 +268,5 @@ export const useTokens = (
       return marketCapTokens;
     case "newest":
       return newestTokens;
-    case "oldest":
-      return oldestTokens;
   }
 };
