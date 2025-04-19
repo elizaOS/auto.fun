@@ -1,45 +1,39 @@
-import { logger } from "../../logger";
-import { Connection, PublicKey, Keypair } from "@solana/web3.js";
-import { updateTokenInDB } from "../../cron";
+import { AnchorProvider, BN, Program } from "@coral-xyz/anchor";
 import {
-  CREATE_CPMM_POOL_PROGRAM,
   CREATE_CPMM_POOL_FEE_ACC,
+  CREATE_CPMM_POOL_PROGRAM,
   DEVNET_PROGRAM_ID,
   getCpmmPdaAmmConfigId,
-  DEV_LOCK_CPMM_AUTH,
-  mul,
-  LOCK_CPMM_AUTH,
 } from "@raydium-io/raydium-sdk-v2";
-import { Program, BN, AnchorProvider } from "@coral-xyz/anchor";
-import { initSdk, txVersion } from "../raydium-config";
-import { withdrawTx, execWithdrawTx } from "../withdraw";
 import { NATIVE_MINT } from "@solana/spl-token";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { updateTokenInDB } from "../../cron";
 import { Env } from "../../env";
-import { depositToRaydiumVault } from "../raydiumVault";
-import { sendNftTo, sendSolTo } from "../utils";
-import { retryOperation } from "../utils";
-import { RaydiumVault } from "../types/raydium_vault";
-import { getWebSocketClient } from "../../websocket-client";
-import { Autofun } from "../../target/types/autofun";
-import { TokenData } from "../types/tokenData";
-import {
-  getMigrationState,
-  MigrationStep,
-  executeMigrationStep,
-  acquireMigrationLock,
-  releaseMigrationLock,
-  LockResult,
-} from "./migrations";
-import { Wallet } from "../../tokenSupplyHelpers/customWallet";
 import { ExternalToken } from "../../externalToken";
-
+import { logger } from "../../logger";
+import { Autofun } from "../../target/types/autofun";
+import { Autofun as AutofunProd } from "../../target/types/autofun_prod";
+import { Wallet } from "../../tokenSupplyHelpers/customWallet";
+import { getWebSocketClient } from "../../websocket-client";
+import { initSdk, txVersion } from "../raydium-config";
+import { depositToRaydiumVault } from "../raydiumVault";
+import { RaydiumVault } from "../types/raydium_vault";
+import { TokenData } from "../types/tokenData";
+import { retryOperation, sendNftTo, sendSolTo } from "../utils";
+import { execWithdrawTx, withdrawTx } from "../withdraw";
+import {
+  executeMigrationStep,
+  LockResult,
+  MigrationStep,
+  releaseMigrationLock,
+} from "./migrations";
 export class TokenMigrator {
   constructor(
     public env: Env,
     public connection: Connection,
     public wallet: Wallet,
     public program: Program<RaydiumVault>,
-    public autofunProgram: Program<Autofun>,
+    public autofunProgram: Program<Autofun | AutofunProd>,
     public provider: AnchorProvider,
   ) {}
   FEE_PERCENTAGE = 10; // 10% fee for pool creation

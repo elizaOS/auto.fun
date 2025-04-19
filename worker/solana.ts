@@ -5,7 +5,8 @@ import { getRpcUrl } from "./util";
 import { AnchorProvider, Program, setProvider } from "@coral-xyz/anchor";
 import { Autofun } from "./target/types/autofun";
 import * as idl from "./target/idl/autofun.json";
-
+import * as idl_prod from "./target/idl/autofun_prod.json";
+import { Autofun as AutofunProd } from "./target/types/autofun_prod";
 // Initialize the Solana configuration with the provided environment
 export function initSolanaConfig(env?: Env) {
   // Set up network and RPC URL
@@ -50,11 +51,14 @@ export function initSolanaConfig(env?: Env) {
   };
 }
 
-export const getProgram = (connection: Connection, wallet: any) => {
+export const getProgram = (connection: Connection, wallet: any, env?: Env) => {
   const provider = new AnchorProvider(connection, wallet, {
     skipPreflight: true,
     commitment: "confirmed",
   });
 
-  return new Program<Autofun>(idl, provider);
+  return new Program<Autofun | AutofunProd>(
+    env?.NETWORK === "devnet" ? idl : idl_prod,
+    provider,
+  );
 };

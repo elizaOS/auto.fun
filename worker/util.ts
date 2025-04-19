@@ -23,6 +23,7 @@ import { Env } from "./env";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
 import { initSolanaConfig, getProgram } from "./solana";
 import { Autofun } from "./target/types/autofun";
+import { Autofun as AutofunProd } from "./target/types/autofun_prod";
 import { getWebSocketClient } from "./websocket-client";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 /**
@@ -370,7 +371,7 @@ export const createConfigTx = async (
   newConfig: any,
 
   connection: Connection,
-  program: Program<Autofun>,
+  program: Program<Autofun | AutofunProd>,
 ) => {
   const [configPda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_CONFIG)],
@@ -416,7 +417,7 @@ export const swapTx = async (
   style: number,
   slippageBps: number = 100,
   connection: Connection,
-  program: Program<Autofun>,
+  program: Program<Autofun | AutofunProd>,
 ) => {
   const [configPda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_CONFIG)],
@@ -496,7 +497,7 @@ export const withdrawTx = async (
   token: PublicKey,
 
   connection: Connection,
-  program: Program<Autofun>,
+  program: Program<Autofun | AutofunProd>,
 ) => {
   const tx = await program.methods
     .withdraw()

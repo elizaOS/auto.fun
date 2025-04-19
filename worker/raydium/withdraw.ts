@@ -7,13 +7,14 @@ import {
   Transaction,
 } from "@solana/web3.js";
 import { Autofun } from "../target/types/autofun";
+import { Autofun as AutofunProd } from "../target/types/autofun_prod";
 import { logger } from "../logger";
 
 export const withdrawTx = async (
   user: PublicKey,
   token: PublicKey,
   connection: Connection,
-  program: Program<Autofun>,
+  program: Program<Autofun | AutofunProd>,
 ) => {
   const tx = await program.methods
     .withdraw()

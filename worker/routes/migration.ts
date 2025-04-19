@@ -2,7 +2,9 @@ import { Wallet } from "../tokenSupplyHelpers/customWallet";
 import { RaydiumVault } from "../raydium/types/raydium_vault";
 import * as raydium_vault_IDL from "../raydium/raydium_vault.json";
 import { Autofun } from "../target/types/autofun";
-import * as IDL from "../target/idl/autofun.json";
+import { Autofun as AutofunProd } from "../target/types/autofun_prod";
+import * as IDL_DEV from "../target/idl/autofun.json";
+import * as IDL_PROD from "../target/idl/autofun_prod.json";
 import { TokenMigrator } from "../raydium/migration/migrateToken";
 import { Hono } from "hono";
 import { Env } from "../env";
@@ -61,7 +63,10 @@ migrationRouter.post("/migration/resume", async (c) => {
       raydium_vault_IDL as any,
       provider,
     );
-    const autofunProgram = new Program<Autofun>(IDL as any, provider);
+    const autofunProgram = new Program<Autofun | AutofunProd>(
+      c.env.NETWORK === "devnet" ? IDL_DEV : IDL_PROD,
+      provider,
+    );
 
     // Create an instance of TokenMigrator.
     const tokenMigrator = new TokenMigrator(
