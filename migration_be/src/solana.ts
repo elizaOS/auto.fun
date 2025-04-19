@@ -53,8 +53,5 @@ export const getProgram = (connection: Connection, wallet: any, env: Env) => {
     commitment: "confirmed",
   });
 
-  return new Program<Autofun>(
-    idl,
-    provider,
-  );
+  return new Program<Autofun>(idl as any, provider);
 };

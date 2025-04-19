@@ -424,7 +424,7 @@ export async function processTransactionLogs(
          raydium_vault_IDL as any,
          provider,
       );
-      const autofunProgram = new Program<Autofun>(IDL, provider);
+      const autofunProgram = new Program<Autofun>(IDL as any, provider);
 
       const tokenMigrator = new TokenMigrator(
          env,
