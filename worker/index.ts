@@ -24,6 +24,7 @@ import { getWebSocketClient } from "./websocket-client";
 import { getSOLPrice } from "./mcap";
 import { allowedOrigins } from "./allowedOrigins";
 // import { startMonitoringBatch } from "./tokenSupplyHelpers/monitoring";
+import { checkMigratingTokens } from "./raydium/migration/migrations";
 
 const app = new Hono<{
   Bindings: Env;
@@ -472,16 +473,27 @@ export default {
       //   })()
       // );
 
-      // ctx.waitUntil(
-      //   (async () => {
-      //     try {
-      await cron(env, event);
-      logger.info("Cron job completed");
-      //     } catch (err) {
-      //       logger.error("Error in cron job:", err);
-      //     }
-      //   })()
-      // );
+      // resume migration 
+      ctx.waitUntil(
+        (async () => {
+          try {
+            await checkMigratingTokens(env, 2);
+          } catch (err) {
+            logger.error("Error in migration resume:", err);
+          }
+        })()
+      );
+
+      ctx.waitUntil(
+        (async () => {
+          try {
+            await cron(env, event);
+            logger.info("Cron job completed");
+          } catch (err) {
+            logger.error("Error in cron job:", err);
+          }
+        })()
+      );
     } catch (error) {
       logger.error("Error in scheduled handler:", error);
     }

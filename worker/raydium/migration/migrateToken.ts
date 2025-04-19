@@ -41,12 +41,14 @@ export class TokenMigrator {
     public program: Program<RaydiumVault>,
     public autofunProgram: Program<Autofun>,
     public provider: AnchorProvider,
-  ) {}
+  ) { }
   FEE_PERCENTAGE = 10; // 10% fee for pool creation
 
   async scheduleNextInvocation(token: TokenData): Promise<void> {
     // Use API_URL from env (or fallback)
     const workerUrl = this.env.API_URL || "http://127.0.0.1:8787";
+    console.log(
+      `[Migrate] Scheduling next invocation for token ${token.mint} at ${workerUrl}/api/migration/resume`,)
 
     // Construct headers with Authorization token
     const headers = {
