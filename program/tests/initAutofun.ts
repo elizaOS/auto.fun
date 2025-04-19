@@ -51,7 +51,7 @@ console.log("ENV: ", process.env.ENV);
     authority: provider.wallet.publicKey,
     pendingAuthority: provider.wallet.publicKey,
     teamWallet: new anchor.web3.PublicKey(
-      "FfNhJtoWL6Nk9UkiZiitYifcBMFUicaJswKj6CFdFNSa"
+      "aUTorMBXR4WtVq56jS7XeGqjFymXZNMK5oiRZx67qvw"
     ),
     initBondingCurve: 100,
     platformBuyFee: new BN(100),
