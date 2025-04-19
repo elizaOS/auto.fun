@@ -291,8 +291,27 @@ api.post("/broadcast", async (c) => {
 
 api.get("/sol-price", async (c) => {
   try {
+    // Create a simple cache key
+    const cacheKey = "sol-price";
+
+    // Try to get from cache first
+    const cachedData = await c.env.CACHE.get(cacheKey);
+    if (cachedData) {
+      return c.json(JSON.parse(cachedData));
+    }
+
+    // If not in cache, fetch the SOL price
     const price = await getSOLPrice(c.env);
-    return c.json({ price });
+
+    // Prepare the result
+    const result = { price };
+
+    // Store in cache with 30-second TTL
+    await c.env.CACHE.put(cacheKey, JSON.stringify(result), {
+      expirationTtl: 30,
+    });
+
+    return c.json(result);
   } catch (error) {
     console.error("Error fetching SOL price:", error);
     return c.json({ error: "Failed to fetch SOL price" }, 500);
