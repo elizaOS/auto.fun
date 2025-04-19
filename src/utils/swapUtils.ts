@@ -1,6 +1,6 @@
 import { getConfigAccount } from "@/hooks/use-config-account";
 import { ConfigAccount } from "@/types";
-import { Autofun, AutofunProd } from "@/utils/program";
+import { Autofun } from "@/utils/program";
 import { BN, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
 
@@ -60,7 +60,7 @@ export const launchAndSwapTx = async (
   swapAmount: number,
   slippageBps: number = 100,
   connection: Connection,
-  program: Program<Autofun | AutofunProd>,
+  program: Program<Autofun>,
   mintKeypair: Keypair,
   configAccount: {
     teamWallet: PublicKey;
@@ -138,7 +138,7 @@ function calculateAmountOutBuy(
 const FEE_BASIS_POINTS = 10000;
 
 export const getSwapAmount = async (
-  program: Program<Autofun | AutofunProd>,
+  program: Program<Autofun>,
   amount: number,
   style: number,
   reserveToken: number,
@@ -221,7 +221,7 @@ export const swapIx = async (
   amount: number,
   style: number,
   slippageBps: number = 100,
-  program: Program<Autofun | AutofunProd>,
+  program: Program<Autofun>,
   reserveToken: number,
   reserveLamport: number,
   configAccount: ConfigAccount,

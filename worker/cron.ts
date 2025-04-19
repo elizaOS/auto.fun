@@ -15,8 +15,7 @@ import * as raydium_vault_IDL from "./raydium/raydium_vault.json";
 import { RaydiumVault } from "./raydium/types/raydium_vault";
 import { checkAndReplenishTokens } from "./routes/generation";
 import { updateHoldersCache } from "./routes/token";
-import * as IDL_DEV from "./target/idl/autofun.json";
-import * as IDL_PROD from "./target/idl/autofun_prod.json";
+import * as IDL from "./target/idl/autofun.json";
 import { Autofun } from "./target/types/autofun";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import {
@@ -524,10 +523,7 @@ export async function processTransactionLogs(
       raydium_vault_IDL as any,
       provider,
     );
-    const autofunProgram = new Program<Autofun>(
-      env.NETWORK === "devnet" ? IDL_DEV : IDL_PROD,
-      provider,
-    );
+    const autofunProgram = new Program<Autofun>(IDL, provider);
 
     const tokenMigrator = new TokenMigrator(
       env,

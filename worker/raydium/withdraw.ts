@@ -1,20 +1,13 @@
-import { BN, Program } from "@coral-xyz/anchor";
-import {
-  ComputeBudgetProgram,
-  Connection,
-  Keypair,
-  PublicKey,
-  Transaction,
-} from "@solana/web3.js";
-import { Autofun } from "../target/types/autofun";
-import { Autofun as AutofunProd } from "../target/types/autofun_prod";
+import { Program } from "@coral-xyz/anchor";
+import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import { logger } from "../logger";
+import { Autofun } from "../target/types/autofun";
 
 export const withdrawTx = async (
   user: PublicKey,
   token: PublicKey,
   connection: Connection,
-  program: Program<Autofun | AutofunProd>,
+  program: Program<Autofun>,
 ) => {
   const tx = await program.methods
     .withdraw()

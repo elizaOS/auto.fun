@@ -1,22 +1,20 @@
-import { TokenData } from "../types/tokenData";
-import { eq, and } from "drizzle-orm";
-import { getDB, tokens } from "../../db";
-import { Env } from "../../env";
-import { updateTokenInDB } from "../../cron";
-import { getWebSocketClient } from "../../websocket-client";
-import { retryOperation } from "../utils";
-import { logger } from "../../logger";
-import { updateTokenSupplyFromChain } from "../../tokenSupplyHelpers";
-import { TokenMigrator } from "../migration/migrateToken";
-import { RaydiumVault } from "../types/raydium_vault";
-import * as raydium_vault_IDL from "../raydium_vault.json";
-import { Autofun } from "../../target/types/autofun";
-import { Autofun as AutofunProd } from "../../target/types/autofun_prod";
-import * as IDL from "../../target/idl/autofun.json";
-import * as IDL_PROD from "../../target/idl/autofun_prod.json";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair } from "@solana/web3.js";
+import { and, eq } from "drizzle-orm";
+import { updateTokenInDB } from "../../cron";
+import { getDB, tokens } from "../../db";
+import { Env } from "../../env";
+import { logger } from "../../logger";
+import * as IDL from "../../target/idl/autofun.json";
+import { Autofun } from "../../target/types/autofun";
+import { updateTokenSupplyFromChain } from "../../tokenSupplyHelpers";
 import { Wallet } from "../../tokenSupplyHelpers/customWallet";
+import { getWebSocketClient } from "../../websocket-client";
+import { TokenMigrator } from "../migration/migrateToken";
+import * as raydium_vault_IDL from "../raydium_vault.json";
+import { RaydiumVault } from "../types/raydium_vault";
+import { TokenData } from "../types/tokenData";
+import { retryOperation } from "../utils";
 
 export interface LockResult {
   txId: string;
@@ -280,10 +278,7 @@ export async function checkMigratingTokens(env: Env, limit: number) {
       raydium_vault_IDL as any,
       provider,
     );
-    const autofunProgram = new Program<Autofun | AutofunProd>(
-      env.NETWORK === "devnet" ? IDL : IDL_PROD,
-      provider,
-    );
+    const autofunProgram = new Program<Autofun>(IDL, provider);
 
     const tokenMigrator = new TokenMigrator(
       env,

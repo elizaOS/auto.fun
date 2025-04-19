@@ -6,23 +6,25 @@ resolution = true
 skip-lint = true
 
 [programs.devnet]
-autofun = "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ"
+autofun = "autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5"
 raydium_vault = "Bi9TwwuBFf15mVVgfVjh4oz65QAGAAo793ioFfX9ugAR"
 
 [programs.mainnet]
-autofun = "AnAYdVXqbS87U1DzzuRR4dnooNv7GjfqnSUEVmaKH8xL"
-raydium_vault = "Bi9TwwuBFf15mVVgfVjh4oz65QAGAAo793ioFfX9ugAR"
+autofun = "Bt5Xg2NkLbjb9XRmivNQh6rhFBoTiZ7YHuHnbF9Hmx7v"
+raydium_vault = "5TArUtX7Koch6JhWZJMatM8LBbyj4Jw1JWA2Br4NBc2o"
 
 [registry]
 url = "https://staked.helius-rpc.com?api-key=3e7503c3-c6b2-44ac-98d4-c309cbcb4074"
 
 [provider]
-cluster = "mainnet"
+cluster = "Mainnet"
 wallet = "./id.json"
 
 [scripts]
+change_vault_exec = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/changeVaultExec.ts"
 check_config = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/checkConfig.ts"
 init_autofun = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/initAutofun.ts"
+launch_token = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/launchToken.ts"
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 test_change_claimer = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/changeClaimer.ts"
 test_claim = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/claim.ts"
@@ -31,8 +33,6 @@ test_init = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/initRayVault.
 test_nft_balance = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/checkBalance.ts"
 test_withdraw = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/withdraw.ts"
 update_state = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/updateState.ts"
-launch_token = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/launchToken.ts"
-change_vault_exec = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/changeVaultExec.ts"
 
 [test]
 startup_wait = 10000

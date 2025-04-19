@@ -12,7 +12,6 @@ import { Env } from "../../env";
 import { ExternalToken } from "../../externalToken";
 import { logger } from "../../logger";
 import { Autofun } from "../../target/types/autofun";
-import { Autofun as AutofunProd } from "../../target/types/autofun_prod";
 import { Wallet } from "../../tokenSupplyHelpers/customWallet";
 import { getWebSocketClient } from "../../websocket-client";
 import { initSdk, txVersion } from "../raydium-config";
@@ -33,7 +32,7 @@ export class TokenMigrator {
     public connection: Connection,
     public wallet: Wallet,
     public program: Program<RaydiumVault>,
-    public autofunProgram: Program<Autofun | AutofunProd>,
+    public autofunProgram: Program<Autofun>,
     public provider: AnchorProvider,
   ) {}
   FEE_PERCENTAGE = 10; // 10% fee for pool creation

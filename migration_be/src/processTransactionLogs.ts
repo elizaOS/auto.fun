@@ -1,24 +1,21 @@
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
-import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { Connection, Keypair } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
-import { TokenData, TokenDBData } from "./raydium/types/tokenData";
-import { getDB, Token, tokens, swaps } from "./db";
+import { getDB, swaps, Token, tokens } from "./db";
 import { Env } from "./env";
 import { logger } from "./logger";
-import { awardGraduationPoints, awardUserPoints } from "./points/helpers";
+import { getSOLPrice } from "./mcap";
 import { TokenMigrator } from "./raydium/migration/migrateToken";
 import { getToken } from "./raydium/migration/migrations";
 import * as raydium_vault_IDL from "./raydium/raydium_vault.json";
 import { RaydiumVault } from "./raydium/types/raydium_vault";
-import * as IDL_DEV from "./target/idl/autofun.json";
-import * as IDL_PROD from "./target/idl/autofun_prod.json";
+import { TokenData, TokenDBData } from "./raydium/types/tokenData";
+import * as IDL from "./target/idl/autofun.json";
 import { Autofun } from "./target/types/autofun";
-import { Autofun as AutofunProd } from "./target/types/autofun_prod";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import {
    createNewTokenData,
-} from "./utils"
-import { getSOLPrice } from "./mcap";
+} from "./utils";
 // Store the last processed signature to avoid duplicate processing
 const lastProcessedSignature: string | null = null;
 
@@ -427,7 +424,7 @@ export async function processTransactionLogs(
          raydium_vault_IDL as any,
          provider,
       );
-      const autofunProgram = new Program<Autofun | AutofunProd>(env.NETWORK === "devnet" ? IDL_DEV : IDL_PROD, provider);
+      const autofunProgram = new Program<Autofun>(IDL, provider);
 
       const tokenMigrator = new TokenMigrator(
          env,

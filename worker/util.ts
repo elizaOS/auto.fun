@@ -21,11 +21,10 @@ import { SEED_BONDING_CURVE, SEED_CONFIG } from "./constant";
 import { getDB, Token, tokenHolders, tokens } from "./db";
 import { Env } from "./env";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
-import { initSolanaConfig, getProgram } from "./solana";
+import { getProgram, initSolanaConfig } from "./solana";
 import { Autofun } from "./target/types/autofun";
-import { Autofun as AutofunProd } from "./target/types/autofun_prod";
-import { getWebSocketClient } from "./websocket-client";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
+import { getWebSocketClient } from "./websocket-client";
 /**
  * Converts a decimal fee (e.g., 0.05 for 5%) to basis points (5% = 500 basis points)
  */
@@ -372,7 +371,7 @@ export const createConfigTx = async (
   newConfig: any,
 
   connection: Connection,
-  program: Program<Autofun | AutofunProd>,
+  program: Program<Autofun>,
 ) => {
   const [configPda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_CONFIG)],
@@ -418,7 +417,7 @@ export const swapTx = async (
   style: number,
   slippageBps: number = 100,
   connection: Connection,
-  program: Program<Autofun | AutofunProd>,
+  program: Program<Autofun>,
 ) => {
   const [configPda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_CONFIG)],
@@ -498,7 +497,7 @@ export const withdrawTx = async (
   token: PublicKey,
 
   connection: Connection,
-  program: Program<Autofun | AutofunProd>,
+  program: Program<Autofun>,
 ) => {
   const tx = await program.methods
     .withdraw()
