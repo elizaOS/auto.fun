@@ -253,7 +253,7 @@ export async function processSwapEvent(
 
       // Calculate featured score
       const featuredScore = calculateFeaturedScore(
-        tokenData[0],
+        tokenData[0] as any,
         maxVolume,
         maxHolders,
       );
@@ -641,15 +641,15 @@ async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-      { name: "mainnet", url: mainnetUrl },
-      { name: "devnet", url: devnetUrl },
-    ]
+        { name: "mainnet", url: mainnetUrl },
+        { name: "devnet", url: devnetUrl },
+      ]
     : [
-      {
-        name: c.env.NETWORK || "devnet",
-        url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-      },
-    ];
+        {
+          name: c.env.NETWORK || "devnet",
+          url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+        },
+      ];
 
   logger.log(
     `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
@@ -1125,6 +1125,9 @@ tokenRouter.get("/tokens", async (c) => {
 
     // Get max values for normalization first - we need these for both the featuredScore and sorting
     const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
+    const shouldHideImported = queryParams.hideImported
+      ? Number(queryParams.hideImported) === 1
+      : false;
 
     // Prepare a basic query
     const tokenQuery = async () => {
@@ -1159,10 +1162,6 @@ tokenRouter.get("/tokens", async (c) => {
         if (creator) {
           tokensQuery = tokensQuery.where(eq(tokens.creator, creator));
         }
-
-        const shouldHideImported = queryParams.hideImported
-          ? Number(queryParams.hideImported) === 1
-          : false;
 
         if (shouldHideImported) {
           tokensQuery = tokensQuery.where(ne(tokens.imported, 1));
@@ -1248,7 +1247,7 @@ tokenRouter.get("/tokens", async (c) => {
         );
       }
 
-      if (hideImported) {
+      if (shouldHideImported) {
         finalQuery = countQuery.where(ne(tokens.imported, 1));
       }
 
@@ -1632,8 +1631,8 @@ tokenRouter.get("/token/:mint", async (c) => {
       token.status === "migrated"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-          (token.curveLimit - token.virtualReserves)) *
-        100;
+            (token.curveLimit - token.virtualReserves)) *
+          100;
 
     // Get token holders count
     const holdersCountQuery = await db

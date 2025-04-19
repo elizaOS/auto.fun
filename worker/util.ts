@@ -248,9 +248,9 @@ export async function createNewTokenData(
     const currentPrice =
       Number(bondingCurveAccount.reserveToken) > 0
         ? Number(bondingCurveAccount.reserveLamport) /
-        1e9 /
-        (Number(bondingCurveAccount.reserveToken) /
-          Math.pow(10, TOKEN_DECIMALS))
+          1e9 /
+          (Number(bondingCurveAccount.reserveToken) /
+            Math.pow(10, TOKEN_DECIMALS))
         : 0;
     console.log("currentPrice", currentPrice);
 
@@ -300,7 +300,7 @@ export async function createNewTokenData(
         (Number(bondingCurveAccount.reserveLamport) / 1e9) * solPrice +
         (Number(bondingCurveAccount.reserveToken) /
           Math.pow(10, TOKEN_DECIMALS)) *
-        tokenPriceUSD,
+          tokenPriceUSD,
       currentPrice:
         Number(bondingCurveAccount.reserveLamport) /
         1e9 /
@@ -529,9 +529,9 @@ export const getRpcUrl = (env: any, forceMainnet: boolean = false) => {
   const apiKey =
     env.NETWORK === "devnet"
       ? env.DEVNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
-      "67ea9085-1406-4db8-8872-38ac77950d7a"
+        "67ea9085-1406-4db8-8872-38ac77950d7a"
       : env.MAINNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
-      "67ea9085-1406-4db8-8872-38ac77950d7a";
+        "67ea9085-1406-4db8-8872-38ac77950d7a";
 
   const result = `${baseUrl}?api-key=${apiKey}`;
 
@@ -880,10 +880,7 @@ export async function updateHoldersCache(env: Env, mint: string) {
       await db
         .delete(tokenHolders)
         .where(
-          and(
-            eq(tokenHolders.mint, mint),
-            inArray(tokenHolders.id, batchIds)
-          ),
+          and(eq(tokenHolders.mint, mint), inArray(tokenHolders.id, batchIds)),
         );
     }
 
@@ -891,10 +888,7 @@ export async function updateHoldersCache(env: Env, mint: string) {
     if (holderRecords.length > 0) {
       for (let i = 0; i < holderRecords.length; i += BATCH_INSERT_SIZE) {
         const batch = holderRecords.slice(i, i + BATCH_INSERT_SIZE);
-        await db
-          .insert(tokenHolders)
-          .values(batch)
-          .onConflictDoNothing();
+        await db.insert(tokenHolders).values(batch).onConflictDoNothing();
       }
     }
 
@@ -991,7 +985,7 @@ export function calculateFeaturedScore(
   token: {
     ticker: string;
     featured?: number;
-    imported: number;
+    imported?: number;
     volume24h?: number | null;
     holderCount?: number | null;
   },
@@ -1015,7 +1009,7 @@ export function calculateFeaturedScore(
     ? 2.5
     : isFeatured
       ? 2
-      : token.imported > 0
+      : token.imported && token.imported > 0
         ? 0.1
         : 1;
 

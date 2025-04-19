@@ -7,7 +7,7 @@ import {
 } from "@codex-data/sdk/dist/sdk/generated/graphql";
 import { Env } from "./env";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { getDB, swaps, TokenHolderInsert, tokenHolders, tokens, } from "./db";
+import { getDB, swaps, TokenHolderInsert, tokenHolders, tokens } from "./db";
 import { getWebSocketClient, WebSocketClient } from "./websocket-client";
 import { eq } from "drizzle-orm";
 import { getSOLPrice } from "./mcap";
@@ -178,15 +178,15 @@ export class ExternalToken {
 
     const allHolders = tokenSupply
       ? codexHolders.items.map(
-        (holder): TokenHolderInsert => ({
-          id: crypto.randomUUID(),
-          mint: this.mint,
-          address: holder.address,
-          amount: holder.shiftedBalance,
-          percentage: (holder.shiftedBalance / tokenSupply) * 100,
-          lastUpdated: now,
-        }),
-      )
+          (holder): TokenHolderInsert => ({
+            id: crypto.randomUUID(),
+            mint: this.mint,
+            address: holder.address,
+            amount: holder.shiftedBalance,
+            percentage: (holder.shiftedBalance / tokenSupply) * 100,
+            lastUpdated: now,
+          }),
+        )
       : [];
 
     allHolders.sort((a, b) => b.percentage - a.percentage);
@@ -201,16 +201,17 @@ export class ExternalToken {
 
       for (let i = 0; i < holders.length; i += batchSize) {
         const batch = holders.slice(i, i + batchSize);
-        await this.db.insert(tokenHolders).values(batch).onConflictDoUpdate(
-          {
+        await this.db
+          .insert(tokenHolders)
+          .values(batch)
+          .onConflictDoUpdate({
             target: [tokenHolders.address],
             set: {
               amount: batch[0].amount,
               percentage: batch[0].percentage,
               lastUpdated: now,
             },
-          },
-        )
+          });
       }
     }
 
