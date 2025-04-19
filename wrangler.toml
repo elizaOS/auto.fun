@@ -82,7 +82,7 @@ FIXED_FEE=0
 PROGRAM_ID="autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5"
 VITE_DEV_PROGRAM_ID="autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5"
 VITE_PROGRAM_ID="autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5"
-VITE_BONDING_CURVE_ADDRESS=CP7TvaxJ17YKiK8Z8QnQAzT8YjzhCp2zqLhRyzoiECCr
+VITE_BONDING_CURVE_ADDRESS="CP7TvaxJ17YKiK8Z8QnQAzT8YjzhCp2zqLhRyzoiECCr"
 
 # Copy vars to development environment
 [env.development.vars]
