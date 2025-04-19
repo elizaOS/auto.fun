@@ -1,7 +1,8 @@
 import { fetcher } from "@/utils/api";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { z } from "zod";
 import { useSearchParams } from "react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface PaginatedResponse<T> {
   items: T[];
@@ -21,6 +22,7 @@ type PaginationOptions<TOutput, TInput> = {
   itemsPropertyName: string;
   hideImported?: number;
   additionalParams?: Record<string, string>;
+  refetchInterval?: number;
 };
 
 export type UsePaginationOptions<TOutput = object, TInput = TOutput> = Omit<
@@ -66,7 +68,7 @@ const fetchPaginatedData = async <
   // Validate each item in the response with the provided schema if it exists
   const validatedItems = response[itemsPropertyName]
     ? (response[itemsPropertyName] as unknown[]).map((item) =>
-        validationSchema ? validationSchema.parse(item) : (item as TOutput),
+        validationSchema ? validationSchema.parse(item) : (item as TOutput)
       )
     : [];
 
@@ -98,7 +100,7 @@ export const usePage = ({ useUrlState }: { useUrlState: boolean }) => {
         setSearchParams(newParams);
       }
     },
-    [searchParams, setSearchParams],
+    [searchParams, setSearchParams]
   );
 
   return { page, setPage: onPageChange };
@@ -114,6 +116,7 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
   enabled = true,
   useUrlState = false,
   hideImported,
+  refetchInterval,
   ...rest
 }: UsePaginationOptions<TOutput, TInput>) => {
   // Extract additional parameters (excluding known parameters)
@@ -127,64 +130,59 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
       additionalParams[key] = String(value);
     }
   });
+  const queryClient = useQueryClient();
   const { page, setPage } = usePage({ useUrlState });
-  const [hasMore, setHasMore] = useState(false);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [fetchedData, setFetchedData] = useState<TOutput[]>([]);
 
-  const loadPage = useCallback(
-    async (pageNumber: number) => {
-      if (pageNumber < 1 || !enabled) return;
+  const queryKey = [
+    enabled,
+    endpoint,
+    itemsPropertyName,
+    limit,
+    page,
+    sortBy,
+    sortOrder,
+    validationSchema,
+    hideImported,
+    // Include additionalParams in the dependency array to reload when they change
+    JSON.stringify(additionalParams),
+  ];
+  const query = useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (page < 1 || !enabled) return null;
 
-      setIsLoading(true);
-      try {
-        const result = await fetchPaginatedData({
-          endpoint,
-          limit,
-          page,
-          sortBy,
-          sortOrder,
-          itemsPropertyName,
-          validationSchema,
-          hideImported,
-          additionalParams,
-        });
+      const result = await fetchPaginatedData({
+        endpoint,
+        limit,
+        page,
+        sortBy,
+        sortOrder,
+        itemsPropertyName,
+        validationSchema,
+        hideImported,
+        additionalParams,
+      });
 
-        setFetchedData(result.items);
-        setTotalPages(result.totalPages);
-        setTotalItems(result.total);
-        setHasMore(result.hasMore);
-        setPage(pageNumber);
-      } catch (error) {
-        console.error("Failed to fetch page:", error);
-        return;
-      } finally {
-        setIsLoading(false);
+      if (page !== result.page) {
+        setPage(result.page);
       }
-    },
-    [
-      enabled,
-      endpoint,
-      itemsPropertyName,
-      limit,
-      page,
-      sortBy,
-      sortOrder,
-      validationSchema,
-      hideImported,
-      // Include additionalParams in the dependency array to reload when they change
-      JSON.stringify(additionalParams),
-    ],
-  );
 
-  useEffect(
-    function updateSortOrder() {
-      loadPage(page);
+      return {
+        fetchedData: result.items,
+        totalPages: result.totalPages,
+        totalItems: result.total,
+        hasMore: result.hasMore,
+      };
     },
-    [loadPage, page],
-  );
+    refetchInterval: refetchInterval ? refetchInterval : 5000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+  });
+
+  const fetchedData = query?.data?.fetchedData || [];
+  const totalPages = query?.data?.totalPages || 0;
+  const totalItems = query?.data?.totalItems || 0;
+  const hasMore = query?.data?.hasMore || false;
 
   const nextPage = useCallback(async () => {
     if (page < totalPages) {
@@ -203,13 +201,36 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
       if (page < 1 || page > totalPages) return;
       setPage(pageNumber);
     },
-    [page, totalPages],
+    [page, totalPages]
+  );
+
+  const setItems = useCallback(
+    (itemsOrUpdater: TOutput[] | ((prevItems: TOutput[]) => TOutput[])) => {
+      if (typeof itemsOrUpdater === "function") {
+        queryClient.setQueryData(
+          queryKey,
+          (oldData: PaginatedResponse<TOutput> | undefined) => {
+            const prevItems = oldData?.items || [];
+            return {
+              ...(oldData || {}),
+              items: itemsOrUpdater(prevItems),
+            };
+          }
+        );
+      } else {
+        queryClient.setQueryData(queryKey, {
+          ...(fetchedData || {}),
+          items: itemsOrUpdater,
+        });
+      }
+    },
+    [queryKey, fetchedData]
   );
 
   return {
     items: fetchedData,
-    setItems: setFetchedData,
-    isLoading,
+    setItems,
+    isLoading: query?.isPending,
     hasNextPage: hasMore,
     hasPreviousPage: page > 1,
     currentPage: page,

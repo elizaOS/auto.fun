@@ -33,7 +33,7 @@ export default function Page() {
           index === self.findIndex((t) => t.mint === item.mint)
       )
     : [];
-    
+
   return (
     <div className="w-full min-h-[50vh]">
       {/* Header Section */}
