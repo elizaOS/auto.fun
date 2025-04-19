@@ -35,7 +35,7 @@ export class TokenMigrator {
     public program: Program<RaydiumVault>,
     public autofunProgram: Program<Autofun | AutofunProd>,
     public provider: AnchorProvider,
-  ) {}
+  ) { }
   FEE_PERCENTAGE = 10; // 10% fee for pool creation
 
   async scheduleNextInvocation(token: TokenData): Promise<void> {
@@ -71,7 +71,7 @@ export class TokenMigrator {
   async callResumeWorker(token: TokenData) {
     try {
       await releaseMigrationLock(this.env, token);
-      await this.migrateToken(token);
+      // await this.migrateToken(token);
     } catch (error) {
       logger.error(
         `[Migrate] Error releasing lock for token ${token.mint}: ${error}`,

@@ -80,7 +80,7 @@ migrationRouter.post("/migration/resume", async (c) => {
     );
 
     // Call migrateToken: process the next migration step.
-    await tokenMigrator.migrateToken(token);
+    // await tokenMigrator.migrateToken(token);
 
     // Return a success response.
     return c.json({
