@@ -31,76 +31,119 @@ export async function execWithdrawTx(
   tx: Transaction,
   connection: Connection,
   wallet: any,
-  maxRetries = 1,
+  maxRetries = 1
 ): Promise<{ signature: string; logs: string[] }> {
   let lastError: Error | null = null;
 
-  try {
-    const signedTx = await wallet.signTransaction(tx);
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      // Sign
+      const signedTx = await wallet.signTransaction(tx);
 
-    const signature = await connection.sendRawTransaction(
-      signedTx.serialize(),
-      {
-        skipPreflight: false,
-        maxRetries: 2,
-        preflightCommitment: "confirmed",
-      },
-    );
+      // Simulate
+      const simulation = await connection.simulateTransaction(signedTx);
+      if (simulation.value.err) {
+        logger.error(
+          'Transaction simulation failed:',
+          simulation.value.err,
+          simulation.value.logs
+        );
+        throw new Error(
+          `Transaction simulation failed: ${JSON.stringify(
+            simulation.value.err
+          )}`
+        );
+      }
+      const preflightLogs = simulation.value.logs || [];
 
-    if (!signature) {
-      throw new Error("Transaction failed to send");
-    }
-    let logs: string[] = [];
-    // Wait for confirmation
-    const confirmation = await connection.confirmTransaction(
-      {
-        signature,
-        blockhash: tx.recentBlockhash!,
-        lastValidBlockHeight: (await connection.getLatestBlockhash())
-          .lastValidBlockHeight,
-      },
-      "confirmed",
-    );
 
-    // Check if we got ProgramFailedToComplete but program actually succeeded
-    if (
-      confirmation.value.err === "ProgramFailedToComplete" ||
-      (confirmation.value.err &&
-        JSON.stringify(confirmation.value.err).includes(
-          "ProgramFailedToComplete",
-        ))
-    ) {
-      // Get transaction logs to verify actual execution
+      const signature = await connection.sendRawTransaction(
+        signedTx.serialize(),
+        {
+          skipPreflight: false,
+          maxRetries: 2,
+          preflightCommitment: 'confirmed',
+        }
+      );
+
+
+      // 4. Confirm
+      const { value: confirmation } = await connection.confirmTransaction(
+        {
+          signature,
+          blockhash: tx.recentBlockhash!,
+          lastValidBlockHeight: (
+            await connection.getLatestBlockhash()
+          ).lastValidBlockHeight,
+        },
+        'confirmed'
+      );
+      if (!confirmation || confirmation.err) {
+        logger.error('Transaction confirmation failed:', confirmation.err);
+        throw new Error('Transaction confirmation failed');
+      }
+
+      //If it reports ProgramFailedToComplete, verify via getTransaction
+      if (
+        confirmation.err === 'ProgramFailedToComplete' ||
+        (confirmation.err &&
+          JSON.stringify(confirmation.err).includes(
+            'ProgramFailedToComplete'
+          ))
+      ) {
+        const txInfo = await connection.getTransaction(signature, {
+          maxSupportedTransactionVersion: 0,
+        });
+        const onChainLogs = txInfo?.meta?.logMessages || [];
+        if (
+          onChainLogs.some((l) => l.includes('Program success'))
+        ) {
+          logger.log(
+            'Succeeded despite ProgramFailedToComplete; returning on‑chain logs'
+          );
+          return { signature, logs: onChainLogs };
+        }
+      } else if (confirmation.err) {
+        throw new Error(
+          `Transaction failed: ${JSON.stringify(confirmation.err)}`
+        );
+      }
+
+      let logs: string[] = [];
+      // get logs from the transaction info
       const txInfo = await connection.getTransaction(signature, {
         maxSupportedTransactionVersion: 0,
       });
-
-      if (
-        txInfo?.meta?.logMessages?.some((log) =>
-          log.includes(`Program success`),
-        )
-      ) {
-        logger.log(
-          "Transaction succeeded despite ProgramFailedToComplete error",
-        );
-        logs = txInfo.meta.logMessages;
-        return { signature, logs: txInfo.meta.logMessages };
+      if (txInfo && txInfo.meta) {
+        logs = txInfo.meta.logMessages || [];
       }
-    } else if (confirmation.value.err) {
-      throw new Error(
-        `Transaction failed: ${JSON.stringify(confirmation.value.err)}`,
+
+      logger.log('Transaction succeeded');
+      return { signature, logs: [...preflightLogs, ...logs] };
+    } catch (error: any) {
+      lastError = error;
+      logger.error(
+        `Withdrawal execution attempt ${attempt + 1} failed:`,
+        error
       );
+
+      // Only retry on network/timeouts, not on program panics
+      const msg = error.message || '';
+      if (
+        !msg.includes('SendTransactionError') &&
+        (msg.includes('Transaction was not confirmed') ||
+          msg.includes('Block height exceeded'))
+      ) {
+        const backoff = Math.min(1000 * 2 ** attempt, 15000);
+        await new Promise((r) => setTimeout(r, backoff));
+        continue;
+      }
+
+      throw error;
     }
-
-    logger.log("Transaction succeeded");
-
-    return { signature, logs: logs };
-  } catch (error: any) {
-    lastError = error;
-    logger.error(`Withdrawal execution failed:`, error);
-
-    throw error;
   }
+
+  throw lastError || new Error('Max retries exceeded');
 }
 
 // Submit the withdrawal transaction without waiting for full confirmation.

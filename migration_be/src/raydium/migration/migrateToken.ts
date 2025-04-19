@@ -511,11 +511,49 @@ export class TokenMigrator {
     return { txId: lockTxIdSecondary, nftMint: nftMintSecondary };
   }
 
+  async initSdkWithRetry(
+    opts: Parameters<typeof initSdk>[0],
+    {
+      maxAttempts = 3,
+      timeoutMs = 60_000,
+      backoffMs = 5_000,
+    }: { maxAttempts?: number; timeoutMs?: number; backoffMs?: number } = {}
+  ) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        // Race initSdk against a timeout
+        return await Promise.race([
+          initSdk(opts),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('initSdk timed out')), timeoutMs)
+          ),
+        ]);
+      } catch (err: any) {
+        if (attempt === maxAttempts) throw err;
+        logger.warn(
+          `[initSdkWithRetry] attempt ${attempt} failed: ${err.message}. ` +
+          `Waiting ${backoffMs}ms before retry…`
+        );
+        await new Promise((r) => setTimeout(r, backoffMs));
+      }
+    }
+    // unreachable
+    throw new Error('initSdkWithRetry exhausted all attempts');
+  }
+
+
   async performLockLP(token: any): Promise<{
     txId: string;
     extraData: { lockLpTxId: string; nftMinted: string };
   }> {
-    const raydium = await initSdk({ env: this.env, loadToken: false });
+
+    const raydium = await this.initSdkWithRetry(
+      { env: this.env, loadToken: false },
+      { maxAttempts: 5, timeoutMs: 60_000, backoffMs: 10_000 }
+    );
+    if (!raydium) {
+      throw new Error("Raydium SDK not initialized");
+    }
     const poolId = token.marketId;
     const poolInfoResult = await this.fetchPoolInfoWithRetry(raydium, poolId);
     console.log("poolInfoResult", poolInfoResult);
