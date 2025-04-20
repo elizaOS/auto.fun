@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { defineConfig } from 'drizzle-kit';
 
-const DB_PATH = process.env.LOCAL_DB_PATH || '/app/data/dev.sqlite';
+const DB_PATH = process.env.LOCAL_DB_PATH || '/data/dev.sqlite';
 
 export default defineConfig({
    out: './drizzle',

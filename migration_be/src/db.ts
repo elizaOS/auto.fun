@@ -208,7 +208,7 @@ export const accessTokens = sqliteTable("access_tokens", {
 
 export function getDB(env: Env) {
    // env.LOCAL_DB_PATH could be "./data/dev.sqlite" or whatever you choose
-   const dbPath = env.LOCAL_DB_PATH || '/app/data/dev.sqlite';
+   const dbPath = env.LOCAL_DB_PATH || '/data/dev.sqlite';
    // open (it will create file if missing)
    const sqlite = new Database(dbPath);
    // wire up drizzle
