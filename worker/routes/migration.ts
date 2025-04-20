@@ -2,7 +2,7 @@ import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
-import { getDB, tokens, users } from "../db";
+import { getDB, tokens, users, Token } from "../db";
 import { Env } from "../env";
 import { logger } from "../logger";
 import { TokenMigrator } from "../raydium/migration/migrateToken";
@@ -13,6 +13,7 @@ import * as IDL from "../target/idl/autofun.json";
 import { Autofun } from "../target/types/autofun";
 import { Wallet } from "../tokenSupplyHelpers/customWallet";
 import { getWebSocketClient } from "../websocket-client";
+import { createNewTokenData } from "../util"
 
 const migrationRouter = new Hono<{
   Bindings: Env;
@@ -283,6 +284,50 @@ migrationRouter.post("/migration/update", async (c) => {
   } catch (err) {
     logger.error("Error in /migration/update:", err);
     return c.json({ error: "Failed to update migration state" }, 500);
+  }
+});
+
+// migration add missing tokens 
+migrationRouter.post("/migration/addMissingTokens", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { rawTokenAddress, rawCreatorAddress, signature } = body;
+
+    if (!rawTokenAddress) {
+      return c.json({ error: "Invalid token data provided" }, 400);
+    }
+
+    // check if we have token in the database
+    const db = getDB(c.env);
+    const existingTokens = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, rawTokenAddress));
+
+
+    if (existingTokens.length > 0) {
+      return c.json({ error: "Tokens already exist in the database" }, 400);
+    }
+
+    // add token to the database if it is missing 
+    const newToken = await createNewTokenData(
+      signature,
+      rawTokenAddress,
+      rawCreatorAddress,
+      c.env,
+    );
+    await getDB(c.env)
+      .insert(tokens)
+      .values(newToken as Token)
+      .onConflictDoNothing()
+    // Return a success response.
+    return c.json({
+      status: "added missing token",
+      rawTokenAddress,
+    });
+  } catch (error) {
+    logger.error("Error in migration add missing tokens endpoint:", error);
+    return c.json({ error: "Failed to process migration invocation" }, 500);
   }
 });
 
