@@ -79,7 +79,7 @@ export async function getLatestCandle(env: Env, tokenMint: string, swap: any) {
         "1", // 1 minute candles
         undefined,
         undefined,
-        env,
+        env
       );
 
       if (candles.length > 0) {
@@ -97,7 +97,7 @@ export async function getLatestCandle(env: Env, tokenMint: string, swap: any) {
     candleStart * 1000, // start (ms)
     (candleStart + candlePeriod) * 1000, // end (ms)
     1, // 1 min range
-    tokenMint,
+    tokenMint
   );
 
   return latestCandle && latestCandle.length > 0 ? latestCandle[0] : null; // Return the single candle
@@ -108,7 +108,7 @@ export async function fetchPriceChartData(
   start: number,
   end: number,
   range: number,
-  tokenMint: string,
+  tokenMint: string
 ) {
   const db = getDB(env);
   const [tokenInfo] = await db
@@ -137,8 +137,8 @@ export async function fetchPriceChartData(
         and(
           eq(swaps.tokenMint, tokenMint),
           sql`${swaps.timestamp} >= ${new Date(start).toISOString()}`,
-          sql`${swaps.timestamp} <= ${new Date(end).toISOString()}`,
-        ),
+          sql`${swaps.timestamp} <= ${new Date(end).toISOString()}`
+        )
       )
       .orderBy(swaps.timestamp);
 
@@ -151,7 +151,7 @@ export async function fetchPriceChartData(
           direction: number;
           amountIn: number | null;
           amountOut: number | null;
-        }) => swap.price != null && swap.timestamp != null,
+        }) => swap.price != null && swap.timestamp != null
       ) // Type guard to ensure price and timestamp are not null
       .map(
         (swap: {
@@ -169,7 +169,7 @@ export async function fetchPriceChartData(
             swap.direction === 0
               ? (swap.amountIn || 0) / 1e9 // Convert from lamports to SOL
               : (swap.amountOut || 0) / 1e9,
-        }),
+        })
       );
 
     if (!priceFeeds.length) return [];
@@ -182,6 +182,10 @@ export async function fetchPriceChartData(
       // Use the test token address only in devnet since there are no locked pools in dev
       const tokenAddress =
         env.NETWORK === "devnet" ? DEV_TEST_TOKEN_ADDRESS : tokenMint;
+
+      console.log(
+        `Santi DEBUG - Fetching chart ${tokenMint} => ACTUALLY USING: ${tokenAddress}`
+      );
 
       // Convert range to Codex resolution format
       let resolution: CodexBarResolution = "1";
@@ -213,7 +217,7 @@ export async function fetchPriceChartData(
         resolution,
         undefined,
         undefined,
-        env,
+        env
       );
 
       // For 120 minute resolution, we need to combine 2 x 60m candles
@@ -245,7 +249,9 @@ export async function fetchPriceChartData(
         }
         return combined;
       }
-
+      console.log(
+        `Santi DEBUG - Fetching chart ${tokenMint} => ACTUALLY USING: ${tokenAddress} => RETURNED: ${JSON.stringify(candles)}`
+      );
       return candles;
     } catch (error) {
       logger.error("Error fetching data with getBars API:", error);
@@ -263,7 +269,7 @@ export async function fetchPriceChartData(
           Math.floor(start / 1000),
           Math.floor(end / 1000),
           1399811149,
-          env,
+          env
         );
 
         // Convert to price feed format - ensure timestamps are never null
@@ -373,7 +379,7 @@ export async function fetchLockedTokenChartData(
   start: number,
   end: number,
   range: number,
-  _env: Env,
+  _env: Env
 ): Promise<any[]> {
   try {
     // Construct Codex API URL for the token chart data
@@ -384,7 +390,7 @@ export async function fetchLockedTokenChartData(
 
     if (!response.ok) {
       throw new Error(
-        `Codex API error: ${response.status} ${response.statusText}`,
+        `Codex API error: ${response.status} ${response.statusText}`
       );
     }
 
@@ -401,7 +407,7 @@ export async function fetchLockedTokenChartData(
     const pairs = data.pairs.sort(
       (a, b) =>
         parseFloat(b.liquidity?.usd || "0") -
-        parseFloat(a.liquidity?.usd || "0"),
+        parseFloat(a.liquidity?.usd || "0")
     );
 
     const mainPair = pairs[0];
@@ -417,7 +423,7 @@ export async function fetchLockedTokenChartData(
 
     if (!chartResponse.ok) {
       throw new Error(
-        `Chart API error: ${chartResponse.status} ${chartResponse.statusText}`,
+        `Chart API error: ${chartResponse.status} ${chartResponse.statusText}`
       );
     }
 
@@ -479,7 +485,7 @@ interface Candle {
  */
 export function groupCandlesByRange(
   candles: Candle[],
-  rangeMinutes: number,
+  rangeMinutes: number
 ): Candle[] {
   if (candles.length === 0) return [];
 
@@ -505,7 +511,7 @@ export function groupCandlesByRange(
       // Process current group and start a new one
       if (currentGroup.length > 0) {
         groupedCandles.push(
-          createCandleFromGroup(currentGroup, currentRangeStart),
+          createCandleFromGroup(currentGroup, currentRangeStart)
         );
       }
 
