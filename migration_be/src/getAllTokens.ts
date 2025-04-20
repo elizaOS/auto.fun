@@ -5,7 +5,6 @@ import PQueue from "p-queue";
 import { Env } from "./env";
 import { Connection, PublicKey } from "@solana/web3.js";
 
-const FIXED_START_Time = 1_745_073_697;
 async function slotAtOrBeforeTime(
    conn: Connection,
    targetTs: number,
@@ -32,14 +31,15 @@ export async function getEventsFromChain(
    env: Env
 ): Promise<number> {
    try {
-      const currentSlot = await connection.getSlot('finalized');
-      const currentTime = await connection.getBlockTime(currentSlot);
-      if (!currentTime) throw new Error('Cannot fetch block time');
+      const currentSlot = await connection.getSlot("finalized");
+      const currentTs = await connection.getBlockTime(currentSlot);
+      if (!currentTs) throw new Error("Could not fetch current block time");
+      const twelveHoursAgoTs = currentTs - 12 * 60 * 60;
 
       // assume slot 0–currentSlot is the search space
       const startSlot = await slotAtOrBeforeTime(
          connection,
-         FIXED_START_Time,
+         twelveHoursAgoTs,
          0,
          currentSlot
       );

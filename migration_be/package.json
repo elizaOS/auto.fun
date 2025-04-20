@@ -2,7 +2,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "sh -c \"      mkdir -p /app/data &&       [ -d /app/data/drizzle ] || cp -r /app/migration_be/drizzle /app/data/drizzle &&       [ -f /app/data/dev.sqlite ] || cp /app/migration_be/dev.sqlite /app/data/dev.sqlite &&       ts-node src/index.ts    \"",
+    "dev": "ts-node src/index.ts",
     "test": "jest"
   },
   "dependencies": {
