@@ -167,7 +167,14 @@ export class TokenMigrator {
         });
         // start monitoring the token
         const ext = new ExternalToken(this.env, token.mint);
-        // await ext.registerWebhook();
+        try {
+          await ext.registerWebhook();
+        } catch (err) {
+          console.error(
+            `[Migrate] Failed to register webhook for token ${token.mint}:`,
+            err,
+          );
+        }
         await releaseMigrationLock(this.env, token);
       }
       const step = currentStep || steps[0];
