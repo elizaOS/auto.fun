@@ -883,7 +883,7 @@ export const Create = () => {
 
   const balance = useSolBalance();
 
-  const maxUserSol = balance ? Math.max(0, Number(balance) - 0.05) : 0;
+  const maxUserSol = balance ? Math.max(0, Number(balance) - 0.025) : 0;
   // Use the smaller of MAX_INITIAL_SOL or the user's max available SOL
   const maxInputSol = Math.min(MAX_INITIAL_SOL, maxUserSol);
 
@@ -3298,7 +3298,7 @@ export const Create = () => {
                   Balance: {solBalance?.toFixed(2) ?? "0.00"} SOL
                   {isAuthenticated && isFormValid && insufficientBalance && (
                     <div className="text-red-500 mt-1">
-                      Insufficient SOL balance (need ~0.01 SOL for mint + buy
+                      Insufficient SOL balance (need ~0.05 SOL for mint + buy
                       amount)
                     </div>
                   )}

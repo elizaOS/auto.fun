@@ -5,13 +5,13 @@ import { updateTokens } from "../cron";
 import { getDB, tokenAgents, tokenHolders, tokens } from "../db";
 import { Env } from "../env";
 import { ExternalToken } from "../externalToken";
-import { logger } from "../util";
 import { getSOLPrice } from "../mcap";
 import {
   applyFeaturedSort,
   checkBlockchainTokenBalance,
   getFeaturedMaxValues,
   getFeaturedScoreExpression,
+  logger,
   processTokenInfo,
   processTokenUpdateEvent,
   updateHoldersCache,
@@ -25,187 +25,6 @@ const tokenRouter = new Hono<{
     user?: { publicKey: string } | null;
   };
 }>();
-
-tokenRouter.get("/metadata/:filename", async (c) => {
-  const filename = c.req.param("filename");
-  const isTemp = c.req.query("temp") === "true";
-
-  logger.log(
-    `[/metadata/:filename] Request received for filename: ${filename}, temp=${isTemp}`,
-  );
-
-  try {
-    if (!filename || !filename.endsWith(".json")) {
-      logger.error("[/metadata/:filename] Invalid filename format:", filename);
-      return c.json({ error: "Filename parameter must end with .json" }, 400);
-    }
-
-    if (!c.env.R2) {
-      logger.error("[/metadata/:filename] R2 storage is not configured");
-      return c.json({ error: "R2 storage is not available" }, 500);
-    }
-
-    // Determine which location to check first based on the temp parameter
-    const primaryKey = isTemp
-      ? `token-metadata-temp/${filename}`
-      : `token-metadata/${filename}`;
-    const fallbackKey = isTemp
-      ? `token-metadata/${filename}`
-      : `token-metadata-temp/${filename}`;
-
-    logger.log(
-      `[/metadata/:filename] Checking primary location: ${primaryKey}`,
-    );
-    let object = await c.env.R2.get(primaryKey);
-
-    // If not found in primary location, check fallback location
-    if (!object) {
-      logger.log(
-        `[/metadata/:filename] Not found in primary location, checking fallback: ${fallbackKey}`,
-      );
-      object = await c.env.R2.get(fallbackKey);
-    }
-
-    if (!object) {
-      logger.error(
-        `[/metadata/:filename] Metadata not found in either location`,
-      );
-      return c.json({ error: "Metadata not found" }, 404);
-    }
-
-    logger.log(
-      `[/metadata/:filename] Found metadata: size=${object.size}, type=${object.httpMetadata?.contentType}`,
-    );
-
-    const contentType = object.httpMetadata?.contentType || "application/json";
-    const data = await object.text();
-
-    // Set appropriate CORS headers for public access
-    const corsHeaders = {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-      "Content-Type": contentType,
-      "Cache-Control": isTemp ? "max-age=3600" : "max-age=86400", // Shorter cache for temp metadata
-    };
-
-    logger.log(`[/metadata/:filename] Serving metadata: ${filename}`);
-    return new Response(data, { headers: corsHeaders });
-  } catch (error) {
-    logger.error(
-      `[/metadata/:filename] Error serving metadata ${filename}:`,
-      error,
-    );
-    return c.json({ error: "Failed to serve metadata JSON" }, 500);
-  }
-});
-
-tokenRouter.get("/image/:filename", async (c) => {
-  const filename = c.req.param("filename");
-  logger.log(`[/image/:filename] Request received for filename: ${filename}`);
-  try {
-    if (!filename) {
-      logger.warn("[/image/:filename] Filename parameter is missing");
-      return c.json({ error: "Filename parameter is required" }, 400);
-    }
-
-    if (!c.env.R2) {
-      logger.error("[/image/:filename] R2 storage is not available");
-      return c.json({ error: "R2 storage is not available" }, 500);
-    }
-
-    // Check if this is a special generation image request
-    // Format: generation-[mint]-[number].jpg
-    const generationMatch = filename.match(
-      /^generation-([A-Za-z0-9]{32,44})-([1-9][0-9]*)\.jpg$/,
-    );
-
-    let imageKey;
-    if (generationMatch) {
-      const [_, mint, number] = generationMatch;
-      // This is a special request for a generation image
-      imageKey = `generations/${mint}/gen-${number}.jpg`;
-      logger.log(
-        `[/image/:filename] Detected generation image request: ${imageKey}`,
-      );
-    } else {
-      // Regular image request
-      imageKey = `token-images/${filename}`;
-    }
-
-    logger.log(
-      `[/image/:filename] Attempting to get object from R2 key: ${imageKey}`,
-    );
-    const object = await c.env.R2.get(imageKey);
-
-    if (!object) {
-      logger.warn(
-        `[/image/:filename] Image not found in R2 for key: ${imageKey}`,
-      );
-
-      // DEBUG: List files in the token-images directory to help diagnose issues
-      try {
-        const prefix = imageKey.split("/")[0] + "/";
-        const objects = await c.env.R2.list({
-          prefix,
-          limit: 10,
-        });
-        logger.log(
-          `[/image/:filename] Files in ${prefix} directory: ${objects.objects.map((o) => o.key).join(", ")}`,
-        );
-      } catch (listError) {
-        logger.error(
-          `[/image/:filename] Error listing files in directory: ${listError}`,
-        );
-      }
-
-      return c.json({ error: "Image not found" }, 404);
-    }
-    logger.log(
-      `[/image/:filename] Found object in R2: size=${object.size}, type=${object.httpMetadata?.contentType}`,
-    );
-
-    // Determine appropriate content type
-    let contentType = object.httpMetadata?.contentType || "image/jpeg";
-
-    // For JSON files, ensure content type is application/json
-    if (filename.endsWith(".json")) {
-      contentType = "application/json";
-    } else if (filename.endsWith(".png")) {
-      contentType = "image/png";
-    } else if (filename.endsWith(".gif")) {
-      contentType = "image/gif";
-    } else if (filename.endsWith(".svg")) {
-      contentType = "image/svg+xml";
-    } else if (filename.endsWith(".webp")) {
-      contentType = "image/webp";
-    }
-
-    const data = await object.arrayBuffer();
-
-    const corsHeaders = {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "*",
-      "Access-Control-Max-Age": "86400",
-    };
-
-    logger.log(
-      `[/image/:filename] Serving ${filename} with type ${contentType}`,
-    );
-    return new Response(data, {
-      headers: {
-        "Content-Type": contentType,
-        "Content-Length": object.size.toString(),
-        "Cache-Control": "public, max-age=31536000",
-        ...corsHeaders,
-      },
-    });
-  } catch (error) {
-    logger.error(`[/image/:filename] Error serving image ${filename}:`, error);
-    return c.json({ error: "Failed to serve image" }, 500);
-  }
-});
 
 tokenRouter.get("/tokens", async (c) => {
   try {
@@ -224,6 +43,7 @@ tokenRouter.get("/tokens", async (c) => {
       ? "marketCapUSD"
       : (queryParams.sortBy as string) || "createdAt";
     const sortOrder = (queryParams.sortOrder as string) || "desc";
+    const bondingStatus = queryParams.bondingStatus as string; // 'all', 'inprogress', 'bonded'
 
     // Use a shorter timeout for test environments
     const timeoutDuration = c.env.NODE_ENV === "test" ? 2000 : 5000;
@@ -248,9 +68,26 @@ tokenRouter.get("/tokens", async (c) => {
     // Get max values for normalization first - we need these for both the featuredScore and sorting
     const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
 
-    const shouldHideImported = queryParams.hideImported
-      ? Number(queryParams.hideImported) === 1
-      : false;
+    // Explicitly parse and check hideImported parameter
+    const hideImportedParam = queryParams.hideImported as string;
+    const shouldHideImported = hideImportedParam === "1";
+    logger.log(
+      `[Tokens Route] Received hideImported param: ${hideImportedParam}, Parsed as: ${shouldHideImported}`,
+    );
+
+    // New bonding status filter logic
+    const applyBondingFilter = (query: any) => {
+      if (bondingStatus === "inprogress") {
+        return query.where(
+          sql`(${tokens.imported} != 1 OR ${tokens.imported} IS NULL) AND ${tokens.curveProgress} < 100`,
+        );
+      } else if (bondingStatus === "bonded") {
+        return query.where(
+          sql`(${tokens.imported} != 1 OR ${tokens.imported} IS NULL) AND (${tokens.curveProgress} >= 100 OR ${tokens.status} = 'locked' OR ${tokens.status} = 'migrated')`,
+        );
+      }
+      return query; // No bonding filter applied
+    };
 
     // Prepare a basic query
     const tokenQuery = async () => {
@@ -275,27 +112,37 @@ tokenRouter.get("/tokens", async (c) => {
           .from(tokens) as any;
 
         // Apply filters
-        if (status) {
-          tokensQuery = tokensQuery.where(eq(tokens.status, status));
-        } else {
-          // By default, don't show pending tokens
-          tokensQuery = tokensQuery.where(sql`${tokens.status} != 'pending'`);
-        }
-
-        tokensQuery = tokensQuery.where(sql`${tokens.image} != ''`);
+        const baseConditions = [
+          // By default, don't show pending tokens unless a specific status is requested
+          status
+            ? eq(tokens.status, status)
+            : sql`${tokens.status} != 'pending'`,
+          // Require image
+          sql`${tokens.image} != ''`,
+          // By default, don't show hidden tokens
+          sql`(${tokens.hidden} != 1)`,
+        ];
 
         if (creator) {
           tokensQuery = tokensQuery.where(eq(tokens.creator, creator));
         }
 
         if (shouldHideImported) {
-          tokensQuery = tokensQuery.where(
-            sql`(${tokens.imported} != 1 OR ${tokens.imported} IS NULL)`,
+          logger.log(
+            `[Tokens Route] Applying hideImported filter to data query.`,
+          );
+          baseConditions.push(sql`(${tokens.imported} = 0)`);
+          logger.log(
+            `[Tokens Route] Data query object after hideImported filter:`,
+            !!tokensQuery,
           );
         }
 
-        // By default, don't show hidden tokens
-        tokensQuery = tokensQuery.where(sql`(${tokens.hidden} != 1)`);
+        // Apply base conditions together
+        tokensQuery = tokensQuery.where(and(...baseConditions));
+
+        // Apply bonding status filter
+        tokensQuery = applyBondingFilter(tokensQuery);
 
         const validSortColumns = {
           marketCapUSD: tokens.marketCapUSD,
@@ -374,6 +221,18 @@ tokenRouter.get("/tokens", async (c) => {
         );
       }
 
+      // Apply hideImported filter to the count query as well
+      if (shouldHideImported) {
+        logger.log(
+          `[Tokens Route] Applying hideImported filter to count query.`,
+        );
+        finalQuery = finalQuery.where(sql`(${tokens.imported} = 0)`);
+        logger.log(
+          `[Tokens Route] Count query object after hideImported filter:`,
+          !!finalQuery,
+        );
+      }
+
       // By default, don't count hidden tokens
       finalQuery = countQuery.where(
         sql`(${tokens.hidden} = 0 OR ${tokens.hidden} IS NULL)`,
@@ -381,6 +240,9 @@ tokenRouter.get("/tokens", async (c) => {
 
       // Ensure tokens without images are also excluded from the count
       finalQuery = finalQuery.where(sql`${tokens.image} != ''`);
+
+      // Apply bonding status filter to count query
+      finalQuery = applyBondingFilter(finalQuery);
 
       const totalCountResult = await finalQuery;
       return Number(totalCountResult[0]?.count || 0);
@@ -404,15 +266,28 @@ tokenRouter.get("/tokens", async (c) => {
 
     let featuredTokens: any = [];
     if (sortBy === "featured" && page === 1) {
+      // Build the where conditions dynamically
+      const conditions = [eq(tokens.featured, 1), eq(tokens.hidden, 0)];
+
+      if (shouldHideImported) {
+        logger.log(
+          `[Tokens Route] Adding hideImported filter to featured tokens query.`,
+        );
+        conditions.push(sql`(${tokens.imported} = 0)`);
+        logger.log(`[Tokens Route] Conditions for featured query:`, conditions);
+      }
+
+      // Build and execute the query
       featuredTokens = await db
         .select()
         .from(tokens)
-        .where(and(eq(tokens.featured, 1), eq(tokens.hidden, 0)))
+        .where(and(...conditions)) // Apply all conditions using 'and'
         .orderBy(desc(tokens.marketCapUSD));
     }
 
     const featuredLength = featuredTokens?.length || 0;
-    const returnTokens: typeof tokensResult = [];
+    const tokensResultData = tokensResult || [];
+    const returnTokens: typeof tokensResultData = [];
 
     // Add featured tokens first if they exist
     if (featuredTokens && featuredTokens.length > 0) {
@@ -438,8 +313,23 @@ tokenRouter.get("/tokens", async (c) => {
       }
     }
 
+    // TEMPORARY DEBUG FILTER:
+    let finalReturnTokens = returnTokens;
+    if (shouldHideImported) {
+      const initialLength = finalReturnTokens.length;
+      finalReturnTokens = finalReturnTokens.filter(
+        (token) => token.imported === 0,
+      );
+      const finalLength = finalReturnTokens.length;
+      if (initialLength !== finalLength) {
+        logger.warn(
+          `[Tokens Route DEBUG] Server-side filter removed ${initialLength - finalLength} tokens with imported != 0.`,
+        );
+      }
+    }
+
     return c.json({
-      tokens: returnTokens,
+      tokens: finalReturnTokens,
       page,
       totalPages,
       total,
@@ -498,6 +388,150 @@ tokenRouter.post("/search-token", async (c) => {
     }
   } catch (error) {
     logger.error(`[search-token] Error checking primary network: ${error}`);
+  }
+});
+
+tokenRouter.post("/create-token", async (c) => {
+  try {
+    // Require authentication
+    const user = c.get("user");
+    if (!user) {
+      return c.json({ error: "Authentication required" }, 401);
+    }
+
+    const body = await c.req.json();
+    console.log("****** body ******\n", body);
+    const {
+      tokenMint,
+      mint,
+      name,
+      symbol,
+      txId,
+      description,
+      twitter,
+      telegram,
+      farcaster,
+      website,
+      discord,
+      imageUrl,
+      metadataUrl,
+      imported,
+      creator,
+    } = body;
+
+    const mintAddress = tokenMint || mint;
+    if (!mintAddress) {
+      return c.json({ error: "Token mint address is required" }, 400);
+    }
+
+    logger.log(`Creating token record for: ${mintAddress}`);
+
+    const db = getDB(c.env);
+
+    // Check if token already exists
+    const existingToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mintAddress))
+      .limit(1);
+
+    if (existingToken && existingToken.length > 0) {
+      return c.json(
+        {
+          error: "Token already exists",
+          token: existingToken[0],
+        },
+        409,
+      );
+    }
+
+    try {
+      // Create token data with all required fields from the token schema
+      const now = new Date().toISOString();
+      const tokenId = crypto.randomUUID();
+      console.log("****** imported ******\n", imported);
+
+      // Convert imported to number (1 for true, 0 for false)
+      const importedValue = imported === true ? 1 : 0;
+
+      // Insert with all required fields from the schema
+      await db.insert(tokens).values({
+        id: tokenId,
+        mint: mintAddress,
+        name: name || `Token ${mintAddress.slice(0, 8)}`,
+        ticker: symbol || "TOKEN",
+        url: metadataUrl || "",
+        image: imageUrl || "",
+        description: description || "",
+        twitter: twitter || "",
+        telegram: telegram || "",
+        farcaster: farcaster || "",
+        website: website || "",
+        discord: discord || "",
+        creator: creator ? creator : user.publicKey || "unknown",
+        status: imported ? "locked" : "active",
+        tokenPriceUSD: 0.00000001,
+        createdAt: now,
+        lastUpdated: now,
+        txId: txId || "create-" + tokenId,
+        imported: importedValue,
+      });
+
+      // For response, include just what we need
+      const tokenData = {
+        id: tokenId,
+        mint: mintAddress,
+        name: name || `Token ${mintAddress.slice(0, 8)}`,
+        ticker: symbol || "TOKEN",
+        description: description || "",
+        twitter: twitter || "",
+        telegram: telegram || "",
+        farcaster: farcaster || "",
+        website: website || "",
+        discord: discord || "",
+        creator: user.publicKey || "unknown",
+        status: imported ? "locked" : "active",
+        url: metadataUrl || "",
+        image: imageUrl || "",
+        createdAt: now,
+        imported: importedValue,
+      };
+
+      // Trigger immediate updates for price and holders in the background
+      // for both imported and newly created tokens
+      logger.log(
+        `Triggering immediate price and holder update for token: ${mintAddress}`,
+      );
+      c.executionCtx.waitUntil(updateTokens(c.env));
+
+      if (imported) {
+        const importedToken = new ExternalToken(c.env, mintAddress);
+        const { marketData } = await importedToken.registerWebhook();
+        // Fetch historical data in the background
+        c.executionCtx.waitUntil(importedToken.fetchHistoricalSwapData());
+        // Merge any immediately available market data
+        Object.assign(tokenData, marketData.newTokenData);
+      }
+
+      // For non-imported tokens, generate additional images in the background
+      logger.log(
+        `Triggering background image generation for new token: ${mintAddress}`,
+      );
+      c.executionCtx.waitUntil(
+        generateAdditionalTokenImages(c.env, mintAddress, description || ""),
+      );
+
+      return c.json({ success: true, token: tokenData });
+    } catch (error) {
+      logger.error("Error creating token:", error);
+      return c.json(
+        { error: "Failed to create token record", details: error },
+        500,
+      );
+    }
+  } catch (error) {
+    logger.error("Error in create-token endpoint:", error);
+    return c.json({ error: "Internal server error", details: error }, 500);
   }
 });
 
@@ -806,149 +840,6 @@ tokenRouter.get("/token/:mint", async (c) => {
     );
   }
 });
-tokenRouter.post("/create-token", async (c) => {
-  try {
-    // Require authentication
-    const user = c.get("user");
-    if (!user) {
-      return c.json({ error: "Authentication required" }, 401);
-    }
-
-    const body = await c.req.json();
-    console.log("****** body ******\n", body);
-    const {
-      tokenMint,
-      mint,
-      name,
-      symbol,
-      txId,
-      description,
-      twitter,
-      telegram,
-      farcaster,
-      website,
-      discord,
-      imageUrl,
-      metadataUrl,
-      imported,
-      creator,
-    } = body;
-
-    const mintAddress = tokenMint || mint;
-    if (!mintAddress) {
-      return c.json({ error: "Token mint address is required" }, 400);
-    }
-
-    logger.log(`Creating token record for: ${mintAddress}`);
-
-    const db = getDB(c.env);
-
-    // Check if token already exists
-    const existingToken = await db
-      .select()
-      .from(tokens)
-      .where(eq(tokens.mint, mintAddress))
-      .limit(1);
-
-    if (existingToken && existingToken.length > 0) {
-      return c.json(
-        {
-          error: "Token already exists",
-          token: existingToken[0],
-        },
-        409,
-      );
-    }
-
-    try {
-      // Create token data with all required fields from the token schema
-      const now = new Date().toISOString();
-      const tokenId = crypto.randomUUID();
-      console.log("****** imported ******\n", imported);
-
-      // Convert imported to number (1 for true, 0 for false)
-      const importedValue = imported === true ? 1 : 0;
-
-      // Insert with all required fields from the schema
-      await db.insert(tokens).values({
-        id: tokenId,
-        mint: mintAddress,
-        name: name || `Token ${mintAddress.slice(0, 8)}`,
-        ticker: symbol || "TOKEN",
-        url: metadataUrl || "",
-        image: imageUrl || "",
-        description: description || "",
-        twitter: twitter || "",
-        telegram: telegram || "",
-        farcaster: farcaster || "",
-        website: website || "",
-        discord: discord || "",
-        creator: creator ? creator : user.publicKey || "unknown",
-        status: imported ? "locked" : "active",
-        tokenPriceUSD: 0.00000001,
-        createdAt: now,
-        lastUpdated: now,
-        txId: txId || "create-" + tokenId,
-        imported: importedValue,
-      });
-
-      // For response, include just what we need
-      const tokenData = {
-        id: tokenId,
-        mint: mintAddress,
-        name: name || `Token ${mintAddress.slice(0, 8)}`,
-        ticker: symbol || "TOKEN",
-        description: description || "",
-        twitter: twitter || "",
-        telegram: telegram || "",
-        farcaster: farcaster || "",
-        website: website || "",
-        discord: discord || "",
-        creator: user.publicKey || "unknown",
-        status: imported ? "locked" : "active",
-        url: metadataUrl || "",
-        image: imageUrl || "",
-        createdAt: now,
-        imported: importedValue,
-      };
-
-      // Trigger immediate updates for price and holders in the background
-      // for both imported and newly created tokens
-      logger.log(
-        `Triggering immediate price and holder update for token: ${mintAddress}`,
-      );
-      c.executionCtx.waitUntil(updateTokens(c.env));
-
-      if (imported) {
-        const importedToken = new ExternalToken(c.env, mintAddress);
-        const { marketData } = await importedToken.registerWebhook();
-        // Fetch historical data in the background
-        c.executionCtx.waitUntil(importedToken.fetchHistoricalSwapData());
-        // Merge any immediately available market data
-        Object.assign(tokenData, marketData.newTokenData);
-      }
-
-      // For non-imported tokens, generate additional images in the background
-      logger.log(
-        `Triggering background image generation for new token: ${mintAddress}`,
-      );
-      c.executionCtx.waitUntil(
-        generateAdditionalTokenImages(c.env, mintAddress, description || ""),
-      );
-
-      return c.json({ success: true, token: tokenData });
-    } catch (error) {
-      logger.error("Error creating token:", error);
-      return c.json(
-        { error: "Failed to create token record", details: error },
-        500,
-      );
-    }
-  } catch (error) {
-    logger.error("Error in create-token endpoint:", error);
-    return c.json({ error: "Internal server error", details: error }, 500);
-  }
-});
 
 tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
   try {
@@ -1216,363 +1107,6 @@ tokenRouter.post("/token/:mint/update", async (c) => {
   }
 });
 
-tokenRouter.get("/token/:mint/agents", async (c) => {
-  try {
-    const mint = c.req.param("mint");
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
-
-    const db = getDB(c.env);
-    const agents = await db
-      .select()
-      .from(tokenAgents) // Ensure tokenAgents is imported and defined in schema
-      .where(eq(tokenAgents.tokenMint, mint))
-      .orderBy(tokenAgents.createdAt);
-
-    // ** ADD Log: Check the agents data before sending **
-    logger.log(
-      `[GET /agents] Found agents for mint ${mint}:`,
-      JSON.stringify(agents),
-    );
-
-    // Return in the format expected by the frontend { agents: [...] }
-    return c.json({ agents: agents || [] });
-  } catch (error) {
-    logger.error("Error fetching token agents:", error);
-    return c.json({ agents: [], error: "Failed to fetch agents" }, 500);
-  }
-});
-
-tokenRouter.delete("/token/:mint/agents/:agentId", async (c) => {
-  try {
-    // Require authentication
-    const user = c.get("user");
-    if (!user || !user.publicKey) {
-      logger.warn("Agent deletion attempt failed: Authentication required");
-      return c.json({ error: "Authentication required" }, 401);
-    }
-
-    const mint = c.req.param("mint");
-    const agentId = c.req.param("agentId"); // Assuming agentId is the unique ID (UUID)
-
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
-    // Basic UUID check (simplified)
-    if (!agentId || agentId.length < 30) {
-      return c.json({ error: "Missing or invalid agent ID" }, 400);
-    }
-
-    const db = getDB(c.env);
-
-    // Find the agent to check ownership
-    const agentToDelete = await db
-      .select()
-      .from(tokenAgents)
-      .where(and(eq(tokenAgents.id, agentId), eq(tokenAgents.tokenMint, mint)))
-      .limit(1);
-
-    if (!agentToDelete || agentToDelete.length === 0) {
-      return c.json(
-        { error: "Agent not found or does not belong to this token" },
-        404,
-      );
-    }
-
-    // Check if the authenticated user is the owner of this agent link
-    if (agentToDelete[0].ownerAddress !== user.publicKey) {
-      logger.warn(
-        `Agent deletion attempt failed: User ${user.publicKey} tried to delete agent ${agentId} owned by ${agentToDelete[0].ownerAddress}`,
-      );
-      return c.json(
-        { error: "You can only remove agents you have connected." },
-        403, // Forbidden
-      );
-    }
-
-    // Delete the agent
-    const result = await db
-      .delete(tokenAgents)
-      .where(eq(tokenAgents.id, agentId))
-      .returning({ id: tokenAgents.id }); // Return ID to confirm deletion
-
-    if (!result || result.length === 0) {
-      // This might happen if the agent was deleted between the select and delete calls
-      logger.warn(
-        `Agent ${agentId} not found during deletion, possibly already deleted.`,
-      );
-      return c.json({ error: "Agent not found during deletion attempt" }, 404);
-    }
-
-    logger.log(
-      `Successfully deleted agent: ID ${agentId}, Token ${mint}, User ${user.publicKey}`,
-    );
-
-    // TODO: Emit WebSocket event for agent removal?
-
-    return c.json({ success: true, message: "Agent removed successfully" });
-  } catch (error) {
-    logger.error("Error deleting token agent:", error);
-    return c.json({ error: "Failed to remove agent" }, 500);
-  }
-});
-
-tokenRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
-  try {
-    // Require authentication
-    const user = c.get("user");
-    if (!user || !user.publicKey) {
-      logger.warn("Agent connection attempt failed: Authentication required");
-      return c.json({ error: "Authentication required" }, 401);
-    }
-
-    const mint = c.req.param("mint");
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
-
-    const body = await c.req.json();
-    const { accessToken, userId } = body;
-
-    if (!accessToken || !userId) {
-      return c.json({ error: "Missing Twitter credentials" }, 400);
-    }
-
-    // Step 1: Attempt to fetch Twitter user info
-    let twitterUserId = userId;
-    let twitterUserName = `user_${userId.substring(0, 5)}`;
-    let twitterImageUrl = "/default-avatar.png";
-
-    try {
-      // Try to fetch user profile
-      logger.log(`Fetching Twitter profile for user ID: ${userId}`);
-      const profileResponse = await fetch(
-        "https://api.twitter.com/2/users/me?user.fields=profile_image_url",
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        },
-      );
-
-      if (profileResponse.ok) {
-        const profileData = await profileResponse.json();
-        logger.log("Twitter profile data:", profileData);
-
-        if (profileData.data && profileData.data.id) {
-          twitterUserId = profileData.data.id;
-          // If username is available, use it
-          if (profileData.data.username) {
-            twitterUserName = `@${profileData.data.username}`;
-          }
-
-          // Handle profile image if available
-          if (profileData.data.profile_image_url) {
-            // Store original Twitter URL temporarily
-            const originalImageUrl = profileData.data.profile_image_url;
-
-            // Replace '_normal' with '_400x400' to get a larger image
-            const largeImageUrl = originalImageUrl.replace(
-              "_normal",
-              "_400x400",
-            );
-
-            try {
-              // Fetch the image
-              const imageResponse = await fetch(largeImageUrl);
-              if (imageResponse.ok) {
-                // Generate a unique filename
-                const imageId = crypto.randomUUID();
-                const imageKey = `twitter-images/${imageId}.jpg`;
-
-                // Get the image as arrayBuffer
-                const imageBuffer = await imageResponse.arrayBuffer();
-
-                // Store in R2 if available
-                if (c.env.R2) {
-                  await c.env.R2.put(imageKey, imageBuffer, {
-                    httpMetadata: {
-                      contentType: "image/jpeg",
-                      cacheControl: "public, max-age=31536000", // Cache for 1 year
-                    },
-                  });
-
-                  // Set the URL to our cached version
-                  twitterImageUrl = `${c.env.API_URL}/api/twitter-image/${imageId}`;
-                  logger.log(
-                    `Cached Twitter profile image at: ${twitterImageUrl}`,
-                  );
-                } else {
-                  // If R2 is not available, use the original URL
-                  twitterImageUrl = largeImageUrl;
-                  logger.log("R2 not available, using original Twitter URL");
-                }
-              } else {
-                logger.warn(
-                  `Failed to fetch Twitter profile image: ${imageResponse.status}`,
-                );
-                // Fall back to the original URL
-                twitterImageUrl = originalImageUrl;
-              }
-            } catch (imageError) {
-              logger.error("Error caching Twitter profile image:", imageError);
-              // Fall back to the original URL
-              twitterImageUrl = originalImageUrl;
-            }
-          }
-        }
-      } else {
-        logger.warn(
-          `Twitter profile fetch failed with status: ${profileResponse.status}`,
-        );
-        // Continue with default values - we don't want to fail the agent creation
-        // just because we couldn't get user details
-      }
-    } catch (profileError) {
-      logger.error("Error fetching Twitter profile:", profileError);
-      // Continue with default values
-    }
-
-    // Step 2: Check if this Twitter user is already connected to this token
-    const db = getDB(c.env);
-    const existingAgent = await db
-      .select()
-      .from(tokenAgents)
-      .where(
-        and(
-          eq(tokenAgents.tokenMint, mint),
-          eq(tokenAgents.twitterUserId, twitterUserId),
-        ),
-      )
-      .limit(1);
-
-    if (existingAgent && existingAgent.length > 0) {
-      logger.warn(
-        `Agent creation attempt failed: Twitter user ${twitterUserId} already linked to token ${mint}`,
-      );
-      return c.json(
-        {
-          error: "This Twitter account is already connected to this token.",
-          agent: existingAgent[0],
-        },
-        409, // Conflict
-      );
-    }
-
-    // Step 3: Check if the owner is the token creator to mark as official
-    const tokenData = await db
-      .select({ creator: tokens.creator })
-      .from(tokens)
-      .where(eq(tokens.mint, mint))
-      .limit(1);
-
-    const isOfficial =
-      tokenData &&
-      tokenData.length > 0 &&
-      tokenData[0].creator === user.publicKey;
-
-    // Step 4: Create new agent
-    const newAgentData = {
-      id: crypto.randomUUID(),
-      tokenMint: mint,
-      ownerAddress: user.publicKey,
-      twitterUserId: twitterUserId,
-      twitterUserName: twitterUserName,
-      twitterImageUrl: twitterImageUrl,
-      official: isOfficial ? 1 : 0,
-      createdAt: new Date().toISOString(),
-    };
-
-    const result = await db
-      .insert(tokenAgents)
-      .values(newAgentData)
-      .returning();
-
-    if (!result || result.length === 0) {
-      throw new Error("Failed to insert new agent into database.");
-    }
-
-    const newAgent = result[0];
-    logger.log(
-      `Successfully created agent link: Token ${mint}, Twitter ${twitterUserName}, Owner ${user.publicKey}`,
-    );
-
-    // TODO: Emit WebSocket event for new agent?
-
-    return c.json(newAgent, 201);
-  } catch (error) {
-    logger.error("Error connecting Twitter agent:", error);
-    return c.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to connect Twitter agent",
-      },
-      500,
-    );
-  }
-});
-
-tokenRouter.get("/twitter-image/:imageId", async (c) => {
-  try {
-    // Get the imageId from params
-    const imageId = c.req.param("imageId");
-    if (!imageId) {
-      return c.json({ error: "Image ID parameter is required" }, 400);
-    }
-
-    // Ensure R2 is available
-    if (!c.env.R2) {
-      return c.json({ error: "R2 storage is not available" }, 500);
-    }
-
-    // Construct the full storage key
-    const imageKey = `twitter-images/${imageId}.jpg`;
-
-    // Fetch the image from R2
-    const object = await c.env.R2.get(imageKey);
-
-    if (!object) {
-      return c.json({ error: "Twitter profile image not found" }, 404);
-    }
-
-    // Get the content type and data
-    const contentType = object.httpMetadata?.contentType || "image/jpeg";
-    const data = await object.arrayBuffer();
-
-    // Set CORS headers for browser access
-    const corsHeaders = {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "*",
-      "Access-Control-Max-Age": "86400",
-    };
-
-    // Return the image with appropriate headers
-    return new Response(data, {
-      headers: {
-        "Content-Type": contentType,
-        "Content-Length": object.size.toString(),
-        "Cache-Control": "public, max-age=31536000", // Cache for 1 year
-        ...corsHeaders,
-      },
-    });
-  } catch (error) {
-    logger.error("Error serving Twitter profile image:", error);
-    return c.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to serve Twitter profile image",
-      },
-      500,
-    );
-  }
-});
-
 tokenRouter.get("/token/:mint/check-balance", async (c) => {
   try {
     const mint = c.req.param("mint");
@@ -1665,74 +1199,6 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
     logger.error(`Error checking token balance: ${error}`);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
-  }
-});
-
-// Check for generated images on a token by mint address in R2
-tokenRouter.get("/check-generated-images/:mint", async (c) => {
-  try {
-    const mint = c.req.param("mint");
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
-
-    if (!c.env.R2) {
-      logger.error("R2 storage is not available");
-      return c.json({ images: [] }, 200); // Return empty list if R2 not available
-    }
-
-    // Check for generated images in R2
-    const generationImagesPrefix = `generations/${mint}/`;
-    logger.log(
-      `Checking for generated images with prefix: ${generationImagesPrefix}`,
-    );
-
-    // Try to list objects with the given prefix
-    try {
-      const objects = await c.env.R2.list({
-        prefix: generationImagesPrefix,
-        limit: 10, // Reasonable limit
-      });
-
-      // Extract the filenames from the full paths
-      const imageKeys = objects.objects.map((obj) => {
-        const parts = obj.key.split("/");
-        return parts[parts.length - 1]; // Get just the filename
-      });
-
-      logger.log(
-        `Found ${imageKeys.length} generated images for token ${mint}`,
-      );
-
-      // For security, we don't return the full image keys but just the existence
-      // and let the frontend construct URLs based on naming conventions
-      return c.json({
-        success: true,
-        hasImages: imageKeys.length > 0,
-        count: imageKeys.length,
-        pattern:
-          imageKeys.length > 0
-            ? `generations/${mint}/gen-[1-${imageKeys.length}].jpg`
-            : null,
-      });
-    } catch (error) {
-      logger.error(`Error listing generated images: ${error}`);
-      return c.json({
-        success: false,
-        hasImages: false,
-        error: "Failed to list generated images",
-      });
-    }
-  } catch (error) {
-    logger.error(`Error checking generated images: ${error}`);
-    return c.json(
-      {
-        success: false,
-        hasImages: false,
-        error: "Server error",
-      },
       500,
     );
   }

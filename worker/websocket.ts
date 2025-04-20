@@ -120,7 +120,16 @@ export class WebSocketDO {
         const message = JSON.parse(event.data as string);
         await this.handleClientMessage(clientId, message);
       } catch (err) {
-        logger.error("Error handling WebSocket message:", err);
+        logger.error(`Error handling WebSocket message:`, err);
+        let eventName = "unknown";
+        try {
+          const parsedData = JSON.parse(event.data as string);
+          eventName = parsedData.event || "unknown";
+        } catch (e) {
+          logger.warn(e);
+        }
+        logger.error(`Event name: ${eventName}`);
+        logger.error(`Message data:`, event.data);
       }
     });
 
