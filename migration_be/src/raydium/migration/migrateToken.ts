@@ -352,7 +352,7 @@ export class TokenMigrator {
   async performCreatePool(
     token: any,
   ): Promise<{ txId: string; extraData: { marketId: string; poolInfo: any } }> {
-    const raydium = await initSdk({ env: this.env, loadToken: false });
+    const raydium = await initSdk({ env: this.env, loadToken: false, connection: this.connection });
     const mintA = await raydium.token.getTokenInfo(token.mint);
     const mintB = await raydium.token.getTokenInfo(NATIVE_MINT);
 
@@ -555,7 +555,7 @@ export class TokenMigrator {
   }> {
 
     const raydium = await this.initSdkWithRetry(
-      { env: this.env, loadToken: false },
+      { env: this.env, loadToken: false, connection: this.connection },
       { maxAttempts: 5, timeoutMs: 60_000, backoffMs: 10_000 }
     );
     if (!raydium) {

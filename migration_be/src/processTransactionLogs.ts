@@ -300,6 +300,7 @@ export async function processTransactionLogs(
          const tokenAccount = await connection.getParsedAccountInfo(
             new PublicKey(mintAddress),
          );
+
          const tokenData = tokenAccount.value?.data as any;
          const tokenInfo = tokenData.parsed.info;
          const creatorAddress = tokenInfo.owner;
