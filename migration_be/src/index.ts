@@ -2,8 +2,8 @@ import { Connection, Logs, PublicKey } from "@solana/web3.js";
 import dotenv from "dotenv";
 
 import { getDB } from "./db";
-import { processTransactionLogs } from "./processTransactionLogs";
-import { processMissedEvents } from "./getAllTokens";
+import { processTransactionLogs, } from "./processTransactionLogs";
+import { processMissedEvents, } from "./getAllTokens";
 
 dotenv.config();
 
@@ -35,27 +35,29 @@ try {
    // we continue anyway—you may choose to exit here if it's fatal
 }
 
-// try {
-//    async function resume(env: any) {
-
-//       checkMigratingTokens(env, 1);
-//    }
-//    resume(process.env as any);
-// } catch (err) {
-//    console.error("❌ Error during migration:", err);
-// }
-
-
 
 
 const connection = new Connection(RPC_URL, "confirmed");
 const programId = new PublicKey(PROGRAM_ID);
 
-// try {
-//    processMissedEvents(connection, process.env as any)
-// } catch (err) {
-//    console.error("❌ Error during migration:", err);
-// }
+try {
+   async function resume(env: any) {
+      try {
+         await processMissedEvents(connection, process.env as any)
+      }
+      catch (err) {
+         console.error("❌ Error during migration:", err);
+         // we continue anyway—you may choose to exit here if it's fatal
+      }
+   }
+   resume(process.env as any);
+} catch (err) {
+   console.error("❌ Error during migration:", err);
+   // we continue anyway—you may choose to exit here if it's fatal
+}
+
+
+
 
 console.log("🚀 Listening on", SOLANA_NETWORK, "via", RPC_URL);
 
@@ -95,7 +97,7 @@ setInterval(async () => {
       try {
          await connection.removeOnLogsListener(subId);
       } catch (_) {
-         // Ignore errors on remove, we will recreate anyway
+         // Ignore errors if the listener was already removed
       }
       startLogSubscription();
    }
