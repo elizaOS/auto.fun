@@ -2,14 +2,13 @@
 
 import Button from "@/components/button";
 import Loader from "@/components/loader";
-import { fetchWithAuth } from "@/hooks/use-authentication";
-import useAuthentication from "@/hooks/use-authentication";
+import useAuthentication, { fetchWithAuth } from "@/hooks/use-authentication";
 import { useTokenBalance } from "@/hooks/use-token-balance";
+import { env } from "@/utils/env";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { RefreshCw, Send } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
-import { toast } from "react-toastify";
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
@@ -48,10 +47,6 @@ const formatTierLabel = (tier: ChatTier): string => {
       return "";
   }
 };
-
-// Additional imports for balance checking
-import { env } from "@/utils/env";
-import { Connection, PublicKey } from "@solana/web3.js";
 
 // --- Chat Types ---
 // Chat Message Type (matches backend structure)
@@ -106,7 +101,9 @@ export default function ChatSection() {
   const location = useLocation();
 
   // Extract token mint from URL if not found in params
-  const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(null);
+  const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(
+    null,
+  );
 
   // Use detected token mint instead of directly from params
   const tokenMint = detectedTokenMint;
@@ -152,7 +149,7 @@ export default function ChatSection() {
             headers: {
               "Content-Type": "application/json",
             },
-          }
+          },
         );
 
         if (response.status === 401 || response.status === 403) {
@@ -195,7 +192,14 @@ export default function ChatSection() {
         setIsRefreshingMessages(false);
       }
     },
-    [tokenMint, publicKey, eligibleChatTiers, isAuthenticated, isBalanceLoading, isAuthenticating],
+    [
+      tokenMint,
+      publicKey,
+      eligibleChatTiers,
+      isAuthenticated,
+      isBalanceLoading,
+      isAuthenticating,
+    ],
   );
 
   // Effect to detect token mint from various sources
@@ -250,16 +254,19 @@ export default function ChatSection() {
       if (data.success && data.tiers) {
         // Use blockchain balance directly
         const effectiveBalance = tokenBalance || 0;
-        
+
         // Calculate eligible tiers based on blockchain balance
-        const eligibleTiers = CHAT_TIERS.filter(tier => 
-          effectiveBalance >= getTierThreshold(tier)
+        const eligibleTiers = CHAT_TIERS.filter(
+          (tier) => effectiveBalance >= getTierThreshold(tier),
         );
 
         setEligibleChatTiers(eligibleTiers);
-        
+
         // If current selected tier is no longer eligible, switch to the highest eligible one
-        if (!eligibleTiers.includes(selectedChatTier) && eligibleTiers.length > 0) {
+        if (
+          !eligibleTiers.includes(selectedChatTier) &&
+          eligibleTiers.length > 0
+        ) {
           setSelectedChatTier(eligibleTiers[eligibleTiers.length - 1]);
         }
       } else {
@@ -287,7 +294,12 @@ export default function ChatSection() {
     if (selectedChatTier && !isBalanceLoading) {
       fetchChatMessages(selectedChatTier);
     }
-  }, [selectedChatTier, eligibleChatTiers, fetchChatMessages, isBalanceLoading]);
+  }, [
+    selectedChatTier,
+    eligibleChatTiers,
+    fetchChatMessages,
+    isBalanceLoading,
+  ]);
 
   // --- Send Chat Message --- *NEW*
   const handleSendMessage = async () => {
@@ -509,57 +521,61 @@ export default function ChatSection() {
                 </div>
               )}
 
-              {!isBalanceLoading && !isChatLoading && chatMessages.length === 0 && !chatError && (
-                <div className="flex flex-col items-center justify-center h-full text-center py-16">
-                  <p className="text-gray-500 mb-2">
-                    No messages yet in the {formatTierLabel(selectedChatTier)}{" "}
-                    chat.
-                  </p>
-                  <p className="text-gray-400 text-sm mb-4">
-                    Be the first to start the conversation!
-                  </p>
-                  {!canChatInSelectedTier && publicKey && (
-                    <p className="text-yellow-500 text-sm">
-                      You need{" "}
-                      {getTierThreshold(selectedChatTier).toLocaleString()}+
-                      tokens to chat here.
+              {!isBalanceLoading &&
+                !isChatLoading &&
+                chatMessages.length === 0 &&
+                !chatError && (
+                  <div className="flex flex-col items-center justify-center h-full text-center py-16">
+                    <p className="text-gray-500 mb-2">
+                      No messages yet in the {formatTierLabel(selectedChatTier)}{" "}
+                      chat.
                     </p>
-                  )}
-                  {!publicKey && (
-                    <p className="text-yellow-500 text-sm">
-                      Connect your wallet to chat.
+                    <p className="text-gray-400 text-sm mb-4">
+                      Be the first to start the conversation!
                     </p>
-                  )}
-                </div>
-              )}
-
-              {!isBalanceLoading && chatMessages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex ${msg.author === publicKey?.toBase58() ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`p-3 max-w-[95%] ${
-                      msg.isOptimistic
-                        ? "bg-gray-700/50 animate-pulse"
-                        : msg.author === publicKey?.toBase58()
-                          ? "bg-[#03FF24]/10 border border-[#03FF24]/30"
-                          : "bg-gray-700"
-                    }`}
-                  >
-                    <div className="flex justify-between items-start mb-1">
-                      {renderMessageAvatar(msg.author)}{" "}
-                      <span className="ml-2 text-xs text-gray-500">
-                        {formatTimestamp(msg.timestamp)}
-                      </span>
-                    </div>
-
-                    <p className="text-sm break-words whitespace-pre-wrap my-1">
-                      {msg.message}
-                    </p>
+                    {!canChatInSelectedTier && publicKey && (
+                      <p className="text-yellow-500 text-sm">
+                        You need{" "}
+                        {getTierThreshold(selectedChatTier).toLocaleString()}+
+                        tokens to chat here.
+                      </p>
+                    )}
+                    {!publicKey && (
+                      <p className="text-yellow-500 text-sm">
+                        Connect your wallet to chat.
+                      </p>
+                    )}
                   </div>
-                </div>
-              ))}
+                )}
+
+              {!isBalanceLoading &&
+                chatMessages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`flex ${msg.author === publicKey?.toBase58() ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`p-3 max-w-[95%] ${
+                        msg.isOptimistic
+                          ? "bg-gray-700/50 animate-pulse"
+                          : msg.author === publicKey?.toBase58()
+                            ? "bg-[#03FF24]/10 border border-[#03FF24]/30"
+                            : "bg-gray-700"
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        {renderMessageAvatar(msg.author)}{" "}
+                        <span className="ml-2 text-xs text-gray-500">
+                          {formatTimestamp(msg.timestamp)}
+                        </span>
+                      </div>
+
+                      <p className="text-sm break-words whitespace-pre-wrap my-1">
+                        {msg.message}
+                      </p>
+                    </div>
+                  </div>
+                ))}
             </div>
 
             {/* Message Input Area */}

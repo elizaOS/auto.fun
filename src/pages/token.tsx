@@ -166,6 +166,7 @@ export default function Page() {
   }, [address]);
 
   useEffect(() => {
+    const socket = getSocket();
     socket.emit("subscribe", address);
 
     return () => {

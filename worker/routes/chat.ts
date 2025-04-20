@@ -36,9 +36,7 @@ async function checkUserTokenBalance(
   tokenMint: string,
   env: Env,
 ): Promise<number> {
-  console.log(
-    `Checking balance for user ${userPublicKey}, token ${tokenMint}`,
-  );
+  console.log(`Checking balance for user ${userPublicKey}, token ${tokenMint}`);
 
   // First check database balance
   let dbBalance = 0;
@@ -56,7 +54,8 @@ async function checkUserTokenBalance(
       )
       .limit(1);
 
-    dbBalance = result.length > 0 && result[0].amount ? Number(result[0].amount) : 0;
+    dbBalance =
+      result.length > 0 && result[0].amount ? Number(result[0].amount) : 0;
   } catch (error) {
     console.error(
       `Error checking database balance for ${userPublicKey} / ${tokenMint}:`,

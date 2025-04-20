@@ -68,7 +68,10 @@ interface AuthStatus {
 
 export default function useAuthentication() {
   const { publicKey, connected, disconnect: adapterDisconnect } = useWallet();
-  const [authToken, setAuthToken] = useLocalStorage<string | null>("authToken", null);
+  const [authToken, setAuthToken] = useLocalStorage<string | null>(
+    "authToken",
+    null,
+  );
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [userPrivileges, setUserPrivileges] = useState<string[]>([]);
 
@@ -162,7 +165,7 @@ export default function useAuthentication() {
   const handleSuccessfulAuth = (token: string, userAddress: string) => {
     setAuthTokenWithStorage(token);
     setStoredWalletAddress(userAddress);
-    
+
     // Store expanded auth data
     const authStorage = {
       token,
