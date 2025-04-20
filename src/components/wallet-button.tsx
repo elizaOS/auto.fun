@@ -178,7 +178,7 @@ const WalletButton = () => {
       ? "Connecting..."
       : isAuthenticated
         ? shortenAddress(displayPublicKey?.toString() || "")
-        : "Connect Wallet";
+        : "Connect";
 
   // Get wallet icon - use the stored state which will be populated
   // from either wallet.adapter.icon or our own adapter instance
@@ -269,7 +269,7 @@ const WalletButton = () => {
         setVisible(true);
       }}
       disabled={connecting || isAuthenticating}
-      className="min-w-[150px]"
+      className="xl:min-w-[150px]"
     >
       {buttonText}
     </Button>

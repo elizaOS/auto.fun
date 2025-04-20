@@ -5,7 +5,7 @@ import { useViewMode } from "@/hooks/use-view-mode";
 export default function GridListSwitcher() {
   const [activeTab, setActiveTab] = useViewMode();
   return (
-    <div className="flex bg-autofun-background-card">
+    <div className="flex items-center gap-1">
       <Button
         variant={activeTab === "grid" ? "primary" : "outline"}
         onClick={() => setActiveTab("grid")}

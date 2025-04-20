@@ -3,6 +3,9 @@ main = "worker/index.ts"
 compatibility_date = "2024-08-21"
 compatibility_flags = [ "nodejs_compat_v2" ]
 
+[observability]
+enabled = true
+
 [limits]
 cpu_ms = 300_000 # CPU time limit for the worker (300s)
 

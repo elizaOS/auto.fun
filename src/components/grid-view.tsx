@@ -50,12 +50,11 @@ export default function GridView({ data }: { data: IToken[] }) {
                     </div>
                   </div>
                 </div>
-                <div className="absolute top-0 right-0 p-5 px-4 text-autofun-text-primary text-xs font-medium font-dm-mono drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
+                <div className="absolute top-0 right-0 p-2 px-3 text-autofun-text-primary text-xs font-medium font-dm-mono drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)] z-[2]">
                   {fromNow(token.createdAt, true)}
                 </div>
                 <div className="w-full h-full aspect-square relative">
-                  <div className="absolute inset-x-0 top-0 rotate-180 h-1/3 bg-gradient-to-t from-black/90 via-transparent to-transparent z-1" />
-                  <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/90 to-transparent z-1" />
+                  <div className="absolute top-0 rotate-180 size-full bg-[linear-gradient(to_bottom,rgba(0,0,0,0.8)_0%,transparent_20%,transparent_80%,rgba(0,0,0,0.5)_100%)] z-1" />
                   {isPartner ? (
                     <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-autofun-background-action-highlight/10 to-transparent z-1 p-4 font-bold">
                       <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-autofun-background-action-highlight/10 to-transparent z-1 p-4 font-bold">

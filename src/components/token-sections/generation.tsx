@@ -35,6 +35,7 @@ const getTabIconPath = (
 // Additional imports for balance checking
 import { env } from "@/utils/env";
 import { Connection, PublicKey } from "@solana/web3.js";
+import { Tooltip } from "react-tooltip";
 
 // Storage keys for Twitter auth
 const STORAGE_KEY = "twitter-oauth-token";
@@ -1710,7 +1711,7 @@ export default function CommunityTab() {
           {/* Main generation controls - consistent across all media types */}
           <div className="flex flex-col gap-4 w-full">
             {/* Controls row - consistent for all media types */}
-            <div className="flex items-end py-3">
+            <div className="flex items-center py-3">
               {/* Input field with dynamic placeholder based on tab */}
               <input
                 type="text"
@@ -1811,7 +1812,11 @@ export default function CommunityTab() {
               {/* Fast/Pro mode buttons - only show for Image and Video */}
               {communityTab !== "Audio" && (
                 <div className="flex space-x-1 h-10">
+                  <Tooltip anchorSelect="#faston">
+                    <span>Fast</span>
+                  </Tooltip>
                   <button
+                    id="faston"
                     onClick={() => setGenerationMode("fast")}
                     className="cursor-pointer h-10"
                   >
@@ -1825,7 +1830,11 @@ export default function CommunityTab() {
                       className="h-10 w-auto cursor-pointer"
                     />
                   </button>
+                  <Tooltip anchorSelect="#promode">
+                    <span>Pro</span>
+                  </Tooltip>
                   <button
+                    id="promode"
                     onClick={() => setGenerationMode("pro")}
                     className="cursor-pointer h-10"
                   >
@@ -1844,55 +1853,53 @@ export default function CommunityTab() {
             </div>
 
             {/* Video-specific options */}
-            {communityTab === "Video" && (
+            {communityTab === "Video" && videoMode === "image" ? (
               <div className="px-4">
                 {/* Image upload area for image-to-video */}
-                {videoMode === "image" && (
-                  <div className="border-2 border-dashed border-gray-600 p-4 rounded-md mb-4">
-                    {selectedImageForVideo ? (
-                      <div className="relative">
-                        <img
-                          src={selectedImageForVideo}
-                          alt="Selected image"
-                          className="max-w-full max-h-[300px] mx-auto"
+                <div className="border-2 border-dashed border-gray-600 p-4 rounded-md mb-4">
+                  {selectedImageForVideo ? (
+                    <div className="relative">
+                      <img
+                        src={selectedImageForVideo}
+                        alt="Selected image"
+                        className="max-w-full max-h-[300px] mx-auto"
+                      />
+                      <button
+                        onClick={() => setSelectedImageForVideo(null)}
+                        className="absolute top-2 right-2 bg-black/70 p-1 rounded-full cursor-pointer"
+                        title="Remove image"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <label className="cursor-pointer">
+                        <div className="mb-2">
+                          {imageUploadLoading
+                            ? "Uploading..."
+                            : "Drop an image here or click to upload"}
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                          disabled={imageUploadLoading}
                         />
-                        <button
-                          onClick={() => setSelectedImageForVideo(null)}
-                          className="absolute top-2 right-2 bg-black/70 p-1 rounded-full cursor-pointer"
-                          title="Remove image"
-                        >
-                          <X size={18} />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <label className="cursor-pointer">
-                          <div className="mb-2">
-                            {imageUploadLoading
-                              ? "Uploading..."
-                              : "Drop an image here or click to upload"}
-                          </div>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="hidden"
-                            disabled={imageUploadLoading}
-                          />
-                          <div className="text-blue-400 hover:text-blue-300 text-sm">
-                            {imageUploadLoading ? (
-                              <div className="animate-pulse">Processing...</div>
-                            ) : (
-                              "Browse files"
-                            )}
-                          </div>
-                        </label>
-                      </div>
-                    )}
-                  </div>
-                )}
+                        <div className="text-blue-400 hover:text-blue-300 text-sm">
+                          {imageUploadLoading ? (
+                            <div className="animate-pulse">Processing...</div>
+                          ) : (
+                            "Browse files"
+                          )}
+                        </div>
+                      </label>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
+            ) : null}
 
             {/* Token balance message */}
             {communityTab === "Image" &&
