@@ -4,9 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import CopyButton from "@/components/copy-button";
 import { fetcher, getToken } from "@/utils/api";
-import { useTokens } from "@/hooks/use-tokens";
+import { usePagination, UsePaginationOptions } from "@/hooks/use-pagination";
 import Pagination from "@/components/pagination";
 import Loader from "@/components/loader";
+import { IToken } from "@/types";
+import { formatNumber } from "@/utils";
 
 export default function AdminTokens() {
   const { address } = useParams();
@@ -21,13 +23,31 @@ export default function AdminTokens() {
 }
 
 function AdminTokensList() {
-  const [sortBy, setSortBy] = useState<
-    "all" | "marketCap" | "newest" | "oldest"
-  >("newest");
+  const [sortBy, setSortBy] = useState<keyof IToken | "all" | "oldest">(
+    "createdAt",
+  );
   const [hideImported, setHideImported] = useState(false);
   const queryClient = useQueryClient(); // Get query client instance
 
-  const tokensPagination = useTokens(sortBy, 50);
+  // Prepare options for usePagination
+  const paginationOptions: UsePaginationOptions<IToken> = {
+    endpoint: "/api/tokens",
+    limit: 50,
+    // Map frontend sort key to backend sort key
+    sortBy:
+      sortBy === "all"
+        ? "featured"
+        : sortBy === "oldest"
+          ? "createdAt"
+          : sortBy,
+    sortOrder: sortBy === "oldest" ? "asc" : "desc",
+    itemsPropertyName: "tokens",
+    useUrlState: true, // Keep URL state for admin page
+    ...(hideImported && { hideImported: 1 }),
+  };
+
+  // Use the standard usePagination hook
+  const tokensPagination = usePagination<IToken, IToken>(paginationOptions);
 
   // Mutation for toggling hidden status for a specific token
   const toggleHiddenMutation = useMutation({
@@ -36,16 +56,16 @@ function AdminTokensList() {
       const token = tokensPagination?.items?.find(
         (t) => t.mint === tokenAddress,
       );
-      const currentHiddenStatus = token ? (token as any).hidden : false;
+      const currentHiddenStatus = token ? !!(token as any).hidden : false;
       return await fetcher(`/api/admin/tokens/${tokenAddress}/hidden`, "POST", {
-        hidden: !currentHiddenStatus, // Toggle the status
+        hidden: !currentHiddenStatus, // Toggle the boolean status
       });
     },
     onSuccess: (_, tokenAddress) => {
       const token = tokensPagination?.items?.find(
         (t) => t.mint === tokenAddress,
       );
-      const currentHiddenStatus = token ? (token as any).hidden : false;
+      const currentHiddenStatus = token ? !!(token as any).hidden : false; // Ensure boolean
       toast.success(
         `Token ${currentHiddenStatus ? "unhidden" : "hidden"} successfully`,
       );
@@ -75,7 +95,7 @@ function AdminTokensList() {
           >
             <option value="all">Featured</option>
             <option value="marketCap">Market Cap</option>
-            <option value="newest">Newest</option>
+            <option value="createdAt">Newest</option>
             <option value="oldest">Oldest</option>
           </select>
 
@@ -106,7 +126,7 @@ function AdminTokensList() {
             </tr>
           </thead>
           <tbody>
-            {tokensPagination?.items?.map((token: any) => (
+            {tokensPagination?.items?.map((token: IToken) => (
               <tr
                 key={token.mint}
                 className="border-b border-autofun-background-primary"
@@ -131,9 +151,11 @@ function AdminTokensList() {
                 </td>
                 <td className="p-2">{token.ticker}</td>
                 <td className="p-2">
-                  {new Date(token.createdAt).toLocaleDateString()}
+                  {token.createdAt
+                    ? new Date(token.createdAt).toLocaleDateString()
+                    : "-"}
                 </td>
-                <td className="p-2">{token.currentPrice.toFixed(8)}</td>
+                <td className="p-2">{token.currentPrice?.toFixed(8) ?? "-"}</td>
                 <td className="p-2">{formatNumber(token.volume24h)}</td>
                 <td className="p-2">
                   <span
@@ -158,7 +180,7 @@ function AdminTokensList() {
                     {token.status}
                   </span>
                 </td>
-                <td className="p-2">
+                <td className="p-2 flex items-center space-x-2">
                   <Link
                     to={`/admin/tokens/${token.mint}`}
                     className="text-autofun-text-highlight hover:underline"
@@ -166,8 +188,8 @@ function AdminTokensList() {
                     View
                   </Link>
                   <button
-                    className={`ml-2 px-2 py-1 text-xs rounded ${
-                      (token as any).hidden
+                    className={`px-2 py-1 text-xs rounded ${
+                      (token as any).hidden // Ensure boolean check
                         ? "bg-purple-900 text-purple-300 hover:bg-purple-800"
                         : "bg-gray-900 text-gray-300 hover:bg-gray-800"
                     }`}
@@ -180,7 +202,7 @@ function AdminTokensList() {
                     {toggleHiddenMutation.isPending &&
                     toggleHiddenMutation.variables === token.mint
                       ? "Processing..."
-                      : (token as any).hidden
+                      : (token as any).hidden // Ensure boolean check
                         ? "Unhide"
                         : "Hide"}
                   </button>
@@ -213,15 +235,11 @@ function AdminTokensList() {
   );
 }
 
-import { IToken } from "@/types";
-import { formatNumber } from "@/utils";
-
-// Extended token interface with admin-specific fields
 interface AdminToken extends IToken {
-  id: string;
+  txId: string;
   featured: number;
   verified: number;
-  hidden: number;
+  hidden: boolean;
 }
 
 interface SocialLinks {
@@ -243,10 +261,9 @@ function AdminTokenDetails({ address }: { address: string }) {
         const tokenData = (await getToken({ address })) as IToken;
         return {
           ...tokenData,
-          id: tokenData.txId || tokenData.mint.substring(0, 8), // Use txId or first 8 chars of mint as ID
           featured: (tokenData as any).featured || false,
           verified: (tokenData as any).verified || false,
-          hidden: (tokenData as any).hidden || false,
+          hidden: !!(tokenData as any).hidden, // Ensure boolean conversion
         } as AdminToken;
       } catch (error) {
         console.error(`Error fetching token data:`, error);
@@ -429,7 +446,9 @@ function AdminTokenDetails({ address }: { address: string }) {
             )}
             <div>
               <span className="text-autofun-text-secondary">ID:</span>
-              <span className="ml-2">{token.id}</span>
+              <span className="ml-2">
+                {token.txId || token.mint.substring(0, 8)}
+              </span>
             </div>
             <div>
               <span className="text-autofun-text-secondary">Name:</span>
@@ -548,7 +567,7 @@ function AdminTokenDetails({ address }: { address: string }) {
             {token.tokenSupplyUiAmount.toLocaleString()}
           </p>
           <p className="text-xs text-autofun-text-secondary">
-            Decimals: {token.tokenDecimals}
+            Decimals: {token.tokenDecimals ?? "N/A"}
           </p>
         </div>
 
@@ -594,8 +613,8 @@ function AdminTokenDetails({ address }: { address: string }) {
             {token.curveProgress ? token.curveProgress.toFixed(1) : "-"}%
           </p>
           <p className="text-xs text-autofun-text-secondary">
-            Reserve: {token.reserveLamport} SOL (Virtual:{" "}
-            {token.virtualReserves} SOL)
+            Reserve: {token.reserveLamport ?? "?"} SOL (Virtual:{" "}
+            {token.virtualReserves ?? "?"} SOL)
           </p>
         </div>
       </div>
