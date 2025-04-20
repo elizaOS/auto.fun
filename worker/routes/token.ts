@@ -71,7 +71,9 @@ tokenRouter.get("/tokens", async (c) => {
     // Explicitly parse and check hideImported parameter
     const hideImportedParam = queryParams.hideImported as string;
     const shouldHideImported = hideImportedParam === "1";
-    logger.log(`[Tokens Route] Received hideImported param: ${hideImportedParam}, Parsed as: ${shouldHideImported}`);
+    logger.log(
+      `[Tokens Route] Received hideImported param: ${hideImportedParam}, Parsed as: ${shouldHideImported}`,
+    );
 
     // New bonding status filter logic
     const applyBondingFilter = (query: any) => {
@@ -112,7 +114,9 @@ tokenRouter.get("/tokens", async (c) => {
         // Apply filters
         const baseConditions = [
           // By default, don't show pending tokens unless a specific status is requested
-          status ? eq(tokens.status, status) : sql`${tokens.status} != 'pending'`,
+          status
+            ? eq(tokens.status, status)
+            : sql`${tokens.status} != 'pending'`,
           // Require image
           sql`${tokens.image} != ''`,
           // By default, don't show hidden tokens
@@ -124,9 +128,14 @@ tokenRouter.get("/tokens", async (c) => {
         }
 
         if (shouldHideImported) {
-          logger.log(`[Tokens Route] Applying hideImported filter to data query.`);
+          logger.log(
+            `[Tokens Route] Applying hideImported filter to data query.`,
+          );
           baseConditions.push(sql`(${tokens.imported} = 0)`);
-          logger.log(`[Tokens Route] Data query object after hideImported filter:`, !!tokensQuery);
+          logger.log(
+            `[Tokens Route] Data query object after hideImported filter:`,
+            !!tokensQuery,
+          );
         }
 
         // Apply base conditions together
@@ -214,11 +223,14 @@ tokenRouter.get("/tokens", async (c) => {
 
       // Apply hideImported filter to the count query as well
       if (shouldHideImported) {
-        logger.log(`[Tokens Route] Applying hideImported filter to count query.`);
-        finalQuery = finalQuery.where(
-          sql`(${tokens.imported} = 0)`
+        logger.log(
+          `[Tokens Route] Applying hideImported filter to count query.`,
         );
-        logger.log(`[Tokens Route] Count query object after hideImported filter:`, !!finalQuery);
+        finalQuery = finalQuery.where(sql`(${tokens.imported} = 0)`);
+        logger.log(
+          `[Tokens Route] Count query object after hideImported filter:`,
+          !!finalQuery,
+        );
       }
 
       // By default, don't count hidden tokens
@@ -255,13 +267,12 @@ tokenRouter.get("/tokens", async (c) => {
     let featuredTokens: any = [];
     if (sortBy === "featured" && page === 1) {
       // Build the where conditions dynamically
-      const conditions = [
-        eq(tokens.featured, 1),
-        eq(tokens.hidden, 0)
-      ];
+      const conditions = [eq(tokens.featured, 1), eq(tokens.hidden, 0)];
 
       if (shouldHideImported) {
-        logger.log(`[Tokens Route] Adding hideImported filter to featured tokens query.`);
+        logger.log(
+          `[Tokens Route] Adding hideImported filter to featured tokens query.`,
+        );
         conditions.push(sql`(${tokens.imported} = 0)`);
         logger.log(`[Tokens Route] Conditions for featured query:`, conditions);
       }
@@ -275,7 +286,7 @@ tokenRouter.get("/tokens", async (c) => {
     }
 
     const featuredLength = featuredTokens?.length || 0;
-    const tokensResultData = tokensResult || []; 
+    const tokensResultData = tokensResult || [];
     const returnTokens: typeof tokensResultData = [];
 
     // Add featured tokens first if they exist
@@ -305,12 +316,16 @@ tokenRouter.get("/tokens", async (c) => {
     // TEMPORARY DEBUG FILTER:
     let finalReturnTokens = returnTokens;
     if (shouldHideImported) {
-       const initialLength = finalReturnTokens.length;
-       finalReturnTokens = finalReturnTokens.filter(token => token.imported === 0);
-       const finalLength = finalReturnTokens.length;
-       if (initialLength !== finalLength) {
-           logger.warn(`[Tokens Route DEBUG] Server-side filter removed ${initialLength - finalLength} tokens with imported != 0.`);
-       }
+      const initialLength = finalReturnTokens.length;
+      finalReturnTokens = finalReturnTokens.filter(
+        (token) => token.imported === 0,
+      );
+      const finalLength = finalReturnTokens.length;
+      if (initialLength !== finalLength) {
+        logger.warn(
+          `[Tokens Route DEBUG] Server-side filter removed ${initialLength - finalLength} tokens with imported != 0.`,
+        );
+      }
     }
 
     return c.json({
