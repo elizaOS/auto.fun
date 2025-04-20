@@ -51,11 +51,11 @@ try {
 const connection = new Connection(RPC_URL, "confirmed");
 const programId = new PublicKey(PROGRAM_ID);
 
-try {
-   processMissedEvents(connection, process.env as any)
-} catch (err) {
-   console.error("❌ Error during migration:", err);
-}
+// try {
+//    processMissedEvents(connection, process.env as any)
+// } catch (err) {
+//    console.error("❌ Error during migration:", err);
+// }
 
 console.log("🚀 Listening on", SOLANA_NETWORK, "via", RPC_URL);
 
