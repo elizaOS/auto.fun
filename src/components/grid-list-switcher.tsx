@@ -10,12 +10,14 @@ export default function GridListSwitcher() {
         variant={activeTab === "grid" ? "primary" : "outline"}
         onClick={() => setActiveTab("grid")}
         aria-label="grid"
+        className="p-2"
       >
         <Grid color="#eee" size={24} />
       </Button>
       <Button
         variant={activeTab === "list" ? "primary" : "outline"}
         onClick={() => setActiveTab("list")}
+        className="p-2"
         aria-label="list"
       >
         <List className="size-6" />

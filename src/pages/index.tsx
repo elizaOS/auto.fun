@@ -167,7 +167,7 @@ export default function Page() {
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               className="relative p-2"
             >
-              <FilterIcon className="h-4 w-4" />
+              <FilterIcon size={24} />
               {(tokenSource !== "all" || bondingStatus !== "all") && (
                 <span className="absolute top-0 right-0 block size-2 rounded-full bg-autofun-background-action-highlight ring-2 ring-autofun-background-action-primary" />
               )}
