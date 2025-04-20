@@ -269,7 +269,7 @@ const WalletButton = () => {
         setVisible(true);
       }}
       disabled={connecting || isAuthenticating}
-      className="min-w-[150px]"
+      className="xl:min-w-[150px]"
     >
       {buttonText}
     </Button>
