@@ -1,10 +1,11 @@
-import { Hono } from "hono";
-import { Env } from "../env";
-import { z } from "zod";
-import { fetchPriceChartData, getLatestCandle } from "../chart";
-import { logger } from "../util";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { getDB, TokenHolder, tokens, swaps } from "../db";
+import { Hono } from "hono";
+import { z } from "zod";
+import { fetchPriceChartData } from "../chart";
+import { getDB, swaps, tokens } from "../db";
+import { Env } from "../env";
+import { logger } from "../util";
+
 const router = new Hono<{
   Bindings: Env;
   Variables: {
@@ -40,7 +41,7 @@ router.get("/chart/:pairIndex/:start/:end/:range/:token", async (c) => {
     }
   }
 });
-// add /creator-tokens to get tokens created by a user
+
 router.post("/creator-tokens", async (c) => {
   const user = c.get("user");
 
@@ -58,7 +59,6 @@ router.post("/creator-tokens", async (c) => {
 });
 
 router.get("/swaps/:mint", async (c) => {
-  // logger.log(`Swaps endpoint called for mint: ${c.req.param("mint")}`);
   try {
     const mint = c.req.param("mint");
 

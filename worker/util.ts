@@ -1315,6 +1315,21 @@ export async function updateHoldersCache(
     const connection = new Connection(getRpcUrl(env, imported));
     const db = getDB(env);
 
+    // *** START INSERT: Check if the token exists before proceeding ***
+    const tokenExists = await db
+      .select({ id: tokens.id })
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    if (!tokenExists || tokenExists.length === 0) {
+      logger.warn(
+        `[updateHoldersCache] Token with mint ${mint} not found in the database. Skipping holder update.`,
+      );
+      return 0; // Return 0 as no holders can be updated
+    }
+    // *** END INSERT ***
+
     // Get all token accounts for this mint using getParsedProgramAccounts
     // This method is more reliable for finding all holders
     const accounts = await connection.getParsedProgramAccounts(
@@ -1412,6 +1427,9 @@ export async function updateHoldersCache(
       for (let i = 0; i < holdersToSave.length; i += BATCH_SIZE) {
         try {
           const batch = holdersToSave.slice(i, i + BATCH_SIZE);
+
+          console.log("batch", batch);
+
           const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
           const totalBatches = Math.ceil(holdersToSave.length / BATCH_SIZE);
 

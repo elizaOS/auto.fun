@@ -14,114 +14,176 @@ import CopyButton from "./copy-button";
 import SkeletonImage from "./skeleton-image";
 import { twMerge } from "tailwind-merge";
 import Verified from "./verified";
+import { ArrowDown, ArrowUp } from "lucide-react";
 
-export function TableView({ data }: { data: IToken[] }) {
+type SortOrderType = "asc" | "desc";
+
+interface TableViewProps {
+  data: IToken[];
+  sortBy: keyof IToken | null;
+  sortOrder: SortOrderType;
+  setSortBy: (sortBy: keyof IToken | null) => void;
+  setSortOrder: (sortOrder: SortOrderType) => void;
+}
+
+export function TableView({
+  data,
+  sortBy,
+  sortOrder,
+  setSortBy,
+  setSortOrder,
+}: TableViewProps) {
   const navigate = useNavigate();
+
+  const handleSort = (columnKey: keyof IToken) => {
+    if (sortBy === columnKey) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(columnKey);
+      setSortOrder("desc");
+    }
+  };
+
+  const SortIcon = ({ columnKey }: { columnKey: keyof IToken }) => {
+    if (sortBy !== columnKey) return null;
+    return sortOrder === "asc" ? (
+      <ArrowUp className="ml-1 h-3 w-3" />
+    ) : (
+      <ArrowDown className="ml-1 h-3 w-3" />
+    );
+  };
+
   return (
     <Table>
       <TableHeader>
         <TableRow className="bg-transparent">
           <TableHead className="w-[500px]">Coin</TableHead>
           <TableHead className="text-left">
-            <span className="hidden md:inline">Market Cap</span>
-            <span className="md:hidden">MCap</span>
+            <button
+              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              onClick={() => handleSort("marketCapUSD")}
+            >
+              <span className="hidden md:inline">Market Cap</span>
+              <span className="md:hidden">MCap</span>
+              <SortIcon columnKey="marketCapUSD" />
+            </button>
           </TableHead>
           <TableHead className="text-left">
-            <span className="hidden md:inline">24H Volume</span>
-            <span className="md:hidden">24H</span>
+            <button
+              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              onClick={() => handleSort("volume24h")}
+            >
+              <span className="hidden md:inline">24H Volume</span>
+              <span className="md:hidden">24H</span>
+              <SortIcon columnKey="volume24h" />
+            </button>
           </TableHead>
           <TableHead className="text-left">
-            <span className="hidden md:inline">Holders</span>
-            <span className="md:hidden">Hold</span>
+            <button
+              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              onClick={() => handleSort("holderCount")}
+            >
+              <span className="hidden md:inline">Holders</span>
+              <span className="md:hidden">Hold</span>
+              <SortIcon columnKey="holderCount" />
+            </button>
           </TableHead>
           <TableHead className="text-left">
-            <span className="hidden md:inline">Bonding Curve</span>
-            <span className="md:hidden">Bonding</span>
+            <button
+              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              onClick={() => handleSort("curveProgress")}
+            >
+              <span className="hidden md:inline">Bonding Curve</span>
+              <span className="md:hidden">Bonding</span>
+              <SortIcon columnKey="curveProgress" />
+            </button>
           </TableHead>
-          <TableHead className="text-right">Age</TableHead>
+          <TableHead className="text-right">
+            <button
+              className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto"
+              onClick={() => handleSort("createdAt")}
+            >
+              Age
+              <SortIcon columnKey="createdAt" />
+            </button>
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {data
-          ?.filter(
-            (token, index, self) =>
-              self.findIndex((t) => t.mint === token.mint) === index,
-          )
-          .filter((token: IToken) => token.image !== "")
-          .map((token: IToken) => {
-            return (
-              <TableRow
-                key={token.mint}
-                className="cursor-pointer"
-                onClick={() => navigate(`/token/${token.mint}`)}
-              >
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="relative size-[50px] bg-[#262626] overflow-hidden">
-                      <SkeletonImage
-                        src={
-                          token?.image
-                            ? resizeImage(token.image, 50, 50)
-                            : "/logo.png"
-                        }
-                        alt={token?.name || "token"}
-                        className={twMerge([
-                          "w-full h-full object-cover",
-                          !token?.image ? "grayscale" : "",
-                        ])}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1 min-w-0">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="capitalize text-autofun-text-primary text-base font-medium font-satoshi leading-normal truncate min-w-0">
-                          {token.name}
-                        </div>
-                        <div className="text-autofun-text-secondary text-base font-normal font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0">
-                          ${token.ticker}
-                        </div>
-                        <Verified isVerified={token?.verified ? true : false} />
+        {data.map((token: IToken) => {
+          return (
+            <TableRow
+              key={token.mint}
+              className="cursor-pointer"
+              onClick={() => navigate(`/token/${token.mint}`)}
+            >
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  <div className="relative size-[50px] bg-[#262626] overflow-hidden">
+                    <SkeletonImage
+                      src={
+                        token?.image
+                          ? resizeImage(token.image, 50, 50)
+                          : "/logo.png"
+                      }
+                      alt={token?.name || "token"}
+                      className={twMerge([
+                        "w-full h-full object-cover",
+                        !token?.image ? "grayscale" : "",
+                      ])}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="capitalize text-autofun-text-primary text-base font-medium font-satoshi leading-normal truncate min-w-0">
+                        {token.name}
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="text-autofun-text-secondary text-xs font-normal font-dm-mono">
-                          {shortenAddress(token.mint)}
-                        </div>
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <CopyButton text={token.mint} />
-                        </div>
+                      <div className="text-autofun-text-secondary text-base font-normal font-dm-mono uppercase leading-normal tracking-widest truncate min-w-0">
+                        ${token.ticker}
+                      </div>
+                      <Verified isVerified={token?.verified ? true : false} />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="text-autofun-text-secondary text-xs font-normal font-dm-mono">
+                        {shortenAddress(token.mint)}
+                      </div>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <CopyButton text={token.mint} />
                       </div>
                     </div>
                   </div>
-                </TableCell>
-                <TableCell className="text-left text-[#2FD345]">
-                  {formatNumber(token.marketCapUSD)}
-                </TableCell>
-                <TableCell className="text-left">
-                  {formatNumber(token.volume24h)}
-                </TableCell>
-                <TableCell className="text-left">{token.holderCount}</TableCell>
-                <TableCell className="text-left">
-                  <div className="flex items-center gap-2 w-full">
-                    {token.imported === 0 && (
-                      <BondingCurveBar progress={token.curveProgress} />
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  {fromNow(token.createdAt)
-                    .replace(" ago", "")
-                    .replace(" days", "d")
-                    .replace(" hours", "hr")
-                    .replace(" minutes", "m")
-                    .replace(" seconds", "s")
-                    .replace(" day", "d")
-                    .replace("an hour", "1hr")
-                    .replace(" minute", "m")
-                    .replace(" second", "s")
-                    .trim()}
-                </TableCell>
-              </TableRow>
-            );
-          })}
+                </div>
+              </TableCell>
+              <TableCell className="text-left text-[#2FD345]">
+                {formatNumber(token.marketCapUSD)}
+              </TableCell>
+              <TableCell className="text-left">
+                {formatNumber(token.volume24h)}
+              </TableCell>
+              <TableCell className="text-left">{token.holderCount}</TableCell>
+              <TableCell className="text-left">
+                <div className="flex items-center gap-2 w-full">
+                  {token.imported === 0 && (
+                    <BondingCurveBar progress={token.curveProgress} />
+                  )}
+                </div>
+              </TableCell>
+              <TableCell className="text-right">
+                {fromNow(token.createdAt)
+                  .replace(" ago", "")
+                  .replace(" days", "d")
+                  .replace(" hours", "hr")
+                  .replace(" minutes", "m")
+                  .replace(" seconds", "s")
+                  .replace(" day", "d")
+                  .replace("an hour", "1hr")
+                  .replace(" minute", "m")
+                  .replace(" second", "s")
+                  .trim()}
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
   );

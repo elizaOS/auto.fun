@@ -21,6 +21,8 @@ import { uploadToCloudflare } from "./uploader";
 import { WebSocketDO, createTestSwap } from "./websocket";
 import { getWebSocketClient } from "./websocket-client";
 import { processSwapEvent } from "./util";
+import agentRouter from "./routes/agents";
+import fileRouter from "./routes/files";
 // import { startMonitoringBatch } from "./tokenSupplyHelpers/monitoring";
 
 const app = new Hono<{
@@ -93,6 +95,8 @@ api.use("*", verifyAuth);
 
 api.route("/", generationRouter);
 api.route("/", tokenRouter);
+api.route("/", agentRouter);
+api.route("/", fileRouter);
 api.route("/", messagesRouter);
 api.route("/", authRouter);
 api.route("/", swapRouter);
