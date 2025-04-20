@@ -23,6 +23,34 @@ import { thawAccount } from "@solana/spl-token";
 // Store the last processed signature to avoid duplicate processing
 const lastProcessedSignature: string | null = null;
 
+export async function resumeOnStart(env: Env, connection: Connection) {
+
+   const wallet = Keypair.fromSecretKey(
+      Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY)),
+   );
+   const provider = new AnchorProvider(
+      connection,
+      new Wallet(wallet),
+      AnchorProvider.defaultOptions(),
+   );
+   const program = new Program<RaydiumVault>(
+      raydium_vault_IDL as any,
+      provider,
+   );
+   const autofunProgram = new Program<Autofun>(IDL as any, provider);
+
+   const tokenMigrator = new TokenMigrator(
+      env,
+      connection,
+      new Wallet(wallet),
+      program,
+      autofunProgram,
+      provider,
+   );
+   await tokenMigrator.resumeMigrationsOnStart()
+}
+
+
 function convertTokenDataToDBData(
    tokenData: Partial<TokenData>,
 ): Partial<TokenDBData> {

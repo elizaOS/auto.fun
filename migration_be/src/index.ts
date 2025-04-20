@@ -2,7 +2,7 @@ import { Connection, Logs, PublicKey } from "@solana/web3.js";
 import dotenv from "dotenv";
 
 import { getDB } from "./db";
-import { processTransactionLogs, } from "./processTransactionLogs";
+import { processTransactionLogs, resumeOnStart } from "./processTransactionLogs";
 import { processMissedEvents, } from "./getAllTokens";
 
 dotenv.config();
@@ -33,6 +33,15 @@ try {
 } catch (err) {
    console.error("❌ Failed to initialize DB:", err);
    // we continue anyway—you may choose to exit here if it's fatal `
+}
+try {
+   async function resume(env: any) {
+
+      resumeOnStart(env, connection);
+   }
+   resume(process.env as any);
+} catch (err) {
+   console.error("❌ Error during migration:", err);
 }
 
 
