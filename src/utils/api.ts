@@ -113,12 +113,20 @@ export const getChartTable = async ({
   token: string;
 }): Promise<ChartTable | undefined> => {
   try {
-    const res = await fetcher(
+    const res = (await fetcher(
       `/api/chart/${pairIndex}/${from}/${to}/${range}/${token}`,
       "GET",
+    )) as ChartTable;
+
+    const tableData = res.table.filter(
+      (a) =>
+        a.close !== null &&
+        a.high !== null &&
+        a.low !== null &&
+        a.open !== null,
     );
 
-    return res as ChartTable;
+    return { table: tableData } as ChartTable;
   } catch (err) {
     console.error(err);
     return undefined;
