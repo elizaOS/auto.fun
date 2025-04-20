@@ -45,6 +45,11 @@ export class ExternalToken {
   }
 
   public async registerWebhook() {
+    const securityToken = this.env.CODEX_WEBHOOK_AUTH_TOKEN;
+    if (!securityToken) {
+      throw new Error("missing CODEX_WEBHOOK_AUTH_TOKEN env var");
+    }
+
     try {
       await this.sdk.mutations.createWebhooks({
         input: {
