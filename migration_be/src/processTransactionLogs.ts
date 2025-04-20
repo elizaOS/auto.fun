@@ -1,5 +1,5 @@
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
-import { Connection, Keypair } from "@solana/web3.js";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
 import { getDB, swaps, Token, tokens } from "./db";
 import { Env } from "./env";
@@ -285,6 +285,35 @@ export async function processTransactionLogs(
       logger.log(
          `Saved swap: ${direction === "0" ? "buy" : "sell"} for ${mintAddress}`,
       );
+
+      // check if the token exists and add it to the db if it does not  
+      const token = await getToken(env, mintAddress);
+      if (!token) {
+         logger.error(`Token not found in database: ${mintAddress}`);
+         // add the token to the db
+         // get the creator address from the blockchain
+         const connection = new Connection(
+            env.NETWORK === "devnet"
+               ? env.DEVNET_SOLANA_RPC_URL
+               : env.MAINNET_SOLANA_RPC_URL,
+         );
+         const tokenAccount = await connection.getParsedAccountInfo(
+            new PublicKey(mintAddress),
+         );
+         const tokenData = tokenAccount.value?.data as any;
+         const tokenInfo = tokenData.parsed.info;
+         const creatorAddress = tokenInfo.owner;
+         const newToken = await createNewTokenData(
+            signature,
+            mintAddress,
+            creatorAddress,
+            env,
+         );
+         await getDB(env)
+            .insert(tokens)
+            .values(newToken as Token);
+         logger.log(`Added new token ${mintAddress} to database`);
+      }
 
       // Update token data in database
       await db
