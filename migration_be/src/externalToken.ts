@@ -181,45 +181,50 @@ export class ExternalToken {
 
 
   public async updateHolderData(tokenSupply: number) {
-    const { holders: codexHolders } = await this.sdk.queries.holders({
-      input: {
-        tokenId: `${this.mint}:${SOLANA_NETWORK_ID}`,
-      },
-    });
+    try {
+      const { holders: codexHolders } = await this.sdk.queries.holders({
+        input: {
+          tokenId: `${this.mint}:${SOLANA_NETWORK_ID}`,
+        },
+      });
 
 
-    const allHolders = tokenSupply
-      ? codexHolders.items.map(
-        (holder): TokenHolderInsert => ({
-          id: crypto.randomUUID(),
-          mint: this.mint,
-          address: holder.address,
-          amount: holder.shiftedBalance,
-          percentage: (holder.shiftedBalance / tokenSupply) * 100,
-          lastUpdated: new Date(),
-        }),
-      )
-      : [];
+      const allHolders = tokenSupply
+        ? codexHolders.items.map(
+          (holder): TokenHolderInsert => ({
+            id: crypto.randomUUID(),
+            mint: this.mint,
+            address: holder.address,
+            amount: holder.shiftedBalance,
+            percentage: (holder.shiftedBalance / tokenSupply) * 100,
+            lastUpdated: new Date(),
+          }),
+        )
+        : [];
 
-    allHolders.sort((a, b) => b.percentage - a.percentage);
+      allHolders.sort((a, b) => b.percentage - a.percentage);
 
-    const MAXIMUM_HOLDERS_STORED = 50;
-    const holders = allHolders.slice(0, MAXIMUM_HOLDERS_STORED);
+      const MAXIMUM_HOLDERS_STORED = 50;
+      const holders = allHolders.slice(0, MAXIMUM_HOLDERS_STORED);
 
-    if (holders.length > 0) {
-      const MAX_SQLITE_PARAMETERS = 100;
-      const parametersPerHolder = Object.keys(holders[0]).length;
-      const batchSize = Math.floor(MAX_SQLITE_PARAMETERS / parametersPerHolder);
+      if (holders.length > 0) {
+        const MAX_SQLITE_PARAMETERS = 100;
+        const parametersPerHolder = Object.keys(holders[0]).length;
+        const batchSize = Math.floor(MAX_SQLITE_PARAMETERS / parametersPerHolder);
 
-      for (let i = 0; i < holders.length; i += batchSize) {
-        const batch = holders.slice(i, i + batchSize);
-        await this.db.insert(tokenHolders).values(batch);
+        for (let i = 0; i < holders.length; i += batchSize) {
+          const batch = holders.slice(i, i + batchSize);
+          await this.db.insert(tokenHolders).values(batch).onConflictDoNothing();
+        }
       }
+
+      // await this.wsClient.to(`token-${this.mint}`).emit("newHolder", holders);
+
+      return holders;
+    } catch (error) {
+      console.error("Error updating holder data:", error);
+      throw error;
     }
-
-    // await this.wsClient.to(`token-${this.mint}`).emit("newHolder", holders);
-
-    return holders;
   }
   // fetch and update swap data
   public async updateLatestSwapData(
