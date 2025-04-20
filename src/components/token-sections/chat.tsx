@@ -3,6 +3,8 @@
 import Button from "@/components/button";
 import Loader from "@/components/loader";
 import { fetchWithAuth } from "@/hooks/use-authentication";
+import useAuthentication from "@/hooks/use-authentication";
+import { useTokenBalance } from "@/hooks/use-token-balance";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { RefreshCw, Send } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -87,14 +89,7 @@ interface PostMessageResponse {
 
 export default function ChatSection() {
   const { publicKey } = useWallet();
-
-  // We can keep this for debugging but it's no longer the primary balance source
-  // @ts-ignore
-  const [manualTokenBalance, setManualTokenBalance] = useState<number | null>(
-    null,
-  );
-
-  // --- Chat State ---
+  const { isAuthenticated, isAuthenticating } = useAuthentication();
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [selectedChatTier, setSelectedChatTier] = useState<ChatTier>("1k");
   const [eligibleChatTiers, setEligibleChatTiers] = useState<ChatTier[]>([]);
@@ -102,20 +97,29 @@ export default function ChatSection() {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null); // Ref for scrolling chat
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const [isRefreshingMessages, setIsRefreshingMessages] = useState(false);
+  const [isBalanceLoading, setIsBalanceLoading] = useState(true);
 
   // Get token mint from URL params with better fallback logic
   const { mint: urlTokenMint } = useParams<{ mint: string }>();
   const location = useLocation();
 
   // Extract token mint from URL if not found in params
-  const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(
-    null,
-  );
+  const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(null);
 
   // Use detected token mint instead of directly from params
   const tokenMint = detectedTokenMint;
+
+  // Add token balance hook after tokenMint is set
+  const { tokenBalance } = useTokenBalance({ tokenId: tokenMint || "" });
+
+  // Update balance loading state when token balance changes
+  useEffect(() => {
+    if (tokenBalance !== undefined) {
+      setIsBalanceLoading(false);
+    }
+  }, [tokenBalance]);
 
   // --- Fetch Chat Messages --- *NEW*
   const fetchChatMessages = useCallback(
@@ -124,7 +128,10 @@ export default function ChatSection() {
         !tokenMint ||
         !publicKey ||
         !API_BASE_URL ||
-        !eligibleChatTiers.includes(tier)
+        !eligibleChatTiers.includes(tier) ||
+        !isAuthenticated ||
+        isBalanceLoading ||
+        isAuthenticating
       ) {
         setChatMessages([]);
         return;
@@ -140,6 +147,12 @@ export default function ChatSection() {
       try {
         const response = await fetchWithAuth(
           `${API_BASE_URL}/api/chat/${tokenMint}/${tier}?limit=100`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
         );
 
         if (response.status === 401 || response.status === 403) {
@@ -182,7 +195,7 @@ export default function ChatSection() {
         setIsRefreshingMessages(false);
       }
     },
-    [tokenMint, publicKey, eligibleChatTiers],
+    [tokenMint, publicKey, eligibleChatTiers, isAuthenticated, isBalanceLoading, isAuthenticating],
   );
 
   // Effect to detect token mint from various sources
@@ -201,120 +214,9 @@ export default function ChatSection() {
     }
   }, [urlTokenMint, location.pathname]);
 
-  // Add function to check token balance
-  const checkTokenBalance = async () => {
-    if (!publicKey || !tokenMint) {
-      return;
-    }
-    try {
-      // Get stored auth token if available
-      const authToken = localStorage.getItem("authToken");
-
-      // First try to get balance from API (which uses the database)
-      try {
-        const response = await fetch(
-          `${API_BASE_URL}/api/token/${tokenMint}/check-balance?address=${publicKey.toString()}`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-            },
-            credentials: "include",
-          },
-        );
-
-        if (response.ok) {
-          const data = (await response.json()) as { balance?: number };
-          if (data.balance !== undefined) {
-            const formattedBalance = Number(data.balance);
-            // Store as backup
-            setManualTokenBalance(formattedBalance);
-            return;
-          }
-        }
-      } catch (apiError) {
-        console.error("API balance check failed:", apiError);
-        // Continue to fallback method if API fails
-      }
-
-      // Decide which networks to check
-      const networksToCheck = [
-        {
-          name: env.solanaNetwork || "devnet",
-          url: env.rpcUrl,
-        },
-      ];
-
-      let totalBalance = 0;
-      let foundOnNetwork = "";
-
-      // Check each network we decided to look at
-      for (const network of networksToCheck) {
-        try {
-          const connection = new Connection(network.url);
-
-          // Get token accounts owned by user for this mint
-          const tokenAccounts = await connection.getTokenAccountsByOwner(
-            publicKey,
-            { mint: new PublicKey(tokenMint) },
-            { commitment: "confirmed" },
-          );
-
-          let networkBalance = 0;
-
-          // Sum up balances from all accounts on this network
-          for (const { pubkey } of tokenAccounts.value) {
-            const accountInfo = await connection.getTokenAccountBalance(pubkey);
-            if (accountInfo.value) {
-              const amount = Number(accountInfo.value.amount);
-              const decimals = accountInfo.value.decimals;
-              networkBalance += amount / Math.pow(10, decimals);
-            }
-          }
-
-          // If we found a balance on this network
-          if (networkBalance > 0) {
-            totalBalance = networkBalance; // Use this balance
-            foundOnNetwork = network.name;
-            break; // Stop checking other networks
-          }
-        } catch (networkError) {
-          console.error(`Error checking ${network.name}:`, networkError);
-        }
-      }
-
-      setManualTokenBalance(totalBalance);
-
-      // Show appropriate toast message
-      if (totalBalance > 0) {
-        if (foundOnNetwork) {
-          toast.success(
-            `You have ${totalBalance.toFixed(2)} tokens on ${foundOnNetwork}${totalBalance >= 1000 ? " - enough to generate content!" : ""}`,
-          );
-        } else {
-          toast.success(
-            `You have ${totalBalance.toFixed(2)} tokens${totalBalance >= 1000 ? " - enough to generate content!" : ""}`,
-          );
-        }
-      } else {
-        toast.warning(
-          `You have 0 tokens. You need at least 1,000 to generate content.`,
-        );
-      }
-    } catch (error) {
-      console.error("Error checking token balance:", error);
-      toast.error("Failed to check token balance");
-    }
-  };
-
-  useEffect(() => {
-    checkTokenBalance();
-  }, [publicKey, tokenMint]);
-
   // --- Fetch Chat Eligibility --- *NEW*
   const fetchChatEligibility = useCallback(async () => {
-    if (!tokenMint || !publicKey || !API_BASE_URL) {
+    if (!tokenMint || !publicKey || !API_BASE_URL || isBalanceLoading) {
       setEligibleChatTiers([]);
       return;
     }
@@ -346,10 +248,19 @@ export default function ChatSection() {
       const data: EligibleTiersResponse = await response.json();
 
       if (data.success && data.tiers) {
-        setEligibleChatTiers(data.tiers);
+        // Use blockchain balance directly
+        const effectiveBalance = tokenBalance || 0;
+        
+        // Calculate eligible tiers based on blockchain balance
+        const eligibleTiers = CHAT_TIERS.filter(tier => 
+          effectiveBalance >= getTierThreshold(tier)
+        );
+
+        setEligibleChatTiers(eligibleTiers);
+        
         // If current selected tier is no longer eligible, switch to the highest eligible one
-        if (!data.tiers.includes(selectedChatTier) && data.tiers.length > 0) {
-          setSelectedChatTier(data.tiers[data.tiers.length - 1]);
+        if (!eligibleTiers.includes(selectedChatTier) && eligibleTiers.length > 0) {
+          setSelectedChatTier(eligibleTiers[eligibleTiers.length - 1]);
         }
       } else {
         throw new Error(data.error || "Failed to fetch eligible tiers");
@@ -363,20 +274,20 @@ export default function ChatSection() {
     } finally {
       setIsChatLoading(false);
     }
-  }, [tokenMint, publicKey, selectedChatTier]); // Re-fetch if token, user, or selected tier changes eligibility
+  }, [tokenMint, publicKey, selectedChatTier, tokenBalance, isBalanceLoading]);
 
   useEffect(() => {
-    if (publicKey && tokenMint) {
+    if (publicKey && tokenMint && !isBalanceLoading) {
       fetchChatEligibility();
     }
-  }, [fetchChatEligibility, publicKey, tokenMint]);
+  }, [fetchChatEligibility, publicKey, tokenMint, isBalanceLoading]);
 
   // Fetch messages when selected tier or eligibility changes
   useEffect(() => {
-    if (selectedChatTier) {
+    if (selectedChatTier && !isBalanceLoading) {
       fetchChatMessages(selectedChatTier);
     }
-  }, [selectedChatTier, eligibleChatTiers, fetchChatMessages]);
+  }, [selectedChatTier, eligibleChatTiers, fetchChatMessages, isBalanceLoading]);
 
   // --- Send Chat Message --- *NEW*
   const handleSendMessage = async () => {
@@ -399,7 +310,7 @@ export default function ChatSection() {
       message: chatInput.trim(),
       tier: selectedChatTier,
       timestamp: new Date().toISOString(),
-      isOptimistic: true, // Mark as optimistically added
+      isOptimistic: true,
     };
 
     // Optimistic UI update
@@ -415,7 +326,7 @@ export default function ChatSection() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            message: chatInput.trim() /*, parentId: null */,
+            message: chatInput.trim(),
           }),
         },
       );
@@ -441,10 +352,11 @@ export default function ChatSection() {
       const data: PostMessageResponse = await response.json();
 
       if (data.success && data.message) {
-        // Replace optimistic message with real one from backend
-        setChatMessages((prev) =>
-          prev.map((msg) => (msg.id === tempId ? data.message! : msg)),
-        );
+        // Remove the optimistic message and add the real one
+        setChatMessages((prev) => {
+          const filtered = prev.filter((msg) => msg.id !== tempId);
+          return [...filtered, data.message!];
+        });
       } else {
         throw new Error(data.error || "Failed to send message");
       }
@@ -572,13 +484,19 @@ export default function ChatSection() {
               ref={chatContainerRef}
               className="flex-grow overflow-y-auto p-2 space-y-3 scrollbar-thin"
             >
-              {isChatLoading && (
+              {isBalanceLoading && (
                 <div className="flex items-center justify-center w-full h-full">
                   <Loader />
                 </div>
               )}
 
-              {chatError && !isChatLoading && (
+              {!isBalanceLoading && isChatLoading && (
+                <div className="flex items-center justify-center w-full h-full">
+                  <Loader />
+                </div>
+              )}
+
+              {!isBalanceLoading && chatError && !isChatLoading && (
                 <div className="text-center py-8">
                   <p className="text-red-500 mb-2">{chatError}</p>
                   <Button
@@ -591,7 +509,7 @@ export default function ChatSection() {
                 </div>
               )}
 
-              {!isChatLoading && chatMessages.length === 0 && !chatError && (
+              {!isBalanceLoading && !isChatLoading && chatMessages.length === 0 && !chatError && (
                 <div className="flex flex-col items-center justify-center h-full text-center py-16">
                   <p className="text-gray-500 mb-2">
                     No messages yet in the {formatTierLabel(selectedChatTier)}{" "}
@@ -615,7 +533,7 @@ export default function ChatSection() {
                 </div>
               )}
 
-              {chatMessages.map((msg) => (
+              {!isBalanceLoading && chatMessages.map((msg) => (
                 <div
                   key={msg.id}
                   className={`flex ${msg.author === publicKey?.toBase58() ? "justify-end" : "justify-start"}`}

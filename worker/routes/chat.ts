@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { validator } from "hono/validator";
 import { HTTPException } from "hono/http-exception";
 import { verify } from "hono/jwt"; // Assuming JWT auth, adjust if needed
+import { Connection, PublicKey } from "@solana/web3.js";
+import { getRpcUrl } from "../util";
 
 // ---=== Database Schema and Drizzle ===---
 import * as schema from "../db"; // Import your generated schema
@@ -28,17 +30,20 @@ const db = (c: Context<any>) => getDB(c.env as Env);
 // --- Placeholder Functions ---
 // Replace these with your actual implementations
 
-// Updated to use the database
+// Updated to use both database and blockchain
 async function checkUserTokenBalance(
   drizzleDb: ReturnType<typeof db>,
   userPublicKey: string,
   tokenMint: string,
+  env: Env,
 ): Promise<number> {
   console.log(
-    `DB Query: Fetch balance for user ${userPublicKey}, token ${tokenMint}`,
+    `Checking balance for user ${userPublicKey}, token ${tokenMint}`,
   );
+
+  // First check database balance
+  let dbBalance = 0;
   try {
-    // Query the tokenHolders table
     const result = await drizzleDb
       .select({
         amount: schema.tokenHolders.amount,
@@ -52,16 +57,51 @@ async function checkUserTokenBalance(
       )
       .limit(1);
 
-    // Return the amount if found, otherwise 0
-    return result.length > 0 && result[0].amount ? Number(result[0].amount) : 0;
+    dbBalance = result.length > 0 && result[0].amount ? Number(result[0].amount) : 0;
   } catch (error) {
     console.error(
-      `Error checking token balance for ${userPublicKey} / ${tokenMint}:`,
+      `Error checking database balance for ${userPublicKey} / ${tokenMint}:`,
       error,
     );
-    // Depending on requirements, you might want to re-throw or return 0/error indicator
-    return 0;
   }
+
+  // Then check blockchain balance
+  let blockchainBalance = 0;
+  try {
+    const connection = new Connection(getRpcUrl(env), "confirmed");
+    const mintPublicKey = new PublicKey(tokenMint);
+    const userPublicKeyObj = new PublicKey(userPublicKey);
+
+    const response = await connection.getTokenAccountsByOwner(
+      userPublicKeyObj,
+      { mint: mintPublicKey },
+      { commitment: "confirmed" },
+    );
+
+    if (response && response.value && response.value.length > 0) {
+      for (const { pubkey } of response.value) {
+        const accountInfo = await connection.getTokenAccountBalance(pubkey);
+        if (accountInfo.value) {
+          const amount = accountInfo.value.amount;
+          const decimals = accountInfo.value.decimals;
+          blockchainBalance += Number(amount) / Math.pow(10, decimals);
+        }
+      }
+    }
+  } catch (error) {
+    console.error(
+      `Error checking blockchain balance for ${userPublicKey} / ${tokenMint}:`,
+      error,
+    );
+  }
+
+  // Use the higher of the two balances
+  const effectiveBalance = Math.max(dbBalance, blockchainBalance);
+  console.log(
+    `Balance check results - DB: ${dbBalance}, Blockchain: ${blockchainBalance}, Effective: ${effectiveBalance}`,
+  );
+
+  return effectiveBalance;
 }
 
 function getUserEligibleTiers(balance: number): string[] {
@@ -97,7 +137,7 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // GET /api/chat/:tokenMint/tiers - Get eligible tiers for the user
 app.get("/chat/:tokenMint/tiers", async (c) => {
-  const user = c.get("user"); // Auth middleware ensures user exists
+  const user = c.get("user");
   const tokenMint = c.req.param("tokenMint");
 
   if (!tokenMint) {
@@ -110,9 +150,10 @@ app.get("/chat/:tokenMint/tiers", async (c) => {
       currentDb,
       user.publicKey,
       tokenMint,
+      c.env,
     );
     const eligibleTiers = getUserEligibleTiers(balance);
-    return c.json({ success: true, tiers: eligibleTiers, balance }); // Return balance too
+    return c.json({ success: true, tiers: eligibleTiers, balance });
   } catch (error) {
     console.error("Error fetching eligible tiers:", error);
     return c.json(
@@ -145,6 +186,7 @@ app.get(
         currentDb,
         user.publicKey,
         tokenMint,
+        c.env,
       );
       const requiredBalance = getTierThreshold(tier);
 
@@ -234,6 +276,7 @@ app.post(
         currentDb,
         user.publicKey,
         tokenMint,
+        c.env,
       );
       const requiredBalance = getTierThreshold(tier);
 
