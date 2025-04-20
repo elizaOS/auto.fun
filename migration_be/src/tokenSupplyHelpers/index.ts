@@ -275,7 +275,7 @@ export async function updateTokenSupplyFromChain(
     throw new Error(`Failed to fetch token supply for ${tokenMint}`);
   }
   const { amount, uiAmount, decimals } = supplyResponse.value;
-  const now = new Date().toISOString();
+  const now = new Date();
 
   const db = getDB(env);
   await db
@@ -294,7 +294,7 @@ export async function updateTokenSupplyFromChain(
     tokenSupply: amount,
     tokenSupplyUiAmount: uiAmount || 0,
     tokenDecimals: decimals,
-    lastSupplyUpdate: now,
+    lastSupplyUpdate: now.toISOString(),
   };
 }
 
