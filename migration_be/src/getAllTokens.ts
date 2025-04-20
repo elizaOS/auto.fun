@@ -54,7 +54,7 @@ export async function getEventsFromChain(
    }
 }
 // Scan blocks from the last processed slot up to the current slot
-export async function processMissedEvents(connection: Connection, env: Env, skipMigration: false): Promise<void> {
+export async function processMissedEvents(connection: Connection, env: Env): Promise<void> {
    try {
       const lastSlot = await getEventsFromChain(connection, env);
       const currentSlot = await connection.getSlot("confirmed");

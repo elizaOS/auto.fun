@@ -13,7 +13,7 @@ import * as IDL from "../target/idl/autofun.json";
 import { Autofun } from "../target/types/autofun";
 import { Wallet } from "../tokenSupplyHelpers/customWallet";
 import { getWebSocketClient } from "../websocket-client";
-import { createNewTokenData } from "../util"
+import { createNewTokenData } from "../util";
 
 const migrationRouter = new Hono<{
   Bindings: Env;
@@ -287,7 +287,7 @@ migrationRouter.post("/migration/update", async (c) => {
   }
 });
 
-// migration add missing tokens 
+// migration add missing tokens
 migrationRouter.post("/migration/addMissingTokens", async (c) => {
   try {
     const body = await c.req.json();
@@ -304,12 +304,11 @@ migrationRouter.post("/migration/addMissingTokens", async (c) => {
       .from(tokens)
       .where(eq(tokens.mint, rawTokenAddress));
 
-
     if (existingTokens.length > 0) {
       return c.json({ error: "Tokens already exist in the database" }, 400);
     }
 
-    // add token to the database if it is missing 
+    // add token to the database if it is missing
     const newToken = await createNewTokenData(
       signature,
       rawTokenAddress,
@@ -319,7 +318,7 @@ migrationRouter.post("/migration/addMissingTokens", async (c) => {
     await getDB(c.env)
       .insert(tokens)
       .values(newToken as Token)
-      .onConflictDoNothing()
+      .onConflictDoNothing();
     // Return a success response.
     return c.json({
       status: "added missing token",
