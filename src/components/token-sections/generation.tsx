@@ -1711,7 +1711,7 @@ export default function CommunityTab() {
           {/* Main generation controls - consistent across all media types */}
           <div className="flex flex-col gap-4 w-full">
             {/* Controls row - consistent for all media types */}
-            <div className="flex items-end py-3">
+            <div className="flex items-center py-3">
               {/* Input field with dynamic placeholder based on tab */}
               <input
                 type="text"
