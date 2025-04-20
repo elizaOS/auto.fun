@@ -324,6 +324,10 @@ export function getCandleData(priceFeeds: PriceFeedInfo[], range: number) {
 
   const cdFeeds: CandlePrice[] = [];
   let pIndex = 0;
+  
+  // Keep track of the last valid candle to fill gaps
+  let lastValidCandle: CandlePrice | null = null;
+  
   for (
     let curCdStart = cdStart;
     curCdStart <= cdEnd;
@@ -345,15 +349,32 @@ export function getCandleData(priceFeeds: PriceFeedInfo[], range: number) {
       if (priceHistory[pIndex].ts >= curCdStart + candlePeriod) break;
       pIndex++;
     }
-    if (prevIndex !== pIndex)
-      cdFeeds.push({
+    
+    if (prevIndex !== pIndex) {
+      // We have data for this time period
+      const newCandle = {
         open: st,
         high: hi,
         low: lo,
         close: en,
         volume: vol,
         time: curCdStart,
+      };
+      cdFeeds.push(newCandle);
+      lastValidCandle = newCandle;
+    } else if (lastValidCandle) {
+      // No data for this time period, but we have a previous candle
+      // Fill with the last known price (close price of the last candle)
+      cdFeeds.push({
+        open: lastValidCandle.close,
+        high: lastValidCandle.close,
+        low: lastValidCandle.close,
+        close: lastValidCandle.close,
+        volume: 0,
+        time: curCdStart,
       });
+    }
+    // If we don't have a lastValidCandle, we skip this period (no data yet)
   }
 
   return cdFeeds;
