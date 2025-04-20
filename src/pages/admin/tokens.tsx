@@ -36,16 +36,16 @@ function AdminTokensList() {
       const token = tokensPagination?.items?.find(
         (t) => t.mint === tokenAddress,
       );
-      const currentHiddenStatus = token ? (token as any).hidden : false;
+      const currentHiddenStatus = token ? !!(token as any).hidden : false;
       return await fetcher(`/api/admin/tokens/${tokenAddress}/hidden`, "POST", {
-        hidden: !currentHiddenStatus, // Toggle the status
+        hidden: !currentHiddenStatus, // Toggle the boolean status
       });
     },
     onSuccess: (_, tokenAddress) => {
       const token = tokensPagination?.items?.find(
         (t) => t.mint === tokenAddress,
       );
-      const currentHiddenStatus = token ? (token as any).hidden : false;
+      const currentHiddenStatus = token ? !!(token as any).hidden : false; // Ensure boolean
       toast.success(
         `Token ${currentHiddenStatus ? "unhidden" : "hidden"} successfully`,
       );
@@ -167,7 +167,7 @@ function AdminTokensList() {
                   </Link>
                   <button
                     className={`ml-2 px-2 py-1 text-xs rounded ${
-                      (token as any).hidden
+                      !!(token as any).hidden // Ensure boolean check
                         ? "bg-purple-900 text-purple-300 hover:bg-purple-800"
                         : "bg-gray-900 text-gray-300 hover:bg-gray-800"
                     }`}
@@ -180,7 +180,7 @@ function AdminTokensList() {
                     {toggleHiddenMutation.isPending &&
                     toggleHiddenMutation.variables === token.mint
                       ? "Processing..."
-                      : (token as any).hidden
+                      : !!(token as any).hidden // Ensure boolean check
                         ? "Unhide"
                         : "Hide"}
                   </button>
@@ -221,7 +221,7 @@ interface AdminToken extends IToken {
   id: string;
   featured: number;
   verified: number;
-  hidden: number;
+  hidden: boolean;
 }
 
 interface SocialLinks {
@@ -246,7 +246,7 @@ function AdminTokenDetails({ address }: { address: string }) {
           id: tokenData.txId || tokenData.mint.substring(0, 8), // Use txId or first 8 chars of mint as ID
           featured: (tokenData as any).featured || false,
           verified: (tokenData as any).verified || false,
-          hidden: (tokenData as any).hidden || false,
+          hidden: !!(tokenData as any).hidden, // Ensure boolean conversion
         } as AdminToken;
       } catch (error) {
         console.error(`Error fetching token data:`, error);

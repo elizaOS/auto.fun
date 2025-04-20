@@ -1,14 +1,25 @@
-import { Link, Route, Routes, useLocation } from "react-router-dom";
+import { Link, Route, Routes, useLocation, Navigate } from "react-router-dom";
 import AdminOverview from "./admin/overview";
 import AdminUsers from "./admin/users";
 import AdminTokens from "./admin/tokens";
 import useAuthentication from "@/hooks/use-authentication";
 
+// Define admin addresses directly in the component
+const adminAddresses: string[] = [
+  "8gikQQppeAGd9m5y57sW4fYyZwrJZoyniHD658arcnnx", // Joey (Santi)
+  "ASktkp5ERQmmHChzSEqGbWNrqAdDdrJjS8AJG5G3cTCh", // Boris (Borko)
+  "DScqtGwFoDTme2Rzdjpdb2w7CtuKc6Z8KF7hMhbx8ugQ", // Shaw
+];
+
 export default function Admin() {
   const location = useLocation();
   const currentPath = location.pathname;
 
-  const { isAuthenticated } = useAuthentication();
+  const { walletAddress } = useAuthentication(); // Get walletAddress
+  console.log("walletAddress", walletAddress);
+  console.log("adminAddresses", adminAddresses);
+  // Check if the user is authenticated and is an admin (client-side check)
+  const isAdmin = walletAddress && adminAddresses.includes(walletAddress);
 
   // Helper function to determine if a link is active
   const isActive = (path: string) => {
@@ -21,7 +32,10 @@ export default function Admin() {
     return false;
   };
 
-  if (!isAuthenticated) return <div className="text-white">Not allowed</div>;
+  // If not authenticated or not an admin, redirect to home page
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div className="flex flex-col gap-4">
