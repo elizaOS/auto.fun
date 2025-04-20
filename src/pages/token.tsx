@@ -56,8 +56,6 @@ const adminAddresses: string[] = [
 //   }
 // `;
 
-const socket = getSocket();
-
 // Add a custom component for middle ellipsis
 function MiddleEllipsis({ text }: { text?: string; suffix?: string }) {
   const elementRef = useRef<HTMLDivElement>(null);
