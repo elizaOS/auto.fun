@@ -47,8 +47,8 @@ export default function Page() {
       {/* Top Navigation */}
       <div className="flex justify-between gap-1 flex-wrap-reverse md:flex-wrap">
         <div className="flex items-center gap-1">
-                    {/* TODO: change to toggle button for newest/oldest */}
-                    <Button
+          {/* TODO: change to toggle button for newest/oldest */}
+          <Button
             variant={sortBy === "newest" ? "primary" : "outline"}
             onClick={() => setSortBy("newest")}
           >
