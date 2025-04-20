@@ -200,7 +200,7 @@ export class ExternalToken {
           .insert(tokenHolders)
           .values(batch)
           .onConflictDoUpdate({
-            target: [tokenHolders.address],
+            target: [tokenHolders.mint, tokenHolders.address],
             set: {
               amount: batch[0].amount,
               percentage: batch[0].percentage,
