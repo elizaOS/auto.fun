@@ -106,7 +106,7 @@ export default function Page() {
       query.isFetchingNextPage,
       query.hasNextPage,
       query.fetchNextPage,
-    ]
+    ],
   );
 
   useEffect(() => {
