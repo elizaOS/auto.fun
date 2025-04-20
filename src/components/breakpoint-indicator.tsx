@@ -21,7 +21,6 @@ const BreakpointIndicator = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-  if (window.location.hostname !== "localhost") return;
 
   if (window.location.hostname !== "localhost") return;
 

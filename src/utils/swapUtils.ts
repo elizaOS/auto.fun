@@ -3,7 +3,7 @@ import { ConfigAccount } from "@/types";
 import { Autofun } from "@/utils/program";
 import { BN, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
-
+import { toast } from "react-toastify";
 /**
  * Converts a decimal fee (e.g., 0.05 for 5%) to basis points (5% = 500 basis points)
  */
@@ -211,6 +211,7 @@ export const getSwapAmountJupiter = async (
     return Number(estimatedOutput);
   } catch (error) {
     console.error("Error fetching swap amount from Jupiter:", error);
+    toast.error("Error fetching swap amount from Jupiter");
     return 0;
   }
 };
