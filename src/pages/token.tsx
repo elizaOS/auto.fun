@@ -491,7 +491,7 @@ export default function Page() {
                     />
                   </button>
                   <button
-                    className={`px-4 py-3 text-autofun-text-primary font-medium cursor-pointer ${
+                    className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer ${
                       activeTab === "ai"
                         ? "bg-autofun-background-highlight text-black"
                         : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
@@ -513,7 +513,7 @@ export default function Page() {
                     />
                   </button>
                   <button
-                    className={`px-4 py-3 text-autofun-text-primary font-medium cursor-pointer ${
+                    className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer ${
                       activeTab === "chat"
                         ? "bg-autofun-background-highlight text-black"
                         : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
@@ -525,8 +525,8 @@ export default function Page() {
                     <img
                       src={
                         activeTab === "chat"
-                          ? "/token/createoff.svg"
-                          : "/token/createon.svg"
+                          ? "/token/chatoff.svg"
+                          : "/token/chaton.svg"
                       }
                       className={`size-4 inline-block ml-1.5 ${
                         activeTab === "chat" ? "text-black" : ""
