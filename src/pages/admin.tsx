@@ -16,8 +16,6 @@ export default function Admin() {
   const currentPath = location.pathname;
 
   const { walletAddress } = useAuthentication(); // Get walletAddress
-  console.log("walletAddress", walletAddress);
-  console.log("adminAddresses", adminAddresses);
   // Check if the user is authenticated and is an admin (client-side check)
   const isAdmin = walletAddress && adminAddresses.includes(walletAddress);
 
