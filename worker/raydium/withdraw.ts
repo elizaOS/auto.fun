@@ -1,6 +1,6 @@
 import { Program } from "@coral-xyz/anchor";
 import { Connection, PublicKey, Transaction } from "@solana/web3.js";
-import { logger } from "../logger";
+import { logger } from "../util";
 import { Autofun } from "../target/types/autofun";
 
 export const withdrawTx = async (

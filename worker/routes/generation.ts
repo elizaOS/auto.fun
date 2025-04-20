@@ -14,7 +14,7 @@ import {
   tokens,
 } from "../db";
 import { Env } from "../env";
-import { logger } from "../logger";
+import { logger } from "../util";
 import { MediaGeneration } from "../types";
 import { uploadGeneratedImage } from "../uploader";
 import { getRpcUrl } from "../util";

@@ -6,7 +6,7 @@ import { TokenData, TokenDBData } from "../worker/raydium/types/tokenData";
 import { getLatestCandle } from "./chart";
 import { getDB, swaps, Token, tokens } from "./db";
 import { Env } from "./env";
-import { logger } from "./logger";
+import { logger } from "./util";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
 import { awardGraduationPoints, awardUserPoints } from "./points/helpers";
 import { TokenMigrator } from "./raydium/migration/migrateToken";

@@ -5,7 +5,7 @@ import { allowedOrigins } from "./allowedOrigins";
 import { verifyAuth } from "./auth";
 import { cron } from "./cron";
 import { Env } from "./env";
-import { logger } from "./logger";
+import { logger } from "./util";
 import { getSOLPrice } from "./mcap";
 import adminRouter from "./routes/admin";
 import authRouter from "./routes/auth";

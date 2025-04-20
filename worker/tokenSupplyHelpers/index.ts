@@ -2,7 +2,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
 import { getDB, swaps, tokens } from "../db";
 import { Env } from "../env";
-import { logger } from "../logger";
+import { logger } from "../util";
 import { retryOperation } from "../raydium/utils";
 import { calculateFeaturedScore, getFeaturedMaxValues } from "../util";
 import { getWebSocketClient } from "../websocket-client";

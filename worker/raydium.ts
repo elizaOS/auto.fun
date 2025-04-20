@@ -1,8 +1,7 @@
 import { Raydium, TxVersion } from "@raydium-io/raydium-sdk-v2";
 import { Connection, Keypair } from "@solana/web3.js";
 import { Env } from "./env";
-import { logger } from "./logger";
-import { getRpcUrl } from "./util";
+import { getRpcUrl, logger } from "./util";
 
 const getOwner = (env: Env) => {
   if (env.WALLET_PRIVATE_KEY) {

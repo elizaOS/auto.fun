@@ -7,7 +7,6 @@ import {
 } from "@solana/spl-token";
 import {
   AccountInfo,
-  ComputeBudgetProgram,
   Connection,
   ParsedAccountData,
   PublicKey,
@@ -16,9 +15,8 @@ import {
   Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { desc, eq, sql, inArray, and } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { CacheService } from "./cache";
-import { SEED_BONDING_CURVE, SEED_CONFIG } from "./constant";
 import { getDB, Token, TokenHolder, tokenHolders, tokens } from "./db";
 import { Env } from "./env";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
@@ -27,7 +25,7 @@ import { Autofun } from "./target/types/autofun";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import { getWebSocketClient } from "./websocket-client";
 
-const FEE_BASIS_POINTS = 10000;
+const SEED_BONDING_CURVE = "bonding_curve";
 
 /**
  * Converts a decimal fee (e.g., 0.05 for 5%) to basis points (5% = 500 basis points)
@@ -411,10 +409,23 @@ const getDevnetRpcUrl = (env: any) => {
   return devnetUrl;
 };
 
-// Generate a logger that works with Cloudflare Workers
+const getTimestamp = () => {
+  return new Date().toISOString();
+};
+
 export const logger = {
-  log: (...args: any[]) => console.log(...args),
-  error: (...args: any[]) => console.error(...args),
+  log: (...args: any[]) => {
+    console.log(`[${getTimestamp()}]`, ...args);
+  },
+  info: (...args: any[]) => {
+    console.info(`[${getTimestamp()}]`, ...args);
+  },
+  warn: (...args: any[]) => {
+    console.warn(`[${getTimestamp()}]`, ...args);
+  },
+  error: (...args: any[]) => {
+    console.error(`[${getTimestamp()}]`, ...args);
+  },
 };
 
 export async function execWithdrawTx(

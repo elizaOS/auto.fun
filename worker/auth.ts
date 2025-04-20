@@ -9,7 +9,7 @@ import { getCookie, setCookie } from "hono/cookie";
 import nacl from "tweetnacl";
 import { getDB, users } from "./db";
 import { Env } from "./env";
-import { logger } from "./logger";
+import { logger } from "./util";
 
 // Define the AuthTokenData interface here to fix TypeScript errors
 interface AuthTokenData {

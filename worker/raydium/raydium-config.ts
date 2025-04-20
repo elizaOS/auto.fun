@@ -11,7 +11,7 @@ import {
   Transaction,
 } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
-import { logger } from "../logger";
+import { logger } from "../util";
 import { Env } from "../env";
 
 type Cluster = "mainnet" | "devnet";

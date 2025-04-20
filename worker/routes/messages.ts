@@ -7,7 +7,7 @@ import {
   messages as messagesTable,
 } from "../db";
 import { Env } from "../env";
-import { logger } from "../logger";
+import { logger } from "../util";
 // Create a router for admin routes
 const messagesRouter = new Hono<{
   Bindings: Env;

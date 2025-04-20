@@ -9,7 +9,7 @@ import {
 } from "../auth";
 import { getDB, users } from "../db";
 import { Env } from "../env";
-import { logger } from "../logger";
+import { logger } from "../util";
 import { awardUserPoints } from "../points/helpers";
 
 const authRouter = new Hono<{

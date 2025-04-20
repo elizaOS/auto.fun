@@ -5,7 +5,7 @@ import { updateTokens } from "../cron";
 import { getDB, tokenAgents, tokenHolders, tokens } from "../db";
 import { Env } from "../env";
 import { ExternalToken } from "../externalToken";
-import { logger } from "../logger";
+import { logger } from "../util";
 import { getSOLPrice } from "../mcap";
 import {
   applyFeaturedSort,

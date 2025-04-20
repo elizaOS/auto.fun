@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { getDB, tokens, users, Token } from "../db";
 import { Env } from "../env";
-import { logger } from "../logger";
+import { logger } from "../util";
 import { TokenMigrator } from "../raydium/migration/migrateToken";
 import * as raydium_vault_IDL from "../raydium/raydium_vault.json";
 import { checkBalance, claim } from "../raydium/raydiumVault";
