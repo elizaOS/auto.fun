@@ -9,7 +9,7 @@
 // import { D1Database } from "@cloudflare/workers-types/experimental";
 // import { R2Bucket } from "@cloudflare/workers-types";
 // import { KVNamespace } from "@cloudflare/workers-types";
-// import { logger } from "../../logger";
+// import { logger } from "../../utils";
 // import { RaydiumVault } from "../types/raydium_vault";
 // import * as raydium_vault_IDL from "../raydium_vault.json";
 

@@ -5,12 +5,12 @@ import {
   SwapEventData,
   TokenPairEventType,
 } from "@codex-data/sdk/dist/sdk/generated/graphql";
-import { Env } from "./env";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { getDB, swaps, TokenHolderInsert, tokenHolders, tokens } from "./db";
-import { getWebSocketClient, WebSocketClient } from "./websocket-client";
 import { eq } from "drizzle-orm";
+import { getDB, swaps, TokenHolderInsert, tokenHolders, tokens } from "./db";
+import { Env } from "./env";
 import { getSOLPrice } from "./mcap";
+import { getWebSocketClient, WebSocketClient } from "./websocket-client";
 
 const SOLANA_NETWORK_ID = 1399811149;
 

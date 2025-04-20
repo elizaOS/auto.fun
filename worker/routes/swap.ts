@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { Env } from "../env";
 import { z } from "zod";
 import { fetchPriceChartData, getLatestCandle } from "../chart";
-import { logger } from "../logger";
+import { logger } from "../util";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { getDB, TokenHolder, tokens, swaps } from "../db";
 const router = new Hono<{

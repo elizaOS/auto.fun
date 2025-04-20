@@ -7,7 +7,7 @@ import { z } from "zod";
 import { allowedOrigins } from "../allowedOrigins";
 import { accessTokens, getDB, oauthVerifiers } from "../db";
 import { Env } from "../env";
-import { logger } from "../logger";
+import { logger } from "../util";
 
 /**
  * ------------------------------------------------------------------

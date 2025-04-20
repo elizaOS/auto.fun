@@ -1,5 +1,5 @@
 import axios from "axios";
-import { logger } from "./logger";
+import { logger } from "./util";
 import { Codex } from "@codex-data/sdk";
 
 export interface CodexTokenEvent {

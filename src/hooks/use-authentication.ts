@@ -147,9 +147,23 @@ export default function useAuthentication() {
     refetchOnWindowFocus: true,
   });
 
+  // Enhance setAuthToken to ensure it's also directly set in localStorage
+  const setAuthTokenWithStorage = (token: string | null) => {
+    setAuthToken(token);
+    try {
+      if (token) {
+        localStorage.setItem("authToken", JSON.stringify(token));
+      } else {
+        localStorage.removeItem("authToken");
+      }
+    } catch (e) {
+      console.error("Error updating authToken in localStorage:", e);
+    }
+  };
+
   // Handle successful authentication
   const handleSuccessfulAuth = (token: string, userAddress: string) => {
-    setAuthToken(token);
+    setAuthTokenWithStorage(token);
     setStoredWalletAddress(userAddress);
 
     // Store expanded auth data
@@ -278,7 +292,7 @@ export default function useAuthentication() {
 
   return {
     authToken,
-    setAuthToken,
+    setAuthToken: setAuthTokenWithStorage,
     isAuthenticated,
     isAuthenticating,
     isInitialized: true,

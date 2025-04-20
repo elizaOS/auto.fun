@@ -6,7 +6,7 @@ import {
 } from "./codex";
 import { getDB, swaps, tokens } from "./db";
 import { Env } from "./env";
-import { logger } from "./logger";
+import { logger } from "./util";
 
 // Define interface for the API response types
 interface DexScreenerPair {

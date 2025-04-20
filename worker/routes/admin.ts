@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { verifyAuth } from "../auth";
 import { getDB, tokens, users } from "../db";
 import { Env } from "../env";
-import { logger } from "../logger";
+import { logger } from "../util";
 import { adminAddresses } from "./adminAddresses";
 
 // Define the router with environment typing

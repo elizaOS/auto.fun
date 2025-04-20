@@ -1,6 +1,6 @@
 import { DurableObjectState } from "@cloudflare/workers-types";
 import { Env } from "./env";
-import { logger } from "./logger";
+import { logger } from "./util";
 
 // Define a custom WebSocket type that includes CloudflareWebSocket functionality
 interface CloudflareWebSocket extends WebSocket {

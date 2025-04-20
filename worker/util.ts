@@ -6,7 +6,7 @@ import {
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import {
-  ComputeBudgetProgram,
+  AccountInfo,
   Connection,
   ParsedAccountData,
   PublicKey,
@@ -15,16 +15,18 @@ import {
   Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { desc, eq, sql, inArray, and } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { CacheService } from "./cache";
-import { SEED_BONDING_CURVE, SEED_CONFIG } from "./constant";
-import { getDB, Token, tokenHolders, tokens } from "./db";
+import { getDB, Token, TokenHolder, tokenHolders, tokens } from "./db";
 import { Env } from "./env";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
 import { getProgram, initSolanaConfig } from "./solana";
 import { Autofun } from "./target/types/autofun";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import { getWebSocketClient } from "./websocket-client";
+
+const SEED_BONDING_CURVE = "bonding_curve";
+
 /**
  * Converts a decimal fee (e.g., 0.05 for 5%) to basis points (5% = 500 basis points)
  */
@@ -82,7 +84,7 @@ function calculateAmountOutBuy(
 }
 
 // Type definition for token metadata from JSON
-export interface TokenMetadataJson {
+interface TokenMetadataJson {
   name: string;
   symbol: string;
   description: string;
@@ -94,10 +96,8 @@ export interface TokenMetadataJson {
   discord?: string;
 }
 
-const FEE_BASIS_POINTS = 10000;
-
 // Helper function to get WebSocket server for emitting events
-export const getIoServer = (env?: Partial<Env>) => {
+const getIoServer = (env?: Partial<Env>) => {
   // Create a mock env with needed properties
   const fullEnv = {
     NETWORK: env?.NETWORK || "mainnet",
@@ -108,7 +108,7 @@ export const getIoServer = (env?: Partial<Env>) => {
 /**
  * Fetches metadata with exponential backoff retry
  */
-export const fetchMetadataWithBackoff = async (
+const fetchMetadataWithBackoff = async (
   umi: Umi,
   tokenAddress: string,
   env?: Env,
@@ -145,41 +145,6 @@ export const fetchMetadataWithBackoff = async (
     }
   }
 };
-
-export async function getTxIdAndCreatorFromTokenAddress(
-  tokenAddress: string,
-  env?: Env,
-) {
-  console.log(`tokenAddress: ${tokenAddress}`);
-
-  // Get a Solana config with the right environment
-  const solanaConfig = initSolanaConfig(env);
-
-  const transactionHistory =
-    await solanaConfig.connection.getSignaturesForAddress(
-      new PublicKey(tokenAddress),
-    );
-
-  if (transactionHistory.length > 0) {
-    const tokenCreationTxId =
-      transactionHistory[transactionHistory.length - 1].signature;
-    const transactionDetails =
-      await solanaConfig.connection.getTransaction(tokenCreationTxId);
-
-    if (
-      transactionDetails &&
-      transactionDetails.transaction &&
-      transactionDetails.transaction.message
-    ) {
-      // The creator address is typically the first account in the transaction's account keys
-      const creatorAddress =
-        transactionDetails.transaction.message.accountKeys[0].toBase58();
-      return { tokenCreationTxId, creatorAddress };
-    }
-  }
-
-  throw new Error(`No transaction found for token address: ${tokenAddress}`);
-}
 
 /**
  * Creates a new token record with all required data
@@ -365,133 +330,6 @@ export async function bulkUpdatePartialTokens(
   return Promise.all(updatedTokensPromises);
 }
 
-export const createConfigTx = async (
-  admin: PublicKey,
-
-  newConfig: any,
-
-  connection: Connection,
-  program: Program<Autofun>,
-) => {
-  const [configPda, _] = PublicKey.findProgramAddressSync(
-    [Buffer.from(SEED_CONFIG)],
-    program.programId,
-  );
-
-  console.log("configPda: ", configPda.toBase58());
-
-  // Create compute budget instructions
-  const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({
-    units: 300000, // Increase compute units
-  });
-
-  const addPriorityFee = ComputeBudgetProgram.setComputeUnitPrice({
-    microLamports: 50000, // Add priority fee
-  });
-
-  // Get the transaction
-  const configTx = await program.methods
-    .configure(newConfig)
-    .accounts({
-      payer: admin,
-    })
-    .transaction();
-
-  // Add compute budget instructions at the beginning
-  configTx.instructions = [
-    modifyComputeUnits,
-    addPriorityFee,
-    ...configTx.instructions,
-  ];
-
-  configTx.feePayer = admin;
-  configTx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-
-  return configTx;
-};
-
-export const swapTx = async (
-  user: PublicKey,
-  token: PublicKey,
-  amount: number,
-  style: number,
-  slippageBps: number = 100,
-  connection: Connection,
-  program: Program<Autofun>,
-) => {
-  const [configPda, _] = PublicKey.findProgramAddressSync(
-    [Buffer.from(SEED_CONFIG)],
-    program.programId,
-  );
-  const configAccount = await program.account.config.fetch(configPda);
-  const [bondingCurvePda] = PublicKey.findProgramAddressSync(
-    [Buffer.from(SEED_BONDING_CURVE), token.toBytes()],
-    program.programId,
-  );
-  const curve = await program.account.bondingCurve.fetch(bondingCurvePda);
-
-  // Apply platform fee
-  const feePercent =
-    style === 1
-      ? Number(configAccount.platformSellFee)
-      : Number(configAccount.platformBuyFee);
-  const adjustedAmount = Math.floor(
-    (amount * (FEE_BASIS_POINTS - feePercent)) / FEE_BASIS_POINTS,
-  );
-
-  // Calculate expected output
-  let estimatedOutput;
-
-  console.log("curve.reserveToken.toNumber()", curve.reserveToken.toNumber());
-  console.log("adjustedAmount", adjustedAmount);
-  console.log(
-    "curve.reserveLamport.toNumber()",
-    curve.reserveLamport.toNumber(),
-  );
-  console.log("feePercent", feePercent);
-
-  if (style === 0) {
-    // Buy
-    estimatedOutput = calculateAmountOutBuy(
-      curve.reserveToken.toNumber(),
-      adjustedAmount,
-      curve.reserveLamport.toNumber(),
-      feePercent,
-      300,
-    );
-  } else {
-    // Sell
-    estimatedOutput = calculateAmountOutSell(
-      curve.reserveLamport.toNumber(),
-      adjustedAmount,
-      feePercent,
-      curve.reserveToken.toNumber(),
-      300,
-    );
-  }
-
-  // Apply slippage to estimated output
-  const minOutput = new BN(
-    Math.floor((estimatedOutput * (10000 - slippageBps)) / 10000),
-  );
-
-  const deadline = Math.floor(Date.now() / 1000) + 120;
-
-  const tx = await program.methods
-    .swap(new BN(amount), style, minOutput, new BN(deadline))
-    .accounts({
-      teamWallet: configAccount.teamWallet,
-      user,
-      tokenMint: token,
-    })
-    .transaction();
-
-  tx.feePayer = user;
-  tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-
-  return tx;
-};
-
 export const withdrawTx = async (
   user: PublicKey,
   token: PublicKey,
@@ -542,7 +380,7 @@ export const getRpcUrl = (env: any, forceMainnet: boolean = false) => {
 };
 
 // Get mainnet RPC URL regardless of environment setting
-export const getMainnetRpcUrl = (env: any) => {
+const getMainnetRpcUrl = (env: any) => {
   // Extract base URL and API key
   const baseUrl = "https://mainnet.helius-rpc.com/";
   const apiKey =
@@ -557,7 +395,7 @@ export const getMainnetRpcUrl = (env: any) => {
 };
 
 // Get devnet RPC URL regardless of environment setting
-export const getDevnetRpcUrl = (env: any) => {
+const getDevnetRpcUrl = (env: any) => {
   // Extract base URL and API key
   const baseUrl = "https://devnet.helius-rpc.com/";
   const apiKey =
@@ -571,48 +409,23 @@ export const getDevnetRpcUrl = (env: any) => {
   return devnetUrl;
 };
 
-// Generate a logger that works with Cloudflare Workers
-export const logger = {
-  log: (...args: any[]) => console.log(...args),
-  error: (...args: any[]) => console.error(...args),
+const getTimestamp = () => {
+  return new Date().toISOString();
 };
 
-// Execute a transaction
-export const execTx = async (
-  transaction: Transaction,
-  connection: Connection,
-  payer: any,
-  commitment: "confirmed" | "finalized" = "confirmed",
-) => {
-  try {
-    //  Sign the transaction with payer wallet
-    const signedTx = await payer.signTransaction(transaction);
-
-    // Serialize, send and confirm the transaction
-    const rawTransaction = signedTx.serialize();
-
-    logger.log(await connection.simulateTransaction(signedTx));
-
-    const txid = await connection.sendRawTransaction(rawTransaction, {
-      skipPreflight: true,
-      maxRetries: 2,
-      preflightCommitment: "processed",
-    });
-
-    logger.log(
-      `https://solscan.io/tx/${txid}?cluster=custom&customUrl=${connection.rpcEndpoint}`,
-    );
-
-    const confirmed = await connection.confirmTransaction(txid, commitment);
-
-    if (confirmed.value.err) {
-      logger.error("err ", confirmed.value.err);
-    }
-
-    return txid;
-  } catch (e) {
-    console.log(e);
-  }
+export const logger = {
+  log: (...args: any[]) => {
+    console.log(`[${getTimestamp()}]`, ...args);
+  },
+  info: (...args: any[]) => {
+    console.info(`[${getTimestamp()}]`, ...args);
+  },
+  warn: (...args: any[]) => {
+    console.warn(`[${getTimestamp()}]`, ...args);
+  },
+  error: (...args: any[]) => {
+    console.error(`[${getTimestamp()}]`, ...args);
+  },
 };
 
 export async function execWithdrawTx(
@@ -762,166 +575,6 @@ export const getAssociatedTokenAccount = (
   return associatedTokenAccountPubkey;
 };
 
-export const getATokenAccountsNeedCreate = async (
-  connection: Connection,
-  walletAddress: PublicKey,
-  owner: PublicKey,
-  nfts: PublicKey[],
-) => {
-  const instructions: TransactionInstruction[] = [];
-  const destinationAccounts: PublicKey[] = [];
-  for (const mint of nfts) {
-    const destinationPubkey = getAssociatedTokenAccount(owner, mint);
-    let response = await connection.getAccountInfo(destinationPubkey);
-    if (!response) {
-      const createATAIx = createAssociatedTokenAccountInstruction(
-        destinationPubkey,
-        walletAddress,
-        owner,
-        mint,
-      );
-      instructions.push(createATAIx);
-    }
-    destinationAccounts.push(destinationPubkey);
-    if (walletAddress != owner) {
-      const userAccount = getAssociatedTokenAccount(walletAddress, mint);
-      response = await connection.getAccountInfo(userAccount);
-      if (!response) {
-        const createATAIx = createAssociatedTokenAccountInstruction(
-          userAccount,
-          walletAddress,
-          walletAddress,
-          mint,
-        );
-        instructions.push(createATAIx);
-      }
-    }
-  }
-  return {
-    instructions,
-    destinationAccounts,
-  };
-};
-
-export function splitIntoLines(text?: string): string[] | undefined {
-  if (!text) return undefined;
-  return text
-    .split("\n")
-    .map((line) => line.trim().replace("\n", ""))
-    .filter((line) => line.length > 0);
-}
-
-export async function updateHoldersCache(env: Env, mint: string) {
-  try {
-    const BATCH_DELETE_SIZE = 100;
-    const BATCH_INSERT_SIZE = 100;
-    const db = getDB(env);
-    const connection = new Connection(getRpcUrl(env));
-
-    // Get token holders from Solana
-    const accounts = await connection.getParsedProgramAccounts(
-      new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), // Token program
-      {
-        filters: [
-          {
-            dataSize: 165, // Size of token account
-          },
-          {
-            memcmp: {
-              offset: 0,
-              bytes: mint, // Mint address
-            },
-          },
-        ],
-      },
-    );
-
-    logger.log(`Found ${accounts.length} token accounts for mint ${mint}`);
-
-    // Process accounts
-    let totalTokens = 0;
-    const holders: any[] = [];
-
-    for (const account of accounts) {
-      const parsedAccountInfo = account.account.data as ParsedAccountData;
-      const tokenBalance =
-        parsedAccountInfo.parsed?.info?.tokenAmount?.uiAmount || 0;
-
-      if (tokenBalance > 0) {
-        totalTokens += tokenBalance;
-        holders.push({
-          address: parsedAccountInfo.parsed?.info?.owner,
-          amount: tokenBalance,
-        });
-      }
-    }
-
-    // Calculate percentages and prepare for database
-    const holderRecords = holders.map((holder) => ({
-      id: crypto.randomUUID(),
-      mint,
-      address: holder.address,
-      amount: holder.amount,
-      percentage: (holder.amount / totalTokens) * 100,
-      lastUpdated: new Date().toISOString(),
-    }));
-
-    const existing = await db
-      .select({ id: tokenHolders.id })
-      .from(tokenHolders)
-      .where(eq(tokenHolders.mint, mint));
-
-    // Remove old holders data
-    for (let i = 0; i < existing.length; i += BATCH_DELETE_SIZE) {
-      const batchIds = existing
-        .slice(i, i + BATCH_DELETE_SIZE)
-        .map((r) => r.id);
-
-      await db
-        .delete(tokenHolders)
-        .where(
-          and(eq(tokenHolders.mint, mint), inArray(tokenHolders.id, batchIds)),
-        );
-    }
-
-    // Insert new holders data in batches of 100 to avoid SQLite parameter limits
-    if (holderRecords.length > 0) {
-      for (let i = 0; i < holderRecords.length; i += BATCH_INSERT_SIZE) {
-        const batch = holderRecords.slice(i, i + BATCH_INSERT_SIZE);
-        await db.insert(tokenHolders).values(batch).onConflictDoNothing();
-      }
-    }
-
-    // Update the token with holder count
-    await db
-      .update(tokens)
-      .set({
-        holderCount: holderRecords.length,
-        lastUpdated: new Date().toISOString(),
-      })
-      .where(eq(tokens.mint, mint));
-
-    // Try to emit websocket update for holders
-    try {
-      // Get the WebSocket client
-      const wsClient = getWebSocketClient(env);
-
-      // Emit event to notify of holder update
-      await wsClient.emit(`token-${mint}`, "newHolder", holderRecords);
-
-      logger.log(`Emitted holders update for token ${mint}`);
-    } catch (wsError) {
-      // Don't fail if WebSocket fails
-      logger.error(`Error emitting WebSocket event: ${wsError}`);
-    }
-
-    return holderRecords.length;
-  } catch (error) {
-    logger.error(`Error updating holders for ${mint}:`, error);
-    throw error;
-  }
-}
-
 /**
  * Gets the maximum values needed for featured sorting
  *
@@ -1070,5 +723,759 @@ export function applyFeaturedSort(
     return tokensQuery.orderBy(desc(featuredScore));
   } else {
     return tokensQuery.orderBy(featuredScore);
+  }
+}
+
+export async function processSwapEvent(
+  env: Env,
+  swap: any,
+  shouldEmitGlobal: boolean = true,
+): Promise<void> {
+  try {
+    // Get WebSocket client
+    const wsClient = getWebSocketClient(env);
+
+    // Get DB connection to fetch token data and calculate featuredScore
+    const db = getDB(env);
+
+    // Get the token data for this swap
+    const tokenData = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, swap.tokenMint))
+      .limit(1);
+
+    // Prepare swap data for emission
+    const enrichedSwap = { ...swap };
+
+    // Add featuredScore if we have token data
+    if (tokenData && tokenData.length > 0) {
+      // Get max values for normalization
+      const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
+
+      // Calculate featured score
+      const featuredScore = calculateFeaturedScore(
+        tokenData[0] as any,
+        maxVolume,
+        maxHolders,
+      );
+
+      // Add token data with featuredScore to the swap
+      enrichedSwap.tokenData = {
+        ...tokenData[0],
+        featuredScore,
+      };
+    }
+
+    // Emit to token-specific room
+    await wsClient.emit(`token-${swap.tokenMint}`, "newSwap", enrichedSwap);
+
+    // Only log in debug mode or for significant events
+    if (process.env.DEBUG_WEBSOCKET) {
+      logger.log(`Emitted swap event for token ${swap.tokenMint}`);
+    }
+
+    // Optionally emit to global room for activity feed
+    if (shouldEmitGlobal) {
+      await wsClient.emit("global", "newSwap", enrichedSwap);
+
+      if (process.env.DEBUG_WEBSOCKET) {
+        logger.log("Emitted swap event to global feed");
+      }
+    }
+
+    return;
+  } catch (error) {
+    logger.error("Error processing swap event:", error);
+    throw error;
+  }
+}
+
+// Helper function to process token info after finding it on a network
+export async function processTokenInfo(
+  c: any,
+  mintPublicKey: PublicKey,
+  tokenInfo: AccountInfo<Buffer>,
+  connection: Connection,
+  requestor: string,
+) {
+  // Check program ID to verify this is an SPL token
+  const TOKEN_PROGRAM_ID = new PublicKey(
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+  );
+  const TOKEN_2022_PROGRAM_ID = new PublicKey(
+    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+  );
+
+  const isSplToken = tokenInfo.owner.equals(TOKEN_PROGRAM_ID);
+  const isSPL2022 = tokenInfo.owner.equals(TOKEN_2022_PROGRAM_ID);
+
+  if (!isSplToken && !isSPL2022) {
+    return c.json(
+      {
+        error: "Not a valid SPL token. Owner: " + tokenInfo.owner.toString(),
+      },
+      400,
+    );
+  }
+
+  logger.log(`[search-token] Token owner: ${tokenInfo.owner.toString()}`);
+  logger.log(`[search-token] Token is SPL-2022: ${isSPL2022}`);
+
+  // Get mint info - decimals and authorities
+  const mintInfo = await connection.getParsedAccountInfo(mintPublicKey);
+  logger.log(
+    `[search-token] Mint info: ${JSON.stringify(mintInfo.value?.data)}`,
+  );
+
+  // Extract basic token info
+  const parsedData = (mintInfo.value?.data as any)?.parsed;
+  const decimals = parsedData?.info?.decimals || 9;
+  const mintAuthority = parsedData?.info?.mintAuthority || null;
+
+  logger.log(`[search-token] Decimals: ${decimals}`);
+  logger.log(`[search-token] Mint authority: ${mintAuthority}`);
+
+  // Initialize variables for token data
+  let tokenName = "";
+  let tokenSymbol = "";
+  let uri = "";
+  let imageUrl = "";
+  let description = "";
+  let updateAuthority: string | null = null;
+  let foundMetadata = false;
+
+  // For SPL-2022 tokens, check for token metadata extension first
+  if (isSPL2022 && parsedData?.info?.extensions) {
+    logger.log(`[search-token] Checking SPL-2022 extensions for metadata`);
+
+    // Find the tokenMetadata extension if it exists
+    const metadataExt = parsedData.info.extensions.find(
+      (ext: any) => ext.extension === "tokenMetadata",
+    );
+
+    if (metadataExt && metadataExt.state) {
+      logger.log(
+        `[search-token] Found tokenMetadata extension: ${JSON.stringify(metadataExt.state)}`,
+      );
+
+      // Extract metadata directly from the extension
+      tokenName = metadataExt.state.name || "";
+      tokenSymbol = metadataExt.state.symbol || "";
+      uri = metadataExt.state.uri || "";
+      updateAuthority = metadataExt.state.updateAuthority || null;
+
+      logger.log(
+        `[search-token] SPL-2022 metadata - Name: ${tokenName}, Symbol: ${tokenSymbol}`,
+      );
+      logger.log(`[search-token] SPL-2022 metadata - URI: ${uri}`);
+      logger.log(
+        `[search-token] SPL-2022 metadata - Update Authority: ${updateAuthority}`,
+      );
+
+      foundMetadata = true;
+
+      // Now fetch additional metadata from the URI if available
+      if (uri) {
+        logger.log(`[search-token] Fetching metadata from URI: ${uri}`);
+        const uriResponse = await fetch(uri);
+
+        if (uriResponse.ok) {
+          const uriText = await uriResponse.text();
+          logger.log(`[search-token] URI response: ${uriText}`);
+
+          try {
+            const uriData = JSON.parse(uriText);
+            logger.log(
+              `[search-token] Parsed URI data: ${JSON.stringify(uriData)}`,
+            );
+
+            // Extract image and description if available
+            if (uriData.image) {
+              imageUrl = uriData.image;
+              logger.log(`[search-token] Found image URL in URI: ${imageUrl}`);
+            }
+
+            if (uriData.description) {
+              description = uriData.description;
+              logger.log(
+                `[search-token] Found description in URI: ${description}`,
+              );
+            }
+          } catch (parseError) {
+            logger.error(
+              `[search-token] Error parsing URI JSON: ${parseError}`,
+            );
+          }
+        } else {
+          logger.error(
+            `[search-token] Failed to fetch URI: ${uriResponse.status} ${uriResponse.statusText}`,
+          );
+        }
+      }
+    } else {
+      logger.log(
+        `[search-token] No tokenMetadata extension found in SPL-2022 token`,
+      );
+    }
+  }
+
+  // Only try to get Metaplex metadata if we didn't find it in SPL-2022 extensions
+  if (!foundMetadata) {
+    // Get metadata PDA
+    const METADATA_PROGRAM_ID = new PublicKey(
+      "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
+    );
+    const [metadataAddress] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        METADATA_PROGRAM_ID.toBuffer(),
+        mintPublicKey.toBuffer(),
+      ],
+      METADATA_PROGRAM_ID,
+    );
+
+    logger.log(
+      `[search-token] Metadata address: ${metadataAddress.toString()}`,
+    );
+
+    // Get metadata account data - direct read from chain with no fallbacks
+    const metadataAccount = await connection.getAccountInfo(metadataAddress);
+    if (!metadataAccount || metadataAccount.data.length === 0) {
+      // For SPL-2022 tokens, we already checked extensions so this is just a warning
+      // For regular SPL tokens, this is an error
+      if (isSPL2022) {
+        logger.log(
+          `[search-token] No Metaplex metadata found for SPL-2022 token: ${mintPublicKey.toString()}`,
+        );
+      } else {
+        logger.error(
+          `[search-token] No metadata found for token: ${mintPublicKey.toString()}`,
+        );
+        return c.json({ error: "No metadata found for this token" }, 404);
+      }
+    } else {
+      // We found Metaplex metadata
+      logger.log(
+        `[search-token] Metadata account found, data length: ${metadataAccount.data.length} bytes`,
+      );
+      logger.log(
+        `[search-token] Raw metadata (hex): ${Buffer.from(metadataAccount.data).toString("hex")}`,
+      );
+
+      // Direct metadata extraction
+      updateAuthority = new PublicKey(
+        metadataAccount.data.slice(1, 33),
+      ).toString();
+      logger.log(`[search-token] Update authority: ${updateAuthority}`);
+
+      // Calculate offsets for variable-length fields
+      let offset = 1 + 32 + 32; // Skip version byte + update authority + mint
+
+      // Extract name length and value
+      const nameLength = metadataAccount.data[offset];
+      offset += 1;
+      const nameData = metadataAccount.data.slice(offset, offset + nameLength);
+      tokenName = nameData.toString("utf8").replace(/\0/g, "").trim();
+      logger.log(
+        `[search-token] Token name: ${tokenName} (${nameLength} bytes)`,
+      );
+      offset += nameLength;
+
+      // Extract symbol - needs to account for padding between fields
+      offset += 3; // Skip padding bytes before length
+      const symbolLength = metadataAccount.data[offset];
+      offset += 1;
+      const symbolData = metadataAccount.data.slice(
+        offset,
+        offset + symbolLength,
+      );
+      tokenSymbol = symbolData.toString("utf8").replace(/\0/g, "").trim();
+      logger.log(
+        `[search-token] Token symbol: ${tokenSymbol} (${symbolLength} bytes)`,
+      );
+      offset += symbolLength;
+
+      // Extract URI
+      offset += 3; // Skip padding bytes before length
+      const uriLength = metadataAccount.data[offset];
+      offset += 1;
+      const uriData = metadataAccount.data.slice(offset, offset + uriLength);
+      uri = uriData.toString("utf8").replace(/\0/g, "").trim();
+      logger.log(`[search-token] Metadata URI: ${uri} (${uriLength} bytes)`);
+
+      foundMetadata = true;
+
+      // Now fetch additional metadata from the URI if available
+      if (uri) {
+        logger.log(`[search-token] Fetching metadata from URI: ${uri}`);
+        const uriResponse = await fetch(uri);
+
+        if (uriResponse.ok) {
+          const uriText = await uriResponse.text();
+          logger.log(`[search-token] URI response: ${uriText}`);
+
+          try {
+            const uriData = JSON.parse(uriText);
+            logger.log(
+              `[search-token] Parsed URI data: ${JSON.stringify(uriData)}`,
+            );
+
+            // Extract image and description if available
+            if (uriData.image) {
+              imageUrl = uriData.image;
+              logger.log(`[search-token] Found image URL in URI: ${imageUrl}`);
+            }
+
+            if (uriData.description) {
+              description = uriData.description;
+              logger.log(
+                `[search-token] Found description in URI: ${description}`,
+              );
+            }
+          } catch (parseError) {
+            logger.error(
+              `[search-token] Error parsing URI JSON: ${parseError}`,
+            );
+          }
+        } else {
+          logger.error(
+            `[search-token] Failed to fetch URI: ${uriResponse.status} ${uriResponse.statusText}`,
+          );
+        }
+      }
+    }
+  }
+
+  // If we still didn't find metadata from either source, throw error
+  if (!foundMetadata && !isSPL2022) {
+    return c.json({ error: "No metadata found for this token" }, 404);
+  }
+
+  // For SPL-2022 tokens, we still consider them valid even without metadata
+  // since they might not use the tokenMetadata extension
+
+  // Check if we're in development mode
+  const isLocalDev = c.env.LOCAL_DEV === "true" || c.env.LOCAL_DEV === true;
+
+  // Determine if requestor is the creator/authority
+  // In development mode, always allow any token to be imported
+  const isCreator = isLocalDev
+    ? true
+    : updateAuthority === requestor || mintAuthority === requestor;
+
+  logger.log(`[search-token] Is local development mode? ${isLocalDev}`);
+  logger.log(`[search-token] LOCAL_DEV value: ${c.env.LOCAL_DEV}`);
+  logger.log(`[search-token] Is requestor the creator? ${isCreator}`);
+  logger.log(`[search-token] Request wallet: ${requestor}`);
+  logger.log(`[search-token] Update authority: ${updateAuthority}`);
+  logger.log(`[search-token] Mint authority: ${mintAuthority}`);
+
+  // Debug log for final creator check result
+  if (isLocalDev) {
+    logger.log(
+      `[search-token] Bypassing creator check in development mode. Anyone can import this token.`,
+    );
+  } else if (isCreator) {
+    logger.log(
+      `[search-token] Creator check passed - requestor is the token creator.`,
+    );
+  } else {
+    logger.log(
+      `[search-token] Creator check failed - requestor is not the token creator.`,
+    );
+  }
+
+  // If we don't have names yet (possible for SPL-2022 without tokenMetadata), use defaults
+  if (!tokenName) {
+    tokenName = `Token ${mintPublicKey.toString().slice(0, 8)}`;
+  }
+  if (!tokenSymbol) {
+    tokenSymbol = mintPublicKey.toString().slice(0, 4).toUpperCase();
+  }
+
+  // Return the token data
+  const tokenData = {
+    name: tokenName,
+    symbol: tokenSymbol,
+    description: description || `Token ${tokenName} (${tokenSymbol})`,
+    mint: mintPublicKey.toString(),
+    updateAuthority: updateAuthority,
+    mintAuthority: mintAuthority || null,
+    creator: updateAuthority || mintAuthority || null,
+    isCreator: isCreator,
+    metadataUri: uri,
+    image: imageUrl,
+    tokenType: isSPL2022 ? "spl-2022" : "spl-token",
+    decimals: decimals,
+    needsWalletSwitch: !isCreator,
+  };
+
+  logger.log(`[search-token] Final token data: ${JSON.stringify(tokenData)}`);
+
+  return c.json(tokenData);
+}
+
+// Helper to check token balance directly on blockchain
+export async function checkBlockchainTokenBalance(
+  c,
+  mint,
+  address,
+  checkMultipleNetworks = false,
+) {
+  // Initialize return data
+  let balance = 0;
+  let foundNetwork = ""; // Renamed to avoid confusion with loop variable
+  // Get explicit mainnet and devnet URLs
+  const mainnetUrl = getMainnetRpcUrl(c.env);
+  const devnetUrl = getDevnetRpcUrl(c.env);
+
+  // Log detailed connection info and environment settings
+  logger.log(`IMPORTANT DEBUG INFO FOR TOKEN BALANCE CHECK:`);
+  logger.log(`Address: ${address}`);
+  logger.log(`Mint: ${mint}`);
+  logger.log(`CheckMultipleNetworks: ${checkMultipleNetworks}`);
+  logger.log(`LOCAL_DEV setting: ${c.env.LOCAL_DEV}`);
+  logger.log(`ENV.NETWORK setting: ${c.env.NETWORK || "not set"}`);
+  logger.log(`Mainnet URL: ${mainnetUrl}`);
+  logger.log(`Devnet URL: ${devnetUrl}`);
+
+  // Determine which networks to check - ONLY mainnet and devnet if in local mode
+  const networksToCheck = checkMultipleNetworks
+    ? [
+        { name: "mainnet", url: mainnetUrl },
+        { name: "devnet", url: devnetUrl },
+      ]
+    : [
+        {
+          name: c.env.NETWORK || "devnet",
+          url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+        },
+      ];
+
+  logger.log(
+    `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
+  );
+
+  // Try each network until we find a balance
+  for (const network of networksToCheck) {
+    try {
+      logger.log(
+        `Checking ${network.name} (${network.url}) for token balance...`,
+      );
+      const connection = new Connection(network.url, "confirmed");
+
+      // Convert string addresses to PublicKey objects
+      const mintPublicKey = new PublicKey(mint);
+      const userPublicKey = new PublicKey(address);
+
+      logger.log(
+        `Getting token accounts for ${address} for mint ${mint} on ${network.name}`,
+      );
+
+      // Fetch token accounts with a simple RPC call
+      const response = await connection.getTokenAccountsByOwner(
+        userPublicKey,
+        { mint: mintPublicKey },
+        { commitment: "confirmed" },
+      );
+
+      // Log the number of accounts found
+      logger.log(
+        `Found ${response.value.length} token accounts on ${network.name}`,
+      );
+
+      // If we have accounts, calculate total balance
+      if (response && response.value && response.value.length > 0) {
+        let networkBalance = 0;
+
+        // Log each account
+        for (let i = 0; i < response.value.length; i++) {
+          const { pubkey } = response.value[i];
+          logger.log(`Account ${i + 1}: ${pubkey.toString()}`);
+        }
+
+        // Get token balances from all accounts
+        for (const { pubkey } of response.value) {
+          try {
+            const accountInfo = await connection.getTokenAccountBalance(pubkey);
+            if (accountInfo.value) {
+              const amount = accountInfo.value.amount;
+              const decimals = accountInfo.value.decimals;
+              const tokenAmount = Number(amount) / Math.pow(10, decimals);
+              networkBalance += tokenAmount;
+              logger.log(
+                `Account ${pubkey.toString()} has ${tokenAmount} tokens`,
+              );
+            }
+          } catch (balanceError) {
+            logger.error(
+              `Error getting token account balance: ${balanceError}`,
+            );
+            // Continue with other accounts
+          }
+        }
+
+        // If we found tokens on this network, use this balance
+        if (networkBalance > 0) {
+          balance = networkBalance;
+          foundNetwork = network.name;
+          logger.log(
+            `SUCCESS: Found balance of ${balance} tokens on ${foundNetwork}`,
+          );
+          break; // Stop checking other networks once we find a balance
+        } else {
+          logger.log(
+            `No balance found on ${network.name} despite finding accounts`,
+          );
+        }
+      } else {
+        logger.log(`No token accounts found on ${network.name}`);
+      }
+    } catch (netError) {
+      logger.error(
+        `Error checking ${network.name} for token balance: ${netError}`,
+      );
+      // Continue to next network
+    }
+  }
+
+  // Return the balance information
+  logger.log(
+    `Final result: Balance=${balance}, Network=${foundNetwork || "none"}`,
+  );
+  return c.json({
+    balance,
+    percentage: 0, // We don't know the percentage when checking directly
+    isCreator: false, // We don't know if creator when checking directly
+    mint,
+    address,
+    network: foundNetwork || c.env.NETWORK || "unknown",
+    onChain: true,
+  });
+}
+
+// Function to process a token update and emit WebSocket events
+export async function processTokenUpdateEvent(
+  env: Env,
+  tokenData: any,
+  shouldEmitGlobal: boolean = false,
+): Promise<void> {
+  try {
+    // Get WebSocket client
+    const wsClient = getWebSocketClient(env);
+
+    // Get DB connection and calculate featuredScore
+    const db = getDB(env);
+    const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
+
+    // Create enriched token data with featuredScore
+    const enrichedTokenData = {
+      ...tokenData,
+      featuredScore: calculateFeaturedScore(tokenData, maxVolume, maxHolders),
+    };
+
+    // Always emit to token-specific room
+    await wsClient.emit(
+      `token-${tokenData.mint}`,
+      "updateToken",
+      enrichedTokenData,
+    );
+
+    if (process.env.DEBUG_WEBSOCKET) {
+      logger.log(`Emitted token update event for ${tokenData.mint}`);
+    }
+
+    // Optionally emit to global room for activity feed
+    if (shouldEmitGlobal) {
+      await wsClient.emit("global", "updateToken", {
+        ...enrichedTokenData,
+        timestamp: new Date(),
+      });
+
+      if (process.env.DEBUG_WEBSOCKET) {
+        logger.log("Emitted token update event to global feed");
+      }
+    }
+
+    return;
+  } catch (error) {
+    logger.error("Error processing token update event:", error);
+    // Don't throw to avoid breaking other functionality
+  }
+}
+
+export async function updateHoldersCache(
+  env: Env,
+  mint: string,
+  imported: boolean = false,
+): Promise<number> {
+  try {
+    // Use the utility function to get the RPC URL with proper API key
+    const connection = new Connection(getRpcUrl(env, imported));
+    const db = getDB(env);
+
+    // Get all token accounts for this mint using getParsedProgramAccounts
+    // This method is more reliable for finding all holders
+    const accounts = await connection.getParsedProgramAccounts(
+      new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), // Token program
+      {
+        filters: [
+          {
+            dataSize: 165, // Size of token account
+          },
+          {
+            memcmp: {
+              offset: 0,
+              bytes: mint, // Mint address
+            },
+          },
+        ],
+      },
+    );
+
+    if (!accounts || accounts.length === 0) {
+      logger.log(`No accounts found for token ${mint}`);
+      return 0;
+    }
+
+    logger.log(`Found ${accounts.length} token accounts for mint ${mint}`);
+
+    // Process accounts to extract holder information
+    let totalTokens = 0;
+    const holders: TokenHolder[] = [];
+
+    // Process each account to get holder details
+    for (const account of accounts) {
+      try {
+        const parsedAccountInfo = account.account.data as ParsedAccountData;
+        const tokenBalance =
+          parsedAccountInfo.parsed?.info?.tokenAmount?.uiAmount || 0;
+
+        // Skip accounts with zero balance
+        if (tokenBalance <= 0) continue;
+
+        const ownerAddress = parsedAccountInfo.parsed?.info?.owner || "";
+
+        // Skip accounts without owner
+        if (!ownerAddress) continue;
+
+        // Add to total tokens for percentage calculation
+        totalTokens += tokenBalance;
+
+        holders.push({
+          id: crypto.randomUUID(),
+          mint,
+          address: ownerAddress,
+          amount: tokenBalance,
+          percentage: 0, // Will calculate after we have the total
+          lastUpdated: new Date().toISOString(),
+        });
+      } catch (error: any) {
+        logger.error(`Error processing account for ${mint}:`, error);
+        // Continue with other accounts even if one fails
+        continue;
+      }
+    }
+
+    // Calculate percentages now that we have the total
+    if (totalTokens > 0) {
+      for (const holder of holders) {
+        holder.percentage = (holder.amount / totalTokens) * 100;
+      }
+    }
+
+    // Sort holders by amount (descending)
+    holders.sort((a, b) => b.amount - a.amount);
+
+    // logger.log(`Processing ${holders.length} holders for token ${mint}`);
+
+    // Clear existing holders and insert new ones
+    // logger.log(`Clearing existing holders for token ${mint}`);
+    await db.delete(tokenHolders).where(eq(tokenHolders.mint, mint));
+
+    // For large number of holders, we need to limit what we insert
+    // to avoid overwhelming the database
+    const MAX_HOLDERS_TO_SAVE = 500; // Reasonable limit for most UI needs
+    const holdersToSave =
+      holders.length > MAX_HOLDERS_TO_SAVE
+        ? holders.slice(0, MAX_HOLDERS_TO_SAVE)
+        : holders;
+
+    // logger.log(`Will insert ${holdersToSave.length} holders (from ${holders.length} total) for token ${mint}`);
+
+    if (holdersToSave.length > 0) {
+      // Use a very small batch size to avoid SQLite parameter limits
+      const BATCH_SIZE = 10;
+
+      // Insert in batches to avoid overwhelming the database
+      for (let i = 0; i < holdersToSave.length; i += BATCH_SIZE) {
+        try {
+          const batch = holdersToSave.slice(i, i + BATCH_SIZE);
+          const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+          const totalBatches = Math.ceil(holdersToSave.length / BATCH_SIZE);
+
+          // logger.log(`Inserting batch ${batchNumber}/${totalBatches} (${batch.length} holders) for token ${mint}`);
+
+          await db.insert(tokenHolders).values(batch);
+
+          // logger.log(`Successfully inserted batch ${batchNumber}/${totalBatches} for token ${mint}`);
+        } catch (insertError) {
+          logger.error(`Error inserting batch for token ${mint}:`, insertError);
+          // Continue with next batch even if this one fails
+        }
+      }
+
+      try {
+        const wsClient = getWebSocketClient(env);
+        // Only emit a limited set of holders to avoid overwhelming WebSockets
+        const limitedHolders = holdersToSave.slice(0, 50);
+        wsClient.emit(`token-${mint}`, "newHolder", limitedHolders);
+        // logger.log(`Emitted WebSocket update with ${limitedHolders.length} holders`);
+      } catch (wsError) {
+        logger.error(`WebSocket error when emitting holder update:`, wsError);
+        // Don't fail if WebSocket fails
+      }
+    }
+
+    // Update token holder count with the ACTUAL total count
+    // even if we've only stored a subset
+    await db
+      .update(tokens)
+      .set({
+        holderCount: holders.length, // Use full count, not just what we saved
+        lastUpdated: new Date().toISOString(),
+      })
+      .where(eq(tokens.mint, mint));
+
+    // Emit WebSocket event to notify of holder update
+    try {
+      // Get updated token data
+      const tokenData = await db
+        .select()
+        .from(tokens)
+        .where(eq(tokens.mint, mint))
+        .limit(1);
+
+      if (tokenData && tokenData.length > 0) {
+        // Emit event with updated holder count
+        await processTokenUpdateEvent(env, {
+          ...tokenData[0],
+          event: "holdersUpdated",
+          holderCount: holders.length, // Use full count here too
+          timestamp: new Date().toISOString(),
+        });
+
+        // logger.log(`Emitted holder update event for token ${mint} with ${holders.length} holders count`);
+      }
+    } catch (wsError) {
+      // Don't fail if WebSocket fails
+      logger.error(`WebSocket error when emitting holder update: ${wsError}`);
+    }
+
+    return holders.length; // Return full count, not just what we saved
+  } catch (error) {
+    logger.error(`Error updating holders for token ${mint}:`, error);
+    return 0; // Return 0 instead of throwing to avoid crashing the endpoint
   }
 }

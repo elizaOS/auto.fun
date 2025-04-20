@@ -148,19 +148,28 @@ export default function Page() {
   useEffect(() => {
     const socket = getSocket();
 
+    // Create a handler function that checks if the token matches the current address
     const handleTokenUpdate = (token: any) => {
-      // Only process updates for the current token
+      // Only update if the token address matches the current page
       if (token.mint === address) {
         queryClient.setQueryData(["token", address], token);
       }
     };
 
-    // Subscribe to this specific token's room
-    socket.emit("subscribe", address);
+    // Add the event listener with our filtered handler
     socket.on("updateToken", handleTokenUpdate);
 
     return () => {
+      // Remove the specific handler when cleaning up
       socket.off("updateToken", handleTokenUpdate);
+    };
+  }, [address]);
+
+  useEffect(() => {
+    const socket = getSocket();
+    socket.emit("subscribe", address);
+
+    return () => {
       socket.emit("unsubscribe", address);
     };
   }, [address]);
