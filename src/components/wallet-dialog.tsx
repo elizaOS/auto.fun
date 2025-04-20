@@ -431,7 +431,7 @@ const WalletListItem: FC<{
     <li>
       <button
         onClick={handleClick}
-        className="cursor-pointer cursor-pointer bg-autofun-background-action-primary w-full flex items-center justify-between px-4 py-3 transition-colors"
+        className="cursor-pointer bg-autofun-background-action-primary w-full flex items-center justify-between px-4 py-3 transition-colors"
         tabIndex={tabIndex}
       >
         <div className="flex items-center gap-1 m-auto">
