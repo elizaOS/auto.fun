@@ -33,20 +33,24 @@ function AdminTokensList() {
   const toggleHiddenMutation = useMutation({
     mutationFn: async (tokenAddress: string) => {
       // Find the token in the current list to determine the current hidden status
-      const token = tokensPagination?.items?.find(t => t.mint === tokenAddress);
+      const token = tokensPagination?.items?.find(
+        (t) => t.mint === tokenAddress,
+      );
       const currentHiddenStatus = token ? (token as any).hidden : false;
       return await fetcher(`/api/admin/tokens/${tokenAddress}/hidden`, "POST", {
         hidden: !currentHiddenStatus, // Toggle the status
       });
     },
     onSuccess: (_, tokenAddress) => {
-      const token = tokensPagination?.items?.find(t => t.mint === tokenAddress);
+      const token = tokensPagination?.items?.find(
+        (t) => t.mint === tokenAddress,
+      );
       const currentHiddenStatus = token ? (token as any).hidden : false;
       toast.success(
         `Token ${currentHiddenStatus ? "unhidden" : "hidden"} successfully`,
       );
       // Invalidate the tokens query to refetch the list
-      queryClient.invalidateQueries({ queryKey: ['tokens', sortBy] });
+      queryClient.invalidateQueries({ queryKey: ["tokens", sortBy] });
     },
     onError: (error, tokenAddress) => {
       toast.error(
@@ -168,11 +172,17 @@ function AdminTokensList() {
                         : "bg-gray-900 text-gray-300 hover:bg-gray-800"
                     }`}
                     onClick={() => toggleHiddenMutation.mutate(token.mint)}
-                    disabled={toggleHiddenMutation.isPending && toggleHiddenMutation.variables === token.mint}
+                    disabled={
+                      toggleHiddenMutation.isPending &&
+                      toggleHiddenMutation.variables === token.mint
+                    }
                   >
-                    {toggleHiddenMutation.isPending && toggleHiddenMutation.variables === token.mint
+                    {toggleHiddenMutation.isPending &&
+                    toggleHiddenMutation.variables === token.mint
                       ? "Processing..."
-                      : (token as any).hidden ? "Unhide" : "Hide"}
+                      : (token as any).hidden
+                        ? "Unhide"
+                        : "Hide"}
                   </button>
                 </td>
               </tr>
