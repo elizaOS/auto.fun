@@ -361,11 +361,11 @@ export const WalletModal: FC<WalletModalProps> = () => {
       <DialogContent hideCloseButton className="max-w-[496px]">
         <div className="p-3.5 border-b relative">
           <h1 className="text-xl font-satoshi font-medium tracking-[-0.018em] text-autofun-text-highlight">
-            Connect Wallet
+            Connect
           </h1>
           <button
             onClick={() => setVisible(false)}
-            className="cursor-pointer absolute top-4 right-4 text-autofun-background-disabled cursor-pointer"
+            className="absolute top-4 right-4 text-autofun-background-disabled cursor-pointer"
             aria-label="Close"
           >
             <svg
