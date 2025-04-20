@@ -14,10 +14,15 @@ export default function GridView({ data }: { data: IToken[] }) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
-      {data?.map((token: IToken, _: number) => {
-        const isPartner = parntnerMintList.includes(token.mint);
-        return (
-          <Link
+      {data
+        ?.filter((token: IToken) => token.image !== "") 
+        .filter((token, index, self) =>
+          self.findIndex((t) => t.mint === token.mint) === index,
+        )
+        .map((token: IToken, _: number) => {
+          const isPartner = parntnerMintList.includes(token.mint);
+          return (
+            <Link
             to={`/token/${token.mint}`}
             key={token.mint}
             className="bg-autofun-background-card"

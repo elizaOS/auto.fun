@@ -47,6 +47,7 @@ export function TableView({ data }: { data: IToken[] }) {
             (token, index, self) =>
               self.findIndex((t) => t.mint === token.mint) === index,
           )
+          .filter((token: IToken) => token.image !== "")
           .map((token: IToken) => {
             return (
               <TableRow

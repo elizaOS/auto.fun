@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import CopyButton from "@/components/copy-button";
 import { fetcher, getToken } from "@/utils/api";
@@ -25,8 +25,35 @@ function AdminTokensList() {
     "all" | "marketCap" | "newest" | "oldest"
   >("newest");
   const [hideImported, setHideImported] = useState(false);
+  const queryClient = useQueryClient(); // Get query client instance
 
   const tokensPagination = useTokens(sortBy, 50);
+
+  // Mutation for toggling hidden status for a specific token
+  const toggleHiddenMutation = useMutation({
+    mutationFn: async (tokenAddress: string) => {
+      // Find the token in the current list to determine the current hidden status
+      const token = tokensPagination?.items?.find(t => t.mint === tokenAddress);
+      const currentHiddenStatus = token ? (token as any).hidden : false;
+      return await fetcher(`/api/admin/tokens/${tokenAddress}/hidden`, "POST", {
+        hidden: !currentHiddenStatus, // Toggle the status
+      });
+    },
+    onSuccess: (_, tokenAddress) => {
+      const token = tokensPagination?.items?.find(t => t.mint === tokenAddress);
+      const currentHiddenStatus = token ? (token as any).hidden : false;
+      toast.success(
+        `Token ${currentHiddenStatus ? "unhidden" : "hidden"} successfully`,
+      );
+      // Invalidate the tokens query to refetch the list
+      queryClient.invalidateQueries({ queryKey: ['tokens', sortBy] });
+    },
+    onError: (error, tokenAddress) => {
+      toast.error(
+        `Failed to update hidden status for token ${tokenAddress}: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    },
+  });
 
   if (tokensPagination?.isLoading) {
     return <Loader />;
@@ -134,6 +161,19 @@ function AdminTokensList() {
                   >
                     View
                   </Link>
+                  <button
+                    className={`ml-2 px-2 py-1 text-xs rounded ${
+                      (token as any).hidden
+                        ? "bg-purple-900 text-purple-300 hover:bg-purple-800"
+                        : "bg-gray-900 text-gray-300 hover:bg-gray-800"
+                    }`}
+                    onClick={() => toggleHiddenMutation.mutate(token.mint)}
+                    disabled={toggleHiddenMutation.isPending && toggleHiddenMutation.variables === token.mint}
+                  >
+                    {toggleHiddenMutation.isPending && toggleHiddenMutation.variables === token.mint
+                      ? "Processing..."
+                      : (token as any).hidden ? "Unhide" : "Hide"}
+                  </button>
                 </td>
               </tr>
             ))}
@@ -363,6 +403,20 @@ function AdminTokenDetails({ address }: { address: string }) {
         <div className="p-4 bg-autofun-background-primary ">
           <h3 className="text-lg font-medium mb-2">Token Information</h3>
           <div className="space-y-2">
+            {token.image && (
+              <div className="flex items-center space-x-2">
+                <span className="text-autofun-text-secondary">Image:</span>
+                <img
+                  src={token.image}
+                  alt={token.name}
+                  className="w-10 h-10 rounded-full object-cover ml-2"
+                  onError={(e) => {
+                    // Replace broken images with a placeholder
+                    (e.target as HTMLImageElement).src = "/placeholder.png";
+                  }}
+                />
+              </div>
+            )}
             <div>
               <span className="text-autofun-text-secondary">ID:</span>
               <span className="ml-2">{token.id}</span>

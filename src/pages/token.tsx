@@ -454,8 +454,8 @@ export default function Page() {
                   </div>
                 );
               })()}
-            {/* Render AdminSection only for moderators and non-imported tokens */}
-            {isModerator && !token?.imported && <AdminSection />}
+            {/* Render AdminSection only for moderators */}
+            {isModerator && <AdminSection />}
           </div>
         </div>
 
