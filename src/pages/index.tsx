@@ -106,7 +106,7 @@ export default function Page() {
       query.isFetchingNextPage,
       query.hasNextPage,
       query.fetchNextPage,
-    ],
+    ]
   );
 
   useEffect(() => {
@@ -169,13 +169,13 @@ export default function Page() {
             >
               <FilterIcon className="h-4 w-4" />
               {(tokenSource !== "all" || bondingStatus !== "all") && (
-                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-blue-500 ring-2 ring-background" />
+                <span className="absolute top-0 right-0 block size-2 rounded-full bg-autofun-background-action-highlight ring-2 ring-autofun-background-action-primary" />
               )}
             </Button>
             {isFilterOpen && (
-              <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-black border z-20 p-4">
+              <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-56 rounded-md shadow-lg bg-autofun-background-primary border z-20 p-4">
                 <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-sm font-medium text-foreground">
+                  <h3 className="text-sm font-dm-mono font-medium text-foreground">
                     Filters
                   </h3>
                   <Button
@@ -184,73 +184,69 @@ export default function Page() {
                     onClick={() => setIsFilterOpen(false)}
                     className="p-1"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="size-4" />
                   </Button>
                 </div>
-                <div className="space-y-4">
+                <div className="flex flex-col gap-2">
                   {/* Token Source Filter */}
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">
-                      Token Source
-                    </label>
-                    <div className="flex gap-2 mt-1">
-                      <Button
-                        size="small"
-                        variant={tokenSource === "all" ? "secondary" : "ghost"}
-                        onClick={() => setTokenSource("all")}
-                        className="flex-1"
-                      >
-                        All
-                      </Button>
-                      <Button
-                        size="small"
-                        variant={
-                          tokenSource === "autofun" ? "secondary" : "ghost"
-                        }
-                        onClick={() => setTokenSource("autofun")}
-                        className="flex-1"
-                      >
-                        auto.fun
-                      </Button>
-                    </div>
+
+                  <label className="text-sm font-dm-mono font-medium text-muted-foreground">
+                    Token Source
+                  </label>
+                  <div className="flex gap-2 mt-1">
+                    <Button
+                      size="small"
+                      variant={tokenSource === "all" ? "secondary" : "ghost"}
+                      onClick={() => setTokenSource("all")}
+                      className="flex-1"
+                    >
+                      All
+                    </Button>
+                    <Button
+                      size="small"
+                      variant={
+                        tokenSource === "autofun" ? "secondary" : "ghost"
+                      }
+                      onClick={() => setTokenSource("autofun")}
+                      className="flex-1"
+                    >
+                      auto.fun
+                    </Button>
                   </div>
+
                   {/* Bonding Status Filter */}
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">
-                      Bonding Status
-                    </label>
-                    <div className="flex flex-col gap-1 mt-1">
-                      <Button
-                        size="small"
-                        variant={
-                          bondingStatus === "all" ? "secondary" : "ghost"
-                        }
-                        onClick={() => setBondingStatus("all")}
-                        className="w-full justify-start"
-                      >
-                        All
-                      </Button>
-                      <Button
-                        size="small"
-                        variant={
-                          bondingStatus === "inprogress" ? "secondary" : "ghost"
-                        }
-                        onClick={() => setBondingStatus("inprogress")}
-                        className="w-full justify-start"
-                      >
-                        In Progress
-                      </Button>
-                      <Button
-                        size="small"
-                        variant={
-                          bondingStatus === "bonded" ? "secondary" : "ghost"
-                        }
-                        onClick={() => setBondingStatus("bonded")}
-                        className="w-full justify-start"
-                      >
-                        Bonded
-                      </Button>
-                    </div>
+                  <label className="text-sm font-dm-mono font-medium text-muted-foreground">
+                    Bonding Status
+                  </label>
+                  <div className="flex flex-col gap-1 mt-1">
+                    <Button
+                      size="small"
+                      variant={bondingStatus === "all" ? "secondary" : "ghost"}
+                      onClick={() => setBondingStatus("all")}
+                      className="w-full justify-start"
+                    >
+                      All
+                    </Button>
+                    <Button
+                      size="small"
+                      variant={
+                        bondingStatus === "inprogress" ? "secondary" : "ghost"
+                      }
+                      onClick={() => setBondingStatus("inprogress")}
+                      className="w-full justify-start"
+                    >
+                      In Progress
+                    </Button>
+                    <Button
+                      size="small"
+                      variant={
+                        bondingStatus === "bonded" ? "secondary" : "ghost"
+                      }
+                      onClick={() => setBondingStatus("bonded")}
+                      className="w-full justify-start"
+                    >
+                      Bonded
+                    </Button>
                   </div>
                 </div>
               </div>
