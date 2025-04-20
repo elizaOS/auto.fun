@@ -183,6 +183,10 @@ export async function fetchPriceChartData(
       const tokenAddress =
         env.NETWORK === "devnet" ? DEV_TEST_TOKEN_ADDRESS : tokenMint;
 
+      console.log(
+        `Santi DEBUG - Fetching chart ${tokenMint} => ACTUALLY USING: ${tokenAddress}`,
+      );
+
       // Convert range to Codex resolution format
       let resolution: CodexBarResolution = "1";
       switch (range) {
@@ -245,7 +249,9 @@ export async function fetchPriceChartData(
         }
         return combined;
       }
-
+      console.log(
+        `Santi DEBUG - Fetching chart ${tokenMint} => ACTUALLY USING: ${tokenAddress} => RETURNED: ${JSON.stringify(candles)}`,
+      );
       return candles;
     } catch (error) {
       logger.error("Error fetching data with getBars API:", error);
