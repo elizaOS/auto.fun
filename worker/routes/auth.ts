@@ -1,4 +1,4 @@
-import { eq, sql, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import {
   authenticate,
@@ -7,16 +7,9 @@ import {
   logout,
   requireAuth,
 } from "../auth";
-import { getDB, users, vanityKeypairs, VanityKeypair } from "../db";
+import { getDB, users } from "../db";
 import { Env } from "../env";
 import { logger } from "../logger";
-import {
-  Connection,
-  PublicKey,
-  Keypair,
-  LAMPORTS_PER_SOL,
-} from "@solana/web3.js";
-import { Buffer } from "buffer";
 import { awardUserPoints } from "../points/helpers";
 
 const authRouter = new Hono<{
