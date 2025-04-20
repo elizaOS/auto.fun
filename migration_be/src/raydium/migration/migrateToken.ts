@@ -167,7 +167,7 @@ export class TokenMigrator {
         });
         // start monitoring the token
         const ext = new ExternalToken(this.env, token.mint);
-        await ext.registerWebhook();
+        // await ext.registerWebhook();
         await releaseMigrationLock(this.env, token);
       }
       const step = currentStep || steps[0];
