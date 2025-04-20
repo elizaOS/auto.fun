@@ -18,10 +18,7 @@ export const HomepageFeaturedSchema = HomepageTokenSchema.and(
 
 export type HomepageSortBy = "all" | "marketCap" | "newest" | "oldest";
 
-export const useHomepageAll = (
-  enabled: boolean,
-  pageSize: number = 24,
-) => {
+export const useHomepageAll = (enabled: boolean, pageSize: number = 24) => {
   const pagination = usePagination({
     endpoint: "/api/tokens",
     limit: pageSize,
@@ -135,10 +132,7 @@ export const useHomepageMarketCap = (
   return pagination;
 };
 
-export const useHomepageNewest = (
-  enabled: boolean,
-  pageSize: number = 24,
-) => {
+export const useHomepageNewest = (enabled: boolean, pageSize: number = 24) => {
   const pagination = usePagination({
     endpoint: "/api/tokens",
     limit: pageSize,
@@ -187,10 +181,7 @@ export const useHomepageNewest = (
   return pagination;
 };
 
-export const useHomepageOldest = (
-  enabled: boolean,
-  pageSize: number = 24,
-) => {
+export const useHomepageOldest = (enabled: boolean, pageSize: number = 24) => {
   const pagination = usePagination({
     endpoint: "/api/tokens",
     limit: pageSize,
