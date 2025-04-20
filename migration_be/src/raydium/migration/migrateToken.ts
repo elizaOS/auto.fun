@@ -104,8 +104,24 @@ export class TokenMigrator {
           logger.log(
             `[Migrate] Migration already in progress for token ${token.mint}. Deferring additional execution.`,
           );
+          // check if the last updates is more than 5 minutes 
+          const lastUpdated = new Date(token.lastUpdated);
+          if (
+            new Date().getTime() - lastUpdated.getTime() > 5 * 60 * 1000
+          ) {
+            logger.log(
+              `[Migrate] Migration is taking too long for token ${token.mint}. Resuming migration.`,
+            );
+            const newToken = await getToken(this.env, token.mint);
+            if (!newToken) {
+              logger.error(`Token ${token.mint} not found in DB.`);
+              continue;
+            }
+            await this.migrateToken(newToken);
+          }
           continue;
         }
+
         const newToken = await getToken(this.env, token.mint);
         if (!newToken) {
           logger.error(`Token ${token.mint} not found in DB.`);

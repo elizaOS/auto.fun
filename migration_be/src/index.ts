@@ -40,6 +40,10 @@ try {
       resumeOnStart(env, connection);
    }
    resume(process.env as any);
+   setInterval(() => {
+      resume(process.env as any);
+   }, 5 * 60 * 1000); // every 5 minutes
+
 } catch (err) {
    console.error("❌ Error during migration:", err);
 }
@@ -60,6 +64,9 @@ try {
       }
    }
    resume(process.env as any);
+   setInterval(() => {
+      resume(process.env as any);
+   }, 5 * 60 * 1000); // every 5 minutes
 } catch (err) {
    console.error("❌ Error during migration:", err);
    // we continue anyway—you may choose to exit here if it's fatal
