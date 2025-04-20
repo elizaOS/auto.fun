@@ -18,15 +18,11 @@ export const HomepageFeaturedSchema = HomepageTokenSchema.and(
 
 export type HomepageSortBy = "all" | "marketCap" | "newest" | "oldest";
 
-export const useHomepageAll = (
-  enabled: boolean,
-  _hideImported?: boolean,
-  pageSize: number = 24,
-) => {
+export const useHomepageAll = (enabled: boolean, pageSize: number = 24) => {
   const pagination = usePagination({
     endpoint: "/api/tokens",
     limit: pageSize,
-    hideImported: 0,
+    hideImported: 1,
     validationSchema: HomepageFeaturedSchema,
     itemsPropertyName: "tokens",
     sortBy: "featured",
@@ -78,13 +74,12 @@ export const useHomepageAll = (
 
 export const useHomepageMarketCap = (
   enabled: boolean,
-  hideImported?: boolean,
   pageSize: number = 24,
 ) => {
   const pagination = usePagination({
     endpoint: "/api/tokens",
     limit: pageSize,
-    hideImported: hideImported ? 1 : 0,
+    hideImported: 0,
     validationSchema: HomepageTokenSchema,
     itemsPropertyName: "tokens",
     sortBy: "marketCapUSD",
@@ -137,15 +132,11 @@ export const useHomepageMarketCap = (
   return pagination;
 };
 
-export const useHomepageNewest = (
-  enabled: boolean,
-  hideImported?: boolean,
-  pageSize: number = 24,
-) => {
+export const useHomepageNewest = (enabled: boolean, pageSize: number = 24) => {
   const pagination = usePagination({
     endpoint: "/api/tokens",
     limit: pageSize,
-    hideImported: hideImported ? 1 : 0,
+    hideImported: 0,
     validationSchema: HomepageTokenSchema,
     itemsPropertyName: "tokens",
     sortBy: "createdAt",
@@ -190,15 +181,11 @@ export const useHomepageNewest = (
   return pagination;
 };
 
-export const useHomepageOldest = (
-  enabled: boolean,
-  hideImported?: boolean,
-  pageSize: number = 24,
-) => {
+export const useHomepageOldest = (enabled: boolean, pageSize: number = 24) => {
   const pagination = usePagination({
     endpoint: "/api/tokens",
     limit: pageSize,
-    hideImported: hideImported ? 1 : 0,
+    hideImported: 0,
     validationSchema: HomepageTokenSchema,
     itemsPropertyName: "tokens",
     sortBy: "createdAt",
@@ -248,13 +235,12 @@ export const useHomepageOldest = (
 };
 
 export const useTokens = (sortBy: HomepageSortBy, pageSize: number = 24) => {
-  const allTokens = useHomepageAll(sortBy === "all", false, pageSize);
+  const allTokens = useHomepageAll(sortBy === "all", pageSize);
   const marketCapTokens = useHomepageMarketCap(
     sortBy === "marketCap",
-    true,
     pageSize,
   );
-  const newestTokens = useHomepageNewest(sortBy === "newest", true, pageSize);
+  const newestTokens = useHomepageNewest(sortBy === "newest", pageSize);
 
   useEffect(() => {
     getSocket().emit("subscribeGlobal");

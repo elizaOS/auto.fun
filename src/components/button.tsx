@@ -16,7 +16,7 @@ const variantClasses = {
     "bg-autofun-background-action-primary border text-autofun-text-highlight",
   trade:
     "bg-autofun-background-card border text-autofun-text-primary px-3 font-dm-mono font-medium",
-  tab: "bg-autofun-background-highlight border border-transparent text-autofun-background-card font-medium",
+  tab: "bg-autofun-background-highlight border-2 border-transparent text-autofun-background-card font-medium",
 };
 
 const sizeClasses = {
