@@ -1,5 +1,5 @@
 import {
-  D1Database,
+
   DurableObjectNamespace,
   R2Bucket,
 } from "@cloudflare/workers-types/experimental";
@@ -73,4 +73,5 @@ export interface Env {
   FIXED_FEE: string;
   ACCOUNT_FEE_MULTISIG: string;
   LOCAL_DB_PATH: string;
+  DATABASE_URL: string;
 }

@@ -2,8 +2,8 @@ import { Connection, Logs, PublicKey } from "@solana/web3.js";
 import dotenv from "dotenv";
 
 import { getDB } from "./db";
-import { processTransactionLogs } from "./processTransactionLogs";
-import { processMissedEvents } from "./getAllTokens";
+import { processTransactionLogs, resumeOnStart } from "./processTransactionLogs";
+import { processMissedEvents, } from "./getAllTokens";
 
 dotenv.config();
 
@@ -32,64 +32,92 @@ try {
    getDB(process.env as any);
 } catch (err) {
    console.error("❌ Failed to initialize DB:", err);
-   // we continue anyway—you may choose to exit here if it's fatal
+   // we continue anyway—you may choose to exit here if it's fatal `
 }
+try {
+   async function resume(env: any) {
 
-// try {
-//    async function resume(env: any) {
-
-//       checkMigratingTokens(env, 1);
-//    }
-//    resume(process.env as any);
-// } catch (err) {
-//    console.error("❌ Error during migration:", err);
-// }
-
+      resumeOnStart(env, connection);
+   }
+   resume(process.env as any);
+} catch (err) {
+   console.error("❌ Error during migration:", err);
+}
 
 
 
 const connection = new Connection(RPC_URL, "confirmed");
 const programId = new PublicKey(PROGRAM_ID);
 
-// try {
-//    processMissedEvents(connection, process.env as any)
-// } catch (err) {
-//    console.error("❌ Error during migration:", err);
-// }
+try {
+   async function resume(env: any) {
+      try {
+         await processMissedEvents(connection, process.env as any)
+      }
+      catch (err) {
+         console.error("❌ Error during migration:", err);
+         // we continue anyway—you may choose to exit here if it's fatal
+      }
+   }
+   resume(process.env as any);
+} catch (err) {
+   console.error("❌ Error during migration:", err);
+   // we continue anyway—you may choose to exit here if it's fatal
+}
+
+
+
 
 console.log("🚀 Listening on", SOLANA_NETWORK, "via", RPC_URL);
 
-const subId = connection.onLogs(
-   programId,
-   async (logs: Logs) => {
+
+let subId: number;
+function startLogSubscription() {
+   try {
+      subId = connection.onLogs(
+         programId,
+         async (logs: Logs) => {
+            try {
+               if (logs.err) {
+                  console.warn("⚠️  Transaction errored:", logs.err);
+                  return;
+               }
+               const result = await processTransactionLogs(process.env as any, logs.logs, logs.signature);
+               console.log("👉 Result:", result);
+            } catch (innerErr) {
+               console.error("❌ Error in onLogs handler:", innerErr);
+            }
+         },
+         "confirmed"
+      );
+      console.log("✅ Subscribed with id", subId);
+   } catch (err) {
+      console.error("❌ Failed to subscribe:", err);
+   }
+}
+
+// Watchdog to ensure subscription stays alive
+setInterval(async () => {
+   try {
+      // A simple RPC heartbeat
+      await connection.getVersion();
+   } catch (err) {
+      console.error("❌ RPC heartbeat failed, recreating subscription:", err);
       try {
-         if (logs.err) {
-            console.warn("⚠️  Transaction errored:", logs.err);
-            return;
-         }
-
-         console.log("📜 Logs:", logs.logs);
-         const signature = logs.signature;
-
-         // process + update your DB / CF as before
-         const result = await processTransactionLogs(
-            process.env as any,
-            logs.logs,
-            signature,
-         );
-
-         console.log("👉 Transaction processing result:", result);
-
-      } catch (err) {
-         // swallow any error so the listener keeps running
-         console.error("❌ Error in `onLogs` handler:", err);
+         await connection.removeOnLogsListener(subId);
+      } catch (_) {
+         // Ignore errors if the listener was already removed
       }
-   },
-   "confirmed"
-);
+      startLogSubscription();
+   }
+}, 30_000); // every 30s
 
+//  Start everything
+startLogSubscription();
+
+// Graceful shutdown
 process.on("SIGINT", async () => {
-   console.log("\n👋 Shutting down...");
+   console.log("\n👋 Shutting down…");
    try {
       await connection.removeOnLogsListener(subId);
    } catch (err) {

@@ -117,8 +117,8 @@ export class ExternalToken {
     const createdAt = token.token?.createdAt;
     // get data from codex number createdAt
     const creationTime = createdAt
-      ? new Date(createdAt * 1000).toISOString()
-      : new Date().toISOString();
+      ? new Date(createdAt * 1000)
+      : new Date();
     const tokenSupplyUi = token.token?.info?.circulatingSupply
       ? Number(token.token?.info?.circulatingSupply)
       : 0;
@@ -164,47 +164,67 @@ export class ExternalToken {
     return { newTokenData, tokenSupply };
   }
 
-  public async updateHolderData(tokenSupply: number) {
-    const { holders: codexHolders } = await this.sdk.queries.holders({
-      input: {
-        tokenId: `${this.mint}:${SOLANA_NETWORK_ID}`,
-      },
+
+  // get creator for the token
+  public async getCreatorAddress() {
+    const { filterTokens } = await this.sdk.queries.filterTokens({
+      tokens: [`${this.mint}:${SOLANA_NETWORK_ID}`],
     });
 
-    const now = new Date().toISOString();
-
-    const allHolders = tokenSupply
-      ? codexHolders.items.map(
-        (holder): TokenHolderInsert => ({
-          id: crypto.randomUUID(),
-          mint: this.mint,
-          address: holder.address,
-          amount: holder.shiftedBalance,
-          percentage: (holder.shiftedBalance / tokenSupply) * 100,
-          lastUpdated: now,
-        }),
-      )
-      : [];
-
-    allHolders.sort((a, b) => b.percentage - a.percentage);
-
-    const MAXIMUM_HOLDERS_STORED = 50;
-    const holders = allHolders.slice(0, MAXIMUM_HOLDERS_STORED);
-
-    if (holders.length > 0) {
-      const MAX_SQLITE_PARAMETERS = 100;
-      const parametersPerHolder = Object.keys(holders[0]).length;
-      const batchSize = Math.floor(MAX_SQLITE_PARAMETERS / parametersPerHolder);
-
-      for (let i = 0; i < holders.length; i += batchSize) {
-        const batch = holders.slice(i, i + batchSize);
-        await this.db.insert(tokenHolders).values(batch);
-      }
+    const token = filterTokens?.results?.[0];
+    if (!token) {
+      throw new Error("failed to find token with codex");
     }
 
-    // await this.wsClient.to(`token-${this.mint}`).emit("newHolder", holders);
+    return token.token?.creatorAddress || null;
+  }
 
-    return holders;
+
+  public async updateHolderData(tokenSupply: number) {
+    try {
+      const { holders: codexHolders } = await this.sdk.queries.holders({
+        input: {
+          tokenId: `${this.mint}:${SOLANA_NETWORK_ID}`,
+        },
+      });
+
+
+      const allHolders = tokenSupply
+        ? codexHolders.items.map(
+          (holder): TokenHolderInsert => ({
+            id: crypto.randomUUID(),
+            mint: this.mint,
+            address: holder.address,
+            amount: holder.shiftedBalance,
+            percentage: (holder.shiftedBalance / tokenSupply) * 100,
+            lastUpdated: new Date(),
+          }),
+        )
+        : [];
+
+      allHolders.sort((a, b) => b.percentage - a.percentage);
+
+      const MAXIMUM_HOLDERS_STORED = 50;
+      const holders = allHolders.slice(0, MAXIMUM_HOLDERS_STORED);
+
+      if (holders.length > 0) {
+        const MAX_SQLITE_PARAMETERS = 100;
+        const parametersPerHolder = Object.keys(holders[0]).length;
+        const batchSize = Math.floor(MAX_SQLITE_PARAMETERS / parametersPerHolder);
+
+        for (let i = 0; i < holders.length; i += batchSize) {
+          const batch = holders.slice(i, i + batchSize);
+          await this.db.insert(tokenHolders).values(batch).onConflictDoNothing();
+        }
+      }
+
+      // await this.wsClient.to(`token-${this.mint}`).emit("newHolder", holders);
+
+      return holders;
+    } catch (error) {
+      console.error("Error updating holder data:", error);
+      throw error;
+    }
   }
   // fetch and update swap data
   public async updateLatestSwapData(
@@ -403,7 +423,12 @@ export class ExternalToken {
       const batch = processedSwaps.slice(i, i + batchSize);
       const result = await this.db
         .insert(swaps)
-        .values(batch)
+        .values(
+          batch.map((swap) => ({
+            ...swap,
+            timestamp: new Date(swap.timestamp),
+          }))
+        )
         .onConflictDoNothing()
         .returning({ insertedId: swaps.id });
       insertedCount += result.length;

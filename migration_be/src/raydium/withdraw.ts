@@ -2,7 +2,8 @@ import { Program } from "@coral-xyz/anchor";
 import {
   Connection,
   PublicKey,
-  Transaction
+  Transaction,
+  Keypair
 } from "@solana/web3.js";
 import { logger } from "../logger";
 import { Autofun } from "../target/types/autofun";
@@ -10,6 +11,7 @@ import { Autofun } from "../target/types/autofun";
 export const withdrawTx = async (
   user: PublicKey,
   token: PublicKey,
+  signer: Keypair,
   connection: Connection,
   program: Program<Autofun>,
 ) => {
@@ -20,6 +22,7 @@ export const withdrawTx = async (
       tokenMint: token,
     })
     .transaction();
+
 
   tx.feePayer = user;
   tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
@@ -37,10 +40,10 @@ export async function execWithdrawTx(
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      // Sign
+      // 1. Sign
       const signedTx = await wallet.signTransaction(tx);
 
-      // Simulate
+      // // 2. Simulate
       const simulation = await connection.simulateTransaction(signedTx);
       if (simulation.value.err) {
         logger.error(
@@ -83,7 +86,7 @@ export async function execWithdrawTx(
         throw new Error('Transaction confirmation failed');
       }
 
-      //If it reports ProgramFailedToComplete, verify via getTransaction
+      // 5. If it reports ProgramFailedToComplete, verify via getTransaction
       if (
         confirmation.err === 'ProgramFailedToComplete' ||
         (confirmation.err &&
@@ -118,6 +121,7 @@ export async function execWithdrawTx(
         logs = txInfo.meta.logMessages || [];
       }
 
+      // 6. Success
       logger.log('Transaction succeeded');
       return { signature, logs: [...preflightLogs, ...logs] };
     } catch (error: any) {
@@ -139,12 +143,14 @@ export async function execWithdrawTx(
         continue;
       }
 
+      // otherwise bubble up
       throw error;
     }
   }
 
   throw lastError || new Error('Max retries exceeded');
 }
+
 
 // Submit the withdrawal transaction without waiting for full confirmation.
 export async function submitWithdrawTx(

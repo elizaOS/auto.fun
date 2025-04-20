@@ -5,75 +5,63 @@ import PQueue from "p-queue";
 import { Env } from "./env";
 import { Connection, PublicKey } from "@solana/web3.js";
 
-async function slotAtOrBeforeTime(
-   conn: Connection,
+async function findSlotAtOrBeforeTime(
+   connection: Connection,
    targetTs: number,
    low: number,
    high: number
 ): Promise<number> {
    while (low < high) {
-      const mid = Math.floor((low + high) / 2);
-      const t = await conn.getBlockTime(mid);
-      if (t === null) {
-         // skip unfulfilled blocks
-         high = mid - 1;
-      } else if (t > targetTs) {
+      const mid = Math.floor((low + high + 1) / 2);  // bias upwards
+      const t = await connection.getBlockTime(mid);
+      if (t === null || t > targetTs) {
+         // Too new (or missing), search lower
          high = mid - 1;
       } else {
-         low = mid + 1;
+         // mid is too old or just right, keep it
+         low = mid;
       }
    }
-   return high;
+   return low;
 }
 
-export async function getEventsFromChain(
-   connection: Connection,
-   env: Env
-): Promise<number> {
-   try {
-      const currentSlot = await connection.getSlot("finalized");
-      const currentTs = await connection.getBlockTime(currentSlot);
-      if (!currentTs) throw new Error("Could not fetch current block time");
-      const twelveHoursAgoTs = currentTs - 12 * 60 * 60;
 
-      // assume slot 0–currentSlot is the search space
-      const startSlot = await slotAtOrBeforeTime(
-         connection,
-         twelveHoursAgoTs,
-         0,
-         currentSlot
-      );
-
-      logger.log(`Starting from slot ~${startSlot} (≈9h ago)`);
-      return startSlot;
-   } catch (err) {
-      logger.error('Error computing 9h‑ago slot:', err);
-      // fallback to “last 500 slots”
-      const curr = await connection.getSlot('finalized');
-      return Math.max(0, curr - 500);
-   }
-}
 // Scan blocks from the last processed slot up to the current slot
-export async function processMissedEvents(connection: Connection, env: Env): Promise<void> {
+export async function processMissedEvents(connection: Connection, env: Env,): Promise<void> {
    try {
-      const lastSlot = await getEventsFromChain(connection, env);
       const currentSlot = await connection.getSlot("confirmed");
-
-      if (lastSlot >= currentSlot) {
-         logger.log(
-            "No missed events to process. Last processed slot is up-to-date."
+      const currentTime = await connection.getBlockTime(currentSlot);
+      let startSlot: number;
+      if (currentTime !== null) {
+         const eighteenHoursAgo = currentTime - 2 * 3600;
+         startSlot = await findSlotAtOrBeforeTime(
+            connection,
+            eighteenHoursAgo,
+            0,
+            currentSlot
          );
-         return;
+         logger.log(
+            `18 hours ago was ≈${new Date(eighteenHoursAgo * 1000).toISOString()}, ` +
+            `which corresponds to slot ${startSlot}`
+         );
+      } else {
+         // fallback if getBlockTime fails
+         startSlot = Math.max(0, currentSlot - 500);
+         logger.warn(
+            "Couldn't get blockTime for currentSlot; falling back to slot",
+            startSlot
+         );
       }
-
+      const slots = await connection.getBlocks(startSlot + 1, currentSlot);
       logger.log(
-         `Processing missed events from slot ${lastSlot + 1} to ${currentSlot}`
+         `Processing ${slots.length} slots from ${startSlot + 1} to ${currentSlot}`
       );
-
-      const queue = new PQueue({ concurrency: 1 });
-      // Iterate through each slot between lastSlot (exclusive) and currentSlot (inclusive)
-      for (let slot = lastSlot + 1; slot <= currentSlot; slot++) {
+      // 2) Now process every slot from startSlot to currentSlot
+      logger.log(`Scanning events from slot ${startSlot + 1} to ${currentSlot}`);
+      const queue = new PQueue({ concurrency: 20 });
+      for (const slot of slots) {
          queue.add(async () => {
+
             try {
                // Fetch the block with full transaction details.
                const block = await connection.getBlock(slot, {
@@ -82,8 +70,10 @@ export async function processMissedEvents(connection: Connection, env: Env): Pro
                   commitment: "confirmed",
                   maxSupportedTransactionVersion: 0,
                });
-               if (!block) return; // Skip if block is null
-
+               if (!block) {
+                  logger.log(`⚠️  Slot ${slot} returned null, skipping`);
+                  return;
+               }
                // Process each transaction in the block
                for (const tx of block.transactions) {
                   const logMessages = tx.meta?.logMessages;
@@ -95,6 +85,8 @@ export async function processMissedEvents(connection: Connection, env: Env): Pro
                         msg.includes(env.PROGRAM_ID!)
                      )
                   ) {
+                     logger.log(`▶️ found event in slot ${slot}`);
+
                      // Construct a log event similar to what the real-time listener receives.
                      const logEvent = {
                         slot,
@@ -103,7 +95,9 @@ export async function processMissedEvents(connection: Connection, env: Env): Pro
                         err: tx?.meta?.err || null,
                      };
                      const signature = logEvent.signature;
-
+                     // console.log(logMessages)
+                     const newTokenLog = logMessages.find((log) => log.includes("NewToken:"));
+                     if (!newTokenLog) return; // Skip if no NewToken log found
                      // Process the event
                      await processTransactionLogs(env, logMessages, signature);
                      // // wait for 5 seconds to avoid rate limiting
@@ -111,7 +105,7 @@ export async function processMissedEvents(connection: Connection, env: Env): Pro
                   }
                }
             } catch (slotError) {
-               logger.error(`Error processing slot ${slot}:`, slotError);
+               logger.error(`❌ Error at slot ${slot}:`, slotError);
             }
          });
       }

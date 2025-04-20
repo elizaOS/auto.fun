@@ -41,7 +41,7 @@ export async function createNewTokenData(
       // Get a Solana config with the right environment
       const solanaConfig = initSolanaConfig(env);
 
-      console.log("solanaConfig", solanaConfig);
+      // console.log("solanaConfig", solanaConfig);
 
       const metadata = await fetchMetadataWithBackoff(
          solanaConfig.umi,
@@ -60,7 +60,6 @@ export async function createNewTokenData(
       const program = getProgram(
          solanaConfig.connection,
          new Wallet(solanaConfig.wallet),
-         env as Env
       );
       // Fetch the account data directly using the connection instead of Anchor program
       const bondingCurveAccount =
@@ -172,9 +171,9 @@ export async function createNewTokenData(
          tokenSupply: tokenSupply.toString(),
          tokenSupplyUiAmount: tokenSupply / Math.pow(10, TOKEN_DECIMALS),
          tokenDecimals: TOKEN_DECIMALS,
-         lastSupplyUpdate: new Date().toISOString(),
-         createdAt: new Date().toISOString(),
-         lastUpdated: new Date().toISOString(),
+         lastSupplyUpdate: new Date(),
+         createdAt: new Date(),
+         lastUpdated: new Date(),
       };
 
 

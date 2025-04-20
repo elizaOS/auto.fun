@@ -30,25 +30,25 @@ const cluster = process.env.NETWORK as Cluster;
 let raydium: Raydium | undefined;
 export const initSdk = async (params: {
   env: Env;
+  connection: Connection;
   loadToken?: boolean;
   owner?: PublicKey;
 }) => {
-  const connection = new Connection(getRpcUrl(params.env));
   const owner: Keypair = Keypair.fromSecretKey(
     Uint8Array.from(JSON.parse(params.env.WALLET_PRIVATE_KEY!)),
   );
 
   if (raydium) return raydium;
   logger.log(
-    `Raydium SDK: Connected to RPC ${connection.rpcEndpoint} in ${cluster}`,
+    `Raydium SDK: Connected to RPC ${params.connection.rpcEndpoint} in ${cluster}`,
   );
   raydium = await Raydium.load({
     owner: params?.owner || owner,
-    connection,
+    connection: params.connection,
     cluster,
     disableFeatureCheck: true,
     disableLoadToken: !params?.loadToken,
-    blockhashCommitment: "finalized",
+    blockhashCommitment: "confirmed",
   });
 
   return raydium;

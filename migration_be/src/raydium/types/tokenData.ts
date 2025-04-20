@@ -62,14 +62,14 @@ export interface TokenData {
   nftMinted?: string;
   lockId?: string;
   lockedAmount?: string;
-  lockedAt?: string;
-  harvestedAt?: string;
+  lockedAt?: Date;
+  harvestedAt?: Date;
   status: string;
-  createdAt: string;
+  createdAt: Date;
   lastUpdated: string;
-  completedAt?: string;
-  withdrawnAt?: string;
-  migratedAt?: string;
+  completedAt?: Date;
+  withdrawnAt?: Date;
+  migratedAt?: Date;
   marketId?: string;
   baseVault?: string;
   quoteVault?: string;
@@ -88,8 +88,8 @@ export interface TokenData {
   price24hAgo?: number;
   volume24h?: number;
   inferenceCount?: number;
-  lastVolumeReset?: string;
-  lastPriceUpdate?: string;
+  lastVolumeReset?: Date;
+  lastPriceUpdate?: Date;
   holderCount?: number;
   txId?: string;
   migration?: MigrationData;
@@ -99,7 +99,7 @@ export interface TokenData {
   tokenSupply?: string;
   tokenSupplyUiAmount?: number;
   tokenDecimals?: number;
-  lastSupplyUpdate?: string;
+  lastSupplyUpdate?: Date;
 }
 
 export interface TokenDBData {
@@ -119,14 +119,14 @@ export interface TokenDBData {
   nftMinted?: string;
   lockId?: string;
   lockedAmount?: string;
-  lockedAt?: string;
-  harvestedAt?: string;
+  lockedAt?: Date;
+  harvestedAt?: Date;
   status?: string;
-  createdAt?: string;
-  lastUpdated: string;
-  completedAt?: string;
-  withdrawnAt?: string;
-  migratedAt?: string;
+  createdAt?: Date;
+  lastUpdated: Date;
+  completedAt?: Date;
+  withdrawnAt?: Date;
+  migratedAt?: Date;
   marketId?: string;
   baseVault?: string;
   quoteVault?: string;
@@ -145,8 +145,8 @@ export interface TokenDBData {
   price24hAgo?: number;
   volume24h?: number;
   inferenceCount?: number;
-  lastVolumeReset?: string;
-  lastPriceUpdate?: string;
+  lastVolumeReset?: Date;
+  lastPriceUpdate?: Date;
   holderCount?: number;
   txId?: string;
   // Database fields stored as JSON strings:

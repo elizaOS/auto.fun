@@ -1,19 +1,19 @@
-import { AnchorProvider, Program } from "@coral-xyz/anchor";
-import { Connection, Keypair } from "@solana/web3.js";
-import { and, eq } from "drizzle-orm";
+import { TokenData } from "../types/tokenData";
+import { eq, and } from "drizzle-orm";
 import { getDB, tokens } from "../../db";
 import { Env } from "../../env";
-import { logger } from "../../logger";
 import { updateTokenInDB } from "../../processTransactionLogs";
-import * as IDL from "../../target/idl/autofun.json";
-import { Autofun } from "../../target/types/autofun";
-import { updateTokenSupplyFromChain } from "../../tokenSupplyHelpers";
-import { Wallet } from "../../tokenSupplyHelpers/customWallet";
-import { TokenMigrator } from "../migration/migrateToken";
-import * as raydium_vault_IDL from "../raydium_vault.json";
-import { RaydiumVault } from "../types/raydium_vault";
-import { TokenData } from "../types/tokenData";
 import { retryOperation } from "../utils";
+import { logger } from "../../logger";
+import { updateTokenSupplyFromChain } from "../../tokenSupplyHelpers";
+import { TokenMigrator } from "../migration/migrateToken";
+import { RaydiumVault } from "../types/raydium_vault";
+import * as raydium_vault_IDL from "../raydium_vault.json";
+import { Autofun } from "../../target/types/autofun";
+import * as IDL from "../../target/idl/autofun.json";
+import { AnchorProvider, Program } from "@coral-xyz/anchor";
+import { Connection, Keypair } from "@solana/web3.js";
+import { Wallet } from "../../tokenSupplyHelpers/customWallet";
 
 
 export interface LockResult {
@@ -60,7 +60,7 @@ export async function getToken(
       tokenSupply = supplyResult.tokenSupply;
       tokenSupplyUiAmount = supplyResult.tokenSupplyUiAmount;
       tokenDecimals = supplyResult.tokenDecimals;
-      lastSupplyUpdate = supplyResult.lastSupplyUpdate;
+      lastSupplyUpdate = new Date(supplyResult.lastSupplyUpdate);
     }
 
     const token: TokenData = {
@@ -84,7 +84,7 @@ export async function getToken(
       harvestedAt: tokenDb.harvestedAt ?? undefined,
       status: tokenDb.status,
       createdAt: tokenDb.createdAt,
-      lastUpdated: tokenDb.lastUpdated,
+      lastUpdated: tokenDb.lastUpdated.toISOString(),
       completedAt: tokenDb.completedAt ?? undefined,
       withdrawnAt: tokenDb.withdrawnAt ?? undefined,
       migratedAt: tokenDb.migratedAt ?? undefined,
@@ -224,7 +224,7 @@ export async function saveMigrationState(
     .update(tokens)
     .set({
       migration: JSON.stringify(updatedMigration),
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: new Date(),
     })
     .where(eq(tokens.mint, token.mint));
 }
@@ -308,7 +308,7 @@ export async function checkMigratingTokens(env: Env, limit: number) {
 
     for (const token of finalList) {
       const tokenM = await getToken(env, token.mint);
-      // await tokenMigrator.migrateToken(tokenM!);
+      await tokenMigrator.migrateToken(tokenM!);
     }
 
   } catch (error) {
