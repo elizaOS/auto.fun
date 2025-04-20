@@ -14,7 +14,7 @@ const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
 // Function to get the correct icon path based on the current tab
 const getTabIconPath = (
   tabType: "Image" | "Video" | "Audio",
-  currentTab: "Image" | "Video" | "Audio",
+  currentTab: "Image" | "Video" | "Audio"
 ): string => {
   if (tabType === "Image") {
     return tabType === currentTab
@@ -35,6 +35,7 @@ const getTabIconPath = (
 // Additional imports for balance checking
 import { env } from "@/utils/env";
 import { Connection, PublicKey } from "@solana/web3.js";
+import { Tooltip } from "react-tooltip";
 
 // Storage keys for Twitter auth
 const STORAGE_KEY = "twitter-oauth-token";
@@ -94,7 +95,7 @@ export default function CommunityTab() {
   // We can keep this for debugging but it's no longer the primary balance source
   // @ts-ignore
   const [manualTokenBalance, setManualTokenBalance] = useState<number | null>(
-    null,
+    null
   );
 
   // --- Modal State ---
@@ -102,7 +103,7 @@ export default function CommunityTab() {
   const [modalShareText, setModalShareText] = useState("");
   const [isPostingTweet, setIsPostingTweet] = useState(false); // Loading state for modal post
   const [imageForShareModal, setImageForShareModal] = useState<string | null>(
-    null,
+    null
   ); // State to hold the specific image URL for the modal
   // --- End Modal State ---
 
@@ -120,7 +121,7 @@ export default function CommunityTab() {
 
   // Extract token mint from URL if not found in params
   const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(
-    null,
+    null
   );
 
   // Effect to detect token mint from various sources
@@ -154,7 +155,7 @@ export default function CommunityTab() {
       try {
         // Check for generated images in the server's R2 storage
         const response = await fetch(
-          `${API_BASE_URL}/api/check-generated-images/${tokenMint}`,
+          `${API_BASE_URL}/api/check-generated-images/${tokenMint}`
         );
 
         if (response.ok) {
@@ -175,12 +176,12 @@ export default function CommunityTab() {
                 API_BASE_URL.includes("127.0.0.1")
               ) {
                 imageUrls.push(
-                  `${API_BASE_URL}/api/image/generation-${tokenMint}-${i}.jpg`,
+                  `${API_BASE_URL}/api/image/generation-${tokenMint}-${i}.jpg`
                 );
               } else {
                 // Otherwise, use the R2 public URL
                 imageUrls.push(
-                  `${env.r2PublicUrl}/generations/${tokenMint}/gen-${i}.jpg`,
+                  `${env.r2PublicUrl}/generations/${tokenMint}/gen-${i}.jpg`
                 );
               }
             }
@@ -217,11 +218,11 @@ export default function CommunityTab() {
 
       try {
         const infoResponse = await fetch(
-          `${API_BASE_URL}/api/token/${tokenMint}`,
+          `${API_BASE_URL}/api/token/${tokenMint}`
         );
         if (!infoResponse.ok) {
           throw new Error(
-            `Failed to fetch token info: ${infoResponse.statusText}`,
+            `Failed to fetch token info: ${infoResponse.statusText}`
           );
         }
         const infoData = (await infoResponse.json()) as TokenInfoResponse;
@@ -254,13 +255,13 @@ export default function CommunityTab() {
     if (storedCredentials) {
       try {
         const parsedCredentials = JSON.parse(
-          storedCredentials,
+          storedCredentials
         ) as TwitterCredentials;
 
         // Check if token is expired
         if (parsedCredentials.expiresAt < Date.now()) {
           console.warn(
-            "Twitter token has expired, user needs to re-authenticate",
+            "Twitter token has expired, user needs to re-authenticate"
           );
         } else {
           setTwitterCredentials(parsedCredentials);
@@ -295,7 +296,7 @@ export default function CommunityTab() {
             setTimeout(() => {
               // Regenerate the share text using stored pieces
               const regeneratedText = generateShareText(
-                { name: share.tokenName, ticker: share.tokenSymbol }, // Use stored token info
+                { name: share.tokenName, ticker: share.tokenSymbol } // Use stored token info
               );
               setModalShareText(regeneratedText);
 
@@ -315,7 +316,7 @@ export default function CommunityTab() {
         } catch (error) {
           console.error("Failed to process pending share", error);
           setShareError(
-            error instanceof Error ? error.message : "Failed to process share",
+            error instanceof Error ? error.message : "Failed to process share"
           );
         }
       }
@@ -344,7 +345,7 @@ export default function CommunityTab() {
     // Check if we have a token mint
     if (!tokenMint) {
       toast.error(
-        "No token found. Please navigate to a token page to generate images",
+        "No token found. Please navigate to a token page to generate images"
       );
       return;
     }
@@ -353,7 +354,7 @@ export default function CommunityTab() {
     const requiredBalance = generationMode === "pro" ? 10000 : 1000;
     if ((tokenBalance ?? 0) < requiredBalance) {
       toast.error(
-        `You need at least ${requiredBalance.toLocaleString()} tokens to generate images in ${generationMode} mode`,
+        `You need at least ${requiredBalance.toLocaleString()} tokens to generate images in ${generationMode} mode`
       );
       return;
     }
@@ -380,7 +381,7 @@ export default function CommunityTab() {
         console.error("No auth token found");
         // Try to generate without auth token for testing
         toast.warning(
-          "No auth token found, trying to generate without authentication",
+          "No auth token found, trying to generate without authentication"
         );
       }
 
@@ -468,10 +469,10 @@ export default function CommunityTab() {
                 {
                   autoClose: 10000, // Show for 10 seconds
                   closeOnClick: false,
-                },
+                }
               );
               throw new Error(
-                `Insufficient token balance. You need at least ${minimumRequired.toLocaleString()} tokens.`,
+                `Insufficient token balance. You need at least ${minimumRequired.toLocaleString()} tokens.`
               );
             }
           } else {
@@ -523,7 +524,7 @@ export default function CommunityTab() {
 
         if (data.remainingGenerations !== undefined) {
           toast.success(
-            `Image generated successfully! You have ${data.remainingGenerations} generations left today.`,
+            `Image generated successfully! You have ${data.remainingGenerations} generations left today.`
           );
         } else {
           toast.success("Image generated successfully!");
@@ -531,14 +532,14 @@ export default function CommunityTab() {
       } else {
         console.error("Invalid response:", data);
         throw new Error(
-          data.error || "Failed to generate image: No media URL returned",
+          data.error || "Failed to generate image: No media URL returned"
         );
       }
     } catch (error) {
       console.error("Error generating image:", error);
       setProcessingStatus("failed");
       toast.error(
-        error instanceof Error ? error.message : "Failed to generate image",
+        error instanceof Error ? error.message : "Failed to generate image"
       );
       // Re-set placeholder if generation failed and we have additional images
       if (additionalImages.length > 0 && !placeholderImage) {
@@ -553,7 +554,7 @@ export default function CommunityTab() {
   // Generate video function
   const generateVideo = async (
     isImageToVideo: boolean = false,
-    sourceImageUrl: string = "",
+    sourceImageUrl: string = ""
   ) => {
     if (!userPrompt && !isImageToVideo) return;
 
@@ -566,7 +567,7 @@ export default function CommunityTab() {
     // Check if we have a token mint
     if (!tokenMint) {
       toast.error(
-        "No token found. Please navigate to a token page to generate videos",
+        "No token found. Please navigate to a token page to generate videos"
       );
       return;
     }
@@ -575,7 +576,7 @@ export default function CommunityTab() {
     const requiredBalance = generationMode === "pro" ? 100000 : 10000;
     if ((tokenBalance ?? 0) < requiredBalance) {
       toast.error(
-        `You need at least ${requiredBalance.toLocaleString()} tokens to generate videos in ${generationMode} mode`,
+        `You need at least ${requiredBalance.toLocaleString()} tokens to generate videos in ${generationMode} mode`
       );
       return;
     }
@@ -600,7 +601,7 @@ export default function CommunityTab() {
       if (!authToken) {
         console.error("No auth token found");
         toast.warning(
-          "No auth token found, trying to generate without authentication",
+          "No auth token found, trying to generate without authentication"
         );
       }
 
@@ -694,10 +695,10 @@ export default function CommunityTab() {
                 {
                   autoClose: 10000,
                   closeOnClick: false,
-                },
+                }
               );
               throw new Error(
-                `Insufficient token balance. You need at least ${minimumRequired.toLocaleString()} tokens.`,
+                `Insufficient token balance. You need at least ${minimumRequired.toLocaleString()} tokens.`
               );
             }
           } else {
@@ -741,7 +742,7 @@ export default function CommunityTab() {
 
         if (data.remainingGenerations !== undefined) {
           toast.success(
-            `Video generated successfully! You have ${data.remainingGenerations} generations left today.`,
+            `Video generated successfully! You have ${data.remainingGenerations} generations left today.`
           );
         } else {
           toast.success("Video generated successfully!");
@@ -749,14 +750,14 @@ export default function CommunityTab() {
       } else {
         console.error("Invalid response:", data);
         throw new Error(
-          data.error || "Failed to generate video: No media URL returned",
+          data.error || "Failed to generate video: No media URL returned"
         );
       }
     } catch (error) {
       console.error("Error generating video:", error);
       setProcessingStatus("failed");
       toast.error(
-        error instanceof Error ? error.message : "Failed to generate video",
+        error instanceof Error ? error.message : "Failed to generate video"
       );
       // Re-set placeholder if generation failed and we have additional images
       if (additionalImages.length > 0 && !placeholderImage) {
@@ -786,7 +787,7 @@ export default function CommunityTab() {
   ];
 
   const generateShareText = (
-    currentTokenInfo: { name: string; ticker: string } | null,
+    currentTokenInfo: { name: string; ticker: string } | null
   ): string => {
     const name = currentTokenInfo?.name || "this token";
     const ticker = currentTokenInfo?.ticker
@@ -883,7 +884,7 @@ export default function CommunityTab() {
       console.error("Share initiation failed", error);
       setShareError(error instanceof Error ? error.message : "Share failed");
       toast.error(
-        `Share initiation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Share initiation failed: ${error instanceof Error ? error.message : "Unknown error"}`
       );
       setIsSharing(false); // Ensure sharing state is reset on error
     } finally {
@@ -906,14 +907,14 @@ export default function CommunityTab() {
   const handleShareOnX = async (
     text: string,
     imageData: string, // Takes the specific image URL to post
-    creds: TwitterCredentials,
+    creds: TwitterCredentials
   ) => {
     // This function is now primarily for the actual posting logic
     try {
       // Double-check if credentials expired
       if (creds.expiresAt < Date.now()) {
         throw new Error(
-          "Twitter authentication expired. Please connect again.",
+          "Twitter authentication expired. Please connect again."
         );
       }
 
@@ -928,7 +929,7 @@ export default function CommunityTab() {
       console.error("Twitter share failed:", error);
       setShareError(error instanceof Error ? error.message : "Share failed");
       toast.error(
-        `Failed to share: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to share: ${error instanceof Error ? error.message : "Unknown error"}`
       );
       throw error; // Re-throw to allow the caller to handle loading state
     }
@@ -948,7 +949,7 @@ export default function CommunityTab() {
       await handleShareOnX(
         modalShareText,
         imageForShareModal,
-        twitterCredentials,
+        twitterCredentials
       );
       setIsShareModalOpen(false); // Close modal on success
     } catch (error) {
@@ -964,7 +965,7 @@ export default function CommunityTab() {
   // Upload image to Twitter
   const uploadImage = async (
     imageData: string, // Expects a URL (data: or http:)
-    accessToken: string,
+    accessToken: string
   ): Promise<string> => {
     try {
       let blob;
@@ -979,7 +980,7 @@ export default function CommunityTab() {
         const response = await fetch(imageData);
         if (!response.ok) {
           throw new Error(
-            `Failed to fetch image for upload: ${response.statusText}`,
+            `Failed to fetch image for upload: ${response.statusText}`
           );
         }
         blob = await response.blob();
@@ -1014,7 +1015,7 @@ export default function CommunityTab() {
         const errorText = await uploadResponse.text();
         console.error(
           "Media upload failed with status:",
-          uploadResponse.status,
+          uploadResponse.status
         );
         console.error("Error response body:", errorText);
         // Attempt to parse JSON error if possible
@@ -1052,7 +1053,7 @@ export default function CommunityTab() {
   const postTweet = async (
     text: string,
     mediaId: string,
-    accessToken: string,
+    accessToken: string
   ) => {
     try {
       // Get auth token for the app (separate from Twitter token)
@@ -1183,7 +1184,7 @@ export default function CommunityTab() {
               ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
             },
             credentials: "include",
-          },
+          }
         );
 
         if (response.ok) {
@@ -1220,7 +1221,7 @@ export default function CommunityTab() {
           const tokenAccounts = await connection.getTokenAccountsByOwner(
             publicKey,
             { mint: new PublicKey(tokenMint) },
-            { commitment: "confirmed" },
+            { commitment: "confirmed" }
           );
 
           let networkBalance = 0;
@@ -1252,16 +1253,16 @@ export default function CommunityTab() {
       if (totalBalance > 0) {
         if (foundOnNetwork) {
           toast.success(
-            `You have ${totalBalance.toFixed(2)} tokens on ${foundOnNetwork}${totalBalance >= 1000 ? " - enough to generate content!" : ""}`,
+            `You have ${totalBalance.toFixed(2)} tokens on ${foundOnNetwork}${totalBalance >= 1000 ? " - enough to generate content!" : ""}`
           );
         } else {
           toast.success(
-            `You have ${totalBalance.toFixed(2)} tokens${totalBalance >= 1000 ? " - enough to generate content!" : ""}`,
+            `You have ${totalBalance.toFixed(2)} tokens${totalBalance >= 1000 ? " - enough to generate content!" : ""}`
           );
         }
       } else {
         toast.warning(
-          `You have 0 tokens. You need at least 1,000 to generate content.`,
+          `You have 0 tokens. You need at least 1,000 to generate content.`
         );
       }
     } catch (error) {
@@ -1323,7 +1324,7 @@ export default function CommunityTab() {
     // Check if we have a token mint
     if (!tokenMint) {
       toast.error(
-        "No token found. Please navigate to a token page to generate audio",
+        "No token found. Please navigate to a token page to generate audio"
       );
       return;
     }
@@ -1333,7 +1334,7 @@ export default function CommunityTab() {
     const requiredBalance = 10000;
     if ((tokenBalance ?? 0) < requiredBalance) {
       toast.error(
-        `You need at least ${requiredBalance.toLocaleString()} tokens to generate audio`,
+        `You need at least ${requiredBalance.toLocaleString()} tokens to generate audio`
       );
       return;
     }
@@ -1358,7 +1359,7 @@ export default function CommunityTab() {
       if (!authToken) {
         console.error("No auth token found");
         toast.warning(
-          "No auth token found, trying to generate without authentication",
+          "No auth token found, trying to generate without authentication"
         );
       }
 
@@ -1451,10 +1452,10 @@ export default function CommunityTab() {
                 {
                   autoClose: 10000,
                   closeOnClick: false,
-                },
+                }
               );
               throw new Error(
-                `Insufficient token balance. You need at least ${minimumRequired.toLocaleString()} tokens.`,
+                `Insufficient token balance. You need at least ${minimumRequired.toLocaleString()} tokens.`
               );
             }
           } else {
@@ -1499,7 +1500,7 @@ export default function CommunityTab() {
 
         if (data.remainingGenerations !== undefined) {
           toast.success(
-            `Audio generated successfully! You have ${data.remainingGenerations} generations left today.`,
+            `Audio generated successfully! You have ${data.remainingGenerations} generations left today.`
           );
         } else {
           toast.success("Audio generated successfully!");
@@ -1507,14 +1508,14 @@ export default function CommunityTab() {
       } else {
         console.error("Invalid response:", data);
         throw new Error(
-          data.error || "Failed to generate audio: No media URL returned",
+          data.error || "Failed to generate audio: No media URL returned"
         );
       }
     } catch (error) {
       console.error("Error generating audio:", error);
       setProcessingStatus("failed");
       toast.error(
-        error instanceof Error ? error.message : "Failed to generate audio",
+        error instanceof Error ? error.message : "Failed to generate audio"
       );
       // Re-set placeholder if generation failed and we have additional images
       if (additionalImages.length > 0 && !placeholderImage) {
@@ -1811,7 +1812,11 @@ export default function CommunityTab() {
               {/* Fast/Pro mode buttons - only show for Image and Video */}
               {communityTab !== "Audio" && (
                 <div className="flex space-x-1 h-10">
+                  <Tooltip anchorSelect="#faston">
+                    <span>Fast</span>
+                  </Tooltip>
                   <button
+                    id="faston"
                     onClick={() => setGenerationMode("fast")}
                     className="cursor-pointer h-10"
                   >
@@ -1825,7 +1830,11 @@ export default function CommunityTab() {
                       className="h-10 w-auto cursor-pointer"
                     />
                   </button>
+                  <Tooltip anchorSelect="#promode">
+                    <span>Pro</span>
+                  </Tooltip>
                   <button
+                    id="promode"
                     onClick={() => setGenerationMode("pro")}
                     className="cursor-pointer h-10"
                   >
@@ -1844,55 +1853,53 @@ export default function CommunityTab() {
             </div>
 
             {/* Video-specific options */}
-            {communityTab === "Video" && (
+            {communityTab === "Video" && videoMode === "image" ? (
               <div className="px-4">
                 {/* Image upload area for image-to-video */}
-                {videoMode === "image" && (
-                  <div className="border-2 border-dashed border-gray-600 p-4 rounded-md mb-4">
-                    {selectedImageForVideo ? (
-                      <div className="relative">
-                        <img
-                          src={selectedImageForVideo}
-                          alt="Selected image"
-                          className="max-w-full max-h-[300px] mx-auto"
+                <div className="border-2 border-dashed border-gray-600 p-4 rounded-md mb-4">
+                  {selectedImageForVideo ? (
+                    <div className="relative">
+                      <img
+                        src={selectedImageForVideo}
+                        alt="Selected image"
+                        className="max-w-full max-h-[300px] mx-auto"
+                      />
+                      <button
+                        onClick={() => setSelectedImageForVideo(null)}
+                        className="absolute top-2 right-2 bg-black/70 p-1 rounded-full cursor-pointer"
+                        title="Remove image"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <label className="cursor-pointer">
+                        <div className="mb-2">
+                          {imageUploadLoading
+                            ? "Uploading..."
+                            : "Drop an image here or click to upload"}
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                          disabled={imageUploadLoading}
                         />
-                        <button
-                          onClick={() => setSelectedImageForVideo(null)}
-                          className="absolute top-2 right-2 bg-black/70 p-1 rounded-full cursor-pointer"
-                          title="Remove image"
-                        >
-                          <X size={18} />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <label className="cursor-pointer">
-                          <div className="mb-2">
-                            {imageUploadLoading
-                              ? "Uploading..."
-                              : "Drop an image here or click to upload"}
-                          </div>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="hidden"
-                            disabled={imageUploadLoading}
-                          />
-                          <div className="text-blue-400 hover:text-blue-300 text-sm">
-                            {imageUploadLoading ? (
-                              <div className="animate-pulse">Processing...</div>
-                            ) : (
-                              "Browse files"
-                            )}
-                          </div>
-                        </label>
-                      </div>
-                    )}
-                  </div>
-                )}
+                        <div className="text-blue-400 hover:text-blue-300 text-sm">
+                          {imageUploadLoading ? (
+                            <div className="animate-pulse">Processing...</div>
+                          ) : (
+                            "Browse files"
+                          )}
+                        </div>
+                      </label>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
+            ) : null}
 
             {/* Token balance message */}
             {communityTab === "Image" &&
@@ -1966,7 +1973,7 @@ export default function CommunityTab() {
                         // Handle potential image load errors, maybe show fallback
                         console.error(
                           "Image failed to load:",
-                          e.currentTarget.src,
+                          e.currentTarget.src
                         );
                         // Optionally set a fallback image or style
                         e.currentTarget.style.display = "none"; // Hide broken image
