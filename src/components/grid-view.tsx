@@ -18,7 +18,7 @@ export default function GridView({ data }: { data: IToken[] }) {
         ?.filter((token: IToken) => token.image !== "")
         .filter(
           (token, index, self) =>
-            self.findIndex((t) => t.mint === token.mint) === index
+            self.findIndex((t) => t.mint === token.mint) === index,
         )
         .map((token: IToken, _: number) => {
           const isPartner = parntnerMintList.includes(token.mint);
