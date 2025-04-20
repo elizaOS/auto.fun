@@ -1,10 +1,10 @@
-import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { Env } from "./env";
-import * as idl from "./target/idl/autofun.json";
-import { Autofun } from "./target/types/autofun";
 import { getRpcUrl } from "./utils";
+import { AnchorProvider, Program, setProvider } from "@coral-xyz/anchor";
+import { Autofun } from "./target/types/autofun";
+import * as idl from "./target/idl/autofun.json";
 
 // Initialize the Solana configuration with the provided environment
 export function initSolanaConfig(env?: Env) {
@@ -47,11 +47,11 @@ export function initSolanaConfig(env?: Env) {
   };
 }
 
-export const getProgram = (connection: Connection, wallet: any, env: Env) => {
+export const getProgram = (connection: Connection, wallet: any) => {
   const provider = new AnchorProvider(connection, wallet, {
     skipPreflight: true,
     commitment: "confirmed",
   });
 
-  return new Program<Autofun>(idl as any, provider);
+  return new Program<Autofun>(idl, provider);
 };

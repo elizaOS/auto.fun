@@ -1,30 +1,40 @@
-import { AnchorProvider, BN, Program } from "@coral-xyz/anchor";
-import {
-  CREATE_CPMM_POOL_FEE_ACC,
-  CREATE_CPMM_POOL_PROGRAM,
-  DEVNET_PROGRAM_ID,
-  getCpmmPdaAmmConfigId
-} from "@raydium-io/raydium-sdk-v2";
-import { NATIVE_MINT } from "@solana/spl-token";
-import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
-import { Env } from "../../env";
-import { ExternalToken } from "../../externalToken";
 import { logger } from "../../logger";
+import { Connection, PublicKey, Keypair, Transaction } from "@solana/web3.js";
 import { updateTokenInDB } from "../../processTransactionLogs";
-import { Autofun } from "../../target/types/autofun";
-import { Wallet } from "../../tokenSupplyHelpers/customWallet";
-import { initSdk, txVersion } from "../raydium-config";
-import { depositToRaydiumVault } from "../raydiumVault";
-import { RaydiumVault } from "../types/raydium_vault";
-import { TokenData } from "../types/tokenData";
-import { retryOperation, sendNftTo, sendSolTo } from "../utils";
-import { withdrawTx, execWithdrawTx } from "../withdraw";
 import {
-  executeMigrationStep,
-  LockResult,
+  CREATE_CPMM_POOL_PROGRAM,
+  CREATE_CPMM_POOL_FEE_ACC,
+  DEVNET_PROGRAM_ID,
+  getCpmmPdaAmmConfigId,
+  DEV_LOCK_CPMM_AUTH,
+  mul,
+  LOCK_CPMM_AUTH,
+} from "@raydium-io/raydium-sdk-v2";
+import { Program, BN, AnchorProvider } from "@coral-xyz/anchor";
+import { initSdk, txVersion } from "../raydium-config";
+import { withdrawTx, execWithdrawTx, submitWithdrawTx } from "../withdraw";
+import { NATIVE_MINT } from "@solana/spl-token";
+import { Env } from "../../env";
+import { depositToRaydiumVault } from "../raydiumVault";
+import { sendNftTo, sendSolTo } from "../utils";
+import { retryOperation } from "../utils";
+import { RaydiumVault } from "../types/raydium_vault";
+import { Autofun } from "../../target/types/autofun";
+import { TokenData } from "../types/tokenData";
+import {
+  getMigrationState,
   MigrationStep,
-  releaseMigrationLock
+  executeMigrationStep,
+  acquireMigrationLock,
+  releaseMigrationLock,
+  LockResult,
 } from "./migrations";
+import { Wallet } from "../../tokenSupplyHelpers/customWallet";
+import { ExternalToken } from "../../externalToken";
+import { getDB, tokens } from "../../db";
+import { eq, and } from "drizzle-orm";
+import { getToken } from "../../raydium/migration/migrations";
+
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout>;
   const timeoutPromise = new Promise<never>((_, reject) => {
@@ -49,6 +59,7 @@ export class TokenMigrator {
     public provider: AnchorProvider,
   ) { }
   FEE_PERCENTAGE = 10; // 10% fee for pool creation
+  public ongoingMigrations: string[] = [];
 
   async scheduleNextInvocation(token: TokenData): Promise<void> {
     // call migraeToken
@@ -71,6 +82,43 @@ export class TokenMigrator {
     } catch (error) {
       console.error("Error scheduling next invocation:", error);
     }
+  }
+
+  async resumeMigrationsOnStart(): Promise<void> {
+    try {
+      const db = getDB(this.env);
+      const migratingTokens = await db
+        .select()
+        .from(tokens)
+        .where(and(
+          eq(tokens.status, "migrating"),
+        ))
+        .execute();
+      if (migratingTokens.length === 0) {
+        logger.log("No tokens to migrate on start.");
+        return;
+      }
+      for (const token of migratingTokens) {
+        // check if token is in ongoingMigrations
+        if (this.ongoingMigrations.includes(token.mint)) {
+          logger.log(
+            `[Migrate] Migration already in progress for token ${token.mint}. Deferring additional execution.`,
+          );
+          continue;
+        }
+        const newToken = await getToken(this.env, token.mint);
+        if (!newToken) {
+          logger.error(`Token ${token.mint} not found in DB.`);
+          continue;
+        }
+        await this.migrateToken(newToken);
+      }
+      logger.log("All ongoing migrations have been resumed.");
+    } catch (error) {
+      console.error("Error fetching migrating tokens:", error);
+      return;
+    }
+
   }
 
   async callResumeWorker(token: TokenData) {
@@ -159,6 +207,14 @@ export class TokenMigrator {
       //   await this.callResumeWorker(token);
       //   return;
       // }
+      // check if the token is already in ongoingMigrations 
+      if (this.ongoingMigrations.includes(token.mint)) {
+        logger.log(
+          `[Migrate] Migration already in progress for token ${token.mint}. Deferring additional`)
+        return;
+      }
+      this.ongoingMigrations.push(token.mint);
+
 
       const steps = this.getMigrationSteps();
       const currentStep = token.migration.lastStep
@@ -171,7 +227,7 @@ export class TokenMigrator {
       // If all steps are done, finalize and update token.
       if (currentStep && currentStep?.name === "finalize") {
         token.status = "locked";
-        token.lockedAt = new Date().toISOString();
+        token.lockedAt = new Date();
         await updateTokenInDB(this.env, {
           mint: token.mint,
           status: "locked",
@@ -198,13 +254,17 @@ export class TokenMigrator {
         logger.log(
           `[Migrate] Scheduling next invocation for token ${token.mint}`,
         );
+        // remove from ongoingMigrations 
+        this.ongoingMigrations = this.ongoingMigrations.filter(
+          (mint) => mint !== token.mint,
+        );
         await this.scheduleNextInvocation(token);
         await releaseMigrationLock(this.env, token);
         return;
       } else {
         // All steps are complete; final status update.
         token.status = "locked";
-        token.lockedAt = new Date().toISOString();
+        token.lockedAt = new Date();
         await updateTokenInDB(this.env, {
           mint: token.mint,
           status: "locked",
@@ -538,8 +598,15 @@ export class TokenMigrator {
     const poolId = token.marketId;
     // add timeout to the fetchPoolInfoWithRetry function
     const timeoutMs = 60_000; // 60 seconds
-    const poolInfoResult = await
-      this.fetchPoolInfoWithRetry(raydium, poolId)
+    // do timeout 
+    const poolInfoResult = await withTimeout(
+      this.fetchPoolInfoWithRetry(raydium, poolId),
+      timeoutMs
+    ).catch((err) => {
+      logger.error(`[Lock] Failed to fetch pool info: ${err.message}`);
+      return null;
+    });
+
 
     if (!poolInfoResult) {
       throw new Error(`Failed to fetch pool info for poolId: ${poolId}`);
@@ -595,7 +662,7 @@ export class TokenMigrator {
       lockedAmount: totalLPAmount.toString(),
       status: "locked",
       lastUpdated: new Date().toISOString(),
-      lockedAt: new Date().toISOString(),
+      lockedAt: new Date(),
     };
     await updateTokenInDB(this.env, tokenData);
     try {

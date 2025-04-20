@@ -117,8 +117,8 @@ export class ExternalToken {
     const createdAt = token.token?.createdAt;
     // get data from codex number createdAt
     const creationTime = createdAt
-      ? new Date(createdAt * 1000).toISOString()
-      : new Date().toISOString();
+      ? new Date(createdAt * 1000)
+      : new Date();
     const tokenSupplyUi = token.token?.info?.circulatingSupply
       ? Number(token.token?.info?.circulatingSupply)
       : 0;
@@ -164,6 +164,22 @@ export class ExternalToken {
     return { newTokenData, tokenSupply };
   }
 
+
+  // get creator for the token
+  public async getCreatorAddress() {
+    const { filterTokens } = await this.sdk.queries.filterTokens({
+      tokens: [`${this.mint}:${SOLANA_NETWORK_ID}`],
+    });
+
+    const token = filterTokens?.results?.[0];
+    if (!token) {
+      throw new Error("failed to find token with codex");
+    }
+
+    return token.token?.creatorAddress || null;
+  }
+
+
   public async updateHolderData(tokenSupply: number) {
     const { holders: codexHolders } = await this.sdk.queries.holders({
       input: {
@@ -171,7 +187,6 @@ export class ExternalToken {
       },
     });
 
-    const now = new Date().toISOString();
 
     const allHolders = tokenSupply
       ? codexHolders.items.map(
@@ -181,7 +196,7 @@ export class ExternalToken {
           address: holder.address,
           amount: holder.shiftedBalance,
           percentage: (holder.shiftedBalance / tokenSupply) * 100,
-          lastUpdated: now,
+          lastUpdated: new Date(),
         }),
       )
       : [];
@@ -403,7 +418,12 @@ export class ExternalToken {
       const batch = processedSwaps.slice(i, i + batchSize);
       const result = await this.db
         .insert(swaps)
-        .values(batch)
+        .values(
+          batch.map((swap) => ({
+            ...swap,
+            timestamp: new Date(swap.timestamp),
+          }))
+        )
         .onConflictDoNothing()
         .returning({ insertedId: swaps.id });
       insertedCount += result.length;

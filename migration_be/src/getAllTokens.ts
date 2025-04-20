@@ -33,7 +33,7 @@ export async function processMissedEvents(connection: Connection, env: Env,): Pr
       const currentTime = await connection.getBlockTime(currentSlot);
       let startSlot: number;
       if (currentTime !== null) {
-         const eighteenHoursAgo = currentTime - 10 * 3600;
+         const eighteenHoursAgo = currentTime - 2 * 3600;
          startSlot = await findSlotAtOrBeforeTime(
             connection,
             eighteenHoursAgo,
@@ -52,11 +52,14 @@ export async function processMissedEvents(connection: Connection, env: Env,): Pr
             startSlot
          );
       }
-
+      const slots = await connection.getBlocks(startSlot + 1, currentSlot);
+      logger.log(
+         `Processing ${slots.length} slots from ${startSlot + 1} to ${currentSlot}`
+      );
       // 2) Now process every slot from startSlot to currentSlot
       logger.log(`Scanning events from slot ${startSlot + 1} to ${currentSlot}`);
       const queue = new PQueue({ concurrency: 20 });
-      for (let slot = startSlot + 1; slot <= currentSlot; slot++) {
+      for (const slot of slots) {
          queue.add(async () => {
 
             try {

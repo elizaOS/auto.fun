@@ -114,17 +114,20 @@ export async function awardUserPoints(
       .where(eq(users.address, userAddress))
       .execute();
   } else {
+
     await db
       .insert(users)
-      .values({
-        id: uuidv4(),
-        address: userAddress,
-        name: null,
-        points: pointsToAdd,
-        rewardPoints: 0,
-        createdAt: now,
-      })
-      .execute();
+      .values([
+        {
+          address: userAddress,
+          points: pointsToAdd,
+          rewardPoints: 0,
+          createdAt: sql`CURRENT_TIMESTAMP`,
+
+          suspended: 0,
+        },
+      ])
+      .returning()
   }
 }
 

@@ -1,28 +1,32 @@
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
-import { getDB, swaps, Token, tokens } from "./db";
+import { TokenData, TokenDBData } from "./raydium/types/tokenData";
+import { getDB, Token, tokens, swaps } from "./db";
 import { Env } from "./env";
 import { logger } from "./logger";
-import { getSOLPrice } from "./mcap";
+import { awardGraduationPoints, awardUserPoints } from "./points/helpers";
 import { TokenMigrator } from "./raydium/migration/migrateToken";
 import { getToken } from "./raydium/migration/migrations";
 import * as raydium_vault_IDL from "./raydium/raydium_vault.json";
 import { RaydiumVault } from "./raydium/types/raydium_vault";
-import { TokenData, TokenDBData } from "./raydium/types/tokenData";
 import * as IDL from "./target/idl/autofun.json";
 import { Autofun } from "./target/types/autofun";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import {
    createNewTokenData,
-} from "./utils";
+} from "./utils"
+import { getSOLPrice } from "./mcap";
+import { ExternalToken } from "./externalToken";
+import { thawAccount } from "@solana/spl-token";
+
 // Store the last processed signature to avoid duplicate processing
 const lastProcessedSignature: string | null = null;
 
 function convertTokenDataToDBData(
    tokenData: Partial<TokenData>,
 ): Partial<TokenDBData> {
-   const now = new Date().toISOString();
+   const now = new Date();
    return {
       ...tokenData,
       lastUpdated: now,
@@ -91,29 +95,30 @@ export async function updateTokenInDB(
       console.log(JSON.stringify(updateData, null, 2));
       updatedTokens = await db
          .insert(tokens)
-         .values({
-            id: crypto.randomUUID(),
-            mint: updateData.mint!,
-            name: updateData.name || `Token ${updateData.mint?.slice(0, 8)}`,
-            ticker: updateData.ticker || "TOKEN",
-            url: updateData.url || "",
-            image: updateData.image || "",
-            creator: updateData.creator || "unknown",
-            status: updateData.status || "active",
-            tokenPriceUSD: updateData.tokenPriceUSD || 0,
-            reserveAmount: updateData.reserveAmount || 0,
-            reserveLamport: updateData.reserveLamport || 0,
-            currentPrice: updateData.currentPrice || 0,
-            createdAt: now,
-            lastUpdated: now,
-            txId: updateData.txId || "",
-            migration: updateData.migration || "",
-            withdrawnAmounts: updateData.withdrawnAmounts || "",
-            poolInfo: updateData.poolInfo || "",
-            lockLpTxId: updateData.lockLpTxId || "",
-            nftMinted: updateData.nftMinted || "",
-            marketId: updateData.marketId || "",
-         })
+         .values([
+            {
+               mint: updateData.mint,
+               name: updateData.name || `Token ${updateData.mint?.slice(0, 8)}`,
+               ticker: updateData.ticker || "TOKEN",
+               url: updateData.url || "",
+               image: updateData.image || "",
+               creator: updateData.creator || "unknown",
+               status: updateData.status || "active",
+               tokenPriceUSD: updateData.tokenPriceUSD ?? 0,
+               reserveAmount: updateData.reserveAmount ?? 0,
+               reserveLamport: updateData.reserveLamport ?? 0,
+               currentPrice: updateData.currentPrice ?? 0,
+               // createdAt: sql`CURRENT_TIMESTAMP`,
+               // lastUpdated: sql`CURRENT_TIMESTAMP`,
+               txId: updateData.txId || "",
+               migration: updateData.migration || "",
+               withdrawnAmounts: updateData.withdrawnAmounts || "",
+               poolInfo: updateData.poolInfo || "",
+               lockLpTxId: updateData.lockLpTxId || "",
+               nftMinted: updateData.nftMinted || "",
+               marketId: updateData.marketId || "",
+            }
+         ])
          .returning();
       logger.log(`Added new token ${updateData.mint} to database`);
    }
@@ -121,7 +126,6 @@ export async function updateTokenInDB(
    return updatedTokens[0];
 }
 
-// Function to process transaction logs and extract token events
 export async function processTransactionLogs(
    env: Env,
    logs: string[],
@@ -221,7 +225,7 @@ export async function processTransactionLogs(
                   Math.pow(10, SOL_DECIMALS) /
                   (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)), // Buy price (SOL/token),
             txId: signature,
-            timestamp: new Date().toISOString(),
+            timestamp: new Date(),
          };
 
          // Insert the swap record
@@ -251,7 +255,7 @@ export async function processTransactionLogs(
                      (Number(env.CURVE_LIMIT) - Number(env.VIRTUAL_RESERVES))) *
                   100,
                txId: signature,
-               lastUpdated: new Date().toISOString(),
+               lastUpdated: new Date(),
                volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${direction === "1"
                   ? (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD
                   : (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD
@@ -327,7 +331,7 @@ export async function processTransactionLogs(
                      rawCreatorAddress,
                   }),
                });
-               logger.log(`[Withdraw] Migration update POSTed for ${rawTokenAddress}`);
+               logger.log(`add missing token for ${rawTokenAddress}`);
             } catch (httpErr) {
                console.error(`[Withdraw] CF update failed:`, httpErr);
             }
@@ -431,3 +435,118 @@ export async function processTransactionLogs(
       events,
    };
 }
+
+
+export async function addOneToken(env: any) {
+   const {
+      signature,
+      rawTokenAddress,
+      rawCreatorAddress,
+   } = {
+      signature: "5QVEi1gWwjVThsjkru5jmzkXexsXB2qrqXk3yfZjmFED3RabTnZpKeyAhfaN4ttgBgypN45QzUt6W39FpRfUkFG8",
+      rawTokenAddress: "GtahzPErC4ph3aAxgtgbp44gy41XnPsN5aWock9N3FUN",
+      rawCreatorAddress: "EKnHbv7NEeKgsUwC1QjYrZ8LFgPmv3mXqZ75LyJPgdCJ",
+   }
+   const newToken = await createNewTokenData(
+      signature,
+      rawTokenAddress,
+      rawCreatorAddress,
+      env,
+   );
+
+   // call the cf backend 
+   (async () => {
+      try {
+         await fetch(`${env.API_URL}/api/migration/addMissingTokens`, {
+            method: "POST",
+            headers: {
+               "Content-Type": "application/json",
+               "Authorization": `Bearer ${env.JWT_SECRET}`,
+            },
+            body: JSON.stringify({
+               signature,
+               rawTokenAddress,
+               rawCreatorAddress,
+            }),
+         });
+         logger.log(`new token update POSTed for ${rawTokenAddress}`);
+      } catch (httpErr) {
+         console.error(`[Withdraw] CF update failed:`, httpErr);
+      }
+   })();
+   await getDB(env)
+      .insert(tokens)
+      .values(newToken as Token);
+}
+
+const list = [{
+   "mint": "GNBe3at5NDpu45z1foWwrVfdxYhFA5dYWqNm2JMVSCAM",
+   "creator": "DKM8aSR2t8or7UzA6kaCwYD2wPrUcPoDVvtqEdZ2aeMH",
+   "signature": "333kTadpSPENQQnEeaAWfqZYaqWBkL4AV9Z8WWdM25ZEGDMVdGMuU8mdQtcG8MHWBN2YNCocd5biB2pd3NBxAKrL",
+},
+]
+export async function migrateTokensFromList(
+   env: Env,
+   connection: Connection,
+
+) {
+   // look for the token in the db if we do not have it add it
+   // and then migrate it
+   for (const mintAddress of list) {
+      const token = await getToken(env, mintAddress.mint);
+      if (!token) {
+         logger.error(`Token not found in database: ${mintAddress}`);
+         // createNewTokenData
+         const newToken = await createNewTokenData(
+            mintAddress.signature,
+            mintAddress.mint,
+            mintAddress.creator,
+            env,
+         );
+         await getDB(env)
+            .insert(tokens)
+            .values(newToken as Token);
+         logger.log(`Added new token ${mintAddress} to database`);
+      }
+
+   }
+
+
+   const wallet = Keypair.fromSecretKey(
+      Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY)),
+   );
+   const provider = new AnchorProvider(
+      connection,
+      new Wallet(wallet),
+      AnchorProvider.defaultOptions(),
+   );
+   const program = new Program<RaydiumVault>(
+      raydium_vault_IDL as any,
+      provider,
+   );
+   const autofunProgram = new Program<Autofun>(IDL as any, provider);
+
+   const tokenMigrator = new TokenMigrator(
+      env,
+      connection,
+      new Wallet(wallet),
+      program,
+      autofunProgram,
+      provider,
+   );
+
+
+   for (const mintAddress of list) {
+      const token = await getToken(env, mintAddress.mint);
+      if (!token) {
+         logger.error(`Token not found in database: ${mintAddress}`);
+         continue;
+      }
+      token.status = "migrating";
+      // Update in database
+      await updateTokenInDB(env, token);
+      // migrate token
+      await tokenMigrator.migrateToken(token);
+   }
+}
+
