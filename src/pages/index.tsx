@@ -13,6 +13,7 @@ import { useViewMode } from "@/hooks/use-view-mode";
 import { getSocket } from "@/utils/socket";
 import { IToken } from "@/types";
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useLocalStorage } from "@uidotdev/usehooks";
 import { Fragment } from "react/jsx-runtime";
 import { FilterIcon, X } from "lucide-react"; // Example icons
 
@@ -37,14 +38,29 @@ interface UseTokensParams {
 
 export default function Page() {
   const [activeTab] = useViewMode();
-  // Manage sort/filter state locally
-  const [gridSortBy, setGridSortBy] = useState<GridSortByType>("newest");
-  const [tokenSource, setTokenSource] = useState<TokenSourceType>("all");
-  const [bondingStatus, setBondingStatus] = useState<BondingStatusType>("all");
-  const [tableSortBy, setTableSortBy] =
-    useState<TableSortByType>("marketCapUSD");
-  const [tableSortOrder, setTableSortOrder] = useState<SortOrderType>("desc");
+  // Manage sort/filter state locally, initializing from localStorage using the hook
+  const [gridSortBy, setGridSortBy] = useLocalStorage<GridSortByType>(
+    "gridSortBy",
+    "newest",
+  );
+  const [tokenSource, setTokenSource] = useLocalStorage<TokenSourceType>(
+    "tokenSource",
+    "all",
+  );
+  const [bondingStatus, setBondingStatus] = useLocalStorage<BondingStatusType>(
+    "bondingStatus",
+    "all",
+  );
+  const [tableSortBy, setTableSortBy] = useLocalStorage<TableSortByType>(
+    "tableSortBy",
+    "marketCapUSD",
+  );
+  const [tableSortOrder, setTableSortOrder] = useLocalStorage<SortOrderType>(
+    "tableSortOrder",
+    "desc",
+  );
 
+  // State for filter popover visibility (no need to persist this)
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // Determine API parameters based on active view and state
