@@ -18,7 +18,8 @@
     "better-sqlite3": "^11.9.1",
     "dotenv": "^16.5.0",
     "drizzle-orm": "^0.42.0",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "p-queue": "^8.1.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

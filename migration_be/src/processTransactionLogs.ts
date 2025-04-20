@@ -364,9 +364,30 @@ export async function processTransactionLogs(
          rawCreatorAddress,
          env,
       );
+      // call the cf backend 
+      (async () => {
+         try {
+            await fetch(`${env.API_URL}/api/migration/addMissingTokens`, {
+               method: "POST",
+               headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${env.JWT_SECRET}`,
+               },
+               body: JSON.stringify({
+                  signature,
+                  rawTokenAddress,
+                  rawCreatorAddress,
+               }),
+            });
+            logger.log(`[Withdraw] Migration update POSTed for ${rawTokenAddress}`);
+         } catch (httpErr) {
+            console.error(`[Withdraw] CF update failed:`, httpErr);
+         }
+      })();
+
       await getDB(env)
          .insert(tokens)
-         .values(newToken as Token);
+         .values(newToken as Token).onConflictDoNothing()
 
 
       result = {
