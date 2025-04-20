@@ -123,12 +123,18 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
         const fetchUrl = `${API_BASE_URL}/api/token/${tokenMint}/agents`;
         const agentsResponse = await fetch(fetchUrl);
 
+        console.log("agentsResponse", agentsResponse);
+
         const responseText = await agentsResponse.text();
+
+        console.log("responseText", responseText);
 
         if (!agentsResponse.ok) {
           // Try to get error message from body (use responseText now)
           let errorMsg = `Failed to fetch token agents: ${agentsResponse.statusText}`;
           const errorBody = JSON.parse(responseText); // Parse the logged text
+
+          console.log("errorBody", errorBody);
           if (
             errorBody &&
             typeof errorBody === "object" &&
@@ -151,6 +157,8 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
           );
           throw new Error("Invalid response format when fetching agents.");
         }
+
+        console.log("agentsData", agentsData);
 
         setTokenAgents(agentsData.agents);
       } catch (error) {
