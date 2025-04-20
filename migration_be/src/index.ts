@@ -32,7 +32,7 @@ try {
    getDB(process.env as any);
 } catch (err) {
    console.error("❌ Failed to initialize DB:", err);
-   // we continue anyway—you may choose to exit here if it's fatal
+   // we continue anyway—you may choose to exit here if it's fatal `
 }
 
 
