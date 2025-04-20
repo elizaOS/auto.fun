@@ -1,134 +1,93 @@
-import { Connection, Logs, PublicKey } from "@solana/web3.js";
-import dotenv from "dotenv";
+// src/index.ts
+import cluster from 'cluster';
+import os from 'os';
+import dotenv from 'dotenv';
+import cron from 'node-cron';
+import { Connection, PublicKey, Logs } from '@solana/web3.js';
 
-import { getDB } from "./db";
-import { processTransactionLogs, resumeOnStart } from "./processTransactionLogs";
-import { processMissedEvents, } from "./getAllTokens";
+import { Env } from './env';
+import { getDB } from './db';
+import { processMissedEvents } from './getAllTokens';
+import { resumeOnStart } from './processTransactionLogs';
+import { startLogSubscription } from './subscription';
+import { logger } from './logger';
 
 dotenv.config();
 
-// catch any uncaught exceptions / rejections so we stay alive
-process.on("uncaughtException", (err) => {
-   console.error("❌ Uncaught exception:", err);
-});
-process.on("unhandledRejection", (reason) => {
-   console.error("❌ Unhandled rejection:", reason);
-});
-
-const SOLANA_NETWORK = process.env.NETWORK ?? "devnet";
-const RPC_URL = SOLANA_NETWORK === "devnet"
-   ? process.env.DEVNET_SOLANA_RPC_URL
-   : process.env.MAINNET_SOLANA_RPC_URL;
-const PROGRAM_ID = process.env.PROGRAM_ID!;
-const CF_AUTH_TOKEN = process.env.HELIUS_WEBHOOK_AUTH_TOKEN!;
-
-if (!RPC_URL || !PROGRAM_ID || !CF_AUTH_TOKEN) {
-   console.error("❌ Missing required environment variables");
-   process.exit(1);
-}
-
-// initialize your local DB (will create file if needed)
+const RPC_URL =
+   (process.env.NETWORK === 'devnet'
+      ? process.env.DEVNET_SOLANA_RPC_URL
+      : process.env.MAINNET_SOLANA_RPC_URL)!;
+const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID!);
+const env = process.env as unknown as Env;
+const connection = new Connection(RPC_URL, 'confirmed');
 try {
    getDB(process.env as any);
-} catch (err) {
-   console.error("❌ Failed to initialize DB:", err);
-   // we continue anyway—you may choose to exit here if it's fatal `
-}
-try {
-   async function resume(env: any) {
 
-      resumeOnStart(env, connection);
-   }
-   resume(process.env as any);
-   setInterval(() => {
-      resume(process.env as any);
-   }, 5 * 60 * 1000); // every 5 minutes
-
-} catch (err) {
-   console.error("❌ Error during migration:", err);
+} catch (error) {
+   console.error('Error initializing database:', error);
 }
 
+type Job = 'subscription' | 'missedEvents' | 'resumeOnStart';
+const jobs: Job[] = ['subscription', 'missedEvents', 'resumeOnStart'];
+const jobMap = new Map<number, Job>();
+
+if (cluster.isPrimary) {
+   (async () => {
 
 
-const connection = new Connection(RPC_URL, "confirmed");
-const programId = new PublicKey(PROGRAM_ID);
-
-try {
-   async function resume(env: any) {
-      try {
-         await processMissedEvents(connection, process.env as any)
+      console.log('🔨 Primary: forking workers…');
+      for (const job of jobs) {
+         const worker = cluster.fork({ JOB: job });
+         jobMap.set(worker.id, job);
       }
-      catch (err) {
-         console.error("❌ Error during migration:", err);
-         // we continue anyway—you may choose to exit here if it's fatal
-      }
+
+      cluster.on('exit', (worker, code, signal) => {
+         const failedJob = jobMap.get(worker.id);
+         console.error(
+            `❌ Worker ${worker.process.pid} for job=${failedJob} died (code=${code}, signal=${signal}). Restarting…`
+         );
+         if (failedJob) {
+            const newWorker = cluster.fork({ JOB: failedJob });
+            jobMap.set(newWorker.id, failedJob);
+         }
+      });
+   })();
+} else {
+   // Worker process
+   const job = process.env.JOB as Job;
+
+   switch (job) {
+      case 'subscription':
+         // This script lives in subscription.ts
+         startLogSubscription(connection, PROGRAM_ID, env);
+         break;
+
+      case 'missedEvents':
+         // Run immediately + every 15m
+         (async () => {
+            await processMissedEvents(connection, env);
+            cron.schedule('*/15 * * * *', async () => {
+               logger.log('🕒 [missedEvents] Cron trigger');
+               await processMissedEvents(connection, env);
+            });
+         })();
+         break;
+
+      case 'resumeOnStart':
+         // Run immediately + every 5m
+         (async () => {
+            await resumeOnStart(env, connection);
+            cron.schedule('*/5 * * * *', async () => {
+               logger.log('🕒 [resumeOnStart] Cron trigger');
+               await resumeOnStart(env, connection);
+            });
+         })();
+         break;
+
+      default:
+         throw new Error(`Unknown JOB=${job}`);
    }
-   resume(process.env as any);
-   setInterval(() => {
-      resume(process.env as any);
-   }, 5 * 60 * 1000); // every 5 minutes
-} catch (err) {
-   console.error("❌ Error during migration:", err);
-   // we continue anyway—you may choose to exit here if it's fatal
+
+   console.log(`Worker ${process.pid} handling "${job}"`);
 }
-
-
-
-
-console.log("🚀 Listening on", SOLANA_NETWORK, "via", RPC_URL);
-
-
-let subId: number;
-function startLogSubscription() {
-   try {
-      subId = connection.onLogs(
-         programId,
-         async (logs: Logs) => {
-            try {
-               if (logs.err) {
-                  console.warn("⚠️  Transaction errored:", logs.err);
-                  return;
-               }
-               const result = await processTransactionLogs(process.env as any, logs.logs, logs.signature);
-               console.log("👉 Result:", result);
-            } catch (innerErr) {
-               console.error("❌ Error in onLogs handler:", innerErr);
-            }
-         },
-         "confirmed"
-      );
-      console.log("✅ Subscribed with id", subId);
-   } catch (err) {
-      console.error("❌ Failed to subscribe:", err);
-   }
-}
-
-// Watchdog to ensure subscription stays alive
-setInterval(async () => {
-   try {
-      // A simple RPC heartbeat
-      await connection.getVersion();
-   } catch (err) {
-      console.error("❌ RPC heartbeat failed, recreating subscription:", err);
-      try {
-         await connection.removeOnLogsListener(subId);
-      } catch (_) {
-         // Ignore errors if the listener was already removed
-      }
-      startLogSubscription();
-   }
-}, 30_000); // every 30s
-
-//  Start everything
-startLogSubscription();
-
-// Graceful shutdown
-process.on("SIGINT", async () => {
-   console.log("\n👋 Shutting down…");
-   try {
-      await connection.removeOnLogsListener(subId);
-   } catch (err) {
-      console.error("❌ Error removing listener:", err);
-   }
-   process.exit(0);
-});

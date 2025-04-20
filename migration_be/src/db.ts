@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { Env } from "./env";
 
+
 // Token schema
 export const tokens = pgTable("tokens", {
    id: text("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -246,6 +247,10 @@ export const vanityGenerationInstances = pgTable("vanity_generation_instances", 
    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
    updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+export const metadata = pgTable("metadata", {
+   key: text("key").primaryKey(),
+   value: text("value").notNull(),
+});
 
 
 export function getDB(env: Env) {
@@ -295,6 +300,9 @@ export type VanityGenerationInstance =
    typeof vanityGenerationInstances.$inferSelect;
 export type VanityGenerationInstanceInsert =
    typeof vanityGenerationInstances.$inferInsert;
+
+export type Metadata = typeof metadata.$inferSelect
+export type MetadataInsert = typeof metadata.$inferInsert;
 
 // Schema for all tables
 const schema = {

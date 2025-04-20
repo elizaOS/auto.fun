@@ -1,9 +1,37 @@
 import { logger } from "./logger";
 import { processTransactionLogs } from "./processTransactionLogs";
-import { Token, getDB } from "./db";
+import { Token, getDB, metadata } from "./db";
 import PQueue from "p-queue";
 import { Env } from "./env";
 import { Connection, PublicKey } from "@solana/web3.js";
+import { eq } from "drizzle-orm";
+
+
+
+
+export async function getLastProcessedSlot(env: any): Promise<number | null> {
+   const db = await getDB(env);
+
+   const row = await db.select()
+      .from(metadata)
+      .where(eq(metadata.key, "lastProcessedSlot"))
+      .limit(1)
+
+   if (row.length > 0) {
+      return parseInt(row[0].value, 10);
+   }
+   return null;
+}
+export async function setLastProcessedSlot(slot: number, env: any): Promise<void> {
+
+
+   const db = await getDB(env);
+   await db.insert(metadata).values({ key: "lastProcessedSlot", value: slot.toString() }).onConflictDoUpdate({
+      target: [metadata.key],
+      set: { value: slot.toString() },
+   });
+   logger.log(`Updated last processed slot to ${slot}`);
+}
 
 async function findSlotAtOrBeforeTime(
    connection: Connection,
@@ -24,33 +52,53 @@ async function findSlotAtOrBeforeTime(
    }
    return low;
 }
+async function processSlot(slot: number, connection: Connection, env: Env) {
+   try {
+      const block = await connection.getBlock(slot, {
+         transactionDetails: 'full',
+         rewards: false,
+         commitment: 'confirmed',
+         maxSupportedTransactionVersion: 0,
+      });
+      if (!block) return logger.log(`Slot ${slot} empty, skipping`);
 
+      for (const tx of block.transactions) {
+         const logs = tx.meta?.logMessages;
+         if (!logs) continue;
+         if (logs.some((l) => l.includes(env.PROGRAM_ID!))) {
+            const signature = tx.transaction.signatures[0];
+            await processTransactionLogs(env, logs, signature);
+         }
+      }
+   } catch (err) {
+      logger.error(`Error processing slot ${slot}:`, err);
+   }
+}
 
 // Scan blocks from the last processed slot up to the current slot
 export async function processMissedEvents(connection: Connection, env: Env,): Promise<void> {
    try {
       const currentSlot = await connection.getSlot("confirmed");
       const currentTime = await connection.getBlockTime(currentSlot);
-      let startSlot: number;
-      if (currentTime !== null) {
-         const eighteenHoursAgo = currentTime - 2 * 3600;
-         startSlot = await findSlotAtOrBeforeTime(
-            connection,
-            eighteenHoursAgo,
-            0,
-            currentSlot
-         );
-         logger.log(
-            `18 hours ago was ≈${new Date(eighteenHoursAgo * 1000).toISOString()}, ` +
-            `which corresponds to slot ${startSlot}`
-         );
+      let startSlot = await getLastProcessedSlot(env);
+
+      if (startSlot === null) {
+         // First time running: fall back to ~6 h ago
+         const currentTime = await connection.getBlockTime(currentSlot);
+         if (currentTime !== null) {
+            const cutoffTs = currentTime - 6 * 3600; // 6 hours
+            startSlot = await findSlotAtOrBeforeTime(
+               connection,
+               cutoffTs,
+               0,
+               currentSlot
+            );
+         } else {
+            startSlot = Math.max(0, currentSlot - 500);
+         }
+         logger.log(`No lastProcessedSlot found. Falling back to slot ${startSlot}`);
       } else {
-         // fallback if getBlockTime fails
-         startSlot = Math.max(0, currentSlot - 500);
-         logger.warn(
-            "Couldn't get blockTime for currentSlot; falling back to slot",
-            startSlot
-         );
+         logger.log(`Resuming from lastProcessedSlot = ${startSlot}`);
       }
       const slots = await connection.getBlocks(startSlot + 1, currentSlot);
       logger.log(
@@ -60,58 +108,11 @@ export async function processMissedEvents(connection: Connection, env: Env,): Pr
       logger.log(`Scanning events from slot ${startSlot + 1} to ${currentSlot}`);
       const queue = new PQueue({ concurrency: 20 });
       for (const slot of slots) {
-         queue.add(async () => {
-
-            try {
-               // Fetch the block with full transaction details.
-               const block = await connection.getBlock(slot, {
-                  transactionDetails: "full",
-                  rewards: false,
-                  commitment: "confirmed",
-                  maxSupportedTransactionVersion: 0,
-               });
-               if (!block) {
-                  logger.log(`⚠️  Slot ${slot} returned null, skipping`);
-                  return;
-               }
-               // Process each transaction in the block
-               for (const tx of block.transactions) {
-                  const logMessages = tx.meta?.logMessages;
-                  if (!logMessages) return;
-
-                  // Check if any log message includes our program's ID.
-                  if (
-                     logMessages.some((msg: any) =>
-                        msg.includes(env.PROGRAM_ID!)
-                     )
-                  ) {
-                     logger.log(`▶️ found event in slot ${slot}`);
-
-                     // Construct a log event similar to what the real-time listener receives.
-                     const logEvent = {
-                        slot,
-                        logs: logMessages,
-                        signature: tx.transaction.signatures[0],
-                        err: tx?.meta?.err || null,
-                     };
-                     const signature = logEvent.signature;
-                     // console.log(logMessages)
-                     const newTokenLog = logMessages.find((log) => log.includes("NewToken:"));
-                     if (!newTokenLog) return; // Skip if no NewToken log found
-                     // Process the event
-                     await processTransactionLogs(env, logMessages, signature);
-                     // // wait for 5 seconds to avoid rate limiting
-                     // await new Promise((resolve) => setTimeout(resolve, 5000));
-                  }
-               }
-            } catch (slotError) {
-               logger.error(`❌ Error at slot ${slot}:`, slotError);
-            }
-         });
+         queue.add(() => processSlot(slot, connection, env));
       }
-      // Wait until all queued tasks are complete.
       await queue.onIdle();
-      logger.log(`Finished processing missed events up to slot ${currentSlot}`);
+      await setLastProcessedSlot(currentSlot, env);
+      logger.log(`✅ Updated lastProcessedSlot → ${currentSlot}`);
    } catch (error) {
       logger.error("Error processing missed events:", error);
    }
