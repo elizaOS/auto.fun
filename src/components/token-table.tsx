@@ -77,6 +77,14 @@ export const TokenTable = ({ tokens }: { tokens: ProfileToken[] }) => {
     getCoreRowModel: getCoreRowModel(),
   });
 
+  if (!tokens || tokens?.length === 0) {
+    return (
+      <div className="text-center text-autofun-text-secondary my-6">
+        No tokens to be displayed
+      </div>
+    );
+  }
+
   return (
     <div className="border border-[#262626] w-full">
       <table className="w-full">
@@ -90,7 +98,7 @@ export const TokenTable = ({ tokens }: { tokens: ProfileToken[] }) => {
                 >
                   {flexRender(
                     header.column.columnDef.header,
-                    header.getContext(),
+                    header.getContext()
                   )}
                 </th>
               ))}
