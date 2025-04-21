@@ -1,0 +1,71 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Project Directory Structure
+
+This document provides an overview of the Auto.fun project's directory structure and the purpose of each major component.
+
+## Root Directory
+
+```
+.
+├── docs/                  # Documentation site using Docusaurus
+├── drizzle/              # Database migration files
+├── migration_be/         # Backend migration tools and database
+├── program/              # Solana program (smart contract) code
+├── public/               # Static assets for the web application
+├── scripts/              # Utility scripts for development and deployment
+├── src/                  # Main application source code
+├── vendor/               # Third-party dependencies
+├── worker/               # Cloudflare Worker backend code
+└── wrangler.toml         # Cloudflare Worker configuration
+```
+
+## Key Components
+
+### Documentation (`docs/`)
+- Contains the Docusaurus-based documentation site
+- Includes API documentation, guides, and tutorials
+- Separate package.json for documentation dependencies
+
+### Backend (`worker/`)
+- Cloudflare Worker implementation
+- Contains API routes, database interactions, and business logic
+- Includes Raydium integration and token supply helpers
+
+### Frontend (`src/`)
+- React-based web application
+- Components, hooks, and utilities
+- Pages and routing
+- Type definitions and providers
+
+### Smart Contract (`program/`)
+- Solana program implementation
+- Includes tests and deployment scripts
+- Contains Raydium vault integration
+
+### Database (`drizzle/` and `migration_be/`)
+- Database migration files
+- Backend database tools and utilities
+- SQLite development database
+
+### Static Assets (`public/`)
+- Images, icons, and other static files
+- Trading view chart libraries
+- Web app manifests and favicons
+
+### Development Tools (`scripts/`)
+- Development and deployment scripts
+- Webhook setup and testing utilities
+- Post-installation scripts
+
+## Configuration Files
+
+- `package.json` - Main project dependencies and scripts
+- `tsconfig.json` - TypeScript configuration
+- `vite.config.ts` - Vite bundler configuration
+- `tailwind.config.js` - Tailwind CSS configuration
+- `wrangler.toml` - Cloudflare Worker configuration
+
