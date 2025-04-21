@@ -15,6 +15,9 @@ type Credentials = {
   expiresAt: number;
   username?: string; // Add username for display
   profileImageUrl?: string; // Add profile image
+  // OAuth 1.0a specific fields
+  oauth1Token?: string;
+  oauth1TokenSecret?: string;
 };
 
 // Response type for OAuth callback
@@ -25,6 +28,11 @@ type OAuthResponse = {
   userId?: string;
   username?: string;
   profileImageUrl?: string;
+  // OAuth 1.0a fields
+  oauth1_token?: string;
+  oauth1_token_secret?: string;
+  user_id?: string;
+  screen_name?: string;
 };
 
 export default function CallbackPage() {
@@ -32,19 +40,28 @@ export default function CallbackPage() {
   const [debugInfo, setDebugInfo] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
-    const fetchAccessToken = async () => {
-      // Log query parameters for debugging
+    const processCallback = async () => {
+      // Check for OAuth 1.0a callback parameters
       const params = new URLSearchParams(window.location.search);
+      const oauthToken = params.get("oauth_token");
+      const oauthVerifier = params.get("oauth_verifier");
+
+      // Standard OAuth 2.0 parameters
       const code = params.get("code");
       const state = params.get("state");
       const error = params.get("error");
       const errorDescription = params.get("error_description");
 
+      // Log debug info
       setDebugInfo({
+        oauthToken: oauthToken || "Missing",
+        oauthVerifier: oauthVerifier || "Missing",
         code: code ? "Received" : "Missing",
         state: state || "Missing",
         error: error || "None",
         errorDescription: errorDescription || "None",
+        apiUrl: env.apiUrl || "Missing",
+        flow: oauthToken ? "OAuth 1.0a" : "OAuth 2.0",
       });
 
       // Handle Twitter OAuth error response
@@ -55,8 +72,71 @@ export default function CallbackPage() {
         return;
       }
 
-      setDebugInfo((prev) => ({ ...prev, apiUrl: env.apiUrl }));
+      // Handle OAuth 1.0a callback
+      if (oauthToken && oauthVerifier) {
+        try {
+          const response = await fetch(
+            `${env.apiUrl}/api/share/oauth1/callback?oauth_token=${oauthToken}&oauth_verifier=${oauthVerifier}`,
+            { credentials: "include" },
+          );
 
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(
+              "OAuth 1.0a callback error:",
+              errorText,
+              "Status:",
+              response.status,
+            );
+            setDebugInfo((prev) => ({
+              ...prev,
+              responseStatus: response.status.toString(),
+              responseError: errorText,
+            }));
+            throw new Error(
+              `OAuth 1.0a authentication failed: ${response.statusText} - ${errorText}`,
+            );
+          }
+
+          const data = (await response.json()) as OAuthResponse;
+
+          if (data.oauth1_token && data.oauth1_token_secret) {
+            // Store OAuth 1.0a credentials
+            const credentials: Credentials = {
+              userId: data.user_id || data.userId || "default_user",
+              // Store both OAuth 2.0 and 1.0a credentials
+              accessToken: data.access_token || "", // May not be present in 1.0a
+              refreshToken: data.refresh_token || "", // May not be present in 1.0a
+              expiresAt: data.expires_in
+                ? Date.now() + data.expires_in * 1000
+                : Date.now() + 86400000, // 24hr default
+              username: data.screen_name || data.username,
+              // OAuth 1.0a specific fields
+              oauth1Token: data.oauth1_token,
+              oauth1TokenSecret: data.oauth1_token_secret,
+            };
+
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(credentials));
+
+            // Redirect back to original page
+            redirectToOrigin();
+          } else {
+            console.error("No OAuth 1.0a tokens received");
+            setDebugInfo((prev) => ({ ...prev, oauth1TokensMissing: "true" }));
+            throw new Error("No OAuth 1.0a tokens received");
+          }
+        } catch (error) {
+          console.error("OAuth 1.0a authentication error:", error);
+          setError(
+            error instanceof Error
+              ? error.message
+              : "OAuth 1.0a authentication failed",
+          );
+        }
+        return;
+      }
+
+      // Handle standard OAuth 2.0 callback
       if (code && state) {
         try {
           const response = await fetch(
@@ -95,20 +175,7 @@ export default function CallbackPage() {
             };
 
             localStorage.setItem(STORAGE_KEY, JSON.stringify(credentials));
-
-            // --- Dynamic Redirect Logic ---
-            // Retrieve the original path, default to root '/' if not found
-            const redirectOrigin =
-              localStorage.getItem(OAUTH_REDIRECT_ORIGIN_KEY) || "/";
-            localStorage.removeItem(OAUTH_REDIRECT_ORIGIN_KEY); // Clean up immediately
-
-            // Construct the final redirect URL, ensuring it's based on the current origin
-            // and preserves search params/hash from the stored path if any
-            const redirectUrl = new URL(redirectOrigin, window.location.origin);
-            redirectUrl.searchParams.set("fresh_auth", "true"); // Add the flag
-
-            window.location.href = redirectUrl.toString(); // Redirect dynamically
-            // --- End Dynamic Redirect Logic ---
+            redirectToOrigin();
           } else {
             console.error("No tokens received from OAuth response");
             setDebugInfo((prev) => ({ ...prev, tokenMissing: "true" }));
@@ -120,13 +187,28 @@ export default function CallbackPage() {
             error instanceof Error ? error.message : "Authentication failed",
           );
         }
-      } else {
-        console.error("Missing required code and/or state parameters");
-        setError("Missing required OAuth parameters (code and state)");
+      } else if (!oauthToken && !oauthVerifier) {
+        // Only show this error if neither OAuth flow's parameters are present
+        console.error("Missing required OAuth parameters");
+        setError("Missing required OAuth parameters");
       }
     };
 
-    fetchAccessToken();
+    // Helper function for redirecting back to origin
+    const redirectToOrigin = () => {
+      // Retrieve the original path, default to root '/' if not found
+      const redirectOrigin =
+        localStorage.getItem(OAUTH_REDIRECT_ORIGIN_KEY) || "/";
+      localStorage.removeItem(OAUTH_REDIRECT_ORIGIN_KEY); // Clean up immediately
+
+      // Construct the final redirect URL
+      const redirectUrl = new URL(redirectOrigin, window.location.origin);
+      redirectUrl.searchParams.set("fresh_auth", "true"); // Add the flag
+
+      window.location.href = redirectUrl.toString(); // Redirect dynamically
+    };
+
+    processCallback();
   }, []);
 
   if (error) {

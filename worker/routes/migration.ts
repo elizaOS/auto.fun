@@ -1,18 +1,19 @@
-import { Wallet } from "../tokenSupplyHelpers/customWallet";
-import { RaydiumVault } from "../raydium/types/raydium_vault";
-import * as raydium_vault_IDL from "../raydium/raydium_vault.json";
-import { Autofun } from "../target/types/autofun";
-import * as IDL from "../target/idl/autofun.json";
-import { TokenMigrator } from "../raydium/migration/migrateToken";
-import { Hono } from "hono";
-import { Env } from "../env";
-import { logger } from "../logger";
-import { Connection, Keypair } from "@solana/web3.js";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
-import { PublicKey } from "@solana/web3.js";
-import { claim, checkBalance } from "../raydium/raydiumVault";
-import { getDB, users, tokens } from "../db";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { eq } from "drizzle-orm";
+import { Hono } from "hono";
+import { getDB, tokens, users, Token } from "../db";
+import { Env } from "../env";
+import { logger } from "../util";
+import { TokenMigrator } from "../raydium/migration/migrateToken";
+import * as raydium_vault_IDL from "../raydium/raydium_vault.json";
+import { checkBalance, claim } from "../raydium/raydiumVault";
+import { RaydiumVault } from "../raydium/types/raydium_vault";
+import * as IDL from "../target/idl/autofun.json";
+import { Autofun } from "../target/types/autofun";
+import { Wallet } from "../tokenSupplyHelpers/customWallet";
+import { getWebSocketClient } from "../websocket-client";
+import { createNewTokenData } from "../util";
 
 const migrationRouter = new Hono<{
   Bindings: Env;
@@ -61,7 +62,7 @@ migrationRouter.post("/migration/resume", async (c) => {
       raydium_vault_IDL as any,
       provider,
     );
-    const autofunProgram = new Program<Autofun>(IDL as any, provider);
+    const autofunProgram = new Program<Autofun>(IDL, provider);
 
     // Create an instance of TokenMigrator.
     const tokenMigrator = new TokenMigrator(
@@ -74,7 +75,7 @@ migrationRouter.post("/migration/resume", async (c) => {
     );
 
     // Call migrateToken: process the next migration step.
-    await tokenMigrator.migrateToken(token);
+    // await tokenMigrator.migrateToken(token);
 
     // Return a success response.
     return c.json({
@@ -152,7 +153,7 @@ migrationRouter.post("/claimFees", async (c) => {
       raydium_vault_IDL as any,
       provider,
     );
-
+    const claimer = new PublicKey(token.creator);
     // Call the claim Function.
     const txSignature = await claim(
       program,
@@ -160,6 +161,7 @@ migrationRouter.post("/claimFees", async (c) => {
       new PublicKey(nftMint),
       new PublicKey(poolId),
       connection,
+      claimer,
     );
     // Return a success response.
     return c.json({
@@ -169,7 +171,10 @@ migrationRouter.post("/claimFees", async (c) => {
     });
   } catch (error) {
     logger.error("Error in claim fees endpoint:", error);
-    return c.json({ error: "Failed to process claim invocation" }, 500);
+    return c.json(
+      { error: `Failed to process claim invocation ${error.message}` },
+      500,
+    );
   }
 });
 
@@ -240,6 +245,92 @@ migrationRouter.get("/checkBalance", async (c) => {
   } catch (error) {
     logger.error("Error in checkBalance endpoint:", error);
     return c.json({ error: "Failed to process checkBalance invocation" }, 500);
+  }
+});
+
+migrationRouter.post("/migration/update", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { step, mint, migration, status, ...extra } = body;
+
+    if (!mint || migration === undefined) {
+      return c.json({ error: "mint and migration are required" }, 400);
+    }
+
+    // 2) normalize migration to string for storage
+    const migrationStr =
+      typeof migration === "string" ? migration : JSON.stringify(migration);
+
+    // 3) prepare update fields
+    const updateData: Record<string, any> = {
+      migration: migrationStr,
+      last_updated: new Date().toISOString(),
+    };
+    if (status) updateData.status = status;
+    if (extra.lockedAt) updateData.locked_at = extra.lockedAt;
+    Object.assign(updateData, extra);
+
+    // 4) write to db
+    const db = getDB(c.env);
+    const token = await db
+      .update(tokens)
+      .set(updateData)
+      .where(eq(tokens.mint, mint))
+      .execute();
+
+    // emit event to notify
+    const ws = getWebSocketClient(c.env);
+
+    if (step === "finalize") {
+      ws.to(`token-${mint}`).emit("updateToken", token);
+    }
+    return c.json({ ok: true, mint });
+  } catch (err) {
+    logger.error("Error in /migration/update:", err);
+    return c.json({ error: "Failed to update migration state" }, 500);
+  }
+});
+
+// migration add missing tokens
+migrationRouter.post("/migration/addMissingTokens", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { rawTokenAddress, rawCreatorAddress, signature } = body;
+
+    if (!rawTokenAddress) {
+      return c.json({ error: "Invalid token data provided" }, 400);
+    }
+
+    // check if we have token in the database
+    const db = getDB(c.env);
+    const existingTokens = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, rawTokenAddress));
+
+    if (existingTokens.length > 0) {
+      return c.json({ error: "Tokens already exist in the database" }, 400);
+    }
+
+    // add token to the database if it is missing
+    const newToken = await createNewTokenData(
+      signature,
+      rawTokenAddress,
+      rawCreatorAddress,
+      c.env,
+    );
+    await getDB(c.env)
+      .insert(tokens)
+      .values(newToken as Token)
+      .onConflictDoNothing();
+    // Return a success response.
+    return c.json({
+      status: "added missing token",
+      rawTokenAddress,
+    });
+  } catch (error) {
+    logger.error("Error in migration add missing tokens endpoint:", error);
+    return c.json({ error: "Failed to process migration invocation" }, 500);
   }
 });
 

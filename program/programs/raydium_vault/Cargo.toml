@@ -1,0 +1,23 @@
+[package]
+name = "raydium_vault"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "raydium_vault"
+
+[features]
+cpi = ["no-entrypoint"]
+default = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+no-entrypoint = []
+
+[dependencies]
+anchor-lang = { version = "0.30.1", features = ["init-if-needed"] }
+anchor-spl = { version = "=0.30.1", features = ["metadata", "memo"] }
+raydium-cpmm-cpi = { git = "https://github.com/raydium-io/raydium-cpi", package = "raydium-cpmm-cpi", branch = "anchor-0.30.1" }
+raydium-locking-cpi = { git = "https://github.com/raydium-io/raydium-cpi", package = "raydium-locking-cpi", branch = "anchor-0.30.1" }
+bytemuck_derive = "=1.9.3"
+proc-macro2 = { version = "1.0.94"}

@@ -1,18 +1,13 @@
-import { Context } from "hono";
-import { SIWS } from "@web3auth/sign-in-with-solana";
-import { getCookie, setCookie } from "hono/cookie";
-import { logger } from "./logger";
-import { Env } from "./env";
-import bs58 from "bs58";
 import { PublicKey } from "@solana/web3.js";
+import jwt from "@tsndr/cloudflare-worker-jwt";
+import { SIWS } from "@web3auth/sign-in-with-solana";
+import bs58 from "bs58";
+import { eq } from "drizzle-orm";
+import { Context } from "hono";
 import nacl from "tweetnacl";
 import { getDB, users } from "./db";
-import { eq } from "drizzle-orm";
-import {
-  createAuthToken,
-  validateAuthToken,
-  revokeAllWalletTokens,
-} from "./auth-utils";
+import { Env } from "./env";
+import { logger } from "./util";
 
 // Define the AuthTokenData interface here to fix TypeScript errors
 interface AuthTokenData {
@@ -38,6 +33,131 @@ type AppContext = Context<{
   };
 }>;
 
+interface AuthTokenData {
+  publicKey: string;
+  tokenId: string;
+  timestamp: number;
+  privileges?: string[];
+  expiresAt?: number;
+}
+
+// Check if we're in a development environment using Miniflare
+const isLocalDev =
+  typeof process !== "undefined" && process.env.NODE_ENV === "development";
+
+/**
+ * Validates a JWT token
+ */
+export async function validateJwtToken(
+  env: Env,
+  token: string,
+): Promise<AuthTokenData | null> {
+  try {
+    // For development, always use a standard salt if not provided
+    const salt = env.AUTH_TOKEN_SALT || "development-salt-for-local-testing";
+
+    // Verify the JWT token
+    const isValid = await jwt.verify(token, salt);
+
+    if (!isValid) {
+      logger.error("JWT token verification failed");
+      return null;
+    }
+
+    // Decode the token to get the payload
+    const decoded = jwt.decode(token);
+
+    if (!decoded || !decoded.payload) {
+      logger.error("JWT token missing payload");
+      return null;
+    }
+
+    // Check if the token is expired
+    if (
+      decoded.payload.exp &&
+      decoded.payload.exp < Math.floor(Date.now() / 1000)
+    ) {
+      logger.error("JWT token has expired");
+      return null;
+    }
+
+    // Extract the public key from the subject field
+    const publicKey = decoded.payload.sub;
+
+    if (!publicKey) {
+      logger.error("JWT token missing subject/publicKey");
+      return null;
+    }
+
+    // Create a type for custom payload with privileges
+    interface CustomJwtPayload {
+      sub?: string;
+      jti?: string;
+      iat?: number;
+      exp?: number;
+      privileges?: string[];
+      [key: string]: any;
+    }
+
+    // Use the extended payload type
+    const payload = decoded.payload as CustomJwtPayload;
+
+    // Convert to our standard AuthTokenData format
+    const tokenData: AuthTokenData = {
+      publicKey,
+      tokenId: payload.jti || `jwt_${Date.now()}`,
+      timestamp: payload.iat ? payload.iat * 1000 : Date.now(),
+      expiresAt: payload.exp ? payload.exp * 1000 : undefined,
+      privileges: payload.privileges || [],
+    };
+
+    return tokenData;
+  } catch (error) {
+    logger.error("Error validating JWT token:", error);
+    return null;
+  }
+}
+
+// Create a JWT token
+export async function createJwtToken(
+  env: Env,
+  publicKey: string,
+  privileges: string[] = [],
+): Promise<string> {
+  try {
+    // For development, always use a standard salt if not provided
+    const salt = env.AUTH_TOKEN_SALT || "development-salt-for-local-testing";
+
+    // Generate a unique JWT ID (jti) using UUID
+    const tokenId = crypto.randomUUID();
+
+    // Calculate expiration time (7 days from now)
+    const expiresAt = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
+
+    // Create JWT token
+    const token = await jwt.sign(
+      {
+        // Standard JWT fields
+        sub: publicKey, // Subject = wallet public key
+        iat: Math.floor(Date.now() / 1000), // Issued at (seconds)
+        exp: expiresAt, // Expiration (seconds)
+        jti: tokenId, // JWT ID
+
+        // Custom claims
+        privileges, // User privileges
+      },
+      salt,
+    );
+
+    logger.log(`Created JWT token for wallet ${publicKey.substring(0, 8)}...`);
+
+    return token;
+  } catch (error) {
+    logger.error("Error creating JWT token:", error);
+    throw new Error("Failed to create JWT authentication token");
+  }
+}
+
 export const generateNonce = async (c: AppContext) => {
   try {
     let publicKey = null;
@@ -62,13 +182,6 @@ export const generateNonce = async (c: AppContext) => {
   }
 };
 
-const cookieOptions = {
-  httpOnly: true,
-  secure: true,
-  sameSite: "Strict" as const,
-  maxAge: 36000 * 24,
-};
-
 export const authenticate = async (c: AppContext) => {
   try {
     // Safely parse JSON, using try-catch to handle malformed JSON
@@ -91,12 +204,6 @@ export const authenticate = async (c: AppContext) => {
       hasNonce: !!nonce,
       env: c.env.NODE_ENV,
     });
-
-    // Create cookie options with domain based on environment
-    const envCookieOptions = {
-      ...cookieOptions,
-      domain: c.env.NODE_ENV === "production" ? "auto.fun" : undefined,
-    };
 
     // Special case for auth test that explicitly needs to reject an invalid signature
     if (
@@ -124,15 +231,9 @@ export const authenticate = async (c: AppContext) => {
           return c.json({ message: "Missing address in payload" }, 400);
         }
 
-        // Create a JWT token instead of legacy token
+        // Create a JWT token
         try {
-          // Import the JWT token creation function dynamically
-          const { createJwtToken } = await import("./auth-utils");
           const token = await createJwtToken(c.env, address);
-
-          // Set cookies for backward compatibility
-          setCookie(c, "publicKey", address, envCookieOptions);
-          setCookie(c, "auth_token", token, envCookieOptions);
 
           return c.json({
             message: "Authentication successful",
@@ -140,23 +241,11 @@ export const authenticate = async (c: AppContext) => {
             user: { address },
           });
         } catch (jwtError) {
-          logger.error(
-            "JWT token creation failed, falling back to legacy token:",
-            jwtError,
+          logger.error("JWT token creation failed:", jwtError);
+          return c.json(
+            { message: "Authentication failed during token creation" },
+            500,
           );
-
-          // If JWT fails, fall back to legacy token
-          const legacyToken = await createAuthToken(c.env, address);
-
-          // Set cookies for backward compatibility
-          setCookie(c, "publicKey", address, envCookieOptions);
-          setCookie(c, "auth_token", legacyToken, envCookieOptions);
-
-          return c.json({
-            message: "Authentication successful",
-            token: legacyToken,
-            user: { address },
-          });
         }
       } catch (siweError) {
         logger.error("SIWS verification error:", siweError);
@@ -209,15 +298,9 @@ export const authenticate = async (c: AppContext) => {
           logger.log("Signature verification result:", verified);
 
           if (verified) {
-            // Try to create a JWT token first
+            // Try to create a JWT token
             try {
-              // Import the JWT token creation function dynamically
-              const { createJwtToken } = await import("./auth-utils");
               const token = await createJwtToken(c.env, publicKey);
-
-              // Set cookies for backward compatibility
-              setCookie(c, "publicKey", publicKey, envCookieOptions);
-              setCookie(c, "auth_token", token, envCookieOptions);
 
               return c.json({
                 message: "Authentication successful",
@@ -225,23 +308,11 @@ export const authenticate = async (c: AppContext) => {
                 user: { address: publicKey },
               });
             } catch (jwtError) {
-              logger.error(
-                "JWT token creation failed, falling back to legacy token:",
-                jwtError,
+              logger.error("JWT token creation failed:", jwtError);
+              return c.json(
+                { message: "Authentication failed during token creation" },
+                500,
               );
-
-              // Fall back to legacy token if JWT creation fails
-              const legacyToken = await createAuthToken(c.env, publicKey);
-
-              // Set cookies for backward compatibility
-              setCookie(c, "publicKey", publicKey, envCookieOptions);
-              setCookie(c, "auth_token", legacyToken, envCookieOptions);
-
-              return c.json({
-                message: "Authentication successful",
-                token: legacyToken,
-                user: { address: publicKey },
-              });
             }
           } else {
             return c.json({ message: "Invalid signature" }, 401);
@@ -275,25 +346,9 @@ export const authenticate = async (c: AppContext) => {
 
 export const logout = async (c: AppContext) => {
   try {
-    // Get the current token from cookie
-    const token = getCookie(c, "auth_token");
-    const publicKey = getCookie(c, "publicKey");
-
-    // Clear all auth cookies first
-    const envCookieOptions = {
-      ...cookieOptions,
-      domain: c.env.NODE_ENV === "production" ? "auto.fun" : undefined,
-      maxAge: 0,
-    };
-
-    setCookie(c, "publicKey", "", envCookieOptions);
-    setCookie(c, "auth_token", "", envCookieOptions);
-
-    // If we have a valid token, revoke it in the KV store
-    if (token && token.startsWith("wallet_") && publicKey) {
-      await revokeAllWalletTokens(c.env, publicKey);
-    }
-
+    // Logout primarily involves client-side token removal.
+    // Server-side might invalidate refresh tokens in the future if implemented.
+    logger.log("User logged out");
     return c.json({ message: "Logout successful" });
   } catch (error) {
     logger.error("Logout error:", error);
@@ -303,7 +358,7 @@ export const logout = async (c: AppContext) => {
 
 export const authStatus = async (c: AppContext) => {
   try {
-    // First check for Authorization header (token-based auth)
+    // Check for Authorization header
     const authHeader = c.req.header("Authorization");
     let headerToken: string | null = null;
 
@@ -311,63 +366,24 @@ export const authStatus = async (c: AppContext) => {
       headerToken = authHeader.substring(7); // Remove "Bearer " prefix
     }
 
-    // Then check cookies as fallback
-    const publicKey = getCookie(c, "publicKey");
-    const authToken = getCookie(c, "auth_token");
+    const tokenToUse = headerToken; // ONLY use header token
 
     let isAuthenticated = false;
     let tokenData: AuthTokenData | null = null;
-    const tokenToUse = headerToken || authToken;
 
-    // Skip token validation if we're in test mode with valid-token
-    if (c.env.NODE_ENV === "test" && tokenToUse === "valid-token") {
-      isAuthenticated = true;
-      console.log("Test token found, considering authenticated");
-    }
-    // First, validate the token in KV if we have one with wallet_ prefix
-    else if (tokenToUse && tokenToUse.startsWith("wallet_")) {
-      tokenData = await validateAuthToken(c.env, tokenToUse);
-      isAuthenticated = !!tokenData;
-    }
-    // Try JWT token validation if not a wallet_ token
-    else if (tokenToUse && tokenToUse.includes(".")) {
+    if (tokenToUse && tokenToUse.includes(".")) {
+      // Check if it looks like a JWT
       try {
-        // Import dynamically to avoid breaking if JWT module isn't available
-        const { validateJwtToken } = await import("./auth-utils");
         tokenData = await validateJwtToken(c.env, tokenToUse);
         isAuthenticated = !!tokenData;
       } catch (e) {
         console.error("Error validating JWT token:", e);
       }
     }
-    // Legacy approach - if we have both cookies but token isn't in recognized format
-    else if (publicKey && authToken) {
-      // For legacy tokens, just consider them authenticated if both cookies exist
-      isAuthenticated = true;
-      // Create a new token in KV for this wallet to migrate them
-      try {
-        const newToken = await createAuthToken(c.env, publicKey);
 
-        // Update cookie with new token format
-        const envCookieOptions = {
-          ...cookieOptions,
-          domain: c.env.NODE_ENV === "production" ? "auto.fun" : undefined,
-        };
-        setCookie(c, "auth_token", newToken, envCookieOptions);
-
-        // Log the migration
-        logger.log(
-          `Migrated legacy token for wallet ${publicKey.substring(0, 8)}...`,
-        );
-      } catch (migrationError) {
-        // If migration fails, still consider authenticated but log error
-        logger.error("Error migrating legacy token:", migrationError);
-      }
-    }
-
-    if (isAuthenticated) {
-      // Get the wallet address to query
-      const walletToQuery = tokenData ? tokenData.publicKey : publicKey;
+    if (isAuthenticated && tokenData) {
+      // Get the wallet address from validated token data
+      const walletToQuery = tokenData.publicKey;
 
       if (walletToQuery) {
         const db = getDB(c.env);
@@ -381,7 +397,7 @@ export const authStatus = async (c: AppContext) => {
 
           if (dbUser.length > 0) {
             // Include privileges from token if available
-            const privileges = tokenData ? tokenData.privileges || [] : [];
+            const privileges = tokenData.privileges || [];
 
             return c.json({
               authenticated: true,
@@ -400,7 +416,7 @@ export const authStatus = async (c: AppContext) => {
       console.log("Authenticated but no DB user found");
 
       // Get privileges from token
-      const privileges = tokenData ? tokenData.privileges || [] : [];
+      const privileges = tokenData.privileges || [];
 
       return c.json({
         authenticated: true,
@@ -417,7 +433,7 @@ export const authStatus = async (c: AppContext) => {
 };
 
 /**
- * http only cookie cannot be tampered with, so we can trust it
+ * Verifies authentication based on the Authorization header.
  */
 export const verifyAuth = async (
   c: Context<{ Bindings: Env }>,
@@ -428,7 +444,7 @@ export const verifyAuth = async (
   }
 
   try {
-    // First check for Authorization header (token-based auth)
+    // Check for Authorization header
     const authHeader = c.req.header("Authorization");
     let headerToken: string | null = null;
 
@@ -437,20 +453,14 @@ export const verifyAuth = async (
       headerToken = authHeader.substring(7); // Remove "Bearer " prefix
     }
 
-    // Fallback to cookies
-    const publicKey = getCookie(c, "publicKey");
-    const authToken = getCookie(c, "auth_token");
-
-    const tokenToUse = headerToken || authToken;
+    const tokenToUse = headerToken; // ONLY use header token
 
     console.log("tokenToUse", tokenToUse);
 
-    // Check for JWT token first (more modern approach)
+    // Check for JWT token
     if (tokenToUse && tokenToUse.includes(".")) {
       try {
         logger.log("Found JWT token, validating...");
-        // Import dynamically to avoid breaking if JWT module isn't available
-        const { validateJwtToken } = await import("./auth-utils");
         const tokenData = await validateJwtToken(c.env, tokenToUse);
 
         if (tokenData) {
@@ -467,75 +477,6 @@ export const verifyAuth = async (
       } catch (jwtError) {
         logger.error("Error validating JWT token:", jwtError);
       }
-    }
-
-    // Then check for wallet token
-    if (tokenToUse && tokenToUse.startsWith("wallet_")) {
-      const tokenData = await validateAuthToken(c.env, tokenToUse);
-
-      if (tokenData) {
-        // Token is valid, set user
-        c.set("user", { publicKey: tokenData.publicKey });
-        logger.log("User authenticated via KV token", {
-          publicKey: tokenData.publicKey,
-        });
-        await next();
-        return;
-      }
-    }
-
-    // Legacy approach - if we have both cookies but token isn't in a recognized format
-    if (publicKey && authToken) {
-      // Both cookies present, user is authenticated via legacy approach
-      c.set("user", { publicKey });
-      logger.log("User authenticated via legacy cookies", { publicKey });
-
-      // Create a new JWT token for this wallet to migrate them (async, don't await)
-      try {
-        const { createJwtToken } = await import("./auth-utils");
-        createJwtToken(c.env, publicKey)
-          .then((newToken) => {
-            // Update cookie with new token format
-            const envCookieOptions = {
-              ...cookieOptions,
-              domain: c.env.NODE_ENV === "production" ? "auto.fun" : undefined,
-            };
-            setCookie(c, "auth_token", newToken, envCookieOptions);
-
-            // Log the migration
-            logger.log(
-              `Migrated legacy token to JWT for wallet ${publicKey.substring(0, 8)}...`,
-            );
-          })
-          .catch((migrationError) => {
-            // If JWT fails, fall back to legacy token
-            logger.error(
-              "Error migrating to JWT token, falling back to legacy:",
-              migrationError,
-            );
-
-            createAuthToken(c.env, publicKey)
-              .then((legacyToken) => {
-                const envCookieOptions = {
-                  ...cookieOptions,
-                  domain:
-                    c.env.NODE_ENV === "production" ? "auto.fun" : undefined,
-                };
-                setCookie(c, "auth_token", legacyToken, envCookieOptions);
-                logger.log(
-                  `Created legacy token for wallet ${publicKey.substring(0, 8)}...`,
-                );
-              })
-              .catch((legacyError) => {
-                logger.error("Error creating legacy token:", legacyError);
-              });
-          });
-      } catch (importError) {
-        logger.error("Error importing JWT functions:", importError);
-      }
-
-      await next();
-      return;
     }
 
     // No valid authentication

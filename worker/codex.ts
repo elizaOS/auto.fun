@@ -1,5 +1,5 @@
 import axios from "axios";
-import { logger } from "./logger";
+import { logger } from "./util";
 import { Codex } from "@codex-data/sdk";
 
 export interface CodexTokenEvent {
@@ -291,7 +291,7 @@ export async function fetchCodexBars(
   const apiUrl = "https://graph.codex.io/graphql";
 
   // Symbol format: <tokenAddress>:<networkId>
-  const symbol = `${tokenAddress}:${networkId}`;
+  const symbol = `${tokenAddress}:${networkId || 1399811149}`;
 
   // Calculate time interval based on resolution
   let timeInterval: number;

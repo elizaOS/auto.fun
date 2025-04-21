@@ -15,37 +15,24 @@ import CallbackPage from "./pages/callback";
 import PageNotFound from "./pages/not-found";
 import Admin from "./pages/admin";
 
-// if the date is before 2025-04-19, redirect to the old website
-if (
-  (window.location.hostname.includes("auto.fun") ||
-    window.location.hostname.includes("autofun.tech")) &&
-  !window.location.hostname.includes("develop.autofun.tech") &&
-  !window.location.search.includes("callback") &&
-  new Date() < new Date("2025-04-19T00:00:00Z") &&
-  !window.location.search.includes("dev") &&
-  !window.location.hostname.includes("localhost") &&
-  !window.location.hostname.includes("127.0.0.1")
-) {
-  window.location.href = "https://x.com/autodotfun";
-} else {
-  createRoot(document.getElementById("root")!).render(
-    <BrowserRouter>
-      <Routes>
-        <Route element={<Layout />}>
-          <Route index element={<Homepage />} />
-          <Route path="/support" element={<Support />} />
-          <Route path="/terms-of-service" element={<TermsOfService />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/fees" element={<Fees />} />
-          <Route path="/token/:address" element={<Token />} />
-          <Route path="/create" element={<Create />} />
-          <Route path="/testing" element={<Testing />} />
-          <Route path="/callback" element={<CallbackPage />} />
-          <Route path="/admin/*" element={<Admin />} />
-          <Route path="*" element={<PageNotFound />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>,
-  );
-}
+createRoot(document.getElementById("root")!).render(
+  <BrowserRouter>
+    <Routes>
+      <Route element={<Layout />}>
+        <Route index element={<Homepage />} />
+        <Route path="/support" element={<Support />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/fees" element={<Fees />} />
+        <Route path="/token/:address" element={<Token />} />
+        <Route path="/create" element={<Create />} />
+        <Route path="/testing" element={<Testing />} />
+        <Route path="/callback" element={<CallbackPage />} />
+        <Route path="/callback-oauth1" element={<CallbackPage />} />
+        <Route path="/admin/*" element={<Admin />} />
+        <Route path="*" element={<PageNotFound />} />
+      </Route>
+    </Routes>
+  </BrowserRouter>,
+);

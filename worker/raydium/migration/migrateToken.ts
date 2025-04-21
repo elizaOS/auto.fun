@@ -1,38 +1,31 @@
-import { logger } from "../../logger";
-import { Connection, PublicKey, Keypair } from "@solana/web3.js";
-import { updateTokenInDB } from "../../cron";
+import { AnchorProvider, BN, Program } from "@coral-xyz/anchor";
 import {
-  CREATE_CPMM_POOL_PROGRAM,
   CREATE_CPMM_POOL_FEE_ACC,
+  CREATE_CPMM_POOL_PROGRAM,
   DEVNET_PROGRAM_ID,
   getCpmmPdaAmmConfigId,
-  DEV_LOCK_CPMM_AUTH,
-  mul,
-  LOCK_CPMM_AUTH,
 } from "@raydium-io/raydium-sdk-v2";
-import { Program, BN, AnchorProvider } from "@coral-xyz/anchor";
-import { initSdk, txVersion } from "../raydium-config";
-import { withdrawTx, execWithdrawTx } from "../withdraw";
 import { NATIVE_MINT } from "@solana/spl-token";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { updateTokenInDB } from "../../cron";
 import { Env } from "../../env";
-import { depositToRaydiumVault } from "../raydiumVault";
-import { sendNftTo, sendSolTo } from "../utils";
-import { retryOperation } from "../utils";
-import { RaydiumVault } from "../types/raydium_vault";
-import { getWebSocketClient } from "../../websocket-client";
-import { Autofun } from "../../target/types/autofun";
-import { TokenData } from "../types/tokenData";
-import {
-  getMigrationState,
-  MigrationStep,
-  executeMigrationStep,
-  acquireMigrationLock,
-  releaseMigrationLock,
-  LockResult,
-} from "./migrations";
-import { Wallet } from "../../tokenSupplyHelpers/customWallet";
 import { ExternalToken } from "../../externalToken";
-
+import { Autofun } from "../../target/types/autofun";
+import { Wallet } from "../../tokenSupplyHelpers/customWallet";
+import { logger } from "../../util";
+import { getWebSocketClient } from "../../websocket-client";
+import { initSdk, txVersion } from "../raydium-config";
+import { depositToRaydiumVault } from "../raydiumVault";
+import { RaydiumVault } from "../types/raydium_vault";
+import { TokenData } from "../types/tokenData";
+import { retryOperation, sendNftTo, sendSolTo } from "../utils";
+import { execWithdrawTx, withdrawTx } from "../withdraw";
+import {
+  executeMigrationStep,
+  LockResult,
+  MigrationStep,
+  releaseMigrationLock,
+} from "./migrations";
 export class TokenMigrator {
   constructor(
     public env: Env,
@@ -47,6 +40,9 @@ export class TokenMigrator {
   async scheduleNextInvocation(token: TokenData): Promise<void> {
     // Use API_URL from env (or fallback)
     const workerUrl = this.env.API_URL || "http://127.0.0.1:8787";
+    console.log(
+      `[Migrate] Scheduling next invocation for token ${token.mint} at ${workerUrl}/api/migration/resume`,
+    );
 
     // Construct headers with Authorization token
     const headers = {
@@ -55,7 +51,7 @@ export class TokenMigrator {
     };
 
     try {
-      const response = await fetch(`${workerUrl}/migration/resume`, {
+      const response = await fetch(`${workerUrl}/api/migration/resume`, {
         method: "POST",
         headers,
         body: JSON.stringify(token),
@@ -74,7 +70,7 @@ export class TokenMigrator {
   async callResumeWorker(token: TokenData) {
     try {
       await releaseMigrationLock(this.env, token);
-      await this.migrateToken(token);
+      // await this.migrateToken(token);
     } catch (error) {
       logger.error(
         `[Migrate] Error releasing lock for token ${token.mint}: ${error}`,
@@ -180,10 +176,9 @@ export class TokenMigrator {
         await releaseMigrationLock(this.env, token);
       }
       const step = currentStep || steps[0];
-      logger.log(
-        `[Migrate] ${step.name} already processed for token ${token.mint}`,
-      );
-      await executeMigrationStep(this.env, token, step);
+      const nextStep = steps[steps.indexOf(step) + 1] || null;
+
+      await executeMigrationStep(this.env, token, step, nextStep);
       // call scheduleNextInvocation to schedule the next step if not done yet.
       if (step.name !== "collectFees") {
         logger.log(
@@ -541,6 +536,10 @@ export class TokenMigrator {
 
   async collectFee(token: any): Promise<{ txId: string; extraData: object }> {
     console.log("Collecting fee for token", token.mint);
+    if (this.env.FIXED_FEE === undefined || Number(this.env.FIXED_FEE) === 0) {
+      console.log("No fee to collect");
+      return { txId: "no_fee", extraData: {} };
+    }
     const mintConstantFee = new BN(Number(this.env.FIXED_FEE ?? 6) * 1e9); // 6 SOL
     const feeWallet = new PublicKey(this.env.ACCOUNT_FEE_MULTISIG!);
     const signerWallet =

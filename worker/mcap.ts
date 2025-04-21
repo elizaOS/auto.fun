@@ -5,17 +5,16 @@ import {
   getPythProgramKeyForCluster,
 } from "@pythnetwork/client";
 import { Connection } from "@solana/web3.js";
-import { eq, SQLWrapper, and, ne } from "drizzle-orm";
-import { initSdk } from "./raydium";
+import { SQLWrapper, and, eq, ne } from "drizzle-orm";
+import { CacheService } from "./cache";
 import { getDB, tokens } from "./db";
 import { Env } from "./env";
-import { logger } from "./logger";
-import { CacheService } from "./cache";
+import { initSdk } from "./raydium";
 import {
   shouldUpdateSupply,
   updateTokenSupplyFromChain,
 } from "./tokenSupplyHelpers";
-import { BN, Program } from "@coral-xyz/anchor";
+import { logger } from "./util";
 
 // Constants
 const PYTHNET_CLUSTER_NAME: PythCluster = "pythnet";

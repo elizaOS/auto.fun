@@ -7,7 +7,7 @@ import { z } from "zod";
 import { allowedOrigins } from "../allowedOrigins";
 import { accessTokens, getDB, oauthVerifiers } from "../db";
 import { Env } from "../env";
-import { logger } from "../logger";
+import { logger } from "../util";
 
 /**
  * ------------------------------------------------------------------
@@ -307,7 +307,7 @@ shareRouter.use("*", async (c, next) => {
   c.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   c.header(
     "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, X-Requested-With",
+    "Content-Type, Authorization, X-Requested-With, X-Twitter-OAuth-Token, X-Twitter-OAuth-Token-Secret",
   );
   c.header("Access-Control-Allow-Credentials", "true");
 
@@ -323,35 +323,203 @@ shareRouter.use("*", async (c, next) => {
  * ------------------------------------------------------------------
  */
 
+// Add a new function to check if timestamps are off
+function getNormalizedTimestamp(): string {
+  // Twitter's servers can have time sync issues, so using a slight offset can help
+  // This is a common workaround for OAuth 1.0a signature issues
+  return Math.floor(Date.now() / 1000).toString();
+}
+
 // OAuth Request Token
 shareRouter.get("/oauth/request_token", async (c) => {
-  const env = c.env;
-  const clientId = env.TWITTER_CLIENT_ID;
-  const redirectUri = `${env.NETWORK === "devnet" ? env.DEVNET_FRONTEND_URL : env.MAINNET_FRONTEND_URL}/callback`;
+  // Check if the query parameter specifies OAuth 1.0a flow
+  const useOAuth1 = c.req.query("oauth_version") === "1.0a";
 
-  logger.log("clientId", clientId);
-  logger.log("redirectUri", redirectUri);
+  if (useOAuth1) {
+    // OAuth 1.0a flow for direct tweeting
+    try {
+      // Generate request token
+      const timestamp = getNormalizedTimestamp();
+      const nonce = randomBytes(32)
+        .toString("base64")
+        .replace(/[^a-zA-Z0-9]/g, "");
 
-  const state = generateRandomString();
-  const codeVerifier = generateRandomString();
-  const codeChallenge = await generateCodeChallenge(codeVerifier);
+      const requestTokenParams = {
+        oauth_callback: `${c.env.NETWORK === "devnet" ? c.env.DEVNET_FRONTEND_URL : c.env.MAINNET_FRONTEND_URL}/callback-oauth1`,
+        oauth_consumer_key: c.env.TWITTER_API_KEY,
+        oauth_nonce: nonce,
+        oauth_signature_method: "HMAC-SHA1",
+        oauth_timestamp: timestamp,
+        oauth_version: "1.0",
+      };
 
-  const params = new URLSearchParams({
-    response_type: "code",
-    client_id: clientId,
-    redirect_uri: redirectUri,
-    scope:
-      "tweet.read users.read tweet.write follows.read offline.access media.write",
-    state: state,
-    code_challenge: codeChallenge,
-    code_challenge_method: "S256",
-  });
+      // Generate signature
+      const signature = await generateOAuth1Signature(
+        "POST",
+        "https://api.twitter.com/oauth/request_token",
+        requestTokenParams,
+        c.env.TWITTER_API_SECRET,
+        "", // No token secret for request token
+      );
 
-  await storeOAuthState(env, state, codeVerifier);
+      // Create auth header with correct parameters
+      const authHeader = generateAuthHeader(requestTokenParams, signature);
 
-  const authorizationUrl = `https://twitter.com/i/oauth2/authorize?${params.toString()}`;
-  logger.log("authorizationUrl", authorizationUrl);
-  return c.redirect(authorizationUrl, 302);
+      // Request token from Twitter
+      const response = await fetch(
+        "https://api.twitter.com/oauth/request_token",
+        {
+          method: "POST",
+          headers: {
+            Authorization: authHeader,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        logger.error("OAuth 1.0a request token failed:", errorText);
+        return c.json(
+          { error: `OAuth 1.0a request token failed: ${errorText}` },
+          500,
+        );
+      }
+
+      const responseText = await response.text();
+      const urlParams = new URLSearchParams(responseText);
+      const oauthToken = urlParams.get("oauth_token");
+      const oauthTokenSecret = urlParams.get("oauth_token_secret");
+
+      if (!oauthToken) {
+        return c.json({ error: "No oauth_token in response" }, 500);
+      }
+
+      // Store the token secret for later use in the callback
+      await storeOAuthState(c.env, oauthToken, oauthTokenSecret || "");
+
+      // Redirect to Twitter authorization page
+      const authUrl = `https://api.twitter.com/oauth/authorize?oauth_token=${oauthToken}`;
+      return c.redirect(authUrl);
+    } catch (error) {
+      logger.error("Error in OAuth 1.0a request:", error);
+      return c.json(
+        {
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
+        500,
+      );
+    }
+  } else {
+    // Original OAuth 2.0 flow
+    const env = c.env;
+    const clientId = env.TWITTER_CLIENT_ID;
+    const redirectUri = `${env.NETWORK === "devnet" ? env.DEVNET_FRONTEND_URL : env.MAINNET_FRONTEND_URL}/callback`;
+
+    logger.log("clientId", clientId);
+    logger.log("redirectUri", redirectUri);
+
+    const state = generateRandomString();
+    const codeVerifier = generateRandomString();
+    const codeChallenge = await generateCodeChallenge(codeVerifier);
+
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope: "tweet.read users.read tweet.write offline.access media.write",
+      state: state,
+      code_challenge: codeChallenge,
+      code_challenge_method: "S256",
+    });
+
+    await storeOAuthState(env, state, codeVerifier);
+
+    const authorizationUrl = `https://twitter.com/i/oauth2/authorize?${params.toString()}`;
+    logger.log("authorizationUrl", authorizationUrl);
+    return c.redirect(authorizationUrl, 302);
+  }
+});
+
+// OAuth 1.0a Access Token Callback
+shareRouter.get("/oauth1/callback", async (c) => {
+  const oauthToken = c.req.query("oauth_token");
+  const oauthVerifier = c.req.query("oauth_verifier");
+
+  if (!oauthToken || !oauthVerifier) {
+    return c.json({ error: "Missing oauth_token or oauth_verifier" }, 400);
+  }
+
+  try {
+    // Get the stored token secret
+    const storedState = await getOAuthState(c.env, oauthToken);
+    if (!storedState) {
+      return c.json({ error: "Invalid or expired oauth_token" }, 400);
+    }
+    const tokenSecret = storedState.codeVerifier; // We stored token secret in codeVerifier field
+
+    // Generate signature for access token request
+    const timestamp = getNormalizedTimestamp();
+    const nonce = randomBytes(32)
+      .toString("base64")
+      .replace(/[^a-zA-Z0-9]/g, "");
+
+    const accessTokenParams = {
+      oauth_consumer_key: c.env.TWITTER_API_KEY,
+      oauth_nonce: nonce,
+      oauth_signature_method: "HMAC-SHA1",
+      oauth_timestamp: timestamp,
+      oauth_token: oauthToken,
+      oauth_verifier: oauthVerifier,
+      oauth_version: "1.0",
+    };
+
+    const signature = await generateOAuth1Signature(
+      "POST",
+      "https://api.twitter.com/oauth/access_token",
+      accessTokenParams,
+      c.env.TWITTER_API_SECRET,
+      tokenSecret,
+    );
+
+    // Create auth header with correct parameters
+    const authHeader = generateAuthHeader(accessTokenParams, signature);
+
+    // Request access token
+    const response = await fetch("https://api.twitter.com/oauth/access_token", {
+      method: "POST",
+      headers: {
+        Authorization: authHeader,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error("OAuth 1.0a access token failed:", errorText);
+      return c.json(
+        { error: `OAuth 1.0a access token failed: ${errorText}` },
+        500,
+      );
+    }
+
+    const responseText = await response.text();
+    const urlParams = new URLSearchParams(responseText);
+
+    // Return user-specific OAuth 1.0a credentials to the client
+    return c.json({
+      oauth1_token: urlParams.get("oauth_token"),
+      oauth1_token_secret: urlParams.get("oauth_token_secret"),
+      user_id: urlParams.get("user_id"),
+      screen_name: urlParams.get("screen_name"),
+    });
+  } catch (error) {
+    logger.error("Error in OAuth 1.0a callback:", error);
+    return c.json(
+      {
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      500,
+    );
+  }
 });
 
 // OAuth Callback
@@ -386,6 +554,7 @@ shareRouter.get("/oauth/callback", async (c) => {
   });
 
   try {
+    // Get OAuth 2.0 token
     const response = await fetch("https://api.twitter.com/2/oauth2/token", {
       method: "POST",
       headers: {
@@ -409,6 +578,25 @@ shareRouter.get("/oauth/callback", async (c) => {
       expires_in: number;
     };
 
+    // Get user info to determine Twitter user ID
+    const userInfoResponse = await fetch("https://api.twitter.com/2/users/me", {
+      headers: {
+        Authorization: `Bearer ${data.access_token}`,
+      },
+    });
+
+    if (!userInfoResponse.ok) {
+      logger.error("Error fetching user info:", await userInfoResponse.text());
+      c.status(userInfoResponse.status as StatusCode);
+      return c.json({ error: "Error fetching user info" });
+    }
+
+    const userInfo = await userInfoResponse.json();
+    const userId = userInfo.data.id;
+
+    logger.log("Got user ID:", userId);
+
+    // We need to store OAuth 2.0 credentials but we'll return both OAuth 2.0 and user ID
     await storeAccessToken(
       c.env,
       data.access_token,
@@ -416,10 +604,12 @@ shareRouter.get("/oauth/callback", async (c) => {
       data.expires_in,
     );
 
+    // Return both OAuth 2.0 token and user ID (for OAuth 1.0a generation on frontend)
     return c.json({
       access_token: data.access_token,
       refresh_token: data.refresh_token,
       expires_in: data.expires_in,
+      user_id: userId,
     });
   } catch (error) {
     logger.error("Error in OAuth callback:", error);
@@ -547,324 +737,387 @@ shareRouter.post("/process", async (c) => {
   }
 });
 
-// Convert to base64
-const convertToBase64 = (bytes: Uint8Array): string => {
-  // Process the bytes in chunks to avoid stack overflow
-  const CHUNK_SIZE = 1024; // Process 1KB at a time
-  let result = "";
-
-  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
-    const chunk = bytes.slice(i, i + CHUNK_SIZE);
-    result += String.fromCharCode.apply(null, Array.from(chunk));
-  }
-
-  return btoa(result);
-};
-
-// Tweet Handler
-shareRouter.post("/tweet", async (c) => {
+// New endpoint for OAuth 1.0a Media Upload
+shareRouter.post("/upload-media", async (c) => {
   try {
-    // Validate the user's OAuth 2.0 token
-    const authHeader = c.req.header("Authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      throw new Error("Missing or invalid authorization header");
-    }
-    // We only need this to validate that the user is authenticated
-    const userAccessToken = authHeader.split(" ")[1];
+    // Get user's OAuth 1.0a credentials from headers
+    const oauth1Token = c.req.header("X-Twitter-OAuth-Token");
+    const oauth1TokenSecret = c.req.header("X-Twitter-OAuth-Token-Secret");
 
-    logger.log("User authenticated with OAuth 2.0 token");
-
-    // Handle media upload
-    if (c.req.header("Content-Type")?.includes("multipart/form-data")) {
-      const formData = await c.req.formData();
-      const mediaFile = formData.get("media") as File;
-
-      if (!mediaFile) {
-        throw new Error("Missing required field: media");
-      }
-
-      logger.log("Media file type:", mediaFile.type);
-      logger.log("Media file size:", mediaFile.size);
-
-      // For large files, handle in chunks
-      const mediaBuffer = await mediaFile.arrayBuffer();
-      const mediaBytes = new Uint8Array(mediaBuffer);
-      logger.log("Raw bytes length:", mediaBytes.length);
-
-      // Use the chunked conversion function to avoid stack overflow
-      const mediaBase64 = convertToBase64(mediaBytes);
-      logger.log("Base64 length:", mediaBase64.length);
-
-      const timestamp = Math.floor((Date.now() - 43200000) / 1000).toString();
-      logger.log("Using timestamp:", timestamp);
-
-      const oauthParams = {
-        oauth_consumer_key: c.env.TWITTER_API_KEY,
-        oauth_nonce: randomBytes(32)
-          .toString("base64")
-          .replace(/[^a-zA-Z0-9]/g, ""),
-        oauth_signature_method: "HMAC-SHA1",
-        oauth_timestamp: timestamp,
-        oauth_token: c.env.TWITTER_ACCESS_TOKEN,
-        oauth_version: "1.0",
-      };
-
-      // INIT with raw byte length
-      const initParams = {
-        command: "INIT",
-        total_bytes: mediaBytes.length.toString(),
-        media_type: mediaFile.type || "image/png",
-      };
-
-      logger.log("INIT params:", initParams);
-
-      const initSignature = await generateOAuth1Signature(
-        "POST",
-        "https://upload.twitter.com/1.1/media/upload.json",
-        { ...oauthParams, ...initParams },
-        c.env.TWITTER_API_SECRET,
-        c.env.TWITTER_ACCESS_TOKEN_SECRET,
-      );
-
-      const initHeader = generateAuthHeader(oauthParams, initSignature);
-
-      logger.log("Making INIT request...");
-      const initBody = new URLSearchParams(initParams);
-
-      const initResponse = await fetch(
-        "https://upload.twitter.com/1.1/media/upload.json",
-        {
-          method: "POST",
-          headers: {
-            Authorization: initHeader,
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: initBody,
-        },
-      );
-
-      const initResponseText = await initResponse.text();
-      logger.log("INIT response status:", initResponse.status);
-      logger.log("INIT response:", initResponseText);
-
-      if (!initResponse.ok) {
-        logger.error("INIT failed:", initResponseText);
-        throw new Error(`INIT failed: ${initResponseText}`);
-      }
-
-      // Parse the response, handling potential JSON parsing errors
-      let initData;
-      try {
-        initData = JSON.parse(initResponseText);
-      } catch (e) {
-        logger.error("Failed to parse INIT response:", e);
-        throw new Error(
-          `Failed to parse Twitter API response: ${initResponseText}`,
-        );
-      }
-
-      if (!initData.media_id_string) {
-        logger.error("No media ID in INIT response:", initData);
-        throw new Error("Twitter API did not return a media ID");
-      }
-
-      const mediaId = initData.media_id_string;
-      logger.log("Got media ID:", mediaId);
-
-      // For images > 5MB, split into multiple segments
-      const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks for Twitter API
-      const totalChunks = Math.ceil(mediaBase64.length / CHUNK_SIZE);
-
-      // Process each chunk separately
-      for (let i = 0; i < totalChunks; i++) {
-        const start = i * CHUNK_SIZE;
-        const end = Math.min(start + CHUNK_SIZE, mediaBase64.length);
-        const chunk = mediaBase64.slice(start, end);
-
-        logger.log(
-          `Uploading chunk ${i + 1}/${totalChunks}, size: ${chunk.length}`,
-        );
-
-        // APPEND for each chunk
-        const appendParams = {
-          command: "APPEND",
-          media_id: mediaId,
-          segment_index: i.toString(),
-          media_data: chunk,
-        };
-
-        const appendSignature = await generateOAuth1Signature(
-          "POST",
-          "https://upload.twitter.com/1.1/media/upload.json",
-          { ...oauthParams, ...appendParams },
-          c.env.TWITTER_API_SECRET,
-          c.env.TWITTER_ACCESS_TOKEN_SECRET,
-        );
-
-        const appendHeader = generateAuthHeader(oauthParams, appendSignature);
-
-        logger.log(`Uploading chunk ${i + 1}...`);
-        const appendBody = new URLSearchParams(appendParams);
-        const appendResponse = await fetch(
-          "https://upload.twitter.com/1.1/media/upload.json",
-          {
-            method: "POST",
-            headers: {
-              Authorization: appendHeader,
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: appendBody,
-          },
-        );
-
-        const appendResponseText = await appendResponse.text();
-        logger.log(
-          `APPEND chunk ${i + 1} response status:`,
-          appendResponse.status,
-        );
-
-        if (appendResponseText) {
-          logger.log(`APPEND chunk ${i + 1} response:`, appendResponseText);
-        }
-
-        if (!appendResponse.ok) {
-          logger.error(`APPEND chunk ${i + 1} failed:`, appendResponseText);
-          throw new Error(
-            `APPEND chunk ${i + 1} failed: ${appendResponseText}`,
-          );
-        }
-      }
-
-      // FINALIZE
-      const finalizeParams = {
-        command: "FINALIZE",
-        media_id: mediaId,
-      };
-
-      const finalizeSignature = await generateOAuth1Signature(
-        "POST",
-        "https://upload.twitter.com/1.1/media/upload.json",
-        { ...oauthParams, ...finalizeParams },
-        c.env.TWITTER_API_SECRET,
-        c.env.TWITTER_ACCESS_TOKEN_SECRET,
-      );
-
-      const finalizeHeader = generateAuthHeader(oauthParams, finalizeSignature);
-
-      logger.log("Finalizing upload...");
-      const finalizeBody = new URLSearchParams(finalizeParams);
-      const finalizeResponse = await fetch(
-        "https://upload.twitter.com/1.1/media/upload.json",
-        {
-          method: "POST",
-          headers: {
-            Authorization: finalizeHeader,
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: finalizeBody,
-        },
-      );
-
-      const finalizeResponseText = await finalizeResponse.text();
-      logger.log("FINALIZE response status:", finalizeResponse.status);
-      logger.log("FINALIZE response:", finalizeResponseText);
-
-      if (!finalizeResponse.ok) {
-        logger.error("FINALIZE failed:", finalizeResponseText);
-        throw new Error(`FINALIZE failed: ${finalizeResponseText}`);
-      }
-
-      let finalizeData;
-      try {
-        finalizeData = JSON.parse(finalizeResponseText);
-      } catch (e) {
-        logger.error("Failed to parse FINALIZE response:", e);
-        throw new Error(
-          `Failed to parse Twitter API finalize response: ${finalizeResponseText}`,
-        );
-      }
-
-      logger.log("Upload completed, returning media ID:", mediaId);
-
-      return c.json({
-        success: true,
-        mediaId,
-      });
+    if (!oauth1Token || !oauth1TokenSecret) {
+      return c.json({ error: "Missing OAuth 1.0a credentials" }, 401);
     }
 
-    // Handle tweet creation
-    if (c.req.header("Content-Type")?.includes("application/json")) {
-      const { text, mediaId } = (await c.req.json()) as {
-        text: string;
-        mediaId: string;
-      };
+    // Get image data URL from the request body
+    const body = await c.req.json();
+    const imageDataUrl = body.image;
 
-      logger.log(
-        "Posting tweet with text:",
-        text.substring(0, 30) + "...",
-        "and media ID:",
-        mediaId,
+    if (!imageDataUrl || !imageDataUrl.startsWith("data:")) {
+      return c.json(
+        { error: "Invalid or missing image data URL in request body" },
+        400,
       );
+    }
 
-      const timestamp = Math.floor((Date.now() - 43200000) / 1000).toString();
-      const oauthParams = {
-        oauth_consumer_key: c.env.TWITTER_API_KEY,
-        oauth_nonce: randomBytes(32)
-          .toString("base64")
-          .replace(/[^a-zA-Z0-9]/g, ""),
-        oauth_signature_method: "HMAC-SHA1",
-        oauth_timestamp: timestamp,
-        oauth_token: c.env.TWITTER_ACCESS_TOKEN,
-        oauth_version: "1.0",
-      };
+    // Extract content type and base64 data
+    const matches = imageDataUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      return c.json({ error: "Invalid image data URL format" }, 400);
+    }
+    const contentType = matches[1];
+    const imageBase64 = matches[2];
 
-      const tweetParams = {
-        text: text,
-        ...(mediaId ? { media: { media_ids: [mediaId] } } : {}),
-      };
+    // Convert base64 to ArrayBuffer, then Uint8Array
+    const binaryString = atob(imageBase64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const mediaBuffer = bytes.buffer;
+    const mediaBytes = new Uint8Array(mediaBuffer); // Use this for total_bytes and APPEND
 
-      const signature = await generateOAuth1Signature(
-        "POST",
-        "https://api.twitter.com/2/tweets",
-        { ...oauthParams },
-        c.env.TWITTER_API_SECRET,
-        c.env.TWITTER_ACCESS_TOKEN_SECRET,
-      );
+    logger.log(
+      `Media Upload: Type=${contentType}, Size=${mediaBytes.length} bytes`,
+    );
 
-      const authHeader = generateAuthHeader(oauthParams, signature);
+    const timestamp = getNormalizedTimestamp();
+    const oauthParams = {
+      oauth_consumer_key: c.env.TWITTER_API_KEY,
+      oauth_nonce: randomBytes(32)
+        .toString("base64")
+        .replace(/[^a-zA-Z0-9]/g, ""),
+      oauth_signature_method: "HMAC-SHA1",
+      oauth_timestamp: timestamp,
+      oauth_token: oauth1Token,
+      oauth_version: "1.0",
+    };
 
-      logger.log("Sending tweet request with OAuth 1.0a");
-      const tweetResponse = await fetch("https://api.twitter.com/2/tweets", {
+    // --- INIT ---
+    const initParams = {
+      command: "INIT",
+      total_bytes: mediaBytes.length.toString(),
+      media_type: contentType,
+      // Optionally add media_category for video/gif: media_category: 'tweet_video' or 'tweet_gif'
+    };
+    logger.log("INIT params:", initParams);
+
+    const initSignature = await generateOAuth1Signature(
+      "POST",
+      "https://upload.twitter.com/1.1/media/upload.json",
+      { ...oauthParams, ...initParams },
+      c.env.TWITTER_API_SECRET,
+      oauth1TokenSecret,
+    );
+    const initHeader = generateAuthHeader(oauthParams, initSignature);
+    logger.log("Making INIT request...");
+    const initBody = new URLSearchParams(initParams);
+
+    const initResponse = await fetch(
+      "https://upload.twitter.com/1.1/media/upload.json",
+      {
         method: "POST",
         headers: {
-          Authorization: authHeader,
-          "Content-Type": "application/json",
+          Authorization: initHeader,
+          "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: JSON.stringify(tweetParams),
-      });
+        body: initBody,
+      },
+    );
 
-      // Handle error with detailed information
-      if (!tweetResponse.ok) {
-        const errorText = await tweetResponse.text();
-        logger.error(
-          "Tweet creation failed:",
-          errorText,
-          "Status:",
-          tweetResponse.status,
-        );
-        throw new Error(`Failed to create tweet: ${errorText}`);
-      }
+    const initResponseText = await initResponse.text();
+    logger.log("INIT response status:", initResponse.status);
+    logger.log("INIT response:", initResponseText);
 
-      const responseData = await tweetResponse.json();
-      logger.log("Tweet posted:", responseData);
-
-      return c.json({
-        success: true,
-        tweet: responseData,
-      });
+    if (!initResponse.ok) {
+      logger.error("INIT failed:", initResponseText);
+      throw new Error(`Twitter Media INIT failed: ${initResponseText}`);
     }
 
-    throw new Error("Invalid request type");
+    let initData;
+    try {
+      initData = JSON.parse(initResponseText);
+    } catch (e) {
+      logger.error("Failed to parse INIT response:", e);
+      throw new Error(
+        `Failed to parse Twitter API response: ${initResponseText}`,
+      );
+    }
+
+    if (!initData.media_id_string) {
+      logger.error("No media ID in INIT response:", initData);
+      throw new Error("Twitter API did not return a media ID after INIT");
+    }
+    const mediaId = initData.media_id_string;
+    logger.log("Got media ID:", mediaId);
+
+    // --- APPEND ---
+    const CHUNK_SIZE = 4 * 1024 * 1024; // 4MB chunks
+    const totalChunks = Math.ceil(mediaBytes.length / CHUNK_SIZE);
+    logger.log(`Starting APPEND for ${totalChunks} chunks...`);
+
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, mediaBytes.length);
+      const chunk = mediaBytes.slice(start, end);
+
+      logger.log(
+        `APPEND chunk ${i + 1}/${totalChunks}, size: ${chunk.length} bytes`,
+      );
+
+      // Regenerate timestamp and nonce for each APPEND request
+      const currentTimestamp = getNormalizedTimestamp();
+      const currentNonce = randomBytes(32)
+        .toString("base64")
+        .replace(/[^a-zA-Z0-9]/g, "");
+
+      // Combine base OAuth params with current timestamp/nonce
+      const currentOauthParams = {
+        oauth_consumer_key: c.env.TWITTER_API_KEY,
+        oauth_nonce: currentNonce,
+        oauth_signature_method: "HMAC-SHA1",
+        oauth_timestamp: currentTimestamp,
+        oauth_token: oauth1Token,
+        oauth_version: "1.0",
+      };
+
+      const appendParams = {
+        command: "APPEND",
+        media_id: mediaId,
+        segment_index: i.toString(),
+      };
+
+      const appendFormData = new FormData();
+      appendFormData.append("command", "APPEND");
+      appendFormData.append("media_id", mediaId);
+      appendFormData.append("segment_index", i.toString());
+      appendFormData.append("media", new Blob([chunk]), "media");
+
+      const appendSignature = await generateOAuth1Signature(
+        "POST",
+        "https://upload.twitter.com/1.1/media/upload.json",
+        { ...currentOauthParams }, // ONLY include OAuth params in signature base for multipart
+        c.env.TWITTER_API_SECRET,
+        oauth1TokenSecret,
+      );
+      // Use current OAuth params for header generation as well
+      const appendHeader = generateAuthHeader(
+        currentOauthParams,
+        appendSignature,
+      );
+
+      logger.log(`Uploading chunk ${i + 1}...`);
+      const appendResponse = await fetch(
+        "https://upload.twitter.com/1.1/media/upload.json",
+        {
+          method: "POST",
+          headers: {
+            Authorization: appendHeader,
+            // Content-Type is set automatically by fetch when using FormData
+          },
+          body: appendFormData,
+        },
+      );
+
+      const appendResponseText = await appendResponse.text(); // Read text even if empty
+      logger.log(
+        `APPEND chunk ${i + 1} response status: ${appendResponse.status}`,
+      );
+      if (appendResponseText) {
+        logger.log(
+          `APPEND chunk ${i + 1} response body: ${appendResponseText}`,
+        );
+      }
+
+      if (!appendResponse.ok) {
+        logger.error(`APPEND chunk ${i + 1} failed:`, appendResponseText);
+        throw new Error(
+          `Twitter Media APPEND chunk ${i + 1} failed: ${appendResponseText}`,
+        );
+      }
+    }
+    logger.log("APPEND completed.");
+
+    // --- FINALIZE ---
+    const finalizeParams = {
+      command: "FINALIZE",
+      media_id: mediaId,
+    };
+
+    const finalizeSignature = await generateOAuth1Signature(
+      "POST",
+      "https://upload.twitter.com/1.1/media/upload.json",
+      { ...oauthParams, ...finalizeParams },
+      c.env.TWITTER_API_SECRET,
+      oauth1TokenSecret,
+    );
+    const finalizeHeader = generateAuthHeader(oauthParams, finalizeSignature);
+    logger.log("Finalizing upload...");
+    const finalizeBody = new URLSearchParams(finalizeParams);
+    const finalizeResponse = await fetch(
+      "https://upload.twitter.com/1.1/media/upload.json",
+      {
+        method: "POST",
+        headers: {
+          Authorization: finalizeHeader,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: finalizeBody,
+      },
+    );
+
+    const finalizeResponseText = await finalizeResponse.text();
+    logger.log("FINALIZE response status:", finalizeResponse.status);
+    logger.log("FINALIZE response:", finalizeResponseText);
+
+    if (!finalizeResponse.ok) {
+      logger.error("FINALIZE failed:", finalizeResponseText);
+      // Check for processing info in the response
+      try {
+        const errorData = JSON.parse(finalizeResponseText);
+        if (errorData.processing_info) {
+          logger.warn(
+            "Media is processing asynchronously:",
+            errorData.processing_info,
+          );
+          // Media might still be processing, return media_id but log warning
+        } else {
+          throw new Error(
+            `Twitter Media FINALIZE failed: ${finalizeResponseText}`,
+          );
+        }
+      } catch (e) {
+        throw new Error(
+          `Twitter Media FINALIZE failed: ${finalizeResponseText}`,
+        );
+      }
+    }
+
+    // Even if processing, return the media_id for the frontend to use
+    logger.log("Media upload process initiated, returning media ID:", mediaId);
+    return c.json({
+      success: true,
+      media_id_string: mediaId, // Return the correct key name
+    });
+  } catch (error) {
+    logger.error("Error in media upload handler:", error);
+    c.status(500);
+    return c.json({
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to upload media to Twitter",
+      details: error instanceof Error ? error.stack : undefined,
+    });
+  }
+});
+
+// Tweet Handler (modified to remove conflicting FormData logic)
+shareRouter.post("/tweet", async (c) => {
+  try {
+    // Get the user's OAuth 1.0a credentials from the request headers
+    const oauth1Token = c.req.header("X-Twitter-OAuth-Token");
+    const oauth1TokenSecret = c.req.header("X-Twitter-OAuth-Token-Secret");
+
+    if (!oauth1Token || !oauth1TokenSecret) {
+      return c.json({ error: "Missing OAuth 1.0a credentials" }, 401);
+    }
+
+    // Expect JSON body with text and media_ids
+    if (!c.req.header("Content-Type")?.includes("application/json")) {
+      return c.json(
+        { error: "Invalid request content type. Expected application/json" },
+        415,
+      );
+    }
+
+    const { text, media_ids } = (await c.req.json()) as {
+      text: string;
+      media_ids?: string[]; // Make media_ids optional
+    };
+
+    if (!text) {
+      return c.json({ error: "Missing tweet text in request body" }, 400);
+    }
+
+    logger.log(
+      "Posting tweet with text:",
+      text.substring(0, 30) + "...",
+      "and media IDs:",
+      media_ids || "None",
+    );
+
+    // Generate OAuth 1.0a params for the tweet using user's credentials
+    const timestamp = getNormalizedTimestamp();
+    const oauthParams = {
+      oauth_consumer_key: c.env.TWITTER_API_KEY,
+      oauth_nonce: randomBytes(32)
+        .toString("base64")
+        .replace(/[^a-zA-Z0-9]/g, ""),
+      oauth_signature_method: "HMAC-SHA1",
+      oauth_timestamp: timestamp,
+      oauth_token: oauth1Token,
+      oauth_version: "1.0",
+    };
+
+    // Create tweet payload (using API v2 format)
+    const tweetPayload: { text: string; media?: { media_ids: string[] } } = {
+      text: text,
+    };
+    if (media_ids && media_ids.length > 0) {
+      tweetPayload.media = { media_ids: media_ids };
+    }
+
+    // Sign the request with user's credentials
+    // Note: For API v2 POST requests with JSON body, only OAuth params are included in signature base string.
+    const signature = await generateOAuth1Signature(
+      "POST",
+      "https://api.twitter.com/2/tweets",
+      { ...oauthParams }, // Only sign the OAuth parameters
+      c.env.TWITTER_API_SECRET,
+      oauth1TokenSecret,
+    );
+
+    const tweetAuthHeader = generateAuthHeader(oauthParams, signature);
+
+    logger.log("Sending tweet request with user's OAuth 1.0a credentials");
+    const tweetResponse = await fetch("https://api.twitter.com/2/tweets", {
+      method: "POST",
+      headers: {
+        Authorization: tweetAuthHeader,
+        "Content-Type": "application/json",
+        Accept: "application/json", // Ensure we accept JSON response
+      },
+      body: JSON.stringify(tweetPayload),
+    });
+
+    // Handle error with detailed information
+    if (!tweetResponse.ok) {
+      const errorText = await tweetResponse.text();
+      logger.error(
+        "Tweet creation failed:",
+        errorText,
+        "Status:",
+        tweetResponse.status,
+      );
+      // Try parsing error for more details
+      let detailedError = `Failed to create tweet: ${tweetResponse.statusText}`;
+      try {
+        const jsonError = JSON.parse(errorText);
+        detailedError = jsonError.detail || jsonError.title || detailedError;
+      } catch (e) {
+        /* Ignore if not JSON */
+      }
+      throw new Error(detailedError);
+    }
+
+    const responseData = await tweetResponse.json();
+    logger.log("Tweet posted successfully by user account:", responseData);
+
+    return c.json({
+      success: true,
+      tweet: responseData,
+    });
   } catch (error) {
     logger.error("Error in tweet handler:", error);
     c.status(500);

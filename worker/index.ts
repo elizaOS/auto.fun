@@ -1,28 +1,28 @@
-import type { R2ObjectBody } from "@cloudflare/workers-types";
 import { ExecutionContext } from "@cloudflare/workers-types/experimental";
-import { sql, or } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { getCookie } from "hono/cookie";
-import { cron } from "./cron";
-import { getDB, preGeneratedTokens } from "./db";
-import { Env } from "./env";
-import { logger } from "./logger";
+import { allowedOrigins } from "./allowedOrigins";
 import { verifyAuth } from "./auth";
+import { cron } from "./cron";
+import { Env } from "./env";
+import { logger } from "./util";
+import { getSOLPrice } from "./mcap";
+import { adminRouter, ownerRouter } from "./routes/admin";
 import authRouter from "./routes/auth";
+import chatRouter from "./routes/chat";
 import generationRouter, { checkAndReplenishTokens } from "./routes/generation";
 import messagesRouter from "./routes/messages";
+import migrationRouter from "./routes/migration";
 import shareRouter from "./routes/share";
 import swapRouter from "./routes/swap";
+import tokenRouter from "./routes/token";
 import webhookRouter from "./routes/webhooks";
-import tokenRouter, { processSwapEvent } from "./routes/token";
-import migrationRouter from "./routes/migration";
-import adminRouter from "./routes/admin";
 import { uploadToCloudflare } from "./uploader";
 import { WebSocketDO, createTestSwap } from "./websocket";
 import { getWebSocketClient } from "./websocket-client";
-import { getSOLPrice } from "./mcap";
-import { allowedOrigins } from "./allowedOrigins";
+import { processSwapEvent } from "./util";
+import agentRouter from "./routes/agents";
+import fileRouter from "./routes/files";
 // import { startMonitoringBatch } from "./tokenSupplyHelpers/monitoring";
 
 const app = new Hono<{
@@ -38,7 +38,13 @@ app.use(
     origin: allowedOrigins,
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization", "X-API-Key"],
+    allowHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-API-Key",
+      "X-Twitter-OAuth-Token",
+      "X-Twitter-OAuth-Token-Secret",
+    ],
     exposeHeaders: ["Content-Length"],
     maxAge: 60000,
   }),
@@ -84,7 +90,13 @@ api.use(
     origin: allowedOrigins,
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization", "X-API-Key"],
+    allowHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-API-Key",
+      "X-Twitter-OAuth-Token",
+      "X-Twitter-OAuth-Token-Secret",
+    ],
     exposeHeaders: ["Content-Length"],
     maxAge: 60000,
   }),
@@ -95,18 +107,22 @@ api.use("*", verifyAuth);
 
 api.route("/", generationRouter);
 api.route("/", tokenRouter);
+api.route("/", agentRouter);
+api.route("/", fileRouter);
 api.route("/", messagesRouter);
 api.route("/", authRouter);
 api.route("/", swapRouter);
+api.route("/", chatRouter);
 api.route("/share", shareRouter);
 api.route("/", webhookRouter);
 api.route("/", migrationRouter);
 api.route("/admin", adminRouter);
+api.route("/owner", ownerRouter);
 
 // Root paths for health checks
 app.get("/", (c) => c.json({ status: "ok" }));
 
-const MAINTENANCE_MODE_ENABLED = false;
+const MAINTENANCE_MODE_ENABLED = true;
 
 app.get("/maintenance-mode", (c) => {
   return c.json({ enabled: MAINTENANCE_MODE_ENABLED });
@@ -226,70 +242,15 @@ api.post("/upload", async (c) => {
   }
 });
 
-// Test endpoint to emit a swap event via WebSocket
-api.get("/emit-test-swap/:tokenId", async (c) => {
-  try {
-    const tokenId = c.req.param("tokenId");
-    if (!tokenId) {
-      return c.json({ error: "tokenId parameter is required" }, 400);
-    }
-
-    // Create test swap data
-    const swap = createTestSwap(tokenId);
-
-    // Process and emit the swap event
-    await processSwapEvent(c.env, swap);
-
-    return c.json({
-      success: true,
-      message: "Test swap emitted via WebSocket",
-      swap,
-    });
-  } catch (error) {
-    logger.error("Error emitting test swap:", error);
-    return c.json(
-      {
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      500,
-    );
-  }
-});
-
-// Add an HTTP endpoint to broadcast to WebSocket rooms (useful for testing)
-api.post("/broadcast", async (c) => {
-  try {
-    const { room, event, data } = await c.req.json();
-
-    if (!room || !event) {
-      return c.json({ error: "Room and event are required" }, 400);
-    }
-
-    // Get WebSocket client
-    const wsClient = getWebSocketClient(c.env);
-
-    // Emit to the specified room
-    await wsClient.emit(room, event, data);
-
-    return c.json({
-      success: true,
-      message: `Broadcasted ${event} to ${room}`,
-    });
-  } catch (error) {
-    logger.error("Error broadcasting:", error);
-    return c.json(
-      {
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      500,
-    );
-  }
-});
-
 api.get("/sol-price", async (c) => {
   try {
+    // If not in cache, fetch the SOL price
     const price = await getSOLPrice(c.env);
-    return c.json({ price });
+
+    // Prepare the result
+    const result = { price };
+
+    return c.json(result);
   } catch (error) {
     console.error("Error fetching SOL price:", error);
     return c.json({ error: "Failed to fetch SOL price" }, 500);
@@ -320,7 +281,8 @@ export default {
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept",
+      "Access-Control-Allow-Headers":
+        "Content-Type, Authorization, Accept, X-Twitter-OAuth-Token, X-Twitter-OAuth-Token-Secret",
       "Access-Control-Allow-Credentials": "true",
     };
 

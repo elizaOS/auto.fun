@@ -1,28 +1,23 @@
 import Button from "./button";
 import { Grid, List } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 import { useViewMode } from "@/hooks/use-view-mode";
 
 export default function GridListSwitcher() {
   const [activeTab, setActiveTab] = useViewMode();
   return (
-    <div className="flex bg-autofun-background-card">
+    <div className="flex items-center gap-1">
       <Button
-        className={twMerge([
-          "cursor-pointer px-2 md:px-4 md:py-2 border-0",
-          activeTab === "grid" ? "" : "bg-transparent",
-        ])}
+        variant={activeTab === "grid" ? "primary" : "outline"}
         onClick={() => setActiveTab("grid")}
         aria-label="grid"
+        className="p-2"
       >
         <Grid color="#eee" size={24} />
       </Button>
       <Button
-        className={twMerge([
-          "cursor-pointer px-2 md:px-4 md:py-2 border-0",
-          activeTab === "list" ? "" : "bg-transparent",
-        ])}
+        variant={activeTab === "list" ? "primary" : "outline"}
         onClick={() => setActiveTab("list")}
+        className="p-2"
         aria-label="list"
       >
         <List className="size-6" />

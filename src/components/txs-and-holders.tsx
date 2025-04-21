@@ -13,14 +13,14 @@ export default function TransactionsAndHolders({ token }: { token: IToken }) {
         <div className="flex items-center">
           <Button
             size="small"
-            variant={mode === "transactions" ? "primary" : "ghost"}
+            variant={mode === "transactions" ? "primary" : "outline"}
             onClick={() => setMode("transactions")}
           >
             Trades
           </Button>
           <Button
             size="small"
-            variant={mode === "holders" ? "primary" : "ghost"}
+            variant={mode === "holders" ? "primary" : "outline"}
             onClick={() => setMode("holders")}
           >
             Holders

@@ -10,6 +10,7 @@ import { Info, Wallet } from "lucide-react";
 import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
+import { BN } from "bn.js";
 
 export default function Trade({
   token,
@@ -81,15 +82,19 @@ export default function Trade({
       const amount = sellAmount;
       if (!amount) return { displayMinReceived: "0", convertedAmount: 0 };
 
+      const amountBN = new BN(amount);
+      const tokenDecimalsBN = new BN(
+        token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6,
+      );
       const convertedAmountT = isTokenSelling
-        ? amount * (token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6)
-        : amount * 1e9;
+        ? amountBN.mul(tokenDecimalsBN).toNumber()
+        : amountBN.mul(new BN(1e9)).toNumber();
 
       const decimals = isTokenSelling
-        ? 1e9
+        ? new BN(1e9)
         : token?.tokenDecimals
-          ? 10 ** token?.tokenDecimals
-          : 1e6;
+          ? new BN(10 ** token?.tokenDecimals)
+          : new BN(1e6);
 
       const swapAmount =
         token?.status === "locked"
@@ -105,7 +110,7 @@ export default function Trade({
               token.reserveLamport,
             );
 
-      const convertedAmount = swapAmount / decimals;
+      const convertedAmount = new BN(swapAmount).div(decimals).toNumber();
 
       const minReceived = convertedAmount * (1 - slippage / 100);
 
@@ -194,7 +199,12 @@ export default function Trade({
                   min={0}
                   type="number"
                   onKeyDown={(e) => {
-                    if (e.key === "-" || e.code === "Minus") {
+                    if (
+                      e.key === "-" ||
+                      e.code === "Minus" ||
+                      e.key === "e" ||
+                      e.key === "E"
+                    ) {
                       e.preventDefault();
                     }
                   }}

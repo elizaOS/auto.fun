@@ -2,17 +2,8 @@ import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useMemo } from "react";
 
-export const SEED_CONFIG = "config";
-export const SEED_BONDING_CURVE = "bonding_curve";
-
-/**
- * Program IDL in camelCase format in order to be used in JS/TS.
- *
- * Note that this is only a type helper and is not the actual IDL. The original
- * IDL can be found at `target/idl/autofun.json`.
- */
 export type Autofun = {
-  address: "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ";
+  address: "autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5";
   metadata: {
     name: "autofun";
     version: "0.1.0";
@@ -2018,7 +2009,7 @@ export type Autofun = {
 };
 
 export const IDL = {
-  address: "aUToHWG2U3E33oDyKm68pwUygDE1sUUGUM1mnLppMVQ",
+  address: "autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5",
   metadata: {
     name: "autofun",
     version: "0.1.0",
@@ -3220,6 +3211,9 @@ export const IDL = {
     },
   ],
 };
+
+export const SEED_CONFIG = "config";
+export const SEED_BONDING_CURVE = "bonding_curve";
 
 export const useProgram = () => {
   const wallet = useWallet();

@@ -40,13 +40,22 @@ export const useTransactions = ({ tokenId }: { tokenId: string }) => {
   useEffect(() => {
     const socket = getSocket();
 
-    socket.on("newSwap", (transaction: unknown) => {
-      const newTransaction = TransactionSchema.parse(transaction);
+    socket.on("newSwap", (transaction: any) => {
+      let newTransactions: any = [];
+      if (Array.isArray(transaction)) {
+        newTransactions = transaction.map((item) =>
+          TransactionSchema.parse(item),
+        );
+      } else if (transaction && typeof transaction === "object") {
+        newTransactions = [TransactionSchema.parse(transaction)];
+      } else {
+        newTransactions = [];
+      }
 
       if (pagination.currentPage !== 1) return;
 
       pagination.setItems((items) =>
-        [newTransaction, ...items].slice(0, pageSize),
+        [...newTransactions, ...items].slice(0, pageSize),
       );
     });
 

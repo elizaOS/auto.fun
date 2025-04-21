@@ -2,7 +2,7 @@
 // This is a simplified vanilla WebSocket implementation that replaces Socket.io
 import type { DurableObjectNamespace } from "@cloudflare/workers-types";
 import { Env } from "./env";
-import { logger } from "./logger";
+import { logger } from "./util";
 
 export class WebSocketClient {
   private webSocketDO: DurableObjectNamespace | null = null;

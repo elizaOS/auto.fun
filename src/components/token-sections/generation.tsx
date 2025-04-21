@@ -35,6 +35,8 @@ const getTabIconPath = (
 // Additional imports for balance checking
 import { env } from "@/utils/env";
 import { Connection, PublicKey } from "@solana/web3.js";
+import { Tooltip } from "react-tooltip";
+import { fetchWithAuth } from "@/hooks/use-authentication";
 
 // Storage keys for Twitter auth
 const STORAGE_KEY = "twitter-oauth-token";
@@ -44,14 +46,20 @@ const OAUTH_REDIRECT_ORIGIN_KEY = "OAUTH_REDIRECT_ORIGIN"; // Key for storing th
 // Types for Twitter authentication
 type TwitterCredentials = {
   userId: string;
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: number;
+  // OAuth 2.0 (kept for potential future use or profile fetching)
+  accessToken?: string;
+  refreshToken?: string;
+  expiresAt?: number; // Expiry for OAuth 2.0 token
+  // OAuth 1.0a (Required for posting)
+  oauth1Token?: string;
+  oauth1TokenSecret?: string;
+  username?: string;
+  profileImageUrl?: string;
+  screen_name?: string; // Often returned with OAuth 1.0a
 };
 
 type PendingShare = {
-  // Store pieces needed to regenerate text
-  imageData: string; // This will store the URL of the image to share
+  imageData: string;
   tokenName: string;
   tokenSymbol: string;
 };
@@ -76,10 +84,12 @@ export default function CommunityTab() {
     "idle" | "processing" | "processed" | "failed"
   >("idle");
   const { publicKey } = useWallet();
-  const [isSharing, setIsSharing] = useState(false);
-  const [shareError, setShareError] = useState<string | null>(null);
-  const [twitterCredentials, setTwitterCredentials] =
-    useState<TwitterCredentials | null>(null);
+  // Remove these older duplicate declarations
+  // const [isSharing, setIsSharing] = useState(false);
+  // const [shareError, setShareError] = useState<string | null>(null);
+  // const [twitterCredentials, setTwitterCredentials] =
+  //   useState<TwitterCredentials | null>(null);
+
   // const [hasGeneratedForToken, setHasGeneratedForToken] = useState(false);
 
   // Pregenerated images that were generated automatically for this token
@@ -96,15 +106,6 @@ export default function CommunityTab() {
   const [manualTokenBalance, setManualTokenBalance] = useState<number | null>(
     null,
   );
-
-  // --- Modal State ---
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [modalShareText, setModalShareText] = useState("");
-  const [isPostingTweet, setIsPostingTweet] = useState(false); // Loading state for modal post
-  const [imageForShareModal, setImageForShareModal] = useState<string | null>(
-    null,
-  ); // State to hold the specific image URL for the modal
-  // --- End Modal State ---
 
   // --- Token Info State ---
   const [tokenInfo, setTokenInfo] = useState<{
@@ -244,26 +245,19 @@ export default function CommunityTab() {
 
   // Check for Twitter credentials on mount
   useEffect(() => {
-    // Don't proceed if we don't have a token mint
-    if (!tokenMint) {
-      console.warn("No token mint found in URL params");
-      return;
-    }
+    if (!tokenMint) return;
 
     const storedCredentials = localStorage.getItem(STORAGE_KEY);
     if (storedCredentials) {
       try {
-        const parsedCredentials = JSON.parse(
-          storedCredentials,
-        ) as TwitterCredentials;
-
-        // Check if token is expired
-        if (parsedCredentials.expiresAt < Date.now()) {
-          console.warn(
-            "Twitter token has expired, user needs to re-authenticate",
-          );
+        const parsedCreds = JSON.parse(storedCredentials) as TwitterCredentials;
+        // Check if *OAuth 1.0a* tokens exist, as they don't expire in the same way
+        if (parsedCreds.oauth1Token && parsedCreds.oauth1TokenSecret) {
+          console.log("Found valid OAuth 1.0a credentials.");
+          setTwitterCredentials(parsedCreds);
         } else {
-          setTwitterCredentials(parsedCredentials);
+          console.warn("Stored credentials missing OAuth 1.0a tokens.");
+          localStorage.removeItem(STORAGE_KEY); // Remove incomplete creds
         }
       } catch (error) {
         console.error("Failed to parse stored Twitter credentials", error);
@@ -271,65 +265,74 @@ export default function CommunityTab() {
       }
     }
 
-    // In a real implementation, we would fetch token agents from the API
-    // fetchTokenAgents(tokenMint);
-
-    // Check for callback from Twitter OAuth
+    // Check for callback from Twitter OAuth (handles both 1.0a and 2.0 if needed)
     const urlParams = new URLSearchParams(window.location.search);
     const freshAuth = urlParams.get("fresh_auth") === "true";
 
     if (freshAuth) {
-      // Check if we have a pending share
+      const storedCredsAfterAuth = localStorage.getItem(STORAGE_KEY);
+      if (storedCredsAfterAuth) {
+        const parsedCreds = JSON.parse(
+          storedCredsAfterAuth,
+        ) as TwitterCredentials;
+        setTwitterCredentials(parsedCreds); // Update state with potentially new creds
+        console.log("Credentials updated after auth callback.");
+      } else {
+        console.error("No credentials found in storage after auth callback.");
+      }
+
+      // Check if we have a pending share to resume
       const pendingShareData = localStorage.getItem(PENDING_SHARE_KEY);
-      if (pendingShareData) {
+      if (pendingShareData && storedCredsAfterAuth) {
+        // Need creds to proceed
         try {
-          // Parse the stored pieces
           const share = JSON.parse(pendingShareData) as PendingShare;
-          const storedCreds = localStorage.getItem(STORAGE_KEY);
+          const creds = JSON.parse(storedCredsAfterAuth) as TwitterCredentials;
 
-          if (storedCreds) {
-            const parsedCreds = JSON.parse(storedCreds) as TwitterCredentials;
-            setTwitterCredentials(parsedCreds);
-
-            // --- Regenerate Text & Open Modal on Callback ---
+          if (creds.oauth1Token && creds.oauth1TokenSecret) {
+            // Ensure we have 1.0a tokens now
+            // Regenerate text & Open Modal
             setTimeout(() => {
-              // Regenerate the share text using stored pieces
-              const regeneratedText = generateShareText(
-                { name: share.tokenName, ticker: share.tokenSymbol }, // Use stored token info
-              );
+              const regeneratedText = generateShareText({
+                name: share.tokenName,
+                ticker: share.tokenSymbol,
+              });
               setModalShareText(regeneratedText);
-
-              // Set the image URL for the modal using the stored URL
               setImageForShareModal(share.imageData);
-
-              // Open the modal
               setIsShareModalOpen(true);
-            }, 100); // Delay ensures state updates settle
-            // --- End Regenerate Text & Open Modal on Callback ---
+              console.log("Resuming share via modal after auth.");
+            }, 100);
           } else {
-            console.error("No credentials found after authentication");
+            console.error(
+              "OAuth 1.0a tokens still missing after callback. Cannot resume share.",
+            );
+            toast.error(
+              "Authentication incomplete. Please try connecting X again.",
+            );
           }
 
-          // Clean up pending share key
           localStorage.removeItem(PENDING_SHARE_KEY);
         } catch (error) {
           console.error("Failed to process pending share", error);
-          setShareError(
-            error instanceof Error ? error.message : "Failed to process share",
-          );
+          setShareError("Failed to process share after authentication.");
         }
       }
 
-      // Clean up URL (remove fresh_auth param)
+      // Clean up URL
       const currentUrl = new URL(window.location.href);
       if (currentUrl.searchParams.has("fresh_auth")) {
-        // Check if param exists before deleting
         currentUrl.searchParams.delete("fresh_auth");
       }
-      // Preserve hash/anchor when cleaning up URL
-      window.history.replaceState({}, "", currentUrl.pathname + location.hash);
+      // Also remove OAuth params if they exist (from 1.0a flow)
+      currentUrl.searchParams.delete("oauth_token");
+      currentUrl.searchParams.delete("oauth_verifier");
+      window.history.replaceState(
+        {},
+        "",
+        currentUrl.pathname + currentUrl.hash,
+      );
     }
-  }, [tokenMint]); // Removed generatedImage dependency as modal now uses imageForShareModal
+  }, [tokenMint]);
 
   // Generate image function
   const generateImage = async () => {
@@ -815,273 +818,247 @@ export default function CommunityTab() {
   };
   // --- End Tweet Templates & Generator ---
 
-  // Share on X function - determines which image to share
+  // State for Twitter sharing & Modal (Keep this set of declarations)
+  const [isSharing, setIsSharing] = useState(false); // General sharing process flag
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [twitterCredentials, setTwitterCredentials] =
+    useState<TwitterCredentials | null>(null); // Store full credentials including 1.0a
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [modalShareText, setModalShareText] = useState("");
+  const [isPostingTweet, setIsPostingTweet] = useState(false); // Specific loading for modal confirm button
+  const [imageForShareModal, setImageForShareModal] = useState<string | null>(
+    null,
+  );
+
+  // --- shareOnX (Initiates the process) ---
   const shareOnX = useCallback(async () => {
-    // Determine which image URL to use: generated or placeholder
+    // Determine which image URL to use
     const imageToShare =
       generatedImage && processingStatus === "processed"
         ? generatedImage
-        : placeholderImage && !generatedImage && communityTab === "Image" // Only allow placeholder share on Image tab
+        : placeholderImage && communityTab === "Image"
           ? placeholderImage
           : null;
 
     if (!imageToShare) {
-      setShareError("No image available to share");
-      toast.error("No image available to share");
+      toast.error("No image available to share.");
       return;
     }
-
-    // Ensure token info is loaded
     if (!tokenInfo) {
-      toast.warn("Token information still loading, please wait a moment.");
+      toast.warn("Token info still loading...");
       return;
     }
 
     setIsSharing(true);
     setShareError(null);
 
-    try {
-      console.log("tokenInfo", tokenInfo);
+    // Check for valid OAuth 1.0a credentials
+    const storedCredentials = localStorage.getItem(STORAGE_KEY);
+    let creds: TwitterCredentials | null = null;
+    if (storedCredentials) {
+      try {
+        creds = JSON.parse(storedCredentials);
+      } catch {
+        /* Ignore parsing error */
+      }
+    }
+
+    if (creds && creds.oauth1Token && creds.oauth1TokenSecret) {
+      // Credentials exist and seem valid -> Open Modal
       const shareText = generateShareText(tokenInfo);
-
-      if (twitterCredentials && twitterCredentials.expiresAt > Date.now()) {
-        // --- Open Modal Directly ---
-        setModalShareText(shareText); // Use generated text
-        setImageForShareModal(imageToShare); // Set the correct image URL for the modal
-        setIsShareModalOpen(true);
-        // --- End Open Modal Directly ---
-      } else {
-        // Store the pending share and redirect to auth
-        const pendingShare: PendingShare = {
-          // Store pieces needed to regenerate text later
-          imageData: imageToShare, // Store the URL of the image being shared
-          tokenName: tokenInfo.name,
-          tokenSymbol: tokenInfo.ticker,
-        };
-        localStorage.setItem(PENDING_SHARE_KEY, JSON.stringify(pendingShare));
-
-        // Store the current path before redirecting
-        const currentPath =
-          window.location.pathname +
+      setModalShareText(shareText);
+      setImageForShareModal(imageToShare);
+      setIsShareModalOpen(true);
+      setIsSharing(false); // Modal is open, general sharing process is paused
+      console.log("Valid credentials found, opening share modal.");
+    } else {
+      // No valid credentials -> Start OAuth 1.0a Flow
+      console.log("No valid credentials, redirecting to OAuth 1.0a...");
+      const pendingShare: PendingShare = {
+        imageData: imageToShare,
+        tokenName: tokenInfo.name,
+        tokenSymbol: tokenInfo.ticker,
+      };
+      localStorage.setItem(PENDING_SHARE_KEY, JSON.stringify(pendingShare));
+      localStorage.setItem(
+        OAUTH_REDIRECT_ORIGIN_KEY,
+        window.location.pathname +
           window.location.search +
-          window.location.hash;
-
-        // Add generation anchor if not already present
-        const pathWithAnchor =
-          currentPath + (currentPath.includes("#") ? "" : "#generation");
-        localStorage.setItem(OAUTH_REDIRECT_ORIGIN_KEY, pathWithAnchor);
-
-        // Redirect to OAuth
-        const apiUrl = env.apiUrl;
-        if (!apiUrl) {
-          throw new Error("API URL is not configured");
-        }
-
-        window.location.href = `${apiUrl}/api/share/oauth/request_token`;
-      }
-    } catch (error) {
-      console.error("Share initiation failed", error);
-      setShareError(error instanceof Error ? error.message : "Share failed");
-      toast.error(
-        `Share initiation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+          window.location.hash,
       );
-      setIsSharing(false); // Ensure sharing state is reset on error
-    } finally {
-      // Don't set isSharing false here if opening modal, modal button handles it
-      // Reset sharing state only if redirecting OR if modal didn't open due to error
-      if (!isShareModalOpen) {
+
+      const apiUrl = env.apiUrl;
+      if (!apiUrl) {
+        toast.error("API URL not configured.");
         setIsSharing(false);
+        return;
       }
+      // Redirect to the backend endpoint that starts OAuth 1.0a
+      window.location.href = `${apiUrl}/api/share/oauth/request_token?oauth_version=1.0a`;
+      // No need to setIsSharing(false) here as page will redirect
     }
   }, [
     generatedImage,
     placeholderImage,
     tokenInfo,
-    twitterCredentials,
     processingStatus,
-    communityTab, // Add communityTab dependency
+    communityTab,
+    // twitterCredentials state is not needed here, we read directly from localStorage
   ]);
 
-  // Handle Twitter posting logic (called by confirmAndPostShare)
+  // --- handleShareOnX (Performs the actual API calls) ---
   const handleShareOnX = async (
     text: string,
-    imageData: string, // Takes the specific image URL to post
-    creds: TwitterCredentials,
+    imageDataUrl: string,
+    creds: TwitterCredentials, // Expects full creds object now
   ) => {
-    // This function is now primarily for the actual posting logic
+    if (!creds.oauth1Token || !creds.oauth1TokenSecret) {
+      throw new Error(
+        "Internal Error: Missing OAuth 1.0a tokens in handleShareOnX.",
+      );
+    }
+
+    // 1. Upload Media using the backend endpoint
+    let media_id_string = "";
     try {
-      // Double-check if credentials expired
-      if (creds.expiresAt < Date.now()) {
-        throw new Error(
-          "Twitter authentication expired. Please connect again.",
-        );
+      toast.info("Uploading media to X...");
+      const mediaUploadResponse = await fetchWithAuth(
+        `${env.apiUrl}/api/share/upload-media`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            // Pass user's OAuth 1.0a tokens
+            "X-Twitter-OAuth-Token": creds.oauth1Token,
+            "X-Twitter-OAuth-Token-Secret": creds.oauth1TokenSecret,
+          },
+          body: JSON.stringify({ image: imageDataUrl }), // Send prepared data URL
+        },
+      );
+
+      if (!mediaUploadResponse.ok) {
+        const error = (await mediaUploadResponse.json()) as { error?: string };
+        throw new Error(error?.error || "Failed to upload media to X.");
       }
 
-      setShareError(null);
-
-      const mediaId = await uploadImage(imageData, creds.accessToken);
-
-      await postTweet(text, mediaId, creds.accessToken);
-
-      toast.success("Successfully shared to Twitter!");
-    } catch (error) {
-      console.error("Twitter share failed:", error);
-      setShareError(error instanceof Error ? error.message : "Share failed");
-      toast.error(
-        `Failed to share: ${error instanceof Error ? error.message : "Unknown error"}`,
+      const mediaData = (await mediaUploadResponse.json()) as {
+        success?: boolean;
+        media_id_string?: string;
+      };
+      if (!mediaData?.success || !mediaData?.media_id_string) {
+        throw new Error("Backend did not return a valid media ID.");
+      }
+      media_id_string = mediaData.media_id_string;
+      toast.info("Media uploaded.");
+    } catch (uploadError) {
+      console.error("Media upload failed:", uploadError);
+      throw new Error(
+        `Media upload failed: ${uploadError instanceof Error ? uploadError.message : "Unknown error"}`,
       );
-      throw error; // Re-throw to allow the caller to handle loading state
+    }
+
+    // 2. Create tweet with the media ID
+    try {
+      toast.info("Posting tweet...");
+      const tweetResponse = await fetch(`${env.apiUrl}/api/share/tweet`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // Pass user's OAuth 1.0a tokens again for tweeting
+          "X-Twitter-OAuth-Token": creds.oauth1Token,
+          "X-Twitter-OAuth-Token-Secret": creds.oauth1TokenSecret,
+        },
+        body: JSON.stringify({
+          text: text, // Use the text from the modal
+          media_ids: [media_id_string],
+        }),
+      });
+
+      if (!tweetResponse.ok) {
+        const error = (await tweetResponse.json()) as { error?: string };
+        throw new Error(error?.error || "Failed to post tweet.");
+      }
+
+      const tweet = (await tweetResponse.json()) as {
+        success?: boolean;
+        tweet?: { data?: { id: string } };
+      };
+      toast.success("Shared successfully on X!");
+
+      // Open the tweet in a new tab
+      if (tweet?.tweet?.data?.id) {
+        const username = creds.screen_name || creds.username; // Use screen_name if available
+        if (username) {
+          window.open(
+            `https://twitter.com/${username}/status/${tweet.tweet.data.id}`,
+            "_blank",
+          );
+        }
+      }
+    } catch (tweetError) {
+      console.error("Tweet posting failed:", tweetError);
+      throw new Error(
+        `Tweet posting failed: ${tweetError instanceof Error ? tweetError.message : "Unknown error"}`,
+      );
     }
   };
 
-  // --- Function called by the modal confirmation button ---
+  // --- confirmAndPostShare (Modal confirmation handler) ---
   const confirmAndPostShare = async () => {
-    // Use the image URL stored for the modal
-    if (!imageForShareModal || !twitterCredentials) {
-      toast.error("Missing image or authentication for sharing.");
+    if (
+      !imageForShareModal ||
+      !twitterCredentials ||
+      !twitterCredentials.oauth1Token ||
+      !twitterCredentials.oauth1TokenSecret
+    ) {
+      toast.error("Cannot share. Missing image or authentication credentials.");
+      // Maybe force re-auth?
+      localStorage.removeItem(STORAGE_KEY);
+      setTwitterCredentials(null);
+      setIsShareModalOpen(false);
+      setIsSharing(false);
       return;
     }
 
-    setIsPostingTweet(true);
-    setIsSharing(true); // Also set the main sharing flag
+    setIsPostingTweet(true); // Use the modal-specific loading state
+    setShareError(null);
     try {
+      // 1. Prepare image data URL (might be needed if modal image is not data url)
+      let finalImageDataUrl = imageForShareModal;
+      if (!finalImageDataUrl.startsWith("data:")) {
+        toast.info("Processing image...");
+        const response = await fetch(finalImageDataUrl);
+        if (!response.ok) throw new Error("Failed to fetch modal image");
+        const blob = await response.blob();
+        finalImageDataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        toast.info("Image processed.");
+      }
+
+      // 2. Call the unified handler
       await handleShareOnX(
-        modalShareText,
-        imageForShareModal,
-        twitterCredentials,
+        modalShareText, // Use text from modal state
+        finalImageDataUrl, // Use potentially converted data URL
+        twitterCredentials, // Pass full credentials object
       );
       setIsShareModalOpen(false); // Close modal on success
+      setImageForShareModal(null);
+      setModalShareText("");
     } catch (error) {
-      // Error is already handled/logged in handleShareOnX
-      // Keep modal open on error
+      // Error is logged and toasted within handleShareOnX
+      setShareError(
+        error instanceof Error
+          ? error.message
+          : "An unknown error occurred during sharing.",
+      );
+      // Keep modal open on error for user to see message/retry
     } finally {
       setIsPostingTweet(false);
-      setIsSharing(false); // Clear main sharing flag
-    }
-  };
-  // --- End function ---
-
-  // Upload image to Twitter
-  const uploadImage = async (
-    imageData: string, // Expects a URL (data: or http:)
-    accessToken: string,
-  ): Promise<string> => {
-    try {
-      let blob;
-
-      // Convert image data to blob - different handling based on data format
-      if (imageData.startsWith("data:")) {
-        // It's a data URL, extract the base64 data and convert to blob
-        const base64Response = await fetch(imageData);
-        blob = await base64Response.blob();
-      } else {
-        // It's a regular URL, fetch it
-        const response = await fetch(imageData);
-        if (!response.ok) {
-          throw new Error(
-            `Failed to fetch image for upload: ${response.statusText}`,
-          );
-        }
-        blob = await response.blob();
-      }
-
-      // Create FormData and append the image
-      const formData = new FormData();
-      // Determine filename based on type (though Twitter might ignore it)
-      const filename = blob.type.startsWith("video/")
-        ? "share-video.mp4"
-        : blob.type.startsWith("audio/")
-          ? "share-audio.mp3"
-          : "share-image.png";
-      formData.append("media", blob, filename);
-
-      // Get auth token for the app (separate from Twitter token)
-      // const authToken = localStorage.getItem("authToken");
-
-      // Send the upload request
-      const uploadResponse = await fetch(`${env.apiUrl}/api/share/tweet`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          // Include wallet auth token if available in a custom header
-          // ...(authToken ? { "X-Auth-Token": `Bearer ${authToken}` } : {}),
-        },
-        body: formData,
-        credentials: "include",
-      });
-
-      if (!uploadResponse.ok) {
-        const errorText = await uploadResponse.text();
-        console.error(
-          "Media upload failed with status:",
-          uploadResponse.status,
-        );
-        console.error("Error response body:", errorText);
-        // Attempt to parse JSON error if possible
-        let detailedError = `Failed to upload media: ${uploadResponse.statusText}`;
-        try {
-          const jsonError = JSON.parse(errorText);
-          if (jsonError.error) {
-            detailedError += ` - ${jsonError.error}`;
-          }
-        } catch (e) {
-          // Ignore if not JSON
-          detailedError += ` - ${errorText}`;
-        }
-        throw new Error(detailedError);
-      }
-
-      // Parse the response with type
-      const responseData = (await uploadResponse.json()) as {
-        mediaId: string;
-        success?: boolean;
-      };
-
-      if (!responseData.mediaId) {
-        throw new Error("No media ID received");
-      }
-
-      return responseData.mediaId;
-    } catch (error) {
-      console.error("Error in uploadImage:", error);
-      throw error;
-    }
-  };
-
-  // Post tweet with image
-  const postTweet = async (
-    text: string,
-    mediaId: string,
-    accessToken: string,
-  ) => {
-    try {
-      // Get auth token for the app (separate from Twitter token)
-      // const authToken = localStorage.getItem("authToken");
-
-      const response = await fetch(`${env.apiUrl}/api/share/tweet`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          // Include wallet auth token if available in a custom header
-          // ...(authToken ? { "X-Auth-Token": `Bearer ${authToken}` } : {}),
-        },
-        body: JSON.stringify({
-          text,
-          mediaId,
-        }),
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to post tweet: ${errorText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error("Error in postTweet:", error);
-      throw error;
+      // setIsSharing(false); // Let the main share button handle this if needed?
     }
   };
 
@@ -1710,7 +1687,7 @@ export default function CommunityTab() {
           {/* Main generation controls - consistent across all media types */}
           <div className="flex flex-col gap-4 w-full">
             {/* Controls row - consistent for all media types */}
-            <div className="flex items-end py-3">
+            <div className="flex items-center py-3">
               {/* Input field with dynamic placeholder based on tab */}
               <input
                 type="text"
@@ -1811,7 +1788,11 @@ export default function CommunityTab() {
               {/* Fast/Pro mode buttons - only show for Image and Video */}
               {communityTab !== "Audio" && (
                 <div className="flex space-x-1 h-10">
+                  <Tooltip anchorSelect="#faston">
+                    <span>Fast</span>
+                  </Tooltip>
                   <button
+                    id="faston"
                     onClick={() => setGenerationMode("fast")}
                     className="cursor-pointer h-10"
                   >
@@ -1825,7 +1806,11 @@ export default function CommunityTab() {
                       className="h-10 w-auto cursor-pointer"
                     />
                   </button>
+                  <Tooltip anchorSelect="#promode">
+                    <span>Pro</span>
+                  </Tooltip>
                   <button
+                    id="promode"
                     onClick={() => setGenerationMode("pro")}
                     className="cursor-pointer h-10"
                   >
@@ -1844,55 +1829,53 @@ export default function CommunityTab() {
             </div>
 
             {/* Video-specific options */}
-            {communityTab === "Video" && (
+            {communityTab === "Video" && videoMode === "image" ? (
               <div className="px-4">
                 {/* Image upload area for image-to-video */}
-                {videoMode === "image" && (
-                  <div className="border-2 border-dashed border-gray-600 p-4 rounded-md mb-4">
-                    {selectedImageForVideo ? (
-                      <div className="relative">
-                        <img
-                          src={selectedImageForVideo}
-                          alt="Selected image"
-                          className="max-w-full max-h-[300px] mx-auto"
+                <div className="border-2 border-dashed border-gray-600 p-4 rounded-md mb-4">
+                  {selectedImageForVideo ? (
+                    <div className="relative">
+                      <img
+                        src={selectedImageForVideo}
+                        alt="Selected image"
+                        className="max-w-full max-h-[300px] mx-auto"
+                      />
+                      <button
+                        onClick={() => setSelectedImageForVideo(null)}
+                        className="absolute top-2 right-2 bg-black/70 p-1 rounded-full cursor-pointer"
+                        title="Remove image"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <label className="cursor-pointer">
+                        <div className="mb-2">
+                          {imageUploadLoading
+                            ? "Uploading..."
+                            : "Drop an image here or click to upload"}
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                          disabled={imageUploadLoading}
                         />
-                        <button
-                          onClick={() => setSelectedImageForVideo(null)}
-                          className="absolute top-2 right-2 bg-black/70 p-1 rounded-full cursor-pointer"
-                          title="Remove image"
-                        >
-                          <X size={18} />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <label className="cursor-pointer">
-                          <div className="mb-2">
-                            {imageUploadLoading
-                              ? "Uploading..."
-                              : "Drop an image here or click to upload"}
-                          </div>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="hidden"
-                            disabled={imageUploadLoading}
-                          />
-                          <div className="text-blue-400 hover:text-blue-300 text-sm">
-                            {imageUploadLoading ? (
-                              <div className="animate-pulse">Processing...</div>
-                            ) : (
-                              "Browse files"
-                            )}
-                          </div>
-                        </label>
-                      </div>
-                    )}
-                  </div>
-                )}
+                        <div className="text-blue-400 hover:text-blue-300 text-sm">
+                          {imageUploadLoading ? (
+                            <div className="animate-pulse">Processing...</div>
+                          ) : (
+                            "Browse files"
+                          )}
+                        </div>
+                      </label>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
+            ) : null}
 
             {/* Token balance message */}
             {communityTab === "Image" &&

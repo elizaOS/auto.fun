@@ -1,12 +1,12 @@
 import { ExecutionContext } from "@cloudflare/workers-types/experimental";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
-import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { Connection, Keypair } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
 import { TokenData, TokenDBData } from "../worker/raydium/types/tokenData";
 import { getLatestCandle } from "./chart";
 import { getDB, swaps, Token, tokens } from "./db";
 import { Env } from "./env";
-import { logger } from "./logger";
+import { logger } from "./util";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
 import { awardGraduationPoints, awardUserPoints } from "./points/helpers";
 import { TokenMigrator } from "./raydium/migration/migrateToken";
@@ -14,7 +14,6 @@ import { getToken } from "./raydium/migration/migrations";
 import * as raydium_vault_IDL from "./raydium/raydium_vault.json";
 import { RaydiumVault } from "./raydium/types/raydium_vault";
 import { checkAndReplenishTokens } from "./routes/generation";
-import { updateHoldersCache } from "./routes/token";
 import * as IDL from "./target/idl/autofun.json";
 import { Autofun } from "./target/types/autofun";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
@@ -23,6 +22,7 @@ import {
   calculateFeaturedScore,
   createNewTokenData,
   getFeaturedMaxValues,
+  updateHoldersCache,
 } from "./util";
 import { getWebSocketClient } from "./websocket-client";
 
@@ -523,7 +523,7 @@ export async function processTransactionLogs(
       raydium_vault_IDL as any,
       provider,
     );
-    const autofunProgram = new Program<Autofun>(IDL as any, provider);
+    const autofunProgram = new Program<Autofun>(IDL, provider);
 
     const tokenMigrator = new TokenMigrator(
       env,
@@ -546,7 +546,7 @@ export async function processTransactionLogs(
     // Update in database
     await updateTokenInDB(env, tokenData);
     // migrate token
-    await tokenMigrator.migrateToken(token);
+    // await tokenMigrator.migrateToken(token);
 
     // Notify clients
     await wsClient.emit(`token-${mintAddress}`, "updateToken", tokenData);

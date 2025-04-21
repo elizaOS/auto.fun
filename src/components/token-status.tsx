@@ -9,7 +9,7 @@ export default function TokenStatus({ token }: { token: IToken }) {
   const labels: Record<IToken["status"], string> = {
     active: "Active",
     harvested: "Harvested",
-    locked: "Locked",
+    locked: "Bonded",
     migrated: "Migrated",
     migrating: "Migrating",
     migration_failed: "Migration Failed",

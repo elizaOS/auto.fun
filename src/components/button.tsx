@@ -9,14 +9,14 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses = {
-  primary: "bg-autofun-background-action-primary border text-white",
-  outline: "bg-transparent border text-white",
+  primary: "border-2 border-[#2FD345] text-white",
+  outline: "bg-transparent border text-white border-2 border-transparent",
   ghost: "bg-transparent text-white border border-transparent",
   secondary:
     "bg-autofun-background-action-primary border text-autofun-text-highlight",
   trade:
     "bg-autofun-background-card border text-autofun-text-primary px-3 font-dm-mono font-medium",
-  tab: "bg-autofun-background-highlight border border-transparent text-autofun-background-card font-medium",
+  tab: "bg-autofun-background-highlight border-2 border-transparent text-autofun-background-card font-medium",
 };
 
 const sizeClasses = {

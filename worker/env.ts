@@ -43,6 +43,7 @@ export interface Env {
   RPC_URL: string;
   MAINNET_SOLANA_RPC_URL: string;
   DEVNET_SOLANA_RPC_URL: string;
+  DEVNET_PROGRAM_ID: string;
   PROGRAM_ID: string;
   // Test environment properties
   tokenPubkey: string; // Used in tests to track the current test token
@@ -50,6 +51,7 @@ export interface Env {
   REDIS: KVNamespace;
   // KV namespace for auth tokens
   AUTH_TOKENS: KVNamespace;
+  CACHE: KVNamespace;
   // Auth token salt for hashing
   AUTH_TOKEN_SALT: string;
   // Frontend URL

@@ -7,42 +7,110 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { IToken } from "@/types";
-import { formatNumber, fromNow, shortenAddress } from "@/utils";
+import { formatNumber, fromNow, resizeImage, shortenAddress } from "@/utils";
 import { useNavigate } from "react-router";
 import BondingCurveBar from "./bonding-curve-bar";
 import CopyButton from "./copy-button";
 import SkeletonImage from "./skeleton-image";
 import { twMerge } from "tailwind-merge";
 import Verified from "./verified";
+import { ArrowDown, ArrowUp } from "lucide-react";
 
-export function TableView({ data }: { data: IToken[] }) {
+type SortOrderType = "asc" | "desc";
+
+interface TableViewProps {
+  data: IToken[];
+  sortBy: keyof IToken | null;
+  sortOrder: SortOrderType;
+  setSortBy: (sortBy: keyof IToken | null) => void;
+  setSortOrder: (sortOrder: SortOrderType) => void;
+}
+
+export function TableView({
+  data,
+  sortBy,
+  sortOrder,
+  setSortBy,
+  setSortOrder,
+}: TableViewProps) {
   const navigate = useNavigate();
+
+  const handleSort = (columnKey: keyof IToken) => {
+    if (sortBy === columnKey) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(columnKey);
+      setSortOrder("desc");
+    }
+  };
+
+  const SortIcon = ({ columnKey }: { columnKey: keyof IToken }) => {
+    if (sortBy !== columnKey) return null;
+    return sortOrder === "asc" ? (
+      <ArrowUp className="ml-1 h-3 w-3" />
+    ) : (
+      <ArrowDown className="ml-1 h-3 w-3" />
+    );
+  };
+
   return (
     <Table>
       <TableHeader>
         <TableRow className="bg-transparent">
           <TableHead className="w-[500px]">Coin</TableHead>
           <TableHead className="text-left">
-            <span className="hidden md:inline">Market Cap</span>
-            <span className="md:hidden">MCap</span>
+            <button
+              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              onClick={() => handleSort("marketCapUSD")}
+            >
+              <span className="hidden md:inline">Market Cap</span>
+              <span className="md:hidden">MCap</span>
+              <SortIcon columnKey="marketCapUSD" />
+            </button>
           </TableHead>
           <TableHead className="text-left">
-            <span className="hidden md:inline">24H Volume</span>
-            <span className="md:hidden">24H</span>
+            <button
+              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              onClick={() => handleSort("volume24h")}
+            >
+              <span className="hidden md:inline">24H Volume</span>
+              <span className="md:hidden">24H</span>
+              <SortIcon columnKey="volume24h" />
+            </button>
           </TableHead>
           <TableHead className="text-left">
-            <span className="hidden md:inline">Holders</span>
-            <span className="md:hidden">Hold</span>
+            <button
+              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              onClick={() => handleSort("holderCount")}
+            >
+              <span className="hidden md:inline">Holders</span>
+              <span className="md:hidden">Hold</span>
+              <SortIcon columnKey="holderCount" />
+            </button>
           </TableHead>
           <TableHead className="text-left">
-            <span className="hidden md:inline">Bonding Curve</span>
-            <span className="md:hidden">Bonding</span>
+            <button
+              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              onClick={() => handleSort("curveProgress")}
+            >
+              <span className="hidden md:inline">Bonding Curve</span>
+              <span className="md:hidden">Bonding</span>
+              <SortIcon columnKey="curveProgress" />
+            </button>
           </TableHead>
-          <TableHead className="text-right">Age</TableHead>
+          <TableHead className="text-right">
+            <button
+              className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto"
+              onClick={() => handleSort("createdAt")}
+            >
+              Age
+              <SortIcon columnKey="createdAt" />
+            </button>
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {data?.map((token: IToken) => {
+        {data.map((token: IToken) => {
           return (
             <TableRow
               key={token.mint}
@@ -53,7 +121,11 @@ export function TableView({ data }: { data: IToken[] }) {
                 <div className="flex items-center gap-2">
                   <div className="relative size-[50px] bg-[#262626] overflow-hidden">
                     <SkeletonImage
-                      src={token?.image || "/logo.png"}
+                      src={
+                        token?.image
+                          ? resizeImage(token.image, 50, 50)
+                          : "/logo.png"
+                      }
                       alt={token?.name || "token"}
                       className={twMerge([
                         "w-full h-full object-cover",
@@ -100,6 +172,7 @@ export function TableView({ data }: { data: IToken[] }) {
                 {fromNow(token.createdAt)
                   .replace(" ago", "")
                   .replace(" days", "d")
+                  .replace("a", "1")
                   .replace(" hours", "hr")
                   .replace(" minutes", "m")
                   .replace(" seconds", "s")

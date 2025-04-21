@@ -1,7 +1,0 @@
-node_modules
-Cargo.lock
-package-lock.json
-yarn.lock
-target
-.anchor
-recover.json

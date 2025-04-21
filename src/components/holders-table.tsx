@@ -15,6 +15,15 @@ import { Link } from "react-router";
 import { useHolders } from "@/hooks/use-holders";
 import { env } from "@/utils/env";
 
+function getPercentageOfTotal(value: number, total: number): string | number {
+  if (total === 0) {
+    return 0;
+  }
+
+  const percentage = (value / total) * 100;
+  return percentage?.toFixed(2);
+}
+
 export default function HoldersTable({ token }: { token: IToken }) {
   const { /*paused,*/ setPause } = usePause();
 
@@ -22,6 +31,8 @@ export default function HoldersTable({ token }: { token: IToken }) {
 
   const isLoading = query.isLoading;
   const data = query?.items;
+
+  const supply = token?.tokenSupplyUiAmount;
 
   return (
     <Table
@@ -70,7 +81,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
                   {holder?.amount.toLocaleString()}
                 </TableCell>
                 <TableCell className="text-right">
-                  {holder?.percentage.toFixed(2)}%
+                  {getPercentageOfTotal(holder.amount, supply)}%
                 </TableCell>
                 <TableCell>
                   <Link to={env.getWalletUrl(holder.address)} target="_blank">

@@ -1,7 +1,6 @@
-import { env } from "@/utils/env";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { fetchWithAuth } from "./use-authentication";
 import { useQuery } from "@tanstack/react-query";
+import useAuthentication from "./use-authentication";
 
 interface User {
   address: string;
@@ -9,46 +8,31 @@ interface User {
   solBalance?: number;
 }
 
-interface AuthStatus {
-  authenticated: boolean;
-  user?: User;
-  privileges?: string[];
-}
-
 export function useUser() {
   const { publicKey } = useWallet();
+  const { authQuery } = useAuthentication();
+
   const query = useQuery({
-    queryKey: ["user", publicKey],
+    queryKey: ["user", publicKey, authQuery.data],
     queryFn: async () => {
       if (!publicKey) {
         return null;
       }
 
-      try {
-        const response = await fetchWithAuth(`${env.apiUrl}/api/auth-status`, {
-          method: "GET",
-        });
-
-        if (response.ok) {
-          const data = (await response.json()) as AuthStatus;
-          if (data.authenticated && data.user) {
-            return { user: data.user, authenticated: data.authenticated };
-          } else {
-            return { authenticated: data.authenticated };
-          }
-        } else {
-          console.error("Error response from auth-status:", response.status);
-          return null;
-        }
-      } catch (error) {
-        console.error("Error fetching user:", error);
-        return null;
+      const authData = authQuery.data;
+      if (authData?.authenticated) {
+        return {
+          user: authData.user,
+          authenticated: authData.authenticated,
+        };
       }
+      return { authenticated: false };
     },
+    enabled: !!publicKey && authQuery.isSuccess,
   });
 
   const user: User | null | undefined = query?.data?.user;
-  const authenticated: boolean = query?.data?.authenticated ? true : false;
+  const authenticated: boolean = query?.data?.authenticated || false;
 
   return { user, authenticated, isLoading: query?.isPending, query };
 }

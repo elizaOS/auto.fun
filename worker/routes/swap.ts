@@ -1,10 +1,12 @@
-import { Hono } from "hono";
-import { Env } from "../env";
-import { z } from "zod";
-import { fetchPriceChartData, getLatestCandle } from "../chart";
-import { logger } from "../logger";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { getDB, TokenHolder, tokenHolders, tokens, swaps } from "../db";
+import { Hono } from "hono";
+import { cache } from "hono/cache";
+import { z } from "zod";
+import { fetchPriceChartData } from "../chart";
+import { getDB, swaps, tokens } from "../db";
+import { Env } from "../env";
+import { logger } from "../util";
+
 const router = new Hono<{
   Bindings: Env;
   Variables: {
@@ -20,27 +22,35 @@ const ChartParamsSchema = z.object({
   token: z.string().min(32).max(44),
 });
 
-router.get("/chart/:pairIndex/:start/:end/:range/:token", async (c) => {
-  try {
-    const params = ChartParamsSchema.parse(c.req.param());
-    const data = await fetchPriceChartData(
-      c.env,
-      params.start * 1000,
-      params.end * 1000,
-      params.range,
-      params.token,
-    );
-    return c.json({ table: data });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      c.json({ error: error.errors }, 400);
-    } else {
-      logger.error(error);
-      c.json({ error: "Internal server error" }, 500);
+router.get(
+  "/chart/:pairIndex/:start/:end/:range/:token",
+  cache({
+    cacheName: "chart-cache",
+    cacheControl: "max-age=120",
+    wait: true,
+  }),
+  async (c) => {
+    try {
+      const params = ChartParamsSchema.parse(c.req.param());
+      const data = await fetchPriceChartData(
+        c.env,
+        params.start * 1000,
+        params.end * 1000,
+        params.range,
+        params.token,
+      );
+      return c.json({ table: data });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        c.json({ error: error.errors }, 400);
+      } else {
+        logger.error(error);
+        c.json({ error: "Internal server error" }, 500);
+      }
     }
-  }
-});
-// add /creator-tokens to get tokens created by a user
+  },
+);
+
 router.post("/creator-tokens", async (c) => {
   const user = c.get("user");
 
@@ -58,7 +68,6 @@ router.post("/creator-tokens", async (c) => {
 });
 
 router.get("/swaps/:mint", async (c) => {
-  // logger.log(`Swaps endpoint called for mint: ${c.req.param("mint")}`);
   try {
     const mint = c.req.param("mint");
 

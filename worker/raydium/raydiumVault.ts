@@ -132,6 +132,7 @@ export async function claim(
   position_nft: anchor.web3.PublicKey,
   poolId: anchor.web3.PublicKey,
   connection: anchor.web3.Connection,
+  claimer: anchor.web3.PublicKey,
 ) {
   const vault_config = getVaultConfig(program.programId);
   const [locked_authority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -158,14 +159,17 @@ export async function claim(
     cluster: "mainnet",
     disableFeatureCheck: true,
     disableLoadToken: false,
-    blockhashCommitment: "finalized",
+    blockhashCommitment: "confirmed",
   });
   const poolInfo = (
     await raydium.api.fetchPoolById({ ids: poolId.toString() })
   )[0];
+  console.log("poolInfo", poolInfo);
   const poolInfoJson = JSON.parse(JSON.stringify(poolInfo));
+  console.log("poolInfoJson", poolInfoJson);
   const pool_state = new anchor.web3.PublicKey(poolId.toString());
   const lp_mint = new anchor.web3.PublicKey(poolInfoJson.lpMint.address);
+  console.log("lp_mint", lp_mint.toString());
   const vault0_mint = new anchor.web3.PublicKey(
     poolInfo.mintA.address.toString(),
   );
@@ -185,24 +189,24 @@ export async function claim(
     connection,
     signerWallet,
     vault0_mint,
-    signerWallet.publicKey,
+    claimer,
   );
   await spl.getOrCreateAssociatedTokenAccount(
     connection,
     signerWallet,
     vault1_mint,
-    signerWallet.publicKey,
+    claimer,
   );
 
   const recv_token0_account = spl.getAssociatedTokenAddressSync(
     vault0_mint,
-    signerWallet.publicKey,
+    claimer,
     true,
     spl.TOKEN_PROGRAM_ID,
   );
   const recv_token1_account = spl.getAssociatedTokenAddressSync(
     vault1_mint,
-    signerWallet.publicKey,
+    claimer,
     true,
     spl.TOKEN_PROGRAM_ID,
   );

@@ -20,7 +20,7 @@ import InlineVanityWorker from "@/workers/vanityWorker?worker&inline"; // Added 
 const MAX_INITIAL_SOL = isDevnet ? 2.8 : 28;
 // Use the token supply and virtual reserves from environment or fallback to defaults
 const TOKEN_SUPPLY = Number(env.tokenSupply) || 1000000000;
-const VIRTUAL_RESERVES = Number(env.virtualReserves) || 2800000000;
+const VIRTUAL_RESERVES = Number(env.virtualReserves) || 100;
 
 // Tab types
 enum FormTab {
@@ -883,7 +883,7 @@ export const Create = () => {
 
   const balance = useSolBalance();
 
-  const maxUserSol = balance ? Math.max(0, Number(balance) - 0.05) : 0;
+  const maxUserSol = balance ? Math.max(0, Number(balance) - 0.025) : 0;
   // Use the smaller of MAX_INITIAL_SOL or the user's max available SOL
   const maxInputSol = Math.min(MAX_INITIAL_SOL, maxUserSol);
 
@@ -1967,9 +1967,8 @@ export const Create = () => {
       // Check if we're working with imported token data - ONLY do this check for IMPORT tab
       const storedTokenData = localStorage.getItem("import_token_data");
       if (storedTokenData && activeTab === FormTab.IMPORT) {
+        const tokenData = JSON.parse(storedTokenData);
         try {
-          const tokenData = JSON.parse(storedTokenData);
-
           // Show coin drop animation
           setShowCoinDrop(true);
 
@@ -2032,6 +2031,14 @@ export const Create = () => {
           navigate(`/token/${tokenData.mint}`);
           return;
         } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message.includes("Token already exists")
+          ) {
+            navigate(`/token/${tokenData.mint}`);
+            return;
+          }
+
           console.error("Error handling imported token:", error);
           if (error instanceof Error) {
             throw error; // Re-throw if it's a permission error
@@ -2068,8 +2075,8 @@ export const Create = () => {
       // Check if we're working with imported token data - ONLY do this check for IMPORT tab
       const storedTokenData = localStorage.getItem("import_token_data");
       if (storedTokenData && activeTab === FormTab.IMPORT) {
+        const tokenData = JSON.parse(storedTokenData);
         try {
-          const tokenData = JSON.parse(storedTokenData);
           // Check if the current wallet has permission to create this token
           // In dev mode, skip this check and allow any wallet to register
           const isCreatorNow =
@@ -2145,6 +2152,13 @@ export const Create = () => {
           navigate(`/token/${tokenData.mint}`);
           return;
         } catch (error) {
+          if (
+            error instanceof Error &&
+            error.message.includes("Token already exists")
+          ) {
+            navigate(`/token/${tokenData.mint}`);
+            return;
+          }
           console.error("Error handling imported token:", error);
           if (error instanceof Error) {
             throw error; // Re-throw if it's a permission error
@@ -3092,11 +3106,13 @@ export const Create = () => {
                   <input
                     type="text"
                     value={vanitySuffix}
-                    onChange={(e) => setVanitySuffix(e.target.value)} // Force uppercase
+                    onChange={(e) => {
+                      stopVanityGeneration(); // Stop generation when suffix changes
+                      setVanitySuffix(e.target.value);
+                    }} // Force uppercase
                     placeholder="FUN"
                     maxLength={5}
                     className={`bg-autofun-background-input w-20 py-1.5 px-2 ${suffixError && !suffixError.startsWith("Warning") && !suffixError.startsWith("Note") ? "border-red-500" : ""} text-white text-center font-mono focus:outline-none focus:border-white disabled:opacity-50`}
-                    disabled={isGeneratingVanity}
                   />
                   <button
                     type="button"
@@ -3282,7 +3298,7 @@ export const Create = () => {
                   Balance: {solBalance?.toFixed(2) ?? "0.00"} SOL
                   {isAuthenticated && isFormValid && insufficientBalance && (
                     <div className="text-red-500 mt-1">
-                      Insufficient SOL balance (need ~0.01 SOL for mint + buy
+                      Insufficient SOL balance (need ~0.05 SOL for mint + buy
                       amount)
                     </div>
                   )}

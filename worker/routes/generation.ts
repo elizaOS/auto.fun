@@ -2,6 +2,7 @@ import { fal } from "@fal-ai/client";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { and, eq, gte, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
+import { Buffer } from "node:buffer"; // Added for image decoding
 import crypto from "node:crypto";
 import { z } from "zod";
 import { requireAuth, verifyAuth } from "../auth";
@@ -13,13 +14,12 @@ import {
   tokens,
 } from "../db";
 import { Env } from "../env";
-import { logger } from "../logger";
+import { logger } from "../util";
 import { MediaGeneration } from "../types";
 import { uploadGeneratedImage } from "../uploader";
 import { getRpcUrl } from "../util";
 import { createTokenPrompt } from "./generation-prompts/create-token";
 import { enhancePrompt } from "./generation-prompts/enhance-prompt";
-import { Buffer } from "node:buffer"; // Added for image decoding
 
 // Enum for media types
 export enum MediaType {

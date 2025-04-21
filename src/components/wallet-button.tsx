@@ -178,7 +178,7 @@ const WalletButton = () => {
       ? "Connecting..."
       : isAuthenticated
         ? shortenAddress(displayPublicKey?.toString() || "")
-        : "Connect Wallet";
+        : "Connect";
 
   // Get wallet icon - use the stored state which will be populated
   // from either wallet.adapter.icon or our own adapter instance
@@ -190,7 +190,7 @@ const WalletButton = () => {
       <div className="relative" ref={dropdownRef}>
         <Button
           size="large"
-          className="p-2 md:px-3"
+          className="p-2 md:px-3 border-none bg-autofun-background-action-primary"
           onClick={() => setMenuOpen(!menuOpen)}
         >
           <div className="flex items-center md:gap-2.5 justify-between m-auto">
@@ -269,7 +269,7 @@ const WalletButton = () => {
         setVisible(true);
       }}
       disabled={connecting || isAuthenticating}
-      className="min-w-[150px]"
+      className="xl:min-w-[150px]"
     >
       {buttonText}
     </Button>

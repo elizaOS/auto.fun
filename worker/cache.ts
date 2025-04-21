@@ -1,7 +1,7 @@
 import { and, eq, gt, lt, sql } from "drizzle-orm";
 import { cachePrices, getDB } from "./db";
 import { Env } from "./env";
-import { logger } from "./logger";
+import { logger } from "./util";
 
 /**
  * Unified cache system using Drizzle/D1 for all caching needs

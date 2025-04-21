@@ -1,12 +1,20 @@
-import { TokenData } from "../types/tokenData";
-import { eq } from "drizzle-orm";
+import { AnchorProvider, Program } from "@coral-xyz/anchor";
+import { Connection, Keypair } from "@solana/web3.js";
+import { and, eq } from "drizzle-orm";
+import { updateTokenInDB } from "../../cron";
 import { getDB, tokens } from "../../db";
 import { Env } from "../../env";
-import { updateTokenInDB } from "../../cron";
-import { getWebSocketClient } from "../../websocket-client";
-import { retryOperation } from "../utils";
-import { logger } from "../../logger";
+import * as IDL from "../../target/idl/autofun.json";
+import { Autofun } from "../../target/types/autofun";
 import { updateTokenSupplyFromChain } from "../../tokenSupplyHelpers";
+import { Wallet } from "../../tokenSupplyHelpers/customWallet";
+import { logger } from "../../util";
+import { getWebSocketClient } from "../../websocket-client";
+import { TokenMigrator } from "../migration/migrateToken";
+import * as raydium_vault_IDL from "../raydium_vault.json";
+import { RaydiumVault } from "../types/raydium_vault";
+import { TokenData } from "../types/tokenData";
+import { retryOperation } from "../utils";
 
 export interface LockResult {
   txId: string;
@@ -123,6 +131,7 @@ export async function executeMigrationStep(
   env: Env,
   token: TokenData,
   step: MigrationStep,
+  nextStep: MigrationStep,
   retryCount: number = 3,
   delay: number = 2000,
 ): Promise<MigrationStepResult> {
@@ -138,16 +147,20 @@ export async function executeMigrationStep(
     updatedAt: new Date().toISOString(),
   };
   Object.assign(token, result.extraData);
-
+  console.log(`${step.name} result:`, result);
   // Update the DB record
   const tokenData: Partial<TokenData> = {
     mint: token.mint,
     migration: token.migration,
     lastUpdated: new Date().toISOString(),
+    status: "migrating",
     ...result.extraData,
   };
+  const nextStepName = nextStep ? nextStep.name : null;
+  token.migration.lastStep = nextStepName ?? "done";
+
   await updateTokenInDB(env, tokenData);
-  await saveMigrationState(env, token, step.name);
+  // await saveMigrationState(env, token, step.name);
 
   const ws = getWebSocketClient(env);
   if (step.eventName) {
@@ -237,4 +250,62 @@ export async function getMigrationState(env: Env, token: TokenData) {
     }
   }
   return null;
+}
+
+export async function checkMigratingTokens(env: Env, limit: number) {
+  try {
+    const db = getDB(env);
+    const migratingTokens = await db
+      .select()
+      .from(tokens)
+      .where(and(eq(tokens.status, "migrating")))
+      .execute();
+
+    const connection = new Connection(
+      env.NETWORK === "devnet"
+        ? env.DEVNET_SOLANA_RPC_URL
+        : env.MAINNET_SOLANA_RPC_URL,
+    );
+    const wallet = Keypair.fromSecretKey(
+      Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY)),
+    );
+    const provider = new AnchorProvider(
+      connection,
+      new Wallet(wallet),
+      AnchorProvider.defaultOptions(),
+    );
+    const program = new Program<RaydiumVault>(
+      raydium_vault_IDL as any,
+      provider,
+    );
+    const autofunProgram = new Program<Autofun>(IDL, provider);
+
+    const tokenMigrator = new TokenMigrator(
+      env,
+      connection,
+      new Wallet(wallet),
+      program,
+      autofunProgram,
+      provider,
+    );
+
+    // Filter out tokens that have migration as null or empty object or migration.status is not locked
+    const filteredTokens = migratingTokens.filter((token) => {
+      const migration = token.migration ? JSON.parse(token.migration) : null;
+      return (
+        migration &&
+        (typeof migration === "object" || migration.status !== "locked")
+      );
+    });
+    // Limit the number of tokens to the specified limit
+    const finalList = filteredTokens.slice(0, limit);
+
+    for (const token of finalList) {
+      const tokenM = await getToken(env, token.mint);
+      // await tokenMigrator.migrateToken(tokenM!);
+    }
+  } catch (error) {
+    logger.error(`Error fetching migrating tokens: ${error}`);
+    throw new Error("Failed to fetch migrating tokens");
+  }
 }

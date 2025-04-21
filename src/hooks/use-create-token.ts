@@ -1,3 +1,9 @@
+import { TokenMetadata } from "@/types/form.type";
+import { env } from "@/utils/env";
+import { Autofun, SEED_CONFIG, useProgram } from "@/utils/program";
+import { launchAndSwapTx } from "@/utils/swapUtils";
+import { BN, Program } from "@coral-xyz/anchor";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import {
   ComputeBudgetProgram,
   Connection,
@@ -7,14 +13,8 @@ import {
   Transaction,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { useCallback } from "react";
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { BN, Program } from "@coral-xyz/anchor";
 import { useMutation } from "@tanstack/react-query";
-import { TokenMetadata } from "@/types/form.type";
-import { Autofun, SEED_CONFIG, useProgram } from "@/utils/program";
-import { launchAndSwapTx } from "@/utils/swapUtils";
-import { env } from "@/utils/env";
+import { useCallback } from "react";
 
 const useCreateTokenMutation = () => {
   return useMutation({

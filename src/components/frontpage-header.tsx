@@ -2,7 +2,8 @@ import * as CANNON from "cannon-es";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { IToken } from "@/types";
-import { getToken } from "@/utils/api";
+// import { getToken } from "@/utils/api";
+import { resizeImage } from "@/utils";
 
 // Add TypeScript declaration for CANNON to fix the errors
 declare module "cannon-es" {
@@ -307,72 +308,72 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     raycaster.setFromCamera(mouse, cameraRef.current);
 
     // Check for intersections with dice
-    const intersects = raycaster.intersectObjects(diceRef.current);
+    // const intersects = raycaster.intersectObjects(diceRef.current);
 
-    if (intersects.length > 0) {
-      // Get the clicked die
-      const clickedDie = intersects[0].object as THREE.Mesh;
+    // if (intersects.length > 0) {
+    //   // Get the clicked die
+    //   const clickedDie = intersects[0].object as THREE.Mesh;
 
-      // Get the token address from the die's userData
-      const tokenAddress = clickedDie.userData?.tokenAddress;
+    //   // Get the token address from the die's userData
+    //   const tokenAddress = clickedDie.userData?.tokenAddress;
 
-      if (tokenAddress) {
-        // If we already have a selected cube, deselect it
-        if (selectedCube) {
-          // Remove glow effect
-          if (Array.isArray(selectedCube.material)) {
-            selectedCube.material.forEach((mat) => {
-              if (mat instanceof THREE.MeshStandardMaterial) {
-                mat.emissiveIntensity = 0.3;
-              }
-            });
+    //   if (tokenAddress) {
+    //     // If we already have a selected cube, deselect it
+    //     if (selectedCube) {
+    //       // Remove glow effect
+    //       if (Array.isArray(selectedCube.material)) {
+    //         selectedCube.material.forEach((mat) => {
+    //           if (mat instanceof THREE.MeshStandardMaterial) {
+    //             mat.emissiveIntensity = 0.3;
+    //           }
+    //         });
+    //       }
+    //       setSelectedCube(null);
+    //       setSelectedTokenData(null);
+    //     } else {
+    //       // Select the new cube
+    //       setSelectedCube(clickedDie);
+    //       // Add glow effect
+    //       if (Array.isArray(clickedDie.material)) {
+    //         clickedDie.material.forEach((mat) => {
+    //           if (mat instanceof THREE.MeshStandardMaterial) {
+    //             mat.emissiveIntensity = 1.0;
+    //           }
+    //         });
+    //       }
+    //       // Fetch token data
+    //       fetchTokenData(tokenAddress);
+    //     }
+    //   }
+    // } else {
+    // If clicking background and we have a selected cube, deselect it
+    if (selectedCube) {
+      // Remove glow effect
+      if (Array.isArray(selectedCube.material)) {
+        selectedCube.material.forEach((mat) => {
+          if (mat instanceof THREE.MeshStandardMaterial) {
+            mat.emissiveIntensity = 0.3;
           }
-          setSelectedCube(null);
-          setSelectedTokenData(null);
-        } else {
-          // Select the new cube
-          setSelectedCube(clickedDie);
-          // Add glow effect
-          if (Array.isArray(clickedDie.material)) {
-            clickedDie.material.forEach((mat) => {
-              if (mat instanceof THREE.MeshStandardMaterial) {
-                mat.emissiveIntensity = 1.0;
-              }
-            });
-          }
-          // Fetch token data
-          fetchTokenData(tokenAddress);
-        }
+        });
       }
+      setSelectedCube(null);
+      setSelectedTokenData(null);
     } else {
-      // If clicking background and we have a selected cube, deselect it
-      if (selectedCube) {
-        // Remove glow effect
-        if (Array.isArray(selectedCube.material)) {
-          selectedCube.material.forEach((mat) => {
-            if (mat instanceof THREE.MeshStandardMaterial) {
-              mat.emissiveIntensity = 0.3;
-            }
-          });
-        }
-        setSelectedCube(null);
-        setSelectedTokenData(null);
-      } else {
-        // Only apply force if no cube is selected
-        applyForceToAllDice(event.nativeEvent);
-      }
+      // Only apply force if no cube is selected
+      applyForceToAllDice(event.nativeEvent);
     }
+    // }
   };
 
   // Function to fetch token data
-  const fetchTokenData = async (tokenAddress: string) => {
-    try {
-      const data = await getToken({ address: tokenAddress });
-      setSelectedTokenData(data as IToken);
-    } catch (error) {
-      console.error("Error fetching token data:", error);
-    }
-  };
+  // const fetchTokenData = async (tokenAddress: string) => {
+  //   try {
+  //     const data = await getToken({ address: tokenAddress });
+  //     setSelectedTokenData(data as IToken);
+  //   } catch (error) {
+  //     console.error("Error fetching token data:", error);
+  //   }
+  // };
 
   // Apply force to all dice when clicking background
   // @ts-ignore
@@ -760,7 +761,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         image: fallbackTexture,
       };
       const dieMaterials = await createDieMaterialsWithSameTexture(
-        `${tokenData.image}?rand=${new Date().getTime()}`,
+        resizeImage(tokenData.image, 100, 100),
       );
       const die = new THREE.Mesh(diceGeometry, dieMaterials);
 

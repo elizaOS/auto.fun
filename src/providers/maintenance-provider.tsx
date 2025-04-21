@@ -15,10 +15,16 @@ export default function MainentenaceProvider({ children }: PropsWithChildren) {
   if (isEnabled)
     return (
       <div className="h-screen flex items-center justify-center text-white">
-        <div className="flex items-center flex-col gap-4">
-          <h1 className="text-2xl">Auto.fun</h1>
-          <h2 className="text-base">
-            We are undergoing maintenance and will be back soon.
+        <div className="flex items-center flex-col gap-4 p-4">
+          <img
+            src="/logo.png"
+            height={128}
+            width={128}
+            alt="logo"
+            className="size-24"
+          />
+          <h2 className="text-base text-center whitespace-pre-line">
+            We are undergoing maintenance.{"\n"}Will be back soon.
           </h2>
         </div>
       </div>

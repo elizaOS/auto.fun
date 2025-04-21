@@ -1,10 +1,9 @@
 import { getConfigAccount } from "@/hooks/use-config-account";
 import { ConfigAccount } from "@/types";
-import { env } from "@/utils/env";
 import { Autofun } from "@/utils/program";
 import { BN, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
-
+// import { toast } from "react-toastify";
 /**
  * Converts a decimal fee (e.g., 0.05 for 5%) to basis points (5% = 500 basis points)
  */
@@ -25,15 +24,6 @@ export function calculateAmountOutSell(
   platformSellFee: number,
   reserveToken: number,
 ): number {
-  console.log(
-    "calculateAmountOutSell",
-    reserveLamport,
-    amount,
-    _tokenDecimals,
-    platformSellFee,
-    reserveToken,
-  );
-
   // Input validation
   if (reserveLamport < 0)
     throw new Error("reserveLamport must be non-negative");
@@ -128,8 +118,6 @@ function calculateAmountOutBuy(
   reserveLamport: number,
   platformBuyFee: number,
 ): number {
-  const reserveTokenBN2 = new BN(reserveToken.toString());
-  console.log("reserveTokenBN2", reserveTokenBN2.toString());
   const feeBasisPoints = new BN(convertToBasisPoints(platformBuyFee));
   const amountBN = new BN(amount);
 
@@ -156,14 +144,6 @@ export const getSwapAmount = async (
   reserveToken: number,
   reserveLamport: number,
 ) => {
-  console.log(
-    "swap amount input:",
-    amount,
-    style,
-    reserveToken,
-    reserveLamport,
-  );
-
   const configAccount = await getConfigAccount(program);
 
   // Apply platform fee
@@ -186,8 +166,6 @@ export const getSwapAmount = async (
       reserveLamport,
       feePercent,
     );
-
-    console.log("estimated out:", estimatedOutput);
   } else {
     // Sell
     estimatedOutput = calculateAmountOutSell(
@@ -199,8 +177,6 @@ export const getSwapAmount = async (
     );
   }
 
-  console.log("swap amount:", estimatedOutput);
-
   return estimatedOutput;
 };
 
@@ -211,6 +187,7 @@ export const getSwapAmountJupiter = async (
   slippageBps: number = 100,
 ) => {
   try {
+    if (amount === 0) return 0;
     // Jupiter uses the following constant to represent SOL
     const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
 
@@ -221,7 +198,6 @@ export const getSwapAmountJupiter = async (
     // 1. Get a quote from Jupiter.
     const feePercent = 0.2;
     const feeBps = feePercent * 100;
-    // Add platform fee to the quote
     const quoteUrl = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=${slippageBps}&restrictIntermediateTokens=true&platformFeeBps=${feeBps}`; // this needs to change to a paid version
     const quoteRes = await fetch(quoteUrl);
 
@@ -230,11 +206,12 @@ export const getSwapAmountJupiter = async (
       throw new Error(`Failed to fetch quote from Jupiter: ${errorMsg}`);
     }
     const quoteResponse = (await quoteRes.json()) as { outAmount: string };
-    console.log(quoteResponse, "quoteResponse");
+
     const estimatedOutput = quoteResponse.outAmount;
     return Number(estimatedOutput);
   } catch (error) {
     console.error("Error fetching swap amount from Jupiter:", error);
+    // toast.error("Error fetching swap amount from Jupiter");
     return 0;
   }
 };
@@ -264,13 +241,6 @@ export const swapIx = async (
   );
 
   const deadline = Math.floor(Date.now() / 1000) + 120;
-
-  console.log("program swap:", {
-    amount,
-    style,
-    minOutput,
-    deadline,
-  });
 
   // Apply the fee instruction to the transaction
   const tx = await program.methods
@@ -320,7 +290,6 @@ export const getJupiterSwapIx = async (
     throw new Error(`Failed to fetch quote from Jupiter: ${errorMsg}`);
   }
   const quoteResponse = await quoteRes.json();
-  console.log("dev address", env.devAddress);
 
   const additionalIxs = [] as any;
 

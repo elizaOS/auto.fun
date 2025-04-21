@@ -4,6 +4,7 @@ import Loader from "@/components/loader";
 import SkeletonImage from "@/components/skeleton-image";
 import AdminSection from "@/components/token-sections/admin";
 import AgentsSection from "@/components/token-sections/agents";
+import ChatSection from "@/components/token-sections/chat";
 import GenerationSection from "@/components/token-sections/generation";
 import TokenStatus from "@/components/token-status";
 import Trade from "@/components/trade";
@@ -19,8 +20,10 @@ import {
   formatNumberSubscript,
   fromNow,
   LAMPORTS_PER_SOL,
+  resizeImage,
 } from "@/utils";
 import { getToken, queryClient } from "@/utils/api";
+import { getAuthToken } from "@/utils/auth";
 import { env } from "@/utils/env";
 import { getSocket } from "@/utils/socket";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -31,6 +34,14 @@ import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
 import { Tooltip } from "react-tooltip";
 import { twMerge } from "tailwind-merge";
+
+// List of admin wallet addresses (copied from worker/routes/adminAddresses.ts)
+const adminAddresses: string[] = [
+  "8gikQQppeAGd9m5y57sW4fYyZwrJZoyniHD658arcnnx", // Joey (Santi)
+  "ASktkp5ERQmmHChzSEqGbWNrqAdDdrJjS8AJG5G3cTCh", // Boris (Borko)
+  "DScqtGwFoDTme2Rzdjpdb2w7CtuKc6Z8KF7hMhbx8ugQ", // Shaw
+  "5kNQWceagenBAr3SjRNVtusNBE7dFGcozw8CEgM5HBt9", // Accelxr
+];
 
 // Remove CSS styles
 // const styles = `
@@ -45,8 +56,6 @@ import { twMerge } from "tailwind-merge";
 //     overflow: hidden;
 //   }
 // `;
-
-const socket = getSocket();
 
 // Add a custom component for middle ellipsis
 function MiddleEllipsis({ text }: { text?: string; suffix?: string }) {
@@ -72,7 +81,11 @@ function MiddleEllipsis({ text }: { text?: string; suffix?: string }) {
   const suffix = text.substring(text.length - 8);
 
   return (
-    <div ref={elementRef} className="font-dm-mono text-center" title={text}>
+    <div
+      ref={elementRef}
+      className="font-dm-mono text-center overflow-hidden"
+      title={text}
+    >
       {showFull ? text : `${prefix}...${suffix}`}
     </div>
   );
@@ -85,11 +98,19 @@ export default function Page() {
   const normalizedWallet = publicKey?.toString();
   const { solPrice: contextSolPrice } = useSolPriceContext();
 
+  // ---- Moderator Check using hardcoded list ----
+  const isModerator = publicKey
+    ? adminAddresses.includes(publicKey.toString())
+    : false;
+  // ---- End Moderator Check ----
+
   // Load active tab from localStorage or default to "chart"
-  const [activeTab, setActiveTab] = useState<"chart" | "ai">(() => {
+  const [activeTab, setActiveTab] = useState<"chart" | "ai" | "chat">(() => {
     if (typeof window !== "undefined") {
       const savedTab = localStorage.getItem(`token-tab-${address}`);
-      return savedTab === "chart" || savedTab === "ai" ? savedTab : "chart";
+      return savedTab === "chart" || savedTab === "ai" || savedTab === "chat"
+        ? savedTab
+        : "chart";
     }
     return "chart";
   });
@@ -123,7 +144,10 @@ export default function Page() {
         throw error;
       }
     },
-    refetchInterval: 20_000,
+    refetchInterval: 7500,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {
@@ -147,6 +171,7 @@ export default function Page() {
   }, [address]);
 
   useEffect(() => {
+    const socket = getSocket();
     socket.emit("subscribe", address);
 
     return () => {
@@ -156,13 +181,12 @@ export default function Page() {
 
   const token = tokenQuery?.data as IToken;
 
-  const solPriceUSD = contextSolPrice || token?.solPriceUSD || 0;
+  // Check if user is the token owner
+  const isTokenOwner = publicKey?.toString() === token?.creator;
+
   const currentPrice = token?.currentPrice || 0;
   const tokenPriceUSD = token?.tokenPriceUSD || 0;
   const volume24h = token?.volume24h || 0;
-  const finalTokenPrice = Number(env.finalTokenPrice ?? 0.000000451);
-  const finalTokenUSDPrice = finalTokenPrice * solPriceUSD;
-  const graduationMarketCap = finalTokenUSDPrice * 1_000_000_000;
 
   const { tokenBalance } = useTokenBalance({
     tokenId: token?.mint || (params?.address as string),
@@ -176,10 +200,21 @@ export default function Page() {
     }
 
     try {
+      const authToken = getAuthToken();
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      }
+
       const response = await fetch(`${env.apiUrl}/api/claimFees`, {
         method: "POST",
         credentials: "include",
         body: JSON.stringify({ tokenMint: token?.mint }),
+        headers,
       });
 
       if (!response.ok) {
@@ -193,11 +228,11 @@ export default function Page() {
     }
   };
 
-  if (tokenQuery?.isLoading) {
+  if (tokenQuery?.isPending) {
     return <Loader />;
   }
 
-  if (tokenQuery?.isError) {
+  if (!tokenQuery?.data && tokenQuery?.isError) {
     return (
       <div className="flex flex-col gap-4 items-center justify-center h-[50vh]">
         <h2 className="text-2xl font-bold text-autofun-text-primary">
@@ -277,7 +312,10 @@ export default function Page() {
           <div className="pt-0 flex flex-col gap-3">
             <div className="relative overflow-hidden">
               <div className="w-full aspect-square">
-                <SkeletonImage src={token?.image} alt="image" />
+                <SkeletonImage
+                  src={resizeImage(token?.image, 475, 475)}
+                  alt="image"
+                />
               </div>
 
               {/* Token name overlapping at top - with drop shadow */}
@@ -423,9 +461,8 @@ export default function Page() {
                   </div>
                 );
               })()}
-            {token?.creator === normalizedWallet && !token?.imported && (
-              <AdminSection />
-            )}
+            {/* Render AdminSection only for moderators or token owners */}
+            {(isModerator || isTokenOwner) && <AdminSection />}
           </div>
         </div>
 
@@ -462,7 +499,7 @@ export default function Page() {
                     />
                   </button>
                   <button
-                    className={`px-4 py-3 text-autofun-text-primary font-medium cursor-pointer ${
+                    className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer ${
                       activeTab === "ai"
                         ? "bg-autofun-background-highlight text-black"
                         : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
@@ -473,14 +510,36 @@ export default function Page() {
                     AI Create
                     <img
                       src={
-                        activeTab === "chart"
-                          ? "/token/createon.svg"
-                          : "/token/createoff.svg"
+                        activeTab === "ai"
+                          ? "/token/createoff.svg"
+                          : "/token/createon.svg"
                       }
                       className={`size-4 inline-block ml-1.5 ${
-                        activeTab === "chart" ? "text-black" : ""
+                        activeTab === "ai" ? "text-black" : "text-white"
                       }`}
                       alt="chart icon"
+                    />
+                  </button>
+                  <button
+                    className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer ${
+                      activeTab === "chat"
+                        ? "bg-autofun-background-highlight text-black"
+                        : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
+                    }`}
+                    onClick={() => setActiveTab("chat")}
+                    style={{ marginTop: "-2px", paddingTop: "14px" }}
+                  >
+                    Chat
+                    <img
+                      src={
+                        activeTab === "chat"
+                          ? "/token/chatoff.svg"
+                          : "/token/chaton.svg"
+                      }
+                      className={`size-4 inline-block ml-1.5 ${
+                        activeTab === "chat" ? "text-black" : ""
+                      }`}
+                      alt="chat icon"
                     />
                   </button>
                 </div>
@@ -507,6 +566,11 @@ export default function Page() {
               {activeTab === "ai" && (
                 <div id="generation" className="scroll-mt-16">
                   <GenerationSection />
+                </div>
+              )}
+              {activeTab === "chat" && (
+                <div id="chat" className="mt-2">
+                  <ChatSection />
                 </div>
               )}
             </div>
@@ -592,8 +656,8 @@ export default function Page() {
                 </div>
                 {token?.status !== "migrated" ? (
                   <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">
-                    Graduate this coin at{" "}
-                    {formatNumber(graduationMarketCap, true)} market cap.{"\n"}
+                    {/* Graduate this coin at{" "}
+                    {formatNumber(graduationMarketCap, true)} market cap.{"\n"} */}
                     There is{" "}
                     {formatNumber(
                       (token?.reserveLamport - token?.virtualReserves) /

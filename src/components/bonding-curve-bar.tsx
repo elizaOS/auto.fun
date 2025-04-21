@@ -101,7 +101,7 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
 
       {/* Percentage indicator - position changes based on progress */}
       <div
-        className="absolute h-full flex items-center z-30"
+        className="absolute h-full -ml-8 md:-ml-6 flex items-center z-30"
         style={{
           left: getPercentagePosition(),
           transition: "left 1.5s ease-in-out",

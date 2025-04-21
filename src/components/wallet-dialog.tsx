@@ -35,7 +35,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
     wallet: connectedWallet,
   } = useWallet();
   const { visible, setVisible } = useWalletModal();
-  const { setAuthToken } = useAuthentication();
+  const { handleSuccessfulAuth } = useAuthentication();
 
   const [installedWallets] = useMemo(() => {
     const installed: Wallet[] = [];
@@ -307,41 +307,9 @@ export const WalletModal: FC<WalletModalProps> = () => {
 
         const authData = (await authResponse.json()) as AuthResponse;
 
-        // Store the token
-        if (authData.token) {
-          // Store token in both formats for compatibility
-          // 1. Directly as authToken (old method) - without JSON.stringify for JWT tokens
-          setAuthToken(authData.token);
-
-          // 2. In enhanced walletAuth storage structure
-          const authStorage = {
-            token: authData.token,
-            walletAddress: authData.user?.address || publicKeyStr,
-            timestamp: Date.now(),
-          };
-
-          try {
-            localStorage.setItem("walletAuth", JSON.stringify(authStorage));
-            // Double check it was stored correctly
-            const storedData = localStorage.getItem("walletAuth");
-            if (storedData) {
-              try {
-                // @ts-ignore
-                const parsed = JSON.parse(storedData);
-              } catch (e) {
-                console.error(
-                  "Error parsing stored token for verification:",
-                  e,
-                );
-              }
-            } else {
-              console.error(
-                "Token storage verification failed - no data found after storage",
-              );
-            }
-          } catch (e) {
-            console.error("Error storing wallet auth data:", e);
-          }
+        // Store the token using the new handler
+        if (authData.token && authData.user?.address) {
+          handleSuccessfulAuth(authData.token);
         } else {
           console.warn("No token received from server during authentication");
           // Generate a fallback token for compatibility
@@ -353,21 +321,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
 
           if (walletAddress) {
             const walletSpecificToken = `wallet_${walletAddress}_${Date.now()}`;
-
-            // Store in both formats
-            setAuthToken(walletSpecificToken);
-
-            const authStorage = {
-              token: walletSpecificToken,
-              walletAddress: walletAddress,
-              timestamp: Date.now(),
-            };
-
-            try {
-              localStorage.setItem("walletAuth", JSON.stringify(authStorage));
-            } catch (e) {
-              console.error("Error storing fallback wallet auth data:", e);
-            }
+            handleSuccessfulAuth(walletSpecificToken);
           } else {
             console.error(
               "Cannot create fallback token: No wallet address available",
@@ -388,7 +342,6 @@ export const WalletModal: FC<WalletModalProps> = () => {
       setVisible(false);
     },
     onError: (e) => {
-      // TODO - Replace for proper toaster again
       console.error("Connection error:", e);
     },
   });
@@ -408,11 +361,11 @@ export const WalletModal: FC<WalletModalProps> = () => {
       <DialogContent hideCloseButton className="max-w-[496px]">
         <div className="p-3.5 border-b relative">
           <h1 className="text-xl font-satoshi font-medium tracking-[-0.018em] text-autofun-text-highlight">
-            Connect Wallet
+            Connect
           </h1>
           <button
             onClick={() => setVisible(false)}
-            className="cursor-pointer absolute top-4 right-4 text-autofun-background-disabled cursor-pointer"
+            className="absolute top-4 right-4 text-autofun-background-disabled cursor-pointer"
             aria-label="Close"
           >
             <svg
@@ -478,7 +431,7 @@ const WalletListItem: FC<{
     <li>
       <button
         onClick={handleClick}
-        className="cursor-pointer cursor-pointer bg-autofun-background-action-primary w-full flex items-center justify-between px-4 py-3 transition-colors"
+        className="cursor-pointer bg-autofun-background-action-primary w-full flex items-center justify-between px-4 py-3 transition-colors"
         tabIndex={tabIndex}
       >
         <div className="flex items-center gap-1 m-auto">

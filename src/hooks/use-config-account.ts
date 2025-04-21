@@ -2,7 +2,6 @@ import { queryClient } from "@/utils/api";
 import { Autofun, SEED_CONFIG } from "@/utils/program";
 import { Program } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
-
 // The query key should be consistent
 const configAccountQueryKey = ["configAccount"];
 

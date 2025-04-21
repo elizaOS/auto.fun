@@ -50,13 +50,19 @@ router.post("/webhook", async (c) => {
     .array()
     .parse(body);
 
-  for (const event of events) {
-    await processTransactionLogs(
-      c.env,
-      event.meta.logMessages,
-      event.transaction.signatures[0],
-    );
-  }
+  c.executionCtx.waitUntil(
+    (async () => {
+      await Promise.all(
+        events.map((event) =>
+          processTransactionLogs(
+            c.env,
+            event.meta.logMessages,
+            event.transaction.signatures[0],
+          ),
+        ),
+      );
+    })(),
+  );
 
   return c.json({
     message: "Completed",
@@ -98,21 +104,21 @@ router.post("/codex-webhook", async (c) => {
 
   const webhookBody = WebhookTokenPairEvent.parse(body);
 
-  const hash = crypto
-    .createHash("sha256")
-    .update(c.env.CODEX_WEBHOOK_AUTH_TOKEN + webhookBody.deduplicationId)
-    .digest("hex");
+  // const hash = crypto
+  //   .createHash("sha256")
+  //   .update(c.env.CODEX_WEBHOOK_AUTH_TOKEN + webhookBody.deduplicationId)
+  //   .digest("hex");
 
-  const isFromCodex = hash === webhookBody.hash;
+  // const isFromCodex = hash === webhookBody.hash;
 
-  if (!isFromCodex) {
-    return c.json(
-      {
-        message: "Unauthorized",
-      },
-      401,
-    );
-  }
+  // if (!isFromCodex) {
+  //   return c.json(
+  //     {
+  //       message: "Unauthorized",
+  //     },
+  //     401,
+  //   );
+  // }
 
   const swap = webhookBody.data.event;
   // const db = getDB(c.env);

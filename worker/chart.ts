@@ -6,7 +6,7 @@ import {
 } from "./codex";
 import { getDB, swaps, tokens } from "./db";
 import { Env } from "./env";
-import { logger } from "./logger";
+import { logger } from "./util";
 
 // Define interface for the API response types
 interface DexScreenerPair {
@@ -37,22 +37,6 @@ interface ChartResponse {
 // For devnet testing - placeholder token address for locked tokens since there are none in devnet
 export const DEV_TEST_TOKEN_ADDRESS =
   "ANNTWQsQ9J3PeM6dXLjdzwYcSzr51RREWQnjuuCEpump";
-
-// Constants
-const MAX_CONCURRENT_UPDATES = 3; // Maximum concurrent holder updates
-
-// const VALID_PROGRAM_ID = new Set(
-//   [
-//     CREATE_CPMM_POOL_PROGRAM.toBase58(),
-//     DEV_CREATE_CPMM_POOL_PROGRAM.toBase58()
-//   ])
-// const isValidCpmm = (id: string) => VALID_PROGRAM_ID.has(id)
-
-// Default values for when env is not available
-export const DEFAULT_TOKEN_SUPPLY = "1000000000000000";
-export const DEFAULT_DECIMALS = 6;
-export const DEFAULT_VIRTUAL_RESERVES = "100000000";
-export const DEFAULT_CURVE_LIMIT = "1000000000";
 
 export interface PriceFeedInfo {
   price: number;
@@ -340,6 +324,10 @@ export function getCandleData(priceFeeds: PriceFeedInfo[], range: number) {
 
   const cdFeeds: CandlePrice[] = [];
   let pIndex = 0;
+
+  // Keep track of the last valid candle to fill gaps
+  let lastValidCandle: CandlePrice | null = null;
+
   for (
     let curCdStart = cdStart;
     curCdStart <= cdEnd;
@@ -361,15 +349,32 @@ export function getCandleData(priceFeeds: PriceFeedInfo[], range: number) {
       if (priceHistory[pIndex].ts >= curCdStart + candlePeriod) break;
       pIndex++;
     }
-    if (prevIndex !== pIndex)
-      cdFeeds.push({
+
+    if (prevIndex !== pIndex) {
+      // We have data for this time period
+      const newCandle = {
         open: st,
         high: hi,
         low: lo,
         close: en,
         volume: vol,
         time: curCdStart,
+      };
+      cdFeeds.push(newCandle);
+      lastValidCandle = newCandle;
+    } else if (lastValidCandle) {
+      // No data for this time period, but we have a previous candle
+      // Fill with the last known price (close price of the last candle)
+      cdFeeds.push({
+        open: lastValidCandle.close,
+        high: lastValidCandle.close,
+        low: lastValidCandle.close,
+        close: lastValidCandle.close,
+        volume: 0,
+        time: curCdStart,
       });
+    }
+    // If we don't have a lastValidCandle, we skip this period (no data yet)
   }
 
   return cdFeeds;

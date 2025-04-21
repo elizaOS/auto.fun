@@ -90,32 +90,32 @@ export const useSwap = () => {
       );
 
       ixs.push(ix);
+
+      // Define SOL fee amounts based on speed
+      let solFee;
+      switch (speed) {
+        case "fast":
+          solFee = 0.00005;
+          break;
+        case "turbo":
+          solFee = 0.0005;
+          break;
+        case "ultra":
+          solFee = 0.005;
+          break;
+        default:
+          solFee = 0.00005;
+      }
+      // Convert SOL fee to lamports (1 SOL = 1e9 lamports)
+      const feeLamports = Math.floor(solFee * 1e9);
+
+      // Create a transaction instruction to apply the fee
+      const feeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: feeLamports,
+      });
+
+      ixs.push(feeInstruction);
     }
-
-    // Define SOL fee amounts based on speed
-    let solFee;
-    switch (speed) {
-      case "fast":
-        solFee = 0.00005;
-        break;
-      case "turbo":
-        solFee = 0.0005;
-        break;
-      case "ultra":
-        solFee = 0.005;
-        break;
-      default:
-        solFee = 0.00005;
-    }
-    // Convert SOL fee to lamports (1 SOL = 1e9 lamports)
-    const feeLamports = Math.floor(solFee * 1e9);
-
-    // Create a transaction instruction to apply the fee
-    const feeInstruction = ComputeBudgetProgram.setComputeUnitPrice({
-      microLamports: feeLamports,
-    });
-
-    ixs.push(feeInstruction);
 
     return ixs;
   };
@@ -150,6 +150,8 @@ export const useSwap = () => {
       token,
     });
 
+    console.log("Instructions being added:", ixs);
+
     const tx = new Transaction().add(...(Array.isArray(ixs) ? ixs : [ixs]));
     const { blockhash } = await connection.getLatestBlockhash();
     tx.feePayer = wallet.publicKey;
@@ -159,7 +161,9 @@ export const useSwap = () => {
     const simulation = await connection.simulateTransaction(tx);
 
     if (simulation.value.err) {
-      throw new Error(`Transaction simulation failed: ${simulation.value.err}`);
+      throw new Error(
+        `Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`,
+      );
     }
 
     const versionedTx = new VersionedTransaction(tx.compileMessage());
