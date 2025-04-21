@@ -641,15 +641,15 @@ async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-        { name: "mainnet", url: mainnetUrl },
-        { name: "devnet", url: devnetUrl },
-      ]
+      { name: "mainnet", url: mainnetUrl },
+      { name: "devnet", url: devnetUrl },
+    ]
     : [
-        {
-          name: c.env.NETWORK || "devnet",
-          url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-        },
-      ];
+      {
+        name: c.env.NETWORK || "devnet",
+        url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+      },
+    ];
 
   logger.log(
     `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
@@ -867,7 +867,7 @@ export async function updateHoldersCache(
           address: ownerAddress,
           amount: tokenBalance,
           percentage: 0, // Will calculate after we have the total
-          lastUpdated: new Date().toISOString(),
+          lastUpdated: new Date(),
         });
       } catch (error: any) {
         logger.error(`Error processing account for ${mint}:`, error);
@@ -942,7 +942,7 @@ export async function updateHoldersCache(
       .update(tokens)
       .set({
         holderCount: holders.length, // Use full count, not just what we saved
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: new Date(),
       })
       .where(eq(tokens.mint, mint));
 
@@ -1580,8 +1580,8 @@ tokenRouter.get("/token/:mint", async (c) => {
       token.status === "migrated"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-            (token.curveLimit - token.virtualReserves)) *
-          100;
+          (token.curveLimit - token.virtualReserves)) *
+        100;
 
     // Get token holders count
     const holdersCountQuery = await db
@@ -1611,7 +1611,7 @@ tokenRouter.get("/token/:mint", async (c) => {
         ...(tokenData[0].reserveLamport === null
           ? { reserveLamport: token.reserveLamport }
           : {}),
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: new Date(),
       })
       .where(eq(tokens.mint, mint));
 
@@ -1685,16 +1685,15 @@ tokenRouter.post("/create-token", async (c) => {
 
     try {
       // Create token data with all required fields from the token schema
-      const now = new Date().toISOString();
-      const tokenId = crypto.randomUUID();
+      const now = new Date();
       console.log("****** imported ******\n", imported);
+      const tokenId = crypto.randomUUID();
 
       // Convert imported to number (1 for true, 0 for false)
       const importedValue = imported === true ? 1 : 0;
 
       // Insert with all required fields from the schema
-      await db.insert(tokens).values({
-        id: tokenId,
+      await db.insert(tokens).values([{
         mint: mintAddress,
         name: name || `Token ${mintAddress.slice(0, 8)}`,
         ticker: symbol || "TOKEN",
@@ -1713,7 +1712,7 @@ tokenRouter.post("/create-token", async (c) => {
         lastUpdated: now,
         txId: txId || "create-" + tokenId,
         imported: importedValue,
-      });
+      }]);
 
       // For response, include just what we need
       const tokenData = {
@@ -1958,7 +1957,7 @@ tokenRouter.post("/token/:mint/update", async (c) => {
         telegram: body.telegram ?? tokenData[0].telegram,
         discord: body.discord ?? tokenData[0].discord,
         farcaster: body.farcaster ?? tokenData[0].farcaster,
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: new Date(),
       })
       .where(eq(tokens.mint, mint));
 
@@ -2152,7 +2151,7 @@ tokenRouter.post("/token/:mint/agents", async (c) => {
       twitterUserName: twitterUserName,
       twitterImageUrl: twitterImageUrl,
       official: isOfficial ? 1 : 0,
-      createdAt: new Date().toISOString(), // Set timestamp if not auto-set by DB
+      createdAt: new Date(), // Set timestamp if not auto-set by DB
     };
 
     // This insert call now expects 'official' as a number (0 or 1)
@@ -2428,20 +2427,22 @@ tokenRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
 
     // Step 4: Create new agent
     const newAgentData = {
-      id: crypto.randomUUID(),
       tokenMint: mint,
       ownerAddress: user.publicKey,
       twitterUserId: twitterUserId,
       twitterUserName: twitterUserName,
       twitterImageUrl: twitterImageUrl,
       official: isOfficial ? 1 : 0,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(),
     };
 
     const result = await db
       .insert(tokenAgents)
-      .values(newAgentData)
-      .returning();
+      .values([{
+        ...newAgentData,
+        id: crypto.randomUUID(),
+      }])
+      .returning().onConflictDoNothing(); // Avoid duplicate
 
     if (!result || result.length === 0) {
       throw new Error("Failed to insert new agent into database.");
@@ -2702,12 +2703,15 @@ tokenRouter.post("/vanity-keypair", async (c) => {
         id: generatedKeypair.publicKey.toString(),
         address: generatedKeypair.publicKey.toString(),
         secretKey: Buffer.from(generatedKeypair.secretKey).toString("base64"),
-        createdAt: Math.floor(Date.now() / 1000).toString(),
         used: 1, // Mark as used immediately since we're using it now
       };
 
       // Insert the generated keypair
-      await db.insert(vanityKeypairs).values(newKeypair);
+      await db.insert(vanityKeypairs).values([{
+        ...newKeypair,
+        id: crypto.randomUUID(),
+        createdAt: new Date(),
+      }]).onConflictDoNothing();
       logger.log(`[POST /vanity-keypair] Inserted new generated keypair`);
 
       // Return the generated keypair

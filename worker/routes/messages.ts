@@ -260,11 +260,11 @@ messagesRouter.post("/messages/:mint", async (c) => {
       author: user.publicKey,
       replyCount: 0,
       likes: 0,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(),
     };
 
     // Insert the message
-    await db.insert(messages).values(messageData);
+    await db.insert(messages).values([messageData]).onConflictDoNothing();
 
     // If this is a reply, increment the parent's replyCount
     if (body.parentId) {
@@ -328,12 +328,12 @@ messagesRouter.post("/messages/:messageId/likes", async (c) => {
     }
 
     // Create like record
-    await db.insert(messageLikes).values({
+    await db.insert(messageLikes).values([{
       id: crypto.randomUUID(),
       messageId,
       userAddress,
-      timestamp: new Date().toISOString(),
-    });
+      timestamp: new Date(),
+    }]);
 
     // Increment message likes
     await db

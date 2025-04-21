@@ -41,7 +41,7 @@ export class TokenMigrator {
     public program: Program<RaydiumVault>,
     public autofunProgram: Program<Autofun>,
     public provider: AnchorProvider,
-  ) {}
+  ) { }
   FEE_PERCENTAGE = 10; // 10% fee for pool creation
 
   async scheduleNextInvocation(token: TokenData): Promise<void> {
@@ -167,7 +167,7 @@ export class TokenMigrator {
       // If all steps are done, finalize and update token.
       if (currentStep && currentStep?.name === "finalize") {
         token.status = "locked";
-        token.lockedAt = new Date().toISOString();
+        token.lockedAt = new Date();
         await updateTokenInDB(this.env, {
           mint: token.mint,
           status: "locked",
@@ -195,7 +195,7 @@ export class TokenMigrator {
       } else {
         // All steps are complete; final status update.
         token.status = "locked";
-        token.lockedAt = new Date().toISOString();
+        token.lockedAt = new Date();
         await updateTokenInDB(this.env, {
           mint: token.mint,
           status: "locked",
@@ -474,7 +474,7 @@ export class TokenMigrator {
       lockedAmount: totalLPAmount.toString(),
       status: "locked",
       lastUpdated: new Date().toISOString(),
-      lockedAt: new Date().toISOString(),
+      lockedAt: new Date(),
     };
     await updateTokenInDB(this.env, tokenData);
 

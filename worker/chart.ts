@@ -163,7 +163,7 @@ export async function fetchPriceChartData(
       .filter(
         (swap: {
           price: number;
-          timestamp: string;
+          timestamp: Date;
           direction: number;
           amountIn: number | null;
           amountOut: number | null;
@@ -172,7 +172,7 @@ export async function fetchPriceChartData(
       .map(
         (swap: {
           price: number;
-          timestamp: string;
+          timestamp: Date;
           direction: number;
           amountIn: number | null;
           amountOut: number | null;
@@ -351,7 +351,7 @@ export function getCandleData(priceFeeds: PriceFeedInfo[], range: number) {
     let en = priceHistory[pIndex].price;
     let vol = 0;
     const prevIndex = pIndex;
-    for (; pIndex < priceHistory.length; ) {
+    for (; pIndex < priceHistory.length;) {
       if (hi < priceHistory[pIndex].price) hi = priceHistory[pIndex].price;
       if (lo > priceHistory[pIndex].price) lo = priceHistory[pIndex].price;
       en = priceHistory[pIndex].price;

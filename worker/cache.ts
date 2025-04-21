@@ -20,7 +20,7 @@ export class CacheService {
   async getSolPrice(): Promise<number | null> {
     try {
       // Get from D1/Drizzle cache
-      const now = new Date().toISOString();
+      const now = new Date();
       const cachedPrice = await this.db
         .select()
         .from(cachePrices)
@@ -56,15 +56,18 @@ export class CacheService {
       const expiresAt = new Date(
         now.getTime() + ttlSeconds * 1000,
       ).toISOString();
+      const expiresAtDate = new Date(expiresAt);
 
-      await this.db.insert(cachePrices).values({
-        id: crypto.randomUUID(),
-        type: "sol",
-        symbol: "SOL",
-        price: price.toString(),
-        timestamp: now.toISOString(),
-        expiresAt,
-      });
+      await this.db.insert(cachePrices)
+        .values([{
+          id: crypto.randomUUID(),
+          type: "sol",
+          symbol: "SOL",
+          price: price.toString(),
+          timestamp: sql`CURRENT_TIMESTAMP`,
+          expiresAt: expiresAtDate,
+        }])
+        .execute();
 
       // Clean up old cache entries
       await this.cleanupOldCacheEntries("sol", "SOL");
@@ -86,7 +89,7 @@ export class CacheService {
           and(
             eq(cachePrices.type, "token"),
             eq(cachePrices.symbol, mint),
-            gt(cachePrices.expiresAt, now),
+            gt(cachePrices.expiresAt, new Date()),
           ),
         )
         .orderBy(sql`timestamp DESC`)
@@ -116,15 +119,18 @@ export class CacheService {
       const expiresAt = new Date(
         now.getTime() + ttlSeconds * 1000,
       ).toISOString();
+      const expiresAtDate = new Date(expiresAt);
 
-      await this.db.insert(cachePrices).values({
-        id: crypto.randomUUID(),
-        type: "token",
-        symbol: mint,
-        price: price.toString(),
-        timestamp: now.toISOString(),
-        expiresAt,
-      });
+      await this.db.insert(cachePrices)
+        .values([{
+          id: crypto.randomUUID(),
+          type: "sol",
+          symbol: "SOL",
+          price: price.toString(),
+          timestamp: sql`CURRENT_TIMESTAMP`,
+          expiresAt: expiresAtDate,
+        }])
+        .execute();
 
       // Clean up old cache entries
       await this.cleanupOldCacheEntries("token", mint);
@@ -151,16 +157,18 @@ export class CacheService {
       const serializedData = JSON.stringify(data, (_, value) =>
         typeof value === "bigint" ? value.toString() : value,
       );
+      const expiresAtDate = new Date(expiresAt);
 
-      await this.db.insert(cachePrices).values({
-        id: crypto.randomUUID(),
-        type: "metadata",
-        symbol: key,
-        price: serializedData,
-        timestamp: now.toISOString(),
-        expiresAt,
-      });
-
+      await this.db.insert(cachePrices)
+        .values([{
+          id: crypto.randomUUID(),
+          type: "sol",
+          symbol: "SOL",
+          price: serializedData.toString(),
+          timestamp: sql`CURRENT_TIMESTAMP`,
+          expiresAt: expiresAtDate,
+        }])
+        .execute();
       // Clean up old cache entries
       await this.cleanupOldCacheEntries("metadata", key);
     } catch (error) {
@@ -173,7 +181,6 @@ export class CacheService {
    */
   async getMetadata<T = any>(key: string): Promise<T | null> {
     try {
-      const now = new Date().toISOString();
       const cachedData = await this.db
         .select()
         .from(cachePrices)
@@ -181,7 +188,7 @@ export class CacheService {
           and(
             eq(cachePrices.type, "metadata"),
             eq(cachePrices.symbol, key),
-            gt(cachePrices.expiresAt, now),
+            gt(cachePrices.expiresAt, new Date()),
           ),
         )
         .orderBy(sql`timestamp DESC`)
@@ -213,7 +220,6 @@ export class CacheService {
     symbol: string,
   ): Promise<void> {
     try {
-      const now = new Date().toISOString();
 
       // Delete expired entries
       await this.db
@@ -222,7 +228,7 @@ export class CacheService {
           and(
             eq(cachePrices.type, type),
             eq(cachePrices.symbol, symbol),
-            lt(cachePrices.expiresAt, now),
+            lt(cachePrices.expiresAt, new Date()),
           ),
         );
 

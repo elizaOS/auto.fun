@@ -69,7 +69,7 @@ adminRouter.post("/tokens/:mint/social", requireAdmin, async (c) => {
         discord: discord ?? tokenData[0].discord,
         website: website ?? tokenData[0].website,
         farcaster: farcaster ?? tokenData[0].farcaster,
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: new Date(),
       })
       .where(eq(tokens.mint, mint));
 
@@ -128,7 +128,7 @@ adminRouter.post("/tokens/:mint/featured", requireAdmin, async (c) => {
       .update(tokens)
       .set({
         featured: featured ? 1 : 0,
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: new Date(),
       })
       .where(eq(tokens.mint, mint));
 
@@ -187,7 +187,7 @@ adminRouter.post("/tokens/:mint/verified", requireAdmin, async (c) => {
       .update(tokens)
       .set({
         verified: verified ? 1 : 0,
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: new Date(),
       })
       .where(eq(tokens.mint, mint));
 
@@ -247,7 +247,7 @@ adminRouter.post("/tokens/:mint/hidden", requireAdmin, async (c) => {
       .update(tokens)
       .set({
         hidden: hidden ? 1 : 0,
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: new Date(),
       })
       .where(eq(tokens.mint, mint));
 

@@ -74,10 +74,10 @@ authRouter.post("/register", async (c) => {
         id: crypto.randomUUID(),
         name: body.name || "",
         address: body.address,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
       };
 
-      await db.insert(users).values(userData);
+      await db.insert(users).values(userData).onConflictDoNothing()
       // ** Points system **
       // Award points for registration
       awardUserPoints(

@@ -1,14 +1,20 @@
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
-import { drizzle, DrizzleD1Database } from "drizzle-orm/d1";
-import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+  pgTable,
+  text,
+  integer,
+  real,
+  timestamp,
+  uniqueIndex
+} from "drizzle-orm/pg-core";
 import { Env } from "./env";
 
 
 // Token schema
-export const tokens = sqliteTable("tokens", {
-  id: text("id").primaryKey(),
+export const tokens = pgTable("tokens", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   ticker: text("ticker").notNull(),
   url: text("url").notNull(),
@@ -21,20 +27,20 @@ export const tokens = sqliteTable("tokens", {
   description: text("description"),
   mint: text("mint").notNull().unique(),
   creator: text("creator").notNull(),
-  nftMinted: text("nft_minted", { mode: "text" }),
-  lockId: text("lock_id", { mode: "text" }),
-  lockedAmount: text("locked_amount", { mode: "text" }),
-  lockedAt: text("locked_at", { mode: "text" }),
-  harvestedAt: text("harvested_at", { mode: "text" }),
+  nftMinted: text("nft_minted"),
+  lockId: text("lock_id"),
+  lockedAmount: text("locked_amount"),
+  lockedAt: timestamp("locked_at"),
+  harvestedAt: timestamp("harvested_at"),
   status: text("status").notNull().default("active"),
-  createdAt: text("created_at", { mode: "text" }).notNull(),
-  lastUpdated: text("last_updated", { mode: "text" }).notNull(),
-  completedAt: text("completed_at", { mode: "text" }),
-  withdrawnAt: text("withdrawn_at", { mode: "text" }),
-  migratedAt: text("migrated_at", { mode: "text" }),
-  marketId: text("market_id", { mode: "text" }),
-  baseVault: text("base_vault", { mode: "text" }),
-  quoteVault: text("quote_vault", { mode: "text" }),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  lastUpdated: timestamp("last_updated").notNull().default(sql`CURRENT_TIMESTAMP`),
+  completedAt: timestamp("completed_at"),
+  withdrawnAt: timestamp("withdrawn_at"),
+  migratedAt: timestamp("migrated_at"),
+  marketId: text("market_id"),
+  baseVault: text("base_vault"),
+  quoteVault: text("quote_vault"),
   withdrawnAmount: real("withdrawn_amount"),
   reserveAmount: real("reserve_amount"),
   reserveLamport: real("reserve_lamport"),
@@ -50,29 +56,25 @@ export const tokens = sqliteTable("tokens", {
   price24hAgo: real("price_24h_ago"),
   volume24h: real("volume_24h"),
   inferenceCount: integer("inference_count"),
-  lastVolumeReset: text("last_volume_reset"),
-  lastPriceUpdate: text("last_price_update"),
+  lastVolumeReset: timestamp("last_volume_reset"),
+  lastPriceUpdate: timestamp("last_price_update"),
   holderCount: integer("holder_count"),
   txId: text("tx_id"),
-  // New fields
-  migration: text("migration", { mode: "text" }), // object with withdraw, createPool, lockLP, finalize info
-  withdrawnAmounts: text("withdrawn_amounts", { mode: "text" }), // Expected to store { withdrawnSol, withdrawnTokens }
-  poolInfo: text("pool_info", { mode: "text" }), // Expected to store pool details (id, lpMint, baseVault, quoteVault)
-  lockLpTxId: text("lock_lp_tx_id", { mode: "text" }),
-  imported: integer("imported").default(0),
-  // Flag fields
-  featured: integer("featured").default(0), // 0 = not featured, 1 = featured
-  verified: integer("verified").default(0), // 0 = not verified, 1 = verified
-  hidden: integer("hidden").default(0), // 0 = not hidden, 1 = hidden
-  // NEW: Token supply and decimals
-  tokenSupply: text("token_supply", { mode: "text" }).default(
-    "1000000000000000",
-  ), // As string to preserve precision
-  tokenSupplyUiAmount: integer("token_supply_ui_amount").default(1000000000),
-  tokenDecimals: integer("token_decimals").default(6),
-  lastSupplyUpdate: text("last_supply_update"),
-});
 
+  // New fields
+  migration: text("migration"),
+  withdrawnAmounts: text("withdrawn_amounts"),
+  poolInfo: text("pool_info"),
+  lockLpTxId: text("lock_lp_tx_id"),
+  imported: integer("imported").default(0),
+  featured: integer("featured").default(0),
+  verified: integer("verified").default(0),
+  hidden: integer("hidden").default(0),
+  tokenSupply: text("token_supply").default("1000000000000000"),
+  tokenSupplyUiAmount: real("token_supply_ui_amount").default(1000000000),
+  tokenDecimals: integer("token_decimals").default(6),
+  lastSupplyUpdate: timestamp("last_supply_update"),
+});
 // Swap schema
 export const swaps = pgTable("swaps", {
   id: text("id").primaryKey(),
@@ -103,17 +105,17 @@ export const fees = pgTable("fees", {
 });
 
 // TokenHolder schema
-export const tokenHolders = sqliteTable("token_holders", {
+export const tokenHolders = pgTable("token_holders", {
   id: text("id").primaryKey(),
   mint: text("mint").notNull(),
-  address: text("address").notNull(),
+  address: text("address").notNull().unique(),
   amount: real("amount").notNull(),
   percentage: real("percentage").notNull(),
-  lastUpdated: text("last_updated", { mode: "text" }).notNull(),
+  lastUpdated: timestamp("last_updated").notNull(),
 });
 
-// Create messages table without self-referencing first
-export const messages = sqliteTable("messages", {
+// Messages schema
+export const messages = pgTable("messages", {
   id: text("id").primaryKey(),
   author: text("author").notNull(),
   tokenMint: text("token_mint").notNull(),
@@ -121,7 +123,7 @@ export const messages = sqliteTable("messages", {
   parentId: text("parent_id"),
   replyCount: integer("reply_count"),
   likes: integer("likes").notNull().default(0),
-  timestamp: text("timestamp").notNull(),
+  timestamp: timestamp("timestamp").notNull(),
 });
 
 // MessageLike schema
@@ -252,34 +254,11 @@ export const metadata = pgTable("metadata", {
 
 
 export function getDB(env: Env) {
-  try {
-    // For non-test environments, use D1 database
-    const drizzleSchema = {
-      tokens,
-      swaps,
-      fees,
-      tokenHolders,
-      messages,
-      messageLikes,
-      users,
-      personalities,
-      vanityKeypairs,
-      mediaGenerations,
-      cachePrices,
-      preGeneratedTokens,
-      oauthVerifiers,
-      accessTokens,
-      tokenAgents,
-      vanityGenerationInstances,
-    };
-    return drizzle(env.DB as any, {
-      schema: drizzleSchema,
-    }) as DrizzleD1Database<typeof drizzleSchema>;
-  } catch (error) {
-    console.error("Error initializing DB:", error);
-    throw error;
-  }
+  const pool = new Pool({ connectionString: env.DATABASE_URL });
+  // pass your schema here
+  return drizzle(pool, { schema });
 }
+
 
 // Type definitions for common query results
 export type Token = typeof schema.tokens.$inferSelect;
