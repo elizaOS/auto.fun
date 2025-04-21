@@ -298,7 +298,7 @@ async function addHasLikedToMessages(
     !userAddress
   ) {
     // Ensure the return type includes hasLiked even if no processing is done
-    return messagesList.map(msg => ({ ...msg, hasLiked: false }));
+    return messagesList.map((msg) => ({ ...msg, hasLiked: false }));
   }
 
   // Extract message IDs
@@ -332,7 +332,8 @@ messagesRouter.get("/messages/:mint/:tier/updates", async (c) => {
   try {
     // 1. Auth Check (Crucial for protecting data)
     const user = c.get("user");
-    if (!user?.publicKey) { // Ensure user and publicKey exist
+    if (!user?.publicKey) {
+      // Ensure user and publicKey exist
       return c.json({ success: false, error: "Authentication required" }, 401);
     }
     const userPublicKey = user.publicKey;
@@ -346,12 +347,15 @@ messagesRouter.get("/messages/:mint/:tier/updates", async (c) => {
       return c.json({ success: false, error: "Invalid mint address" }, 400);
     }
     // Basic tier validation (adjust if specific tiers are enforced)
-    if (!tier || typeof tier !== 'string') {
-        return c.json({ success: false, error: "Invalid tier specified" }, 400);
+    if (!tier || typeof tier !== "string") {
+      return c.json({ success: false, error: "Invalid tier specified" }, 400);
     }
 
     if (!sinceTimestamp || isNaN(new Date(sinceTimestamp).getTime())) {
-      return c.json({ success: false, error: "Invalid 'since' timestamp query parameter" }, 400);
+      return c.json(
+        { success: false, error: "Invalid 'since' timestamp query parameter" },
+        400,
+      );
     }
 
     // Note: Skipping balance check for polling endpoint for performance.
@@ -375,26 +379,27 @@ messagesRouter.get("/messages/:mint/:tier/updates", async (c) => {
     // 4. Add 'hasLiked' info
     let messagesWithLikes = newMessages;
     if (newMessages.length > 0) {
-        try {
-             messagesWithLikes = await addHasLikedToMessages(
-                db,
-                newMessages,
-                userPublicKey, // Use validated publicKey
-             );
-        } catch (error) {
-            logger.error("Error adding likes info to message updates:", error);
-             // Continue without like info, but ensure hasLiked field exists
-             messagesWithLikes = newMessages.map(msg => ({...msg, hasLiked: false}));
-        }
+      try {
+        messagesWithLikes = await addHasLikedToMessages(
+          db,
+          newMessages,
+          userPublicKey, // Use validated publicKey
+        );
+      } catch (error) {
+        logger.error("Error adding likes info to message updates:", error);
+        // Continue without like info, but ensure hasLiked field exists
+        messagesWithLikes = newMessages.map((msg) => ({
+          ...msg,
+          hasLiked: false,
+        }));
+      }
     } else {
-        // Ensure empty array is returned if no new messages
-        messagesWithLikes = [];
+      // Ensure empty array is returned if no new messages
+      messagesWithLikes = [];
     }
-
 
     // 5. Return Result
     return c.json({ success: true, messages: messagesWithLikes });
-
   } catch (error) {
     logger.error("Error fetching message updates:", error);
     return c.json({ success: false, error: "Failed to fetch updates" }, 500);

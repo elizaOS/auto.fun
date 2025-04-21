@@ -14,7 +14,7 @@ import { useLocation, useParams } from "react-router-dom";
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
 
 // --- Constants for Chat ---
-const CHAT_TIERS = ["1k", "10k", "100k", "1M"] as const;
+const CHAT_TIERS = ["1k", "100k", "1M"] as const;
 type ChatTier = (typeof CHAT_TIERS)[number];
 
 // Helper functions for chat tiers
@@ -22,8 +22,6 @@ const getTierThreshold = (tier: ChatTier): number => {
   switch (tier) {
     case "1k":
       return 1000;
-    case "10k":
-      return 10000;
     case "100k":
       return 100000;
     case "1M":
@@ -37,8 +35,6 @@ const formatTierLabel = (tier: ChatTier): string => {
   switch (tier) {
     case "1k":
       return "1k+";
-    case "10k":
-      return "10k+";
     case "100k":
       return "100k+";
     case "1M":
@@ -104,7 +100,7 @@ export default function ChatSection() {
 
   // Extract token mint from URL if not found in params
   const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(
-    null
+    null,
   );
 
   // Use detected token mint instead of directly from params
@@ -154,12 +150,12 @@ export default function ChatSection() {
             headers: {
               "Content-Type": "application/json",
             },
-          }
+          },
         );
 
         if (response.status === 401 || response.status === 403) {
           setChatError(
-            `You need ${getTierThreshold(tier).toLocaleString()} tokens to view this chat.`
+            `You need ${getTierThreshold(tier).toLocaleString()} tokens to view this chat.`,
           );
           setChatMessages([]);
           setLatestTimestamp(null); // Reset timestamp on auth error
@@ -181,13 +177,13 @@ export default function ChatSection() {
           // Sort messages by timestamp, oldest first
           const sortedMessages = data.messages.sort(
             (a, b) =>
-              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
           );
           setChatMessages(sortedMessages);
           // Set latest timestamp for polling
           if (sortedMessages.length > 0) {
             setLatestTimestamp(
-              sortedMessages[sortedMessages.length - 1].timestamp
+              sortedMessages[sortedMessages.length - 1].timestamp,
             );
           } else {
             // If no messages, start polling from now
@@ -201,7 +197,7 @@ export default function ChatSection() {
       } catch (error) {
         console.error("Error fetching chat messages:", error);
         setChatError(
-          error instanceof Error ? error.message : "Could not load messages"
+          error instanceof Error ? error.message : "Could not load messages",
         );
         setChatMessages([]);
         // Set timestamp to now even on error to potentially start polling
@@ -219,7 +215,7 @@ export default function ChatSection() {
       isBalanceLoading,
       isAuthenticating,
       // Removed fetchChatMessages from deps as it causes infinite loops
-    ]
+    ],
   );
 
   // Effect to detect token mint from various sources
@@ -251,7 +247,7 @@ export default function ChatSection() {
     try {
       // NOTE: Using the eligibility endpoint
       const response = await fetchWithAuth(
-        `${API_BASE_URL}/api/chat/${tokenMint}/tiers` // Assuming this path is correct
+        `${API_BASE_URL}/api/chat/${tokenMint}/tiers`, // Assuming this path is correct
       );
 
       if (response.status === 401 || response.status === 403) {
@@ -262,7 +258,7 @@ export default function ChatSection() {
 
       if (!response.ok) {
         throw new Error(
-          `Failed to fetch tier eligibility: ${response.statusText}`
+          `Failed to fetch tier eligibility: ${response.statusText}`,
         );
       }
 
@@ -279,7 +275,7 @@ export default function ChatSection() {
 
         // Calculate eligible tiers based on blockchain balance
         const eligibleTiers = CHAT_TIERS.filter(
-          (tier) => effectiveBalance >= getTierThreshold(tier)
+          (tier) => effectiveBalance >= getTierThreshold(tier),
         );
 
         setEligibleChatTiers(eligibleTiers);
@@ -300,7 +296,7 @@ export default function ChatSection() {
     } catch (error) {
       console.error("Error fetching chat eligibility:", error);
       setChatError(
-        error instanceof Error ? error.message : "Could not check eligibility"
+        error instanceof Error ? error.message : "Could not check eligibility",
       );
       setEligibleChatTiers([]);
     } finally {
@@ -364,13 +360,13 @@ export default function ChatSection() {
       // Use the new backend update route
       const response = await fetchWithAuth(
         // IMPORTANT: Adjust this path if your backend router setup differs
-        `${API_BASE_URL}/api/messages/${tokenMint}/${selectedChatTier}/updates?since=${latestTimestamp}`
+        `${API_BASE_URL}/api/messages/${tokenMint}/${selectedChatTier}/updates?since=${latestTimestamp}`,
       );
 
       if (!response.ok) {
         // Log polling errors quietly
         console.warn(
-          `Polling failed (${response.status}): ${response.statusText}`
+          `Polling failed (${response.status}): ${response.statusText}`,
         );
         if (response.status === 401 || response.status === 403) {
           // Handle auth errors during polling - maybe stop polling?
@@ -392,19 +388,19 @@ export default function ChatSection() {
         // Sort new messages (API guarantees ascending order, but sort just in case)
         const newMessages = data.messages.sort(
           (a, b) =>
-            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
         );
 
         // Filter out potential duplicates (e.g., optimistic messages confirmed by poll)
         const currentMessageIds = new Set(chatMessages.map((m) => m.id));
         const uniqueNewMessages = newMessages.filter(
-          (nm) => !currentMessageIds.has(nm.id)
+          (nm) => !currentMessageIds.has(nm.id),
         );
 
         if (uniqueNewMessages.length > 0) {
           setChatMessages((prev) => [...prev, ...uniqueNewMessages]);
           setLatestTimestamp(
-            uniqueNewMessages[uniqueNewMessages.length - 1].timestamp
+            uniqueNewMessages[uniqueNewMessages.length - 1].timestamp,
           );
 
           // Scroll to bottom only if new messages were added and user is near bottom
@@ -455,7 +451,7 @@ export default function ChatSection() {
     ) {
       const intervalId = setInterval(pollForNewMessages, 5000); // Poll every 5 seconds
       console.log(
-        `Polling started for ${tokenMint} / ${selectedChatTier} since ${latestTimestamp}`
+        `Polling started for ${tokenMint} / ${selectedChatTier} since ${latestTimestamp}`,
       );
 
       return () => {
@@ -524,12 +520,12 @@ export default function ChatSection() {
             message: chatInput.trim(),
             // No parentId specified here, assumes root message
           }),
-        }
+        },
       );
 
       if (response.status === 401 || response.status === 403) {
         setChatError(
-          `You need ${getTierThreshold(selectedChatTier).toLocaleString()} tokens to post here.`
+          `You need ${getTierThreshold(selectedChatTier).toLocaleString()} tokens to post here.`,
         );
         // Remove optimistic message
         setChatMessages((prev) => prev.filter((msg) => msg.id !== tempId));
@@ -571,7 +567,7 @@ export default function ChatSection() {
     } catch (error) {
       console.error("Error sending message:", error);
       setChatError(
-        error instanceof Error ? error.message : "Could not send message"
+        error instanceof Error ? error.message : "Could not send message",
       );
       // Remove optimistic message on error
       setChatMessages((prev) => prev.filter((msg) => msg.id !== tempId));

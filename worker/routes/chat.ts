@@ -105,7 +105,6 @@ async function checkUserTokenBalance(
 function getUserEligibleTiers(balance: number): string[] {
   const tiers: string[] = [];
   if (balance >= 1000) tiers.push("1k");
-  if (balance >= 10000) tiers.push("10k");
   if (balance >= 100000) tiers.push("100k");
   if (balance >= 1000000) tiers.push("1M");
   return tiers;
@@ -115,8 +114,6 @@ function getTierThreshold(tier: string): number {
   switch (tier) {
     case "1k":
       return 1000;
-    case "10k":
-      return 10000;
     case "100k":
       return 100000;
     case "1M":
@@ -126,7 +123,7 @@ function getTierThreshold(tier: string): number {
   }
 }
 
-const allowedTiers = ["1k", "10k", "100k", "1M"];
+const allowedTiers = ["1k", "100k", "1M"];
 
 // --- Hono App ---
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
