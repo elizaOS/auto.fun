@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
 import Button from "./button";
 import SearchBar from "./search-bar";
-import { DiceButton } from "./dice-button";
 import { useCurrentTheme } from "@/stores/useThemeStore";
 import ThemedUiElement from "@/components/themed-ui-element";
 
@@ -64,7 +63,6 @@ export default function Header() {
             {pathname !== "/create" && (
               <>
                 <SearchBar />
-                <DiceButton />
                 <Link to="/create">
                   <Button className="cursor-pointer flex items-center text-base text-accent font-bold font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border-2 border-accent min-w-34 hover:bg-accent hover:text-autofun-background-primary transition-colors">
                     New Coin{" "}
@@ -113,7 +111,6 @@ export default function Header() {
             </>
           )}
           <WalletButton />
-          <DiceButton />
         </div>
       </div>
     </>

@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { IToken } from "@/types";
 // import { getToken } from "@/utils/api";
 import { resizeImage } from "@/utils";
-import { useCurrentTheme } from "@/stores/useThemeStore";
+import { useCurrentTheme, useThemeStore } from "@/stores/useThemeStore";
 
 // Add TypeScript declaration for CANNON to fix the errors
 declare module "cannon-es" {
@@ -204,6 +204,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
   // Get current theme to use themed SVGs
   const currentTheme = useCurrentTheme();
+  const { cycleTheme } = useThemeStore();
 
   useEffect(() => {
     // Skip token processing if we've already done initial setup and the scene is initialized
@@ -288,6 +289,9 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   // Handle clicking anywhere on the container
   const handleContainerClick = (event: React.MouseEvent) => {
     if (isLoading) return;
+
+    // Cycle theme when container is clicked
+    cycleTheme();
 
     // Store click position relative to the container
     const rect = containerRef.current?.getBoundingClientRect();
@@ -1078,8 +1082,10 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
   return (
     <div
-      className="w-full h-[300px] relative overflow-hidden cursor-pointer my-6 xl:mt-0"
+      className="w-full h-[300px] relative overflow-hidden cursor-pointer my-6 xl:mt-0 hover:opacity-90 transition-opacity"
       onClick={handleContainerClick}
+      title="Click to change theme color"
+      aria-label="Click to roll dice and change theme color"
     >
       {/* SVG background placed below the canvas */}
       <div className="absolute inset-0 flex justify-center items-center z-0">
