@@ -17,6 +17,7 @@ export default function Layout() {
   const lastScrollY = useRef(0);
   const isInitialMount = useRef(true);
   const isHomepage = pathname === "/";
+  const isTosAccepted = localStorage.getItem("tosAccepted") === "true";
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -74,7 +75,7 @@ export default function Layout() {
     <QueryClientProvider client={queryClient}>
       <Providers>
         <div className="min-h-screen bg-autofun-background-primary text-autofun-text-primary flex flex-col font-satoshi antialiased">
-          <Header />
+          {isTosAccepted ? <Header /> : null}
           <main className="flex-grow px-2 md:px-4 pb-24">
             <Outlet />
             <BreakpointIndicator />
