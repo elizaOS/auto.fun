@@ -1,12 +1,17 @@
-import { PropsWithChildren } from "react";
-import { Link } from "react-router";
+import { PropsWithChildren, useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 
 export default function TosProvider({ children }: PropsWithChildren) {
-  const localStorageSave = false;
+  const location = useLocation();
+  const routes = ["/privacy-policy", "/terms-of-service", "/fees"];
+  const AllowedRoute = routes.includes(location.pathname);
 
-  return localStorageSave ? (
-    <>{children}</>
-  ) : (
+  if (AllowedRoute) {
+    return <>{children}</>;
+  }
+
+
+  return (
     <div className="h-screen w-screen grid place-items-center bg-autofun-background">
       <div className="max-w-[400px] md:max-w-[496px] w-full bg-autofun-background-card shadow-lg overflow-hidden">
         <div className="p-4 border-b border-autofun-border relative">
@@ -33,15 +38,17 @@ export default function TosProvider({ children }: PropsWithChildren) {
             By clicking the button below, you agree to the Terms of Service.
           </p>
 
-          <button className="m-4 bg-autofun-background-action-highlight text-black px-6 py-2 hover:bg-gray-200 transition-all font-semibold">
+          <button
+            className="m-4 bg-autofun-background-action-highlight text-black px-6 py-2 hover:bg-gray-200 transition-all font-semibold"
+          >
             I'm ready to have fun
           </button>
         </div>
 
         <div className="mt-3 border-t border-autofun-border p-4 flex justify-center gap-4 text-xs text-autofun-background-disabled">
-          <Link to={"/privacy-policy"} className="hover:underline">Privacy Policy</Link>
-          <Link to={"/terms-of-service"} className="hover:underline">Terms of Service</Link>
-          <Link to={"/fees"} className="hover:underline">Fees</Link>
+          <Link to="/privacy-policy" className="hover:underline">Privacy Policy</Link>
+          <Link to="/terms-of-service" className="hover:underline">Terms of Service</Link>
+          <Link to="/fees" className="hover:underline">Fees</Link>
         </div>
       </div>
     </div>
