@@ -14,7 +14,7 @@ import { useLocation, useParams } from "react-router-dom";
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
 
 // --- Constants for Chat ---
-const CHAT_TIERS = ["1k", "100k", "1M"] as const;
+const CHAT_TIERS = ["1k", "10k", "100k", "1M"] as const;
 type ChatTier = (typeof CHAT_TIERS)[number];
 
 // Helper functions for chat tiers
@@ -22,6 +22,8 @@ const getTierThreshold = (tier: ChatTier): number => {
   switch (tier) {
     case "1k":
       return 1000;
+    case "10k":
+      return 10000;
     case "100k":
       return 100000;
     case "1M":
@@ -102,7 +104,7 @@ export default function ChatSection() {
 
   // Extract token mint from URL if not found in params
   const [detectedTokenMint, setDetectedTokenMint] = useState<string | null>(
-    null,
+    null
   );
 
   // Use detected token mint instead of directly from params
@@ -152,12 +154,12 @@ export default function ChatSection() {
             headers: {
               "Content-Type": "application/json",
             },
-          },
+          }
         );
 
         if (response.status === 401 || response.status === 403) {
           setChatError(
-            `You need ${getTierThreshold(tier).toLocaleString()} tokens to view this chat.`,
+            `You need ${getTierThreshold(tier).toLocaleString()} tokens to view this chat.`
           );
           setChatMessages([]);
           setLatestTimestamp(null); // Reset timestamp on auth error
@@ -179,29 +181,31 @@ export default function ChatSection() {
           // Sort messages by timestamp, oldest first
           const sortedMessages = data.messages.sort(
             (a, b) =>
-              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
           );
           setChatMessages(sortedMessages);
           // Set latest timestamp for polling
           if (sortedMessages.length > 0) {
-            setLatestTimestamp(sortedMessages[sortedMessages.length - 1].timestamp);
+            setLatestTimestamp(
+              sortedMessages[sortedMessages.length - 1].timestamp
+            );
           } else {
             // If no messages, start polling from now
             setLatestTimestamp(new Date().toISOString());
           }
         } else {
-           // Set timestamp to now even on error to potentially start polling
-           setLatestTimestamp(new Date().toISOString());
+          // Set timestamp to now even on error to potentially start polling
+          setLatestTimestamp(new Date().toISOString());
           throw new Error(data.error || "Failed to fetch messages");
         }
       } catch (error) {
         console.error("Error fetching chat messages:", error);
         setChatError(
-          error instanceof Error ? error.message : "Could not load messages",
+          error instanceof Error ? error.message : "Could not load messages"
         );
         setChatMessages([]);
-         // Set timestamp to now even on error to potentially start polling
-         setLatestTimestamp(new Date().toISOString());
+        // Set timestamp to now even on error to potentially start polling
+        setLatestTimestamp(new Date().toISOString());
       } finally {
         setIsChatLoading(false);
         setIsRefreshingMessages(false);
@@ -215,7 +219,7 @@ export default function ChatSection() {
       isBalanceLoading,
       isAuthenticating,
       // Removed fetchChatMessages from deps as it causes infinite loops
-    ],
+    ]
   );
 
   // Effect to detect token mint from various sources
@@ -247,7 +251,7 @@ export default function ChatSection() {
     try {
       // NOTE: Using the eligibility endpoint
       const response = await fetchWithAuth(
-        `${API_BASE_URL}/api/chat/${tokenMint}/tiers`, // Assuming this path is correct
+        `${API_BASE_URL}/api/chat/${tokenMint}/tiers` // Assuming this path is correct
       );
 
       if (response.status === 401 || response.status === 403) {
@@ -258,7 +262,7 @@ export default function ChatSection() {
 
       if (!response.ok) {
         throw new Error(
-          `Failed to fetch tier eligibility: ${response.statusText}`,
+          `Failed to fetch tier eligibility: ${response.statusText}`
         );
       }
 
@@ -275,7 +279,7 @@ export default function ChatSection() {
 
         // Calculate eligible tiers based on blockchain balance
         const eligibleTiers = CHAT_TIERS.filter(
-          (tier) => effectiveBalance >= getTierThreshold(tier),
+          (tier) => effectiveBalance >= getTierThreshold(tier)
         );
 
         setEligibleChatTiers(eligibleTiers);
@@ -296,7 +300,7 @@ export default function ChatSection() {
     } catch (error) {
       console.error("Error fetching chat eligibility:", error);
       setChatError(
-        error instanceof Error ? error.message : "Could not check eligibility",
+        error instanceof Error ? error.message : "Could not check eligibility"
       );
       setEligibleChatTiers([]);
     } finally {
@@ -309,113 +313,164 @@ export default function ChatSection() {
     if (publicKey && tokenMint && !isBalanceLoading && isAuthenticated) {
       fetchChatEligibility();
     }
-  }, [fetchChatEligibility, publicKey, tokenMint, isBalanceLoading, isAuthenticated]);
+  }, [
+    fetchChatEligibility,
+    publicKey,
+    tokenMint,
+    isBalanceLoading,
+    isAuthenticated,
+  ]);
 
   // Effect to reset state and fetch initial messages when context changes
   useEffect(() => {
-      setLatestTimestamp(null); // Reset timestamp
-      setChatMessages([]); // Clear old messages
-      setChatError(null); // Clear old errors
-      if (tokenMint && eligibleChatTiers.includes(selectedChatTier) && !isBalanceLoading && isAuthenticated) {
-          setIsChatLoading(true); // Show loading spinner for initial fetch
-          fetchChatMessages(selectedChatTier);
-      }
-  }, [tokenMint, selectedChatTier, fetchChatMessages, isBalanceLoading, isAuthenticated, eligibleChatTiers]); // Added deps
-
+    setLatestTimestamp(null); // Reset timestamp
+    setChatMessages([]); // Clear old messages
+    setChatError(null); // Clear old errors
+    if (
+      tokenMint &&
+      eligibleChatTiers.includes(selectedChatTier) &&
+      !isBalanceLoading &&
+      isAuthenticated
+    ) {
+      setIsChatLoading(true); // Show loading spinner for initial fetch
+      fetchChatMessages(selectedChatTier);
+    }
+  }, [
+    tokenMint,
+    selectedChatTier,
+    fetchChatMessages,
+    isBalanceLoading,
+    isAuthenticated,
+    eligibleChatTiers,
+  ]); // Added deps
 
   // --- Poll for New Messages --- *NEW*
   const pollForNewMessages = useCallback(async () => {
     // Ensure all conditions are met before polling
-    if (!tokenMint || !publicKey || !selectedChatTier || !latestTimestamp || !isAuthenticated || isSendingMessage || isChatLoading || isRefreshingMessages) {
+    if (
+      !tokenMint ||
+      !publicKey ||
+      !selectedChatTier ||
+      !latestTimestamp ||
+      !isAuthenticated ||
+      isSendingMessage ||
+      isChatLoading ||
+      isRefreshingMessages
+    ) {
       return;
     }
 
     try {
-       // Use the new backend update route
+      // Use the new backend update route
       const response = await fetchWithAuth(
-          // IMPORTANT: Adjust this path if your backend router setup differs
-          `${API_BASE_URL}/api/messages/${tokenMint}/${selectedChatTier}/updates?since=${latestTimestamp}`,
+        // IMPORTANT: Adjust this path if your backend router setup differs
+        `${API_BASE_URL}/api/messages/${tokenMint}/${selectedChatTier}/updates?since=${latestTimestamp}`
       );
 
       if (!response.ok) {
-         // Log polling errors quietly
-         console.warn(`Polling failed (${response.status}): ${response.statusText}`);
-         if (response.status === 401 || response.status === 403) {
-            // Handle auth errors during polling - maybe stop polling?
-            // For now, just log and let the interval continue/be cleared elsewhere
-            console.error("Polling auth failed. Stopping?");
-         }
-         return;
+        // Log polling errors quietly
+        console.warn(
+          `Polling failed (${response.status}): ${response.statusText}`
+        );
+        if (response.status === 401 || response.status === 403) {
+          // Handle auth errors during polling - maybe stop polling?
+          // For now, just log and let the interval continue/be cleared elsewhere
+          console.error("Polling auth failed. Stopping?");
+        }
+        return;
       }
 
-       const contentType = response.headers.get("content-type");
-       if (!contentType || !contentType.includes("application/json")) {
-         console.warn("Polling received non-JSON response");
-         return;
-       }
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        console.warn("Polling received non-JSON response");
+        return;
+      }
 
       const data: GetMessagesResponse = await response.json();
 
       if (data.success && data.messages && data.messages.length > 0) {
         // Sort new messages (API guarantees ascending order, but sort just in case)
         const newMessages = data.messages.sort(
-          (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          (a, b) =>
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
         );
 
         // Filter out potential duplicates (e.g., optimistic messages confirmed by poll)
-        const currentMessageIds = new Set(chatMessages.map(m => m.id));
-        const uniqueNewMessages = newMessages.filter(nm => !currentMessageIds.has(nm.id));
+        const currentMessageIds = new Set(chatMessages.map((m) => m.id));
+        const uniqueNewMessages = newMessages.filter(
+          (nm) => !currentMessageIds.has(nm.id)
+        );
 
         if (uniqueNewMessages.length > 0) {
           setChatMessages((prev) => [...prev, ...uniqueNewMessages]);
-          setLatestTimestamp(uniqueNewMessages[uniqueNewMessages.length - 1].timestamp);
+          setLatestTimestamp(
+            uniqueNewMessages[uniqueNewMessages.length - 1].timestamp
+          );
 
-           // Scroll to bottom only if new messages were added and user is near bottom
-           if (chatContainerRef.current) {
-              const scrollThreshold = 100; // Pixels from bottom
-              const isNearBottom = chatContainerRef.current.scrollHeight - chatContainerRef.current.clientHeight <= chatContainerRef.current.scrollTop + scrollThreshold;
-              if (isNearBottom) {
-                  // Use setTimeout to ensure scroll happens after DOM update
-                  setTimeout(() => {
-                      if (chatContainerRef.current) {
-                         chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-                      }
-                  }, 0);
-              }
-           }
+          // Scroll to bottom only if new messages were added and user is near bottom
+          if (chatContainerRef.current) {
+            const scrollThreshold = 100; // Pixels from bottom
+            const isNearBottom =
+              chatContainerRef.current.scrollHeight -
+                chatContainerRef.current.clientHeight <=
+              chatContainerRef.current.scrollTop + scrollThreshold;
+            if (isNearBottom) {
+              // Use setTimeout to ensure scroll happens after DOM update
+              setTimeout(() => {
+                if (chatContainerRef.current) {
+                  chatContainerRef.current.scrollTop =
+                    chatContainerRef.current.scrollHeight;
+                }
+              }, 0);
+            }
+          }
         }
       }
     } catch (error) {
       console.error("Error polling for messages:", error);
-       // Avoid showing polling errors prominently
+      // Avoid showing polling errors prominently
     }
   }, [
-      tokenMint,
-      publicKey,
-      selectedChatTier,
-      latestTimestamp,
-      isAuthenticated,
-      isSendingMessage,
-      isChatLoading,
-      isRefreshingMessages,
-      chatMessages, // Needed for duplicate check
-      // API_BASE_URL is stable
+    tokenMint,
+    publicKey,
+    selectedChatTier,
+    latestTimestamp,
+    isAuthenticated,
+    isSendingMessage,
+    isChatLoading,
+    isRefreshingMessages,
+    chatMessages, // Needed for duplicate check
+    // API_BASE_URL is stable
   ]);
 
   // Setup polling interval
   useEffect(() => {
     // Only poll if authenticated, have necessary info, and a timestamp to poll from
-    if (isAuthenticated && tokenMint && selectedChatTier && latestTimestamp && eligibleChatTiers.includes(selectedChatTier)) {
+    if (
+      isAuthenticated &&
+      tokenMint &&
+      selectedChatTier &&
+      latestTimestamp &&
+      eligibleChatTiers.includes(selectedChatTier)
+    ) {
       const intervalId = setInterval(pollForNewMessages, 5000); // Poll every 5 seconds
-      console.log(`Polling started for ${tokenMint} / ${selectedChatTier} since ${latestTimestamp}`);
+      console.log(
+        `Polling started for ${tokenMint} / ${selectedChatTier} since ${latestTimestamp}`
+      );
 
       return () => {
-          clearInterval(intervalId); // Cleanup interval
-          console.log(`Polling stopped for ${tokenMint} / ${selectedChatTier}`);
-      }
+        clearInterval(intervalId); // Cleanup interval
+        console.log(`Polling stopped for ${tokenMint} / ${selectedChatTier}`);
+      };
     }
-  }, [isAuthenticated, tokenMint, selectedChatTier, latestTimestamp, eligibleChatTiers, pollForNewMessages]);
-
+  }, [
+    isAuthenticated,
+    tokenMint,
+    selectedChatTier,
+    latestTimestamp,
+    eligibleChatTiers,
+    pollForNewMessages,
+  ]);
 
   // --- Send Chat Message --- *MODIFIED*
   const handleSendMessage = async () => {
@@ -448,11 +503,12 @@ export default function ChatSection() {
 
     // Scroll to bottom after optimistic update
     if (chatContainerRef.current) {
-        setTimeout(() => {
-            if(chatContainerRef.current) {
-                 chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-            }
-        }, 0);
+      setTimeout(() => {
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop =
+            chatContainerRef.current.scrollHeight;
+        }
+      }, 0);
     }
 
     try {
@@ -468,12 +524,12 @@ export default function ChatSection() {
             message: chatInput.trim(),
             // No parentId specified here, assumes root message
           }),
-        },
+        }
       );
 
       if (response.status === 401 || response.status === 403) {
         setChatError(
-          `You need ${getTierThreshold(selectedChatTier).toLocaleString()} tokens to post here.`,
+          `You need ${getTierThreshold(selectedChatTier).toLocaleString()} tokens to post here.`
         );
         // Remove optimistic message
         setChatMessages((prev) => prev.filter((msg) => msg.id !== tempId));
@@ -496,14 +552,18 @@ export default function ChatSection() {
         setChatMessages((prev) => {
           const filtered = prev.filter((msg) => msg.id !== tempId);
           // Make sure the real message isn't already added by polling
-          if (!filtered.some(m => m.id === data.message!.id)) {
-              return [...filtered, data.message!];
+          if (!filtered.some((m) => m.id === data.message!.id)) {
+            return [...filtered, data.message!];
           }
           return filtered;
         });
         // Update latest timestamp if this new message is the latest
-        if (!latestTimestamp || new Date(data.message.timestamp).getTime() > new Date(latestTimestamp).getTime()) {
-            setLatestTimestamp(data.message.timestamp);
+        if (
+          !latestTimestamp ||
+          new Date(data.message.timestamp).getTime() >
+            new Date(latestTimestamp).getTime()
+        ) {
+          setLatestTimestamp(data.message.timestamp);
         }
       } else {
         throw new Error(data.error || "Failed to send message");
@@ -511,7 +571,7 @@ export default function ChatSection() {
     } catch (error) {
       console.error("Error sending message:", error);
       setChatError(
-        error instanceof Error ? error.message : "Could not send message",
+        error instanceof Error ? error.message : "Could not send message"
       );
       // Remove optimistic message on error
       setChatMessages((prev) => prev.filter((msg) => msg.id !== tempId));
@@ -525,15 +585,19 @@ export default function ChatSection() {
   useEffect(() => {
     if (chatContainerRef.current && !isChatLoading && chatMessages.length > 0) {
       // Only scroll fully down on initial load or refresh
-      if(!latestTimestamp) { // Rough check if it's initial load
-         chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      if (!latestTimestamp) {
+        // Rough check if it's initial load
+        chatContainerRef.current.scrollTop =
+          chatContainerRef.current.scrollHeight;
       }
     }
   }, [chatMessages, isChatLoading]); // Removed latestTimestamp dependency
 
   // Determine if user can chat in the currently selected tier
   const canChatInSelectedTier =
-    publicKey && eligibleChatTiers.includes(selectedChatTier) && isAuthenticated;
+    publicKey &&
+    eligibleChatTiers.includes(selectedChatTier) &&
+    isAuthenticated;
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -622,15 +686,20 @@ export default function ChatSection() {
                   variant="outline"
                   // Refresh fetches all messages again, resetting the timestamp
                   onClick={() => {
-                      setLatestTimestamp(null);
-                      fetchChatMessages(selectedChatTier, false)
+                    setLatestTimestamp(null);
+                    fetchChatMessages(selectedChatTier, false);
                   }}
                   disabled={isRefreshingMessages || isChatLoading}
                   className="p-1"
                 >
                   <RefreshCw
                     size={16}
-                    className={isRefreshingMessages || (isChatLoading && !isRefreshingMessages) ? "animate-spin" : ""} // Spin if initial loading too
+                    className={
+                      isRefreshingMessages ||
+                      (isChatLoading && !isRefreshingMessages)
+                        ? "animate-spin"
+                        : ""
+                    } // Spin if initial loading too
                   />
                 </Button>
               </div>
@@ -641,7 +710,8 @@ export default function ChatSection() {
               ref={chatContainerRef}
               className="flex-grow overflow-y-auto p-2 space-y-3 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800"
             >
-              {(isBalanceLoading || (isChatLoading && chatMessages.length === 0)) && (
+              {(isBalanceLoading ||
+                (isChatLoading && chatMessages.length === 0)) && (
                 <div className="flex items-center justify-center w-full h-full">
                   <Loader />
                 </div>
@@ -693,7 +763,8 @@ export default function ChatSection() {
                     className={`flex ${msg.author === publicKey?.toBase58() ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`p-3 max-w-[95%] rounded-lg shadow-md ${ // Added rounded corners and shadow
+                      className={`p-3 max-w-[95%] rounded-lg shadow-md ${
+                        // Added rounded corners and shadow
                         msg.isOptimistic
                           ? "bg-gray-700/50 animate-pulse"
                           : msg.author === publicKey?.toBase58()
@@ -717,7 +788,9 @@ export default function ChatSection() {
             </div>
 
             {/* Message Input Area */}
-            <div className="p-2 border-t border-gray-700"> {/* Added border */}
+            <div className="p-2 border-t border-gray-700">
+              {" "}
+              {/* Added border */}
               {!canChatInSelectedTier && publicKey && (
                 <p className="text-center text-yellow-500 text-sm mb-2">
                   You need {getTierThreshold(selectedChatTier).toLocaleString()}
@@ -746,9 +819,11 @@ export default function ChatSection() {
                     }
                   }}
                   placeholder={
-                    !isAuthenticated ? "Connect wallet to chat"
-                    : !eligibleChatTiers.includes(selectedChatTier) ? `Need ${getTierThreshold(selectedChatTier).toLocaleString()}+ tokens`
-                    : `Message in ${formatTierLabel(selectedChatTier)} chat...`
+                    !isAuthenticated
+                      ? "Connect wallet to chat"
+                      : !eligibleChatTiers.includes(selectedChatTier)
+                        ? `Need ${getTierThreshold(selectedChatTier).toLocaleString()}+ tokens`
+                        : `Message in ${formatTierLabel(selectedChatTier)} chat...`
                   }
                   disabled={!canChatInSelectedTier || isSendingMessage}
                   className="flex-1 h-10 border bg-gray-800 border-gray-600 text-white focus:outline-none focus:border-[#03FF24] focus:ring-1 focus:ring-[#03FF24] px-3 text-sm rounded-md disabled:opacity-60 disabled:cursor-not-allowed" // Added rounded corners, adjusted colors

@@ -198,6 +198,14 @@ export class TokenMigrator {
         eventName: "feesCollected",
         fn: (token: any) => this.collectFee(token).then((result) => result),
       },
+      {
+        name: "done",
+        eventName: "migrationDone",
+        fn: (token: any) => {
+          console.log("token.migration", token.migration);
+          return Promise.resolve({ txId: "", extraData: {} });
+        },
+      },
     ];
   }
 
@@ -242,7 +250,13 @@ export class TokenMigrator {
         : undefined;
       console.log("currentStep", currentStep);
 
-      //
+      if (currentStep?.name === "done") {
+        logger.log(
+          `[Migrate] Migration already done for token ${token.mint}. Deferring additionalMetadata )`,
+        );
+        return;
+
+      }
 
       // If all steps are done, finalize and update token.
       if (currentStep && currentStep?.name === "finalize") {
@@ -288,6 +302,7 @@ export class TokenMigrator {
         // All steps are complete; final status update.
         token.status = "locked";
         token.lockedAt = new Date();
+        token.migration.lastStep = "done";
         await updateTokenInDB(this.env, {
           mint: token.mint,
           status: "locked",
@@ -855,9 +870,7 @@ export class TokenMigrator {
         // err
       );
     }
-    this.ongoingMigrations = this.ongoingMigrations.filter(
-      (mint) => mint !== token.mint,
-    );
+
     return { txId: "finalized" };
   }
 
