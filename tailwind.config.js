@@ -7,6 +7,7 @@ module.exports = {
         "dm-mono": ["DMMono", "monospace"],
       },
       colors: {
+        accent: 'var(--accent-color)',
         autofun: {
           background: {
             primary: "#0a0a0a",
@@ -15,17 +16,17 @@ module.exports = {
             disabled: "#505050",
             input: "#212121",
             "action-secondary": "#092f0e",
-            highlight: "#03FF24",
-            "action-highlight": "#03FF24",
+            highlight: 'var(--accent-color)',
+            "action-highlight": 'var(--accent-color)',
             "action-disabled": "#171717",
           },
           stroke: {
             primary: "#262626",
-            highlight: "#03FF24",
+            highlight: 'var(--accent-color)',
             light: "#707070",
           },
           text: {
-            highlight: "#03FF24",
+            highlight: 'var(--accent-color)',
             primary: "#ffffff",
             secondary: "#8c8c8c",
             disabled: "#505050",
@@ -36,7 +37,7 @@ module.exports = {
             primary: "#ffffff",
             secondary: "#8c8c8c",
             disabled: "#505050",
-            highlight: "#03FF24",
+            highlight: 'var(--accent-color)',
           },
         },
       },

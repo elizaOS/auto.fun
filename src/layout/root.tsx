@@ -3,6 +3,7 @@ import Footer from "@/components/footer";
 import Header from "@/components/header";
 import { WalletModal } from "@/components/wallet-dialog";
 import { Providers } from "@/providers";
+import { useCurrentTheme } from "@/stores/useThemeStore";
 import { queryClient } from "@/utils/api";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
@@ -11,10 +12,18 @@ import { ToastContainer } from "react-toastify";
 
 export default function Layout() {
   const { pathname } = useLocation();
+  const currentTheme = useCurrentTheme();
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--accent-color",
+      currentTheme.accentColor,
+    );
+  }, [currentTheme]);
 
   return (
     <QueryClientProvider client={queryClient}>

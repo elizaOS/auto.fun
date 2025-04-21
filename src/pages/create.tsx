@@ -16,6 +16,7 @@ import { Icons } from "../components/icons";
 import { TokenMetadata } from "../types/form.type";
 // Import the worker using Vite's ?worker syntax
 import InlineVanityWorker from "@/workers/vanityWorker?worker&inline"; // Added import
+import { useCurrentTheme } from "@/stores/useThemeStore"; // Import theme hook
 
 const MAX_INITIAL_SOL = isDevnet ? 2.8 : 28;
 // Use the token supply and virtual reserves from environment or fallback to defaults
@@ -2764,6 +2765,11 @@ export const Create = () => {
     };
   }, []);
 
+  const currentTheme = useCurrentTheme(); // Get current theme
+
+  // Construct dynamic dice logo path
+  const diceLogoPath = `/hues/dice/dice-${currentTheme.fileSuffix}.svg`;
+
   return (
     <div className="flex flex-col items-center justify-center">
       {showCoinDrop && (
@@ -2780,25 +2786,27 @@ export const Create = () => {
         {/* Tabs Navigation */}
         <div className="flex items-center md:justify-between flex-col md:flex-row gap-8 mx-auto w-full mb-2">
           <div className="flex shrink-0 items-center gap-4">
+            {/* Apply dynamic path to dice logo */}
             <img
-              src="/create/dicelogo.svg"
-              alt="Coin Machine"
+              src={diceLogoPath} 
+              alt="Coin Machine Dice" 
               className="w-24 h-24"
+              key={diceLogoPath} // Add key to force re-render on src change
             />
             <img
               src="/create/coinmachine.svg"
-              alt="Coin Machine"
+              alt="Coin Machine Text"
               className="w-48 h-24"
             />
           </div>
           <div className="flex justify-between items-center text-lg w-full shrink">
             {Object.values(FormTab).map((tab, _) => (
               <button
-                key={tab} // Added key
+                key={tab}
                 type="button"
-                className={`uppercase font-satoshi font-medium transition-colors duration-200 cursor-pointer select-none ${
+                className={`uppercase font-satoshi font-medium transition-colors duration-200 cursor-pointer select-none border-b-2 ${
                   activeTab === tab
-                    ? "border-[#03FF24] text-[#03FF24] font-bold"
+                    ? "border-accent text-accent font-bold" // Use accent color
                     : "border-transparent text-neutral-400 hover:text-white"
                 }`}
                 onClick={() => handleTabChange(tab)}

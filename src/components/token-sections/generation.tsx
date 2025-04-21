@@ -1608,19 +1608,20 @@ export default function CommunityTab() {
     if (!document.getElementById("media-tab-styles")) {
       const style = document.createElement("style");
       style.id = "media-tab-styles";
+      // Update the background-color to use the CSS variable
       style.innerHTML = `
         .active-tab {
           position: relative;
         }
         .active-tab::after {
-          content: '';
+          content: \'\';
           position: absolute;
           bottom: -4px;
           left: 50%;
           transform: translateX(-50%);
           width: 24px;
           height: 2px;
-          background-color: #03FF24;
+          background-color: var(--accent-color); /* Use CSS variable */
         }
       `;
       document.head.appendChild(style);

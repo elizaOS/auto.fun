@@ -1,28 +1,40 @@
-import { Icons } from "./icons";
+import {
+  Dice1,
+  Dice2,
+  Dice3,
+  Dice4,
+  Dice5,
+  Dice6,
+} from "lucide-react";
+import { useThemeStore } from "@/stores/useThemeStore";
+import Button from "./button"; // Assuming a reusable Button component exists
+import React from "react";
 
-interface DiceButtonProps {
-  onClick: () => void;
-  isLoading?: boolean;
-  className?: string;
-}
+const diceIcons = [
+  Dice1,
+  Dice2,
+  Dice3,
+  Dice4,
+  Dice5,
+  Dice6,
+];
 
-export const DiceButton = ({
-  onClick,
-  isLoading,
-  className = "",
-}: DiceButtonProps) => {
+export const DiceButton: React.FC = () => {
+  const { cycleTheme, currentThemeIndex } = useThemeStore();
+
+  // Calculate which dice face to show (1-6)
+  const diceNumber = (currentThemeIndex % 6) + 1;
+  const DiceIcon = diceIcons[diceNumber - 1];
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={isLoading}
-      className={`cursor-pointer opacity-50 hover:opacity-100 ${className}`}
+    <Button
+      variant="outline"
+      size="small"
+      onClick={cycleTheme}
+      className="border-accent text-accent hover:bg-accent hover:text-autofun-background-primary transition-colors p-2"
+      aria-label="Change theme"
     >
-      {isLoading ? (
-        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-      ) : (
-        <Icons.Dice />
-      )}
-    </button>
+      <DiceIcon className="size-5" />
+    </Button>
   );
 };

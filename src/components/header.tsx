@@ -5,13 +5,18 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
 import Button from "./button";
 import SearchBar from "./search-bar";
+import { DiceButton } from "./dice-button";
+import { useCurrentTheme } from "@/stores/useThemeStore";
 
 export default function Header() {
   const { pathname } = useLocation();
   const { publicKey } = useWallet();
   const { isAuthenticated } = useAuthentication();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  // const solBalance = useSolBalance();
+  const currentTheme = useCurrentTheme();
+
+  const logoPath = `/hues/logo/logo-${currentTheme.fileSuffix}.svg`;
+  const logoWidePath = `/hues/logo/logo-${currentTheme.fileSuffix}.svg`;
 
   const mobileNavItems = [
     { icon: "/nav/stars.svg", title: "Create Token", href: "/create" },
@@ -42,28 +47,30 @@ export default function Header() {
             <Link to="/" className="mr-6" aria-label="Auto.fun frontpage">
               <img
                 className="hidden md:block size-20 pointer-events-none"
-                src="/logo_wide.svg"
+                src={logoWidePath}
                 alt="logo"
+                key={logoWidePath}
               />
               <img
                 className="block md:hidden size-20 pointer-events-none"
-                src="/logo.svg"
+                src={logoPath}
                 alt="logo"
+                key={logoPath}
               />
             </Link>
           </div>
-          <div className="flex space-x-3 flex-row">
+          <div className="flex space-x-3 flex-row items-center">
             {pathname !== "/create" && (
               <>
                 <SearchBar />
-
+                <DiceButton />
                 <Link to="/create">
-                  <Button className="cursor-pointer flex items-center text-base text-autofun-text-highlight font-bold font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345] min-w-34">
+                  <Button className="cursor-pointer flex items-center text-base text-accent font-bold font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border-2 border-accent min-w-34 hover:bg-accent hover:text-autofun-background-primary transition-colors">
                     New Coin{" "}
                     <img
                       src="/nav/stars.svg"
                       alt="stars"
-                      className="text-[#2FD345]"
+                      className="text-accent"
                     />
                   </Button>
                 </Link>
@@ -80,7 +87,12 @@ export default function Header() {
       >
         <div className="flex items-center justify-between lg:hidden w-full py-2 px-2">
           <Link to="/" className="shrink-0" aria-label="Auto.fun frontpage">
-            <img className="h-11 w-15 sm:w-auto" src="/logo.svg" alt="logo" />
+            <img
+              className="h-11 w-15 sm:w-auto"
+              src={logoPath}
+              alt="logo"
+              key={logoPath}
+            />
           </Link>
           {pathname !== "/create" && (
             <>
@@ -88,18 +100,19 @@ export default function Header() {
                 <SearchBar />
               </div>
               <Link to="/create" className="mr-2 shrink-0">
-                <Button className="cursor-pointer shrink-0 flex items-center text-base text-autofun-text-highlight font-bold font-satoshi justify-center px-2 sm:px-4 py-1 sm:py-2.5 gap-2 h-11 bg-[#171717] border-2 border-[#2FD345]">
+                <Button className="cursor-pointer shrink-0 flex items-center text-base text-accent font-bold font-satoshi justify-center px-2 sm:px-4 py-1 sm:py-2.5 gap-2 h-11 bg-[#171717] border-2 border-accent hover:bg-accent hover:text-autofun-background-primary transition-colors">
                   <span className="hidden md:inline">New Coin</span>{" "}
                   <img
                     src="/nav/stars.svg"
                     alt="stars"
-                    className="text-[#2FD345] shrink-0"
+                    className="text-accent shrink-0"
                   />
                 </Button>
               </Link>
             </>
           )}
           <WalletButton />
+          <DiceButton />
         </div>
       </div>
     </>

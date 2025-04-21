@@ -194,7 +194,7 @@ const WalletButton = () => {
           onClick={() => setMenuOpen(!menuOpen)}
         >
           <div className="flex items-center md:gap-2.5 justify-between m-auto">
-            <span className="font-satoshi font-medium">
+            <span className="font-satoshi font-medium text-accent">
               {shortenAddress(displayPublicKey.toString())}
             </span>
 

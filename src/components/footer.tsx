@@ -1,9 +1,19 @@
 import { Link } from "react-router";
+import { useCurrentTheme } from "@/stores/useThemeStore";
 
 export const Footer = () => {
+  const currentTheme = useCurrentTheme();
+
+  const diceSvgPath = `/hues/dice/dice-${currentTheme.fileSuffix}.svg`;
+
   return (
     <div className="flex flex-col gap-2">
-      <img className="w-auto h-16 mt-16 mb-16" src="/dice.svg" alt="logo" />
+      <img
+        className="w-auto h-16 mt-16 mb-16 mx-auto"
+        src={diceSvgPath}
+        alt="logo dice"
+        key={diceSvgPath}
+      />
       <div className="flex flex-wrap gap-2 items-center py-4 justify-between px-2">
         <div className="flex items-center gap-2.5 mx-auto py-2.5">
           <FooterLink href="/privacy-policy" title="Privacy" />

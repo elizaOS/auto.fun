@@ -463,8 +463,8 @@ export default function Page() {
         <div className="w-full lg:w-1/2 flex flex-col gap-3 order-3 lg:order-2">
           <div className="overflow-hidden relative">
             <div className="flex flex-col">
-              {/* Green stroke above tab section */}
-              <div className="h-2 w-full bg-autofun-text-highlight z-10"></div>
+              {/* Accent stroke above tab section */}
+              <div className="h-2 w-full bg-accent z-10"></div>
 
               {/* Tabs Header with Title and Right-aligned Tabs - removed border-b as it's on the parent */}
               <div className="flex items-center justify-between pr-2">
@@ -472,7 +472,7 @@ export default function Page() {
                   <button
                     className={`px-4 py-3 text-autofun-text-primary font-medium cursor-pointer ${
                       activeTab === "chart"
-                        ? "bg-autofun-background-highlight text-black"
+                        ? "bg-accent text-autofun-background-primary"
                         : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
                     }`}
                     onClick={() => setActiveTab("chart")}
@@ -486,7 +486,7 @@ export default function Page() {
                           : "/token/chartoff.svg"
                       }
                       className={`size-4 inline-block ml-1.5 ${
-                        activeTab === "chart" ? "text-black" : ""
+                        activeTab === "chart" ? "text-autofun-background-primary" : ""
                       }`}
                       alt="chart icon"
                     />
@@ -494,7 +494,7 @@ export default function Page() {
                   <button
                     className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer ${
                       activeTab === "ai"
-                        ? "bg-autofun-background-highlight text-black"
+                        ? "bg-accent text-autofun-background-primary"
                         : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
                     }`}
                     onClick={() => setActiveTab("ai")}
@@ -504,19 +504,19 @@ export default function Page() {
                     <img
                       src={
                         activeTab === "ai"
-                          ? "/token/createoff.svg"
-                          : "/token/createon.svg"
+                          ? "/token/aion.svg"
+                          : "/token/aioff.svg"
                       }
                       className={`size-4 inline-block ml-1.5 ${
-                        activeTab === "ai" ? "text-black" : "text-white"
+                        activeTab === "ai" ? "text-autofun-background-primary" : ""
                       }`}
-                      alt="chart icon"
+                      alt="ai icon"
                     />
                   </button>
                   <button
                     className={`px-4 py-3 mr-1 text-autofun-text-primary font-medium cursor-pointer ${
                       activeTab === "chat"
-                        ? "bg-autofun-background-highlight text-black"
+                        ? "bg-accent text-autofun-background-primary"
                         : "text-autofun-text-secondary hover:text-autofun-text-primary bg-autofun-background-input"
                     }`}
                     onClick={() => setActiveTab("chat")}
@@ -530,7 +530,7 @@ export default function Page() {
                           : "/token/chaton.svg"
                       }
                       className={`size-4 inline-block ml-1.5 ${
-                        activeTab === "chat" ? "text-black" : ""
+                        activeTab === "chat" ? "text-autofun-background-primary" : ""
                       }`}
                       alt="chat icon"
                     />

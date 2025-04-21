@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { IToken } from "@/types";
 // import { getToken } from "@/utils/api";
 import { resizeImage } from "@/utils";
+import { useCurrentTheme } from "@/stores/useThemeStore";
 
 // Add TypeScript declaration for CANNON to fix the errors
 declare module "cannon-es" {
@@ -200,6 +201,9 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   const sceneInitializedRef = useRef(false);
   // Add a ref to track if tokens have been processed initially
   const tokensProcessedRef = useRef(false);
+
+  // Get current theme to use themed SVGs
+  const currentTheme = useCurrentTheme();
 
   useEffect(() => {
     // Skip token processing if we've already done initial setup and the scene is initialized
@@ -416,6 +420,22 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     }
   }, [selectedTokenData, clickPosition, popupRef.current]);
 
+  // Update wall colors when theme changes
+  useEffect(() => {
+    if (sceneRef.current) {
+      // Find all wall meshes and update their materials
+      sceneRef.current.traverse((object) => {
+        if (object instanceof THREE.Mesh && 
+            object.material instanceof THREE.MeshStandardMaterial &&
+            !(object.userData?.tokenAddress)) { // Skip dice
+          // Update to the current theme color
+          object.material.color.set(currentTheme.accentColor);
+          object.material.needsUpdate = true;
+        }
+      });
+    }
+  }, [currentTheme]);
+
   // Function to calculate display position
   const getDisplayPosition = () => {
     if (!clickPosition || !containerRef.current || !popupRef.current) {
@@ -586,7 +606,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
 
     // Walls
     const wallMeshMaterial = new THREE.MeshStandardMaterial({
-      color: 0x03ff24, // Bright green
+      color: parseInt(currentTheme.accentColor.replace('#', '0x')), // Use theme color instead of hardcoded green
       roughness: 0.7,
       // emissive: 0x000000,
       // fully transparent
@@ -1065,10 +1085,11 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
         {/* Face with eyes overlay - ensure proportions maintained */}
         <div className="relative h-full flex-shrink-0">
           <img
-            src="noeyes.svg"
+            src={`/hues/noeyes/noeyes-${currentTheme.fileSuffix}.svg`}
             className="h-full w-auto object-contain"
             style={{ aspectRatio: "3/1" }}
             alt="Face background"
+            key={`noeyes-${currentTheme.fileSuffix}`} /* Add key to force re-render when theme changes */
           />
           {/* Positioned eyes over the face */}
           <div className="absolute inset-0 pointer-events-none">
