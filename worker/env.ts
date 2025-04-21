@@ -49,6 +49,7 @@ export interface Env {
   tokenPubkey: string; // Used in tests to track the current test token
   // Redis
   REDIS: KVNamespace;
+  REDIS_URL: string;
   // KV namespace for auth tokens
   AUTH_TOKENS: KVNamespace;
   CACHE: KVNamespace;
