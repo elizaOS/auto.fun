@@ -158,14 +158,17 @@ export async function claim(
     cluster: "mainnet",
     disableFeatureCheck: true,
     disableLoadToken: false,
-    blockhashCommitment: "finalized",
+    blockhashCommitment: "confirmed",
   });
   const poolInfo = (
     await raydium.api.fetchPoolById({ ids: poolId.toString() })
   )[0];
+  console.log("poolInfo", poolInfo);
   const poolInfoJson = JSON.parse(JSON.stringify(poolInfo));
+  console.log("poolInfoJson", poolInfoJson);
   const pool_state = new anchor.web3.PublicKey(poolId.toString());
   const lp_mint = new anchor.web3.PublicKey(poolInfoJson.lpMint.address);
+  console.log("lp_mint", lp_mint.toString());
   const vault0_mint = new anchor.web3.PublicKey(
     poolInfo.mintA.address.toString(),
   );
