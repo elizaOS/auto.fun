@@ -1117,7 +1117,7 @@ tokenRouter.get("/tokens", async (c) => {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
           logger.log(`Cache hit for ${cacheKey}`);
-          return c.json(cachedData);
+          return c.json(JSON.parse(cachedData));
         }
         logger.log(`Cache miss for ${cacheKey}`);
       } catch (cacheError) {
@@ -1490,7 +1490,7 @@ tokenRouter.get("/token/:mint", async (c) => {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
           logger.log(`Cache hit for ${cacheKey}`);
-          return c.json(cachedData);
+          return c.json(JSON.parse(cachedData));
         }
         logger.log(`Cache miss for ${cacheKey}`);
       } catch (cacheError) {
