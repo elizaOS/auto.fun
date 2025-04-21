@@ -15,6 +15,7 @@ import { IToken } from "@/types";
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Fragment } from "react/jsx-runtime";
 import { FilterIcon, X } from "lucide-react"; // Example icons
+import ThemedLogo from "@/components/themed-logo";
 
 // Define types for state
 type GridSortByType = "newest" | "all" | "marketCap";
@@ -125,7 +126,7 @@ export default function Page() {
         <FrontpageHeader tokens={headerTokens} />
       </div>
       <div className="md:hidden flex justify-center items-center py-8">
-        <img src="/logo_wide.svg" alt="Logo" className="w-4/5 max-w-[400px]" />
+        <ThemedLogo className="w-4/5 max-w-[400px]" alt="Logo" />
       </div>
       {/* Top Navigation */}
       <div className="flex justify-between gap-1 flex-wrap-reverse md:flex-wrap">

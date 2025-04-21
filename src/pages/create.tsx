@@ -17,6 +17,7 @@ import { TokenMetadata } from "../types/form.type";
 // Import the worker using Vite's ?worker syntax
 import InlineVanityWorker from "@/workers/vanityWorker?worker&inline"; // Added import
 import { useCurrentTheme } from "@/stores/useThemeStore"; // Import theme hook
+import ThemedLogo from "@/components/themed-logo";
 
 const MAX_INITIAL_SOL = isDevnet ? 2.8 : 28;
 // Use the token supply and virtual reserves from environment or fallback to defaults
@@ -3401,8 +3402,7 @@ export const Create = () => {
                       transform: "rotateY(0deg) translateZ(64px)",
                     }}
                   >
-                    <img
-                      src="/logo_wide.svg"
+                    <ThemedLogo
                       alt="logo front"
                       style={{
                         height: "100%",
@@ -3435,8 +3435,7 @@ export const Create = () => {
                         position: "relative",
                       }}
                     >
-                      <img
-                        src="/logo_wide.svg"
+                      <ThemedLogo
                         alt="logo right"
                         style={{
                           position: "absolute",
@@ -3464,8 +3463,7 @@ export const Create = () => {
                       transform: "rotateY(180deg) translateZ(64px)",
                     }}
                   >
-                    <img
-                      src="/logo_wide.svg"
+                    <ThemedLogo
                       alt="logo back"
                       style={{
                         height: "100%",
@@ -3498,8 +3496,7 @@ export const Create = () => {
                         position: "relative",
                       }}
                     >
-                      <img
-                        src="/logo_wide.svg"
+                      <ThemedLogo
                         alt="logo left"
                         style={{
                           position: "absolute",

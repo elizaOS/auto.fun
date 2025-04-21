@@ -1,5 +1,6 @@
 import { useEffect, useState, CSSProperties } from "react";
 import { twMerge } from "tailwind-merge";
+import ThemedLogo from "@/components/themed-logo";
 
 export default function Loader({ className }: { className?: string }) {
   const [rotation, setRotation] = useState(0);
@@ -56,9 +57,9 @@ export default function Loader({ className }: { className?: string }) {
                 transform: "rotateY(0deg) translateZ(64px)",
               }}
             >
-              <img
-                src="/logo_wide.svg"
+              <ThemedLogo
                 alt="logo front"
+                className=""
                 style={{
                   height: "100%",
                   width: "256px",
@@ -83,9 +84,9 @@ export default function Loader({ className }: { className?: string }) {
                   position: "relative",
                 }}
               >
-                <img
-                  src="/logo_wide.svg"
+                <ThemedLogo
                   alt="logo right"
+                  className=""
                   style={{
                     position: "absolute",
                     height: "100%",
@@ -105,9 +106,9 @@ export default function Loader({ className }: { className?: string }) {
                 transform: "rotateY(180deg) translateZ(64px)",
               }}
             >
-              <img
-                src="/logo_wide.svg"
+              <ThemedLogo
                 alt="logo back"
+                className=""
                 style={{
                   height: "100%",
                   width: "256px",
@@ -132,9 +133,9 @@ export default function Loader({ className }: { className?: string }) {
                   position: "relative",
                 }}
               >
-                <img
-                  src="/logo_wide.svg"
+                <ThemedLogo
                   alt="logo left"
+                  className=""
                   style={{
                     position: "absolute",
                     height: "100%",
