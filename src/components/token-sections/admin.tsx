@@ -180,6 +180,95 @@ export default function AdminTab() {
 
     setIsSaving(true);
 
+    // --- Link Normalization ---
+    const normalizeUrl = (
+      url: string,
+      prefix: string,
+      domain?: string,
+    ): string => {
+      if (!url) return "";
+      try {
+        url = url.trim();
+        // If it's already a valid URL with the correct domain, ensure https
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+          const urlObj = new URL(url);
+          if (domain && urlObj.hostname.replace(/^www\\./, "") !== domain) {
+            // Domain mismatch, try to extract path/username
+            const path = urlObj.pathname.split("/").pop() || "";
+            return path ? `${prefix}${path}` : ""; // Return empty if no path found
+          }
+          urlObj.protocol = "https:";
+          return urlObj.toString();
+        }
+        // Handle cases like domain.com/path directly
+        if (domain && url.startsWith(domain + "/")) {
+          return `https://${url}`;
+        }
+        // Handle just username/path/code
+        if (!url.includes("/") && !url.includes(".")) {
+          return `${prefix}${url}`;
+        }
+        // If it doesn't seem like a username or valid url, prepend prefix cautiously
+        // Assume it's a path/username if no protocol and no clear domain
+        if (!url.startsWith("http") && !url.includes("://")) {
+          // Basic check for common domain patterns - might need refinement
+          const domainPattern = /^[a-zA-Z0-9-]+(\\.[a-zA-Z0-9-]+)+/;
+          if (!domainPattern.test(url.split("/")[0])) {
+            return `${prefix}${url}`;
+          }
+          // Otherwise, assume it's a full URL needing https
+          return `https://${url}`;
+        }
+      } catch (e) {
+        console.warn(`Could not parse or normalize URL: ${url}`, e);
+        // Fallback: attempt basic https prefix if missing
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+          return `https://${url}`;
+        }
+      }
+      // Return original url if normalization failed or wasn't applicable
+      return url;
+    };
+
+    const normalizeTwitter = (input: string): string => {
+      if (!input) return "";
+      input = input.trim();
+      const twitterUrlMatch = input.match(
+        /(?:https?:\/\/)?(?:www\.)?(?:twitter\.com|x\.com)\/([a-zA-Z0-9_]+)/,
+      );
+      if (twitterUrlMatch && twitterUrlMatch[1]) {
+        return `https://x.com/${twitterUrlMatch[1]}`;
+      }
+      // Assume it's just the username if no URL match
+      const usernameMatch = input.match(/^[a-zA-Z0-9_]+$/);
+      if (usernameMatch) {
+        return `https://x.com/${input}`;
+      }
+      console.warn(`Could not normalize Twitter/X input: ${input}`);
+      return input; // Return original if cannot parse
+    };
+
+    const normalizedLinks = {
+      website: normalizeUrl(data.links.website || "", "https://"),
+      twitter: normalizeTwitter(data.links.twitter || ""),
+      telegram: normalizeUrl(
+        data.links.telegram || "",
+        "https://t.me/",
+        "t.me",
+      ),
+      discord: normalizeUrl(
+        data.links.discord || "",
+        "https://discord.gg/",
+        "discord.gg",
+      ),
+      farcaster: normalizeUrl(
+        data.links.farcaster || "",
+        "https://warpcast.com/",
+        "warpcast.com",
+      ),
+    };
+    // --- End Link Normalization ---
+
     try {
       // Get the auth token from localStorage
       const authToken = localStorage.getItem("authToken");
@@ -194,12 +283,13 @@ export default function AdminTab() {
       }
 
       // Create request payload with development override if needed
+      // Use normalized links
       const payload: Record<string, any> = {
-        website: data.links.website,
-        twitter: data.links.twitter,
-        telegram: data.links.telegram,
-        discord: data.links.discord,
-        farcaster: data.links.farcaster,
+        website: normalizedLinks.website,
+        twitter: normalizedLinks.twitter,
+        telegram: normalizedLinks.telegram,
+        discord: normalizedLinks.discord,
+        farcaster: normalizedLinks.farcaster,
       };
 
       // **Important:** Use the dedicated admin endpoint for social links
@@ -225,13 +315,13 @@ export default function AdminTab() {
       }
 
       toast.success("Token information updated successfully");
-      // Update original data after successful save
+      // Update original data after successful save with *normalized* values
       setOriginalData({
-        website: data.links.website || "",
-        twitter: data.links.twitter || "",
-        telegram: data.links.telegram || "",
-        discord: data.links.discord || "",
-        farcaster: data.links.farcaster || "",
+        website: normalizedLinks.website || "",
+        twitter: normalizedLinks.twitter || "",
+        telegram: normalizedLinks.telegram || "",
+        discord: normalizedLinks.discord || "",
+        farcaster: normalizedLinks.farcaster || "",
       });
       // Optionally refetch token data to be absolutely sure
       queryClient.invalidateQueries({ queryKey: ["token", mint] });
@@ -359,14 +449,10 @@ export default function AdminTab() {
           )}
         />
 
-        {/* Twitter Field with custom domain validation for x.com */}
+        {/* Twitter Field - Validation removed, handled by normalization */}
         <Controller
           control={control}
           name="links.twitter"
-          rules={{
-            validate: (value: string) =>
-              !value || isFromDomain(value, "x.com") || "Invalid X URL",
-          }}
           render={({ field, fieldState: { error } }) => (
             <div className="flex flex-col gap-1">
               <FormInput
