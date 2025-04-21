@@ -4,11 +4,7 @@ import {
   parseTokenAccountResp,
 } from "@raydium-io/raydium-sdk-v2";
 import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import {
-  Connection,
-  Keypair,
-  PublicKey
-} from "@solana/web3.js";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { Env } from "../env";
 import { logger } from "../util";
 

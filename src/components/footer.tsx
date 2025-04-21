@@ -5,11 +5,11 @@ export const Footer = () => {
   const isHomepage = pathname === "/";
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 bg-gradient-to-t from-black pt-4 to-transparent">
       {!isHomepage && (
         <img className="w-auto h-16 mt-16 mb-16" src="/dice.svg" alt="logo" />
       )}
-      <div className="flex flex-wrap gap-2 items-center py-4 justify-between px-2">
+      <div className="flex flex-wrap gap-2 items-center py-1 justify-between px-2">
         <div className="flex items-center gap-2.5 mx-auto py-2.5">
           <FooterLink href="/privacy-policy" title="Privacy" />
           <div className="w-[1px] h-4 bg-autofun-stroke-light" />
