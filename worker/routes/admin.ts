@@ -55,6 +55,36 @@ const requireTokenOwner = async (c: any, next: Function) => {
   await next();
 };
 
+// Middleware to check if user is either admin or token owner
+const requireAdminOrTokenOwner = async (c: any, next: Function) => {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: "Authentication required" }, 401);
+  }
+
+  const tokenMint = c.req.param("mint");
+  if (!tokenMint) {
+    return c.json({ error: "Token mint required" }, 400);
+  }
+
+  const isAdmin = adminAddresses.includes(user.publicKey);
+  
+  if (isAdmin) {
+    await next();
+    return;
+  }
+
+  const token = await c.env.DB.prepare(
+    "SELECT creator FROM tokens WHERE mint = ?"
+  ).bind(tokenMint).first();
+
+  if (!token || token.creator !== user.publicKey) {
+    return c.json({ error: "Admin privileges or token ownership required" }, 403);
+  }
+
+  await next();
+};
+
 // Apply authentication middleware to all routes
 adminRouter.use("*", verifyAuth);
 
@@ -70,29 +100,52 @@ const ownerRouter = new Hono<{
 ownerRouter.use("*", requireTokenOwner);
 
 // Route to update a token's social links
-adminRouter.post("/tokens/:mint/social", requireAdmin, async (c) => {
+adminRouter.post("/tokens/:mint/social", requireAdminOrTokenOwner, async (c) => {
   const mint = c.req.param("mint");
   const body = await c.req.json();
 
   try {
-    // Only allow moderators to update featured/verified/hidden status
-    if (body.featured !== undefined || body.verified !== undefined || body.hidden !== undefined) {
-      await c.env.DB.prepare(
-        `UPDATE tokens 
-         SET featured = ?, verified = ?, hidden = ?
-         WHERE mint = ?`
-      ).bind(
-        body.featured || 0,
-        body.verified || 0,
-        body.hidden || 0,
-        mint
-      ).run();
+    const db = getDB(c.env);
+
+    // Check if token exists
+    const tokenData = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    if (!tokenData || tokenData.length === 0) {
+      return c.json({ error: "Token not found" }, 404);
     }
 
-    return c.json({ success: true });
+    // Update social links
+    await db
+      .update(tokens)
+      .set({
+        website: body.website || null,
+        twitter: body.twitter || null,
+        telegram: body.telegram || null,
+        discord: body.discord || null,
+        farcaster: body.farcaster || null,
+        lastUpdated: new Date().toISOString(),
+      })
+      .where(eq(tokens.mint, mint));
+
+    // Get the updated token data
+    const updatedToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    return c.json({
+      success: true,
+      message: "Token social links updated successfully",
+      token: updatedToken[0],
+    });
   } catch (error) {
-    console.error("Error updating token status:", error);
-    return c.json({ error: "Failed to update token status" }, 500);
+    console.error("Error updating token social links:", error);
+    return c.json({ error: "Failed to update token social links" }, 500);
   }
 });
 
@@ -606,29 +659,42 @@ adminRouter.get("/users", requireAdmin, async (c) => {
   }
 });
 
-// Social links endpoint for token owners
+// Route to update a token's social links (owner version)
 ownerRouter.post("/tokens/:mint/social", async (c) => {
   const mint = c.req.param("mint");
   const body = await c.req.json();
 
   try {
-    await c.env.DB.prepare(
-      `UPDATE tokens 
-       SET website = ?, twitter = ?, telegram = ?, discord = ?, farcaster = ?
-       WHERE mint = ?`
-    ).bind(
-      body.website || null,
-      body.twitter || null,
-      body.telegram || null,
-      body.discord || null,
-      body.farcaster || null,
-      mint
-    ).run();
+    const db = getDB(c.env);
 
-    return c.json({ success: true });
+    // Update social links
+    await db
+      .update(tokens)
+      .set({
+        website: body.website || null,
+        twitter: body.twitter || null,
+        telegram: body.telegram || null,
+        discord: body.discord || null,
+        farcaster: body.farcaster || null,
+        lastUpdated: new Date().toISOString(),
+      })
+      .where(eq(tokens.mint, mint));
+
+    // Get the updated token data
+    const updatedToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    return c.json({
+      success: true,
+      message: "Token social links updated successfully",
+      token: updatedToken[0],
+    });
   } catch (error) {
-    console.error("Error updating social links:", error);
-    return c.json({ error: "Failed to update social links" }, 500);
+    console.error("Error updating token social links:", error);
+    return c.json({ error: "Failed to update token social links" }, 500);
   }
 });
 

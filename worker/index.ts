@@ -104,8 +104,8 @@ api.route("/", chatRouter);
 api.route("/share", shareRouter);
 api.route("/", webhookRouter);
 api.route("/", migrationRouter);
-api.route("/api/admin", adminRouter);
-api.route("/api/owner", ownerRouter);
+api.route("/admin", adminRouter);
+api.route("/owner", ownerRouter);
 
 // Root paths for health checks
 app.get("/", (c) => c.json({ status: "ok" }));
