@@ -9,6 +9,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { RefreshCw, Send } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
+import { useInView } from 'react-intersection-observer';
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
@@ -79,6 +80,11 @@ interface PostMessageResponse {
   error?: string;
 }
 
+const CHAT_MESSAGE_LIMIT = 50; // Define limit constant
+
+// --- Chat Types ---
+// ... existing code ...
+
 export default function ChatSection() {
   const { publicKey } = useWallet();
   const { isAuthenticated, isAuthenticating } = useAuthentication();
@@ -92,7 +98,16 @@ export default function ChatSection() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [isRefreshingMessages, setIsRefreshingMessages] = useState(false);
   const [isBalanceLoading, setIsBalanceLoading] = useState(true);
-  const [latestTimestamp, setLatestTimestamp] = useState<string | null>(null); // State for polling
+  const [latestTimestamp, setLatestTimestamp] = useState<string | null>(null);
+
+  // --- Pagination State ---
+  const [oldestTimestamp, setOldestTimestamp] = useState<string | null>(null);
+  const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
+  const [hasOlderMessages, setHasOlderMessages] = useState(true);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const { ref: topSentinelRef, inView: isTopSentinelInView } = useInView({
+    threshold: 0, // Trigger as soon as it enters viewport
+  });
 
   // Get token mint from URL params with better fallback logic
   const { mint: urlTokenMint } = useParams<{ mint: string }>();
@@ -116,7 +131,53 @@ export default function ChatSection() {
     }
   }, [tokenBalance]);
 
-  // --- Fetch Initial Chat Messages --- *MODIFIED*
+  // --- Scrolling Helper --- MOVED HERE - AFTER chatContainerRef declaration
+  const scrollToBottom = useCallback((forceScroll = false) => {
+    if (!chatContainerRef.current) return;
+
+    // Log to debug
+    console.log("Attempting to scroll to bottom, forceScroll:", forceScroll);
+
+    const scrollThreshold = 100; // Pixels from bottom
+    const isNearBottom =
+      chatContainerRef.current.scrollHeight -
+        chatContainerRef.current.clientHeight <=
+      chatContainerRef.current.scrollTop + scrollThreshold;
+
+    if (forceScroll || isNearBottom) {
+      // Use setTimeout to ensure scroll happens after DOM update
+      setTimeout(() => {
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop =
+            chatContainerRef.current.scrollHeight;
+          console.log("Scrolled to bottom");
+        }
+      }, 10); // Small timeout to ensure DOM updates
+    }
+  }, []);
+
+  // Handler to detect when user scrolls away from bottom
+  useEffect(() => {
+    if (!chatContainerRef.current) return;
+
+    const handleScroll = () => {
+      if (!chatContainerRef.current) return;
+      
+      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+      const isNearBottom = scrollHeight - clientHeight <= scrollTop + 150; // 150px threshold
+      
+      setShowScrollButton(!isNearBottom);
+    };
+
+    const chatContainer = chatContainerRef.current;
+    chatContainer.addEventListener('scroll', handleScroll);
+    
+    return () => {
+      chatContainer.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  // --- Fetch Initial Chat Messages --- *REVISED*
   const fetchChatMessages = useCallback(
     async (tier: ChatTier, showLoading = true) => {
       if (
@@ -129,7 +190,9 @@ export default function ChatSection() {
         isAuthenticating
       ) {
         setChatMessages([]);
-        setLatestTimestamp(null); // Reset timestamp if prerequisites fail
+        setLatestTimestamp(null);
+        setOldestTimestamp(null);
+        setHasOlderMessages(true);
         return;
       }
 
@@ -140,11 +203,10 @@ export default function ChatSection() {
       }
 
       setChatError(null);
+      setHasOlderMessages(true);
       try {
-        // NOTE: Using the original endpoint for initial fetch
-        // Consider adapting if the backend consolidated endpoints
         const response = await fetchWithAuth(
-          `${API_BASE_URL}/api/chat/${tokenMint}/${tier}?limit=100`, // Assuming this path is correct for fetching initial messages
+          `${API_BASE_URL}/api/chat/${tokenMint}/${tier}?limit=${CHAT_MESSAGE_LIMIT}`,
           {
             method: "GET",
             headers: {
@@ -158,7 +220,9 @@ export default function ChatSection() {
             `You need ${getTierThreshold(tier).toLocaleString()} tokens to view this chat.`,
           );
           setChatMessages([]);
-          setLatestTimestamp(null); // Reset timestamp on auth error
+          setLatestTimestamp(null);
+          setOldestTimestamp(null);
+          setHasOlderMessages(false);
           return;
         }
 
@@ -174,24 +238,29 @@ export default function ChatSection() {
         const data: GetMessagesResponse = await response.json();
 
         if (data.success && data.messages) {
-          // Sort messages by timestamp, oldest first
           const sortedMessages = data.messages.sort(
             (a, b) =>
               new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
           );
           setChatMessages(sortedMessages);
-          // Set latest timestamp for polling
+
           if (sortedMessages.length > 0) {
-            setLatestTimestamp(
-              sortedMessages[sortedMessages.length - 1].timestamp,
-            );
+            setLatestTimestamp(sortedMessages[sortedMessages.length - 1].timestamp);
+            setOldestTimestamp(sortedMessages[0].timestamp);
+            setHasOlderMessages(sortedMessages.length === CHAT_MESSAGE_LIMIT);
           } else {
-            // If no messages, start polling from now
-            setLatestTimestamp(new Date().toISOString());
+            const now = new Date().toISOString();
+            setLatestTimestamp(now);
+            setOldestTimestamp(now);
+            setHasOlderMessages(false);
           }
+          setTimeout(() => scrollToBottom(true), 100);
+          console.log("Initial messages loaded, should scroll to bottom");
         } else {
-          // Set timestamp to now even on error to potentially start polling
-          setLatestTimestamp(new Date().toISOString());
+          const now = new Date().toISOString();
+          setLatestTimestamp(now);
+          setOldestTimestamp(now);
+          setHasOlderMessages(false);
           throw new Error(data.error || "Failed to fetch messages");
         }
       } catch (error) {
@@ -200,8 +269,10 @@ export default function ChatSection() {
           error instanceof Error ? error.message : "Could not load messages",
         );
         setChatMessages([]);
-        // Set timestamp to now even on error to potentially start polling
-        setLatestTimestamp(new Date().toISOString());
+        const now = new Date().toISOString();
+        setLatestTimestamp(now);
+        setOldestTimestamp(now);
+        setHasOlderMessages(false);
       } finally {
         setIsChatLoading(false);
         setIsRefreshingMessages(false);
@@ -214,19 +285,17 @@ export default function ChatSection() {
       isAuthenticated,
       isBalanceLoading,
       isAuthenticating,
-      // Removed fetchChatMessages from deps as it causes infinite loops
+      scrollToBottom
     ],
   );
 
   // Effect to detect token mint from various sources
   useEffect(() => {
-    // First try from URL params (most reliable)
     if (urlTokenMint) {
       setDetectedTokenMint(urlTokenMint);
       return;
     }
 
-    // If not in params, try to extract from pathname
     const pathMatch = location.pathname.match(/\/token\/([A-Za-z0-9]{32,44})/);
     if (pathMatch && pathMatch[1]) {
       setDetectedTokenMint(pathMatch[1]);
@@ -241,13 +310,10 @@ export default function ChatSection() {
       return;
     }
 
-    // Don't show loading indicator just for eligibility check if messages are already loading
-    // setIsChatLoading(true);
     setChatError(null);
     try {
-      // NOTE: Using the eligibility endpoint
       const response = await fetchWithAuth(
-        `${API_BASE_URL}/api/chat/${tokenMint}/tiers`, // Assuming this path is correct
+        `${API_BASE_URL}/api/chat/${tokenMint}/tiers`,
       );
 
       if (response.status === 401 || response.status === 403) {
@@ -270,25 +336,20 @@ export default function ChatSection() {
       const data: EligibleTiersResponse = await response.json();
 
       if (data.success && data.tiers) {
-        // Use blockchain balance directly
         const effectiveBalance = tokenBalance || 0;
 
-        // Calculate eligible tiers based on blockchain balance
         const eligibleTiers = CHAT_TIERS.filter(
           (tier) => effectiveBalance >= getTierThreshold(tier),
         );
 
         setEligibleChatTiers(eligibleTiers);
 
-        // If current selected tier is no longer eligible, switch to the highest eligible one
         if (
           !eligibleTiers.includes(selectedChatTier) &&
           eligibleTiers.length > 0
         ) {
           setSelectedChatTier(eligibleTiers[eligibleTiers.length - 1]);
         } else if (eligibleTiers.length === 0) {
-          // If not eligible for any tier, maybe default to '1k' display but disable?
-          // setSelectedChatTier("1k"); // Keep selected tier, buttons will be disabled
         }
       } else {
         throw new Error(data.error || "Failed to fetch eligible tiers");
@@ -299,8 +360,6 @@ export default function ChatSection() {
         error instanceof Error ? error.message : "Could not check eligibility",
       );
       setEligibleChatTiers([]);
-    } finally {
-      // setIsChatLoading(false);
     }
   }, [tokenMint, publicKey, selectedChatTier, tokenBalance, isBalanceLoading]);
 
@@ -319,30 +378,119 @@ export default function ChatSection() {
 
   // Effect to reset state and fetch initial messages when context changes
   useEffect(() => {
-    setLatestTimestamp(null); // Reset timestamp
-    setChatMessages([]); // Clear old messages
-    setChatError(null); // Clear old errors
+    setLatestTimestamp(null);
+    setChatMessages([]);
+    setChatError(null);
+    setOldestTimestamp(null);
+    setHasOlderMessages(true);
+    setIsLoadingOlderMessages(false);
+
     if (
       tokenMint &&
       eligibleChatTiers.includes(selectedChatTier) &&
       !isBalanceLoading &&
       isAuthenticated
     ) {
-      setIsChatLoading(true); // Show loading spinner for initial fetch
+      setIsChatLoading(true);
       fetchChatMessages(selectedChatTier);
     }
   }, [
     tokenMint,
     selectedChatTier,
-    fetchChatMessages,
     isBalanceLoading,
     isAuthenticated,
     eligibleChatTiers,
-  ]); // Added deps
+  ]);
 
-  // --- Poll for New Messages --- *NEW*
+  // --- Fetch Older Messages (Upwards Pagination) --- *NEW*
+  const fetchOlderMessages = useCallback(async () => {
+    if (
+      !tokenMint ||
+      !publicKey ||
+      !selectedChatTier ||
+      !oldestTimestamp ||
+      !hasOlderMessages ||
+      isLoadingOlderMessages ||
+      isChatLoading
+    ) {
+      return;
+    }
+
+    setIsLoadingOlderMessages(true);
+    setChatError(null);
+
+    try {
+      const response = await fetchWithAuth(
+        `${API_BASE_URL}/api/chat/${tokenMint}/${selectedChatTier}/history?before=${oldestTimestamp}&limit=${CHAT_MESSAGE_LIMIT}`,
+      );
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          setHasOlderMessages(false);
+        } else {
+          throw new Error(`Failed to fetch older messages: ${response.statusText}`);
+        }
+        return;
+      }
+
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Invalid response format: Expected JSON");
+      }
+
+      const data: GetMessagesResponse = await response.json();
+
+      if (data.success && data.messages && data.messages.length > 0) {
+        const chatDiv = chatContainerRef.current;
+        const oldScrollHeight = chatDiv?.scrollHeight || 0;
+        const oldScrollTop = chatDiv?.scrollTop || 0;
+
+        const sortedOlderMessages = data.messages.sort(
+          (a, b) =>
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+        );
+
+        setChatMessages((prev) => [...sortedOlderMessages, ...prev]);
+        setOldestTimestamp(sortedOlderMessages[0].timestamp);
+        setHasOlderMessages(sortedOlderMessages.length === CHAT_MESSAGE_LIMIT);
+
+        if (chatDiv) {
+          requestAnimationFrame(() => {
+            const newScrollHeight = chatDiv.scrollHeight;
+            chatDiv.scrollTop = newScrollHeight - oldScrollHeight + oldScrollTop;
+          });
+        }
+      } else {
+        setHasOlderMessages(false);
+        if (data.error) {
+          console.warn("Error fetching older messages (backend):", data.error);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching older messages:", error);
+    } finally {
+      setIsLoadingOlderMessages(false);
+    }
+  }, [
+    tokenMint,
+    publicKey,
+    selectedChatTier,
+    oldestTimestamp,
+    hasOlderMessages,
+    isLoadingOlderMessages,
+    isChatLoading,
+    isAuthenticated
+  ]);
+
+  // Trigger fetchOlderMessages when top sentinel becomes visible
+  useEffect(() => {
+    if (isTopSentinelInView && hasOlderMessages && !isLoadingOlderMessages) {
+      fetchOlderMessages();
+    }
+  }, [isTopSentinelInView, hasOlderMessages, isLoadingOlderMessages, fetchOlderMessages]);
+
+  // --- Poll for New Messages --- *REVISED*
   const pollForNewMessages = useCallback(async () => {
-    // Ensure all conditions are met before polling
     if (
       !tokenMint ||
       !publicKey ||
@@ -357,20 +505,15 @@ export default function ChatSection() {
     }
 
     try {
-      // Use the new backend update route
       const response = await fetchWithAuth(
-        // IMPORTANT: Adjust this path if your backend router setup differs
         `${API_BASE_URL}/api/messages/${tokenMint}/${selectedChatTier}/updates?since=${latestTimestamp}`,
       );
 
       if (!response.ok) {
-        // Log polling errors quietly
         console.warn(
           `Polling failed (${response.status}): ${response.statusText}`,
         );
         if (response.status === 401 || response.status === 403) {
-          // Handle auth errors during polling - maybe stop polling?
-          // For now, just log and let the interval continue/be cleared elsewhere
           console.error("Polling auth failed. Stopping?");
         }
         return;
@@ -385,13 +528,11 @@ export default function ChatSection() {
       const data: GetMessagesResponse = await response.json();
 
       if (data.success && data.messages && data.messages.length > 0) {
-        // Sort new messages (API guarantees ascending order, but sort just in case)
         const newMessages = data.messages.sort(
           (a, b) =>
             new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
         );
 
-        // Filter out potential duplicates (e.g., optimistic messages confirmed by poll)
         const currentMessageIds = new Set(chatMessages.map((m) => m.id));
         const uniqueNewMessages = newMessages.filter(
           (nm) => !currentMessageIds.has(nm.id),
@@ -403,28 +544,11 @@ export default function ChatSection() {
             uniqueNewMessages[uniqueNewMessages.length - 1].timestamp,
           );
 
-          // Scroll to bottom only if new messages were added and user is near bottom
-          if (chatContainerRef.current) {
-            const scrollThreshold = 100; // Pixels from bottom
-            const isNearBottom =
-              chatContainerRef.current.scrollHeight -
-                chatContainerRef.current.clientHeight <=
-              chatContainerRef.current.scrollTop + scrollThreshold;
-            if (isNearBottom) {
-              // Use setTimeout to ensure scroll happens after DOM update
-              setTimeout(() => {
-                if (chatContainerRef.current) {
-                  chatContainerRef.current.scrollTop =
-                    chatContainerRef.current.scrollHeight;
-                }
-              }, 0);
-            }
-          }
+          setTimeout(() => scrollToBottom(false), 50);
         }
       }
     } catch (error) {
       console.error("Error polling for messages:", error);
-      // Avoid showing polling errors prominently
     }
   }, [
     tokenMint,
@@ -435,13 +559,12 @@ export default function ChatSection() {
     isSendingMessage,
     isChatLoading,
     isRefreshingMessages,
-    chatMessages, // Needed for duplicate check
-    // API_BASE_URL is stable
+    chatMessages,
+    scrollToBottom
   ]);
 
   // Setup polling interval
   useEffect(() => {
-    // Only poll if authenticated, have necessary info, and a timestamp to poll from
     if (
       isAuthenticated &&
       tokenMint &&
@@ -449,13 +572,13 @@ export default function ChatSection() {
       latestTimestamp &&
       eligibleChatTiers.includes(selectedChatTier)
     ) {
-      const intervalId = setInterval(pollForNewMessages, 5000); // Poll every 5 seconds
+      const intervalId = setInterval(pollForNewMessages, 5000);
       console.log(
         `Polling started for ${tokenMint} / ${selectedChatTier} since ${latestTimestamp}`,
       );
 
       return () => {
-        clearInterval(intervalId); // Cleanup interval
+        clearInterval(intervalId);
         console.log(`Polling stopped for ${tokenMint} / ${selectedChatTier}`);
       };
     }
@@ -468,7 +591,7 @@ export default function ChatSection() {
     pollForNewMessages,
   ]);
 
-  // --- Send Chat Message --- *MODIFIED*
+  // --- Send Chat Message --- *REVISED*
   const handleSendMessage = async () => {
     if (
       !chatInput.trim() ||
@@ -481,7 +604,7 @@ export default function ChatSection() {
 
     setIsSendingMessage(true);
     setChatError(null);
-    const tempId = `temp-${Date.now()}`; // Use timestamp for temp ID
+    const tempId = `temp-${Date.now()}`;
     const optimisticMessage: ChatMessage = {
       id: tempId,
       author: publicKey.toBase58(),
@@ -490,27 +613,17 @@ export default function ChatSection() {
       tier: selectedChatTier,
       timestamp: new Date().toISOString(),
       isOptimistic: true,
-      hasLiked: false, // Optimistic messages haven't been liked
+      hasLiked: false,
     };
 
-    // Optimistic UI update
     setChatMessages((prev) => [...prev, optimisticMessage]);
     setChatInput("");
 
-    // Scroll to bottom after optimistic update
-    if (chatContainerRef.current) {
-      setTimeout(() => {
-        if (chatContainerRef.current) {
-          chatContainerRef.current.scrollTop =
-            chatContainerRef.current.scrollHeight;
-        }
-      }, 0);
-    }
+    setTimeout(() => scrollToBottom(true), 50);
 
     try {
-      // Use the existing POST endpoint (assuming it's correct)
       const response = await fetchWithAuth(
-        `${API_BASE_URL}/api/chat/${tokenMint}/${selectedChatTier}`, // Assuming this path is correct
+        `${API_BASE_URL}/api/chat/${tokenMint}/${selectedChatTier}`,
         {
           method: "POST",
           headers: {
@@ -518,7 +631,6 @@ export default function ChatSection() {
           },
           body: JSON.stringify({
             message: chatInput.trim(),
-            // No parentId specified here, assumes root message
           }),
         },
       );
@@ -527,7 +639,6 @@ export default function ChatSection() {
         setChatError(
           `You need ${getTierThreshold(selectedChatTier).toLocaleString()} tokens to post here.`,
         );
-        // Remove optimistic message
         setChatMessages((prev) => prev.filter((msg) => msg.id !== tempId));
         return;
       }
@@ -544,16 +655,13 @@ export default function ChatSection() {
       const data: PostMessageResponse = await response.json();
 
       if (data.success && data.message) {
-        // Remove the optimistic message and add the real one
         setChatMessages((prev) => {
           const filtered = prev.filter((msg) => msg.id !== tempId);
-          // Make sure the real message isn't already added by polling
           if (!filtered.some((m) => m.id === data.message!.id)) {
             return [...filtered, data.message!];
           }
           return filtered;
         });
-        // Update latest timestamp if this new message is the latest
         if (
           !latestTimestamp ||
           new Date(data.message.timestamp).getTime() >
@@ -561,6 +669,7 @@ export default function ChatSection() {
         ) {
           setLatestTimestamp(data.message.timestamp);
         }
+        setTimeout(() => scrollToBottom(true), 50);
       } else {
         throw new Error(data.error || "Failed to send message");
       }
@@ -569,25 +678,20 @@ export default function ChatSection() {
       setChatError(
         error instanceof Error ? error.message : "Could not send message",
       );
-      // Remove optimistic message on error
       setChatMessages((prev) => prev.filter((msg) => msg.id !== tempId));
     } finally {
       setIsSendingMessage(false);
     }
   };
 
-  // Scroll to bottom of chat when messages initially load
-  // Polling handles its own scrolling logic
+  // Scroll to bottom on first render and when messages change
   useEffect(() => {
-    if (chatContainerRef.current && !isChatLoading && chatMessages.length > 0) {
-      // Only scroll fully down on initial load or refresh
-      if (!latestTimestamp) {
-        // Rough check if it's initial load
-        chatContainerRef.current.scrollTop =
-          chatContainerRef.current.scrollHeight;
-      }
+    if (!isChatLoading && chatMessages.length > 0) {
+      // Short delay to ensure DOM updates
+      setTimeout(() => scrollToBottom(true), 100);
+      console.log("Messages changed, scrolling to bottom");
     }
-  }, [chatMessages, isChatLoading]); // Removed latestTimestamp dependency
+  }, [chatMessages, isChatLoading, scrollToBottom]);
 
   // Determine if user can chat in the currently selected tier
   const canChatInSelectedTier =
@@ -599,7 +703,6 @@ export default function ChatSection() {
     const date = new Date(timestamp);
     const now = new Date();
 
-    // If today, just show time
     if (date.toDateString() === now.toDateString()) {
       return date.toLocaleTimeString([], {
         hour: "2-digit",
@@ -607,7 +710,6 @@ export default function ChatSection() {
       });
     }
 
-    // If this year, show date without year
     if (date.getFullYear() === now.getFullYear()) {
       return (
         date.toLocaleDateString([], { month: "short", day: "numeric" }) +
@@ -616,7 +718,6 @@ export default function ChatSection() {
       );
     }
 
-    // Otherwise show full date
     return (
       date.toLocaleDateString([], {
         year: "numeric",
@@ -630,17 +731,10 @@ export default function ChatSection() {
 
   // Function to render the avatar/identity for each message
   const renderMessageAvatar = (authorKey: string) => {
-    // Get first 4 and last 4 chars of public key for display
     const shortKey = `${authorKey.substring(0, 4)}...${authorKey.substring(authorKey.length - 4)}`;
 
     return (
       <div className="flex items-center gap-2">
-        {/* <div 
-          className="flex items-center justify-center w-8 h-8 rounded-full text-black font-semibold text-xs"
-          style={{ backgroundColor: bgColor }}
-        >
-          {authorKey.substring(0, 2).toUpperCase()}
-        </div> */}
         <span className="text-xs text-gray-400">{shortKey}</span>
       </div>
     );
@@ -661,13 +755,12 @@ export default function ChatSection() {
                   return (
                     <button
                       key={tier}
-                      // Clear messages and timestamp on tier change handled by useEffect
                       onClick={() => setSelectedChatTier(tier)}
-                      disabled={!isEligible || isChatLoading} // Disable while loading initial messages
+                      disabled={!isEligible || isChatLoading || isLoadingOlderMessages}
                       className={`px-3 py-1 text-sm font-medium transition-colors
                           ${isSelected ? "bg-[#03FF24] text-black" : "text-gray-300"}
                           ${!isEligible ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-700"}
-                          ${isChatLoading && isSelected ? "animate-pulse" : ""} // Indicate loading on selected tab
+                          ${isChatLoading && isSelected ? "animate-pulse" : ""}
                         `}
                     >
                       {formatTierLabel(tier)}
@@ -680,12 +773,12 @@ export default function ChatSection() {
                 <Button
                   size="small"
                   variant="outline"
-                  // Refresh fetches all messages again, resetting the timestamp
                   onClick={() => {
-                    setLatestTimestamp(null);
+                    setOldestTimestamp(null);
+                    setHasOlderMessages(true);
                     fetchChatMessages(selectedChatTier, false);
                   }}
-                  disabled={isRefreshingMessages || isChatLoading}
+                  disabled={isRefreshingMessages || isChatLoading || isLoadingOlderMessages}
                   className="p-1"
                 >
                   <RefreshCw
@@ -695,7 +788,7 @@ export default function ChatSection() {
                       (isChatLoading && !isRefreshingMessages)
                         ? "animate-spin"
                         : ""
-                    } // Spin if initial loading too
+                    }
                   />
                 </Button>
               </div>
@@ -706,20 +799,36 @@ export default function ChatSection() {
               ref={chatContainerRef}
               className="flex-grow overflow-y-auto p-2 space-y-3 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800"
             >
+              {/* --- Top Sentinel for Upward Pagination --- */}
+              <div ref={topSentinelRef} style={{ height: '1px' }} />
+
+              {/* Loading indicator for older messages */}
+              {isLoadingOlderMessages && (
+                <div className="flex items-center justify-center py-2">
+                  <Loader />
+                </div>
+              )}
+
+              {/* No More Older Messages Indicator */}
+              {!hasOlderMessages && chatMessages.length > 0 && !isLoadingOlderMessages && (
+                 <div className="text-center text-gray-500 text-xs py-2">
+                   Beginning of chat history
+                 </div>
+               )}
+
               {(isBalanceLoading ||
-                (isChatLoading && chatMessages.length === 0)) && (
+                (isChatLoading && chatMessages.length === 0)) && !isLoadingOlderMessages && (
                 <div className="flex items-center justify-center w-full h-full">
                   <Loader />
                 </div>
               )}
 
-              {!isBalanceLoading && chatError && !isChatLoading && (
+              {!isBalanceLoading && chatError && !isChatLoading && !isLoadingOlderMessages && (
                 <div className="text-center py-8">
                   <p className="text-red-500 mb-2">{chatError}</p>
                   <Button
                     size="small"
                     variant="outline"
-                    // Try again fetches initial messages
                     onClick={() => fetchChatMessages(selectedChatTier)}
                     disabled={isChatLoading}
                   >
@@ -731,7 +840,7 @@ export default function ChatSection() {
               {!isBalanceLoading &&
                 !isChatLoading &&
                 chatMessages.length === 0 &&
-                !chatError && (
+                !chatError && !isLoadingOlderMessages && (
                   <div className="flex flex-col items-center justify-center h-full text-center py-16">
                     <p className="text-gray-500 mb-2">
                       No messages yet in the {formatTierLabel(selectedChatTier)}{" "}
@@ -755,12 +864,11 @@ export default function ChatSection() {
               {!isBalanceLoading &&
                 chatMessages.map((msg) => (
                   <div
-                    key={msg.id} // Use message ID as key
+                    key={msg.id}
                     className={`flex ${msg.author === publicKey?.toBase58() ? "justify-end" : "justify-start"}`}
                   >
                     <div
                       className={`p-3 max-w-[95%] rounded-lg shadow-md ${
-                        // Added rounded corners and shadow
                         msg.isOptimistic
                           ? "bg-gray-700/50 animate-pulse"
                           : msg.author === publicKey?.toBase58()
@@ -785,8 +893,18 @@ export default function ChatSection() {
 
             {/* Message Input Area */}
             <div className="p-2 border-t border-gray-700">
-              {" "}
-              {/* Added border */}
+              {/* Scroll to bottom button */}
+              {showScrollButton && (
+                <button
+                  onClick={() => scrollToBottom(true)}
+                  className="fixed bottom-24 right-4 bg-[#03FF24] text-black rounded-full p-3 shadow-lg hover:opacity-90 transition-opacity"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+              )}
+              
               {!canChatInSelectedTier && publicKey && (
                 <p className="text-center text-yellow-500 text-sm mb-2">
                   You need {getTierThreshold(selectedChatTier).toLocaleString()}
@@ -806,11 +924,11 @@ export default function ChatSection() {
                   onKeyDown={(e) => {
                     if (
                       e.key === "Enter" &&
-                      !e.shiftKey && // Allow shift+enter for newlines if needed in future
+                      !e.shiftKey &&
                       !isSendingMessage &&
                       canChatInSelectedTier
                     ) {
-                      e.preventDefault(); // Prevent default newline on enter
+                      e.preventDefault();
                       handleSendMessage();
                     }
                   }}
@@ -822,7 +940,7 @@ export default function ChatSection() {
                         : `Message in ${formatTierLabel(selectedChatTier)} chat...`
                   }
                   disabled={!canChatInSelectedTier || isSendingMessage}
-                  className="flex-1 h-10 border bg-gray-800 border-gray-600 text-white focus:outline-none focus:border-[#03FF24] focus:ring-1 focus:ring-[#03FF24] px-3 text-sm rounded-md disabled:opacity-60 disabled:cursor-not-allowed" // Added rounded corners, adjusted colors
+                  className="flex-1 h-10 border bg-gray-800 border-gray-600 text-white focus:outline-none focus:border-[#03FF24] focus:ring-1 focus:ring-[#03FF24] px-3 text-sm rounded-md disabled:opacity-60 disabled:cursor-not-allowed"
                 />
                 <button
                   onClick={handleSendMessage}
@@ -831,7 +949,7 @@ export default function ChatSection() {
                     isSendingMessage ||
                     !chatInput.trim()
                   }
-                  className="p-2 bg-[#03FF24] text-black hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition-all rounded-md flex items-center justify-center w-10 h-10" // Adjusted styles
+                  className="p-2 bg-[#03FF24] text-black hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition-all rounded-md flex items-center justify-center w-10 h-10"
                 >
                   {isSendingMessage ? (
                     <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
