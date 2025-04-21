@@ -7,7 +7,7 @@ import { cron } from "./cron";
 import { Env } from "./env";
 import { logger } from "./util";
 import { getSOLPrice } from "./mcap";
-import adminRouter from "./routes/admin";
+import { adminRouter, ownerRouter } from "./routes/admin";
 import authRouter from "./routes/auth";
 import chatRouter from "./routes/chat";
 import generationRouter, { checkAndReplenishTokens } from "./routes/generation";
@@ -117,11 +117,12 @@ api.route("/share", shareRouter);
 api.route("/", webhookRouter);
 api.route("/", migrationRouter);
 api.route("/admin", adminRouter);
+api.route("/owner", ownerRouter);
 
 // Root paths for health checks
 app.get("/", (c) => c.json({ status: "ok" }));
 
-const MAINTENANCE_MODE_ENABLED = false;
+const MAINTENANCE_MODE_ENABLED = true;
 
 app.get("/maintenance-mode", (c) => {
   return c.json({ enabled: MAINTENANCE_MODE_ENABLED });
