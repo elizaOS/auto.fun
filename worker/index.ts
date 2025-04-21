@@ -109,7 +109,7 @@ api.route("/admin", adminRouter);
 // Root paths for health checks
 app.get("/", (c) => c.json({ status: "ok" }));
 
-const MAINTENANCE_MODE_ENABLED = false;
+const MAINTENANCE_MODE_ENABLED = true;
 
 app.get("/maintenance-mode", (c) => {
   return c.json({ enabled: MAINTENANCE_MODE_ENABLED });
