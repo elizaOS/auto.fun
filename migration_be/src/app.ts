@@ -56,6 +56,9 @@ app.post('/claim-fees', async (req: Request, res: Response) => {
    }
 });
 
+app.get('/', (req: Request, res: Response) => {
+   res.send('Nothing for you here!');
+});
 const PORT = 3000;
 app.listen(PORT, () => {
    console.log(`App listening on port: ${PORT}`);
