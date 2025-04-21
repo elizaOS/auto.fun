@@ -917,7 +917,14 @@ export async function updateHoldersCache(
 
           // logger.log(`Inserting batch ${batchNumber}/${totalBatches} (${batch.length} holders) for token ${mint}`);
 
-          await db.insert(tokenHolders).values(batch);
+          await db.insert(tokenHolders).values(batch).onConflictDoUpdate({
+            target: [tokenHolders.mint, tokenHolders.address],
+            set: {
+              amount: batch[0].amount,
+              percentage: batch[0].percentage,
+              lastUpdated: new Date(),
+            },
+          });
 
           // logger.log(`Successfully inserted batch ${batchNumber}/${totalBatches} for token ${mint}`);
         } catch (insertError) {
