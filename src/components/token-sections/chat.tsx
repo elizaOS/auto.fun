@@ -9,7 +9,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { RefreshCw, Send } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
-import { useInView } from 'react-intersection-observer';
+import { useInView } from "react-intersection-observer";
 
 // --- API Base URL ---
 const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
@@ -162,18 +162,19 @@ export default function ChatSection() {
 
     const handleScroll = () => {
       if (!chatContainerRef.current) return;
-      
-      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+
+      const { scrollTop, scrollHeight, clientHeight } =
+        chatContainerRef.current;
       const isNearBottom = scrollHeight - clientHeight <= scrollTop + 150; // 150px threshold
-      
+
       setShowScrollButton(!isNearBottom);
     };
 
     const chatContainer = chatContainerRef.current;
-    chatContainer.addEventListener('scroll', handleScroll);
-    
+    chatContainer.addEventListener("scroll", handleScroll);
+
     return () => {
-      chatContainer.removeEventListener('scroll', handleScroll);
+      chatContainer.removeEventListener("scroll", handleScroll);
     };
   }, []);
 
@@ -245,7 +246,9 @@ export default function ChatSection() {
           setChatMessages(sortedMessages);
 
           if (sortedMessages.length > 0) {
-            setLatestTimestamp(sortedMessages[sortedMessages.length - 1].timestamp);
+            setLatestTimestamp(
+              sortedMessages[sortedMessages.length - 1].timestamp,
+            );
             setOldestTimestamp(sortedMessages[0].timestamp);
             setHasOlderMessages(sortedMessages.length === CHAT_MESSAGE_LIMIT);
           } else {
@@ -285,7 +288,7 @@ export default function ChatSection() {
       isAuthenticated,
       isBalanceLoading,
       isAuthenticating,
-      scrollToBottom
+      scrollToBottom,
     ],
   );
 
@@ -350,6 +353,7 @@ export default function ChatSection() {
         ) {
           setSelectedChatTier(eligibleTiers[eligibleTiers.length - 1]);
         } else if (eligibleTiers.length === 0) {
+          // do nothing
         }
       } else {
         throw new Error(data.error || "Failed to fetch eligible tiers");
@@ -428,7 +432,9 @@ export default function ChatSection() {
         if (response.status === 404) {
           setHasOlderMessages(false);
         } else {
-          throw new Error(`Failed to fetch older messages: ${response.statusText}`);
+          throw new Error(
+            `Failed to fetch older messages: ${response.statusText}`,
+          );
         }
         return;
       }
@@ -457,7 +463,8 @@ export default function ChatSection() {
         if (chatDiv) {
           requestAnimationFrame(() => {
             const newScrollHeight = chatDiv.scrollHeight;
-            chatDiv.scrollTop = newScrollHeight - oldScrollHeight + oldScrollTop;
+            chatDiv.scrollTop =
+              newScrollHeight - oldScrollHeight + oldScrollTop;
           });
         }
       } else {
@@ -479,7 +486,7 @@ export default function ChatSection() {
     hasOlderMessages,
     isLoadingOlderMessages,
     isChatLoading,
-    isAuthenticated
+    isAuthenticated,
   ]);
 
   // Trigger fetchOlderMessages when top sentinel becomes visible
@@ -487,7 +494,12 @@ export default function ChatSection() {
     if (isTopSentinelInView && hasOlderMessages && !isLoadingOlderMessages) {
       fetchOlderMessages();
     }
-  }, [isTopSentinelInView, hasOlderMessages, isLoadingOlderMessages, fetchOlderMessages]);
+  }, [
+    isTopSentinelInView,
+    hasOlderMessages,
+    isLoadingOlderMessages,
+    fetchOlderMessages,
+  ]);
 
   // --- Poll for New Messages --- *REVISED*
   const pollForNewMessages = useCallback(async () => {
@@ -560,7 +572,7 @@ export default function ChatSection() {
     isChatLoading,
     isRefreshingMessages,
     chatMessages,
-    scrollToBottom
+    scrollToBottom,
   ]);
 
   // Setup polling interval
@@ -756,7 +768,9 @@ export default function ChatSection() {
                     <button
                       key={tier}
                       onClick={() => setSelectedChatTier(tier)}
-                      disabled={!isEligible || isChatLoading || isLoadingOlderMessages}
+                      disabled={
+                        !isEligible || isChatLoading || isLoadingOlderMessages
+                      }
                       className={`px-3 py-1 text-sm font-medium transition-colors
                           ${isSelected ? "bg-[#03FF24] text-black" : "text-gray-300"}
                           ${!isEligible ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-700"}
@@ -778,7 +792,11 @@ export default function ChatSection() {
                     setHasOlderMessages(true);
                     fetchChatMessages(selectedChatTier, false);
                   }}
-                  disabled={isRefreshingMessages || isChatLoading || isLoadingOlderMessages}
+                  disabled={
+                    isRefreshingMessages ||
+                    isChatLoading ||
+                    isLoadingOlderMessages
+                  }
                   className="p-1"
                 >
                   <RefreshCw
@@ -800,7 +818,7 @@ export default function ChatSection() {
               className="flex-grow overflow-y-auto p-2 space-y-3 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800"
             >
               {/* --- Top Sentinel for Upward Pagination --- */}
-              <div ref={topSentinelRef} style={{ height: '1px' }} />
+              <div ref={topSentinelRef} style={{ height: "1px" }} />
 
               {/* Loading indicator for older messages */}
               {isLoadingOlderMessages && (
@@ -810,37 +828,44 @@ export default function ChatSection() {
               )}
 
               {/* No More Older Messages Indicator */}
-              {!hasOlderMessages && chatMessages.length > 0 && !isLoadingOlderMessages && (
-                 <div className="text-center text-gray-500 text-xs py-2">
-                   Beginning of chat history
-                 </div>
-               )}
+              {!hasOlderMessages &&
+                chatMessages.length > 0 &&
+                !isLoadingOlderMessages && (
+                  <div className="text-center text-gray-500 text-xs py-2">
+                    Beginning of chat history
+                  </div>
+                )}
 
               {(isBalanceLoading ||
-                (isChatLoading && chatMessages.length === 0)) && !isLoadingOlderMessages && (
-                <div className="flex items-center justify-center w-full h-full">
-                  <Loader />
-                </div>
-              )}
+                (isChatLoading && chatMessages.length === 0)) &&
+                !isLoadingOlderMessages && (
+                  <div className="flex items-center justify-center w-full h-full">
+                    <Loader />
+                  </div>
+                )}
 
-              {!isBalanceLoading && chatError && !isChatLoading && !isLoadingOlderMessages && (
-                <div className="text-center py-8">
-                  <p className="text-red-500 mb-2">{chatError}</p>
-                  <Button
-                    size="small"
-                    variant="outline"
-                    onClick={() => fetchChatMessages(selectedChatTier)}
-                    disabled={isChatLoading}
-                  >
-                    Try Again
-                  </Button>
-                </div>
-              )}
+              {!isBalanceLoading &&
+                chatError &&
+                !isChatLoading &&
+                !isLoadingOlderMessages && (
+                  <div className="text-center py-8">
+                    <p className="text-red-500 mb-2">{chatError}</p>
+                    <Button
+                      size="small"
+                      variant="outline"
+                      onClick={() => fetchChatMessages(selectedChatTier)}
+                      disabled={isChatLoading}
+                    >
+                      Try Again
+                    </Button>
+                  </div>
+                )}
 
               {!isBalanceLoading &&
                 !isChatLoading &&
                 chatMessages.length === 0 &&
-                !chatError && !isLoadingOlderMessages && (
+                !chatError &&
+                !isLoadingOlderMessages && (
                   <div className="flex flex-col items-center justify-center h-full text-center py-16">
                     <p className="text-gray-500 mb-2">
                       No messages yet in the {formatTierLabel(selectedChatTier)}{" "}
@@ -899,12 +924,22 @@ export default function ChatSection() {
                   onClick={() => scrollToBottom(true)}
                   className="fixed bottom-24 right-4 bg-[#03FF24] text-black rounded-full p-3 shadow-lg hover:opacity-90 transition-opacity"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
                     <polyline points="6 9 12 15 18 9"></polyline>
                   </svg>
                 </button>
               )}
-              
+
               {!canChatInSelectedTier && publicKey && (
                 <p className="text-center text-yellow-500 text-sm mb-2">
                   You need {getTierThreshold(selectedChatTier).toLocaleString()}

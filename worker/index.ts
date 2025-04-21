@@ -38,7 +38,13 @@ app.use(
     origin: allowedOrigins,
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization", "X-API-Key"],
+    allowHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-API-Key",
+      "X-Twitter-OAuth-Token",
+      "X-Twitter-OAuth-Token-Secret",
+    ],
     exposeHeaders: ["Content-Length"],
     maxAge: 60000,
   }),
@@ -84,7 +90,13 @@ api.use(
     origin: allowedOrigins,
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization", "X-API-Key"],
+    allowHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-API-Key",
+      "X-Twitter-OAuth-Token",
+      "X-Twitter-OAuth-Token-Secret",
+    ],
     exposeHeaders: ["Content-Length"],
     maxAge: 60000,
   }),
@@ -268,7 +280,8 @@ export default {
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept",
+      "Access-Control-Allow-Headers":
+        "Content-Type, Authorization, Accept, X-Twitter-OAuth-Token, X-Twitter-OAuth-Token-Secret",
       "Access-Control-Allow-Credentials": "true",
     };
 
