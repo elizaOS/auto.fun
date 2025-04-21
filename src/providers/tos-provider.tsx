@@ -28,27 +28,26 @@ export default function TosProvider({ children }: PropsWithChildren) {
 
         <div className="p-6 text-center">
           <p className="text-autofun-text-info font-satoshi text-base mb-4">
-            Auto.Fun empowers anyone to create coins. All coins created on Auto.Fun are
-            fair-launch, ensuring that everyone has an equal opportunity to buy
-            and sell when the coin is first introduced.
+          Auto.Fun lets anyone create coins with fair-launch tokenomics, so everyone gets an equal shot at buying and selling when the coin first drops.
           </p>
           <p className="text-autofun-background-action-highlight text-left font-satoshi mb-6 text-xl">
-            Here’s how it works:
+          How it’s done:
           </p>
           <ol className="text-white font-satoshi text-left space-y-4 text-base mb-6 list-decimal list-inside">
-            <li>Choose a coin that catches your interest</li>
-            <li>Purchase the coin through the bonding curve</li>
-            <li>Sell it whenever you wish to lock in your gains or losses</li>
+            <li>Choose a coin that catches your interests</li>
+            <li>Buy in through the bonding curve</li>
+            <li>Sell it at any point to lock in gains</li>
+            <li>Engage with the community through AI agents and content generation</li>
           </ol>
           <p className="text-autofun-text-secondary font-satoshi text-base mb-6">
-            By clicking the button below, you agree to the Terms of Service.
+          By clicking below, you're agreeing to our Terms of Service.
           </p>
 
           <button
             onClick={handleAcceptTos} // Handle TOS acceptance
             className="m-4 bg-autofun-background-action-highlight text-black px-6 py-2 hover:bg-gray-200 transition-all font-semibold"
           >
-            I'm ready to have fun
+            Fun Button
           </button>
         </div>
 
