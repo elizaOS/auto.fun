@@ -224,6 +224,11 @@ export class TokenMigrator {
           return;
         }
       }
+      if (token.status === "locked") {
+        logger.log(
+          `[Migrate] Token ${token.mint} is already locked. Deferring additional`)
+        return
+      }
       token.migration = token.migration || {};
       console.log("token.migration", token.migration);
       // const ws = getWebSocketClient(this.env);
@@ -260,11 +265,11 @@ export class TokenMigrator {
 
       // If all steps are done, finalize and update token.
       if (currentStep && currentStep?.name === "finalize") {
-        token.status = "locked";
+
         token.lockedAt = new Date();
         await updateTokenInDB(this.env, {
           mint: token.mint,
-          status: "locked",
+          status: "finalized",
           lockedAt: token.lockedAt,
           lastUpdated: new Date().toISOString(),
         });

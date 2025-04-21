@@ -153,7 +153,7 @@ migrationRouter.post("/claimFees", async (c) => {
       raydium_vault_IDL as any,
       provider,
     );
-
+    const claimer = new PublicKey(token.creator);
     // Call the claim Function.
     const txSignature = await claim(
       program,
@@ -161,6 +161,7 @@ migrationRouter.post("/claimFees", async (c) => {
       new PublicKey(nftMint),
       new PublicKey(poolId),
       connection,
+      claimer
     );
     // Return a success response.
     return c.json({
