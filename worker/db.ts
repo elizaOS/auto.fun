@@ -1,5 +1,5 @@
 import { Pool } from "pg";
-import { drizzle } from "drizzle-orm/node-postgres";
+import { drizzle, } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
 import {
   pgTable,
@@ -8,14 +8,14 @@ import {
   real,
   timestamp,
   uniqueIndex,
+  unique
 } from "drizzle-orm/pg-core";
 import { Env } from "./env";
 
+
 // Token schema
 export const tokens = pgTable("tokens", {
-  id: text("id")
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   ticker: text("ticker").notNull(),
   url: text("url").notNull(),
@@ -34,12 +34,8 @@ export const tokens = pgTable("tokens", {
   lockedAt: timestamp("locked_at"),
   harvestedAt: timestamp("harvested_at"),
   status: text("status").notNull().default("active"),
-  createdAt: timestamp("created_at")
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-  lastUpdated: timestamp("last_updated")
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  lastUpdated: timestamp("last_updated").notNull().default(sql`CURRENT_TIMESTAMP`),
   completedAt: timestamp("completed_at"),
   withdrawnAt: timestamp("withdrawn_at"),
   migratedAt: timestamp("migrated_at"),
@@ -110,14 +106,20 @@ export const fees = pgTable("fees", {
 });
 
 // TokenHolder schema
-export const tokenHolders = pgTable("token_holders", {
-  id: text("id").primaryKey(),
-  mint: text("mint").notNull(),
-  address: text("address").notNull().unique(),
-  amount: real("amount").notNull(),
-  percentage: real("percentage").notNull(),
-  lastUpdated: timestamp("last_updated").notNull(),
-});
+export const tokenHolders = pgTable(
+  "token_holders",
+  {
+    id: text("id").primaryKey(),
+    mint: text("mint").notNull(),
+    address: text("address").notNull(),
+    amount: real("amount").notNull(),
+    percentage: real("percentage").notNull(),
+    lastUpdated: timestamp("last_updated").notNull(),
+  },
+  (table) => ({
+    mintAddressUnique: unique().on(table.mint, table.address),
+  }),
+);
 
 // Messages schema
 export const messages = pgTable("messages", {
@@ -151,16 +153,12 @@ export const personalities = pgTable("personalities", {
 
 // User schema
 export const users = pgTable("users", {
-  id: text("id")
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name"),
   address: text("address").notNull().unique(),
   points: integer("points").notNull().default(0),
   rewardPoints: integer("reward_points").notNull().default(0),
-  createdAt: timestamp("created_at")
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   suspended: integer("suspended").notNull().default(0),
 });
 
@@ -169,9 +167,7 @@ export const vanityKeypairs = pgTable("vanity_keypairs", {
   id: text("id").primaryKey(),
   address: text("address").notNull().unique(),
   secretKey: text("secret_key").notNull(),
-  createdAt: timestamp("created_at")
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   used: integer("used").notNull().default(0),
 });
 
@@ -215,9 +211,7 @@ export const preGeneratedTokens = pgTable("pre_generated_tokens", {
   description: text("description").notNull(),
   prompt: text("prompt").notNull(),
   image: text("image"),
-  createdAt: timestamp("created_at")
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   used: integer("used").notNull().default(0),
 });
 
@@ -246,39 +240,32 @@ export const tokenAgents = pgTable("token_agents", {
   twitterUserName: text("twitter_user_name").notNull(),
   twitterImageUrl: text("twitter_image_url").notNull(),
   official: integer("official").notNull().default(0),
-  createdAt: timestamp("created_at")
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 // VanityGenerationInstances schema
-export const vanityGenerationInstances = pgTable(
-  "vanity_generation_instances",
-  {
-    id: text("id").primaryKey(),
-    instanceId: text("instance_id"),
-    ipAddress: text("ip_address"),
-    status: text("status").notNull().default("stopped"),
-    jobId: text("job_id"),
-    lastHeartbeat: timestamp("last_heartbeat"),
-    createdAt: timestamp("created_at")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
-    updatedAt: timestamp("updated_at")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
-  },
-);
+export const vanityGenerationInstances = pgTable("vanity_generation_instances", {
+  id: text("id").primaryKey(),
+  instanceId: text("instance_id"),
+  ipAddress: text("ip_address"),
+  status: text("status").notNull().default("stopped"),
+  jobId: text("job_id"),
+  lastHeartbeat: timestamp("last_heartbeat"),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
 export const metadata = pgTable("metadata", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
 });
+
 
 export function getDB(env: Env) {
   const pool = new Pool({ connectionString: env.DATABASE_URL });
   // pass your schema here
   return drizzle(pool, { schema });
 }
+
 
 // Type definitions for common query results
 export type Token = typeof schema.tokens.$inferSelect;
@@ -321,7 +308,7 @@ export type VanityGenerationInstance =
 export type VanityGenerationInstanceInsert =
   typeof vanityGenerationInstances.$inferInsert;
 
-export type Metadata = typeof metadata.$inferSelect;
+export type Metadata = typeof metadata.$inferSelect
 export type MetadataInsert = typeof metadata.$inferInsert;
 
 // Schema for all tables

@@ -1,5 +1,5 @@
 import { Pool } from "pg";
-import { drizzle } from "drizzle-orm/node-postgres";
+import { drizzle, } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
 import {
    pgTable,
@@ -7,7 +7,8 @@ import {
    integer,
    real,
    timestamp,
-   uniqueIndex
+   uniqueIndex,
+   unique
 } from "drizzle-orm/pg-core";
 import { Env } from "./env";
 
@@ -105,14 +106,20 @@ export const fees = pgTable("fees", {
 });
 
 // TokenHolder schema
-export const tokenHolders = pgTable("token_holders", {
-   id: text("id").primaryKey(),
-   mint: text("mint").notNull(),
-   address: text("address").notNull().unique(),
-   amount: real("amount").notNull(),
-   percentage: real("percentage").notNull(),
-   lastUpdated: timestamp("last_updated").notNull(),
-});
+export const tokenHolders = pgTable(
+   "token_holders",
+   {
+      id: text("id").primaryKey(),
+      mint: text("mint").notNull(),
+      address: text("address").notNull(),
+      amount: real("amount").notNull(),
+      percentage: real("percentage").notNull(),
+      lastUpdated: timestamp("last_updated").notNull(),
+   },
+   (table) => ({
+      mintAddressUnique: unique().on(table.mint, table.address),
+   }),
+);
 
 // Messages schema
 export const messages = pgTable("messages", {
