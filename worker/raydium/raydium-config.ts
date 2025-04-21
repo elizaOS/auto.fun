@@ -3,16 +3,14 @@ import {
   TxVersion,
   parseTokenAccountResp,
 } from "@raydium-io/raydium-sdk-v2";
+import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
   Connection,
   Keypair,
-  clusterApiUrl,
-  PublicKey,
-  Transaction,
+  PublicKey
 } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
-import { logger } from "../util";
 import { Env } from "../env";
+import { logger } from "../util";
 
 type Cluster = "mainnet" | "devnet";
 export const getRpcUrl = (env: Env) => {
@@ -22,7 +20,6 @@ export const getRpcUrl = (env: Env) => {
 };
 
 export const txVersion = TxVersion.V0;
-const cluster = process.env.NETWORK as Cluster;
 
 let raydium: Raydium | undefined;
 export const initSdk = async (params: {
@@ -30,6 +27,7 @@ export const initSdk = async (params: {
   loadToken?: boolean;
   owner?: PublicKey;
 }) => {
+  const cluster = params.env.NETWORK as Cluster;
   const connection = new Connection(getRpcUrl(params.env));
   const owner: Keypair = Keypair.fromSecretKey(
     Uint8Array.from(JSON.parse(params.env.WALLET_PRIVATE_KEY!)),

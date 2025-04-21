@@ -6,10 +6,12 @@ import dotenv from "dotenv";
 dotenv.config();
 
 class RedisCacheService {
-  constructor(private redisPool: RedisPool) {}
+  constructor(private redisPool: RedisPool, private env: Env) {
+    this.env = env;
+  }
 
   getKey(key: string) {
-    return `${process.env.NETWORK}:${key}`;
+    return `${this.env.NETWORK}:${key}`;
   }
   async get(key: string): Promise<string | null> {
     return this.redisPool.useClient((client) => client.get(this.getKey(key)));
@@ -52,7 +54,7 @@ export function createRedisCache(env: Env) {
   });
 
   logger.info("Redis cache service created");
-  return new RedisCacheService(redisPool);
+  return new RedisCacheService(redisPool, env);
 }
 
 export default {
