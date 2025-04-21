@@ -7,6 +7,7 @@ import Button from "./button";
 import SearchBar from "./search-bar";
 import { DiceButton } from "./dice-button";
 import { useCurrentTheme } from "@/stores/useThemeStore";
+import ThemedUiElement from "@/components/themed-ui-element";
 
 export default function Header() {
   const { pathname } = useLocation();
@@ -67,8 +68,8 @@ export default function Header() {
                 <Link to="/create">
                   <Button className="cursor-pointer flex items-center text-base text-accent font-bold font-satoshi justify-center px-4 py-2.5 gap-2 h-11 bg-[#171717] border-2 border-accent min-w-34 hover:bg-accent hover:text-autofun-background-primary transition-colors">
                     New Coin{" "}
-                    <img
-                      src="/nav/stars.svg"
+                    <ThemedUiElement
+                      type="stars"
                       alt="stars"
                       className="text-accent"
                     />
@@ -102,8 +103,8 @@ export default function Header() {
               <Link to="/create" className="mr-2 shrink-0">
                 <Button className="cursor-pointer shrink-0 flex items-center text-base text-accent font-bold font-satoshi justify-center px-2 sm:px-4 py-1 sm:py-2.5 gap-2 h-11 bg-[#171717] border-2 border-accent hover:bg-accent hover:text-autofun-background-primary transition-colors">
                   <span className="hidden md:inline">New Coin</span>{" "}
-                  <img
-                    src="/nav/stars.svg"
+                  <ThemedUiElement
+                    type="stars"
                     alt="stars"
                     className="text-accent shrink-0"
                   />

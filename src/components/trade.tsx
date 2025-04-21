@@ -10,6 +10,7 @@ import { Info, Wallet } from "lucide-react";
 import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
+import ThemedUiElement from "@/components/themed-ui-element";
 
 export default function Trade({
   token,
@@ -20,6 +21,7 @@ export default function Trade({
 }) {
   // const { solPrice: contextSolPrice } = useSolPriceContext();
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
+  const [isSwapButtonPressed, setIsSwapButtonPressed] = useState<boolean>(false);
 
   const [sellAmount, setSellAmount] = useState<number | undefined>(undefined);
   const [slippage, setSlippage] = useState<number>(2);
@@ -151,11 +153,11 @@ export default function Trade({
               }}
               className="flex items-center justify-center w-1/2 translate-x-[0.12em] cursor-pointer"
             >
-              <img
-                src={!isTokenSelling ? "/token/buyon.svg" : "/token/buyoff.svg"}
-                alt="Buy"
-                className="w-full"
-              />
+              {!isTokenSelling ? (
+                <ThemedUiElement type="buyon" alt="Buy" className="w-full" />
+              ) : (
+                <img src="/token/buyoff.svg" alt="Buy" className="w-full" />
+              )}
             </button>
             <button
               onClick={() => {
@@ -170,13 +172,11 @@ export default function Trade({
               }}
               className="flex items-center justify-center w-1/2 translate-x-[-0.12em] cursor-pointer"
             >
-              <img
-                src={
-                  isTokenSelling ? "/token/sellon.svg" : "/token/selloff.svg"
-                }
-                alt="Sell"
-                className="w-full"
-              />
+              {isTokenSelling ? (
+                <ThemedUiElement type="sellon" alt="Sell" className="w-full" />
+              ) : (
+                <img src="/token/selloff.svg" alt="Sell" className="w-full" />
+              )}
             </button>
           </div>
 
@@ -341,39 +341,28 @@ export default function Trade({
                 sellAmount === 0
               }
               onClick={onSwap}
+              onMouseDown={() => !isExecutingSwap && setIsSwapButtonPressed(true)}
+              onMouseUp={() => !isExecutingSwap && setIsSwapButtonPressed(false)}
+              onMouseLeave={() => !isExecutingSwap && setIsSwapButtonPressed(false)}
               className={twMerge([
                 "w-full mx-2 cursor-pointer mt-2",
                 isDisabled ? "cursor-not-allowed! opacity-50" : "",
               ])}
             >
-              <img
-                src={
-                  isExecutingSwap ? "/token/swapdown.svg" : "/token/swapup.svg"
-                }
-                alt="Generate"
-                className={twMerge([
-                  !isAuthenticated
-                    ? "cursor-not-allowed grayscale select-none"
-                    : "",
-                  "w-full",
-                ])}
-                onMouseDown={(e) => {
-                  if (!isExecutingSwap) {
-                    (e.target as HTMLImageElement).src = "/token/swapdown.svg";
-                  }
-                }}
-                onMouseUp={(e) => {
-                  if (!isExecutingSwap) {
-                    (e.target as HTMLImageElement).src = "/token/swapup.svg";
-                  }
-                }}
-                onDragStart={(e) => e.preventDefault()}
-                onMouseOut={(e) => {
-                  if (!isExecutingSwap) {
-                    (e.target as HTMLImageElement).src = "/token/swapup.svg";
-                  }
-                }}
-              />
+              {isExecutingSwap ? (
+                <img src="/token/swapdown.svg" alt="Swapping" className="w-full" />
+              ) : isSwapButtonPressed ? (
+                <img src="/token/swapdown.svg" alt="Swapping" className="w-full" />
+              ) : (
+                <ThemedUiElement 
+                  type="swapup" 
+                  alt="Swap" 
+                  className={twMerge([
+                    !isAuthenticated ? "cursor-not-allowed grayscale select-none" : "",
+                    "w-full",
+                  ])}
+                />
+              )}
             </button>
           </div>
         </div>

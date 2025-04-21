@@ -34,6 +34,7 @@ import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
 import { Tooltip } from "react-tooltip";
 import { twMerge } from "tailwind-merge";
+import ThemedUiElement from "@/components/themed-ui-element";
 
 // List of admin wallet addresses (copied from worker/routes/adminAddresses.ts)
 const adminAddresses: string[] = [
@@ -630,13 +631,13 @@ export default function Page() {
                       width: `${Math.min(100, token?.curveProgress || 0)}%`,
                     }}
                   >
-                    <img
+                    <ThemedUiElement
+                      type="progress"
                       style={{
                         width: "100%",
                         height: "100%",
                         objectFit: "cover",
                       }}
-                      src="/token/progress.svg"
                       alt="Progress indicator"
                     />
                   </div>

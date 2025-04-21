@@ -427,7 +427,8 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
       sceneRef.current.traverse((object) => {
         if (object instanceof THREE.Mesh && 
             object.material instanceof THREE.MeshStandardMaterial &&
-            !(object.userData?.tokenAddress)) { // Skip dice
+            !(object.userData?.tokenAddress) && 
+            object.position.y > 0) { // Skip floor (y = -0.5) and dice (have tokenAddress)
           // Update to the current theme color
           object.material.color.set(currentTheme.accentColor);
           object.material.needsUpdate = true;
