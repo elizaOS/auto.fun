@@ -1,4 +1,5 @@
 import { PropsWithChildren } from "react";
+import { Link } from "react-router";
 
 export default function TosProvider({ children }: PropsWithChildren) {
   const localStorageSave = false;
@@ -38,9 +39,9 @@ export default function TosProvider({ children }: PropsWithChildren) {
         </div>
 
         <div className="mt-3 border-t border-autofun-border p-4 flex justify-center gap-4 text-xs text-autofun-background-disabled">
-          <button className="hover:underline">Privacy Policy</button>
-          <button className="hover:underline">Terms of Service</button>
-          <button className="hover:underline">Fees</button>
+          <Link to={"/privacy-policy"} className="hover:underline">Privacy Policy</Link>
+          <Link to={"/terms-of-service"} className="hover:underline">Terms of Service</Link>
+          <Link to={"/fees"} className="hover:underline">Fees</Link>
         </div>
       </div>
     </div>
