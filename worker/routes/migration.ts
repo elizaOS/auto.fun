@@ -130,44 +130,26 @@ migrationRouter.post("/claimFees", async (c) => {
 
     const nftMint = token.nftMinted?.split(",")[0];
     const poolId = token.marketId;
-    // Create connection based on the environment setting.
-    const connection = new Connection(
-      c.env.NETWORK === "devnet"
-        ? c.env.DEVNET_SOLANA_RPC_URL
-        : c.env.MAINNET_SOLANA_RPC_URL,
-    );
 
-    // Create a wallet using the secret from env.
-    const wallet = Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(c.env.WALLET_PRIVATE_KEY)),
-    );
+    const payload = {
+      tokenMint: token.mint,
+      nftMint,
+      poolId,
+      userAddress: token.creator,
+    };
+    await fetch(`autofun-production.up.railway.app/claim-fees`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${c.env.JWT_SECRET}`,
+      },
+      body: JSON.stringify(payload),
+    });
 
-    // Build an Anchor provider.
-    const provider = new AnchorProvider(
-      connection,
-      new Wallet(wallet),
-      AnchorProvider.defaultOptions(),
-    );
-
-    const program = new Program<RaydiumVault>(
-      raydium_vault_IDL as any,
-      provider,
-    );
-    const claimer = new PublicKey(token.creator);
-    // Call the claim Function.
-    const txSignature = await claim(
-      program,
-      wallet,
-      new PublicKey(nftMint),
-      new PublicKey(poolId),
-      connection,
-      claimer
-    );
     // Return a success response.
     return c.json({
-      status: "Claim invocation processed",
+      status: "Claim invocation processing started",
       tokenMint: token.mint,
-      txSignature,
     });
   } catch (error) {
     logger.error("Error in claim fees endpoint:", error);
