@@ -132,13 +132,10 @@ export default function useAuthentication() {
     queryClient.invalidateQueries({ queryKey: ["auth-status"] });
   };
 
+  // Effect to handle wallet connection/disconnection
   useEffect(() => {
-    if (!connected && !publicKey && authToken) {
-      console.log("Wallet disconnected, clearing auth token.");
-      setAuthToken(null);
-      setUserPrivileges([]);
-      queryClient.invalidateQueries({ queryKey: ["auth-status"] });
-    } else if (connected && publicKey && authToken) {
+    if (connected && publicKey && authToken) {
+      // Wallet connected, check if token matches
       const payload = parseJwt(authToken);
       if (payload?.sub !== publicKey.toString()) {
         console.log(
@@ -152,6 +149,18 @@ export default function useAuthentication() {
       console.log("Wallet connected, but no auth token found.");
     }
   }, [connected, publicKey, authToken, setAuthToken, queryClient]);
+
+  // useLocalStorage handles this automatically, but we check expiration
+  useEffect(() => {
+    const initialToken = getAuthToken();
+    if (initialToken && isTokenExpired(initialToken)) {
+      console.log("Initial auth token is expired, clearing.");
+      setAuthToken(null);
+    } else if (initialToken && !authToken) {
+      // Sync state if localStorage has a token but state doesn't (e.g. after refresh)
+      setAuthToken(initialToken);
+    }
+  }, [setAuthToken, authToken]);
 
   const isAuthenticated =
     authQuery.data?.authenticated === true &&
@@ -188,16 +197,6 @@ export default function useAuthentication() {
       console.error("Error disconnecting wallet adapter:", e);
     }
   };
-
-  useEffect(() => {
-    const initialToken = getAuthToken();
-    if (initialToken && isTokenExpired(initialToken)) {
-      console.log("Initial auth token is expired, clearing.");
-      setAuthToken(null);
-    } else if (initialToken && !authToken) {
-      setAuthToken(initialToken);
-    }
-  }, [setAuthToken]);
 
   return {
     authToken,
