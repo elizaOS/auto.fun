@@ -181,6 +181,9 @@ export default function Page() {
 
   const token = tokenQuery?.data as IToken;
 
+  // Check if user is the token owner
+  const isTokenOwner = publicKey?.toString() === token?.creator;
+
   const currentPrice = token?.currentPrice || 0;
   const tokenPriceUSD = token?.tokenPriceUSD || 0;
   const volume24h = token?.volume24h || 0;
@@ -458,8 +461,8 @@ export default function Page() {
                   </div>
                 );
               })()}
-            {/* Render AdminSection only for moderators */}
-            {isModerator && <AdminSection />}
+            {/* Render AdminSection only for moderators or token owners */}
+            {(isModerator || isTokenOwner) && <AdminSection />}
           </div>
         </div>
 

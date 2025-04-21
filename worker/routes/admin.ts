@@ -31,20 +31,80 @@ const requireAdmin = async (c: any, next: Function) => {
   await next();
 };
 
+// Middleware to check if user is the token owner
+const requireTokenOwner = async (c: any, next: Function) => {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: "Authentication required" }, 401);
+  }
+
+  const tokenMint = c.req.param("mint");
+  if (!tokenMint) {
+    return c.json({ error: "Token mint required" }, 400);
+  }
+
+  // Fetch token data to check ownership
+  const token = await c.env.DB.prepare(
+    "SELECT creator FROM tokens WHERE mint = ?"
+  ).bind(tokenMint).first();
+
+  if (!token || token.creator !== user.publicKey) {
+    return c.json({ error: "Token ownership required" }, 403);
+  }
+
+  await next();
+};
+
+// Middleware to check if user is either admin or token owner
+const requireAdminOrTokenOwner = async (c: any, next: Function) => {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: "Authentication required" }, 401);
+  }
+
+  const tokenMint = c.req.param("mint");
+  if (!tokenMint) {
+    return c.json({ error: "Token mint required" }, 400);
+  }
+
+  const isAdmin = adminAddresses.includes(user.publicKey);
+  
+  if (isAdmin) {
+    await next();
+    return;
+  }
+
+  const token = await c.env.DB.prepare(
+    "SELECT creator FROM tokens WHERE mint = ?"
+  ).bind(tokenMint).first();
+
+  if (!token || token.creator !== user.publicKey) {
+    return c.json({ error: "Admin privileges or token ownership required" }, 403);
+  }
+
+  await next();
+};
+
 // Apply authentication middleware to all routes
 adminRouter.use("*", verifyAuth);
 
+// Create owner router for token owner specific endpoints
+const ownerRouter = new Hono<{
+  Bindings: Env;
+  Variables: {
+    user?: { publicKey: string } | null;
+  };
+}>();
+
+// Apply owner middleware to owner router
+ownerRouter.use("*", requireTokenOwner);
+
 // Route to update a token's social links
-adminRouter.post("/tokens/:mint/social", requireAdmin, async (c) => {
+adminRouter.post("/tokens/:mint/social", requireAdminOrTokenOwner, async (c) => {
+  const mint = c.req.param("mint");
+  const body = await c.req.json();
+
   try {
-    const mint = c.req.param("mint");
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
-
-    const body = await c.req.json();
-    const { twitter, telegram, discord, website, farcaster } = body;
-
     const db = getDB(c.env);
 
     // Check if token exists
@@ -55,23 +115,21 @@ adminRouter.post("/tokens/:mint/social", requireAdmin, async (c) => {
       .limit(1);
 
     if (!tokenData || tokenData.length === 0) {
-      return c.json({ error: "Token not found" }, 400);
+      return c.json({ error: "Token not found" }, 404);
     }
 
-    // Update token with the new social links
+    // Update social links
     await db
       .update(tokens)
       .set({
-        twitter: twitter ?? tokenData[0].twitter,
-        telegram: telegram ?? tokenData[0].telegram,
-        discord: discord ?? tokenData[0].discord,
-        website: website ?? tokenData[0].website,
-        farcaster: farcaster ?? tokenData[0].farcaster,
+        website: body.website || null,
+        twitter: body.twitter || null,
+        telegram: body.telegram || null,
+        discord: body.discord || null,
+        farcaster: body.farcaster || null,
         lastUpdated: new Date().toISOString(),
       })
       .where(eq(tokens.mint, mint));
-
-    logger.log(`Admin updated social links for token ${mint}`);
 
     // Get the updated token data
     const updatedToken = await db
@@ -86,11 +144,8 @@ adminRouter.post("/tokens/:mint/social", requireAdmin, async (c) => {
       token: updatedToken[0],
     });
   } catch (error) {
-    logger.error("Error updating token social links:", error);
-    return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
+    console.error("Error updating token social links:", error);
+    return c.json({ error: "Failed to update token social links" }, 500);
   }
 });
 
@@ -604,4 +659,44 @@ adminRouter.get("/users", requireAdmin, async (c) => {
   }
 });
 
-export default adminRouter;
+// Route to update a token's social links (owner version)
+ownerRouter.post("/tokens/:mint/social", async (c) => {
+  const mint = c.req.param("mint");
+  const body = await c.req.json();
+
+  try {
+    const db = getDB(c.env);
+
+    // Update social links
+    await db
+      .update(tokens)
+      .set({
+        website: body.website || null,
+        twitter: body.twitter || null,
+        telegram: body.telegram || null,
+        discord: body.discord || null,
+        farcaster: body.farcaster || null,
+        lastUpdated: new Date().toISOString(),
+      })
+      .where(eq(tokens.mint, mint));
+
+    // Get the updated token data
+    const updatedToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    return c.json({
+      success: true,
+      message: "Token social links updated successfully",
+      token: updatedToken[0],
+    });
+  } catch (error) {
+    console.error("Error updating token social links:", error);
+    return c.json({ error: "Failed to update token social links" }, 500);
+  }
+});
+
+// Export both routers
+export { adminRouter, ownerRouter };
