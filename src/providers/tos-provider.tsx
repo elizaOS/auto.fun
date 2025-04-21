@@ -1,4 +1,4 @@
-import { PropsWithChildren, useEffect, useState } from "react";
+import { PropsWithChildren } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 export default function TosProvider({ children }: PropsWithChildren) {
@@ -6,10 +6,16 @@ export default function TosProvider({ children }: PropsWithChildren) {
   const routes = ["/privacy-policy", "/terms-of-service", "/fees"];
   const AllowedRoute = routes.includes(location.pathname);
 
-  if (AllowedRoute) {
+  const isTosAccepted = localStorage.getItem("tosAccepted") === "true";
+
+  if (isTosAccepted || AllowedRoute) {
     return <>{children}</>;
   }
 
+  const handleAcceptTos = () => {
+    localStorage.setItem("tosAccepted", "true");
+    window.location.reload();
+  };
 
   return (
     <div className="h-screen w-screen grid place-items-center bg-autofun-background">
@@ -39,6 +45,7 @@ export default function TosProvider({ children }: PropsWithChildren) {
           </p>
 
           <button
+            onClick={handleAcceptTos} // Handle TOS acceptance
             className="m-4 bg-autofun-background-action-highlight text-black px-6 py-2 hover:bg-gray-200 transition-all font-semibold"
           >
             I'm ready to have fun
