@@ -16,7 +16,7 @@ class RedisCacheService {
   async set(
     key: string,
     value: string,
-    ttlInSeconds?: number
+    ttlInSeconds?: number,
   ): Promise<"OK" | null> {
     return this.redisPool.useClient((client) => {
       return ttlInSeconds

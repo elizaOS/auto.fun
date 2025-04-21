@@ -17,7 +17,7 @@ const connection: Redis = new IORedis(process.env.REDIS_URL as string, {
   enableReadyCheck: true,
   keepAlive: 10000,
   reconnectOnError(err) {
-    const targetError = 'READONLY';
+    const targetError = "READONLY";
     if (err.message.includes(targetError)) {
       // Only reconnect when the error contains "READONLY"
       return true;
@@ -27,28 +27,28 @@ const connection: Redis = new IORedis(process.env.REDIS_URL as string, {
 });
 
 // Add event listeners for connection status
-connection.on('connect', () => {
-  logger.info('Redis connection established');
+connection.on("connect", () => {
+  logger.info("Redis connection established");
 });
 
-connection.on('ready', () => {
-  logger.info('Redis connection ready to accept commands');
+connection.on("ready", () => {
+  logger.info("Redis connection ready to accept commands");
 });
 
-connection.on('error', (err) => {
+connection.on("error", (err) => {
   logger.error(`Redis connection error: ${err.message}`);
 });
 
-connection.on('close', () => {
-  logger.warn('Redis connection closed');
+connection.on("close", () => {
+  logger.warn("Redis connection closed");
 });
 
-connection.on('reconnecting', () => {
-  logger.info('Redis attempting to reconnect');
+connection.on("reconnecting", () => {
+  logger.info("Redis attempting to reconnect");
 });
 
-connection.on('end', () => {
-  logger.warn('Redis connection ended');
+connection.on("end", () => {
+  logger.warn("Redis connection ended");
 });
 
 export default connection;
