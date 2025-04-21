@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql, asc } from "drizzle-orm";
 import { Hono } from "hono";
 import {
   getDB,
@@ -297,7 +297,8 @@ async function addHasLikedToMessages(
     messagesList.length === 0 ||
     !userAddress
   ) {
-    return messagesList;
+    // Ensure the return type includes hasLiked even if no processing is done
+    return messagesList.map(msg => ({ ...msg, hasLiked: false }));
   }
 
   // Extract message IDs
@@ -325,5 +326,79 @@ async function addHasLikedToMessages(
     hasLiked: likedMessageIds.has(message.id),
   }));
 }
+
+// Get new messages for a specific tier since a given timestamp
+messagesRouter.get("/messages/:mint/:tier/updates", async (c) => {
+  try {
+    // 1. Auth Check (Crucial for protecting data)
+    const user = c.get("user");
+    if (!user?.publicKey) { // Ensure user and publicKey exist
+      return c.json({ success: false, error: "Authentication required" }, 401);
+    }
+    const userPublicKey = user.publicKey;
+
+    // 2. Params & Query Validation
+    const mint = c.req.param("mint");
+    const tier = c.req.param("tier"); // No specific ChatTier type assumed here for broader compatibility
+    const sinceTimestamp = c.req.query("since"); // ISO string
+
+    if (!mint || mint.length < 32 || mint.length > 44) {
+      return c.json({ success: false, error: "Invalid mint address" }, 400);
+    }
+    // Basic tier validation (adjust if specific tiers are enforced)
+    if (!tier || typeof tier !== 'string') {
+        return c.json({ success: false, error: "Invalid tier specified" }, 400);
+    }
+
+    if (!sinceTimestamp || isNaN(new Date(sinceTimestamp).getTime())) {
+      return c.json({ success: false, error: "Invalid 'since' timestamp query parameter" }, 400);
+    }
+
+    // Note: Skipping balance check for polling endpoint for performance.
+    // Assumes client checks eligibility before starting polling.
+
+    const db = getDB(c.env);
+
+    // 3. Query New Messages
+    const newMessages = await db
+      .select()
+      .from(messagesTable)
+      .where(
+        and(
+          eq(messagesTable.tokenMint, mint),
+          eq(messagesTable.tier, tier), // Filter by tier
+          sql`${messagesTable.timestamp} > ${sinceTimestamp}`, // Filter by timestamp
+        ),
+      )
+      .orderBy(asc(messagesTable.timestamp)); // Order chronologically for correct appending
+
+    // 4. Add 'hasLiked' info
+    let messagesWithLikes = newMessages;
+    if (newMessages.length > 0) {
+        try {
+             messagesWithLikes = await addHasLikedToMessages(
+                db,
+                newMessages,
+                userPublicKey, // Use validated publicKey
+             );
+        } catch (error) {
+            logger.error("Error adding likes info to message updates:", error);
+             // Continue without like info, but ensure hasLiked field exists
+             messagesWithLikes = newMessages.map(msg => ({...msg, hasLiked: false}));
+        }
+    } else {
+        // Ensure empty array is returned if no new messages
+        messagesWithLikes = [];
+    }
+
+
+    // 5. Return Result
+    return c.json({ success: true, messages: messagesWithLikes });
+
+  } catch (error) {
+    logger.error("Error fetching message updates:", error);
+    return c.json({ success: false, error: "Failed to fetch updates" }, 500);
+  }
+});
 
 export default messagesRouter;
