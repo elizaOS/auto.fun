@@ -133,7 +133,6 @@ export async function claim(
   poolId: anchor.web3.PublicKey,
   connection: anchor.web3.Connection,
   claimer: anchor.web3.PublicKey,
-
 ) {
   const vault_config = getVaultConfig(program.programId);
   const [locked_authority] = anchor.web3.PublicKey.findProgramAddressSync(
