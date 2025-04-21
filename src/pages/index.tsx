@@ -187,7 +187,6 @@ export default function Page() {
               {(tokenSource !== "all" || bondingStatus !== "all") && (
                 <span className="absolute top-0 right-0 block size-2 rounded-full bg-autofun-background-action-highlight ring-2 ring-autofun-background-action-primary" />
               )}
-              
             </Button>
             {isFilterOpen && (
               <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-56 shadow-lg bg-autofun-background-primary border border-b-autofun-stroke-primary z-20 p-4">

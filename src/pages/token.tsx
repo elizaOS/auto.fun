@@ -81,7 +81,11 @@ function MiddleEllipsis({ text }: { text?: string; suffix?: string }) {
   const suffix = text.substring(text.length - 8);
 
   return (
-    <div ref={elementRef} className="font-dm-mono text-center" title={text}>
+    <div
+      ref={elementRef}
+      className="font-dm-mono text-center overflow-hidden"
+      title={text}
+    >
       {showFull ? text : `${prefix}...${suffix}`}
     </div>
   );
