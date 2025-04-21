@@ -74,4 +74,5 @@ export interface Env {
   MONITOR_KV: KVNamespace;
   FIXED_FEE: string;
   ACCOUNT_FEE_MULTISIG: string;
+  DATABASE_URL: string;
 }

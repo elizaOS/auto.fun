@@ -60,7 +60,7 @@ export async function getToken(
       tokenSupply = supplyResult.tokenSupply;
       tokenSupplyUiAmount = supplyResult.tokenSupplyUiAmount;
       tokenDecimals = supplyResult.tokenDecimals;
-      lastSupplyUpdate = supplyResult.lastSupplyUpdate;
+      lastSupplyUpdate = new Date(supplyResult.lastSupplyUpdate);
     }
 
     const token: TokenData = {
@@ -84,7 +84,7 @@ export async function getToken(
       harvestedAt: tokenDb.harvestedAt ?? undefined,
       status: tokenDb.status,
       createdAt: tokenDb.createdAt,
-      lastUpdated: tokenDb.lastUpdated,
+      lastUpdated: tokenDb.lastUpdated.toISOString(),
       completedAt: tokenDb.completedAt ?? undefined,
       withdrawnAt: tokenDb.withdrawnAt ?? undefined,
       migratedAt: tokenDb.migratedAt ?? undefined,
@@ -223,7 +223,7 @@ export async function saveMigrationState(
     .update(tokens)
     .set({
       migration: JSON.stringify(updatedMigration),
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: new Date(),
     })
     .where(eq(tokens.mint, token.mint));
 }

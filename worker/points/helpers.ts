@@ -70,7 +70,7 @@ export async function awardUserPoints(
   description = "",
 ): Promise<void> {
   const db = getDB(env);
-  const now = new Date().toISOString();
+  const now = new Date();
   const pointsToAdd = calculatePoints(event);
   if (pointsToAdd <= 0) return;
 
@@ -116,14 +116,13 @@ export async function awardUserPoints(
   } else {
     await db
       .insert(users)
-      .values({
-        id: uuidv4(),
+      .values([{
         address: userAddress,
         name: null,
         points: pointsToAdd,
         rewardPoints: 0,
         createdAt: now,
-      })
+      }])
       .execute();
   }
 }

@@ -159,13 +159,13 @@ async function processSwapLog(
         price:
           direction === "1"
             ? Number(amountOut) /
-              Math.pow(10, 9) /
-              (Number(amount) / Math.pow(10, token.tokenDecimals)) // Sell price (SOL/token)
+            Math.pow(10, 9) /
+            (Number(amount) / Math.pow(10, token.tokenDecimals)) // Sell price (SOL/token)
             : Number(amount) /
-              Math.pow(10, 9) /
-              (Number(amountOut) / Math.pow(10, token.tokenDecimals)), // Buy price (SOL/token),
+            Math.pow(10, 9) /
+            (Number(amountOut) / Math.pow(10, token.tokenDecimals)), // Buy price (SOL/token),
         txId: signature,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date(),
       };
       await db.insert(swaps).values(swapRecord);
 
@@ -177,9 +177,7 @@ async function processSwapLog(
           currentPrice: currentPrice,
           liquidity:
             (Number(reserveLamport) / 1e9) * solPriceUSD +
-            (Number(reserveToken) / Math.pow(10, token.tokenDecimals)) *
-              tokenPriceUSD,
-          marketCapUSD,
+            (Number(reserveToken) / Math.pow(10, token.tokenDecimals)) * tokenPriceUSD,
           tokenPriceUSD,
           solPriceUSD: solPriceUSD,
           curveProgress:
@@ -187,22 +185,20 @@ async function processSwapLog(
               (Number(env.CURVE_LIMIT) - Number(env.VIRTUAL_RESERVES))) *
             100,
           txId: signature,
-          lastUpdated: new Date().toISOString(),
-          volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${
-            direction === "1"
-              ? (Number(amount) / Math.pow(10, token.tokenDecimals)) *
-                tokenPriceUSD
-              : (Number(amountOut) / Math.pow(10, token.tokenDecimals)) *
-                tokenPriceUSD
-          }`,
+          lastUpdated: new Date(),
+          volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${direction === "1"
+            ? (Number(amount) / Math.pow(10, token.tokenDecimals)) * tokenPriceUSD
+            : (Number(amountOut) / Math.pow(10, token.tokenDecimals)) * tokenPriceUSD
+            }`,
           priceChange24h,
           // Conditionally set price24hAgo & lastPriceUpdate
           ...(shouldReset24h
             ? {
-                price24hAgo: tokenPriceUSD,
-                lastPriceUpdate: slotTime,
-              }
+              price24hAgo: tokenPriceUSD,
+              lastPriceUpdate: now,
+            }
             : {}),
+
         })
         .where(eq(tokens.mint, mintAddress))
         .returning();
@@ -272,7 +268,7 @@ export async function updateTokenSupplyFromChain(
     throw new Error(`Failed to fetch token supply for ${tokenMint}`);
   }
   const { amount, uiAmount, decimals } = supplyResponse.value;
-  const now = new Date().toISOString();
+  const now = new Date();
 
   const db = getDB(env);
   await db
@@ -291,7 +287,7 @@ export async function updateTokenSupplyFromChain(
     tokenSupply: amount,
     tokenSupplyUiAmount: uiAmount || 0,
     tokenDecimals: decimals,
-    lastSupplyUpdate: now,
+    lastSupplyUpdate: now.toISOString(),
   };
 }
 
