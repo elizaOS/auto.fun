@@ -1,8 +1,8 @@
-import Redis from 'ioredis';
+import Redis from "ioredis";
 import { and, eq, gt, lt, sql } from "drizzle-orm";
 import { cachePrices, getDB } from "./db";
-import { Env } from './env';
-import { logger } from './util';
+import { Env } from "./env";
+import { logger } from "./util";
 
 /**
  * Unified cache system using Drizzle/D1 for all caching needs
@@ -58,15 +58,18 @@ export class CacheService {
         now.getTime() + ttlSeconds * 1000,
       ).toISOString();
       const expiresAtDate = new Date(expiresAt);
-      await this.db.insert(cachePrices)
-        .values([{
-          id: crypto.randomUUID(),
-          type: "sol",
-          symbol: "SOL",
-          price: price.toString(),
-          timestamp: sql`CURRENT_TIMESTAMP`,    // OK as SQL literal
-          expiresAt: expiresAtDate,             // now a Date, not a string
-        }])
+      await this.db
+        .insert(cachePrices)
+        .values([
+          {
+            id: crypto.randomUUID(),
+            type: "sol",
+            symbol: "SOL",
+            price: price.toString(),
+            timestamp: sql`CURRENT_TIMESTAMP`, // OK as SQL literal
+            expiresAt: expiresAtDate, // now a Date, not a string
+          },
+        ])
         .execute();
       // Clean up old cache entries
       await this.cleanupOldCacheEntries("sol", "SOL");
@@ -119,15 +122,18 @@ export class CacheService {
       ).toISOString();
       const expiresAtDate = new Date(expiresAt);
 
-      await this.db.insert(cachePrices)
-        .values([{
-          id: crypto.randomUUID(),
-          type: "sol",
-          symbol: "SOL",
-          price: price.toString(),
-          timestamp: sql`CURRENT_TIMESTAMP`,
-          expiresAt: expiresAtDate,
-        }])
+      await this.db
+        .insert(cachePrices)
+        .values([
+          {
+            id: crypto.randomUUID(),
+            type: "sol",
+            symbol: "SOL",
+            price: price.toString(),
+            timestamp: sql`CURRENT_TIMESTAMP`,
+            expiresAt: expiresAtDate,
+          },
+        ])
         .execute();
 
       // Clean up old cache entries
@@ -157,15 +163,18 @@ export class CacheService {
       );
       const expiresAtDate = new Date(expiresAt);
 
-      await this.db.insert(cachePrices)
-        .values([{
-          id: crypto.randomUUID(),
-          type: "sol",
-          symbol: "SOL",
-          price: serializedData.toString(),
-          timestamp: sql`CURRENT_TIMESTAMP`,
-          expiresAt: expiresAtDate,
-        }])
+      await this.db
+        .insert(cachePrices)
+        .values([
+          {
+            id: crypto.randomUUID(),
+            type: "sol",
+            symbol: "SOL",
+            price: serializedData.toString(),
+            timestamp: sql`CURRENT_TIMESTAMP`,
+            expiresAt: expiresAtDate,
+          },
+        ])
         .execute();
       // Clean up old cache entries
       await this.cleanupOldCacheEntries("metadata", key);
@@ -218,7 +227,6 @@ export class CacheService {
     symbol: string,
   ): Promise<void> {
     try {
-
       // Delete expired entries
       await this.db
         .delete(cachePrices)
@@ -276,10 +284,10 @@ export class RedisCache {
   constructor(redisUrl: string) {
     // Initialize Redis connection using the URL
     this.redis = new Redis(redisUrl);
-    
+
     // Set up error handling
-    this.redis.on('error', (err) => {
-      logger.error('Redis connection error:', err);
+    this.redis.on("error", (err) => {
+      logger.error("Redis connection error:", err);
     });
   }
 
@@ -291,17 +299,17 @@ export class RedisCache {
   async get<T>(key: string): Promise<T | null> {
     try {
       const data = await this.redis.get(key);
-      
+
       if (!data) {
         return null;
       }
-      
+
       try {
         // Parse the data as JSON
         return JSON.parse(data) as T;
       } catch (parseError) {
         // If parsing fails, return the raw data if it's a string type
-        return (typeof data === 'string' ? data : null) as unknown as T;
+        return (typeof data === "string" ? data : null) as unknown as T;
       }
     } catch (error) {
       logger.error(`Error getting data for key ${key} from cache:`, error);
@@ -318,13 +326,13 @@ export class RedisCache {
   async set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
     try {
       // Serialize the value to JSON, handling BigInt values
-      const serializedValue = JSON.stringify(value, (_, v) => 
-        typeof v === 'bigint' ? v.toString() : v
+      const serializedValue = JSON.stringify(value, (_, v) =>
+        typeof v === "bigint" ? v.toString() : v,
       );
-      
+
       if (ttlSeconds !== undefined && ttlSeconds > 0) {
         // Set with expiration
-        await this.redis.set(key, serializedValue, 'EX', ttlSeconds);
+        await this.redis.set(key, serializedValue, "EX", ttlSeconds);
       } else {
         // Set without expiration
         await this.redis.set(key, serializedValue);
@@ -385,32 +393,32 @@ export class RedisCache {
     try {
       await this.redis.quit();
     } catch (error) {
-      logger.error('Error closing Redis connection:', error);
+      logger.error("Error closing Redis connection:", error);
     }
   }
 }
 
 /**
  * Example usage:
- * 
+ *
  * // Initialize the cache
  * const cache = new RedisCache(env.REDIS_URL);
- * 
+ *
  * // Set a value with TTL
  * await cache.set('user:123', { name: 'John', role: 'admin' }, 3600); // 1 hour TTL
- * 
+ *
  * // Get a value
  * const user = await cache.get<{ name: string, role: string }>('user:123');
- * 
+ *
  * // Check if a key exists
  * const exists = await cache.exists('user:123');
- * 
+ *
  * // Get the remaining TTL
  * const ttl = await cache.ttl('user:123');
- * 
+ *
  * // Delete a key
  * await cache.delete('user:123');
- * 
+ *
  * // Close the connection when done
  * await cache.close();
  */
