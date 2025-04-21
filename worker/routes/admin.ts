@@ -6,7 +6,7 @@ import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { verifyAuth } from "../auth";
 
 // Define the router with environment typing
-const adminRouter = new Hono<{
+export const adminRouter = new Hono<{
   Bindings: Env;
   Variables: {
     user?: { publicKey: string } | null;
