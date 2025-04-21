@@ -643,15 +643,15 @@ async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-        { name: "mainnet", url: mainnetUrl },
-        { name: "devnet", url: devnetUrl },
-      ]
+      { name: "mainnet", url: mainnetUrl },
+      { name: "devnet", url: devnetUrl },
+    ]
     : [
-        {
-          name: c.env.NETWORK || "devnet",
-          url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-        },
-      ];
+      {
+        name: c.env.NETWORK || "devnet",
+        url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+      },
+    ];
 
   logger.log(
     `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
@@ -1117,7 +1117,16 @@ tokenRouter.get("/tokens", async (c) => {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
           logger.log(`Cache hit for ${cacheKey}`);
-          return c.json(JSON.parse(cachedData));
+          // check if the chache data is valid  
+          const parsedData = JSON.parse(cachedData);
+          if (parsedData && parsedData.tokens && parsedData.length > 0) {
+            return c.json(JSON.parse(cachedData));
+          } else {
+            logger.warn(`Cache data is empty or invalid for ${cacheKey}`);
+            // If the cache data is empty or invalid, remove it from Redis
+            console.log(`ignoring cache for ${cacheKey}`);
+          }
+
         }
         logger.log(`Cache miss for ${cacheKey}`);
       } catch (cacheError) {
@@ -1304,7 +1313,7 @@ tokenRouter.get("/tokens", async (c) => {
       hasMore: page < totalPages,
     };
 
-    if (redisCache) {
+    if (redisCache && tokensResult.length > 0) {
       try {
         await redisCache.set(cacheKey, JSON.stringify(responseData), 10);
         logger.log(`Cached data for ${cacheKey} with 10s TTL`);
@@ -1628,8 +1637,8 @@ tokenRouter.get("/token/:mint", async (c) => {
       token.status === "migrated"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-            (token.curveLimit - token.virtualReserves)) *
-          100;
+          (token.curveLimit - token.virtualReserves)) *
+        100;
 
     // Get token holders count
     const holdersCountQuery = await db
