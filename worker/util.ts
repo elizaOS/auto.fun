@@ -24,6 +24,7 @@ import { getProgram, initSolanaConfig } from "./solana";
 import { Autofun } from "./target/types/autofun";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import { getWebSocketClient } from "./websocket-client";
+import { ExternalToken } from "./externalToken";
 
 const SEED_BONDING_CURVE = "bonding_curve";
 
@@ -213,9 +214,9 @@ export async function createNewTokenData(
     const currentPrice =
       Number(bondingCurveAccount.reserveToken) > 0
         ? Number(bondingCurveAccount.reserveLamport) /
-          1e9 /
-          (Number(bondingCurveAccount.reserveToken) /
-            Math.pow(10, TOKEN_DECIMALS))
+        1e9 /
+        (Number(bondingCurveAccount.reserveToken) /
+          Math.pow(10, TOKEN_DECIMALS))
         : 0;
     console.log("currentPrice", currentPrice);
 
@@ -265,7 +266,7 @@ export async function createNewTokenData(
         (Number(bondingCurveAccount.reserveLamport) / 1e9) * solPrice +
         (Number(bondingCurveAccount.reserveToken) /
           Math.pow(10, TOKEN_DECIMALS)) *
-          tokenPriceUSD,
+        tokenPriceUSD,
       currentPrice:
         Number(bondingCurveAccount.reserveLamport) /
         1e9 /
@@ -322,9 +323,14 @@ export async function bulkUpdatePartialTokens(
   const solPrice = await getSOLPrice(env);
 
   // Process each token in parallel
-  const updatedTokensPromises = tokens.map((token) =>
-    calculateTokenMarketData(token, solPrice, env),
-  );
+  const updatedTokensPromises = tokens.map((token) => {
+    if (token.status === "locked" || token.status === "migrating") {
+      const ext = new ExternalToken(env, token.mint);
+      return ext.updateMarketData();
+    } else {
+      return calculateTokenMarketData(token, solPrice, env);
+    }
+  });
 
   // Wait for all updates to complete
   return Promise.all(updatedTokensPromises);
@@ -367,9 +373,9 @@ export const getRpcUrl = (env: any, forceMainnet: boolean = false) => {
   const apiKey =
     env.NETWORK === "devnet"
       ? env.DEVNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
-        "67ea9085-1406-4db8-8872-38ac77950d7a"
+      "67ea9085-1406-4db8-8872-38ac77950d7a"
       : env.MAINNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
-        "67ea9085-1406-4db8-8872-38ac77950d7a";
+      "67ea9085-1406-4db8-8872-38ac77950d7a";
 
   const result = `${baseUrl}?api-key=${apiKey}`;
 
@@ -1143,15 +1149,15 @@ export async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-        { name: "mainnet", url: mainnetUrl },
-        { name: "devnet", url: devnetUrl },
-      ]
+      { name: "mainnet", url: mainnetUrl },
+      { name: "devnet", url: devnetUrl },
+    ]
     : [
-        {
-          name: c.env.NETWORK || "devnet",
-          url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-        },
-      ];
+      {
+        name: c.env.NETWORK || "devnet",
+        url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+      },
+    ];
 
   logger.log(
     `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
