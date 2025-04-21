@@ -197,7 +197,6 @@ export const getSwapAmountJupiter = async (
     // 1. Get a quote from Jupiter.
     const feePercent = 0.2;
     const feeBps = feePercent * 100;
-    // Add platform fee to the quote
     const quoteUrl = `https://lite-api.jup.ag/swap/v1/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=${slippageBps}&restrictIntermediateTokens=true&platformFeeBps=${feeBps}`; // this needs to change to a paid version
     const quoteRes = await fetch(quoteUrl);
 
