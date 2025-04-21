@@ -32,7 +32,7 @@ const lastProcessedSignature: string | null = null;
 function convertTokenDataToDBData(
   tokenData: Partial<TokenData>,
 ): Partial<TokenDBData> {
-  const now = new Date().toISOString();
+  const now = new Date()
   return {
     ...tokenData,
     lastUpdated: now,
@@ -42,7 +42,7 @@ function convertTokenDataToDBData(
         : tokenData.migration,
     withdrawnAmounts:
       tokenData.withdrawnAmounts &&
-      typeof tokenData.withdrawnAmounts !== "string"
+        typeof tokenData.withdrawnAmounts !== "string"
         ? JSON.stringify(tokenData.withdrawnAmounts)
         : tokenData.withdrawnAmounts,
     poolInfo:
@@ -101,29 +101,30 @@ export async function updateTokenInDB(
     console.log(JSON.stringify(updateData, null, 2));
     updatedTokens = await db
       .insert(tokens)
-      .values({
-        id: crypto.randomUUID(),
-        mint: updateData.mint!,
-        name: updateData.name || `Token ${updateData.mint?.slice(0, 8)}`,
-        ticker: updateData.ticker || "TOKEN",
-        url: updateData.url || "",
-        image: updateData.image || "",
-        creator: updateData.creator || "unknown",
-        status: updateData.status || "active",
-        tokenPriceUSD: updateData.tokenPriceUSD || 0,
-        reserveAmount: updateData.reserveAmount || 0,
-        reserveLamport: updateData.reserveLamport || 0,
-        currentPrice: updateData.currentPrice || 0,
-        createdAt: now,
-        lastUpdated: now,
-        txId: updateData.txId || "",
-        migration: updateData.migration || "",
-        withdrawnAmounts: updateData.withdrawnAmounts || "",
-        poolInfo: updateData.poolInfo || "",
-        lockLpTxId: updateData.lockLpTxId || "",
-        nftMinted: updateData.nftMinted || "",
-        marketId: updateData.marketId || "",
-      })
+      .values([
+        {
+          mint: updateData.mint,
+          name: updateData.name || `Token ${updateData.mint?.slice(0, 8)}`,
+          ticker: updateData.ticker || "TOKEN",
+          url: updateData.url || "",
+          image: updateData.image || "",
+          creator: updateData.creator || "unknown",
+          status: updateData.status || "active",
+          tokenPriceUSD: updateData.tokenPriceUSD ?? 0,
+          reserveAmount: updateData.reserveAmount ?? 0,
+          reserveLamport: updateData.reserveLamport ?? 0,
+          currentPrice: updateData.currentPrice ?? 0,
+          // createdAt: sql`CURRENT_TIMESTAMP`,
+          // lastUpdated: sql`CURRENT_TIMESTAMP`,
+          txId: updateData.txId || "",
+          migration: updateData.migration || "",
+          withdrawnAmounts: updateData.withdrawnAmounts || "",
+          poolInfo: updateData.poolInfo || "",
+          lockLpTxId: updateData.lockLpTxId || "",
+          nftMinted: updateData.nftMinted || "",
+          marketId: updateData.marketId || "",
+        }
+      ])
       .returning();
     logger.log(`Added new token ${updateData.mint} to database`);
   }
@@ -350,13 +351,13 @@ export async function processTransactionLogs(
       price:
         direction === "1"
           ? Number(amountOut) /
-            Math.pow(10, SOL_DECIMALS) /
-            (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) // Sell price (SOL/token)
+          Math.pow(10, SOL_DECIMALS) /
+          (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) // Sell price (SOL/token)
           : Number(amount) /
-            Math.pow(10, SOL_DECIMALS) /
-            (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)), // Buy price (SOL/token),
+          Math.pow(10, SOL_DECIMALS) /
+          (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)), // Buy price (SOL/token),
       txId: signature,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(),
     };
 
     // Insert the swap record
@@ -384,12 +385,11 @@ export async function processTransactionLogs(
             (Number(env.CURVE_LIMIT) - Number(env.VIRTUAL_RESERVES))) *
           100,
         txId: signature,
-        lastUpdated: new Date().toISOString(),
-        volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${
-          direction === "1"
-            ? (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD
-            : (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD
-        }`,
+        lastUpdated: new Date(),
+        volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${direction === "1"
+          ? (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD
+          : (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD
+          }`,
       })
       .where(eq(tokens.mint, mintAddress))
       .returning();

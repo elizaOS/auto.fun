@@ -179,12 +179,12 @@ async function storeOAuthState(
   const expiresAt = new Date(Date.now() + 600_000); // 10 minutes
 
   try {
-    await db.insert(oauthVerifiers).values({
+    await db.insert(oauthVerifiers).values([{
       id: nanoid(),
       state,
-      code_verifier: codeVerifier,
-      expires_at: expiresAt.toISOString(),
-    });
+      codeVerifier: codeVerifier,
+      expiresAt: expiresAt,
+    }]);
   } catch (error) {
     throw new Error(`Failed to store OAuth state: ${error}`);
   }
@@ -198,8 +198,8 @@ async function getOAuthState(
     const db = getDB(env);
     const result = await db
       .select({
-        code_verifier: oauthVerifiers.code_verifier,
-        expires_at: oauthVerifiers.expires_at,
+        code_verifier: oauthVerifiers.codeVerifier,
+        expires_at: oauthVerifiers.expiresAt,
       })
       .from(oauthVerifiers)
       .where(eq(oauthVerifiers.state, state))
@@ -231,12 +231,12 @@ async function storeAccessToken(
     await db.delete(accessTokens);
 
     // Then insert the new token
-    await db.insert(accessTokens).values({
+    await db.insert(accessTokens).values([{
       id: nanoid(),
-      access_token: token,
-      refresh_token: refresh,
-      expires_at: expiresAt.toISOString(),
-    });
+      accessToken: token,
+      refreshToken: refresh,
+      expiresAt: expiresAt,
+    }]);
   } catch (error) {
     throw new Error(`Failed to store access token: ${error}`);
   }
@@ -246,7 +246,7 @@ async function getRefreshToken(env: Env): Promise<string | null> {
   try {
     const db = getDB(env);
     const result = await db
-      .select({ refresh_token: accessTokens.refresh_token })
+      .select({ refresh_token: accessTokens.refreshToken })
       .from(accessTokens)
       .limit(1);
 
@@ -272,12 +272,12 @@ async function updateAccessToken(
     await db.delete(accessTokens);
 
     // Insert the new token
-    await db.insert(accessTokens).values({
+    await db.insert(accessTokens).values([{
       id: nanoid(),
-      access_token: token,
-      refresh_token: refresh,
-      expires_at: expiresAt.toISOString(),
-    });
+      accessToken: token,
+      refreshToken: refresh,
+      expiresAt: expiresAt,
+    }]);
   } catch (error) {
     throw new Error(`Failed to update access token: ${error}`);
   }

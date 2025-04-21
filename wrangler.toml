@@ -106,6 +106,7 @@ PROGRAM_ID = "autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5"
 HELIUS_WEBHOOK_AUTH_TOKEN="devnet"
 VITE_DEV_PROGRAM_ID="autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5"
 VITE_PROGRAM_ID="autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5"
+DATABASE_URL="yamanote.proxy.rlwy.net:34932/autofun"
 
 # D1 Database for development
 [[env.development.d1_databases]]

@@ -26,7 +26,7 @@ type ProcessedSwap = {
   amountOut: number;
   price: number;
   txId: string;
-  timestamp: string;
+  timestamp: Date;
 };
 
 /**
@@ -115,8 +115,8 @@ export class ExternalToken {
     const createdAt = token.token?.createdAt;
     // get data from codex number createdAt
     const creationTime = createdAt
-      ? new Date(createdAt * 1000).toISOString()
-      : new Date().toISOString();
+      ? new Date(createdAt * 1000)
+      : new Date()
     const tokenSupplyUi = token.token?.info?.circulatingSupply
       ? Number(token.token?.info?.circulatingSupply)
       : 0;
@@ -177,7 +177,7 @@ export class ExternalToken {
       },
     });
 
-    const now = new Date().toISOString();
+    const now = new Date();
 
     const allHolders = tokenSupply
       ? codexHolders.items.map(
@@ -251,7 +251,7 @@ export class ExternalToken {
           id: crypto.randomUUID(),
           tokenMint: this.mint,
           txId: codexSwap.transactionHash,
-          timestamp: new Date(codexSwap.timestamp * 1000).toISOString(),
+          timestamp: new Date(codexSwap.timestamp * 1000),
           user: codexSwap.maker || "",
         };
         const priceUsdtotal = swapData.priceUsdTotal || 0;
@@ -349,7 +349,7 @@ export class ExternalToken {
             id: crypto.randomUUID(),
             tokenMint: this.mint,
             txId: codexSwap.transactionHash,
-            timestamp: new Date(codexSwap.timestamp * 1000).toISOString(),
+            timestamp: new Date(codexSwap.timestamp * 1000),
             user: codexSwap.maker || "",
           };
 

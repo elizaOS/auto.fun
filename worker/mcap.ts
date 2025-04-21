@@ -254,7 +254,7 @@ async function calculateRaydiumTokenMarketData(token: any, env?: Env) {
     // Calculate market cap
     const marketCapUSD = env
       ? (Number(env.TOKEN_SUPPLY) / Math.pow(10, TOKEN_DECIMALS)) *
-        tokenPriceUSD
+      tokenPriceUSD
       : (1000000000000000 / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD; // Default value if env not available
 
     if (marketCapUSD < 0) {
@@ -269,9 +269,9 @@ async function calculateRaydiumTokenMarketData(token: any, env?: Env) {
     const liquidity =
       poolInfo.mintAmountA > 0 && poolInfo.mintAmountB > 0
         ? // Token side: amount * price in USD (already in correct decimals)
-          poolInfo.mintAmountB * tokenPriceUSD +
-          // SOL side: amount * SOL price (already in correct decimals)
-          poolInfo.mintAmountA * solPrice
+        poolInfo.mintAmountB * tokenPriceUSD +
+        // SOL side: amount * SOL price (already in correct decimals)
+        poolInfo.mintAmountA * solPrice
         : 0;
 
     // logger.log('Raydium market data:', {
@@ -361,7 +361,7 @@ export async function updateMigratedTokenMarketData(env?: Env) {
                 tokenPriceUSD: marketData.tokenPriceUSD,
                 liquidity: marketData.liquidity,
                 solPriceUSD: marketData.solPriceUSD,
-                lastUpdated: new Date().toISOString(),
+                lastUpdated: new Date(),
               })
               .where(eq(tokens.mint, token.mint));
 
