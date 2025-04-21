@@ -234,7 +234,7 @@ tokenRouter.get("/tokens", async (c) => {
       }
 
       // By default, don't count hidden tokens
-      finalQuery = countQuery.where(
+      finalQuery = finalQuery.where(
         sql`(${tokens.hidden} = 0 OR ${tokens.hidden} IS NULL)`,
       );
 
