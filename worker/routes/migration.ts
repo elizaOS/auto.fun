@@ -170,7 +170,10 @@ migrationRouter.post("/claimFees", async (c) => {
     });
   } catch (error) {
     logger.error("Error in claim fees endpoint:", error);
-    return c.json({ error: `Failed to process claim invocation ${error.message}`, }, 500);
+    return c.json(
+      { error: `Failed to process claim invocation ${error.message}` },
+      500,
+    );
   }
 });
 

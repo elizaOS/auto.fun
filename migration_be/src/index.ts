@@ -1,16 +1,15 @@
 // src/index.ts
+import { Connection, PublicKey } from '@solana/web3.js';
 import cluster from 'cluster';
-import os from 'os';
 import dotenv from 'dotenv';
 import cron from 'node-cron';
-import { Connection, PublicKey, Logs } from '@solana/web3.js';
 
-import { Env } from './env';
 import { getDB } from './db';
+import { Env } from './env';
 import { processMissedEvents } from './getAllTokens';
+import { logger } from './logger';
 import { resumeOnStart } from './processTransactionLogs';
 import { startLogSubscription } from './subscription';
-import { logger } from './logger';
 
 dotenv.config();
 

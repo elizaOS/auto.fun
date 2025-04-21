@@ -309,7 +309,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
 
         // Store the token using the new handler
         if (authData.token && authData.user?.address) {
-          handleSuccessfulAuth(authData.token, authData.user.address);
+          handleSuccessfulAuth(authData.token);
         } else {
           console.warn("No token received from server during authentication");
           // Generate a fallback token for compatibility
@@ -321,7 +321,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
 
           if (walletAddress) {
             const walletSpecificToken = `wallet_${walletAddress}_${Date.now()}`;
-            handleSuccessfulAuth(walletSpecificToken, walletAddress);
+            handleSuccessfulAuth(walletSpecificToken);
           } else {
             console.error(
               "Cannot create fallback token: No wallet address available",

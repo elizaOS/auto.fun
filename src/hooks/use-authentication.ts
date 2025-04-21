@@ -1,46 +1,16 @@
 import { env } from "@/utils/env";
+import { getAuthToken, isTokenExpired, parseJwt } from "@/utils/auth";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useLocalStorage } from "@uidotdev/usehooks";
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 // Helper function to send auth token in headers
 export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-  let authToken = null;
-  try {
-    const walletAuthStr = localStorage.getItem("walletAuth");
-    if (walletAuthStr) {
-      try {
-        const walletAuthData = JSON.parse(walletAuthStr) as {
-          token: string;
-          walletAddress: string;
-          timestamp: number;
-        };
-
-        if (walletAuthData && walletAuthData.token) {
-          authToken = walletAuthData.token;
-        }
-      } catch (parseError) {
-        console.error("Error parsing wallet auth data:", parseError);
-      }
-    }
-
-    if (!authToken) {
-      const storedAuthToken = localStorage.getItem("authToken");
-      if (storedAuthToken) {
-        try {
-          authToken = JSON.parse(storedAuthToken);
-        } catch (parseError) {
-          console.error("Error parsing stored auth token:", parseError);
-        }
-      }
-    }
-  } catch (e) {
-    console.error("Error reading auth token from localStorage:", e);
-  }
+  const authToken = getAuthToken();
 
   const headers = new Headers(options.headers || {});
-  if (authToken) {
+  if (authToken && !isTokenExpired(authToken)) {
     const tokenWithBearer = authToken.startsWith("Bearer ")
       ? authToken
       : `Bearer ${authToken}`;
@@ -67,60 +37,42 @@ interface AuthStatus {
 }
 
 export default function useAuthentication() {
-  const { publicKey, connected, disconnect: adapterDisconnect } = useWallet();
+  const {
+    publicKey,
+    connected,
+    disconnect: adapterDisconnect,
+    wallet,
+  } = useWallet();
   const [authToken, setAuthToken] = useLocalStorage<string | null>(
     "authToken",
     null,
   );
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  // const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [userPrivileges, setUserPrivileges] = useState<string[]>([]);
+  const queryClient = useQueryClient();
 
-  const hasDirectPhantomConnection =
-    typeof window !== "undefined" &&
-    window.solana &&
-    window.solana.isPhantom &&
-    window.solana.publicKey;
-
-  const getWalletAddressFromToken = (token: string | null): string | null => {
-    if (!token) return null;
-
-    if (token.startsWith("wallet_")) {
-      const parts = token.split("_");
-      if (parts.length >= 2) {
-        return parts[1];
-      }
-    } else if (token.includes(".")) {
-      try {
-        const parts = token.split(".");
-        if (parts.length === 3) {
-          const payload = JSON.parse(atob(parts[1]));
-          if (payload.sub) {
-            return payload.sub;
-          }
-        }
-      } catch (e) {
-        console.error("Error decoding JWT token:", e);
+  const getWalletAddress = (): string | null => {
+    if (authToken && !isTokenExpired(authToken)) {
+      const payload = parseJwt(authToken);
+      if (payload?.sub) {
+        return payload.sub;
       }
     }
-
+    if (connected && publicKey) {
+      return publicKey.toString();
+    }
     return null;
   };
 
-  const [storedWalletAddress, setStoredWalletAddress] = useState<string | null>(
-    authToken ? getWalletAddressFromToken(authToken) : null,
-  );
+  const currentWalletAddress = getWalletAddress();
 
   const authQuery = useQuery<AuthStatus>({
-    queryKey: [
-      "auth-status",
-      publicKey?.toString(),
-      storedWalletAddress,
-      connected,
-      authToken,
-    ],
+    queryKey: ["auth-status", authToken],
     queryFn: async () => {
+      if (!authToken || isTokenExpired(authToken)) {
+        return { authenticated: false };
+      }
       try {
-        setIsAuthenticating(true);
         const response = await fetchWithAuth(`${env.apiUrl}/api/auth-status`, {
           method: "GET",
         });
@@ -128,181 +80,131 @@ export default function useAuthentication() {
         if (response.ok) {
           const data = (await response.json()) as AuthStatus;
           if (data.authenticated) {
-            if (data.privileges) {
-              setUserPrivileges(data.privileges);
+            setUserPrivileges(data.privileges || []);
+            const tokenWallet = data.user?.address || parseJwt(authToken)?.sub;
+            if (publicKey && tokenWallet !== publicKey.toString()) {
+              console.warn(
+                "Auth token wallet does not match connected wallet. Consider logging out.",
+              );
             }
             return data;
+          } else {
+            setAuthToken(null);
+            setUserPrivileges([]);
+            return { authenticated: false };
           }
+        } else if (response.status === 401 || response.status === 403) {
+          setAuthToken(null);
+          setUserPrivileges([]);
+          return { authenticated: false };
         }
         return { authenticated: false };
       } catch (error) {
         console.error("Error checking auth status:", error);
         return { authenticated: false };
-      } finally {
-        setIsAuthenticating(false);
       }
     },
-    enabled: !!publicKey || !!storedWalletAddress || connected || !!authToken,
-    staleTime: 30000,
+    enabled: !!authToken && !isTokenExpired(authToken),
+    staleTime: 60 * 1000,
     refetchOnWindowFocus: true,
+    retry: 1,
   });
 
-  // Enhance setAuthToken to ensure it's also directly set in localStorage
-  const setAuthTokenWithStorage = (token: string | null) => {
+  const handleSuccessfulAuth = (token: string) => {
+    const payload = parseJwt(token);
+    const tokenWallet = payload?.sub;
+
+    if (!tokenWallet) {
+      console.error("Received token without wallet address (sub claim).");
+      setAuthToken(null);
+      return;
+    }
+
+    if (publicKey && tokenWallet !== publicKey.toString()) {
+      console.error(
+        "Token wallet address does not match connected wallet address. Aborting auth.",
+      );
+      return;
+    }
+
     setAuthToken(token);
-    try {
-      if (token) {
-        localStorage.setItem("authToken", JSON.stringify(token));
-      } else {
-        localStorage.removeItem("authToken");
-      }
-    } catch (e) {
-      console.error("Error updating authToken in localStorage:", e);
-    }
+    setUserPrivileges(payload?.privileges || []);
+    queryClient.invalidateQueries({ queryKey: ["auth-status"] });
   };
 
-  // Handle successful authentication
-  const handleSuccessfulAuth = (token: string, userAddress: string) => {
-    setAuthTokenWithStorage(token);
-    setStoredWalletAddress(userAddress);
-
-    // Store expanded auth data
-    const authStorage = {
-      token,
-      walletAddress: userAddress,
-      timestamp: Date.now(),
-    };
-
-    try {
-      localStorage.setItem("walletAuth", JSON.stringify(authStorage));
-    } catch (e) {
-      console.error("Error storing wallet auth data:", e);
-    }
-
-    // Force a refetch of auth status
-    authQuery.refetch();
-  };
-
-  // Auto-reconnect if we have a token but wallet is not connected
   useEffect(() => {
-    if (
-      authToken &&
-      !connected &&
-      !hasDirectPhantomConnection &&
-      !isAuthenticating
-    ) {
-      if (
-        typeof window !== "undefined" &&
-        window.solana &&
-        window.solana.isPhantom
-      ) {
-        try {
-          window.solana.connect().catch((err: any) => {
-            console.error("Failed to reconnect directly:", err);
-          });
-        } catch (err) {
-          console.error("Error during reconnection attempt:", err);
-        }
+    if (!connected && !publicKey && authToken) {
+      console.log("Wallet disconnected, clearing auth token.");
+      setAuthToken(null);
+      setUserPrivileges([]);
+      queryClient.invalidateQueries({ queryKey: ["auth-status"] });
+    } else if (connected && publicKey && authToken) {
+      const payload = parseJwt(authToken);
+      if (payload?.sub !== publicKey.toString()) {
+        console.log(
+          "Connected wallet does not match auth token wallet, clearing token.",
+        );
+        setAuthToken(null);
+        setUserPrivileges([]);
+        queryClient.invalidateQueries({ queryKey: ["auth-status"] });
       }
+    } else if (connected && publicKey && !authToken) {
+      console.log("Wallet connected, but no auth token found.");
     }
-  }, [authToken, connected, hasDirectPhantomConnection, isAuthenticating]);
+  }, [connected, publicKey, authToken, setAuthToken, queryClient]);
 
   const isAuthenticated =
+    authQuery.data?.authenticated === true &&
     !!authToken &&
-    authQuery.data?.authenticated &&
-    (connected || hasDirectPhantomConnection || !!storedWalletAddress);
+    !isTokenExpired(authToken);
 
   const signOut = async () => {
-    try {
-      await fetchWithAuth(`${env.apiUrl}/api/logout`, {
-        method: "POST",
-      });
-    } catch (e) {
-      console.error("Failed to complete server-side logout:", e);
-    }
-
+    const tokenToRevoke = authToken;
     setAuthToken(null);
-    setStoredWalletAddress(null);
     setUserPrivileges([]);
+    queryClient.invalidateQueries({ queryKey: ["auth-status"] });
 
     try {
-      localStorage.removeItem("walletAuth");
+      if (tokenToRevoke) {
+        const headers = new Headers();
+        headers.set("Authorization", `Bearer ${tokenToRevoke}`);
+        await fetch(`${env.apiUrl}/api/logout`, {
+          method: "POST",
+          headers: headers,
+          credentials: "include",
+        });
+      }
     } catch (e) {
-      console.error("Error removing walletAuth data:", e);
+      console.error("Failed to complete server-side logout notification:", e);
     }
 
     try {
       if (adapterDisconnect) {
-        try {
-          await adapterDisconnect();
-        } catch (e) {
-          console.error("Error disconnecting adapter:", e);
-        }
-      }
-
-      if (window.solana && window.solana.disconnect) {
-        try {
-          await window.solana.disconnect();
-        } catch (e) {
-          console.error("Error disconnecting Phantom:", e);
-        }
+        await adapterDisconnect();
+      } else if (wallet?.adapter?.disconnect) {
+        await wallet.adapter.disconnect();
       }
     } catch (e) {
-      console.error("Error during sign out:", e);
+      console.error("Error disconnecting wallet adapter:", e);
     }
   };
 
   useEffect(() => {
-    try {
-      const walletAuthStr = localStorage.getItem("walletAuth");
-      if (walletAuthStr) {
-        try {
-          const walletAuthData = JSON.parse(walletAuthStr) as {
-            token: string;
-            walletAddress: string;
-            timestamp: number;
-          };
-          setAuthToken(walletAuthData.token);
-          setStoredWalletAddress(walletAuthData.walletAddress);
-          return;
-        } catch (parseError) {
-          console.error("Error parsing wallet auth data:", parseError);
-          localStorage.removeItem("walletAuth");
-        }
-      }
-
-      const storedAuthToken = localStorage.getItem("authToken");
-      if (storedAuthToken && !authToken) {
-        try {
-          const parsedToken = JSON.parse(storedAuthToken);
-          setAuthToken(parsedToken);
-          const extractedAddress = getWalletAddressFromToken(parsedToken);
-          if (extractedAddress) {
-            setStoredWalletAddress(extractedAddress);
-          }
-        } catch (parseError) {
-          console.error("Error parsing stored auth token:", parseError);
-          localStorage.removeItem("authToken");
-        }
-      }
-    } catch (e) {
-      console.error("Error reading auth token from localStorage:", e);
+    const initialToken = getAuthToken();
+    if (initialToken && isTokenExpired(initialToken)) {
+      console.log("Initial auth token is expired, clearing.");
+      setAuthToken(null);
+    } else if (initialToken && !authToken) {
+      setAuthToken(initialToken);
     }
-  }, []);
+  }, [setAuthToken]);
 
   return {
     authToken,
-    setAuthToken: setAuthTokenWithStorage,
     isAuthenticated,
-    isAuthenticating,
-    isInitialized: true,
+    isAuthenticating: authQuery.isLoading,
     signOut,
-    walletAddress:
-      storedWalletAddress ||
-      publicKey?.toString() ||
-      (hasDirectPhantomConnection && window.solana?.publicKey
-        ? window.solana.publicKey.toString()
-        : null),
+    walletAddress: currentWalletAddress,
     privileges: userPrivileges,
     fetchWithAuth,
     authQuery,
