@@ -1,5 +1,4 @@
 import {
-  D1Database,
   DurableObjectNamespace,
   R2Bucket,
 } from "@cloudflare/workers-types/experimental";
@@ -15,7 +14,7 @@ interface Ai {
  */
 export interface Env {
   WEBSOCKET_DO: DurableObjectNamespace;
-  DB: D1Database;
+  DATABASE_URL: string; // PostgreSQL connection string
   NETWORK: string;
   DECIMALS: string;
   TOKEN_SUPPLY: string;

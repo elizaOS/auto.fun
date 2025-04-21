@@ -1,17 +1,20 @@
 import { sql } from "drizzle-orm";
-import { drizzle, DrizzleD1Database } from "drizzle-orm/d1";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import {
+  pgTable,
+  text,
   integer,
   real,
-  sqliteTable,
-  text,
+  timestamp,
   uniqueIndex,
   index,
-} from "drizzle-orm/sqlite-core";
+  serial,
+} from "drizzle-orm/pg-core";
 import { Env } from "./env";
 
 // Token schema
-export const tokens = sqliteTable(
+export const tokens = pgTable(
   "tokens",
   {
     id: text("id").primaryKey(),
@@ -27,20 +30,20 @@ export const tokens = sqliteTable(
     description: text("description"),
     mint: text("mint").notNull().unique(),
     creator: text("creator").notNull(),
-    nftMinted: text("nft_minted", { mode: "text" }),
-    lockId: text("lock_id", { mode: "text" }),
-    lockedAmount: text("locked_amount", { mode: "text" }),
-    lockedAt: text("locked_at", { mode: "text" }),
-    harvestedAt: text("harvested_at", { mode: "text" }),
+    nftMinted: text("nft_minted"),
+    lockId: text("lock_id"),
+    lockedAmount: text("locked_amount"),
+    lockedAt: timestamp("locked_at"),
+    harvestedAt: timestamp("harvested_at"),
     status: text("status").notNull().default("active"),
-    createdAt: text("created_at", { mode: "text" }).notNull(),
-    lastUpdated: text("last_updated", { mode: "text" }).notNull(),
-    completedAt: text("completed_at", { mode: "text" }),
-    withdrawnAt: text("withdrawn_at", { mode: "text" }),
-    migratedAt: text("migrated_at", { mode: "text" }),
-    marketId: text("market_id", { mode: "text" }),
-    baseVault: text("base_vault", { mode: "text" }),
-    quoteVault: text("quote_vault", { mode: "text" }),
+    createdAt: timestamp("created_at").notNull(),
+    lastUpdated: timestamp("last_updated").notNull(),
+    completedAt: timestamp("completed_at"),
+    withdrawnAt: timestamp("withdrawn_at"),
+    migratedAt: timestamp("migrated_at"),
+    marketId: text("market_id"),
+    baseVault: text("base_vault"),
+    quoteVault: text("quote_vault"),
     withdrawnAmount: real("withdrawn_amount"),
     reserveAmount: real("reserve_amount"),
     reserveLamport: real("reserve_lamport"),
@@ -56,27 +59,27 @@ export const tokens = sqliteTable(
     price24hAgo: real("price_24h_ago"),
     volume24h: real("volume_24h"),
     inferenceCount: integer("inference_count"),
-    lastVolumeReset: text("last_volume_reset"),
-    lastPriceUpdate: text("last_price_update"),
+    lastVolumeReset: timestamp("last_volume_reset"),
+    lastPriceUpdate: timestamp("last_price_update"),
     holderCount: integer("holder_count"),
     txId: text("tx_id"),
     // New fields
-    migration: text("migration", { mode: "text" }), // object with withdraw, createPool, lockLP, finalize info
-    withdrawnAmounts: text("withdrawn_amounts", { mode: "text" }), // Expected to store { withdrawnSol, withdrawnTokens }
-    poolInfo: text("pool_info", { mode: "text" }), // Expected to store pool details (id, lpMint, baseVault, quoteVault)
-    lockLpTxId: text("lock_lp_tx_id", { mode: "text" }),
+    migration: text("migration"), // object with withdraw, createPool, lockLP, finalize info
+    withdrawnAmounts: text("withdrawn_amounts"), // Expected to store { withdrawnSol, withdrawnTokens }
+    poolInfo: text("pool_info"), // Expected to store pool details (id, lpMint, baseVault, quoteVault)
+    lockLpTxId: text("lock_lp_tx_id"),
     imported: integer("imported").default(0),
     // Flag fields
     featured: integer("featured").default(0), // 0 = not featured, 1 = featured
     verified: integer("verified").default(0), // 0 = not verified, 1 = verified
     hidden: integer("hidden").default(0), // 0 = not hidden, 1 = hidden
     // NEW: Token supply and decimals
-    tokenSupply: text("token_supply", { mode: "text" }).default(
+    tokenSupply: text("token_supply").default(
       "1000000000000000",
     ), // As string to preserve precision
-    tokenSupplyUiAmount: integer("token_supply_ui_amount").default(1000000000),
+    tokenSupplyUiAmount: real("token_supply_ui_amount").default(1000000000),
     tokenDecimals: integer("token_decimals").default(6),
-    lastSupplyUpdate: text("last_supply_update"),
+    lastSupplyUpdate: timestamp("last_supply_update"),
   },
   (table) => ({
     // WHERE status!=pending AND hidden=0 ORDER BY market_cap_usd DESC
@@ -107,9 +110,9 @@ export const tokens = sqliteTable(
 );
 
 // Swap schema
-export const swaps = sqliteTable("swaps", {
+export const swaps = pgTable("swaps", {
   id: text("id").primaryKey(),
-  tokenMint: text("token_mint", { mode: "text" }).notNull(),
+  tokenMint: text("token_mint").notNull(),
   user: text("user").notNull(),
   type: text("type").notNull(),
   direction: integer("direction").notNull(), // 0 = Buy (SOL->Token), 1 = Sell (Token->SOL)
@@ -117,26 +120,26 @@ export const swaps = sqliteTable("swaps", {
   amountOut: real("amount_out"),
   priceImpact: real("price_impact"),
   price: real("price").notNull(),
-  txId: text("tx_id", { mode: "text" }).notNull().unique(),
-  timestamp: text("timestamp").notNull(),
+  txId: text("tx_id").notNull().unique(),
+  timestamp: timestamp("timestamp").notNull(),
 });
 
 // Fees schema
-export const fees = sqliteTable("fees", {
+export const fees = pgTable("fees", {
   id: text("id").primaryKey(),
-  tokenMint: text("token_mint", { mode: "text" }).notNull(),
+  tokenMint: text("token_mint").notNull(),
   user: text("user"),
   direction: integer("direction"),
-  feeAmount: text("fee_amount", { mode: "text" }),
-  tokenAmount: text("token_amount", { mode: "text" }),
-  solAmount: text("sol_amount", { mode: "text" }),
+  feeAmount: text("fee_amount"),
+  tokenAmount: text("token_amount"),
+  solAmount: text("sol_amount"),
   type: text("type").notNull(), // swap, migration
-  txId: text("tx_id", { mode: "text" }),
-  timestamp: text("timestamp").notNull(),
+  txId: text("tx_id"),
+  timestamp: timestamp("timestamp").notNull(),
 });
 
 // TokenHolder schema
-export const tokenHolders = sqliteTable(
+export const tokenHolders = pgTable(
   "token_holders",
   {
     id: text("id").primaryKey(),
@@ -144,7 +147,7 @@ export const tokenHolders = sqliteTable(
     address: text("address").notNull(),
     amount: real("amount").notNull(),
     percentage: real("percentage").notNull(),
-    lastUpdated: text("last_updated", { mode: "text" }).notNull(),
+    lastUpdated: timestamp("last_updated").notNull(),
   },
   (table) => ({
     // Guarantee one row per mint+address
@@ -158,67 +161,63 @@ export const tokenHolders = sqliteTable(
 );
 
 // Create messages table without self-referencing first
-export const messages = sqliteTable("messages", {
+export const messages = pgTable("messages", {
   id: text("id").primaryKey(),
   author: text("author").notNull(),
-  tokenMint: text("token_mint", { mode: "text" }).notNull(),
+  tokenMint: text("token_mint").notNull(),
   message: text("message").notNull(),
-  parentId: text("parent_id", { mode: "text" }),
+  parentId: text("parent_id"),
   replyCount: integer("reply_count"),
   tier: text("tier").notNull(),
-  timestamp: text("timestamp").notNull(),
+  timestamp: timestamp("timestamp").notNull(),
 });
 
 // MessageLike schema
-export const messageLikes = sqliteTable("message_likes", {
+export const messageLikes = pgTable("message_likes", {
   id: text("id").primaryKey(),
-  messageId: text("message_id", { mode: "text" }).notNull(),
-  userAddress: text("user_address", { mode: "text" }).notNull(),
-  timestamp: text("timestamp").notNull(),
+  messageId: text("message_id").notNull(),
+  userAddress: text("user_address").notNull(),
+  timestamp: timestamp("timestamp").notNull(),
 });
 
 // Personality schema
-export const personalities = sqliteTable("personalities", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const personalities = pgTable("personalities", {
+  id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  createdAt: integer("created_at", { mode: "timestamp" }).default(
-    sql`CURRENT_TIMESTAMP`,
-  ),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).default(
-    sql`CURRENT_TIMESTAMP`,
-  ),
-  deletedAt: integer("deleted_at", { mode: "timestamp" }),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
+  deletedAt: timestamp("deleted_at"),
 });
 
 // User schema
-export const users = sqliteTable("users", {
+export const users = pgTable("users", {
   id: text("id").primaryKey(),
   name: text("name"),
   address: text("address").notNull().unique(),
   points: integer("points").notNull().default(0),
   rewardPoints: integer("reward_points").notNull().default(0),
-  createdAt: text("created_at", { mode: "text" }).notNull(),
+  createdAt: timestamp("created_at").notNull(),
   suspended: integer("suspended").notNull().default(0), // 0 = not suspended, 1 = suspended
 });
 
 // VanityKeypair schema
-export const vanityKeypairs = sqliteTable("vanity_keypairs", {
+export const vanityKeypairs = pgTable("vanity_keypairs", {
   id: text("id").primaryKey(),
   address: text("address").notNull().unique(),
-  secretKey: text("secret_key", { mode: "text" }).notNull(),
-  createdAt: text("created_at", { mode: "text" }).notNull(),
+  secretKey: text("secret_key").notNull(),
+  createdAt: timestamp("created_at").notNull(),
   used: integer("used").notNull().default(0),
 });
 
 // Media Generation table
-export const mediaGenerations = sqliteTable("media_generations", {
+export const mediaGenerations = pgTable("media_generations", {
   id: text("id").primaryKey(),
   mint: text("mint").notNull(),
   type: text("type").notNull(), // "image", "video", "audio"
   prompt: text("prompt").notNull(),
-  mediaUrl: text("media_url", { mode: "text" }).notNull(),
-  negativePrompt: text("negative_prompt", { mode: "text" }),
+  mediaUrl: text("media_url").notNull(),
+  negativePrompt: text("negative_prompt"),
   numInferenceSteps: integer("num_inference_steps"),
   seed: integer("seed"),
   // Video specific metadata
@@ -230,78 +229,84 @@ export const mediaGenerations = sqliteTable("media_generations", {
   durationSeconds: integer("duration_seconds"),
   bpm: integer("bpm"),
   creator: text("creator"),
-  timestamp: text("timestamp").notNull(),
+  timestamp: timestamp("timestamp").notNull(),
   dailyGenerationCount: integer("daily_generation_count"),
-  lastGenerationReset: text("last_generation_reset", { mode: "text" }),
+  lastGenerationReset: timestamp("last_generation_reset"),
 });
 
 // Cache table for prices
-export const cachePrices = sqliteTable("cache_prices", {
+export const cachePrices = pgTable("cache_prices", {
   id: text("id").primaryKey(),
   type: text("type").notNull(), // "sol", "token", etc.
   symbol: text("symbol").notNull(),
   price: text("price").notNull(), // Store as string to preserve precision
-  timestamp: text("timestamp").notNull(),
-  expiresAt: text("expires_at", { mode: "text" }).notNull(), // When this cache entry should expire
+  timestamp: timestamp("timestamp").notNull(),
+  expiresAt: timestamp("expires_at").notNull(), // When this cache entry should expire
 });
 
 // Pre-generated tokens table
-export const preGeneratedTokens = sqliteTable("pre_generated_tokens", {
+export const preGeneratedTokens = pgTable("pre_generated_tokens", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   ticker: text("ticker").notNull(),
   description: text("description").notNull(),
   prompt: text("prompt").notNull(),
   image: text("image"),
-  createdAt: text("created_at", { mode: "text" }).notNull(),
+  createdAt: timestamp("created_at").notNull(),
   used: integer("used").notNull().default(0),
 });
 
 // Twitter OAuth verifiers table (migrated from Supabase)
-export const oauthVerifiers = sqliteTable("oauth_verifiers", {
+export const oauthVerifiers = pgTable("oauth_verifiers", {
   id: text("id").primaryKey(),
   state: text("state").notNull().unique(),
-  code_verifier: text("code_verifier").notNull(),
-  expires_at: text("expires_at", { mode: "text" }).notNull(),
+  codeVerifier: text("code_verifier").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
 });
 
 // Twitter access tokens table (migrated from Supabase)
-export const accessTokens = sqliteTable("access_tokens", {
+export const accessTokens = pgTable("access_tokens", {
   id: text("id").primaryKey(),
-  access_token: text("access_token").notNull(),
-  refresh_token: text("refresh_token").notNull(),
-  expires_at: text("expires_at", { mode: "text" }).notNull(),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
 });
 
-export const tokenAgents = sqliteTable("token_agents", {
+export const tokenAgents = pgTable("token_agents", {
   id: text("id").primaryKey(),
-  tokenMint: text("token_mint", { mode: "text" }).notNull(),
-  ownerAddress: text("owner_address", { mode: "text" }).notNull(),
-  twitterUserId: text("twitter_user_id", { mode: "text" }).notNull(),
-  twitterUserName: text("twitter_user_name", { mode: "text" }).notNull(),
-  twitterImageUrl: text("twitter_image_url", { mode: "text" }).notNull(),
+  tokenMint: text("token_mint").notNull(),
+  ownerAddress: text("owner_address").notNull(),
+  twitterUserId: text("twitter_user_id").notNull(),
+  twitterUserName: text("twitter_user_name").notNull(),
+  twitterImageUrl: text("twitter_image_url").notNull(),
   official: integer("official").notNull().default(0),
-  createdAt: text("created_at", { mode: "text" }).notNull(),
+  createdAt: timestamp("created_at").notNull(),
 });
 
 // New table to track Vast.ai vanity generation instances
-export const vanityGenerationInstances = sqliteTable(
+export const vanityGenerationInstances = pgTable(
   "vanity_generation_instances",
   {
     id: text("id").primaryKey(), // Use a UUID generated by the worker
-    instanceId: text("instance_id", { mode: "text" }), // Vast.ai instance ID
-    ipAddress: text("ip_address", { mode: "text" }), // IP address of the running instance
+    instanceId: text("instance_id"), // Vast.ai instance ID
+    ipAddress: text("ip_address"), // IP address of the running instance
     status: text("status").notNull().default("stopped"), // 'stopped', 'pending', 'initializing', 'running', 'error', 'stopping'
-    jobId: text("job_id", { mode: "text" }), // Job ID from the vanity-grinder API
-    lastHeartbeat: text("last_heartbeat", { mode: "text" }),
-    createdAt: text("created_at", { mode: "text" }).notNull(),
-    updatedAt: text("updated_at", { mode: "text" }).notNull(),
+    jobId: text("job_id"), // Job ID from the vanity-grinder API
+    lastHeartbeat: timestamp("last_heartbeat"),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at").notNull(),
   },
 );
 
+// Metadata table
+export const metadata = pgTable("metadata", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+});
+
 export function getDB(env: Env) {
   try {
-    // For non-test environments, use D1 database
+    const pool = new Pool({ connectionString: env.DATABASE_URL });
     const drizzleSchema = {
       tokens,
       swaps,
@@ -319,10 +324,9 @@ export function getDB(env: Env) {
       accessTokens,
       tokenAgents,
       vanityGenerationInstances,
+      metadata,
     };
-    return drizzle(env.DB.withSession() as any, {
-      schema: drizzleSchema,
-    }) as DrizzleD1Database<typeof drizzleSchema>;
+    return drizzle(pool, { schema: drizzleSchema });
   } catch (error) {
     console.error("Error initializing DB:", error);
     throw error;
@@ -370,6 +374,9 @@ export type VanityGenerationInstance =
 export type VanityGenerationInstanceInsert =
   typeof vanityGenerationInstances.$inferInsert;
 
+export type Metadata = typeof metadata.$inferSelect;
+export type MetadataInsert = typeof metadata.$inferInsert;
+
 // Schema for all tables
 const schema = {
   tokens,
@@ -388,6 +395,7 @@ const schema = {
   accessTokens,
   tokenAgents,
   vanityGenerationInstances,
+  metadata,
 };
 
 // Export schema for type inference

@@ -21,11 +21,8 @@ bucket = "./dist"
 [triggers]
 crons = ["*/1 * * * *"] # Run every 1 minute
 
-# D1 Database for production
-[[d1_databases]]
-binding = "DB"
-database_name = "autofun"
-database_id = "b086a46c-b1c3-4eec-8eca-2abea542e45b"
+# PostgreSQL Database configuration is now handled via environment variables
+# DATABASE_URL in .env file
 
 # R2 bucket for storage
 [[r2_buckets]]
@@ -107,11 +104,8 @@ HELIUS_WEBHOOK_AUTH_TOKEN="devnet"
 VITE_DEV_PROGRAM_ID="autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5"
 VITE_PROGRAM_ID="autoUmixaMaYKFjexMpQuBpNYntgbkzCo2b1ZqUaAZ5"
 
-# D1 Database for development
-[[env.development.d1_databases]]
-binding = "DB"
-database_name = "autofun-dev"
-database_id = "9d80bef0-48e8-482b-928a-8d9398f6fa04"
+# PostgreSQL Database configuration is now handled via environment variables
+# DATABASE_URL in .env file
 
 # KV namespace for auth tokens in development
 [[env.development.kv_namespaces]]
@@ -162,11 +156,8 @@ id = "91bc4666a62044ba816c53a9b2116281"
 binding = "CACHE"
 id = "0ddd0d2b6b6241e0b206302ea7ed392b"
 
-# D1 Database for production
-[[env.production.d1_databases]]
-binding = "DB"
-database_name = "autofun"
-database_id = "b086a46c-b1c3-4eec-8eca-2abea542e45b"
+# PostgreSQL Database configuration is now handled via environment variables
+# DATABASE_URL in .env file
 
 # R2 bucket for storage
 [[env.production.r2_buckets]]
