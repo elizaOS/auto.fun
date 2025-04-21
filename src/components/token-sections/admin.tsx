@@ -181,10 +181,7 @@ export default function AdminTab() {
     setIsSaving(true);
 
     try {
-      // Get the auth token from localStorage
       const authToken = localStorage.getItem("authToken");
-
-      // Create headers with auth token if available
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
@@ -193,8 +190,7 @@ export default function AdminTab() {
         headers["Authorization"] = `Bearer ${JSON.parse(authToken)}`;
       }
 
-      // Create request payload with development override if needed
-      const payload: Record<string, any> = {
+      const payload = {
         website: data.links.website,
         twitter: data.links.twitter,
         telegram: data.links.telegram,
@@ -202,21 +198,34 @@ export default function AdminTab() {
         farcaster: data.links.farcaster,
       };
 
-      // **Important:** Use the dedicated admin endpoint for social links
-      const response = await fetch(
+      // Try admin endpoint first, fall back to owner endpoint if not admin
+      let response = await fetch(
         `${env.apiUrl}/api/admin/tokens/${mint}/social`,
         {
           method: "POST",
           headers,
           body: JSON.stringify(payload),
-          credentials: "include", // Important to include credentials for auth cookies
-        },
+          credentials: "include",
+        }
       );
+
+      if (response.status === 403) {
+        // If not admin, try owner endpoint
+        response = await fetch(
+          `${env.apiUrl}/api/owner/tokens/${mint}/social`,
+          {
+            method: "POST",
+            headers,
+            body: JSON.stringify(payload),
+            credentials: "include",
+          }
+        );
+      }
 
       if (!response.ok) {
         let errorMessage = "Failed to update token";
         try {
-          const errorData = (await response.json()) as { error?: string };
+          const errorData = await response.json() as { error?: string };
           errorMessage = errorData.error || errorMessage;
         } catch (e) {
           console.error("Error parsing error response:", e);
@@ -225,7 +234,6 @@ export default function AdminTab() {
       }
 
       toast.success("Token information updated successfully");
-      // Update original data after successful save
       setOriginalData({
         website: data.links.website || "",
         twitter: data.links.twitter || "",
@@ -233,12 +241,11 @@ export default function AdminTab() {
         discord: data.links.discord || "",
         farcaster: data.links.farcaster || "",
       });
-      // Optionally refetch token data to be absolutely sure
       queryClient.invalidateQueries({ queryKey: ["token", mint] });
     } catch (error) {
       console.error("Error updating token:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to update token",
+        error instanceof Error ? error.message : "Failed to update token"
       );
     } finally {
       setIsSaving(false);
@@ -323,9 +330,27 @@ export default function AdminTab() {
   const isModerator = publicKey
     ? adminAddresses.includes(publicKey.toString())
     : false;
-  // ---- End Moderator Check ----
 
-  const queryClient = useQueryClient(); // Correctly initialize queryClient
+  // Check if user is the token owner
+  const [isTokenOwner, setIsTokenOwner] = useState(false);
+
+  // Update the ownership check in useEffect
+  useEffect(() => {
+    if (!mint) return;
+    const fetchTokenData = async () => {
+      try {
+        const response = await fetch(`${env.apiUrl}/api/token/${mint}`);
+        const data = await response.json() as { creator: string };
+        setIsTokenOwner(data.creator === publicKey?.toString());
+        // ... rest of the fetch logic
+      } catch (error) {
+        console.error("Error fetching token data:", error);
+      }
+    };
+    fetchTokenData();
+  }, [mint, publicKey]);
+
+  const queryClient = useQueryClient();
 
   if (isLoading) {
     return (
@@ -335,9 +360,9 @@ export default function AdminTab() {
     );
   }
 
-  // If not a moderator, don't render the admin controls
-  if (!isModerator) {
-    return null; // Or some message indicating restricted access
+  // If not a moderator or owner, don't render the admin controls
+  if (!isModerator && !isTokenOwner) {
+    return null;
   }
 
   return (
@@ -359,7 +384,7 @@ export default function AdminTab() {
           )}
         />
 
-        {/* Twitter Field with custom domain validation for x.com */}
+        {/* Twitter Field */}
         <Controller
           control={control}
           name="links.twitter"
@@ -384,7 +409,7 @@ export default function AdminTab() {
           )}
         />
 
-        {/* Telegram Field with custom domain validation for t.me */}
+        {/* Telegram Field */}
         <Controller
           control={control}
           name="links.telegram"
@@ -409,7 +434,7 @@ export default function AdminTab() {
           )}
         />
 
-        {/* Discord Field with custom domain validation for discord.gg */}
+        {/* Discord Field */}
         <Controller
           control={control}
           name="links.discord"
@@ -436,7 +461,7 @@ export default function AdminTab() {
           )}
         />
 
-        {/* Farcaster Field with custom domain validation */}
+        {/* Farcaster Field */}
         <Controller
           control={control}
           name="links.farcaster"
@@ -475,64 +500,66 @@ export default function AdminTab() {
         {isSaving ? "Saving..." : "Save Social Links"}
       </button>
 
-      {/* Moderator Actions Section */}
-      <div className="mt-6 pt-4 border-t border-autofun-border">
-        <h4 className="text-md font-semibold mb-3 text-autofun-text-secondary">
-          Moderator Actions
-        </h4>
-        <div className="flex flex-wrap justify-start gap-2">
-          <button
-            type="button" // Prevent form submission
-            className={`px-4 py-2 text-sm rounded ${
-              tokenStatus.featured
-                ? "bg-red-700 text-red-100 hover:bg-red-600"
-                : "bg-blue-700 text-blue-100 hover:bg-blue-600"
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-            onClick={() => toggleFeaturedMutation.mutate()}
-            disabled={toggleFeaturedMutation.isPending}
-          >
-            {toggleFeaturedMutation.isPending
-              ? "Processing..."
-              : tokenStatus.featured
-                ? "Remove Featured"
-                : "Make Featured"}
-          </button>
+      {/* Moderator Actions Section - Only show for moderators */}
+      {isModerator && (
+        <div className="mt-6 pt-4 border-t border-autofun-border">
+          <h4 className="text-md font-semibold mb-3 text-autofun-text-secondary">
+            Moderator Actions
+          </h4>
+          <div className="flex flex-wrap justify-start gap-2">
+            <button
+              type="button"
+              className={`px-4 py-2 text-sm rounded ${
+                tokenStatus.featured
+                  ? "bg-red-700 text-red-100 hover:bg-red-600"
+                  : "bg-blue-700 text-blue-100 hover:bg-blue-600"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              onClick={() => toggleFeaturedMutation.mutate()}
+              disabled={toggleFeaturedMutation.isPending}
+            >
+              {toggleFeaturedMutation.isPending
+                ? "Processing..."
+                : tokenStatus.featured
+                  ? "Remove Featured"
+                  : "Make Featured"}
+            </button>
 
-          <button
-            type="button" // Prevent form submission
-            className={`px-4 py-2 text-sm rounded ${
-              tokenStatus.verified
-                ? "bg-red-700 text-red-100 hover:bg-red-600"
-                : "bg-green-700 text-green-100 hover:bg-green-600"
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-            onClick={() => toggleVerifiedMutation.mutate()}
-            disabled={toggleVerifiedMutation.isPending}
-          >
-            {toggleVerifiedMutation.isPending
-              ? "Processing..."
-              : tokenStatus.verified
-                ? "Remove Verified"
-                : "Make Verified"}
-          </button>
+            <button
+              type="button"
+              className={`px-4 py-2 text-sm rounded ${
+                tokenStatus.verified
+                  ? "bg-red-700 text-red-100 hover:bg-red-600"
+                  : "bg-green-700 text-green-100 hover:bg-green-600"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              onClick={() => toggleVerifiedMutation.mutate()}
+              disabled={toggleVerifiedMutation.isPending}
+            >
+              {toggleVerifiedMutation.isPending
+                ? "Processing..."
+                : tokenStatus.verified
+                  ? "Remove Verified"
+                  : "Make Verified"}
+            </button>
 
-          <button
-            type="button" // Prevent form submission
-            className={`px-4 py-2 text-sm rounded ${
-              tokenStatus.hidden
-                ? "bg-yellow-700 text-yellow-100 hover:bg-yellow-600" // Use yellow for unhide
-                : "bg-gray-700 text-gray-100 hover:bg-gray-600"
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-            onClick={() => toggleHiddenMutation.mutate()}
-            disabled={toggleHiddenMutation.isPending}
-          >
-            {toggleHiddenMutation.isPending
-              ? "Processing..."
-              : tokenStatus.hidden
-                ? "Unhide Token"
-                : "Hide Token"}
-          </button>
+            <button
+              type="button"
+              className={`px-4 py-2 text-sm rounded ${
+                tokenStatus.hidden
+                  ? "bg-yellow-700 text-yellow-100 hover:bg-yellow-600"
+                  : "bg-gray-700 text-gray-100 hover:bg-gray-600"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              onClick={() => toggleHiddenMutation.mutate()}
+              disabled={toggleHiddenMutation.isPending}
+            >
+              {toggleHiddenMutation.isPending
+                ? "Processing..."
+                : tokenStatus.hidden
+                  ? "Unhide Token"
+                  : "Hide Token"}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </form>
   );
 }

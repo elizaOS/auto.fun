@@ -31,66 +31,68 @@ const requireAdmin = async (c: any, next: Function) => {
   await next();
 };
 
+// Middleware to check if user is the token owner
+const requireTokenOwner = async (c: any, next: Function) => {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: "Authentication required" }, 401);
+  }
+
+  const tokenMint = c.req.param("mint");
+  if (!tokenMint) {
+    return c.json({ error: "Token mint required" }, 400);
+  }
+
+  // Fetch token data to check ownership
+  const token = await c.env.DB.prepare(
+    "SELECT creator FROM tokens WHERE mint = ?"
+  ).bind(tokenMint).first();
+
+  if (!token || token.creator !== user.publicKey) {
+    return c.json({ error: "Token ownership required" }, 403);
+  }
+
+  await next();
+};
+
 // Apply authentication middleware to all routes
 adminRouter.use("*", verifyAuth);
 
+// Create owner router for token owner specific endpoints
+const ownerRouter = new Hono<{
+  Bindings: Env;
+  Variables: {
+    user?: { publicKey: string } | null;
+  };
+}>();
+
+// Apply owner middleware to owner router
+ownerRouter.use("*", requireTokenOwner);
+
 // Route to update a token's social links
 adminRouter.post("/tokens/:mint/social", requireAdmin, async (c) => {
+  const mint = c.req.param("mint");
+  const body = await c.req.json();
+
   try {
-    const mint = c.req.param("mint");
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
+    // Only allow moderators to update featured/verified/hidden status
+    if (body.featured !== undefined || body.verified !== undefined || body.hidden !== undefined) {
+      await c.env.DB.prepare(
+        `UPDATE tokens 
+         SET featured = ?, verified = ?, hidden = ?
+         WHERE mint = ?`
+      ).bind(
+        body.featured || 0,
+        body.verified || 0,
+        body.hidden || 0,
+        mint
+      ).run();
     }
 
-    const body = await c.req.json();
-    const { twitter, telegram, discord, website, farcaster } = body;
-
-    const db = getDB(c.env);
-
-    // Check if token exists
-    const tokenData = await db
-      .select()
-      .from(tokens)
-      .where(eq(tokens.mint, mint))
-      .limit(1);
-
-    if (!tokenData || tokenData.length === 0) {
-      return c.json({ error: "Token not found" }, 400);
-    }
-
-    // Update token with the new social links
-    await db
-      .update(tokens)
-      .set({
-        twitter: twitter ?? tokenData[0].twitter,
-        telegram: telegram ?? tokenData[0].telegram,
-        discord: discord ?? tokenData[0].discord,
-        website: website ?? tokenData[0].website,
-        farcaster: farcaster ?? tokenData[0].farcaster,
-        lastUpdated: new Date().toISOString(),
-      })
-      .where(eq(tokens.mint, mint));
-
-    logger.log(`Admin updated social links for token ${mint}`);
-
-    // Get the updated token data
-    const updatedToken = await db
-      .select()
-      .from(tokens)
-      .where(eq(tokens.mint, mint))
-      .limit(1);
-
-    return c.json({
-      success: true,
-      message: "Token social links updated successfully",
-      token: updatedToken[0],
-    });
+    return c.json({ success: true });
   } catch (error) {
-    logger.error("Error updating token social links:", error);
-    return c.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
+    console.error("Error updating token status:", error);
+    return c.json({ error: "Failed to update token status" }, 500);
   }
 });
 
@@ -604,4 +606,31 @@ adminRouter.get("/users", requireAdmin, async (c) => {
   }
 });
 
-export default adminRouter;
+// Social links endpoint for token owners
+ownerRouter.post("/tokens/:mint/social", async (c) => {
+  const mint = c.req.param("mint");
+  const body = await c.req.json();
+
+  try {
+    await c.env.DB.prepare(
+      `UPDATE tokens 
+       SET website = ?, twitter = ?, telegram = ?, discord = ?, farcaster = ?
+       WHERE mint = ?`
+    ).bind(
+      body.website || null,
+      body.twitter || null,
+      body.telegram || null,
+      body.discord || null,
+      body.farcaster || null,
+      mint
+    ).run();
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error("Error updating social links:", error);
+    return c.json({ error: "Failed to update social links" }, 500);
+  }
+});
+
+// Export both routers
+export { adminRouter, ownerRouter };
