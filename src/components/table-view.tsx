@@ -172,7 +172,7 @@ export function TableView({
                 {fromNow(token.createdAt)
                   .replace(" ago", "")
                   .replace(" days", "d")
-                  .replace(" a", "1")
+                  .replace("a", "1")
                   .replace(" hours", "hr")
                   .replace(" minutes", "m")
                   .replace(" seconds", "s")
