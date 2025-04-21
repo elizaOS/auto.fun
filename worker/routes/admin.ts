@@ -6,7 +6,7 @@ import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { verifyAuth } from "../auth";
 
 // Define the router with environment typing
-export const adminRouter = new Hono<{
+const adminRouter = new Hono<{
   Bindings: Env;
   Variables: {
     user?: { publicKey: string } | null;
@@ -91,7 +91,7 @@ adminRouter.post("/tokens/:mint/social", requireAdmin, async (c) => {
     logger.error("Error updating token social links:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -150,7 +150,7 @@ adminRouter.post("/tokens/:mint/featured", requireAdmin, async (c) => {
     logger.error("Error setting token featured flag:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -209,7 +209,7 @@ adminRouter.post("/tokens/:mint/verified", requireAdmin, async (c) => {
     logger.error("Error setting token verified flag:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -269,7 +269,7 @@ adminRouter.post("/tokens/:mint/hidden", requireAdmin, async (c) => {
     logger.error("Error setting token hidden flag:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -335,7 +335,7 @@ adminRouter.post("/users/:address/suspended", requireAdmin, async (c) => {
     logger.error("Error setting user suspended flag:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -389,7 +389,7 @@ adminRouter.get("/users/:address", requireAdmin, async (c) => {
     logger.error("Error getting user:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -429,7 +429,7 @@ adminRouter.get("/stats", requireAdmin, async (c) => {
     logger.error("Error getting admin stats:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -459,15 +459,15 @@ adminRouter.get("/users", requireAdmin, async (c) => {
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(
         () => reject(new Error("Database query timed out")),
-        timeoutDuration,
-      ),
+        timeoutDuration
+      )
     );
 
     const countTimeoutPromise = new Promise<number>((_, reject) =>
       setTimeout(
         () => reject(new Error("Count query timed out")),
-        timeoutDuration / 2,
-      ),
+        timeoutDuration / 2
+      )
     );
 
     const db = getDB(c.env);
@@ -479,9 +479,9 @@ adminRouter.get("/users", requireAdmin, async (c) => {
         const allUsersColumns = Object.fromEntries(
           Object.entries(users)
             .filter(
-              ([key, value]) => typeof value === "object" && "name" in value,
+              ([key, value]) => typeof value === "object" && "name" in value
             )
-            .map(([key, value]) => [key, value]),
+            .map(([key, value]) => [key, value])
         );
 
         // Start with a basic query
@@ -491,11 +491,11 @@ adminRouter.get("/users", requireAdmin, async (c) => {
         // For backward compatibility, also check the name prefix
         if (showSuspended) {
           usersQuery = usersQuery.where(
-            sql`${users.suspended} = 1 OR ${users.name} LIKE '[SUSPENDED]%'`,
+            sql`${users.suspended} = 1 OR ${users.name} LIKE '[SUSPENDED]%'`
           );
         } else {
           usersQuery = usersQuery.where(
-            sql`(${users.suspended} = 0 OR ${users.suspended} IS NULL) AND (${users.name} NOT LIKE '[SUSPENDED]%' OR ${users.name} IS NULL)`,
+            sql`(${users.suspended} = 0 OR ${users.suspended} IS NULL) AND (${users.name} NOT LIKE '[SUSPENDED]%' OR ${users.name} IS NULL)`
           );
         }
 
@@ -503,7 +503,7 @@ adminRouter.get("/users", requireAdmin, async (c) => {
           // This is a simplified implementation - in production you'd use a proper search mechanism
           usersQuery = usersQuery.where(
             sql`(${users.name} LIKE ${"%" + search + "%"} OR 
-                 ${users.address} LIKE ${"%" + search + "%"})`,
+                 ${users.address} LIKE ${"%" + search + "%"})`
           );
         }
 
@@ -543,18 +543,18 @@ adminRouter.get("/users", requireAdmin, async (c) => {
 
       if (showSuspended) {
         finalQuery = countQuery.where(
-          sql`${users.suspended} = 1 OR ${users.name} LIKE '[SUSPENDED]%'`,
+          sql`${users.suspended} = 1 OR ${users.name} LIKE '[SUSPENDED]%'`
         );
       } else {
         finalQuery = countQuery.where(
-          sql`(${users.suspended} = 0 OR ${users.suspended} IS NULL) AND (${users.name} NOT LIKE '[SUSPENDED]%' OR ${users.name} IS NULL)`,
+          sql`(${users.suspended} = 0 OR ${users.suspended} IS NULL) AND (${users.name} NOT LIKE '[SUSPENDED]%' OR ${users.name} IS NULL)`
         );
       }
 
       if (search) {
         finalQuery = countQuery.where(
           sql`(${users.name} LIKE ${"%" + search + "%"} OR 
-               ${users.address} LIKE ${"%" + search + "%"})`,
+               ${users.address} LIKE ${"%" + search + "%"})`
         );
       }
 
@@ -605,5 +605,77 @@ adminRouter.get("/users", requireAdmin, async (c) => {
     });
   }
 });
+const requireTokenOwner = async (c: any, next: Function) => {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: "Authentication required" }, 401);
+  }
 
-export default adminRouter;
+  const tokenMint = c.req.param("mint");
+  if (!tokenMint) {
+    return c.json({ error: "Token mint required" }, 400);
+  }
+
+  // Fetch token data to check ownership
+  const token = await c.env.DB.prepare(
+    "SELECT creator FROM tokens WHERE mint = ?"
+  )
+    .bind(tokenMint)
+    .first();
+
+  if (!token || token.creator !== user.publicKey) {
+    return c.json({ error: "Token ownership required" }, 403);
+  }
+
+  await next();
+};
+// Create owner router for token owner specific endpoints
+const ownerRouter = new Hono<{
+  Bindings: Env;
+  Variables: {
+    user?: { publicKey: string } | null;
+  };
+}>();
+
+// Route to update a token's social links (owner version)
+ownerRouter.post("/tokens/:mint/social", async (c) => {
+  const mint = c.req.param("mint");
+  const body = await c.req.json();
+
+  try {
+    const db = getDB(c.env);
+
+    // Update social links
+    await db
+      .update(tokens)
+      .set({
+        website: body.website || null,
+        twitter: body.twitter || null,
+        telegram: body.telegram || null,
+        discord: body.discord || null,
+        farcaster: body.farcaster || null,
+        lastUpdated: new Date(),
+      })
+      .where(eq(tokens.mint, mint));
+
+    // Get the updated token data
+    const updatedToken = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, mint))
+      .limit(1);
+
+    return c.json({
+      success: true,
+      message: "Token social links updated successfully",
+      token: updatedToken[0],
+    });
+  } catch (error) {
+    console.error("Error updating token social links:", error);
+    return c.json({ error: "Failed to update token social links" }, 500);
+  }
+});
+
+ownerRouter.use("*", requireTokenOwner);
+
+export { adminRouter, ownerRouter };
