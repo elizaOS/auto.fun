@@ -287,6 +287,8 @@ export class TokenMigrator {
       } else {
         // All steps are complete; final status update.
         token.status = "locked";
+        token.migration.lastStep = "done";
+
         token.lockedAt = new Date();
         await updateTokenInDB(this.env, {
           mint: token.mint,
@@ -297,6 +299,9 @@ export class TokenMigrator {
         // const ws = getWebSocketClient(this.env);
         // ws.to(`token-${token.mint}`).emit("updateToken", token);
         // notfiy the backend via api call to /api/migration/update
+        this.ongoingMigrations = this.ongoingMigrations.filter(
+          (mint) => mint !== token.mint,
+        );
         logger.log(`[Migrate] Migration finalized for token ${token.mint}`);
         await releaseMigrationLock(this.env, token);
         return;
