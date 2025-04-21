@@ -82,7 +82,7 @@ export default function Layout() {
             <ToastContainer position="bottom-right" theme="dark" />
           </main>
           <div
-            className={`${isHomepage ? (isFixed ? "fixed" : "absolute") : "static"} bottom-0 left-0 right-0 bg-autofun-background-primary ${showFooter ? "block" : "hidden"} z-50`}
+            className={`${isHomepage ? (isFixed ? "fixed" : "absolute") : "static"} bottom-0 left-0 right-0 ${showFooter ? "block" : "hidden"} z-50`}
           >
             <Footer />
           </div>

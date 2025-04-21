@@ -4,7 +4,7 @@ import { useNavigate } from "react-router";
 export const useTosAccepted = () => {
   const [tosAccepted, setTosAccepted] = useLocalStorage<boolean>(
     "tosAccepted",
-    false
+    false,
   );
   const navigate = useNavigate();
 

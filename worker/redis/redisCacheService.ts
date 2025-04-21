@@ -6,7 +6,10 @@ import dotenv from "dotenv";
 dotenv.config();
 
 class RedisCacheService {
-  constructor(private redisPool: RedisPool, private env: Env) {
+  constructor(
+    private redisPool: RedisPool,
+    private env: Env,
+  ) {
     this.env = env;
   }
 
@@ -20,7 +23,7 @@ class RedisCacheService {
   async set(
     key: string,
     value: string,
-    ttlInSeconds?: number
+    ttlInSeconds?: number,
   ): Promise<"OK" | null> {
     return this.redisPool.useClient((client) => {
       return ttlInSeconds
