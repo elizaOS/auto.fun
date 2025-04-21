@@ -8,6 +8,26 @@ import {
 import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { RedisCache } from "../cache";
+
+// Initialize Redis cache globally
+let redisCache: RedisCache | null = null;
+
+// Function to get or initialize Redis cache
+const getRedisCache = (env: any): RedisCache | null => {
+  if (!env.REDIS_URL) return null;
+  
+  if (!redisCache) {
+    try {
+      redisCache = new RedisCache(env.REDIS_URL);
+      logger.log('Redis cache initialized globally');
+    } catch (error) {
+      logger.error('Failed to initialize Redis cache:', error);
+      return null;
+    }
+  }
+  
+  return redisCache;
+};
 import {
   getDB,
   tokenAgents,
@@ -1108,15 +1128,14 @@ tokenRouter.get("/tokens", async (c) => {
     const sortOrder = (queryParams.sortOrder as string) || "desc";
 
     // Create a cache key based on the query parameters
-    const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported}:${creator || ""}:${sortBy}:${sortOrder}`;
-
-    // Initialize Redis cache if REDIS_URL is available
-    let redisCache;
-    if (c.env.REDIS_URL) {
+    const cacheKey = `tokens:${limit}:${page}:${search || ''}:${status || ''}:${hideImported}:${creator || ''}:${sortBy}:${sortOrder}`;
+    
+    // Get Redis cache instance
+    const redisCache = getRedisCache(c.env);
+    
+    // Try to get data from cache first if Redis is available
+    if (redisCache) {
       try {
-        redisCache = new RedisCache(c.env.REDIS_URL);
-
-        // Try to get data from cache first
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
           logger.log(`Cache hit for ${cacheKey}`);
@@ -1124,7 +1143,7 @@ tokenRouter.get("/tokens", async (c) => {
         }
         logger.log(`Cache miss for ${cacheKey}`);
       } catch (cacheError) {
-        logger.error(`Redis cache initialization error:`, cacheError);
+        logger.error(`Redis cache error:`, cacheError);
         // Continue without caching if there's an error
       }
     }
@@ -1310,6 +1329,7 @@ tokenRouter.get("/tokens", async (c) => {
     if (redisCache) {
       try {
         await redisCache.set(cacheKey, responseData, 10);
+        logger.log(`Cached data for ${cacheKey} with 10s TTL`);
       } catch (cacheError) {
         logger.error(`Error caching token data:`, cacheError);
       }
@@ -1477,6 +1497,27 @@ tokenRouter.get("/token/:mint", async (c) => {
     // Validate mint address
     if (!mint || mint.length < 32 || mint.length > 44) {
       return c.json({ error: "Invalid mint address" }, 400);
+    }
+
+    // Create a cache key based on the mint address
+    const cacheKey = `token:${mint}`;
+    
+    // Get Redis cache instance
+    const redisCache = getRedisCache(c.env);
+    
+    // Try to get data from cache first if Redis is available
+    if (redisCache) {
+      try {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          logger.log(`Cache hit for ${cacheKey}`);
+          return c.json(cachedData);
+        }
+        logger.log(`Cache miss for ${cacheKey}`);
+      } catch (cacheError) {
+        logger.error(`Redis cache error:`, cacheError);
+        // Continue without caching if there's an error
+      }
     }
 
     // Get token data
@@ -1653,7 +1694,20 @@ tokenRouter.get("/token/:mint", async (c) => {
     console.log("marketCapUSD", token.marketCapUSD);
 
     // Format response with additional data
-    return c.json(token);
+    const responseData = token;
+    
+    // Cache the result if Redis is available
+    if (redisCache) {
+      try {
+        // Cache for 5 seconds
+        await redisCache.set(cacheKey, responseData, 5);
+        logger.log(`Cached data for ${cacheKey} with 5s TTL`);
+      } catch (cacheError) {
+        logger.error(`Error caching token data:`, cacheError);
+      }
+    }
+    
+    return c.json(responseData);
   } catch (error) {
     logger.error(`Error getting token: ${error}`);
     return c.json(
