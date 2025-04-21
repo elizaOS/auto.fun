@@ -4,6 +4,7 @@
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "migrateTokensFromSqlite": "ts-node src/migrateTokensFromSqlite.ts",
+    "testClaim": "ts-node src/testClaim.ts",
     "test": "jest"
   },
   "dependencies": {
@@ -17,10 +18,12 @@
     "@raydium-io/raydium-sdk-v2": "^0.1.124-alpha",
     "@solana/spl-token": "^0.4.13",
     "@solana/web3.js": "^1.98.0",
+    "@types/express": "^5.0.1",
     "@types/node-cron": "^3.0.11",
     "better-sqlite3": "^11.9.1",
     "dotenv": "^16.5.0",
     "drizzle-orm": "^0.42.0",
+    "express": "^5.1.0",
     "import": "^0.0.6",
     "node-cron": "^3.0.3",
     "node-fetch": "^3.3.2",

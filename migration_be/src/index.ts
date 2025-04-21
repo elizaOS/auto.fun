@@ -10,6 +10,7 @@ import { processMissedEvents } from './getAllTokens';
 import { logger } from './logger';
 import { resumeOnStart } from './processTransactionLogs';
 import { startLogSubscription } from './subscription';
+import app from './app';
 
 dotenv.config();
 
@@ -30,6 +31,12 @@ try {
 type Job = 'subscription' | 'missedEvents' | 'resumeOnStart';
 const jobs: Job[] = ['subscription', 'missedEvents', 'resumeOnStart'];
 const jobMap = new Map<number, Job>();
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+   console.log(`App listening on port: ${PORT}`);
+});
+
 
 if (cluster.isPrimary) {
    (async () => {
@@ -77,7 +84,7 @@ if (cluster.isPrimary) {
          // Run immediately + every 5m
          (async () => {
             await resumeOnStart(env, connection);
-            cron.schedule('*/5 * * * *', async () => {
+            cron.schedule('*/30 * * * *', async () => {
                logger.log('🕒 [resumeOnStart] Cron trigger');
                await resumeOnStart(env, connection);
             });

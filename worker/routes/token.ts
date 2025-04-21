@@ -299,11 +299,11 @@ tokenRouter.get("/tokens", async (c) => {
       const filteredTokens =
         featuredTokens && featuredTokens.length > 0
           ? tokensResult.filter(
-              (token) =>
-                !featuredTokens.some(
-                  (featured) => featured.mint === token.mint,
-                ),
-            )
+            (token) =>
+              !featuredTokens.some(
+                (featured) => featured.mint === token.mint,
+              ),
+          )
           : tokensResult;
 
       // Add filtered tokens up to the limit
@@ -738,7 +738,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     // if (refreshHolders) {
     const imported = Number(token.imported) === 1;
     logger.log(`Refreshing holders data for token ${mint}`);
-    // c.executionCtx.waitUntil(updateHoldersCache(c.env, mint, imported));
+    c.executionCtx.waitUntil(updateHoldersCache(c.env, mint, imported));
     // }
 
     // Set default values for critical fields if they're missing
@@ -772,7 +772,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     token.solPriceUSD = solPrice;
 
     // Calculate or update marketCapUSD if we have tokenPriceUSD
-    token.marketCapUSD = token.tokenPriceUSD * (token.tokenSupplyUiAmount || 0);
+    // token.marketCapUSD = token.tokenPriceUSD * (token.tokenSupplyUiAmount || 0);
 
     // Get virtualReserves and curveLimit from env or set defaults
     const virtualReserves = c.env.VIRTUAL_RESERVES
@@ -791,8 +791,8 @@ tokenRouter.get("/token/:mint", async (c) => {
       token.status === "migrated"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-            (token.curveLimit - token.virtualReserves)) *
-          100;
+          (token.curveLimit - token.virtualReserves)) *
+        100;
 
     // Get token holders count
     const holdersCountQuery = await db
