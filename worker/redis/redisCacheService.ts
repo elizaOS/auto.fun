@@ -2,6 +2,8 @@ import { logger } from "../util";
 import { RedisPool } from "./redisPool";
 import { ExecutionContext } from "@cloudflare/workers-types/experimental";
 import { Env } from "../env";
+import dotenv from "dotenv";
+dotenv.config();
 
 class RedisCacheService {
   constructor(private redisPool: RedisPool) {}
@@ -16,7 +18,7 @@ class RedisCacheService {
   async set(
     key: string,
     value: string,
-    ttlInSeconds?: number,
+    ttlInSeconds?: number
   ): Promise<"OK" | null> {
     return this.redisPool.useClient((client) => {
       return ttlInSeconds
