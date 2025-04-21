@@ -1,9 +1,12 @@
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 
 export const Footer = () => {
+  const { pathname } = useLocation();
+  const isHomepage = pathname === "/";
+
   return (
     <div className="flex flex-col gap-2">
-      <img className="w-auto h-16 mt-16 mb-16" src="/dice.svg" alt="logo" />
+      {!isHomepage && <img className="w-auto h-16 mt-16 mb-16" src="/dice.svg" alt="logo" />}
       <div className="flex flex-wrap gap-2 items-center py-4 justify-between px-2">
         <div className="flex items-center gap-2.5 mx-auto py-2.5">
           <FooterLink href="/privacy-policy" title="Privacy" />

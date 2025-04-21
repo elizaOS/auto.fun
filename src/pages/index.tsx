@@ -118,7 +118,7 @@ export default function Page() {
   }, [query?.items]);
 
   return (
-    <div className="w-full min-h-[50vh]">
+    <div className="w-full min-h-[50vh] pb-24">
       {/* Header Section */}
       {/* Show FrontpageHeader on desktop, logo on mobile */}
       <div className="hidden md:block">
