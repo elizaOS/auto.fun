@@ -860,7 +860,7 @@ export async function updateHoldersCache(env: Env, mint: string) {
       address: holder.address,
       amount: holder.amount,
       percentage: (holder.amount / totalTokens) * 100,
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: new Date(),
     }));
 
     // Remove old holders data
@@ -871,7 +871,7 @@ export async function updateHoldersCache(env: Env, mint: string) {
       const BATCH_SIZE = 100;
       for (let i = 0; i < holderRecords.length; i += BATCH_SIZE) {
         const batch = holderRecords.slice(i, i + BATCH_SIZE);
-        await this.db.insert(tokenHolders).values(batch).onConflictDoNothing();
+        await db.insert(tokenHolders).values(batch).onConflictDoNothing();
       }
     }
 

@@ -196,6 +196,15 @@ async function processSwapLog(
             ? (Number(amount) / Math.pow(10, token.tokenDecimals)) * tokenPriceUSD
             : (Number(amountOut) / Math.pow(10, token.tokenDecimals)) * tokenPriceUSD
             }`,
+          priceChange24h,
+          // Conditionally set price24hAgo & lastPriceUpdate
+          ...(shouldReset24h
+            ? {
+              price24hAgo: tokenPriceUSD,
+              lastPriceUpdate: now,
+            }
+            : {}),
+
         })
         .where(eq(tokens.mint, mintAddress))
         .returning();
