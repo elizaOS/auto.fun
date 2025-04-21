@@ -15,6 +15,10 @@ import CallbackPage from "./pages/callback";
 import PageNotFound from "./pages/not-found";
 import Admin from "./pages/admin";
 
+if (!window.location.href.includes("?dev") && !window.location.href.includes("localhost")) {
+  window.location.href = "https://twitter.com/autodotfun";
+}
+
 createRoot(document.getElementById("root")!).render(
   <BrowserRouter>
     <Routes>
