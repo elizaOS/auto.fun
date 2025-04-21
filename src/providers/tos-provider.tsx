@@ -4,7 +4,7 @@ import { useTosAccepted } from "@/hooks/use-tos";
 
 export default function TosProvider({ children }: PropsWithChildren) {
   const location = useLocation();
-  const routes = ["/privacy-policy", "/terms-of-service", "/fees"];
+  const routes = ["/privacy-policy", "/terms-of-service", "/fees", "/support"];
   const AllowedRoute = routes.includes(location.pathname);
 
   const { tosAccepted, acceptTos } = useTosAccepted();
@@ -13,7 +13,11 @@ export default function TosProvider({ children }: PropsWithChildren) {
     <>
     {!tosAccepted && !AllowedRoute && <div className="h-screen w-screen grid place-items-center absolute z-1000 bg-black/50">
       <div className="max-w-[400px] md:max-w-[496px] w-full bg-autofun-background-card shadow-lg overflow-hidden">
-
+      <div className="p-4 border-b border-autofun-border relative mx-auto">
+          <h1 className="mx-auto text-xl text-center font-satoshi font-medium tracking-[-0.018em] text-autofun-text-highlight">
+            Welcome to AUTO.FUN [beta]
+          </h1>
+        </div>
         <div className="p-6 text-center">
           <p className="text-autofun-text-info font-satoshi text-base mb-4">
             Create tokens with AI, build a community with AI content creation, and engage with role-gated chat.
@@ -37,6 +41,7 @@ export default function TosProvider({ children }: PropsWithChildren) {
           <Link to="/privacy-policy" className="hover:underline">Privacy Policy</Link>
           <Link to="/terms-of-service" className="hover:underline">Terms of Service</Link>
           <Link to="/fees" className="hover:underline">Fees</Link>
+          <Link to="/support" className="hover:underline">Support</Link>
         </div>
       </div>
     </div>}
