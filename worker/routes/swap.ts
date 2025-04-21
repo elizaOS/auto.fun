@@ -1,5 +1,6 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
+import { cache } from "hono/cache";
 import { z } from "zod";
 import { fetchPriceChartData } from "../chart";
 import { getDB, swaps, tokens } from "../db";
@@ -21,7 +22,11 @@ const ChartParamsSchema = z.object({
   token: z.string().min(32).max(44),
 });
 
-router.get("/chart/:pairIndex/:start/:end/:range/:token", async (c) => {
+router.get("/chart/:pairIndex/:start/:end/:range/:token", cache({
+  cacheName: "chart-cache",
+  cacheControl: "max-age=120",
+  wait: true,
+}), async (c) => {
   try {
     const params = ChartParamsSchema.parse(c.req.param());
     const data = await fetchPriceChartData(
