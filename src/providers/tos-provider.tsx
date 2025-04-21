@@ -1,5 +1,3 @@
-import SkeletonImage from "@/components/skeleton-image";
-import { DialogContent } from "@radix-ui/react-dialog";
 import { PropsWithChildren } from "react";
 
 export default function TosProvider({ children }: PropsWithChildren) {
