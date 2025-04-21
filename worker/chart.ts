@@ -324,10 +324,10 @@ export function getCandleData(priceFeeds: PriceFeedInfo[], range: number) {
 
   const cdFeeds: CandlePrice[] = [];
   let pIndex = 0;
-  
+
   // Keep track of the last valid candle to fill gaps
   let lastValidCandle: CandlePrice | null = null;
-  
+
   for (
     let curCdStart = cdStart;
     curCdStart <= cdEnd;
@@ -349,7 +349,7 @@ export function getCandleData(priceFeeds: PriceFeedInfo[], range: number) {
       if (priceHistory[pIndex].ts >= curCdStart + candlePeriod) break;
       pIndex++;
     }
-    
+
     if (prevIndex !== pIndex) {
       // We have data for this time period
       const newCandle = {
