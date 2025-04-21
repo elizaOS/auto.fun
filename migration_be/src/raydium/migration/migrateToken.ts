@@ -104,10 +104,10 @@ export class TokenMigrator {
           logger.log(
             `[Migrate] Migration already in progress for token ${token.mint}. Deferring additional execution.`,
           );
-          // check if the last updates is more than 5 minutes 
+          // check if the last updates is more than 60 minutes 
           const lastUpdated = new Date(token.lastUpdated);
           if (
-            new Date().getTime() - lastUpdated.getTime() > 5 * 60 * 1000
+            new Date().getTime() - lastUpdated.getTime() > 60 * 60 * 1000
           ) {
             logger.log(
               `[Migrate] Migration is taking too long for token ${token.mint}. Resuming migration.`,
@@ -224,13 +224,13 @@ export class TokenMigrator {
           return;
         }
       }
-      if (token.status === "locked") {
+
+      token.migration = token.migration!
+      if (token.migration.lastStep === "done") {
         logger.log(
           `[Migrate] Token ${token.mint} is already locked. Deferring additional`)
         return
       }
-      token.migration = token.migration || {};
-      console.log("token.migration", token.migration);
       // const ws = getWebSocketClient(this.env);
       // const lockAcquired = await acquireMigrationLock(this.env, token);
       // if (!lockAcquired) {
@@ -264,16 +264,17 @@ export class TokenMigrator {
       }
 
       // If all steps are done, finalize and update token.
-      if (currentStep && currentStep?.name === "finalize") {
+      if (currentStep && currentStep?.name === "lockLP") {
 
         token.lockedAt = new Date();
         await updateTokenInDB(this.env, {
           mint: token.mint,
-          status: "finalized",
+          status: "locked",
           lockedAt: token.lockedAt,
           lastUpdated: new Date().toISOString(),
         });
         // start monitoring the token
+        // register webhooks before lp lock
         const ext = new ExternalToken(this.env, token.mint);
         try {
           await ext.registerWebhook();
@@ -634,7 +635,9 @@ export class TokenMigrator {
     logger.log(
       `[Lock] locking LP for token ${token.mint} after 60 seconds`,
     );
-    // wait for 60 seconds for the pool to be created
+    // wait for 5 minutes before locking the LP
+    console.log("Waiting for 60 seconds before locking LP...");
+    await new Promise((resolve) => setTimeout(resolve, 60_000));
 
     const raydium = await this.initSdkWithRetry(
       { env: this.env, loadToken: false, connection: this.connection },
@@ -644,16 +647,9 @@ export class TokenMigrator {
       throw new Error("Raydium SDK not initialized");
     }
     const poolId = token.marketId;
-    // add timeout to the fetchPoolInfoWithRetry function
-    const timeoutMs = 60_000; // 60 seconds
-    // do timeout 
-    const poolInfoResult = await withTimeout(
-      this.fetchPoolInfoWithRetry(raydium, poolId),
-      timeoutMs
-    ).catch((err) => {
-      logger.error(`[Lock] Failed to fetch pool info: ${err.message}`);
-      return null;
-    });
+
+    const poolInfoResult = await this.fetchPoolInfoWithRetry(raydium, poolId)
+
 
 
     if (!poolInfoResult) {
@@ -950,7 +946,7 @@ export class TokenMigrator {
         if (retryCount === MAX_RETRIES) {
           throw error;
         }
-        await new Promise((res) => setTimeout(res, 10000)); // wait 10 seconds before retrying
+        await new Promise((res) => setTimeout(res, 5000)); // wait 5 seconds before retrying
       }
     }
     return { poolInfo, poolKeys };
