@@ -62,6 +62,30 @@ export default function Page() {
 
   // State for filter popover visibility (no need to persist this)
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null); // Ref for the filter popover
+
+  // Click outside handler for filter popover
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        filterRef.current &&
+        !filterRef.current.contains(event.target as Node)
+      ) {
+        setIsFilterOpen(false);
+      }
+    }
+    // Add listener if popover is open
+    if (isFilterOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      // Remove listener if popover is closed
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+    // Cleanup listener on component unmount or when isFilterOpen changes
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isFilterOpen]); // Re-run effect when isFilterOpen changes
 
   // Determine API parameters based on active view and state
   const apiParams = useMemo((): UseTokensParams => {
@@ -176,7 +200,7 @@ export default function Page() {
 
         <div className="flex items-center gap-2">
           {/* Filter Button & Popover */}
-          <div className="relative">
+          <div className="relative" ref={filterRef}>
             <Button
               variant="outline"
               size="small"

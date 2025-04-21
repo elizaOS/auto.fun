@@ -161,7 +161,7 @@ migrationRouter.post("/claimFees", async (c) => {
       new PublicKey(nftMint),
       new PublicKey(poolId),
       connection,
-      claimer
+      claimer,
     );
     // Return a success response.
     return c.json({

@@ -187,7 +187,7 @@ export const getSwapAmountJupiter = async (
   slippageBps: number = 100,
 ) => {
   try {
-    if(amount === 0) return 0;
+    if (amount === 0) return 0;
     // Jupiter uses the following constant to represent SOL
     const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
 

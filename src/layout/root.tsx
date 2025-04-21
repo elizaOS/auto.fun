@@ -35,7 +35,7 @@ export default function Layout() {
       const threshold = 100;
       const isAtBottom = scrollPosition >= documentHeight - threshold;
       const isNearTop = window.scrollY < 200;
-      
+
       const isScrollingDown = window.scrollY > lastScrollY.current;
       lastScrollY.current = window.scrollY;
 
@@ -66,8 +66,8 @@ export default function Layout() {
       isInitialMount.current = false;
     }
 
-    window.addEventListener('scroll', checkScrollPosition);
-    return () => window.removeEventListener('scroll', checkScrollPosition);
+    window.addEventListener("scroll", checkScrollPosition);
+    return () => window.removeEventListener("scroll", checkScrollPosition);
   }, [isFixed, isHomepage]);
 
   return (
@@ -80,8 +80,8 @@ export default function Layout() {
             <BreakpointIndicator />
             <ToastContainer position="bottom-right" theme="dark" />
           </main>
-          <div 
-            className={`${isHomepage ? (isFixed ? 'fixed' : 'absolute') : 'static'} bottom-0 left-0 right-0 bg-autofun-background-primary ${showFooter ? 'block' : 'hidden'} z-50`}
+          <div
+            className={`${isHomepage ? (isFixed ? "fixed" : "absolute") : "static"} bottom-0 left-0 right-0 bg-autofun-background-primary ${showFooter ? "block" : "hidden"} z-50`}
           >
             <Footer />
           </div>
