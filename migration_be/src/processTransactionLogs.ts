@@ -162,306 +162,312 @@ export async function processTransactionLogs(
    found: boolean;
    events: Array<{ tokenAddress: string; event: string }>;
 }> {
-   const events: Array<{ tokenAddress: string; event: string }> = [];
+   try {
+      const events: Array<{ tokenAddress: string; event: string }> = [];
 
-   const swapLog = logs.find((log) => log.includes("Swap:"));
-   const reservesLog = logs.find((log) => log.includes("Reserves:"));
-   const feeLog = logs.find((log) => log.includes("fee:"));
-   const swapeventLog = logs.find((log) => log.includes("SwapEvent:"));
-   const mintLog = logs.find((log) => log.includes("Mint:"));
-   const newTokenLog = logs.find((log) => log.includes("NewToken:"));
-   const completeEventLog = logs.find((log) =>
-      log.includes("curve is completed"),
-   );
+      const swapLog = logs.find((log) => log.includes("Swap:"));
+      const reservesLog = logs.find((log) => log.includes("Reserves:"));
+      const feeLog = logs.find((log) => log.includes("fee:"));
+      const swapeventLog = logs.find((log) => log.includes("SwapEvent:"));
+      const mintLog = logs.find((log) => log.includes("Mint:"));
+      const newTokenLog = logs.find((log) => log.includes("NewToken:"));
+      const completeEventLog = logs.find((log) =>
+         log.includes("curve is completed"),
+      );
 
-   // --- Swap handler ---
-   if (mintLog && swapLog && reservesLog && feeLog && swapeventLog) {
-      try {
-         console.log("Swap event detected", swapLog);
+      // --- Swap handler ---
+      if (mintLog && swapLog && reservesLog && feeLog && swapeventLog) {
+         try {
+            console.log("Swap event detected", swapLog);
 
-         // extract mintAddress
-         const mintAddress = mintLog.split("Mint:")[1].trim().replace(/[",)]/g, "");
-         if (
-            !/^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
-               mintAddress,
-            )
-         ) {
-            throw new Error(`Invalid mint address format: ${mintAddress}`);
-         }
-
-         // extract swap parts
-         const parts = swapLog.split(" ");
-         const user = parts[parts.length - 3].replace(/[",)]/g, "");
-         const direction = parts[parts.length - 2].replace(/[",)]/g, "");
-         const amount = parts[parts.length - 1].replace(/[",)]/g, "");
-         if (!user || !["0", "1"].includes(direction) || isNaN(Number(amount))) {
-            throw new Error(`Invalid swap data: ${swapLog}`);
-         }
-
-         // extract reserves
-         const rparts = reservesLog.split(" ");
-         const reserveToken = rparts[rparts.length - 2].replace(/[",)]/g, "");
-         const reserveLamport = rparts[rparts.length - 1].replace(/[",)]/g, "");
-         if (
-            isNaN(Number(reserveToken)) ||
-            isNaN(Number(reserveLamport))
-         ) {
-            throw new Error(`Invalid reserves data: ${reservesLog}`);
-         }
-
-         // extract amountOut
-         const amountOut = swapeventLog
-            .split(" ")
-            .slice(-3)[2]
-            .replace(/[",)]/g, "");
-         if (isNaN(Number(amountOut))) {
-            throw new Error(`Invalid SwapEvent data: ${swapeventLog}`);
-         }
-
-         // price calculations
-         const solPrice = await getSOLPrice(env);
-         let tokenWithSupply = await getToken(env, mintAddress);
-         if (!tokenWithSupply) {
-            // … same “add missing token” logic …
-            // then:
-            tokenWithSupply = await getToken(env, mintAddress)!;
-         }
-         const TOKEN_DECIMALS = tokenWithSupply?.tokenDecimals || 6;
-         const lamportDecimal = Number(reserveLamport) / 1e9;
-         const tokenAmountDecimal = Number(reserveToken) / 10 ** TOKEN_DECIMALS;
-         const currentPrice = lamportDecimal / tokenAmountDecimal;
-         const tokenPriceUSD =
-            currentPrice > 0
-               ? (currentPrice / 10 ** TOKEN_DECIMALS) * solPrice * 10 ** TOKEN_DECIMALS
-               : 0;
-
-         const SOL_DECIMALS = 9;
-         const swapRecord = {
-            id: crypto.randomUUID(),
-            tokenMint: mintAddress,
-            user: user,
-            type: direction === "0" ? "buy" : "sell",
-            direction: parseInt(direction),
-            amountIn: Number(amount),
-            amountOut: Number(amountOut),
-            price:
-               direction === "1"
-                  ? Number(amountOut) /
-                  Math.pow(10, SOL_DECIMALS) /
-                  (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) // Sell price (SOL/token)
-                  : Number(amount) /
-                  Math.pow(10, SOL_DECIMALS) /
-                  (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)), // Buy price (SOL/token),
-            txId: signature,
-            timestamp: new Date(),
-         };
-
-         // Insert the swap record
-         const db = getDB(env);
-         await db.insert(swaps).values(swapRecord);
-         logger.log(
-            `Saved swap: ${direction === "0" ? "buy" : "sell"} for ${mintAddress}`,
-         );
-
-         // check if the token exists and add it to the db if it does not  
-         const token = await getToken(env, mintAddress);
-
-         // Update token data in database
-         await db
-            .update(tokens)
-            .set({
-               reserveAmount: Number(reserveToken),
-               reserveLamport: Number(reserveLamport),
-               currentPrice: currentPrice,
-               liquidity:
-                  (Number(reserveLamport) / 1e9) * solPrice +
-                  (Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD,
-               tokenPriceUSD,
-               solPriceUSD: solPrice,
-               curveProgress:
-                  ((Number(reserveLamport) - Number(env.VIRTUAL_RESERVES)) /
-                     (Number(env.CURVE_LIMIT) - Number(env.VIRTUAL_RESERVES))) *
-                  100,
-               txId: signature,
-               lastUpdated: new Date(),
-               volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${direction === "1"
-                  ? (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD
-                  : (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD
-                  }`,
-            })
-            .where(eq(tokens.mint, mintAddress))
-            .returning();
-
-
-
-
-
-         events.push({ tokenAddress: mintAddress, event: "swap" });
-      } catch (err: any) {
-         logger.error(`Swap handler error: ${err.message}`);
-      }
-   }
-
-   // --- NewToken handler ---
-   if (newTokenLog) {
-      try {
-         const parts = newTokenLog.split(" ");
-         if (parts.length < 2) {
-            logger.error(`Invalid NewToken log format: ${newTokenLog}`);
-            throw new Error(`Invalid NewToken log format: ${newTokenLog}`);
-         }
-
-         // Get the last two elements which should be tokenAddress and creatorAddress
-         const rawTokenAddress = parts[parts.length - 2].replace(/[",)]/g, "");
-         const rawCreatorAddress = parts[parts.length - 1].replace(/[",)]/g, "");
-
-         // Validate addresses are in proper base58 format
-         const isValidTokenAddress =
-            /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
-               rawTokenAddress,
-            );
-         const isValidCreatorAddress =
-            /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
-               rawCreatorAddress,
-            );
-
-         if (!isValidTokenAddress || !isValidCreatorAddress) {
-            logger.error(
-               `Invalid address format in NewToken log: token=${rawTokenAddress}, creator=${rawCreatorAddress}`,
-            );
-            throw new Error(
-               `Invalid address format in NewToken log: token=${rawTokenAddress}, creator=${rawCreatorAddress}`,
-            );
-         }
-
-         logger.log(`New token detected: ${rawTokenAddress}`);
-
-         // Update the database
-         const newToken = await createNewTokenData(
-            signature,
-            rawTokenAddress,
-            rawCreatorAddress,
-            env,
-         );
-
-         // call the cf backend 
-         (async () => {
-            try {
-               await fetch(`${env.API_URL}/api/migration/addMissingTokens`, {
-                  method: "POST",
-                  headers: {
-                     "Content-Type": "application/json",
-                     "Authorization": `Bearer ${env.JWT_SECRET}`,
-                  },
-                  body: JSON.stringify({
-                     signature,
-                     rawTokenAddress,
-                     rawCreatorAddress,
-                  }),
-               });
-               logger.log(`add missing token for ${rawTokenAddress}`);
-            } catch (httpErr) {
-               console.error(`[Withdraw] CF update failed:`, httpErr);
+            // extract mintAddress
+            const mintAddress = mintLog.split("Mint:")[1].trim().replace(/[",)]/g, "");
+            if (
+               !/^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
+                  mintAddress,
+               )
+            ) {
+               throw new Error(`Invalid mint address format: ${mintAddress}`);
             }
-         })();
-         await getDB(env)
-            .insert(tokens)
-            .values(newToken as Token);
 
+            // extract swap parts
+            const parts = swapLog.split(" ");
+            const user = parts[parts.length - 3].replace(/[",)]/g, "");
+            const direction = parts[parts.length - 2].replace(/[",)]/g, "");
+            const amount = parts[parts.length - 1].replace(/[",)]/g, "");
+            if (!user || !["0", "1"].includes(direction) || isNaN(Number(amount))) {
+               throw new Error(`Invalid swap data: ${swapLog}`);
+            }
 
-         events.push({ tokenAddress: rawTokenAddress, event: "newToken" });
-      } catch (err: any) {
-         logger.error(`NewToken handler error: ${err.message}`);
-      }
-   }
+            // extract reserves
+            const rparts = reservesLog.split(" ");
+            const reserveToken = rparts[rparts.length - 2].replace(/[",)]/g, "");
+            const reserveLamport = rparts[rparts.length - 1].replace(/[",)]/g, "");
+            if (
+               isNaN(Number(reserveToken)) ||
+               isNaN(Number(reserveLamport))
+            ) {
+               throw new Error(`Invalid reserves data: ${reservesLog}`);
+            }
 
-   // --- Curve‐completion handler ---
-   if (completeEventLog && mintLog) {
-      try {
-         const mintParts = mintLog.split("Mint:");
-         if (mintParts.length < 2) {
-            logger.error(`Invalid Mint log format in curve completion: ${mintLog}`);
-            return { found: false, events };
-         }
-         const mintAddress = mintParts[1].trim().replace(/[",)]/g, "");
+            // extract amountOut
+            const amountOut = swapeventLog
+               .split(" ")
+               .slice(-3)[2]
+               .replace(/[",)]/g, "");
+            if (isNaN(Number(amountOut))) {
+               throw new Error(`Invalid SwapEvent data: ${swapeventLog}`);
+            }
 
-         // Validate mint address format
-         if (
-            !mintAddress ||
-            !/^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
-               mintAddress,
-            )
-         ) {
-            logger.error(
-               `Invalid mint address format in curve completion: ${mintAddress}`,
+            // price calculations
+            const solPrice = await getSOLPrice(env);
+            let tokenWithSupply = await getToken(env, mintAddress);
+            if (!tokenWithSupply) {
+               // … same “add missing token” logic …
+               // then:
+               tokenWithSupply = await getToken(env, mintAddress)!;
+            }
+            const TOKEN_DECIMALS = tokenWithSupply?.tokenDecimals || 6;
+            const lamportDecimal = Number(reserveLamport) / 1e9;
+            const tokenAmountDecimal = Number(reserveToken) / 10 ** TOKEN_DECIMALS;
+            const currentPrice = lamportDecimal / tokenAmountDecimal;
+            const tokenPriceUSD =
+               currentPrice > 0
+                  ? (currentPrice / 10 ** TOKEN_DECIMALS) * solPrice * 10 ** TOKEN_DECIMALS
+                  : 0;
+
+            const SOL_DECIMALS = 9;
+            const swapRecord = {
+               id: crypto.randomUUID(),
+               tokenMint: mintAddress,
+               user: user,
+               type: direction === "0" ? "buy" : "sell",
+               direction: parseInt(direction),
+               amountIn: Number(amount),
+               amountOut: Number(amountOut),
+               price:
+                  direction === "1"
+                     ? Number(amountOut) /
+                     Math.pow(10, SOL_DECIMALS) /
+                     (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) // Sell price (SOL/token)
+                     : Number(amount) /
+                     Math.pow(10, SOL_DECIMALS) /
+                     (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)), // Buy price (SOL/token),
+               txId: signature,
+               timestamp: new Date(),
+            };
+
+            // Insert the swap record
+            const db = getDB(env);
+            await db.insert(swaps).values(swapRecord).onConflictDoNothing();
+            logger.log(
+               `Saved swap: ${direction === "0" ? "buy" : "sell"} for ${mintAddress}`,
             );
-            return { found: false, events };
+
+            // check if the token exists and add it to the db if it does not  
+            const token = await getToken(env, mintAddress);
+
+            // Update token data in database
+            await db
+               .update(tokens)
+               .set({
+                  reserveAmount: Number(reserveToken),
+                  reserveLamport: Number(reserveLamport),
+                  currentPrice: currentPrice,
+                  liquidity:
+                     (Number(reserveLamport) / 1e9) * solPrice +
+                     (Number(reserveToken) / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD,
+                  tokenPriceUSD,
+                  solPriceUSD: solPrice,
+                  curveProgress:
+                     ((Number(reserveLamport) - Number(env.VIRTUAL_RESERVES)) /
+                        (Number(env.CURVE_LIMIT) - Number(env.VIRTUAL_RESERVES))) *
+                     100,
+                  txId: signature,
+                  lastUpdated: new Date(),
+                  volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${direction === "1"
+                     ? (Number(amount) / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD
+                     : (Number(amountOut) / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD
+                     }`,
+               })
+               .where(eq(tokens.mint, mintAddress))
+               .returning();
+
+
+
+
+
+            events.push({ tokenAddress: mintAddress, event: "swap" });
+         } catch (err: any) {
+            logger.error(`Swap handler error: ${err.message}`);
          }
-
-         logger.log(`Curve completion detected for ${mintAddress}`);
-
-         // Update token status
-         const tokenData: Partial<TokenData> = {
-            mint: mintAddress,
-            status: "migrating",
-            lastUpdated: new Date().toISOString(),
-         };
-
-         const connection = new Connection(
-            env.NETWORK === "devnet"
-               ? env.DEVNET_SOLANA_RPC_URL
-               : env.MAINNET_SOLANA_RPC_URL,
-         );
-         const wallet = Keypair.fromSecretKey(
-            Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY)),
-         );
-         const provider = new AnchorProvider(
-            connection,
-            new Wallet(wallet),
-            AnchorProvider.defaultOptions(),
-         );
-         const program = new Program<RaydiumVault>(
-            raydium_vault_IDL as any,
-            provider,
-         );
-         const autofunProgram = new Program<Autofun>(IDL as any, provider);
-
-         const tokenMigrator = new TokenMigrator(
-            env,
-            connection,
-            new Wallet(wallet),
-            program,
-            autofunProgram,
-            provider,
-         );
-         const token = await getToken(env, mintAddress);
-         if (!token) {
-            throw new Error(
-               `Token not found in database: ${mintAddress}`,
-            );
-         }
-
-
-         token.status = "migrating";
-         // Update in database
-         await updateTokenInDB(env, tokenData);
-         // migrate token
-         await tokenMigrator.migrateToken(token);
-
-         // Notify clients
-         // await wsClient.emit(`token-${mintAddress}`, "updateToken", tokenData);
-
-
-         events.push({ tokenAddress: mintAddress, event: "curveComplete" });
-      } catch (err: any) {
-         logger.error(`Curve‐complete handler error: ${err.message}`);
       }
-   }
 
-   return {
-      found: events.length > 0,
-      events,
-   };
+      // --- NewToken handler ---
+      if (newTokenLog) {
+         try {
+            const parts = newTokenLog.split(" ");
+            if (parts.length < 2) {
+               logger.error(`Invalid NewToken log format: ${newTokenLog}`);
+               throw new Error(`Invalid NewToken log format: ${newTokenLog}`);
+            }
+
+            // Get the last two elements which should be tokenAddress and creatorAddress
+            const rawTokenAddress = parts[parts.length - 2].replace(/[",)]/g, "");
+            const rawCreatorAddress = parts[parts.length - 1].replace(/[",)]/g, "");
+
+            // Validate addresses are in proper base58 format
+            const isValidTokenAddress =
+               /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
+                  rawTokenAddress,
+               );
+            const isValidCreatorAddress =
+               /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
+                  rawCreatorAddress,
+               );
+
+            if (!isValidTokenAddress || !isValidCreatorAddress) {
+               logger.error(
+                  `Invalid address format in NewToken log: token=${rawTokenAddress}, creator=${rawCreatorAddress}`,
+               );
+               throw new Error(
+                  `Invalid address format in NewToken log: token=${rawTokenAddress}, creator=${rawCreatorAddress}`,
+               );
+            }
+
+            logger.log(`New token detected: ${rawTokenAddress}`);
+
+            // Update the database
+            const newToken = await createNewTokenData(
+               signature,
+               rawTokenAddress,
+               rawCreatorAddress,
+               env,
+            );
+
+            // call the cf backend 
+            (async () => {
+               try {
+                  await fetch(`${env.API_URL}/api/migration/addMissingTokens`, {
+                     method: "POST",
+                     headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${env.JWT_SECRET}`,
+                     },
+                     body: JSON.stringify({
+                        signature,
+                        rawTokenAddress,
+                        rawCreatorAddress,
+                     }),
+                  });
+                  logger.log(`add missing token for ${rawTokenAddress}`);
+               } catch (httpErr) {
+                  console.error(`[Withdraw] CF update failed:`, httpErr);
+               }
+            })();
+            await getDB(env)
+               .insert(tokens)
+               .values(newToken as Token)
+               .onConflictDoNothing()
+
+
+            events.push({ tokenAddress: rawTokenAddress, event: "newToken" });
+         } catch (err: any) {
+            logger.error(`NewToken handler error: ${err.message}`);
+         }
+      }
+
+      // --- Curve‐completion handler ---
+      if (completeEventLog && mintLog) {
+         try {
+            const mintParts = mintLog.split("Mint:");
+            if (mintParts.length < 2) {
+               logger.error(`Invalid Mint log format in curve completion: ${mintLog}`);
+               return { found: false, events };
+            }
+            const mintAddress = mintParts[1].trim().replace(/[",)]/g, "");
+
+            // Validate mint address format
+            if (
+               !mintAddress ||
+               !/^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
+                  mintAddress,
+               )
+            ) {
+               logger.error(
+                  `Invalid mint address format in curve completion: ${mintAddress}`,
+               );
+               return { found: false, events };
+            }
+
+            logger.log(`Curve completion detected for ${mintAddress}`);
+
+            // Update token status
+            const tokenData: Partial<TokenData> = {
+               mint: mintAddress,
+               status: "migrating",
+               lastUpdated: new Date().toISOString(),
+            };
+
+            const connection = new Connection(
+               env.NETWORK === "devnet"
+                  ? env.DEVNET_SOLANA_RPC_URL
+                  : env.MAINNET_SOLANA_RPC_URL,
+            );
+            const wallet = Keypair.fromSecretKey(
+               Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY)),
+            );
+            const provider = new AnchorProvider(
+               connection,
+               new Wallet(wallet),
+               AnchorProvider.defaultOptions(),
+            );
+            const program = new Program<RaydiumVault>(
+               raydium_vault_IDL as any,
+               provider,
+            );
+            const autofunProgram = new Program<Autofun>(IDL as any, provider);
+
+            const tokenMigrator = new TokenMigrator(
+               env,
+               connection,
+               new Wallet(wallet),
+               program,
+               autofunProgram,
+               provider,
+            );
+            const token = await getToken(env, mintAddress);
+            if (!token) {
+               throw new Error(
+                  `Token not found in database: ${mintAddress}`,
+               );
+            }
+
+
+            token.status = "migrating";
+            // Update in database
+            await updateTokenInDB(env, tokenData);
+            // migrate token
+            await tokenMigrator.migrateToken(token);
+
+            // Notify clients
+            // await wsClient.emit(`token-${mintAddress}`, "updateToken", tokenData);
+
+
+            events.push({ tokenAddress: mintAddress, event: "curveComplete" });
+         } catch (err: any) {
+            logger.error(`Curve‐complete handler error: ${err.message}`);
+         }
+      }
+
+      return {
+         found: events.length > 0,
+         events,
+      };
+   } catch (err) {
+      logger.error(`Error processing transaction logs: ${err}`);
+      return { found: false, events: [] };
+   }
 }
 
 
@@ -504,7 +510,7 @@ export async function addOneToken(env: any) {
    })();
    await getDB(env)
       .insert(tokens)
-      .values(newToken as Token);
+      .values(newToken as Token).onConflictDoNothing();
 }
 
 const list = [{
@@ -533,7 +539,7 @@ export async function migrateTokensFromList(
          );
          await getDB(env)
             .insert(tokens)
-            .values(newToken as Token);
+            .values(newToken as Token).onConflictDoNothing();
          logger.log(`Added new token ${mintAddress} to database`);
       }
 
