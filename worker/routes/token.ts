@@ -7,27 +7,8 @@ import {
 } from "@solana/web3.js";
 import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
-import { RedisCache } from "../cache";
+import { createRedisCache } from "../redis/redisCacheService";
 
-// Initialize Redis cache globally
-let redisCache: RedisCache | null = null;
-
-// Function to get or initialize Redis cache
-const getRedisCache = (env: any): RedisCache | null => {
-  if (!env.REDIS_URL) return null;
-
-  if (!redisCache) {
-    try {
-      redisCache = new RedisCache(env.REDIS_URL);
-      logger.log("Redis cache initialized globally");
-    } catch (error) {
-      logger.error("Failed to initialize Redis cache:", error);
-      return null;
-    }
-  }
-
-  return redisCache;
-};
 import {
   getDB,
   tokenAgents,
@@ -662,15 +643,15 @@ async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-        { name: "mainnet", url: mainnetUrl },
-        { name: "devnet", url: devnetUrl },
-      ]
+      { name: "mainnet", url: mainnetUrl },
+      { name: "devnet", url: devnetUrl },
+    ]
     : [
-        {
-          name: c.env.NETWORK || "devnet",
-          url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-        },
-      ];
+      {
+        name: c.env.NETWORK || "devnet",
+        url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+      },
+    ];
 
   logger.log(
     `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
@@ -1130,10 +1111,7 @@ tokenRouter.get("/tokens", async (c) => {
     // Create a cache key based on the query parameters
     const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported}:${creator || ""}:${sortBy}:${sortOrder}`;
 
-    // Get Redis cache instance
-    const redisCache = getRedisCache(c.env);
-
-    // Try to get data from cache first if Redis is available
+    const redisCache = createRedisCache(c.env);
     if (redisCache) {
       try {
         const cachedData = await redisCache.get(cacheKey);
@@ -1147,6 +1125,8 @@ tokenRouter.get("/tokens", async (c) => {
         // Continue without caching if there's an error
       }
     }
+
+
 
     // Use a shorter timeout for test environments
     const timeoutDuration = c.env.NODE_ENV === "test" ? 2000 : 5000;
@@ -1326,9 +1306,11 @@ tokenRouter.get("/tokens", async (c) => {
       hasMore: page < totalPages,
     };
 
+
     if (redisCache) {
+
       try {
-        await redisCache.set(cacheKey, responseData, 10);
+        await redisCache.set(cacheKey, JSON.stringify(responseData), 10);
         logger.log(`Cached data for ${cacheKey} with 10s TTL`);
       } catch (cacheError) {
         logger.error(`Error caching token data:`, cacheError);
@@ -1501,12 +1483,9 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     // Create a cache key based on the mint address
     const cacheKey = `token:${mint}`;
-
-    // Get Redis cache instance
-    const redisCache = getRedisCache(c.env);
-
-    // Try to get data from cache first if Redis is available
+    const redisCache = createRedisCache(c.env);
     if (redisCache) {
+
       try {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
@@ -1519,6 +1498,7 @@ tokenRouter.get("/token/:mint", async (c) => {
         // Continue without caching if there's an error
       }
     }
+
 
     // Get token data
     const db = getDB(c.env);
@@ -1654,8 +1634,8 @@ tokenRouter.get("/token/:mint", async (c) => {
       token.status === "migrated"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-            (token.curveLimit - token.virtualReserves)) *
-          100;
+          (token.curveLimit - token.virtualReserves)) *
+        100;
 
     // Get token holders count
     const holdersCountQuery = await db
@@ -1695,17 +1675,17 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     // Format response with additional data
     const responseData = token;
-
-    // Cache the result if Redis is available
     if (redisCache) {
+
       try {
         // Cache for 5 seconds
-        await redisCache.set(cacheKey, responseData, 5);
+        await redisCache.set(cacheKey, JSON.stringify(responseData), 5);
         logger.log(`Cached data for ${cacheKey} with 5s TTL`);
       } catch (cacheError) {
         logger.error(`Error caching token data:`, cacheError);
       }
     }
+
 
     return c.json(responseData);
   } catch (error) {

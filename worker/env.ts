@@ -76,4 +76,7 @@ export interface Env {
   FIXED_FEE: string;
   ACCOUNT_FEE_MULTISIG: string;
   DATABASE_URL: string;
+  REDIS_HOST: string;
+  REDIS_PORT: string;
+  REDIS_PASSWORD: string;
 }
