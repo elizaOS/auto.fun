@@ -137,7 +137,8 @@ migrationRouter.post("/claimFees", async (c) => {
       poolId,
       userAddress: token.creator,
     };
-    await fetch(`autofun-production.up.railway.app/claim-fees`, {
+
+    await fetch(`https://autofun-production.up.railway.app/claim-fees`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
