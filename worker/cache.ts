@@ -276,19 +276,132 @@ export class CacheService {
  */
 export class RedisCache {
   private redis: Redis;
+  private isConnected: boolean = false;
+  private connectionPromise: Promise<void> | null = null;
+  private static instances: Map<string, RedisCache> = new Map();
+  // No custom timeouts - rely on Redis client's built-in timeout handling
 
   /**
-   * Create a new RedisCache instance
+   * Create a new RedisCache instance or return an existing one for the same URL
    * @param redisUrl Redis connection URL (e.g., redis://user:password@host:port/db)
    */
   constructor(redisUrl: string) {
-    // Initialize Redis connection using the URL
-    this.redis = new Redis(redisUrl);
+    // Check if we already have an instance for this URL
+    const existingInstance = RedisCache.instances.get(redisUrl);
+    if (existingInstance) {
+      return existingInstance;
+    }
 
-    // Set up error handling
+    // Initialize Redis connection options with very generous timeouts
+    const options = {
+      connectTimeout: 30000, // 30 seconds
+      commandTimeout: 60000, // 60 seconds - much longer timeout for commands
+      maxRetriesPerRequest: 5, // Increased retries
+      enableOfflineQueue: true, // Queue commands when disconnected
+      enableReadyCheck: false, // Disable ready check to avoid timeouts
+      retryStrategy: (times: number) => {
+        logger.log(`Redis retry attempt ${times}`);
+        if (times > 5) {
+          logger.error(`Redis connection failed after ${times} retries`);
+          return null; // Stop retrying
+        }
+        return Math.min(times * 500, 5000); // Longer exponential backoff
+      },
+      reconnectOnError: (err: Error) => {
+        logger.error("Redis reconnect on error:", err);
+        return true; // Always try to reconnect
+      }
+    };
+    
+    logger.log(`Initializing Redis connection to ${redisUrl} with timeout ${options.commandTimeout}ms`);
+
+    // Initialize Redis connection using the URL with options
+    this.redis = new Redis(redisUrl, options);
+    
+    // Set up event handlers
+    this.setupEventHandlers();
+    
+    // Store this instance for reuse
+    RedisCache.instances.set(redisUrl, this);
+    
+    // Initialize connection
+    this.connectionPromise = this.connect();
+  }
+
+  /**
+   * Set up event handlers for the Redis client
+   */
+  private setupEventHandlers(): void {
+    this.redis.on("connect", () => {
+      logger.log("Redis connected");
+      this.isConnected = true;
+    });
+
+    this.redis.on("ready", () => {
+      logger.log("Redis ready");
+      this.isConnected = true;
+    });
+
     this.redis.on("error", (err) => {
       logger.error("Redis connection error:", err);
+      this.isConnected = false;
     });
+
+    this.redis.on("close", () => {
+      logger.log("Redis connection closed");
+      this.isConnected = false;
+    });
+
+    this.redis.on("reconnecting", () => {
+      logger.log("Redis reconnecting");
+      this.isConnected = false;
+    });
+
+    this.redis.on("end", () => {
+      logger.log("Redis connection ended");
+      this.isConnected = false;
+    });
+  }
+
+  /**
+   * Connect to Redis with timeout
+   */
+  private async connect(): Promise<void> {
+    if (this.isConnected) return;
+
+    try {
+      // Wait for the connection to be ready with a timeout
+      await Promise.race([
+        new Promise<void>((resolve) => {
+          this.redis.once("ready", () => {
+            this.isConnected = true;
+            resolve();
+          });
+        }),
+        new Promise<void>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error("Redis connection timeout"));
+          }, 10000); // 10 seconds timeout
+        }),
+      ]);
+    } catch (error) {
+      logger.error("Redis connection failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Ensure the Redis connection is ready before performing operations
+   */
+  private async ensureConnection(): Promise<void> {
+    if (this.isConnected) return;
+    
+    if (this.connectionPromise) {
+      await this.connectionPromise;
+    } else {
+      this.connectionPromise = this.connect();
+      await this.connectionPromise;
+    }
   }
 
   /**
@@ -298,6 +411,7 @@ export class RedisCache {
    */
   async get<T>(key: string): Promise<T | null> {
     try {
+      await this.ensureConnection();
       const data = await this.redis.get(key);
 
       if (!data) {
@@ -324,21 +438,48 @@ export class RedisCache {
    * @param ttlSeconds Time to live in seconds (optional, defaults to no expiration)
    */
   async set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
+    // Check if this is the problematic tokens list key
+    const isTokensListKey = key.startsWith('tokens:') && key.includes('createdAt');
+    
     try {
+      await this.ensureConnection();
+      
       // Serialize the value to JSON, handling BigInt values
       const serializedValue = JSON.stringify(value, (_, v) =>
         typeof v === "bigint" ? v.toString() : v,
       );
 
       if (ttlSeconds !== undefined && ttlSeconds > 0) {
-        // Set with expiration
-        await this.redis.set(key, serializedValue, "EX", ttlSeconds);
+        // Use setex for setting with expiration
+        if (isTokensListKey) {
+          // For token lists, don't wait for the result
+          this.redis.setex(key, ttlSeconds, serializedValue)
+            .then(() => logger.log(`Successfully cached tokens list with key ${key}`))
+            .catch(err => logger.warn(`Non-critical error caching tokens list: ${err.message}`));
+        } else {
+          // For other keys, wait for the result
+          await this.redis.setex(key, ttlSeconds, serializedValue);
+        }
       } else {
-        // Set without expiration
-        await this.redis.set(key, serializedValue);
+        // Use set for setting without expiration
+        if (isTokensListKey) {
+          // For token lists, don't wait for the result
+          this.redis.set(key, serializedValue)
+            .then(() => logger.log(`Successfully cached tokens list with key ${key}`))
+            .catch(err => logger.warn(`Non-critical error caching tokens list: ${err.message}`));
+        } else {
+          // For other keys, wait for the result
+          await this.redis.set(key, serializedValue);
+        }
       }
     } catch (error) {
-      logger.error(`Error setting data for key ${key} in cache:`, error);
+      // For token lists, just log a warning
+      if (isTokensListKey) {
+        logger.warn(`Non-critical error preparing to cache tokens list: ${error}`);
+      } else {
+        // For other keys, log an error
+        logger.error(`Error setting data for key ${key} in cache:`, error);
+      }
     }
   }
 
@@ -349,6 +490,7 @@ export class RedisCache {
    */
   async delete(key: string): Promise<boolean> {
     try {
+      await this.ensureConnection();
       const result = await this.redis.del(key);
       return result > 0;
     } catch (error) {
@@ -364,6 +506,7 @@ export class RedisCache {
    */
   async exists(key: string): Promise<boolean> {
     try {
+      await this.ensureConnection();
       const result = await this.redis.exists(key);
       return result === 1;
     } catch (error) {
@@ -379,6 +522,7 @@ export class RedisCache {
    */
   async ttl(key: string): Promise<number> {
     try {
+      await this.ensureConnection();
       return await this.redis.ttl(key);
     } catch (error) {
       logger.error(`Error getting TTL for key ${key}:`, error);
@@ -388,13 +532,35 @@ export class RedisCache {
 
   /**
    * Close the Redis connection
+   * Note: This should only be called when shutting down the application
    */
   async close(): Promise<void> {
     try {
+      // Remove this instance from the instances map
+      for (const [url, instance] of RedisCache.instances.entries()) {
+        if (instance === this) {
+          RedisCache.instances.delete(url);
+          break;
+        }
+      }
+      
+      // Quit the Redis client
       await this.redis.quit();
+      this.isConnected = false;
     } catch (error) {
       logger.error("Error closing Redis connection:", error);
     }
+  }
+
+  /**
+   * Close all Redis connections
+   * This should be called when the application is shutting down
+   */
+  static async closeAll(): Promise<void> {
+    for (const instance of RedisCache.instances.values()) {
+      await instance.close();
+    }
+    RedisCache.instances.clear();
   }
 }
 
