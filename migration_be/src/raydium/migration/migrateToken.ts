@@ -112,11 +112,15 @@ export class TokenMigrator {
             logger.log(
               `[Migrate] Migration is taking too long for token ${token.mint}. Resuming migration.`,
             );
+
             const newToken = await getToken(this.env, token.mint);
+
+
             if (!newToken) {
               logger.error(`Token ${token.mint} not found in DB.`);
               continue;
             }
+            await releaseMigrationLock(this.env, newToken);
             await this.migrateToken(newToken);
           }
           continue;
@@ -265,6 +269,9 @@ export class TokenMigrator {
       const nextStep = steps[steps.indexOf(step) + 1] || null;
 
       await executeMigrationStep(this.env, token, step, nextStep);
+      this.ongoingMigrations = this.ongoingMigrations.filter(
+        (mint) => mint !== token.mint,
+      );
       // call scheduleNextInvocation to schedule the next step if not done yet.
       if (step.name !== "collectFees") {
         logger.log(
@@ -365,6 +372,9 @@ export class TokenMigrator {
     })();
 
     // 5) return to caller
+    this.ongoingMigrations = this.ongoingMigrations.filter(
+      (mint) => mint !== token.mint,
+    );
     return {
       txId,
       extraData: { withdrawnAmounts },
@@ -479,7 +489,9 @@ export class TokenMigrator {
         err
       );
     }
-
+    this.ongoingMigrations = this.ongoingMigrations.filter(
+      (mint) => mint !== token.mint,
+    );
     return {
       txId,
       extraData: {
@@ -705,6 +717,9 @@ export class TokenMigrator {
         err
       );
     }
+    this.ongoingMigrations = this.ongoingMigrations.filter(
+      (mint) => mint !== token.mint,
+    );
     return {
       txId: aggregatedTxId,
       extraData: { lockLpTxId: aggregatedTxId, nftMinted: aggregatedNftMint },
@@ -751,7 +766,9 @@ export class TokenMigrator {
         err
       );
     }
-
+    this.ongoingMigrations = this.ongoingMigrations.filter(
+      (mint) => mint !== token.mint,
+    );
     logger.log(
       `[Send] Sending NFT to manager multisig for token ${token.mint} with NFT ${nftMinted}`,
     );
@@ -803,7 +820,9 @@ export class TokenMigrator {
         err,
       );
     }
-
+    this.ongoingMigrations = this.ongoingMigrations.filter(
+      (mint) => mint !== token.mint,
+    );
     logger.log(
       `[Deposit] Depositing NFT to Raydium vault for token ${token.mint} with NFT ${nftMinted}`,
     );
@@ -836,6 +855,9 @@ export class TokenMigrator {
         // err
       );
     }
+    this.ongoingMigrations = this.ongoingMigrations.filter(
+      (mint) => mint !== token.mint,
+    );
     return { txId: "finalized" };
   }
 
@@ -878,6 +900,9 @@ export class TokenMigrator {
     //     err
     //   );
     // }
+    this.ongoingMigrations = this.ongoingMigrations.filter(
+      (mint) => mint !== token.mint,
+    );
     return { txId: txSignature ?? "", extraData: {} };
   }
 
