@@ -206,7 +206,6 @@ export default function TwitterSharePage() {
         }
         globalThis.location.href = `${apiUrl}/api/share/oauth/request_token`;
       }
-      
     } catch (error) {
       setShareError(error instanceof Error ? error.message : "Share failed");
     } finally {

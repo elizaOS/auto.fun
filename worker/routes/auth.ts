@@ -70,7 +70,7 @@ authRouter.post("/register", async (c) => {
         createdAt: new Date(),
       };
 
-      await db.insert(users).values(userData).onConflictDoNothing()
+      await db.insert(users).values(userData).onConflictDoNothing();
       // ** Points system **
       // Award points for registration
       awardUserPoints(

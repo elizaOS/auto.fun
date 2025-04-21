@@ -58,15 +58,18 @@ export class CacheService {
       ).toISOString();
       const expiresAtDate = new Date(expiresAt);
 
-      await this.db.insert(cachePrices)
-        .values([{
-          id: crypto.randomUUID(),
-          type: "sol",
-          symbol: "SOL",
-          price: price.toString(),
-          timestamp: sql`CURRENT_TIMESTAMP`,
-          expiresAt: expiresAtDate,
-        }])
+      await this.db
+        .insert(cachePrices)
+        .values([
+          {
+            id: crypto.randomUUID(),
+            type: "sol",
+            symbol: "SOL",
+            price: price.toString(),
+            timestamp: sql`CURRENT_TIMESTAMP`,
+            expiresAt: expiresAtDate,
+          },
+        ])
         .execute();
 
       // Clean up old cache entries
@@ -121,15 +124,18 @@ export class CacheService {
       ).toISOString();
       const expiresAtDate = new Date(expiresAt);
 
-      await this.db.insert(cachePrices)
-        .values([{
-          id: crypto.randomUUID(),
-          type: "sol",
-          symbol: "SOL",
-          price: price.toString(),
-          timestamp: sql`CURRENT_TIMESTAMP`,
-          expiresAt: expiresAtDate,
-        }])
+      await this.db
+        .insert(cachePrices)
+        .values([
+          {
+            id: crypto.randomUUID(),
+            type: "sol",
+            symbol: "SOL",
+            price: price.toString(),
+            timestamp: sql`CURRENT_TIMESTAMP`,
+            expiresAt: expiresAtDate,
+          },
+        ])
         .execute();
 
       // Clean up old cache entries
@@ -159,15 +165,18 @@ export class CacheService {
       );
       const expiresAtDate = new Date(expiresAt);
 
-      await this.db.insert(cachePrices)
-        .values([{
-          id: crypto.randomUUID(),
-          type: "sol",
-          symbol: "SOL",
-          price: serializedData.toString(),
-          timestamp: sql`CURRENT_TIMESTAMP`,
-          expiresAt: expiresAtDate,
-        }])
+      await this.db
+        .insert(cachePrices)
+        .values([
+          {
+            id: crypto.randomUUID(),
+            type: "sol",
+            symbol: "SOL",
+            price: serializedData.toString(),
+            timestamp: sql`CURRENT_TIMESTAMP`,
+            expiresAt: expiresAtDate,
+          },
+        ])
         .execute();
       // Clean up old cache entries
       await this.cleanupOldCacheEntries("metadata", key);
@@ -220,7 +229,6 @@ export class CacheService {
     symbol: string,
   ): Promise<void> {
     try {
-
       // Delete expired entries
       await this.db
         .delete(cachePrices)

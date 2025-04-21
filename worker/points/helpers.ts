@@ -116,13 +116,15 @@ export async function awardUserPoints(
   } else {
     await db
       .insert(users)
-      .values([{
-        address: userAddress,
-        name: null,
-        points: pointsToAdd,
-        rewardPoints: 0,
-        createdAt: now,
-      }])
+      .values([
+        {
+          address: userAddress,
+          name: null,
+          points: pointsToAdd,
+          rewardPoints: 0,
+          createdAt: now,
+        },
+      ])
       .execute();
   }
 }

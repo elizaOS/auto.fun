@@ -328,12 +328,14 @@ messagesRouter.post("/messages/:messageId/likes", async (c) => {
     }
 
     // Create like record
-    await db.insert(messageLikes).values([{
-      id: crypto.randomUUID(),
-      messageId,
-      userAddress,
-      timestamp: new Date(),
-    }]);
+    await db.insert(messageLikes).values([
+      {
+        id: crypto.randomUUID(),
+        messageId,
+        userAddress,
+        timestamp: new Date(),
+      },
+    ]);
 
     // Increment message likes
     await db

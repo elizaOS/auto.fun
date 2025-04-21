@@ -179,12 +179,14 @@ async function storeOAuthState(
   const expiresAt = new Date(Date.now() + 600_000); // 10 minutes
 
   try {
-    await db.insert(oauthVerifiers).values([{
-      id: nanoid(),
-      state,
-      codeVerifier: codeVerifier,
-      expiresAt: expiresAt,
-    }]);
+    await db.insert(oauthVerifiers).values([
+      {
+        id: nanoid(),
+        state,
+        codeVerifier: codeVerifier,
+        expiresAt: expiresAt,
+      },
+    ]);
   } catch (error) {
     throw new Error(`Failed to store OAuth state: ${error}`);
   }
@@ -231,12 +233,14 @@ async function storeAccessToken(
     await db.delete(accessTokens);
 
     // Then insert the new token
-    await db.insert(accessTokens).values([{
-      id: nanoid(),
-      accessToken: token,
-      refreshToken: refresh,
-      expiresAt: expiresAt,
-    }]);
+    await db.insert(accessTokens).values([
+      {
+        id: nanoid(),
+        accessToken: token,
+        refreshToken: refresh,
+        expiresAt: expiresAt,
+      },
+    ]);
   } catch (error) {
     throw new Error(`Failed to store access token: ${error}`);
   }
@@ -272,12 +276,14 @@ async function updateAccessToken(
     await db.delete(accessTokens);
 
     // Insert the new token
-    await db.insert(accessTokens).values([{
-      id: nanoid(),
-      accessToken: token,
-      refreshToken: refresh,
-      expiresAt: expiresAt,
-    }]);
+    await db.insert(accessTokens).values([
+      {
+        id: nanoid(),
+        accessToken: token,
+        refreshToken: refresh,
+        expiresAt: expiresAt,
+      },
+    ]);
   } catch (error) {
     throw new Error(`Failed to update access token: ${error}`);
   }

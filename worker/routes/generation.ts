@@ -79,7 +79,7 @@ export async function checkRateLimits(
 
   const cutoffTime = new Date(
     Date.now() - RATE_LIMITS[type].COOLDOWN_PERIOD_MS,
-  )
+  );
 
   // Create a timeout for the database query
   const dbTimeout = 5000; // 5 seconds
@@ -812,8 +812,9 @@ app.post("/:mint/generate", async (c) => {
             error: "Rate limit exceeded. Please try again later.",
             limit: RATE_LIMITS[validatedData.type].MAX_GENERATIONS_PER_DAY,
             cooldown: RATE_LIMITS[validatedData.type].COOLDOWN_PERIOD_MS,
-            message: `You can generate up to ${RATE_LIMITS[validatedData.type].MAX_GENERATIONS_PER_DAY
-              } ${validatedData.type}s per day`,
+            message: `You can generate up to ${
+              RATE_LIMITS[validatedData.type].MAX_GENERATIONS_PER_DAY
+            } ${validatedData.type}s per day`,
           },
           429,
         );
@@ -860,14 +861,16 @@ app.post("/:mint/generate", async (c) => {
 
     // Save generation to database with timeout
     try {
-      const insertPromise = db.insert(mediaGenerations).values([{
-        id: crypto.randomUUID(),
-        mint,
-        type: validatedData.type,
-        prompt: validatedData.prompt,
-        mediaUrl,
-        timestamp: new Date(),
-      }]);
+      const insertPromise = db.insert(mediaGenerations).values([
+        {
+          id: crypto.randomUUID(),
+          mint,
+          type: validatedData.type,
+          prompt: validatedData.prompt,
+          mediaUrl,
+          timestamp: new Date(),
+        },
+      ]);
 
       await Promise.race([insertPromise, dbTimeoutPromise]);
     } catch (error) {
@@ -940,7 +943,7 @@ app.get("/:mint/history", async (c) => {
 
     const cutoffTime = new Date(
       Date.now() - RATE_LIMITS[type || MediaType.IMAGE].COOLDOWN_PERIOD_MS,
-    )
+    );
 
     // Build query conditions
     const conditions = [
@@ -976,16 +979,16 @@ app.get("/:mint/history", async (c) => {
       remaining: type
         ? RATE_LIMITS[type].MAX_GENERATIONS_PER_DAY - counts[type]
         : {
-          [MediaType.IMAGE]:
-            RATE_LIMITS[MediaType.IMAGE].MAX_GENERATIONS_PER_DAY -
-            counts[MediaType.IMAGE],
-          [MediaType.VIDEO]:
-            RATE_LIMITS[MediaType.VIDEO].MAX_GENERATIONS_PER_DAY -
-            counts[MediaType.VIDEO],
-          [MediaType.AUDIO]:
-            RATE_LIMITS[MediaType.AUDIO].MAX_GENERATIONS_PER_DAY -
-            counts[MediaType.AUDIO],
-        },
+            [MediaType.IMAGE]:
+              RATE_LIMITS[MediaType.IMAGE].MAX_GENERATIONS_PER_DAY -
+              counts[MediaType.IMAGE],
+            [MediaType.VIDEO]:
+              RATE_LIMITS[MediaType.VIDEO].MAX_GENERATIONS_PER_DAY -
+              counts[MediaType.VIDEO],
+            [MediaType.AUDIO]:
+              RATE_LIMITS[MediaType.AUDIO].MAX_GENERATIONS_PER_DAY -
+              counts[MediaType.AUDIO],
+          },
       resetTime: new Date(
         Date.now() + RATE_LIMITS[type || MediaType.IMAGE].COOLDOWN_PERIOD_MS,
       ).toISOString(),
@@ -1642,7 +1645,7 @@ async function generateTokenOnDemand(
           }
           finalImageUrl =
             env.API_URL?.includes("localhost") ||
-              env.API_URL?.includes("127.0.0.1")
+            env.API_URL?.includes("127.0.0.1")
               ? `${env.API_URL}/api/image/${imageFilename}` // Assumes a local proxy endpoint exists
               : `${r2PublicUrl.replace(/\/$/, "")}/${imageKey}`; // Ensure no double slash
 
@@ -1720,16 +1723,18 @@ async function generateTokenOnDemand(
     ctx.waitUntil(
       (async () => {
         try {
-          await db.insert(preGeneratedTokens).values([{
-            id: tokenId,
-            name: onDemandToken.name,
-            ticker: onDemandToken.ticker,
-            description: onDemandToken.description,
-            prompt: onDemandToken.prompt,
-            image: onDemandToken.image, // Ensure the final URL is saved
-            createdAt: onDemandToken.createdAt,
-            used: onDemandToken.used,
-          }]);
+          await db.insert(preGeneratedTokens).values([
+            {
+              id: tokenId,
+              name: onDemandToken.name,
+              ticker: onDemandToken.ticker,
+              description: onDemandToken.description,
+              prompt: onDemandToken.prompt,
+              image: onDemandToken.image, // Ensure the final URL is saved
+              createdAt: onDemandToken.createdAt,
+              used: onDemandToken.used,
+            },
+          ]);
           logger.log(
             `Generated and saved on-demand token: ${metadata.name} (${metadata.symbol}) with image ${finalImageUrl}`,
           );
@@ -1741,7 +1746,13 @@ async function generateTokenOnDemand(
       })(),
     );
 
-    return { success: true, token: { ...onDemandToken, createdAt: onDemandToken.createdAt.toISOString() } };
+    return {
+      success: true,
+      token: {
+        ...onDemandToken,
+        createdAt: onDemandToken.createdAt.toISOString(),
+      },
+    };
   } catch (error) {
     logger.error("Unhandled error during generateTokenOnDemand:", error);
     // Ensure a structured error response
@@ -2203,7 +2214,7 @@ export async function generatePreGeneratedTokens(env: Env) {
         // Only construct the URL if the base URL is available
         finalImageUrl =
           env.API_URL?.includes("localhost") ||
-            env.API_URL?.includes("127.0.0.1")
+          env.API_URL?.includes("127.0.0.1")
             ? `${env.API_URL}/api/image/${imageFilename}`
             : `${r2PublicUrl.replace(/\/$/, "")}/${imageKey}`; // Ensure no double slash
         logger.log(
@@ -2223,16 +2234,18 @@ export async function generatePreGeneratedTokens(env: Env) {
     try {
       logger.log(`[PreGen DB] Saving token to database: ${metadata.name}`);
       const db = getDB(env);
-      await db.insert(preGeneratedTokens).values([{
-        id: crypto.randomUUID(),
-        name: metadata.name,
-        ticker: metadata.symbol,
-        description: metadata.description,
-        prompt: metadata.prompt,
-        image: finalImageUrl, // Use the constructed URL
-        createdAt: new Date(),
-        used: 0,
-      }]);
+      await db.insert(preGeneratedTokens).values([
+        {
+          id: crypto.randomUUID(),
+          name: metadata.name,
+          ticker: metadata.symbol,
+          description: metadata.description,
+          prompt: metadata.prompt,
+          image: finalImageUrl, // Use the constructed URL
+          createdAt: new Date(),
+          used: 0,
+        },
+      ]);
       logger.log(
         `[PreGen DB] Successfully saved token: ${metadata.name} (${metadata.symbol}) with image ${finalImageUrl}`,
       );
@@ -2400,8 +2413,9 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
           error: "Rate limit exceeded. Please try again later.",
           limit: RATE_LIMITS[mediaType].MAX_GENERATIONS_PER_DAY,
           cooldown: RATE_LIMITS[mediaType].COOLDOWN_PERIOD_MS,
-          message: `You can generate up to ${RATE_LIMITS[mediaType].MAX_GENERATIONS_PER_DAY
-            } ${mediaType}s per day.`,
+          message: `You can generate up to ${
+            RATE_LIMITS[mediaType].MAX_GENERATIONS_PER_DAY
+          } ${mediaType}s per day.`,
           remaining: rateLimit.remaining,
         },
         429,
@@ -2553,15 +2567,17 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
     // Save generation to database
     const generationId = crypto.randomUUID();
     try {
-      await db.insert(mediaGenerations).values([{
-        id: generationId,
-        mint: tokenMint,
-        type: mediaType,
-        prompt: enhancedPrompt,
-        mediaUrl,
-        creator: user.publicKey,
-        timestamp: new Date(),
-      }]);
+      await db.insert(mediaGenerations).values([
+        {
+          id: generationId,
+          mint: tokenMint,
+          type: mediaType,
+          prompt: enhancedPrompt,
+          mediaUrl,
+          creator: user.publicKey,
+          timestamp: new Date(),
+        },
+      ]);
       console.log(`Generation saved to database with ID: ${generationId}`);
     } catch (dbError) {
       // Log but continue - don't fail the request just because we couldn't save to DB

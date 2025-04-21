@@ -47,7 +47,7 @@ function calculateAmountOutSell(
   amount: number,
   _tokenDecimals: number,
   platformSellFee: number,
-  reserveToken: number
+  reserveToken: number,
 ): number {
   const feeBasisPoints = convertToBasisPoints(platformSellFee);
   const amountBN = new BN(amount);
@@ -69,7 +69,7 @@ function calculateAmountOutBuy(
   amount: number,
   _solDecimals: number,
   reserveLamport: number,
-  platformBuyFee: number
+  platformBuyFee: number,
 ): number {
   const feeBasisPoints = convertToBasisPoints(platformBuyFee);
   const amountBN = new BN(amount);
@@ -115,7 +115,7 @@ export const getIoServer = (env?: Partial<Env>) => {
 export const fetchMetadataWithBackoff = async (
   umi: Umi,
   tokenAddress: string,
-  env?: Env
+  env?: Env,
 ) => {
   // If env is provided, try to get from cache first
   if (env) {
@@ -143,7 +143,7 @@ export const fetchMetadataWithBackoff = async (
       if (i === maxRetries - 1) throw error;
       const delay = Math.min(
         baseDelay * Math.pow(2, i) + Math.random() * 1000,
-        maxDelay
+        maxDelay,
       );
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
@@ -152,7 +152,7 @@ export const fetchMetadataWithBackoff = async (
 
 export async function getTxIdAndCreatorFromTokenAddress(
   tokenAddress: string,
-  env?: Env
+  env?: Env,
 ) {
   console.log(`tokenAddress: ${tokenAddress}`);
 
@@ -161,7 +161,7 @@ export async function getTxIdAndCreatorFromTokenAddress(
 
   const transactionHistory =
     await solanaConfig.connection.getSignaturesForAddress(
-      new PublicKey(tokenAddress)
+      new PublicKey(tokenAddress),
     );
 
   if (transactionHistory.length > 0) {
@@ -192,7 +192,7 @@ export async function createNewTokenData(
   txId: string,
   tokenAddress: string,
   creatorAddress: string,
-  env?: Env
+  env?: Env,
 ): Promise<Partial<Token>> {
   try {
     // Get a Solana config with the right environment
@@ -203,20 +203,20 @@ export async function createNewTokenData(
     const metadata = await fetchMetadataWithBackoff(
       solanaConfig.umi,
       tokenAddress,
-      env
+      env,
     );
     logger.log(`Fetched metadata for token ${tokenAddress}:`);
 
     const [bondingCurvePda] = PublicKey.findProgramAddressSync(
       [Buffer.from(SEED_BONDING_CURVE), new PublicKey(tokenAddress).toBytes()],
-      solanaConfig.programId
+      solanaConfig.programId,
     );
     if (!solanaConfig.wallet) {
       throw new Error("Wallet not found in Solana config");
     }
     const program = getProgram(
       solanaConfig.connection,
-      new Wallet(solanaConfig.wallet)
+      new Wallet(solanaConfig.wallet),
     );
     // Fetch the account data directly using the connection instead of Anchor program
     const bondingCurveAccount =
@@ -229,7 +229,7 @@ export async function createNewTokenData(
     } catch (error) {
       logger.error(
         `Failed to fetch IPFS metadata from URI: ${metadata.metadata.uri}`,
-        error
+        error,
       );
     }
 
@@ -240,7 +240,7 @@ export async function createNewTokenData(
 
     if (!bondingCurveAccount) {
       throw new Error(
-        `Bonding curve account not found for token ${tokenAddress}`
+        `Bonding curve account not found for token ${tokenAddress}`,
       );
     }
     console.log("bondingCurveAccount", bondingCurveAccount);
@@ -251,9 +251,9 @@ export async function createNewTokenData(
     const currentPrice =
       Number(bondingCurveAccount.reserveToken) > 0
         ? Number(bondingCurveAccount.reserveLamport) /
-        1e9 /
-        (Number(bondingCurveAccount.reserveToken) /
-          Math.pow(10, TOKEN_DECIMALS))
+          1e9 /
+          (Number(bondingCurveAccount.reserveToken) /
+            Math.pow(10, TOKEN_DECIMALS))
         : 0;
     console.log("currentPrice", currentPrice);
 
@@ -303,7 +303,7 @@ export async function createNewTokenData(
         (Number(bondingCurveAccount.reserveLamport) / 1e9) * solPrice +
         (Number(bondingCurveAccount.reserveToken) /
           Math.pow(10, TOKEN_DECIMALS)) *
-        tokenPriceUSD,
+          tokenPriceUSD,
       currentPrice:
         Number(bondingCurveAccount.reserveLamport) /
         1e9 /
@@ -350,7 +350,7 @@ export async function createNewTokenData(
  */
 export async function bulkUpdatePartialTokens(
   tokens: Token[],
-  env: Env
+  env: Env,
 ): Promise<Token[]> {
   if (!tokens || tokens.length === 0) {
     return [];
@@ -361,7 +361,7 @@ export async function bulkUpdatePartialTokens(
 
   // Process each token in parallel
   const updatedTokensPromises = tokens.map((token) =>
-    calculateTokenMarketData(token, solPrice, env)
+    calculateTokenMarketData(token, solPrice, env),
   );
 
   // Wait for all updates to complete
@@ -374,11 +374,11 @@ export const createConfigTx = async (
   newConfig: any,
 
   connection: Connection,
-  program: Program<Autofun>
+  program: Program<Autofun>,
 ) => {
   const [configPda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_CONFIG)],
-    program.programId
+    program.programId,
   );
 
   console.log("configPda: ", configPda.toBase58());
@@ -420,16 +420,16 @@ export const swapTx = async (
   style: number,
   slippageBps: number = 100,
   connection: Connection,
-  program: Program<Autofun>
+  program: Program<Autofun>,
 ) => {
   const [configPda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_CONFIG)],
-    program.programId
+    program.programId,
   );
   const configAccount = await program.account.config.fetch(configPda);
   const [bondingCurvePda] = PublicKey.findProgramAddressSync(
     [Buffer.from(SEED_BONDING_CURVE), token.toBytes()],
-    program.programId
+    program.programId,
   );
   const curve = await program.account.bondingCurve.fetch(bondingCurvePda);
 
@@ -439,7 +439,7 @@ export const swapTx = async (
       ? Number(configAccount.platformSellFee)
       : Number(configAccount.platformBuyFee);
   const adjustedAmount = Math.floor(
-    (amount * (FEE_BASIS_POINTS - feePercent)) / FEE_BASIS_POINTS
+    (amount * (FEE_BASIS_POINTS - feePercent)) / FEE_BASIS_POINTS,
   );
 
   // Calculate expected output
@@ -449,7 +449,7 @@ export const swapTx = async (
   console.log("adjustedAmount", adjustedAmount);
   console.log(
     "curve.reserveLamport.toNumber()",
-    curve.reserveLamport.toNumber()
+    curve.reserveLamport.toNumber(),
   );
   console.log("feePercent", feePercent);
 
@@ -460,7 +460,7 @@ export const swapTx = async (
       adjustedAmount,
       curve.reserveLamport.toNumber(),
       feePercent,
-      300
+      300,
     );
   } else {
     // Sell
@@ -469,13 +469,13 @@ export const swapTx = async (
       adjustedAmount,
       feePercent,
       curve.reserveToken.toNumber(),
-      300
+      300,
     );
   }
 
   // Apply slippage to estimated output
   const minOutput = new BN(
-    Math.floor((estimatedOutput * (10000 - slippageBps)) / 10000)
+    Math.floor((estimatedOutput * (10000 - slippageBps)) / 10000),
   );
 
   const deadline = Math.floor(Date.now() / 1000) + 120;
@@ -500,7 +500,7 @@ export const withdrawTx = async (
   token: PublicKey,
 
   connection: Connection,
-  program: Program<Autofun>
+  program: Program<Autofun>,
 ) => {
   const tx = await program.methods
     .withdraw()
@@ -532,14 +532,14 @@ export const getRpcUrl = (env: any, forceMainnet: boolean = false) => {
   const apiKey =
     env.NETWORK === "devnet"
       ? env.DEVNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
-      "67ea9085-1406-4db8-8872-38ac77950d7a"
+        "67ea9085-1406-4db8-8872-38ac77950d7a"
       : env.MAINNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
-      "67ea9085-1406-4db8-8872-38ac77950d7a";
+        "67ea9085-1406-4db8-8872-38ac77950d7a";
 
   const result = `${baseUrl}?api-key=${apiKey}`;
 
   logger.log(
-    `getRpcUrl called with NETWORK=${env.NETWORK}, returning: ${result}`
+    `getRpcUrl called with NETWORK=${env.NETWORK}, returning: ${result}`,
   );
   return result;
 };
@@ -587,7 +587,7 @@ export const execTx = async (
   transaction: Transaction,
   connection: Connection,
   payer: any,
-  commitment: "confirmed" | "finalized" = "confirmed"
+  commitment: "confirmed" | "finalized" = "confirmed",
 ) => {
   try {
     //  Sign the transaction with payer wallet
@@ -605,7 +605,7 @@ export const execTx = async (
     });
 
     logger.log(
-      `https://solscan.io/tx/${txid}?cluster=custom&customUrl=${connection.rpcEndpoint}`
+      `https://solscan.io/tx/${txid}?cluster=custom&customUrl=${connection.rpcEndpoint}`,
     );
 
     const confirmed = await connection.confirmTransaction(txid, commitment);
@@ -624,7 +624,7 @@ export async function execWithdrawTx(
   tx: Transaction,
   connection: Connection,
   wallet: any,
-  maxRetries = 1
+  maxRetries = 1,
 ): Promise<{ signature: string; logs: string[] }> {
   let lastError: Error | null = null;
 
@@ -636,7 +636,7 @@ export async function execWithdrawTx(
       const simulation = await connection.simulateTransaction(signedTx);
       if (simulation.value.err) {
         throw new Error(
-          `Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`
+          `Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`,
         );
       }
 
@@ -649,7 +649,7 @@ export async function execWithdrawTx(
           skipPreflight: true,
           maxRetries: 2,
           preflightCommitment: "confirmed",
-        }
+        },
       );
 
       if (!signature) {
@@ -664,7 +664,7 @@ export async function execWithdrawTx(
           lastValidBlockHeight: (await connection.getLatestBlockhash())
             .lastValidBlockHeight,
         },
-        "confirmed"
+        "confirmed",
       );
 
       // Check if we got ProgramFailedToComplete but program actually succeeded
@@ -672,7 +672,7 @@ export async function execWithdrawTx(
         confirmation.value.err === "ProgramFailedToComplete" ||
         (confirmation.value.err &&
           JSON.stringify(confirmation.value.err).includes(
-            "ProgramFailedToComplete"
+            "ProgramFailedToComplete",
           ))
       ) {
         // Get transaction logs to verify actual execution
@@ -682,17 +682,17 @@ export async function execWithdrawTx(
 
         if (
           txInfo?.meta?.logMessages?.some((log) =>
-            log.includes(`Program success`)
+            log.includes(`Program success`),
           )
         ) {
           logger.log(
-            "Transaction succeeded despite ProgramFailedToComplete error"
+            "Transaction succeeded despite ProgramFailedToComplete error",
           );
           return { signature, logs: txInfo.meta.logMessages };
         }
       } else if (confirmation.value.err) {
         throw new Error(
-          `Transaction failed: ${JSON.stringify(confirmation.value.err)}`
+          `Transaction failed: ${JSON.stringify(confirmation.value.err)}`,
         );
       }
 
@@ -709,7 +709,7 @@ export async function execWithdrawTx(
           error.message?.includes("Block height exceeded"))
       ) {
         await new Promise((resolve) =>
-          setTimeout(resolve, Math.min(1000 * Math.pow(2, i), 15000))
+          setTimeout(resolve, Math.min(1000 * Math.pow(2, i), 15000)),
         );
         continue;
       }
@@ -725,7 +725,7 @@ export const createAssociatedTokenAccountInstruction = (
   associatedTokenAddress: PublicKey,
   payer: PublicKey,
   walletAddress: PublicKey,
-  splTokenMintAddress: PublicKey
+  splTokenMintAddress: PublicKey,
 ) => {
   const keys = [
     { pubkey: payer, isSigner: true, isWritable: true },
@@ -753,7 +753,7 @@ export const createAssociatedTokenAccountInstruction = (
 
 export const getAssociatedTokenAccount = (
   ownerPubkey: PublicKey,
-  mintPk: PublicKey
+  mintPk: PublicKey,
 ): PublicKey => {
   const associatedTokenAccountPubkey = PublicKey.findProgramAddressSync(
     [
@@ -761,7 +761,7 @@ export const getAssociatedTokenAccount = (
       TOKEN_PROGRAM_ID.toBytes(),
       mintPk.toBytes(), // mint address
     ],
-    ASSOCIATED_TOKEN_PROGRAM_ID
+    ASSOCIATED_TOKEN_PROGRAM_ID,
   )[0];
 
   return associatedTokenAccountPubkey;
@@ -771,7 +771,7 @@ export const getATokenAccountsNeedCreate = async (
   connection: Connection,
   walletAddress: PublicKey,
   owner: PublicKey,
-  nfts: PublicKey[]
+  nfts: PublicKey[],
 ) => {
   const instructions: TransactionInstruction[] = [];
   const destinationAccounts: PublicKey[] = [];
@@ -783,7 +783,7 @@ export const getATokenAccountsNeedCreate = async (
         destinationPubkey,
         walletAddress,
         owner,
-        mint
+        mint,
       );
       instructions.push(createATAIx);
     }
@@ -796,7 +796,7 @@ export const getATokenAccountsNeedCreate = async (
           userAccount,
           walletAddress,
           walletAddress,
-          mint
+          mint,
         );
         instructions.push(createATAIx);
       }
@@ -836,7 +836,7 @@ export async function updateHoldersCache(env: Env, mint: string) {
             },
           },
         ],
-      }
+      },
     );
 
     logger.log(`Found ${accounts.length} token accounts for mint ${mint}`);
@@ -948,7 +948,7 @@ export async function getFeaturedMaxValues(db: any) {
  */
 export function getFeaturedScoreExpression(
   maxVolume: number,
-  maxHolders: number
+  maxHolders: number,
 ) {
   // Use provided max values, defaulting to 1 to avoid division by zero
   const normalizedMaxVolume = maxVolume || 1;
@@ -973,7 +973,7 @@ export function getFeaturedScoreExpression(
 export function calculateFeaturedScore(
   token: { volume24h?: number | null; holderCount?: number | null },
   maxVolume: number,
-  maxHolders: number
+  maxHolders: number,
 ): number {
   const normalizedMaxVolume = maxVolume || 1;
   const normalizedMaxHolders = maxHolders || 1;
@@ -1001,7 +1001,7 @@ export function applyFeaturedSort(
   tokensQuery: any,
   maxVolume: number,
   maxHolders: number,
-  sortOrder: string
+  sortOrder: string,
 ) {
   const featuredScore = getFeaturedScoreExpression(maxVolume, maxHolders);
 

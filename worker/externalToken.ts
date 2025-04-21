@@ -114,9 +114,7 @@ export class ExternalToken {
     }
     const createdAt = token.token?.createdAt;
     // get data from codex number createdAt
-    const creationTime = createdAt
-      ? new Date(createdAt * 1000)
-      : new Date()
+    const creationTime = createdAt ? new Date(createdAt * 1000) : new Date();
     const tokenSupplyUi = token.token?.info?.circulatingSupply
       ? Number(token.token?.info?.circulatingSupply)
       : 0;
@@ -153,7 +151,9 @@ export class ExternalToken {
     };
     // remove data that is 0 or undefined
     const filtered = Object.fromEntries(
-      Object.entries(newTokenData).filter(([, value]) => value !== 0 && value !== undefined),
+      Object.entries(newTokenData).filter(
+        ([, value]) => value !== 0 && value !== undefined,
+      ),
     );
 
     // TODO: featured score for token db and websocket
@@ -181,15 +181,15 @@ export class ExternalToken {
 
     const allHolders = tokenSupply
       ? codexHolders.items.map(
-        (holder): TokenHolderInsert => ({
-          id: crypto.randomUUID(),
-          mint: this.mint,
-          address: holder.address,
-          amount: holder.shiftedBalance,
-          percentage: (holder.shiftedBalance / tokenSupply) * 100,
-          lastUpdated: now,
-        }),
-      )
+          (holder): TokenHolderInsert => ({
+            id: crypto.randomUUID(),
+            mint: this.mint,
+            address: holder.address,
+            amount: holder.shiftedBalance,
+            percentage: (holder.shiftedBalance / tokenSupply) * 100,
+            lastUpdated: now,
+          }),
+        )
       : [];
 
     allHolders.sort((a, b) => b.percentage - a.percentage);
