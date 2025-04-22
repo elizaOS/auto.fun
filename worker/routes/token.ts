@@ -1814,6 +1814,49 @@ tokenRouter.post("/create-token", async (c) => {
     return c.json({ error: "Internal server error", details: error }, 500);
   }
 });
+/**
+ * used for importing tokens
+ * will only search in mainnet because it's easier to test popular solana tokens that way.
+ * we don't want to accidentally import devnet tokens into our system
+ */
+tokenRouter.post("/search-token", async (c) => {
+  const body = await c.req.json();
+  const { mint, requestor } = body;
+
+  if (!mint || typeof mint !== "string") {
+    return c.json({ error: "Invalid mint address" }, 400);
+  }
+
+  if (!requestor || typeof requestor !== "string") {
+    return c.json({ error: "Missing or invalid requestor" }, 400);
+  }
+
+  // Validate mint address
+  const mintPublicKey = new PublicKey(mint);
+  logger.log(`[search-token] Searching for token ${mint}`);
+
+  const connection = new Connection(c.env.MAINNET_SOLANA_RPC_URL, "confirmed");
+
+  // Try to find the token on mainnet
+  try {
+    const tokenInfo = await connection.getAccountInfo(mintPublicKey);
+    if (tokenInfo) {
+      logger.log(
+        `[search-token] Found token on primary network (${c.env.NETWORK || "default"})`,
+      );
+      // Continue with the token info we found
+      return await processTokenInfo(
+        c,
+        mintPublicKey,
+        tokenInfo,
+        connection,
+        requestor,
+      );
+    }
+  } catch (error) {
+    logger.error(`[search-token] Error checking primary network: ${error}`);
+  }
+});
 
 tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
   try {
@@ -2076,499 +2119,6 @@ tokenRouter.post("/token/:mint/update", async (c) => {
     logger.error("Error updating token:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
-    );
-  }
-});
-
-tokenRouter.get("/token/:mint/agents", async (c) => {
-  try {
-    const mint = c.req.param("mint");
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
-
-    const db = getDB(c.env);
-    const agents = await db
-      .select()
-      .from(tokenAgents) // Ensure tokenAgents is imported and defined in schema
-      .where(eq(tokenAgents.tokenMint, mint))
-      .orderBy(tokenAgents.createdAt);
-
-    // ** ADD Log: Check the agents data before sending **
-    logger.log(
-      `[GET /agents] Found agents for mint ${mint}:`,
-      JSON.stringify(agents),
-    );
-
-    // Return in the format expected by the frontend { agents: [...] }
-    return c.json({ agents: agents || [] });
-  } catch (error) {
-    logger.error("Error fetching token agents:", error);
-    return c.json({ agents: [], error: "Failed to fetch agents" }, 500);
-  }
-});
-
-tokenRouter.post("/token/:mint/agents", async (c) => {
-  try {
-    // Require authentication (check user variable set by middleware)
-    const user = c.get("user");
-    if (!user || !user.publicKey) {
-      logger.warn("Agent creation attempt failed: Authentication required");
-      return c.json({ error: "Authentication required" }, 401);
-    }
-
-    const mint = c.req.param("mint");
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
-
-    const body = await c.req.json();
-    const { twitterUserId } = body;
-
-    if (!twitterUserId || typeof twitterUserId !== "string") {
-      return c.json({ error: "Missing or invalid twitterUserId" }, 400);
-    }
-
-    const db = getDB(c.env);
-
-    // Check if this Twitter user is already linked to this specific token
-    const existingAgent = await db
-      .select()
-      .from(tokenAgents)
-      .where(
-        and(
-          eq(tokenAgents.tokenMint, mint),
-          eq(tokenAgents.twitterUserId, twitterUserId),
-        ),
-      )
-      .limit(1);
-
-    if (existingAgent && existingAgent.length > 0) {
-      logger.warn(
-        `Agent creation attempt failed: Twitter user ${twitterUserId} already linked to token ${mint}`,
-      );
-      return c.json(
-        {
-          error: "This Twitter account is already connected to this token.",
-          agent: existingAgent[0],
-        },
-        409, // Conflict
-      );
-    }
-
-    // --- Placeholder: Fetch Twitter Username and Image ---
-    // TODO: Replace with actual Twitter API call using credentials/client
-    const twitterUserName = twitterUserId;
-    const twitterImageUrl = "/default-avatar.png";
-    logger.warn(
-      `Placeholder: Using mock Twitter data for user ID ${twitterUserId}`,
-    );
-    // try {
-    //   const twitterProfile = await fetchTwitterProfile(c.env, twitterUserId);
-    //   twitterUserName = twitterProfile.username;
-    //   twitterImageUrl = twitterProfile.profile_image_url;
-    // } catch (twitterError) {
-    //    logger.error(`Failed to fetch Twitter profile for ${twitterUserId}:`, twitterError);
-    //    // Decide how to handle - proceed with placeholder or error out?
-    // }
-    // --- End Placeholder ---
-
-    // Check if the owner is the token creator to mark as official
-    const tokenData = await db
-      .select({ creator: tokens.creator })
-      .from(tokens)
-      .where(eq(tokens.mint, mint))
-      .limit(1);
-
-    const isOfficial =
-      tokenData &&
-      tokenData.length > 0 &&
-      tokenData[0].creator === user.publicKey;
-
-    const newAgentData = {
-      id: crypto.randomUUID(), // Generate ID if not auto-generated by DB
-      tokenMint: mint,
-      ownerAddress: user.publicKey, // The Solana address of the user linking the account
-      twitterUserId: twitterUserId,
-      twitterUserName: twitterUserName,
-      twitterImageUrl: twitterImageUrl,
-      official: isOfficial ? 1 : 0,
-      createdAt: new Date(), // Set timestamp if not auto-set by DB
-    };
-
-    // This insert call now expects 'official' as a number (0 or 1)
-    const result = await db
-      .insert(tokenAgents)
-      .values(newAgentData)
-      .returning();
-
-    if (!result || result.length === 0) {
-      throw new Error("Failed to insert new agent into database.");
-    }
-
-    const newAgent = result[0];
-    logger.log(
-      `Successfully created agent link: Token ${mint}, Twitter ${twitterUserName}, Owner ${user.publicKey}`,
-    );
-
-    // TODO: Emit WebSocket event for new agent?
-
-    return c.json(newAgent, 201); // Return the newly created agent with 201 status
-  } catch (error) {
-    logger.error("Error creating token agent:", error);
-    // Handle potential database unique constraint errors more gracefully if needed
-    if (
-      error instanceof Error &&
-      error.message.includes("duplicate key value violates unique constraint")
-    ) {
-      return c.json(
-        {
-          error:
-            "This Twitter account might already be linked elsewhere or a database conflict occurred.",
-        },
-        409,
-      );
-    }
-    return c.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to create agent",
-      },
-      500,
-    );
-  }
-});
-
-tokenRouter.delete("/token/:mint/agents/:agentId", async (c) => {
-  try {
-    // Require authentication
-    const user = c.get("user");
-    if (!user || !user.publicKey) {
-      logger.warn("Agent deletion attempt failed: Authentication required");
-      return c.json({ error: "Authentication required" }, 401);
-    }
-
-    const mint = c.req.param("mint");
-    const agentId = c.req.param("agentId"); // Assuming agentId is the unique ID (UUID)
-
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
-    // Basic UUID check (simplified)
-    if (!agentId || agentId.length < 30) {
-      return c.json({ error: "Missing or invalid agent ID" }, 400);
-    }
-
-    const db = getDB(c.env);
-
-    // Find the agent to check ownership
-    const agentToDelete = await db
-      .select()
-      .from(tokenAgents)
-      .where(and(eq(tokenAgents.id, agentId), eq(tokenAgents.tokenMint, mint)))
-      .limit(1);
-
-    if (!agentToDelete || agentToDelete.length === 0) {
-      return c.json(
-        { error: "Agent not found or does not belong to this token" },
-        404,
-      );
-    }
-
-    // Check if the authenticated user is the owner of this agent link
-    if (agentToDelete[0].ownerAddress !== user.publicKey) {
-      logger.warn(
-        `Agent deletion attempt failed: User ${user.publicKey} tried to delete agent ${agentId} owned by ${agentToDelete[0].ownerAddress}`,
-      );
-      return c.json(
-        { error: "You can only remove agents you have connected." },
-        403, // Forbidden
-      );
-    }
-
-    // Delete the agent
-    const result = await db
-      .delete(tokenAgents)
-      .where(eq(tokenAgents.id, agentId))
-      .returning({ id: tokenAgents.id }); // Return ID to confirm deletion
-
-    if (!result || result.length === 0) {
-      // This might happen if the agent was deleted between the select and delete calls
-      logger.warn(
-        `Agent ${agentId} not found during deletion, possibly already deleted.`,
-      );
-      return c.json({ error: "Agent not found during deletion attempt" }, 404);
-    }
-
-    logger.log(
-      `Successfully deleted agent: ID ${agentId}, Token ${mint}, User ${user.publicKey}`,
-    );
-
-    // TODO: Emit WebSocket event for agent removal?
-
-    return c.json({ success: true, message: "Agent removed successfully" });
-  } catch (error) {
-    logger.error("Error deleting token agent:", error);
-    return c.json({ error: "Failed to remove agent" }, 500);
-  }
-});
-
-tokenRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
-  try {
-    // Require authentication
-    const user = c.get("user");
-    if (!user || !user.publicKey) {
-      logger.warn("Agent connection attempt failed: Authentication required");
-      return c.json({ error: "Authentication required" }, 401);
-    }
-
-    const mint = c.req.param("mint");
-    if (!mint || mint.length < 32 || mint.length > 44) {
-      return c.json({ error: "Invalid mint address" }, 400);
-    }
-
-    const body = await c.req.json();
-    const { accessToken, userId } = body;
-
-    if (!accessToken || !userId) {
-      return c.json({ error: "Missing Twitter credentials" }, 400);
-    }
-
-    // Step 1: Attempt to fetch Twitter user info
-    let twitterUserId = userId;
-    let twitterUserName = `user_${userId.substring(0, 5)}`;
-    let twitterImageUrl = "/default-avatar.png";
-
-    try {
-      // Try to fetch user profile
-      logger.log(`Fetching Twitter profile for user ID: ${userId}`);
-      const profileResponse = await fetch(
-        "https://api.twitter.com/2/users/me?user.fields=profile_image_url",
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        },
-      );
-
-      if (profileResponse.ok) {
-        const profileData = await profileResponse.json();
-        logger.log("Twitter profile data:", profileData);
-
-        if (profileData.data && profileData.data.id) {
-          twitterUserId = profileData.data.id;
-          // If username is available, use it
-          if (profileData.data.username) {
-            twitterUserName = `@${profileData.data.username}`;
-          }
-
-          // Handle profile image if available
-          if (profileData.data.profile_image_url) {
-            // Store original Twitter URL temporarily
-            const originalImageUrl = profileData.data.profile_image_url;
-
-            // Replace '_normal' with '_400x400' to get a larger image
-            const largeImageUrl = originalImageUrl.replace(
-              "_normal",
-              "_400x400",
-            );
-
-            try {
-              // Fetch the image
-              const imageResponse = await fetch(largeImageUrl);
-              if (imageResponse.ok) {
-                // Generate a unique filename
-                const imageId = crypto.randomUUID();
-                const imageKey = `twitter-images/${imageId}.jpg`;
-
-                // Get the image as arrayBuffer
-                const imageBuffer = await imageResponse.arrayBuffer();
-
-                // Store in R2 if available
-                if (c.env.R2) {
-                  await c.env.R2.put(imageKey, imageBuffer, {
-                    httpMetadata: {
-                      contentType: "image/jpeg",
-                      cacheControl: "public, max-age=31536000", // Cache for 1 year
-                    },
-                  });
-
-                  // Set the URL to our cached version
-                  twitterImageUrl = `${c.env.API_URL}/api/twitter-image/${imageId}`;
-                  logger.log(
-                    `Cached Twitter profile image at: ${twitterImageUrl}`,
-                  );
-                } else {
-                  // If R2 is not available, use the original URL
-                  twitterImageUrl = largeImageUrl;
-                  logger.log("R2 not available, using original Twitter URL");
-                }
-              } else {
-                logger.warn(
-                  `Failed to fetch Twitter profile image: ${imageResponse.status}`,
-                );
-                // Fall back to the original URL
-                twitterImageUrl = originalImageUrl;
-              }
-            } catch (imageError) {
-              logger.error("Error caching Twitter profile image:", imageError);
-              // Fall back to the original URL
-              twitterImageUrl = originalImageUrl;
-            }
-          }
-        }
-      } else {
-        logger.warn(
-          `Twitter profile fetch failed with status: ${profileResponse.status}`,
-        );
-        // Continue with default values - we don't want to fail the agent creation
-        // just because we couldn't get user details
-      }
-    } catch (profileError) {
-      logger.error("Error fetching Twitter profile:", profileError);
-      // Continue with default values
-    }
-
-    // Step 2: Check if this Twitter user is already connected to this token
-    const db = getDB(c.env);
-    const existingAgent = await db
-      .select()
-      .from(tokenAgents)
-      .where(
-        and(
-          eq(tokenAgents.tokenMint, mint),
-          eq(tokenAgents.twitterUserId, twitterUserId),
-        ),
-      )
-      .limit(1);
-
-    if (existingAgent && existingAgent.length > 0) {
-      logger.warn(
-        `Agent creation attempt failed: Twitter user ${twitterUserId} already linked to token ${mint}`,
-      );
-      return c.json(
-        {
-          error: "This Twitter account is already connected to this token.",
-          agent: existingAgent[0],
-        },
-        409, // Conflict
-      );
-    }
-
-    // Step 3: Check if the owner is the token creator to mark as official
-    const tokenData = await db
-      .select({ creator: tokens.creator })
-      .from(tokens)
-      .where(eq(tokens.mint, mint))
-      .limit(1);
-
-    const isOfficial =
-      tokenData &&
-      tokenData.length > 0 &&
-      tokenData[0].creator === user.publicKey;
-
-    // Step 4: Create new agent
-    const newAgentData = {
-      tokenMint: mint,
-      ownerAddress: user.publicKey,
-      twitterUserId: twitterUserId,
-      twitterUserName: twitterUserName,
-      twitterImageUrl: twitterImageUrl,
-      official: isOfficial ? 1 : 0,
-      createdAt: new Date(),
-    };
-
-    const result = await db
-      .insert(tokenAgents)
-      .values([
-        {
-          ...newAgentData,
-          id: crypto.randomUUID(),
-        },
-      ])
-      .returning()
-      .onConflictDoNothing(); // Avoid duplicate
-
-    if (!result || result.length === 0) {
-      throw new Error("Failed to insert new agent into database.");
-    }
-
-    const newAgent = result[0];
-    logger.log(
-      `Successfully created agent link: Token ${mint}, Twitter ${twitterUserName}, Owner ${user.publicKey}`,
-    );
-
-    // TODO: Emit WebSocket event for new agent?
-
-    return c.json(newAgent, 201);
-  } catch (error) {
-    logger.error("Error connecting Twitter agent:", error);
-    return c.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to connect Twitter agent",
-      },
-      500,
-    );
-  }
-});
-
-tokenRouter.get("/twitter-image/:imageId", async (c) => {
-  try {
-    // Get the imageId from params
-    const imageId = c.req.param("imageId");
-    if (!imageId) {
-      return c.json({ error: "Image ID parameter is required" }, 400);
-    }
-
-    // Ensure R2 is available
-    if (!c.env.R2) {
-      return c.json({ error: "R2 storage is not available" }, 500);
-    }
-
-    // Construct the full storage key
-    const imageKey = `twitter-images/${imageId}.jpg`;
-
-    // Fetch the image from R2
-    const object = await c.env.R2.get(imageKey);
-
-    if (!object) {
-      return c.json({ error: "Twitter profile image not found" }, 404);
-    }
-
-    // Get the content type and data
-    const contentType = object.httpMetadata?.contentType || "image/jpeg";
-    const data = await object.arrayBuffer();
-
-    // Set CORS headers for browser access
-    const corsHeaders = {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "*",
-      "Access-Control-Max-Age": "86400",
-    };
-
-    // Return the image with appropriate headers
-    return new Response(data, {
-      headers: {
-        "Content-Type": contentType,
-        "Content-Length": object.size.toString(),
-        "Cache-Control": "public, max-age=31536000", // Cache for 1 year
-        ...corsHeaders,
-      },
-    });
-  } catch (error) {
-    logger.error("Error serving Twitter profile image:", error);
-    return c.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to serve Twitter profile image",
-      },
       500,
     );
   }

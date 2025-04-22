@@ -25,6 +25,7 @@ import {
   updateHoldersCache,
 } from "./util";
 import { getWebSocketClient } from "./websocket-client";
+import { generateAdditionalTokenImages } from "./routes/generation";
 
 // Store the last processed signature to avoid duplicate processing
 const lastProcessedSignature: string | null = null;
@@ -567,6 +568,7 @@ export async function cron(
   ctx: ExecutionContext | { cron: string },
 ): Promise<void> {
   console.log("Running cron job...");
+  return;
   try {
     // Check if this is a legitimate Cloudflare scheduled trigger
     // For scheduled triggers, the ctx should have a 'cron' property
@@ -589,36 +591,160 @@ export async function cron(
 }
 
 export async function updateTokens(env: Env) {
-  // Then update token prices
   const db = getDB(env);
+  logger.log("Starting updateTokens cron task...");
+
+  // Fetch active tokens with necessary fields
   const activeTokens = await db
-    .select()
+    .select({
+      mint: tokens.mint,
+      imported: tokens.imported,
+      description: tokens.description,
+      id: tokens.id,
+      name: tokens.name,
+      ticker: tokens.ticker,
+      url: tokens.url,
+      image: tokens.image,
+      twitter: tokens.twitter,
+      telegram: tokens.telegram,
+      website: tokens.website,
+      discord: tokens.discord,
+      farcaster: tokens.farcaster,
+      creator: tokens.creator,
+      nftMinted: tokens.nftMinted,
+      lockId: tokens.lockId,
+      lockedAmount: tokens.lockedAmount,
+      lockedAt: tokens.lockedAt,
+      harvestedAt: tokens.harvestedAt,
+      status: tokens.status,
+      createdAt: tokens.createdAt,
+      lastUpdated: tokens.lastUpdated,
+      completedAt: tokens.completedAt,
+      withdrawnAt: tokens.withdrawnAt,
+      migratedAt: tokens.migratedAt,
+      marketId: tokens.marketId,
+      baseVault: tokens.baseVault,
+      quoteVault: tokens.quoteVault,
+      withdrawnAmount: tokens.withdrawnAmount,
+      reserveAmount: tokens.reserveAmount,
+      reserveLamport: tokens.reserveLamport,
+      virtualReserves: tokens.virtualReserves,
+      liquidity: tokens.liquidity,
+      currentPrice: tokens.currentPrice,
+      marketCapUSD: tokens.marketCapUSD,
+      tokenPriceUSD: tokens.tokenPriceUSD,
+      solPriceUSD: tokens.solPriceUSD,
+      curveProgress: tokens.curveProgress,
+      curveLimit: tokens.curveLimit,
+      priceChange24h: tokens.priceChange24h,
+      price24hAgo: tokens.price24hAgo,
+      volume24h: tokens.volume24h,
+      inferenceCount: tokens.inferenceCount,
+      lastVolumeReset: tokens.lastVolumeReset,
+      lastPriceUpdate: tokens.lastPriceUpdate,
+      holderCount: tokens.holderCount,
+      txId: tokens.txId,
+      migration: tokens.migration,
+      withdrawnAmounts: tokens.withdrawnAmounts,
+      poolInfo: tokens.poolInfo,
+      lockLpTxId: tokens.lockLpTxId,
+      featured: tokens.featured,
+      verified: tokens.verified,
+      hidden: tokens.hidden,
+      tokenSupply: tokens.tokenSupply,
+      tokenSupplyUiAmount: tokens.tokenSupplyUiAmount,
+      tokenDecimals: tokens.tokenDecimals,
+      lastSupplyUpdate: tokens.lastSupplyUpdate,
+    })
     .from(tokens)
     .where(eq(tokens.status, "active"));
 
+  logger.log(`Found ${activeTokens.length} active tokens to process.`);
+
   await Promise.all([
+    // Update Market Data
     (async () => {
-      const updatedTokens = await bulkUpdatePartialTokens(activeTokens, env);
-      logger.log(`Updated prices for ${updatedTokens.length} tokens`);
+      try {
+        // Pass the fetched tokens (cast needed because select specifies columns)
+        const updatedTokens = await bulkUpdatePartialTokens(
+          activeTokens as Token[],
+          env,
+        );
+        logger.log(`Cron: Updated prices for ${updatedTokens.length} tokens`);
+      } catch (err) {
+        logger.error("Cron: Error during bulkUpdatePartialTokens:", err);
+      }
     })(),
+
+    // Update Holders Cache
     (async () => {
-      // Update holder data for each active token
+      logger.log("Cron: Starting holder cache update loop...");
       for (const token of activeTokens) {
         try {
           if (token.mint) {
-            logger.log(`Updating holder data for token: ${token.mint}`);
-            const holderCount = await updateHoldersCache(env, token.mint);
-            logger.log(
-              `Updated holders for ${token.mint}: ${holderCount} holders`,
-            );
+            await updateHoldersCache(env, token.mint);
           }
         } catch (err) {
-          logger.error(`Error updating holders for token ${token.mint}:`, err);
+          logger.error(
+            `Cron: Error updating holders for token ${token.mint}:`,
+            err,
+          );
         }
       }
+      logger.log("Cron: Finished holder cache update loop.");
     })(),
+
+    // Replenish Pre-Generated Tokens
     (async () => {
-      await checkAndReplenishTokens(env);
+      try {
+        await checkAndReplenishTokens(env);
+        logger.log("Cron: Checked and replenished pre-generated tokens.");
+      } catch (err) {
+        logger.error("Cron: Error during checkAndReplenishTokens:", err);
+      }
+    })(),
+
+    // Check/Generate Missing Images
+    (async () => {
+      logger.log("Cron: Starting check for missing generation images...");
+      for (const token of activeTokens) {
+        if (token.mint && Number(token.imported) === 0) {
+          try {
+            if (env.R2) {
+              const generationImagesPrefix = `generations/${token.mint}/`;
+              const objects = await env.R2.list({
+                prefix: generationImagesPrefix,
+                limit: 1,
+              });
+              const hasGenerationImages = objects.objects.length > 0;
+
+              if (!hasGenerationImages) {
+                logger.log(
+                  `Cron: Triggering image generation for: ${token.mint}`,
+                );
+                await generateAdditionalTokenImages(
+                  env,
+                  token.mint,
+                  token.description || "",
+                );
+              }
+            } else {
+              logger.warn(
+                "Cron: R2 storage not configured, skipping image check.",
+              );
+              break; // No need to check further tokens if R2 isn't there
+            }
+          } catch (imageCheckError) {
+            logger.error(
+              `Cron: Error checking/generating images for ${token.mint}:`,
+              imageCheckError,
+            );
+          }
+        }
+      }
+      logger.log("Cron: Finished checking for missing generation images.");
     })(),
   ]);
+
+  logger.log("Finished updateTokens cron task.");
 }

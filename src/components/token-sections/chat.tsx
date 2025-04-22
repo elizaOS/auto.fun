@@ -815,7 +815,7 @@ export default function ChatSection() {
             {/* Message Display Area */}
             <div
               ref={chatContainerRef}
-              className="flex-grow overflow-y-auto p-2 space-y-3 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800"
+              className="flex-grow overflow-y-auto p-2 space-y-3 scrollbar-thin scrollbar-thumb-[#03FF24] scrollbar-track-black"
             >
               {/* --- Top Sentinel for Upward Pagination --- */}
               <div ref={topSentinelRef} style={{ height: "1px" }} />
