@@ -21,7 +21,7 @@ export class CacheService {
    * Get SOL price from cache
    */
   async getSolPrice(): Promise<number | null> {
-    const cacheKey = this.redisCache.getKey('solPrice');
+    const cacheKey = this.redisCache.getKey("solPrice");
     try {
       const cachedValue = await this.redisCache.get(cacheKey);
       if (cachedValue) {
@@ -34,7 +34,10 @@ export class CacheService {
       logger.log(`Cache miss for SOL price (${cacheKey})`);
       return null;
     } catch (error) {
-      logger.error(`Error getting SOL price from Redis cache (${cacheKey}):`, error);
+      logger.error(
+        `Error getting SOL price from Redis cache (${cacheKey}):`,
+        error,
+      );
       return null;
     }
   }
@@ -45,12 +48,17 @@ export class CacheService {
    * @param ttlSeconds How long the cache should live (in seconds)
    */
   async setSolPrice(price: number, ttlSeconds: number = 30): Promise<void> {
-    const cacheKey = this.redisCache.getKey('solPrice');
+    const cacheKey = this.redisCache.getKey("solPrice");
     try {
       await this.redisCache.set(cacheKey, price.toString(), ttlSeconds);
-      logger.log(`Cached SOL price (${price}) in Redis with TTL ${ttlSeconds}s`);
+      logger.log(
+        `Cached SOL price (${price}) in Redis with TTL ${ttlSeconds}s`,
+      );
     } catch (error) {
-      logger.error(`Error setting SOL price in Redis cache (${cacheKey}):`, error);
+      logger.error(
+        `Error setting SOL price in Redis cache (${cacheKey}):`,
+        error,
+      );
     }
   }
 

@@ -4,11 +4,7 @@ import { getDB, tokens } from "../db";
 import { Env } from "../env";
 import { retryOperation } from "../raydium/utils";
 import { createRedisCache } from "../redis/redisCacheService";
-import {
-  calculateFeaturedScore,
-  getFeaturedMaxValues,
-  logger
-} from "../util";
+import { calculateFeaturedScore, getFeaturedMaxValues, logger } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 
 // Define max swaps to keep in Redis list (consistent with other files)

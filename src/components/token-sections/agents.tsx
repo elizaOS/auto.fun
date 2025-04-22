@@ -122,12 +122,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
         // Fetch Token Agents using the new dedicated endpoint
         const fetchUrl = `${API_BASE_URL}/api/token/${tokenMint}/agents`;
         const agentsResponse = await fetch(fetchUrl);
-
-        console.log("agentsResponse", agentsResponse);
-
         const responseText = await agentsResponse.text();
-
-        console.log("responseText", responseText);
 
         if (!agentsResponse.ok) {
           // Try to get error message from body (use responseText now)
@@ -157,8 +152,6 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
           );
           throw new Error("Invalid response format when fetching agents.");
         }
-
-        console.log("agentsData", agentsData);
 
         setTokenAgents(agentsData.agents);
       } catch (error) {

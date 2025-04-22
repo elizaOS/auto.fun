@@ -13,7 +13,10 @@ import { getToken } from "./raydium/migration/migrations";
 import * as raydium_vault_IDL from "./raydium/raydium_vault.json";
 import { RaydiumVault } from "./raydium/types/raydium_vault";
 import { createRedisCache } from "./redis/redisCacheService";
-import { checkAndReplenishTokens, generateAdditionalTokenImages } from "./routes/generation";
+import {
+  checkAndReplenishTokens,
+  generateAdditionalTokenImages,
+} from "./routes/generation";
 import { updateHoldersCache } from "./routes/token";
 import * as IDL from "./target/idl/autofun.json";
 import { Autofun } from "./target/types/autofun";
@@ -22,7 +25,8 @@ import {
   bulkUpdatePartialTokens,
   calculateFeaturedScore,
   createNewTokenData,
-  getFeaturedMaxValues, logger
+  getFeaturedMaxValues,
+  logger,
 } from "./util";
 import { getWebSocketClient } from "./websocket-client";
 

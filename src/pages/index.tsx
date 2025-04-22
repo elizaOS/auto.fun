@@ -133,7 +133,6 @@ export default function Page() {
       // Create new observer
       observer.current = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting && query.hasNextPage) {
-          console.log("Type of fetchNextPage:", typeof query.fetchNextPage);
           // Explicitly cast to any to bypass persistent type error
           (query.fetchNextPage as any)();
         }

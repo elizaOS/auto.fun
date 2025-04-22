@@ -109,7 +109,6 @@ router.post("/codex-webhook", async (c) => {
 
   const webhookBody = WebhookTokenPairEvent.parse(body);
 
-
   const swap = webhookBody.data.event;
   // const db = getDB(c.env);
   // Determine which token index (0 or 1) this event is for
