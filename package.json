@@ -111,6 +111,7 @@
     "socket.io-serverless": "^0.2.1",
     "sqlite3": "^5.1.7",
     "tailwind-merge": "^3.0.2",
+    "tailwind-scrollbar": "^4.0.2",
     "three": "^0.174.0",
     "tweetnacl": "^1.0.3",
     "util": "^0.12.5",

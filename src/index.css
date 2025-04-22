@@ -210,3 +210,18 @@ button {
     rgba(0, 0, 0, 0.5) 100%
   );
 }
+
+/* Custom scrollbar styling for chat container */
+.chat-scroll-container::-webkit-scrollbar {
+  width: 8px; /* Adjust width as needed (similar to scrollbar-thin) */
+}
+
+.chat-scroll-container::-webkit-scrollbar-track {
+  background: black;
+}
+
+.chat-scroll-container::-webkit-scrollbar-thumb {
+  background-color: #03FF24; /* Green thumb */
+  border-radius: 0; /* Force rectangular */
+  border: none;
+}
