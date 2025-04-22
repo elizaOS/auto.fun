@@ -1,4 +1,11 @@
-import React, { useState } from "react";
+import React, {
+  Ref,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { twMerge } from "tailwind-merge";
 
 interface SkeletonImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
@@ -15,36 +22,107 @@ const SkeletonImage: React.FC<SkeletonImageProps> = ({
   ...props
 }) => {
   const [loaded, setLoaded] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const [optimizedSrc, setOptimizedSrc] = useState<string>(src);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleLoad = () => {
     setLoaded(true);
   };
 
+  const imageOptimizationEnabled = src?.includes(
+    "https://auto.fun/cdn-cgi/image/"
+  );
+
+  console.log({ src });
+
+  const updateImageSrc = useCallback(() => {
+    if (imageOptimizationEnabled && ref?.current) {
+      const width = ref.current.clientWidth;
+      const height = ref.current.clientHeight;
+
+      if (width > 0 && height > 0) {
+        const cdnPathRegex = /https:\/\/auto\.fun\/cdn-cgi\/image\/([^/]*)/;
+        const match = src.match(cdnPathRegex);
+
+        let updatedSrc = src;
+
+        if (match && match[1]) {
+          const cdnParams = match[1];
+
+          const updatedParams = cdnParams
+            .split(",")
+            .map((param) => {
+              if (param.startsWith("width=")) {
+                return `width=${width}`;
+              } else if (param.startsWith("height=")) {
+                return `height=${height}`;
+              }
+              return param;
+            })
+            .join(",");
+
+          updatedSrc = src.replace(
+            cdnPathRegex,
+            `https://auto.fun/cdn-cgi/image/${updatedParams}`
+          );
+        }
+
+        setOptimizedSrc(updatedSrc);
+      }
+    } else {
+      setOptimizedSrc(src);
+    }
+  }, [ref, src, imageOptimizationEnabled]);
+
+  const handleResize = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      updateImageSrc();
+    }, 300);
+  }, [updateImageSrc]);
+
+  useEffect(() => {
+    updateImageSrc();
+    
+    window.addEventListener("resize", handleResize);
+    
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [updateImageSrc, handleResize]);
+
   return (
     <div
+      ref={ref}
       className={twMerge([
         "size-full select-none",
         parentClassName ? parentClassName : "",
       ])}
     >
-      {/* Skeleton placeholder */}
       {!loaded && (
         <div
           className={twMerge(
             "absolute inset-0 bg-autofun-background-input animate-pulse size-full",
-            className,
+            className
           )}
         />
       )}
       <img
         loading="lazy"
-        src={src}
+        src={optimizedSrc}
         alt={alt}
         onLoad={handleLoad}
         className={twMerge(
           "transition-opacity duration-200 object-cover size-full",
           loaded ? "opacity-100" : "opacity-0",
-          className,
+          className
         )}
         {...props}
       />

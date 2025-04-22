@@ -158,6 +158,6 @@ export const resizeImage = (url: string, width: number, height: number) => {
   if (url.includes("ipfs") || !url.startsWith("http")) {
     return url;
   } else {
-    return `https://auto.fun/cdn-cgi/image/width=${width},height=${height},format=auto/${url}`;
+    return `https://auto.fun/cdn-cgi/image/width=${width},height=${height},sharpen=1,format=auto/${url}`;
   }
 };
