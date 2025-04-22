@@ -12,7 +12,7 @@ import { TokenMigrator } from "./raydium/migration/migrateToken";
 import { getToken } from "./raydium/migration/migrations";
 import * as raydium_vault_IDL from "./raydium/raydium_vault.json";
 import { RaydiumVault } from "./raydium/types/raydium_vault";
-import { getRedisCache } from "./redis/redisCacheService";
+import { createRedisCache } from "./redis/redisCacheService";
 import {
   checkAndReplenishTokens,
   generateAdditionalTokenImages,
@@ -349,7 +349,7 @@ async function handleSwap(
     };
 
     const db = getDB(env);
-    const redisCache = getRedisCache(env);
+    const redisCache = createRedisCache(env);
     const listKey = redisCache.getKey(`swapsList:${mintAddress}`);
 
     try {
@@ -515,7 +515,7 @@ export async function cron(
 
 export async function updateTokens(env: Env) {
   const db = getDB(env);
-  const cache = getRedisCache(env);
+  const cache = createRedisCache(env);
   logger.log("Starting updateTokens cron task...");
 
   // Fetch active tokens with necessary fields
