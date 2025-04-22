@@ -104,12 +104,10 @@ router.post("/codex-webhook", async (c) => {
 
   const webhookBody = WebhookTokenPairEvent.parse(body);
 
-
   const swap = webhookBody.data.event;
   // const db = getDB(c.env);
   // Determine which token index (0 or 1) this event is for
   const tokenIndex = swap.eventType2.startsWith("Token1") ? 1 : 0;
-
 
   const tokenMint = tokenIndex === 1 ? swap.token1Address : swap.token0Address;
 
@@ -132,7 +130,12 @@ router.post("/codex-webhook", async (c) => {
   const ext = new ExternalToken(c.env, tokenMint);
   //  we just call this to update the last 5 swaps in the db
   await ext.updateLatestSwapData(3);
-  const latestCandle = await getLatestCandle(c.env, tokenMint, swap, selectedToken);
+  const latestCandle = await getLatestCandle(
+    c.env,
+    tokenMint,
+    swap,
+    selectedToken,
+  );
 
   await ext.updateMarketAndHolders();
 
@@ -141,8 +144,6 @@ router.post("/codex-webhook", async (c) => {
     message: "Completed",
   });
 });
-
-
 
 // Start monitoring batch
 router.post("/codex-start-monitoring", async (c) => {

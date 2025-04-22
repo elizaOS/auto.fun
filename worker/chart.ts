@@ -53,7 +53,12 @@ export type CandlePrice = {
   time: number;
 };
 
-export async function getLatestCandle(env: Env, tokenMint: string, swap: any, tokenInfo?: any) {
+export async function getLatestCandle(
+  env: Env,
+  tokenMint: string,
+  swap: any,
+  tokenInfo?: any,
+) {
   // Get a time range that covers just this swap
   const swapTime = new Date(swap.timestamp).getTime() / 1000;
   const candlePeriod = 60; // 1 min default
@@ -68,7 +73,6 @@ export async function getLatestCandle(env: Env, tokenMint: string, swap: any, to
       .where(eq(tokens.mint, tokenMint))
       .limit(1);
   }
-
 
   if (tokenInfo?.status === "locked") {
     try {
@@ -342,7 +346,7 @@ export function getCandleData(priceFeeds: PriceFeedInfo[], range: number) {
     let en = priceHistory[pIndex].price;
     let vol = 0;
     const prevIndex = pIndex;
-    for (; pIndex < priceHistory.length;) {
+    for (; pIndex < priceHistory.length; ) {
       if (hi < priceHistory[pIndex].price) hi = priceHistory[pIndex].price;
       if (lo > priceHistory[pIndex].price) lo = priceHistory[pIndex].price;
       en = priceHistory[pIndex].price;

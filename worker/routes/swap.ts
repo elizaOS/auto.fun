@@ -92,9 +92,9 @@ router.get("/swaps/:mint", async (c) => {
           logger.log(`[Cache Hit] /swaps/${mint}?limit=${limit}&page=${page}`);
           const parsedData = JSON.parse(cachedData);
           if (parsedData && Array.isArray(parsedData.swaps)) {
-             return c.json(parsedData);
+            return c.json(parsedData);
           } else {
-             logger.warn(`Invalid cache data for ${cacheKey}, fetching fresh.`);
+            logger.warn(`Invalid cache data for ${cacheKey}, fetching fresh.`);
           }
         } else {
           logger.log(`[Cache Miss] /swaps/${mint}?limit=${limit}&page=${page}`);
@@ -120,7 +120,7 @@ router.get("/swaps/:mint", async (c) => {
       db
         .select({ count: sql<number>`count(*)` })
         .from(swaps)
-        .where(eq(swaps.tokenMint, mint))
+        .where(eq(swaps.tokenMint, mint)),
     ]);
 
     const totalSwaps = Number(totalSwapsQuery[0]?.count || 0);
@@ -141,12 +141,12 @@ router.get("/swaps/:mint", async (c) => {
 
     // --- BEGIN REDIS CACHE SET ---
     if (redisCache && responseData.swaps && responseData.swaps.length > 0) {
-       try {
-         await redisCache.set(cacheKey, JSON.stringify(responseData), 15);
-         logger.log(`Cached data for ${cacheKey} with 15s TTL`);
-       } catch (cacheError) {
-         logger.error(`Redis cache SET error for swaps:`, cacheError);
-       }
+      try {
+        await redisCache.set(cacheKey, JSON.stringify(responseData), 15);
+        logger.log(`Cached data for ${cacheKey} with 15s TTL`);
+      } catch (cacheError) {
+        logger.error(`Redis cache SET error for swaps:`, cacheError);
+      }
     }
     // --- END REDIS CACHE SET ---
 
