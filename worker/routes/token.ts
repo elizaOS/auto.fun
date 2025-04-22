@@ -1260,35 +1260,17 @@ tokenRouter.get("/tokens", async (c) => {
         validSortColumns[sortBy as keyof typeof validSortColumns] ||
         tokens.createdAt;
       if (sortOrder.toLowerCase() === "desc") {
-        if (sortColumn === tokens.marketCapUSD) {
-          // baseQuery = baseQuery.orderBy(sql`${sortColumn} DESC NULLS LAST`);
-          baseQuery = baseQuery.orderBy(
-            sql`CASE 
-                   WHEN ${tokens.marketCapUSD} IS NULL OR ${tokens.marketCapUSD}::text = 'NaN' THEN 1 
-                   ELSE 0 
-                 END`,
-            sql`${tokens.marketCapUSD} DESC`
-          );
-          logger.log(`[Query Build] Applied sort: ${sortBy} DESC NULLS LAST`);
-        } else {
-          // baseQuery = baseQuery.orderBy(desc(sortColumn));
-          baseQuery = baseQuery.orderBy(
-            sql`CASE 
-                   WHEN ${sortColumn} IS NULL OR ${sortColumn}::text = 'NaN' THEN 1 
-                   ELSE 0 
-                 END`,
-            sql`${sortColumn} DESC`
-          );
-          logger.log(`[Query Build] Applied sort: ${sortBy} DESC`);
-        }
+        baseQuery = baseQuery.orderBy(
+          sql`CASE 
+                  WHEN ${sortColumn} IS NULL OR ${sortColumn}::text = 'NaN' THEN 1 
+                  ELSE 0 
+                END`,
+          sql`${sortColumn} DESC`
+        );
+        logger.log(`[Query Build] Applied sort: ${sortBy} DESC`);
       } else {
-        if (sortColumn === tokens.marketCapUSD) {
-          baseQuery = baseQuery.orderBy(sql`${sortColumn} ASC NULLS FIRST`);
-          logger.log(`[Query Build] Applied sort: ${sortBy} ASC NULLS FIRST`);
-        } else {
-          baseQuery = baseQuery.orderBy(sortColumn);
-          logger.log(`[Query Build] Applied sort: ${sortBy} ASC`);
-        }
+        baseQuery = baseQuery.orderBy(sortColumn);
+        logger.log(`[Query Build] Applied sort: ${sortBy} ASC`);
       }
     }
 
@@ -1336,7 +1318,6 @@ tokenRouter.get("/tokens", async (c) => {
       logger.log(
         `[Execution] baseQuery finished, ${tokensResult?.length} results. Awaiting countQuery...`,
       );
-
       // @ts-ignore - Drizzle's execute() type might not be perfectly inferred
       // const countResult = await Promise.race([
       //   countQuery.execute(),
