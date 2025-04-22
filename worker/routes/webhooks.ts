@@ -1,17 +1,17 @@
-import { Hono } from "hono";
-import { Env } from "../env";
-import { processTransactionLogs } from "../cron";
-import { z } from "zod";
-import crypto from "crypto";
-import { getDB, tokens } from "../db";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { getWebSocketClient } from "../websocket-client";
+import crypto from "crypto";
+import { eq } from "drizzle-orm";
+import { Hono } from "hono";
+import { z } from "zod";
+import { getLatestCandle } from "../chart";
+import { processTransactionLogs } from "../cron";
+import { getDB, tokens } from "../db";
+import { Env } from "../env";
+import { ExternalToken } from "../externalToken";
 import { createRedisCache } from "../redis/redisCacheService";
 import { startMonitoringBatch } from "../tokenSupplyHelpers/monitoring";
-import { getLatestCandle } from "../chart";
-import { ExternalToken } from "../externalToken";
 import { logger } from "../util";
-import { eq, and } from "drizzle-orm";
+import { getWebSocketClient } from "../websocket-client";
 
 const router = new Hono<{
   Bindings: Env;
@@ -195,8 +195,6 @@ router.post("/codex-webhook", async (c) => {
       message: "Token not in db",
     });
   }
-  const selectedToken = token[0];
-
   const wsClient = getWebSocketClient(c.env);
 
   const ext = new ExternalToken(c.env, tokenMint);
