@@ -7,6 +7,7 @@ import {
   useQueryClient,
   QueryKey,
   useQuery,
+  keepPreviousData,
 } from "@tanstack/react-query";
 
 interface PaginatedResponse<T> {
@@ -205,6 +206,7 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
     refetchOnReconnect: true,
     retry: 3,
     enabled: enabled,
+    placeholderData: keepPreviousData,
   });
 
   const fetchedData = query?.data?.fetchedData || [];
@@ -268,7 +270,7 @@ export const usePagination = <TOutput extends Record<string, unknown>, TInput>({
   return {
     items: fetchedData,
     setItems,
-    isLoading: query?.isPending && !fetchedData.length,
+    isLoading: query?.isLoading,
     hasNextPage: hasMore,
     hasPreviousPage: page > 1,
     currentPage: page,

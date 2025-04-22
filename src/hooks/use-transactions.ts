@@ -26,7 +26,13 @@ const TransactionSchema = z
 
 export type Transaction = z.infer<typeof TransactionSchema>;
 
-export const useTransactions = ({ tokenId }: { tokenId: string }) => {
+export const useTransactions = ({
+  tokenId,
+  isPaused,
+}: {
+  tokenId: string;
+  isPaused?: boolean;
+}) => {
   const pageSize = 20;
   const pagination = usePagination({
     endpoint: `/api/swaps/${tokenId}`,
@@ -35,12 +41,14 @@ export const useTransactions = ({ tokenId }: { tokenId: string }) => {
     itemsPropertyName: "swaps",
     sortBy: "timestamp",
     sortOrder: "desc",
+    enabled: isPaused ? false : true,
   });
 
   useEffect(() => {
     const socket = getSocket();
 
     socket.on("newSwap", (transaction: any) => {
+      if (isPaused) return;
       let newTransactions: any = [];
       if (Array.isArray(transaction)) {
         newTransactions = transaction.map((item) =>
