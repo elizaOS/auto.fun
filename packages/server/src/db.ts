@@ -260,7 +260,6 @@ export const metadata = pgTable("metadata", {
 });
 
 export function getDB() {
-  console.log("env.DATABASE_URL", process.env.DATABASE_URL)
   const sql = neon(process.env.DATABASE_URL!);
   // Instantiate Drizzle with your schema
   return drizzle(sql, { schema });
