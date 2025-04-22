@@ -10,7 +10,6 @@ let sharedRedisPool: RedisPool | null = null;
 
 // Function to initialize and/or get the shared pool
 export function getSharedRedisPool(): RedisPool {
-  const env = process.env;
   if (!sharedRedisPool) {
     logger.info("Initializing Shared Redis Pool");
     sharedRedisPool = new RedisPool({
