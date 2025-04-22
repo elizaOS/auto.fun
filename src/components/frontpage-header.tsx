@@ -1,7 +1,7 @@
-import * as CANNON from "cannon-es";
-import { useEffect, useMemo, useRef, useState } from "react";
-import * as THREE from "three";
 import { IToken } from "@/types";
+import * as CANNON from "cannon-es";
+import { useEffect, useRef, useState } from "react";
+import * as THREE from "three";
 // import { getToken } from "@/utils/api";
 import { resizeImage } from "@/utils";
 
@@ -538,7 +538,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
     const world = new CANNON.World();
     worldRef.current = world;
     world.gravity.set(0, -9.8 * 10, 0); // Less intense gravity
-    world.solver.iterations = 12; // Increase iterations from 7 to 12 for better accuracy
+    world.solver.iterations = 7; // Increase iterations from 7 to 12 for better accuracy
     world.broadphase = new CANNON.SAPBroadphase(world); // More efficient broadphase
     world.allowSleep = true; // Critical for performance
 
