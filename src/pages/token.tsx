@@ -34,7 +34,6 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
 import { Tooltip } from "react-tooltip";
-import { twMerge } from "tailwind-merge";
 
 // List of admin wallet addresses (copied from worker/routes/adminAddresses.ts)
 const adminAddresses: string[] = [
@@ -107,23 +106,13 @@ export default function Page() {
 
   const [activeTab, setActiveTab] = useState<"chart" | "ai" | "chat">("chart");
 
-  const [signature, setSignature] = useState<string | undefined>(undefined);
-
-  const onSwapCompleted = (signature: string) => {
-    setSignature(signature);
-    queryClient.invalidateQueries({ queryKey: ["token", address] });
-    setTimeout(() => {
-      setSignature(undefined);
-    }, 1000);
-  };
-
   // Fetch token details from API
   const tokenQuery = useQuery({
     queryKey: ["token", address],
     queryFn: async () => {
       if (!address) throw new Error("No address passed");
       try {
-        return await getToken({ address, signature });
+        return await getToken({ address });
       } catch (error) {
         console.error(`Token page: Error fetching token data:`, error);
         throw error;
@@ -216,8 +205,8 @@ export default function Page() {
     }
   };
 
-  if (tokenQuery?.isPending) {
-    return <Loader />;
+  if (tokenQuery?.isLoading) {
+    return <Loader isFullscreen />;
   }
 
   if (!tokenQuery?.data && tokenQuery?.isError) {
@@ -384,7 +373,7 @@ export default function Page() {
                   ];
 
                   const availableLinks = socialLinks.filter(
-                    (link) => !!link.url
+                    (link) => !!link.url,
                   );
 
                   if (availableLinks.length === 0) {
@@ -541,7 +530,7 @@ export default function Page() {
           {/* Right Column - 25% - Trading and Bonding Curve */}
           <div className="w-full lg:w-1/4 flex flex-col md:flex-row lg:flex-col gap-3 order-2 lg:order-3">
             {/* Trade Component - Now at the top */}
-            <Trade token={token} onSwapCompleted={onSwapCompleted} />
+            <Trade token={token} />
             <div className="flex flex-col gap-3 md:min-w-[400px] lg:min-w-[0]">
               {/* Balance and Value */}
               <div className={`flex flex-col gap-4 my-4 mx-2`}>
@@ -563,7 +552,7 @@ export default function Page() {
                     {formatNumber(
                       tokenBalance * currentPrice * solanaPrice,
                       true,
-                      false
+                      false,
                     )}
                   </span>
                 </div>
@@ -626,7 +615,7 @@ export default function Page() {
                         (token?.reserveLamport - token?.virtualReserves) /
                           LAMPORTS_PER_SOL,
                         true,
-                        true
+                        true,
                       )}{" "}
                       SOL in the bonding curve.
                     </p>

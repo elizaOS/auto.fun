@@ -5,20 +5,15 @@ import { IToken } from "@/types";
 import { formatNumber } from "@/utils";
 import { useProgram } from "@/utils/program";
 import { getSwapAmount, getSwapAmountJupiter } from "@/utils/swapUtils";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Info, Wallet } from "lucide-react";
 import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
 import { BN } from "bn.js";
 
-export default function Trade({
-  token,
-  onSwapCompleted,
-}: {
-  token: IToken;
-  onSwapCompleted: (signature: string) => void;
-}) {
+export default function Trade({ token }: { token: IToken }) {
+  const queryClient = useQueryClient();
   // const { solPrice: contextSolPrice } = useSolPriceContext();
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
 
@@ -52,7 +47,7 @@ export default function Trade({
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status
+    token?.status,
   );
 
   const isButtonDisabled = (amount: number | string) => {
@@ -84,7 +79,7 @@ export default function Trade({
 
       const amountBN = new BN(amount);
       const tokenDecimalsBN = new BN(
-        token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6
+        token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6,
       );
       const convertedAmountT = isTokenSelling
         ? amountBN.mul(tokenDecimalsBN).toNumber()
@@ -107,7 +102,7 @@ export default function Trade({
               // they are not dynamically calculated but instead use the
               // default values leading to slightly incorrect calculations
               token.reserveAmount,
-              token.reserveLamport
+              token.reserveLamport,
             );
 
       const convertedAmount = new BN(swapAmount).div(decimals).toNumber();
@@ -130,14 +125,15 @@ export default function Trade({
   const onSwap = async () => {
     if (!sellAmount) return;
 
-    const res = (await executeSwap({
+    await executeSwap({
       amount: sellAmount,
       style: isTokenSelling ? "sell" : "buy",
       tokenAddress: token.mint,
       token,
-    })) as { signature: string };
+    });
 
-    onSwapCompleted(res.signature);
+    queryClient.invalidateQueries({ queryKey: ["token", token.mint] });
+
     setSellAmount(0);
   };
 
@@ -169,7 +165,7 @@ export default function Trade({
                   setSellAmount(
                     sellAmount !== undefined
                       ? sellAmount
-                      : formatAmount(convertedAmount)
+                      : formatAmount(convertedAmount),
                   );
                 }
                 setIsTokenSelling(true);
