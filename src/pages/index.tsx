@@ -41,21 +41,21 @@ export default function Page() {
   // Manage sort/filter state locally, initializing from localStorage using the hook
   const [gridSortBy, setGridSortBy] = useUrlSearchParams<GridSortByType>(
     "category",
-    "newest",
+    "newest"
   );
   const [tokenSource, setTokenSource] = useUrlSearchParams<TokenSourceType>(
     "source",
-    "all",
+    "all"
   );
   const [bondingStatus, setBondingStatus] =
     useUrlSearchParams<BondingStatusType>("status", "all");
   const [tableSortBy, setTableSortBy] = useUrlSearchParams<TableSortByType>(
     "sort",
-    "marketCapUSD",
+    "marketCapUSD"
   );
   const [tableSortOrder, setTableSortOrder] = useUrlSearchParams<SortOrderType>(
     "order",
-    "desc",
+    "desc"
   );
 
   // State for filter popover visibility (no need to persist this)
@@ -143,7 +143,7 @@ export default function Page() {
       query.isFetchingNextPage,
       query.hasNextPage,
       query.fetchNextPage,
-    ],
+    ]
   );
 
   useEffect(() => {
