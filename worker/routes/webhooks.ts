@@ -35,7 +35,7 @@ router.post("/webhook", async (c) => {
       {
         message: "Unauthorized",
       },
-      401,
+      401
     );
   }
 
@@ -59,11 +59,11 @@ router.post("/webhook", async (c) => {
           processTransactionLogs(
             c.env,
             event.meta.logMessages,
-            event.transaction.signatures[0],
-          ),
-        ),
+            event.transaction.signatures[0]
+          )
+        )
       );
-    })(),
+    })()
   );
 
   return c.json({
@@ -176,29 +176,38 @@ router.post("/codex-webhook", async (c) => {
       MAX_SWAPS_TO_KEEP,
     );
     logger.log(
-      `Codex: Saved swap to Redis list ${listKey} & trimmed. Type: ${isBuy ? "buy" : "sell"}`,
+      `Codex: Saved swap to Redis list ${listKey} & trimmed. Type: ${isBuy ? "buy" : "sell"}`
     );
   } catch (redisError) {
     logger.error(
       `Codex: Failed to save swap to Redis list ${listKey}:`,
-      redisError,
+      redisError
     );
     // Potentially return error or continue processing other parts
   }
   // --- END REDIS PUSH BLOCK ---
 
-  //check if we have the token in the db
-  const db = getDB(c.env);
-  const token = await db
-    .select()
-    .from(tokens)
-    .where(eq(tokens.mint, tokenMint));
+  //check if we have the token in the db or in CACHE
+  const cachedToken = await redisCache.get(`codex-webhook:${tokenMint}`);
+
+  let token = cachedToken ? JSON.parse(cachedToken) : null;
+
+  if (!token) {
+    const db = getDB(c.env);
+    const token = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, tokenMint));
+
+    await redisCache.set(`codex-webhook:${tokenMint}`, JSON.stringify(token));
+  }
+
   if (!token || token.length === 0) {
-    // do nothing since the token is not in the table
     return c.json({
       message: "Token not in db",
     });
   }
+  
   const wsClient = getWebSocketClient(c.env);
 
   const ext = new ExternalToken(c.env, tokenMint);
