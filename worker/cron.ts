@@ -596,7 +596,6 @@ export async function cron(
   ctx: ExecutionContext | { cron: string },
 ): Promise<void> {
   console.log("Running cron job...");
-  return;
   try {
     // Check if this is a legitimate Cloudflare scheduled trigger
     // For scheduled triggers, the ctx should have a 'cron' property
