@@ -1,24 +1,25 @@
 import { getDB, tokens } from "../db";
 import { eq } from "drizzle-orm";
 import { ExternalToken } from "../externalToken";
+import { createRedisCache } from "../redis/redisCacheService";
 
 // TODO: Replace with redis cache
 export async function startMonitoringBatch(
-  batchSize = 10,
+  batchSize = 10
 ): Promise<{ processed: number; total: number }> {
   const kv = process.env.MONITOR_KV;
   const db = getDB();
-
-  const rawList = await kv.get("lockedList");
-  const rawCursor = await kv.get("lockedCursor");
+  const redisCache = createRedisCache();
+  const rawList = await redisCache.get("lockedList");
+  const rawCursor = await redisCache.get("lockedCursor");
   if (!rawList) {
     const locked = await db
       .select()
       .from(tokens)
       .where(eq(tokens.status, "locked"));
     const mints = locked.map((t) => t.mint);
-    await kv.put("lockedList", JSON.stringify(mints));
-    await kv.put("lockedCursor", "0");
+    await redisCache.set("lockedList", JSON.stringify(mints));
+    await redisCache.set("lockedCursor", "0");
     return { processed: 0, total: mints.length };
   }
 
@@ -40,6 +41,6 @@ export async function startMonitoringBatch(
   }
 
   cursor += batch.length;
-  await kv.put("lockedCursor", cursor.toString());
+  await redisCache.set("lockedCursor", cursor.toString());
   return { processed: batch.length, total };
 }
