@@ -263,17 +263,17 @@ export async function processTransactionLogs(
             const redisCache = createRedisCache(env);
             const listKey = redisCache.getKey(`swapsList:${mintAddress}`);
             try {
-                await redisCache.lpush(listKey, JSON.stringify(swapRecord));
-                await redisCache.ltrim(listKey, 0, MAX_SWAPS_TO_KEEP - 1);
-                logger.log(
-                    `MigrationBE: Saved swap to Redis list ${listKey} & trimmed. Type: ${direction === "0" ? "buy" : "sell"}`,
-                );
+               await redisCache.lpush(listKey, JSON.stringify(swapRecord));
+               await redisCache.ltrim(listKey, 0, MAX_SWAPS_TO_KEEP - 1);
+               logger.log(
+                  `MigrationBE: Saved swap to Redis list ${listKey} & trimmed. Type: ${direction === "0" ? "buy" : "sell"}`,
+               );
             } catch (redisError) {
-                logger.error(`MigrationBE: Failed to save swap to Redis list ${listKey}:`, redisError);
+               logger.error(`MigrationBE: Failed to save swap to Redis list ${listKey}:`, redisError);
             }
 
             // check if the token exists and add it to the db if it does not  
-            const token = await getToken(env, mintAddress);
+            // const token = await getToken(env, mintAddress);
 
             // Update token data in database
             await db

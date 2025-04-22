@@ -29,7 +29,7 @@ try {
 }
 
 type Job = 'subscription' | 'missedEvents' | 'resumeOnStart';
-const jobs: Job[] = ['subscription', 'missedEvents', 'resumeOnStart'];
+const jobs: Job[] = ['subscription',];
 const jobMap = new Map<number, Job>();
 
 const PORT = process.env.PORT || 3000;
