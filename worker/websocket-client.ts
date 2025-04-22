@@ -3,7 +3,6 @@
 import type { DurableObjectNamespace } from "@cloudflare/workers-types";
 import { Env } from "./env";
 import { logger } from "./util";
-import { crypto } from "@cloudflare/workers-types";
 
 export class WebSocketClient {
   private webSocketDO: DurableObjectNamespace | null = null;
