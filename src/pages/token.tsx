@@ -185,8 +185,11 @@ export default function Page() {
   const isTokenOwner = publicKey?.toString() === token?.creator;
 
   const currentPrice = token?.currentPrice || 0;
-  const tokenPriceUSD = token?.tokenPriceUSD || 0;
+  const marketCapUSD = token?.marketCapUSD || 0;
   const volume24h = token?.volume24h || 0;
+
+  const tokenPriceUSD = token?.marketCapUSD / token?.tokenSupplyUiAmount;
+  const priceSOL = tokenPriceUSD / token?.solPriceUSD;
 
   const { tokenBalance } = useTokenBalance({
     tokenId: token?.mint || (params?.address as string),
@@ -267,8 +270,8 @@ export default function Page() {
         <TopPageItem
           title="Market Cap"
           value={
-            tokenPriceUSD * token?.tokenSupplyUiAmount > 0
-              ? abbreviateNumber(tokenPriceUSD * token?.tokenSupplyUiAmount)
+            marketCapUSD > 0
+              ? abbreviateNumber(marketCapUSD)
               : "-"
           }
         />
@@ -699,8 +702,8 @@ export default function Page() {
                     Price SOL
                   </span>
                   <span className="text-xl font-dm-mono text-autofun-text-primary">
-                    {currentPrice
-                      ? formatNumberSubscript(currentPrice)
+                    {priceSOL
+                      ? formatNumberSubscript(priceSOL)
                       : "0.00000000"}
                   </span>
                 </div>
