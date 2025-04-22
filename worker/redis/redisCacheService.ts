@@ -45,6 +45,34 @@ class RedisCacheService {
   async ttl(key: string): Promise<number> {
     return this.redisPool.useClient((client) => client.ttl(this.getKey(key)));
   }
+
+  // --- START NEW LIST METHODS ---
+  async lpush(key: string, value: string): Promise<number> {
+    logger.info(`LPUSH to ${this.getKey(key)}`);
+    return this.redisPool.useClient((client) =>
+      client.lpush(this.getKey(key), value),
+    );
+  }
+
+  async lrange(key: string, start: number, stop: number): Promise<string[]> {
+    logger.info(`LRANGE from ${this.getKey(key)} ${start} ${stop}`);
+    return this.redisPool.useClient((client) =>
+      client.lrange(this.getKey(key), start, stop),
+    );
+  }
+
+  async llen(key: string): Promise<number> {
+    logger.info(`LLEN for ${this.getKey(key)}`);
+    return this.redisPool.useClient((client) => client.llen(this.getKey(key)));
+  }
+
+  async ltrim(key: string, start: number, stop: number): Promise<"OK" | null> {
+    logger.info(`LTRIM on ${this.getKey(key)} ${start} ${stop}`);
+    return this.redisPool.useClient((client) =>
+      client.ltrim(this.getKey(key), start, stop),
+    );
+  }
+  // --- END NEW LIST METHODS ---
 }
 
 export function createRedisCache(env: Env) {

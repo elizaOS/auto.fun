@@ -1,9 +1,9 @@
-import { eq, sql, gt } from "drizzle-orm";
-import { getDB, users, swaps, tokenHolders, tokens } from "../db";
+import { eq, gt, sql } from "drizzle-orm";
+import { getDB, tokenHolders, tokens, users } from "../db";
 import { getToken } from "../raydium/migration/migrations";
 
-import { v4 as uuidv4 } from "uuid";
 import { Env } from "../env";
+import { createRedisCache } from "../redis/redisCacheService";
 
 // point events for now
 export type PointEvent =
@@ -136,18 +136,29 @@ export async function awardGraduationPoints(
   const db = getDB(env);
 
   // Last swap user
-  const [lastSwap] = await db
-    .select()
-    .from(swaps)
-    .where(eq(swaps.tokenMint, mint))
-    .orderBy(sql`timestamp DESC`)
-    .limit(1)
-    .execute();
+  let lastSwapUser: string | null = null;
+  try {
+    const redisCache = createRedisCache(env);
+    const listKey = redisCache.getKey(`swapsList:${mint}`);
+    const [lastSwapString] = await redisCache.lrange(listKey, 0, 0); // Get the first item (most recent)
 
-  if (lastSwap?.user) {
+    if (lastSwapString) {
+      const lastSwapData = JSON.parse(lastSwapString);
+      lastSwapUser = lastSwapData?.user;
+    }
+  } catch (redisError) {
+    // Use logger if available, otherwise console.error
+    console.error(
+      `Failed to get last swap user from Redis for ${mint}:`,
+      redisError,
+    );
+    // Continue without awarding points for last swap if Redis fails
+  }
+
+  if (lastSwapUser) {
     await awardUserPoints(
       env,
-      lastSwap.user,
+      lastSwapUser, // Use user fetched from Redis
       { type: "graduating_tx" },
       "Graduating transaction bonus",
     );

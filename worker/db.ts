@@ -80,20 +80,6 @@ export const tokens = pgTable("tokens", {
   tokenDecimals: integer("token_decimals").default(6),
   lastSupplyUpdate: timestamp("last_supply_update"),
 });
-// Swap schema
-export const swaps = pgTable("swaps", {
-  id: text("id").primaryKey(),
-  tokenMint: text("token_mint").notNull(),
-  user: text("user").notNull(),
-  type: text("type").notNull(),
-  direction: integer("direction").notNull(),
-  amountIn: real("amount_in"),
-  amountOut: real("amount_out"),
-  priceImpact: real("price_impact"),
-  price: real("price").notNull(),
-  txId: text("tx_id").notNull().unique(),
-  timestamp: timestamp("timestamp").notNull(),
-});
 
 // Fees schema
 export const fees = pgTable("fees", {
@@ -107,6 +93,7 @@ export const fees = pgTable("fees", {
   type: text("type").notNull(),
   txId: text("tx_id"),
   timestamp: timestamp("timestamp").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
 });
 
 // TokenHolder schema
@@ -290,9 +277,6 @@ export function getDB(env: Env) {
 export type Token = typeof schema.tokens.$inferSelect;
 export type TokenInsert = typeof schema.tokens.$inferInsert;
 
-export type Swap = typeof schema.swaps.$inferSelect;
-export type SwapInsert = typeof schema.swaps.$inferInsert;
-
 export type Fee = typeof schema.fees.$inferSelect;
 export type FeeInsert = typeof schema.fees.$inferInsert;
 
@@ -333,7 +317,6 @@ export type MetadataInsert = typeof metadata.$inferInsert;
 // Schema for all tables
 const schema = {
   tokens,
-  swaps,
   fees,
   tokenHolders,
   messages,

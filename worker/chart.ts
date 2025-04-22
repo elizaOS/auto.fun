@@ -4,8 +4,9 @@ import {
   fetchCodexBars,
   fetchCodexTokenEvents,
 } from "./codex";
-import { getDB, swaps, tokens } from "./db";
+import { getDB, tokens } from "./db";
 import { Env } from "./env";
+import { createRedisCache } from "./redis/redisCacheService";
 import { logger } from "./util";
 
 // Define interface for the API response types
@@ -124,45 +125,50 @@ export async function fetchPriceChartData(
 
   if (tokenInfo.status !== "locked") {
     // Load price histories from DB
-    const swapRecords = await db
-      .select({
-        price: swaps.price,
-        amountIn: swaps.amountIn,
-        amountOut: swaps.amountOut,
-        direction: swaps.direction,
-        timestamp: swaps.timestamp,
-      })
-      .from(swaps)
-      .where(
-        and(
-          eq(swaps.tokenMint, tokenMint),
-          sql`${swaps.timestamp} >= ${new Date(start).toISOString()}`,
-          sql`${swaps.timestamp} <= ${new Date(end).toISOString()}`,
-        ),
-      )
-      .orderBy(swaps.timestamp);
+    let swapRecordsRaw: any[] = [];
+    try {
+      const redisCache = createRedisCache(env);
+      const listKey = redisCache.getKey(`swapsList:${tokenMint}`);
+      const swapStrings = await redisCache.lrange(listKey, 0, -1); // Fetch all swaps
+      swapRecordsRaw = swapStrings.map((s) => JSON.parse(s));
+      logger.log(
+        `Chart: Retrieved ${swapRecordsRaw.length} raw swaps from Redis list ${listKey}`,
+      );
+    } catch (redisError) {
+      logger.error(
+        `Chart: Failed to read swaps from Redis list swapsList:${tokenMint}:`,
+        redisError,
+      );
+      return []; // Return empty if cache fails
+    }
+
+    // Filter swaps by timestamp in application code
+    const filteredSwaps = swapRecordsRaw.filter((swap) => {
+      const swapTime = new Date(swap.timestamp).getTime();
+      return swapTime >= start && swapTime <= end;
+    });
 
     // Convert to PriceFeedInfo array - ensure timestamp is not null
-    const priceFeeds: PriceFeedInfo[] = swapRecords
+    const priceFeeds: PriceFeedInfo[] = filteredSwaps
       .filter(
         (swap: {
-          price: number;
-          timestamp: Date;
+          price: number | null; // Allow null price
+          timestamp: string | Date; // Allow string or Date
           direction: number;
           amountIn: number | null;
           amountOut: number | null;
         }) => swap.price != null && swap.timestamp != null,
-      ) // Type guard to ensure price and timestamp are not null
+      ) // Filter out swaps with null price or timestamp
       .map(
         (swap: {
-          price: number;
-          timestamp: Date;
+          price: number; // Not null after filter
+          timestamp: string | Date; // Not null after filter
           direction: number;
           amountIn: number | null;
           amountOut: number | null;
         }) => ({
           price: swap.price,
-          timestamp: new Date(swap.timestamp), // Create a new Date object from the string
+          timestamp: new Date(swap.timestamp), // Ensure it's a Date object
           // If direction is 0 (buy), amountIn is SOL
           // If direction is 1 (sell), amountOut is SOL
           volume:
