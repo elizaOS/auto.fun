@@ -3,7 +3,7 @@ import type {
   LibrarySymbolInfo,
   ResolutionString,
   SubscribeBarsCallback,
-} from "@/libraries/charting_library";
+} from "../../../packages/client/public/libraries/charting_library/charting_library";
 import { getSocket } from "@/utils/socket";
 
 type SubscriptionItem = {

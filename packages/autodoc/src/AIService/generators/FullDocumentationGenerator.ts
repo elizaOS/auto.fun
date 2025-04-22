@@ -8,10 +8,10 @@ import type {
   PluginDocumentation,
   TodoItem,
   TodoSection,
-} from '../../types';
-import { PROMPT_TEMPLATES } from '../../utils/prompts';
+} from '../../types/index.js';
+import { PROMPT_TEMPLATES } from '../../utils/prompts.js';
 import { AIService } from '../AIService.js';
-import type { FileDocsGroup, OrganizedDocs } from '../types';
+import type { FileDocsGroup, OrganizedDocs } from '../types/index.js';
 import { CodeFormatter } from '../utils/CodeFormatter.js';
 import { DocumentOrganizer } from '../utils/DocumentOrganizer.js';
 

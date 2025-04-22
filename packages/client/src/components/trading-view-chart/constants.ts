@@ -1,4 +1,4 @@
-import { ChartingLibraryFeatureset } from "@/libraries/charting_library";
+import { ChartingLibraryFeatureset } from "../../../packages/client/public/libraries/charting_library/charting_library";
 
 const RED = "#FF6767";
 const GREEN = "#47D0A5";
