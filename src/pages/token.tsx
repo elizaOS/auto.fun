@@ -34,7 +34,6 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
 import { Tooltip } from "react-tooltip";
-import { twMerge } from "tailwind-merge";
 
 // List of admin wallet addresses (copied from worker/routes/adminAddresses.ts)
 const adminAddresses: string[] = [
@@ -374,7 +373,7 @@ export default function Page() {
                   ];
 
                   const availableLinks = socialLinks.filter(
-                    (link) => !!link.url
+                    (link) => !!link.url,
                   );
 
                   if (availableLinks.length === 0) {
@@ -553,7 +552,7 @@ export default function Page() {
                     {formatNumber(
                       tokenBalance * currentPrice * solanaPrice,
                       true,
-                      false
+                      false,
                     )}
                   </span>
                 </div>
@@ -616,7 +615,7 @@ export default function Page() {
                         (token?.reserveLamport - token?.virtualReserves) /
                           LAMPORTS_PER_SOL,
                         true,
-                        true
+                        true,
                       )}{" "}
                       SOL in the bonding curve.
                     </p>

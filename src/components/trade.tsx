@@ -47,7 +47,7 @@ export default function Trade({ token }: { token: IToken }) {
   const { executeSwap, isExecuting: isExecutingSwap } = useSwap();
 
   const isDisabled = ["migrating", "migration_failed", "failed"].includes(
-    token?.status
+    token?.status,
   );
 
   const isButtonDisabled = (amount: number | string) => {
@@ -79,7 +79,7 @@ export default function Trade({ token }: { token: IToken }) {
 
       const amountBN = new BN(amount);
       const tokenDecimalsBN = new BN(
-        token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6
+        token?.tokenDecimals ? 10 ** token?.tokenDecimals : 1e6,
       );
       const convertedAmountT = isTokenSelling
         ? amountBN.mul(tokenDecimalsBN).toNumber()
@@ -102,7 +102,7 @@ export default function Trade({ token }: { token: IToken }) {
               // they are not dynamically calculated but instead use the
               // default values leading to slightly incorrect calculations
               token.reserveAmount,
-              token.reserveLamport
+              token.reserveLamport,
             );
 
       const convertedAmount = new BN(swapAmount).div(decimals).toNumber();
@@ -165,7 +165,7 @@ export default function Trade({ token }: { token: IToken }) {
                   setSellAmount(
                     sellAmount !== undefined
                       ? sellAmount
-                      : formatAmount(convertedAmount)
+                      : formatAmount(convertedAmount),
                   );
                 }
                 setIsTokenSelling(true);

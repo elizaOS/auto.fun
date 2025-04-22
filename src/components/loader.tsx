@@ -49,7 +49,9 @@ export default function Loader({
     <div
       className={twMerge([
         "flex items-center justify-center h-[50vh]",
-        isFullscreen ? "fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" : "",
+        isFullscreen
+          ? "fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+          : "",
         className ? className : "",
       ])}
     >
