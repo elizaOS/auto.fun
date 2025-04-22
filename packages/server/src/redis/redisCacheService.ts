@@ -1,9 +1,27 @@
 import dotenv from "dotenv";
-import { Env } from "../env";
-// Assuming logger is not available or needed in migration_be context
-// import { logger } from "../util"; 
-import { RedisPool } from "./redisPool";
+import type { Env } from "../env"; 
+import { logger } from "../util";
+import { RedisPool } from "./redisPool"; 
 dotenv.config();
+
+// Singleton RedisPool instance
+let sharedRedisPool: RedisPool | null = null;
+
+// Function to initialize and/or get the shared pool
+function getSharedRedisPool(env: Env): RedisPool {
+  if (!sharedRedisPool) {
+    logger.info("Initializing Shared Redis Pool");
+    sharedRedisPool = new RedisPool({
+      host: env.REDIS_HOST,
+      port: Number(env.REDIS_PORT),
+      password: env.REDIS_PASSWORD,
+      // Consider adding pool configuration options here if your RedisPool supports them
+      // e.g., minSize, maxSize, connectionTimeout
+    });
+    logger.info("Shared Redis Pool Initialized");
+  }
+  return sharedRedisPool;
+}
 
 class RedisCacheService {
   constructor(
@@ -14,8 +32,12 @@ class RedisCacheService {
   }
 
   getKey(key: string) {
-    // Use a specific prefix for migration data if needed, or just network
-    return `${this.env.NETWORK || 'migration'}:${key}`;
+    // Avoid double-prefixing if key already includes network
+    const prefix = `${this.env.NETWORK}:`;
+    if (key.startsWith(prefix)) {
+      return key;
+    }
+    return `${prefix}${key}`;
   }
   async get(key: string): Promise<string | null> {
     return this.redisPool.useClient((client) => client.get(this.getKey(key)));
@@ -50,41 +72,50 @@ class RedisCacheService {
 
   // --- START NEW LIST METHODS ---
   async lpush(key: string, value: string): Promise<number> {
-    // console.log(`LPUSH to ${this.getKey(key)}`); // Avoid logger if unavailable
+    logger.info(`LPUSH to ${this.getKey(key)}`);
     return this.redisPool.useClient((client) =>
       client.lpush(this.getKey(key), value),
     );
   }
 
   async lrange(key: string, start: number, stop: number): Promise<string[]> {
-    // console.log(`LRANGE from ${this.getKey(key)} ${start} ${stop}`); // Avoid logger
+    logger.info(`LRANGE from ${this.getKey(key)} ${start} ${stop}`);
     return this.redisPool.useClient((client) =>
       client.lrange(this.getKey(key), start, stop),
     );
   }
 
   async llen(key: string): Promise<number> {
-    // console.log(`LLEN for ${this.getKey(key)}`); // Avoid logger
+    logger.info(`LLEN for ${this.getKey(key)}`);
     return this.redisPool.useClient((client) => client.llen(this.getKey(key)));
   }
 
   async ltrim(key: string, start: number, stop: number): Promise<"OK" | null> {
-    // console.log(`LTRIM on ${this.getKey(key)} ${start} ${stop}`); // Avoid logger
+    logger.info(`LTRIM on ${this.getKey(key)} ${start} ${stop}`);
     return this.redisPool.useClient((client) =>
       client.ltrim(this.getKey(key), start, stop),
+    );
+  }
+
+  async lpushTrim(
+    key: string,
+    value: string,
+    maxLength: number,
+  ): Promise<Array<unknown> | null> {
+    logger.info(`LPUSH+LTRIM pipeline on ${this.getKey(key)} limit ${maxLength}`);
+    return this.redisPool.useClient((client) =>
+      client
+        .multi()
+        .lpush(this.getKey(key), value)
+        .ltrim(this.getKey(key), 0, maxLength - 1)
+        .exec(),
     );
   }
   // --- END NEW LIST METHODS ---
 }
 
-export function createRedisCache(env: Env) {
-  // console.log("Creating Redis cache service for migration_be"); // Avoid logger
-  const redisPool = new RedisPool({
-    host: env.REDIS_HOST,
-    port: Number(env.REDIS_PORT),
-    password: env.REDIS_PASSWORD,
-  });
-
-  // console.log("Redis cache service created for migration_be"); // Avoid logger
-  return new RedisCacheService(redisPool, env);
-} 
+export function createRedisCache(env: Env): RedisCacheService {
+  const pool = getSharedRedisPool(env);
+  const instance = new RedisCacheService(pool, env);
+  return instance;
+}

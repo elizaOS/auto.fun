@@ -1,23 +1,22 @@
-import { Autofun, RaydiumVault } from "@autodotfun/program/types";
 import { AnchorProvider, BN, Program } from "@coral-xyz/anchor";
 import {
   CREATE_CPMM_POOL_FEE_ACC,
   CREATE_CPMM_POOL_PROGRAM,
   DEVNET_PROGRAM_ID,
-  getCpmmPdaAmmConfigId
+  getCpmmPdaAmmConfigId,
 } from "@raydium-io/raydium-sdk-v2";
 import { NATIVE_MINT } from "@solana/spl-token";
-import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
-import { and, eq } from "drizzle-orm";
-import { getDB, tokens } from "../../db";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { updateTokenInDB } from "../../cron";
 import { Env } from "../../env";
 import { ExternalToken } from "../../externalToken";
-import { logger } from "../../logger";
-import { updateTokenInDB } from "../../processTransactionLogs";
-import { getToken } from "../../raydium/migration/migrations";
+import { Autofun } from "../../target/types/autofun";
 import { Wallet } from "../../tokenSupplyHelpers/customWallet";
+import { logger } from "../../util";
+import { getWebSocketClient } from "../../websocket-client";
 import { initSdk, txVersion } from "../raydium-config";
 import { depositToRaydiumVault } from "../raydiumVault";
+import { RaydiumVault } from "../types/raydium_vault";
 import { TokenData } from "../types/tokenData";
 import { retryOperation, sendNftTo, sendSolTo } from "../utils";
 import { execWithdrawTx, withdrawTx } from "../withdraw";
@@ -25,23 +24,8 @@ import {
   executeMigrationStep,
   LockResult,
   MigrationStep,
-  releaseMigrationLock
+  releaseMigrationLock,
 } from "./migrations";
-
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  let timeoutId: ReturnType<typeof setTimeout>;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(
-      () => reject(new Error(`Operation timed out after ${ms}ms`)),
-      ms
-    );
-  });
-  // Promise.race, then clear the timer regardless of which wins
-  return Promise.race([promise, timeoutPromise]).finally(() => {
-    clearTimeout(timeoutId);
-  });
-}
-
 export class TokenMigrator {
   constructor(
     public env: Env,
@@ -50,94 +34,43 @@ export class TokenMigrator {
     public program: Program<RaydiumVault>,
     public autofunProgram: Program<Autofun>,
     public provider: AnchorProvider,
-  ) { }
+  ) {}
   FEE_PERCENTAGE = 10; // 10% fee for pool creation
-  public ongoingMigrations: string[] = [];
 
   async scheduleNextInvocation(token: TokenData): Promise<void> {
-    // call migraeToken
-    // with a delay of 10 seconds
-    const delay = 10000; // 10 seconds
-    try {
-      /// first unlock the migration
-      if (!token.migration) {
-        token.migration = {};
-      } else {
-        if (token.migration.lock) {
-          token.migration.lock = false;
-        }
-      }
-      await updateTokenInDB(this.env, token);
-      setTimeout(() => {
-        this.migrateToken(token);
-      }, delay);
+    // Use API_URL from env (or fallback)
+    const workerUrl = this.env.API_URL || "http://127.0.0.1:8787";
+    console.log(
+      `[Migrate] Scheduling next invocation for token ${token.mint} at ${workerUrl}/api/migration/resume`,
+    );
 
+    // Construct headers with Authorization token
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${this.env.JWT_SECRET}`, // Use JWT_SECRET from env
+    };
+
+    try {
+      const response = await fetch(`${workerUrl}/api/migration/resume`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(token),
+      });
+      if (!response.ok) {
+        console.error(
+          "Failed to schedule next invocation:",
+          await response.text(),
+        );
+      }
     } catch (error) {
       console.error("Error scheduling next invocation:", error);
     }
   }
 
-  async resumeMigrationsOnStart(): Promise<void> {
-    try {
-      const db = getDB(this.env);
-      const migratingTokens = await db
-        .select()
-        .from(tokens)
-        .where(and(
-          eq(tokens.status, "migrating"),
-        ))
-        .execute();
-      if (migratingTokens.length === 0) {
-        logger.log("No tokens to migrate on start.");
-        return;
-      }
-      for (const token of migratingTokens) {
-        // check if token is in ongoingMigrations
-        if (this.ongoingMigrations.includes(token.mint)) {
-          logger.log(
-            `[Migrate] Migration already in progress for token ${token.mint}. Deferring additional execution.`,
-          );
-          // check if the last updates is more than 60 minutes 
-          const lastUpdated = new Date(token.lastUpdated);
-          if (
-            new Date().getTime() - lastUpdated.getTime() > 60 * 60 * 1000
-          ) {
-            logger.log(
-              `[Migrate] Migration is taking too long for token ${token.mint}. Resuming migration.`,
-            );
-
-            const newToken = await getToken(this.env, token.mint);
-
-
-            if (!newToken) {
-              logger.error(`Token ${token.mint} not found in DB.`);
-              continue;
-            }
-            await releaseMigrationLock(this.env, newToken);
-            await this.migrateToken(newToken);
-          }
-          continue;
-        }
-
-        const newToken = await getToken(this.env, token.mint);
-        if (!newToken) {
-          logger.error(`Token ${token.mint} not found in DB.`);
-          continue;
-        }
-        await this.migrateToken(newToken);
-      }
-      logger.log("All ongoing migrations have been resumed.");
-    } catch (error) {
-      console.error("Error fetching migrating tokens:", error);
-      return;
-    }
-
-  }
-
   async callResumeWorker(token: TokenData) {
     try {
       await releaseMigrationLock(this.env, token);
-      await this.migrateToken(token);
+      // await this.migrateToken(token);
     } catch (error) {
       logger.error(
         `[Migrate] Error releasing lock for token ${token.mint}: ${error}`,
@@ -191,14 +124,6 @@ export class TokenMigrator {
         eventName: "feesCollected",
         fn: (token: any) => this.collectFee(token).then((result) => result),
       },
-      {
-        name: "done",
-        eventName: "migrationDone",
-        fn: (token: any) => {
-          console.log("token.migration", token.migration);
-          return Promise.resolve({ txId: "", extraData: {} });
-        },
-      },
     ];
   }
 
@@ -217,13 +142,7 @@ export class TokenMigrator {
           return;
         }
       }
-
-      token.migration = token.migration!
-      if (token.migration.lastStep === "done") {
-        logger.log(
-          `[Migrate] Token ${token.mint} is already locked. Deferring additional`)
-        return
-      }
+      token.migration = token.migration || {};
       // const ws = getWebSocketClient(this.env);
       // const lockAcquired = await acquireMigrationLock(this.env, token);
       // if (!lockAcquired) {
@@ -233,32 +152,17 @@ export class TokenMigrator {
       //   await this.callResumeWorker(token);
       //   return;
       // }
-      // check if the token is already in ongoingMigrations 
-      if (this.ongoingMigrations.includes(token.mint)) {
-        logger.log(
-          `[Migrate] Migration already in progress for token ${token.mint}. Deferring additional`)
-        return;
-      }
-      this.ongoingMigrations.push(token.mint);
-
 
       const steps = this.getMigrationSteps();
       const currentStep = token.migration.lastStep
         ? steps.find((step) => step.name === token.migration?.lastStep)
         : undefined;
-      console.log("currentStep", currentStep);
 
-      if (currentStep?.name === "done") {
-        logger.log(
-          `[Migrate] Migration already done for token ${token.mint}. Deferring additionalMetadata )`,
-        );
-        return;
-
-      }
+      //
 
       // If all steps are done, finalize and update token.
-      if (currentStep && currentStep?.name === "lockLP") {
-
+      if (currentStep && currentStep?.name === "finalize") {
+        token.status = "locked";
         token.lockedAt = new Date();
         await updateTokenInDB(this.env, {
           mint: token.mint,
@@ -267,32 +171,18 @@ export class TokenMigrator {
           lastUpdated: new Date().toISOString(),
         });
         // start monitoring the token
-        // register webhooks before lp lock
         const ext = new ExternalToken(this.env, token.mint);
-        try {
-          await ext.registerWebhook();
-        } catch (error) {
-          logger.error(
-            `[Migrate] Error registering webhook for token ${token.mint}: ${error}`,
-          );
-        }
+        await ext.registerWebhook();
         await releaseMigrationLock(this.env, token);
       }
       const step = currentStep || steps[0];
       const nextStep = steps[steps.indexOf(step) + 1] || null;
 
       await executeMigrationStep(this.env, token, step, nextStep);
-      this.ongoingMigrations = this.ongoingMigrations.filter(
-        (mint) => mint !== token.mint,
-      );
       // call scheduleNextInvocation to schedule the next step if not done yet.
       if (step.name !== "collectFees") {
         logger.log(
           `[Migrate] Scheduling next invocation for token ${token.mint}`,
-        );
-        // remove from ongoingMigrations 
-        this.ongoingMigrations = this.ongoingMigrations.filter(
-          (mint) => mint !== token.mint,
         );
         await this.scheduleNextInvocation(token);
         await releaseMigrationLock(this.env, token);
@@ -301,16 +191,14 @@ export class TokenMigrator {
         // All steps are complete; final status update.
         token.status = "locked";
         token.lockedAt = new Date();
-        token.migration.lastStep = "done";
         await updateTokenInDB(this.env, {
           mint: token.mint,
           status: "locked",
           lockedAt: token.lockedAt,
           lastUpdated: new Date().toISOString(),
         });
-        // const ws = getWebSocketClient(this.env);
-        // ws.to(`token-${token.mint}`).emit("updateToken", token);
-        // notfiy the backend via api call to /api/migration/update
+        const ws = getWebSocketClient(this.env);
+        ws.to(`token-${token.mint}`).emit("updateToken", token);
         logger.log(`[Migrate] Migration finalized for token ${token.mint}`);
         await releaseMigrationLock(this.env, token);
         return;
@@ -330,69 +218,29 @@ export class TokenMigrator {
     }
   }
 
-  async performWithdraw(
-    token: any
-  ): Promise<{
+  async performWithdraw(token: any): Promise<{
     txId: string;
-    extraData: { withdrawnAmounts: { withdrawnSol: number; withdrawnTokens: number } };
+    extraData: {
+      withdrawnAmounts: { withdrawnSol: number; withdrawnTokens: number };
+    };
   }> {
-    logger.log(`[Withdraw] Starting for token ${token.mint}`);
-
-    // 1) build the withdrawal transaction
-    const tx: Transaction = await withdrawTx(
+    logger.log(`[Withdraw] Withdrawing funds for token ${token.mint}`);
+    const transaction = await withdrawTx(
       this.wallet.publicKey,
       new PublicKey(token.mint),
-      this.wallet.payer as Keypair,
-
       this.connection,
       this.autofunProgram,
     );
-    tx.instructions = [...tx.instructions];
 
-
-    tx.instructions = [...tx.instructions];
+    transaction.instructions = [...transaction.instructions];
 
     const { signature: txId, logs } = await execWithdrawTx(
-      tx,
+      transaction,
       this.connection,
       this.wallet,
     );
     const withdrawnAmounts = this.parseWithdrawLogs(logs);
-
-
-    // 4) fire & forget your CF D1 update
-    (async () => {
-      try {
-        await fetch(`${this.env.API_URL}/api/migration/update`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${this.env.JWT_SECRET}`,
-          },
-          body: JSON.stringify({
-            step: "withdraw",
-            mint: token.mint,
-            migration: token.migration,
-            status: token.status,
-            lockedAt: token.lockedAt,
-            withdrawnAmounts,
-            txId: txId,
-          }),
-        });
-        logger.log(`[Withdraw] Migration update POSTed for ${token.mint}`);
-      } catch (httpErr) {
-        console.error(`[Withdraw] CF update failed:`, httpErr);
-      }
-    })();
-
-    // 5) return to caller
-    this.ongoingMigrations = this.ongoingMigrations.filter(
-      (mint) => mint !== token.mint,
-    );
-    return {
-      txId,
-      extraData: { withdrawnAmounts },
-    };
+    return { txId, extraData: { withdrawnAmounts } };
   }
 
   private parseWithdrawLogs(withdrawLogs: string[]): {
@@ -419,7 +267,7 @@ export class TokenMigrator {
   async performCreatePool(
     token: any,
   ): Promise<{ txId: string; extraData: { marketId: string; poolInfo: any } }> {
-    const raydium = await initSdk({ env: this.env, connection: this.connection, loadToken: false });
+    const raydium = await initSdk({ env: this.env, loadToken: false });
     const mintA = await raydium.token.getTokenInfo(token.mint);
     const mintB = await raydium.token.getTokenInfo(NATIVE_MINT);
 
@@ -480,32 +328,7 @@ export class TokenMigrator {
       baseVault: poolCreation.extInfo.address.vaultA.toString(),
       quoteVault: poolCreation.extInfo.address.vaultB.toString(),
     };
-    try {
-      await fetch(`${this.env.API_URL}/api/migration/update`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${this.env.JWT_SECRET}`,
-        },
-        body: JSON.stringify({
-          mint: token.mint,
-          step: "createPool",
-          migration: token.migration,
-          status: token.status,
-          marketId: poolAddresses.id,
-          poolInfo: poolAddresses,
-          txId,
-        }),
-      });
-    } catch (err) {
-      console.error(
-        `[Pool] Failed to POST migration/update for ${token.mint}:`,
-        err
-      );
-    }
-    this.ongoingMigrations = this.ongoingMigrations.filter(
-      (mint) => mint !== token.mint,
-    );
+
     return {
       txId,
       extraData: {
@@ -542,8 +365,8 @@ export class TokenMigrator {
       });
     const { txId: lockTxIdPrimary } = (await retryOperation(
       () => lockExecutePrimary({ skipPreflight: false }),
-      5,
-      4000,
+      3,
+      2000,
     )) as LockResult;
     const nftMintPrimary = lockExtInfoPrimary.nftMint.toString();
     logger.log(`[Lock] Primary LP lock txId: ${lockTxIdPrimary}`);
@@ -579,8 +402,8 @@ export class TokenMigrator {
       });
     const { txId: lockTxIdSecondary } = (await retryOperation(
       () => lockExecuteSecondary({ skipPreflight: false }),
-      5,
-      4000,
+      3,
+      2000,
     )) as LockResult;
     const nftMintSecondary = lockExtInfoSecondary.nftMint.toString();
     logger.log(`[Lock] Secondary LP lock txId: ${lockTxIdSecondary}`);
@@ -588,66 +411,13 @@ export class TokenMigrator {
     return { txId: lockTxIdSecondary, nftMint: nftMintSecondary };
   }
 
-  async initSdkWithRetry(
-    opts: Parameters<typeof initSdk>[0],
-    {
-      maxAttempts = 3,
-      timeoutMs = 60_000,
-      backoffMs = 5_000,
-    }: { maxAttempts?: number; timeoutMs?: number; backoffMs?: number } = {}
-  ) {
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        // Wrap your initSdk call
-        const sdk = await withTimeout(initSdk(opts), timeoutMs);
-        return sdk;
-      } catch (err: any) {
-        // On the last attempt, re‑throw
-        if (attempt === maxAttempts) {
-          logger.error(
-            `[initSdkWithRetry] attempt ${attempt} failed permanently: ${err.message}`
-          );
-          throw err;
-        }
-        // Otherwise log and back off
-        logger.warn(
-          `[initSdkWithRetry] attempt ${attempt} failed: ${err.message}. ` +
-          `Retrying in ${backoffMs}ms…`
-        );
-        await new Promise((r) => setTimeout(r, backoffMs));
-      }
-    }
-    // Should never hit this
-    throw new Error('initSdkWithRetry: exhausted retries');
-  }
-
   async performLockLP(token: any): Promise<{
     txId: string;
     extraData: { lockLpTxId: string; nftMinted: string };
   }> {
-    logger.log(
-      `[Lock] locking LP for token ${token.mint} after 60 seconds`,
-    );
-    // wait for 5 minutes before locking the LP
-    console.log("Waiting for 60 seconds before locking LP...");
-    await new Promise((resolve) => setTimeout(resolve, 60_000));
-
-    const raydium = await this.initSdkWithRetry(
-      { env: this.env, loadToken: false, connection: this.connection },
-      { maxAttempts: 2, timeoutMs: 30_000, backoffMs: 5_000 }
-    );
-    if (!raydium) {
-      throw new Error("Raydium SDK not initialized");
-    }
+    const raydium = await initSdk({ env: this.env, loadToken: false });
     const poolId = token.marketId;
-
-    const poolInfoResult = await this.fetchPoolInfoWithRetry(raydium, poolId)
-
-
-
-    if (!poolInfoResult) {
-      throw new Error(`Failed to fetch pool info for poolId: ${poolId}`);
-    }
+    const poolInfoResult = await this.fetchPoolInfoWithRetry(raydium, poolId);
     console.log("poolInfoResult", poolInfoResult);
     const poolInfo = poolInfoResult.poolInfo;
     const poolKeys = poolInfoResult.poolKeys;
@@ -702,33 +472,7 @@ export class TokenMigrator {
       lockedAt: new Date(),
     };
     await updateTokenInDB(this.env, tokenData);
-    try {
-      await fetch(`${this.env.API_URL}/api/migration/update`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${this.env.JWT_SECRET}`,
-        },
-        body: JSON.stringify({
-          mint: token.mint,
-          migration: token.migration,
-          status: tokenData.status,
-          lockedAt: tokenData.lockedAt,
-          lockLpTxId: aggregatedTxId,
-          nftMinted: aggregatedNftMint,
-          step: "lockLP",
-          txId: aggregatedTxId,
-        }),
-      });
-    } catch (err) {
-      console.error(
-        `[PoolLock] Failed to POST migration/update for ${token.mint}:`,
-        err
-      );
-    }
-    this.ongoingMigrations = this.ongoingMigrations.filter(
-      (mint) => mint !== token.mint,
-    );
+
     return {
       txId: aggregatedTxId,
       extraData: { lockLpTxId: aggregatedTxId, nftMinted: aggregatedNftMint },
@@ -754,30 +498,7 @@ export class TokenMigrator {
       new PublicKey(nftMinted), // 10% NFT
       this.connection,
     );
-    try {
-      await fetch(`${this.env.API_URL}/api/migration/update`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${this.env.JWT_SECRET}`,
-        },
-        body: JSON.stringify({
-          mint: token.mint,
-          migration: token.migration,
-          status: token.status,
-          txId: txSignature,
-          step: "sendNft",
-        }),
-      });
-    } catch (err) {
-      console.error(
-        `[SendNft] Failed to POST migration/update for ${token.mint}:`,
-        err
-      );
-    }
-    this.ongoingMigrations = this.ongoingMigrations.filter(
-      (mint) => mint !== token.mint,
-    );
+
     logger.log(
       `[Send] Sending NFT to manager multisig for token ${token.mint} with NFT ${nftMinted}`,
     );
@@ -803,35 +524,6 @@ export class TokenMigrator {
       claimer_address,
     );
 
-    try {
-      await fetch(`${this.env.API_URL}/api/migration/update`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${this.env.JWT_SECRET}`,
-        },
-        body: JSON.stringify({
-          mint: token.mint,
-          migration: token.migration,
-          status: token.status,
-          txId: txSignature,
-          step: "depositNft",
-        }),
-      });
-    } catch (err) {
-      console.error(
-        `[DepositNFT] Failed to POST migration/update for ${token.mint}:`,
-        err
-      );
-
-      logger.error(
-        `[DepositNFT] Failed to POST migration/update for ${token.mint}:`,
-        err,
-      );
-    }
-    this.ongoingMigrations = this.ongoingMigrations.filter(
-      (mint) => mint !== token.mint,
-    );
     logger.log(
       `[Deposit] Depositing NFT to Raydium vault for token ${token.mint} with NFT ${nftMinted}`,
     );
@@ -839,32 +531,6 @@ export class TokenMigrator {
   }
 
   async finalizeMigration(token: any): Promise<{ txId: string }> {
-    try {
-      token.status = "locked";
-      token.lockedAt = new Date().toISOString();
-
-
-      await fetch(`${this.env.API_URL}/api/migration/update`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${this.env.JWT_SECRET}`,
-        },
-        body: JSON.stringify({
-          mint: token.mint,
-          migration: token.migration,
-          status: token.status,
-          lockedAt: token.lockedAt,
-          step: "finalize",
-        }),
-      });
-    } catch (err) {
-      console.error(
-        `[Finalize] Failed to POST migration/update for ${token.mint}:`,
-        // err
-      );
-    }
-
     return { txId: "finalized" };
   }
 
@@ -887,29 +553,6 @@ export class TokenMigrator {
       feeWallet,
       this.connection,
     );
-    // try {
-    //   await fetch(`${this.env.API_URL}/api/migration/update`, {
-    //     method: "POST",
-    //     headers: {
-    //       "Content-Type": "application/json",
-    //       "Authorization": `Bearer ${this.env.JWT_SECRET}`,
-    //     },
-    //     body: JSON.stringify({
-    //       mint: token.mint,
-    //       migration: token.migration,
-    //       status: token.status,
-    //       txId: txSignature
-    //     }),
-    //   });
-    // } catch (err) {
-    //   console.error(
-    //     `[DepositNFT] Failed to POST migration/update for ${token.mint}:`,
-    //     err
-    //   );
-    // }
-    this.ongoingMigrations = this.ongoingMigrations.filter(
-      (mint) => mint !== token.mint,
-    );
     return { txId: txSignature ?? "", extraData: {} };
   }
 
@@ -917,7 +560,7 @@ export class TokenMigrator {
     raydium: any,
     poolId: string,
   ): Promise<{ poolInfo: any; poolKeys: any }> {
-    const MAX_RETRIES = 10;
+    const MAX_RETRIES = 3;
     let retryCount = 0;
     let poolInfo: any = null;
     let poolKeys: any;
@@ -939,7 +582,7 @@ export class TokenMigrator {
         if (retryCount === MAX_RETRIES) {
           throw error;
         }
-        await new Promise((res) => setTimeout(res, 5000)); // wait 5 seconds before retrying
+        await new Promise((res) => setTimeout(res, 10000)); // wait 10 seconds before retrying
       }
     }
     return { poolInfo, poolKeys };

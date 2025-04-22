@@ -1,6 +1,7 @@
 import { eq, gt, sql } from "drizzle-orm";
 import { getDB, tokens, users } from "../db";
 import { getToken } from "../raydium/migration/migrations";
+
 import { Env } from "../env";
 import { createRedisCache } from "../redis/redisCacheService";
 
@@ -69,7 +70,7 @@ export async function awardUserPoints(
   description = "",
 ): Promise<void> {
   const db = getDB(env);
-  const now = new Date().toISOString();
+  const now = new Date();
   const pointsToAdd = calculatePoints(event);
   if (pointsToAdd <= 0) return;
 
@@ -113,20 +114,18 @@ export async function awardUserPoints(
       .where(eq(users.address, userAddress))
       .execute();
   } else {
-
     await db
       .insert(users)
       .values([
         {
           address: userAddress,
+          name: null,
           points: pointsToAdd,
           rewardPoints: 0,
-          createdAt: sql`CURRENT_TIMESTAMP`,
-
-          suspended: 0,
+          createdAt: now,
         },
       ])
-      .returning()
+      .execute();
   }
 }
 
@@ -140,14 +139,20 @@ export async function awardGraduationPoints(
   // Last swap user
   let lastSwapUser: string | null = null;
   try {
-      const listKey = redisCache.getKey(`swapsList:${mint}`);
-      const [lastSwapString] = await redisCache.lrange(listKey, 0, 0); // Get the first item (most recent)
-      if (lastSwapString) {
-          const lastSwapData = JSON.parse(lastSwapString);
-          lastSwapUser = lastSwapData?.user;
-      }
+    const listKey = redisCache.getKey(`swapsList:${mint}`);
+    const [lastSwapString] = await redisCache.lrange(listKey, 0, 0); // Get the first item (most recent)
+
+    if (lastSwapString) {
+      const lastSwapData = JSON.parse(lastSwapString);
+      lastSwapUser = lastSwapData?.user;
+    }
   } catch (redisError) {
-      console.error(`MigrationBE: Failed to get last swap user from Redis for ${mint}:`, redisError);
+    // Use logger if available, otherwise console.error
+    console.error(
+      `Failed to get last swap user from Redis for ${mint}:`,
+      redisError,
+    );
+    // Continue without awarding points for last swap if Redis fails
   }
 
   if (lastSwapUser) {
@@ -175,14 +180,21 @@ export async function awardGraduationPoints(
   let holders: any[] = [];
   const holdersListKey = redisCache.getKey(`holders:${mint}`);
   try {
-      const holdersString = await redisCache.get(holdersListKey);
-      if (holdersString) {
-          holders = JSON.parse(holdersString);
-      } else {
-          console.log(`MigrationBE: No holders found in Redis for ${mint} during graduation point calculation.`);
-      }
+    const holdersString = await redisCache.get(holdersListKey);
+    if (holdersString) {
+      holders = JSON.parse(holdersString);
+    } else {
+      // Use logger if available
+      console.log(
+        `No holders found in Redis for ${mint} during graduation point calculation.`,
+      );
+    }
   } catch (redisError) {
-      console.error(`MigrationBE: Failed to get holders from Redis for graduation points (${mint}):`, redisError);
+    console.error(
+      `Failed to get holders from Redis for graduation points (${mint}):`,
+      redisError,
+    );
+    // Continue without awarding holder points if Redis fails
   }
 
   const [priceRow] = await db

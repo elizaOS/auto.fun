@@ -1,8 +1,8 @@
 import { and, eq, gt, lt, sql } from "drizzle-orm";
 import { cachePrices, getDB } from "./db";
 import { Env } from "./env";
-import { logger } from "./logger";
 import { createRedisCache } from "./redis/redisCacheService";
+import { logger } from "./util";
 
 /**
  * Unified cache system using Drizzle/D1 for all caching needs
@@ -21,18 +21,23 @@ export class CacheService {
    * Get SOL price from cache
    */
   async getSolPrice(): Promise<number | null> {
-    const cacheKey = this.redisCache.getKey('solPrice');
+    const cacheKey = this.redisCache.getKey("solPrice");
     try {
       const cachedValue = await this.redisCache.get(cacheKey);
       if (cachedValue) {
         const price = parseFloat(cachedValue);
         if (!isNaN(price)) {
+          logger.log(`Cache hit for SOL price: ${price}`);
           return price;
         }
       }
+      logger.log(`Cache miss for SOL price (${cacheKey})`);
       return null;
     } catch (error) {
-      console.error(`Error getting SOL price from Redis cache (${cacheKey}):`, error);
+      logger.error(
+        `Error getting SOL price from Redis cache (${cacheKey}):`,
+        error,
+      );
       return null;
     }
   }
@@ -43,11 +48,17 @@ export class CacheService {
    * @param ttlSeconds How long the cache should live (in seconds)
    */
   async setSolPrice(price: number, ttlSeconds: number = 30): Promise<void> {
-    const cacheKey = this.redisCache.getKey('solPrice');
+    const cacheKey = this.redisCache.getKey("solPrice");
     try {
       await this.redisCache.set(cacheKey, price.toString(), ttlSeconds);
+      logger.log(
+        `Cached SOL price (${price}) in Redis with TTL ${ttlSeconds}s`,
+      );
     } catch (error) {
-      console.error(`Error setting SOL price in Redis cache (${cacheKey}):`, error);
+      logger.error(
+        `Error setting SOL price in Redis cache (${cacheKey}):`,
+        error,
+      );
     }
   }
 
@@ -95,15 +106,18 @@ export class CacheService {
       ).toISOString();
       const expiresAtDate = new Date(expiresAt);
 
-      await this.db.insert(cachePrices)
-        .values([{
-          id: crypto.randomUUID(),
-          type: "sol",
-          symbol: "SOL",
-          price: price.toString(),
-          timestamp: sql`CURRENT_TIMESTAMP`,
-          expiresAt: expiresAtDate,
-        }])
+      await this.db
+        .insert(cachePrices)
+        .values([
+          {
+            id: crypto.randomUUID(),
+            type: "sol",
+            symbol: "SOL",
+            price: price.toString(),
+            timestamp: sql`CURRENT_TIMESTAMP`,
+            expiresAt: expiresAtDate,
+          },
+        ])
         .execute();
 
       // Clean up old cache entries
@@ -133,15 +147,18 @@ export class CacheService {
       );
       const expiresAtDate = new Date(expiresAt);
 
-      await this.db.insert(cachePrices)
-        .values([{
-          id: crypto.randomUUID(),
-          type: "sol",
-          symbol: "SOL",
-          price: serializedData.toString(),
-          timestamp: sql`CURRENT_TIMESTAMP`,
-          expiresAt: expiresAtDate,
-        }])
+      await this.db
+        .insert(cachePrices)
+        .values([
+          {
+            id: crypto.randomUUID(),
+            type: "sol",
+            symbol: "SOL",
+            price: serializedData.toString(),
+            timestamp: sql`CURRENT_TIMESTAMP`,
+            expiresAt: expiresAtDate,
+          },
+        ])
         .execute();
       // Clean up old cache entries
       await this.cleanupOldCacheEntries("metadata", key);
@@ -194,7 +211,6 @@ export class CacheService {
     symbol: string,
   ): Promise<void> {
     try {
-
       // Delete expired entries
       await this.db
         .delete(cachePrices)

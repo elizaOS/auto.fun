@@ -127,4 +127,4 @@ export class RedisPool {
 
     return this.subscriberClient;
   }
-} 
+}

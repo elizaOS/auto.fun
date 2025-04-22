@@ -7,11 +7,11 @@ import { logger } from "./logger";
 import { getSOLPrice } from "./mcap";
 import { TokenMigrator } from "./raydium/migration/migrateToken";
 import { getToken } from "./raydium/migration/migrations";
-import * as raydium_vault_IDL from "@autodotfun/program/idl/raydium_vault.json";
+import * as raydium_vault_IDL from "./raydium/raydium_vault.json";
 import { RaydiumVault } from "./raydium/types/raydium_vault";
 import { TokenData, TokenDBData } from "./raydium/types/tokenData";
-import * as IDL from "@autodotfun/program/idl/autofun.json";
-import { Autofun } from "@autodotfun/program/types";
+import * as IDL from "./target/idl/autofun.json";
+import { Autofun } from "./target/types/autofun";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import {
    createNewTokenData,
@@ -50,7 +50,6 @@ export async function resumeOnStart(env: Env, connection: Connection) {
    );
    await tokenMigrator.resumeMigrationsOnStart()
 }
-
 
 function convertTokenDataToDBData(
    tokenData: Partial<TokenData>,

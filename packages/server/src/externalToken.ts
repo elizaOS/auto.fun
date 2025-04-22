@@ -5,14 +5,19 @@ import {
   SwapEventData,
   TokenPairEventType,
 } from "@codex-data/sdk/dist/sdk/generated/graphql";
-import { Env } from "./env";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { getDB, tokens } from "./db";
 import { eq } from "drizzle-orm";
+import { getDB, tokens } from "./db";
+import { Env } from "./env";
 import { getSOLPrice } from "./mcap";
+import { getWebSocketClient, WebSocketClient } from "./websocket-client";
 import { createRedisCache } from "./redis/redisCacheService";
+import { logger } from "./util";
 
 const SOLANA_NETWORK_ID = 1399811149;
+
+// Define max swaps to keep in Redis list (consistent with other files)
+const MAX_SWAPS_TO_KEEP = 250;
 
 // Define a type for the expected structure of a processed swap
 // This should match the schema of your 'swaps' table
@@ -26,7 +31,7 @@ type ProcessedSwap = {
   amountOut: number;
   price: number;
   txId: string;
-  timestamp: string;
+  timestamp: Date;
 };
 
 /**
@@ -36,20 +41,22 @@ export class ExternalToken {
   private sdk: Codex;
   private mint: string;
   private db: ReturnType<typeof getDB>;
+  private wsClient: WebSocketClient;
   private env: Env;
 
   constructor(env: Env, mint: string) {
     this.sdk = new Codex(env.CODEX_API_KEY);
     this.mint = mint;
     this.db = getDB(env);
+    this.wsClient = getWebSocketClient(env);
     this.env = env;
   }
 
   public async registerWebhook() {
     const securityToken = this.env.CODEX_WEBHOOK_AUTH_TOKEN;
-    if (!securityToken) {
-      throw new Error("missing CODEX_WEBHOOK_AUTH_TOKEN env var");
-    }
+    // if (!securityToken) {
+    //   throw new Error("missing CODEX_WEBHOOK_AUTH_TOKEN env var");
+    // }
 
     try {
       await this.sdk.mutations.createWebhooks({
@@ -117,9 +124,7 @@ export class ExternalToken {
     }
     const createdAt = token.token?.createdAt;
     // get data from codex number createdAt
-    const creationTime = createdAt
-      ? new Date(createdAt * 1000)
-      : new Date();
+    const creationTime = createdAt ? new Date(createdAt * 1000) : new Date();
     const tokenSupplyUi = token.token?.info?.circulatingSupply
       ? Number(token.token?.info?.circulatingSupply)
       : 0;
@@ -144,83 +149,62 @@ export class ExternalToken {
       tokenDecimals: tokenDecimals,
       // time of import
       createdAt: creationTime,
-
-      // time of actual token creation
-      // createdAt: token.createdAt
-      //   ? new Date(token.createdAt * 1000).toISOString()
-      //   : new Date().toISOString(),
     };
 
-    // TODO: featured score for token db and websocket
-    const updatedToken = (
-      await this.db
-        .update(tokens)
-        .set(newTokenData)
-        .where(eq(tokens.mint, this.mint))
-        .returning()
-    )[0];
+    // Remove DB write for ephemeral data; store stats in Redis
+    const redisCache = createRedisCache(this.env);
+    const statsKey = redisCache.getKey(`token:stats:${this.mint}`);
+    await redisCache.set(statsKey, JSON.stringify(newTokenData), 60);
+    logger.log(`ExternalToken: Stored market stats in Redis for ${this.mint} with TTL 60s`);
 
-    // this.wsClient.to("global").emit("updateToken", updatedToken);
+    // Emit updated stats via WebSocket
+    this.wsClient.to("global").emit("updateToken", newTokenData);
 
     return { newTokenData, tokenSupply };
   }
 
-
-  // get creator for the token
-  public async getCreatorAddress() {
-    const { filterTokens } = await this.sdk.queries.filterTokens({
-      tokens: [`${this.mint}:${SOLANA_NETWORK_ID}`],
+  public async updateHolderData(tokenSupply: number) {
+    const { holders: codexHolders } = await this.sdk.queries.holders({
+      input: {
+        tokenId: `${this.mint}:${SOLANA_NETWORK_ID}`,
+      },
     });
 
-    const token = filterTokens?.results?.[0];
-    if (!token) {
-      throw new Error("failed to find token with codex");
-    }
+    const now = new Date();
 
-    return token.token?.creatorAddress || null;
-  }
+    const allHolders = tokenSupply
+      ? codexHolders.items.map((holder): any => ({
+          mint: this.mint,
+          address: holder.address,
+          amount: holder.shiftedBalance,
+          percentage: (holder.shiftedBalance / tokenSupply) * 100,
+          lastUpdated: now,
+        }))
+      : [];
 
+    allHolders.sort((a, b) => b.percentage - a.percentage);
 
-  public async updateHolderData(tokenSupply: number) {
+    const redisCache = createRedisCache(this.env);
+    const holdersListKey = redisCache.getKey(`holders:${this.mint}`);
+    const top50Holders = allHolders.slice(0, 50);
+
     try {
-      const { holders: codexHolders } = await this.sdk.queries.holders({
-        input: {
-          tokenId: `${this.mint}:${SOLANA_NETWORK_ID}`,
-        },
-      });
-
-
-      const allHolders = tokenSupply
-        ? codexHolders.items.map(
-          (holder): any => ({
-            id: crypto.randomUUID(),
-            mint: this.mint,
-            address: holder.address,
-            amount: holder.shiftedBalance,
-            percentage: (holder.shiftedBalance / tokenSupply) * 100,
-            lastUpdated: new Date(),
-          }),
-        )
-        : [];
-
-      allHolders.sort((a, b) => b.percentage - a.percentage);
-
-      // Store full list in Redis instead of DB
-      const redisCache = createRedisCache(this.env);
-      const holdersListKey = redisCache.getKey(`holders:${this.mint}`);
-      try {
-          await redisCache.set(holdersListKey, JSON.stringify(allHolders));
-          console.log(`MigrationBE/ExternalToken: Stored ${allHolders.length} holders in Redis list ${holdersListKey}`);
-      } catch (redisError) {
-          console.error(`MigrationBE/ExternalToken: Failed to store holders in Redis for ${this.mint}:`, redisError);
-      }
-
-      // Return the full list as stored in Redis
-      return allHolders;
-    } catch (error) {
-      console.error("Error updating holder data:", error);
-      throw error;
+      await redisCache.set(holdersListKey, JSON.stringify(top50Holders));
+      logger.log(
+        `ExternalToken: Stored ${allHolders.length} holders in Redis list ${holdersListKey}`,
+      );
+    } catch (redisError) {
+      logger.error(
+        `ExternalToken: Failed to store holders in Redis for ${this.mint}:`,
+        redisError,
+      );
     }
+
+    await this.wsClient
+      .to(`token-${this.mint}`)
+      .emit("newHolder", top50Holders);
+
+    return top50Holders;
   }
   // fetch and update swap data
   public async updateLatestSwapData(
@@ -251,7 +235,7 @@ export class ExternalToken {
           id: crypto.randomUUID(),
           tokenMint: this.mint,
           txId: codexSwap.transactionHash,
-          timestamp: new Date(codexSwap.timestamp * 1000).toISOString(),
+          timestamp: new Date(codexSwap.timestamp * 1000),
           user: codexSwap.maker || "",
         };
         const priceUsdtotal = swapData.priceUsdTotal || 0;
@@ -285,12 +269,12 @@ export class ExternalToken {
       })
       .filter((swap): swap is NonNullable<typeof swap> => !!swap);
 
-    // if (processedSwaps.length > 0) {
-    //   await this.insertProcessedSwaps(processedSwaps);
-    //   await this.wsClient
-    //     .to(`token-${this.mint}`)
-    //     .emit("newSwap", processedSwaps);
-    // }
+    if (processedSwaps.length > 0) {
+      await this.insertProcessedSwaps(processedSwaps);
+      await this.wsClient
+        .to(`token-${this.mint}`)
+        .emit("newSwap", processedSwaps);
+    }
 
     console.log(
       `[worker] Updated latest batch for ${this.mint}. Fetched: ${processedSwaps.length} swaps.`,
@@ -349,7 +333,7 @@ export class ExternalToken {
             id: crypto.randomUUID(),
             tokenMint: this.mint,
             txId: codexSwap.transactionHash,
-            timestamp: new Date(codexSwap.timestamp * 1000).toISOString(),
+            timestamp: new Date(codexSwap.timestamp * 1000),
             user: codexSwap.maker || "",
           };
 
@@ -380,9 +364,9 @@ export class ExternalToken {
 
       if (processedSwaps.length > 0) {
         await this.insertProcessedSwaps(processedSwaps);
-        // await this.wsClient
-        //   .to(`token-${this.mint}`)
-        //   .emit("newSwap", processedSwaps);
+        await this.wsClient
+          .to(`token-${this.mint}`)
+          .emit("newSwap", processedSwaps);
       }
 
       // Update the cursor for the next batch
@@ -398,40 +382,50 @@ export class ExternalToken {
   ): Promise<void> {
     if (processedSwaps.length === 0) return;
 
-    // Instantiate Redis client (assuming local path)
+    // Instantiate Redis client
     const redisCache = createRedisCache(this.env);
     const listKey = redisCache.getKey(`swapsList:${this.mint}`);
-    // Define max swaps consistent with worker (can be adjusted if needed for migration)
-    const MAX_SWAPS_TO_KEEP = 1000;
 
-    // Sort swaps by ascending timestamp (oldest first for lpush)
+    // Sort swaps by ascending timestamp (oldest first)
+    // Important: We push to the START of the list (lpush),
+    // so processing oldest first ensures the list maintains newest-at-the-start order.
     processedSwaps.sort(
       (a, b) =>
         new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
     );
 
-    console.log(
-      `MigrationBE: Inserting ${processedSwaps.length} swaps into Redis list ${listKey} for ${this.mint}`,
+    logger.log(
+      `Inserting ${processedSwaps.length} swaps into Redis list ${listKey} for ${this.mint}`,
     );
 
     let insertedCount = 0;
+    // Loop and push individually (lpush doesn't easily handle large arrays in ioredis types)
     for (const swap of processedSwaps) {
       try {
-        // Ensure timestamp is stringified
+        // Ensure timestamp is stringified correctly if it's a Date object
         const swapToStore = {
           ...swap,
-          timestamp: typeof swap.timestamp !== 'string' ? new Date(swap.timestamp).toISOString() : swap.timestamp
+          timestamp:
+            swap.timestamp instanceof Date
+              ? swap.timestamp.toISOString()
+              : swap.timestamp,
         };
         await redisCache.lpush(listKey, JSON.stringify(swapToStore));
+        // Trim after each push to keep the list size controlled
         await redisCache.ltrim(listKey, 0, MAX_SWAPS_TO_KEEP - 1);
         insertedCount++;
       } catch (redisError) {
-        console.error(`MigrationBE: Failed to save swap to Redis list ${listKey}:`, redisError);
+        logger.error(
+          `ExternalToken: Failed to save swap to Redis list ${listKey}:`,
+          redisError,
+        );
+        // Optionally break or continue on error
+        // break;
       }
     }
 
     console.log(
-      `MigrationBE: Finished inserting. ${insertedCount} swaps pushed to Redis for ${this.mint}`,
+      `Finished inserting. ${insertedCount} swaps pushed to Redis for ${this.mint}`,
     );
   }
 }

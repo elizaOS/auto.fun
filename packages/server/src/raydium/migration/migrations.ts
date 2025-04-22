@@ -1,20 +1,20 @@
-import { TokenData } from "../types/tokenData";
-import { eq, and } from "drizzle-orm";
-import { getDB, tokens } from "../../db";
-import { Env } from "../../env";
-import { updateTokenInDB } from "../../processTransactionLogs";
-import { retryOperation } from "../utils";
-import { logger } from "../../logger";
-import { updateTokenSupplyFromChain } from "../../tokenSupplyHelpers";
-import { TokenMigrator } from "../migration/migrateToken";
-import { RaydiumVault } from "../types/raydium_vault";
-import * as raydium_vault_IDL from "@autodotfun/program/idl/raydium_vault.json";
-import { Autofun } from "@autodotfun/program/types";
-import * as IDL from "@autodotfun/program/idl/autofun.json";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair } from "@solana/web3.js";
+import { and, eq } from "drizzle-orm";
+import { updateTokenInDB } from "../../cron";
+import { getDB, tokens } from "../../db";
+import { Env } from "../../env";
+import * as IDL from "../../target/idl/autofun.json";
+import { Autofun } from "../../target/types/autofun";
+import { updateTokenSupplyFromChain } from "../../tokenSupplyHelpers";
 import { Wallet } from "../../tokenSupplyHelpers/customWallet";
-
+import { logger } from "../../util";
+import { getWebSocketClient } from "../../websocket-client";
+import { TokenMigrator } from "../migration/migrateToken";
+import * as raydium_vault_IDL from "../raydium_vault.json";
+import { RaydiumVault } from "../types/raydium_vault";
+import { TokenData } from "../types/tokenData";
+import { retryOperation } from "../utils";
 
 export interface LockResult {
   txId: string;
@@ -141,12 +141,11 @@ export async function executeMigrationStep(
 
   // Update token migration
   token.migration = token.migration ?? {};
-  (token.migration as any)[step.name] = {
-    status: "success",
+  (token.migration as Record<string, any>)[step.name] = {
+    status: "success", 
     txId: result.txId,
     updatedAt: new Date().toISOString(),
   };
-
   Object.assign(token, result.extraData);
   console.log(`${step.name} result:`, result);
   // Update the DB record
@@ -161,11 +160,11 @@ export async function executeMigrationStep(
   token.migration.lastStep = nextStepName ?? "done";
 
   await updateTokenInDB(env, tokenData);
-  // await saveMigrationState(env, token, nextStepName ?? "done");
+  // await saveMigrationState(env, token, step.name);
 
-  // const ws = getWebSocketClient(env);
+  const ws = getWebSocketClient(env);
   if (step.eventName) {
-    // ws.to(`token-${token.mint}`).emit(step.eventName, token);
+    ws.to(`token-${token.mint}`).emit(step.eventName, token);
   }
 
   logger.log(
@@ -253,19 +252,14 @@ export async function getMigrationState(env: Env, token: TokenData) {
   return null;
 }
 
-
 export async function checkMigratingTokens(env: Env, limit: number) {
   try {
     const db = getDB(env);
     const migratingTokens = await db
       .select()
       .from(tokens)
-      .where(and(
-        eq(tokens.status, "migrating"),
-      ))
+      .where(and(eq(tokens.status, "migrating")))
       .execute();
-    console.log("migratingTokens", migratingTokens.length);
-
 
     const connection = new Connection(
       env.NETWORK === "devnet"
@@ -284,7 +278,7 @@ export async function checkMigratingTokens(env: Env, limit: number) {
       raydium_vault_IDL as any,
       provider,
     );
-    const autofunProgram = new Program<Autofun>(IDL as any, provider);
+    const autofunProgram = new Program<Autofun>(IDL, provider);
 
     const tokenMigrator = new TokenMigrator(
       env,
@@ -295,7 +289,7 @@ export async function checkMigratingTokens(env: Env, limit: number) {
       provider,
     );
 
-    // Filter out tokens that have migration as null or empty object or migration.status is not locked 
+    // Filter out tokens that have migration as null or empty object or migration.status is not locked
     const filteredTokens = migratingTokens.filter((token) => {
       const migration = token.migration ? JSON.parse(token.migration) : null;
       return (
@@ -308,12 +302,10 @@ export async function checkMigratingTokens(env: Env, limit: number) {
 
     for (const token of finalList) {
       const tokenM = await getToken(env, token.mint);
-      await tokenMigrator.migrateToken(tokenM!);
+      // await tokenMigrator.migrateToken(tokenM!);
     }
-
   } catch (error) {
     logger.error(`Error fetching migrating tokens: ${error}`);
     throw new Error("Failed to fetch migrating tokens");
   }
-
 }

@@ -3,18 +3,10 @@ import {
   TxVersion,
   parseTokenAccountResp,
 } from "@raydium-io/raydium-sdk-v2";
-import {
-  Connection,
-  Keypair,
-  clusterApiUrl,
-  PublicKey,
-  Transaction,
-} from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
-import { logger } from "../logger";
+import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { Env } from "../env";
-import * as dotenv from "dotenv";
-dotenv.config();
+import { logger } from "../util";
 
 type Cluster = "mainnet" | "devnet";
 export const getRpcUrl = (env: Env) => {
@@ -24,31 +16,30 @@ export const getRpcUrl = (env: Env) => {
 };
 
 export const txVersion = TxVersion.V0;
-const cluster = process.env.NETWORK as Cluster;
-
 
 let raydium: Raydium | undefined;
 export const initSdk = async (params: {
   env: Env;
-  connection: Connection;
   loadToken?: boolean;
   owner?: PublicKey;
 }) => {
+  const cluster = params.env.NETWORK as Cluster;
+  const connection = new Connection(getRpcUrl(params.env));
   const owner: Keypair = Keypair.fromSecretKey(
     Uint8Array.from(JSON.parse(params.env.WALLET_PRIVATE_KEY!)),
   );
 
   if (raydium) return raydium;
   logger.log(
-    `Raydium SDK: Connected to RPC ${params.connection.rpcEndpoint} in ${cluster}`,
+    `Raydium SDK: Connected to RPC ${connection.rpcEndpoint} in ${cluster}`,
   );
   raydium = await Raydium.load({
     owner: params?.owner || owner,
-    connection: params.connection,
+    connection,
     cluster,
     disableFeatureCheck: true,
     disableLoadToken: !params?.loadToken,
-    blockhashCommitment: "confirmed",
+    blockhashCommitment: "finalized",
   });
 
   return raydium;

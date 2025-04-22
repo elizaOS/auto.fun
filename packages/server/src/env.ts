@@ -1,5 +1,5 @@
 import {
-
+  D1Database,
   DurableObjectNamespace,
   R2Bucket,
 } from "@cloudflare/workers-types/experimental";
@@ -15,7 +15,7 @@ interface Ai {
  */
 export interface Env {
   WEBSOCKET_DO: DurableObjectNamespace;
-
+  DB: D1Database;
   NETWORK: string;
   DECIMALS: string;
   TOKEN_SUPPLY: string;
@@ -43,13 +43,16 @@ export interface Env {
   RPC_URL: string;
   MAINNET_SOLANA_RPC_URL: string;
   DEVNET_SOLANA_RPC_URL: string;
+  DEVNET_PROGRAM_ID: string;
   PROGRAM_ID: string;
   // Test environment properties
   tokenPubkey: string; // Used in tests to track the current test token
   // Redis
   REDIS: KVNamespace;
+  REDIS_URL: string;
   // KV namespace for auth tokens
   AUTH_TOKENS: KVNamespace;
+  CACHE: KVNamespace;
   // Auth token salt for hashing
   AUTH_TOKEN_SALT: string;
   // Frontend URL
@@ -72,10 +75,8 @@ export interface Env {
   MONITOR_KV: KVNamespace;
   FIXED_FEE: string;
   ACCOUNT_FEE_MULTISIG: string;
-  LOCAL_DB_PATH: string;
   DATABASE_URL: string;
-  // --- ADDED Redis properties ---
   REDIS_HOST: string;
-  REDIS_PORT: string | number; // Allow string or number for flexibility
-  REDIS_PASSWORD?: string; // Password might be optional
+  REDIS_PORT: string;
+  REDIS_PASSWORD: string;
 }
