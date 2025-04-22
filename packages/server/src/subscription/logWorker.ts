@@ -1,4 +1,3 @@
-// src/workers/logWorker.ts
 import { Connection, PublicKey } from "@solana/web3.js";
 import dotenv from "dotenv";
 import { startLogSubscription } from "./subscription";
