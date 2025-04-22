@@ -144,6 +144,7 @@ export class ExternalToken {
       createdAt: creationTime,
       currentPrice: currentPrice,
 
+
       // time of actual token creation
       // createdAt: token.createdAt
       //   ? new Date(token.createdAt * 1000).toISOString()
@@ -152,7 +153,7 @@ export class ExternalToken {
     // remove data that is 0 or undefined
     const filtered = Object.fromEntries(
       Object.entries(newTokenData).filter(
-        ([, value]) => value !== 0 && value !== undefined,
+        ([, value]) => value !== 0 && value !== undefined && value !== null,
       ),
     );
 
@@ -181,15 +182,15 @@ export class ExternalToken {
 
     const allHolders = tokenSupply
       ? codexHolders.items.map(
-          (holder): TokenHolderInsert => ({
-            id: crypto.randomUUID(),
-            mint: this.mint,
-            address: holder.address,
-            amount: holder.shiftedBalance,
-            percentage: (holder.shiftedBalance / tokenSupply) * 100,
-            lastUpdated: now,
-          }),
-        )
+        (holder): TokenHolderInsert => ({
+          id: crypto.randomUUID(),
+          mint: this.mint,
+          address: holder.address,
+          amount: holder.shiftedBalance,
+          percentage: (holder.shiftedBalance / tokenSupply) * 100,
+          lastUpdated: now,
+        }),
+      )
       : [];
 
     allHolders.sort((a, b) => b.percentage - a.percentage);
