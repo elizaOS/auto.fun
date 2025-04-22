@@ -1515,7 +1515,7 @@ async function generateTokenOnDemand(
         }) as any;
 
         // Extract the URL (expecting direct URL from Fal)
-        let sourceImageUrl = imageResult?.data?.images?.[0]?.url || imageResult?.image?.url || "";
+        const sourceImageUrl = imageResult?.data?.images?.[0]?.url || imageResult?.image?.url || "";
 
         if (!sourceImageUrl || !sourceImageUrl.startsWith('http')) {
             logger.error("Fal image generation result:", JSON.stringify(imageResult));
@@ -2000,7 +2000,7 @@ export async function generatePreGeneratedTokens() { // Removed env parameter
       }) as any;
 
       // Extract the URL (expecting direct URL from Fal)
-      let sourceImageUrl = imageResult?.data?.images?.[0]?.url || imageResult?.image?.url || "";
+      const sourceImageUrl = imageResult?.data?.images?.[0]?.url || imageResult?.image?.url || "";
 
       if (!sourceImageUrl || !sourceImageUrl.startsWith('http')) {
         logger.error("Fal image generation result:", JSON.stringify(imageResult));

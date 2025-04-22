@@ -26,6 +26,7 @@ export default tseslint.config(
       'no-useless-escape': 'off',
       'no-control-regex': 'off',
       'no-async-promise-executor': 'off',
+      '@typescript-eslint/no-empty-object-type': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/no-unsafe-function-type': 'off',
       'prefer-rest-params': 'off',
