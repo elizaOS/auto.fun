@@ -19,58 +19,60 @@ const router = new Hono<{
   };
 }>();
 
+
+// disable to test helius wss
 /**
  * listen to transaction logs for our program from helius
  */
-router.post("/webhook", async (c) => {
-  console.log("helius webhook received");
-  // value is configured in helius webhook dashboard
-  const authorization = c.req.header("Authorization");
-  console.log("Authorization", authorization);
-  console.log(
-    "HELUS_WEBHOOK_AUTH_TOKEN",
-    process.env.HELIUS_WEBHOOK_AUTH_TOKEN
-  );
+// router.post("/webhook", async (c) => {
+//   console.log("helius webhook received");
+//   // value is configured in helius webhook dashboard
+//   const authorization = c.req.header("Authorization");
+//   console.log("Authorization", authorization);
+//   console.log(
+//     "HELUS_WEBHOOK_AUTH_TOKEN",
+//     process.env.HELIUS_WEBHOOK_AUTH_TOKEN
+//   );
 
-  if (authorization !== process.env.HELIUS_WEBHOOK_AUTH_TOKEN) {
-    return c.json(
-      {
-        message: "Unauthorized",
-      },
-      401
-    );
-  }
+//   if (authorization !== process.env.HELIUS_WEBHOOK_AUTH_TOKEN) {
+//     return c.json(
+//       {
+//         message: "Unauthorized",
+//       },
+//       401
+//     );
+//   }
 
-  const body = await c.req.json();
-  const events = z
-    .object({
-      meta: z.object({
-        logMessages: z.string().array(),
-      }),
-      transaction: z.object({
-        signatures: z.string().array(),
-      }),
-    })
-    .array()
-    .parse(body);
+//   const body = await c.req.json();
+//   const events = z
+//     .object({
+//       meta: z.object({
+//         logMessages: z.string().array(),
+//       }),
+//       transaction: z.object({
+//         signatures: z.string().array(),
+//       }),
+//     })
+//     .array()
+//     .parse(body);
 
-  c.executionCtx.waitUntil(
-    (async () => {
-      await Promise.all(
-        events.map((event) =>
-          processTransactionLogs(
-            event.meta.logMessages,
-            event.transaction.signatures[0]
-          )
-        )
-      );
-    })()
-  );
+//   c.executionCtx.waitUntil(
+//     (async () => {
+//       await Promise.all(
+//         events.map((event) =>
+//           processTransactionLogs(
+//             event.meta.logMessages,
+//             event.transaction.signatures[0]
+//           )
+//         )
+//       );
+//     })()
+//   );
 
-  return c.json({
-    message: "Completed",
-  });
-});
+//   return c.json({
+//     message: "Completed",
+//   });
+// });
 
 const WebhookTokenPairEvent = z.object({
   deduplicationId: z.string(),
