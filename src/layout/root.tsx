@@ -24,7 +24,7 @@ export default function Layout() {
       setShowFooter(true);
       return;
     }
-  
+
     const checkScrollPosition = () => {
       const isNearTop = window.scrollY < 200;
       if (isNearTop) {
@@ -33,13 +33,12 @@ export default function Layout() {
         setShowFooter(true);
       }
     };
-  
+
     checkScrollPosition();
-  
+
     window.addEventListener("scroll", checkScrollPosition);
     return () => window.removeEventListener("scroll", checkScrollPosition);
   }, [isHomepage]);
-  
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -144,11 +144,6 @@ export class ExternalToken {
       tokenDecimals: tokenDecimals,
       // time of import
       createdAt: creationTime,
-
-      // time of actual token creation
-      // createdAt: token.createdAt
-      //   ? new Date(token.createdAt * 1000).toISOString()
-      //   : new Date().toISOString(),
     };
 
     // TODO: featured score for token db and websocket

@@ -37,7 +37,11 @@ export async function getSOLPrice(env?: Env): Promise<number> {
     const cacheService = new CacheService(env);
     const cachedPrice = await cacheService.getSolPrice();
     console.log("cachedPrice", cachedPrice);
-    if (cachedPrice !== null) {
+    if (
+      Number.isNaN(cachedPrice) !== false &&
+      cachedPrice !== null &&
+      cachedPrice > 0
+    ) {
       return cachedPrice;
     }
   }

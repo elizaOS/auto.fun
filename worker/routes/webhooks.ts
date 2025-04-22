@@ -167,8 +167,8 @@ router.post("/codex-webhook", async (c) => {
   const wsClient = getWebSocketClient(c.env);
 
   const ext = new ExternalToken(c.env, tokenMint);
-  //  we just call this to update the last 20 swaps in the db
-  await ext.updateLatestSwapData(20);
+  //  we just call this to update the last 5 swaps in the db
+  await ext.updateLatestSwapData(3);
   const latestCandle = await getLatestCandle(c.env, tokenMint, swap);
 
   await ext.updateMarketAndHolders();
