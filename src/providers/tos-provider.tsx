@@ -1,18 +1,25 @@
-import { PropsWithChildren } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { useTosAccepted } from "@/hooks/use-tos";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocalStorage } from "@uidotdev/usehooks";
 
-export default function TosProvider({ children }: PropsWithChildren) {
+export default function TosProvider() {
   const location = useLocation();
   const routes = ["/privacy-policy", "/terms-of-service", "/fees", "/support"];
   const AllowedRoute = routes.includes(location.pathname);
+  const [tosAccepted, setTosAccepted] = useLocalStorage<boolean>(
+    "tosAccepted",
+    false
+  );
+  const navigate = useNavigate();
 
-  const { tosAccepted, acceptTos } = useTosAccepted();
+  const acceptTos = () => {
+    setTosAccepted(true);
+    navigate("/");
+  };
 
   return (
     <>
       {!tosAccepted && !AllowedRoute && (
-        <div className="h-screen w-screen grid place-items-center absolute z-1000 bg-black/50">
+        <div className="h-screen w-full grid place-items-center fixed z-1000 backdrop-blur-xs">
           <div className="max-w-[400px] md:max-w-[496px] w-full bg-autofun-background-card shadow-lg overflow-hidden">
             <div className="p-4 border-b border-autofun-border relative mx-auto">
               <h1 className="mx-auto text-xl text-center font-satoshi font-medium tracking-[-0.018em] text-autofun-text-highlight">
@@ -57,7 +64,6 @@ export default function TosProvider({ children }: PropsWithChildren) {
           </div>
         </div>
       )}
-      {children}
     </>
   );
 }
