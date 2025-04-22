@@ -60,7 +60,7 @@ export default function CallbackPage() {
         state: state || "Missing",
         error: error || "None",
         errorDescription: errorDescription || "None",
-        apiUrl: process.env.apiUrl || "Missing",
+        apiUrl: env.apiUrl || "Missing",
         flow: oauthToken ? "OAuth 1.0a" : "OAuth 2.0",
       });
 
@@ -76,7 +76,7 @@ export default function CallbackPage() {
       if (oauthToken && oauthVerifier) {
         try {
           const response = await fetch(
-            `${process.env.apiUrl}/api/share/oauth1/callback?oauth_token=${oauthToken}&oauth_verifier=${oauthVerifier}`,
+            `${env.apiUrl}/api/share/oauth1/callback?oauth_token=${oauthToken}&oauth_verifier=${oauthVerifier}`,
             { credentials: "include" },
           );
 
@@ -140,7 +140,7 @@ export default function CallbackPage() {
       if (code && state) {
         try {
           const response = await fetch(
-            `${process.env.apiUrl}/api/share/oauth/callback?code=${code}&state=${state}`,
+            `${env.apiUrl}/api/share/oauth/callback?code=${code}&state=${state}`,
             { credentials: "include" },
           );
 

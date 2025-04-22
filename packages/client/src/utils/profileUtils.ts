@@ -210,7 +210,7 @@ const useGetProfileTokens = () => {
           }
 
           const tokensHeld =
-            tokenAccount.amount / BigInt(10) ** BigInt(process.env.decimals);
+            tokenAccount.amount / BigInt(10) ** BigInt(env.decimals);
           const solValue =
             calculateAmountOutSell(
               bondingCurveAccount.reserveLamport.toNumber(),
@@ -290,7 +290,7 @@ const useCreatedTokens = () => {
     };
 
     // === 2) Fetch the raw tokens list ===
-    const response = await fetch(`${process.env.apiUrl}/api/creator-tokens`, {
+    const response = await fetch(`${env.apiUrl}/api/creator-tokens`, {
       method: "POST",
       headers,
       credentials: "include",
@@ -355,7 +355,7 @@ const useCreatedTokens = () => {
     });
 
     return profileTokens;
-  }, [publicKey, process.env.apiUrl, getTokenAccounts, removeNonAutofunTokens]);
+  }, [publicKey, env.apiUrl, getTokenAccounts, removeNonAutofunTokens]);
 
   return fetchTokens;
 };

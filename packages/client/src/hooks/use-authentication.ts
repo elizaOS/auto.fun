@@ -73,7 +73,7 @@ export default function useAuthentication() {
         return { authenticated: false };
       }
       try {
-        const response = await fetchWithAuth(`${process.env.apiUrl}/api/auth-status`, {
+        const response = await fetchWithAuth(`${env.apiUrl}/api/auth-status`, {
           method: "GET",
         });
 
@@ -177,7 +177,7 @@ export default function useAuthentication() {
       if (tokenToRevoke) {
         const headers = new Headers();
         headers.set("Authorization", `Bearer ${tokenToRevoke}`);
-        await fetch(`${process.env.apiUrl}/api/logout`, {
+        await fetch(`${env.apiUrl}/api/logout`, {
           method: "POST",
           headers: headers,
           credentials: "include",

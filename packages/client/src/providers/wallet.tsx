@@ -10,7 +10,7 @@ import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
 
 export const Wallet = ({ children }: PropsWithChildren) => {
   // Always use the latest endpoint from environment
-  const endpoint = process.env.rpcUrl || "https://api.devnet.solana.com";
+  const endpoint = env.rpcUrl || "https://api.devnet.solana.com";
   const [autoConnectAttempted, setAutoConnectAttempted] = useState(false);
 
   // Initialize wallet adapters

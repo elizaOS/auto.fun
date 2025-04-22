@@ -15,6 +15,8 @@ class SocketWrapper {
   private connectionResolve: (() => void) | null = null;
   // Queue for messages that need to be sent when connection is established
   private messageQueue: Array<{ event: string; data?: unknown }> = [];
+  // Store the client ID received from the server
+  private clientId: string | null = null;
 
   constructor(url: string) {
     this.url = url;
@@ -61,7 +63,16 @@ class SocketWrapper {
     this.ws.onmessage = (event) => {
       try {
         const { event: eventName, data } = JSON.parse(event.data);
-        this.triggerEvent(eventName, data);
+        // Listen for the clientId event specifically
+        if (eventName === 'clientId' && typeof data === 'string') {
+          console.log('Received client ID:', data);
+          this.clientId = data;
+          // Process queue again in case messages were waiting for clientId
+          this.processQueue();
+        } else {
+          // Trigger other event handlers
+          this.triggerEvent(eventName, data);
+        }
       } catch (error) {
         console.error("Failed to parse WebSocket message:", error);
       }
@@ -71,6 +82,8 @@ class SocketWrapper {
       // Don't attempt to reconnect if disconnect() was called
       if (this.ws === null) return;
 
+      // Clear client ID on disconnect
+      this.clientId = null;
       this.triggerEvent("disconnect", {
         reason: "io server disconnect",
         code: event.code,
@@ -135,35 +148,40 @@ class SocketWrapper {
   };
 
   private processQueue = (): void => {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+    // Only process queue if connected AND we have a client ID
+    if (this.ws && this.ws.readyState === WebSocket.OPEN && this.clientId) {
       this.messageQueue.forEach((msg) => {
-        this.ws?.send(JSON.stringify(msg));
+        // Add clientId to the message before sending
+        const messageToSend = { ...msg, clientId: this.clientId };
+        this.ws?.send(JSON.stringify(messageToSend));
       });
       this.messageQueue = [];
     }
   };
 
   emit = async (event: string, data?: unknown): Promise<this> => {
+    // Always queue the message first
+    this.messageQueue.push({ event, data });
+
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ event, data }));
+      // If connected and have clientId, try processing queue immediately
+      if (this.clientId) {
+        this.processQueue();
+      } else {
+        // Waiting for clientId event
+      }
     } else if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
-      // Wait for the connection to open before sending the message
+      // Connection is in progress, wait for open and clientId
       if (this.connectionPromise) {
         try {
           await this.connectionPromise;
-          // Now the connection should be open, try to send again
-          return this.emit(event, data);
+          // Connection opened, clientId might arrive soon, queue is fine
         } catch (error) {
-          // If there's an error waiting for the connection, queue the message
-          this.messageQueue.push({ event, data });
+          // Error connecting, queue remains
         }
-      } else {
-        // No connection promise, queue the message
-        this.messageQueue.push({ event, data });
       }
     } else {
-      // Socket is closed or closing, reconnect and queue the message
-      this.messageQueue.push({ event, data });
+      // Socket is closed or closing, attempt reconnect (queue remains)
       this.connect();
     }
     return this;
@@ -174,6 +192,9 @@ class SocketWrapper {
       this.ws.close();
       this.ws = null;
     }
+
+    // Clear client ID on disconnect
+    this.clientId = null;
 
     // Clear any pending reconnection attempts
     if (this.reconnectTimer) {
@@ -193,7 +214,13 @@ let socket: Socket | null = null;
 
 export const getSocket = (): Socket => {
   if (!socket) {
-    socket = new SocketWrapper(process.env.apiUrl);
+    // Get apiUrl from environment and ensure it's defined
+    const apiUrl = env.apiUrl;
+    if (!apiUrl) {
+      throw new Error("Client environment variable 'apiUrl' is not defined. Please set it in your client environment (e.g., .env file).");
+    }
+    // Pass the guaranteed string to the constructor
+    socket = new SocketWrapper(apiUrl);
   }
   return socket;
 };

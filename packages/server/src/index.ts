@@ -2,11 +2,10 @@ import { Connection } from "@solana/web3.js";
 import dotenv from "dotenv";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { serve } from '@hono/node-server';
-import type { Server as HttpServer } from 'http';
-import type { Http2SecureServer, Http2Server } from 'http2';
-import type { AddressInfo } from 'net';
-// import type { Serve } from '@hono/node-server' // Remove this type import
+import { UpgradeWebSocket } from 'hono/ws';
+import { Context } from 'hono';
+import { createBunWebSocket } from 'hono/bun';
+import type { WSContext } from 'hono/ws'; // Import WSContext type for handlers
 
 // Load environment variables from .env file at the root
 dotenv.config({ path: "../../.env" });
@@ -297,7 +296,34 @@ try {
 const redisCache = createRedisCache(); // Create cache service instance
 logger.info("Redis Cache Service Initialized.");
 
-// --- Start the Node.js server ---
+// Initialize WebSocketManager with Redis
+webSocketManager.initialize(redisCache);
+logger.info("WebSocket Manager Initialized.");
+
+// --- Create Bun WebSocket handlers ---
+const { upgradeWebSocket, websocket } = createBunWebSocket();
+
+// --- Add WebSocket Upgrade Route ---
+app.get('/ws', upgradeWebSocket((c: Context) => {
+  return {
+    onOpen: (_evt: Event, wsInstance: WSContext) => {
+      webSocketManager.handleConnectionOpen(wsInstance);
+    },
+    onMessage: (evt: MessageEvent, wsInstance: WSContext) => {
+      webSocketManager.handleMessage(wsInstance, evt.data);
+    },
+    onClose: (_evt: CloseEvent, wsInstance: WSContext) => {
+      webSocketManager.handleConnectionClose(wsInstance);
+    },
+    onError: (evt: Event, wsInstance: WSContext) => {
+      logger.error('WebSocket error event:', evt);
+      const error = (evt as ErrorEvent).error || new Error('WebSocket error');
+      webSocketManager.handleConnectionError(wsInstance, error);
+    },
+  };
+}));
+
+// --- Start the server (Handled by Bun automatically via export) ---
 const PORT = parseInt(process.env.PORT || "8787", 10);
 
 if (isNaN(PORT)) {
@@ -305,90 +331,10 @@ if (isNaN(PORT)) {
   process.exit(1);
 }
 
-// Hono server options
-const serverOptions = {
+logger.info(`Hono app configured. Bun will start server on port ${PORT}`);
+
+// Export fetch and websocket handlers for Bun
+export default {
   fetch: app.fetch,
-  port: PORT,
+  websocket, // Add the websocket handler
 };
-
-// --- Start the server ---
-// Store the server instance - type from @hono/node-server is complex, use a union
-let runningServer: HttpServer | Http2Server | Http2SecureServer | null = null;
-
-try {
-  //  runningServer = serve(serverOptions, (info: AddressInfo) => {
-  //       logger.info(`🚀 Server listening on http://localhost:${info.port}`);
-  //   });
-   logger.info(`Hono server setup complete for port ${PORT}`);
-
-    // --- Initialize WebSocketManager with the Node Server and Redis ---
-      webSocketManager.initialize(redisCache); // Pass Node server instance
-
-
-} catch (error) {
-    logger.error("Failed to start the Hono server:", error);
-    process.exit(1); // Exit if server fails to start
-}
-
-
-// --- Graceful Shutdown ---
-const signals: NodeJS.Signals[] = ["SIGINT", "SIGTERM"];
-signals.forEach((signal) => {
-  process.on(signal, async () => { // Make handler async
-    logger.info(`Received ${signal}, shutting down gracefully...`);
-    let exitCode = 0;
-    const shutdownTimeout = setTimeout(() => {
-        logger.warn("Graceful shutdown timed out after 10s. Forcing exit.");
-        process.exit(1); // Force exit after timeout
-    }, 10000); // 10 seconds timeout
-
-    try {
-        // 1. Close WebSocketManager (terminates local connections)
-        logger.info("Closing WebSocket Manager...");
-        webSocketManager.close(); // This should close the WebSocket server itself
-
-        // 2. Close HTTP server (stops accepting new connections)
-        if (runningServer) {
-            logger.info("Closing HTTP Server...");
-            // Use the stored server instance
-            // Use a type assertion or check to satisfy TypeScript
-            // Note: The actual type returned by serve might vary based on options
-            await new Promise<void>((resolve) => { // Re-add promise wrapper
-            (runningServer as HttpServer)?.close((err?: Error) => { // err is optional Error
-               if (err) {
-                    logger.error("Error closing HTTP server:", err);
-                    // Don't reject here, try to continue shutdown
-                    // reject(err);
-               } else {
-                    logger.info("HTTP Server closed.");
-               }
-               resolve(); // Resolve even if there was an error closing
-            });
-            });
-        } else {
-             logger.warn("HTTP server instance not found, skipping close.");
-        }
-
-
-        // 3. Close Redis Pool
-        if (redisPoolInstance) {
-             logger.info("Closing Redis Pool...");
-             await redisPoolInstance.destroy(); // Assuming pool has a destroy method
-             logger.info("Redis Pool closed.");
-        }
-
-        // Add other cleanup (e.g., database connections) here
-
-    } catch (error) {
-        logger.error("Error during graceful shutdown:", error);
-        exitCode = 1;
-    } finally {
-         clearTimeout(shutdownTimeout); // Cancel force exit timeout
-         logger.info(`Graceful shutdown complete. Exiting with code ${exitCode}.`);
-        process.exit(exitCode);
-    }
-  });
-});
-
-logger.info(`Server configured to run on port ${PORT}`);
-export default app;

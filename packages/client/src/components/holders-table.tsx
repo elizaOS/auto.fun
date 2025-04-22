@@ -67,7 +67,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
               <TableRow className="hover:bg-white/5" key={holder?.address}>
                 <TableCell className="text-left">
                   <Link
-                    to={process.env.getWalletUrl(holder.address)}
+                    to={env.getWalletUrl(holder.address)}
                     target="_blank"
                     className="hover:text-autofun-text-highlight"
                   >
@@ -84,7 +84,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
                   {getPercentageOfTotal(holder.amount, supply)}%
                 </TableCell>
                 <TableCell>
-                  <Link to={process.env.getWalletUrl(holder.address)} target="_blank">
+                  <Link to={env.getWalletUrl(holder.address)} target="_blank">
                     <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary" />
                   </Link>
                 </TableCell>
@@ -100,7 +100,7 @@ export default function HoldersTable({ token }: { token: IToken }) {
               <div className="flex flex-col items-center gap-2">
                 <p>No holders data available from blockchain.</p>
                 <Link
-                  to={process.env.getHolderURL(token?.mint)}
+                  to={env.getHolderURL(token?.mint)}
                   target="_blank"
                   className="text-autofun-text-highlight hover:underline flex items-center gap-1"
                 >

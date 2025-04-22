@@ -78,7 +78,7 @@ export default function TwitterSharePage() {
 
   // --- Twitter Effects & Logic ---
   useEffect(() => {
-    const apiUrl = process.env.apiUrl;
+    const apiUrl = env.apiUrl;
     if (!apiUrl) {
       console.error("VITE_API_URL is not defined in environment variables");
       setApiUrlStatus("error");
@@ -200,7 +200,7 @@ export default function TwitterSharePage() {
           imageData: dummyImage,
         };
         localStorage.setItem(PENDING_SHARE_KEY, JSON.stringify(pendingShare));
-        const apiUrl = process.env.apiUrl;
+        const apiUrl = env.apiUrl;
         if (!apiUrl) {
           throw new Error("API URL is not configured.");
         }
@@ -221,7 +221,7 @@ export default function TwitterSharePage() {
         const formData = new FormData();
         formData.append("media", blob, "share-image.png");
 
-        const uploadResponse = await fetch(`${process.env.apiUrl}/api/share/tweet`, {
+        const uploadResponse = await fetch(`${env.apiUrl}/api/share/tweet`, {
           method: "POST",
           headers: { Authorization: `Bearer ${accessToken}` },
           body: formData,
@@ -253,7 +253,7 @@ export default function TwitterSharePage() {
   const postTweet = useCallback(
     async (text: string, mediaId: string, accessToken: string) => {
       try {
-        const response = await fetch(`${process.env.apiUrl}/api/share/tweet`, {
+        const response = await fetch(`${env.apiUrl}/api/share/tweet`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -564,7 +564,7 @@ export default function TwitterSharePage() {
         {/* Debug section */}
         <div className="mt-8 p-4 bg-gray-800 rounded-lg w-full text-xs text-gray-400">
           <h3 className="font-bold mb-2">Debug Information</h3>
-          <div>API URL: {process.env.apiUrl || "Not set"}</div>
+          <div>API URL: {env.apiUrl || "Not set"}</div>
           <div>
             Auth Status: {credentials ? "Authenticated" : "Not authenticated"}
           </div>

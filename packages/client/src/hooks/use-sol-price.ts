@@ -23,7 +23,7 @@ const fetchSolPrice = async (): Promise<number> => {
   try {
     // First try the backend API endpoint
     try {
-      const response = await fetch(`${process.env.apiUrl}/api/sol-price`);
+      const response = await fetch(`${env.apiUrl}/api/sol-price`);
       if (response.ok) {
         const data = (await response.json()) as SolPriceResponse;
         if (data && data.price) {

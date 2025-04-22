@@ -3,7 +3,7 @@ import { env } from "./env";
 
 // Use Helius RPC URL from environment variables
 export const getRpcUrl = (): string => {
-  return process.env.rpcUrl;
+  return env.rpcUrl;
 };
 
 // Cache to store previously fetched data

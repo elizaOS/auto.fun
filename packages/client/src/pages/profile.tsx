@@ -24,7 +24,7 @@ const WalletAddress = () => {
           {walletAddress}
         </div>
         <Link
-          to={process.env.getWalletUrl(walletAddress)}
+          to={env.getWalletUrl(walletAddress)}
           target="_blank"
           rel="noopener noreferrer"
           aria-label="visit profile"

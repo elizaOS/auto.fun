@@ -98,7 +98,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
                   >
                     <TableCell className="text-left">
                       <Link
-                        to={process.env.getAccountUrl(swap?.user)}
+                        to={env.getAccountUrl(swap?.user)}
                         target="_blank"
                         className="hover:text-autofun-text-highlight"
                       >
@@ -124,7 +124,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
                     </TableCell>
                     <TableCell>
                       <Link
-                        to={process.env.getTransactionUrl(swap.txId)}
+                        to={env.getTransactionUrl(swap.txId)}
                         target="_blank"
                       >
                         <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary hover:text-autofun-text-highlight transition-colors duration-200" />
