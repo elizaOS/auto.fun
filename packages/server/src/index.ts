@@ -316,9 +316,9 @@ const serverOptions = {
 let runningServer: HttpServer | Http2Server | Http2SecureServer | null = null;
 
 try {
-   runningServer = serve(serverOptions, (info: AddressInfo) => {
-        logger.info(`🚀 Server listening on http://localhost:${info.port}`);
-    });
+  //  runningServer = serve(serverOptions, (info: AddressInfo) => {
+  //       logger.info(`🚀 Server listening on http://localhost:${info.port}`);
+  //   });
    logger.info(`Hono server setup complete for port ${PORT}`);
 
     // --- Initialize WebSocketManager with the Node Server and Redis ---
