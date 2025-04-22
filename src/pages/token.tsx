@@ -251,7 +251,9 @@ export default function Page() {
   return (
     <Fragment>
       <Helmet>
-        <title>{token?.name} ({token?.ticker}) - auto.fun</title>
+        <title>
+          {token?.name} ({token?.ticker}) - auto.fun
+        </title>
       </Helmet>
       <div className="flex flex-col gap-3">
         {/* Top Stats Section - Full Width */}
@@ -266,30 +268,7 @@ export default function Page() {
           />
           <TopPageItem
             title="Age"
-            value={
-              token?.createdAt
-                ? fromNow(token?.createdAt, true).includes("a few")
-                  ? "NOW"
-                  : fromNow(token?.createdAt, true).includes("a minute")
-                    ? "1m"
-                    : fromNow(token?.createdAt, true).includes("an hour")
-                      ? "1h"
-                      : fromNow(token?.createdAt, true).includes("a day")
-                        ? "1d"
-                        : fromNow(token?.createdAt, true)
-                            .replace("ago", "")
-                            .replace(" days", "d")
-                            .replace(" hours", "h")
-                            .replace(" minutes", "m")
-                            .replace("seconds", "s")
-                            .replace(" day", "d")
-                            .replace("hour", "hr")
-                            .replace(" minute", "m")
-                            .replace("second", "s")
-                            .trim()
-                            .trim()
-                : "-"
-            }
+            value={token?.createdAt ? fromNow(token?.createdAt, true) : "-"}
           />
         </div>
 
