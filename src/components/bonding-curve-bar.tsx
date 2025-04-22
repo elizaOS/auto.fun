@@ -81,7 +81,7 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
             ${width === 100 ? 'animate-subtle-pulse' : ''}
           `}
           style={{
-            width: `${width}%`, // this part still needs to be inline since Tailwind doesn't support dynamic width percentages
+            width: `${width}%`,
           }}
         >
           <span className={`font-medium font-dm-mono text-sm px-1 whitespace-nowrap ${
