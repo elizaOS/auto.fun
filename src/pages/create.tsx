@@ -69,6 +69,11 @@ interface GenerateMetadataResponse {
   };
 }
 
+interface UploadImportImageResponse {
+  success: boolean;
+  imageUrl: string;
+}
+
 // Define tokenData interface
 interface TokenSearchData {
   name?: string;
@@ -1460,29 +1465,68 @@ export const Create = () => {
           }),
         });
 
-        // Check if the request was successful
         if (!response.ok) {
-          // First try to parse error from response
           try {
             const errorData = (await response.json()) as { error?: string };
             if (errorData.error) {
               throw new Error(errorData.error);
             }
           } catch (parseError) {
-            // If we can't parse the error, show a more friendly message
             if (response.status === 404) {
-              throw new Error(
-                "The token doesn't exist or doesn't have metadata.",
-              );
+              throw new Error("The token doesn't exist or doesn't have metadata.");
             } else {
-              throw new Error(
-                `Server error (${response.status}): Unable to retrieve token data.`,
-              );
+              throw new Error(`Server error (${response.status}): Unable to retrieve token data. Token either doesn't exist or is already imported.`);
             }
           }
         }
 
         const tokenData = (await response.json()) as TokenSearchData;
+
+        // If token has an image URL, fetch and convert to base64
+        if (tokenData.image) {
+          try {
+            const imageResponse = await fetch(tokenData.image);
+            if (imageResponse.ok) {
+              const imageBlob = await imageResponse.blob();
+              const imageFile = new File([imageBlob], "imported-image.png", {
+                type: "image/png",
+              });
+              setImageFile(imageFile);
+              
+              // Create preview URL
+              const previewUrl = URL.createObjectURL(imageBlob);
+              setCoinDropImageUrl(previewUrl);
+
+              // Upload the image to our storage
+              const uploadResponse = await fetch(`${env.apiUrl}/api/upload-import-image`, {
+                method: "POST",
+                headers,
+                credentials: "include",
+                body: JSON.stringify({
+                  imageBase64: await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.readAsDataURL(imageBlob);
+                  }),
+                }),
+              });
+
+              if (uploadResponse.ok) {
+                const data = (await uploadResponse.json()) as UploadImportImageResponse;
+                if (data.success && data.imageUrl) {
+                  tokenData.image = data.imageUrl;
+                  // Update the form state with the new image URL
+                  setCoinDropImageUrl(data.imageUrl);
+                  if (previewSetterRef.current) {
+                    previewSetterRef.current(data.imageUrl);
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.error("Error handling token image:", error);
+          }
+        }
 
         // Store token data in localStorage for later use
         localStorage.setItem("import_token_data", JSON.stringify(tokenData));
@@ -1503,49 +1547,23 @@ export const Create = () => {
           },
         }));
 
-        // Set token image if available
-        if (tokenData.image) {
-          if (previewSetterRef.current) {
-            previewSetterRef.current(tokenData.image);
-          }
-          setCoinDropImageUrl(tokenData.image);
-        }
-
-        // // Check if the current wallet is authorized to create this token
-        // const isCreatorWallet =
-        //   tokenData.isCreator !== undefined
-        //     ? tokenData.isCreator
-        //     : (tokenData.updateAuthority &&
-        //         tokenData.updateAuthority === publicKey.toString()) ||
-        //       (tokenData.creators &&
-        //         tokenData.creators.includes(publicKey.toString()));
-
-        // // Success message - ready to register
-        // const message = !isCreatorWallet
-        //   ? "Development Mode: You can register this token without being the creator wallet."
-        //   : "Token data loaded successfully. You can now register this token.";
-
-        // setImportStatus({
-        //   type: "success",
-        //   message,
-        // });
+        // Success message - ready to register
+        setImportStatus({
+          type: "success",
+          message: "Token data loaded successfully. You can now import this token.",
+        });
       } catch (fetchError) {
         console.error("API Error:", fetchError);
-
         setImportStatus({
           type: "error",
-          message:
-            fetchError instanceof Error
-              ? fetchError.message
-              : "Failed to import token",
+          message: fetchError instanceof Error ? fetchError.message : "Failed to import token",
         });
       }
     } catch (error) {
       console.error("Error importing token:", error);
       setImportStatus({
         type: "error",
-        message:
-          error instanceof Error ? error.message : "Failed to import token",
+        message: error instanceof Error ? error.message : "Failed to import token",
       });
     } finally {
       setIsImporting(false);
@@ -1959,18 +1977,24 @@ export const Create = () => {
     try {
       setIsSubmitting(true);
 
-      // Ensure wallet is connected
       if (!publicKey) {
         throw new Error("Wallet not connected");
       }
 
-      // Check if we're working with imported token data - ONLY do this check for IMPORT tab
+      // Check if we're working with imported token data
       const storedTokenData = localStorage.getItem("import_token_data");
-      if (storedTokenData && activeTab === FormTab.IMPORT) {
+      if (storedTokenData) {
         const tokenData = JSON.parse(storedTokenData);
         try {
-          // Show coin drop animation
-          setShowCoinDrop(true);
+          // Convert image to base64 if exists
+          let media_base64: string | null = null;
+          if (imageFile) {
+            media_base64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(imageFile);
+            });
+          }
 
           // Get auth token from localStorage with quote handling
           const authToken = getAuthToken();
@@ -1984,32 +2008,34 @@ export const Create = () => {
             headers["Authorization"] = `Bearer ${authToken}`;
           }
 
-          // Create token record via API
-          const createResponse = await fetch(env.apiUrl + "/api/create-token", {
-            method: "POST",
-            headers,
-            credentials: "include",
-            body: JSON.stringify({
-              tokenMint: tokenData.mint,
-              mint: tokenData.mint,
-              name: form.name,
-              symbol: form.symbol,
-              description: form.description,
-              twitter: form.links.twitter,
-              telegram: form.links.telegram,
-              website: form.links.website,
-              discord: form.links.discord,
-              imageUrl: tokenData.image || "",
-              metadataUrl: tokenData.metadataUri || "",
-              creator:
-                tokenData.updateAuthority ||
-                tokenData.creators ||
-                tokenData.mintAuthority ||
-                "",
-              // Include the import flag to indicate this is an imported token
-              imported: true,
-            }),
-          });
+          // Create token with the imported data
+          const createResponse = await fetch(
+            env.apiUrl + "/api/create-token",
+            {
+              method: "POST",
+              headers,
+              credentials: "include",
+              body: JSON.stringify({
+                tokenMint: tokenData.mint,
+                mint: tokenData.mint,
+                name: form.name,
+                symbol: form.symbol,
+                description: form.description,
+                twitter: form.links.twitter,
+                telegram: form.links.telegram,
+                website: form.links.website,
+                discord: form.links.discord,
+                imageBase64: media_base64,
+                metadataUrl: tokenData.metadataUri || "",
+                creator:
+                  tokenData.creators ||
+                  tokenData.updateAuthority ||
+                  tokenData.mintAuthority ||
+                  "",
+                // Include the import flag to indicate this is an imported token
+                imported: true,
+              }),
+            });
 
           if (!createResponse.ok) {
             const errorData = (await createResponse.json()) as {
@@ -2039,7 +2065,6 @@ export const Create = () => {
             return;
           }
 
-          console.error("Error handling imported token:", error);
           if (error instanceof Error) {
             throw error; // Re-throw if it's a permission error
           }
@@ -2990,9 +3015,6 @@ export const Create = () => {
                     )}
                   </div>
                 )}
-
-                {/* Remove this section as it's redundant with the form below */}
-                {/* {hasStoredToken && !importStatus && ( ... )} */}
               </div>
             </div>
           </div>
