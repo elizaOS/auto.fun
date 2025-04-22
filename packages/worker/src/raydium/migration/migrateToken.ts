@@ -10,7 +10,7 @@ import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { updateTokenInDB } from "../../cron";
 import { Env } from "../../env";
 import { ExternalToken } from "../../externalToken";
-import { Autofun } from "../../target/types/autofun";
+import { Autofun } from "@autodotfun/program/types";
 import { Wallet } from "../../tokenSupplyHelpers/customWallet";
 import { logger } from "../../util";
 import { getWebSocketClient } from "../../websocket-client";

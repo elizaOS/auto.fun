@@ -1,39 +1,32 @@
-import { logger } from "../../logger";
-import { Connection, PublicKey, Keypair, Transaction } from "@solana/web3.js";
-import { updateTokenInDB } from "../../processTransactionLogs";
+import { Autofun, RaydiumVault } from "@autodotfun/program/types";
+import { AnchorProvider, BN, Program } from "@coral-xyz/anchor";
 import {
-  CREATE_CPMM_POOL_PROGRAM,
   CREATE_CPMM_POOL_FEE_ACC,
+  CREATE_CPMM_POOL_PROGRAM,
   DEVNET_PROGRAM_ID,
-  getCpmmPdaAmmConfigId,
-  DEV_LOCK_CPMM_AUTH,
-  mul,
-  LOCK_CPMM_AUTH,
+  getCpmmPdaAmmConfigId
 } from "@raydium-io/raydium-sdk-v2";
-import { Program, BN, AnchorProvider } from "@coral-xyz/anchor";
-import { initSdk, txVersion } from "../raydium-config";
-import { withdrawTx, execWithdrawTx, submitWithdrawTx } from "../withdraw";
 import { NATIVE_MINT } from "@solana/spl-token";
-import { Env } from "../../env";
-import { depositToRaydiumVault } from "../raydiumVault";
-import { sendNftTo, sendSolTo } from "../utils";
-import { retryOperation } from "../utils";
-import { RaydiumVault } from "../types/raydium_vault";
-import { Autofun } from "../../target/types/autofun";
-import { TokenData } from "../types/tokenData";
-import {
-  getMigrationState,
-  MigrationStep,
-  executeMigrationStep,
-  acquireMigrationLock,
-  releaseMigrationLock,
-  LockResult,
-} from "./migrations";
-import { Wallet } from "../../tokenSupplyHelpers/customWallet";
-import { ExternalToken } from "../../externalToken";
+import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
+import { and, eq } from "drizzle-orm";
 import { getDB, tokens } from "../../db";
-import { eq, and } from "drizzle-orm";
+import { Env } from "../../env";
+import { ExternalToken } from "../../externalToken";
+import { logger } from "../../logger";
+import { updateTokenInDB } from "../../processTransactionLogs";
 import { getToken } from "../../raydium/migration/migrations";
+import { Wallet } from "../../tokenSupplyHelpers/customWallet";
+import { initSdk, txVersion } from "../raydium-config";
+import { depositToRaydiumVault } from "../raydiumVault";
+import { TokenData } from "../types/tokenData";
+import { retryOperation, sendNftTo, sendSolTo } from "../utils";
+import { execWithdrawTx, withdrawTx } from "../withdraw";
+import {
+  executeMigrationStep,
+  LockResult,
+  MigrationStep,
+  releaseMigrationLock
+} from "./migrations";
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout>;

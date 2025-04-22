@@ -220,7 +220,6 @@ router.post("/codex-webhook", async (c) => {
   //  we just call this to update the last 5 swaps in the db
   await ext.updateLatestSwapData(20);
   const latestCandle = await getLatestCandle(c.env, tokenMint, swap, token);
-
   await ext.updateMarketAndHolders();
 
   // Emit the same swapRecord format as used in cron.ts

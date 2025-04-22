@@ -3,8 +3,8 @@ import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { Env } from "./env";
 import { getRpcUrl } from "./utils";
 import { AnchorProvider, Program, setProvider } from "@coral-xyz/anchor";
-import { Autofun } from "./target/types/autofun";
-import * as idl from "./target/idl/autofun.json";
+import { Autofun } from "@autodotfun/program/types";
+import * as idl from "@autodotfun/program/idl/autofun.json";
 
 // Initialize the Solana configuration with the provided environment
 export function initSolanaConfig(env?: Env) {

@@ -1,4 +1,4 @@
-import { DatafeedConfiguration, ErrorCallback, GetMarksCallback, HistoryCallback, IDatafeedChartApi, IDatafeedQuotesApi, IExternalDatafeed, LibrarySymbolInfo, Mark, OnReadyCallback, QuotesCallback, ResolutionString, ResolveCallback, SearchSymbolResultItem, SearchSymbolsCallback, ServerTimeCallback, SubscribeBarsCallback, TimescaleMark, SymbolResolveExtension, VisiblePlotsSet } from '../../../public/libraries/charting_library/datafeed-api';
+import { DatafeedConfiguration, ErrorCallback, GetMarksCallback, HistoryCallback, IDatafeedChartApi, IDatafeedQuotesApi, IExternalDatafeed, LibrarySymbolInfo, Mark, OnReadyCallback, QuotesCallback, ResolutionString, ResolveCallback, SearchSymbolResultItem, SearchSymbolsCallback, ServerTimeCallback, SubscribeBarsCallback, TimescaleMark, SymbolResolveExtension, VisiblePlotsSet, Timezone } from '../../../public/libraries/charting_library/datafeed-api';
 import { LimitedResponseConfiguration, PeriodParamsWithOptionalCountback } from './history-provider';
 import { IQuotesProvider } from './iquotes-provider';
 import { IRequester } from './irequester';
@@ -9,6 +9,7 @@ export interface UdfCompatibleConfiguration extends DatafeedConfiguration {
     supports_marks?: boolean;
     supports_timescale_marks?: boolean;
     supports_time?: boolean;
+    exchanges?: any[];
 }
 export interface ResolveSymbolResponse extends LibrarySymbolInfo {
     s: undefined;
@@ -31,6 +32,32 @@ export interface ResolveSymbolResponse extends LibrarySymbolInfo {
     'has-weekly-and-monthly'?: boolean;
     'has-empty-bars'?: boolean;
     'volume-precision'?: number;
+    'description'?: string;
+    ticker: string;
+    currency_code: string;
+    original_currency_code: string;
+    unit_id: string;
+    original_unit_id: string;
+    unit_conversion_types: string[];
+    listed_exchange: string;
+    exchange: string;
+    has_intraday: boolean;
+    visible_plots_set: VisiblePlotsSet;
+    minmov: number;
+    minmove2: number;
+    session: string;
+    session_holidays: string;
+    supported_resolutions: ResolutionString[];
+    has_daily: boolean;
+    intraday_multipliers: string[];
+    has_weekly_and_monthly: boolean;
+    has_empty_bars: boolean;
+    volume_precision: number;
+    format: string;
+    type: string;
+    timezone: Timezone;
+    pricescale: number;
+    name: string;
 }
 export interface UdfSearchSymbolsResponse extends Array<SearchSymbolResultItem> {
     s?: undefined;

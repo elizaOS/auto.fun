@@ -6,7 +6,7 @@ import {
   Keypair
 } from "@solana/web3.js";
 import { logger } from "../logger";
-import { Autofun } from "../target/types/autofun";
+import { Autofun } from "@autodotfun/program/types";
 
 export const withdrawTx = async (
   user: PublicKey,

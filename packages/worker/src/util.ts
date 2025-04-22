@@ -1,3 +1,4 @@
+import { Autofun } from "@autodotfun/program/types";
 import { BN, Program } from "@coral-xyz/anchor";
 import { fetchDigitalAsset } from "@metaplex-foundation/mpl-token-metadata";
 import { publicKey, Umi } from "@metaplex-foundation/umi";
@@ -8,22 +9,19 @@ import {
 import {
   ComputeBudgetProgram,
   Connection,
-  ParsedAccountData,
   PublicKey,
   SystemProgram,
   SYSVAR_RENT_PUBKEY,
   Transaction,
-  TransactionInstruction,
+  TransactionInstruction
 } from "@solana/web3.js";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, sql } from "drizzle-orm";
 import { CacheService } from "./cache";
-import { getDB, Token, tokens } from "./db";
+import { Token, tokens } from "./db";
 import { Env } from "./env";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
-import { initSolanaConfig, getProgram } from "./solana";
-import { Autofun } from "./target/types/autofun";
+import { getProgram, initSolanaConfig } from "./solana";
 import { getWebSocketClient } from "./websocket-client";
-import { ExternalToken } from "./externalToken";
 
 export const SEED_BONDING_CURVE = "bonding_curve";
 export const SEED_CONFIG = "config";

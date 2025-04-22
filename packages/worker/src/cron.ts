@@ -1,6 +1,4 @@
 import { ExecutionContext } from "@cloudflare/workers-types/experimental";
-import { AnchorProvider, Program } from "@coral-xyz/anchor";
-import { Connection, Keypair } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
 import { TokenData, TokenDBData } from "../worker/raydium/types/tokenData";
 import { getLatestCandle } from "./chart";
@@ -8,19 +6,13 @@ import { getDB, Token, tokens } from "./db";
 import { Env } from "./env";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
 import { awardGraduationPoints, awardUserPoints } from "./points/helpers";
-import { TokenMigrator } from "./raydium/migration/migrateToken";
 import { getToken } from "./raydium/migration/migrations";
-import * as raydium_vault_IDL from "./raydium/raydium_vault.json";
-import { RaydiumVault } from "./raydium/types/raydium_vault";
 import { createRedisCache } from "./redis/redisCacheService";
 import {
   checkAndReplenishTokens,
   generateAdditionalTokenImages,
 } from "./routes/generation";
 import { updateHoldersCache } from "./routes/token";
-import * as IDL from "./target/idl/autofun.json";
-import { Autofun } from "./target/types/autofun";
-import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import {
   bulkUpdatePartialTokens,
   calculateFeaturedScore,

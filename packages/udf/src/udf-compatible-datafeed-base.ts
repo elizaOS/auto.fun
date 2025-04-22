@@ -20,7 +20,7 @@ import {
 	SymbolResolveExtension,
 	VisiblePlotsSet,
 	Timezone,
-} from '../../../public/libraries/charting_library/datafeed-api';
+} from '@autodotfun/charting-library/datafeed-api';
 
 import {
 	getErrorMessage,

@@ -6,7 +6,7 @@
     "scripts": {
         "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
         "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-        "build": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor build",
+        "build": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor build && mkdir -p ./idl ./types && cp target/idl/autofun.json ./idl/ && cp target/idl/raydium_vault.json ./idl/ && cp target/types/autofun.ts ./types/",
         "clean": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor clean",
         "program-id:main": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster mainnet bun run scripts/getProgramId.ts",
         "program-id:dev": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster devnet bun run scripts/getProgramId.ts",
@@ -48,6 +48,11 @@
         "launch:main": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster mainnet launch_token",
         "launch:dev": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster devnet launch_token"
     },
+    "files": [
+        "idl",
+        "types",
+        "src"
+    ],
     "dependencies": {
         "@coral-xyz/anchor": "0.30.1",
         "@raydium-io/raydium-sdk-v2": "^0.1.90-alpha",

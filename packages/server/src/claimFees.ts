@@ -3,7 +3,7 @@ import { claim } from "./raydium/raydiumVault";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { RaydiumVault } from "./raydium/types/raydium_vault";
-import * as raydium_vault_IDL from "./raydium/raydium_vault.json";
+import * as raydium_vault_IDL from "@autodotfun/program/idl/raydium_vault.json";
 import dotenv from 'dotenv';
 
 dotenv.config();

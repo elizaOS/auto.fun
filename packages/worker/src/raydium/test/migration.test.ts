@@ -13,7 +13,7 @@
 // import { RaydiumVault } from "../types/raydium_vault";
 // import * as raydium_vault_IDL from "../raydium_vault.json";
 
-// import { Autofun } from "../../target/types/autofun";
+i// mport { Autofun } from "@autodotfun/program/types";
 // import { IDL } from "../../../src/utils/program";
 // import { config } from "dotenv";
 // import {Wallet} from "../../tokenSupplyHelpers/customWallet"
