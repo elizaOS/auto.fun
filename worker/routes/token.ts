@@ -1240,7 +1240,8 @@ tokenRouter.get("/tokens", async (c) => {
       createdAt: tokens.createdAt,
       marketCapUSD: tokens.marketCapUSD,
       volume24h: tokens.volume24h,
-      holders: tokens.holderCount,
+      holderCount: tokens.holderCount,
+      curveProgress: tokens.curveProgress
       // Add other valid columns here
     };
 
@@ -1259,21 +1260,17 @@ tokenRouter.get("/tokens", async (c) => {
         validSortColumns[sortBy as keyof typeof validSortColumns] ||
         tokens.createdAt;
       if (sortOrder.toLowerCase() === "desc") {
-        if (sortColumn === tokens.marketCapUSD) {
-          baseQuery = baseQuery.orderBy(sql`${sortColumn} DESC NULLS LAST`);
-          logger.log(`[Query Build] Applied sort: ${sortBy} DESC NULLS LAST`);
-        } else {
-          baseQuery = baseQuery.orderBy(desc(sortColumn));
-          logger.log(`[Query Build] Applied sort: ${sortBy} DESC`);
-        }
+        baseQuery = baseQuery.orderBy(
+          sql`CASE 
+                  WHEN ${sortColumn} IS NULL OR ${sortColumn}::text = 'NaN' THEN 1 
+                  ELSE 0 
+                END`,
+          sql`${sortColumn} DESC`
+        );
+        logger.log(`[Query Build] Applied sort: ${sortBy} DESC`);
       } else {
-        if (sortColumn === tokens.marketCapUSD) {
-          baseQuery = baseQuery.orderBy(sql`${sortColumn} ASC NULLS FIRST`);
-          logger.log(`[Query Build] Applied sort: ${sortBy} ASC NULLS FIRST`);
-        } else {
-          baseQuery = baseQuery.orderBy(sortColumn);
-          logger.log(`[Query Build] Applied sort: ${sortBy} ASC`);
-        }
+        baseQuery = baseQuery.orderBy(sortColumn);
+        logger.log(`[Query Build] Applied sort: ${sortBy} ASC`);
       }
     }
 
