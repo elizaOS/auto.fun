@@ -13,7 +13,12 @@ class RedisCacheService {
   }
 
   getKey(key: string) {
-    return `${this.env.NETWORK}:${key}`;
+    // Avoid double-prefixing if key already includes network
+    const prefix = `${this.env.NETWORK}:`;
+    if (key.startsWith(prefix)) {
+      return key;
+    }
+    return `${prefix}${key}`;
   }
   async get(key: string): Promise<string | null> {
     return this.redisPool.useClient((client) => client.get(this.getKey(key)));
