@@ -41,21 +41,21 @@ export default function Page() {
   // Manage sort/filter state locally, initializing from localStorage using the hook
   const [gridSortBy, setGridSortBy] = useUrlSearchParams<GridSortByType>(
     "category",
-    "newest"
+    "newest",
   );
   const [tokenSource, setTokenSource] = useUrlSearchParams<TokenSourceType>(
     "source",
-    "all"
+    "all",
   );
   const [bondingStatus, setBondingStatus] =
     useUrlSearchParams<BondingStatusType>("status", "all");
   const [tableSortBy, setTableSortBy] = useUrlSearchParams<TableSortByType>(
     "sort",
-    "marketCapUSD"
+    "marketCapUSD",
   );
   const [tableSortOrder, setTableSortOrder] = useUrlSearchParams<SortOrderType>(
     "order",
-    "desc"
+    "desc",
   );
 
   // State for filter popover visibility (no need to persist this)
@@ -143,7 +143,7 @@ export default function Page() {
       query.isFetchingNextPage,
       query.hasNextPage,
       query.fetchNextPage,
-    ]
+    ],
   );
 
   useEffect(() => {
@@ -154,16 +154,23 @@ export default function Page() {
     return query?.items || [];
   }, [query?.items]);
 
+  const isMobile = window.innerWidth <= 640;
+
   return (
     <div className="w-full min-h-[50vh] pb-24">
       {/* Header Section */}
       {/* Show FrontpageHeader on desktop, logo on mobile */}
-      <div className="hidden md:block">
+      {!isMobile ? (
         <FrontpageHeader tokens={headerTokens} />
-      </div>
-      <div className="md:hidden flex justify-center items-center py-8">
-        <img src="/logo_wide.svg" alt="Logo" className="w-4/5 max-w-[400px]" />
-      </div>
+      ) : (
+        <div className="flex justify-center items-center py-8">
+          <img
+            src="/logo_wide.svg"
+            alt="Logo"
+            className="w-4/5 max-w-[400px]"
+          />
+        </div>
+      )}
       {/* Top Navigation */}
       <div className="flex justify-between gap-1 flex-wrap-reverse md:flex-wrap">
         {/* Grid Sort Buttons - Hide on Table View */}
