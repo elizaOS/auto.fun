@@ -1,7 +1,7 @@
 import { and, eq, gt, lt, sql } from "drizzle-orm";
 import { cachePrices, getDB } from "./db";
 import { Env } from "./env";
-import { createRedisCache } from "./redis/redisCacheService";
+import { getGlobalRedisCache } from "./redis/redisCacheGlobal";
 import { logger } from "./util";
 
 /**
@@ -10,11 +10,11 @@ import { logger } from "./util";
  */
 export class CacheService {
   private db: ReturnType<typeof getDB>;
-  private redisCache: ReturnType<typeof createRedisCache>;
+  private redisCache: ReturnType<typeof getGlobalRedisCache>;
 
   constructor() {
     this.db = getDB();
-    this.redisCache = createRedisCache();
+    this.redisCache = getGlobalRedisCache();
   }
 
   /**

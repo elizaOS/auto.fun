@@ -7,7 +7,7 @@ import { calculateTokenMarketData, getSOLPrice } from "./mcap";
 import { awardGraduationPoints, awardUserPoints } from "./points/helpers";
 import { getToken } from "./raydium/migration/migrations";
 import { TokenData, TokenDBData } from "./raydium/types/tokenData";
-import { createRedisCache } from "./redis/redisCacheService";
+import { getGlobalRedisCache } from "./redis/redisCacheGlobal";
 import {
   checkAndReplenishTokens,
   generateAdditionalTokenImages,
@@ -90,7 +90,7 @@ function convertTokenDataToDBData(
         : tokenData.migration,
     withdrawnAmounts:
       tokenData.withdrawnAmounts &&
-      typeof tokenData.withdrawnAmounts !== "string"
+        typeof tokenData.withdrawnAmounts !== "string"
         ? JSON.stringify(tokenData.withdrawnAmounts)
         : tokenData.withdrawnAmounts,
     poolInfo:
@@ -315,7 +315,7 @@ async function handleSwap(
     const tokenWithMarketData = await calculateTokenMarketData(
       tokenWithSupply,
       solPrice,
-          );
+    );
     const marketCapUSD = tokenWithMarketData.marketCapUSD;
 
     const swapRecord = {
@@ -335,7 +335,7 @@ async function handleSwap(
     };
 
     const db = getDB();
-    const redisCache = createRedisCache();
+    const redisCache = getGlobalRedisCache();
     const listKey = redisCache.getKey(`swapsList:${mintAddress}`);
 
     try {
@@ -366,11 +366,10 @@ async function handleSwap(
           100,
         txId: signature,
         lastUpdated: new Date(),
-        volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${
-          direction === "1"
-            ? (Number(amount) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
-            : (Number(amountOut) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
-        }`,
+        volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${direction === "1"
+          ? (Number(amount) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
+          : (Number(amountOut) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
+          }`,
       })
       .where(eq(tokens.mint, mintAddress))
       .returning();
@@ -495,10 +494,10 @@ export async function cron(
     // IMPORTANT: Ensure the main async work is wrapped in ctx.waitUntil
     // Assuming `ctx` is the ExecutionContext passed to the `scheduled` handler
     if ('waitUntil' in ctx && typeof ctx.waitUntil === 'function') {
-       ctx.waitUntil(updateTokens());
+      ctx.waitUntil(updateTokens());
     } else {
-       // Fallback or handle case where ctx is not ExecutionContext (e.g., local testing)
-       await updateTokens();
+      // Fallback or handle case where ctx is not ExecutionContext (e.g., local testing)
+      await updateTokens();
     }
 
   } catch (error) {
@@ -508,7 +507,7 @@ export async function cron(
 
 export async function updateTokens() {
   const db = getDB();
-  const cache = createRedisCache();
+  const cache = getGlobalRedisCache();
   logger.log("Starting updateTokens cron task...");
 
   // Define batch size for sequential processing
@@ -611,7 +610,7 @@ export async function updateTokens() {
               60,
             )
           ));
-          logger.log(`Cron: Updated prices for batch ${Math.floor(i/CHUNK_SIZE)+1} (${updatedBatch.length}/${batch.length}) tokens`);
+          logger.log(`Cron: Updated prices for batch ${Math.floor(i / CHUNK_SIZE) + 1} (${updatedBatch.length}/${batch.length}) tokens`);
         }
         logger.log(`Cron: Completed price updates for ${total} tokens in batches of ${CHUNK_SIZE}`);
       } catch (err) {
@@ -636,7 +635,7 @@ export async function updateTokens() {
   logger.log(`Cron: Starting holder cache update loop in batches of ${BATCH_SIZE}...`);
   for (let i = 0; i < activeTokens.length; i += BATCH_SIZE) {
     const batch = activeTokens.slice(i, i + BATCH_SIZE);
-    logger.log(`Cron: Processing holder batch ${Math.floor(i/BATCH_SIZE)+1}/${Math.ceil(activeTokens.length/BATCH_SIZE)}`);
+    logger.log(`Cron: Processing holder batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(activeTokens.length / BATCH_SIZE)}`);
     await Promise.all(batch.map(async (token) => {
       try {
         if (token.mint) {
@@ -649,8 +648,8 @@ export async function updateTokens() {
         );
       }
     }));
-     // Optional: Add a small delay between batches if needed
-     // await new Promise(resolve => setTimeout(resolve, 100));
+    // Optional: Add a small delay between batches if needed
+    // await new Promise(resolve => setTimeout(resolve, 100));
   }
   logger.log("Cron: Finished holder cache update loop.");
 
@@ -658,46 +657,46 @@ export async function updateTokens() {
   // --- Step 3: Sequential Batch Processing for Image Checks ---
   logger.log(`Cron: Starting image check/generation loop in batches of ${BATCH_SIZE}...`);
   for (let i = 0; i < activeTokens.length; i += BATCH_SIZE) {
-      const batch = activeTokens.slice(i, i + BATCH_SIZE);
-      logger.log(`Cron: Processing image check batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(activeTokens.length / BATCH_SIZE)}`);
-      await Promise.all(batch.map(async (token) => {
-          if (token.mint && Number(token.imported) === 0) {
-              try {
-                  if (process.env.R2) {
-                      const generationImagesPrefix = `generations/${token.mint}/`;
-                      const objects = await process.env.R2.list({
-                          prefix: generationImagesPrefix,
-                          limit: 1,
-                      });
-                      const hasGenerationImages = objects.objects.length > 0;
+    const batch = activeTokens.slice(i, i + BATCH_SIZE);
+    logger.log(`Cron: Processing image check batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(activeTokens.length / BATCH_SIZE)}`);
+    await Promise.all(batch.map(async (token) => {
+      if (token.mint && Number(token.imported) === 0) {
+        try {
+          if (process.env.R2) {
+            const generationImagesPrefix = `generations/${token.mint}/`;
+            const objects = await process.env.R2.list({
+              prefix: generationImagesPrefix,
+              limit: 1,
+            });
+            const hasGenerationImages = objects.objects.length > 0;
 
-                      if (!hasGenerationImages) {
-                          logger.log(
-                              `Cron: Triggering image generation for: ${token.mint}`,
-                          );
-                          // Consider making generateAdditionalTokenImages truly async if it's long-running
-                          // and doesn't need to block the next batch immediately.
-                          await generateAdditionalTokenImages(
-                                                            token.mint,
-                              token.description || "",
-                          );
-                      }
-                  } else {
-                      logger.warn(
-                          "Cron: R2 storage not configured, skipping image check.",
-                      );
-                      // No need to break the inner loop, just skip R2 check for this token
-                  }
-              } catch (imageCheckError) {
-                  logger.error(
-                      `Cron: Error checking/generating images for ${token.mint}:`,
-                      imageCheckError,
-                  );
-              }
+            if (!hasGenerationImages) {
+              logger.log(
+                `Cron: Triggering image generation for: ${token.mint}`,
+              );
+              // Consider making generateAdditionalTokenImages truly async if it's long-running
+              // and doesn't need to block the next batch immediately.
+              await generateAdditionalTokenImages(
+                token.mint,
+                token.description || "",
+              );
+            }
+          } else {
+            logger.warn(
+              "Cron: R2 storage not configured, skipping image check.",
+            );
+            // No need to break the inner loop, just skip R2 check for this token
           }
-      }));
-       // Optional: Add a small delay between batches if needed
-       // await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (imageCheckError) {
+          logger.error(
+            `Cron: Error checking/generating images for ${token.mint}:`,
+            imageCheckError,
+          );
+        }
+      }
+    }));
+    // Optional: Add a small delay between batches if needed
+    // await new Promise(resolve => setTimeout(resolve, 100));
   }
   logger.log("Cron: Finished checking for missing generation images.");
 

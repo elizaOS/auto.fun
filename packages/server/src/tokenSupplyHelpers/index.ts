@@ -3,7 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { getDB, tokens } from "../db";
 import { Env } from "../env";
 import { retryOperation } from "../raydium/utils";
-import { createRedisCache } from "../redis/redisCacheService";
+import { getGlobalRedisCache } from "../redis/redisCacheGlobal";
 import { calculateFeaturedScore, getFeaturedMaxValues, logger } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 
@@ -46,7 +46,7 @@ export async function handleSignature(
   if (!logs) return;
 
   const metrics = await processSwapLog(
-        token,
+    token,
     signature,
     solPriceUSD,
     logs,
@@ -159,15 +159,15 @@ async function processSwapLog(
         price:
           direction === "1"
             ? Number(amountOut) /
-              Math.pow(10, 9) /
-              (Number(amount) / Math.pow(10, token.tokenDecimals)) // Sell price (SOL/token)
+            Math.pow(10, 9) /
+            (Number(amount) / Math.pow(10, token.tokenDecimals)) // Sell price (SOL/token)
             : Number(amount) /
-              Math.pow(10, 9) /
-              (Number(amountOut) / Math.pow(10, token.tokenDecimals)), // Buy price (SOL/token),
+            Math.pow(10, 9) /
+            (Number(amountOut) / Math.pow(10, token.tokenDecimals)), // Buy price (SOL/token),
         txId: signature,
         timestamp: new Date(),
       };
-      const redisCache = createRedisCache();
+      const redisCache = getGlobalRedisCache();
       const listKey = redisCache.getKey(`swapsList:${mintAddress}`);
       try {
         await redisCache.lpush(listKey, JSON.stringify(swapRecord));
@@ -192,7 +192,7 @@ async function processSwapLog(
           liquidity:
             (Number(reserveLamport) / 1e9) * solPriceUSD +
             (Number(reserveToken) / Math.pow(10, token.tokenDecimals)) *
-              tokenPriceUSD,
+            tokenPriceUSD,
           tokenPriceUSD,
           solPriceUSD: solPriceUSD,
           curveProgress:
@@ -201,20 +201,19 @@ async function processSwapLog(
             100,
           txId: signature,
           lastUpdated: new Date(),
-          volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${
-            direction === "1"
+          volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${direction === "1"
               ? (Number(amount) / Math.pow(10, token.tokenDecimals)) *
-                tokenPriceUSD
+              tokenPriceUSD
               : (Number(amountOut) / Math.pow(10, token.tokenDecimals)) *
-                tokenPriceUSD
-          }`,
+              tokenPriceUSD
+            }`,
           priceChange24h,
           // Conditionally set price24hAgo & lastPriceUpdate
           ...(shouldReset24h
             ? {
-                price24hAgo: tokenPriceUSD,
-                lastPriceUpdate: now,
-              }
+              price24hAgo: tokenPriceUSD,
+              lastPriceUpdate: now,
+            }
             : {}),
         })
         .where(eq(tokens.mint, mintAddress))

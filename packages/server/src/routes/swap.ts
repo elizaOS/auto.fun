@@ -5,7 +5,7 @@ import { z } from "zod";
 import { fetchPriceChartData } from "../chart";
 import { getDB, tokens } from "../db";
 import { Env } from "../env";
-import { createRedisCache } from "../redis/redisCacheService";
+import { getGlobalRedisCache } from "../redis/redisCacheGlobal";
 import { logger } from "../util";
 
 const router = new Hono<{
@@ -34,7 +34,7 @@ router.get(
     try {
       const params = ChartParamsSchema.parse(c.req.param());
       const data = await fetchPriceChartData(
-                params.start * 1000,
+        params.start * 1000,
         params.end * 1000,
         params.range,
         params.token,
@@ -80,7 +80,7 @@ router.get("/swaps/:mint", async (c) => {
     const page = parseInt(c.req.query("page") || "1");
     const offset = (page - 1) * limit;
 
-    const redisCache = createRedisCache();
+    const redisCache = getGlobalRedisCache();
     const listKey = redisCache.getKey(`swapsList:${mint}`);
     let totalSwaps = 0;
     let swapsResultRaw: any[] = []; // Use any[] for initial parsed data
