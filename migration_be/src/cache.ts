@@ -2,7 +2,7 @@ import { and, eq, gt, lt, sql } from "drizzle-orm";
 import { cachePrices, getDB } from "./db";
 import { Env } from "./env";
 import { logger } from "./logger";
-import { createRedisCache } from "./redis/redisCacheService";
+import { createLRUCache } from "./cache/lruCache";
 
 /**
  * Unified cache system using Drizzle/D1 for all caching needs
@@ -10,18 +10,18 @@ import { createRedisCache } from "./redis/redisCacheService";
  */
 export class CacheService {
   private db: ReturnType<typeof getDB>;
-  private redisCache: ReturnType<typeof createRedisCache>;
+  private redisCache: ReturnType<typeof createLRUCache>;
 
   constructor(env: Env) {
     this.db = getDB(env);
-    this.redisCache = createRedisCache(env);
+    this.redisCache = createLRUCache(env);
   }
 
   /**
    * Get SOL price from cache
    */
   async getSolPrice(): Promise<number | null> {
-    const cacheKey = this.redisCache.getKey('solPrice');
+    const cacheKey = this.redisCache.getKey("solPrice");
     try {
       const cachedValue = await this.redisCache.get(cacheKey);
       if (cachedValue) {
@@ -32,7 +32,10 @@ export class CacheService {
       }
       return null;
     } catch (error) {
-      console.error(`Error getting SOL price from Redis cache (${cacheKey}):`, error);
+      console.error(
+        `Error getting SOL price from Redis cache (${cacheKey}):`,
+        error
+      );
       return null;
     }
   }
@@ -43,11 +46,14 @@ export class CacheService {
    * @param ttlSeconds How long the cache should live (in seconds)
    */
   async setSolPrice(price: number, ttlSeconds: number = 30): Promise<void> {
-    const cacheKey = this.redisCache.getKey('solPrice');
+    const cacheKey = this.redisCache.getKey("solPrice");
     try {
       await this.redisCache.set(cacheKey, price.toString(), ttlSeconds);
     } catch (error) {
-      console.error(`Error setting SOL price in Redis cache (${cacheKey}):`, error);
+      console.error(
+        `Error setting SOL price in Redis cache (${cacheKey}):`,
+        error
+      );
     }
   }
 
@@ -63,8 +69,8 @@ export class CacheService {
           and(
             eq(cachePrices.type, "token"),
             eq(cachePrices.symbol, mint),
-            gt(cachePrices.expiresAt, new Date()),
-          ),
+            gt(cachePrices.expiresAt, new Date())
+          )
         )
         .orderBy(sql`timestamp DESC`)
         .limit(1);
@@ -86,24 +92,27 @@ export class CacheService {
   async setTokenPrice(
     mint: string,
     price: number,
-    ttlSeconds: number = 300,
+    ttlSeconds: number = 300
   ): Promise<void> {
     try {
       const now = new Date();
       const expiresAt = new Date(
-        now.getTime() + ttlSeconds * 1000,
+        now.getTime() + ttlSeconds * 1000
       ).toISOString();
       const expiresAtDate = new Date(expiresAt);
 
-      await this.db.insert(cachePrices)
-        .values([{
-          id: crypto.randomUUID(),
-          type: "sol",
-          symbol: "SOL",
-          price: price.toString(),
-          timestamp: sql`CURRENT_TIMESTAMP`,
-          expiresAt: expiresAtDate,
-        }])
+      await this.db
+        .insert(cachePrices)
+        .values([
+          {
+            id: crypto.randomUUID(),
+            type: "sol",
+            symbol: "SOL",
+            price: price.toString(),
+            timestamp: sql`CURRENT_TIMESTAMP`,
+            expiresAt: expiresAtDate,
+          },
+        ])
         .execute();
 
       // Clean up old cache entries
@@ -119,29 +128,32 @@ export class CacheService {
   async setMetadata(
     key: string,
     data: any,
-    ttlSeconds: number = 3600,
+    ttlSeconds: number = 3600
   ): Promise<void> {
     try {
       const now = new Date();
       const expiresAt = new Date(
-        now.getTime() + ttlSeconds * 1000,
+        now.getTime() + ttlSeconds * 1000
       ).toISOString();
 
       // Serialize data with BigInt handling
       const serializedData = JSON.stringify(data, (_, value) =>
-        typeof value === "bigint" ? value.toString() : value,
+        typeof value === "bigint" ? value.toString() : value
       );
       const expiresAtDate = new Date(expiresAt);
 
-      await this.db.insert(cachePrices)
-        .values([{
-          id: crypto.randomUUID(),
-          type: "sol",
-          symbol: "SOL",
-          price: serializedData.toString(),
-          timestamp: sql`CURRENT_TIMESTAMP`,
-          expiresAt: expiresAtDate,
-        }])
+      await this.db
+        .insert(cachePrices)
+        .values([
+          {
+            id: crypto.randomUUID(),
+            type: "sol",
+            symbol: "SOL",
+            price: serializedData.toString(),
+            timestamp: sql`CURRENT_TIMESTAMP`,
+            expiresAt: expiresAtDate,
+          },
+        ])
         .execute();
       // Clean up old cache entries
       await this.cleanupOldCacheEntries("metadata", key);
@@ -162,8 +174,8 @@ export class CacheService {
           and(
             eq(cachePrices.type, "metadata"),
             eq(cachePrices.symbol, key),
-            gt(cachePrices.expiresAt, new Date()),
-          ),
+            gt(cachePrices.expiresAt, new Date())
+          )
         )
         .orderBy(sql`timestamp DESC`)
         .limit(1);
@@ -191,10 +203,9 @@ export class CacheService {
    */
   private async cleanupOldCacheEntries(
     type: string,
-    symbol: string,
+    symbol: string
   ): Promise<void> {
     try {
-
       // Delete expired entries
       await this.db
         .delete(cachePrices)
@@ -202,8 +213,8 @@ export class CacheService {
           and(
             eq(cachePrices.type, type),
             eq(cachePrices.symbol, symbol),
-            lt(cachePrices.expiresAt, new Date()),
-          ),
+            lt(cachePrices.expiresAt, new Date())
+          )
         );
 
       // Keep only the N most recent entries
@@ -224,15 +235,15 @@ export class CacheService {
               and(
                 eq(cachePrices.type, type),
                 eq(cachePrices.symbol, symbol),
-                sql`${cachePrices.id} NOT IN (${keepIds.join(",")})`,
-              ),
+                sql`${cachePrices.id} NOT IN (${keepIds.join(",")})`
+              )
             );
         }
       }
     } catch (error) {
       logger.error(
         `Error cleaning up cache entries for ${type}:${symbol}:`,
-        error,
+        error
       );
     }
   }

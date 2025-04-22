@@ -11,7 +11,7 @@ import { getDB, tokens } from "./db";
 import { Env } from "./env";
 import { getSOLPrice } from "./mcap";
 import { getWebSocketClient, WebSocketClient } from "./websocket-client";
-import { createRedisCache } from "./redis/redisCacheService";
+import { createLRUCache } from "./cache/lruCache";
 import { logger } from "./util";
 
 const SOLANA_NETWORK_ID = 1399811149;
@@ -184,19 +184,19 @@ export class ExternalToken {
 
     allHolders.sort((a, b) => b.percentage - a.percentage);
 
-    const redisCache = createRedisCache(this.env);
+    const redisCache = createLRUCache(this.env);
     const holdersListKey = redisCache.getKey(`holders:${this.mint}`);
     const top50Holders = allHolders.slice(0, 50);
 
     try {
       await redisCache.set(holdersListKey, JSON.stringify(top50Holders));
       logger.log(
-        `ExternalToken: Stored ${allHolders.length} holders in Redis list ${holdersListKey}`,
+        `ExternalToken: Stored ${allHolders.length} holders in Redis list ${holdersListKey}`
       );
     } catch (redisError) {
       logger.error(
         `ExternalToken: Failed to store holders in Redis for ${this.mint}:`,
-        redisError,
+        redisError
       );
     }
 
@@ -208,7 +208,7 @@ export class ExternalToken {
   }
   // fetch and update swap data
   public async updateLatestSwapData(
-    BATCH_LIMIT = 200,
+    BATCH_LIMIT = 200
   ): Promise<ProcessedSwap[]> {
     const cursor: string | undefined | null = undefined;
 
@@ -227,7 +227,7 @@ export class ExternalToken {
 
     const processedSwaps = codexSwaps
       .filter(
-        (codexSwap): codexSwap is NonNullable<typeof codexSwap> => !!codexSwap,
+        (codexSwap): codexSwap is NonNullable<typeof codexSwap> => !!codexSwap
       )
       .map((codexSwap): ProcessedSwap | null => {
         const swapData = codexSwap.data as SwapEventData;
@@ -277,7 +277,7 @@ export class ExternalToken {
     }
 
     console.log(
-      `[worker] Updated latest batch for ${this.mint}. Fetched: ${processedSwaps.length} swaps.`,
+      `[worker] Updated latest batch for ${this.mint}. Fetched: ${processedSwaps.length} swaps.`
     );
     return processedSwaps;
   }
@@ -306,7 +306,7 @@ export class ExternalToken {
       const currentCursor = getTokenEvents?.cursor;
 
       console.log(
-        `[worker] Historical: Fetched ${codexSwaps.length} swaps for ${this.mint}. Next cursor: ${currentCursor}`,
+        `[worker] Historical: Fetched ${codexSwaps.length} swaps for ${this.mint}. Next cursor: ${currentCursor}`
       );
 
       // Exit the loop if no data or when we fetch less than the limit (end of data)
@@ -317,15 +317,14 @@ export class ExternalToken {
       // Prevent infinite loop if the cursor does not change.
       if (cursor && currentCursor === cursor) {
         console.warn(
-          "[worker] Historical: Cursor did not change. Exiting to prevent infinite loop.",
+          "[worker] Historical: Cursor did not change. Exiting to prevent infinite loop."
         );
         break;
       }
 
       const processedSwaps = codexSwaps
         .filter(
-          (codexSwap): codexSwap is NonNullable<typeof codexSwap> =>
-            !!codexSwap,
+          (codexSwap): codexSwap is NonNullable<typeof codexSwap> => !!codexSwap
         )
         .map((codexSwap): ProcessedSwap | null => {
           const swapData = codexSwap.data as SwapEventData;
@@ -378,12 +377,12 @@ export class ExternalToken {
 
   // save the processed swaps to the database
   private async insertProcessedSwaps(
-    processedSwaps: ProcessedSwap[],
+    processedSwaps: ProcessedSwap[]
   ): Promise<void> {
     if (processedSwaps.length === 0) return;
 
     // Instantiate Redis client
-    const redisCache = createRedisCache(this.env);
+    const redisCache = createLRUCache(this.env);
     const listKey = redisCache.getKey(`swapsList:${this.mint}`);
 
     // Sort swaps by ascending timestamp (oldest first)
@@ -391,11 +390,11 @@ export class ExternalToken {
     // so processing oldest first ensures the list maintains newest-at-the-start order.
     processedSwaps.sort(
       (a, b) =>
-        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
 
     logger.log(
-      `Inserting ${processedSwaps.length} swaps into Redis list ${listKey} for ${this.mint}`,
+      `Inserting ${processedSwaps.length} swaps into Redis list ${listKey} for ${this.mint}`
     );
 
     let insertedCount = 0;
@@ -417,7 +416,7 @@ export class ExternalToken {
       } catch (redisError) {
         logger.error(
           `ExternalToken: Failed to save swap to Redis list ${listKey}:`,
-          redisError,
+          redisError
         );
         // Optionally break or continue on error
         // break;
@@ -425,7 +424,7 @@ export class ExternalToken {
     }
 
     console.log(
-      `Finished inserting. ${insertedCount} swaps pushed to Redis for ${this.mint}`,
+      `Finished inserting. ${insertedCount} swaps pushed to Redis for ${this.mint}`
     );
   }
 }

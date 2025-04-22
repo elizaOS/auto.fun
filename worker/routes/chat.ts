@@ -10,7 +10,7 @@ import { Context } from "hono"; // Import Context type
 import * as schema from "../db"; // Import your generated schema
 import { getDB } from "../db"; // Import the getDB helper
 import { Env } from "../env"; // Import Env type from env.ts
-import { createRedisCache } from "../redis/redisCacheService"; // Added redis import
+import { createLRUCache } from "../cache/lruCache"; // Added redis import
 // ---=================================---
 
 // Placeholder types - replace with your actual DB types and Env definition
@@ -34,10 +34,10 @@ const db = (c: Context<any>) => getDB(c.env as Env);
 async function checkUserTokenBalance(
   userPublicKey: string,
   tokenMint: string,
-  env: Env,
+  env: Env
 ): Promise<number> {
   console.log(`Checking balance for user ${userPublicKey}, token ${tokenMint}`);
-  const redisCache = createRedisCache(env); // Instantiate Redis
+  const redisCache = createLRUCache(env); // Instantiate Redis
 
   // First check Redis cache
   let cachedBalance = 0;
@@ -47,7 +47,7 @@ async function checkUserTokenBalance(
     if (holdersString) {
       const allHolders: any[] = JSON.parse(holdersString);
       const specificHolderData = allHolders.find(
-        (h) => h.address === userPublicKey,
+        (h) => h.address === userPublicKey
       );
       if (specificHolderData) {
         // Assuming amount stored is raw, adjust for decimals (e.g., 6)
@@ -57,7 +57,7 @@ async function checkUserTokenBalance(
   } catch (redisError) {
     console.error(
       `Chat: Error checking Redis balance for ${userPublicKey} / ${tokenMint}:`,
-      redisError,
+      redisError
     );
     // Continue to blockchain check if Redis fails
   }
@@ -72,7 +72,7 @@ async function checkUserTokenBalance(
     const response = await connection.getTokenAccountsByOwner(
       userPublicKeyObj,
       { mint: mintPublicKey },
-      { commitment: "confirmed" },
+      { commitment: "confirmed" }
     );
 
     if (response && response.value && response.value.length > 0) {
@@ -88,14 +88,14 @@ async function checkUserTokenBalance(
   } catch (error) {
     console.error(
       `Error checking blockchain balance for ${userPublicKey} / ${tokenMint}:`,
-      error,
+      error
     );
   }
 
   // Use the higher of the two balances (Redis vs Blockchain)
   const effectiveBalance = Math.max(cachedBalance, blockchainBalance);
   console.log(
-    `Chat Balance check results - Redis: ${cachedBalance}, Blockchain: ${blockchainBalance}, Effective: ${effectiveBalance}`,
+    `Chat Balance check results - Redis: ${cachedBalance}, Blockchain: ${blockchainBalance}, Effective: ${effectiveBalance}`
   );
 
   return effectiveBalance;
@@ -142,7 +142,7 @@ app.get("/chat/:tokenMint/tiers", async (c) => {
     const balance = await checkUserTokenBalance(
       user.publicKey,
       tokenMint,
-      c.env,
+      c.env
     );
     const eligibleTiers = getUserEligibleTiers(balance);
     return c.json({ success: true, tiers: eligibleTiers, balance });
@@ -150,7 +150,7 @@ app.get("/chat/:tokenMint/tiers", async (c) => {
     console.error("Error fetching eligible tiers:", error);
     return c.json(
       { success: false, error: "Failed to fetch eligible tiers" },
-      500,
+      500
     );
   }
 });
@@ -176,7 +176,7 @@ app.get(
       const balance = await checkUserTokenBalance(
         user.publicKey,
         tokenMint,
-        c.env,
+        c.env
       );
       const requiredBalance = getTierThreshold(tier);
 
@@ -186,7 +186,7 @@ app.get(
             success: false,
             error: `Insufficient balance. Need ${requiredBalance.toLocaleString()} tokens.`,
           },
-          403,
+          403
         );
       }
 
@@ -198,8 +198,8 @@ app.get(
         .where(
           and(
             eq(schema.messages.tokenMint, tokenMint),
-            eq(schema.messages.tier, tier),
-          ),
+            eq(schema.messages.tier, tier)
+          )
         )
         .orderBy(asc(schema.messages.timestamp)) // Order by timestamp ascending for chat
         .limit(limit)
@@ -221,7 +221,7 @@ app.get(
       console.error(`Error fetching messages for ${tier}:`, error);
       return c.json({ success: false, error: "Failed to fetch messages" }, 500);
     }
-  },
+  }
 );
 
 // Define ChatTier type based on allowedTiers
@@ -265,7 +265,7 @@ app.post(
       const balance = await checkUserTokenBalance(
         user.publicKey,
         tokenMint,
-        c.env,
+        c.env
       );
       const requiredBalance = getTierThreshold(tier);
 
@@ -275,7 +275,7 @@ app.post(
             success: false,
             error: `Insufficient balance. Need ${requiredBalance.toLocaleString()} tokens to post.`,
           },
-          403,
+          403
         );
       }
 
@@ -331,7 +331,7 @@ app.post(
       console.error(`Error posting message to ${tier}:`, error);
       return c.json({ success: false, error: "Failed to post message" }, 500);
     }
-  },
+  }
 );
 
 // DELETE /api/chat/:tokenMint/:tier/message/:messageId - Delete a message
@@ -381,7 +381,7 @@ app.delete(
       // The check above ensures it existed and user was authorized.
       console.log(
         `Attempted to delete message ${messageId}. Result:`,
-        deleteResult,
+        deleteResult
       );
 
       return c.json({ success: true, message: "Message deleted" });
@@ -392,7 +392,7 @@ app.delete(
       }
       return c.json({ success: false, error: "Failed to delete message" }, 500);
     }
-  },
+  }
 );
 
 export default app;

@@ -155,7 +155,7 @@ export class WebSocketDO {
   // Handle client-to-server messages
   private async handleClientMessage(
     clientId: string,
-    message: any,
+    message: any
   ): Promise<void> {
     if (!message || !message.event) return;
 
@@ -228,7 +228,7 @@ export class WebSocketDO {
         JSON.stringify({
           event: roomName.startsWith("token-") ? "subscribed" : "joined",
           data: { room: roomName },
-        }),
+        })
       );
     }
   }
@@ -256,7 +256,7 @@ export class WebSocketDO {
         JSON.stringify({
           event: roomName.startsWith("token-") ? "unsubscribed" : "left",
           data: { room: roomName },
-        }),
+        })
       );
     }
   }
@@ -310,9 +310,13 @@ export class WebSocketDO {
     roomName: string,
     event: string,
     data: any,
-    excludeClientId?: string,
+    excludeClientId?: string
   ): Promise<void> {
     const message = JSON.stringify({ event, data });
+    logger.info(
+      `📤 WebSocket message for room ${roomName}, formatted message:`,
+      message
+    );
     const clients = this.rooms.get(roomName);
 
     if (!clients || clients.size === 0) {
@@ -359,13 +363,13 @@ export class WebSocketDO {
               success: true,
               message: `Received chunk ${chunkIndex}`,
             }),
-            { headers: { "Content-Type": "application/json" } },
+            { headers: { "Content-Type": "application/json" } }
           );
         }
         // All chunks received, assemble and broadcast
         const assembled = Array.from(
           { length: partial.totalChunks },
-          (_, i) => partial.chunks[i],
+          (_, i) => partial.chunks[i]
         ).join("");
         await this.state.storage.delete(storageKey);
         const { room, event, data } = JSON.parse(assembled);
@@ -375,7 +379,7 @@ export class WebSocketDO {
             success: true,
             message: `Broadcast to ${room} successful`,
           }),
-          { headers: { "Content-Type": "application/json" } },
+          { headers: { "Content-Type": "application/json" } }
         );
       }
 
@@ -390,6 +394,10 @@ export class WebSocketDO {
         return new Response("Missing required fields", { status: 400 });
       }
 
+      logger.info(
+        `📡 Broadcasting to room ${room}, event ${event}, data:`,
+        typeof data === "object" ? JSON.stringify(data, null, 2) : data
+      );
       await this.broadcastToRoom(room, event, data);
 
       return new Response(
@@ -399,7 +407,7 @@ export class WebSocketDO {
         }),
         {
           headers: { "Content-Type": "application/json" },
-        },
+        }
       );
     } catch (error) {
       logger.error("Error broadcasting message:", error);
@@ -411,7 +419,7 @@ export class WebSocketDO {
         {
           status: 500,
           headers: { "Content-Type": "application/json" },
-        },
+        }
       );
     }
   }
@@ -443,7 +451,7 @@ export class WebSocketDO {
           {
             status: 404,
             headers: { "Content-Type": "application/json" },
-          },
+          }
         );
       }
 
@@ -456,7 +464,7 @@ export class WebSocketDO {
         }),
         {
           headers: { "Content-Type": "application/json" },
-        },
+        }
       );
     } catch (error) {
       logger.error("Error sending direct message:", error);
@@ -468,7 +476,7 @@ export class WebSocketDO {
         {
           status: 500,
           headers: { "Content-Type": "application/json" },
-        },
+        }
       );
     }
   }

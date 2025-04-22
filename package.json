@@ -90,6 +90,7 @@
     "ioredis": "^5.6.1",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
+    "lru-cache": "^11.1.0",
     "lucide-react": "^0.483.0",
     "nanoid": "^5.1.5",
     "node-fetch": "^3.3.2",

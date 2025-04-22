@@ -3,7 +3,7 @@ import { getDB, tokens, users } from "../db";
 import { getToken } from "../raydium/migration/migrations";
 
 import { Env } from "../env";
-import { createRedisCache } from "../redis/redisCacheService";
+import { createLRUCache } from "../cache/lruCache";
 
 // point events for now
 export type PointEvent =
@@ -67,7 +67,7 @@ export async function awardUserPoints(
   env: Env,
   userAddress: string,
   event: PointEvent,
-  description = "",
+  description = ""
 ): Promise<void> {
   const db = getDB(env);
   const now = new Date();
@@ -131,10 +131,10 @@ export async function awardUserPoints(
 
 export async function awardGraduationPoints(
   env: Env,
-  mint: string,
+  mint: string
 ): Promise<void> {
   const db = getDB(env);
-  const redisCache = createRedisCache(env);
+  const redisCache = createLRUCache(env);
 
   // Last swap user
   let lastSwapUser: string | null = null;
@@ -150,7 +150,7 @@ export async function awardGraduationPoints(
     // Use logger if available, otherwise console.error
     console.error(
       `Failed to get last swap user from Redis for ${mint}:`,
-      redisError,
+      redisError
     );
     // Continue without awarding points for last swap if Redis fails
   }
@@ -160,7 +160,7 @@ export async function awardGraduationPoints(
       env,
       lastSwapUser, // Use user fetched from Redis
       { type: "graduating_tx" },
-      "Graduating transaction bonus",
+      "Graduating transaction bonus"
     );
   }
 
@@ -172,7 +172,7 @@ export async function awardGraduationPoints(
       env,
       creator,
       { type: "owner_graduation" },
-      "Owner graduation bonus",
+      "Owner graduation bonus"
     );
   }
 
@@ -186,13 +186,13 @@ export async function awardGraduationPoints(
     } else {
       // Use logger if available
       console.log(
-        `No holders found in Redis for ${mint} during graduation point calculation.`,
+        `No holders found in Redis for ${mint} during graduation point calculation.`
       );
     }
   } catch (redisError) {
     console.error(
       `Failed to get holders from Redis for graduation points (${mint}):`,
-      redisError,
+      redisError
     );
     // Continue without awarding holder points if Redis fails
   }
@@ -212,7 +212,7 @@ export async function awardGraduationPoints(
       env,
       h.address,
       { type: "graduation_holding", heldAtGraduation: usdHeld },
-      `Holding through graduation: $${usdHeld.toFixed(2)}`,
+      `Holding through graduation: $${usdHeld.toFixed(2)}`
     );
   }
 }
@@ -221,7 +221,7 @@ export async function awardGraduationPoints(
 export async function distributeWeeklyPoints(
   env: Env,
   weeklyPool = 1_000_000,
-  capPercent = 0.02,
+  capPercent = 0.02
 ): Promise<{ distributed: number; unassigned: number }> {
   const db = getDB(env);
 
