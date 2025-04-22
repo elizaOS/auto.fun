@@ -1337,9 +1337,6 @@ tokenRouter.get("/tokens", async (c) => {
         `[Execution] baseQuery finished, ${tokensResult?.length} results. Awaiting countQuery...`,
       );
 
-      tokensResult?.map((t) => {
-        console.log(t.curveProgress)
-      })
       // @ts-ignore - Drizzle's execute() type might not be perfectly inferred
       // const countResult = await Promise.race([
       //   countQuery.execute(),
