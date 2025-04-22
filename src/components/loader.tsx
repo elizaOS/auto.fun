@@ -157,9 +157,6 @@ export default function Loader({
             </div>
           </div>
         </div>
-        <div className="font-dm-mono text-base text-autofun-text-secondary">
-          Loading
-        </div>
       </div>
     </div>
   );
