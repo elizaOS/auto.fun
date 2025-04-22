@@ -15,8 +15,6 @@
   "scripts": {
     "compile": "tsc",
     "bundle-js": "rollup -c rollup.config.js",
-    "build": "bun run compile && bun run bundle-js",
-    "dev": "bun run build",
     "lint": "eslint . --fix --ignore-path ../../.gitignore"
   },
   "type": "module",

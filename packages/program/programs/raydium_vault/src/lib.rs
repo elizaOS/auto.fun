@@ -9,7 +9,7 @@ pub mod events;
 
 use instructions::*;
 
-declare_id!("autoFENwXX1Y3V4pkUdJw7WzhF1ZT6xQsyJWkLqBcta");
+declare_id!("4wfdeZbZ5KKjYCfhXxxa5QdjYNwdsVjoneL8zb1cVXig");
 
 /**
  * Raydium CLMM

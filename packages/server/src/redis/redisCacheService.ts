@@ -2,13 +2,14 @@ import dotenv from "dotenv";
 import type { Env } from "../env"; 
 import { logger } from "../util";
 import { RedisPool } from "./redisPool"; 
+import { Redis } from "ioredis";
 dotenv.config();
 
 // Singleton RedisPool instance
 let sharedRedisPool: RedisPool | null = null;
 
 // Function to initialize and/or get the shared pool
-function getSharedRedisPool(env: Env): RedisPool {
+export function getSharedRedisPool(env: Env): RedisPool {
   if (!sharedRedisPool) {
     logger.info("Initializing Shared Redis Pool");
     sharedRedisPool = new RedisPool({
@@ -23,7 +24,7 @@ function getSharedRedisPool(env: Env): RedisPool {
   return sharedRedisPool;
 }
 
-class RedisCacheService {
+export class RedisCacheService {
   constructor(
     private redisPool: RedisPool,
     private env: Env,
@@ -112,6 +113,33 @@ class RedisCacheService {
     );
   }
   // --- END NEW LIST METHODS ---
+
+  // --- START NEW SET METHODS ---
+  async sadd(key: string, member: string | string[]): Promise<number> {
+    const members = Array.isArray(member) ? member : [member];
+    logger.info(`SADD to ${this.getKey(key)}`);
+    // Note: ioredis sadd returns number of elements added
+    return this.redisPool.useClient((client: Redis) => client.sadd(this.getKey(key), ...members));
+  }
+
+  async srem(key: string, member: string | string[]): Promise<number> {
+    const members = Array.isArray(member) ? member : [member];
+    logger.info(`SREM from ${this.getKey(key)}`);
+    // Note: ioredis srem returns number of elements removed
+    return this.redisPool.useClient((client: Redis) => client.srem(this.getKey(key), ...members));
+  }
+
+  async smembers(key: string): Promise<string[]> {
+    logger.info(`SMEMBERS for ${this.getKey(key)}`);
+    return this.redisPool.useClient((client: Redis) => client.smembers(this.getKey(key)));
+  }
+
+  // Expose useClient for transactions if absolutely necessary, but prefer specific methods
+  // Only uncomment if the MULTI logic cannot be encapsulated here.
+  // async useClient<T>(fn: (client: Redis) => Promise<T>): Promise<T> {
+  //   return this.redisPool.useClient(fn);
+  // }
+  // --- END NEW SET METHODS ---
 }
 
 export function createRedisCache(env: Env): RedisCacheService {

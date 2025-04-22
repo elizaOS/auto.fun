@@ -414,7 +414,7 @@ export async function processSwapEvent(
 ): Promise<void> {
   try {
     // Get WebSocket client
-    const wsClient = getWebSocketClient(env);
+    const wsClient = getWebSocketClient();
 
     // Get DB connection to fetch token data and calculate featuredScore
     const db = getDB(env);
@@ -960,7 +960,7 @@ export async function processTokenUpdateEvent(
 ): Promise<void> {
   try {
     // Get WebSocket client
-    const wsClient = getWebSocketClient(env);
+    const wsClient = getWebSocketClient();
 
     // Get DB connection and calculate featuredScore
     const db = getDB(env);
@@ -1108,7 +1108,7 @@ export async function updateHoldersCache(
 
     // Emit limited set of holders via WebSocket
     try {
-      const wsClient = getWebSocketClient(env);
+      const wsClient = getWebSocketClient();
       const limitedHolders = holders.slice(0, 50); // Emit only top 50
       wsClient.emit(`token-${mint}`, "newHolder", limitedHolders);
     } catch (wsError) {

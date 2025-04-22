@@ -193,7 +193,7 @@ export async function processTransactionLogs(
   wsClient: any = null,
 ): Promise<ProcessResult> {
   if (!wsClient) {
-    wsClient = getWebSocketClient(env);
+    wsClient = getWebSocketClient();
   }
 
   // Try each handler in sequence and return on first match

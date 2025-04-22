@@ -106,7 +106,7 @@ export const getIoServer = (env?: Partial<Env>) => {
   const fullEnv = {
     NETWORK: env?.NETWORK || "mainnet",
   } as Env;
-  return getWebSocketClient(fullEnv);
+  return getWebSocketClient();
 };
 
 /**

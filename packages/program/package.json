@@ -3,10 +3,16 @@
     "version": "0.0.1",
     "license": "MIT",
     "type": "module",
+    "main": "index.js",
+    "exports": {
+        "./idl/autofun.json": "./idl/autofun.json",
+        "./idl/raydium_vault.json": "./idl/raydium_vault.json",
+        "./types": "./types/autofun.ts"
+    },
     "scripts": {
         "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
         "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-        "build": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor build && mkdir -p ./idl ./types && cp target/idl/autofun.json ./idl/ && cp target/idl/raydium_vault.json ./idl/ && cp target/types/autofun.ts ./types/",
+        "build": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor build && mkdir -p ./idl ./types && cp target/idl/autofun.json ./idl/ && cp target/idl/raydium_vault.json ./idl/ && cp target/types/autofun.ts ./types/ && echo 'export * from \"./types/autofun.js\"' > index.js",
         "clean": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor clean",
         "program-id:main": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster mainnet bun run scripts/getProgramId.ts",
         "program-id:dev": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster devnet bun run scripts/getProgramId.ts",
@@ -51,7 +57,8 @@
     "files": [
         "idl",
         "types",
-        "src"
+        "src",
+        "index.js"
     ],
     "dependencies": {
         "@coral-xyz/anchor": "0.30.1",

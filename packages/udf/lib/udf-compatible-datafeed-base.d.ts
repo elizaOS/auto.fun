@@ -1,4 +1,4 @@
-import { DatafeedConfiguration, ErrorCallback, GetMarksCallback, HistoryCallback, IDatafeedChartApi, IDatafeedQuotesApi, IExternalDatafeed, LibrarySymbolInfo, Mark, OnReadyCallback, QuotesCallback, ResolutionString, ResolveCallback, SearchSymbolResultItem, SearchSymbolsCallback, ServerTimeCallback, SubscribeBarsCallback, TimescaleMark, SymbolResolveExtension, VisiblePlotsSet, Timezone } from '../../../public/libraries/charting_library/datafeed-api';
+import { DatafeedConfiguration, ErrorCallback, GetMarksCallback, HistoryCallback, IDatafeedChartApi, IDatafeedQuotesApi, IExternalDatafeed, LibrarySymbolInfo, Mark, OnReadyCallback, QuotesCallback, ResolutionString, ResolveCallback, SearchSymbolResultItem, SearchSymbolsCallback, ServerTimeCallback, SubscribeBarsCallback, TimescaleMark, SymbolResolveExtension, VisiblePlotsSet, Timezone } from '@autodotfun/charting-library/datafeed-api';
 import { LimitedResponseConfiguration, PeriodParamsWithOptionalCountback } from './history-provider';
 import { IQuotesProvider } from './iquotes-provider';
 import { IRequester } from './irequester';

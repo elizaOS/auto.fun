@@ -214,7 +214,7 @@ router.post("/codex-webhook", async (c) => {
     });
   }
 
-  const wsClient = getWebSocketClient(c.env);
+  const wsClient = getWebSocketClient();
 
   const ext = new ExternalToken(c.env, tokenMint);
   //  we just call this to update the last 5 swaps in the db

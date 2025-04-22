@@ -4,14 +4,14 @@ import { and, eq } from "drizzle-orm";
 import { updateTokenInDB } from "../../cron";
 import { getDB, tokens } from "../../db";
 import { Env } from "../../env";
-import * as IDL from "../../target/idl/autofun.json";
-import { Autofun } from "../../target/types/autofun";
+import * as IDL from "@autodotfun/program/idl/autofun.json";
+import { Autofun } from "@autodotfun/program/types/autofun";
 import { updateTokenSupplyFromChain } from "../../tokenSupplyHelpers";
 import { Wallet } from "../../tokenSupplyHelpers/customWallet";
 import { logger } from "../../util";
 import { getWebSocketClient } from "../../websocket-client";
 import { TokenMigrator } from "../migration/migrateToken";
-import * as raydium_vault_IDL from "../raydium_vault.json";
+import * as raydium_vault_IDL from "@autodotfun/program/idl/raydium_vault.json";
 import { RaydiumVault } from "../types/raydium_vault";
 import { TokenData } from "../types/tokenData";
 import { retryOperation } from "../utils";
@@ -162,7 +162,7 @@ export async function executeMigrationStep(
   await updateTokenInDB(env, tokenData);
   // await saveMigrationState(env, token, step.name);
 
-  const ws = getWebSocketClient(env);
+  const ws = getWebSocketClient();
   if (step.eventName) {
     ws.to(`token-${token.mint}`).emit(step.eventName, token);
   }

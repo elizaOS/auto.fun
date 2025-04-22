@@ -197,7 +197,7 @@ export class TokenMigrator {
           lockedAt: token.lockedAt,
           lastUpdated: new Date().toISOString(),
         });
-        const ws = getWebSocketClient(this.env);
+        const ws = getWebSocketClient();
         ws.to(`token-${token.mint}`).emit("updateToken", token);
         logger.log(`[Migrate] Migration finalized for token ${token.mint}`);
         await releaseMigrationLock(this.env, token);

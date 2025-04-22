@@ -67,7 +67,7 @@ async function processSwapLog(
   logs: string[],
 ) {
   try {
-    const wsClient = getWebSocketClient(env);
+    const wsClient = getWebSocketClient();
     const swapLog = logs.find((l) => l.includes("Swap:"));
     const reservesLog = logs.find((l) => l.includes("Reserves:"));
     const mintLog = logs.find((l) => l.includes("Mint:"));
