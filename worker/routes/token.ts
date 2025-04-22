@@ -969,7 +969,11 @@ export async function processTokenUpdateEvent(
     // Create enriched token data with featuredScore
     const enrichedTokenData = {
       ...tokenData,
-      featuredScore: calculateFeaturedScore(tokenData, maxVolume, maxHolders),
+      featuredScore: calculateFeaturedScore(
+        tokenData,
+        maxVolume,
+        maxHolders,
+      ),
     };
 
     // Always emit to token-specific room
@@ -1215,7 +1219,7 @@ tokenRouter.get("/tokens", async (c) => {
     }
     // --- END RE-ENABLE CACHE GET ---
 
-    const db = getDB(c.env as Env);
+    const db = getDB(c.env);
 
     // Get max values needed by builder for column selection
     const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
@@ -1371,6 +1375,16 @@ tokenRouter.get("/tokens", async (c) => {
       total,
       hasMore: page < totalPages,
     };
+
+    // Merge ephemeral stats from Redis into each token
+    if (redisCache) {
+      await Promise.all(
+        responseData.tokens.map(async (t) => {
+          const statsJson = await redisCache.get(`token:stats:${t.mint}`);
+          if (statsJson) Object.assign(t, JSON.parse(statsJson));
+        }),
+      );
+    }
 
     // --- RE-ENABLE CACHE SET ---
     if (
@@ -1690,6 +1704,12 @@ tokenRouter.get("/token/:mint", async (c) => {
         : ((token.reserveLamport - token.virtualReserves) /
             (token.curveLimit - token.virtualReserves)) *
           100;
+
+    // Merge ephemeral stats from Redis
+    if (redisCache) {
+      const statsJson = await redisCache.get(`token:stats:${mint}`);
+      if (statsJson) Object.assign(token, JSON.parse(statsJson));
+    }
 
     // Format response with additional data
     const responseData = token;

@@ -16,19 +16,6 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
   const animationFrameRef = useRef<number | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [labelLeft, setLabelLeft] = useState(0);
-
-  useEffect(() => {
-    const containerWidth = containerRef.current?.offsetWidth || 0;
-    const rawLeft = (containerWidth * width) / 120;
-    const labelWidth = 30; // width for the label
-    const padding = 3;
-
-    const min = labelWidth / 2 + padding;
-    const max = containerWidth - labelWidth / 2 - padding;
-
-    setLabelLeft(Math.min(Math.max(rawLeft, min), max));
-  }, [width]);
 
   // Ensure progress is not negative
   progress = Math.max(progress, 0);
@@ -84,37 +71,25 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
     <div ref={containerRef} className="relative w-full z-0 h-8">
       {/* Add keyframes style */}
       <style>{pulseKeyframes}</style>
-
-      {/* Background */}
-      <div className="absolute left-0 h-full w-full bg-autofun-stroke-primary" />
-
-      {/* Progress */}
-      <div
-        className="absolute left-0 h-full bg-autofun-text-highlight z-20 transition-all duration-1500 ease-in-out"
-        style={{
-          width: `${width}%`,
-          transition:
-            "width 1.5s ease-in-out, background-color 0.8s ease-in-out",
-          animation:
-            width === 100 ? "subtle-pulse 2s infinite ease-in-out" : "none",
-        }}
-      />
-
-      {/* Percentage indicator - position changes based on progress */}
-      <div
-        className="absolute h-full flex items-center z-30 pointer-events-none"
-        style={{
-          left: `${labelLeft}px`,
-          transform: "translateX(-50%)",
-        }}
-      >
-        <span
-          className={`font-medium font-dm-mono text-sm px-1 whitespace-nowrap ${
-            width >= 50 ? "text-black" : "text-autofun-text-secondary"
-          }`}
+      <div className="h-full w-full bg-autofun-stroke-primary overflow-hidden">
+        <div
+          className={`
+            h-full bg-autofun-text-highlight z-20 
+            transition-all duration-[1500ms] ease-in-out 
+            flex items-center 
+            ${width < 15 ? "justify-start" : "justify-end"}
+            ${width === 100 ? 'animate-subtle-pulse' : ''}
+          `}
+          style={{
+            width: `${width}%`,
+          }}
         >
-          {displayedValue}%
-        </span>
+          <span className={`font-medium font-dm-mono text-sm px-1 whitespace-nowrap ${
+            width >= 50 ? "text-black pr-2" : "text-autofun-text-secondary pl-2"
+          }`}>
+            {displayedValue}%
+          </span>
+        </div>
       </div>
     </div>
   );
