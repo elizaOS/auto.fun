@@ -19,7 +19,7 @@ agentRouter.get("/token/:mint/agents", async (c) => {
       return c.json({ error: "Invalid mint address" }, 400);
     }
 
-    const db = getDB(c.env);
+    const db = getDB();
     const agents = await db
       .select()
       .from(tokenAgents) // Ensure tokenAgents is imported and defined in schema
@@ -60,7 +60,7 @@ agentRouter.delete("/token/:mint/agents/:agentId", async (c) => {
       return c.json({ error: "Missing or invalid agent ID" }, 400);
     }
 
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Find the agent to check ownership
     const agentToDelete = await db
@@ -231,7 +231,7 @@ agentRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
     }
 
     // Step 2: Check if this Twitter user is already connected to this token
-    const db = getDB(c.env);
+    const db = getDB();
     const existingAgent = await db
       .select()
       .from(tokenAgents)

@@ -97,7 +97,7 @@ migrationRouter.post("/claimFees", async (c) => {
       return c.json({ error: "Not authenticated" }, 401);
     }
 
-    const db = getDB(c.env);
+    const db = getDB();
     const userInfo = await db
       .select()
       .from(users)
@@ -174,7 +174,7 @@ migrationRouter.get("/checkBalance", async (c) => {
       return c.json({ error: "Not authenticated" }, 401);
     }
 
-    const db = getDB(c.env);
+    const db = getDB();
     const userInfo = await db
       .select()
       .from(users)
@@ -253,7 +253,7 @@ migrationRouter.post("/migration/update", async (c) => {
     Object.assign(updateData, extra);
 
     // 4) write to db
-    const db = getDB(c.env);
+    const db = getDB();
     const token = await db
       .update(tokens)
       .set(updateData)
@@ -284,7 +284,7 @@ migrationRouter.post("/migration/addMissingTokens", async (c) => {
     }
 
     // check if we have token in the database
-    const db = getDB(c.env);
+    const db = getDB();
     const existingTokens = await db
       .select()
       .from(tokens)
@@ -301,7 +301,7 @@ migrationRouter.post("/migration/addMissingTokens", async (c) => {
       rawCreatorAddress,
       c.env,
     );
-    await getDB(c.env)
+    await getDB()
       .insert(tokens)
       .values(newToken as Token)
       .onConflictDoNothing();

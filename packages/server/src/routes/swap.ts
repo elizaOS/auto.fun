@@ -58,7 +58,7 @@ router.post("/creator-tokens", async (c) => {
   if (!user) {
     return c.json({ message: "Unauthorized" }, 401);
   }
-  const db = getDB(c.env);
+  const db = getDB();
   const tokensCreated = await db
     .select()
     .from(tokens)

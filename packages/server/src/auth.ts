@@ -386,7 +386,7 @@ export const authStatus = async (c: AppContext) => {
       const walletToQuery = tokenData.publicKey;
 
       if (walletToQuery) {
-        const db = getDB(c.env);
+        const db = getDB();
 
         try {
           const dbUser = await db

@@ -11,7 +11,7 @@ import { getWebSocketClient } from "../websocket-client";
 const MAX_SWAPS_TO_KEEP = 1000;
 
 export async function getAllLockedTokens(env: Env) {
-  const db = getDB(env);
+  const db = getDB();
   const tokenData = await db
     .select()
     .from(tokens)
@@ -105,7 +105,7 @@ async function processSwapLog(
         .slice(-3)
         .map((s) => s.replace(/[",)]/g, ""));
 
-      const db = getDB(env);
+      const db = getDB();
       const [existing] = await db
         .select({
           price24hAgo: tokens.price24hAgo,
@@ -291,7 +291,7 @@ export async function updateTokenSupplyFromChain(
   const { amount, uiAmount, decimals } = supplyResponse.value;
   const now = new Date();
 
-  const db = getDB(env);
+  const db = getDB();
   await db
     .update(tokens)
     .set({

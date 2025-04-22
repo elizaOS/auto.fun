@@ -1,9 +1,7 @@
+import { Connection } from "@solana/web3.js";
+import dotenv from "dotenv";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { serve } from "@hono/node-server";
-import dotenv from "dotenv";
-import { Connection, PublicKey } from "@solana/web3.js";
-import { AddressInfo } from "net";
 // import type { Serve } from '@hono/node-server' // Remove this type import
 
 // Load environment variables from .env file at the root
@@ -12,7 +10,6 @@ dotenv.config({ path: "../../.env" });
 import { allowedOrigins } from "./allowedOrigins";
 import { verifyAuth } from "./auth";
 import { Env } from "./env"; // Assuming Env type is defined and includes Redis vars
-import { getSOLPrice } from "./mcap";
 import { adminRouter, ownerRouter } from "./routes/admin";
 import agentRouter from "./routes/agents";
 import authRouter from "./routes/auth";
@@ -28,9 +25,9 @@ import webhookRouter from "./routes/webhooks";
 // import { uploadToCloudflare } from "./uploader";
 import { logger } from "./util";
 // import { claimFees } from "./claimFees";
-import { webSocketManager } from './websocket-manager';
 import { createRedisCache } from './redis/redisCacheService'; // Import Redis factory
 import { RedisPool } from './redis/redisPool'; // Import RedisPool type if needed for shutdown variable
+import { webSocketManager } from './websocket-manager';
 // Assuming getSharedRedisPool is exported from redisCacheService or redisPool
 import { getSharedRedisPool } from './redis/redisCacheService';
 

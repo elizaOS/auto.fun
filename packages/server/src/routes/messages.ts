@@ -35,7 +35,7 @@ messagesRouter.get("/messages/:mint", async (c) => {
       setTimeout(() => reject(new Error("Messages query timed out")), 5000),
     );
 
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Query root messages with timeout protection
     const messagesQueryPromise = async () => {
@@ -129,7 +129,7 @@ messagesRouter.get("/messages/:mint", async (c) => {
 messagesRouter.get("/messages/:messageId/replies", async (c) => {
   try {
     const messageId = c.req.param("messageId");
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Get replies for this message
     const repliesResult = await db
@@ -164,7 +164,7 @@ messagesRouter.get("/messages/:messageId/replies", async (c) => {
 messagesRouter.get("/messages/:messageId/thread", async (c) => {
   try {
     const messageId = c.req.param("messageId");
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Get the parent message
     const parentResult = await db
@@ -249,7 +249,7 @@ messagesRouter.post("/messages/:mint", async (c) => {
       );
     }
 
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Create the message
     const messageData = {
@@ -298,7 +298,7 @@ messagesRouter.post("/messages/:messageId/likes", async (c) => {
     const messageId = c.req.param("messageId");
     const userAddress = user.publicKey;
 
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Find the message
     const message = await db

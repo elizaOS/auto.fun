@@ -47,8 +47,8 @@ export class ExternalToken {
   constructor(env: Env, mint: string) {
     this.sdk = new Codex(env.CODEX_API_KEY);
     this.mint = mint;
-    this.db = getDB(env);
-    this.wsClient = getWebSocketClient(env);
+    this.db = getDB();
+    this.wsClient = getWebSocketClient();
     this.env = env;
   }
 

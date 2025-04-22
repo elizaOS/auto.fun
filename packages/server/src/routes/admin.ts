@@ -43,7 +43,7 @@ adminRouter.post("/tokens/:mint/social", requireAdmin, async (c) => {
     const body = await c.req.json();
     const { twitter, telegram, discord, website, farcaster } = body;
 
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Check if token exists
     const tokenData = await db
@@ -107,7 +107,7 @@ adminRouter.post("/tokens/:mint/featured", requireAdmin, async (c) => {
       return c.json({ error: "Featured flag must be a boolean" }, 400);
     }
 
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Check if token exists
     const tokenData = await db
@@ -166,7 +166,7 @@ adminRouter.post("/tokens/:mint/verified", requireAdmin, async (c) => {
       return c.json({ error: "Verified flag must be a boolean" }, 400);
     }
 
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Check if token exists
     const tokenData = await db
@@ -225,7 +225,7 @@ adminRouter.post("/tokens/:mint/hidden", requireAdmin, async (c) => {
       return c.json({ error: "Hidden flag must be a boolean" }, 400);
     }
 
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Check if token exists
     const tokenData = await db
@@ -285,7 +285,7 @@ adminRouter.post("/users/:address/suspended", requireAdmin, async (c) => {
       return c.json({ error: "Suspended flag must be a boolean" }, 400);
     }
 
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Check if user exists
     const userData = await db
@@ -344,7 +344,7 @@ adminRouter.get("/users/:address", requireAdmin, async (c) => {
       return c.json({ error: "Invalid wallet address" }, 400);
     }
 
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Get user from database
     const userData = await db
@@ -393,7 +393,7 @@ adminRouter.get("/users/:address", requireAdmin, async (c) => {
 // Route to get admin statistics
 adminRouter.get("/stats", requireAdmin, async (c) => {
   try {
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Get total user count
     const userCountResult = await db
@@ -466,7 +466,7 @@ adminRouter.get("/users", requireAdmin, async (c) => {
       ),
     );
 
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Prepare a basic query
     const userQuery = async () => {
@@ -639,7 +639,7 @@ ownerRouter.post("/tokens/:mint/social", async (c) => {
   const body = await c.req.json();
 
   try {
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Update social links
     await db

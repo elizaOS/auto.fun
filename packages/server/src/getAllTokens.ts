@@ -10,7 +10,7 @@ import { eq } from "drizzle-orm";
 
 
 export async function getLastProcessedSlot(env: any): Promise<number | null> {
-   const db = await getDB(env);
+   const db = await getDB();
 
    const row = await db.select()
       .from(metadata)
@@ -25,7 +25,7 @@ export async function getLastProcessedSlot(env: any): Promise<number | null> {
 export async function setLastProcessedSlot(slot: number, env: any): Promise<void> {
 
 
-   const db = await getDB(env);
+   const db = await getDB();
    await db.insert(metadata).values({ key: "lastProcessedSlot", value: slot.toString() }).onConflictDoUpdate({
       target: [metadata.key],
       set: { value: slot.toString() },

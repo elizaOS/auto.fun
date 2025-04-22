@@ -19,7 +19,7 @@ app.get("/:address", async (c) => {
       return c.json({ error: "Address is required" }, 400);
     }
 
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Get user information
     const userResult = await db

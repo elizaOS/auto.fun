@@ -51,7 +51,7 @@ authRouter.post("/register", async (c) => {
       return c.json({ error: "Invalid address" }, 400);
     }
 
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Check if user already exists
     const existingUser = await db
@@ -112,7 +112,7 @@ authRouter.get("/protected", requireAuth, async (c) => {
     }
 
     // Get user info from database
-    const db = getDB(c.env);
+    const db = getDB();
     const userInfo = await db
       .select()
       .from(users)

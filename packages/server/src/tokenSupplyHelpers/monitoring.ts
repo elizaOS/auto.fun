@@ -8,7 +8,7 @@ export async function startMonitoringBatch(
   batchSize = 10,
 ): Promise<{ processed: number; total: number }> {
   const kv = env.MONITOR_KV;
-  const db = getDB(env);
+  const db = getDB();
 
   const rawList = await kv.get("lockedList");
   const rawCursor = await kv.get("lockedCursor");

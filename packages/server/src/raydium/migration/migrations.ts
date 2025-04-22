@@ -40,7 +40,7 @@ export async function getToken(
   env: Env,
   mint: string,
 ): Promise<TokenData | null> {
-  const db = getDB(env);
+  const db = getDB();
   const tokenRecords = await db
     .select()
     .from(tokens)
@@ -213,7 +213,7 @@ export async function saveMigrationState(
   token: TokenData,
   step: string,
 ) {
-  const db = getDB(env);
+  const db = getDB();
   const updatedMigration = {
     ...token.migration,
     lastStep: step,
@@ -229,7 +229,7 @@ export async function saveMigrationState(
 }
 
 export async function getMigrationState(env: Env, token: TokenData) {
-  const db = getDB(env);
+  const db = getDB();
 
   const tokenRecords = await db
     .select()
@@ -254,7 +254,7 @@ export async function getMigrationState(env: Env, token: TokenData) {
 
 export async function checkMigratingTokens(env: Env, limit: number) {
   try {
-    const db = getDB(env);
+    const db = getDB();
     const migratingTokens = await db
       .select()
       .from(tokens)

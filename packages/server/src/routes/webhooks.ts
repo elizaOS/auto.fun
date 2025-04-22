@@ -110,7 +110,7 @@ router.post("/codex-webhook", async (c) => {
   const webhookBody = WebhookTokenPairEvent.parse(body);
 
   const swap = webhookBody.data.event;
-  // const db = getDB(c.env);
+  // const db = getDB();
   // Determine which token index (0 or 1) this event is for
   const token0IsSol =
     swap.token0Address === "So11111111111111111111111111111111111111112";
@@ -193,7 +193,7 @@ router.post("/codex-webhook", async (c) => {
   let token = cachedToken ? JSON.parse(cachedToken) : null;
 
   if (!token) {
-    const db = getDB(c.env);
+    const db = getDB();
     const dbToken = await db
       .select()
       .from(tokens)

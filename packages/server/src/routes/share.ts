@@ -175,7 +175,7 @@ async function storeOAuthState(
   state: string,
   codeVerifier: string,
 ): Promise<void> {
-  const db = getDB(env);
+  const db = getDB();
   const expiresAt = new Date(Date.now() + 600_000); // 10 minutes
 
   try {
@@ -197,7 +197,7 @@ async function getOAuthState(
   state: string,
 ): Promise<{ codeVerifier: string; expiresAt: Date } | null> {
   try {
-    const db = getDB(env);
+    const db = getDB();
     const result = await db
       .select({
         code_verifier: oauthVerifiers.codeVerifier,
@@ -226,7 +226,7 @@ async function storeAccessToken(
   refresh: string,
   expiresIn: number,
 ): Promise<void> {
-  const db = getDB(env);
+  const db = getDB();
   const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
   try {
@@ -258,7 +258,7 @@ async function getRefreshToken(
   userId: string,
 ): Promise<string | null> {
   try {
-    const db = getDB(env);
+    const db = getDB();
     const result = await db
       .select({ refresh_token: accessTokens.refreshToken })
       .from(accessTokens)
@@ -280,7 +280,7 @@ async function updateAccessToken(
   refresh: string,
   expiresIn: number,
 ): Promise<void> {
-  const db = getDB(env);
+  const db = getDB();
   const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
   try {
@@ -304,7 +304,7 @@ async function validateToken(
   userId: string,
 ): Promise<boolean> {
   try {
-    const db = getDB(env);
+    const db = getDB();
     const result = await db
       .select()
       .from(accessTokens)

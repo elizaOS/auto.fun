@@ -78,7 +78,7 @@ export async function updateTokenInDB(
    env: Env,
    tokenData: Partial<TokenData>,
 ): Promise<Token> {
-   const db = getDB(env);
+   const db = getDB();
    const now = new Date().toISOString();
 
    // Create a new object that conforms to TokenDBData
@@ -258,7 +258,7 @@ export async function processTransactionLogs(
             };
 
             // Insert the swap record
-            const db = getDB(env);
+            const db = getDB();
             const redisCache = createRedisCache(env);
             const listKey = redisCache.getKey(`swapsList:${mintAddress}`);
             try {
@@ -372,7 +372,7 @@ export async function processTransactionLogs(
                   console.error(`[Withdraw] CF update failed:`, httpErr);
                }
             })();
-            await getDB(env)
+            await getDB()
                .insert(tokens)
                .values(newToken as Token)
                .onConflictDoNothing()
@@ -515,7 +515,7 @@ export async function addOneToken(env: any) {
          console.error(`[Withdraw] CF update failed:`, httpErr);
       }
    })();
-   await getDB(env)
+   await getDB()
       .insert(tokens)
       .values(newToken as Token).onConflictDoNothing();
 }
@@ -544,7 +544,7 @@ export async function migrateTokensFromList(
             mintAddress.creator,
             env,
          );
-         await getDB(env)
+         await getDB()
             .insert(tokens)
             .values(newToken as Token).onConflictDoNothing();
          logger.log(`Added new token ${mintAddress} to database`);

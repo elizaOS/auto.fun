@@ -417,7 +417,7 @@ export async function processSwapEvent(
     const wsClient = getWebSocketClient();
 
     // Get DB connection to fetch token data and calculate featuredScore
-    const db = getDB(env);
+    const db = getDB();
 
     // Get the token data for this swap
     const tokenData = await db
@@ -963,7 +963,7 @@ export async function processTokenUpdateEvent(
     const wsClient = getWebSocketClient();
 
     // Get DB connection and calculate featuredScore
-    const db = getDB(env);
+    const db = getDB();
     const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
 
     // Create enriched token data with featuredScore
@@ -1016,7 +1016,7 @@ export async function updateHoldersCache(
   try {
     // Use the utility function to get the RPC URL with proper API key
     const connection = new Connection(getRpcUrl(env, imported));
-    const db = getDB(env);
+    const db = getDB();
     const redisCache = createRedisCache(env); // Instantiate Redis cache
 
     // Get all token accounts for this mint using getParsedProgramAccounts
@@ -1215,7 +1215,7 @@ tokenRouter.get("/tokens", async (c) => {
     }
     // --- END RE-ENABLE CACHE GET ---
 
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Get max values needed by builder for column selection
     const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
@@ -1529,7 +1529,7 @@ tokenRouter.get("/token/:mint/price", async (c) => {
     // --- END REDIS CACHE CHECK ---
 
     // Get token data from database
-    const db = getDB(c.env);
+    const db = getDB();
     const tokenData = await db
       .select({
         // Select only necessary fields
@@ -1619,7 +1619,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     }
 
     // Get token data
-    const db = getDB(c.env);
+    const db = getDB();
     const [tokenData, solPrice] = await Promise.all([
       db.select().from(tokens).where(eq(tokens.mint, mint)).limit(1),
       getSOLPrice(c.env),
@@ -1755,7 +1755,7 @@ tokenRouter.post("/create-token", async (c) => {
 
     logger.log(`Creating token record for: ${mintAddress}`);
 
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Check if token already exists
     const existingToken = await db
@@ -1947,7 +1947,7 @@ tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
 
     // Update holders for this specific token
     // Determine if token is imported - fetch from DB first
-    const db = getDB(c.env);
+    const db = getDB();
     const tokenData = await db
       .select({ imported: tokens.imported })
       .from(tokens)
@@ -2041,7 +2041,7 @@ tokenRouter.post("/token/:mint/update", async (c) => {
     }
 
     // Get DB connection
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Get the token to check permissions
     const tokenDataResult = await db // Renamed to avoid conflict
@@ -2308,7 +2308,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
     }
     // --- END REDIS CACHE CHECK ---
 
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Get token for decimals and creator information first
     const tokenQuery = await db
@@ -2452,7 +2452,7 @@ tokenRouter.post("/search-token", async (c) => {
   logger.log(`[search-token] Searching for token ${mint}`);
 
   // Check if token is already imported
-  const db = getDB(c.env);
+  const db = getDB();
   const existingToken = await db
     .select()
     .from(tokens)

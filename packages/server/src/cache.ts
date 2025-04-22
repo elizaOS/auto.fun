@@ -13,7 +13,7 @@ export class CacheService {
   private redisCache: ReturnType<typeof createRedisCache>;
 
   constructor(env: Env) {
-    this.db = getDB(env);
+    this.db = getDB();
     this.redisCache = createRedisCache(env);
   }
 

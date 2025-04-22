@@ -66,7 +66,7 @@ export async function getLatestCandle(
   const candleStart = Math.floor(swapTime / candlePeriod) * candlePeriod;
 
   // Check if token is locked (should use Codex API)
-  const db = getDB(env);
+  const db = getDB();
   if (!tokenInfo) {
     tokenInfo = await db
       .select()
@@ -118,7 +118,7 @@ export async function fetchPriceChartData(
   range: number,
   tokenMint: string,
 ) {
-  const db = getDB(env);
+  const db = getDB();
   const [tokenInfo] = await db
     .select()
     .from(tokens)

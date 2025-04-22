@@ -104,7 +104,7 @@ export async function updateTokenInDB(
   env: Env,
   tokenData: Partial<TokenData>,
 ): Promise<Token> {
-  const db = getDB(env);
+  const db = getDB();
   const now = new Date().toISOString();
 
   // Create a new object that conforms to TokenDBData
@@ -240,7 +240,7 @@ async function handleNewToken(
       logger.error(`Failed to create new token data for ${rawTokenAddress}`);
       return null;
     }
-    await getDB(env)
+    await getDB()
       .insert(tokens)
       .values([newToken as Token])
       .onConflictDoNothing();
@@ -340,7 +340,7 @@ async function handleSwap(
       timestamp: new Date(),
     };
 
-    const db = getDB(env);
+    const db = getDB();
     const redisCache = createRedisCache(env);
     const listKey = redisCache.getKey(`swapsList:${mintAddress}`);
 
@@ -515,7 +515,7 @@ export async function cron(
 }
 
 export async function updateTokens(env: Env) {
-  const db = getDB(env);
+  const db = getDB();
   const cache = createRedisCache(env);
   logger.log("Starting updateTokens cron task...");
 

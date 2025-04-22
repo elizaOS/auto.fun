@@ -69,7 +69,7 @@ export async function awardUserPoints(
   event: PointEvent,
   description = "",
 ): Promise<void> {
-  const db = getDB(env);
+  const db = getDB();
   const now = new Date();
   const pointsToAdd = calculatePoints(event);
   if (pointsToAdd <= 0) return;
@@ -133,7 +133,7 @@ export async function awardGraduationPoints(
   env: Env,
   mint: string,
 ): Promise<void> {
-  const db = getDB(env);
+  const db = getDB();
   const redisCache = createRedisCache(env);
 
   // Last swap user
@@ -223,7 +223,7 @@ export async function distributeWeeklyPoints(
   weeklyPool = 1_000_000,
   capPercent = 0.02,
 ): Promise<{ distributed: number; unassigned: number }> {
-  const db = getDB(env);
+  const db = getDB();
 
   const allUsers = await db
     .select({

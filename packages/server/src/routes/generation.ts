@@ -70,7 +70,7 @@ export async function checkRateLimits(
     }
   }
 
-  const db = getDB(env);
+  const db = getDB();
 
   const cutoffTime = new Date(
     Date.now() - RATE_LIMITS[type].COOLDOWN_PERIOD_MS,
@@ -183,7 +183,7 @@ export async function checkTokenOwnership(
     }
 
     // Access the database
-    const db = getDB(env);
+    const db = getDB();
     const redisCache = createRedisCache(env); // Instantiate Redis
 
     try {
@@ -739,7 +739,7 @@ app.post("/:mint/generate", async (c) => {
     );
 
     // Check if the token exists in the database
-    const db = getDB(c.env);
+    const db = getDB();
     let token;
 
     try {
@@ -946,7 +946,7 @@ app.get("/:mint/history", async (c) => {
       return c.json({ error: "Invalid media type" }, 400);
     }
 
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Check if user owns the token
     const token = await db
@@ -1740,7 +1740,7 @@ async function generateTokenOnDemand(
     }
 
     // Store in database for future use (run in background)
-    const db = getDB(env);
+    const db = getDB();
     ctx.waitUntil(
       (async () => {
         try {
@@ -1788,7 +1788,7 @@ async function generateTokenOnDemand(
 // Get a random pre-generated token endpoint
 app.get("/pre-generated-token", async (c) => {
   try {
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Get a random unused token
     const randomToken = await db
@@ -1841,7 +1841,7 @@ app.post("/mark-token-used", async (c) => {
       return c.json({ error: "Token ID is required" }, 400);
     }
 
-    const db = getDB(c.env);
+    const db = getDB();
 
     // Mark the token as used
     await db
@@ -2254,7 +2254,7 @@ export async function generatePreGeneratedTokens(env: Env) {
     // ----- Step 4: Insert into Database ----- (Optional: Upload Metadata JSON could be added here)
     try {
       logger.log(`[PreGen DB] Saving token to database: ${metadata.name}`);
-      const db = getDB(env);
+      const db = getDB();
       await db.insert(preGeneratedTokens).values([
         {
           id: crypto.randomUUID(),
@@ -2302,7 +2302,7 @@ export async function checkAndReplenishTokens(
     const maxRetries = 5; // Increased from 2 to 5 to give more chances for success
 
     while (retries < maxRetries) {
-      const db = getDB(env);
+      const db = getDB();
 
       // Count unused tokens
       const countResult = await db
@@ -2362,7 +2362,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
     logger.log(`Media type: ${mediaType}, Mode: ${mode}`);
 
     // Get token metadata from database if available
-    const db = getDB(c.env);
+    const db = getDB();
     const existingToken = await db
       .select()
       .from(tokens)
