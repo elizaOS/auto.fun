@@ -1,8 +1,7 @@
+import dotenv from "dotenv";
+import { Env } from "../env";
 import { logger } from "../util";
 import { RedisPool } from "./redisPool";
-import { ExecutionContext } from "@cloudflare/workers-types/experimental";
-import { Env } from "../env";
-import dotenv from "dotenv";
 dotenv.config();
 
 class RedisCacheService {
@@ -59,30 +58,3 @@ export function createRedisCache(env: Env) {
   logger.info("Redis cache service created");
   return new RedisCacheService(redisPool, env);
 }
-
-export default {
-  async fetch(request: Request, env: any, ctx: ExecutionContext) {
-    const RedisCache = createRedisCache(env);
-    const url = new URL(request.url);
-    const pathname = url.pathname;
-
-    if (pathname.startsWith("/set/")) {
-      const [, , key, value] = pathname.split("/");
-      if (!key || !value)
-        return new Response("Key or value missing", { status: 400 });
-
-      await RedisCache.set(key, value, 120); // TTL 2 minutes
-      return new Response(`Set key "${key}" to "${value}"`);
-    }
-
-    if (pathname.startsWith("/get/")) {
-      const [, , key] = pathname.split("/");
-      if (!key) return new Response("Key missing", { status: 400 });
-
-      const value = await RedisCache.get(key);
-      return new Response(value ? `Value: ${value}` : `Key "${key}" not found`);
-    }
-
-    return new Response("Try /set/foo/bar or /get/foo");
-  },
-};

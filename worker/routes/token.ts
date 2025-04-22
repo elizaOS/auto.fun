@@ -1401,8 +1401,8 @@ tokenRouter.get("/tokens", async (c) => {
     ) {
       // Cache only if results exist
       try {
-        await redisCache.set(cacheKey, JSON.stringify(responseData), 10);
-        logger.log(`Cached data for ${cacheKey} with 10s TTL`);
+        await redisCache.set(cacheKey, JSON.stringify(responseData), 15);
+        logger.log(`Cached data for ${cacheKey} with 15s TTL`);
       } catch (cacheError) {
         logger.error(`Redis cache SET error:`, cacheError);
       }
@@ -1555,11 +1555,16 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     // Get token data
     const db = getDB(c.env);
-    const tokenData = await db
-      .select()
-      .from(tokens)
-      .where(eq(tokens.mint, mint))
-      .limit(1);
+    const [tokenData, solPrice] = await Promise.all([
+      db
+        .select()
+        .from(tokens)
+        .where(eq(tokens.mint, mint))
+        .limit(1),
+      getSOLPrice(c.env)
+    ]);
+
+
     const token = tokenData[0];
 
     if (!tokenData || tokenData.length === 0) {
@@ -1567,26 +1572,6 @@ tokenRouter.get("/token/:mint", async (c) => {
     }
 
     // Get fresh SOL price
-    const solPrice = await getSOLPrice(c.env);
-
-    /**
-     * Use DB as source of truth for imported tokens since we have
-     * fetched and stored all the market data. we don't need to calculate
-     * anything based on our program variables.
-     */
-    if (Number(token.imported) === 1) {
-      const updatedToken = await db
-        .update(tokens)
-        .set({
-          solPriceUSD: solPrice,
-          currentPrice: (token.tokenPriceUSD || 0) / solPrice,
-          marketCapUSD:
-            (token.tokenPriceUSD || 0) * (token.tokenSupplyUiAmount || 0),
-        })
-        .where(eq(tokens.mint, mint))
-        .returning();
-      return c.json(updatedToken[0]);
-    }
 
     // Only refresh holder data if explicitly requested
     // const refreshHolders = c.req.query("refresh_holders") === "true";
@@ -1654,8 +1639,8 @@ tokenRouter.get("/token/:mint", async (c) => {
     if (redisCache) {
       try {
         // Cache for 5 seconds
-        await redisCache.set(cacheKey, JSON.stringify(responseData), 5);
-        logger.log(`Cached data for ${cacheKey} with 5s TTL`);
+        await redisCache.set(cacheKey, JSON.stringify(responseData), 10);
+        logger.log(`Cached data for ${cacheKey} with 10s TTL`);
       } catch (cacheError) {
         logger.error(`Error caching token data:`, cacheError);
       }
@@ -1670,6 +1655,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     );
   }
 });
+
 tokenRouter.post("/create-token", async (c) => {
   try {
     // Require authentication
@@ -1736,6 +1722,7 @@ tokenRouter.post("/create-token", async (c) => {
       // Insert with all required fields from the schema
       await db.insert(tokens).values([
         {
+          id: mintAddress, // Use mintAddress as the primary key/ID
           mint: mintAddress,
           name: name || `Token ${mintAddress.slice(0, 8)}`,
           ticker: symbol || "TOKEN",
@@ -1785,12 +1772,19 @@ tokenRouter.post("/create-token", async (c) => {
       c.executionCtx.waitUntil(updateTokens(c.env));
 
       if (imported) {
-        const importedToken = new ExternalToken(c.env, mintAddress);
-        const { marketData } = await importedToken.registerWebhook();
-        // Fetch historical data in the background
-        c.executionCtx.waitUntil(importedToken.fetchHistoricalSwapData());
-        // Merge any immediately available market data
-        Object.assign(tokenData, marketData.newTokenData);
+        try {
+          const importedToken = new ExternalToken(c.env, mintAddress);
+          const { marketData } = await importedToken.registerWebhook();
+          // Fetch historical data in the background
+          c.executionCtx.waitUntil(importedToken.fetchHistoricalSwapData());
+          // Merge any immediately available market data
+          if (marketData && marketData.newTokenData) {
+             Object.assign(tokenData, marketData.newTokenData);
+          }
+        } catch (webhookError) {
+            logger.error(`Failed to register webhook for imported token ${mintAddress}:`, webhookError);
+            // Continue even if webhook registration fails, especially locally
+        }
       }
 
       // For non-imported tokens, generate additional images in the background
@@ -1814,6 +1808,7 @@ tokenRouter.post("/create-token", async (c) => {
     return c.json({ error: "Internal server error", details: error }, 500);
   }
 });
+
 /**
  * used for importing tokens
  * will only search in mainnet because it's easier to test popular solana tokens that way.
