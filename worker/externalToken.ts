@@ -188,8 +188,10 @@ export class ExternalToken {
 
     const redisCache = createRedisCache(this.env);
     const holdersListKey = redisCache.getKey(`holders:${this.mint}`);
+    const top50Holders = allHolders.slice(0, 50);
+
     try {
-      await redisCache.set(holdersListKey, JSON.stringify(allHolders));
+      await redisCache.set(holdersListKey, JSON.stringify(top50Holders));
       logger.log(
         `ExternalToken: Stored ${allHolders.length} holders in Redis list ${holdersListKey}`,
       );
@@ -200,7 +202,6 @@ export class ExternalToken {
       );
     }
 
-    const top50Holders = allHolders.slice(0, 50);
     await this.wsClient
       .to(`token-${this.mint}`)
       .emit("newHolder", top50Holders);
