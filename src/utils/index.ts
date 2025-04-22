@@ -53,11 +53,32 @@ export const fromNow = (
   date: string | Date | number,
   hideAgo?: boolean,
 ): string => {
-  const now = String(moment(date).fromNow());
-  if (hideAgo) {
-    return String(moment(date).fromNow()).replace("ago", "");
+  const timeString = String(moment(date).fromNow());
+
+  if (!hideAgo) {
+    return timeString;
   }
-  return now;
+
+  // Handle special cases first
+  if (timeString.includes("a few seconds ago")) return "NOW";
+  if (timeString.includes("a minute ago")) return "1m";
+  if (timeString.includes("an hour ago")) return "1hr";
+  if (timeString.includes("a day ago")) return "1d";
+  if (timeString.includes("a week ago")) return "1w";
+  if (timeString.includes("a month ago")) return "1mo";
+  if (timeString.includes("a year ago")) return "1y";
+
+  // Handle regular cases with replacements
+  let result = timeString.replace("ago", "").trim();
+  result = result.replace(" seconds", "s").replace(" second", "s");
+  result = result.replace(" minutes", "m").replace(" minute", "m");
+  result = result.replace(" hours", "hrs").replace(" hour", "hr");
+  result = result.replace(" days", "d").replace(" day", "d");
+  result = result.replace(" weeks", "w").replace(" week", "w");
+  result = result.replace(" months", "mo").replace(" month", "mo");
+  result = result.replace(" years", "y").replace(" year", "y");
+
+  return result;
 };
 
 function toSubscript(num: number): string {
@@ -134,6 +155,7 @@ export const isFromDomain = (url: string, domain: string): boolean => {
 };
 
 export const resizeImage = (url: string, width: number, height: number) => {
+  if (!url) return "/logo.png";
   if (url.includes("ipfs") || !url.startsWith("http")) {
     return url;
   } else {

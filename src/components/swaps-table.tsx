@@ -12,13 +12,13 @@ import { fromNow, shortenAddress } from "@/utils";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { Link } from "react-router";
 import { twMerge } from "tailwind-merge";
-// import PausedIndicator from "./paused-indicator";
+import PausedIndicator from "./paused-indicator";
 import { useTransactions } from "@/hooks/use-transactions";
 import { env } from "@/utils/env";
 import Pagination from "./pagination";
 
 export default function SwapsTable({ token }: { token: IToken }) {
-  const { /*paused,*/ setPause } = usePause();
+  const { paused, setPause } = usePause();
   const {
     items: data,
     goToPage,
@@ -27,7 +27,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
     hasNextPage,
     totalItems,
     totalPages,
-  } = useTransactions({ tokenId: token.mint });
+  } = useTransactions({ tokenId: token.mint, isPaused: paused });
 
   // Helper to format swap amounts based on type
   const formatSwapAmount = (amount: number | string, isToken: boolean) => {
@@ -51,21 +51,23 @@ export default function SwapsTable({ token }: { token: IToken }) {
   };
 
   return (
-    <div className="space-y-12 h-fit overflow-y-hidden overflow-x-none">
-      <Table
-        className="border-0 !rounded-0 !border-spacing-y-0"
-        onMouseEnter={() => setPause(true)}
-        onMouseLeave={() => setPause(false)}
-      >
-        {/* <PausedIndicator show={paused} /> */}
+    <div
+      className="space-y-12 h-fit overflow-y-hidden overflow-x-none relative"
+      onMouseEnter={() => setPause(true)}
+      onMouseLeave={() => setPause(false)}
+    >
+      <div className="absolute right-0 top-1 transform">
+        <PausedIndicator show={paused} />
+      </div>
+      <Table className="border-0 !rounded-0 !border-spacing-y-0">
         <TableHeader>
           <TableRow className="bg-transparent">
-            <TableHead>Account</TableHead>
-            <TableHead className="text-left">Type</TableHead>
+            <TableHead className="w-[120px]">Account</TableHead>
+            <TableHead className="text-left w-[100px]">Type</TableHead>
             <TableHead className="text-left">SOL</TableHead>
             <TableHead className="text-left">Token</TableHead>
-            <TableHead className="text-left w-[150px]">Date</TableHead>
-            <TableHead className="text-right">Txn</TableHead>
+            <TableHead className="text-left w-[80px]">Date</TableHead>
+            <TableHead className="text-right w-[50px]" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -118,14 +120,14 @@ export default function SwapsTable({ token }: { token: IToken }) {
                       {formatSwapAmount(swap.tokenAmount, true)}
                     </TableCell>
                     <TableCell className="text-left">
-                      {fromNow(swap?.timestamp)}
+                      {fromNow(swap?.timestamp, true)}
                     </TableCell>
                     <TableCell>
                       <Link
                         to={env.getTransactionUrl(swap.txId)}
                         target="_blank"
                       >
-                        <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary" />
+                        <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary hover:text-autofun-text-highlight transition-colors duration-200" />
                       </Link>
                     </TableCell>
                   </TableRow>

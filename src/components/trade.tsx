@@ -5,20 +5,16 @@ import { IToken } from "@/types";
 import { formatNumber } from "@/utils";
 import { useProgram } from "@/utils/program";
 import { getSwapAmount, getSwapAmountJupiter } from "@/utils/swapUtils";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Info, Wallet } from "lucide-react";
 import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
 import { BN } from "bn.js";
+import { Tooltip } from "react-tooltip";
 
-export default function Trade({
-  token,
-  onSwapCompleted,
-}: {
-  token: IToken;
-  onSwapCompleted: (signature: string) => void;
-}) {
+export default function Trade({ token }: { token: IToken }) {
+  const queryClient = useQueryClient();
   // const { solPrice: contextSolPrice } = useSolPriceContext();
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
 
@@ -76,11 +72,17 @@ export default function Trade({
     queryFn: async (): Promise<{
       displayMinReceived: string;
       convertedAmount: number;
+      minReceivedRaw: number;
     }> => {
-      if (!program) return { displayMinReceived: "0", convertedAmount: 0 };
+      const empty = {
+        displayMinReceived: "0",
+        convertedAmount: 0,
+        minReceivedRaw: 0,
+      };
+      if (!program) return empty;
       const style = isTokenSelling ? 1 : 0;
       const amount = sellAmount;
-      if (!amount) return { displayMinReceived: "0", convertedAmount: 0 };
+      if (!amount) return empty;
 
       const amountBN = new BN(amount);
       const tokenDecimalsBN = new BN(
@@ -118,8 +120,13 @@ export default function Trade({
         ? formatNumber(minReceived, false, true)
         : formatNumber(minReceived, false, true);
 
-      return { displayMinReceived, convertedAmount };
+      return {
+        displayMinReceived,
+        minReceivedRaw: minReceived,
+        convertedAmount,
+      };
     },
+    refetchInterval: 5000,
   });
 
   const displayMinReceived =
@@ -129,14 +136,15 @@ export default function Trade({
   const onSwap = async () => {
     if (!sellAmount) return;
 
-    const res = (await executeSwap({
+    await executeSwap({
       amount: sellAmount,
       style: isTokenSelling ? "sell" : "buy",
       tokenAddress: token.mint,
       token,
-    })) as { signature: string };
+    });
 
-    onSwapCompleted(res.signature);
+    queryClient.invalidateQueries({ queryKey: ["token", token.mint] });
+
     setSellAmount(0);
   };
 
@@ -277,7 +285,20 @@ export default function Trade({
             {/* Buying */}
             <div className="flex items-center p-4 gap-2 justify-between text-sm font-dm-mono text-autofun-text-secondary w-full">
               <span>Min Received:</span>
-              <div className="relative flex uppercase items-center gap-2">
+              <Tooltip anchorSelect="#minreceived">
+                {displayhMinReceivedQuery?.data?.minReceivedRaw
+                  ? formatNumber(
+                      displayhMinReceivedQuery?.data?.minReceivedRaw,
+                      true,
+                      true,
+                    )
+                  : "0"}{" "}
+                {isTokenSelling ? "SOL" : token?.ticker}
+              </Tooltip>
+              <div
+                className="relative flex uppercase items-center gap-2"
+                id="minreceived"
+              >
                 {displayhMinReceivedQuery?.isError
                   ? "Error"
                   : displayMinReceived}

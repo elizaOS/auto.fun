@@ -31,24 +31,43 @@ export class WebSocketClient {
         const doStub = this.webSocketDO.get(doId);
 
         // Send the message to the WebSocket Durable Object
-        const response = await doStub.fetch("https://internal/broadcast", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            room: formattedRoom,
-            event,
-            data,
-          }),
-        });
-
-        if (!response.ok) {
-          const error = await response.text();
-          logger.error(`Error broadcasting to room ${formattedRoom}: ${error}`);
-          throw new Error(
-            `Failed to broadcast to room ${formattedRoom}: ${error}`,
-          );
+        const url = "https://internal/broadcast";
+        const payloadObj = { room: formattedRoom, event, data };
+        const serialized = JSON.stringify(payloadObj);
+        const MAX_SIZE = 131072;
+        if (serialized.length <= MAX_SIZE) {
+          const response = await doStub.fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: serialized,
+          });
+          if (!response.ok) {
+            const error = await response.text();
+            logger.error(`Error broadcasting to room ${formattedRoom}: ${error}`);
+            throw new Error(`Failed to broadcast to room ${formattedRoom}: ${error}`);
+          }
+        } else {
+          const messageId = crypto.randomUUID();
+          const chunkSize = MAX_SIZE - 1024;
+          const totalChunks = Math.ceil(serialized.length / chunkSize);
+          for (let i = 0; i < totalChunks; i++) {
+            const chunk = serialized.slice(i * chunkSize, (i + 1) * chunkSize);
+            const response = await doStub.fetch(url, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Chunk-Index": i.toString(),
+                "X-Total-Chunks": totalChunks.toString(),
+                "X-Message-Id": messageId,
+              },
+              body: chunk,
+            });
+            if (!response.ok) {
+              const error = await response.text();
+              logger.error(`Error broadcasting chunk ${i} to room ${formattedRoom}: ${error}`);
+              throw new Error(`Failed to broadcast chunk ${i} to room ${formattedRoom}: ${error}`);
+            }
+          }
         }
       } else {
         logger.error("Cannot emit: No WebSocket Durable Object available");

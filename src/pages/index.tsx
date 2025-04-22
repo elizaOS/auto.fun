@@ -13,9 +13,10 @@ import { useViewMode } from "@/hooks/use-view-mode";
 import { getSocket } from "@/utils/socket";
 import { IToken } from "@/types";
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import { useLocalStorage } from "@uidotdev/usehooks";
 import { Fragment } from "react/jsx-runtime";
 import { FilterIcon, X } from "lucide-react"; // Example icons
+import { useUrlSearchParams } from "@/hooks/use-url-searchparams";
+import { Helmet } from "react-helmet";
 
 // Define types for state
 type GridSortByType = "newest" | "all" | "marketCap";
@@ -39,24 +40,22 @@ interface UseTokensParams {
 export default function Page() {
   const [activeTab] = useViewMode();
   // Manage sort/filter state locally, initializing from localStorage using the hook
-  const [gridSortBy, setGridSortBy] = useLocalStorage<GridSortByType>(
-    "gridSortBy",
+  const [gridSortBy, setGridSortBy] = useUrlSearchParams<GridSortByType>(
+    "category",
     "newest",
   );
-  const [tokenSource, setTokenSource] = useLocalStorage<TokenSourceType>(
-    "tokenSource",
+  const [tokenSource, setTokenSource] = useUrlSearchParams<TokenSourceType>(
+    "source",
     "all",
   );
-  const [bondingStatus, setBondingStatus] = useLocalStorage<BondingStatusType>(
-    "bondingStatus",
-    "all",
-  );
-  const [tableSortBy, setTableSortBy] = useLocalStorage<TableSortByType>(
-    "tableSortBy",
+  const [bondingStatus, setBondingStatus] =
+    useUrlSearchParams<BondingStatusType>("status", "all");
+  const [tableSortBy, setTableSortBy] = useUrlSearchParams<TableSortByType>(
+    "sort",
     "marketCapUSD",
   );
-  const [tableSortOrder, setTableSortOrder] = useLocalStorage<SortOrderType>(
-    "tableSortOrder",
+  const [tableSortOrder, setTableSortOrder] = useUrlSearchParams<SortOrderType>(
+    "order",
     "desc",
   );
 
@@ -156,177 +155,191 @@ export default function Page() {
     return query?.items || [];
   }, [query?.items]);
 
+  const isMobile = window.innerWidth <= 640;
+
   return (
-    <div className="w-full min-h-[50vh] pb-24">
-      {/* Header Section */}
-      {/* Show FrontpageHeader on desktop, logo on mobile */}
-      <div className="hidden md:block">
-        <FrontpageHeader tokens={headerTokens} />
-      </div>
-      <div className="md:hidden flex justify-center items-center py-8">
-        <img src="/logo_wide.svg" alt="Logo" className="w-4/5 max-w-[400px]" />
-      </div>
-      {/* Top Navigation */}
-      <div className="flex justify-between gap-1 flex-wrap-reverse md:flex-wrap">
-        {/* Grid Sort Buttons - Hide on Table View */}
-        {activeTab === "grid" && (
-          <div className="flex items-center gap-1">
-            {/* TODO: change to toggle button for newest/oldest */}
-            <Button
-              variant={gridSortBy === "newest" ? "primary" : "outline"}
-              onClick={() => setGridSortBy("newest")}
-            >
-              New
-            </Button>
-            <Button
-              variant={gridSortBy === "all" ? "primary" : "outline"}
-              onClick={() => setGridSortBy("all")}
-            >
-              {/* featured represents all */}
-              Featured
-            </Button>
-            <Button
-              variant={gridSortBy === "marketCap" ? "primary" : "outline"}
-              onClick={() => setGridSortBy("marketCap")}
-            >
-              <span className="hidden sm:inline">Market Cap</span>
-              <span className="sm:hidden">MCap</span>
-            </Button>
+    <Fragment>
+      <Helmet>
+        <title>auto.fun</title>
+      </Helmet>
+      <div className="w-full min-h-[50vh] pb-24">
+        {/* Header Section */}
+        {/* Show FrontpageHeader on desktop, logo on mobile */}
+        {!isMobile ? (
+          <FrontpageHeader tokens={headerTokens} />
+        ) : (
+          <div className="flex justify-center items-center py-8">
+            <img
+              src="/logo_wide.svg"
+              alt="Logo"
+              className="w-4/5 max-w-[400px]"
+            />
           </div>
         )}
-        {/* Placeholder div to maintain layout when grid buttons hide */}
-        {activeTab !== "grid" && <div className="flex-1" />}
+        {/* Top Navigation */}
+        <div className="flex justify-between gap-1 flex-wrap-reverse md:flex-wrap">
+          {/* Grid Sort Buttons - Hide on Table View */}
+          {activeTab === "grid" && (
+            <div className="flex items-center gap-1">
+              {/* TODO: change to toggle button for newest/oldest */}
+              <Button
+                variant={gridSortBy === "newest" ? "primary" : "outline"}
+                onClick={() => setGridSortBy("newest")}
+              >
+                New
+              </Button>
+              <Button
+                variant={gridSortBy === "all" ? "primary" : "outline"}
+                onClick={() => setGridSortBy("all")}
+              >
+                {/* featured represents all */}
+                Featured
+              </Button>
+              <Button
+                variant={gridSortBy === "marketCap" ? "primary" : "outline"}
+                onClick={() => setGridSortBy("marketCap")}
+              >
+                <span className="hidden sm:inline">Market Cap</span>
+                <span className="sm:hidden">MCap</span>
+              </Button>
+            </div>
+          )}
+          {/* Placeholder div to maintain layout when grid buttons hide */}
+          {activeTab !== "grid" && <div className="flex-1" />}
 
-        <div className="flex items-center gap-2">
-          {/* Filter Button & Popover */}
-          <div className="relative" ref={filterRef}>
-            <Button
-              variant="outline"
-              size="small"
-              onClick={() => setIsFilterOpen(!isFilterOpen)}
-              className="relative p-2"
-            >
-              <FilterIcon size={24} />
-              {(tokenSource !== "all" || bondingStatus !== "all") && (
-                <span className="absolute top-0 right-0 block size-2 rounded-full bg-autofun-background-action-highlight ring-2 ring-autofun-background-action-primary" />
+          <div className="flex items-center gap-2">
+            {/* Filter Button & Popover */}
+            <div className="relative" ref={filterRef}>
+              <Button
+                variant="outline"
+                size="small"
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className="relative p-2"
+              >
+                <FilterIcon size={24} />
+                {(tokenSource !== "all" || bondingStatus !== "all") && (
+                  <span className="absolute top-0 right-0 block size-2 rounded-full bg-autofun-background-action-highlight ring-2 ring-autofun-background-action-primary" />
+                )}
+              </Button>
+              {isFilterOpen && (
+                <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-56 shadow-lg bg-autofun-background-primary border border-b-autofun-stroke-primary z-20 p-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-sm font-dm-mono font-medium text-foreground">
+                      Filters
+                    </h3>
+                    <Button
+                      variant="ghost"
+                      size="small"
+                      onClick={() => setIsFilterOpen(false)}
+                      className="p-1"
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {/* Token Source Filter */}
+
+                    <label className="text-sm font-dm-mono font-medium text-muted-foreground">
+                      Token Source
+                    </label>
+                    <div className="flex gap-2 mt-1">
+                      <Button
+                        size="small"
+                        variant={tokenSource === "all" ? "secondary" : "ghost"}
+                        onClick={() => setTokenSource("all")}
+                        className="flex-1"
+                      >
+                        All
+                      </Button>
+                      <Button
+                        size="small"
+                        variant={
+                          tokenSource === "autofun" ? "secondary" : "ghost"
+                        }
+                        onClick={() => setTokenSource("autofun")}
+                        className="flex-1"
+                      >
+                        auto.fun
+                      </Button>
+                    </div>
+
+                    {/* Bonding Status Filter */}
+                    <label className="text-sm font-dm-mono font-medium text-muted-foreground">
+                      Bonding Status
+                    </label>
+                    <div className="flex flex-col gap-1 mt-1">
+                      <Button
+                        size="small"
+                        variant={
+                          bondingStatus === "all" ? "secondary" : "ghost"
+                        }
+                        onClick={() => setBondingStatus("all")}
+                        className="w-full justify-start"
+                      >
+                        All
+                      </Button>
+                      <Button
+                        size="small"
+                        variant={
+                          bondingStatus === "active" ? "secondary" : "ghost"
+                        }
+                        onClick={() => setBondingStatus("active")}
+                        className="w-full justify-start"
+                      >
+                        In Progress
+                      </Button>
+                      <Button
+                        size="small"
+                        variant={
+                          bondingStatus === "locked" ? "secondary" : "ghost"
+                        }
+                        onClick={() => setBondingStatus("locked")}
+                        className="w-full justify-start"
+                      >
+                        Bonded
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               )}
-            </Button>
-            {isFilterOpen && (
-              <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-56 shadow-lg bg-autofun-background-primary border border-b-autofun-stroke-primary z-20 p-4">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-sm font-dm-mono font-medium text-foreground">
-                    Filters
-                  </h3>
-                  <Button
-                    variant="ghost"
-                    size="small"
-                    onClick={() => setIsFilterOpen(false)}
-                    className="p-1"
-                  >
-                    <X className="size-4" />
-                  </Button>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {/* Token Source Filter */}
-
-                  <label className="text-sm font-dm-mono font-medium text-muted-foreground">
-                    Token Source
-                  </label>
-                  <div className="flex gap-2 mt-1">
-                    <Button
-                      size="small"
-                      variant={tokenSource === "all" ? "secondary" : "ghost"}
-                      onClick={() => setTokenSource("all")}
-                      className="flex-1"
-                    >
-                      All
-                    </Button>
-                    <Button
-                      size="small"
-                      variant={
-                        tokenSource === "autofun" ? "secondary" : "ghost"
-                      }
-                      onClick={() => setTokenSource("autofun")}
-                      className="flex-1"
-                    >
-                      auto.fun
-                    </Button>
-                  </div>
-
-                  {/* Bonding Status Filter */}
-                  <label className="text-sm font-dm-mono font-medium text-muted-foreground">
-                    Bonding Status
-                  </label>
-                  <div className="flex flex-col gap-1 mt-1">
-                    <Button
-                      size="small"
-                      variant={bondingStatus === "all" ? "secondary" : "ghost"}
-                      onClick={() => setBondingStatus("all")}
-                      className="w-full justify-start"
-                    >
-                      All
-                    </Button>
-                    <Button
-                      size="small"
-                      variant={
-                        bondingStatus === "active" ? "secondary" : "ghost"
-                      }
-                      onClick={() => setBondingStatus("active")}
-                      className="w-full justify-start"
-                    >
-                      In Progress
-                    </Button>
-                    <Button
-                      size="small"
-                      variant={
-                        bondingStatus === "locked" ? "secondary" : "ghost"
-                      }
-                      onClick={() => setBondingStatus("locked")}
-                      className="w-full justify-start"
-                    >
-                      Bonded
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
+            </div>
+            {/* Existing Grid/List Switcher */}
+            <GridListSwitcher />
           </div>
-          {/* Existing Grid/List Switcher */}
-          <GridListSwitcher />
+        </div>
+        <div className="flex flex-col flex-1">
+          {!query?.isLoading && query?.items?.length === 0 ? (
+            <div className="text-center text-muted-foreground my-6">
+              No tokens to be displayed
+            </div>
+          ) : (
+            <Fragment>
+              {activeTab === "grid" ? (
+                <div className="my-6 relative">
+                  <GridView data={query.items} />
+                  <div ref={lastElementRef} style={{ height: "10px" }} />
+                </div>
+              ) : (
+                <div className="mb-2 relative">
+                  <TableView
+                    data={query.items}
+                    sortBy={tableSortBy}
+                    sortOrder={tableSortOrder}
+                    setSortBy={setTableSortBy}
+                    setSortOrder={setTableSortOrder}
+                  />
+                  <div ref={lastElementRef} style={{ height: "10px" }} />
+                </div>
+              )}
+              {(query.isLoading || query.isFetchingNextPage) && (
+                <div className="flex justify-center items-center my-4">
+                  <Loader />
+                </div>
+              )}
+            </Fragment>
+          )}
         </div>
       </div>
-      <div className="flex flex-col flex-1">
-        {!query?.isLoading && query?.items?.length === 0 ? (
-          <div className="text-center text-muted-foreground my-6">
-            No tokens to be displayed
-          </div>
-        ) : (
-          <Fragment>
-            {activeTab === "grid" ? (
-              <div className="my-6 relative">
-                <GridView data={query.items} />
-                <div ref={lastElementRef} style={{ height: "10px" }} />
-              </div>
-            ) : (
-              <div className="mb-2 relative">
-                <TableView
-                  data={query.items}
-                  sortBy={tableSortBy}
-                  sortOrder={tableSortOrder}
-                  setSortBy={setTableSortBy}
-                  setSortOrder={setTableSortOrder}
-                />
-                <div ref={lastElementRef} style={{ height: "10px" }} />
-              </div>
-            )}
-            {(query.isLoading || query.isFetchingNextPage) && (
-              <div className="flex justify-center items-center my-4">
-                <Loader />
-              </div>
-            )}
-          </Fragment>
-        )}
-      </div>
-    </div>
+    </Fragment>
   );
 }

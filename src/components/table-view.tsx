@@ -7,7 +7,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { IToken } from "@/types";
-import { formatNumber, fromNow, resizeImage, shortenAddress } from "@/utils";
+import {
+  abbreviateNumber,
+  formatNumber,
+  fromNow,
+  resizeImage,
+  shortenAddress,
+} from "@/utils";
 import { useNavigate } from "react-router";
 import BondingCurveBar from "./bonding-curve-bar";
 import CopyButton from "./copy-button";
@@ -60,7 +66,7 @@ export function TableView({
           <TableHead className="w-[500px]">Coin</TableHead>
           <TableHead className="text-left">
             <button
-              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              className="flex items-center gap-1 hover:text-foreground transition-colors uppercase"
               onClick={() => handleSort("marketCapUSD")}
             >
               <span className="hidden md:inline">Market Cap</span>
@@ -70,7 +76,7 @@ export function TableView({
           </TableHead>
           <TableHead className="text-left">
             <button
-              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              className="flex items-center gap-1 hover:text-foreground transition-colors uppercase"
               onClick={() => handleSort("volume24h")}
             >
               <span className="hidden md:inline">24H Volume</span>
@@ -80,7 +86,7 @@ export function TableView({
           </TableHead>
           <TableHead className="text-left">
             <button
-              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              className="flex items-center gap-1 hover:text-foreground transition-colors uppercase"
               onClick={() => handleSort("holderCount")}
             >
               <span className="hidden md:inline">Holders</span>
@@ -90,7 +96,7 @@ export function TableView({
           </TableHead>
           <TableHead className="text-left">
             <button
-              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              className="flex items-center gap-1 hover:text-foreground transition-colors uppercase"
               onClick={() => handleSort("curveProgress")}
             >
               <span className="hidden md:inline">Bonding Curve</span>
@@ -100,7 +106,7 @@ export function TableView({
           </TableHead>
           <TableHead className="text-right">
             <button
-              className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto"
+              className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto uppercase"
               onClick={() => handleSort("createdAt")}
             >
               Age
@@ -160,7 +166,9 @@ export function TableView({
               <TableCell className="text-left">
                 {formatNumber(token.volume24h)}
               </TableCell>
-              <TableCell className="text-left">{token.holderCount}</TableCell>
+              <TableCell className="text-left">
+                {abbreviateNumber(token?.holderCount || 0, true)}
+              </TableCell>
               <TableCell className="text-left">
                 <div className="flex items-center gap-2 w-full">
                   {token.imported === 0 && (
@@ -169,18 +177,7 @@ export function TableView({
                 </div>
               </TableCell>
               <TableCell className="text-right">
-                {fromNow(token.createdAt)
-                  .replace(" ago", "")
-                  .replace(" days", "d")
-                  .replace("a", "1")
-                  .replace(" hours", "hr")
-                  .replace(" minutes", "m")
-                  .replace(" seconds", "s")
-                  .replace(" day", "d")
-                  .replace("an hour", "1hr")
-                  .replace(" minute", "m")
-                  .replace(" second", "s")
-                  .trim()}
+                {fromNow(token.createdAt, true)}
               </TableCell>
             </TableRow>
           );

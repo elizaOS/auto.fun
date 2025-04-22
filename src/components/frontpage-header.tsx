@@ -1,5 +1,5 @@
 import * as CANNON from "cannon-es";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { IToken } from "@/types";
 // import { getToken } from "@/utils/api";
@@ -201,7 +201,7 @@ const DiceRoller = ({ tokens = [] }: DiceRollerProps) => {
   // Add a ref to track if tokens have been processed initially
   const tokensProcessedRef = useRef(false);
 
-  useEffect(() => {
+  useMemo(() => {
     // Skip token processing if we've already done initial setup and the scene is initialized
     if (tokensProcessedRef.current && sceneInitializedRef.current) return;
 

@@ -225,3 +225,18 @@ button {
   border-radius: 0; /* Force rectangular */
   border: none;
 }
+
+@layer utilities {
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 350ms ease-in-out forwards;
+  }
+}
