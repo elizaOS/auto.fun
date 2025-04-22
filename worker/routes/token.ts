@@ -2447,6 +2447,22 @@ tokenRouter.post("/search-token", async (c) => {
 
   logger.log(`[search-token] Searching for token ${mint}`);
 
+  // Check if token is already imported
+  const db = getDB(c.env);
+  const existingToken = await db
+    .select()
+    .from(tokens)
+    .where(eq(tokens.mint, mint))
+    .limit(1);
+
+  if (existingToken && existingToken.length > 0) {
+    logger.log(`[search-token] Token ${mint} is already imported`);
+    return c.json({ 
+      error: "Token already imported",
+      token: existingToken[0]
+    }, 409);
+  }
+
   const connection = new Connection(getMainnetRpcUrl(c.env), "confirmed");
 
   try {

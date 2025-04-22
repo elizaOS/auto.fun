@@ -1475,7 +1475,7 @@ export const Create = () => {
             if (response.status === 404) {
               throw new Error("The token doesn't exist or doesn't have metadata.");
             } else {
-              throw new Error(`Server error (${response.status}): Unable to retrieve token data.`);
+              throw new Error(`Server error (${response.status}): Unable to retrieve token data. Token either doesn't exist or is already imported.`);
             }
           }
         }
