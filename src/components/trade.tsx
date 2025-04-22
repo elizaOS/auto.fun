@@ -5,20 +5,15 @@ import { IToken } from "@/types";
 import { formatNumber } from "@/utils";
 import { useProgram } from "@/utils/program";
 import { getSwapAmount, getSwapAmountJupiter } from "@/utils/swapUtils";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Info, Wallet } from "lucide-react";
 import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SkeletonImage from "./skeleton-image";
 import { BN } from "bn.js";
 
-export default function Trade({
-  token,
-  onSwapCompleted,
-}: {
-  token: IToken;
-  onSwapCompleted: (signature: string) => void;
-}) {
+export default function Trade({ token }: { token: IToken }) {
+  const queryClient = useQueryClient();
   // const { solPrice: contextSolPrice } = useSolPriceContext();
   const [isTokenSelling, setIsTokenSelling] = useState<boolean>(false);
 
@@ -130,14 +125,15 @@ export default function Trade({
   const onSwap = async () => {
     if (!sellAmount) return;
 
-    const res = (await executeSwap({
+    await executeSwap({
       amount: sellAmount,
       style: isTokenSelling ? "sell" : "buy",
       tokenAddress: token.mint,
       token,
-    })) as { signature: string };
+    });
 
-    onSwapCompleted(res.signature);
+    queryClient.invalidateQueries({ queryKey: ["token", token.mint] });
+
     setSellAmount(0);
   };
 
