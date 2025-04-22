@@ -3,6 +3,7 @@ import { IToken } from "@/types";
 import { abbreviateNumber, fromNow, resizeImage } from "@/utils";
 import { Link } from "react-router";
 import Verified from "./verified";
+import TokenStatus from "./token-status";
 
 export default function GridView({ data }: { data: IToken[] }) {
   return (
@@ -12,9 +13,12 @@ export default function GridView({ data }: { data: IToken[] }) {
           <Link
             to={`/token/${token.mint}`}
             key={token.mint}
-            className="bg-autofun-background-card animate-fade-in"
+            className="bg-autofun-background-card animate-fade-in group"
           >
             <div className="flex flex-col min-w-0 relative">
+              <div className="absolute top-0 left-0 p-2 px-3 z-10 group-hover:opacity-100 opacity-0 transition-opacity duration-200">
+                <TokenStatus token={token} />
+              </div>
               <div className="absolute left-0 bottom-0 p-2 px-3 min-w-0 z-10">
                 <div className="flex justify-end items-center gap-2 w-full min-w-0">
                   {/* <div className="capitalize text-autofun-text-primary text-base font-medium font-satoshi leading-normal truncate min-w-0 drop-shadow-[0_0px_2px_rgba(0,0,0,0.4)]">
