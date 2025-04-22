@@ -15,6 +15,21 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
   const [displayedValue, setDisplayedValue] = useState<number>(0);
   const animationFrameRef = useRef<number | null>(null);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [labelLeft, setLabelLeft] = useState(0);
+
+  useEffect(() => {
+    const containerWidth = containerRef.current?.offsetWidth || 0;
+    const rawLeft = (containerWidth * width) / 120;
+    const labelWidth = 30; // assume ~40px width for the label
+    const padding = 3;
+
+    const min = labelWidth / 2 + padding;
+    const max = containerWidth - labelWidth / 2 - padding;
+
+    setLabelLeft(Math.min(Math.max(rawLeft, min), max));
+  }, [width]);
+
   // Ensure progress is not negative
   progress = Math.max(progress, 0);
 
@@ -65,22 +80,8 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
     };
   }, [progress, displayedValue]);
 
-  // Helper function to decide percentage indicator position
-  const getPercentagePosition = () => {
-    if (width <= 45) {
-      // When progress is low, keep percentage to the right
-      return `${width + 2}%`;
-    } else if (width >= 55) {
-      // When progress is high, position percentage inside the bar
-      return `${Math.min(width - 10, 88)}%`;
-    } else {
-      // Transition zone - prevent the text from straddling the boundary
-      return `${width < 50 ? width + 2 : width - 10}%`;
-    }
-  };
-
   return (
-    <div className="relative w-full z-0 h-8">
+    <div ref={containerRef} className="relative w-full z-0 h-8">
       {/* Add keyframes style */}
       <style>{pulseKeyframes}</style>
 
@@ -101,14 +102,14 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
 
       {/* Percentage indicator - position changes based on progress */}
       <div
-        className="absolute h-full -ml-8 md:-ml-6 flex items-center z-30"
+        className="absolute h-full flex items-center z-30 pointer-events-none"
         style={{
-          left: getPercentagePosition(),
-          transition: "left 1.5s ease-in-out",
+          left: `${labelLeft}px`,
+          transform: "translateX(-50%)",
         }}
       >
         <span
-          className={`font-medium font-dm-mono text-sm px-1 ${
+          className={`font-medium font-dm-mono text-sm px-1 whitespace-nowrap ${
             width >= 50 ? "text-black" : "text-autofun-text-secondary"
           }`}
         >
