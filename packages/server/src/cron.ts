@@ -656,20 +656,6 @@ export async function updateTokens() {
   // --- Step 3: Sequential Batch Processing for Image Checks ---
   logger.log(`Cron: Starting image check/generation loop in batches of ${BATCH_SIZE}...`);
   for (let i = 0; i < activeTokens.length; i += BATCH_SIZE) {
-<<<<<<< Updated upstream
-    const batch = activeTokens.slice(i, i + BATCH_SIZE);
-    logger.log(`Cron: Processing image check batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(activeTokens.length / BATCH_SIZE)}`);
-    await Promise.all(batch.map(async (token) => {
-      if (token.mint && Number(token.imported) === 0) {
-        try {
-          if (process.env.R2) {
-            const generationImagesPrefix = `generations/${token.mint}/`;
-            const objects = await process.env.R2.list({
-              prefix: generationImagesPrefix,
-              limit: 1,
-            });
-            const hasGenerationImages = objects.objects.length > 0;
-=======
       const batch = activeTokens.slice(i, i + BATCH_SIZE);
       logger.log(`Cron: Processing image check batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(activeTokens.length / BATCH_SIZE)}`);
       await Promise.all(batch.map(async (token) => {
@@ -682,7 +668,6 @@ export async function updateTokens() {
                           limit: 1,
                       });
                       const hasGenerationImages = objects.objects.length > 0;
->>>>>>> Stashed changes
 
             if (!hasGenerationImages) {
               logger.log(
