@@ -1,8 +1,8 @@
-import { useLocalStorage } from "@uidotdev/usehooks";
+import { useUrlSearchParams } from "./use-url-searchparams";
 
 type ViewMode = "grid" | "list";
 
 export const useViewMode = () => {
-  const [viewMode, setViewMode] = useLocalStorage<ViewMode>("view", "grid");
+  const [viewMode, setViewMode] = useUrlSearchParams<ViewMode>("view", "grid");
   return [viewMode, setViewMode] as const;
 };

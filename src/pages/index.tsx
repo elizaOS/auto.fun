@@ -13,9 +13,9 @@ import { useViewMode } from "@/hooks/use-view-mode";
 import { getSocket } from "@/utils/socket";
 import { IToken } from "@/types";
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import { useLocalStorage } from "@uidotdev/usehooks";
 import { Fragment } from "react/jsx-runtime";
 import { FilterIcon, X } from "lucide-react"; // Example icons
+import { useUrlSearchParams } from "@/hooks/use-url-searchparams";
 
 // Define types for state
 type GridSortByType = "newest" | "all" | "marketCap";
@@ -39,24 +39,22 @@ interface UseTokensParams {
 export default function Page() {
   const [activeTab] = useViewMode();
   // Manage sort/filter state locally, initializing from localStorage using the hook
-  const [gridSortBy, setGridSortBy] = useLocalStorage<GridSortByType>(
-    "gridSortBy",
+  const [gridSortBy, setGridSortBy] = useUrlSearchParams<GridSortByType>(
+    "category",
     "newest",
   );
-  const [tokenSource, setTokenSource] = useLocalStorage<TokenSourceType>(
-    "tokenSource",
+  const [tokenSource, setTokenSource] = useUrlSearchParams<TokenSourceType>(
+    "source",
     "all",
   );
-  const [bondingStatus, setBondingStatus] = useLocalStorage<BondingStatusType>(
-    "bondingStatus",
-    "all",
-  );
-  const [tableSortBy, setTableSortBy] = useLocalStorage<TableSortByType>(
-    "tableSortBy",
+  const [bondingStatus, setBondingStatus] =
+    useUrlSearchParams<BondingStatusType>("status", "all");
+  const [tableSortBy, setTableSortBy] = useUrlSearchParams<TableSortByType>(
+    "sort",
     "marketCapUSD",
   );
-  const [tableSortOrder, setTableSortOrder] = useLocalStorage<SortOrderType>(
-    "tableSortOrder",
+  const [tableSortOrder, setTableSortOrder] = useUrlSearchParams<SortOrderType>(
+    "order",
     "desc",
   );
 
