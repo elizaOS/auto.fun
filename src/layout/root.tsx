@@ -12,10 +12,6 @@ import { ToastContainer } from "react-toastify";
 export default function Layout() {
   const { pathname } = useLocation();
   const [showFooter, setShowFooter] = useState(false);
-  const [isFixed, setIsFixed] = useState(false);
-  const bottomHitCount = useRef(0);
-  const lastScrollY = useRef(0);
-  const isInitialMount = useRef(true);
   const isHomepage = pathname === "/";
   const isTosAccepted = localStorage.getItem("tosAccepted") === "true";
 
@@ -26,7 +22,6 @@ export default function Layout() {
   useEffect(() => {
     if (!isHomepage) {
       setShowFooter(true);
-      setIsFixed(false);
       return;
     }
   
