@@ -7,7 +7,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { IToken } from "@/types";
-import { formatNumber, fromNow, resizeImage, shortenAddress } from "@/utils";
+import {
+  abbreviateNumber,
+  formatNumber,
+  fromNow,
+  resizeImage,
+  shortenAddress,
+} from "@/utils";
 import { useNavigate } from "react-router";
 import BondingCurveBar from "./bonding-curve-bar";
 import CopyButton from "./copy-button";
@@ -160,7 +166,9 @@ export function TableView({
               <TableCell className="text-left">
                 {formatNumber(token.volume24h)}
               </TableCell>
-              <TableCell className="text-left">{token.holderCount}</TableCell>
+              <TableCell className="text-left">
+                {abbreviateNumber(token?.holderCount || 0, true)}
+              </TableCell>
               <TableCell className="text-left">
                 <div className="flex items-center gap-2 w-full">
                   {token.imported === 0 && (
@@ -169,18 +177,7 @@ export function TableView({
                 </div>
               </TableCell>
               <TableCell className="text-right">
-                {fromNow(token.createdAt)
-                  .replace(" ago", "")
-                  .replace(" days", "d")
-                  .replace("a", "1")
-                  .replace(" hours", "hr")
-                  .replace(" minutes", "m")
-                  .replace(" seconds", "s")
-                  .replace(" day", "d")
-                  .replace("an hour", "1hr")
-                  .replace(" minute", "m")
-                  .replace(" second", "s")
-                  .trim()}
+                {fromNow(token.createdAt, true)}
               </TableCell>
             </TableRow>
           );
