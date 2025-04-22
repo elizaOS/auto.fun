@@ -1,19 +1,19 @@
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-import type { Configuration } from '../../Configuration.js';
-import { TypeScriptParser } from '../../TypeScriptParser.js';
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import type { Configuration } from "../../Configuration.js";
+import { TypeScriptParser } from "../../TypeScriptParser.js";
 import type {
   ASTQueueItem,
   EnvUsage,
   PluginDocumentation,
   TodoItem,
   TodoSection,
-} from '../../types/index.js';
-import { PROMPT_TEMPLATES } from '../../utils/prompts.js';
-import { AIService } from '../AIService.js';
-import type { FileDocsGroup, OrganizedDocs } from '../types/index.js';
-import { CodeFormatter } from '../utils/CodeFormatter.js';
-import { DocumentOrganizer } from '../utils/DocumentOrganizer.js';
+} from "../../types/index.js";
+import { PROMPT_TEMPLATES } from "../../utils/prompts.js";
+import { AIService } from "../AIService.js";
+import type { FileDocsGroup, OrganizedDocs } from "../types/index.js";
+import { CodeFormatter } from "../utils/CodeFormatter.js";
+import { DocumentOrganizer } from "../utils/DocumentOrganizer.js";
 
 /**
  * Interface representing a Frequently Asked Question (FAQ) with a question and its corresponding answer.
@@ -88,33 +88,54 @@ export class FullDocumentationGenerator {
     todoItems: TodoItem[];
     envUsages: EnvUsage[];
   }): Promise<PluginDocumentation> {
-    const organizedDocs = this.documentOrganizer.organizeDocumentation(existingDocs);
-    const organizedDocsPath = path.join(this.configuration.absolutePath, 'organizedDocs.json');
-    await fs.writeFile(organizedDocsPath, JSON.stringify(organizedDocs, null, 2));
+    const organizedDocs =
+      this.documentOrganizer.organizeDocumentation(existingDocs);
+    const organizedDocsPath = path.join(
+      this.configuration.absolutePath,
+      "organizedDocs.json",
+    );
+    await fs.writeFile(
+      organizedDocsPath,
+      JSON.stringify(organizedDocs, null, 2),
+    );
 
-    const indexPath = path.join(this.configuration.absolutePath, 'src', 'index.ts');
+    const indexPath = path.join(
+      this.configuration.absolutePath,
+      "src",
+      "index.ts",
+    );
     const exports = this.typeScriptParser.extractExports(indexPath);
 
-    const actionsDocumentation = await this.generateActionsDocumentation(exports.actions);
-    const providersDocumentation = await this.generateProvidersDocumentation(exports.providers);
-    const evaluatorsDocumentation = await this.generateEvaluatorsDocumentation(exports.evaluators);
+    const actionsDocumentation = await this.generateActionsDocumentation(
+      exports.actions,
+    );
+    const providersDocumentation = await this.generateProvidersDocumentation(
+      exports.providers,
+    );
+    const evaluatorsDocumentation = await this.generateEvaluatorsDocumentation(
+      exports.evaluators,
+    );
 
     // Generate overview, FAQ, and troubleshooting together
-    const overviewResponse = await this.generateOverview(organizedDocs, packageJson);
+    const overviewResponse = await this.generateOverview(
+      organizedDocs,
+      packageJson,
+    );
     const parsedOverview = JSON.parse(overviewResponse);
 
-    const [installation, configuration, usage, apiRef, todoSection] = await Promise.all([
-      this.generateInstallation(packageJson),
-      this.generateConfiguration(envUsages),
-      this.generateUsage(organizedDocs, packageJson),
-      this.generateApiReference(organizedDocs),
-      this.generateTodoSection(todoItems),
-    ]);
+    const [installation, configuration, usage, apiRef, todoSection] =
+      await Promise.all([
+        this.generateInstallation(packageJson),
+        this.generateConfiguration(envUsages),
+        this.generateUsage(organizedDocs, packageJson),
+        this.generateApiReference(organizedDocs),
+        this.generateTodoSection(todoItems),
+      ]);
 
     // Format the FAQ and troubleshooting sections
     const formattedFAQ = this.formatFAQSection(parsedOverview.faq);
     const formattedTroubleshooting = this.formatTroubleshootingSection(
-      parsedOverview.troubleshooting
+      parsedOverview.troubleshooting,
     );
 
     return {
@@ -138,47 +159,54 @@ export class FullDocumentationGenerator {
 
   private formatFAQSection(faq: FAQ[]): string {
     if (!Array.isArray(faq)) {
-      console.warn('FAQ data is not an array, returning empty string');
-      return '';
+      console.warn("FAQ data is not an array, returning empty string");
+      return "";
     }
 
     return faq
       .filter((item) => item.question && item.answer) // Filter out invalid items
       .map((item) => `### Q: ${item.question}\n${item.answer}`)
-      .join('\n\n');
+      .join("\n\n");
   }
 
-  private formatTroubleshootingSection(troubleshooting: Troubleshooting): string {
+  private formatTroubleshootingSection(
+    troubleshooting: Troubleshooting,
+  ): string {
     if (!troubleshooting?.commonIssues || !troubleshooting?.debuggingTips) {
-      console.warn('Troubleshooting data is missing required fields, returning empty string');
-      return '';
+      console.warn(
+        "Troubleshooting data is missing required fields, returning empty string",
+      );
+      return "";
     }
     const issues = troubleshooting.commonIssues
       .filter(
         (issue: { issue: string; cause: string; solution: string }) =>
-          issue.issue && issue.cause && issue.solution
+          issue.issue && issue.cause && issue.solution,
       )
       .map(
         (issue: { issue: string; cause: string; solution: string }) =>
-          `### ${issue.issue}\n- Cause: ${issue.cause}\n- Solution: ${issue.solution}`
+          `### ${issue.issue}\n- Cause: ${issue.cause}\n- Solution: ${issue.solution}`,
       )
-      .join('\n\n');
+      .join("\n\n");
 
     const tips =
       troubleshooting.debuggingTips.length > 0
-        ? `### Debugging Tips\n${troubleshooting.debuggingTips.map((tip) => `- ${tip}`).join('\n')}`
-        : '';
+        ? `### Debugging Tips\n${troubleshooting.debuggingTips.map((tip) => `- ${tip}`).join("\n")}`
+        : "";
 
-    return issues + (tips ? `\n\n${tips}` : '');
+    return issues + (tips ? `\n\n${tips}` : "");
   }
 
-  private async generateOverview(docs: OrganizedDocs, packageJson: any): Promise<string> {
+  private async generateOverview(
+    docs: OrganizedDocs,
+    packageJson: any,
+  ): Promise<string> {
     const prompt = PROMPT_TEMPLATES.overview(packageJson, docs);
     try {
       const overview = await this.aiService.generateComment(prompt, true);
       return this.cleanJSONResponse(overview);
     } catch (error) {
-      console.error('Error generating overview:', error);
+      console.error("Error generating overview:", error);
       return `# ${packageJson.name}\n\nNo overview available. Please check package documentation.`;
     }
   }
@@ -186,19 +214,22 @@ export class FullDocumentationGenerator {
   private cleanJSONResponse(response: string): string {
     // Remove markdown code block syntax if present
     return response
-      .replace(/^```json\n/, '') // Remove opening ```json
-      .replace(/\n```$/, '') // Remove closing ```
+      .replace(/^```json\n/, "") // Remove opening ```json
+      .replace(/\n```$/, "") // Remove closing ```
       .trim(); // Remove any extra whitespace
   }
 
   private async generateInstallation(packageJson: any): Promise<string> {
-    const indexPath = path.join(this.configuration.absolutePath, 'src/index.ts');
-    const _mainExport = 'plugin';
-    let exportName = `${packageJson.name.split('/').pop()}Plugin`;
+    const indexPath = path.join(
+      this.configuration.absolutePath,
+      "src/index.ts",
+    );
+    const _mainExport = "plugin";
+    let exportName = `${packageJson.name.split("/").pop()}Plugin`;
 
     try {
       const indexContent = await fs.readFile(indexPath, {
-        encoding: 'utf8',
+        encoding: "utf8",
       });
       const exportMatch = indexContent.match(/export const (\w+):/);
       if (exportMatch) {
@@ -254,13 +285,15 @@ export class FullDocumentationGenerator {
 
       return await this.aiService.generateComment(prompt);
     } catch (error) {
-      console.error('Error reading index.ts:', error);
+      console.error("Error reading index.ts:", error);
       return this.generateBasicInstallPrompt(packageJson);
     }
   }
 
   private async generateBasicInstallPrompt(packageJson: any): Promise<string> {
-    console.log('AIService::generateInstallation threw an error, generating basic install prompt');
+    console.log(
+      "AIService::generateInstallation threw an error, generating basic install prompt",
+    );
     const prompt = `Generate basic installation instructions for this ElizaOS plugin:
 
         Plugin name: ${packageJson.name}
@@ -279,9 +312,9 @@ export class FullDocumentationGenerator {
             (item) => `
         Environment Variable: ${item.code}
         Full Context: ${item.fullContext}
-        `
+        `,
           )
-          .join('\n')}
+          .join("\n")}
         Create comprehensive configuration documentation that:
         1. Lists all required environment variables and their purpose
         2. Return a full .env example file
@@ -294,10 +327,16 @@ export class FullDocumentationGenerator {
     return await this.aiService.generateComment(prompt);
   }
 
-  private async generateUsage(docs: OrganizedDocs, _packageJson: any): Promise<string> {
+  private async generateUsage(
+    docs: OrganizedDocs,
+    _packageJson: any,
+  ): Promise<string> {
     const fileGroups = this.documentOrganizer.groupDocsByFile(docs);
     // write fileGroups to a json file
-    const fileGroupsPath = path.join(this.configuration.absolutePath, 'fileGroups.json');
+    const fileGroupsPath = path.join(
+      this.configuration.absolutePath,
+      "fileGroups.json",
+    );
     await fs.writeFile(fileGroupsPath, JSON.stringify(fileGroups, null, 2));
     const sections: string[] = [];
 
@@ -309,7 +348,7 @@ export class FullDocumentationGenerator {
       }
     }
 
-    return sections.join('\n\n');
+    return sections.join("\n\n");
   }
 
   private async generateApiReference(docs: OrganizedDocs): Promise<string> {
@@ -323,19 +362,24 @@ export class FullDocumentationGenerator {
       }
     }
 
-    return sections.join('\n');
+    return sections.join("\n");
   }
 
   /**
    * Generates troubleshooting guide based on documentation and common patterns
    */
   // toDo - integrate w/ @Jin's discord scraper to pull solutions for known issues
-  private async generateTroubleshooting(docs: OrganizedDocs, packageJson: any): Promise<string> {
+  private async generateTroubleshooting(
+    docs: OrganizedDocs,
+    packageJson: any,
+  ): Promise<string> {
     const prompt = `${PROMPT_TEMPLATES.troubleshooting}\n\nFor package: ${packageJson.name}\n\nWith content:\n${JSON.stringify(docs, null, 2)}`;
     return await this.aiService.generateComment(prompt);
   }
 
-  private async generateFileUsageDoc(fileGroup: FileDocsGroup): Promise<string> {
+  private async generateFileUsageDoc(
+    fileGroup: FileDocsGroup,
+  ): Promise<string> {
     const filePath = this.codeFormatter.formatFilePath(fileGroup.filePath);
     const prompt = `${PROMPT_TEMPLATES.fileUsageDoc}\n\nFor file: ${filePath}\n\nWith components:\n${this.codeFormatter.formatComponents(fileGroup)}`;
     const doc = await this.aiService.generateComment(prompt);
@@ -346,7 +390,7 @@ export class FullDocumentationGenerator {
     const filePath = this.codeFormatter.formatFilePath(fileGroup.filePath);
     const formattedDocs = this.codeFormatter.formatApiComponents(fileGroup);
     // Add TypeScript code block for the file path to indicate it's a TypeScript module
-    return formattedDocs ? `### File: \`${filePath}\`\n${formattedDocs}` : '';
+    return formattedDocs ? `### File: \`${filePath}\`\n${formattedDocs}` : "";
   }
 
   private async generateProviderDoc(provider: any): Promise<string> {
@@ -358,14 +402,18 @@ export class FullDocumentationGenerator {
    * Generates TODO section documentation from found TODO comments
    */
   // toDo - integrate w/ @Jin's discord scraper to auto create GH issues/bounties
-  private async generateTodoSection(todoItems: TodoItem[]): Promise<TodoSection> {
+  private async generateTodoSection(
+    todoItems: TodoItem[],
+  ): Promise<TodoSection> {
     if (todoItems.length === 0) {
-      return { todos: 'No TODO items found.', todoCount: 0 };
+      return { todos: "No TODO items found.", todoCount: 0 };
     }
 
     const prompt = `${PROMPT_TEMPLATES.todos}\n\nWith items:\n${todoItems
-      .map((item) => `- Comment: ${item.comment}\n  Context: ${item.fullContext}`)
-      .join('\n')}`;
+      .map(
+        (item) => `- Comment: ${item.comment}\n  Context: ${item.fullContext}`,
+      )
+      .join("\n")}`;
 
     const todos = await this.aiService.generateComment(prompt);
     return { todos, todoCount: todoItems.length };
@@ -373,21 +421,24 @@ export class FullDocumentationGenerator {
 
   private resolveTypeScriptFilePath(file: string): string {
     // Remove leading ./ if present
-    const relativePath = file.replace(/^\.\//, '');
+    const relativePath = file.replace(/^\.\//, "");
 
     // Ensure the path has .ts extension
-    const pathWithExtension = this.codeFormatter.ensureTypeScriptExtension(relativePath);
+    const pathWithExtension =
+      this.codeFormatter.ensureTypeScriptExtension(relativePath);
 
     // Join with the absolute path and src directory
-    return path.join(this.configuration.absolutePath, 'src', pathWithExtension);
+    return path.join(this.configuration.absolutePath, "src", pathWithExtension);
   }
 
   ///////////////////////////////
   /// Eliza Specific Constructs//
   ///////////////////////////////
 
-  private async generateActionsDocumentation(actionsFiles: string[]): Promise<string> {
-    let documentation = '';
+  private async generateActionsDocumentation(
+    actionsFiles: string[],
+  ): Promise<string> {
+    let documentation = "";
 
     for (const file of actionsFiles) {
       // Remove ./ prefix and ensure path includes src directory and .ts extension
@@ -402,43 +453,52 @@ export class FullDocumentationGenerator {
           continue;
         }
 
-        const actionCode = this.typeScriptParser.extractActionCode(filePath, bounds);
+        const actionCode = this.typeScriptParser.extractActionCode(
+          filePath,
+          bounds,
+        );
 
         // Use PROMPT_TEMPLATES.actionDoc
         const prompt = `${PROMPT_TEMPLATES.actionDoc}\n\nWith content:\n\`\`\`typescript\n${actionCode}\n\`\`\``;
 
-        const actionDocumentation = await this.aiService.generateComment(prompt);
+        const actionDocumentation =
+          await this.aiService.generateComment(prompt);
         if (actionDocumentation.trim()) {
           documentation += `${actionDocumentation}\n\n`;
         }
       } catch (error) {
-        console.warn(`Warning: Could not process action file ${filePath}:`, error);
+        console.warn(
+          `Warning: Could not process action file ${filePath}:`,
+          error,
+        );
       }
     }
 
     if (!documentation.trim()) {
-      return 'No actions documentation available.';
+      return "No actions documentation available.";
     }
 
     return documentation;
   }
 
-  private async generateProvidersDocumentation(providersFiles: string[]): Promise<string> {
-    let documentation = '';
+  private async generateProvidersDocumentation(
+    providersFiles: string[],
+  ): Promise<string> {
+    let documentation = "";
 
     for (const file of providersFiles) {
       // Remove ./ prefix and ensure path includes src directory and .ts extension
-      const relativePath = file.replace(/^\.\//, '');
+      const relativePath = file.replace(/^\.\//, "");
       const filePath = this.resolveTypeScriptFilePath(file);
 
       try {
-        const content = await fs.readFile(filePath, 'utf-8');
+        const content = await fs.readFile(filePath, "utf-8");
         // Create a provider object with relevant information
         const provider = {
           fileName: relativePath,
           content: content,
           // Extract provider properties
-          name: relativePath.split('/').pop()?.replace('.ts', ''),
+          name: relativePath.split("/").pop()?.replace(".ts", ""),
         };
 
         const providerDocumentation = await this.generateProviderDoc(provider);
@@ -446,27 +506,32 @@ export class FullDocumentationGenerator {
           documentation += `${providerDocumentation}\n\n`;
         }
       } catch (error) {
-        console.warn(`Warning: Could not read provider file ${filePath}:`, error);
+        console.warn(
+          `Warning: Could not read provider file ${filePath}:`,
+          error,
+        );
       }
     }
 
     if (!documentation.trim()) {
-      return 'No providers documentation available.';
+      return "No providers documentation available.";
     }
 
     return documentation;
   }
 
-  private async generateEvaluatorsDocumentation(evaluatorsFiles: string[]): Promise<string> {
-    let documentation = '';
+  private async generateEvaluatorsDocumentation(
+    evaluatorsFiles: string[],
+  ): Promise<string> {
+    let documentation = "";
 
     for (const file of evaluatorsFiles) {
       // Remove ./ prefix and ensure path includes src directory and .ts extension
-      const relativePath = file.replace(/^\.\//, '');
+      const relativePath = file.replace(/^\.\//, "");
       const filePath = this.resolveTypeScriptFilePath(file);
 
       try {
-        const content = await fs.readFile(filePath, 'utf-8');
+        const content = await fs.readFile(filePath, "utf-8");
         const prompt = `Generate documentation for the following Evaluator:
                     \`\`\`typescript
                     ${content}
@@ -476,17 +541,21 @@ export class FullDocumentationGenerator {
 
                     Format in markdown without adding any additional headers.`;
 
-        const evaluatorDocumentation = await this.aiService.generateComment(prompt);
+        const evaluatorDocumentation =
+          await this.aiService.generateComment(prompt);
         if (evaluatorDocumentation.trim()) {
           documentation += `### ${relativePath}\n\n${evaluatorDocumentation}\n\n`;
         }
       } catch (error) {
-        console.warn(`Warning: Could not read evaluator file ${filePath}:`, error);
+        console.warn(
+          `Warning: Could not read evaluator file ${filePath}:`,
+          error,
+        );
       }
     }
 
     if (!documentation.trim()) {
-      return 'No evaluators documentation available.';
+      return "No evaluators documentation available.";
     }
 
     return documentation;

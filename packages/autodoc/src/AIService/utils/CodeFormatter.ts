@@ -1,4 +1,4 @@
-import type { FileDocsGroup } from '../types';
+import type { FileDocsGroup } from "../types";
 
 /**
  * Class representing a CodeFormatter that includes methods for formatting code components and JSDoc comments.
@@ -11,7 +11,7 @@ export class CodeFormatter {
    */
   public ensureTypeScriptExtension(filePath: string): string {
     // If the path already ends with .ts, return it as is
-    if (filePath.endsWith('.ts')) {
+    if (filePath.endsWith(".ts")) {
       return filePath;
     }
     // Otherwise, append .ts
@@ -29,18 +29,20 @@ export class CodeFormatter {
 
     // Classes
     if (fileGroup.classes.length > 0) {
-      sections.push('#### Classes');
+      sections.push("#### Classes");
       fileGroup.classes.forEach((c) => {
         sections.push(`##### \`${c.name}\``);
         if (c.jsDoc) sections.push(this.formatJSDoc(c.jsDoc, c.code));
 
         // Add any methods belonging to this class
-        const classMethods = fileGroup.methods.filter((m) => m.className === c.name);
+        const classMethods = fileGroup.methods.filter(
+          (m) => m.className === c.name,
+        );
         if (classMethods.length > 0) {
-          sections.push('**Methods:**');
+          sections.push("**Methods:**");
           classMethods.forEach((m) => {
             sections.push(
-              `###### \`${m.name}\`${m.jsDoc ? `\n${this.formatJSDoc(m.jsDoc, m.code)}` : ''}`
+              `###### \`${m.name}\`${m.jsDoc ? `\n${this.formatJSDoc(m.jsDoc, m.code)}` : ""}`,
             );
           });
         }
@@ -49,7 +51,7 @@ export class CodeFormatter {
 
     // Interfaces
     if (fileGroup.interfaces.length > 0) {
-      sections.push('#### Interfaces');
+      sections.push("#### Interfaces");
       fileGroup.interfaces.forEach((i) => {
         sections.push(`##### \`${i.name}\``);
         if (i.jsDoc) sections.push(this.formatJSDoc(i.jsDoc, i.code));
@@ -58,7 +60,7 @@ export class CodeFormatter {
 
     // Types
     if (fileGroup.types.length > 0) {
-      sections.push('#### Types');
+      sections.push("#### Types");
       fileGroup.types.forEach((t) => {
         sections.push(`##### \`${t.name}\``);
         if (t.jsDoc) sections.push(this.formatJSDoc(t.jsDoc, t.code));
@@ -67,7 +69,7 @@ export class CodeFormatter {
 
     // Standalone Functions
     if (fileGroup.functions.length > 0) {
-      sections.push('#### Functions');
+      sections.push("#### Functions");
       fileGroup.functions.forEach((f) => {
         sections.push(`##### \`${f.name}\``);
         if (f.jsDoc) sections.push(this.formatJSDoc(f.jsDoc, f.code));
@@ -77,14 +79,14 @@ export class CodeFormatter {
     // Standalone Methods
     const standaloneMethods = fileGroup.methods.filter((m) => !m.className);
     if (standaloneMethods.length > 0) {
-      sections.push('#### Methods');
+      sections.push("#### Methods");
       standaloneMethods.forEach((m) => {
         sections.push(`##### \`${m.name}\``);
         if (m.jsDoc) sections.push(this.formatJSDoc(m.jsDoc, m.code));
       });
     }
 
-    return sections.join('\n\n');
+    return sections.join("\n\n");
   }
 
   /**
@@ -97,32 +99,41 @@ export class CodeFormatter {
     const sections: string[] = [];
 
     if (fileGroup.classes.length > 0) {
-      sections.push('Classes:', fileGroup.classes.map((c) => `- ${c.name}: ${c.jsDoc}`).join('\n'));
+      sections.push(
+        "Classes:",
+        fileGroup.classes.map((c) => `- ${c.name}: ${c.jsDoc}`).join("\n"),
+      );
     }
 
     if (fileGroup.methods.length > 0) {
-      sections.push('Methods:', fileGroup.methods.map((m) => `- ${m.name}: ${m.jsDoc}`).join('\n'));
+      sections.push(
+        "Methods:",
+        fileGroup.methods.map((m) => `- ${m.name}: ${m.jsDoc}`).join("\n"),
+      );
     }
 
     if (fileGroup.interfaces.length > 0) {
       sections.push(
-        'Interfaces:',
-        fileGroup.interfaces.map((i) => `- ${i.name}: ${i.jsDoc}`).join('\n')
+        "Interfaces:",
+        fileGroup.interfaces.map((i) => `- ${i.name}: ${i.jsDoc}`).join("\n"),
       );
     }
 
     if (fileGroup.types.length > 0) {
-      sections.push('Types:', fileGroup.types.map((t) => `- ${t.name}: ${t.jsDoc}`).join('\n'));
+      sections.push(
+        "Types:",
+        fileGroup.types.map((t) => `- ${t.name}: ${t.jsDoc}`).join("\n"),
+      );
     }
 
     if (fileGroup.functions.length > 0) {
       sections.push(
-        'Functions:',
-        fileGroup.functions.map((f) => `- ${f.name}: ${f.jsDoc}`).join('\n')
+        "Functions:",
+        fileGroup.functions.map((f) => `- ${f.name}: ${f.jsDoc}`).join("\n"),
       );
     }
 
-    return sections.join('\n\n');
+    return sections.join("\n\n");
   }
 
   /**
@@ -133,7 +144,7 @@ export class CodeFormatter {
    */
   public formatFilePath(filePath: string): string {
     // Get relative path from src directory
-    const srcIndex = filePath.indexOf('/src/');
+    const srcIndex = filePath.indexOf("/src/");
     if (srcIndex === -1) return filePath;
 
     const relativePath = filePath.slice(srcIndex + 5); // +5 to skip '/src/'
@@ -149,8 +160,10 @@ export class CodeFormatter {
    */
   public formatJSDoc(jsDoc: string, _code?: string): string {
     // Clean up the JSDoc
-    let cleanDoc = jsDoc.replace(/^```\s*\n?/gm, '').replace(/\n?```\s*$/gm, '');
-    cleanDoc = cleanDoc.trim().replace(/\n{3,}/g, '\n\n');
+    let cleanDoc = jsDoc
+      .replace(/^```\s*\n?/gm, "")
+      .replace(/\n?```\s*$/gm, "");
+    cleanDoc = cleanDoc.trim().replace(/\n{3,}/g, "\n\n");
 
     // Format JSDoc with typescript declaration
     const docSection = `\`\`\`typescript\n${cleanDoc}\n\`\`\``;
@@ -184,38 +197,42 @@ export class CodeFormatter {
     }
 
     // Calculate maximum length per block to stay under total limit
-    const nonCodeLength = code.replace(codeBlockRegex, '').length;
-    const maxLengthPerBlock = Math.floor((maxLength - nonCodeLength) / codeBlocks.length);
+    const nonCodeLength = code.replace(codeBlockRegex, "").length;
+    const maxLengthPerBlock = Math.floor(
+      (maxLength - nonCodeLength) / codeBlocks.length,
+    );
 
     for (let i = 0; i < codeBlocks.length; i++) {
       const block = codeBlocks[i];
       if (block.length > maxLengthPerBlock) {
-        const lines = block.split('\n');
+        const lines = block.split("\n");
         const header = lines[0]; // Keep the ```typescript or similar
         const footer = lines[lines.length - 1]; // Keep the closing ```
 
         // Calculate how many lines we can keep
         const maxLinesPerSection = Math.floor(
-          (maxLengthPerBlock - header.length - footer.length) / 3
+          (maxLengthPerBlock - header.length - footer.length) / 3,
         );
 
         // Take fewer lines but ensure we get the most important parts
-        const codeStart = lines.slice(1, maxLinesPerSection).join('\n');
+        const codeStart = lines.slice(1, maxLinesPerSection).join("\n");
 
         // For the middle section, focus on the important parts
         const middleIndex = Math.floor(lines.length / 2);
         const middleStart = Math.max(
           maxLinesPerSection,
-          middleIndex - Math.floor(maxLinesPerSection / 2)
+          middleIndex - Math.floor(maxLinesPerSection / 2),
         );
         const middleEnd = Math.min(
           lines.length - maxLinesPerSection,
-          middleIndex + Math.floor(maxLinesPerSection / 2)
+          middleIndex + Math.floor(maxLinesPerSection / 2),
         );
-        const codeMiddle = lines.slice(middleStart, middleEnd).join('\n');
+        const codeMiddle = lines.slice(middleStart, middleEnd).join("\n");
 
         // Take the end section
-        const codeEnd = lines.slice(lines.length - maxLinesPerSection, -1).join('\n');
+        const codeEnd = lines
+          .slice(lines.length - maxLinesPerSection, -1)
+          .join("\n");
 
         const truncatedBlock = `${header}\n${codeStart}\n// ... truncated [${lines.length - maxLinesPerSection * 2} lines] ...\n${codeMiddle}\n// ... truncated ...\n${codeEnd}\n${footer}`;
         code = code.replace(block, truncatedBlock);
@@ -224,17 +241,17 @@ export class CodeFormatter {
 
     // Final safety check - if still too long, do a hard truncate
     if (code.length > maxLength) {
-      const blocks = code.split('```');
+      const blocks = code.split("```");
       const truncatedBlocks = blocks.map((block, index) => {
         // Every odd index is a code block
         if (index % 2 === 1) {
-          const lines = block.split('\n');
+          const lines = block.split("\n");
           const maxLines = 10; // Keep only first few lines of each block
-          return `${lines.slice(0, maxLines).join('\n')}\n// ... remaining code truncated ...\n`;
+          return `${lines.slice(0, maxLines).join("\n")}\n// ... remaining code truncated ...\n`;
         }
         return block.slice(0, 500); // Limit non-code text
       });
-      code = truncatedBlocks.join('```');
+      code = truncatedBlocks.join("```");
     }
 
     return code;

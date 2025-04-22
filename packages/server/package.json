@@ -10,7 +10,7 @@
     "migrateTokensFromSqlite": "bun run src/migrateTokensFromSqlite.ts",
     "testClaim": "bun run src/testClaim.ts",
     "test": "jest",
-    "lint": "eslint . --fix --ignore-path ../../.gitignore"
+    "lint": "eslint . --fix --ignore-pattern ../../.gitignore"
   },
   "dependencies": {
     "@autodotfun/program": "workspace:*",

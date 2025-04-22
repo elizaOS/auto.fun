@@ -1,5 +1,5 @@
-import type { ASTQueueItem } from '../../types';
-import type { FileDocsGroup, OrganizedDocs } from '../types';
+import type { ASTQueueItem } from "../../types";
+import type { FileDocsGroup, OrganizedDocs } from "../types";
 
 /**
  * Class representing a DocumentOrganizer.
@@ -18,23 +18,23 @@ export class DocumentOrganizer {
       (acc: OrganizedDocs, doc) => {
         // Use nodeType to determine the category
         switch (doc.nodeType) {
-          case 'ClassDeclaration':
+          case "ClassDeclaration":
             acc.classes.push(doc);
             break;
-          case 'MethodDefinition':
-          case 'TSMethodSignature':
+          case "MethodDefinition":
+          case "TSMethodSignature":
             acc.methods.push(doc);
             break;
-          case 'TSInterfaceDeclaration':
+          case "TSInterfaceDeclaration":
             acc.interfaces.push(doc);
             break;
-          case 'TSTypeAliasDeclaration':
+          case "TSTypeAliasDeclaration":
             acc.types.push(doc);
             break;
-          case 'FunctionDeclaration':
+          case "FunctionDeclaration":
             acc.functions.push(doc);
             break;
-          case 'VariableDeclaration':
+          case "VariableDeclaration":
             acc.variables.push(doc);
             break;
         }
@@ -47,7 +47,7 @@ export class DocumentOrganizer {
         types: [],
         functions: [],
         variables: [],
-      }
+      },
     );
   }
 

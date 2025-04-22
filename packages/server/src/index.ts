@@ -35,15 +35,6 @@ import { webSocketManager } from './websocket-manager';
 // Assuming getSharedRedisPool is exported from redisCacheService or redisPool
 import { getSharedRedisPool } from './redis/redisCacheService';
 
-// Define types based on Env, but adaptable for Node.js environment
-// You might need to adjust Env definition or how these are accessed
-interface AppBindings {
-  // Define bindings accessible in Node.js context if needed (e.g., DB connections, service clients)
-  // R2: any; // Example: Replace with appropriate type for R2/S3 client
-  // AI: any; // Example: Replace if using AI service client
-  // DB: any; // Example: Replace if using DB client
-}
-
 // Define Variables type matching the original Hono app
 interface AppVariables {
   user?: { publicKey: string } | null;
@@ -51,7 +42,7 @@ interface AppVariables {
 }
 
 // Initialize Hono app with Node.js compatible types
-const app = new Hono<{ Bindings: AppBindings; Variables: AppVariables }>();
+const app = new Hono<{ Variables: AppVariables }>();
 
 // --- Environment Setup (Load or Validate Env Vars) ---
 // Ensure necessary env vars are loaded (dotenv should have done this)
@@ -107,7 +98,7 @@ app.use("*", verifyAuth);
 // --- API Routes ---
 
 // Create a sub-router for API endpoints
-const api = new Hono<{ Bindings: AppBindings; Variables: AppVariables }>();
+const api = new Hono<{ Variables: AppVariables }>();
 
 // Apply CORS and Auth middleware to the API sub-router as well
 // (This might be redundant if already applied globally, but ensures consistency)

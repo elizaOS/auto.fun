@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { RedisCacheService } from './redis/redisCacheService';
 import { logger } from './util';
 // Use require syntax for ws WebSocket type, as suggested by linter
-import WebSocket = require('ws');
+import WebSocket from 'ws';
 // import type { Server as HttpServer } from 'http'; // Import Node HTTP Server type
 
 // Our managed interface extending the standard WebSocket type
@@ -222,7 +222,9 @@ class WebSocketManager {
             this.localRoomClients.get(roomName)?.delete(client);
             client.rooms.delete(roomName);
             // Attempt to notify client of failure
-             try { client.send(JSON.stringify({ event: 'join_error', data: { room: roomName, error: 'Failed to update subscription' } })); } catch {} // Ignore send errors
+             try { client.send(JSON.stringify({ event: 'join_error', data: { room: roomName, error: 'Failed to update subscription' } })); } catch {
+                // do nothing
+             } // Ignore send errors
             throw error;
         }
     }
@@ -251,7 +253,9 @@ class WebSocketManager {
              logger.error(`Redis error leaving room ${roomName} for client ${client.clientId}:`, error);
              // Re-add to local cache? Maybe not, state is inconsistent.
              // Attempt to notify client of failure
-              try { client.send(JSON.stringify({ event: 'leave_error', data: { room: roomName, error: 'Failed to update subscription' } })); } catch {} // Ignore send errors
+              try { client.send(JSON.stringify({ event: 'leave_error', data: { room: roomName, error: 'Failed to update subscription' } })); } catch {
+                // do nothing
+              } // Ignore send errors
              throw error;
         }
     }

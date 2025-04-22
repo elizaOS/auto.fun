@@ -1,4 +1,4 @@
-import type { ASTQueueItem } from '../../types';
+import type { ASTQueueItem } from "../../types";
 
 /**
  * Interface representing a group of documentation for files.
