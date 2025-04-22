@@ -216,8 +216,8 @@ export default function Page() {
     }
   };
 
-  if (tokenQuery?.isPending) {
-    return <Loader />;
+  if (tokenQuery?.isLoading) {
+    return <Loader isFullscreen />;
   }
 
   if (!tokenQuery?.data && tokenQuery?.isError) {

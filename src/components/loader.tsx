@@ -1,7 +1,13 @@
 import { useEffect, useState, CSSProperties } from "react";
 import { twMerge } from "tailwind-merge";
 
-export default function Loader({ className }: { className?: string }) {
+export default function Loader({
+  className,
+  isFullscreen,
+}: {
+  className?: string;
+  isFullscreen?: boolean;
+}) {
   const [rotation, setRotation] = useState(0);
 
   useEffect(() => {
@@ -43,6 +49,7 @@ export default function Loader({ className }: { className?: string }) {
     <div
       className={twMerge([
         "flex items-center justify-center h-[50vh]",
+        isFullscreen ? "fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" : "",
         className ? className : "",
       ])}
     >
