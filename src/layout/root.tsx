@@ -5,7 +5,7 @@ import { WalletModal } from "@/components/wallet-dialog";
 import { Providers } from "@/providers";
 import { queryClient } from "@/utils/api";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router";
 import { ToastContainer } from "react-toastify";
 
@@ -34,7 +34,7 @@ export default function Layout() {
       }
     };
   
-    checkScrollPosition(); // check once on mount
+    checkScrollPosition();
   
     window.addEventListener("scroll", checkScrollPosition);
     return () => window.removeEventListener("scroll", checkScrollPosition);
