@@ -2028,8 +2028,8 @@ export const Create = () => {
                 imageBase64: media_base64,
                 metadataUrl: tokenData.metadataUri || "",
                 creator:
-                  tokenData.updateAuthority ||
                   tokenData.creators ||
+                  tokenData.updateAuthority ||
                   tokenData.mintAuthority ||
                   "",
                 // Include the import flag to indicate this is an imported token
