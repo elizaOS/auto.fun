@@ -151,16 +151,14 @@ export class ExternalToken {
       createdAt: creationTime,
     };
 
-    // TODO: featured score for token db and websocket
-    const updatedToken = (
-      await this.db
-        .update(tokens)
-        .set(newTokenData)
-        .where(eq(tokens.mint, this.mint))
-        .returning()
-    )[0];
+    // Remove DB write for ephemeral data; store stats in Redis
+    const redisCache = createRedisCache(this.env);
+    const statsKey = redisCache.getKey(`token:stats:${this.mint}`);
+    await redisCache.set(statsKey, JSON.stringify(newTokenData), 60);
+    logger.log(`ExternalToken: Stored market stats in Redis for ${this.mint} with TTL 60s`);
 
-    this.wsClient.to("global").emit("updateToken", updatedToken);
+    // Emit updated stats via WebSocket
+    this.wsClient.to("global").emit("updateToken", newTokenData);
 
     return { newTokenData, tokenSupply };
   }
