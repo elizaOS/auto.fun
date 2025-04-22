@@ -1628,7 +1628,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     token.solPriceUSD = solPrice;
 
     // Calculate or update marketCapUSD if we have tokenPriceUSD
-    token.marketCapUSD = token.tokenPriceUSD * (token.tokenSupplyUiAmount || 0);
+    // token.marketCapUSD = token.tokenPriceUSD * (token.tokenSupplyUiAmount || 0);
 
     // Get virtualReserves and curveLimit from env or set defaults
     const virtualReserves = c.env.VIRTUAL_RESERVES
