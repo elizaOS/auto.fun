@@ -10,8 +10,6 @@
         "./types": "./types/autofun.ts"
     },
     "scripts": {
-        "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
-        "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
         "build": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor build && mkdir -p ./idl ./types && cp target/idl/autofun.json ./idl/ && cp target/idl/raydium_vault.json ./idl/ && cp target/types/autofun.ts ./types/ && echo 'export * from \"./types/autofun.js\"' > index.js",
         "clean": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor clean",
         "program-id:main": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster mainnet bun run scripts/getProgramId.ts",

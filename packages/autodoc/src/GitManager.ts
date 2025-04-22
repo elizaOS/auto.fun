@@ -1,6 +1,6 @@
-import { Octokit } from '@octokit/rest';
-import dotenv from 'dotenv';
-import type { PrModeFileChange, Repository } from './types/index.js';
+import { Octokit } from "@octokit/rest";
+import dotenv from "dotenv";
+import type { PrModeFileChange, Repository } from "./types/index.js";
 
 dotenv.config();
 
@@ -74,7 +74,7 @@ export class GitManager {
    */
   constructor(public repository: Repository) {
     if (!process.env.GITHUB_ACCESS_TOKEN) {
-      throw new Error('GITHUB_ACCESS_TOKEN is not set');
+      throw new Error("GITHUB_ACCESS_TOKEN is not set");
     }
     this.octokit = new Octokit({
       auth: process.env.GITHUB_ACCESS_TOKEN,
@@ -86,7 +86,9 @@ export class GitManager {
    * @param {number} pullNumber - The number of the pull request to get files from.
    * @returns {Promise<PrModeFileChange[]>} - Array of objects representing file changes in the pull request.
    */
-  public async getFilesInPullRequest(pullNumber: number): Promise<PrModeFileChange[]> {
+  public async getFilesInPullRequest(
+    pullNumber: number,
+  ): Promise<PrModeFileChange[]> {
     const { data } = await this.octokit.pulls.listFiles({
       owner: this.repository.owner,
       repo: this.repository.name,
@@ -110,7 +112,10 @@ export class GitManager {
    * @param {string} baseBranch - The name of the branch to base the new branch off of.
    * @returns {Promise<void>} - A Promise that resolves when the branch is successfully created.
    */
-  public async createBranch(branchName: string, baseBranch: string): Promise<void> {
+  public async createBranch(
+    branchName: string,
+    baseBranch: string,
+  ): Promise<void> {
     await this.octokit.git.createRef({
       owner: this.repository.owner,
       repo: this.repository.name,
@@ -138,7 +143,7 @@ export class GitManager {
     branchName: string,
     filePath: string,
     content: string,
-    message: string
+    message: string,
   ): Promise<void> {
     try {
       const { data } = await this.octokit.repos.getContent({
@@ -153,20 +158,22 @@ export class GitManager {
         repo: this.repository.name,
         path: filePath,
         message: message,
-        content: Buffer.from(content).toString('base64'),
+        content: Buffer.from(content).toString("base64"),
         sha: (data as any).sha,
         branch: branchName,
       });
     } catch (error: any) {
       if (error.status === 404) {
-        console.log("404 - File doesn't exist in the target branch, creating a new file");
+        console.log(
+          "404 - File doesn't exist in the target branch, creating a new file",
+        );
         // File doesn't exist in the target branch, create a new file
         await this.octokit.repos.createOrUpdateFileContents({
           owner: this.repository.owner,
           repo: this.repository.name,
           path: filePath,
           message: message,
-          content: Buffer.from(content).toString('base64'),
+          content: Buffer.from(content).toString("base64"),
           branch: branchName,
         });
       } else {
@@ -180,7 +187,9 @@ export class GitManager {
    * @param {CreatePullRequestOptions} options - The options for creating the pull request.
    * @returns {Promise<void>} A Promise that resolves once the pull request is successfully created.
    */
-  public async createPullRequest(options: CreatePullRequestOptions): Promise<void> {
+  public async createPullRequest(
+    options: CreatePullRequestOptions,
+  ): Promise<void> {
     try {
       // Create the pull request
       const { data: pr } = await this.octokit.pulls.create({
@@ -214,7 +223,7 @@ export class GitManager {
 
       console.log(`Created PR #${pr.number}: ${pr.html_url}`);
     } catch (error) {
-      console.error('Error creating pull request:', error);
+      console.error("Error creating pull request:", error);
       throw error;
     }
   }

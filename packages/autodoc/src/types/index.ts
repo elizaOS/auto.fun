@@ -1,4 +1,4 @@
-import type { TSESTree } from '@typescript-eslint/types';
+import type { TSESTree } from "@typescript-eslint/types";
 
 /**
  * Represents an item in the Abstract Syntax Tree (AST) queue.

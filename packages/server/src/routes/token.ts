@@ -7,7 +7,7 @@ import {
 } from "@solana/web3.js";
 import { and, count, desc, eq, or, sql, SQL } from "drizzle-orm";
 import { Context, Hono } from "hono";
-import { createRedisCache } from "../redis/redisCacheService";
+import { createRedisCache } from "../redis";
 
 import { PgSelect } from "drizzle-orm/pg-core";
 import { updateTokens } from "../cron";

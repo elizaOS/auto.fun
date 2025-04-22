@@ -1,10 +1,9 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
 import { getDB, tokens } from "../db";
-import { Env } from "../env";
-import { retryOperation } from "../raydium/utils";
-import { createRedisCache } from "../redis/redisCacheService";
+import { createRedisCache } from "../redis";
 import { calculateFeaturedScore, getFeaturedMaxValues, logger } from "../util";
+import { retryOperation } from "@autodotfun/raydium/src/utils";
 import { getWebSocketClient } from "../websocket-client";
 
 // Define max swaps to keep in Redis list (consistent with other files)

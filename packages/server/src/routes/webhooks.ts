@@ -8,7 +8,7 @@ import { processTransactionLogs } from "../cron";
 import { getDB, tokens } from "../db";
 import type { Env } from "../env";
 import { ExternalToken } from "../externalToken";
-import { createRedisCache } from "../redis/redisCacheService";
+import { createRedisCache } from "../redis";
 import { startMonitoringBatch } from "../tokenSupplyHelpers/monitoring";
 import { logger } from "../util";
 import { getWebSocketClient } from "../websocket-client";
@@ -28,7 +28,10 @@ router.post("/webhook", async (c) => {
   // value is configured in helius webhook dashboard
   const authorization = c.req.header("Authorization");
   console.log("Authorization", authorization);
-  console.log("HELUS_WEBHOOK_AUTH_TOKEN", process.env.HELIUS_WEBHOOK_AUTH_TOKEN);
+  console.log(
+    "HELUS_WEBHOOK_AUTH_TOKEN",
+    process.env.HELIUS_WEBHOOK_AUTH_TOKEN
+  );
 
   if (authorization !== process.env.HELIUS_WEBHOOK_AUTH_TOKEN) {
     return c.json(
@@ -238,19 +241,22 @@ router.post("/codex-webhook", async (c) => {
 // Start monitoring batch
 router.post("/codex-start-monitoring", async (c) => {
   const { processed, total } = await startMonitoringBatch(10);
+
+  const redisCache = createRedisCache();
+  const cachedData = await redisCache.get("lockedCursor");
   return c.json({
     message:
       processed === 0 && total > 0
         ? "Seeded or already complete"
-        : `Processed ${processed} tokens, cursor now ${await process.env.MONITOR_KV.get("lockedCursor")}/${total}`,
+        : `Processed ${processed} tokens, cursor now ${cachedData}/${total}`,
   });
 });
 
 // Status Endpoint
 router.get("/codex-monitor-status", async (c) => {
-  const kv = process.env.MONITOR_KV;
-  const rawList = await kv.get("lockedList");
-  const rawCursor = await kv.get("lockedCursor");
+  const redisCache = createRedisCache();
+  const rawList = await redisCache.get("lockedList");
+  const rawCursor = await redisCache.get("lockedCursor");
   if (!rawList) return c.json({ seeded: false });
   const mints: string[] = JSON.parse(rawList);
   const cursor = Number.parseInt(rawCursor || "0", 10);

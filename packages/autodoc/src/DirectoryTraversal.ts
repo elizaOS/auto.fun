@@ -1,6 +1,6 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import type { Configuration } from './Configuration.js';
+import fs from "node:fs";
+import path from "node:path";
+import type { Configuration } from "./Configuration.js";
 
 /**
  * DirectoryTraversal class for traversing through directories and files.
@@ -17,22 +17,22 @@ export class DirectoryTraversal {
    * regardless of configuration
    */
   private static readonly FORCED_EXCLUDED_DIRS = [
-    'node_modules',
-    '.git',
-    'dist',
-    'build',
-    'coverage',
-    '.next',
-    '.nuxt',
-    '.cache',
-    'tmp',
-    'temp',
-    '.turbo',
-    '.husky',
-    '.github',
-    '.vscode',
-    'public',
-    'static',
+    "node_modules",
+    ".git",
+    "dist",
+    "build",
+    "coverage",
+    ".next",
+    ".nuxt",
+    ".cache",
+    "tmp",
+    "temp",
+    ".turbo",
+    ".husky",
+    ".github",
+    ".vscode",
+    "public",
+    "static",
   ];
 
   /**
@@ -42,7 +42,7 @@ export class DirectoryTraversal {
    */
   constructor(
     private config: Configuration,
-    public prFiles: string[] = []
+    public prFiles: string[] = [],
   ) {}
 
   /**
@@ -69,7 +69,7 @@ export class DirectoryTraversal {
    */
   public traverse(): string[] {
     if (this.prFiles.length > 0) {
-      console.log('Detected PR Files:', this.prFiles);
+      console.log("Detected PR Files:", this.prFiles);
 
       // PR files are already relative to repo root, filter and convert to absolute paths
       const files = this.prFiles
@@ -78,21 +78,23 @@ export class DirectoryTraversal {
           const absolutePath = this.config.toAbsolutePath(file);
 
           // Check if the file is within our target directory
-          const isInTargetDir = absolutePath.startsWith(this.config.absolutePath);
+          const isInTargetDir = absolutePath.startsWith(
+            this.config.absolutePath,
+          );
 
           return (
             isInTargetDir &&
             fs.existsSync(absolutePath) &&
             !this.isExcluded(absolutePath) &&
-            path.extname(file) === '.ts'
+            path.extname(file) === ".ts"
           );
         })
         .map((file) => this.config.toAbsolutePath(file));
 
-      console.log('Files to process:', files);
+      console.log("Files to process:", files);
       return files;
     }
-    console.log('No PR Files Detected, Scanning all files in root directory');
+    console.log("No PR Files Detected, Scanning all files in root directory");
     const typeScriptFiles: string[] = [];
 
     const traverseDirectory = (currentDirectory: string) => {
@@ -107,7 +109,7 @@ export class DirectoryTraversal {
             traverseDirectory(filePath);
           }
         } else if (stats.isFile() && !this.isExcluded(filePath)) {
-          if (path.extname(file) === '.ts') {
+          if (path.extname(file) === ".ts") {
             typeScriptFiles.push(filePath);
           }
         }
@@ -123,14 +125,17 @@ export class DirectoryTraversal {
    */
   private isExcluded(absolutePath: string): boolean {
     // Get path relative to the target directory for exclusion checking
-    const relativeToTarget = path.relative(this.config.absolutePath, absolutePath);
+    const relativeToTarget = path.relative(
+      this.config.absolutePath,
+      absolutePath,
+    );
 
     // First check forced excluded directories - these are always excluded
     const isInForcedExcludedDir = DirectoryTraversal.FORCED_EXCLUDED_DIRS.some(
       (dir) =>
         absolutePath.includes(`${path.sep}${dir}${path.sep}`) ||
         absolutePath.includes(`${path.sep}${dir}`) ||
-        absolutePath.startsWith(`${dir}${path.sep}`)
+        absolutePath.startsWith(`${dir}${path.sep}`),
     );
 
     if (isInForcedExcludedDir) {
@@ -139,12 +144,12 @@ export class DirectoryTraversal {
 
     // Check if path is in excluded directory
     const isExcludedDir = this.config.excludedDirectories.some(
-      (dir) => relativeToTarget.split(path.sep)[0] === dir
+      (dir) => relativeToTarget.split(path.sep)[0] === dir,
     );
 
     // Check if file is excluded
     const isExcludedFile = this.config.excludedFiles.some(
-      (file) => path.basename(absolutePath) === file
+      (file) => path.basename(absolutePath) === file,
     );
 
     return isExcludedDir || isExcludedFile;

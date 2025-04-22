@@ -1,22 +1,22 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import type { TSESTree } from '@typescript-eslint/types';
-import type { AIService } from './AIService/AIService.js';
-import type { Configuration } from './Configuration.js';
-import type { DirectoryTraversal } from './DirectoryTraversal.js';
-import type { GitManager } from './GitManager.js';
-import { JSDocValidator } from './JSDocValidator.js';
-import type { JsDocAnalyzer } from './JsDocAnalyzer.js';
-import type { JsDocGenerator } from './JsDocGenerator.js';
-import { PluginDocumentationGenerator } from './PluginDocumentationGenerator.js';
-import type { TypeScriptParser } from './TypeScriptParser.js';
+import fs from "node:fs";
+import path from "node:path";
+import type { TSESTree } from "@typescript-eslint/types";
+import type { AIService } from "./AIService/AIService.js";
+import type { Configuration } from "./Configuration.js";
+import type { DirectoryTraversal } from "./DirectoryTraversal.js";
+import type { GitManager } from "./GitManager.js";
+import { JSDocValidator } from "./JSDocValidator.js";
+import type { JsDocAnalyzer } from "./JsDocAnalyzer.js";
+import type { JsDocGenerator } from "./JsDocGenerator.js";
+import { PluginDocumentationGenerator } from "./PluginDocumentationGenerator.js";
+import type { TypeScriptParser } from "./TypeScriptParser.js";
 import type {
   ASTQueueItem,
   EnvUsage,
   FullModeFileChange,
   PrModeFileChange,
   TodoItem,
-} from './types/index.js';
+} from "./types/index.js";
 
 /**
  * Class representing a Documentation Generator.
@@ -38,7 +38,7 @@ export class DocumentationGenerator {
   public existingJsDocQueue: ASTQueueItem[] = [];
   private hasChanges = false;
   private fileContents: Map<string, string> = new Map();
-  public branchName = '';
+  public branchName = "";
   private fileOffsets: Map<string, number> = new Map();
   private typeScriptFiles: string[] = [];
   private jsDocValidator: JSDocValidator;
@@ -62,7 +62,7 @@ export class DocumentationGenerator {
     public jsDocGenerator: JsDocGenerator,
     public gitManager: GitManager,
     public configuration: Configuration,
-    public aiService: AIService
+    public aiService: AIService,
   ) {
     this.typeScriptFiles = this.directoryTraversal.traverse();
     this.jsDocValidator = new JSDocValidator(aiService);
@@ -88,20 +88,25 @@ export class DocumentationGenerator {
         const absolutePath = this.configuration.toAbsolutePath(file.filename);
 
         // Check if file is in target directory
-        const isInTargetDir = absolutePath.startsWith(this.configuration.absolutePath);
+        const isInTargetDir = absolutePath.startsWith(
+          this.configuration.absolutePath,
+        );
 
         // Get path relative to target directory for exclusion checking
-        const relativeToTarget = path.relative(this.configuration.absolutePath, absolutePath);
+        const relativeToTarget = path.relative(
+          this.configuration.absolutePath,
+          absolutePath,
+        );
 
         // Check exclusions
         const isExcluded =
           // Check excluded directories
           this.configuration.excludedDirectories.some(
-            (dir) => relativeToTarget.split(path.sep)[0] === dir
+            (dir) => relativeToTarget.split(path.sep)[0] === dir,
           ) ||
           // Check excluded files
           this.configuration.excludedFiles.some(
-            (excludedFile) => path.basename(absolutePath) === excludedFile
+            (excludedFile) => path.basename(absolutePath) === excludedFile,
           );
 
         return isInTargetDir && !isExcluded;
@@ -110,30 +115,30 @@ export class DocumentationGenerator {
       const typeScriptFiles = this.directoryTraversal.traverse();
       fileChanges = typeScriptFiles.map((file) => ({
         filename: this.configuration.toRelativePath(file),
-        status: 'modified',
+        status: "modified",
       }));
     }
 
     // Process each TypeScript file
     for (const fileChange of fileChanges) {
-      if (fileChange.status === 'deleted') continue;
+      if (fileChange.status === "deleted") continue;
 
       const filePath = this.configuration.toAbsolutePath(fileChange.filename);
       this.fileOffsets.set(filePath, 0);
 
       // Load and store file content
-      if (fileChange.status === 'added' && 'contents_url' in fileChange) {
-        console.log('Getting file content from GitHub API');
+      if (fileChange.status === "added" && "contents_url" in fileChange) {
+        console.log("Getting file content from GitHub API");
         const fileContent = await this.getFileContent(fileChange.contents_url);
         this.fileContents.set(filePath, fileContent);
       } else {
-        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const fileContent = fs.readFileSync(filePath, "utf-8");
         this.fileContents.set(filePath, fileContent);
       }
 
       const ast = this.typeScriptParser.parse(filePath);
       if (!ast || !ast.body) {
-        console.log('Invalid AST found for file', filePath);
+        console.log("Invalid AST found for file", filePath);
         continue;
       }
 
@@ -151,13 +156,16 @@ export class DocumentationGenerator {
       // This way we have a branch for either JSDoc commits or README commits
 
       if (this.configuration.generateJsDoc) {
-        this.branchName = `docs-update-${pullNumber || 'full'}-${Date.now()}`;
-        await this.gitManager.createBranch(this.branchName, this.configuration.branch);
+        this.branchName = `docs-update-${pullNumber || "full"}-${Date.now()}`;
+        await this.gitManager.createBranch(
+          this.branchName,
+          this.configuration.branch,
+        );
       }
 
       // Process each node
       for (const queueItem of this.missingJsDocQueue) {
-        let comment = '';
+        let comment = "";
         if (queueItem.className !== undefined) {
           comment = await this.jsDocGenerator.generateClassComment(queueItem);
         } else {
@@ -166,7 +174,11 @@ export class DocumentationGenerator {
 
         // Only update the actual files with JSDoc if generateJsDoc flag is true
         if (this.configuration.generateJsDoc) {
-          await this.updateFileWithJSDoc(queueItem.filePath, comment, queueItem.startLine);
+          await this.updateFileWithJSDoc(
+            queueItem.filePath,
+            comment,
+            queueItem.startLine,
+          );
           this.hasChanges = true;
         }
 
@@ -181,7 +193,7 @@ export class DocumentationGenerator {
             this.branchName,
             this.configuration.toRelativePath(filePath),
             content,
-            `docs: Add JSDoc documentation to ${path.basename(filePath)}`
+            `docs: Add JSDoc documentation to ${path.basename(filePath)}`,
           );
         }
 
@@ -191,7 +203,7 @@ export class DocumentationGenerator {
           body: prContent.body,
           head: this.branchName,
           base: this.configuration.branch,
-          labels: ['documentation', 'automated-pr'],
+          labels: ["documentation", "automated-pr"],
           reviewers: this.configuration.pullRequestReviewers || [],
         });
       }
@@ -208,15 +220,22 @@ export class DocumentationGenerator {
    * @param filePath - Path to the source file
    * @param ast - The complete AST
    */
-  private processNode(node: TSESTree.Node, filePath: string, ast: TSESTree.Program): void {
+  private processNode(
+    node: TSESTree.Node,
+    filePath: string,
+    ast: TSESTree.Program,
+  ): void {
     if (!this.jsDocAnalyzer.shouldHaveJSDoc(node)) return;
 
     // Process the main node
-    const jsDocComment = this.jsDocAnalyzer.getJSDocComment(node, ast.comments || []);
+    const jsDocComment = this.jsDocAnalyzer.getJSDocComment(
+      node,
+      ast.comments || [],
+    );
     const queueItem = this.jsDocAnalyzer.createQueueItem(
       node,
       filePath,
-      this.getNodeCode(filePath, node)
+      this.getNodeCode(filePath, node),
     );
 
     if (jsDocComment) {
@@ -229,11 +248,14 @@ export class DocumentationGenerator {
     // Process any documentable children (like class methods)
     const children = this.jsDocAnalyzer.getDocumentableChildren(node);
     for (const child of children) {
-      const childJsDocComment = this.jsDocAnalyzer.getJSDocComment(child, ast.comments || []);
+      const childJsDocComment = this.jsDocAnalyzer.getJSDocComment(
+        child,
+        ast.comments || [],
+      );
       const childQueueItem = this.jsDocAnalyzer.createQueueItem(
         child,
         filePath,
-        this.getNodeCode(filePath, child)
+        this.getNodeCode(filePath, child),
       );
 
       if (childJsDocComment) {
@@ -255,24 +277,24 @@ export class DocumentationGenerator {
   private async updateFileWithJSDoc(
     filePath: string,
     jsDoc: string,
-    insertLine: number
+    insertLine: number,
   ): Promise<void> {
-    const content = this.fileContents.get(filePath) || '';
-    const lines = content.split('\n');
+    const content = this.fileContents.get(filePath) || "";
+    const lines = content.split("\n");
     const currentOffset = this.fileOffsets.get(filePath) || 0;
     const adjustedLine = insertLine + currentOffset;
-    const fileName = filePath.split('/').pop() || '';
+    const fileName = filePath.split("/").pop() || "";
 
     // Insert the comment
     lines.splice(adjustedLine - 1, 0, jsDoc);
-    const newContent = lines.join('\n');
+    const newContent = lines.join("\n");
 
     try {
       // Validate and fix if necessary
       const validatedJSDoc = await this.jsDocValidator.validateAndFixJSDoc(
         fileName,
         newContent,
-        jsDoc
+        jsDoc,
       );
 
       if (validatedJSDoc !== jsDoc) {
@@ -286,7 +308,7 @@ export class DocumentationGenerator {
         this.fileOffsets.set(filePath, currentOffset + newLines);
       }
 
-      this.fileContents.set(filePath, lines.join('\n'));
+      this.fileContents.set(filePath, lines.join("\n"));
     } catch (error) {
       console.error(`Error validating JSDoc in ${filePath}:`, error);
       throw error;
@@ -301,11 +323,11 @@ export class DocumentationGenerator {
    * @returns {string} The code belonging to the specified node.
    */
   public getNodeCode(filePath: string, node: TSESTree.Node): string {
-    const fileContent = fs.readFileSync(filePath, 'utf-8');
-    const lines = fileContent.split('\n');
+    const fileContent = fs.readFileSync(filePath, "utf-8");
+    const lines = fileContent.split("\n");
     const startLine = node.loc?.start.line || 0;
     const endLine = node.loc?.end.line || 0;
-    return lines.slice(startLine - 1, endLine).join('\n');
+    return lines.slice(startLine - 1, endLine).join("\n");
   }
 
   /**
@@ -318,10 +340,12 @@ export class DocumentationGenerator {
     try {
       const response = await fetch(contentsUrl);
       const data = await response.json();
-      return Buffer.from(data.content, 'base64').toString('utf-8');
+      return Buffer.from(data.content, "base64").toString("utf-8");
     } catch (_error) {
-      console.error('Error fetching file content from GitHub API, ensure the PR has been merged');
-      return '';
+      console.error(
+        "Error fetching file content from GitHub API, ensure the PR has been merged",
+      );
+      return "";
     }
   }
 
@@ -330,9 +354,11 @@ export class DocumentationGenerator {
    * @param {number} [pullNumber] - Optional pull request number that the JSDoc documentation is related to.
    * @returns {Promise<{ title: string; body: string }>} - A promise that resolves to an object with a title and body for the pull request.
    */
-  private async generatePRContent(pullNumber?: number): Promise<{ title: string; body: string }> {
+  private async generatePRContent(
+    pullNumber?: number,
+  ): Promise<{ title: string; body: string }> {
     const modifiedFiles = Array.from(this.fileContents.keys());
-    const filesContext = modifiedFiles.map((file) => `- ${file}`).join('\n');
+    const filesContext = modifiedFiles.map((file) => `- ${file}`).join("\n");
 
     const prompt = `Create a JSON object for a pull request about JSDoc documentation updates.
     The JSON must have exactly this format, with no extra fields or markdown formatting:
@@ -344,7 +370,7 @@ export class DocumentationGenerator {
     Context for generating the content:
     - ${modifiedFiles.length} files were modified
     - Files modified:\n${filesContext}
-    - This is ${pullNumber ? `related to PR #${pullNumber}` : 'a full repository documentation update'}
+    - This is ${pullNumber ? `related to PR #${pullNumber}` : "a full repository documentation update"}
     - This is an automated PR for adding JSDoc documentation
 
     The title should be concise and follow conventional commit format.
@@ -359,16 +385,16 @@ export class DocumentationGenerator {
 
     try {
       // Clean up the response - remove any markdown formatting or extra text
-      const jsonStart = response.indexOf('{');
-      const jsonEnd = response.lastIndexOf('}') + 1;
+      const jsonStart = response.indexOf("{");
+      const jsonEnd = response.lastIndexOf("}") + 1;
       if (jsonStart === -1 || jsonEnd === -1) {
-        throw new Error('No valid JSON object found in response');
+        throw new Error("No valid JSON object found in response");
       }
 
       const jsonStr = response
         .slice(jsonStart, jsonEnd)
-        .replace(/```json/g, '')
-        .replace(/```/g, '')
+        .replace(/```json/g, "")
+        .replace(/```/g, "")
         .trim();
 
       const content = JSON.parse(jsonStr);
@@ -377,10 +403,10 @@ export class DocumentationGenerator {
       if (
         !content.title ||
         !content.body ||
-        typeof content.title !== 'string' ||
-        typeof content.body !== 'string'
+        typeof content.title !== "string" ||
+        typeof content.body !== "string"
       ) {
-        throw new Error('Invalid JSON structure');
+        throw new Error("Invalid JSON structure");
       }
 
       return {
@@ -388,10 +414,10 @@ export class DocumentationGenerator {
         body: content.body,
       };
     } catch (error) {
-      console.error('Error parsing AI response for PR content:', error);
-      console.error('Raw response:', response);
+      console.error("Error parsing AI response for PR content:", error);
+      console.error("Raw response:", response);
       return {
-        title: `docs: Add JSDoc documentation${pullNumber ? ` for PR #${pullNumber}` : ''}`,
+        title: `docs: Add JSDoc documentation${pullNumber ? ` for PR #${pullNumber}` : ""}`,
         body: this.generateDefaultPRBody(),
       };
     }
@@ -405,7 +431,7 @@ export class DocumentationGenerator {
   private generateDefaultPRBody(): string {
     const changes = Array.from(this.fileContents.keys())
       .map((filePath) => `- Added JSDoc documentation to \`${filePath}\``)
-      .join('\n');
+      .join("\n");
 
     return `## 📝 Documentation Updates
         This PR adds JSDoc documentation to TypeScript files that were missing proper documentation.
@@ -431,7 +457,7 @@ export class DocumentationGenerator {
       const ast = this.typeScriptParser.parse(filePath);
       if (!ast) continue;
 
-      const sourceCode = fs.readFileSync(filePath, 'utf-8');
+      const sourceCode = fs.readFileSync(filePath, "utf-8");
 
       // Find TODOs
       this.jsDocAnalyzer.findTodoComments(ast, ast.comments || [], sourceCode);

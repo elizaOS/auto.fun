@@ -60,7 +60,7 @@ const config: Config = {
       'docusaurus-plugin-typedoc',
       {
         entryPoints: ['../src/components/**/*.tsx', '../src/hooks/**/*.ts', '../src/utils/**/*.ts', '../worker/**/*.ts'],
-        tsconfig: '../tsconfig.json',
+        tsconfig: '../../tsconfig.json',
         out: './api',
         skipErrorChecking: true,
         excludeExternals: true,

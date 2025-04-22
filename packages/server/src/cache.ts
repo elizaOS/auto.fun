@@ -1,7 +1,7 @@
 import { and, eq, gt, lt, sql } from "drizzle-orm";
 import { cachePrices, getDB } from "./db";
 import { Env } from "./env";
-import { createRedisCache } from "./redis/redisCacheService";
+import { createRedisCache } from "./redis";
 import { logger } from "./util";
 
 /**

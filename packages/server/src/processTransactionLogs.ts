@@ -1,22 +1,21 @@
+import * as IDL from "@autodotfun/program/idl/autofun.json";
+import * as raydium_vault_IDL from "@autodotfun/program/idl/raydium_vault.json";
+import { Autofun } from "@autodotfun/program/types/autofun";
+import { RaydiumVault } from "@autodotfun/raydium/src/types/raydium_vault";
+import { TokenData, TokenDBData } from "@autodotfun/raydium/src/types/tokenData";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { Connection, Keypair } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
 import { getDB, Token, tokens } from "./db";
-import { Env } from "./env";
 import { logger } from "./logger";
 import { getSOLPrice } from "./mcap";
-import { TokenMigrator } from "./raydium/migration/migrateToken";
-import { getToken } from "./raydium/migration/migrations";
-import * as raydium_vault_IDL from "@autodotfun/program/idl/raydium_vault.json";
-import { RaydiumVault } from "./raydium/types/raydium_vault";
-import { TokenData, TokenDBData } from "./raydium/types/tokenData";
-import * as IDL from "@autodotfun/program/idl/autofun.json";
-import { Autofun } from "./target/types/autofun";
+import { TokenMigrator } from "./migration/migrateToken";
+import { getToken } from "./migration/migrations";
+import { createRedisCache } from "./redis";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import {
    createNewTokenData,
 } from "./utils";
-import { createRedisCache } from "./redis/redisCacheService";
 
 // Store the last processed signature to avoid duplicate processing
 const lastProcessedSignature: string | null = null;

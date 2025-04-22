@@ -5,7 +5,7 @@ import { z } from "zod";
 import { fetchPriceChartData } from "../chart";
 import { getDB, tokens } from "../db";
 import { Env } from "../env";
-import { createRedisCache } from "../redis/redisCacheService";
+import { createRedisCache } from "../redis";
 import { logger } from "../util";
 
 const router = new Hono<{

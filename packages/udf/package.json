@@ -14,8 +14,7 @@
   },
   "scripts": {
     "compile": "tsc",
-    "bundle-js": "rollup -c rollup.config.js",
-    "lint": "eslint . --fix --ignore-path ../../.gitignore"
+    "bundle-js": "rollup -c rollup.config.js"
   },
   "type": "module",
   "main": "./lib/udf-compatible-datafeed.js",

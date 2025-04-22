@@ -1,6 +1,6 @@
-import fs from 'node:fs';
-import { type ParserOptions, parse } from '@typescript-eslint/parser';
-import { type ActionBounds, ActionMetadata } from './types';
+import fs from "node:fs";
+import { type ParserOptions, parse } from "@typescript-eslint/parser";
+import { type ActionBounds, ActionMetadata } from "./types";
 
 /**
  * A class for parsing TypeScript files.
@@ -46,9 +46,9 @@ export class TypeScriptParser {
    */
   public parse(file: string): any {
     try {
-      const content = fs.readFileSync(file, 'utf-8');
+      const content = fs.readFileSync(file, "utf-8");
       const parserOptions: ParserOptions = {
-        sourceType: 'module',
+        sourceType: "module",
         ecmaVersion: 2020,
         ecmaFeatures: {
           jsx: true,
@@ -62,7 +62,7 @@ export class TypeScriptParser {
       };
 
       const ast = parse(content, parserOptions);
-      if (!ast || typeof ast !== 'object') {
+      if (!ast || typeof ast !== "object") {
         console.warn(`Warning: Invalid AST generated for file ${file}`);
         return null;
       }
@@ -71,7 +71,7 @@ export class TypeScriptParser {
       if (error instanceof Error) {
         this.handleParseError(error);
       } else {
-        console.error('Unknown error:', error);
+        console.error("Unknown error:", error);
       }
       return null;
     }
@@ -98,13 +98,13 @@ export class TypeScriptParser {
     if (ast) {
       // Traverse the AST to find export declarations
       ast.body.forEach((node: any) => {
-        if (node.type === 'ImportDeclaration') {
+        if (node.type === "ImportDeclaration") {
           const source = node.source.value;
-          if (source.startsWith('./actions/')) {
+          if (source.startsWith("./actions/")) {
             exports.actions.push(source);
-          } else if (source.startsWith('./providers/')) {
+          } else if (source.startsWith("./providers/")) {
             exports.providers.push(source);
-          } else if (source.startsWith('./evaluators/')) {
+          } else if (source.startsWith("./evaluators/")) {
             exports.evaluators.push(source);
           }
         }
@@ -124,28 +124,31 @@ export class TypeScriptParser {
 
     const findActionTypeAnnotation = (node: any) => {
       // Look for Action type annotation
-      if (node?.typeAnnotation?.typeAnnotation?.typeName?.name === 'Action') {
+      if (node?.typeAnnotation?.typeAnnotation?.typeName?.name === "Action") {
         startLine = node.loc.start.line;
       }
 
       // Look for ActionExample type annotation to find the end
-      if (node?.typeAnnotation?.elementType?.elementType?.typeName?.name === 'ActionExample') {
+      if (
+        node?.typeAnnotation?.elementType?.elementType?.typeName?.name ===
+        "ActionExample"
+      ) {
         endLine = node.loc.end.line;
       }
 
       // Backup: Look for action name property
       if (
-        node?.type === 'Property' &&
-        node?.key?.type === 'Identifier' &&
-        node?.key?.name === 'name' &&
-        node?.value?.type === 'Literal'
+        node?.type === "Property" &&
+        node?.key?.type === "Identifier" &&
+        node?.key?.name === "name" &&
+        node?.value?.type === "Literal"
       ) {
         actionNameStartLine = node.loc.start.line;
       }
 
       // Recursively search in child nodes
       for (const key in node) {
-        if (node[key] && typeof node[key] === 'object') {
+        if (node[key] && typeof node[key] === "object") {
           if (Array.isArray(node[key])) {
             node[key].forEach(findActionTypeAnnotation);
           } else {
@@ -159,7 +162,7 @@ export class TypeScriptParser {
 
     // If we found a valid end line but no start line, use the action name line as fallback
     if (!startLine && actionNameStartLine && endLine) {
-      console.log('Using action name line as fallback');
+      console.log("Using action name line as fallback");
       startLine = actionNameStartLine;
     }
 
@@ -171,14 +174,14 @@ export class TypeScriptParser {
   }
 
   public extractActionCode(filePath: string, bounds: ActionBounds): string {
-    const fileContent = fs.readFileSync(filePath, 'utf-8');
-    const lines = fileContent.split('\n');
+    const fileContent = fs.readFileSync(filePath, "utf-8");
+    const lines = fileContent.split("\n");
 
     // Extract lines from start to end (inclusive)
-    return lines.slice(bounds.startLine - 1, bounds.endLine).join('\n');
+    return lines.slice(bounds.startLine - 1, bounds.endLine).join("\n");
   }
 
   private handleParseError(error: Error): void {
-    console.error('Error parsing TypeScript file:', error.message);
+    console.error("Error parsing TypeScript file:", error.message);
   }
 }

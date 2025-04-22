@@ -4,10 +4,10 @@ import { getLatestCandle } from "./chart";
 import { getDB, Token, tokens } from "./db";
 import { Env } from "./env";
 import { calculateTokenMarketData, getSOLPrice } from "./mcap";
-import { awardGraduationPoints, awardUserPoints } from "./points/helpers";
-import { getToken } from "./raydium/migration/migrations";
-import { TokenData, TokenDBData } from "./raydium/types/tokenData";
-import { createRedisCache } from "./redis/redisCacheService";
+import { awardGraduationPoints, awardUserPoints } from "./points";
+import { getToken } from "./migration/migrations";
+import { TokenData, TokenDBData } from "@autodotfun/raydium/src/types/tokenData";
+import { createRedisCache } from "./redis";
 import {
   checkAndReplenishTokens,
   generateAdditionalTokenImages,

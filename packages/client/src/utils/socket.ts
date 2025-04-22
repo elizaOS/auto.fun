@@ -64,8 +64,8 @@ class SocketWrapper {
       try {
         const { event: eventName, data } = JSON.parse(event.data);
         // Listen for the clientId event specifically
-        if (eventName === 'clientId' && typeof data === 'string') {
-          console.log('Received client ID:', data);
+        if (eventName === "clientId" && typeof data === "string") {
+          console.log("Received client ID:", data);
           this.clientId = data;
           // Process queue again in case messages were waiting for clientId
           this.processQueue();
@@ -217,7 +217,9 @@ export const getSocket = (): Socket => {
     // Get apiUrl from environment and ensure it's defined
     const apiUrl = env.apiUrl;
     if (!apiUrl) {
-      throw new Error("Client environment variable 'apiUrl' is not defined. Please set it in your client environment (e.g., .env file).");
+      throw new Error(
+        "Client environment variable 'apiUrl' is not defined. Please set it in your client environment (e.g., .env file).",
+      );
     }
     // Pass the guaranteed string to the constructor
     socket = new SocketWrapper(apiUrl);

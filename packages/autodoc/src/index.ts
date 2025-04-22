@@ -1,12 +1,12 @@
-import { AIService } from './AIService/AIService.js';
-import { Configuration } from './Configuration.js';
-import { DirectoryTraversal } from './DirectoryTraversal.js';
-import { DocumentationGenerator } from './DocumentationGenerator.js';
-import { GitManager } from './GitManager.js';
-import { JsDocAnalyzer } from './JsDocAnalyzer.js';
-import { JsDocGenerator } from './JsDocGenerator.js';
-import { PluginDocumentationGenerator } from './PluginDocumentationGenerator.js';
-import { TypeScriptParser } from './TypeScriptParser.js';
+import { AIService } from "./AIService/AIService.js";
+import { Configuration } from "./Configuration.js";
+import { DirectoryTraversal } from "./DirectoryTraversal.js";
+import { DocumentationGenerator } from "./DocumentationGenerator.js";
+import { GitManager } from "./GitManager.js";
+import { JsDocAnalyzer } from "./JsDocAnalyzer.js";
+import { JsDocGenerator } from "./JsDocGenerator.js";
+import { PluginDocumentationGenerator } from "./PluginDocumentationGenerator.js";
+import { TypeScriptParser } from "./TypeScriptParser.js";
 
 /**
  * Main function for generating documentation.
@@ -38,15 +38,17 @@ async function main() {
 
     let prFiles: string[] = [];
     if (
-      typeof configuration.repository.pullNumber === 'number' &&
+      typeof configuration.repository.pullNumber === "number" &&
       !Number.isNaN(configuration.repository.pullNumber)
     ) {
-      console.log('Pull Request Number: ', configuration.repository.pullNumber);
+      console.log("Pull Request Number: ", configuration.repository.pullNumber);
       try {
-        const files = await gitManager.getFilesInPullRequest(configuration.repository.pullNumber);
+        const files = await gitManager.getFilesInPullRequest(
+          configuration.repository.pullNumber,
+        );
         prFiles = files.map((file) => file.filename);
       } catch (prError) {
-        console.error('Error fetching PR files:', {
+        console.error("Error fetching PR files:", {
           error: prError,
           pullNumber: configuration.repository.pullNumber,
           repository: `${configuration.repository.owner}/${configuration.repository.name}`,
@@ -69,21 +71,23 @@ async function main() {
         jsDocGenerator,
         gitManager,
         configuration,
-        aiService
+        aiService,
       );
 
       const pluginDocGenerator = new PluginDocumentationGenerator(
         aiService,
         gitManager,
-        configuration
+        configuration,
       );
 
-      const { todoItems, envUsages } = await documentationGenerator.analyzeCodebase();
+      const { todoItems, envUsages } =
+        await documentationGenerator.analyzeCodebase();
 
       // Generate JSDoc documentation first
-      const { documentedItems, branchName } = await documentationGenerator.generate(
-        configuration.repository.pullNumber
-      );
+      const { documentedItems, branchName } =
+        await documentationGenerator.generate(
+          configuration.repository.pullNumber,
+        );
 
       // If both are true, use JSDoc branch for README
       // If only README is true, create new branch
@@ -97,13 +101,18 @@ async function main() {
           await gitManager.createBranch(targetBranch, configuration.branch);
         }
 
-        await pluginDocGenerator.generate(documentedItems, targetBranch, todoItems, envUsages);
+        await pluginDocGenerator.generate(
+          documentedItems,
+          targetBranch,
+          todoItems,
+          envUsages,
+        );
 
         // Only create PR if we're not also generating JSDoc (otherwise changes go in JSDoc PR)
         if (!configuration.generateJsDoc) {
           const prContent = {
-            title: 'docs: Update plugin documentation',
-            body: 'Updates plugin documentation with latest changes',
+            title: "docs: Update plugin documentation",
+            body: "Updates plugin documentation with latest changes",
           };
 
           await gitManager.createPullRequest({
@@ -111,13 +120,13 @@ async function main() {
             body: prContent.body,
             head: targetBranch,
             base: configuration.branch,
-            labels: ['documentation', 'automated-pr'],
+            labels: ["documentation", "automated-pr"],
             reviewers: configuration.pullRequestReviewers || [],
           });
         }
       }
     } catch (error) {
-      console.error('Error during documentation generation:', {
+      console.error("Error during documentation generation:", {
         message: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
         timestamp: new Date().toISOString(),
@@ -125,7 +134,7 @@ async function main() {
       process.exit(1);
     }
   } catch (error) {
-    console.error('Critical error during documentation generation:', {
+    console.error("Critical error during documentation generation:", {
       error:
         error instanceof Error
           ? {
@@ -144,6 +153,9 @@ async function main() {
 
 // Simple error handling for the main function
 main().catch((error) => {
-  console.error('Fatal error:', error instanceof Error ? error.message : String(error));
+  console.error(
+    "Fatal error:",
+    error instanceof Error ? error.message : String(error),
+  );
   process.exit(1);
 });

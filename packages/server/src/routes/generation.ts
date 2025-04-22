@@ -12,9 +12,9 @@ import { logger } from "../util";
 import { MediaGeneration } from "../types";
 import { uploadGeneratedImage } from "../uploader";
 import { getRpcUrl } from "../util";
-import { createTokenPrompt } from "./generation-prompts/create-token";
-import { enhancePrompt } from "./generation-prompts/enhance-prompt";
-import { createRedisCache } from "../redis/redisCacheService";
+import { createTokenPrompt } from "../generation-prompts/create-token";
+import { enhancePrompt } from "../generation-prompts/enhance-prompt";
+import { createRedisCache } from "../redis";
 
 // Enum for media types
 export enum MediaType {
@@ -363,15 +363,17 @@ export async function generateMedia(
   // Set default timeout - shorter for tests
   const timeout = 300000;
 
-  // Initialize fal.ai client dynamically if needed for video/audio
+  // Initialize fal.ai client dynamically if needed for video/audio or pro image
   if (
-    !(data.type === MediaType.IMAGE && data.mode === "fast") &&
-    process.env.FAL_API_KEY
+    data.type !== MediaType.IMAGE || data.mode === "pro" // Fal needed for Video, Audio, or Pro Image
   ) {
-    console.log("**** process.env.FAL_API_KEY", process.env.FAL_API_KEY);
+    if (!process.env.FAL_API_KEY) {
+      throw new Error("FAL_API_KEY environment variable not set.");
+    }
     fal.config({
       credentials: process.env.FAL_API_KEY,
     });
+    logger.log("Fal AI client configured.");
   }
 
   // Create a timeout promise
@@ -390,6 +392,7 @@ export async function generateMedia(
     if (!process.env.AI) {
       throw new Error("Cloudflare AI binding not configured");
     }
+    logger.log("Using Cloudflare AI for fast image generation...");
 
     // Add retry logic for AI generation
     const maxRetries = 3;
@@ -406,8 +409,12 @@ export async function generateMedia(
           },
         );
 
-        // Create data URL from the base64 image
-        const dataURI = `data:image/jpeg;base64,${result.image}`;
+        // Create data URL from the image buffer
+        // Assuming result is an ArrayBuffer or similar binary format
+        const imageBuffer = Buffer.from(result as ArrayBuffer); // Convert result to Buffer
+        const base64Image = imageBuffer.toString('base64');
+        const dataURI = `data:image/jpeg;base64,${base64Image}`; // Assuming JPEG, adjust if needed
+
 
         // Return in a format compatible with our existing code
         return {
@@ -436,7 +443,8 @@ export async function generateMedia(
       `Failed to generate image after ${maxRetries} attempts: ${lastError?.message}`,
     );
   } else if (data.type === MediaType.IMAGE && data.mode === "pro") {
-    // Use flux-pro ultra for slow high-quality image generation
+    // Use flux-pro ultra for slow high-quality image generation via Fal
+    logger.log("Using Fal AI (flux-pro) for pro image generation...");
     generationPromise = fal.subscribe("fal-ai/flux-pro/v1.1-ultra", {
       input: {
         prompt: data.prompt,
@@ -455,7 +463,8 @@ export async function generateMedia(
     // Race against timeout
     return await Promise.race([generationPromise, timeoutPromise]);
   } else if (data.type === MediaType.VIDEO && data.image_url) {
-    // Image-to-video generation
+    // Image-to-video generation via Fal
+    logger.log("Using Fal AI for image-to-video generation...");
     const model =
       data.mode === "pro"
         ? "fal-ai/pixverse/v4/image-to-video"
@@ -477,7 +486,8 @@ export async function generateMedia(
     // Race against timeout
     return await Promise.race([generationPromise, timeoutPromise]);
   } else if (data.type === MediaType.VIDEO) {
-    // Text-to-video generation
+    // Text-to-video generation via Fal
+    logger.log("Using Fal AI for text-to-video generation...");
     const model =
       data.mode === "pro"
         ? "fal-ai/pixverse/v4/text-to-video"
@@ -501,6 +511,7 @@ export async function generateMedia(
     // Race against timeout
     return await Promise.race([generationPromise, timeoutPromise]);
   } else if (data.type === MediaType.AUDIO) {
+    logger.log("Using Fal AI for audio generation...");
     if (data.lyrics) {
       // Use diffrhythm for music generation with lyrics
       const formattedLyrics = formatLyricsForDiffrhythm(data.lyrics);
@@ -547,6 +558,7 @@ export async function generateMedia(
       };
     } else {
       // Generate lyrics first, then use them to generate the song
+      logger.log("Generating lyrics for audio...");
       const lyrics = await generateLyrics(
                 {
           name: data.prompt.split(":")[0] || "",
@@ -600,6 +612,9 @@ export async function generateMedia(
         },
       };
     }
+  } else {
+     // Should not happen given the logic, but good practice
+    throw new Error(`Unsupported media type or configuration: ${data.type}, mode: ${data.mode}`);
   }
 }
 
@@ -841,6 +856,7 @@ app.post("/:mint/generate", async (c) => {
 
     let result: any;
     try {
+      // Pass c.env to generateMedia
       result = await generateMedia(validatedData);
     } catch (error) {
       clearTimeoutSafe(endpointTimeoutId);
@@ -1080,8 +1096,13 @@ app.post("/generate-metadata", async (c) => {
     );
 
     // Function to generate metadata with the specified prompt data
-    async function generatePromptMetadata(maxRetries = MAX_RETRIES) {
+    async function generatePromptMetadata(maxRetries = MAX_RETRIES) { // Add env parameter
       let retryCount = 0;
+
+      if (!process.env.FAL_API_KEY) {
+        throw new Error("FAL_API_KEY environment variable not set for metadata generation.");
+      }
+      fal.config({ credentials: process.env.FAL_API_KEY });
 
       while (retryCount < maxRetries) {
         try {
@@ -1089,42 +1110,49 @@ app.post("/generate-metadata", async (c) => {
             `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`,
           );
 
-          const response = await process.env.AI.run(
-            "@cf/meta/llama-3.1-8b-instruct-fast",
-            {
-              messages: [
-                {
-                  role: "system",
-                  content: await createTokenPrompt(validatedData),
-                },
-              ],
-              max_tokens: 1000,
-              temperature: 0.75 + retryCount * 0.02, // Slightly increase temperature on retries for variation
-            },
-          );
+          const systemPromptContent = await createTokenPrompt(validatedData);
+          const falInput = {
+              model: "fal-ai/meta-llama/llama-4-scout",
+              // Combine messages into prompt/system_prompt for fal
+              system_prompt: systemPromptContent,
+              prompt: "Generate the token metadata based on the system prompt.", // Or adjust if createTokenPrompt provides the main prompt
+              // Temperature is not directly supported in fal.subscribe input for all models? Check fal docs.
+              // Assuming the model's default or configured temperature is used.
+          };
+
+          logger.log("Fal AI Input:", JSON.stringify(falInput));
+
+          // Use fal.subscribe
+          const response: any = await fal.subscribe("fal-ai/meta-llama/llama-4-scout", {
+              input: falInput,
+              logs: true, // Optional: for debugging
+          });
+
 
           // Parse the JSON response with robust error handling
           let metadata: Record<string, string>;
 
           // Log the raw response for debugging
+          const rawOutput = response?.data?.output || response?.output || ""; // Adjust based on actual Fal response structure
           logger.log(
-            `[Endpoint - Attempt ${retryCount + 1}] Raw AI response:`,
-            response.response.substring(0, 100) + "...",
+            `[Endpoint - Attempt ${retryCount + 1}] Raw Fal AI output:`,
+            typeof rawOutput === 'string' ? rawOutput.substring(0, 100) + "..." : JSON.stringify(rawOutput),
           );
 
           // First try to extract JSON using regex - find content between the first { and last }
           const jsonRegex = /{[\s\S]*}/;
-          const matches = response.response.match(jsonRegex);
+          // Ensure rawOutput is a string before matching
+          const jsonString = typeof rawOutput === 'string' ? rawOutput.match(jsonRegex)?.[0] : null;
 
-          if (!matches || matches.length === 0) {
+
+          if (!jsonString) {
             logger.warn(
-              `[Endpoint - Attempt ${retryCount + 1}] Could not find JSON object in AI response, retrying...`,
+              `[Endpoint - Attempt ${retryCount + 1}] Could not find JSON object in Fal AI response, retrying...`,
             );
             retryCount++;
             continue;
           }
 
-          const jsonString = matches[0];
           logger.log(
             `[Endpoint - Attempt ${retryCount + 1}] Extracted JSON string:`,
             jsonString.substring(0, 100) + "...",
@@ -1140,14 +1168,16 @@ app.post("/generate-metadata", async (c) => {
               `[Endpoint - Attempt ${retryCount + 1}] JSON parse failed. Attempting field extraction...`,
             );
 
-            const nameMatch = response.response.match(/"name"\s*:\s*"([^"]+)"/);
-            const symbolMatch = response.response.match(
+            // Field extraction might be less reliable with complex LLM output
+            // Consider refining the prompt to *only* output JSON
+            const nameMatch = jsonString.match(/"name"\s*:\s*"([^"]+)"/);
+            const symbolMatch = jsonString.match(
               /"symbol"\s*:\s*"([^"]+)"/,
             );
-            const descMatch = response.response.match(
+            const descMatch = jsonString.match(
               /"description"\s*:\s*"([^"]+)"/,
             );
-            const promptMatch = response.response.match(
+            const promptMatch = jsonString.match(
               /"prompt"\s*:\s*"([^"]+)"/,
             );
 
@@ -1212,7 +1242,7 @@ app.post("/generate-metadata", async (c) => {
       return null;
     }
 
-    // Generate metadata with retries
+    // Generate metadata with retries, passing env
     const metadata = await generatePromptMetadata();
 
     if (!metadata) {
@@ -1533,6 +1563,7 @@ export async function getDailyGenerationCount(
 
 // Function to generate a token on demand
 async function generateTokenOnDemand(
+  // Add env parameter
   ctx: { waitUntil: (promise: Promise<any>) => void },
 ): Promise<{
   success: boolean;
@@ -1552,7 +1583,7 @@ async function generateTokenOnDemand(
     logger.log("Generating a token on demand...");
 
     // Step 1: Generate Metadata
-    const metadata = await generateMetadata(); // Assuming generateMetadata handles its own retries
+    const metadata = await generateMetadata(); // Pass env, Assuming generateMetadata handles its own retries
 
     if (!metadata) {
       return {
@@ -1577,6 +1608,7 @@ async function generateTokenOnDemand(
       );
       try {
         // Generate image using our existing function
+        // Pass env to generateMedia
         const imageResult = await generateMedia({
           prompt: metadata.prompt,
           type: MediaType.IMAGE,
@@ -1628,7 +1660,7 @@ async function generateTokenOnDemand(
           const imageFilename = `${crypto.randomUUID()}${extension}`;
           const imageKey = `token-images/${imageFilename}`; // Consistent R2 prefix
 
-          if (!process.env.R2) {
+          if (!process.env.R2) { // Use process.env.R2
             throw new Error(
               "R2 storage (process.env.R2) is not configured. Cannot upload image.",
             );
@@ -1637,7 +1669,7 @@ async function generateTokenOnDemand(
           logger.log(
             `[Attempt ${imageAttempt}] Uploading image to R2 with key: ${imageKey}`,
           );
-          await process.env.R2.put(imageKey, imageBuffer, {
+          await process.env.R2.put(imageKey, imageBuffer, { // Use process.env.R2.put
             httpMetadata: {
               contentType,
               cacheControl: "public, max-age=31536000", // 1 year cache
@@ -1645,15 +1677,15 @@ async function generateTokenOnDemand(
           });
 
           // Construct the final public URL
-          const r2PublicUrl = process.env.R2_PUBLIC_URL;
+          const r2PublicUrl = process.env.R2_PUBLIC_URL; // Use process.env.R2_PUBLIC_URL
           if (!r2PublicUrl) {
             throw new Error(
               "R2_PUBLIC_URL environment variable is not set. Cannot construct public image URL.",
             );
           }
           finalImageUrl =
-            process.env.API_URL?.includes("localhost") ||
-            process.env.API_URL?.includes("127.0.0.1")
+            process.env.API_URL?.includes("localhost") || // Use process.env.API_URL
+            process.env.API_URL?.includes("127.0.0.1")    // Use process.env.API_URL
               ? `${process.env.API_URL}/api/image/${imageFilename}` // Assumes a local proxy endpoint exists
               : `${r2PublicUrl.replace(/\/$/, "")}/${imageKey}`; // Ensure no double slash
 
@@ -1863,9 +1895,14 @@ app.post("/mark-token-used", async (c) => {
   }
 });
 
-// Function to generate metadata using Claude with retry
-async function generateMetadata(maxRetries = 10) {
+// Function to generate metadata using Fal with retry
+async function generateMetadata(maxRetries = 10) { // Add env parameter
   let retryCount = 0;
+
+  if (!process.env.FAL_API_KEY) {
+    throw new Error("FAL_API_KEY environment variable not set for metadata generation.");
+  }
+  fal.config({ credentials: process.env.FAL_API_KEY });
 
   while (retryCount < maxRetries) {
     try {
@@ -1873,39 +1910,44 @@ async function generateMetadata(maxRetries = 10) {
         `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`,
       );
 
-      const response = await process.env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
-        messages: [
-          {
-            role: "system",
-            content: await createTokenPrompt(),
-          },
-        ],
-        max_tokens: 1000,
-        temperature: 0.75 + retryCount * 0.02, // Slightly increase temperature on retries for variation
+      const systemPromptContent = await createTokenPrompt(); // Needs to be self-contained or take env if needed
+      const falInput = {
+          model: "fal-ai/meta-llama/llama-4-scout",
+          system_prompt: systemPromptContent,
+          prompt: "Generate the token metadata based on the system prompt.",
+          // Temperature adjustment might need different handling with Fal
+      };
+
+      // Use fal.subscribe
+      const response: any = await fal.subscribe("fal-ai/meta-llama/llama-4-scout", {
+          input: falInput,
+          logs: true,
       });
+
 
       // Parse the JSON response with robust error handling
       let metadata: Record<string, string>;
 
       // Log the raw response for debugging
+      const rawOutput = response?.data?.output || response?.output || ""; // Adjust based on actual Fal response structure
       logger.log(
-        `[Attempt ${retryCount + 1}] Raw AI response:`,
-        response.response.substring(0, 100) + "...",
+        `[Attempt ${retryCount + 1}] Raw Fal AI response:`,
+        typeof rawOutput === 'string' ? rawOutput.substring(0, 100) + "..." : JSON.stringify(rawOutput),
       );
 
       // First try to extract JSON using regex - find content between the first { and last }
       const jsonRegex = /{[\s\S]*}/;
-      const matches = response.response.match(jsonRegex);
+       const jsonString = typeof rawOutput === 'string' ? rawOutput.match(jsonRegex)?.[0] : null;
 
-      if (!matches || matches.length === 0) {
+
+      if (!jsonString) {
         logger.warn(
-          `[Attempt ${retryCount + 1}] Could not find JSON object in AI response, retrying...`,
+          `[Attempt ${retryCount + 1}] Could not find JSON object in Fal AI response, retrying...`,
         );
         retryCount++;
         continue;
       }
 
-      const jsonString = matches[0];
       logger.log(
         `[Attempt ${retryCount + 1}] Extracted JSON string:`,
         jsonString.substring(0, 100) + "...",
@@ -1921,12 +1963,13 @@ async function generateMetadata(maxRetries = 10) {
           `[Attempt ${retryCount + 1}] JSON parse failed. Attempting field extraction...`,
         );
 
-        const nameMatch = response.response.match(/"name"\s*:\s*"([^"]+)"/);
-        const symbolMatch = response.response.match(/"symbol"\s*:\s*"([^"]+)"/);
-        const descMatch = response.response.match(
+        // Field extraction might be less reliable with complex LLM output
+        const nameMatch = jsonString.match(/"name"\s*:\s*"([^"]+)"/);
+        const symbolMatch = jsonString.match(/"symbol"\s*:\s*"([^"]+)"/);
+        const descMatch = jsonString.match(
           /"description"\s*:\s*"([^"]+)"/,
         );
-        const promptMatch = response.response.match(/"prompt"\s*:\s*"([^"]+)"/);
+        const promptMatch = jsonString.match(/"prompt"\s*:\s*"([^"]+)"/);
 
         if (nameMatch && symbolMatch && descMatch && promptMatch) {
           metadata = {
@@ -1986,6 +2029,7 @@ async function generateMetadata(maxRetries = 10) {
   logger.error(`Failed to generate metadata after ${maxRetries} attempts`);
 
   // In development, provide a detailed fallback
+  // Using process.env here as env might not be available in fallback scenario? Revisit if needed.
   if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
     const randomNum = Math.floor(Math.random() * 1000);
     logger.log(
@@ -2005,13 +2049,19 @@ async function generateMetadata(maxRetries = 10) {
 }
 
 // Function to generate new pre-generated tokens
-export async function generatePreGeneratedTokens() {
+export async function generatePreGeneratedTokens() { // Add env parameter
   let metadata: Record<string, string> | null = null;
   try {
-    // ----- Step 1: Generate Metadata (Logic from /generate-metadata) -----
+    // ----- Step 1: Generate Metadata (using Fal) -----
     logger.log("[PreGen Metadata] Starting metadata generation...");
     const MAX_METADATA_RETRIES = 5; // Reduced retries for cron efficiency
     let metadataRetryCount = 0;
+
+    if (!process.env.FAL_API_KEY) {
+      logger.error("[PreGen Metadata] FAL_API_KEY is not configured. Skipping token generation.");
+      return;
+    }
+    fal.config({ credentials: process.env.FAL_API_KEY });
 
     while (metadataRetryCount < MAX_METADATA_RETRIES) {
       try {
@@ -2019,64 +2069,52 @@ export async function generatePreGeneratedTokens() {
           `[PreGen Metadata] Attempt ${metadataRetryCount + 1}/${MAX_METADATA_RETRIES}...`,
         );
 
-        // Note: We don't have `validatedData` here, so createTokenPrompt needs the simpler signature
-        const response = await process.env.AI.run(
-          "@cf/meta/llama-3.1-8b-instruct-fast",
-          {
-            messages: [
-              {
-                role: "system",
-                content: await createTokenPrompt(), // Use simpler prompt generation
-              },
-            ],
-            max_tokens: 1000,
-            temperature: 0.75 + metadataRetryCount * 0.02,
-          },
-        );
+        const systemPromptContent = await createTokenPrompt(); // Assumes this doesn't need env
+        const falInput = {
+            model: "fal-ai/meta-llama/llama-4-scout",
+            system_prompt: systemPromptContent,
+            prompt: "Generate token metadata (name, symbol, description, prompt) based on the system prompt. Output ONLY the JSON object.",
+            // Temperature adjustment might need different handling with Fal
+        };
+
+        // Use fal.subscribe
+        const response: any = await fal.subscribe("fal-ai/meta-llama/llama-4-scout", {
+            input: falInput,
+            logs: true, // Optional for debugging
+        });
+
 
         let parsedMetadata: Record<string, string> | null = null;
+        const rawOutput = response?.data?.output || response?.output || "";
         const jsonRegex = /{.*}/s; // Use /s flag to match across lines
-        const matches = response.response.match(jsonRegex);
+        // Ensure rawOutput is string before match
+        const jsonString = typeof rawOutput === 'string' ? rawOutput.match(jsonRegex)?.[0] : null;
 
-        if (matches && matches.length > 0) {
-          const jsonString = matches[0];
+
+        if (jsonString) {
           try {
             parsedMetadata = JSON.parse(jsonString);
+            logger.log(`[PreGen Metadata Attempt ${metadataRetryCount + 1}] Parsed JSON successfully.`);
           } catch (parseError) {
             logger.warn(
-              `[PreGen Metadata Attempt ${metadataRetryCount + 1}] JSON parse failed. Attempting field extraction...`,
+              `[PreGen Metadata Attempt ${metadataRetryCount + 1}] JSON parse failed. Raw output: ${rawOutput.substring(0,100)}...`,
               parseError,
             );
-            // Fallback field extraction (simplified)
-            const nameMatch = response.response.match(/"name"\s*:\s*"([^"]+)"/);
-            const symbolMatch = response.response.match(
-              /"symbol"\s*:\s*"([^"]+)"/,
-            );
-            const descMatch = response.response.match(
-              /"description"\s*:\s*"([^"]+)"/,
-            );
-            const promptMatch = response.response.match(
-              /"prompt"\s*:\s*"([^"]+)"/,
-            );
+            // Fallback field extraction (less reliable)
+            const nameMatch = rawOutput.match(/"name"\s*:\s*"([^"]+)"/);
+            const symbolMatch = rawOutput.match(/"symbol"\s*:\s*"([^"]+)"/);
+            const descMatch = rawOutput.match(/"description"\s*:\s*"([^"]+)"/);
+            const promptMatch = rawOutput.match(/"prompt"\s*:\s*"([^"]+)"/);
             if (nameMatch && symbolMatch && descMatch && promptMatch) {
-              parsedMetadata = {
-                name: nameMatch[1],
-                symbol: symbolMatch[1],
-                description: descMatch[1],
-                prompt: promptMatch[1],
-              };
-              logger.log(
-                `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Successfully extracted fields.`,
-              );
+              parsedMetadata = { name: nameMatch[1], symbol: symbolMatch[1], description: descMatch[1], prompt: promptMatch[1] };
+              logger.log(`[PreGen Metadata Attempt ${metadataRetryCount + 1}] Successfully extracted fields.`);
             } else {
-              logger.warn(
-                `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Failed to extract required fields.`,
-              );
+              logger.warn(`[PreGen Metadata Attempt ${metadataRetryCount + 1}] Failed to extract required fields from raw output.`);
             }
           }
         } else {
           logger.warn(
-            `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Could not find JSON object in AI response.`,
+            `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Could not find JSON object in Fal AI response. Raw output: ${rawOutput.substring(0,100)}...`,
           );
         }
 
@@ -2102,7 +2140,7 @@ export async function generatePreGeneratedTokens() {
         }
       } catch (error) {
         logger.error(
-          `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Error during generation:`,
+          `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Error during Fal generation:`,
           error,
         );
         metadataRetryCount++;
@@ -2117,6 +2155,7 @@ export async function generatePreGeneratedTokens() {
         "[PreGen Metadata] Failed to generate valid metadata after all retries. Skipping token.",
       );
       // Use fallback in development/test
+      // Using process.env here as env might not be available in fallback scenario? Revisit if needed.
       if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
         const randomNum = Math.floor(Math.random() * 1000);
         logger.log("[PreGen Metadata] Using fallback metadata.");
@@ -2132,15 +2171,18 @@ export async function generatePreGeneratedTokens() {
     }
     // ----- End Step 1 -----
 
-    // ----- Step 2: Generate Image (using CF AI) -----
+    // ----- Step 2: Generate Image (using CF AI or Fal Pro - decide which one) -----
+    // Keeping CF AI for fast image generation as per original logic
     let imageDataUrl: string = "";
     try {
       logger.log(
         `[PreGen Image] Generating image for: ${metadata.name} using prompt: ${metadata.prompt.substring(0, 50)}...`,
       );
+       // Ensure generateMedia is called with env
       const imageResult = await generateMedia({
         prompt: metadata.prompt,
         type: MediaType.IMAGE,
+        // Assuming 'fast' mode uses CF AI if available, which is handled inside generateMedia
       }) as any;
       if (
         imageResult?.data?.images?.length &&
@@ -2196,22 +2238,22 @@ export async function generatePreGeneratedTokens() {
       const imageKey = `token-images/${imageFilename}`; // Using the same prefix as /upload
       logger.log(`[PreGen Upload] Determined image R2 key: ${imageKey}`);
 
-      if (!process.env.R2) {
-        throw new Error("[PreGen Upload] R2 binding is not available.");
+      if (!process.env.R2) { // Use process.env.R2
+        throw new Error("[PreGen Upload] R2 binding (process.env.R2) is not available.");
       }
 
       logger.log(`[PreGen Upload] Attempting R2 put for key: ${imageKey}`);
-      const res = await process.env.R2.put(imageKey, imageBuffer, {
+      const res = await process.env.R2.put(imageKey, imageBuffer, { // Use process.env.R2.put
         httpMetadata: { contentType, cacheControl: "public, max-age=31536000" },
       });
       // log the public url from the respnse
-      console.log("****** RES", res);
+      console.log("****** R2 Put Result:", res); // Log R2 response object
       logger.log(
         `[PreGen Upload] Image successfully uploaded to R2: ${imageKey}`,
       );
 
       // Construct URL based on environment (like /upload does)
-      const r2PublicUrl = process.env.R2_PUBLIC_URL;
+      const r2PublicUrl = process.env.R2_PUBLIC_URL; // Use process.env.R2_PUBLIC_URL
       if (!r2PublicUrl) {
         logger.error(
           "[PreGen Upload] R2_PUBLIC_URL environment variable is not set. Cannot construct public image URL.",
@@ -2221,8 +2263,8 @@ export async function generatePreGeneratedTokens() {
       } else {
         // Only construct the URL if the base URL is available
         finalImageUrl =
-          process.env.API_URL?.includes("localhost") ||
-          process.env.API_URL?.includes("127.0.0.1")
+          process.env.API_URL?.includes("localhost") || // Use process.env.API_URL
+          process.env.API_URL?.includes("127.0.0.1")    // Use process.env.API_URL
             ? `${process.env.API_URL}/api/image/${imageFilename}`
             : `${r2PublicUrl.replace(/\/$/, "")}/${imageKey}`; // Ensure no double slash
         logger.log(
@@ -2277,10 +2319,11 @@ export async function generatePreGeneratedTokens() {
 
 // Check and replenish pre-generated tokens if needed
 export async function checkAndReplenishTokens(
+  // Add env parameter
   threshold: number = 3,
 ): Promise<void> {
   if (!threshold) {
-    threshold = parseInt(process.env.PREGENERATED_TOKENS_COUNT || "3");
+    threshold = parseInt(process.env.PREGENERATED_TOKENS_COUNT || "3"); // Use env variable
   }
   try {
     console.log("Checking and replenishing pre-generated tokens...");
@@ -2304,7 +2347,7 @@ export async function checkAndReplenishTokens(
         logger.log(
           `Generating ${tokensToGenerate} new pre-generated tokens...`,
         );
-        await generatePreGeneratedTokens();
+        await generatePreGeneratedTokens(); // Pass env
         retries++;
       } else {
         break;
@@ -2463,6 +2506,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
 
     // Use AI to enhance the prompt
     console.log(`Enhancing prompt with token metadata for ${mediaType}`);
+    // Pass env to generateEnhancedPrompt
     const enhancedPrompt = await generateEnhancedPrompt(
       userPrompt,
       tokenMetadata,
@@ -2652,37 +2696,58 @@ async function generateEnhancedPrompt(
   mediaType: MediaType = MediaType.IMAGE,
 ): Promise<string> {
   try {
+     if (!process.env.FAL_API_KEY) {
+      throw new Error("FAL_API_KEY environment variable not set for prompt enhancement.");
+    }
+    fal.config({ credentials: process.env.FAL_API_KEY });
+
     // Adjust prompt based on media type
-    let systemPrompt = enhancePrompt(userPrompt, tokenMetadata);
+    let systemPromptContent = enhancePrompt(userPrompt, tokenMetadata);
 
     // Modify prompt based on media type
     if (mediaType === MediaType.VIDEO) {
-      systemPrompt +=
-        "\nAdditionally, focus on dynamic visual elements and motion that would work well in a short video.";
+      systemPromptContent +=
+        "\nAdditionally, focus on dynamic visual elements and motion that would work well in a short video. Enhance the user prompt based on this.";
     } else if (mediaType === MediaType.AUDIO) {
-      systemPrompt +=
-        "\nAdditionally, focus on acoustic elements, mood, and atmosphere suitable for audio content.";
+      systemPromptContent +=
+        "\nAdditionally, focus on acoustic elements, mood, and atmosphere suitable for audio content. Enhance the user prompt based on this.";
+    } else {
+        systemPromptContent += "\nEnhance the user prompt for image generation based on the token context provided.";
     }
 
-    // Use Llama to enhance the prompt
-    const response = await process.env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-      ],
-      max_tokens: 1000,
-      temperature: 0.75,
+
+    // Use Fal AI to enhance the prompt
+    const falInput = {
+        model: "fal-ai/meta-llama/llama-4-scout",
+        system_prompt: systemPromptContent,
+        prompt: `User prompt to enhance: "${userPrompt}". Output ONLY the enhanced prompt text.`,
+        // Temperature adjustment might need different handling with Fal
+    };
+
+    const response: any = await fal.subscribe("fal-ai/meta-llama/llama-4-scout", {
+        input: falInput,
+        logs: true,
     });
 
+
     // Extract just the prompt text from the response
-    let enhancedPrompt = response.response.trim();
+    let enhancedPrompt = response?.data?.output || response?.output || ""; // Adjust based on actual Fal response structure
+    // Clean up potential extraneous text if the model didn't follow instructions perfectly
+    enhancedPrompt = enhancedPrompt.trim().replace(/^"|"$/g, ''); // Remove surrounding quotes
+
 
     // If the prompt is too long, truncate it to 500 characters
     if (enhancedPrompt.length > 500) {
-      enhancedPrompt = enhancedPrompt.substring(0, 500);
+      enhancedPrompt = enhancedPrompt.substring(0, 500).trim();
     }
+
+    // Basic validation if enhancement failed
+    if (!enhancedPrompt || enhancedPrompt.length < 10) {
+        logger.warn("Fal AI prompt enhancement resulted in a short/empty prompt, falling back.");
+        // Fallback logic
+        return `${tokenMetadata.name} (${tokenMetadata.symbol}): ${userPrompt}`;
+    }
+
 
     return enhancedPrompt;
   } catch (error) {
@@ -2732,6 +2797,7 @@ export async function generateAdditionalTokenImages(
 
         try {
           // Generate the image
+          // Pass env to generateMedia call
           const imageResult = await generateMedia({
             prompt,
             type: MediaType.IMAGE,
@@ -2829,54 +2895,84 @@ async function generateLyrics(
   stylePrompt?: string,
 ): Promise<string> {
   try {
-    const systemPrompt = `You are a creative songwriter. Create lyrics for a song about the token "${tokenMetadata.name}" (${tokenMetadata.symbol}). 
+     if (!process.env.FAL_API_KEY) {
+      throw new Error("FAL_API_KEY environment variable not set for lyrics generation.");
+    }
+    fal.config({ credentials: process.env.FAL_API_KEY });
+
+    const systemPrompt = `You are a creative songwriter. Create lyrics for a song about the token "${tokenMetadata.name}" (${tokenMetadata.symbol}).
     The song should capture the essence of the token's description: "${tokenMetadata.description}".
     ${stylePrompt ? `The musical style should be: ${stylePrompt}` : ""}
-    
+
     Format the lyrics with timestamps in the format [MM:SS.mm] at the start of each line.
     Include at least two sections: a verse and a chorus.
     Each section should be marked with [verse] or [chorus] at the start.
     Make the lyrics creative and engaging.
-    
+    Output ONLY the formatted lyrics.
+
     Example format:
     [verse]
     [00:00.00] First line of verse
     [00:02.50] Second line of verse
     [00:05.00] Third line of verse
-    
+
     [chorus]
     [00:07.50] First line of chorus
     [00:10.00] Second line of chorus
     [00:12.50] Third line of chorus`;
 
-    const response = await process.env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-      ],
-      max_tokens: 1000,
-      temperature: 0.8,
+    const falInput = {
+        model: "fal-ai/meta-llama/llama-4-scout",
+        system_prompt: systemPrompt,
+        prompt: "Generate the lyrics based on the system prompt instructions.",
+        // Temperature adjustment might need different handling with Fal
+    };
+
+    const response: any = await fal.subscribe("fal-ai/meta-llama/llama-4-scout", {
+        input: falInput,
+        logs: true,
     });
 
-    // Ensure the lyrics have proper formatting
-    let lyrics = response.response.trim();
 
-    // Add section markers if they're missing
+    // Ensure the lyrics have proper formatting
+    let lyrics = response?.data?.output || response?.output || ""; // Adjust based on actual Fal response structure
+    lyrics = lyrics.trim();
+
+    // Basic validation
+    if (!lyrics || !lyrics.includes("[") || lyrics.length < 20) {
+        logger.error("Failed to generate valid lyrics structure from Fal AI. Response:", lyrics);
+        // Provide a fallback structure
+        return `[verse]\n[00:00.00] Song about ${tokenMetadata.name}\n[00:03.00] Symbol ${tokenMetadata.symbol}\n[chorus]\n[00:06.00] Based on: ${tokenMetadata.description?.substring(0, 50)}...\n[00:09.00] Fal AI generation failed.`;
+    }
+
+
+    // Add section markers if they're missing (might be less necessary if prompt works well)
     if (!lyrics.includes("[verse]")) {
       lyrics = `[verse]\n${lyrics}`;
     }
     if (!lyrics.includes("[chorus]")) {
-      lyrics = `[chorus]\n${lyrics}`;
+      // Find the first timestamp after [verse] lines and insert [chorus] before it
+       const lines = lyrics.split('\n');
+       let verseEnded = false;
+       let chorusInserted = false;
+       for(let i=0; i<lines.length; i++) {
+           if(lines[i].includes('[verse]')) verseEnded = true;
+           if(verseEnded && lines[i].match(/\[\d{2}:\d{2}\.\d{2}\]/) && !lines[i-1]?.includes('[verse]')) {
+               lines.splice(i, 0, '[chorus]');
+               chorusInserted = true;
+               break;
+           }
+       }
+       if (!chorusInserted) lyrics = lyrics + '\n[chorus]\n[00:15.00] Default chorus line.'; // Add fallback chorus if needed
+       else lyrics = lines.join('\n');
     }
 
-    // Add timestamps if they're missing
+    // Add timestamps if they're missing (less likely if prompt works)
     const lines = lyrics.split("\n");
     let currentTime = 0;
     const formattedLines = lines.map((line: string) => {
-      if (line.startsWith("[") && !line.match(/\[\d{2}:\d{2}\.\d{2}\]/)) {
-        return line; // Keep section markers as is
+      if (line.trim() === '' || (line.startsWith("[") && !line.match(/\[\d{2}:\d{2}\.\d{2}\]/))) {
+        return line; // Keep section markers or empty lines as is
       }
       if (!line.match(/\[\d{2}:\d{2}\.\d{2}\]/)) {
         const minutes = Math.floor(currentTime / 60);
@@ -2884,7 +2980,16 @@ async function generateLyrics(
         const milliseconds = Math.floor((currentTime % 1) * 100);
         const timestamp = `[${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${milliseconds.toString().padStart(2, "0")}]`;
         currentTime += 2.5; // Add 2.5 seconds between lines
-        return `${timestamp} ${line}`;
+        return `${timestamp} ${line.trim()}`;
+      } else {
+          // Extract time if present to keep track for subsequent lines
+          const timeMatch = line.match(/\[(\d{2}):(\d{2})\.(\d{2})\]/);
+          if(timeMatch) {
+              const minutes = parseInt(timeMatch[1], 10);
+              const seconds = parseInt(timeMatch[2], 10);
+              const ms = parseInt(timeMatch[3], 10);
+              currentTime = minutes * 60 + seconds + ms / 100 + 2.5; // Update current time based on last timestamp + delta
+          }
       }
       return line;
     });

@@ -28,11 +28,11 @@ import webhookRouter from "./routes/webhooks";
 // import { uploadToCloudflare } from "./uploader";
 import { logger } from "./util";
 // import { claimFees } from "./claimFees";
-import { createRedisCache } from './redis/redisCacheService'; // Import Redis factory
+import { createRedisCache } from './redis'; // Import Redis factory
 import { RedisPool } from './redis/redisPool'; // Import RedisPool type if needed for shutdown variable
 import { webSocketManager } from './websocket-manager';
 // Assuming getSharedRedisPool is exported from redisCacheService or redisPool
-import { getSharedRedisPool } from './redis/redisCacheService';
+import { getSharedRedisPool } from './redis';
 
 // Define Variables type matching the original Hono app
 interface AppVariables {
@@ -288,7 +288,7 @@ app.onError((err, c) => {
 // --- Initialize Services ---
 let redisPoolInstance: RedisPool | null = null;
 try {
-  redisPoolInstance = getSharedRedisPool(); // Initialize or get pool
+  redisPoolInstance = getSharedRedisPool() as any; // Initialize or get pool
 } catch (error) {
   logger.error("Failed to initialize Redis Pool:", error);
   process.exit(1);

@@ -6,7 +6,7 @@ import {
 } from "./codex";
 import { getDB, tokens } from "./db";
 import { Env } from "./env";
-import { createRedisCache } from "./redis/redisCacheService";
+import { createRedisCache } from "./redis";
 import { logger } from "./util";
 
 // Define interface for the API response types

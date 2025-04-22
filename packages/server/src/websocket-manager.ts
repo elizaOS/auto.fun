@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { RedisCacheService } from './redis/redisCacheService';
+import type { RedisCacheService } from './redis';
 import { logger } from './util';
 // Import the correct type from Hono
 import type { WSContext } from 'hono/ws';
@@ -275,7 +275,9 @@ class WebSocketManager {
             client.rooms.delete(roomName);
             try {
                 client.ws.send(JSON.stringify({ event: 'join_error', data: { room: roomName, error: 'Failed to update subscription' } }));
-            } catch {}
+            } catch {
+                // do nothing
+            }
             throw error;
         }
     }
@@ -301,7 +303,9 @@ class WebSocketManager {
             logger.error(`Redis error leaving room ${roomName} for client ${client.clientId}:`, error);
             try {
                 client.ws.send(JSON.stringify({ event: 'leave_error', data: { room: roomName, error: 'Failed to update subscription' } }));
-            } catch {}
+            } catch {
+                // do nothing
+            }
             throw error;
         }
     }

@@ -1,8 +1,8 @@
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { claim } from "./raydium/raydiumVault";
+import { claim } from "@autodotfun/raydium/src/raydiumVault";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
-import { RaydiumVault } from "./raydium/types/raydium_vault";
+import { RaydiumVault } from "@autodotfun/raydium/src/types/raydium_vault";
 import * as raydium_vault_IDL from "@autodotfun/program/idl/raydium_vault.json";
 import dotenv from 'dotenv';
 
@@ -34,7 +34,7 @@ export async function claimFees(nftMint: PublicKey, poolId: PublicKey, connectio
       while (attempt < maxRetries && !success) {
          try {
             txSignature = await claim(
-               program,
+               program as any,
                wallet,
                nftMint,
                poolId,

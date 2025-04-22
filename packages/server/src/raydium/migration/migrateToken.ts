@@ -8,18 +8,17 @@ import {
 import { NATIVE_MINT } from "@solana/spl-token";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { updateTokenInDB } from "../../cron";
-import { Env } from "../../env";
 import { ExternalToken } from "../../externalToken";
-import { Autofun } from "../../target/types/autofun";
+import { Autofun } from "@autodotfun/program/types/autofun";
 import { Wallet } from "../../tokenSupplyHelpers/customWallet";
 import { logger } from "../../util";
 import { getWebSocketClient } from "../../websocket-client";
-import { initSdk, txVersion } from "../raydium-config";
-import { depositToRaydiumVault } from "../raydiumVault";
-import { RaydiumVault } from "../types/raydium_vault";
-import { TokenData } from "../types/tokenData";
-import { retryOperation, sendNftTo, sendSolTo } from "../utils";
-import { execWithdrawTx, withdrawTx } from "../withdraw";
+import { initSdk, txVersion } from "@autodotfun/raydium/src/raydium-config";
+import { depositToRaydiumVault } from "@autodotfun/raydium/src/raydiumVault";
+import { RaydiumVault } from "@autodotfun/raydium/src/types/raydium_vault";
+import { TokenData } from "@autodotfun/raydium/src/types/tokenData";
+import { retryOperation, sendNftTo, sendSolTo } from "@autodotfun/raydium/src/utils";
+import { execWithdrawTx, withdrawTx } from "@autodotfun/raydium/src/withdraw";
 import {
   executeMigrationStep,
   LockResult,
@@ -228,7 +227,7 @@ export class TokenMigrator {
       this.wallet.publicKey,
       new PublicKey(token.mint),
       this.connection,
-      this.autofunProgram,
+      this.autofunProgram as any,
     );
 
     transaction.instructions = [...transaction.instructions];
@@ -518,7 +517,7 @@ export class TokenMigrator {
     const txSignature = await depositToRaydiumVault(
       this.provider,
       signerWallet,
-      this.program,
+      this.program as any,
       new PublicKey(nftMinted), // 90% NFT
       claimer_address,
     );

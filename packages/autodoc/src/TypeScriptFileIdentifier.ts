@@ -1,5 +1,5 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from "node:fs";
+import path from "node:path";
 
 /**
  * Class representing a TypeScript file identifier.
@@ -23,7 +23,7 @@ export class TypeScriptFileIdentifier {
    */
   public isTypeScriptFile(file: string): boolean {
     const extension = path.extname(file);
-    return extension === '.ts' || extension === '.tsx';
+    return extension === ".ts" || extension === ".tsx";
   }
 
   /**

@@ -10,7 +10,7 @@ import {
 import { getDB, users } from "../db";
 import { Env } from "../env";
 import { logger } from "../util";
-import { awardUserPoints } from "../points/helpers";
+import { awardUserPoints } from "../points";
 
 const authRouter = new Hono<{
   Bindings: Env;
