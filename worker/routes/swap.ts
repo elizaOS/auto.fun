@@ -81,49 +81,6 @@ router.get("/swaps/:mint", async (c) => {
     const page = parseInt(c.req.query("page") || "1");
     const offset = (page - 1) * limit;
 
-    // --- BEGIN REDIS CACHE CHECK ---
-    // --> CHANGE: Remove simple key caching check
-    // const cacheKey = `swaps:${mint}:${limit}:${page}`;
-    // const redisCache = createRedisCache(c.env as Env);
-    // if (redisCache) {
-    //   try {
-    //     const cachedData = await redisCache.get(cacheKey);
-    //     if (cachedData) {
-    //       logger.log(`[Cache Hit] /swaps/${mint}?limit=${limit}&page=${page}`);
-    //       const parsedData = JSON.parse(cachedData);
-    //       if (parsedData && Array.isArray(parsedData.swaps)) {
-    //          return c.json(parsedData);
-    //       } else {
-    //          logger.warn(`Invalid cache data for ${cacheKey}, fetching fresh.`);
-    //       }
-    //     } else {
-    //       logger.log(`[Cache Miss] /swaps/${mint}?limit=${limit}&page=${page}`);
-    //     }
-    //   } catch (cacheError) {
-    //     logger.error(`Redis cache GET error for swaps:`, cacheError);
-    //   }
-    // }
-    // --- END REDIS CACHE CHECK ---
-
-    // Get the DB connection
-    // const db = getDB(c.env);
-
-    // Get real swap data from the database
-    // --> CHANGE: Read from Redis List instead of DB
-    // const [swapsResult, totalSwapsQuery] = await Promise.all([
-    //   db
-    //     .select()
-    //     .from(swaps)
-    //     .where(eq(swaps.tokenMint, mint))
-    //     .orderBy(desc(swaps.timestamp))
-    //     .offset(offset)
-    //     .limit(limit),
-    //   db
-    //     .select({ count: sql<number>`count(*)` })
-    //     .from(swaps)
-    //     .where(eq(swaps.tokenMint, mint))
-    // ]);
-
     const redisCache = createRedisCache(c.env);
     const listKey = redisCache.getKey(`swapsList:${mint}`);
     let totalSwaps = 0;
@@ -177,18 +134,6 @@ router.get("/swaps/:mint", async (c) => {
       totalPages,
       total: totalSwaps,
     };
-
-    // --- BEGIN REDIS CACHE SET ---
-    // --> CHANGE: Remove cache set, as this endpoint now only reads
-    // if (redisCache && responseData.swaps && responseData.swaps.length > 0) {
-    //    try {
-    //      await redisCache.set(cacheKey, JSON.stringify(responseData), 15);
-    //      logger.log(`Cached data for ${cacheKey} with 15s TTL`);
-    //    } catch (cacheError) {
-    //      logger.error(`Redis cache SET error for swaps:`, cacheError);
-    //    }
-    // }
-    // --- END REDIS CACHE SET ---
 
     return c.json(responseData);
   } catch (error) {

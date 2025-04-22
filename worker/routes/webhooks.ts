@@ -195,6 +195,7 @@ router.post("/codex-webhook", async (c) => {
       message: "Token not in db",
     });
   }
+  const selectedToken = token[0];
 
   const wsClient = getWebSocketClient(c.env);
 

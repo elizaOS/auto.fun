@@ -1090,9 +1090,6 @@ export async function updateHoldersCache(
     // Sort holders by amount (descending)
     holders.sort((a, b) => b.amount - a.amount);
 
-    // ---> CHANGE: Store full list in Redis instead of DB
-    // Clear existing holders and insert new ones
-    // await db.delete(tokenHolders).where(eq(tokenHolders.mint, mint));
     const holdersListKey = redisCache.getKey(`holders:${mint}`);
     try {
       // Store the entire list, stringified. No TTL.
@@ -1104,35 +1101,6 @@ export async function updateHoldersCache(
       logger.error(`Failed to store holders in Redis for ${mint}:`, redisError);
       // Decide if we should proceed without saving holders (e.g., update token count anyway?)
     }
-    // ---> END CHANGE
-
-    // Limit what we save/emit for performance (optional, depends on need)
-    // const MAX_HOLDERS_TO_SAVE = 500;
-    // const holdersToSave = holders.length > MAX_HOLDERS_TO_SAVE ? holders.slice(0, MAX_HOLDERS_TO_SAVE) : holders;
-
-    // ---> CHANGE: Remove DB insert logic
-    // if (holdersToSave.length > 0) {
-    //   const BATCH_SIZE = 10;
-    //   for (let i = 0; i < holdersToSave.length; i += BATCH_SIZE) {
-    //     try {
-    //       const batch = holdersToSave.slice(i, i + BATCH_SIZE);
-    //       await db
-    //         .insert(tokenHolders)
-    //         .values(batch)
-    //         .onConflictDoUpdate({
-    //           target: [tokenHolders.mint, tokenHolders.address],
-    //           set: {
-    //             amount: sql`excluded.amount`,
-    //             percentage: sql`excluded.percentage`,
-    //             lastUpdated: new Date(),
-    //           },
-    //         });
-    //     } catch (insertError) {
-    //       logger.error(`Error inserting batch for token ${mint}:`, insertError);
-    //     }
-    //   }
-    // }
-    // ---> END CHANGE
 
     // Emit limited set of holders via WebSocket
     try {
@@ -1461,19 +1429,6 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
     const page = parseInt(c.req.query("page") || "1");
     const offset = (page - 1) * limit;
 
-    // --- REMOVE REDIS CACHE CHECK for paginated result ---
-    // const cacheKey = `tokenHolders:${mint}:${limit}:${page}`;
-    // ... (old cache check logic removed) ...
-    // --- END REMOVE REDIS CACHE CHECK ---
-
-    // ---> CHANGE: Read full list from Redis instead of DB
-    // const db = getDB(c.env);
-    // const allHolders = await db
-    //   .select()
-    //   .from(tokenHolders)
-    //   .where(eq(tokenHolders.mint, mint))
-    //   .orderBy(desc(tokenHolders.amount));
-
     let allHolders: any[] = [];
     const redisCache = createRedisCache(c.env);
     const holdersListKey = redisCache.getKey(`holders:${mint}`);
@@ -1524,12 +1479,6 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
       totalPages: totalPages,
       total: totalHolders,
     };
-
-    // --- REMOVE REDIS CACHE SET for paginated result ---
-    // if (redisCache) {
-    // ... (old cache set logic removed) ...
-    // }
-    // --- END REMOVE REDIS CACHE SET ---
 
     return c.json(responseData);
   } catch (error) {
@@ -1739,7 +1688,7 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     // Calculate or update curveProgress using the original formula
     token.curveProgress =
-      token.status === "migrated"
+      token.status === "migrated" || token.status === "locked"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
             (token.curveLimit - token.virtualReserves)) *
@@ -2421,16 +2370,6 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
       // Pass c context to the helper function
       return await checkBlockchainTokenBalance(c, mint, address, false); // Check only configured network
     }
-
-    // ---> CHANGE: Read holder info from full Redis list
-    // Check token holders table in DB
-    // const holderQuery = await db
-    //   .select({ amount: tokenHolders.amount, percentage: tokenHolders.percentage, lastUpdated: tokenHolders.lastUpdated })
-    //   .from(tokenHolders)
-    //   .where(
-    //     and(eq(tokenHolders.mint, mint), eq(tokenHolders.address, address)),
-    //   )
-    //   .limit(1);
 
     let specificHolderData: any | null = null;
     let lastUpdated: Date | null = null;

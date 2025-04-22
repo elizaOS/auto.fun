@@ -54,7 +54,12 @@ export type CandlePrice = {
   time: number;
 };
 
-export async function getLatestCandle(env: Env, tokenMint: string, swap: any) {
+export async function getLatestCandle(
+  env: Env,
+  tokenMint: string,
+  swap: any,
+  tokenInfo?: any,
+) {
   // Get a time range that covers just this swap
   const swapTime = new Date(swap.timestamp).getTime() / 1000;
   const candlePeriod = 60; // 1 min default
@@ -62,11 +67,13 @@ export async function getLatestCandle(env: Env, tokenMint: string, swap: any) {
 
   // Check if token is locked (should use Codex API)
   const db = getDB(env);
-  const [tokenInfo] = await db
-    .select()
-    .from(tokens)
-    .where(eq(tokens.mint, tokenMint))
-    .limit(1);
+  if (!tokenInfo) {
+    tokenInfo = await db
+      .select()
+      .from(tokens)
+      .where(eq(tokens.mint, tokenMint))
+      .limit(1);
+  }
 
   if (tokenInfo?.status === "locked") {
     try {
