@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
+import { env } from "@/utils/env";
 
 interface SkeletonImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
@@ -23,9 +24,7 @@ const SkeletonImage: React.FC<SkeletonImageProps> = ({
     setLoaded(true);
   };
 
-  const imageOptimizationEnabled = src?.includes(
-    "https://auto.fun/cdn-cgi/image/",
-  );
+  const imageOptimizationEnabled = src?.includes(env.imageOptimizationUrl);
 
   const updateImageSrc = useCallback(() => {
     if (imageOptimizationEnabled && ref?.current) {
@@ -55,7 +54,7 @@ const SkeletonImage: React.FC<SkeletonImageProps> = ({
 
           updatedSrc = src.replace(
             cdnPathRegex,
-            `https://auto.fun/cdn-cgi/image/${updatedParams}`,
+            `${env.imageOptimizationUrl}/${updatedParams}`
           );
         }
 

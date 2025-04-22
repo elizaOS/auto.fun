@@ -278,7 +278,7 @@ export default function TwitterSharePage() {
   ); // Added setTokenStatus dependency
 
   const createDummyImage = async (): Promise<string> => {
-    return "https://auto.fun/example.png";
+    return env.exampleImageUrl;
   };
 
   // --- Vanity Generator Logic ---
@@ -487,7 +487,7 @@ export default function TwitterSharePage() {
         {/* Display image to share */}
         <div className="mb-8 border border-gray-700 rounded-lg overflow-hidden w-full">
           <img
-            src="https://auto.fun/example.png"
+            src={env.exampleImageUrl}
             alt="Share Preview"
             className="w-full h-auto"
           />

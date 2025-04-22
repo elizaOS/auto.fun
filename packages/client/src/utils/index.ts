@@ -1,5 +1,6 @@
 import relativeTime from "dayjs/plugin/relativeTime";
 import dayjs from "dayjs";
+import { env } from "./env";
 
 dayjs.extend(relativeTime);
 
@@ -159,6 +160,6 @@ export const resizeImage = (url: string, width: number, height: number) => {
   if (url.includes("ipfs") || !url.startsWith("http")) {
     return url;
   } else {
-    return `https://auto.fun/cdn-cgi/image/width=${width},height=${height},format=auto/${url}`;
+    return `${env.imageOptimizationUrl}/width=${width},height=${height},format=auto/${url}`;
   }
 };
