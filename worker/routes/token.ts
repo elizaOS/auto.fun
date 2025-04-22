@@ -1241,7 +1241,7 @@ tokenRouter.get("/tokens", async (c) => {
       marketCapUSD: tokens.marketCapUSD,
       volume24h: tokens.volume24h,
       holderCount: tokens.holderCount,
-      curveProgress: tokens.curveProgress
+      curveProgress: tokens.curveProgress,
       // Add other valid columns here
     };
 
@@ -1265,7 +1265,7 @@ tokenRouter.get("/tokens", async (c) => {
                   WHEN ${sortColumn} IS NULL OR ${sortColumn}::text = 'NaN' THEN 1 
                   ELSE 0 
                 END`,
-          sql`${sortColumn} DESC`
+          sql`${sortColumn} DESC`,
         );
         logger.log(`[Query Build] Applied sort: ${sortBy} DESC`);
       } else {

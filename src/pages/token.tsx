@@ -241,13 +241,6 @@ export default function Page() {
     );
   }
 
-  // this is for testing purpose only, untill we have implemented partner tokens
-  const parntnerMintList = [
-    "B6t4KWk4MTGadFwzwTorAv5fmxw7v2bS7J74dRkw8FUN",
-    "78c5zQY31XJ38U1TdH6WWEaa4AgxDPXq5fJr2q5rgFUN",
-  ];
-  const isPartner = parntnerMintList.includes(address as string);
-
   return (
     <Fragment>
       <Helmet>
@@ -287,12 +280,9 @@ export default function Page() {
 
                 {/* Token name overlapping at top - with drop shadow */}
                 <div
-                  className={twMerge(
-                    isPartner
-                      ? "from-autofun-background-action-highlight/10 via-autofun-background-action-highlight/10"
-                      : "from-black/50 via-black/25",
-                    "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5"
-                  )}
+                  className={
+                    "from-black/50 via-black/25 absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5"
+                  }
                 >
                   <div className="flex flex-wrap items-center justify-start w-full gap-2">
                     <div className="flex flex-wrap items-center gap-2">
@@ -333,16 +323,18 @@ export default function Page() {
 
               {/* Contract address */}
               <div className="flex flex-col gap-2">
-                <div className="flex">
+                <div className="flex relative">
                   <div className="size-10 inline-flex border-r shrink-0 bg-autofun-background-action-primary">
                     <span className="text-base font-dm-mono m-auto text-autofun-text-secondary">
                       CA
                     </span>
                   </div>
-                  <div className="bg-autofun-background-input flex justify-between py-2 px-3 min-w-0 w-full gap-2">
+                  <div className="bg-autofun-background-input flex justify-between py-2 px-3 min-w-0 w-full gap-2 relative">
                     <span className="mx-auto w-0 flex-1 min-w-0 block text-base text-autofun-text-secondary">
                       <MiddleEllipsis text={token?.mint} />
                     </span>
+                  </div>
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-autofun-background-input">
                     <CopyButton text={token?.mint} />
                   </div>
                 </div>

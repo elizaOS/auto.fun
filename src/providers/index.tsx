@@ -8,7 +8,7 @@ import TosProvider from "./tos-provider";
 export function Providers({ children }: PropsWithChildren) {
   return (
     <MainentenaceProvider>
-      <TosProvider/>
+      <TosProvider />
       <Wallet>
         <SolPriceProvider>{children}</SolPriceProvider>
       </Wallet>

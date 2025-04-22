@@ -60,12 +60,12 @@ export default function SwapsTable({ token }: { token: IToken }) {
         {/* <PausedIndicator show={paused} /> */}
         <TableHeader>
           <TableRow className="bg-transparent">
-            <TableHead>Account</TableHead>
-            <TableHead className="text-left">Type</TableHead>
+            <TableHead className="w-[120px]">Account</TableHead>
+            <TableHead className="text-left w-[100px]">Type</TableHead>
             <TableHead className="text-left">SOL</TableHead>
             <TableHead className="text-left">Token</TableHead>
-            <TableHead className="text-left w-[150px]">Date</TableHead>
-            <TableHead className="text-right">Txn</TableHead>
+            <TableHead className="text-left w-[80px]">Date</TableHead>
+            <TableHead className="text-right w-[50px]" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -85,7 +85,7 @@ export default function SwapsTable({ token }: { token: IToken }) {
               .sort(
                 (a, b) =>
                   new Date(b.timestamp).getTime() -
-                  new Date(a.timestamp).getTime(),
+                  new Date(a.timestamp).getTime()
               )
               .map((swap, _) => {
                 const isBuy = swap.type === "Buy";
@@ -118,14 +118,14 @@ export default function SwapsTable({ token }: { token: IToken }) {
                       {formatSwapAmount(swap.tokenAmount, true)}
                     </TableCell>
                     <TableCell className="text-left">
-                      {fromNow(swap?.timestamp)}
+                      {fromNow(swap?.timestamp, true)}
                     </TableCell>
                     <TableCell>
                       <Link
                         to={env.getTransactionUrl(swap.txId)}
                         target="_blank"
                       >
-                        <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary" />
+                        <ExternalLink className="ml-auto size-4 text-autofun-icon-secondary hover:text-autofun-text-highlight transition-colors duration-200" />
                       </Link>
                     </TableCell>
                   </TableRow>

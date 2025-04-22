@@ -66,7 +66,7 @@ export function TableView({
           <TableHead className="w-[500px]">Coin</TableHead>
           <TableHead className="text-left">
             <button
-              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              className="flex items-center gap-1 hover:text-foreground transition-colors uppercase"
               onClick={() => handleSort("marketCapUSD")}
             >
               <span className="hidden md:inline">Market Cap</span>
@@ -76,7 +76,7 @@ export function TableView({
           </TableHead>
           <TableHead className="text-left">
             <button
-              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              className="flex items-center gap-1 hover:text-foreground transition-colors uppercase"
               onClick={() => handleSort("volume24h")}
             >
               <span className="hidden md:inline">24H Volume</span>
@@ -86,7 +86,7 @@ export function TableView({
           </TableHead>
           <TableHead className="text-left">
             <button
-              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              className="flex items-center gap-1 hover:text-foreground transition-colors uppercase"
               onClick={() => handleSort("holderCount")}
             >
               <span className="hidden md:inline">Holders</span>
@@ -96,7 +96,7 @@ export function TableView({
           </TableHead>
           <TableHead className="text-left">
             <button
-              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              className="flex items-center gap-1 hover:text-foreground transition-colors uppercase"
               onClick={() => handleSort("curveProgress")}
             >
               <span className="hidden md:inline">Bonding Curve</span>
@@ -106,7 +106,7 @@ export function TableView({
           </TableHead>
           <TableHead className="text-right">
             <button
-              className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto"
+              className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto uppercase"
               onClick={() => handleSort("createdAt")}
             >
               Age
