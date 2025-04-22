@@ -38,6 +38,7 @@ export class RedisCacheService {
     }
     return `${prefix}${key}`;
   }
+  
   async get(key: string): Promise<string | null> {
     return this.redisPool.useClient((client) => client.get(this.getKey(key)));
   }
