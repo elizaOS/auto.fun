@@ -1,15 +1,13 @@
-import { Connection, PublicKey, ParsedAccountData } from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
 import { eq, sql } from "drizzle-orm";
 import { getDB, tokens } from "../db";
 import { Env } from "../env";
-import { createRedisCache } from "../redis/redisCacheService";
 import { retryOperation } from "../raydium/utils";
+import { createRedisCache } from "../redis/redisCacheService";
 import {
   calculateFeaturedScore,
   getFeaturedMaxValues,
-  logger,
-  getRpcUrl,
-  updateHoldersCache as utilUpdateHoldersCache,
+  logger
 } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 
