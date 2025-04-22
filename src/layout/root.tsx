@@ -56,9 +56,6 @@ export default function Layout() {
             <BreakpointIndicator />
             <ToastContainer position="bottom-right" theme="dark" />
           </main>
-          <div className="h-[1500px]">
-
-          </div>
           <div
             className={`${isHomepage ? "fixed" : "static"} bottom-0 left-0 right-0 ${showFooter ? "block" : "hidden"} z-50`}
           >
