@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
-import { Env } from "../env";
+import type { Env } from "../env"; 
 import { logger } from "../util";
-import { RedisPool } from "./redisPool";
+import { RedisPool } from "./redisPool"; 
 dotenv.config();
 
 class RedisCacheService {
@@ -75,6 +75,21 @@ class RedisCacheService {
     logger.info(`LTRIM on ${this.getKey(key)} ${start} ${stop}`);
     return this.redisPool.useClient((client) =>
       client.ltrim(this.getKey(key), start, stop),
+    );
+  }
+
+  async lpushTrim(
+    key: string,
+    value: string,
+    maxLength: number,
+  ): Promise<Array<unknown> | null> {
+    logger.info(`LPUSH+LTRIM pipeline on ${this.getKey(key)} limit ${maxLength}`);
+    return this.redisPool.useClient((client) =>
+      client
+        .multi()
+        .lpush(this.getKey(key), value)
+        .ltrim(this.getKey(key), 0, maxLength - 1)
+        .exec(),
     );
   }
   // --- END NEW LIST METHODS ---
