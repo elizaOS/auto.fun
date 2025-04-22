@@ -166,7 +166,7 @@ router.post("/codex-webhook", async (c) => {
   };
 
   const redisCache = getGlobalRedisCache();
-  const listKey = redisCache.getKey(`swapsList:${tokenMint}`);
+  const listKey = `swapsList:${tokenMint}`;
   try {
     // Pipeline push + trim to reduce RTT
     await redisCache.lpushTrim(

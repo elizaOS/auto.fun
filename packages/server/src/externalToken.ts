@@ -149,7 +149,7 @@ export class ExternalToken {
 
     // Remove DB write for ephemeral data; store stats in Redis
     const redisCache = getGlobalRedisCache();
-    const statsKey = redisCache.getKey(`token:stats:${this.mint}`);
+    const statsKey = `token:stats:${this.mint}`;
     await redisCache.set(statsKey, JSON.stringify(newTokenData), 60);
     logger.log(`ExternalToken: Stored market stats in Redis for ${this.mint} with TTL 60s`);
 
@@ -181,7 +181,7 @@ export class ExternalToken {
     allHolders.sort((a, b) => b.percentage - a.percentage);
 
     const redisCache = getGlobalRedisCache();
-    const holdersListKey = redisCache.getKey(`holders:${this.mint}`);
+    const holdersListKey = `holders:${this.mint}`;
     const top50Holders = allHolders.slice(0, 50);
 
     try {
@@ -380,7 +380,7 @@ export class ExternalToken {
 
     // Instantiate Redis client
     const redisCache = getGlobalRedisCache();
-    const listKey = redisCache.getKey(`swapsList:${this.mint}`);
+    const listKey = `swapsList:${this.mint}`;
 
     // Sort swaps by ascending timestamp (oldest first)
     // Important: We push to the START of the list (lpush),

@@ -168,7 +168,7 @@ async function processSwapLog(
         timestamp: new Date(),
       };
       const redisCache = getGlobalRedisCache();
-      const listKey = redisCache.getKey(`swapsList:${mintAddress}`);
+      const listKey = `swapsList:${mintAddress}`;
       try {
         await redisCache.lpush(listKey, JSON.stringify(swapRecord));
         await redisCache.ltrim(listKey, 0, MAX_SWAPS_TO_KEEP - 1);
@@ -202,10 +202,10 @@ async function processSwapLog(
           txId: signature,
           lastUpdated: new Date(),
           volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${direction === "1"
-              ? (Number(amount) / Math.pow(10, token.tokenDecimals)) *
-              tokenPriceUSD
-              : (Number(amountOut) / Math.pow(10, token.tokenDecimals)) *
-              tokenPriceUSD
+            ? (Number(amount) / Math.pow(10, token.tokenDecimals)) *
+            tokenPriceUSD
+            : (Number(amountOut) / Math.pow(10, token.tokenDecimals)) *
+            tokenPriceUSD
             }`,
           priceChange24h,
           // Conditionally set price24hAgo & lastPriceUpdate

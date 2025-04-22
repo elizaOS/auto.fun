@@ -21,7 +21,7 @@ export class CacheService {
    * Get SOL price from cache
    */
   async getSolPrice(): Promise<number | null> {
-    const cacheKey = this.redisCache.getKey("solPrice");
+    const cacheKey = "solPrice";
     try {
       const cachedValue = await this.redisCache.get(cacheKey);
       if (cachedValue) {
@@ -48,7 +48,7 @@ export class CacheService {
    * @param ttlSeconds How long the cache should live (in seconds)
    */
   async setSolPrice(price: number, ttlSeconds: number = 30): Promise<void> {
-    const cacheKey = this.redisCache.getKey("solPrice");
+    const cacheKey = "solPrice";
     try {
       await this.redisCache.set(cacheKey, price.toString(), ttlSeconds);
       logger.log(

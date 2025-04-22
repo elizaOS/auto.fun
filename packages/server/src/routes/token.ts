@@ -1091,7 +1091,7 @@ export async function updateHoldersCache(
     // Sort holders by amount (descending)
     holders.sort((a, b) => b.amount - a.amount);
 
-    const holdersListKey = redisCache.getKey(`holders:${mint}`);
+    const holdersListKey = `holders:${mint}`;
     try {
       // Store the entire list, stringified. No TTL.
       await redisCache.set(holdersListKey, JSON.stringify(holders));
@@ -1426,7 +1426,7 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
 
     let allHolders: any[] = [];
     const redisCache = getGlobalRedisCache();
-    const holdersListKey = redisCache.getKey(`holders:${mint}`);
+    const holdersListKey = `holders:${mint}`;
     try {
       const holdersString = await redisCache.get(holdersListKey);
       if (holdersString) {
@@ -2348,7 +2348,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
 
     let specificHolderData: any | null = null;
     let lastUpdated: Date | null = null;
-    const holdersListKey = redisCache.getKey(`holders:${mint}`);
+    const holdersListKey = `holders:${mint}`;
     try {
       const holdersString = await redisCache.get(holdersListKey);
       if (holdersString) {

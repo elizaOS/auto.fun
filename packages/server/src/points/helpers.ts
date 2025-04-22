@@ -136,7 +136,7 @@ export async function awardGraduationPoints(
   // Last swap user
   let lastSwapUser: string | null = null;
   try {
-    const listKey = redisCache.getKey(`swapsList:${mint}`);
+    const listKey = `swapsList:${mint}`;
     const [lastSwapString] = await redisCache.lrange(listKey, 0, 0); // Get the first item (most recent)
 
     if (lastSwapString) {
@@ -173,7 +173,7 @@ export async function awardGraduationPoints(
 
   // Holding through graduation
   let holders: any[] = [];
-  const holdersListKey = redisCache.getKey(`holders:${mint}`);
+  const holdersListKey = `holders:${mint}`;
   try {
     const holdersString = await redisCache.get(holdersListKey);
     if (holdersString) {

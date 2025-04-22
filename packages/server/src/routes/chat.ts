@@ -40,7 +40,7 @@ async function checkUserTokenBalance(
 
   // First check Redis cache
   let cachedBalance = 0;
-  const holdersListKey = redisCache.getKey(`holders:${tokenMint}`);
+  const holdersListKey = `holders:${tokenMint}`;
   try {
     const holdersString = await redisCache.get(holdersListKey);
     if (holdersString) {

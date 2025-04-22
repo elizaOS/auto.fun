@@ -198,7 +198,7 @@ export async function checkTokenOwnership(
       }
 
       let specificHolderData: any | null = null;
-      const holdersListKey = redisCache.getKey(`holders:${mint}`);
+      const holdersListKey = `holders:${mint}`;
       try {
         const holdersString = await redisCache.get(holdersListKey);
         if (holdersString) {

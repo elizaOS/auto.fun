@@ -131,7 +131,7 @@ export async function fetchPriceChartData(
     let swapRecordsRaw: any[] = [];
     try {
       const redisCache = getGlobalRedisCache();
-      const listKey = redisCache.getKey(`swapsList:${tokenMint}`);
+      const listKey = `swapsList:${tokenMint}`;
       const swapStrings = await redisCache.lrange(listKey, 0, -1); // Fetch all swaps
       swapRecordsRaw = swapStrings.map((s) => JSON.parse(s));
       logger.log(

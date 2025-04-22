@@ -336,7 +336,7 @@ async function handleSwap(
 
     const db = getDB();
     const redisCache = getGlobalRedisCache();
-    const listKey = redisCache.getKey(`swapsList:${mintAddress}`);
+    const listKey = `swapsList:${mintAddress}`;
 
     try {
       await redisCache.lpush(listKey, JSON.stringify(swapRecord));
