@@ -1473,9 +1473,13 @@ export const Create = () => {
             }
           } catch (parseError) {
             if (response.status === 404) {
-              throw new Error("The token doesn't exist or doesn't have metadata.");
+              throw new Error(
+                "The token doesn't exist or doesn't have metadata.",
+              );
             } else {
-              throw new Error(`Server error (${response.status}): Unable to retrieve token data. Token either doesn't exist or is already imported.`);
+              throw new Error(
+                `Server error (${response.status}): Unable to retrieve token data. Token either doesn't exist or is already imported.`,
+              );
             }
           }
         }
@@ -1492,27 +1496,31 @@ export const Create = () => {
                 type: "image/png",
               });
               setImageFile(imageFile);
-              
+
               // Create preview URL
               const previewUrl = URL.createObjectURL(imageBlob);
               setCoinDropImageUrl(previewUrl);
 
               // Upload the image to our storage
-              const uploadResponse = await fetch(`${env.apiUrl}/api/upload-import-image`, {
-                method: "POST",
-                headers,
-                credentials: "include",
-                body: JSON.stringify({
-                  imageBase64: await new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result as string);
-                    reader.readAsDataURL(imageBlob);
+              const uploadResponse = await fetch(
+                `${env.apiUrl}/api/upload-import-image`,
+                {
+                  method: "POST",
+                  headers,
+                  credentials: "include",
+                  body: JSON.stringify({
+                    imageBase64: await new Promise((resolve) => {
+                      const reader = new FileReader();
+                      reader.onloadend = () => resolve(reader.result as string);
+                      reader.readAsDataURL(imageBlob);
+                    }),
                   }),
-                }),
-              });
+                },
+              );
 
               if (uploadResponse.ok) {
-                const data = (await uploadResponse.json()) as UploadImportImageResponse;
+                const data =
+                  (await uploadResponse.json()) as UploadImportImageResponse;
                 if (data.success && data.imageUrl) {
                   tokenData.image = data.imageUrl;
                   // Update the form state with the new image URL
@@ -1550,20 +1558,25 @@ export const Create = () => {
         // Success message - ready to register
         setImportStatus({
           type: "success",
-          message: "Token data loaded successfully. You can now import this token.",
+          message:
+            "Token data loaded successfully. You can now import this token.",
         });
       } catch (fetchError) {
         console.error("API Error:", fetchError);
         setImportStatus({
           type: "error",
-          message: fetchError instanceof Error ? fetchError.message : "Failed to import token",
+          message:
+            fetchError instanceof Error
+              ? fetchError.message
+              : "Failed to import token",
         });
       }
     } catch (error) {
       console.error("Error importing token:", error);
       setImportStatus({
         type: "error",
-        message: error instanceof Error ? error.message : "Failed to import token",
+        message:
+          error instanceof Error ? error.message : "Failed to import token",
       });
     } finally {
       setIsImporting(false);
@@ -2009,33 +2022,31 @@ export const Create = () => {
           }
 
           // Create token with the imported data
-          const createResponse = await fetch(
-            env.apiUrl + "/api/create-token",
-            {
-              method: "POST",
-              headers,
-              credentials: "include",
-              body: JSON.stringify({
-                tokenMint: tokenData.mint,
-                mint: tokenData.mint,
-                name: form.name,
-                symbol: form.symbol,
-                description: form.description,
-                twitter: form.links.twitter,
-                telegram: form.links.telegram,
-                website: form.links.website,
-                discord: form.links.discord,
-                imageBase64: media_base64,
-                metadataUrl: tokenData.metadataUri || "",
-                creator:
-                  tokenData.creators ||
-                  tokenData.updateAuthority ||
-                  tokenData.mintAuthority ||
-                  "",
-                // Include the import flag to indicate this is an imported token
-                imported: true,
-              }),
-            });
+          const createResponse = await fetch(env.apiUrl + "/api/create-token", {
+            method: "POST",
+            headers,
+            credentials: "include",
+            body: JSON.stringify({
+              tokenMint: tokenData.mint,
+              mint: tokenData.mint,
+              name: form.name,
+              symbol: form.symbol,
+              description: form.description,
+              twitter: form.links.twitter,
+              telegram: form.links.telegram,
+              website: form.links.website,
+              discord: form.links.discord,
+              imageBase64: media_base64,
+              metadataUrl: tokenData.metadataUri || "",
+              creator:
+                tokenData.creators ||
+                tokenData.updateAuthority ||
+                tokenData.mintAuthority ||
+                "",
+              // Include the import flag to indicate this is an imported token
+              imported: true,
+            }),
+          });
 
           if (!createResponse.ok) {
             const errorData = (await createResponse.json()) as {

@@ -253,7 +253,10 @@ async function storeAccessToken(
   }
 }
 
-async function getRefreshToken(env: Env, userId: string): Promise<string | null> {
+async function getRefreshToken(
+  env: Env,
+  userId: string,
+): Promise<string | null> {
   try {
     const db = getDB(env);
     const result = await db
@@ -295,16 +298,22 @@ async function updateAccessToken(
   }
 }
 
-async function validateToken(env: Env, token: string, userId: string): Promise<boolean> {
+async function validateToken(
+  env: Env,
+  token: string,
+  userId: string,
+): Promise<boolean> {
   try {
     const db = getDB(env);
     const result = await db
       .select()
       .from(accessTokens)
-      .where(and(
-        eq(accessTokens.accessToken, token),
-        eq(accessTokens.userId, userId)
-      ))
+      .where(
+        and(
+          eq(accessTokens.accessToken, token),
+          eq(accessTokens.userId, userId),
+        ),
+      )
       .limit(1);
     return result.length > 0;
   } catch (err) {
@@ -688,7 +697,13 @@ shareRouter.post("/oauth/refresh", async (c) => {
     }
 
     const data = await response.json();
-    await updateAccessToken(c.env, userId, data.access_token, data.refresh_token, data.expires_in);
+    await updateAccessToken(
+      c.env,
+      userId,
+      data.access_token,
+      data.refresh_token,
+      data.expires_in,
+    );
     return c.json({ success: true });
   } catch (error) {
     c.status(500);

@@ -344,7 +344,10 @@ export class WebSocketDO {
         const totalChunks = parseInt(headers.get("X-Total-Chunks") || "0", 10);
         const chunk = await request.text();
         const storageKey = `partial:${messageId}`;
-        let partial = (await this.state.storage.get(storageKey)) as { chunks: Record<string, string>; totalChunks: number } || { chunks: {}, totalChunks };
+        const partial = ((await this.state.storage.get(storageKey)) as {
+          chunks: Record<string, string>;
+          totalChunks: number;
+        }) || { chunks: {}, totalChunks };
         if (!partial.totalChunks) {
           partial.totalChunks = totalChunks;
         }
@@ -352,17 +355,26 @@ export class WebSocketDO {
         await this.state.storage.put(storageKey, partial);
         if (Object.keys(partial.chunks).length < partial.totalChunks) {
           return new Response(
-            JSON.stringify({ success: true, message: `Received chunk ${chunkIndex}` }),
+            JSON.stringify({
+              success: true,
+              message: `Received chunk ${chunkIndex}`,
+            }),
             { headers: { "Content-Type": "application/json" } },
           );
         }
         // All chunks received, assemble and broadcast
-        const assembled = Array.from({ length: partial.totalChunks }, (_, i) => partial.chunks[i]).join("");
+        const assembled = Array.from(
+          { length: partial.totalChunks },
+          (_, i) => partial.chunks[i],
+        ).join("");
         await this.state.storage.delete(storageKey);
         const { room, event, data } = JSON.parse(assembled);
         await this.broadcastToRoom(room, event, data);
         return new Response(
-          JSON.stringify({ success: true, message: `Broadcast to ${room} successful` }),
+          JSON.stringify({
+            success: true,
+            message: `Broadcast to ${room} successful`,
+          }),
           { headers: { "Content-Type": "application/json" } },
         );
       }

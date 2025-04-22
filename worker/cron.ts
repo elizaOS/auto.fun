@@ -36,7 +36,10 @@ const lastProcessedSignature: string | null = null;
 // Define max swaps to keep in Redis list
 const MAX_SWAPS_TO_KEEP = 1000;
 
-function sanitizeTokenForWebSocket(token: Partial<Token>, maxBytes = 95000): Partial<Token> {
+function sanitizeTokenForWebSocket(
+  token: Partial<Token>,
+  maxBytes = 95000,
+): Partial<Token> {
   const clone = { ...token };
 
   // Helper to get byte size
@@ -95,7 +98,7 @@ function convertTokenDataToDBData(
         : tokenData.migration,
     withdrawnAmounts:
       tokenData.withdrawnAmounts &&
-        typeof tokenData.withdrawnAmounts !== "string"
+      typeof tokenData.withdrawnAmounts !== "string"
         ? JSON.stringify(tokenData.withdrawnAmounts)
         : tokenData.withdrawnAmounts,
     poolInfo:
@@ -195,7 +198,7 @@ export async function processTransactionLogs(
   env: Env,
   logs: string[],
   signature: string,
-  wsClient: any = null
+  wsClient: any = null,
 ): Promise<ProcessResult> {
   if (!wsClient) {
     wsClient = getWebSocketClient(env);
@@ -219,14 +222,15 @@ async function handleNewToken(
   env: Env,
   logs: string[],
   signature: string,
-  wsClient: any
+  wsClient: any,
 ): Promise<HandlerResult> {
   const newTokenLog = logs.find((log) => log.includes("NewToken:"));
   if (!newTokenLog) return null;
 
   try {
     const parts = newTokenLog.split(" ");
-    if (parts.length < 2) throw new Error(`Invalid NewToken log: ${newTokenLog}`);
+    if (parts.length < 2)
+      throw new Error(`Invalid NewToken log: ${newTokenLog}`);
 
     const rawTokenAddress = parts[parts.length - 2].replace(/[",)]/g, "");
     const rawCreatorAddress = parts[parts.length - 1].replace(/[",)]/g, "");
@@ -234,7 +238,12 @@ async function handleNewToken(
       throw new Error(`Malformed token address: ${rawTokenAddress}`);
     }
 
-    const newToken = await createNewTokenData(signature, rawTokenAddress, rawCreatorAddress, env);
+    const newToken = await createNewTokenData(
+      signature,
+      rawTokenAddress,
+      rawCreatorAddress,
+      env,
+    );
     if (!newToken) {
       logger.error(`Failed to create new token data for ${rawTokenAddress}`);
       return null;
@@ -257,7 +266,7 @@ async function handleSwap(
   env: Env,
   logs: string[],
   signature: string,
-  wsClient: any
+  wsClient: any,
 ): Promise<HandlerResult | null> {
   const mintLog = logs.find((log) => log.includes("Mint:"));
   const swapLog = logs.find((log) => log.includes("Swap:"));
@@ -276,12 +285,18 @@ async function handleSwap(
     }
 
     const swapParts = swapLog.trim().split(" ");
-    const [user, direction, amount] = swapParts.slice(-3).map(v => v.replace(/[",)]/g, ""));
+    const [user, direction, amount] = swapParts
+      .slice(-3)
+      .map((v) => v.replace(/[",)]/g, ""));
     if (!user || !["0", "1"].includes(direction) || isNaN(Number(amount))) {
       throw new Error(`Malformed swap data: ${swapLog}`);
     }
 
-    const [reserveToken, reserveLamport] = reservesLog.trim().split(" ").slice(-2).map(v => v.replace(/[",)]/g, ""));
+    const [reserveToken, reserveLamport] = reservesLog
+      .trim()
+      .split(" ")
+      .slice(-2)
+      .map((v) => v.replace(/[",)]/g, ""));
     if (isNaN(Number(reserveToken)) || isNaN(Number(reserveLamport))) {
       throw new Error(`Malformed reserve data: ${reservesLog}`);
     }
@@ -304,12 +319,17 @@ async function handleSwap(
     const solAmount = Number(reserveLamport) / 1e9;
     const currentPrice = solAmount / tokenAmount;
     const tokenPriceInSol = currentPrice / 10 ** TOKEN_DECIMALS;
-    const tokenPriceUSD = currentPrice > 0 ? tokenPriceInSol * solPrice * 10 ** TOKEN_DECIMALS : 0;
+    const tokenPriceUSD =
+      currentPrice > 0 ? tokenPriceInSol * solPrice * 10 ** TOKEN_DECIMALS : 0;
 
     tokenWithSupply.tokenPriceUSD = tokenPriceUSD;
     tokenWithSupply.currentPrice = currentPrice;
 
-    const tokenWithMarketData = await calculateTokenMarketData(tokenWithSupply, solPrice, env);
+    const tokenWithMarketData = await calculateTokenMarketData(
+      tokenWithSupply,
+      solPrice,
+      env,
+    );
     const marketCapUSD = tokenWithMarketData.marketCapUSD;
 
     const swapRecord = {
@@ -356,13 +376,15 @@ async function handleSwap(
         solPriceUSD: solPrice,
         curveProgress:
           ((Number(reserveLamport) - Number(env.VIRTUAL_RESERVES)) /
-            (Number(env.CURVE_LIMIT) - Number(env.VIRTUAL_RESERVES))) * 100,
+            (Number(env.CURVE_LIMIT) - Number(env.VIRTUAL_RESERVES))) *
+          100,
         txId: signature,
         lastUpdated: new Date(),
-        volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${direction === "1"
-          ? (Number(amount) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
-          : (Number(amountOut) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
-          }`,
+        volume24h: sql`COALESCE(${tokens.volume24h}, 0) + ${
+          direction === "1"
+            ? (Number(amount) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
+            : (Number(amountOut) / 10 ** TOKEN_DECIMALS) * tokenPriceUSD
+        }`,
       })
       .where(eq(tokens.mint, mintAddress))
       .returning();
@@ -412,7 +434,9 @@ async function handleSwap(
       featuredScore: calculateFeaturedScore(newToken, maxVolume, maxHolders),
     };
 
-    await wsClient.to("global").emit("updateToken", sanitizeTokenForWebSocket(enrichedToken));
+    await wsClient
+      .to("global")
+      .emit("updateToken", sanitizeTokenForWebSocket(enrichedToken));
 
     return {
       found: true,
@@ -425,12 +449,11 @@ async function handleSwap(
   }
 }
 
-
 async function handleCurveComplete(
   env: Env,
   logs: string[],
   signature: string,
-  wsClient: any
+  wsClient: any,
 ): Promise<HandlerResult> {
   const completeLog = logs.find((log) => log.includes("curve is completed"));
   const mintLog = logs.find((log) => log.includes("Mint:"));
@@ -450,7 +473,11 @@ async function handleCurveComplete(
     }
 
     await updateTokenInDB(env, token);
-    await wsClient.emit(`global`, "updateToken", sanitizeTokenForWebSocket(convertTokenDataToDBData(token)));
+    await wsClient.emit(
+      `global`,
+      "updateToken",
+      sanitizeTokenForWebSocket(convertTokenDataToDBData(token)),
+    );
 
     return { found: true, tokenAddress: mintAddress, event: "curveComplete" };
   } catch (err) {
@@ -458,8 +485,6 @@ async function handleCurveComplete(
     return null;
   }
 }
-
-
 
 export async function cron(
   env: Env,

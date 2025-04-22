@@ -43,8 +43,12 @@ export class WebSocketClient {
           });
           if (!response.ok) {
             const error = await response.text();
-            logger.error(`Error broadcasting to room ${formattedRoom}: ${error}`);
-            throw new Error(`Failed to broadcast to room ${formattedRoom}: ${error}`);
+            logger.error(
+              `Error broadcasting to room ${formattedRoom}: ${error}`,
+            );
+            throw new Error(
+              `Failed to broadcast to room ${formattedRoom}: ${error}`,
+            );
           }
         } else {
           const messageId = crypto.randomUUID();
@@ -64,8 +68,12 @@ export class WebSocketClient {
             });
             if (!response.ok) {
               const error = await response.text();
-              logger.error(`Error broadcasting chunk ${i} to room ${formattedRoom}: ${error}`);
-              throw new Error(`Failed to broadcast chunk ${i} to room ${formattedRoom}: ${error}`);
+              logger.error(
+                `Error broadcasting chunk ${i} to room ${formattedRoom}: ${error}`,
+              );
+              throw new Error(
+                `Failed to broadcast chunk ${i} to room ${formattedRoom}: ${error}`,
+              );
             }
           }
         }

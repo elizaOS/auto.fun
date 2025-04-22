@@ -208,15 +208,19 @@ export const oauthVerifiers = pgTable("oauth_verifiers", {
 });
 
 // AccessTokens schema
-export const accessTokens = pgTable("access_tokens", {
-  id: text("id").primaryKey(),
-  userId: text("user_id").notNull(),
-  accessToken: text("access_token").notNull(),
-  refreshToken: text("refresh_token").notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-}, (table) => ({
-  userIdUnique: unique().on(table.userId),
-}));
+export const accessTokens = pgTable(
+  "access_tokens",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    accessToken: text("access_token").notNull(),
+    refreshToken: text("refresh_token").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+  },
+  (table) => ({
+    userIdUnique: unique().on(table.userId),
+  }),
+);
 
 // TokenAgents schema
 export const tokenAgents = pgTable("token_agents", {

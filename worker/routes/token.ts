@@ -1773,19 +1773,19 @@ tokenRouter.post("/create-token", async (c) => {
       if (imageBase64) {
         try {
           // Extract the base64 data from the data URL
-          const base64Data = imageBase64.split(',')[1];
-          const imageBuffer = Buffer.from(base64Data, 'base64');
-          
+          const base64Data = imageBase64.split(",")[1];
+          const imageBuffer = Buffer.from(base64Data, "base64");
+
           // Generate a unique filename
           const filename = `${mintAddress}-${Date.now()}.png`;
-          
+
           // Upload to R2
           await c.env.R2.put(filename, imageBuffer, {
             httpMetadata: {
-              contentType: 'image/png',
+              contentType: "image/png",
             },
           });
-          
+
           // Set the public URL for the image
           imageUrl = `${c.env.R2_PUBLIC_URL}/${filename}`;
         } catch (error) {
@@ -2422,7 +2422,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
       500,
     );
   }
-}); 
+});
 
 tokenRouter.post("/search-token", async (c) => {
   const body = await c.req.json();
@@ -2454,10 +2454,13 @@ tokenRouter.post("/search-token", async (c) => {
 
   if (existingToken && existingToken.length > 0) {
     logger.log(`[search-token] Token ${mint} is already imported`);
-    return c.json({ 
-      error: "Token already imported",
-      token: existingToken[0]
-    }, 409);
+    return c.json(
+      {
+        error: "Token already imported",
+        token: existingToken[0],
+      },
+      409,
+    );
   }
 
   const connection = new Connection(getMainnetRpcUrl(c.env), "confirmed");
@@ -2530,9 +2533,10 @@ export async function uploadImportImage(c: Context) {
       return c.json({ error: "R2 public URL not configured" }, 500);
     }
 
-    const imageUrl = env.API_URL?.includes("localhost") || env.API_URL?.includes("127.0.0.1")
-      ? `${env.API_URL}/api/image/${imageFilename}`
-      : `${r2PublicUrl.replace(/\/$/, "")}/${imageKey}`;
+    const imageUrl =
+      env.API_URL?.includes("localhost") || env.API_URL?.includes("127.0.0.1")
+        ? `${env.API_URL}/api/image/${imageFilename}`
+        : `${r2PublicUrl.replace(/\/$/, "")}/${imageKey}`;
 
     return c.json({ success: true, imageUrl });
   } catch (error) {
