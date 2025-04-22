@@ -17,7 +17,7 @@
     "types": ["@cloudflare/workers-types", "node"],
     "paths": {
       "@/*": ["./src/*"],
-      "@/libraries/*": ["./public/libraries/*"]
+      "@/libraries/*": ["packages/client/public/libraries/*"]
     },
     "declaration": true,
     "emitDeclarationOnly": true,

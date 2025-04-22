@@ -1,7 +1,14 @@
 name = "api-dev"
-main = "worker/index.ts"
+main = "packages/worker/dist/index.js"
 compatibility_date = "2024-08-21"
 compatibility_flags = [ "nodejs_compat_v2" ]
+
+[build]
+command = "bun run build --filter=@autodotfun/worker..."
+# Optional: specify cwd if needed, but turbo command should run from root
+# cwd = "."
+# Optional: specify watch_dir if different from package root
+# watch_dir = "packages/worker/src"
 
 [observability]
 enabled = true
@@ -15,7 +22,7 @@ binding = "AI"
 
 # Cloudflare Pages configuration
 [site]
-bucket = "./dist"
+bucket = "packages/client/dist"
 
 # Cron triggers
 [triggers]
@@ -53,7 +60,7 @@ tag = "v1"
 name = "api-dev"
 # Site configuration for development
 [env.development.site]
-bucket = "./dist"
+bucket = "packages/client/dist"
 
 # Add AI binding for development - fix to object format
 [env.development.ai]

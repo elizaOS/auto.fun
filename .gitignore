@@ -1,5 +1,4 @@
 # Logs
-vanity/target
 logs
 *.log
 npm-debug.log*
@@ -32,3 +31,6 @@ dist-ssr
 .env
 .wrangler
 .dev.vars
+
+ignore/
+.turbo/
