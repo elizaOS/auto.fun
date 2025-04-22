@@ -657,7 +657,7 @@ export default function Page() {
                     </span>
                   </div>
                 </div>
-                {token?.status !== "migrated" ? (
+                {token?.status !== "migrated" && token?.curveProgress !== 100 ? (
                   <p className="font-satoshi text-sm text-autofun-text-secondary whitespace-pre-line break-words mt-2">
                     {/* Graduate this coin at{" "}
                     {formatNumber(graduationMarketCap, true)} market cap.{"\n"} */}
