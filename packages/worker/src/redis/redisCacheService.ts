@@ -4,6 +4,8 @@ import { logger } from "../util";
 import { RedisPool } from "./redisPool"; 
 dotenv.config();
 
+let redisCacheInstance: RedisCacheService | null = null;
+
 class RedisCacheService {
   constructor(
     private redisPool: RedisPool,
@@ -96,13 +98,16 @@ class RedisCacheService {
 }
 
 export function createRedisCache(env: Env) {
-  logger.info("Creating Redis cache service");
-  const redisPool = new RedisPool({
-    host: env.REDIS_HOST,
-    port: Number(env.REDIS_PORT),
-    password: env.REDIS_PASSWORD,
-  });
+  if (!redisCacheInstance) {
+    logger.info("Creating Redis cache service");
+    const redisPool = new RedisPool({
+      host: env.REDIS_HOST,
+      port: Number(env.REDIS_PORT),
+      password: env.REDIS_PASSWORD,
+    });
 
-  logger.info("Redis cache service created");
-  return new RedisCacheService(redisPool, env);
+    logger.info("Redis cache service created");
+    redisCacheInstance = new RedisCacheService(redisPool, env);
+  }
+  return redisCacheInstance;
 }

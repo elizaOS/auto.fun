@@ -466,7 +466,7 @@ async function handleCurveComplete(
 
     await updateTokenInDB(env, token);
     await wsClient.emit(
-      `global`,
+      "global",
       "updateToken",
       sanitizeTokenForWebSocket(convertTokenDataToDBData(token)),
     );
@@ -507,6 +507,7 @@ export async function cron(
 
 export async function updateTokens(env: Env) {
   const db = getDB(env);
+  const cache = createRedisCache(env);
   logger.log("Starting updateTokens cron task...");
 
   // Fetch active tokens with necessary fields
@@ -585,6 +586,24 @@ export async function updateTokens(env: Env) {
         for (let i = 0; i < total; i += CHUNK_SIZE) {
           const batch = activeTokens.slice(i, i + CHUNK_SIZE) as Token[];
           const updatedBatch = await bulkUpdatePartialTokens(batch, env);
+          // Push ephemeral metrics to Redis (TTL 60s)
+          await Promise.all(updatedBatch.map(token =>
+            cache.set(
+              `token:stats:${token.mint}`,
+              JSON.stringify({
+                currentPrice: token.currentPrice,
+                tokenPriceUSD: token.tokenPriceUSD,
+                solPriceUSD: token.solPriceUSD,
+                marketCapUSD: token.marketCapUSD,
+                volume24h: token.volume24h,
+                priceChange24h: token.priceChange24h,
+                price24hAgo: token.price24hAgo,
+                curveProgress: token.curveProgress,
+                curveLimit: token.curveLimit,
+              }),
+              60,
+            )
+          ));
           logger.log(`Cron: Updated prices for batch ${Math.floor(i/CHUNK_SIZE)+1} (${updatedBatch.length}/${batch.length}) tokens`);
         }
         logger.log(`Cron: Completed price updates for ${total} tokens in batches of ${CHUNK_SIZE}`);
