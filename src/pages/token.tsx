@@ -683,7 +683,7 @@ export default function Page() {
             {/* Price Display - Now below bonding curve */}
             <div className="py-4 px-3">
               <div className="flex justify-between flex-col">
-                <div className="flexcol gap-1 items-center py-4">
+                <div className="flex-col gap-1 items-center py-4">
                   <span className="font-dm-mono text-autofun-text-secondary">
                     Price USD
                   </span>
