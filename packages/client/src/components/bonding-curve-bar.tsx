@@ -78,15 +78,19 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
             transition-all duration-[1500ms] ease-in-out 
             flex items-center 
             ${width < 15 ? "justify-start" : "justify-end"}
-            ${width === 100 ? 'animate-subtle-pulse' : ''}
+            ${width === 100 ? "animate-subtle-pulse" : ""}
           `}
           style={{
             width: `${width}%`,
           }}
         >
-          <span className={`font-medium font-dm-mono text-sm px-1 whitespace-nowrap ${
-            width >= 50 ? "text-black pr-2" : "text-autofun-text-secondary pl-2"
-          }`}>
+          <span
+            className={`font-medium font-dm-mono text-sm px-1 whitespace-nowrap ${
+              width >= 50
+                ? "text-black pr-2"
+                : "text-autofun-text-secondary pl-2"
+            }`}
+          >
             {displayedValue}%
           </span>
         </div>

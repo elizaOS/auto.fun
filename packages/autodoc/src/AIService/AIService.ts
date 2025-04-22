@@ -1,9 +1,9 @@
-import { ChatOpenAI } from '@langchain/openai';
-import dotenv from 'dotenv';
-import type { Configuration } from '../Configuration.js';
-import { TypeScriptParser } from '../TypeScriptParser.js';
-import { CodeFormatter } from './utils/CodeFormatter.js';
-import { DocumentOrganizer } from './utils/DocumentOrganizer.js';
+import { ChatOpenAI } from "@langchain/openai";
+import dotenv from "dotenv";
+import type { Configuration } from "../Configuration.js";
+import { TypeScriptParser } from "../TypeScriptParser.js";
+import { CodeFormatter } from "./utils/CodeFormatter.js";
+import { DocumentOrganizer } from "./utils/DocumentOrganizer.js";
 
 dotenv.config();
 
@@ -27,12 +27,12 @@ export class AIService {
    */
   constructor(private configuration: Configuration) {
     if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is not set');
+      throw new Error("OPENAI_API_KEY is not set");
     }
     this.chatModel = new ChatOpenAI({ apiKey: process.env.OPENAI_API_KEY });
     this.chatModelFAQ = new ChatOpenAI({
       apiKey: process.env.OPENAI_API_KEY,
-      model: 'gpt-4o',
+      model: "gpt-4o",
     });
     this.codeFormatter = new CodeFormatter();
   }
@@ -50,7 +50,9 @@ export class AIService {
         finalPrompt = this.codeFormatter.truncateCodeBlock(prompt, 8000);
       }
 
-      console.log(`Generating comment for prompt of length: ${finalPrompt.length}`);
+      console.log(
+        `Generating comment for prompt of length: ${finalPrompt.length}`,
+      );
 
       try {
         let response;
@@ -61,8 +63,13 @@ export class AIService {
         }
         return response.content as string;
       } catch (error) {
-        if (error instanceof Error && error.message.includes('maximum context length')) {
-          console.warn('Token limit exceeded, attempting with further truncation...');
+        if (
+          error instanceof Error &&
+          error.message.includes("maximum context length")
+        ) {
+          console.warn(
+            "Token limit exceeded, attempting with further truncation...",
+          );
           // Try with more aggressive truncation
           finalPrompt = this.codeFormatter.truncateCodeBlock(prompt, 4000);
           try {
@@ -71,9 +78,11 @@ export class AIService {
           } catch (retryError) {
             if (
               retryError instanceof Error &&
-              retryError.message.includes('maximum context length')
+              retryError.message.includes("maximum context length")
             ) {
-              console.warn('Still exceeding token limit, using minimal context...');
+              console.warn(
+                "Still exceeding token limit, using minimal context...",
+              );
               // Final attempt with minimal context
               finalPrompt = this.codeFormatter.truncateCodeBlock(prompt, 2000);
               const response = await this.chatModel.invoke(finalPrompt);
@@ -86,7 +95,7 @@ export class AIService {
       }
     } catch (error) {
       this.handleAPIError(error as Error);
-      return '';
+      return "";
     }
   }
 
@@ -98,7 +107,7 @@ export class AIService {
    * @returns {void}
    */
   public handleAPIError(error: Error): void {
-    console.error('API Error:', error.message);
+    console.error("API Error:", error.message);
     throw error;
   }
 }
