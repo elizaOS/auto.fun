@@ -21,7 +21,7 @@ export default function BondingCurveBar({ progress }: { progress: number }) {
   useEffect(() => {
     const containerWidth = containerRef.current?.offsetWidth || 0;
     const rawLeft = (containerWidth * width) / 120;
-    const labelWidth = 30; // assume ~40px width for the label
+    const labelWidth = 30; // width for the label
     const padding = 3;
 
     const min = labelWidth / 2 + padding;
