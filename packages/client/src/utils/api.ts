@@ -11,7 +11,7 @@ export const fetcher = async (
   body?: object,
 ) => {
   try {
-    const response = await fetchWithAuth(`${env.apiUrl}${endpoint}`, {
+    const response = await fetchWithAuth(`${process.env.apiUrl}${endpoint}`, {
       method,
       headers: {
         "Content-Type": "application/json",

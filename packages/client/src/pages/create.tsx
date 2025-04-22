@@ -19,8 +19,8 @@ import InlineVanityWorker from "@/workers/vanityWorker?worker&inline"; // Added 
 
 const MAX_INITIAL_SOL = isDevnet ? 2.8 : 28;
 // Use the token supply and virtual reserves from environment or fallback to defaults
-const TOKEN_SUPPLY = Number(env.tokenSupply) || 1000000000;
-const VIRTUAL_RESERVES = Number(env.virtualReserves) || 100;
+const TOKEN_SUPPLY = Number(process.env.tokenSupply) || 1000000000;
+const VIRTUAL_RESERVES = Number(process.env.virtualReserves) || 100;
 
 // Tab types
 enum FormTab {
@@ -624,7 +624,7 @@ const uploadImage = async (metadata: TokenMetadata) => {
     headers["Authorization"] = `Bearer ${authToken}`;
   }
 
-  const response = await fetch(env.apiUrl + "/api/upload", {
+  const response = await fetch(process.env.apiUrl + "/api/upload", {
     method: "POST",
     headers,
     credentials: "include",
@@ -1261,7 +1261,7 @@ export const Create = () => {
         headers["Authorization"] = `Bearer ${authToken}`;
       }
 
-      const response = await fetch(env.apiUrl + "/api/generate-metadata", {
+      const response = await fetch(process.env.apiUrl + "/api/generate-metadata", {
         method: "POST",
         headers,
         credentials: "include",
@@ -1316,7 +1316,7 @@ export const Create = () => {
       setIsGenerating(true);
       setGeneratingField("prompt");
 
-      const imageResponse = await fetch(env.apiUrl + "/api/generate", {
+      const imageResponse = await fetch(process.env.apiUrl + "/api/generate", {
         method: "POST",
         headers,
         credentials: "include",
@@ -1455,7 +1455,7 @@ export const Create = () => {
 
       try {
         // Fetch token data from a special search endpoint that can find any token
-        const response = await fetch(`${env.apiUrl}/api/search-token`, {
+        const response = await fetch(`${process.env.apiUrl}/api/search-token`, {
           method: "POST",
           headers,
           credentials: "include",
@@ -1503,7 +1503,7 @@ export const Create = () => {
 
               // Upload the image to our storage
               const uploadResponse = await fetch(
-                `${env.apiUrl}/api/upload-import-image`,
+                `${process.env.apiUrl}/api/upload-import-image`,
                 {
                   method: "POST",
                   headers,
@@ -1659,7 +1659,7 @@ export const Create = () => {
         }
 
         // Get a pre-generated token
-        const response = await fetch(env.apiUrl + "/api/pre-generated-token", {
+        const response = await fetch(process.env.apiUrl + "/api/pre-generated-token", {
           method: "GET",
           headers,
           credentials: "include",
@@ -1710,7 +1710,7 @@ export const Create = () => {
             // Extract the filename from the R2 URL
             const filename = imageUrl.split("/").pop();
             // Use local endpoint instead
-            imageUrl = `${env.apiUrl}/api/image/${filename}`;
+            imageUrl = `${process.env.apiUrl}/api/image/${filename}`;
           }
 
           const imageBlob = await fetch(imageUrl).then((r) => r.blob());
@@ -1733,7 +1733,7 @@ export const Create = () => {
           }
         } else {
           // If no image, generate one using the prompt
-          const imageResponse = await fetch(env.apiUrl + "/api/generate", {
+          const imageResponse = await fetch(process.env.apiUrl + "/api/generate", {
             method: "POST",
             headers,
             credentials: "include",
@@ -2022,7 +2022,7 @@ export const Create = () => {
           }
 
           // Create token with the imported data
-          const createResponse = await fetch(env.apiUrl + "/api/create-token", {
+          const createResponse = await fetch(process.env.apiUrl + "/api/create-token", {
             method: "POST",
             headers,
             credentials: "include",
@@ -2147,7 +2147,7 @@ export const Create = () => {
           }
 
           // Create token record via API
-          const createResponse = await fetch(env.apiUrl + "/api/create-token", {
+          const createResponse = await fetch(process.env.apiUrl + "/api/create-token", {
             method: "POST",
             headers,
             credentials: "include",
@@ -2361,7 +2361,7 @@ export const Create = () => {
           }
 
           // Mark the token as used and delete any other tokens with the same name or ticker
-          await fetch(env.apiUrl + "/api/mark-token-used", {
+          await fetch(process.env.apiUrl + "/api/mark-token-used", {
             method: "POST",
             headers,
             credentials: "include",
@@ -2491,7 +2491,7 @@ export const Create = () => {
 
           // Get a pre-generated token
           const response = await fetch(
-            env.apiUrl + "/api/pre-generated-token",
+            process.env.apiUrl + "/api/pre-generated-token",
             {
               method: "GET",
               headers,
@@ -2544,13 +2544,13 @@ export const Create = () => {
             let imageUrl = token.image;
             if (
               imageUrl.includes("r2.dev") &&
-              env.apiUrl?.includes("localhost") &&
-              env.apiUrl?.includes("127.0.0.1")
+              process.env.apiUrl?.includes("localhost") &&
+              process.env.apiUrl?.includes("127.0.0.1")
             ) {
               // Extract the filename from the R2 URL
               const filename = imageUrl.split("/").pop();
               // Use local endpoint instead
-              imageUrl = `${env.apiUrl}/api/image/${filename}`;
+              imageUrl = `${process.env.apiUrl}/api/image/${filename}`;
             }
 
             const imageBlob = await fetch(imageUrl).then((r) => r.blob());

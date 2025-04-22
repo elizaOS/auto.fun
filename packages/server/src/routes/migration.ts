@@ -25,7 +25,7 @@ const migrationRouter = new Hono<{
 migrationRouter.use("/migration", async (c, next) => {
   const authHeader = c.req.header("Authorization");
   const apiKey = authHeader ? authHeader.split(" ")[1] : null;
-  if (!apiKey || apiKey !== c.env.JWT_SECRET) {
+  if (!apiKey || apiKey !== process.env.JWT_SECRET) {
     return c.json({ error: "Unauthorized" }, 401);
   }
   await next();
@@ -40,14 +40,18 @@ migrationRouter.post("/migration/resume", async (c) => {
 
     // Create connection based on the environment setting.
     const connection = new Connection(
-      c.env.NETWORK === "devnet"
-        ? c.env.DEVNET_SOLANA_RPC_URL
-        : c.env.MAINNET_SOLANA_RPC_URL,
+      process.env.NETWORK === "devnet"
+        ? process.env.DEVNET_SOLANA_RPC_URL || ""
+        : process.env.MAINNET_SOLANA_RPC_URL || "",
     );
 
-    // Create a wallet using the secret from env.
+    if (!process.env.WALLET_PRIVATE_KEY) {
+      throw new Error("Wallet private key not found");
+    }
+
+    // Create a wallet using the secret from process.env.
     const wallet = Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(c.env.WALLET_PRIVATE_KEY)),
+      Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
     );
 
     // Build an Anchor provider.
@@ -65,11 +69,10 @@ migrationRouter.post("/migration/resume", async (c) => {
 
     // Create an instance of TokenMigrator.
     const tokenMigrator = new TokenMigrator(
-      c.env,
       connection,
       new Wallet(wallet),
       program,
-      autofunProgram,
+      autofunProgram as any,
       provider,
     );
 
@@ -141,7 +144,7 @@ migrationRouter.post("/claimFees", async (c) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${c.env.JWT_SECRET}`,
+        Authorization: `Bearer ${process.env.JWT_SECRET}`,
       },
       body: JSON.stringify(payload),
     });
@@ -204,16 +207,20 @@ migrationRouter.get("/checkBalance", async (c) => {
       return c.json({ error: "Position NFT not found" }, 404);
     }
 
-    // Create a wallet using the secret from env.
+    if (!process.env.WALLET_PRIVATE_KEY) {
+      throw new Error("Wallet private key not found");
+    }
+
+    // Create a wallet using the secret from process.env.
     const wallet = Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(c.env.WALLET_PRIVATE_KEY)),
+      Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
     );
 
     // Create connection based on the environment setting.
     const connection = new Connection(
-      c.env.NETWORK === "devnet"
-        ? c.env.DEVNET_SOLANA_RPC_URL
-        : c.env.MAINNET_SOLANA_RPC_URL,
+      process.env.NETWORK === "devnet"
+        ? process.env.DEVNET_SOLANA_RPC_URL || ""
+        : process.env.MAINNET_SOLANA_RPC_URL || "",
     );
 
     const checkBalanceResult = await checkBalance(
@@ -261,7 +268,7 @@ migrationRouter.post("/migration/update", async (c) => {
       .execute();
 
     // emit event to notify
-    const ws = getWebSocketClient(c.env);
+    const ws = getWebSocketClient();
 
     if (step === "finalize") {
       ws.to(`token-${mint}`).emit("updateToken", token);
@@ -299,7 +306,6 @@ migrationRouter.post("/migration/addMissingTokens", async (c) => {
       signature,
       rawTokenAddress,
       rawCreatorAddress,
-      c.env,
     );
     await getDB()
       .insert(tokens)

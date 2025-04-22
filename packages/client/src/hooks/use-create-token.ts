@@ -68,9 +68,9 @@ const useCreateTokenMutation = () => {
         token_metadata.initialSol > 0
           ? await launchAndSwapTx(
               userPublicKey,
-              Number(env.decimals),
-              Number(env.tokenSupply),
-              Number(env.virtualReserves),
+              Number(process.env.decimals),
+              Number(process.env.tokenSupply),
+              Number(process.env.virtualReserves),
               token_metadata.name,
               token_metadata.symbol,
               metadataUrl,
@@ -83,9 +83,9 @@ const useCreateTokenMutation = () => {
             )
           : await program.methods
               .launch(
-                Number(env.decimals),
-                new BN(Number(env.tokenSupply)),
-                new BN(Number(env.virtualReserves)),
+                Number(process.env.decimals),
+                new BN(Number(process.env.tokenSupply)),
+                new BN(Number(process.env.virtualReserves)),
                 token_metadata.name,
                 token_metadata.symbol,
                 metadataUrl,

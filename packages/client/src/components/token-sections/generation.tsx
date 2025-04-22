@@ -9,7 +9,7 @@ import Loader from "../loader";
 import CopyButton from "../copy-button";
 
 // --- API Base URL ---
-const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
+const API_BASE_URL = process.env.apiUrl || ""; // Ensure fallback
 
 // Function to get the correct icon path based on the current tab
 const getTabIconPath = (
@@ -181,7 +181,7 @@ export default function CommunityTab() {
               } else {
                 // Otherwise, use the R2 public URL
                 imageUrls.push(
-                  `${env.r2PublicUrl}/generations/${tokenMint}/gen-${i}.jpg`,
+                  `${process.env.r2PublicUrl}/generations/${tokenMint}/gen-${i}.jpg`,
                 );
               }
             }
@@ -388,7 +388,7 @@ export default function CommunityTab() {
       }
 
       // Log API URL to help debug
-      const apiUrl = `${env.apiUrl}/api/enhance-and-generate`;
+      const apiUrl = `${process.env.apiUrl}/api/enhance-and-generate`;
 
       // Create headers
       const headers: Record<string, string> = {
@@ -518,7 +518,7 @@ export default function CommunityTab() {
           // It's a URL, make sure it's absolute
           const fullUrl = data.mediaUrl.startsWith("http")
             ? data.mediaUrl
-            : `${env.apiUrl}${data.mediaUrl.startsWith("/") ? "" : "/"}${data.mediaUrl}`;
+            : `${process.env.apiUrl}${data.mediaUrl.startsWith("/") ? "" : "/"}${data.mediaUrl}`;
           setGeneratedImage(fullUrl);
         }
 
@@ -608,7 +608,7 @@ export default function CommunityTab() {
       }
 
       // API endpoint
-      const apiUrl = `${env.apiUrl}/api/enhance-and-generate`;
+      const apiUrl = `${process.env.apiUrl}/api/enhance-and-generate`;
 
       // Create headers
       const headers: Record<string, string> = {
@@ -737,7 +737,7 @@ export default function CommunityTab() {
         // It's a URL, make sure it's absolute
         const fullUrl = data.mediaUrl.startsWith("http")
           ? data.mediaUrl
-          : `${env.apiUrl}${data.mediaUrl.startsWith("/") ? "" : "/"}${data.mediaUrl}`;
+          : `${process.env.apiUrl}${data.mediaUrl.startsWith("/") ? "" : "/"}${data.mediaUrl}`;
 
         setGeneratedImage(fullUrl); // We'll reuse this state for videos too
         setProcessingStatus("processed");
@@ -887,7 +887,7 @@ export default function CommunityTab() {
           window.location.hash,
       );
 
-      const apiUrl = env.apiUrl;
+      const apiUrl = process.env.apiUrl;
       if (!apiUrl) {
         toast.error("API URL not configured.");
         setIsSharing(false);
@@ -923,7 +923,7 @@ export default function CommunityTab() {
     try {
       toast.info("Uploading media to X...");
       const mediaUploadResponse = await fetchWithAuth(
-        `${env.apiUrl}/api/share/upload-media`,
+        `${process.env.apiUrl}/api/share/upload-media`,
         {
           method: "POST",
           headers: {
@@ -960,7 +960,7 @@ export default function CommunityTab() {
     // 2. Create tweet with the media ID
     try {
       toast.info("Posting tweet...");
-      const tweetResponse = await fetch(`${env.apiUrl}/api/share/tweet`, {
+      const tweetResponse = await fetch(`${process.env.apiUrl}/api/share/tweet`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1180,8 +1180,8 @@ export default function CommunityTab() {
       // Decide which networks to check
       const networksToCheck = [
         {
-          name: env.solanaNetwork || "devnet",
-          url: env.rpcUrl,
+          name: process.env.solanaNetwork || "devnet",
+          url: process.env.rpcUrl,
         },
       ];
 
@@ -1340,7 +1340,7 @@ export default function CommunityTab() {
       }
 
       // API endpoint
-      const apiUrl = `${env.apiUrl}/api/enhance-and-generate`;
+      const apiUrl = `${process.env.apiUrl}/api/enhance-and-generate`;
       // Create headers
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -1468,7 +1468,7 @@ export default function CommunityTab() {
         // It's a URL, make sure it's absolute
         const fullUrl = data.mediaUrl.startsWith("http")
           ? data.mediaUrl
-          : `${env.apiUrl}${data.mediaUrl.startsWith("/") ? "" : "/"}${data.mediaUrl}`;
+          : `${process.env.apiUrl}${data.mediaUrl.startsWith("/") ? "" : "/"}${data.mediaUrl}`;
 
         setGeneratedImage(fullUrl); // We'll reuse this state for audio too
         setEditableLyrics(data.lyrics);

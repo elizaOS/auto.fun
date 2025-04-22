@@ -234,7 +234,7 @@ tokenRouter.get("/image/:filename", async (c) => {
       return c.json({ error: "Filename parameter is required" }, 400);
     }
 
-    if (!c.env.R2) {
+    if (!process.env.R2) {
       logger.error("[/image/:filename] R2 storage is not available");
       return c.json({ error: "R2 storage is not available" }, 500);
     }
@@ -261,7 +261,7 @@ tokenRouter.get("/image/:filename", async (c) => {
     logger.log(
       `[/image/:filename] Attempting to get object from R2 key: ${imageKey}`,
     );
-    const object = await c.env.R2.get(imageKey);
+    const object = await process.env.R2.get(imageKey);
 
     if (!object) {
       logger.warn(
@@ -271,7 +271,7 @@ tokenRouter.get("/image/:filename", async (c) => {
       // DEBUG: List files in the token-images directory to help diagnose issues
       try {
         const prefix = imageKey.split("/")[0] + "/";
-        const objects = await c.env.R2.list({
+        const objects = await process.env.R2.list({
           prefix,
           limit: 10,
         });
@@ -347,7 +347,7 @@ tokenRouter.get("/metadata/:filename", async (c) => {
       return c.json({ error: "Filename parameter must end with .json" }, 400);
     }
 
-    if (!c.env.R2) {
+    if (!process.env.R2) {
       logger.error("[/metadata/:filename] R2 storage is not configured");
       return c.json({ error: "R2 storage is not available" }, 500);
     }
@@ -363,14 +363,14 @@ tokenRouter.get("/metadata/:filename", async (c) => {
     logger.log(
       `[/metadata/:filename] Checking primary location: ${primaryKey}`,
     );
-    let object = await c.env.R2.get(primaryKey);
+    let object = await process.env.R2.get(primaryKey);
 
     // If not found in primary location, check fallback location
     if (!object) {
       logger.log(
         `[/metadata/:filename] Not found in primary location, checking fallback: ${fallbackKey}`,
       );
-      object = await c.env.R2.get(fallbackKey);
+      object = await process.env.R2.get(fallbackKey);
     }
 
     if (!object) {
@@ -408,7 +408,6 @@ tokenRouter.get("/metadata/:filename", async (c) => {
 });
 
 export async function processSwapEvent(
-  env: Env,
   swap: any,
   shouldEmitGlobal: boolean = true,
 ): Promise<void> {
@@ -453,7 +452,7 @@ export async function processSwapEvent(
 
     // Only log in debug mode or for significant events
     // Check for process is not ideal in Cloudflare Workers, use env var instead
-    const debugWs = (env as any).DEBUG_WEBSOCKET === "true";
+    const debugWs = process.env.DEBUG_WEBSOCKET === "true";
     if (debugWs) {
       logger.log(`Emitted swap event for token ${swap.tokenMint}`);
     }
@@ -752,7 +751,7 @@ async function processTokenInfo(
   // since they might not use the tokenMetadata extension
 
   // Check if we're in development mode
-  const isLocalDev = c.env.LOCAL_DEV === "true" || c.env.LOCAL_DEV === true;
+  const isLocalDev = process.env.LOCAL_DEV === "true";
 
   // Determine if requestor is the creator/authority
   // In development mode, always allow any token to be imported
@@ -761,7 +760,7 @@ async function processTokenInfo(
     : updateAuthority === requestor || mintAuthority === requestor;
 
   logger.log(`[search-token] Is local development mode? ${isLocalDev}`);
-  logger.log(`[search-token] LOCAL_DEV value: ${c.env.LOCAL_DEV}`);
+  logger.log(`[search-token] LOCAL_DEV value: ${process.env.LOCAL_DEV}`);
   logger.log(`[search-token] Is requestor the creator? ${isCreator}`);
   logger.log(`[search-token] Request wallet: ${requestor}`);
   logger.log(`[search-token] Update authority: ${updateAuthority}`);
@@ -824,16 +823,16 @@ async function checkBlockchainTokenBalance(
   let balance = 0;
   let foundNetwork = ""; // Renamed to avoid confusion with loop variable
   // Get explicit mainnet and devnet URLs
-  const mainnetUrl = getMainnetRpcUrl(c.env);
-  const devnetUrl = getDevnetRpcUrl(c.env);
+  const mainnetUrl = getMainnetRpcUrl();
+  const devnetUrl = getDevnetRpcUrl();
 
   // Log detailed connection info and environment settings
   logger.log(`IMPORTANT DEBUG INFO FOR TOKEN BALANCE CHECK:`);
   logger.log(`Address: ${address}`);
   logger.log(`Mint: ${mint}`);
   logger.log(`CheckMultipleNetworks: ${checkMultipleNetworks}`);
-  logger.log(`LOCAL_DEV setting: ${c.env.LOCAL_DEV}`);
-  logger.log(`ENV.NETWORK setting: ${c.env.NETWORK || "not set"}`);
+  logger.log(`LOCAL_DEV setting: ${process.env.LOCAL_DEV}`);
+  logger.log(`ENV.NETWORK setting: ${process.env.NETWORK || "not set"}`);
   logger.log(`Mainnet URL: ${mainnetUrl}`);
   logger.log(`Devnet URL: ${devnetUrl}`);
 
@@ -845,8 +844,8 @@ async function checkBlockchainTokenBalance(
       ]
     : [
         {
-          name: c.env.NETWORK || "devnet",
-          url: c.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+          name: process.env.NETWORK || "devnet",
+          url: process.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
         },
       ];
 
@@ -947,14 +946,13 @@ async function checkBlockchainTokenBalance(
     isCreator: false, // We don't know if creator when checking directly
     mint,
     address,
-    network: foundNetwork || c.env.NETWORK || "unknown",
+    network: foundNetwork || process.env.NETWORK || "unknown",
     onChain: true,
   });
 }
 
 // Function to process a token update and emit WebSocket events
 export async function processTokenUpdateEvent(
-  env: Env,
   tokenData: any,
   shouldEmitGlobal: boolean = false,
 ): Promise<void> {
@@ -984,7 +982,7 @@ export async function processTokenUpdateEvent(
     );
 
     // Use env var for debug check
-    const debugWs = (env as any).DEBUG_WEBSOCKET === "true";
+    const debugWs = process.env.DEBUG_WEBSOCKET === "true";
     if (debugWs) {
       logger.log(`Emitted token update event for ${tokenData.mint}`);
     }
@@ -1009,15 +1007,15 @@ export async function processTokenUpdateEvent(
 }
 
 export async function updateHoldersCache(
-  env: Env,
   mint: string,
   imported: boolean = false,
 ): Promise<number> {
+  const env = process.env;
   try {
     // Use the utility function to get the RPC URL with proper API key
-    const connection = new Connection(getRpcUrl(env, imported));
+    const connection = new Connection(getRpcUrl(imported));
     const db = getDB();
-    const redisCache = createRedisCache(env); // Instantiate Redis cache
+    const redisCache = createRedisCache(); // Instantiate Redis cache
 
     // Get all token accounts for this mint using getParsedProgramAccounts
     // This method is more reliable for finding all holders
@@ -1133,7 +1131,7 @@ export async function updateHoldersCache(
         .limit(1);
 
       if (tokenData && tokenData.length > 0) {
-        await processTokenUpdateEvent(env, {
+        await processTokenUpdateEvent({
           ...tokenData[0],
           event: "holdersUpdated",
           holderCount: holders.length, // Use full count here too
@@ -1179,7 +1177,7 @@ tokenRouter.get("/tokens", async (c) => {
 
     // --- RE-ENABLE CACHE GET ---
     const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`; // Refined key slightly
-    const redisCache = createRedisCache(c.env as Env); // Ensure env is cast if needed
+    const redisCache = createRedisCache(); // Ensure env is cast if needed
     if (redisCache) {
       try {
         const cachedData = await redisCache.get(cacheKey);
@@ -1297,7 +1295,7 @@ tokenRouter.get("/tokens", async (c) => {
     // --- END SQL Generation ---
 
     // --- Execute Queries (Sequentially is safer for SQLite) ---
-    // const timeoutDuration = (c.env.NODE_ENV === "test" || c.env.LOCAL_DEV === 'true') ? 20000 : 10000; // Longer timeout for dev/test
+    // const timeoutDuration = (process.env.NODE_ENV === "test" || process.env.LOCAL_DEV === 'true') ? 20000 : 10000; // Longer timeout for dev/test
     // const timeoutPromise = new Promise((_, reject) =>
     //   setTimeout(() => reject(new Error("Query timed out")), timeoutDuration),
     // );
@@ -1428,7 +1426,7 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
     const offset = (page - 1) * limit;
 
     let allHolders: any[] = [];
-    const redisCache = createRedisCache(c.env);
+    const redisCache = createRedisCache();
     const holdersListKey = redisCache.getKey(`holders:${mint}`);
     try {
       const holdersString = await redisCache.get(holdersListKey);
@@ -1505,7 +1503,7 @@ tokenRouter.get("/token/:mint/price", async (c) => {
 
     // --- BEGIN REDIS CACHE CHECK ---
     const cacheKey = `tokenPrice:${mint}`;
-    const redisCache = createRedisCache(c.env as Env);
+    const redisCache = createRedisCache();
 
     if (redisCache) {
       try {
@@ -1596,7 +1594,7 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     // Create a cache key based on the mint address
     const cacheKey = `token:${mint}`;
-    const redisCache = createRedisCache(c.env);
+    const redisCache = createRedisCache();
     if (redisCache) {
       try {
         const cachedData = await redisCache.get(cacheKey);
@@ -1622,7 +1620,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     const db = getDB();
     const [tokenData, solPrice] = await Promise.all([
       db.select().from(tokens).where(eq(tokens.mint, mint)).limit(1),
-      getSOLPrice(c.env),
+      getSOLPrice(),
     ]);
 
     if (!tokenData || tokenData.length === 0) {
@@ -1639,13 +1637,13 @@ tokenRouter.get("/token/:mint", async (c) => {
     // if (refreshHolders) {
     // const imported = Number(token.imported) === 1;
     // logger.log(`Refreshing holders data for token ${mint}`);
-    // c.executionCtx.waitUntil(updateHoldersCache(c.env, mint, imported));
+    // c.executionCtx.waitUntil(updateHoldersCache(mint, imported));
     // }
 
     // Set default values for critical fields if they're missing
     const TOKEN_DECIMALS = token.tokenDecimals || 6;
     const defaultReserveAmount = 1000000000000; // 1 trillion (default token supply)
-    const defaultReserveLamport = Number(c.env.VIRTUAL_RESERVES || 28000000000); // 2.8 SOL (default reserve / 28 in mainnet)
+    const defaultReserveLamport = Number(process.env.VIRTUAL_RESERVES || 28000000000); // 2.8 SOL (default reserve / 28 in mainnet)
 
     // Make sure reserveAmount and reserveLamport have values
     token.reserveAmount = token.reserveAmount || defaultReserveAmount;
@@ -1664,7 +1662,7 @@ tokenRouter.get("/token/:mint", async (c) => {
     const tokenPriceInSol = token.currentPrice || 0; // Price is already per whole token
     token.tokenPriceUSD = tokenPriceInSol * solPrice;
 
-    // const tokenMarketData = await calculateTokenMarketData(token, solPrice, c.env);
+    // const tokenMarketData = await calculateTokenMarketData(token, solPrice, process.env);
 
     // Update solPriceUSD
     token.solPriceUSD = solPrice;
@@ -1673,11 +1671,11 @@ tokenRouter.get("/token/:mint", async (c) => {
     // token.marketCapUSD = token.tokenPriceUSD * (token.tokenSupplyUiAmount || 0);
 
     // Get virtualReserves and curveLimit from env or set defaults
-    const virtualReserves = c.env.VIRTUAL_RESERVES
-      ? Number(c.env.VIRTUAL_RESERVES)
+    const virtualReserves = process.env.VIRTUAL_RESERVES
+      ? Number(process.env.VIRTUAL_RESERVES)
       : 28000000000;
-    const curveLimit = c.env.CURVE_LIMIT
-      ? Number(c.env.CURVE_LIMIT)
+    const curveLimit = process.env.CURVE_LIMIT
+      ? Number(process.env.CURVE_LIMIT)
       : 113000000000;
 
     // Update virtualReserves and curveLimit
@@ -1787,14 +1785,14 @@ tokenRouter.post("/create-token", async (c) => {
           const filename = `${mintAddress}-${Date.now()}.png`;
 
           // Upload to R2
-          await c.env.R2.put(filename, imageBuffer, {
+          await process.env.R2.put(filename, imageBuffer, {
             httpMetadata: {
               contentType: "image/png",
             },
           });
 
           // Set the public URL for the image
-          imageUrl = `${c.env.R2_PUBLIC_URL}/${filename}`;
+          imageUrl = `${process.env.R2_PUBLIC_URL}/${filename}`;
         } catch (error) {
           logger.error("Error uploading image to R2:", error);
           // Continue without image if upload fails
@@ -1874,11 +1872,11 @@ tokenRouter.post("/create-token", async (c) => {
       logger.log(
         `Triggering immediate price and holder update for token: ${mintAddress}`,
       );
-      c.executionCtx.waitUntil(updateTokens(c.env));
+      c.executionCtx.waitUntil(updateTokens());
 
       if (imported) {
         try {
-          const importedToken = new ExternalToken(c.env, mintAddress);
+          const importedToken = new ExternalToken(mintAddress);
           const { marketData } = await importedToken.registerWebhook();
           // Fetch historical data in the background
           c.executionCtx.waitUntil(importedToken.fetchHistoricalSwapData());
@@ -1901,7 +1899,7 @@ tokenRouter.post("/create-token", async (c) => {
           `Triggering background image generation for new token: ${mintAddress}`,
         );
         c.executionCtx.waitUntil(
-          generateAdditionalTokenImages(c.env, mintAddress, description || ""),
+          generateAdditionalTokenImages(mintAddress, description || ""),
         );
       }
 
@@ -1956,7 +1954,7 @@ tokenRouter.get("/token/:mint/refresh-holders", async (c) => {
     const imported = tokenData.length > 0 ? tokenData[0].imported === 1 : false;
 
     // Run update in background
-    c.executionCtx.waitUntil(updateHoldersCache(c.env, mint, imported));
+    c.executionCtx.waitUntil(updateHoldersCache(mint, imported));
 
     return c.json({
       success: true,
@@ -1995,10 +1993,10 @@ tokenRouter.post("/token/:mint/update", async (c) => {
 
       // For development purposes, if in dev mode and there's a publicKey in the body, use that
       // Use a more secure way to enable dev overrides if needed (e.g., specific header/env var)
-      // if (c.env.NODE_ENV === "development") {
+      // if (process.env.NODE_ENV === "development") {
       //   try {
       //     const body = await c.req.json();
-      //     if (body._devWalletOverride && c.env.NODE_ENV === "development") {
+      //     if (body._devWalletOverride && process.env.NODE_ENV === "development") {
       //       logger.log(
       //         "DEVELOPMENT: Using wallet override:",
       //         body._devWalletOverride,
@@ -2097,7 +2095,7 @@ tokenRouter.post("/token/:mint/update", async (c) => {
 
     // Special dev override if enabled
     // Removed admin override for security, use specific dev flags if needed
-    // if (c.env.NODE_ENV === "development" && body._forceAdmin === true) {
+    // if (process.env.NODE_ENV === "development" && body._forceAdmin === true) {
     //   logger.log("DEVELOPMENT: Admin access override enabled");
     //   isCreator = true;
     // }
@@ -2195,7 +2193,7 @@ tokenRouter.post("/token/:mint/update", async (c) => {
             .buffer as ArrayBuffer;
 
           // 4) Overwrite the same key in R2
-          await c.env.R2.put(objectKey, buf, {
+          await process.env.R2.put(objectKey, buf, {
             httpMetadata: { contentType: "application/json" },
             customMetadata: { publicAccess: "true" },
           });
@@ -2223,7 +2221,7 @@ tokenRouter.post("/token/:mint/update", async (c) => {
     // Emit WebSocket event for token update if needed
     if (updatedTokenResult.length > 0) {
       try {
-        await processTokenUpdateEvent(c.env, {
+        await processTokenUpdateEvent({
           ...updatedTokenResult[0],
           event: "tokenUpdated",
           timestamp: new Date().toISOString(),
@@ -2285,7 +2283,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
 
     // --- BEGIN REDIS CACHE CHECK (only if not forcing on-chain check) ---
     const cacheKey = `balanceCheck:${mint}:${address}`;
-    const redisCache = createRedisCache(c.env as Env);
+    const redisCache = createRedisCache();
 
     if (!checkOnChain && redisCache) {
       try {
@@ -2386,7 +2384,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
         mint,
         address,
         lastUpdated: lastUpdated, // Use timestamp from Redis data
-        network: c.env.NETWORK || "unknown",
+        network: process.env.NETWORK || "unknown",
         onChain: false, // Indicate data is from cache
       };
     } else if (isCreator) {
@@ -2404,7 +2402,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
         isCreator: false,
         mint,
         address,
-        network: c.env.NETWORK || "unknown",
+        network: process.env.NETWORK || "unknown",
         onChain: false,
       };
     }
@@ -2470,7 +2468,7 @@ tokenRouter.post("/search-token", async (c) => {
     );
   }
 
-  const connection = new Connection(getMainnetRpcUrl(c.env), "confirmed");
+  const connection = new Connection(getMainnetRpcUrl(), "confirmed");
 
   try {
     const tokenInfo = await connection.getAccountInfo(mintPublicKey);
@@ -2502,7 +2500,7 @@ export async function uploadImportImage(c: Context) {
     }
 
     const { imageBase64 } = await c.req.json();
-    const env = c.env as Env;
+    const env = process.env;
 
     if (!imageBase64) {
       return c.json({ error: "No image data provided" }, 400);
@@ -2530,19 +2528,19 @@ export async function uploadImportImage(c: Context) {
     const imageKey = `token-images/${imageFilename}`;
 
     // Upload to R2
-    await env.R2.put(imageKey, imageBuffer, {
+    await process.env.R2.put(imageKey, imageBuffer, {
       httpMetadata: { contentType, cacheControl: "public, max-age=31536000" },
     });
 
     // Construct public URL
-    const r2PublicUrl = env.R2_PUBLIC_URL;
+    const r2PublicUrl = process.env.R2_PUBLIC_URL;
     if (!r2PublicUrl) {
       return c.json({ error: "R2 public URL not configured" }, 500);
     }
 
     const imageUrl =
-      env.API_URL?.includes("localhost") || env.API_URL?.includes("127.0.0.1")
-        ? `${env.API_URL}/api/image/${imageFilename}`
+      process.env.API_URL?.includes("localhost") || process.env.API_URL?.includes("127.0.0.1")
+        ? `${process.env.API_URL}/api/image/${imageFilename}`
         : `${r2PublicUrl.replace(/\/$/, "")}/${imageKey}`;
 
     return c.json({ success: true, imageUrl });

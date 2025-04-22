@@ -187,7 +187,7 @@ export default function Page() {
         headers["Authorization"] = `Bearer ${authToken}`;
       }
 
-      const response = await fetch(`${env.apiUrl}/api/claimFees`, {
+      const response = await fetch(`${process.env.apiUrl}/api/claimFees`, {
         method: "POST",
         credentials: "include",
         body: JSON.stringify({ tokenMint: token?.mint }),
@@ -283,7 +283,7 @@ export default function Page() {
                         <span>View on Solscan</span>
                       </Tooltip>
                       <Link
-                        to={env.getTokenURL(token?.mint)}
+                        to={process.env.getTokenURL(token?.mint)}
                         target="_blank"
                         id="view-on-solscan"
                       >
@@ -620,9 +620,9 @@ export default function Page() {
                       SOL in the bonding curve.
                     </p>
                   ) : (
-                    env.solanaNetwork !== "devnet" && (
+                    process.env.solanaNetwork !== "devnet" && (
                       <Link
-                        to={env.getRaydiumURL(token?.mint)}
+                        to={process.env.getRaydiumURL(token?.mint)}
                         target="_blank"
                         className="text-autofun-text-secondary hover:text-autofun-text-primary"
                       >

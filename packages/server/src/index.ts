@@ -2,6 +2,10 @@ import { Connection } from "@solana/web3.js";
 import dotenv from "dotenv";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { serve } from '@hono/node-server';
+import type { Server as HttpServer } from 'http';
+import type { Http2SecureServer, Http2Server } from 'http2';
+import type { AddressInfo } from 'net';
 // import type { Serve } from '@hono/node-server' // Remove this type import
 
 // Load environment variables from .env file at the root
@@ -111,7 +115,7 @@ const api = new Hono<{ Bindings: AppBindings; Variables: AppVariables }>();
 api.use("*", verifyAuth); // Ensure auth applies to all /api routes
 
 // --- Mount existing routers ---
-// Ensure these routers don't rely on Cloudflare `c.env` bindings without adaptation
+// Ensure these routers don't rely on Cloudflare `process.env` bindings without adaptation
 api.route("/", generationRouter);
 api.route("/", tokenRouter);
 api.route("/", agentRouter);
@@ -223,7 +227,7 @@ api.route("/owner", ownerRouter);
 //     }
 
 //     // --- Cloudflare R2 Upload Logic Needs Replacement ---
-//     // const imageUrl = await uploadToCloudflare(c.env, imageBuffer, { contentType, filename });
+//     // const imageUrl = await uploadToCloudflare(imageBuffer, { contentType, filename });
 //     // Replace uploadToCloudflare with a Node.js compatible S3/R2 client like AWS SDK v3
 //     // Example placeholder using a dummy function:
 //     // const imageUrl = await nodeUploadFunction(imageBuffer, { contentType, filename, /* Add Node S3/R2 config */ });
@@ -294,12 +298,12 @@ app.onError((err, c) => {
 // --- Initialize Services ---
 let redisPoolInstance: RedisPool | null = null;
 try {
-  redisPoolInstance = getSharedRedisPool(env); // Initialize or get pool
+  redisPoolInstance = getSharedRedisPool(); // Initialize or get pool
 } catch (error) {
   logger.error("Failed to initialize Redis Pool:", error);
   process.exit(1);
 }
-const redisCache = createRedisCache(env); // Create cache service instance
+const redisCache = createRedisCache(); // Create cache service instance
 logger.info("Redis Cache Service Initialized.");
 
 // --- Start the Node.js server ---
@@ -310,26 +314,33 @@ if (isNaN(PORT)) {
   process.exit(1);
 }
 
-// Simplify server options type
+// Hono server options
 const serverOptions = {
   fetch: app.fetch,
   port: PORT,
 };
 
-// const server = serve(serverOptions, (info: AddressInfo) => {
-//   console.log(`🚀 Server listening on http://localhost:${info.port}`);
-//   logger.info(`Server started successfully on port ${PORT}`);
-// });
+// --- Start the server ---
+// Store the server instance - type from @hono/node-server is complex, use a union
+let runningServer: HttpServer | Http2Server | Http2SecureServer | null = null;
 
-// --- Initialize WebSocketManager with Redis ---
 try {
-  webSocketManager.initialize(app, redisCache); // Pass Redis cache
+   runningServer = serve(serverOptions, (info: AddressInfo) => {
+        logger.info(`🚀 Server listening on http://localhost:${info.port}`);
+    });
+   logger.info(`Hono server setup complete for port ${PORT}`);
+
+    // --- Initialize WebSocketManager with the Node Server and Redis ---
+      webSocketManager.initialize(redisCache); // Pass Node server instance
+
+
 } catch (error) {
-   logger.error("Failed to initialize WebSocket Manager:", error);
-   // Consider shutting down the server if WS manager fails
+    logger.error("Failed to start the Hono server:", error);
+    process.exit(1); // Exit if server fails to start
 }
 
-// --- Graceful Shutdown --- 
+
+// --- Graceful Shutdown ---
 const signals: NodeJS.Signals[] = ["SIGINT", "SIGTERM"];
 signals.forEach((signal) => {
   process.on(signal, async () => { // Make handler async
@@ -337,26 +348,36 @@ signals.forEach((signal) => {
     let exitCode = 0;
     const shutdownTimeout = setTimeout(() => {
         logger.warn("Graceful shutdown timed out after 10s. Forcing exit.");
-        process.exit(1);
+        process.exit(1); // Force exit after timeout
     }, 10000); // 10 seconds timeout
 
     try {
         // 1. Close WebSocketManager (terminates local connections)
         logger.info("Closing WebSocket Manager...");
-        webSocketManager.close();
+        webSocketManager.close(); // This should close the WebSocket server itself
 
         // 2. Close HTTP server (stops accepting new connections)
-        logger.info("Closing HTTP Server...");
-        await new Promise<void>((resolve, reject) => {
-            server.close((err) => {
-                if (err) {
-                     logger.error("Error closing HTTP server:", err);
-                     return reject(err);
-                 }
-                logger.info("HTTP Server closed.");
-                resolve();
+        if (runningServer) {
+            logger.info("Closing HTTP Server...");
+            // Use the stored server instance
+            // Use a type assertion or check to satisfy TypeScript
+            // Note: The actual type returned by serve might vary based on options
+            await new Promise<void>((resolve) => { // Re-add promise wrapper
+            (runningServer as HttpServer)?.close((err?: Error) => { // err is optional Error
+               if (err) {
+                    logger.error("Error closing HTTP server:", err);
+                    // Don't reject here, try to continue shutdown
+                    // reject(err);
+               } else {
+                    logger.info("HTTP Server closed.");
+               }
+               resolve(); // Resolve even if there was an error closing
             });
-        });
+            });
+        } else {
+             logger.warn("HTTP server instance not found, skipping close.");
+        }
+
 
         // 3. Close Redis Pool
         if (redisPoolInstance) {

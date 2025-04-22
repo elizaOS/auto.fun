@@ -101,7 +101,6 @@ function convertTokenDataToDBData(
 }
 
 export async function updateTokenInDB(
-  env: Env,
   tokenData: Partial<TokenData>,
 ): Promise<Token> {
   const db = getDB();
@@ -187,7 +186,6 @@ type ProcessResult = {
 
 type HandlerResult = ProcessResult | null;
 export async function processTransactionLogs(
-  env: Env,
   logs: string[],
   signature: string,
   wsClient: any = null,
@@ -197,13 +195,13 @@ export async function processTransactionLogs(
   }
 
   // Try each handler in sequence and return on first match
-  const newTokenResult = await handleNewToken(env, logs, signature, wsClient);
+  const newTokenResult = await handleNewToken(logs, signature, wsClient);
   if (newTokenResult) return newTokenResult;
 
-  const swapResult = await handleSwap(env, logs, signature, wsClient);
+  const swapResult = await handleSwap(logs, signature, wsClient);
   if (swapResult) return swapResult;
 
-  const curveResult = await handleCurveComplete(env, logs, signature, wsClient);
+  const curveResult = await handleCurveComplete(logs, signature, wsClient);
   if (curveResult) return curveResult;
 
   // Default: no event found
@@ -211,7 +209,6 @@ export async function processTransactionLogs(
 }
 
 async function handleNewToken(
-  env: Env,
   logs: string[],
   signature: string,
   wsClient: any,
@@ -234,7 +231,6 @@ async function handleNewToken(
       signature,
       rawTokenAddress,
       rawCreatorAddress,
-      env,
     );
     if (!newToken) {
       logger.error(`Failed to create new token data for ${rawTokenAddress}`);
@@ -245,7 +241,7 @@ async function handleNewToken(
       .values([newToken as Token])
       .onConflictDoNothing();
     await wsClient.emit("global", "newToken", newToken);
-    await updateHoldersCache(env, rawTokenAddress);
+    await updateHoldersCache(rawTokenAddress);
 
     return { found: true, tokenAddress: rawTokenAddress, event: "newToken" };
   } catch (err) {
@@ -255,7 +251,6 @@ async function handleNewToken(
 }
 
 async function handleSwap(
-  env: Env,
   logs: string[],
   signature: string,
   wsClient: any,
@@ -299,8 +294,8 @@ async function handleSwap(
       .slice(-3)
       .map((v) => v.replace(/[",)]/g, ""));
 
-    const solPrice = await getSOLPrice(env);
-    const tokenWithSupply = await getToken(env, mintAddress);
+    const solPrice = await getSOLPrice();
+    const tokenWithSupply = await getToken(mintAddress);
     if (!tokenWithSupply) {
       logger.error(`Token not found in DB: ${mintAddress}`);
       return null;
@@ -320,8 +315,7 @@ async function handleSwap(
     const tokenWithMarketData = await calculateTokenMarketData(
       tokenWithSupply,
       solPrice,
-      env,
-    );
+          );
     const marketCapUSD = tokenWithMarketData.marketCapUSD;
 
     const swapRecord = {
@@ -341,7 +335,7 @@ async function handleSwap(
     };
 
     const db = getDB();
-    const redisCache = createRedisCache(env);
+    const redisCache = createRedisCache();
     const listKey = redisCache.getKey(`swapsList:${mintAddress}`);
 
     try {
@@ -367,8 +361,8 @@ async function handleSwap(
         tokenPriceUSD,
         solPriceUSD: solPrice,
         curveProgress:
-          ((Number(reserveLamport) - Number(env.VIRTUAL_RESERVES)) /
-            (Number(env.CURVE_LIMIT) - Number(env.VIRTUAL_RESERVES))) *
+          ((Number(reserveLamport) - Number(process.env.VIRTUAL_RESERVES)) /
+            (Number(process.env.CURVE_LIMIT) - Number(process.env.VIRTUAL_RESERVES))) *
           100,
         txId: signature,
         lastUpdated: new Date(),
@@ -388,11 +382,11 @@ async function handleSwap(
         : (swapRecord.amountIn / 10 ** TOKEN_DECIMALS) * tokenPriceUSD;
 
     const bondStatus = newToken?.status === "locked" ? "postbond" : "prebond";
-    await awardUserPoints(env, swapRecord.user, {
+    await awardUserPoints(swapRecord.user, {
       type: `${bondStatus}_${swapRecord.type}` as any,
       usdVolume,
     });
-    await awardUserPoints(env, swapRecord.user, {
+    await awardUserPoints(swapRecord.user, {
       type: "trade_volume_bonus",
       usdVolume,
     });
@@ -400,7 +394,7 @@ async function handleSwap(
     try {
       const listLength = await redisCache.llen(listKey);
       if (swapRecord.type === "buy" && listLength === 1) {
-        await awardUserPoints(env, swapRecord.user, {
+        await awardUserPoints(swapRecord.user, {
           type: "first_buyer",
         });
         logger.log(`Awarded first_buyer to ${swapRecord.user}`);
@@ -409,7 +403,7 @@ async function handleSwap(
       logger.error("Failed to award first_buyer:", err);
     }
 
-    await updateHoldersCache(env, mintAddress);
+    await updateHoldersCache(mintAddress);
 
     await wsClient.emit(`global`, "newSwap", {
       ...swapRecord,
@@ -417,7 +411,7 @@ async function handleSwap(
       timestamp: swapRecord.timestamp.toISOString(),
     });
 
-    const latestCandle = await getLatestCandle(env, mintAddress, swapRecord);
+    const latestCandle = await getLatestCandle(mintAddress, swapRecord);
     await wsClient.to(`global`).emit("newCandle", latestCandle);
 
     const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
@@ -442,7 +436,6 @@ async function handleSwap(
 }
 
 async function handleCurveComplete(
-  env: Env,
   logs: string[],
   signature: string,
   wsClient: any,
@@ -457,14 +450,14 @@ async function handleCurveComplete(
       throw new Error(`Invalid mint on curve completion: ${mintAddress}`);
     }
 
-    await awardGraduationPoints(env, mintAddress);
-    const token = await getToken(env, mintAddress);
+    await awardGraduationPoints(mintAddress);
+    const token = await getToken(mintAddress);
     if (!token) {
       logger.error(`Token not found: ${mintAddress}`);
       return null;
     }
 
-    await updateTokenInDB(env, token);
+    await updateTokenInDB(token);
     await wsClient.emit(
       "global",
       "updateToken",
@@ -479,7 +472,6 @@ async function handleCurveComplete(
 }
 
 export async function cron(
-  env: Env,
   ctx: ExecutionContext | { cron: string },
 ): Promise<void> {
   console.log("Running cron job...");
@@ -503,10 +495,10 @@ export async function cron(
     // IMPORTANT: Ensure the main async work is wrapped in ctx.waitUntil
     // Assuming `ctx` is the ExecutionContext passed to the `scheduled` handler
     if ('waitUntil' in ctx && typeof ctx.waitUntil === 'function') {
-       ctx.waitUntil(updateTokens(env));
+       ctx.waitUntil(updateTokens());
     } else {
        // Fallback or handle case where ctx is not ExecutionContext (e.g., local testing)
-       await updateTokens(env);
+       await updateTokens();
     }
 
   } catch (error) {
@@ -514,9 +506,9 @@ export async function cron(
   }
 }
 
-export async function updateTokens(env: Env) {
+export async function updateTokens() {
   const db = getDB();
-  const cache = createRedisCache(env);
+  const cache = createRedisCache();
   logger.log("Starting updateTokens cron task...");
 
   // Define batch size for sequential processing
@@ -599,7 +591,7 @@ export async function updateTokens(env: Env) {
         const total = activeTokens.length;
         for (let i = 0; i < total; i += CHUNK_SIZE) {
           const batch = activeTokens.slice(i, i + CHUNK_SIZE) as Token[];
-          const updatedBatch = await bulkUpdatePartialTokens(batch, env);
+          const updatedBatch = await bulkUpdatePartialTokens(batch);
           // Push ephemeral metrics to Redis (TTL 60s)
           // This Promise.all is likely fine as it's already within a batch
           await Promise.all(updatedBatch.map(token =>
@@ -630,7 +622,7 @@ export async function updateTokens(env: Env) {
     // Replenish Pre-Generated Tokens (runs once, less intensive)
     (async () => {
       try {
-        await checkAndReplenishTokens(env);
+        await checkAndReplenishTokens();
         logger.log("Cron: Checked and replenished pre-generated tokens.");
       } catch (err) {
         logger.error("Cron: Error during checkAndReplenishTokens:", err);
@@ -648,7 +640,7 @@ export async function updateTokens(env: Env) {
     await Promise.all(batch.map(async (token) => {
       try {
         if (token.mint) {
-          await updateHoldersCache(env, token.mint);
+          await updateHoldersCache(token.mint);
         }
       } catch (err) {
         logger.error(
@@ -671,9 +663,9 @@ export async function updateTokens(env: Env) {
       await Promise.all(batch.map(async (token) => {
           if (token.mint && Number(token.imported) === 0) {
               try {
-                  if (env.R2) {
+                  if (process.env.R2) {
                       const generationImagesPrefix = `generations/${token.mint}/`;
-                      const objects = await env.R2.list({
+                      const objects = await process.env.R2.list({
                           prefix: generationImagesPrefix,
                           limit: 1,
                       });
@@ -686,8 +678,7 @@ export async function updateTokens(env: Env) {
                           // Consider making generateAdditionalTokenImages truly async if it's long-running
                           // and doesn't need to block the next batch immediately.
                           await generateAdditionalTokenImages(
-                              env,
-                              token.mint,
+                                                            token.mint,
                               token.description || "",
                           );
                       }

@@ -28,9 +28,9 @@ router.post("/webhook", async (c) => {
   // value is configured in helius webhook dashboard
   const authorization = c.req.header("Authorization");
   console.log("Authorization", authorization);
-  console.log("HELUS_WEBHOOK_AUTH_TOKEN", c.env.HELIUS_WEBHOOK_AUTH_TOKEN);
+  console.log("HELUS_WEBHOOK_AUTH_TOKEN", process.env.HELIUS_WEBHOOK_AUTH_TOKEN);
 
-  if (authorization !== c.env.HELIUS_WEBHOOK_AUTH_TOKEN) {
+  if (authorization !== process.env.HELIUS_WEBHOOK_AUTH_TOKEN) {
     return c.json(
       {
         message: "Unauthorized",
@@ -57,7 +57,6 @@ router.post("/webhook", async (c) => {
       await Promise.all(
         events.map((event) =>
           processTransactionLogs(
-            c.env,
             event.meta.logMessages,
             event.transaction.signatures[0]
           )
@@ -166,7 +165,7 @@ router.post("/codex-webhook", async (c) => {
     timestamp: new Date(swap.timestamp * 1000), // Store as Date object
   };
 
-  const redisCache = createRedisCache(c.env);
+  const redisCache = createRedisCache();
   const listKey = redisCache.getKey(`swapsList:${tokenMint}`);
   try {
     // Pipeline push + trim to reduce RTT
@@ -216,10 +215,10 @@ router.post("/codex-webhook", async (c) => {
 
   const wsClient = getWebSocketClient();
 
-  const ext = new ExternalToken(c.env, tokenMint);
+  const ext = new ExternalToken(tokenMint);
   //  we just call this to update the last 5 swaps in the db
   await ext.updateLatestSwapData(20);
-  const latestCandle = await getLatestCandle(c.env, tokenMint, swap, token);
+  const latestCandle = await getLatestCandle(tokenMint, swap, token);
 
   await ext.updateMarketAndHolders();
 
@@ -238,18 +237,18 @@ router.post("/codex-webhook", async (c) => {
 
 // Start monitoring batch
 router.post("/codex-start-monitoring", async (c) => {
-  const { processed, total } = await startMonitoringBatch(c.env, 10);
+  const { processed, total } = await startMonitoringBatch(10);
   return c.json({
     message:
       processed === 0 && total > 0
         ? "Seeded or already complete"
-        : `Processed ${processed} tokens, cursor now ${await c.env.MONITOR_KV.get("lockedCursor")}/${total}`,
+        : `Processed ${processed} tokens, cursor now ${await process.env.MONITOR_KV.get("lockedCursor")}/${total}`,
   });
 });
 
 // Status Endpoint
 router.get("/codex-monitor-status", async (c) => {
-  const kv = c.env.MONITOR_KV;
+  const kv = process.env.MONITOR_KV;
   const rawList = await kv.get("lockedList");
   const rawCursor = await kv.get("lockedCursor");
   if (!rawList) return c.json({ seeded: false });

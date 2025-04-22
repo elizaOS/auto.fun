@@ -8,7 +8,7 @@ import { env } from "@/utils/env";
 import Button from "../button";
 
 // --- API Base URL ---
-const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
+const API_BASE_URL = process.env.apiUrl || ""; // Ensure fallback
 
 // Storage keys for Twitter auth
 const STORAGE_KEY = "twitter-oauth-token";
@@ -227,7 +227,7 @@ export default function AgentsSection({ isCreator }: { isCreator: boolean }) {
         console.log("Stored origin path for redirect:", pathWithAnchor);
 
         // Redirect to OAuth
-        const apiUrl = env.apiUrl;
+        const apiUrl = process.env.apiUrl;
         if (!apiUrl) {
           throw new Error("API URL is not configured");
         }

@@ -5,9 +5,9 @@ import { logger } from "./util";
 const _fileCache: { [key: string]: string } = {};
 
 // Log uploaded files to an in-memory cache only
-function logUploadedFile(env: Env, objectKey: string, publicUrl: string) {
+function logUploadedFile(objectKey: string, publicUrl: string) {
   try {
-    if (env.NODE_ENV !== "development") return;
+    if (process.env.NODE_ENV !== "development") return;
 
     // Add to in-memory cache
     _fileCache[objectKey] = publicUrl;
@@ -26,7 +26,6 @@ export function getUploadedFiles(): { [key: string]: string } {
 
 // CloudFlare storage utility (R2) to replace Pinata
 export async function uploadToCloudflare(
-  env: Env,
   data: ArrayBuffer | object,
   options: {
     isJson?: boolean;
@@ -90,13 +89,13 @@ export async function uploadToCloudflare(
         const objectPath = options.isJson ? "token-metadata" : "token-images";
 
         // Check if R2 is available
-        if (!env.R2) {
+        if (!process.env.R2) {
           reject(new Error("R2 is not available"));
           return;
         }
 
         // Perform the upload
-        env.R2.put(objectPath + "/" + objectKey, objectData, {
+        process.env.R2.put(objectPath + "/" + objectKey, objectData, {
           httpMetadata: { contentType },
           customMetadata: {
             publicAccess: "true",
@@ -106,7 +105,7 @@ export async function uploadToCloudflare(
           .then(() => {
             resolve();
           })
-          .catch((e) => {
+          .catch((e: any) => {
             reject(e);
           });
       });
@@ -126,16 +125,16 @@ export async function uploadToCloudflare(
 
       logger.log(
         "uploading to r2",
-        env.R2_PUBLIC_URL,
-        env.API_URL,
-        env.NODE_ENV,
+        process.env.R2_PUBLIC_URL,
+        process.env.API_URL,
+        process.env.NODE_ENV,
       );
-      const publicUrl = env.API_URL?.includes("localhost")
-        ? `${env.API_URL}/api/${apiPath}/${objectKey}`
-        : `${env.R2_PUBLIC_URL}/${objectPath}/${objectKey}`;
+      const publicUrl = process.env.API_URL?.includes("localhost")
+        ? `${process.env.API_URL}/api/${apiPath}/${objectKey}`
+        : `${process.env.R2_PUBLIC_URL}/${objectPath}/${objectKey}`;
 
       // Log file in development mode
-      logUploadedFile(env, objectKey, publicUrl);
+      logUploadedFile(objectKey, publicUrl);
 
       logger.log(`Successfully uploaded to R2: ${publicUrl}`);
       return publicUrl;
@@ -144,11 +143,11 @@ export async function uploadToCloudflare(
       logger.error("Cloudflare R2 upload failed:", r2Error);
 
       // Return a fallback URL
-      const fallbackUrl = `${env.R2_PUBLIC_URL || "https://fallback-storage.example.com"}/${objectKey}`;
+      const fallbackUrl = `${process.env.R2_PUBLIC_URL || "https://fallback-storage.example.com"}/${objectKey}`;
       logger.log("Using fallback URL:", fallbackUrl);
 
       // Still log the fallback URL
-      logUploadedFile(env, objectKey, fallbackUrl);
+      logUploadedFile(objectKey, fallbackUrl);
 
       return fallbackUrl;
     }
@@ -161,11 +160,11 @@ export async function uploadToCloudflare(
     }
 
     // Return a fallback URL
-    const fallbackUrl = `${env.R2_PUBLIC_URL || "https://fallback-storage.example.com"}/${objectKey}`;
+    const fallbackUrl = `${process.env.R2_PUBLIC_URL || "https://fallback-storage.example.com"}/${objectKey}`;
     logger.log("Using fallback URL from catch block:", fallbackUrl);
 
     // Log even fallback URLs from errors
-    logUploadedFile(env, objectKey, fallbackUrl);
+    logUploadedFile(objectKey, fallbackUrl);
 
     return fallbackUrl;
   }
@@ -173,7 +172,6 @@ export async function uploadToCloudflare(
 
 // Function to upload a generated image to a predictable path for a token
 export async function uploadGeneratedImage(
-  env: Env,
   data: ArrayBuffer | object,
   tokenMint: string,
   generationNumber: number,
@@ -215,7 +213,7 @@ export async function uploadGeneratedImage(
         }
 
         // Perform the upload
-        env.R2.put(objectKey, objectData, {
+        process.env.R2.put(objectKey, objectData, {
           httpMetadata: {
             contentType,
             cacheControl: "public, max-age=31536000",
@@ -229,7 +227,7 @@ export async function uploadGeneratedImage(
           .then(() => {
             resolve();
           })
-          .catch((e) => {
+          .catch((e: any) => {
             reject(e);
           });
       });
@@ -244,10 +242,10 @@ export async function uploadGeneratedImage(
       await Promise.race([uploadPromise, timeoutPromise]);
 
       // Construct the public URL
-      const publicUrl = `${env.R2_PUBLIC_URL}/${objectKey}`;
+      const publicUrl = `${process.env.R2_PUBLIC_URL}/${objectKey}`;
 
       // Log file in development mode
-      logUploadedFile(env, objectKey, publicUrl);
+      logUploadedFile(objectKey, publicUrl);
 
       logger.log(`Successfully uploaded generated image to R2: ${publicUrl}`);
       return publicUrl;

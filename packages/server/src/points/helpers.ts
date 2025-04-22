@@ -64,7 +64,6 @@ function calculatePoints(evt: PointEvent): number {
 }
 
 export async function awardUserPoints(
-  env: Env,
   userAddress: string,
   event: PointEvent,
   description = "",
@@ -130,11 +129,10 @@ export async function awardUserPoints(
 }
 
 export async function awardGraduationPoints(
-  env: Env,
   mint: string,
 ): Promise<void> {
   const db = getDB();
-  const redisCache = createRedisCache(env);
+  const redisCache = createRedisCache();
 
   // Last swap user
   let lastSwapUser: string | null = null;
@@ -157,20 +155,18 @@ export async function awardGraduationPoints(
 
   if (lastSwapUser) {
     await awardUserPoints(
-      env,
-      lastSwapUser, // Use user fetched from Redis
+            lastSwapUser, // Use user fetched from Redis
       { type: "graduating_tx" },
       "Graduating transaction bonus",
     );
   }
 
   // Owner graduation
-  const tokenRecord = await getToken(env, mint);
+  const tokenRecord = await getToken(mint);
   const creator = tokenRecord?.creator;
   if (creator) {
     await awardUserPoints(
-      env,
-      creator,
+            creator,
       { type: "owner_graduation" },
       "Owner graduation bonus",
     );
@@ -209,8 +205,7 @@ export async function awardGraduationPoints(
   for (const h of holders) {
     const usdHeld = (h.amount || 0) * priceAtGraduation;
     await awardUserPoints(
-      env,
-      h.address,
+            h.address,
       { type: "graduation_holding", heldAtGraduation: usdHeld },
       `Holding through graduation: $${usdHeld.toFixed(2)}`,
     );
@@ -219,7 +214,6 @@ export async function awardGraduationPoints(
 
 /* Malibu To do: add this to a cron job to run once a week */
 export async function distributeWeeklyPoints(
-  env: Env,
   weeklyPool = 1_000_000,
   capPercent = 0.02,
 ): Promise<{ distributed: number; unassigned: number }> {

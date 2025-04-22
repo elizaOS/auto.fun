@@ -63,7 +63,7 @@ export const useSwap = () => {
 
     const ixs = [];
     if (token?.status === "locked") {
-      const mainnetConnection = new Connection(env.rpcUrlMainnet, "confirmed"); // this is always mainnet
+      const mainnetConnection = new Connection(process.env.rpcUrlMainnet, "confirmed"); // this is always mainnet
       // Use Jupiter API when tokens are locked
       const ixsJupiterSwap = await getJupiterSwapIx(
         wallet.publicKey,

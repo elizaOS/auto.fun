@@ -100,29 +100,16 @@ export interface TokenMetadataJson {
 
 const FEE_BASIS_POINTS = 10000;
 
-// Helper function to get WebSocket server for emitting events
-export const getIoServer = (env?: Partial<Env>) => {
-  // Create a mock env with needed properties
-  const fullEnv = {
-    NETWORK: env?.NETWORK || "mainnet",
-  } as Env;
-  return getWebSocketClient();
-};
-
 /**
  * Fetches metadata with exponential backoff retry
  */
 export const fetchMetadataWithBackoff = async (
   umi: Umi,
   tokenAddress: string,
-  env?: Env,
 ) => {
-  // If env is provided, try to get from cache first
-  if (env) {
-    const cacheService = new CacheService(env);
+      const cacheService = new CacheService();
     const cached = await cacheService.getMetadata(tokenAddress);
     if (cached) return cached;
-  }
 
   const maxRetries = 15;
   const baseDelay = 500;
@@ -132,11 +119,8 @@ export const fetchMetadataWithBackoff = async (
     try {
       const metadata = await fetchDigitalAsset(umi, publicKey(tokenAddress));
 
-      // Cache the result if env is provided
-      if (env) {
-        const cacheService = new CacheService(env);
+        const cacheService = new CacheService();
         await cacheService.setMetadata(tokenAddress, metadata, 3600); // Cache for 1 hour
-      }
 
       return metadata;
     } catch (error: any) {
@@ -152,12 +136,11 @@ export const fetchMetadataWithBackoff = async (
 
 export async function getTxIdAndCreatorFromTokenAddress(
   tokenAddress: string,
-  env?: Env,
 ) {
   console.log(`tokenAddress: ${tokenAddress}`);
 
   // Get a Solana config with the right environment
-  const solanaConfig = initSolanaConfig(env);
+  const solanaConfig = initSolanaConfig();
 
   const transactionHistory =
     await solanaConfig.connection.getSignaturesForAddress(
@@ -192,18 +175,16 @@ export async function createNewTokenData(
   txId: string,
   tokenAddress: string,
   creatorAddress: string,
-  env?: Env,
 ): Promise<Partial<Token>> {
   try {
     // Get a Solana config with the right environment
-    const solanaConfig = initSolanaConfig(env);
+    const solanaConfig = initSolanaConfig();
 
     console.log("solanaConfig", solanaConfig);
 
     const metadata = await fetchMetadataWithBackoff(
       solanaConfig.umi,
       tokenAddress,
-      env,
     );
     logger.log(`Fetched metadata for token ${tokenAddress}:`);
 
@@ -234,9 +215,9 @@ export async function createNewTokenData(
     }
 
     // Get TOKEN_DECIMALS from env if available, otherwise use default
-    const TOKEN_DECIMALS = env?.DECIMALS ? Number(env.DECIMALS) : 6;
+    const TOKEN_DECIMALS = Number(process.env.DECIMALS || 6);
 
-    const solPrice = env ? await getSOLPrice(env) : await getSOLPrice();
+    const solPrice = await getSOLPrice();
 
     if (!bondingCurveAccount) {
       throw new Error(
@@ -266,22 +247,18 @@ export async function createNewTokenData(
     console.log("tokenPriceUSD", tokenPriceUSD);
 
     // Get TOKEN_SUPPLY from env if available, otherwise use default
-    const tokenSupply = env?.TOKEN_SUPPLY
-      ? Number(env.TOKEN_SUPPLY)
-      : 1000000000000000;
+    const tokenSupply = Number(process.env.TOKEN_SUPPLY);
     const marketCapUSD =
       (tokenSupply / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD;
     console.log("marketCapUSD", marketCapUSD);
 
     // Get virtual reserves from env if available, otherwise use default
-    const virtualReserves = env?.VIRTUAL_RESERVES
-      ? Number(env.VIRTUAL_RESERVES)
+    const virtualReserves = process.env.VIRTUAL_RESERVES
+      ? Number(process.env.VIRTUAL_RESERVES)
       : 100000000;
 
     // Get curve limit from env if available, otherwise use default
-    const curveLimit = env?.CURVE_LIMIT
-      ? Number(env.CURVE_LIMIT)
-      : 113000000000;
+    const curveLimit = Number(process.env.CURVE_LIMIT);
 
     const tokenData: Partial<Token> = {
       id: tokenAddress, // Use mint as primary key
@@ -333,7 +310,7 @@ export async function createNewTokenData(
       lastUpdated: new Date(),
     };
 
-    getIoServer(env).to("global").emit("newToken", { mint: tokenData.mint });
+    getWebSocketClient().to("global").emit("newToken", { mint: tokenData.mint });
 
     return tokenData;
   } catch (error) {
@@ -350,18 +327,17 @@ export async function createNewTokenData(
  */
 export async function bulkUpdatePartialTokens(
   tokens: Token[],
-  env: Env,
 ): Promise<Token[]> {
   if (!tokens || tokens.length === 0) {
     return [];
   }
 
   // Get SOL price once for all tokens
-  const solPrice = await getSOLPrice(env);
+  const solPrice = await getSOLPrice();
 
   // Process each token in parallel
   const updatedTokensPromises = tokens.map((token) =>
-    calculateTokenMarketData(token, solPrice, env),
+    calculateTokenMarketData(token, solPrice),
   );
 
   // Wait for all updates to complete
@@ -517,11 +493,11 @@ export const withdrawTx = async (
 };
 
 // Get RPC URL based on the environment
-export const getRpcUrl = (env: any, forceMainnet: boolean = false) => {
+export const getRpcUrl = (forceMainnet: boolean = false) => {
   // Extract the base URL and ensure we use the correct API key
   let baseUrl;
 
-  if (forceMainnet || env.NETWORK === "devnet") {
+  if (forceMainnet || process.env.NETWORK === "devnet") {
     baseUrl = "https://devnet.helius-rpc.com/";
   } else {
     // Default to mainnet
@@ -530,27 +506,27 @@ export const getRpcUrl = (env: any, forceMainnet: boolean = false) => {
 
   // Use API key from environment, ensuring it's applied correctly
   const apiKey =
-    env.NETWORK === "devnet"
-      ? env.DEVNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
+    process.env.NETWORK === "devnet"
+      ? process.env.DEVNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
         "67ea9085-1406-4db8-8872-38ac77950d7a"
-      : env.MAINNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
+      : process.env.MAINNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
         "67ea9085-1406-4db8-8872-38ac77950d7a";
 
   const result = `${baseUrl}?api-key=${apiKey}`;
 
   logger.log(
-    `getRpcUrl called with NETWORK=${env.NETWORK}, returning: ${result}`,
+    `getRpcUrl called with NETWORK=${process.env.NETWORK}, returning: ${result}`,
   );
   return result;
 };
 
 // Get mainnet RPC URL regardless of environment setting
-export const getMainnetRpcUrl = (env: any) => {
+export const getMainnetRpcUrl = () => {
   // Extract base URL and API key
   const baseUrl = "https://mainnet.helius-rpc.com/";
   const apiKey =
-    env.MAINNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
-    env.VITE_MAINNET_RPC_URL?.split("api-key=")[1] ||
+    process.env.MAINNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
+    process.env.VITE_MAINNET_RPC_URL?.split("api-key=")[1] ||
     "67ea9085-1406-4db8-8872-38ac77950d7a";
 
   const mainnetUrl = `${baseUrl}?api-key=${apiKey}`;
@@ -560,12 +536,12 @@ export const getMainnetRpcUrl = (env: any) => {
 };
 
 // Get devnet RPC URL regardless of environment setting
-export const getDevnetRpcUrl = (env: any) => {
+export const getDevnetRpcUrl = () => {
   // Extract base URL and API key
   const baseUrl = "https://devnet.helius-rpc.com/";
   const apiKey =
-    env.DEVNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
-    env.VITE_DEVNET_RPC_URL?.split("api-key=")[1] ||
+    process.env.DEVNET_SOLANA_RPC_URL?.split("api-key=")[1] ||
+    process.env.VITE_DEVNET_RPC_URL?.split("api-key=")[1] ||
     "67ea9085-1406-4db8-8872-38ac77950d7a";
 
   const devnetUrl = `${baseUrl}?api-key=${apiKey}`;

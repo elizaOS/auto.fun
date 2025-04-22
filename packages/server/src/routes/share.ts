@@ -171,7 +171,6 @@ async function fetchTwitterUser(
  * ------------------------------------------------------------------
  */
 async function storeOAuthState(
-  env: Env,
   state: string,
   codeVerifier: string,
 ): Promise<void> {
@@ -193,7 +192,6 @@ async function storeOAuthState(
 }
 
 async function getOAuthState(
-  env: Env,
   state: string,
 ): Promise<{ codeVerifier: string; expiresAt: Date } | null> {
   try {
@@ -220,7 +218,6 @@ async function getOAuthState(
 }
 
 async function storeAccessToken(
-  env: Env,
   userId: string,
   token: string,
   refresh: string,
@@ -254,7 +251,6 @@ async function storeAccessToken(
 }
 
 async function getRefreshToken(
-  env: Env,
   userId: string,
 ): Promise<string | null> {
   try {
@@ -274,7 +270,6 @@ async function getRefreshToken(
 }
 
 async function updateAccessToken(
-  env: Env,
   userId: string,
   token: string,
   refresh: string,
@@ -299,7 +294,6 @@ async function updateAccessToken(
 }
 
 async function validateToken(
-  env: Env,
   token: string,
   userId: string,
 ): Promise<boolean> {
@@ -384,8 +378,8 @@ shareRouter.get("/oauth/request_token", async (c) => {
         .replace(/[^a-zA-Z0-9]/g, "");
 
       const requestTokenParams = {
-        oauth_callback: `${c.env.NETWORK === "devnet" ? c.env.DEVNET_FRONTEND_URL : c.env.MAINNET_FRONTEND_URL}/callback-oauth1`,
-        oauth_consumer_key: c.env.TWITTER_API_KEY,
+        oauth_callback: `${process.env.NETWORK === "devnet" ? process.env.DEVNET_FRONTEND_URL : process.env.MAINNET_FRONTEND_URL}/callback-oauth1`,
+        oauth_consumer_key: process.env.TWITTER_API_KEY || "",
         oauth_nonce: nonce,
         oauth_signature_method: "HMAC-SHA1",
         oauth_timestamp: timestamp,
@@ -397,7 +391,7 @@ shareRouter.get("/oauth/request_token", async (c) => {
         "POST",
         "https://api.twitter.com/oauth/request_token",
         requestTokenParams,
-        c.env.TWITTER_API_SECRET,
+        process.env.TWITTER_API_SECRET || "",
         "", // No token secret for request token
       );
 
@@ -434,7 +428,7 @@ shareRouter.get("/oauth/request_token", async (c) => {
       }
 
       // Store the token secret for later use in the callback
-      await storeOAuthState(c.env, oauthToken, oauthTokenSecret || "");
+      await storeOAuthState(oauthToken, oauthTokenSecret || "");
 
       // Redirect to Twitter authorization page
       const authUrl = `https://api.twitter.com/oauth/authorize?oauth_token=${oauthToken}`;
@@ -450,9 +444,9 @@ shareRouter.get("/oauth/request_token", async (c) => {
     }
   } else {
     // Original OAuth 2.0 flow
-    const env = c.env;
-    const clientId = env.TWITTER_CLIENT_ID;
-    const redirectUri = `${env.NETWORK === "devnet" ? env.DEVNET_FRONTEND_URL : env.MAINNET_FRONTEND_URL}/callback`;
+    const env = process.env;
+    const clientId = process.env.TWITTER_CLIENT_ID;
+    const redirectUri = `${process.env.NETWORK === "devnet" ? process.env.DEVNET_FRONTEND_URL : process.env.MAINNET_FRONTEND_URL}/callback`;
 
     logger.log("clientId", clientId);
     logger.log("redirectUri", redirectUri);
@@ -461,17 +455,16 @@ shareRouter.get("/oauth/request_token", async (c) => {
     const codeVerifier = generateRandomString();
     const codeChallenge = await generateCodeChallenge(codeVerifier);
 
-    const params = new URLSearchParams({
-      response_type: "code",
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      scope: "tweet.read users.read tweet.write offline.access media.write",
-      state: state,
-      code_challenge: codeChallenge,
-      code_challenge_method: "S256",
-    });
+    const params = new URLSearchParams();
+    params.append("response_type", "code");
+    params.append("client_id", clientId || "");
+    params.append("redirect_uri", redirectUri);
+    params.append("scope", "tweet.read users.read tweet.write offline.access media.write");
+    params.append("state", state);
+    params.append("code_challenge", codeChallenge);
+    params.append("code_challenge_method", "S256");
 
-    await storeOAuthState(env, state, codeVerifier);
+    await storeOAuthState(state, codeVerifier);
 
     const authorizationUrl = `https://twitter.com/i/oauth2/authorize?${params.toString()}`;
     logger.log("authorizationUrl", authorizationUrl);
@@ -490,7 +483,7 @@ shareRouter.get("/oauth1/callback", async (c) => {
 
   try {
     // Get the stored token secret
-    const storedState = await getOAuthState(c.env, oauthToken);
+    const storedState = await getOAuthState(oauthToken);
     if (!storedState) {
       return c.json({ error: "Invalid or expired oauth_token" }, 400);
     }
@@ -503,7 +496,7 @@ shareRouter.get("/oauth1/callback", async (c) => {
       .replace(/[^a-zA-Z0-9]/g, "");
 
     const accessTokenParams = {
-      oauth_consumer_key: c.env.TWITTER_API_KEY,
+      oauth_consumer_key: process.env.TWITTER_API_KEY || "",
       oauth_nonce: nonce,
       oauth_signature_method: "HMAC-SHA1",
       oauth_timestamp: timestamp,
@@ -516,7 +509,7 @@ shareRouter.get("/oauth1/callback", async (c) => {
       "POST",
       "https://api.twitter.com/oauth/access_token",
       accessTokenParams,
-      c.env.TWITTER_API_SECRET,
+      process.env.TWITTER_API_SECRET || "",
       tokenSecret,
     );
 
@@ -574,23 +567,22 @@ shareRouter.get("/oauth/callback", async (c) => {
     return c.json({ error: "Missing code or state" });
   }
 
-  const storedState = await getOAuthState(c.env, state);
+  const storedState = await getOAuthState(state);
   if (!storedState) {
     c.status(400);
     return c.json({ error: "Invalid state or expired" });
   }
 
   const codeVerifier = storedState.codeVerifier;
-  const clientId = c.env.TWITTER_CLIENT_ID;
-  const redirectUri = `${c.env.NETWORK === "devnet" ? c.env.DEVNET_FRONTEND_URL : c.env.MAINNET_FRONTEND_URL}/callback`;
+  const clientId = process.env.TWITTER_CLIENT_ID;
+  const redirectUri = `${process.env.NETWORK === "devnet" ? process.env.DEVNET_FRONTEND_URL : process.env.MAINNET_FRONTEND_URL}/callback`;
 
-  const params = new URLSearchParams({
-    code: code,
-    grant_type: "authorization_code",
-    client_id: clientId,
-    redirect_uri: redirectUri,
-    code_verifier: codeVerifier,
-  });
+  const params = new URLSearchParams();
+  params.append("code", code);
+  params.append("grant_type", "authorization_code"); 
+  params.append("client_id", clientId || "");
+  params.append("redirect_uri", redirectUri);
+  params.append("code_verifier", codeVerifier);
 
   try {
     // Get OAuth 2.0 token
@@ -637,7 +629,6 @@ shareRouter.get("/oauth/callback", async (c) => {
 
     // We need to store OAuth 2.0 credentials but we'll return both OAuth 2.0 and user ID
     await storeAccessToken(
-      c.env,
       userId,
       data.access_token,
       data.refresh_token,
@@ -671,7 +662,7 @@ shareRouter.post("/oauth/refresh", async (c) => {
     return c.json({ error: "user_id is required" });
   }
 
-  const refreshToken = await getRefreshToken(c.env, userId);
+  const refreshToken = await getRefreshToken(userId);
   if (!refreshToken) {
     c.status(400);
     return c.json({ error: "No refresh token found" });
@@ -683,7 +674,7 @@ shareRouter.post("/oauth/refresh", async (c) => {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         Authorization: `Basic ${Buffer.from(
-          `${c.env.TWITTER_CLIENT_ID}:${c.env.TWITTER_API_SECRET}`,
+          `${process.env.TWITTER_CLIENT_ID}:${process.env.TWITTER_API_SECRET}`,
         ).toString("base64")}`,
       },
       body: new URLSearchParams({
@@ -698,7 +689,6 @@ shareRouter.post("/oauth/refresh", async (c) => {
 
     const data = await response.json();
     await updateAccessToken(
-      c.env,
       userId,
       data.access_token,
       data.refresh_token,
@@ -727,7 +717,7 @@ shareRouter.post("/process", async (c) => {
 
     const requestBody = (await c.req.json()) as { userId: string };
 
-    const useTestData = false; // Default to false if env.FAKE_API is not set
+    const useTestData = false; // Default to false if process.env.FAKE_API is not set
 
     logger.log("useTestData", useTestData);
 
@@ -816,7 +806,7 @@ shareRouter.post("/upload-media", async (c) => {
 
     const timestamp = getNormalizedTimestamp();
     const oauthParams = {
-      oauth_consumer_key: c.env.TWITTER_API_KEY,
+      oauth_consumer_key: process.env.TWITTER_API_KEY || "",
       oauth_nonce: randomBytes(32)
         .toString("base64")
         .replace(/[^a-zA-Z0-9]/g, ""),
@@ -839,7 +829,7 @@ shareRouter.post("/upload-media", async (c) => {
       "POST",
       "https://upload.twitter.com/1.1/media/upload.json",
       { ...oauthParams, ...initParams },
-      c.env.TWITTER_API_SECRET,
+      process.env.TWITTER_API_SECRET || "",
       oauth1TokenSecret,
     );
     const initHeader = generateAuthHeader(oauthParams, initSignature);
@@ -906,7 +896,7 @@ shareRouter.post("/upload-media", async (c) => {
 
       // Combine base OAuth params with current timestamp/nonce
       const currentOauthParams = {
-        oauth_consumer_key: c.env.TWITTER_API_KEY,
+        oauth_consumer_key: process.env.TWITTER_API_KEY || "",
         oauth_nonce: currentNonce,
         oauth_signature_method: "HMAC-SHA1",
         oauth_timestamp: currentTimestamp,
@@ -930,7 +920,7 @@ shareRouter.post("/upload-media", async (c) => {
         "POST",
         "https://upload.twitter.com/1.1/media/upload.json",
         { ...currentOauthParams }, // ONLY include OAuth params in signature base for multipart
-        c.env.TWITTER_API_SECRET,
+        process.env.TWITTER_API_SECRET || "",
         oauth1TokenSecret,
       );
       // Use current OAuth params for header generation as well
@@ -981,7 +971,7 @@ shareRouter.post("/upload-media", async (c) => {
       "POST",
       "https://upload.twitter.com/1.1/media/upload.json",
       { ...oauthParams, ...finalizeParams },
-      c.env.TWITTER_API_SECRET,
+      process.env.TWITTER_API_SECRET || "",
       oauth1TokenSecret,
     );
     const finalizeHeader = generateAuthHeader(oauthParams, finalizeSignature);
@@ -1083,7 +1073,7 @@ shareRouter.post("/tweet", async (c) => {
     // Generate OAuth 1.0a params for the tweet using user's credentials
     const timestamp = getNormalizedTimestamp();
     const oauthParams = {
-      oauth_consumer_key: c.env.TWITTER_API_KEY,
+      oauth_consumer_key: process.env.TWITTER_API_KEY || "",
       oauth_nonce: randomBytes(32)
         .toString("base64")
         .replace(/[^a-zA-Z0-9]/g, ""),
@@ -1107,7 +1097,7 @@ shareRouter.post("/tweet", async (c) => {
       "POST",
       "https://api.twitter.com/2/tweets",
       { ...oauthParams }, // Only sign the OAuth parameters
-      c.env.TWITTER_API_SECRET,
+      process.env.TWITTER_API_SECRET || "",
       oauth1TokenSecret,
     );
 

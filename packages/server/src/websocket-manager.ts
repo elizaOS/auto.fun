@@ -1,28 +1,28 @@
 import { v4 as uuidv4 } from 'uuid';
-// import WebSocket, { WebSocketServer } from 'ws'; // Standard import causing issues
-import WebSocket from 'ws'; // Import default only
-// import { WebSocketServer } from 'ws';         
-// import WebSocket = require('ws');         
 import type { RedisCacheService } from './redis/redisCacheService';
 import { logger } from './util';
-import type { Redis } from 'ioredis';
+// Use require syntax for ws WebSocket type, as suggested by linter
+import WebSocket = require('ws');
+// import type { Server as HttpServer } from 'http'; // Import Node HTTP Server type
 
-// Interface for our WebSocket connection wrapper
+// Our managed interface extending the standard WebSocket type
+// Hono's handler will provide an object compatible with this standard type
 interface ManagedWebSocket extends WebSocket {
     clientId: string;
-    isAlive: boolean;
-    // Local rooms cache for quick access during disconnect, but Redis is source of truth
+    isAlive: boolean; // Used for ping/pong
     rooms: Set<string>;
 }
 
 class WebSocketManager {
-    private wss: WebSocket.Server | null = null;
-    // Locally connected clients
+    // Remove wss instance
+    // private wss: WebSocket.Server | null = null;
+    // Map clientId to the active Hono WebSocket connection
     private clients: Map<string, ManagedWebSocket> = new Map();
-    // Local cache of room -> locally connected clients (for efficient broadcasting)
+    // Local cache of room -> locally connected clients (for efficient broadcasting within this instance)
+    // Note: Redis remains the source of truth for room memberships across instances
     private localRoomClients: Map<string, Set<ManagedWebSocket>> = new Map();
     private heartbeatInterval: NodeJS.Timeout | null = null;
-    private redisCache: RedisCacheService | null = null; // Add Redis dependency
+    private redisCache: RedisCacheService | null = null;
 
     // --- Redis Key Helper ---
     private redisKey(rawKey: string): string { // Renamed param for clarity
@@ -36,294 +36,321 @@ class WebSocketManager {
         return this.redisCache.getKey(rawKey);
     }
 
-    // --- Initialization ---
-    initialize(server: any, redisCache: RedisCacheService): void {
-        if (this.wss) {
-            logger.warn("WebSocketManager already initialized.");
-            return;
+    // --- Initialization (Simpler: only needs Redis) ---
+    initialize(redisCache: RedisCacheService): void {
+        if (this.redisCache) { // Check if already initialized
+             logger.warn("WebSocketManager RedisCacheService already set.");
+             // Optionally return or re-assign based on desired behavior
         }
-        this.redisCache = redisCache; // Store Redis instance
-        logger.info("WebSocketManager received RedisCacheService.");
+        this.redisCache = redisCache;
+        logger.info("WebSocketManager initialized with RedisCacheService.");
+        this.startHeartbeat(); // Start ping/pong
+    }
 
-        this.wss = new WebSocket.Server({ server });
-        logger.info("WebSocketServer initialized and attached to HTTP server.");
+    // --- Connection Handling (Called by Hono route) ---
+    public handleConnectionOpen(ws: WebSocket): void {
+        const managedWs = ws as ManagedWebSocket;
+        managedWs.clientId = uuidv4();
+        managedWs.isAlive = true;
+        managedWs.rooms = new Set();
+        this.clients.set(managedWs.clientId, managedWs);
 
-        this.wss.on('connection', (ws: WebSocket) => {
-            const managedWs = ws as ManagedWebSocket;
-            managedWs.clientId = uuidv4();
+        logger.log(`Client connected: ${managedWs.clientId}`);
+        try {
+             managedWs.send(JSON.stringify({ event: 'clientId', data: managedWs.clientId }));
+        } catch (error) { // Catch potential errors if socket closes immediately
+             logger.error(`Failed to send clientId to ${managedWs.clientId}:`, error);
+             this.handleConnectionClose(managedWs); // Treat as immediate close
+        }
+
+        // Handle pong responses for heartbeat
+        managedWs.on('pong', () => {
             managedWs.isAlive = true;
-            managedWs.rooms = new Set(); // Initialize local room cache
-            this.clients.set(managedWs.clientId, managedWs);
-
-            logger.log(`Client connected: ${managedWs.clientId}`);
-            managedWs.send(JSON.stringify({ event: 'clientId', data: managedWs.clientId }));
-
-            // Note: Automatic state restoration from Redis on connect is complex
-            // because the client doesn't provide a persistent ID by default.
-            // Clients need to explicitly rejoin rooms.
-
-            managedWs.on('pong', () => { managedWs.isAlive = true; });
-
-            managedWs.on('message', (message: Buffer) => {
-                try {
-                    const parsedMessage = JSON.parse(message.toString());
-                    // Make async as handlers now involve Redis
-                    this.handleClientMessage(managedWs, parsedMessage).catch(error => {
-                         logger.error(`Error in async handleClientMessage for ${managedWs.clientId}:`, error);
-                    });
-                } catch (error) {
-                    logger.error(`Failed to parse or handle message for ${managedWs.clientId}:`, message.toString(), error);
-                }
-            });
-
-            managedWs.on('close', () => {
-                logger.log(`Client disconnected: ${managedWs.clientId}`);
-                // Make async as handlers now involve Redis
-                this.handleClientDisconnect(managedWs).catch(error => {
-                    logger.error(`Error in async handleClientDisconnect for ${managedWs.clientId}:`, error);
-                });
-            });
-
-            managedWs.on('error', (error) => {
-                logger.error(`WebSocket error for client ${managedWs.clientId}:`, error);
-                 // Make async as handlers now involve Redis
-                this.handleClientDisconnect(managedWs).catch(err => {
-                    logger.error(`Error in async handleClientDisconnect (from error event) for ${managedWs.clientId}:`, err);
-                });
-            });
         });
 
-        this.startHeartbeat();
+        // Standard close/error handlers attached here
+        managedWs.on('close', () => this.handleConnectionClose(managedWs));
+        managedWs.on('error', (error: Error) => this.handleConnectionError(managedWs, error));
     }
 
-    private startHeartbeat(): void {
-        if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
-
-        this.heartbeatInterval = setInterval(() => {
-            this.clients.forEach((client) => {
-                if (!client.isAlive) {
-                    logger.warn(`Client ${client.clientId} unresponsive, terminating.`);
-                    // handleClientDisconnect is called via 'close' or 'error' events eventually
-                    client.terminate();
-                    return;
-                }
-                client.isAlive = false;
-                client.ping();
-            });
-        }, 30000);
-        logger.info("WebSocketManager heartbeat started.");
-    }
-
-    // --- Message Handling ---
+    // --- Message Handling (Called by Hono route) ---
     // Make async as it calls async room methods
-    private async handleClientMessage(client: ManagedWebSocket, message: any): Promise<void> {
-        if (!this.redisCache) {
-            logger.error("Redis cache not available in handleClientMessage");
+    public async handleMessage(ws: WebSocket, message: any): Promise<void> {
+        const managedWs = ws as ManagedWebSocket;
+        managedWs.isAlive = true; // Got message, must be alive
+
+        let parsedMessage: any;
+        try {
+            const messageString = message.toString(); // ws RawData is Buffer | ArrayBuffer | Buffer[]
+            parsedMessage = JSON.parse(messageString);
+        } catch (error) {
+            logger.error(`Failed to parse message from ${managedWs.clientId}:`, message, error);
             return;
         }
-        if (!message || !message.event) return;
 
-        const { event, data } = message;
-        logger.log(`Received message from ${client.clientId}:`, { event, data });
+        if (!this.redisCache) {
+            logger.error("Redis cache not available in handleMessage");
+            return;
+        }
+        if (!parsedMessage || !parsedMessage.event) return;
+
+        const { event, data } = parsedMessage;
+        logger.log(`Received message from ${managedWs.clientId}:`, { event, data });
 
         try {
             switch (event) {
                 case 'join':
                     if (data?.room && typeof data.room === 'string') {
-                        await this.joinRoom(client, data.room);
-                    } else { logger.warn(`Invalid 'join' format from ${client.clientId}:`, data); }
+                        await this.joinRoom(managedWs, data.room);
+                    } else { logger.warn(`Invalid 'join' format from ${managedWs.clientId}:`, data); }
                     break;
                 case 'leave':
                     if (data?.room && typeof data.room === 'string') {
-                        await this.leaveRoom(client, data.room);
-                    } else { logger.warn(`Invalid 'leave' format from ${client.clientId}:`, data); }
+                        await this.leaveRoom(managedWs, data.room);
+                    } else { logger.warn(`Invalid 'leave' format from ${managedWs.clientId}:`, data); }
                     break;
-                case 'subscribe': // Maps to joinRoom('token-...')
+                case 'subscribe':
                     if (data && typeof data === 'string') {
-                        await this.joinRoom(client, `token-${data}`);
-                    } else { logger.warn(`Invalid 'subscribe' format from ${client.clientId}:`, data); }
+                        await this.joinRoom(managedWs, `token-${data}`);
+                    } else { logger.warn(`Invalid 'subscribe' format from ${managedWs.clientId}:`, data); }
                     break;
-                case 'unsubscribe': // Maps to leaveRoom('token-...')
+                case 'unsubscribe':
                     if (data && typeof data === 'string') {
-                        await this.leaveRoom(client, `token-${data}`);
-                    } else { logger.warn(`Invalid 'unsubscribe' format from ${client.clientId}:`, data); }
+                        await this.leaveRoom(managedWs, `token-${data}`);
+                    } else { logger.warn(`Invalid 'unsubscribe' format from ${managedWs.clientId}:`, data); }
                     break;
                 case 'subscribeGlobal':
-                    await this.joinRoom(client, 'global');
+                    await this.joinRoom(managedWs, 'global');
                     break;
                 case 'unsubscribeGlobal':
-                    await this.leaveRoom(client, 'global');
+                    await this.leaveRoom(managedWs, 'global');
+                    break;
+                case 'pong':
+                     // Handled by the 'pong' event listener set up in handleConnectionOpen
                     break;
                 default:
-                    logger.warn(`Unhandled event type '${event}' from client ${client.clientId}`);
+                    logger.warn(`Unhandled event type '${event}' from client ${managedWs.clientId}`);
             }
         } catch (error) {
-             logger.error(`Error handling message event '${event}' for client ${client.clientId}:`, error);
+             logger.error(`Error handling message event '${event}' for client ${managedWs.clientId}:`, error);
         }
     }
 
+    // --- Close/Error Handling (Called by Hono route) ---
+    public handleConnectionClose(ws: WebSocket): void {
+        const managedWs = ws as ManagedWebSocket;
+        // Use clientId if available on the object already
+        const clientId = managedWs.clientId || 'unknown';
+        if (this.clients.has(clientId)) {
+             logger.log(`Client disconnected: ${clientId}`);
+             this.performClientCleanup(managedWs).catch(error => {
+                 logger.error(`Error in async performClientCleanup for ${clientId}:`, error);
+             });
+        } else {
+             // logger.log(`Cleanup skipped or already performed for client: ${clientId}`);
+        }
+    }
+
+    public handleConnectionError(ws: WebSocket, error: Error): void {
+        const managedWs = ws as ManagedWebSocket;
+        const clientId = managedWs?.clientId || 'unknown';
+        logger.error(`WebSocket error for client ${clientId}:`, error);
+        this.handleConnectionClose(ws); // Trigger cleanup
+    }
+
+    // --- Heartbeat (Ping/Pong) ---
+    private startHeartbeat(): void {
+        if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+        logger.info("Starting WebSocketManager heartbeat (ping/pong)...");
+
+        this.heartbeatInterval = setInterval(() => {
+             this.clients.forEach(async (client) => {
+                if (!client.isAlive) {
+                    logger.warn(`Client ${client.clientId} unresponsive to ping, terminating.`);
+                    try {
+                         // Standard WebSocket terminate() or close()
+                         if ('terminate' in client && typeof client.terminate === 'function') {
+                            client.terminate();
+                         } else {
+                             client.close(1008, "Heartbeat Failure");
+                         }
+                    } catch (e) {
+                        logger.warn(`Error closing/terminating unresponsive client ${client.clientId}:`, e);
+                    }
+                    await this.performClientCleanup(client).catch(err => {
+                         logger.error(`Error in performClientCleanup (heartbeat timeout) for ${client.clientId}:`, err);
+                    });
+                    return;
+                }
+                client.isAlive = false;
+                try {
+                     // Standard WebSocket ping method
+                     client.ping(() => {}); // Empty callback often needed
+                } catch (e) {
+                     logger.warn(`Failed to send ping to client ${client.clientId}:`, e);
+                     await this.performClientCleanup(client).catch(err => {
+                          logger.error(`Error in performClientCleanup (ping failed) for ${client.clientId}:`, err);
+                     });
+                }
+            });
+        }, 30000);
+    }
+
     // --- Room Management (with Redis) ---
-    // Make async
     private async joinRoom(client: ManagedWebSocket, roomName: string): Promise<void> {
         if (!this.redisCache) throw new Error("Redis cache not initialized for joinRoom");
 
-        // Add to local cache for broadcasting efficiency
+        // Add to local cache
         if (!this.localRoomClients.has(roomName)) {
             this.localRoomClients.set(roomName, new Set());
         }
         this.localRoomClients.get(roomName)?.add(client);
-        client.rooms.add(roomName); // Also update client's local room set
+        client.rooms.add(roomName);
 
-        // Add to Redis Sets for persistence
         const clientRoomsKey = this.redisKey(`client:${client.clientId}:rooms`);
         const roomClientsKey = this.redisKey(`room:${roomName}:clients`);
         try {
-             // Use the specific service methods
-             // Note: These are not atomic without a MULTI wrapper in the service itself.
-             // If atomicity is critical, consider adding transactional methods to RedisCacheService.
              await this.redisCache.sadd(clientRoomsKey, roomName);
              await this.redisCache.sadd(roomClientsKey, client.clientId);
-
              logger.log(`Client ${client.clientId} joined room (local+Redis): ${roomName}`);
-
-             // Send confirmation back to client
              client.send(JSON.stringify({
                  event: roomName.startsWith('token-') ? 'subscribed' : 'joined',
                  data: { room: roomName }
              }));
         } catch (error) {
             logger.error(`Redis error joining room ${roomName} for client ${client.clientId}:`, error);
-            // Optional: Revert local changes if Redis fails?
             this.localRoomClients.get(roomName)?.delete(client);
             client.rooms.delete(roomName);
-            throw error; // Re-throw to be caught by handleClientMessage
+            // Attempt to notify client of failure
+             try { client.send(JSON.stringify({ event: 'join_error', data: { room: roomName, error: 'Failed to update subscription' } })); } catch {} // Ignore send errors
+            throw error;
         }
     }
 
-    // Make async
     private async leaveRoom(client: ManagedWebSocket, roomName: string): Promise<void> {
-        if (!this.redisCache) throw new Error("Redis cache not initialized for leaveRoom");
+         if (!this.redisCache) throw new Error("Redis cache not initialized for leaveRoom");
 
         // Remove from local cache
         this.localRoomClients.get(roomName)?.delete(client);
         if (this.localRoomClients.get(roomName)?.size === 0) {
             this.localRoomClients.delete(roomName);
         }
-        client.rooms.delete(roomName); // Update client's local room set
+        client.rooms.delete(roomName);
 
-        // Remove from Redis Sets
         const clientRoomsKey = this.redisKey(`client:${client.clientId}:rooms`);
         const roomClientsKey = this.redisKey(`room:${roomName}:clients`);
         try {
-             // Use the specific service methods
-             // Consider atomicity needs - might need a transactional method in RedisCacheService
              await this.redisCache.srem(clientRoomsKey, roomName);
              await this.redisCache.srem(roomClientsKey, client.clientId);
-
              logger.log(`Client ${client.clientId} left room (local+Redis): ${roomName}`);
-
-             // Send confirmation back to client
              client.send(JSON.stringify({
                  event: roomName.startsWith('token-') ? 'unsubscribed' : 'left',
                  data: { room: roomName }
              }));
         } catch (error) {
              logger.error(`Redis error leaving room ${roomName} for client ${client.clientId}:`, error);
-             // Optional: Revert local changes? Difficult as client might be gone.
+             // Re-add to local cache? Maybe not, state is inconsistent.
+             // Attempt to notify client of failure
+              try { client.send(JSON.stringify({ event: 'leave_error', data: { room: roomName, error: 'Failed to update subscription' } })); } catch {} // Ignore send errors
              throw error;
         }
     }
 
-    // --- Disconnect Handling (with Redis cleanup) ---
-    // Make async
-    private async handleClientDisconnect(client: ManagedWebSocket): Promise<void> {
-        if (!this.redisCache) {
-             logger.error("Redis cache not available in handleClientDisconnect for client:", client.clientId);
-             // Proceed with local cleanup anyway
-        }
+    // --- Client Cleanup (Internal, handles local and Redis state) ---
+    private async performClientCleanup(client: ManagedWebSocket): Promise<void> {
+         if (!this.clients.has(client.clientId)) {
+              return; // Already cleaned up
+         }
 
-        logger.log(`Cleaning up disconnected client: ${client.clientId}`);
-
-        // Use the client's local room cache for cleanup efficiency
-        const roomsClientWasIn = Array.from(client.rooms); // Get rooms before clearing
+        logger.log(`Performing cleanup for client: ${client.clientId}`);
+        const roomsClientWasIn = Array.from(client.rooms); // Get rooms before clearing map/set
 
         // 1. Remove client from local data structures
         this.clients.delete(client.clientId);
         roomsClientWasIn.forEach(roomName => {
-             this.localRoomClients.get(roomName)?.delete(client);
-             if (this.localRoomClients.get(roomName)?.size === 0) {
-                this.localRoomClients.delete(roomName);
+            const room = this.localRoomClients.get(roomName);
+            if (room) {
+                 room.delete(client);
+                 if (room.size === 0) {
+                    this.localRoomClients.delete(roomName);
+                 }
             }
         });
 
-        // 2. Remove client from Redis room sets and delete client's room set
+        // 2. Remove client from Redis
         if (this.redisCache) {
             const clientRoomsKey = this.redisKey(`client:${client.clientId}:rooms`);
             try {
-                // Use specific methods. Atomicity note: If one srem fails, others might still execute.
-                // A dedicated transactional cleanup method in RedisCacheService would be more robust.
                 for (const roomName of roomsClientWasIn) {
                      const roomClientsKey = this.redisKey(`room:${roomName}:clients`);
                      await this.redisCache.srem(roomClientsKey, client.clientId);
-                     // Optional: Check room size and delete if empty (requires SCARD)
-                     // const size = await this.redisCache.scard(roomClientsKey); // Requires scard method
-                     // if (size === 0) await this.redisCache.del(roomClientsKey);
                 }
-                await this.redisCache.del(clientRoomsKey); // Delete the client's own room list
-
+                await this.redisCache.del(clientRoomsKey);
                  logger.log(`Cleaned up Redis state for client ${client.clientId}`);
             } catch (error) {
                 logger.error(`Redis error during cleanup for client ${client.clientId}:`, error);
             }
-            // No need to release client explicitly if useClient handles it
         } else {
              logger.warn("Redis cache not available, skipping Redis cleanup for client:", client.clientId);
         }
     }
 
-
-    // --- Broadcasting (using Redis for audience list) ---
-    // Make async
+    // --- Broadcasting ---
     public async broadcastToRoom(roomName: string, event: string, data: any, excludeClientId?: string): Promise<void> {
         if (!this.redisCache) {
             logger.error("Cannot broadcast: Redis cache not available.");
             return;
         }
-
         const roomClientsKey = this.redisKey(`room:${roomName}:clients`);
         let clientIdsInRoom: string[] = [];
-
         try {
-            // Get all client IDs subscribed to the room from Redis
              clientIdsInRoom = await this.redisCache.smembers(roomClientsKey);
         } catch (error) {
             logger.error(`Redis error fetching clients for room ${roomName}:`, error);
-            return; // Cannot broadcast if we can't get the list
-        }
-
-
-        if (!clientIdsInRoom || clientIdsInRoom.length === 0) {
-            // logger.log(`No clients listed in Redis for room ${roomName} to broadcast event ${event}.`);
             return;
         }
+
+        if (!clientIdsInRoom || clientIdsInRoom.length === 0) return;
 
         const message = JSON.stringify({ event, data });
         let count = 0;
 
-        // Iterate through client IDs from Redis
         clientIdsInRoom.forEach(clientId => {
             if (clientId === excludeClientId) return;
-
-            // Find the client in the *local* map (must be connected to *this* server instance)
             const client = this.clients.get(clientId);
-            if (client && client.readyState === WebSocket.OPEN) {
-                client.send(message);
-                count++;
+            if (client && client.readyState === WebSocket.OPEN) { // Use WebSocket.OPEN
+                 try {
+                      client.send(message);
+                      count++;
+                 } catch (error) {
+                      logger.error(`Error sending broadcast to client ${clientId}:`, error);
+                 }
             }
         });
 
         if (count > 0) {
-            logger.log(`Broadcasted event ${event} to ${count} clients in room ${roomName}.`);
+            logger.log(`Broadcasted event ${event} to ${count} locally connected clients in room ${roomName}.`);
+        }
+    }
+
+    // --- Send Direct Message to Client ---
+    public sendToClient(clientId: string, event: string, data: any): boolean {
+        const client = this.clients.get(clientId);
+        // Check if client is connected to *this* instance and ready
+        if (client && client.readyState === WebSocket.OPEN) { // Use WebSocket.OPEN
+             try {
+                 const message = JSON.stringify({ event, data });
+                 client.send(message);
+                 logger.log(`Sent direct message event ${event} to client ${clientId}`);
+                 return true;
+             } catch (error) {
+                 logger.error(`Failed to stringify or send direct message to client ${clientId}:`, error);
+                 return false;
+             }
+        } else {
+             // Logger warning removed as client might just be connected to another instance
+             // logger.warn(`Could not send to client ${clientId}: Not found locally or connection not open.`);\n            return false; // Indicate message was not sent by this instance\n        }\n    }\n\n    // --- Graceful Shutdown ---\n    public close(): void {\n        logger.info(\"Closing WebSocketManager...\");\n        if (this.heartbeatInterval) {\n            clearInterval(this.heartbeatInterval);\n            this.heartbeatInterval = null;\n            logger.info(\"WebSocket heartbeat stopped.\");\n        }\n        // No wss instance to close\n        // Close existing connections gracefully?\n        logger.info(`Closing ${this.clients.size} local WebSocket client connections...`);\n        this.clients.forEach(client => {\n            try {\n                 // Send a closing reason if desired, then close\n                 // client.send(JSON.stringify({ event: 'server_shutdown', data: 'Server is shutting down' }));\n                 client.close(1000, \"Server Shutting Down\"); // 1000 = Normal Closure\n            } catch (e) {\n                 logger.warn(`Error sending close frame to client ${client.clientId}:`, e);\n            }\n        });\n        this.clients.clear();\n        this.localRoomClients.clear();\n         logger.info(\"WebSocketManager local client maps cleared.\");\n    }\n}\n\nconst webSocketManager = new WebSocketManager();\n\nexport { webSocketManager };\n// Export the ManagedWebSocket type if needed elsewhere, though casting internally is common\n// export type { ManagedWebSocket };\n
+            return false; // Indicate message was not sent by this instance
         }
     }
 
@@ -333,28 +360,28 @@ class WebSocketManager {
         if (this.heartbeatInterval) {
             clearInterval(this.heartbeatInterval);
             this.heartbeatInterval = null;
+            logger.info("WebSocket heartbeat stopped.");
         }
-        if (this.wss) {
-            logger.info("Terminating all local WebSocket client connections...");
-            this.clients.forEach(client => {
-                client.terminate();
-            });
-            // Type annotation for err in close callback is still Error | null
-            this.wss.close((err: Error | null) => {
-                if (err) {
-                    logger.error("Error closing WebSocketServer:", err);
-                } else {
-                    logger.info("WebSocketServer closed.");
-                }
-            });
-            this.wss = null;
-            this.clients.clear();
-            this.localRoomClients.clear();
-        }
+        // No wss instance to close
+        // Close existing connections gracefully?
+        logger.info(`Closing ${this.clients.size} local WebSocket client connections...`);
+        this.clients.forEach(client => {
+            try {
+                 // Send a closing reason if desired, then close
+                 // client.send(JSON.stringify({ event: 'server_shutdown', data: 'Server is shutting down' }));
+                 client.close(1000, "Server Shutting Down"); // 1000 = Normal Closure
+            } catch (e) {
+                 logger.warn(`Error sending close frame to client ${client.clientId}:`, e);
+            }
+        });
+        this.clients.clear();
+        this.localRoomClients.clear();
+         logger.info("WebSocketManager local client maps cleared.");
     }
 }
 
 const webSocketManager = new WebSocketManager();
 
 export { webSocketManager };
-export type { ManagedWebSocket };
+// Export the ManagedWebSocket type if needed elsewhere, though casting internally is common
+// export type { ManagedWebSocket };

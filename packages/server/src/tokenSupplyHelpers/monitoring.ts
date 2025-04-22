@@ -1,13 +1,12 @@
 import { getDB, tokens } from "../db";
 import { eq } from "drizzle-orm";
 import { ExternalToken } from "../externalToken";
-import { Env } from "../env";
 
+// TODO: Replace with redis cache
 export async function startMonitoringBatch(
-  env: Env,
   batchSize = 10,
 ): Promise<{ processed: number; total: number }> {
-  const kv = env.MONITOR_KV;
+  const kv = process.env.MONITOR_KV;
   const db = getDB();
 
   const rawList = await kv.get("lockedList");
@@ -33,7 +32,7 @@ export async function startMonitoringBatch(
   const batch = mints.slice(cursor, cursor + batchSize);
   for (const mint of batch) {
     try {
-      const ext = new ExternalToken(env, mint);
+      const ext = new ExternalToken(mint);
       await ext.registerWebhook();
     } catch (err) {
       console.error(`Failed to register ${mint}:`, err);

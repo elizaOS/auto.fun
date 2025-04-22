@@ -19,7 +19,7 @@
 // import {Wallet} from "../../tokenSupplyHelpers/customWallet"
 
 // config({ path: ".env.test" });
-// let env: Env;
+// let ;
 // let connection: Connection;
 // let wallet: Keypair;
 // let provider: AnchorProvider;
@@ -97,10 +97,10 @@
 //       );
 //     }
 //     // Create a Solana connection
-//     connection = new Connection(env.MAINNET_SOLANA_RPC_URL);
+//     connection = new Connection(process.env.MAINNET_SOLANA_RPC_URL);
 
 //      wallet = Keypair.fromSecretKey(
-//       Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY)),
+//       Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
 //      );
 
 //     // Create Anchor provider
@@ -116,8 +116,7 @@
 
 //     // Initialize the TokenMigrator class
 //     tokenMigrator = new TokenMigrator(
-//       env,
-//       connection,
+//       //       connection,
 //       new Wallet(wallet),
 //       program,
 //       autofunProgram,
@@ -133,7 +132,7 @@
 //     }
 
 //     // Retrieve token data from the database.
-//     const token = await getToken(env, testTokenMint);
+//     const token = await getToken(testTokenMint);
 //     expect(token).not.toBeNull();
 //     if (!token) return;
 
@@ -143,7 +142,7 @@
 //     await tokenMigrator.migrateToken(token);
 
 //     // After migration, re-fetch the token from the DB.
-//     const updatedToken = await getToken(env, testTokenMint);
+//     const updatedToken = await getToken(testTokenMint);
 //     expect(updatedToken).not.toBeNull();
 //     if (updatedToken) {
 //       expect(updatedToken.status).toBe("locked");

@@ -283,7 +283,7 @@ export const WalletModal: FC<WalletModalProps> = () => {
         };
 
         // Use token-based authentication with Authorization header instead of cookies
-        const authResponse = await fetch(`${env.apiUrl}/api/authenticate`, {
+        const authResponse = await fetch(`${process.env.apiUrl}/api/authenticate`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

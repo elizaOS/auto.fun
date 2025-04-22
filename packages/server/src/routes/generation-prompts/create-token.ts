@@ -1,7 +1,7 @@
 import { Env } from "../../env";
 import { ideas, adjectives, nouns, exampleFormats } from "./constants";
 
-export async function createTokenPrompt(env: Env, validatedData?: any) {
+export async function createTokenPrompt(validatedData?: any) {
   // Customize AI prompt based on user input
   let userInstructions = "";
   if (validatedData && validatedData.prompt) {
@@ -28,7 +28,7 @@ export async function createTokenPrompt(env: Env, validatedData?: any) {
   }
 
   // Get trending topics for inspiration
-  const newsApiKey = env.NEWS_API_KEY;
+  const newsApiKey = process.env.NEWS_API_KEY;
   let trendingTopics = [];
 
   if (newsApiKey) {

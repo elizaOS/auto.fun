@@ -1,12 +1,11 @@
-import { Raydium, TxVersion } from "@raydium-io/raydium-sdk-v2";
+import { Raydium, TxVersion, Cluster } from "@raydium-io/raydium-sdk-v2";
 import { Connection, Keypair } from "@solana/web3.js";
-import { Env } from "./env";
 import { getRpcUrl, logger } from "./util";
 
-const getOwner = (env: Env) => {
-  if (env.WALLET_PRIVATE_KEY) {
+const getOwner = () => {
+  if (process.env.WALLET_PRIVATE_KEY) {
     return Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY)),
+      Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
     );
   }
   return undefined; // Explicitly return undefined when no key is present
@@ -20,19 +19,19 @@ export interface InitSdkOptions {
   env?: any;
 }
 
-export const initSdk = async ({ loadToken = true, env }: InitSdkOptions) => {
+export const initSdk = async ({ loadToken = true }: InitSdkOptions) => {
   try {
     // Set the cluster from env or use default
-    const cluster = env?.NETWORK || "mainnet";
+    const cluster = process.env.NETWORK || "mainnet";
 
     // Get connection based on env if provided
-    const sdkConnection = new Connection(getRpcUrl(env));
+    const sdkConnection = new Connection(getRpcUrl());
 
     // Create a new instance each time since we're passing potentially different config
     const raydium = await Raydium.load({
-      owner: env ? getOwner(env) : undefined,
+      owner: getOwner(),
       connection: sdkConnection,
-      cluster,
+      cluster: cluster as Cluster,
       disableFeatureCheck: true,
       disableLoadToken: !loadToken,
       blockhashCommitment: "finalized",

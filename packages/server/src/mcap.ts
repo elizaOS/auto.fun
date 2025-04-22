@@ -30,11 +30,10 @@ let lastUpdateTime: Date | null = null;
  * Get the current SOL price in USD
  * Prioritizes cache, then Pyth, then fallback APIs
  */
-export async function getSOLPrice(env?: Env): Promise<number> {
+export async function getSOLPrice(): Promise<number> {
   console.log("getting sol price");
   // If env is provided, try to get price from cache first
-  if (env) {
-    const cacheService = new CacheService(env);
+    const cacheService = new CacheService();
     const cachedPrice = await cacheService.getSolPrice();
     console.log("cachedPrice", cachedPrice);
     if (
@@ -44,7 +43,6 @@ export async function getSOLPrice(env?: Env): Promise<number> {
     ) {
       return cachedPrice;
     }
-  }
 
   // Try Pyth Network first (most accurate source)
   // try {
@@ -55,7 +53,7 @@ export async function getSOLPrice(env?: Env): Promise<number> {
 
   //   // Cache the result if env is provided
   //   if (env && price > 0) {
-  //     const cacheService = new CacheService(env);
+  //     const cacheService = new CacheService();
   //     await cacheService.setSolPrice(price);
   //   }
 
@@ -77,10 +75,8 @@ export async function getSOLPrice(env?: Env): Promise<number> {
       const price = data.solana.usd;
 
       // If env is provided, cache the price
-      if (env) {
-        const cacheService = new CacheService(env);
+        const cacheService = new CacheService();
         await cacheService.setSolPrice(price);
-      }
 
       return price;
     }
@@ -99,10 +95,8 @@ export async function getSOLPrice(env?: Env): Promise<number> {
       const price = parseFloat(data.price);
 
       // If env is provided, cache the price
-      if (env) {
-        const cacheService = new CacheService(env);
+        const cacheService = new CacheService();
         await cacheService.setSolPrice(price);
-      }
 
       return price;
     }
@@ -146,7 +140,6 @@ export async function fetchSOLPriceFromPyth(): Promise<number> {
 export async function calculateTokenMarketData(
   token: any,
   solPrice: number,
-  env: Env,
 ): Promise<any> {
   // Copy the token to avoid modifying the original
   const tokenWithMarketData = { ...token };
@@ -162,7 +155,7 @@ export async function calculateTokenMarketData(
     }
 
     if (shouldUpdateSupply(token)) {
-      const updatedSupply = await updateTokenSupplyFromChain(env, token.mint);
+      const updatedSupply = await updateTokenSupplyFromChain(token.mint);
       tokenWithMarketData.tokenSupply = updatedSupply.tokenSupply;
       tokenWithMarketData.tokenSupplyUiAmount =
         updatedSupply.tokenSupplyUiAmount;
@@ -188,11 +181,11 @@ export async function calculateTokenMarketData(
   }
 }
 
-async function calculateRaydiumTokenMarketData(token: any, env?: Env) {
+async function calculateRaydiumTokenMarketData(token: any) {
   try {
-    const TOKEN_DECIMALS = env ? Number(env.DECIMALS || 6) : 6;
-    const solPrice = await getSOLPrice(env);
-    const raydium = await initSdk({ loadToken: true, env });
+    const TOKEN_DECIMALS = Number(process.env.DECIMALS || 6);
+    const solPrice = await getSOLPrice();
+    const raydium = await initSdk({ loadToken: true });
 
     let poolInfo;
     let retries = 5;
@@ -228,8 +221,6 @@ async function calculateRaydiumTokenMarketData(token: any, env?: Env) {
       logger.error("Mcap: Invalid pool info structure");
     }
 
-    // const virtualLiquidity = env ? Number(env.VIRTUAL_RESERVES) / Math.pow(10, 9) : 0;
-
     if (!poolInfo) {
       throw new Error("Mcap: Invalid pool info structure");
     }
@@ -256,10 +247,8 @@ async function calculateRaydiumTokenMarketData(token: any, env?: Env) {
     const tokenPriceUSD = currentPrice > 0 ? currentPrice * solPrice : 0;
 
     // Calculate market cap
-    const marketCapUSD = env
-      ? (Number(env.TOKEN_SUPPLY) / Math.pow(10, TOKEN_DECIMALS)) *
+    const marketCapUSD = (Number(process.env.TOKEN_SUPPLY) / Math.pow(10, TOKEN_DECIMALS)) *
         tokenPriceUSD
-      : (1000000000000000 / Math.pow(10, TOKEN_DECIMALS)) * tokenPriceUSD; // Default value if env not available
 
     if (marketCapUSD < 0) {
       throw new Error("Mcap: Market cap is negative");
@@ -319,23 +308,12 @@ async function calculateRaydiumTokenMarketData(token: any, env?: Env) {
  * Process a batch of tokens and update their market data
  * This approach is more compatible with Cloudflare Workers' stateless nature
  */
-export async function updateMigratedTokenMarketData(env?: Env) {
+export async function updateMigratedTokenMarketData() {
   console.log("Updating migrated token market data");
   try {
     const startTime = Date.now();
 
-    // Use the provided env or create a minimal fallback (no process.env)
-    const workingEnv =
-      env ||
-      ({
-        NETWORK: "devnet",
-        DECIMALS: "6",
-        TOKEN_SUPPLY: "1000000000000000",
-        VIRTUAL_RESERVES: "28000000000",
-        CURVE_LIMIT: "113000000000",
-      } as Env); // Cast to Env for compatibility
-
-    const db = getDB(workingEnv);
+    const db = getDB();
     const migratedTokens = await db
       .select()
       .from(tokens)
@@ -353,8 +331,7 @@ export async function updateMigratedTokenMarketData(env?: Env) {
         tokenBatch.map(async (token: { mint: string | SQLWrapper }) => {
           try {
             const marketData = await calculateRaydiumTokenMarketData(
-              token,
-              workingEnv,
+              token
             );
 
             await db

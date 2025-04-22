@@ -49,13 +49,12 @@ export const TOKEN_OWNERSHIP = {
 
 // Helper to check rate limits
 export async function checkRateLimits(
-  env: Env,
   mint: string,
   type: MediaType,
   publicKey?: string,
 ): Promise<{ allowed: boolean; remaining: number; message?: string }> {
   // Special handling for test environments
-  if (env.NODE_ENV === "test") {
+  if (process.env.NODE_ENV === "test") {
     // In test mode, we want to test different rate limit scenarios
     // Use the mint address to determine the rate limit behavior
     if (mint.endsWith("A") || mint.endsWith("a")) {
@@ -110,7 +109,7 @@ export async function checkRateLimits(
     // If token ownership validation is enabled and user wallet is provided
     if (TOKEN_OWNERSHIP.ENABLED && publicKey) {
       // Check if user owns enough tokens
-      const ownershipResult = await checkTokenOwnership(env, mint, publicKey);
+      const ownershipResult = await checkTokenOwnership(mint, publicKey);
       if (!ownershipResult.allowed) {
         return {
           allowed: false,
@@ -139,7 +138,6 @@ export async function checkRateLimits(
  * Checks if a user owns the required minimum amount of tokens for generating content
  */
 export async function checkTokenOwnership(
-  env: Env,
   mint: string,
   publicKey: string,
   mode: "fast" | "pro" = "fast",
@@ -147,7 +145,7 @@ export async function checkTokenOwnership(
 ): Promise<{ allowed: boolean; message?: string }> {
   try {
     // Special handling for test environments
-    if (env.NODE_ENV === "test") {
+    if (process.env.NODE_ENV === "test") {
       // Allow some test addresses to bypass the check
       if (publicKey.endsWith("TEST") || publicKey.endsWith("ADMIN")) {
         return { allowed: true };
@@ -184,7 +182,7 @@ export async function checkTokenOwnership(
 
     // Access the database
     const db = getDB();
-    const redisCache = createRedisCache(env); // Instantiate Redis
+    const redisCache = createRedisCache(); // Instantiate Redis
 
     try {
       // First check if user is the token creator (creators always have access)
@@ -218,8 +216,7 @@ export async function checkTokenOwnership(
         );
         // Fallback to blockchain check if Redis fails
         return await checkBlockchainTokenBalance(
-          env,
-          mint,
+                    mint,
           publicKey,
           minimumRequired,
         );
@@ -233,8 +230,7 @@ export async function checkTokenOwnership(
           `User ${publicKey} not found in Redis holders for ${mint}, checking blockchain.`,
         );
         return await checkBlockchainTokenBalance(
-          env,
-          mint,
+                    mint,
           publicKey,
           minimumRequired,
         );
@@ -261,8 +257,7 @@ export async function checkTokenOwnership(
       logger.error(`Database error during token creator check: ${dbError}`);
       // Fall back to checking the blockchain directly if database check fails
       return await checkBlockchainTokenBalance(
-        env,
-        mint,
+                mint,
         publicKey,
         minimumRequired,
       );
@@ -279,14 +274,13 @@ export async function checkTokenOwnership(
  * Used when database lookup fails or when user is not in the token holders table
  */
 async function checkBlockchainTokenBalance(
-  env: Env,
   mint: string,
   publicKey: string,
   minimumRequired: number,
 ): Promise<{ allowed: boolean; message?: string }> {
   try {
     // Connect to Solana
-    const connection = new Connection(getRpcUrl(env), "confirmed");
+    const connection = new Connection(getRpcUrl(), "confirmed");
 
     // Convert string addresses to PublicKey objects
     const mintPublicKey = new PublicKey(mint);
@@ -341,7 +335,6 @@ async function checkBlockchainTokenBalance(
 
 // Helper to generate media using fal.ai or Cloudflare Workers
 export async function generateMedia(
-  env: Env,
   data: {
     prompt: string;
     type: MediaType;
@@ -373,11 +366,11 @@ export async function generateMedia(
   // Initialize fal.ai client dynamically if needed for video/audio
   if (
     !(data.type === MediaType.IMAGE && data.mode === "fast") &&
-    env.FAL_API_KEY
+    process.env.FAL_API_KEY
   ) {
-    console.log("**** env.FAL_API_KEY", env.FAL_API_KEY);
+    console.log("**** process.env.FAL_API_KEY", process.env.FAL_API_KEY);
     fal.config({
-      credentials: env.FAL_API_KEY,
+      credentials: process.env.FAL_API_KEY,
     });
   }
 
@@ -394,7 +387,7 @@ export async function generateMedia(
   // Use Cloudflare Worker AI for image generation (fast mode)
   if (data.type === MediaType.IMAGE && (!data.mode || data.mode === "fast")) {
     // Use Cloudflare AI binding instead of external API
-    if (!env.AI) {
+    if (!process.env.AI) {
       throw new Error("Cloudflare AI binding not configured");
     }
 
@@ -405,7 +398,7 @@ export async function generateMedia(
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         // Use the flux-1-schnell model via AI binding
-        const result = await env.AI.run(
+        const result = await process.env.AI.run(
           "@cf/black-forest-labs/flux-1-schnell",
           {
             prompt: data.prompt,
@@ -555,8 +548,7 @@ export async function generateMedia(
     } else {
       // Generate lyrics first, then use them to generate the song
       const lyrics = await generateLyrics(
-        env,
-        {
+                {
           name: data.prompt.split(":")[0] || "",
           symbol: data.prompt.split(":")[1]?.trim() || "",
           description: data.prompt.split(":")[2]?.trim() || "",
@@ -726,7 +718,7 @@ app.post("/:mint/generate", async (c) => {
 
     // Configure fal.ai client
     fal.config({
-      credentials: c.env.FAL_API_KEY ?? "",
+      credentials: process.env.FAL_API_KEY ?? "",
     });
 
     // Create a database timeout
@@ -766,15 +758,14 @@ app.post("/:mint/generate", async (c) => {
     try {
       const mode = validatedData.mode || "fast";
       rateLimit = (await Promise.race([
-        checkRateLimits(c.env, mint, validatedData.type, user.publicKey),
+        checkRateLimits(mint, validatedData.type, user.publicKey),
         dbTimeoutPromise,
       ])) as { allowed: boolean; remaining: number; message?: string };
 
       // Additional ownership check for mode-specific requirements
       if (rateLimit.allowed) {
         const ownershipCheck = await checkTokenOwnership(
-          c.env,
-          mint,
+                    mint,
           user.publicKey,
           mode,
           validatedData.type,
@@ -846,11 +837,11 @@ app.post("/:mint/generate", async (c) => {
       return c.json({ error: "Error checking rate limits" }, 500);
     }
 
-    console.log("FAL_API_KEY is", c.env.FAL_API_KEY);
+    console.log("FAL_API_KEY is", process.env.FAL_API_KEY);
 
     let result: any;
     try {
-      result = await generateMedia(c.env, validatedData);
+      result = await generateMedia(validatedData);
     } catch (error) {
       clearTimeoutSafe(endpointTimeoutId);
       console.error(`Media generation failed: ${error}`);
@@ -1098,13 +1089,13 @@ app.post("/generate-metadata", async (c) => {
             `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`,
           );
 
-          const response = await c.env.AI.run(
+          const response = await process.env.AI.run(
             "@cf/meta/llama-3.1-8b-instruct-fast",
             {
               messages: [
                 {
                   role: "system",
-                  content: await createTokenPrompt(c.env, validatedData),
+                  content: await createTokenPrompt(validatedData),
                 },
               ],
               max_tokens: 1000,
@@ -1226,7 +1217,7 @@ app.post("/generate-metadata", async (c) => {
 
     if (!metadata) {
       // All retries failed - provide fallback in development or return error
-      if (c.env.NODE_ENV === "development" || c.env.NODE_ENV === "test") {
+      if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
         const randomNum = Math.floor(Math.random() * 1000);
         logger.log(
           "Using fallback metadata in development/test environment after all retries failed",
@@ -1308,7 +1299,7 @@ app.post("/generate", async (c) => {
       throw error;
     }
 
-    const result = await generateMedia(c.env, validatedData) as any;
+    const result = await generateMedia(validatedData) as any;
 
     console.log("result is", result);
 
@@ -1370,7 +1361,6 @@ app.post("/generate", async (c) => {
  * Generate an image using Fal.ai API
  */
 export async function generateImage(
-  env: Env,
   mint: string,
   prompt: string,
   negativePrompt?: string,
@@ -1378,7 +1368,7 @@ export async function generateImage(
 ): Promise<MediaGeneration> {
   try {
     // In test mode, return a test image
-    if (env.NODE_ENV === "test") {
+    if (process.env.NODE_ENV === "test") {
       return {
         id: crypto.randomUUID(),
         mint,
@@ -1397,7 +1387,7 @@ export async function generateImage(
 
     // For production, we would call the actual Fal.ai API
     // This is simplified for the test scenario
-    if (!env.FAL_API_KEY) {
+    if (!process.env.FAL_API_KEY) {
       throw new Error("FAL_API_KEY is not configured");
     }
 
@@ -1429,7 +1419,6 @@ export async function generateImage(
  * Generate a video using Fal.ai API
  */
 export async function generateVideo(
-  env: Env,
   mint: string,
   prompt: string,
   negativePrompt?: string,
@@ -1437,7 +1426,7 @@ export async function generateVideo(
 ): Promise<MediaGeneration> {
   try {
     // In test mode, return a test video
-    if (env.NODE_ENV === "test") {
+    if (process.env.NODE_ENV === "test") {
       return {
         id: crypto.randomUUID(),
         mint,
@@ -1460,7 +1449,7 @@ export async function generateVideo(
 
     // For production, we would call the actual Fal.ai API
     // This is simplified for the test scenario
-    if (!env.FAL_API_KEY) {
+    if (!process.env.FAL_API_KEY) {
       throw new Error("FAL_API_KEY is not configured");
     }
 
@@ -1496,14 +1485,13 @@ export async function generateVideo(
  * Get daily generation count and update if needed
  */
 export async function getDailyGenerationCount(
-  env: Env,
   db: any,
   mint: string,
   creator: string,
 ): Promise<number> {
   try {
     // In test mode, return a low count
-    if (env.NODE_ENV === "test") {
+    if (process.env.NODE_ENV === "test") {
       return 1;
     }
 
@@ -1545,7 +1533,6 @@ export async function getDailyGenerationCount(
 
 // Function to generate a token on demand
 async function generateTokenOnDemand(
-  env: Env,
   ctx: { waitUntil: (promise: Promise<any>) => void },
 ): Promise<{
   success: boolean;
@@ -1565,7 +1552,7 @@ async function generateTokenOnDemand(
     logger.log("Generating a token on demand...");
 
     // Step 1: Generate Metadata
-    const metadata = await generateMetadata(env); // Assuming generateMetadata handles its own retries
+    const metadata = await generateMetadata(); // Assuming generateMetadata handles its own retries
 
     if (!metadata) {
       return {
@@ -1590,7 +1577,7 @@ async function generateTokenOnDemand(
       );
       try {
         // Generate image using our existing function
-        const imageResult = await generateMedia(env, {
+        const imageResult = await generateMedia({
           prompt: metadata.prompt,
           type: MediaType.IMAGE,
           // Consider setting mode: 'fast' if CF AI is preferred and available
@@ -1641,16 +1628,16 @@ async function generateTokenOnDemand(
           const imageFilename = `${crypto.randomUUID()}${extension}`;
           const imageKey = `token-images/${imageFilename}`; // Consistent R2 prefix
 
-          if (!env.R2) {
+          if (!process.env.R2) {
             throw new Error(
-              "R2 storage (env.R2) is not configured. Cannot upload image.",
+              "R2 storage (process.env.R2) is not configured. Cannot upload image.",
             );
           }
 
           logger.log(
             `[Attempt ${imageAttempt}] Uploading image to R2 with key: ${imageKey}`,
           );
-          await env.R2.put(imageKey, imageBuffer, {
+          await process.env.R2.put(imageKey, imageBuffer, {
             httpMetadata: {
               contentType,
               cacheControl: "public, max-age=31536000", // 1 year cache
@@ -1658,16 +1645,16 @@ async function generateTokenOnDemand(
           });
 
           // Construct the final public URL
-          const r2PublicUrl = env.R2_PUBLIC_URL;
+          const r2PublicUrl = process.env.R2_PUBLIC_URL;
           if (!r2PublicUrl) {
             throw new Error(
               "R2_PUBLIC_URL environment variable is not set. Cannot construct public image URL.",
             );
           }
           finalImageUrl =
-            env.API_URL?.includes("localhost") ||
-            env.API_URL?.includes("127.0.0.1")
-              ? `${env.API_URL}/api/image/${imageFilename}` // Assumes a local proxy endpoint exists
+            process.env.API_URL?.includes("localhost") ||
+            process.env.API_URL?.includes("127.0.0.1")
+              ? `${process.env.API_URL}/api/image/${imageFilename}` // Assumes a local proxy endpoint exists
               : `${r2PublicUrl.replace(/\/$/, "")}/${imageKey}`; // Ensure no double slash
 
           logger.log(
@@ -1804,7 +1791,7 @@ app.get("/pre-generated-token", async (c) => {
       );
 
       // Generate a token on the fly
-      const result = await generateTokenOnDemand(c.env, c.executionCtx);
+      const result = await generateTokenOnDemand(c.executionCtx);
 
       if (!result.success) {
         return c.json({ error: result.error }, 500);
@@ -1877,7 +1864,7 @@ app.post("/mark-token-used", async (c) => {
 });
 
 // Function to generate metadata using Claude with retry
-async function generateMetadata(env: Env, maxRetries = 10) {
+async function generateMetadata(maxRetries = 10) {
   let retryCount = 0;
 
   while (retryCount < maxRetries) {
@@ -1886,11 +1873,11 @@ async function generateMetadata(env: Env, maxRetries = 10) {
         `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`,
       );
 
-      const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
+      const response = await process.env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
         messages: [
           {
             role: "system",
-            content: await createTokenPrompt(env),
+            content: await createTokenPrompt(),
           },
         ],
         max_tokens: 1000,
@@ -1999,7 +1986,7 @@ async function generateMetadata(env: Env, maxRetries = 10) {
   logger.error(`Failed to generate metadata after ${maxRetries} attempts`);
 
   // In development, provide a detailed fallback
-  if (env.NODE_ENV === "development" || env.NODE_ENV === "test") {
+  if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
     const randomNum = Math.floor(Math.random() * 1000);
     logger.log(
       "Using fallback metadata in development/test environment after all retries failed",
@@ -2018,7 +2005,7 @@ async function generateMetadata(env: Env, maxRetries = 10) {
 }
 
 // Function to generate new pre-generated tokens
-export async function generatePreGeneratedTokens(env: Env) {
+export async function generatePreGeneratedTokens() {
   let metadata: Record<string, string> | null = null;
   try {
     // ----- Step 1: Generate Metadata (Logic from /generate-metadata) -----
@@ -2033,13 +2020,13 @@ export async function generatePreGeneratedTokens(env: Env) {
         );
 
         // Note: We don't have `validatedData` here, so createTokenPrompt needs the simpler signature
-        const response = await env.AI.run(
+        const response = await process.env.AI.run(
           "@cf/meta/llama-3.1-8b-instruct-fast",
           {
             messages: [
               {
                 role: "system",
-                content: await createTokenPrompt(env), // Use simpler prompt generation
+                content: await createTokenPrompt(), // Use simpler prompt generation
               },
             ],
             max_tokens: 1000,
@@ -2130,7 +2117,7 @@ export async function generatePreGeneratedTokens(env: Env) {
         "[PreGen Metadata] Failed to generate valid metadata after all retries. Skipping token.",
       );
       // Use fallback in development/test
-      if (env.NODE_ENV === "development" || env.NODE_ENV === "test") {
+      if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
         const randomNum = Math.floor(Math.random() * 1000);
         logger.log("[PreGen Metadata] Using fallback metadata.");
         metadata = {
@@ -2151,7 +2138,7 @@ export async function generatePreGeneratedTokens(env: Env) {
       logger.log(
         `[PreGen Image] Generating image for: ${metadata.name} using prompt: ${metadata.prompt.substring(0, 50)}...`,
       );
-      const imageResult = await generateMedia(env, {
+      const imageResult = await generateMedia({
         prompt: metadata.prompt,
         type: MediaType.IMAGE,
       }) as any;
@@ -2209,12 +2196,12 @@ export async function generatePreGeneratedTokens(env: Env) {
       const imageKey = `token-images/${imageFilename}`; // Using the same prefix as /upload
       logger.log(`[PreGen Upload] Determined image R2 key: ${imageKey}`);
 
-      if (!env.R2) {
+      if (!process.env.R2) {
         throw new Error("[PreGen Upload] R2 binding is not available.");
       }
 
       logger.log(`[PreGen Upload] Attempting R2 put for key: ${imageKey}`);
-      const res = await env.R2.put(imageKey, imageBuffer, {
+      const res = await process.env.R2.put(imageKey, imageBuffer, {
         httpMetadata: { contentType, cacheControl: "public, max-age=31536000" },
       });
       // log the public url from the respnse
@@ -2224,7 +2211,7 @@ export async function generatePreGeneratedTokens(env: Env) {
       );
 
       // Construct URL based on environment (like /upload does)
-      const r2PublicUrl = env.R2_PUBLIC_URL;
+      const r2PublicUrl = process.env.R2_PUBLIC_URL;
       if (!r2PublicUrl) {
         logger.error(
           "[PreGen Upload] R2_PUBLIC_URL environment variable is not set. Cannot construct public image URL.",
@@ -2234,9 +2221,9 @@ export async function generatePreGeneratedTokens(env: Env) {
       } else {
         // Only construct the URL if the base URL is available
         finalImageUrl =
-          env.API_URL?.includes("localhost") ||
-          env.API_URL?.includes("127.0.0.1")
-            ? `${env.API_URL}/api/image/${imageFilename}`
+          process.env.API_URL?.includes("localhost") ||
+          process.env.API_URL?.includes("127.0.0.1")
+            ? `${process.env.API_URL}/api/image/${imageFilename}`
             : `${r2PublicUrl.replace(/\/$/, "")}/${imageKey}`; // Ensure no double slash
         logger.log(
           `[PreGen Upload] Constructed final image URL: ${finalImageUrl}`,
@@ -2290,11 +2277,10 @@ export async function generatePreGeneratedTokens(env: Env) {
 
 // Check and replenish pre-generated tokens if needed
 export async function checkAndReplenishTokens(
-  env: Env,
   threshold: number = 3,
 ): Promise<void> {
   if (!threshold) {
-    threshold = parseInt(env.PREGENERATED_TOKENS_COUNT || "3");
+    threshold = parseInt(process.env.PREGENERATED_TOKENS_COUNT || "3");
   }
   try {
     console.log("Checking and replenishing pre-generated tokens...");
@@ -2318,7 +2304,7 @@ export async function checkAndReplenishTokens(
         logger.log(
           `Generating ${tokensToGenerate} new pre-generated tokens...`,
         );
-        await generatePreGeneratedTokens(env);
+        await generatePreGeneratedTokens();
         retries++;
       } else {
         break;
@@ -2388,7 +2374,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
 
     if (!existingToken || existingToken.length === 0) {
       // For development, allow generation even if token doesn't exist in DB
-      if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
+      if (process.env.NODE_ENV !== "development" && process.env.NODE_ENV !== "test") {
         return c.json(
           {
             success: false,
@@ -2403,7 +2389,6 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
 
     // Check rate limits for the user on this token
     const rateLimit = await checkRateLimits(
-      c.env,
       tokenMint,
       mediaType,
       user.publicKey,
@@ -2444,7 +2429,6 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
 
     // Check specific token requirements for the selected mode
     const ownershipCheck = await checkTokenOwnership(
-      c.env,
       tokenMint,
       user.publicKey,
       mode,
@@ -2480,7 +2464,6 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
     // Use AI to enhance the prompt
     console.log(`Enhancing prompt with token metadata for ${mediaType}`);
     const enhancedPrompt = await generateEnhancedPrompt(
-      c.env,
       userPrompt,
       tokenMetadata,
       mediaType,
@@ -2517,7 +2500,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
       generationParams.lyrics = lyrics;
     }
 
-    const result = await generateMedia(c.env, generationParams) as any;
+    const result = await generateMedia(generationParams) as any;
 
     console.log(
       "Media generation result:",
@@ -2659,7 +2642,6 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
 
 // Helper function to generate an enhanced prompt using the token metadata
 async function generateEnhancedPrompt(
-  env: Env,
   userPrompt: string,
   tokenMetadata: {
     name: string;
@@ -2683,7 +2665,7 @@ async function generateEnhancedPrompt(
     }
 
     // Use Llama to enhance the prompt
-    const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
+    const response = await process.env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
       messages: [
         {
           role: "system",
@@ -2713,7 +2695,6 @@ async function generateEnhancedPrompt(
 
 // Function to generate additional images for a token
 export async function generateAdditionalTokenImages(
-  env: Env,
   tokenMint: string,
   description: string,
 ): Promise<void> {
@@ -2723,19 +2704,16 @@ export async function generateAdditionalTokenImages(
     // Generate enhanced prompts for each image
     const enhancedPrompts = await Promise.all([
       generateEnhancedPrompt(
-        env,
         description,
         { name: "", symbol: "", description },
         MediaType.IMAGE,
       ),
       generateEnhancedPrompt(
-        env,
         description,
         { name: "", symbol: "", description },
         MediaType.IMAGE,
       ),
       generateEnhancedPrompt(
-        env,
         description,
         { name: "", symbol: "", description },
         MediaType.IMAGE,
@@ -2754,7 +2732,7 @@ export async function generateAdditionalTokenImages(
 
         try {
           // Generate the image
-          const imageResult = await generateMedia(env, {
+          const imageResult = await generateMedia({
             prompt,
             type: MediaType.IMAGE,
           }) as any;
@@ -2769,7 +2747,7 @@ export async function generateAdditionalTokenImages(
           const imageBuffer = Buffer.from(base64Data, "base64");
 
           // Upload to R2 with predictable path
-          await uploadGeneratedImage(env, imageBuffer, tokenMint, index + 1);
+          await uploadGeneratedImage(imageBuffer, tokenMint, index + 1);
           logger.log(
             `Successfully generated and uploaded image ${index + 1} for token ${tokenMint}`,
           );
@@ -2843,7 +2821,6 @@ function formatLyricsForDiffrhythm(lyrics: string): string {
 
 // Helper function to generate lyrics using AI
 async function generateLyrics(
-  env: Env,
   tokenMetadata: {
     name: string;
     symbol: string;
@@ -2872,7 +2849,7 @@ async function generateLyrics(
     [00:10.00] Second line of chorus
     [00:12.50] Third line of chorus`;
 
-    const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
+    const response = await process.env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
       messages: [
         {
           role: "system",

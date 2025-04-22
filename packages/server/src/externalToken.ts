@@ -40,20 +40,16 @@ type ProcessedSwap = {
 export class ExternalToken {
   private sdk: Codex;
   private mint: string;
-  private db: ReturnType<typeof getDB>;
   private wsClient: WebSocketClient;
-  private env: Env;
 
-  constructor(env: Env, mint: string) {
-    this.sdk = new Codex(env.CODEX_API_KEY);
+  constructor(mint: string) {
+    this.sdk = new Codex(process.env.CODEX_API_KEY || "");
     this.mint = mint;
-    this.db = getDB();
     this.wsClient = getWebSocketClient();
-    this.env = env;
   }
 
   public async registerWebhook() {
-    const securityToken = this.env.CODEX_WEBHOOK_AUTH_TOKEN;
+    const securityToken = process.env.CODEX_WEBHOOK_AUTH_TOKEN;
     // if (!securityToken) {
     //   throw new Error("missing CODEX_WEBHOOK_AUTH_TOKEN env var");
     // }
@@ -65,7 +61,7 @@ export class ExternalToken {
             webhooks: [
               {
                 alertRecurrence: AlertRecurrence.Indefinite,
-                callbackUrl: `${this.env.API_URL}/api/codex-webhook`,
+                callbackUrl: `${process.env.API_URL}/api/codex-webhook`,
                 // callbackUrl: `https://out-charitable-remain-declined.trycloudflare.com/api/codex-webhook`,
                 conditions: {
                   tokenAddress: {
@@ -79,7 +75,7 @@ export class ExternalToken {
                   },
                 },
                 name: this.mint,
-                securityToken,
+                securityToken: securityToken as string,
                 deduplicate: true,
               },
             ],
@@ -152,7 +148,7 @@ export class ExternalToken {
     };
 
     // Remove DB write for ephemeral data; store stats in Redis
-    const redisCache = createRedisCache(this.env);
+    const redisCache = createRedisCache();
     const statsKey = redisCache.getKey(`token:stats:${this.mint}`);
     await redisCache.set(statsKey, JSON.stringify(newTokenData), 60);
     logger.log(`ExternalToken: Stored market stats in Redis for ${this.mint} with TTL 60s`);
@@ -184,7 +180,7 @@ export class ExternalToken {
 
     allHolders.sort((a, b) => b.percentage - a.percentage);
 
-    const redisCache = createRedisCache(this.env);
+    const redisCache = createRedisCache();
     const holdersListKey = redisCache.getKey(`holders:${this.mint}`);
     const top50Holders = allHolders.slice(0, 50);
 
@@ -223,7 +219,7 @@ export class ExternalToken {
     });
 
     const codexSwaps = getTokenEvents?.items ?? [];
-    const solPrice = await getSOLPrice(this.env);
+    const solPrice = await getSOLPrice();
 
     const processedSwaps = codexSwaps
       .filter(
@@ -383,7 +379,7 @@ export class ExternalToken {
     if (processedSwaps.length === 0) return;
 
     // Instantiate Redis client
-    const redisCache = createRedisCache(this.env);
+    const redisCache = createRedisCache();
     const listKey = redisCache.getKey(`swapsList:${this.mint}`);
 
     // Sort swaps by ascending timestamp (oldest first)

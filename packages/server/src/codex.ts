@@ -32,8 +32,7 @@ export async function fetchCodexTokenEvents(
   tokenAddress: string,
   startTimestamp: number,
   endTimestamp: number,
-  networkId: number = 1399811149,
-  env?: any,
+  networkId: number = 1399811149
 ): Promise<CodexTokenEvent[]> {
   const apiUrl = "https://graph.codex.io/graphql";
   let allItems: CodexTokenEvent[] = [];
@@ -76,7 +75,7 @@ export async function fetchCodexTokenEvents(
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: env?.CODEX_API_KEY || "",
+            Authorization: process.env.CODEX_API_KEY || "",
           },
         },
       );
@@ -124,7 +123,6 @@ export async function fetchCodexTokenEvents(
 export async function fetchCodexTokenPrice(
   tokenAddress: string,
   networkId: number = 1399811149,
-  env?: any,
 ): Promise<{
   currentPrice: number;
   priceUsd: number;
@@ -158,7 +156,7 @@ export async function fetchCodexTokenPrice(
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: env?.CODEX_API_KEY || "",
+          Authorization: process.env.CODEX_API_KEY || "",
         },
       },
     );
@@ -286,7 +284,6 @@ export async function fetchCodexBars(
   resolution: CodexBarResolution = "1",
   networkId: number = 1399811149,
   quoteToken: string = "token1",
-  env?: any,
 ): Promise<CandleData[]> {
   const apiUrl = "https://graph.codex.io/graphql";
 
@@ -320,7 +317,6 @@ export async function fetchCodexBars(
       resolution,
       quoteToken,
       timeInterval,
-      env,
     );
   } else {
     // Otherwise, fetch in chunks of 1000 intervals each
@@ -339,7 +335,6 @@ export async function fetchCodexBars(
         resolution,
         quoteToken,
         timeInterval,
-        env,
       ).catch((error) => {
         logger.error(
           `Error fetching chunk from ${new Date(currentStart * 1000).toISOString()} to ${new Date(chunkEnd * 1000).toISOString()}:`,
@@ -371,11 +366,10 @@ async function fetchCodexBarsChunk(
   resolution: CodexBarResolution,
   quoteToken: string,
   timeInterval: number,
-  env?: any,
 ): Promise<CandleData[]> {
   try {
     // fix codex chart
-    const codexService = new Codex(env?.CODEX_API_KEY || "");
+    const codexService = new Codex(process.env.CODEX_API_KEY || "");
     // const query = `query {
     //   getBars(
     //     query: {

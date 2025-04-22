@@ -12,7 +12,7 @@ import { useLocation, useParams } from "react-router-dom";
 import { useInView } from "react-intersection-observer";
 
 // --- API Base URL ---
-const API_BASE_URL = env.apiUrl || ""; // Ensure fallback
+const API_BASE_URL = process.env.apiUrl || ""; // Ensure fallback
 
 // --- Constants for Chat ---
 const CHAT_TIERS = ["1k", "100k", "1M"] as const;

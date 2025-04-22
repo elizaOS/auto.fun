@@ -9,7 +9,7 @@ import { and, asc, eq } from "drizzle-orm"; // Import Drizzle functions
 import { Context } from "hono"; // Import Context type
 import * as schema from "../db"; // Import your generated schema
 import { getDB } from "../db"; // Import the getDB helper
-import { Env } from "../env"; // Import Env type from env.ts
+import { Env } from "../env"; // Import Env type from process.env.ts
 import { createRedisCache } from "../redis/redisCacheService"; // Added redis import
 // ---=================================---
 
@@ -25,7 +25,7 @@ type Variables = {
 };
 
 // Helper function to get DB instance - using broader type to handle context variations
-const db = (c: Context<any>) => getDB(c.env as Env);
+const db = (c: Context<any>) => getDB();
 
 // --- Placeholder Functions ---
 // Replace these with your actual implementations
@@ -34,10 +34,9 @@ const db = (c: Context<any>) => getDB(c.env as Env);
 async function checkUserTokenBalance(
   userPublicKey: string,
   tokenMint: string,
-  env: Env,
 ): Promise<number> {
   console.log(`Checking balance for user ${userPublicKey}, token ${tokenMint}`);
-  const redisCache = createRedisCache(env); // Instantiate Redis
+  const redisCache = createRedisCache(); // Instantiate Redis
 
   // First check Redis cache
   let cachedBalance = 0;
@@ -65,7 +64,7 @@ async function checkUserTokenBalance(
   // Then check blockchain balance
   let blockchainBalance = 0;
   try {
-    const connection = new Connection(getRpcUrl(env), "confirmed");
+    const connection = new Connection(getRpcUrl(), "confirmed");
     const mintPublicKey = new PublicKey(tokenMint);
     const userPublicKeyObj = new PublicKey(userPublicKey);
 
@@ -142,7 +141,6 @@ app.get("/chat/:tokenMint/tiers", async (c) => {
     const balance = await checkUserTokenBalance(
       user.publicKey,
       tokenMint,
-      c.env,
     );
     const eligibleTiers = getUserEligibleTiers(balance);
     return c.json({ success: true, tiers: eligibleTiers, balance });
@@ -176,8 +174,7 @@ app.get(
       const balance = await checkUserTokenBalance(
         user.publicKey,
         tokenMint,
-        c.env,
-      );
+              );
       const requiredBalance = getTierThreshold(tier);
 
       if (balance < requiredBalance) {
@@ -265,8 +262,7 @@ app.post(
       const balance = await checkUserTokenBalance(
         user.publicKey,
         tokenMint,
-        c.env,
-      );
+              );
       const requiredBalance = getTierThreshold(tier);
 
       if (balance < requiredBalance) {

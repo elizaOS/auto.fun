@@ -9,24 +9,24 @@ import { Env } from "../env";
 import { logger } from "../util";
 
 type Cluster = "mainnet" | "devnet";
-export const getRpcUrl = (env: Env) => {
-  return env.NETWORK === "devnet"
-    ? env.DEVNET_SOLANA_RPC_URL!
-    : env.MAINNET_SOLANA_RPC_URL!;
+export const getRpcUrl = () => {
+  const env = process.env;
+  return process.env.NETWORK === "devnet"
+    ? process.env.DEVNET_SOLANA_RPC_URL!
+    : process.env.MAINNET_SOLANA_RPC_URL!;
 };
 
 export const txVersion = TxVersion.V0;
 
 let raydium: Raydium | undefined;
 export const initSdk = async (params: {
-  env: Env;
   loadToken?: boolean;
   owner?: PublicKey;
 }) => {
-  const cluster = params.env.NETWORK as Cluster;
-  const connection = new Connection(getRpcUrl(params.env));
+  const cluster = process.env.NETWORK as Cluster;
+  const connection = new Connection(getRpcUrl());
   const owner: Keypair = Keypair.fromSecretKey(
-    Uint8Array.from(JSON.parse(params.env.WALLET_PRIVATE_KEY!)),
+    Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY!)),
   );
 
   if (raydium) return raydium;
@@ -45,10 +45,11 @@ export const initSdk = async (params: {
   return raydium;
 };
 
-export const fetchTokenAccountData = async (env: Env) => {
-  const connection = new Connection(getRpcUrl(env));
+export const fetchTokenAccountData = async () => {
+  const env = process.env;
+  const connection = new Connection(getRpcUrl());
   const owner: Keypair = Keypair.fromSecretKey(
-    Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY!)),
+    Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY!)),
   );
   const solAccountResp = await connection.getAccountInfo(owner.publicKey);
   const tokenAccountResp = await connection.getTokenAccountsByOwner(

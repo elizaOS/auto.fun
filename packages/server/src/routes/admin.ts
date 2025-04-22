@@ -449,7 +449,7 @@ adminRouter.get("/users", requireAdmin, async (c) => {
     const showSuspended = queryParams.suspended === "true";
 
     // Use a shorter timeout for test environments
-    const timeoutDuration = c.env.NODE_ENV === "test" ? 2000 : 5000;
+    const timeoutDuration = process.env.NODE_ENV === "test" ? 2000 : 5000;
 
     // Create a timeout promise to prevent hanging
     const timeoutPromise = new Promise((_, reject) =>
@@ -613,7 +613,7 @@ const requireTokenOwner = async (c: any, next: Function) => {
   }
 
   // Fetch token data to check ownership
-  const token = await c.env.DB.prepare(
+  const token = await process.env.DB.prepare(
     "SELECT creator FROM tokens WHERE mint = ?",
   )
     .bind(tokenMint)

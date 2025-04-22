@@ -28,7 +28,6 @@ import {
 } from "./migrations";
 export class TokenMigrator {
   constructor(
-    public env: Env,
     public connection: Connection,
     public wallet: Wallet,
     public program: Program<RaydiumVault>,
@@ -39,7 +38,7 @@ export class TokenMigrator {
 
   async scheduleNextInvocation(token: TokenData): Promise<void> {
     // Use API_URL from env (or fallback)
-    const workerUrl = this.env.API_URL || "http://127.0.0.1:8787";
+    const workerUrl = process.env.API_URL || "http://127.0.0.1:8787";
     console.log(
       `[Migrate] Scheduling next invocation for token ${token.mint} at ${workerUrl}/api/migration/resume`,
     );
@@ -47,7 +46,7 @@ export class TokenMigrator {
     // Construct headers with Authorization token
     const headers = {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${this.env.JWT_SECRET}`, // Use JWT_SECRET from env
+      Authorization: `Bearer ${process.env.JWT_SECRET}`, // Use JWT_SECRET from env
     };
 
     try {
@@ -69,7 +68,7 @@ export class TokenMigrator {
 
   async callResumeWorker(token: TokenData) {
     try {
-      await releaseMigrationLock(this.env, token);
+      await releaseMigrationLock(token);
       // await this.migrateToken(token);
     } catch (error) {
       logger.error(
@@ -102,7 +101,7 @@ export class TokenMigrator {
             token,
             token.nftMinted?.split(",")[1] ?? "",
             this.wallet.payer as Keypair,
-            new PublicKey(this.env.MANAGER_MULTISIG_ADDRESS!),
+            new PublicKey(process.env.MANAGER_MULTISIG_ADDRESS!),
           ).then((result) => result),
       },
       {
@@ -143,8 +142,8 @@ export class TokenMigrator {
         }
       }
       token.migration = token.migration || {};
-      // const ws = getWebSocketClient(this.env);
-      // const lockAcquired = await acquireMigrationLock(this.env, token);
+      // const ws = getWebSocketClient();
+      // const lockAcquired = await acquireMigrationLock(token);
       // if (!lockAcquired) {
       //   logger.log(
       //     `[Migrate] Unable to acquire lock for token ${token.mint}. Deferring to resume operation.`,
@@ -164,34 +163,34 @@ export class TokenMigrator {
       if (currentStep && currentStep?.name === "finalize") {
         token.status = "locked";
         token.lockedAt = new Date();
-        await updateTokenInDB(this.env, {
+        await updateTokenInDB({
           mint: token.mint,
           status: "locked",
           lockedAt: token.lockedAt,
           lastUpdated: new Date().toISOString(),
         });
         // start monitoring the token
-        const ext = new ExternalToken(this.env, token.mint);
+        const ext = new ExternalToken(token.mint);
         await ext.registerWebhook();
-        await releaseMigrationLock(this.env, token);
+        await releaseMigrationLock(token);
       }
       const step = currentStep || steps[0];
       const nextStep = steps[steps.indexOf(step) + 1] || null;
 
-      await executeMigrationStep(this.env, token, step, nextStep);
+      await executeMigrationStep(token, step, nextStep);
       // call scheduleNextInvocation to schedule the next step if not done yet.
       if (step.name !== "collectFees") {
         logger.log(
           `[Migrate] Scheduling next invocation for token ${token.mint}`,
         );
         await this.scheduleNextInvocation(token);
-        await releaseMigrationLock(this.env, token);
+        await releaseMigrationLock(token);
         return;
       } else {
         // All steps are complete; final status update.
         token.status = "locked";
         token.lockedAt = new Date();
-        await updateTokenInDB(this.env, {
+        await updateTokenInDB({
           mint: token.mint,
           status: "locked",
           lockedAt: token.lockedAt,
@@ -200,13 +199,13 @@ export class TokenMigrator {
         const ws = getWebSocketClient();
         ws.to(`token-${token.mint}`).emit("updateToken", token);
         logger.log(`[Migrate] Migration finalized for token ${token.mint}`);
-        await releaseMigrationLock(this.env, token);
+        await releaseMigrationLock(token);
         return;
       }
     } catch (error) {
       logger.error(`[Migrate] Migration failed for token ${token.mint}:`);
       console.error(error);
-      await updateTokenInDB(this.env, {
+      await updateTokenInDB({
         mint: token.mint,
         // status: "migration_failed",
         status: "migrating",
@@ -267,7 +266,7 @@ export class TokenMigrator {
   async performCreatePool(
     token: any,
   ): Promise<{ txId: string; extraData: { marketId: string; poolInfo: any } }> {
-    const raydium = await initSdk({ env: this.env, loadToken: false });
+    const raydium = await initSdk({ loadToken: false });
     const mintA = await raydium.token.getTokenInfo(token.mint);
     const mintB = await raydium.token.getTokenInfo(NATIVE_MINT);
 
@@ -287,7 +286,7 @@ export class TokenMigrator {
     if (!withdrawnAmounts)
       throw new Error("No withdrawn amounts found for pool creation");
 
-    const mintConstantFee = new BN(Number(this.env.FIXED_FEE ?? 6) * 1e9); // 6 SOL
+    const mintConstantFee = new BN(Number(process.env.FIXED_FEE ?? 6) * 1e9); // 6 SOL
 
     const withdrawnTokensBN = new BN(withdrawnAmounts.withdrawnTokens);
     console.log("withdrawnSol", withdrawnAmounts.withdrawnSol);
@@ -415,7 +414,7 @@ export class TokenMigrator {
     txId: string;
     extraData: { lockLpTxId: string; nftMinted: string };
   }> {
-    const raydium = await initSdk({ env: this.env, loadToken: false });
+    const raydium = await initSdk({ loadToken: false });
     const poolId = token.marketId;
     const poolInfoResult = await this.fetchPoolInfoWithRetry(raydium, poolId);
     console.log("poolInfoResult", poolInfoResult);
@@ -471,7 +470,7 @@ export class TokenMigrator {
       lastUpdated: new Date().toISOString(),
       lockedAt: new Date(),
     };
-    await updateTokenInDB(this.env, tokenData);
+    await updateTokenInDB(tokenData);
 
     return {
       txId: aggregatedTxId,
@@ -489,7 +488,7 @@ export class TokenMigrator {
     console.log("Sending NFT to manager multisig", nftMinted);
     if (!signerWallet) {
       signerWallet = Keypair.fromSecretKey(
-        Uint8Array.from(JSON.parse(this.env.WALLET_PRIVATE_KEY!)),
+        Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY!)),
       );
     }
     const txSignature = await sendNftTo(
@@ -514,7 +513,7 @@ export class TokenMigrator {
     const signerWallet =
       this.wallet.payer ??
       Keypair.fromSecretKey(
-        Uint8Array.from(JSON.parse(this.env.WALLET_PRIVATE_KEY!)),
+        Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY!)),
       );
     const txSignature = await depositToRaydiumVault(
       this.provider,
@@ -536,16 +535,16 @@ export class TokenMigrator {
 
   async collectFee(token: any): Promise<{ txId: string; extraData: object }> {
     console.log("Collecting fee for token", token.mint);
-    if (this.env.FIXED_FEE === undefined || Number(this.env.FIXED_FEE) === 0) {
+    if (process.env.FIXED_FEE === undefined || Number(process.env.FIXED_FEE) === 0) {
       console.log("No fee to collect");
       return { txId: "no_fee", extraData: {} };
     }
-    const mintConstantFee = new BN(Number(this.env.FIXED_FEE ?? 6) * 1e9); // 6 SOL
-    const feeWallet = new PublicKey(this.env.ACCOUNT_FEE_MULTISIG!);
+    const mintConstantFee = new BN(Number(process.env.FIXED_FEE ?? 6) * 1e9); // 6 SOL
+    const feeWallet = new PublicKey(process.env.ACCOUNT_FEE_MULTISIG!);
     const signerWallet =
       this.wallet.payer ??
       Keypair.fromSecretKey(
-        Uint8Array.from(JSON.parse(this.env.WALLET_PRIVATE_KEY!)),
+        Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY!)),
       );
     const txSignature = await sendSolTo(
       mintConstantFee,

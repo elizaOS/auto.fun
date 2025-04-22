@@ -129,7 +129,7 @@ export default function AdminTab() {
     const fetchTokenData = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`${env.apiUrl}/api/token/${mint}`);
+        const response = await fetch(`${process.env.apiUrl}/api/token/${mint}`);
         if (!response.ok) {
           throw new Error(`Failed to fetch token data (${response.status})`);
         }
@@ -291,7 +291,7 @@ export default function AdminTab() {
 
       // Try admin endpoint first, fall back to owner endpoint if not admin
       let response = await fetch(
-        `${env.apiUrl}/api/admin/tokens/${mint}/social`,
+        `${process.env.apiUrl}/api/admin/tokens/${mint}/social`,
         {
           method: "POST",
           headers,
@@ -303,7 +303,7 @@ export default function AdminTab() {
       if (response.status === 403) {
         // If not admin, try owner endpoint
         response = await fetch(
-          `${env.apiUrl}/api/owner/tokens/${mint}/social`,
+          `${process.env.apiUrl}/api/owner/tokens/${mint}/social`,
           {
             method: "POST",
             headers,
@@ -430,7 +430,7 @@ export default function AdminTab() {
     if (!mint) return;
     const fetchTokenData = async () => {
       try {
-        const response = await fetch(`${env.apiUrl}/api/token/${mint}`);
+        const response = await fetch(`${process.env.apiUrl}/api/token/${mint}`);
         const data = (await response.json()) as { creator: string };
         setIsTokenOwner(data.creator === publicKey?.toString());
         // ... rest of the fetch logic

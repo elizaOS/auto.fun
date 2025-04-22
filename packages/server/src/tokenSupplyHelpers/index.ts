@@ -10,7 +10,7 @@ import { getWebSocketClient } from "../websocket-client";
 // Define max swaps to keep in Redis list (consistent with other files)
 const MAX_SWAPS_TO_KEEP = 1000;
 
-export async function getAllLockedTokens(env: Env) {
+export async function getAllLockedTokens() {
   const db = getDB();
   const tokenData = await db
     .select()
@@ -21,15 +21,14 @@ export async function getAllLockedTokens(env: Env) {
 }
 
 export async function handleSignature(
-  env: Env,
   signature: string,
   token: any,
   solPriceUSD: number,
 ) {
   const connection = new Connection(
-    env.NETWORK === "devnet"
-      ? env.DEVNET_SOLANA_RPC_URL
-      : env.MAINNET_SOLANA_RPC_URL,
+    process.env.NETWORK === "devnet"
+      ? process.env.DEVNET_SOLANA_RPC_URL || ""
+      : process.env.MAINNET_SOLANA_RPC_URL || "",
   );
 
   // finalize
@@ -47,8 +46,7 @@ export async function handleSignature(
   if (!logs) return;
 
   const metrics = await processSwapLog(
-    env,
-    token,
+        token,
     signature,
     solPriceUSD,
     logs,
@@ -60,7 +58,6 @@ export async function handleSignature(
 }
 
 async function processSwapLog(
-  env: Env,
   token: any,
   signature: string,
   solPriceUSD: number,
@@ -170,7 +167,7 @@ async function processSwapLog(
         txId: signature,
         timestamp: new Date(),
       };
-      const redisCache = createRedisCache(env);
+      const redisCache = createRedisCache();
       const listKey = redisCache.getKey(`swapsList:${mintAddress}`);
       try {
         await redisCache.lpush(listKey, JSON.stringify(swapRecord));
@@ -199,8 +196,8 @@ async function processSwapLog(
           tokenPriceUSD,
           solPriceUSD: solPriceUSD,
           curveProgress:
-            ((Number(reserveLamport) - Number(env.VIRTUAL_RESERVES)) /
-              (Number(env.CURVE_LIMIT) - Number(env.VIRTUAL_RESERVES))) *
+            ((Number(reserveLamport) - Number(process.env.VIRTUAL_RESERVES)) /
+              (Number(process.env.CURVE_LIMIT) - Number(process.env.VIRTUAL_RESERVES))) *
             100,
           txId: signature,
           lastUpdated: new Date(),
@@ -265,7 +262,6 @@ export function shouldUpdateSupply(token: any): boolean {
 }
 
 export async function updateTokenSupplyFromChain(
-  env: Env,
   tokenMint: string,
 ): Promise<{
   tokenSupply: string;
@@ -274,9 +270,9 @@ export async function updateTokenSupplyFromChain(
   lastSupplyUpdate: string;
 }> {
   const connection = new Connection(
-    env.NETWORK === "mainnet"
-      ? env.MAINNET_SOLANA_RPC_URL
-      : env.DEVNET_SOLANA_RPC_URL,
+    process.env.NETWORK === "mainnet"
+      ? process.env.MAINNET_SOLANA_RPC_URL || ""
+      : process.env.DEVNET_SOLANA_RPC_URL || "",
     "confirmed",
   );
   // retry in case it fails once
@@ -335,17 +331,16 @@ async function isValidSwapTx(
 }
 
 export async function processLastValidSwap(
-  env: Env,
   token: any,
   solPriceUSD: number,
   limit = 5,
 ): Promise<void> {
   const rpcUrl =
-    env.NETWORK === "devnet"
-      ? env.DEVNET_SOLANA_RPC_URL
-      : env.MAINNET_SOLANA_RPC_URL;
+    process.env.NETWORK === "devnet"
+      ? process.env.DEVNET_SOLANA_RPC_URL
+      : process.env.MAINNET_SOLANA_RPC_URL;
 
-  const connection = new Connection(rpcUrl, "confirmed");
+  const connection = new Connection(rpcUrl || "", "confirmed");
   const mint = token.mint;
   if (!mint) {
     logger.error("processLastValidSwap: Token object missing mint property.");
@@ -361,7 +356,7 @@ export async function processLastValidSwap(
   for (const { signature } of sigs) {
     if (await isValidSwapTx(connection, signature, mint)) {
       // Found the most recent valid swap—process it once
-      await handleSignature(env, signature, token, solPriceUSD);
+      await handleSignature(signature, token, solPriceUSD);
       return;
     }
   }

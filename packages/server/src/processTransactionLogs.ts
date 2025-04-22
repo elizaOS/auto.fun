@@ -7,10 +7,10 @@ import { logger } from "./logger";
 import { getSOLPrice } from "./mcap";
 import { TokenMigrator } from "./raydium/migration/migrateToken";
 import { getToken } from "./raydium/migration/migrations";
-import * as raydium_vault_IDL from "./raydium/raydium_vault.json";
+import * as raydium_vault_IDL from "@autodotfun/program/idl/raydium_vault.json";
 import { RaydiumVault } from "./raydium/types/raydium_vault";
 import { TokenData, TokenDBData } from "./raydium/types/tokenData";
-import * as IDL from "./target/idl/autofun.json";
+import * as IDL from "@autodotfun/program/idl/autofun.json";
 import { Autofun } from "./target/types/autofun";
 import { Wallet } from "./tokenSupplyHelpers/customWallet";
 import {
@@ -24,10 +24,14 @@ const lastProcessedSignature: string | null = null;
 // Define max swaps to keep in Redis list (consistent with worker)
 const MAX_SWAPS_TO_KEEP = 1000;
 
-export async function resumeOnStart(env: Env, connection: Connection) {
+export async function resumeOnStart(connection: Connection) {
+
+   if (!process.env.WALLET_PRIVATE_KEY) {
+      throw new Error("Wallet private key not found");
+   }
 
    const wallet = Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY)),
+      Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
    );
    const provider = new AnchorProvider(
       connection,
@@ -41,8 +45,7 @@ export async function resumeOnStart(env: Env, connection: Connection) {
    const autofunProgram = new Program<Autofun>(IDL as any, provider);
 
    const tokenMigrator = new TokenMigrator(
-      env,
-      connection,
+            connection,
       new Wallet(wallet),
       program,
       autofunProgram,
@@ -75,8 +78,7 @@ function convertTokenDataToDBData(
 }
 
 export async function updateTokenInDB(
-   env: Env,
-   tokenData: Partial<TokenData>,
+    tokenData: Partial<TokenData>,
 ): Promise<Token> {
    const db = getDB();
    const now = new Date().toISOString();
@@ -155,8 +157,7 @@ export async function updateTokenInDB(
 }
 
 export async function processTransactionLogs(
-   env: Env,
-   logs: string[],
+    logs: string[],
    signature: string,
 ): Promise<{
    found: boolean;
@@ -220,12 +221,12 @@ export async function processTransactionLogs(
             }
 
             // price calculations
-            const solPrice = await getSOLPrice(env);
-            let tokenWithSupply = await getToken(env, mintAddress);
+            const solPrice = await getSOLPrice();
+            let tokenWithSupply = await getToken(mintAddress);
             if (!tokenWithSupply) {
                // … same "add missing token" logic …
                // then:
-               tokenWithSupply = await getToken(env, mintAddress)!;
+               tokenWithSupply = await getToken(mintAddress)!;
             }
             const TOKEN_DECIMALS = tokenWithSupply?.tokenDecimals || 6;
             const lamportDecimal = Number(reserveLamport) / 1e9;
@@ -259,7 +260,7 @@ export async function processTransactionLogs(
 
             // Insert the swap record
             const db = getDB();
-            const redisCache = createRedisCache(env);
+            const redisCache = createRedisCache();
             const listKey = redisCache.getKey(`swapsList:${mintAddress}`);
             try {
                await redisCache.lpush(listKey, JSON.stringify(swapRecord));
@@ -272,7 +273,7 @@ export async function processTransactionLogs(
             }
 
             // check if the token exists and add it to the db if it does not  
-            // const token = await getToken(env, mintAddress);
+            // const token = await getToken(mintAddress);
 
             // Update token data in database
             await db
@@ -287,8 +288,8 @@ export async function processTransactionLogs(
                   tokenPriceUSD,
                   solPriceUSD: solPrice,
                   curveProgress:
-                     ((Number(reserveLamport) - Number(env.VIRTUAL_RESERVES)) /
-                        (Number(env.CURVE_LIMIT) - Number(env.VIRTUAL_RESERVES))) *
+                     ((Number(reserveLamport) - Number(process.env.VIRTUAL_RESERVES)) /
+                        (Number(process.env.CURVE_LIMIT) - Number(process.env.VIRTUAL_RESERVES))) *
                      100,
                   txId: signature,
                   lastUpdated: new Date(),
@@ -349,17 +350,16 @@ export async function processTransactionLogs(
                signature,
                rawTokenAddress,
                rawCreatorAddress,
-               env,
-            );
+                           );
 
             // call the cf backend 
             (async () => {
                try {
-                  await fetch(`${env.API_URL}/api/migration/addMissingTokens`, {
+                  await fetch(`${process.env.API_URL}/api/migration/addMissingTokens`, {
                      method: "POST",
                      headers: {
                         "Content-Type": "application/json",
-                        "Authorization": `Bearer ${env.JWT_SECRET}`,
+                        "Authorization": `Bearer ${process.env.JWT_SECRET}`,
                      },
                      body: JSON.stringify({
                         signature,
@@ -417,12 +417,17 @@ export async function processTransactionLogs(
             };
 
             const connection = new Connection(
-               env.NETWORK === "devnet"
-                  ? env.DEVNET_SOLANA_RPC_URL
-                  : env.MAINNET_SOLANA_RPC_URL,
+               process.env.NETWORK === "devnet"
+                  ? process.env.DEVNET_SOLANA_RPC_URL || ""
+                  : process.env.MAINNET_SOLANA_RPC_URL || "",
             );
+
+            if (!process.env.WALLET_PRIVATE_KEY) {
+               throw new Error("Wallet private key not found");
+            }
+
             const wallet = Keypair.fromSecretKey(
-               Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY)),
+               Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
             );
             const provider = new AnchorProvider(
                connection,
@@ -436,14 +441,13 @@ export async function processTransactionLogs(
             const autofunProgram = new Program<Autofun>(IDL as any, provider);
 
             const tokenMigrator = new TokenMigrator(
-               env,
-               connection,
+                              connection,
                new Wallet(wallet),
                program,
                autofunProgram,
                provider,
             );
-            const token = await getToken(env, mintAddress);
+            const token = await getToken(mintAddress);
             if (!token) {
                throw new Error(
                   `Token not found in database: ${mintAddress}`,
@@ -453,7 +457,7 @@ export async function processTransactionLogs(
 
             token.status = "migrating";
             // Update in database
-            await updateTokenInDB(env, tokenData);
+            await updateTokenInDB(tokenData);
             // migrate token
             await tokenMigrator.migrateToken(token);
 
@@ -478,7 +482,8 @@ export async function processTransactionLogs(
 }
 
 
-export async function addOneToken(env: any) {
+export async function addOneToken() {
+   const env = process.env;
    const {
       signature,
       rawTokenAddress,
@@ -492,17 +497,16 @@ export async function addOneToken(env: any) {
       signature,
       rawTokenAddress,
       rawCreatorAddress,
-      env,
-   );
+         );
 
    // call the cf backend 
    (async () => {
       try {
-         await fetch(`${env.API_URL}/api/migration/addMissingTokens`, {
+         await fetch(`${process.env.API_URL}/api/migration/addMissingTokens`, {
             method: "POST",
             headers: {
                "Content-Type": "application/json",
-               "Authorization": `Bearer ${env.JWT_SECRET}`,
+               "Authorization": `Bearer ${process.env.JWT_SECRET}`,
             },
             body: JSON.stringify({
                signature,
@@ -527,14 +531,13 @@ const list = [{
 },
 ]
 export async function migrateTokensFromList(
-   env: Env,
-   connection: Connection,
+    connection: Connection,
 
 ) {
    // look for the token in the db if we do not have it add it
    // and then migrate it
    for (const mintAddress of list) {
-      const token = await getToken(env, mintAddress.mint);
+      const token = await getToken(mintAddress.mint);
       if (!token) {
          logger.error(`Token not found in database: ${mintAddress}`);
          // createNewTokenData
@@ -542,8 +545,7 @@ export async function migrateTokensFromList(
             mintAddress.signature,
             mintAddress.mint,
             mintAddress.creator,
-            env,
-         );
+                     );
          await getDB()
             .insert(tokens)
             .values(newToken as Token).onConflictDoNothing();
@@ -552,9 +554,12 @@ export async function migrateTokensFromList(
 
    }
 
+   if (!process.env.WALLET_PRIVATE_KEY) {
+      throw new Error("Wallet private key not found");
+   }
 
    const wallet = Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY)),
+      Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
    );
    const provider = new AnchorProvider(
       connection,
@@ -568,8 +573,7 @@ export async function migrateTokensFromList(
    const autofunProgram = new Program<Autofun>(IDL as any, provider);
 
    const tokenMigrator = new TokenMigrator(
-      env,
-      connection,
+            connection,
       new Wallet(wallet),
       program,
       autofunProgram,
@@ -578,14 +582,14 @@ export async function migrateTokensFromList(
 
 
    for (const mintAddress of list) {
-      const token = await getToken(env, mintAddress.mint);
+      const token = await getToken(mintAddress.mint);
       if (!token) {
          logger.error(`Token not found in database: ${mintAddress}`);
          continue;
       }
       token.status = "migrating";
       // Update in database
-      await updateTokenInDB(env, token);
+      await updateTokenInDB(token);
       // migrate token
       await tokenMigrator.migrateToken(token);
    }

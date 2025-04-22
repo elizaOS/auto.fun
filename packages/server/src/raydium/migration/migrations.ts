@@ -37,7 +37,6 @@ export interface MigrationStep {
 }
 
 export async function getToken(
-  env: Env,
   mint: string,
 ): Promise<TokenData | null> {
   const db = getDB();
@@ -56,7 +55,7 @@ export async function getToken(
     let lastSupplyUpdate = tokenDb.lastSupplyUpdate;
 
     if (tokenDb.tokenDecimals === undefined) {
-      const supplyResult = await updateTokenSupplyFromChain(env, tokenDb.mint);
+      const supplyResult = await updateTokenSupplyFromChain(tokenDb.mint);
       tokenSupply = supplyResult.tokenSupply;
       tokenSupplyUiAmount = supplyResult.tokenSupplyUiAmount;
       tokenDecimals = supplyResult.tokenDecimals;
@@ -128,7 +127,6 @@ export async function getToken(
 }
 
 export async function executeMigrationStep(
-  env: Env,
   token: TokenData,
   step: MigrationStep,
   nextStep: MigrationStep,
@@ -159,8 +157,8 @@ export async function executeMigrationStep(
   const nextStepName = nextStep ? nextStep.name : null;
   token.migration.lastStep = nextStepName ?? "done";
 
-  await updateTokenInDB(env, tokenData);
-  // await saveMigrationState(env, token, step.name);
+  await updateTokenInDB(tokenData);
+  // await saveMigrationState(token, step.name);
 
   const ws = getWebSocketClient();
   if (step.eventName) {
@@ -174,7 +172,6 @@ export async function executeMigrationStep(
 }
 
 export async function acquireMigrationLock(
-  env: Env,
   token: TokenData,
 ): Promise<boolean> {
   const migration = token.migration ? token.migration : {};
@@ -184,7 +181,7 @@ export async function acquireMigrationLock(
   migration.lock = true;
   token.migration = migration;
 
-  await updateTokenInDB(env, {
+  await updateTokenInDB({
     mint: token.mint,
     migration: token.migration,
     lastUpdated: new Date().toISOString(),
@@ -193,7 +190,6 @@ export async function acquireMigrationLock(
   return true;
 }
 export async function releaseMigrationLock(
-  env: Env,
   token: TokenData,
 ): Promise<void> {
   const migration = token.migration ? token.migration : {};
@@ -202,14 +198,13 @@ export async function releaseMigrationLock(
   }
   token.migration = migration;
 
-  await updateTokenInDB(env, {
+  await updateTokenInDB({
     mint: token.mint,
     migration: token.migration,
     lastUpdated: new Date().toISOString(),
   });
 }
 export async function saveMigrationState(
-  env: Env,
   token: TokenData,
   step: string,
 ) {
@@ -228,7 +223,7 @@ export async function saveMigrationState(
     .where(eq(tokens.mint, token.mint));
 }
 
-export async function getMigrationState(env: Env, token: TokenData) {
+export async function getMigrationState(token: TokenData) {
   const db = getDB();
 
   const tokenRecords = await db
@@ -252,7 +247,7 @@ export async function getMigrationState(env: Env, token: TokenData) {
   return null;
 }
 
-export async function checkMigratingTokens(env: Env, limit: number) {
+export async function checkMigratingTokens(limit: number) {
   try {
     const db = getDB();
     const migratingTokens = await db
@@ -262,12 +257,18 @@ export async function checkMigratingTokens(env: Env, limit: number) {
       .execute();
 
     const connection = new Connection(
-      env.NETWORK === "devnet"
-        ? env.DEVNET_SOLANA_RPC_URL
-        : env.MAINNET_SOLANA_RPC_URL,
+      process.env.NETWORK === "devnet"
+        ? process.env.DEVNET_SOLANA_RPC_URL || ""
+        : process.env.MAINNET_SOLANA_RPC_URL || "",
     );
+
+
+    if (!process.env.WALLET_PRIVATE_KEY) {
+      throw new Error("Wallet private key not found");
+    }
+
     const wallet = Keypair.fromSecretKey(
-      Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY)),
+      Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
     );
     const provider = new AnchorProvider(
       connection,
@@ -278,11 +279,10 @@ export async function checkMigratingTokens(env: Env, limit: number) {
       raydium_vault_IDL as any,
       provider,
     );
-    const autofunProgram = new Program<Autofun>(IDL, provider);
+    const autofunProgram = new Program<Autofun>(IDL, provider) as any;
 
     const tokenMigrator = new TokenMigrator(
-      env,
-      connection,
+            connection,
       new Wallet(wallet),
       program,
       autofunProgram,
@@ -301,7 +301,7 @@ export async function checkMigratingTokens(env: Env, limit: number) {
     const finalList = filteredTokens.slice(0, limit);
 
     for (const token of finalList) {
-      const tokenM = await getToken(env, token.mint);
+      const tokenM = await getToken(token.mint);
       // await tokenMigrator.migrateToken(tokenM!);
     }
   } catch (error) {

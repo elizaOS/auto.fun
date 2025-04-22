@@ -1,21 +1,22 @@
 import dotenv from "dotenv";
-import type { Env } from "../env"; 
 import { logger } from "../util";
 import { RedisPool } from "./redisPool"; 
 import { Redis } from "ioredis";
+import { Env } from "../env";
 dotenv.config();
 
 // Singleton RedisPool instance
 let sharedRedisPool: RedisPool | null = null;
 
 // Function to initialize and/or get the shared pool
-export function getSharedRedisPool(env: Env): RedisPool {
+export function getSharedRedisPool(): RedisPool {
+  const env = process.env;
   if (!sharedRedisPool) {
     logger.info("Initializing Shared Redis Pool");
     sharedRedisPool = new RedisPool({
-      host: env.REDIS_HOST,
-      port: Number(env.REDIS_PORT),
-      password: env.REDIS_PASSWORD,
+      host: process.env.REDIS_HOST,
+      port: Number(process.env.REDIS_PORT),
+      password: process.env.REDIS_PASSWORD,
       // Consider adding pool configuration options here if your RedisPool supports them
       // e.g., minSize, maxSize, connectionTimeout
     });
@@ -27,14 +28,12 @@ export function getSharedRedisPool(env: Env): RedisPool {
 export class RedisCacheService {
   constructor(
     private redisPool: RedisPool,
-    private env: Env,
   ) {
-    this.env = env;
   }
 
   getKey(key: string) {
     // Avoid double-prefixing if key already includes network
-    const prefix = `${this.env.NETWORK}:`;
+    const prefix = `${process.env.NETWORK}:`;
     if (key.startsWith(prefix)) {
       return key;
     }
@@ -142,8 +141,8 @@ export class RedisCacheService {
   // --- END NEW SET METHODS ---
 }
 
-export function createRedisCache(env: Env): RedisCacheService {
-  const pool = getSharedRedisPool(env);
-  const instance = new RedisCacheService(pool, env);
+export function createRedisCache(): RedisCacheService {
+  const pool = getSharedRedisPool();
+  const instance = new RedisCacheService(pool);
   return instance;
 }

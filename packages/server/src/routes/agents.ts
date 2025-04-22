@@ -186,8 +186,8 @@ agentRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
                 const imageBuffer = await imageResponse.arrayBuffer();
 
                 // Store in R2 if available
-                if (c.env.R2) {
-                  await c.env.R2.put(imageKey, imageBuffer, {
+                if (process.env.R2) {
+                  await process.env.R2.put(imageKey, imageBuffer, {
                     httpMetadata: {
                       contentType: "image/jpeg",
                       cacheControl: "public, max-age=31536000", // Cache for 1 year
@@ -195,7 +195,7 @@ agentRouter.post("/token/:mint/connect-twitter-agent", async (c) => {
                   });
 
                   // Set the URL to our cached version
-                  twitterImageUrl = `${c.env.API_URL}/api/twitter-image/${imageId}`;
+                  twitterImageUrl = `${process.env.API_URL}/api/twitter-image/${imageId}`;
                   logger.log(
                     `Cached Twitter profile image at: ${twitterImageUrl}`,
                   );

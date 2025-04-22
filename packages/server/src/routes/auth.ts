@@ -22,7 +22,7 @@ const authRouter = new Hono<{
 authRouter.post("/register", async (c) => {
   try {
     // Special handling for test environment
-    if (c.env.NODE_ENV === "test") {
+    if (process.env.NODE_ENV === "test") {
       const body = await c.req.json();
       const { address } = body;
 
@@ -74,8 +74,7 @@ authRouter.post("/register", async (c) => {
       // ** Points system **
       // Award points for registration
       awardUserPoints(
-        c.env,
-        userData.address,
+                userData.address,
         { type: "wallet_connected" },
         "User registered",
       );

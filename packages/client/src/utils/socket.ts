@@ -193,7 +193,7 @@ let socket: Socket | null = null;
 
 export const getSocket = (): Socket => {
   if (!socket) {
-    socket = new SocketWrapper(env.apiUrl);
+    socket = new SocketWrapper(process.env.apiUrl);
   }
   return socket;
 };

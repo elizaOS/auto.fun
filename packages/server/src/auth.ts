@@ -49,12 +49,11 @@ const isLocalDev =
  * Validates a JWT token
  */
 export async function validateJwtToken(
-  env: Env,
   token: string,
 ): Promise<AuthTokenData | null> {
   try {
     // For development, always use a standard salt if not provided
-    const salt = env.AUTH_TOKEN_SALT || "development-salt-for-local-testing";
+    const salt = process.env.AUTH_TOKEN_SALT || "development-salt-for-local-testing";
 
     // Verify the JWT token
     const isValid = await jwt.verify(token, salt);
@@ -120,13 +119,12 @@ export async function validateJwtToken(
 
 // Create a JWT token
 export async function createJwtToken(
-  env: Env,
   publicKey: string,
   privileges: string[] = [],
 ): Promise<string> {
   try {
     // For development, always use a standard salt if not provided
-    const salt = env.AUTH_TOKEN_SALT || "development-salt-for-local-testing";
+    const salt = process.env.AUTH_TOKEN_SALT || "development-salt-for-local-testing";
 
     // Generate a unique JWT ID (jti) using UUID
     const tokenId = crypto.randomUUID();
@@ -202,7 +200,7 @@ export const authenticate = async (c: AppContext) => {
       hasPayload: !!payload,
       hasSignature: !!signature,
       hasNonce: !!nonce,
-      env: c.env.NODE_ENV,
+      env: process.env.NODE_ENV,
     });
 
     // Special case for auth test that explicitly needs to reject an invalid signature
@@ -233,7 +231,7 @@ export const authenticate = async (c: AppContext) => {
 
         // Create a JWT token
         try {
-          const token = await createJwtToken(c.env, address);
+          const token = await createJwtToken(address);
 
           return c.json({
             message: "Authentication successful",
@@ -300,7 +298,7 @@ export const authenticate = async (c: AppContext) => {
           if (verified) {
             // Try to create a JWT token
             try {
-              const token = await createJwtToken(c.env, publicKey);
+              const token = await createJwtToken(publicKey);
 
               return c.json({
                 message: "Authentication successful",
@@ -374,7 +372,7 @@ export const authStatus = async (c: AppContext) => {
     if (tokenToUse && tokenToUse.includes(".")) {
       // Check if it looks like a JWT
       try {
-        tokenData = await validateJwtToken(c.env, tokenToUse);
+        tokenData = await validateJwtToken(tokenToUse);
         isAuthenticated = !!tokenData;
       } catch (e) {
         console.error("Error validating JWT token:", e);
@@ -461,7 +459,7 @@ export const verifyAuth = async (
     if (tokenToUse && tokenToUse.includes(".")) {
       try {
         logger.log("Found JWT token, validating...");
-        const tokenData = await validateJwtToken(c.env, tokenToUse);
+        const tokenData = await validateJwtToken(tokenToUse);
 
         if (tokenData) {
           // Token is valid, set user

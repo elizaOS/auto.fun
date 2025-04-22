@@ -6,10 +6,10 @@ import * as idl from "@autodotfun/program/idl/autofun.json";
 import { Autofun } from "@autodotfun/program/types/autofun";
 import { getRpcUrl } from "./util";
 // Initialize the Solana configuration with the provided environment
-export function initSolanaConfig(env?: Env) {
+export function initSolanaConfig() {
   // Set up network and RPC URL
-  const network = env?.NETWORK;
-  const rpcUrl = getRpcUrl(env);
+  const network = process.env.NETWORK;
+  const rpcUrl = getRpcUrl();
 
   // Create UMI instance
   const umi = createUmi(rpcUrl);
@@ -17,8 +17,8 @@ export function initSolanaConfig(env?: Env) {
   // Set up program ID based on network
   const programId =
     network === "devnet"
-      ? env?.DEVNET_PROGRAM_ID || env?.PROGRAM_ID
-      : env?.PROGRAM_ID;
+      ? process.env.DEVNET_PROGRAM_ID || process.env.PROGRAM_ID
+      : process.env.PROGRAM_ID;
 
   if (!programId) {
     throw new Error("missing program_id env var");
@@ -27,16 +27,18 @@ export function initSolanaConfig(env?: Env) {
   // Create wallet if private key is available
   let wallet: Keypair | undefined;
 
-  if (env?.WALLET_PRIVATE_KEY) {
+  if(!process.env.WALLET_PRIVATE_KEY){
+    throw new Error("missing WALLET_PRIVATE_KEY env var");
+  }
+
     try {
       wallet = Keypair.fromSecretKey(
-        Uint8Array.from(JSON.parse(env.WALLET_PRIVATE_KEY)),
+        Uint8Array.from(JSON.parse(process.env.WALLET_PRIVATE_KEY)),
       );
-      console.log("Created wallet from env.WALLET_PRIVATE_KEY");
+      console.log("Created wallet from process.env.WALLET_PRIVATE_KEY");
     } catch (error) {
       console.error("Failed to create wallet from env:", error);
     }
-  }
 
   // Return configuration object
   return {
@@ -49,7 +51,7 @@ export function initSolanaConfig(env?: Env) {
   };
 }
 
-export const getProgram = (connection: Connection, wallet: any, env?: Env) => {
+export const getProgram = (connection: Connection, wallet: any) => {
   const provider = new AnchorProvider(connection, wallet, {
     skipPreflight: true,
     commitment: "confirmed",

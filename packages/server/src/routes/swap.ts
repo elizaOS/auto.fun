@@ -34,8 +34,7 @@ router.get(
     try {
       const params = ChartParamsSchema.parse(c.req.param());
       const data = await fetchPriceChartData(
-        c.env,
-        params.start * 1000,
+                params.start * 1000,
         params.end * 1000,
         params.range,
         params.token,
@@ -81,7 +80,7 @@ router.get("/swaps/:mint", async (c) => {
     const page = parseInt(c.req.query("page") || "1");
     const offset = (page - 1) * limit;
 
-    const redisCache = createRedisCache(c.env);
+    const redisCache = createRedisCache();
     const listKey = redisCache.getKey(`swapsList:${mint}`);
     let totalSwaps = 0;
     let swapsResultRaw: any[] = []; // Use any[] for initial parsed data

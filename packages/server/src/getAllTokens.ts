@@ -9,7 +9,7 @@ import { eq } from "drizzle-orm";
 
 
 
-export async function getLastProcessedSlot(env: any): Promise<number | null> {
+export async function getLastProcessedSlot(): Promise<number | null> {
    const db = await getDB();
 
    const row = await db.select()
@@ -22,7 +22,7 @@ export async function getLastProcessedSlot(env: any): Promise<number | null> {
    }
    return null;
 }
-export async function setLastProcessedSlot(slot: number, env: any): Promise<void> {
+export async function setLastProcessedSlot(slot: number): Promise<void> {
 
 
    const db = await getDB();
@@ -52,7 +52,7 @@ async function findSlotAtOrBeforeTime(
    }
    return low;
 }
-async function processSlot(slot: number, connection: Connection, env: Env) {
+async function processSlot(slot: number, connection: Connection) {
    try {
       const block = await connection.getBlock(slot, {
          transactionDetails: 'full',
@@ -65,9 +65,9 @@ async function processSlot(slot: number, connection: Connection, env: Env) {
       for (const tx of block.transactions) {
          const logs = tx.meta?.logMessages;
          if (!logs) continue;
-         if (logs.some((l) => l.includes(env.PROGRAM_ID!))) {
+         if (logs.some((l) => l.includes(process.env.PROGRAM_ID!))) {
             const signature = tx.transaction.signatures[0];
-            await processTransactionLogs(env, logs, signature);
+            await processTransactionLogs(logs, signature);
          }
       }
    } catch (err) {
@@ -76,11 +76,11 @@ async function processSlot(slot: number, connection: Connection, env: Env) {
 }
 
 // Scan blocks from the last processed slot up to the current slot
-export async function processMissedEvents(connection: Connection, env: Env,): Promise<void> {
+export async function processMissedEvents(connection: Connection, ): Promise<void> {
    try {
       const currentSlot = await connection.getSlot("confirmed");
       const currentTime = await connection.getBlockTime(currentSlot);
-      let startSlot = await getLastProcessedSlot(env);
+      let startSlot = await getLastProcessedSlot();
 
       if (startSlot === null) {
          // First time running: fall back to ~6 h ago
@@ -108,10 +108,10 @@ export async function processMissedEvents(connection: Connection, env: Env,): Pr
       logger.log(`Scanning events from slot ${startSlot + 1} to ${currentSlot}`);
       const queue = new PQueue({ concurrency: 20 });
       for (const slot of slots) {
-         queue.add(() => processSlot(slot, connection, env));
+         queue.add(() => processSlot(slot, connection));
       }
       await queue.onIdle();
-      await setLastProcessedSlot(currentSlot, env);
+      await setLastProcessedSlot(currentSlot);
       logger.log(`✅ Updated lastProcessedSlot → ${currentSlot}`);
    } catch (error) {
       logger.error("Error processing missed events:", error);

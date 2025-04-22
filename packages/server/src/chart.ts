@@ -55,7 +55,6 @@ export type CandlePrice = {
 };
 
 export async function getLatestCandle(
-  env: Env,
   tokenMint: string,
   swap: any,
   tokenInfo?: any,
@@ -79,7 +78,7 @@ export async function getLatestCandle(
     try {
       // Use the test token address only in devnet since there are no locked pools in dev
       const tokenAddress =
-        env.NETWORK === "devnet" ? DEV_TEST_TOKEN_ADDRESS : tokenMint;
+        process.env.NETWORK === "devnet" ? DEV_TEST_TOKEN_ADDRESS : tokenMint;
       const candles = await fetchCodexBars(
         tokenAddress,
         candleStart,
@@ -87,7 +86,6 @@ export async function getLatestCandle(
         "1", // 1 minute candles
         undefined,
         undefined,
-        env,
       );
 
       if (candles.length > 0) {
@@ -101,7 +99,6 @@ export async function getLatestCandle(
 
   // Fallback: Fetch all swaps in this candle period to properly calculate OHLCV
   const latestCandle = await fetchPriceChartData(
-    env,
     candleStart * 1000, // start (ms)
     (candleStart + candlePeriod) * 1000, // end (ms)
     1, // 1 min range
@@ -112,7 +109,6 @@ export async function getLatestCandle(
 }
 
 export async function fetchPriceChartData(
-  env: Env,
   start: number,
   end: number,
   range: number,
@@ -134,7 +130,7 @@ export async function fetchPriceChartData(
     // Load price histories from DB
     let swapRecordsRaw: any[] = [];
     try {
-      const redisCache = createRedisCache(env);
+      const redisCache = createRedisCache();
       const listKey = redisCache.getKey(`swapsList:${tokenMint}`);
       const swapStrings = await redisCache.lrange(listKey, 0, -1); // Fetch all swaps
       swapRecordsRaw = swapStrings.map((s) => JSON.parse(s));
@@ -194,7 +190,7 @@ export async function fetchPriceChartData(
     try {
       // Use the test token address only in devnet since there are no locked pools in dev
       const tokenAddress =
-        env.NETWORK === "devnet" ? DEV_TEST_TOKEN_ADDRESS : tokenMint;
+        process.env.NETWORK === "devnet" ? DEV_TEST_TOKEN_ADDRESS : tokenMint;
 
       // Convert range to Codex resolution format
       let resolution: CodexBarResolution = "1";
@@ -226,7 +222,6 @@ export async function fetchPriceChartData(
         resolution,
         undefined,
         undefined,
-        env,
       );
 
       // For 120 minute resolution, we need to combine 2 x 60m candles
@@ -268,7 +263,7 @@ export async function fetchPriceChartData(
         logger.log("Falling back to getTokenEvents API");
         // Use the test token address only in devnet
         const tokenAddress =
-          env.NETWORK === "devnet" ? DEV_TEST_TOKEN_ADDRESS : tokenMint;
+          process.env.NETWORK === "devnet" ? DEV_TEST_TOKEN_ADDRESS : tokenMint;
 
         // Fetch price history from Codex API using our utility function
         const tokenEvents = await fetchCodexTokenEvents(
@@ -276,7 +271,6 @@ export async function fetchPriceChartData(
           Math.floor(start / 1000),
           Math.floor(end / 1000),
           1399811149,
-          env,
         );
 
         // Convert to price feed format - ensure timestamps are never null
@@ -407,7 +401,6 @@ export async function fetchLockedTokenChartData(
   start: number,
   end: number,
   range: number,
-  _env: Env,
 ): Promise<any[]> {
   try {
     // Construct Codex API URL for the token chart data
