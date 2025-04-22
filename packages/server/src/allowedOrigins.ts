@@ -1,33 +1,15 @@
 // Define allowed origins
+import dotenv from "dotenv";
 
-export const allowedOrigins = [
-  // auto.fun
-  "https://auto.fun",
-  "https://*.auto.fun",
-  "https://dev.auto.fun",
-  "https://develop.auto.fun",
-  "https://api-dev.auto.fun",
-  "https://api.auto.fun",
+// Load environment variables from .env file
+dotenv.config({ path: "../../.env" });
 
-  // localhost
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "http://localhost:3420",
-  "http://127.0.0.1:3000",
+console.log("ALLOWED_ORIGINS", process.env.ALLOWED_ORIGINS);
 
-  // autofun.pages.dev
-  "https://autofun.pages.dev",
-  "https://develop.autofun.pages.dev",
-  "https://*.autofun.pages.dev",
+// Get allowed origins from environment variable if available
+// Format: comma-separated list of domains
+const envAllowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map((origin) => origin.trim())
+  : null;
 
-  // auto-fun.pages.dev
-  "https://auto-fun.pages.dev",
-  "https://develop.auto-fun.pages.dev",
-  "https://*.auto-fun.pages.dev",
-
-  // autofun.tech
-  "https://autofun.tech",
-  "https://develop.autofun.tech",
-  "https://api.autofun.tech",
-  "https://api-dev.autofun.tech",
-];
+export const allowedOrigins = envAllowedOrigins || ["http://localhost:3000"];
