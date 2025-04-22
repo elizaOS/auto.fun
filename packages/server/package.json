@@ -1,11 +1,16 @@
 {
+  "name": "@autodotfun/server",
+  "license": "MIT",
+  "version": "0.0.1",
+  "private": true,
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
-    "migrateTokensFromSqlite": "ts-node src/migrateTokensFromSqlite.ts",
-    "testClaim": "ts-node src/testClaim.ts",
-    "test": "jest"
+    "start": "bun dist/index.js",
+    "dev": "bun run src/index.ts",
+    "migrateTokensFromSqlite": "bun run src/migrateTokensFromSqlite.ts",
+    "testClaim": "bun run src/testClaim.ts",
+    "test": "jest",
+    "lint": "eslint . --fix --ignore-path ../../.gitignore"
   },
   "dependencies": {
     "@cloudflare/workers-types": "^4.20250418.0",

@@ -1,13 +1,9 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "node",
+    "noEmit": false,
+    "outDir": "dist",
     "resolveJsonModule": true,
-    "isolatedModules": true,
     "baseUrl": ".",
     "paths": {
       "@elizaos/core": ["../core/src"],

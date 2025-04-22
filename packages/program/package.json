@@ -1,13 +1,15 @@
 {
-    "license": "ISC",
+    "name": "@autodotfun/program",
+    "version": "0.0.1",
+    "license": "MIT",
     "type": "module",
     "scripts": {
         "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
         "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
         "build": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor build",
         "clean": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor clean",
-        "program-id:main": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster mainnet ts-node scripts/getProgramId.ts",
-        "program-id:dev": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster devnet ts-node scripts/getProgramId.ts",
+        "program-id:main": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster mainnet bun run scripts/getProgramId.ts",
+        "program-id:dev": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster devnet bun run scripts/getProgramId.ts",
         "init:autofun_main": "ENV=main RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster mainnet init_autofun",
         "init:autofun_dev": "ENV=dev RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster devnet init_autofun",
         "init:vault_main": "RUSTUP_TOOLCHAIN=nightly-2025-04-14 anchor run --provider.cluster mainnet test_init",

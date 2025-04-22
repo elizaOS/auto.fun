@@ -4,7 +4,7 @@ import {
   IChartingLibraryWidget,
   ResolutionString,
   widget,
-} from "../../../packages/client/public/libraries/charting_library/charting_library";
+} from "@autodotfun/charts";
 import { chartOverrides, disabledFeatures, enabledFeatures } from "./constants";
 import { getDataFeed } from "./datafeed";
 import { twMerge } from "tailwind-merge";

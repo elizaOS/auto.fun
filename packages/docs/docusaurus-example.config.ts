@@ -175,7 +175,7 @@ const config = {
         treatValidationWarningsAsErrors: true,
         searchInComments: true,
         navigationLinks: {
-          GitHub: 'https://github.com/elizaos/eliza',
+          GitHub: 'https://github.com/elizaos/auto.fun',
           Documentation: '/docs/intro',
         },
       },
@@ -210,7 +210,7 @@ const config = {
       {
         showReadingTime: true,
         onUntruncatedBlogPosts: 'ignore',
-        editUrl: 'https://github.com/elizaos/eliza/tree/v2-develop/docs',
+        editUrl: 'https://github.com/elizaos/auto.fun/tree/v2-develop/docs',
         blogSidebarTitle: 'Recent posts',
         blogSidebarCount: 'ALL',
         showLastUpdateAuthor: true,
@@ -235,7 +235,7 @@ const config = {
           blogTitle: 'AI News',
           blogDescription: 'Automated aggregating and summarization of elizaOS ecosystem updates',
           showReadingTime: true,
-          editUrl: 'https://github.com/elizaos/eliza/tree/v2-develop/packages/docs',
+          editUrl: 'https://github.com/elizaos/auto.fun/tree/v2-develop/packages/docs',
           blogSidebarTitle: 'All posts',
           blogSidebarCount: 'ALL',
           showLastUpdateAuthor: true,
@@ -249,7 +249,7 @@ const config = {
         docs: {
           docItemComponent: '@theme/ApiItem',
           sidebarPath: require.resolve('./sidebars.ts'),
-          editUrl: 'https://github.com/elizaos/eliza/tree/v2-develop/packages/docs/',
+          editUrl: 'https://github.com/elizaos/auto.fun/tree/v2-develop/packages/docs/',
           exclude: ['**/_media/**'],
           showLastUpdateAuthor: true,
           showLastUpdateTime: true,
@@ -423,7 +423,7 @@ const config = {
           ],
         },
         {
-          href: 'https://github.com/elizaos/eliza',
+          href: 'https://github.com/elizaos/auto.fun',
           className: 'header-github-link',
           'aria-label': 'GitHub repository',
           position: 'right',
@@ -433,23 +433,6 @@ const config = {
     footer: {
       style: 'dark',
       links: [
-        {
-          title: 'Docs',
-          items: [
-            {
-              label: 'General',
-              href: './',
-            },
-            {
-              label: 'llms.txt',
-              href: 'https://eliza.how/llms.txt',
-            },
-            {
-              label: 'llms-full.txt',
-              href: 'https://eliza.how/llms-full.txt',
-            },
-          ],
-        },
         {
           title: 'Community',
           items: [
@@ -465,22 +448,9 @@ const config = {
               label: 'Twitter',
               href: 'https://twitter.com/elizaos',
             },
-          ],
-        },
-        {
-          title: 'More',
-          items: [
-            {
-              label: 'Blog',
-              href: '/blog',
-            },
-            {
-              label: 'RSS',
-              href: '/news/rss.xml',
-            },
             {
               label: 'GitHub',
-              href: 'https://github.com/elizaos/eliza',
+              href: 'https://github.com/elizaos/auto.fun',
             },
           ],
         },

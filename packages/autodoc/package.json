@@ -1,7 +1,7 @@
 {
   "type": "module",
-  "name": "@elizaos/autodoc",
-  "version": "1.0.0-beta.0",
+  "name": "@autodotfun/autodoc",
+  "version": "0.0.1",
   "private": true,
   "description": "",
   "main": "dist/index.js",
@@ -9,8 +9,9 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsup",
-    "autodoc:dev": "tsup --watch",
-    "autodoc": "node dist/index.js",
+    "dev": "tsup --watch",
+    "autodoc": "bun dist/index.js",
+    "start": "bun dist/index.js",
     "clean": "rm -rf dist .turbo node_modules .turbo-tsconfig.json tsconfig.tsbuildinfo",
     "lint": "prettier --write ./src",
     "format": "prettier --write ./src",

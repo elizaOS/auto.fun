@@ -11,7 +11,7 @@ This guide will help you set up your development environment for Auto.fun.
 Before you begin, make sure you have the following installed:
 
 - Node.js (v16 or higher)
-- npm or yarn
+- bun
 - Git
 
 ## Step 1: Clone the Repository
@@ -24,7 +24,7 @@ cd auto.fun
 ## Step 2: Install Dependencies
 
 ```bash
-npm install
+bun install
 # or
 yarn install
 ```
@@ -50,7 +50,7 @@ NEXT_PUBLIC_API_URL=https://api.auto.fun
 ## Step 4: Build the Project
 
 ```bash
-npm run build
+bun run build
 # or
 yarn build
 ```
@@ -58,7 +58,7 @@ yarn build
 ## Step 5: Start Development Server
 
 ```bash
-npm run dev
+bun run dev
 # or
 yarn dev
 ```
@@ -69,7 +69,7 @@ By default, we will mock the webhook events using a web socket server. If you wa
 
 1. Create your own Helius account at https://dashboard.helius.dev
 2. Modify the dev script in package.json to call setup-webhook.js
-3. Run `npm run dev` to automatically tunnel your local server and add it as a webhook to Helius
+3. Run `bun run dev` to automatically tunnel your local server and add it as a webhook to Helius
 
 ## Next Steps
 

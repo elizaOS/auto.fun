@@ -1,12 +1,13 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "types": ["node", "mocha"],
     "typeRoots": ["./node_modules/@types"],
     "lib": ["es2015"],
     "module": "commonjs",
     "target": "es6",
-    "skipLibCheck": true,
-    "strict": true,
-    "esModuleInterop": true
-  }
+    "noEmit": true
+  },
+  "include": ["tests/**/*.ts", "scripts/**/*.ts", "Anchor.toml"],
+  "exclude": ["node_modules", "target"]
 }

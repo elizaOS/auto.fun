@@ -4,7 +4,7 @@ import type {
   IBasicDataFeed,
   DatafeedConfiguration,
   ResolutionString,
-} from "../../../packages/client/public/libraries/charting_library/charting_library";
+} from "@autodotfun/charts";
 
 import { subscribeOnStream, unsubscribeFromStream } from "./streaming";
 import { getChartTable } from "@/utils/api";
