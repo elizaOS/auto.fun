@@ -1738,7 +1738,7 @@ tokenRouter.post("/create-token", async (c) => {
       farcaster,
       website,
       discord,
-      imageUrl,
+      imageBase64,
       metadataUrl,
       imported,
       creator,
@@ -1771,6 +1771,32 @@ tokenRouter.post("/create-token", async (c) => {
     }
 
     try {
+      // Handle image upload if base64 data is provided
+      let imageUrl = "";
+      if (imageBase64) {
+        try {
+          // Extract the base64 data from the data URL
+          const base64Data = imageBase64.split(',')[1];
+          const imageBuffer = Buffer.from(base64Data, 'base64');
+          
+          // Generate a unique filename
+          const filename = `${mintAddress}-${Date.now()}.png`;
+          
+          // Upload to R2
+          await c.env.R2.put(filename, imageBuffer, {
+            httpMetadata: {
+              contentType: 'image/png',
+            },
+          });
+          
+          // Set the public URL for the image
+          imageUrl = `${c.env.R2_PUBLIC_URL}/${filename}`;
+        } catch (error) {
+          logger.error("Error uploading image to R2:", error);
+          // Continue without image if upload fails
+        }
+      }
+
       // Create token data with all required fields from the token schema
       const now = new Date();
       console.log("****** imported ******\n", imported);
@@ -1895,58 +1921,6 @@ tokenRouter.post("/create-token", async (c) => {
       { error: "Internal server error", details: errorMessage },
       500,
     );
-  }
-});
-
-/**
- * used for importing tokens
- * will only search in mainnet because it's easier to test popular solana tokens that way.
- * we don't want to accidentally import devnet tokens into our system
- */
-tokenRouter.post("/search-token", async (c) => {
-  const body = await c.req.json();
-  const { mint, requestor } = body;
-
-  if (!mint || typeof mint !== "string") {
-    return c.json({ error: "Invalid mint address" }, 400);
-  }
-  let mintPublicKey;
-  try {
-    mintPublicKey = new PublicKey(mint);
-  } catch (e) {
-    return c.json({ error: "Invalid mint address format" }, 400);
-  }
-
-  if (!requestor || typeof requestor !== "string") {
-    return c.json({ error: "Missing or invalid requestor" }, 400);
-  }
-
-  // Validate mint address
-  // const mintPublicKey = new PublicKey(mint); // Moved validation up
-  logger.log(`[search-token] Searching for token ${mint}`);
-
-  const connection = new Connection(getMainnetRpcUrl(c.env), "confirmed"); // Use helper
-
-  // Try to find the token on mainnet
-  try {
-    const tokenInfo = await connection.getAccountInfo(mintPublicKey);
-    if (tokenInfo) {
-      logger.log(`[search-token] Found token on mainnet`);
-      // Continue with the token info we found
-      return await processTokenInfo(
-        c,
-        mintPublicKey,
-        tokenInfo,
-        connection,
-        requestor,
-      );
-    } else {
-      logger.error(`[search-token] Token ${mint} not found on mainnet`);
-      return c.json({ error: "Token not found on mainnet" }, 404);
-    }
-  } catch (error) {
-    logger.error(`[search-token] Error checking mainnet: ${error}`);
-    return c.json({ error: "Error checking Solana network" }, 500);
   }
 });
 
@@ -2451,6 +2425,110 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
       500,
     );
   }
+}); 
+
+tokenRouter.post("/search-token", async (c) => {
+  const body = await c.req.json();
+  const { mint, requestor } = body;
+
+  if (!mint || typeof mint !== "string") {
+    return c.json({ error: "Invalid mint address" }, 400);
+  }
+  let mintPublicKey;
+  try {
+    mintPublicKey = new PublicKey(mint);
+  } catch (e) {
+    return c.json({ error: "Invalid mint address format" }, 400);
+  }
+
+  if (!requestor || typeof requestor !== "string") {
+    return c.json({ error: "Missing or invalid requestor" }, 400);
+  }
+
+  logger.log(`[search-token] Searching for token ${mint}`);
+
+  const connection = new Connection(getMainnetRpcUrl(c.env), "confirmed");
+
+  try {
+    const tokenInfo = await connection.getAccountInfo(mintPublicKey);
+    if (tokenInfo) {
+      logger.log(`[search-token] Found token on mainnet`);
+      return await processTokenInfo(
+        c,
+        mintPublicKey,
+        tokenInfo,
+        connection,
+        requestor,
+      );
+    } else {
+      logger.error(`[search-token] Token ${mint} not found on mainnet`);
+      return c.json({ error: "Token not found on mainnet" }, 404);
+    }
+  } catch (error) {
+    logger.error(`[search-token] Error checking mainnet: ${error}`);
+    return c.json({ error: "Error checking Solana network" }, 500);
+  }
 });
+
+export async function uploadImportImage(c: Context) {
+  try {
+    // Require authentication
+    const user = c.get("user");
+    if (!user) {
+      return c.json({ error: "Authentication required" }, 401);
+    }
+
+    const { imageBase64 } = await c.req.json();
+    const env = c.env as Env;
+
+    if (!imageBase64) {
+      return c.json({ error: "No image data provided" }, 400);
+    }
+
+    // Extract content type and base64 data from data URL
+    const imageMatch = imageBase64.match(/^data:(image\/[a-z+]+);base64,(.*)$/);
+    if (!imageMatch) {
+      return c.json({ error: "Invalid image data URI format" }, 400);
+    }
+
+    const contentType = imageMatch[1];
+    const base64Data = imageMatch[2];
+    const imageBuffer = Buffer.from(base64Data, "base64");
+
+    // Determine file extension
+    let extension = ".jpg";
+    if (contentType.includes("png")) extension = ".png";
+    else if (contentType.includes("gif")) extension = ".gif";
+    else if (contentType.includes("svg")) extension = ".svg";
+    else if (contentType.includes("webp")) extension = ".webp";
+
+    // Generate unique filename
+    const imageFilename = `${crypto.randomUUID()}${extension}`;
+    const imageKey = `token-images/${imageFilename}`;
+
+    // Upload to R2
+    await env.R2.put(imageKey, imageBuffer, {
+      httpMetadata: { contentType, cacheControl: "public, max-age=31536000" },
+    });
+
+    // Construct public URL
+    const r2PublicUrl = env.R2_PUBLIC_URL;
+    if (!r2PublicUrl) {
+      return c.json({ error: "R2 public URL not configured" }, 500);
+    }
+
+    const imageUrl = env.API_URL?.includes("localhost") || env.API_URL?.includes("127.0.0.1")
+      ? `${env.API_URL}/api/image/${imageFilename}`
+      : `${r2PublicUrl.replace(/\/$/, "")}/${imageKey}`;
+
+    return c.json({ success: true, imageUrl });
+  } catch (error) {
+    console.error("Error uploading import image:", error);
+    return c.json({ error: "Failed to upload image" }, 500);
+  }
+}
+
+// Add the upload-import-image route to the router
+tokenRouter.post("/upload-import-image", uploadImportImage);
 
 export default tokenRouter;
