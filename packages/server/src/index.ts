@@ -31,6 +31,9 @@ import { logger } from "./util";
 import { webSocketManager } from './websocket-manager';
 // Assuming getSharedRedisPool is exported from redisCacheService or redisPool
 import { getGlobalRedisCache, getSharedRedisPool } from './redis';
+import { getSOLPrice } from './mcap';
+import { fork } from "child_process";
+import path from "path";
 // Define Variables type matching the original Hono app
 interface AppVariables {
   user?: { publicKey: string } | null;
@@ -244,18 +247,16 @@ api.route("/owner", ownerRouter);
 // Needs adjustment for Node.js caching if getSOLPrice used CF Cache API
 // import { getSOLPrice } from "./mcap"; // Ensure adapted for Node.js
 
-// api.get("/sol-price", async (c) => {
-//   try {
-//     // Ensure getSOLPrice is adapted for Node.js (e.g., using a simple in-memory cache or redis)
-//     // const price = await getSOLPrice(/* Pass necessary env/config if needed */);
-//     const price = 150.00; // Placeholder value
-//     logger.info("(Placeholder) Would fetch SOL price");
-//     return c.json({ price });
-//   } catch (error) {
-//     logger.error("Error fetching SOL price:", error);
-//     return c.json({ error: "Failed to fetch SOL price" }, 500);
-//   }
-// });
+api.get("/sol-price", async (c) => {
+  try {
+    const solPrice = await getSOLPrice(); // Use the global cache service
+    logger.info("(Placeholder) Would fetch SOL price");
+    return c.json({ price: solPrice });
+  } catch (error) {
+    logger.error("Error fetching SOL price:", error);
+    return c.json({ error: "Failed to fetch SOL price" }, 500);
+  }
+});
 
 // --- Mount the API sub-router ---
 app.route("/api", api);
@@ -328,3 +329,23 @@ export default {
   fetch: app.fetch,
   websocket, // Add the websocket handler
 };
+
+
+function startLogWorker() {
+
+  const child = fork(path.join(__dirname, "subscription/logWorker"), [], {
+    env: process.env,
+  });
+
+  logger.info("🚀 Started log subscription worker with PID", child.pid);
+
+  child.on("exit", (code) => {
+    logger.error(`❌ Log subscription worker exited with code ${code}. Restarting...`);
+    setTimeout(startLogWorker, 1000); // Restart after 1s
+  });
+
+  child.on("error", (err) => {
+    logger.error("❌ Error in log subscription worker:", err);
+  });
+}
+startLogWorker();
