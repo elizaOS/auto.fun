@@ -54,10 +54,7 @@ export default function Page() {
     "sort",
     "marketCapUSD",
   );
-  const [tableSortOrder, setTableSortOrder] = useUrlSearchParams<SortOrderType>(
-    "order",
-    "desc",
-  );
+  const [tableSortOrder, setTableSortOrder] = useState<SortOrderType>("desc");
 
   // State for filter popover visibility (no need to persist this)
   const [isFilterOpen, setIsFilterOpen] = useState(false);
