@@ -199,16 +199,6 @@ export async function checkTokenOwnership(
         return { allowed: true };
       }
 
-      // If not the creator, check if user is a token holder with enough tokens
-      // ---> CHANGE: Read from Redis instead of DB
-      // const holderQuery = await db
-      //   .select()
-      //   .from(tokenHolders)
-      //   .where(
-      //     and(eq(tokenHolders.mint, mint), eq(tokenHolders.address, publicKey)),
-      //   )
-      //   .limit(1);
-
       let specificHolderData: any | null = null;
       const holdersListKey = redisCache.getKey(`holders:${mint}`);
       try {

@@ -2,6 +2,7 @@ import { and, eq, gt, lt, sql } from "drizzle-orm";
 import { cachePrices, getDB } from "./db";
 import { Env } from "./env";
 import { logger } from "./logger";
+import { createRedisCache } from "./redis/redisCacheService";
 
 /**
  * Unified cache system using Drizzle/D1 for all caching needs
@@ -9,38 +10,29 @@ import { logger } from "./logger";
  */
 export class CacheService {
   private db: ReturnType<typeof getDB>;
+  private redisCache: ReturnType<typeof createRedisCache>;
 
   constructor(env: Env) {
     this.db = getDB(env);
+    this.redisCache = createRedisCache(env);
   }
 
   /**
    * Get SOL price from cache
    */
   async getSolPrice(): Promise<number | null> {
+    const cacheKey = this.redisCache.getKey('solPrice');
     try {
-      // Get from D1/Drizzle cache
-      const now = new Date();
-      const cachedPrice = await this.db
-        .select()
-        .from(cachePrices)
-        .where(
-          and(
-            eq(cachePrices.type, "sol"),
-            eq(cachePrices.symbol, "SOL"),
-            gt(cachePrices.expiresAt, now),
-          ),
-        )
-        .orderBy(sql`timestamp DESC`)
-        .limit(1);
-
-      if (cachedPrice.length > 0) {
-        return parseFloat(cachedPrice[0].price);
+      const cachedValue = await this.redisCache.get(cacheKey);
+      if (cachedValue) {
+        const price = parseFloat(cachedValue);
+        if (!isNaN(price)) {
+          return price;
+        }
       }
-
       return null;
     } catch (error) {
-      logger.error("Error getting SOL price from cache:", error);
+      console.error(`Error getting SOL price from Redis cache (${cacheKey}):`, error);
       return null;
     }
   }
@@ -51,26 +43,11 @@ export class CacheService {
    * @param ttlSeconds How long the cache should live (in seconds)
    */
   async setSolPrice(price: number, ttlSeconds: number = 30): Promise<void> {
+    const cacheKey = this.redisCache.getKey('solPrice');
     try {
-      const now = new Date();
-      const expiresAt = new Date(
-        now.getTime() + ttlSeconds * 1000,
-      ).toISOString();
-      const expiresAtDate = new Date(expiresAt);
-      await this.db.insert(cachePrices)
-        .values([{
-          id: crypto.randomUUID(),
-          type: "sol",
-          symbol: "SOL",
-          price: price.toString(),
-          timestamp: sql`CURRENT_TIMESTAMP`,    // OK as SQL literal
-          expiresAt: expiresAtDate,             // now a Date, not a string
-        }])
-        .execute();
-      // Clean up old cache entries
-      await this.cleanupOldCacheEntries("sol", "SOL");
+      await this.redisCache.set(cacheKey, price.toString(), ttlSeconds);
     } catch (error) {
-      logger.error("Error setting SOL price in cache:", error);
+      console.error(`Error setting SOL price in Redis cache (${cacheKey}):`, error);
     }
   }
 
