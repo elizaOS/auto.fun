@@ -31,10 +31,8 @@ const SkeletonImage: React.FC<SkeletonImageProps> = ({
   };
 
   const imageOptimizationEnabled = src?.includes(
-    "https://auto.fun/cdn-cgi/image/"
+    "https://auto.fun/cdn-cgi/image/",
   );
-
-  console.log({ src });
 
   const updateImageSrc = useCallback(() => {
     if (imageOptimizationEnabled && ref?.current) {
@@ -64,7 +62,7 @@ const SkeletonImage: React.FC<SkeletonImageProps> = ({
 
           updatedSrc = src.replace(
             cdnPathRegex,
-            `https://auto.fun/cdn-cgi/image/${updatedParams}`
+            `https://auto.fun/cdn-cgi/image/${updatedParams}`,
           );
         }
 
@@ -87,9 +85,9 @@ const SkeletonImage: React.FC<SkeletonImageProps> = ({
 
   useEffect(() => {
     updateImageSrc();
-    
+
     window.addEventListener("resize", handleResize);
-    
+
     return () => {
       window.removeEventListener("resize", handleResize);
       if (debounceTimerRef.current) {
@@ -110,7 +108,7 @@ const SkeletonImage: React.FC<SkeletonImageProps> = ({
         <div
           className={twMerge(
             "absolute inset-0 bg-autofun-background-input animate-pulse size-full",
-            className
+            className,
           )}
         />
       )}
@@ -122,7 +120,7 @@ const SkeletonImage: React.FC<SkeletonImageProps> = ({
         className={twMerge(
           "transition-opacity duration-200 object-cover size-full",
           loaded ? "opacity-100" : "opacity-0",
-          className
+          className,
         )}
         {...props}
       />

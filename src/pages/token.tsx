@@ -291,7 +291,7 @@ export default function Page() {
                     isPartner
                       ? "from-autofun-background-action-highlight/10 via-autofun-background-action-highlight/10"
                       : "from-black/50 via-black/25",
-                    "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5"
+                    "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5",
                   )}
                 >
                   <div className="flex flex-wrap items-center justify-start w-full gap-2">
@@ -392,7 +392,7 @@ export default function Page() {
                   ];
 
                   const availableLinks = socialLinks.filter(
-                    (link) => !!link.url
+                    (link) => !!link.url,
                   );
 
                   if (availableLinks.length === 0) {
@@ -571,7 +571,7 @@ export default function Page() {
                     {formatNumber(
                       tokenBalance * currentPrice * solanaPrice,
                       true,
-                      false
+                      false,
                     )}
                   </span>
                 </div>
@@ -634,7 +634,7 @@ export default function Page() {
                         (token?.reserveLamport - token?.virtualReserves) /
                           LAMPORTS_PER_SOL,
                         true,
-                        true
+                        true,
                       )}{" "}
                       SOL in the bonding curve.
                     </p>
