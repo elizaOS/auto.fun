@@ -241,13 +241,6 @@ export default function Page() {
     );
   }
 
-  // this is for testing purpose only, untill we have implemented partner tokens
-  const parntnerMintList = [
-    "B6t4KWk4MTGadFwzwTorAv5fmxw7v2bS7J74dRkw8FUN",
-    "78c5zQY31XJ38U1TdH6WWEaa4AgxDPXq5fJr2q5rgFUN",
-  ];
-  const isPartner = parntnerMintList.includes(address as string);
-
   return (
     <Fragment>
       <Helmet>
@@ -287,12 +280,9 @@ export default function Page() {
 
                 {/* Token name overlapping at top - with drop shadow */}
                 <div
-                  className={twMerge(
-                    isPartner
-                      ? "from-autofun-background-action-highlight/10 via-autofun-background-action-highlight/10"
-                      : "from-black/50 via-black/25",
-                    "absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5"
-                  )}
+                  className={
+                    "from-black/50 via-black/25 absolute top-0 left-0 right-0 bg-gradient-to-b to-transparent px-3 py-2.5"
+                  }
                 >
                   <div className="flex flex-wrap items-center justify-start w-full gap-2">
                     <div className="flex flex-wrap items-center gap-2">
