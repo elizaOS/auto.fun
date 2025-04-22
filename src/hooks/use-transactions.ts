@@ -44,7 +44,7 @@ export const useTransactions = ({ tokenId }: { tokenId: string }) => {
       let newTransactions: any = [];
       if (Array.isArray(transaction)) {
         newTransactions = transaction.map((item) =>
-          TransactionSchema.parse(item),
+          TransactionSchema.parse(item)
         );
       } else if (transaction && typeof transaction === "object") {
         newTransactions = [TransactionSchema.parse(transaction)];
@@ -54,9 +54,26 @@ export const useTransactions = ({ tokenId }: { tokenId: string }) => {
 
       if (pagination.currentPage !== 1) return;
 
-      pagination.setItems((items) =>
-        [...newTransactions, ...items].slice(0, pageSize),
-      );
+      pagination.setItems((items) => {
+        const uniqueItems = Array.from(
+          new Map(items.map((item) => [item.txId, item])).values()
+        );
+
+        const existingTxIds = new Set(uniqueItems.map((item) => item.txId));
+
+        const uniqueNewTransactions = newTransactions.filter(
+          (tx: any) => !existingTxIds.has(tx.txId)
+        );
+
+        const mergedItems = [...uniqueNewTransactions, ...uniqueItems];
+
+        const sortedItems = mergedItems.sort(
+          (a, b) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+
+        return sortedItems.slice(0, pageSize);
+      });
     });
 
     return () => {
