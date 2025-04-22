@@ -1,10 +1,11 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
-import { cache } from "hono/cache";
+import { cache as honoCacheMiddleware } from "hono/cache";
 import { z } from "zod";
 import { fetchPriceChartData } from "../chart";
 import { getDB, swaps, tokens } from "../db";
 import { Env } from "../env";
+import { createRedisCache } from "../redis/redisCacheService";
 import { logger } from "../util";
 
 const router = new Hono<{
@@ -24,7 +25,7 @@ const ChartParamsSchema = z.object({
 
 router.get(
   "/chart/:pairIndex/:start/:end/:range/:token",
-  cache({
+  honoCacheMiddleware({
     cacheName: "chart-cache",
     cacheControl: "max-age=120",
     wait: true,
@@ -80,25 +81,47 @@ router.get("/swaps/:mint", async (c) => {
     const page = parseInt(c.req.query("page") || "1");
     const offset = (page - 1) * limit;
 
+    // --- BEGIN REDIS CACHE CHECK ---
+    const cacheKey = `swaps:${mint}:${limit}:${page}`;
+    const redisCache = createRedisCache(c.env as Env);
+
+    if (redisCache) {
+      try {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          logger.log(`[Cache Hit] /swaps/${mint}?limit=${limit}&page=${page}`);
+          const parsedData = JSON.parse(cachedData);
+          if (parsedData && Array.isArray(parsedData.swaps)) {
+             return c.json(parsedData);
+          } else {
+             logger.warn(`Invalid cache data for ${cacheKey}, fetching fresh.`);
+          }
+        } else {
+          logger.log(`[Cache Miss] /swaps/${mint}?limit=${limit}&page=${page}`);
+        }
+      } catch (cacheError) {
+        logger.error(`Redis cache GET error for swaps:`, cacheError);
+      }
+    }
+    // --- END REDIS CACHE CHECK ---
+
     // Get the DB connection
     const db = getDB(c.env);
 
     // Get real swap data from the database
-    const swapsResult = await db
-      .select()
-      .from(swaps)
-      .where(eq(swaps.tokenMint, mint))
-      .orderBy(desc(swaps.timestamp))
-      .offset(offset)
-      .limit(limit);
-
-    // logger.log(`Found ${swapsResult.length} swaps for mint ${mint}`);
-
-    // Get total count for pagination
-    const totalSwapsQuery = await db
-      .select({ count: sql`count(*)` })
-      .from(swaps)
-      .where(eq(swaps.tokenMint, mint));
+    const [swapsResult, totalSwapsQuery] = await Promise.all([
+      db
+        .select()
+        .from(swaps)
+        .where(eq(swaps.tokenMint, mint))
+        .orderBy(desc(swaps.timestamp))
+        .offset(offset)
+        .limit(limit),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(swaps)
+        .where(eq(swaps.tokenMint, mint))
+    ]);
 
     const totalSwaps = Number(totalSwapsQuery[0]?.count || 0);
     const totalPages = Math.ceil(totalSwaps / limit);
@@ -109,20 +132,31 @@ router.get("/swaps/:mint", async (c) => {
       directionText: swap.direction === 0 ? "buy" : "sell",
     }));
 
-    const response = {
+    const responseData = {
       swaps: formattedSwaps,
       page,
       totalPages,
       total: totalSwaps,
     };
 
-    return c.json(response);
+    // --- BEGIN REDIS CACHE SET ---
+    if (redisCache && responseData.swaps && responseData.swaps.length > 0) {
+       try {
+         await redisCache.set(cacheKey, JSON.stringify(responseData), 15);
+         logger.log(`Cached data for ${cacheKey} with 15s TTL`);
+       } catch (cacheError) {
+         logger.error(`Redis cache SET error for swaps:`, cacheError);
+       }
+    }
+    // --- END REDIS CACHE SET ---
+
+    return c.json(responseData);
   } catch (error) {
     logger.error("Error in swaps history route:", error);
     return c.json(
       {
         swaps: [],
-        page: 1,
+        page: parseInt(c.req.query("page") || "1"),
         totalPages: 0,
         total: 0,
         error: "Failed to fetch swap history",
