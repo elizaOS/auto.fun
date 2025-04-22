@@ -3,7 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { getDB, tokens } from "../db";
 import { Env } from "../env";
 import { retryOperation } from "../raydium/utils";
-import { createRedisCache } from "../redis/redisCacheService";
+import { createLRUCache } from "../cache/lruCache";
 import { calculateFeaturedScore, getFeaturedMaxValues, logger } from "../util";
 import { getWebSocketClient } from "../websocket-client";
 
@@ -24,12 +24,12 @@ export async function handleSignature(
   env: Env,
   signature: string,
   token: any,
-  solPriceUSD: number,
+  solPriceUSD: number
 ) {
   const connection = new Connection(
     env.NETWORK === "devnet"
       ? env.DEVNET_SOLANA_RPC_URL
-      : env.MAINNET_SOLANA_RPC_URL,
+      : env.MAINNET_SOLANA_RPC_URL
   );
 
   // finalize
@@ -51,7 +51,7 @@ export async function handleSignature(
     token,
     signature,
     solPriceUSD,
-    logs,
+    logs
   );
   if (metrics) {
     logger.log(`Swap metrics for ${metrics.mintAddress}:`, metrics);
@@ -64,7 +64,7 @@ async function processSwapLog(
   token: any,
   signature: string,
   solPriceUSD: number,
-  logs: string[],
+  logs: string[]
 ) {
   try {
     const wsClient = getWebSocketClient(env);
@@ -84,7 +84,7 @@ async function processSwapLog(
       if (
         !mintAddress ||
         !/^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(
-          mintAddress,
+          mintAddress
         )
       ) {
         logger.error(`Invalid mint address format: ${mintAddress}`);
@@ -170,18 +170,18 @@ async function processSwapLog(
         txId: signature,
         timestamp: new Date(),
       };
-      const redisCache = createRedisCache(env);
+      const redisCache = createLRUCache(env);
       const listKey = redisCache.getKey(`swapsList:${mintAddress}`);
       try {
         await redisCache.lpush(listKey, JSON.stringify(swapRecord));
         await redisCache.ltrim(listKey, 0, MAX_SWAPS_TO_KEEP - 1);
         logger.log(
-          `Helper: Saved swap to Redis list ${listKey} & trimmed. Type: ${direction === "0" ? "buy" : "sell"}`,
+          `Helper: Saved swap to Redis list ${listKey} & trimmed. Type: ${direction === "0" ? "buy" : "sell"}`
         );
       } catch (redisError) {
         logger.error(
           `Helper: Failed to save swap to Redis list ${listKey}:`,
-          redisError,
+          redisError
         );
         // Consider if we should proceed or return error
       }
@@ -229,7 +229,7 @@ async function processSwapLog(
         featuredScore: calculateFeaturedScore(
           newToken[0],
           maxVolume,
-          maxHolders,
+          maxHolders
         ),
       };
       // Emit event to all clients via WebSocket
@@ -266,7 +266,7 @@ export function shouldUpdateSupply(token: any): boolean {
 
 export async function updateTokenSupplyFromChain(
   env: Env,
-  tokenMint: string,
+  tokenMint: string
 ): Promise<{
   tokenSupply: string;
   tokenSupplyUiAmount: number;
@@ -277,13 +277,13 @@ export async function updateTokenSupplyFromChain(
     env.NETWORK === "mainnet"
       ? env.MAINNET_SOLANA_RPC_URL
       : env.DEVNET_SOLANA_RPC_URL,
-    "confirmed",
+    "confirmed"
   );
   // retry in case it fails once
   const supplyResponse = await retryOperation(
     () => connection.getTokenSupply(new PublicKey(tokenMint)),
     2,
-    5000,
+    5000
   );
   if (!supplyResponse || !supplyResponse.value) {
     throw new Error(`Failed to fetch token supply for ${tokenMint}`);
@@ -315,7 +315,7 @@ export async function updateTokenSupplyFromChain(
 async function isValidSwapTx(
   connection: Connection,
   signature: string,
-  mint: string,
+  mint: string
 ): Promise<boolean> {
   const tx = await connection.getTransaction(signature, {
     maxSupportedTransactionVersion: 0,
@@ -338,7 +338,7 @@ export async function processLastValidSwap(
   env: Env,
   token: any,
   solPriceUSD: number,
-  limit = 5,
+  limit = 5
 ): Promise<void> {
   const rpcUrl =
     env.NETWORK === "devnet"

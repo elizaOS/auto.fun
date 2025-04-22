@@ -12,7 +12,7 @@ import { TokenMigrator } from "./raydium/migration/migrateToken";
 import { getToken } from "./raydium/migration/migrations";
 import * as raydium_vault_IDL from "./raydium/raydium_vault.json";
 import { RaydiumVault } from "./raydium/types/raydium_vault";
-import { createRedisCache } from "./redis/redisCacheService";
+import { createLRUCache } from "./cache/lruCache";
 import {
   checkAndReplenishTokens,
   generateAdditionalTokenImages,
@@ -38,7 +38,7 @@ const MAX_SWAPS_TO_KEEP = 1000;
 
 function sanitizeTokenForWebSocket(
   token: Partial<Token>,
-  maxBytes = 95000,
+  maxBytes = 95000
 ): Partial<Token> {
   const clone = { ...token };
 
@@ -86,7 +86,7 @@ function sanitizeTokenForWebSocket(
   };
 }
 function convertTokenDataToDBData(
-  tokenData: Partial<TokenData>,
+  tokenData: Partial<TokenData>
 ): Partial<TokenDBData> {
   const now = new Date();
   return {
@@ -110,7 +110,7 @@ function convertTokenDataToDBData(
 
 export async function updateTokenInDB(
   env: Env,
-  tokenData: Partial<TokenData>,
+  tokenData: Partial<TokenData>
 ): Promise<Token> {
   const db = getDB(env);
   const now = new Date().toISOString();
@@ -198,7 +198,7 @@ export async function processTransactionLogs(
   env: Env,
   logs: string[],
   signature: string,
-  wsClient: any = null,
+  wsClient: any = null
 ): Promise<ProcessResult> {
   if (!wsClient) {
     wsClient = getWebSocketClient(env);
@@ -222,7 +222,7 @@ async function handleNewToken(
   env: Env,
   logs: string[],
   signature: string,
-  wsClient: any,
+  wsClient: any
 ): Promise<HandlerResult> {
   const newTokenLog = logs.find((log) => log.includes("NewToken:"));
   if (!newTokenLog) return null;
@@ -242,7 +242,7 @@ async function handleNewToken(
       signature,
       rawTokenAddress,
       rawCreatorAddress,
-      env,
+      env
     );
     if (!newToken) {
       logger.error(`Failed to create new token data for ${rawTokenAddress}`);
@@ -252,6 +252,7 @@ async function handleNewToken(
       .insert(tokens)
       .values([newToken as Token])
       .onConflictDoNothing();
+    logger.info("🔥 EMITTING newToken EVENT (cron.ts) with data:", newToken);
     await wsClient.emit("global", "newToken", newToken);
     await updateHoldersCache(env, rawTokenAddress);
 
@@ -266,7 +267,7 @@ async function handleSwap(
   env: Env,
   logs: string[],
   signature: string,
-  wsClient: any,
+  wsClient: any
 ): Promise<HandlerResult | null> {
   const mintLog = logs.find((log) => log.includes("Mint:"));
   const swapLog = logs.find((log) => log.includes("Swap:"));
@@ -328,7 +329,7 @@ async function handleSwap(
     const tokenWithMarketData = await calculateTokenMarketData(
       tokenWithSupply,
       solPrice,
-      env,
+      env
     );
     const marketCapUSD = tokenWithMarketData.marketCapUSD;
 
@@ -349,7 +350,7 @@ async function handleSwap(
     };
 
     const db = getDB(env);
-    const redisCache = createRedisCache(env);
+    const redisCache = createLRUCache(env);
     const listKey = redisCache.getKey(`swapsList:${mintAddress}`);
 
     try {
@@ -453,7 +454,7 @@ async function handleCurveComplete(
   env: Env,
   logs: string[],
   signature: string,
-  wsClient: any,
+  wsClient: any
 ): Promise<HandlerResult> {
   const completeLog = logs.find((log) => log.includes("curve is completed"));
   const mintLog = logs.find((log) => log.includes("Mint:"));
@@ -476,7 +477,7 @@ async function handleCurveComplete(
     await wsClient.emit(
       "global",
       "updateToken",
-      sanitizeTokenForWebSocket(convertTokenDataToDBData(token)),
+      sanitizeTokenForWebSocket(convertTokenDataToDBData(token))
     );
 
     return { found: true, tokenAddress: mintAddress, event: "curveComplete" };
@@ -488,7 +489,7 @@ async function handleCurveComplete(
 
 export async function cron(
   env: Env,
-  ctx: ExecutionContext | { cron: string },
+  ctx: ExecutionContext | { cron: string }
 ): Promise<void> {
   console.log("Running cron job...");
   try {
@@ -499,7 +500,7 @@ export async function cron(
 
     if (!isScheduledEvent) {
       logger.warn(
-        "Rejected direct call to cron function - not triggered by scheduler",
+        "Rejected direct call to cron function - not triggered by scheduler"
       );
       return; // Exit early without running the scheduled tasks
     }
@@ -515,7 +516,7 @@ export async function cron(
 
 export async function updateTokens(env: Env) {
   const db = getDB(env);
-  const cache = createRedisCache(env);
+  const cache = createLRUCache(env);
   logger.log("Starting updateTokens cron task...");
 
   // Fetch active tokens with necessary fields
@@ -595,26 +596,32 @@ export async function updateTokens(env: Env) {
           const batch = activeTokens.slice(i, i + CHUNK_SIZE) as Token[];
           const updatedBatch = await bulkUpdatePartialTokens(batch, env);
           // Push ephemeral metrics to Redis (TTL 60s)
-          await Promise.all(updatedBatch.map(token =>
-            cache.set(
-              `token:stats:${token.mint}`,
-              JSON.stringify({
-                currentPrice: token.currentPrice,
-                tokenPriceUSD: token.tokenPriceUSD,
-                solPriceUSD: token.solPriceUSD,
-                marketCapUSD: token.marketCapUSD,
-                volume24h: token.volume24h,
-                priceChange24h: token.priceChange24h,
-                price24hAgo: token.price24hAgo,
-                curveProgress: token.curveProgress,
-                curveLimit: token.curveLimit,
-              }),
-              60,
+          await Promise.all(
+            updatedBatch.map((token) =>
+              cache.set(
+                `token:stats:${token.mint}`,
+                JSON.stringify({
+                  currentPrice: token.currentPrice,
+                  tokenPriceUSD: token.tokenPriceUSD,
+                  solPriceUSD: token.solPriceUSD,
+                  marketCapUSD: token.marketCapUSD,
+                  volume24h: token.volume24h,
+                  priceChange24h: token.priceChange24h,
+                  price24hAgo: token.price24hAgo,
+                  curveProgress: token.curveProgress,
+                  curveLimit: token.curveLimit,
+                }),
+                60
+              )
             )
-          ));
-          logger.log(`Cron: Updated prices for batch ${Math.floor(i/CHUNK_SIZE)+1} (${updatedBatch.length}/${batch.length}) tokens`);
+          );
+          logger.log(
+            `Cron: Updated prices for batch ${Math.floor(i / CHUNK_SIZE) + 1} (${updatedBatch.length}/${batch.length}) tokens`
+          );
         }
-        logger.log(`Cron: Completed price updates for ${total} tokens in batches of ${CHUNK_SIZE}`);
+        logger.log(
+          `Cron: Completed price updates for ${total} tokens in batches of ${CHUNK_SIZE}`
+        );
       } catch (err) {
         logger.error("Cron: Error during bulkUpdatePartialTokens:", err);
       }
@@ -631,7 +638,7 @@ export async function updateTokens(env: Env) {
         } catch (err) {
           logger.error(
             `Cron: Error updating holders for token ${token.mint}:`,
-            err,
+            err
           );
         }
       }
@@ -664,24 +671,24 @@ export async function updateTokens(env: Env) {
 
               if (!hasGenerationImages) {
                 logger.log(
-                  `Cron: Triggering image generation for: ${token.mint}`,
+                  `Cron: Triggering image generation for: ${token.mint}`
                 );
                 await generateAdditionalTokenImages(
                   env,
                   token.mint,
-                  token.description || "",
+                  token.description || ""
                 );
               }
             } else {
               logger.warn(
-                "Cron: R2 storage not configured, skipping image check.",
+                "Cron: R2 storage not configured, skipping image check."
               );
               break; // No need to check further tokens if R2 isn't there
             }
           } catch (imageCheckError) {
             logger.error(
               `Cron: Error checking/generating images for ${token.mint}:`,
-              imageCheckError,
+              imageCheckError
             );
           }
         }

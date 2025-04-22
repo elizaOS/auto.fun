@@ -2,7 +2,7 @@ import { eq, gt, sql } from "drizzle-orm";
 import { getDB, tokens, users } from "../db";
 import { getToken } from "../raydium/migration/migrations";
 import { Env } from "../env";
-import { createRedisCache } from "../redis/redisCacheService";
+import { createLRUCache } from "../cache/lruCache";
 
 // point events for now
 export type PointEvent =
@@ -66,7 +66,7 @@ export async function awardUserPoints(
   env: Env,
   userAddress: string,
   event: PointEvent,
-  description = "",
+  description = ""
 ): Promise<void> {
   const db = getDB(env);
   const now = new Date().toISOString();
@@ -113,7 +113,6 @@ export async function awardUserPoints(
       .where(eq(users.address, userAddress))
       .execute();
   } else {
-
     await db
       .insert(users)
       .values([
@@ -126,28 +125,31 @@ export async function awardUserPoints(
           suspended: 0,
         },
       ])
-      .returning()
+      .returning();
   }
 }
 
 export async function awardGraduationPoints(
   env: Env,
-  mint: string,
+  mint: string
 ): Promise<void> {
   const db = getDB(env);
-  const redisCache = createRedisCache(env);
+  const redisCache = createLRUCache(env);
 
   // Last swap user
   let lastSwapUser: string | null = null;
   try {
-      const listKey = redisCache.getKey(`swapsList:${mint}`);
-      const [lastSwapString] = await redisCache.lrange(listKey, 0, 0); // Get the first item (most recent)
-      if (lastSwapString) {
-          const lastSwapData = JSON.parse(lastSwapString);
-          lastSwapUser = lastSwapData?.user;
-      }
+    const listKey = redisCache.getKey(`swapsList:${mint}`);
+    const [lastSwapString] = await redisCache.lrange(listKey, 0, 0); // Get the first item (most recent)
+    if (lastSwapString) {
+      const lastSwapData = JSON.parse(lastSwapString);
+      lastSwapUser = lastSwapData?.user;
+    }
   } catch (redisError) {
-      console.error(`MigrationBE: Failed to get last swap user from Redis for ${mint}:`, redisError);
+    console.error(
+      `MigrationBE: Failed to get last swap user from Redis for ${mint}:`,
+      redisError
+    );
   }
 
   if (lastSwapUser) {
@@ -155,7 +157,7 @@ export async function awardGraduationPoints(
       env,
       lastSwapUser, // Use user fetched from Redis
       { type: "graduating_tx" },
-      "Graduating transaction bonus",
+      "Graduating transaction bonus"
     );
   }
 
@@ -167,7 +169,7 @@ export async function awardGraduationPoints(
       env,
       creator,
       { type: "owner_graduation" },
-      "Owner graduation bonus",
+      "Owner graduation bonus"
     );
   }
 
@@ -175,14 +177,19 @@ export async function awardGraduationPoints(
   let holders: any[] = [];
   const holdersListKey = redisCache.getKey(`holders:${mint}`);
   try {
-      const holdersString = await redisCache.get(holdersListKey);
-      if (holdersString) {
-          holders = JSON.parse(holdersString);
-      } else {
-          console.log(`MigrationBE: No holders found in Redis for ${mint} during graduation point calculation.`);
-      }
+    const holdersString = await redisCache.get(holdersListKey);
+    if (holdersString) {
+      holders = JSON.parse(holdersString);
+    } else {
+      console.log(
+        `MigrationBE: No holders found in Redis for ${mint} during graduation point calculation.`
+      );
+    }
   } catch (redisError) {
-      console.error(`MigrationBE: Failed to get holders from Redis for graduation points (${mint}):`, redisError);
+    console.error(
+      `MigrationBE: Failed to get holders from Redis for graduation points (${mint}):`,
+      redisError
+    );
   }
 
   const [priceRow] = await db
@@ -200,7 +207,7 @@ export async function awardGraduationPoints(
       env,
       h.address,
       { type: "graduation_holding", heldAtGraduation: usdHeld },
-      `Holding through graduation: $${usdHeld.toFixed(2)}`,
+      `Holding through graduation: $${usdHeld.toFixed(2)}`
     );
   }
 }
@@ -209,7 +216,7 @@ export async function awardGraduationPoints(
 export async function distributeWeeklyPoints(
   env: Env,
   weeklyPool = 1_000_000,
-  capPercent = 0.02,
+  capPercent = 0.02
 ): Promise<{ distributed: number; unassigned: number }> {
   const db = getDB(env);
 

@@ -60,7 +60,12 @@ class SocketWrapper {
 
     this.ws.onmessage = (event) => {
       try {
+        console.log("🔄 Raw WebSocket message received:", event.data);
         const { event: eventName, data } = JSON.parse(event.data);
+        console.log(
+          `🔄 Parsed WebSocket message: Event=${eventName}, Data=`,
+          data
+        );
         this.triggerEvent(eventName, data);
       } catch (error) {
         console.error("Failed to parse WebSocket message:", error);
@@ -97,7 +102,7 @@ class SocketWrapper {
       // Calculate delay with exponential backoff, but cap at maxReconnectInterval
       const delay = Math.min(
         this.reconnectInterval * Math.pow(1.5, this.reconnectAttempts),
-        this.maxReconnectInterval,
+        this.maxReconnectInterval
       );
 
       this.reconnectTimer = setTimeout(() => {
@@ -128,7 +133,7 @@ class SocketWrapper {
       delete this.eventHandlers[event];
     } else if (this.eventHandlers[event]) {
       this.eventHandlers[event] = this.eventHandlers[event].filter(
-        (handler) => handler !== callback,
+        (handler) => handler !== callback
       );
     }
     return this;

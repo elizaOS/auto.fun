@@ -5,7 +5,7 @@ import { z } from "zod";
 import { fetchPriceChartData } from "../chart";
 import { getDB, tokens } from "../db";
 import { Env } from "../env";
-import { createRedisCache } from "../redis/redisCacheService";
+import { createLRUCache } from "../cache/lruCache";
 import { logger } from "../util";
 
 const router = new Hono<{
@@ -38,7 +38,7 @@ router.get(
         params.start * 1000,
         params.end * 1000,
         params.range,
-        params.token,
+        params.token
       );
       return c.json({ table: data });
     } catch (error) {
@@ -49,7 +49,7 @@ router.get(
         c.json({ error: "Internal server error" }, 500);
       }
     }
-  },
+  }
 );
 
 router.post("/creator-tokens", async (c) => {
@@ -81,7 +81,7 @@ router.get("/swaps/:mint", async (c) => {
     const page = parseInt(c.req.query("page") || "1");
     const offset = (page - 1) * limit;
 
-    const redisCache = createRedisCache(c.env);
+    const redisCache = createLRUCache(c.env);
     const listKey = redisCache.getKey(`swapsList:${mint}`);
     let totalSwaps = 0;
     let swapsResultRaw: any[] = []; // Use any[] for initial parsed data
@@ -96,12 +96,12 @@ router.get("/swaps/:mint", async (c) => {
       totalSwaps = countResult;
       swapsResultRaw = swapStrings.map((s) => JSON.parse(s));
       logger.log(
-        `Retrieved ${swapsResultRaw.length} swaps (total: ${totalSwaps}) from Redis list ${listKey}`,
+        `Retrieved ${swapsResultRaw.length} swaps (total: ${totalSwaps}) from Redis list ${listKey}`
       );
     } catch (redisError) {
       logger.error(
         `Failed to read swaps from Redis list ${listKey}:`,
-        redisError,
+        redisError
       );
       // Return error or empty list depending on desired behavior
       return c.json(
@@ -112,7 +112,7 @@ router.get("/swaps/:mint", async (c) => {
           total: 0,
           error: "Failed to retrieve swap history from cache",
         },
-        500,
+        500
       );
     }
 
@@ -146,7 +146,7 @@ router.get("/swaps/:mint", async (c) => {
         total: 0,
         error: "Failed to fetch swap history",
       },
-      500,
+      500
     );
   }
 });

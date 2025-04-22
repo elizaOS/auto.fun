@@ -14,7 +14,7 @@ import { uploadGeneratedImage } from "../uploader";
 import { getRpcUrl } from "../util";
 import { createTokenPrompt } from "./generation-prompts/create-token";
 import { enhancePrompt } from "./generation-prompts/enhance-prompt";
-import { createRedisCache } from "../redis/redisCacheService";
+import { createLRUCache } from "../cache/lruCache";
 
 // Enum for media types
 export enum MediaType {
@@ -52,7 +52,7 @@ export async function checkRateLimits(
   env: Env,
   mint: string,
   type: MediaType,
-  publicKey?: string,
+  publicKey?: string
 ): Promise<{ allowed: boolean; remaining: number; message?: string }> {
   // Special handling for test environments
   if (env.NODE_ENV === "test") {
@@ -73,7 +73,7 @@ export async function checkRateLimits(
   const db = getDB(env);
 
   const cutoffTime = new Date(
-    Date.now() - RATE_LIMITS[type].COOLDOWN_PERIOD_MS,
+    Date.now() - RATE_LIMITS[type].COOLDOWN_PERIOD_MS
   );
 
   // Create a timeout for the database query
@@ -81,8 +81,8 @@ export async function checkRateLimits(
   const dbTimeoutPromise = new Promise<never>((_, reject) =>
     setTimeout(
       () => reject(new Error("Rate limits check timed out")),
-      dbTimeout,
-    ),
+      dbTimeout
+    )
   );
 
   try {
@@ -94,8 +94,8 @@ export async function checkRateLimits(
         and(
           eq(mediaGenerations.mint, mint),
           eq(mediaGenerations.type, type),
-          gte(mediaGenerations.timestamp, cutoffTime),
-        ),
+          gte(mediaGenerations.timestamp, cutoffTime)
+        )
       );
 
     // Race the query against the timeout
@@ -143,7 +143,7 @@ export async function checkTokenOwnership(
   mint: string,
   publicKey: string,
   mode: "fast" | "pro" = "fast",
-  mediaType: MediaType = MediaType.IMAGE,
+  mediaType: MediaType = MediaType.IMAGE
 ): Promise<{ allowed: boolean; message?: string }> {
   try {
     // Special handling for test environments
@@ -184,7 +184,7 @@ export async function checkTokenOwnership(
 
     // Access the database
     const db = getDB(env);
-    const redisCache = createRedisCache(env); // Instantiate Redis
+    const redisCache = createLRUCache(env); // Instantiate Redis
 
     try {
       // First check if user is the token creator (creators always have access)
@@ -208,20 +208,20 @@ export async function checkTokenOwnership(
           specificHolderData = allHolders.find((h) => h.address === publicKey);
         } else {
           logger.log(
-            `checkTokenOwnership: No holders found in Redis for ${mint}`,
+            `checkTokenOwnership: No holders found in Redis for ${mint}`
           );
         }
       } catch (redisError) {
         logger.error(
           `checkTokenOwnership: Failed to get holders from Redis for ${mint}:`,
-          redisError,
+          redisError
         );
         // Fallback to blockchain check if Redis fails
         return await checkBlockchainTokenBalance(
           env,
           mint,
           publicKey,
-          minimumRequired,
+          minimumRequired
         );
       }
       // ---> END CHANGE
@@ -230,13 +230,13 @@ export async function checkTokenOwnership(
       if (!specificHolderData) {
         // User is not a token holder according to cache, check the blockchain directly as fallback
         logger.log(
-          `User ${publicKey} not found in Redis holders for ${mint}, checking blockchain.`,
+          `User ${publicKey} not found in Redis holders for ${mint}, checking blockchain.`
         );
         return await checkBlockchainTokenBalance(
           env,
           mint,
           publicKey,
-          minimumRequired,
+          minimumRequired
         );
       }
 
@@ -264,7 +264,7 @@ export async function checkTokenOwnership(
         env,
         mint,
         publicKey,
-        minimumRequired,
+        minimumRequired
       );
     }
   } catch (error) {
@@ -282,7 +282,7 @@ async function checkBlockchainTokenBalance(
   env: Env,
   mint: string,
   publicKey: string,
-  minimumRequired: number,
+  minimumRequired: number
 ): Promise<{ allowed: boolean; message?: string }> {
   try {
     // Connect to Solana
@@ -296,7 +296,7 @@ async function checkBlockchainTokenBalance(
     const response = await connection.getTokenAccountsByOwner(
       userPublicKey,
       { mint: mintPublicKey },
-      { commitment: "confirmed" },
+      { commitment: "confirmed" }
     );
 
     // Calculate total token amount
@@ -305,8 +305,8 @@ async function checkBlockchainTokenBalance(
     // Get token balances from all accounts
     const tokenAccountInfos = await Promise.all(
       response.value.map(({ pubkey }) =>
-        connection.getTokenAccountBalance(pubkey),
-      ),
+        connection.getTokenAccountBalance(pubkey)
+      )
     );
 
     // Sum up all token balances
@@ -330,7 +330,7 @@ async function checkBlockchainTokenBalance(
   } catch (error) {
     // Log the error but don't block operations due to a token check failure
     logger.error(
-      `Error checking blockchain token balance for user ${publicKey}: ${error}`,
+      `Error checking blockchain token balance for user ${publicKey}: ${error}`
     );
 
     // Default to allowing if we can't check the balance
@@ -365,7 +365,7 @@ export async function generateMedia(
     music_duration?: string;
     cfg_strength?: number;
     scheduler?: string;
-  },
+  }
 ) {
   // Set default timeout - shorter for tests
   const timeout = 300000;
@@ -385,8 +385,8 @@ export async function generateMedia(
   const timeoutPromise = new Promise((_, reject) =>
     setTimeout(
       () => reject(new Error(`Media generation timed out after ${timeout}ms`)),
-      timeout,
-    ),
+      timeout
+    )
   );
 
   let generationPromise;
@@ -410,7 +410,7 @@ export async function generateMedia(
           {
             prompt: data.prompt,
             steps: 4,
-          },
+          }
         );
 
         // Create data URL from the base64 image
@@ -440,7 +440,7 @@ export async function generateMedia(
 
     // If we get here, all retries failed
     throw new Error(
-      `Failed to generate image after ${maxRetries} attempts: ${lastError?.message}`,
+      `Failed to generate image after ${maxRetries} attempts: ${lastError?.message}`
     );
   } else if (data.type === MediaType.IMAGE && data.mode === "pro") {
     // Use flux-pro ultra for slow high-quality image generation
@@ -561,7 +561,7 @@ export async function generateMedia(
           symbol: data.prompt.split(":")[1]?.trim() || "",
           description: data.prompt.split(":")[2]?.trim() || "",
         },
-        data.style_prompt,
+        data.style_prompt
       );
 
       // Now use the generated lyrics to create the song
@@ -692,7 +692,7 @@ app.post("/:mint/generate", async (c) => {
         error:
           "Generation request timed out. Please try again with a simpler prompt.",
       },
-      504,
+      504
     );
   }, endpointTimeout);
 
@@ -732,10 +732,7 @@ app.post("/:mint/generate", async (c) => {
     // Create a database timeout
     const dbTimeout = 5000; // 5 seconds
     const dbTimeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(new Error("Database query timed out")),
-        dbTimeout,
-      ),
+      setTimeout(() => reject(new Error("Database query timed out")), dbTimeout)
     );
 
     // Check if the token exists in the database
@@ -777,7 +774,7 @@ app.post("/:mint/generate", async (c) => {
           mint,
           user.publicKey,
           mode,
-          validatedData.type,
+          validatedData.type
         );
 
         if (!ownershipCheck.allowed) {
@@ -805,7 +802,7 @@ app.post("/:mint/generate", async (c) => {
               type: "OWNERSHIP_REQUIREMENT",
               minimumRequired,
             },
-            403,
+            403
           );
         }
       }
@@ -824,7 +821,7 @@ app.post("/:mint/generate", async (c) => {
               type: "OWNERSHIP_REQUIREMENT",
               minimumRequired: TOKEN_OWNERSHIP.DEFAULT_MINIMUM,
             },
-            403,
+            403
           );
         }
         // Otherwise it's a standard rate limit error
@@ -837,7 +834,7 @@ app.post("/:mint/generate", async (c) => {
               RATE_LIMITS[validatedData.type].MAX_GENERATIONS_PER_DAY
             } ${validatedData.type}s per day`,
           },
-          429,
+          429
         );
       }
     } catch (error) {
@@ -906,7 +903,7 @@ app.post("/:mint/generate", async (c) => {
       mediaUrl,
       remainingGenerations: rateLimit.remaining - 1,
       resetTime: new Date(
-        Date.now() + RATE_LIMITS[validatedData.type].COOLDOWN_PERIOD_MS,
+        Date.now() + RATE_LIMITS[validatedData.type].COOLDOWN_PERIOD_MS
       ).toISOString(),
     });
   } catch (error) {
@@ -919,7 +916,7 @@ app.post("/:mint/generate", async (c) => {
 
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -958,12 +955,12 @@ app.get("/:mint/history", async (c) => {
     if (!token || token.length === 0) {
       return c.json(
         { error: "Not authorized to view generation history for this token" },
-        403,
+        403
       );
     }
 
     const cutoffTime = new Date(
-      Date.now() - RATE_LIMITS[type || MediaType.IMAGE].COOLDOWN_PERIOD_MS,
+      Date.now() - RATE_LIMITS[type || MediaType.IMAGE].COOLDOWN_PERIOD_MS
     );
 
     // Build query conditions
@@ -1011,7 +1008,7 @@ app.get("/:mint/history", async (c) => {
               counts[MediaType.AUDIO],
           },
       resetTime: new Date(
-        Date.now() + RATE_LIMITS[type || MediaType.IMAGE].COOLDOWN_PERIOD_MS,
+        Date.now() + RATE_LIMITS[type || MediaType.IMAGE].COOLDOWN_PERIOD_MS
       ).toISOString(),
     });
   } catch (error) {
@@ -1023,7 +1020,7 @@ app.get("/:mint/history", async (c) => {
 
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1043,7 +1040,7 @@ app.post("/generate-metadata", async (c) => {
           details:
             error instanceof Error ? error.message : "Unknown parsing error",
         },
-        400,
+        400
       );
     }
 
@@ -1076,7 +1073,7 @@ app.post("/generate-metadata", async (c) => {
               code: e.code,
             })),
           },
-          400,
+          400
         );
       }
       throw error;
@@ -1085,7 +1082,7 @@ app.post("/generate-metadata", async (c) => {
     // Custom max retries for endpoint
     const MAX_RETRIES = 10;
     logger.log(
-      `Generating token metadata with up to ${MAX_RETRIES} retries...`,
+      `Generating token metadata with up to ${MAX_RETRIES} retries...`
     );
 
     // Function to generate metadata with the specified prompt data
@@ -1095,7 +1092,7 @@ app.post("/generate-metadata", async (c) => {
       while (retryCount < maxRetries) {
         try {
           logger.log(
-            `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`,
+            `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`
           );
 
           const response = await c.env.AI.run(
@@ -1109,7 +1106,7 @@ app.post("/generate-metadata", async (c) => {
               ],
               max_tokens: 1000,
               temperature: 0.75 + retryCount * 0.02, // Slightly increase temperature on retries for variation
-            },
+            }
           );
 
           // Parse the JSON response with robust error handling
@@ -1118,7 +1115,7 @@ app.post("/generate-metadata", async (c) => {
           // Log the raw response for debugging
           logger.log(
             `[Endpoint - Attempt ${retryCount + 1}] Raw AI response:`,
-            response.response.substring(0, 100) + "...",
+            response.response.substring(0, 100) + "..."
           );
 
           // First try to extract JSON using regex - find content between the first { and last }
@@ -1127,7 +1124,7 @@ app.post("/generate-metadata", async (c) => {
 
           if (!matches || matches.length === 0) {
             logger.warn(
-              `[Endpoint - Attempt ${retryCount + 1}] Could not find JSON object in AI response, retrying...`,
+              `[Endpoint - Attempt ${retryCount + 1}] Could not find JSON object in AI response, retrying...`
             );
             retryCount++;
             continue;
@@ -1136,7 +1133,7 @@ app.post("/generate-metadata", async (c) => {
           const jsonString = matches[0];
           logger.log(
             `[Endpoint - Attempt ${retryCount + 1}] Extracted JSON string:`,
-            jsonString.substring(0, 100) + "...",
+            jsonString.substring(0, 100) + "..."
           );
 
           try {
@@ -1146,18 +1143,18 @@ app.post("/generate-metadata", async (c) => {
             // If the first extraction fails, try a more aggressive approach
             // Look for individual fields and construct a JSON object
             logger.log(
-              `[Endpoint - Attempt ${retryCount + 1}] JSON parse failed. Attempting field extraction...`,
+              `[Endpoint - Attempt ${retryCount + 1}] JSON parse failed. Attempting field extraction...`
             );
 
             const nameMatch = response.response.match(/"name"\s*:\s*"([^"]+)"/);
             const symbolMatch = response.response.match(
-              /"symbol"\s*:\s*"([^"]+)"/,
+              /"symbol"\s*:\s*"([^"]+)"/
             );
             const descMatch = response.response.match(
-              /"description"\s*:\s*"([^"]+)"/,
+              /"description"\s*:\s*"([^"]+)"/
             );
             const promptMatch = response.response.match(
-              /"prompt"\s*:\s*"([^"]+)"/,
+              /"prompt"\s*:\s*"([^"]+)"/
             );
 
             if (nameMatch && symbolMatch && descMatch && promptMatch) {
@@ -1168,11 +1165,11 @@ app.post("/generate-metadata", async (c) => {
                 prompt: promptMatch[1],
               };
               logger.log(
-                `[Endpoint - Attempt ${retryCount + 1}] Successfully extracted fields from response`,
+                `[Endpoint - Attempt ${retryCount + 1}] Successfully extracted fields from response`
               );
             } else {
               logger.warn(
-                `[Endpoint - Attempt ${retryCount + 1}] Failed to extract required fields, retrying...`,
+                `[Endpoint - Attempt ${retryCount + 1}] Failed to extract required fields, retrying...`
               );
               retryCount++;
               continue;
@@ -1187,7 +1184,7 @@ app.post("/generate-metadata", async (c) => {
             !metadata.prompt
           ) {
             logger.warn(
-              `[Endpoint - Attempt ${retryCount + 1}] Missing required fields in metadata, retrying...`,
+              `[Endpoint - Attempt ${retryCount + 1}] Missing required fields in metadata, retrying...`
             );
             retryCount++;
             continue;
@@ -1197,13 +1194,13 @@ app.post("/generate-metadata", async (c) => {
           metadata.symbol = metadata.symbol.toUpperCase();
 
           logger.log(
-            `Successfully generated metadata on attempt ${retryCount + 1}/${maxRetries}`,
+            `Successfully generated metadata on attempt ${retryCount + 1}/${maxRetries}`
           );
           return metadata;
         } catch (error) {
           logger.error(
             `[Endpoint - Attempt ${retryCount + 1}] Error during metadata generation:`,
-            error,
+            error
           );
           retryCount++;
 
@@ -1216,7 +1213,7 @@ app.post("/generate-metadata", async (c) => {
 
       // All retries failed
       logger.error(
-        `Failed to generate metadata after ${maxRetries} attempts in endpoint`,
+        `Failed to generate metadata after ${maxRetries} attempts in endpoint`
       );
       return null;
     }
@@ -1229,7 +1226,7 @@ app.post("/generate-metadata", async (c) => {
       if (c.env.NODE_ENV === "development" || c.env.NODE_ENV === "test") {
         const randomNum = Math.floor(Math.random() * 1000);
         logger.log(
-          "Using fallback metadata in development/test environment after all retries failed",
+          "Using fallback metadata in development/test environment after all retries failed"
         );
         return c.json({
           success: true,
@@ -1250,7 +1247,7 @@ app.post("/generate-metadata", async (c) => {
           error:
             "Failed to generate valid token metadata after maximum retries",
         },
-        500,
+        500
       );
     }
 
@@ -1263,7 +1260,7 @@ app.post("/generate-metadata", async (c) => {
     console.error("Error in metadata endpoint:", error);
     return c.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
-      500,
+      500
     );
   }
 });
@@ -1302,7 +1299,7 @@ app.post("/generate", async (c) => {
               code: e.code,
             })),
           },
-          400,
+          400
         );
       }
       throw error;
@@ -1342,7 +1339,7 @@ app.post("/generate", async (c) => {
           success: false,
           error: `Failed to generate ${validatedData.type}. Please try again.`,
         },
-        500,
+        500
       );
     }
 
@@ -1361,7 +1358,7 @@ app.post("/generate", async (c) => {
             ? error.message
             : "Unknown error generating media",
       },
-      500,
+      500
     );
   }
 });
@@ -1374,7 +1371,7 @@ export async function generateImage(
   mint: string,
   prompt: string,
   negativePrompt?: string,
-  creator?: string,
+  creator?: string
 ): Promise<MediaGeneration> {
   try {
     // In test mode, return a test image
@@ -1433,7 +1430,7 @@ export async function generateVideo(
   mint: string,
   prompt: string,
   negativePrompt?: string,
-  creator?: string,
+  creator?: string
 ): Promise<MediaGeneration> {
   try {
     // In test mode, return a test video
@@ -1499,7 +1496,7 @@ export async function getDailyGenerationCount(
   env: Env,
   db: any,
   mint: string,
-  creator: string,
+  creator: string
 ): Promise<number> {
   try {
     // In test mode, return a low count
@@ -1512,7 +1509,7 @@ export async function getDailyGenerationCount(
     const today = new Date(
       now.getFullYear(),
       now.getMonth(),
-      now.getDate(),
+      now.getDate()
     ).toISOString();
 
     // Find the last generation for this creator and token
@@ -1546,7 +1543,7 @@ export async function getDailyGenerationCount(
 // Function to generate a token on demand
 async function generateTokenOnDemand(
   env: Env,
-  ctx: { waitUntil: (promise: Promise<any>) => void },
+  ctx: { waitUntil: (promise: Promise<any>) => void }
 ): Promise<{
   success: boolean;
   token?: {
@@ -1575,7 +1572,7 @@ async function generateTokenOnDemand(
     }
 
     logger.log(
-      `Successfully generated token metadata: ${metadata.name} (${metadata.symbol})`,
+      `Successfully generated token metadata: ${metadata.name} (${metadata.symbol})`
     );
 
     // Step 2: Generate and Upload Image with Retry Logic
@@ -1586,7 +1583,7 @@ async function generateTokenOnDemand(
     while (imageAttempt < maxImageRetries && !finalImageUrl) {
       imageAttempt++;
       logger.log(
-        `Generating/uploading image for token ${metadata.name}, attempt ${imageAttempt}/${maxImageRetries}...`,
+        `Generating/uploading image for token ${metadata.name}, attempt ${imageAttempt}/${maxImageRetries}...`
       );
       try {
         // Generate image using our existing function
@@ -1611,19 +1608,19 @@ async function generateTokenOnDemand(
 
         if (!sourceImageUrl) {
           throw new Error(
-            "Image generation result did not contain a valid URL or data URI.",
+            "Image generation result did not contain a valid URL or data URI."
           );
         }
 
         // Process based on URL type
         if (sourceImageUrl.startsWith("data:image")) {
           logger.log(
-            `[Attempt ${imageAttempt}] Received data URI, preparing for R2 upload...`,
+            `[Attempt ${imageAttempt}] Received data URI, preparing for R2 upload...`
           );
 
           // Decode and Upload Data URI (Adapted from generatePreGeneratedTokens)
           const imageMatch = sourceImageUrl.match(
-            /^data:(image\/[a-z+]+);base64,(.*)$/,
+            /^data:(image\/[a-z+]+);base64,(.*)$/
           );
           if (!imageMatch) {
             throw new Error("Invalid image data URI format for upload.");
@@ -1643,12 +1640,12 @@ async function generateTokenOnDemand(
 
           if (!env.R2) {
             throw new Error(
-              "R2 storage (env.R2) is not configured. Cannot upload image.",
+              "R2 storage (env.R2) is not configured. Cannot upload image."
             );
           }
 
           logger.log(
-            `[Attempt ${imageAttempt}] Uploading image to R2 with key: ${imageKey}`,
+            `[Attempt ${imageAttempt}] Uploading image to R2 with key: ${imageKey}`
           );
           await env.R2.put(imageKey, imageBuffer, {
             httpMetadata: {
@@ -1661,7 +1658,7 @@ async function generateTokenOnDemand(
           const r2PublicUrl = env.R2_PUBLIC_URL;
           if (!r2PublicUrl) {
             throw new Error(
-              "R2_PUBLIC_URL environment variable is not set. Cannot construct public image URL.",
+              "R2_PUBLIC_URL environment variable is not set. Cannot construct public image URL."
             );
           }
           finalImageUrl =
@@ -1671,35 +1668,35 @@ async function generateTokenOnDemand(
               : `${r2PublicUrl.replace(/\/$/, "")}/${imageKey}`; // Ensure no double slash
 
           logger.log(
-            `[Attempt ${imageAttempt}] R2 Upload successful. Final URL: ${finalImageUrl}`,
+            `[Attempt ${imageAttempt}] R2 Upload successful. Final URL: ${finalImageUrl}`
           );
         } else if (sourceImageUrl.startsWith("http")) {
           // Assume it's a publicly accessible URL (e.g., from Fal.ai)
           logger.log(
-            `[Attempt ${imageAttempt}] Using direct public URL from generation result: ${sourceImageUrl}`,
+            `[Attempt ${imageAttempt}] Using direct public URL from generation result: ${sourceImageUrl}`
           );
           finalImageUrl = sourceImageUrl;
         } else {
           // Handle unexpected formats
           throw new Error(
-            `Generated image source is not a data URI or HTTP(S) URL: ${sourceImageUrl.substring(0, 60)}...`,
+            `Generated image source is not a data URI or HTTP(S) URL: ${sourceImageUrl.substring(0, 60)}...`
           );
         }
       } catch (error) {
         logger.error(
           `[Attempt ${imageAttempt}] Error during image generation/upload:`,
-          error,
+          error
         );
         // Check if it's the last attempt
         if (imageAttempt >= maxImageRetries) {
           logger.error(
-            "Max image generation/upload retries reached. Failing token generation.",
+            "Max image generation/upload retries reached. Failing token generation."
           );
           // finalImageUrl remains empty, loop will terminate
         } else {
           // Wait briefly before the next retry
           await new Promise((resolve) =>
-            setTimeout(resolve, 500 * imageAttempt),
+            setTimeout(resolve, 500 * imageAttempt)
           ); // Exponential backoff factor
         }
       }
@@ -1757,14 +1754,14 @@ async function generateTokenOnDemand(
             },
           ]);
           logger.log(
-            `Generated and saved on-demand token: ${metadata.name} (${metadata.symbol}) with image ${finalImageUrl}`,
+            `Generated and saved on-demand token: ${metadata.name} (${metadata.symbol}) with image ${finalImageUrl}`
           );
         } catch (err) {
           logger.error("Error saving on-demand token to database:", err);
           // Note: If DB save fails, the token exists but isn't in preGeneratedTokens.
           // Consider if additional error handling/cleanup is needed here.
         }
-      })(),
+      })()
     );
 
     return {
@@ -1800,7 +1797,7 @@ app.get("/pre-generated-token", async (c) => {
 
     if (!randomToken || randomToken.length === 0) {
       logger.log(
-        "No pre-generated tokens available. Generating one on demand...",
+        "No pre-generated tokens available. Generating one on demand..."
       );
 
       // Generate a token on the fly
@@ -1826,7 +1823,7 @@ app.get("/pre-generated-token", async (c) => {
       {
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      500,
+      500
     );
   }
 });
@@ -1856,8 +1853,8 @@ app.post("/mark-token-used", async (c) => {
         .where(
           or(
             name ? eq(preGeneratedTokens.name, name) : undefined,
-            ticker ? eq(preGeneratedTokens.ticker, ticker) : undefined,
-          ),
+            ticker ? eq(preGeneratedTokens.ticker, ticker) : undefined
+          )
         );
     }
 
@@ -1871,7 +1868,7 @@ app.post("/mark-token-used", async (c) => {
       {
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      500,
+      500
     );
   }
 });
@@ -1883,7 +1880,7 @@ async function generateMetadata(env: Env, maxRetries = 10) {
   while (retryCount < maxRetries) {
     try {
       logger.log(
-        `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`,
+        `Generating token metadata (attempt ${retryCount + 1}/${maxRetries})...`
       );
 
       const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
@@ -1903,7 +1900,7 @@ async function generateMetadata(env: Env, maxRetries = 10) {
       // Log the raw response for debugging
       logger.log(
         `[Attempt ${retryCount + 1}] Raw AI response:`,
-        response.response.substring(0, 100) + "...",
+        response.response.substring(0, 100) + "..."
       );
 
       // First try to extract JSON using regex - find content between the first { and last }
@@ -1912,7 +1909,7 @@ async function generateMetadata(env: Env, maxRetries = 10) {
 
       if (!matches || matches.length === 0) {
         logger.warn(
-          `[Attempt ${retryCount + 1}] Could not find JSON object in AI response, retrying...`,
+          `[Attempt ${retryCount + 1}] Could not find JSON object in AI response, retrying...`
         );
         retryCount++;
         continue;
@@ -1921,7 +1918,7 @@ async function generateMetadata(env: Env, maxRetries = 10) {
       const jsonString = matches[0];
       logger.log(
         `[Attempt ${retryCount + 1}] Extracted JSON string:`,
-        jsonString.substring(0, 100) + "...",
+        jsonString.substring(0, 100) + "..."
       );
 
       try {
@@ -1931,13 +1928,13 @@ async function generateMetadata(env: Env, maxRetries = 10) {
         // If the first extraction fails, try a more aggressive approach
         // Look for individual fields and construct a JSON object
         logger.log(
-          `[Attempt ${retryCount + 1}] JSON parse failed. Attempting field extraction...`,
+          `[Attempt ${retryCount + 1}] JSON parse failed. Attempting field extraction...`
         );
 
         const nameMatch = response.response.match(/"name"\s*:\s*"([^"]+)"/);
         const symbolMatch = response.response.match(/"symbol"\s*:\s*"([^"]+)"/);
         const descMatch = response.response.match(
-          /"description"\s*:\s*"([^"]+)"/,
+          /"description"\s*:\s*"([^"]+)"/
         );
         const promptMatch = response.response.match(/"prompt"\s*:\s*"([^"]+)"/);
 
@@ -1949,11 +1946,11 @@ async function generateMetadata(env: Env, maxRetries = 10) {
             prompt: promptMatch[1],
           };
           logger.log(
-            `[Attempt ${retryCount + 1}] Successfully extracted fields from response`,
+            `[Attempt ${retryCount + 1}] Successfully extracted fields from response`
           );
         } else {
           logger.warn(
-            `[Attempt ${retryCount + 1}] Failed to extract required fields, retrying...`,
+            `[Attempt ${retryCount + 1}] Failed to extract required fields, retrying...`
           );
           retryCount++;
           continue;
@@ -1968,7 +1965,7 @@ async function generateMetadata(env: Env, maxRetries = 10) {
         !metadata.prompt
       ) {
         logger.warn(
-          `[Attempt ${retryCount + 1}] Missing required fields in metadata, retrying...`,
+          `[Attempt ${retryCount + 1}] Missing required fields in metadata, retrying...`
         );
         retryCount++;
         continue;
@@ -1978,13 +1975,13 @@ async function generateMetadata(env: Env, maxRetries = 10) {
       metadata.symbol = metadata.symbol.toUpperCase();
 
       logger.log(
-        `Successfully generated metadata on attempt ${retryCount + 1}/${maxRetries}`,
+        `Successfully generated metadata on attempt ${retryCount + 1}/${maxRetries}`
       );
       return metadata;
     } catch (error) {
       logger.error(
         `[Attempt ${retryCount + 1}] Error during metadata generation:`,
-        error,
+        error
       );
       retryCount++;
 
@@ -2002,7 +1999,7 @@ async function generateMetadata(env: Env, maxRetries = 10) {
   if (env.NODE_ENV === "development" || env.NODE_ENV === "test") {
     const randomNum = Math.floor(Math.random() * 1000);
     logger.log(
-      "Using fallback metadata in development/test environment after all retries failed",
+      "Using fallback metadata in development/test environment after all retries failed"
     );
     return {
       name: `FallbackToken${randomNum}`,
@@ -2029,7 +2026,7 @@ export async function generatePreGeneratedTokens(env: Env) {
     while (metadataRetryCount < MAX_METADATA_RETRIES) {
       try {
         logger.log(
-          `[PreGen Metadata] Attempt ${metadataRetryCount + 1}/${MAX_METADATA_RETRIES}...`,
+          `[PreGen Metadata] Attempt ${metadataRetryCount + 1}/${MAX_METADATA_RETRIES}...`
         );
 
         // Note: We don't have `validatedData` here, so createTokenPrompt needs the simpler signature
@@ -2044,7 +2041,7 @@ export async function generatePreGeneratedTokens(env: Env) {
             ],
             max_tokens: 1000,
             temperature: 0.75 + metadataRetryCount * 0.02,
-          },
+          }
         );
 
         let parsedMetadata: Record<string, string> | null = null;
@@ -2058,18 +2055,18 @@ export async function generatePreGeneratedTokens(env: Env) {
           } catch (parseError) {
             logger.warn(
               `[PreGen Metadata Attempt ${metadataRetryCount + 1}] JSON parse failed. Attempting field extraction...`,
-              parseError,
+              parseError
             );
             // Fallback field extraction (simplified)
             const nameMatch = response.response.match(/"name"\s*:\s*"([^"]+)"/);
             const symbolMatch = response.response.match(
-              /"symbol"\s*:\s*"([^"]+)"/,
+              /"symbol"\s*:\s*"([^"]+)"/
             );
             const descMatch = response.response.match(
-              /"description"\s*:\s*"([^"]+)"/,
+              /"description"\s*:\s*"([^"]+)"/
             );
             const promptMatch = response.response.match(
-              /"prompt"\s*:\s*"([^"]+)"/,
+              /"prompt"\s*:\s*"([^"]+)"/
             );
             if (nameMatch && symbolMatch && descMatch && promptMatch) {
               parsedMetadata = {
@@ -2079,17 +2076,17 @@ export async function generatePreGeneratedTokens(env: Env) {
                 prompt: promptMatch[1],
               };
               logger.log(
-                `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Successfully extracted fields.`,
+                `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Successfully extracted fields.`
               );
             } else {
               logger.warn(
-                `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Failed to extract required fields.`,
+                `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Failed to extract required fields.`
               );
             }
           }
         } else {
           logger.warn(
-            `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Could not find JSON object in AI response.`,
+            `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Could not find JSON object in AI response.`
           );
         }
 
@@ -2104,19 +2101,19 @@ export async function generatePreGeneratedTokens(env: Env) {
           parsedMetadata.symbol = parsedMetadata.symbol.toUpperCase();
           metadata = parsedMetadata; // Assign successfully parsed and validated metadata
           logger.log(
-            `[PreGen Metadata] Successfully generated metadata on attempt ${metadataRetryCount + 1}.`,
+            `[PreGen Metadata] Successfully generated metadata on attempt ${metadataRetryCount + 1}.`
           );
           break; // Exit retry loop
         } else {
           logger.warn(
-            `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Missing required fields or failed parsing. Retrying...`,
+            `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Missing required fields or failed parsing. Retrying...`
           );
           metadataRetryCount++;
         }
       } catch (error) {
         logger.error(
           `[PreGen Metadata Attempt ${metadataRetryCount + 1}] Error during generation:`,
-          error,
+          error
         );
         metadataRetryCount++;
         if (metadataRetryCount < MAX_METADATA_RETRIES) {
@@ -2127,7 +2124,7 @@ export async function generatePreGeneratedTokens(env: Env) {
 
     if (!metadata) {
       logger.error(
-        "[PreGen Metadata] Failed to generate valid metadata after all retries. Skipping token.",
+        "[PreGen Metadata] Failed to generate valid metadata after all retries. Skipping token."
       );
       // Use fallback in development/test
       if (env.NODE_ENV === "development" || env.NODE_ENV === "test") {
@@ -2149,7 +2146,7 @@ export async function generatePreGeneratedTokens(env: Env) {
     let imageDataUrl: string = "";
     try {
       logger.log(
-        `[PreGen Image] Generating image for: ${metadata.name} using prompt: ${metadata.prompt.substring(0, 50)}...`,
+        `[PreGen Image] Generating image for: ${metadata.name} using prompt: ${metadata.prompt.substring(0, 50)}...`
       );
       const imageResult = await generateMedia(env, {
         prompt: metadata.prompt,
@@ -2161,7 +2158,7 @@ export async function generatePreGeneratedTokens(env: Env) {
       ) {
         imageDataUrl = imageResult.data.images[0].url;
         logger.log(
-          `[PreGen Image] Successfully generated image Data URI for ${metadata.name}`,
+          `[PreGen Image] Successfully generated image Data URI for ${metadata.name}`
         );
       } else {
         throw new Error("generateMedia did not return a valid image data URI.");
@@ -2169,7 +2166,7 @@ export async function generatePreGeneratedTokens(env: Env) {
     } catch (imageError) {
       logger.error(
         `[PreGen Image] Error generating image for ${metadata.name}:`,
-        imageError,
+        imageError
       );
       return; // Stop if image generation fails
     }
@@ -2179,10 +2176,10 @@ export async function generatePreGeneratedTokens(env: Env) {
     let finalImageUrl = ""; // This will hold the final URL
     try {
       logger.log(
-        `[PreGen Upload] Preparing image for upload: ${metadata.name}`,
+        `[PreGen Upload] Preparing image for upload: ${metadata.name}`
       );
       const imageMatch = imageDataUrl.match(
-        /^data:(image\/[a-z+]+);base64,(.*)$/,
+        /^data:(image\/[a-z+]+);base64,(.*)$/
       );
       if (!imageMatch) {
         throw new Error("Invalid image data URI format for upload.");
@@ -2191,7 +2188,7 @@ export async function generatePreGeneratedTokens(env: Env) {
       const base64Data = imageMatch[2];
       const imageBuffer = Buffer.from(base64Data, "base64");
       logger.log(
-        `[PreGen Upload] Decoded image: type=${contentType}, size=${imageBuffer.length} bytes`,
+        `[PreGen Upload] Decoded image: type=${contentType}, size=${imageBuffer.length} bytes`
       );
 
       let extension = ".jpg";
@@ -2220,14 +2217,14 @@ export async function generatePreGeneratedTokens(env: Env) {
       // log the public url from the respnse
       console.log("****** RES", res);
       logger.log(
-        `[PreGen Upload] Image successfully uploaded to R2: ${imageKey}`,
+        `[PreGen Upload] Image successfully uploaded to R2: ${imageKey}`
       );
 
       // Construct URL based on environment (like /upload does)
       const r2PublicUrl = env.R2_PUBLIC_URL;
       if (!r2PublicUrl) {
         logger.error(
-          "[PreGen Upload] R2_PUBLIC_URL environment variable is not set. Cannot construct public image URL.",
+          "[PreGen Upload] R2_PUBLIC_URL environment variable is not set. Cannot construct public image URL."
         );
         // Depending on desired behavior, you might want to return or throw here
         // For now, we'll set finalImageUrl to empty and let the DB step handle it (or fail)
@@ -2239,13 +2236,13 @@ export async function generatePreGeneratedTokens(env: Env) {
             ? `${env.API_URL}/api/image/${imageFilename}`
             : `${r2PublicUrl.replace(/\/$/, "")}/${imageKey}`; // Ensure no double slash
         logger.log(
-          `[PreGen Upload] Constructed final image URL: ${finalImageUrl}`,
+          `[PreGen Upload] Constructed final image URL: ${finalImageUrl}`
         );
       }
     } catch (uploadError) {
       logger.error(
         `[PreGen Upload] Error during image upload for ${metadata.name}:`,
-        uploadError,
+        uploadError
       );
       return; // Stop if upload fails
     }
@@ -2268,12 +2265,12 @@ export async function generatePreGeneratedTokens(env: Env) {
         },
       ]);
       logger.log(
-        `[PreGen DB] Successfully saved token: ${metadata.name} (${metadata.symbol}) with image ${finalImageUrl}`,
+        `[PreGen DB] Successfully saved token: ${metadata.name} (${metadata.symbol}) with image ${finalImageUrl}`
       );
     } catch (dbError) {
       logger.error(
         `[PreGen DB] Error saving token ${metadata.name} to database:`,
-        dbError,
+        dbError
       );
       // Log error, but maybe don't stop the whole cron job?
     }
@@ -2283,7 +2280,7 @@ export async function generatePreGeneratedTokens(env: Env) {
     const tokenName = metadata?.name || "unknown_token_error";
     logger.error(
       `[PreGen Process] Unexpected error during generation for ${tokenName}:`,
-      error,
+      error
     );
   }
 }
@@ -2291,7 +2288,7 @@ export async function generatePreGeneratedTokens(env: Env) {
 // Check and replenish pre-generated tokens if needed
 export async function checkAndReplenishTokens(
   env: Env,
-  threshold: number = 3,
+  threshold: number = 3
 ): Promise<void> {
   if (!threshold) {
     threshold = parseInt(env.PREGENERATED_TOKENS_COUNT || "3");
@@ -2316,7 +2313,7 @@ export async function checkAndReplenishTokens(
       if (count < threshold) {
         const tokensToGenerate = threshold - count;
         logger.log(
-          `Generating ${tokensToGenerate} new pre-generated tokens...`,
+          `Generating ${tokensToGenerate} new pre-generated tokens...`
         );
         await generatePreGeneratedTokens(env);
         retries++;
@@ -2395,7 +2392,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
             error:
               "Token not found. Please provide a valid token mint address.",
           },
-          404,
+          404
         );
       }
       console.log("Token not found in DB, but proceeding in development mode");
@@ -2406,7 +2403,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
       c.env,
       tokenMint,
       mediaType,
-      user.publicKey,
+      user.publicKey
     );
 
     if (!rateLimit.allowed) {
@@ -2423,7 +2420,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
             type: "OWNERSHIP_REQUIREMENT",
             minimumRequired: TOKEN_OWNERSHIP.DEFAULT_MINIMUM,
           },
-          403,
+          403
         );
       }
       // Otherwise it's a standard rate limit error
@@ -2438,7 +2435,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
           } ${mediaType}s per day.`,
           remaining: rateLimit.remaining,
         },
-        429,
+        429
       );
     }
 
@@ -2448,7 +2445,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
       tokenMint,
       user.publicKey,
       mode,
-      mediaType,
+      mediaType
     );
 
     if (!ownershipCheck.allowed) {
@@ -2473,7 +2470,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
           type: "OWNERSHIP_REQUIREMENT",
           minimumRequired,
         },
-        403,
+        403
       );
     }
 
@@ -2483,7 +2480,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
       c.env,
       userPrompt,
       tokenMetadata,
-      mediaType,
+      mediaType
     );
 
     if (!enhancedPrompt) {
@@ -2492,7 +2489,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
           success: false,
           error: "Failed to enhance the prompt. Please try again.",
         },
-        500,
+        500
       );
     }
 
@@ -2521,7 +2518,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
 
     console.log(
       "Media generation result:",
-      JSON.stringify(result).substring(0, 200) + "...",
+      JSON.stringify(result).substring(0, 200) + "..."
     );
 
     // Validate response
@@ -2580,7 +2577,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
           success: false,
           error: `Failed to generate ${mediaType}. Please try again.`,
         },
-        500,
+        500
       );
     }
 
@@ -2624,7 +2621,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
       generationId,
       remainingGenerations: rateLimit.remaining - 1,
       resetTime: new Date(
-        Date.now() + RATE_LIMITS[mediaType].COOLDOWN_PERIOD_MS,
+        Date.now() + RATE_LIMITS[mediaType].COOLDOWN_PERIOD_MS
       ).toISOString(),
     };
 
@@ -2652,7 +2649,7 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
             ? error.message
             : "Unknown error generating media",
       },
-      500,
+      500
     );
   }
 });
@@ -2667,7 +2664,7 @@ async function generateEnhancedPrompt(
     description?: string;
     prompt?: string;
   },
-  mediaType: MediaType = MediaType.IMAGE,
+  mediaType: MediaType = MediaType.IMAGE
 ): Promise<string> {
   try {
     // Adjust prompt based on media type
@@ -2715,7 +2712,7 @@ async function generateEnhancedPrompt(
 export async function generateAdditionalTokenImages(
   env: Env,
   tokenMint: string,
-  description: string,
+  description: string
 ): Promise<void> {
   try {
     logger.log(`Generating additional images for token ${tokenMint}`);
@@ -2726,19 +2723,19 @@ export async function generateAdditionalTokenImages(
         env,
         description,
         { name: "", symbol: "", description },
-        MediaType.IMAGE,
+        MediaType.IMAGE
       ),
       generateEnhancedPrompt(
         env,
         description,
         { name: "", symbol: "", description },
-        MediaType.IMAGE,
+        MediaType.IMAGE
       ),
       generateEnhancedPrompt(
         env,
         description,
         { name: "", symbol: "", description },
-        MediaType.IMAGE,
+        MediaType.IMAGE
       ),
     ]);
 
@@ -2747,7 +2744,7 @@ export async function generateAdditionalTokenImages(
       enhancedPrompts.map(async (prompt, index) => {
         if (!prompt) {
           logger.error(
-            `Failed to generate enhanced prompt ${index + 1} for token ${tokenMint}`,
+            `Failed to generate enhanced prompt ${index + 1} for token ${tokenMint}`
           );
           return;
         }
@@ -2771,22 +2768,22 @@ export async function generateAdditionalTokenImages(
           // Upload to R2 with predictable path
           await uploadGeneratedImage(env, imageBuffer, tokenMint, index + 1);
           logger.log(
-            `Successfully generated and uploaded image ${index + 1} for token ${tokenMint}`,
+            `Successfully generated and uploaded image ${index + 1} for token ${tokenMint}`
           );
         } catch (error) {
           logger.error(
             `Error generating/uploading image ${index + 1} for token ${tokenMint}:`,
-            error,
+            error
           );
         }
-      }),
+      })
     );
 
     logger.log(`Completed generating additional images for token ${tokenMint}`);
   } catch (error) {
     logger.error(
       `Error in generateAdditionalTokenImages for ${tokenMint}:`,
-      error,
+      error
     );
   }
 }
@@ -2849,7 +2846,7 @@ async function generateLyrics(
     symbol: string;
     description?: string;
   },
-  stylePrompt?: string,
+  stylePrompt?: string
 ): Promise<string> {
   try {
     const systemPrompt = `You are a creative songwriter. Create lyrics for a song about the token "${tokenMetadata.name}" (${tokenMetadata.symbol}). 

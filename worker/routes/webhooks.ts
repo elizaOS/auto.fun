@@ -8,7 +8,7 @@ import { processTransactionLogs } from "../cron";
 import { getDB, tokens } from "../db";
 import type { Env } from "../env";
 import { ExternalToken } from "../externalToken";
-import { createRedisCache } from "../redis/redisCacheService";
+import { createLRUCache } from "../cache/lruCache";
 import { startMonitoringBatch } from "../tokenSupplyHelpers/monitoring";
 import { logger } from "../util";
 import { getWebSocketClient } from "../websocket-client";
@@ -166,7 +166,7 @@ router.post("/codex-webhook", async (c) => {
     timestamp: new Date(swap.timestamp * 1000), // Store as Date object
   };
 
-  const redisCache = createRedisCache(c.env);
+  const redisCache = createLRUCache(c.env);
   const listKey = redisCache.getKey(`swapsList:${tokenMint}`);
   try {
     // Pipeline push + trim to reduce RTT

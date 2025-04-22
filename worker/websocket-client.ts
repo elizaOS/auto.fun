@@ -24,6 +24,11 @@ export class WebSocketClient {
             ? room
             : `token-${room}`;
 
+      console.log(
+        `🔥 WebSocketClient.emit: Room=${formattedRoom}, Event=${event}, Data=`,
+        JSON.stringify(data, null, 2)
+      );
+
       // Use Durable Object if available (production or Miniflare)
       if (this.webSocketDO) {
         // Get the singleton Durable Object
@@ -44,10 +49,10 @@ export class WebSocketClient {
           if (!response.ok) {
             const error = await response.text();
             logger.error(
-              `Error broadcasting to room ${formattedRoom}: ${error}`,
+              `Error broadcasting to room ${formattedRoom}: ${error}`
             );
             throw new Error(
-              `Failed to broadcast to room ${formattedRoom}: ${error}`,
+              `Failed to broadcast to room ${formattedRoom}: ${error}`
             );
           }
         } else {
@@ -69,10 +74,10 @@ export class WebSocketClient {
             if (!response.ok) {
               const error = await response.text();
               logger.error(
-                `Error broadcasting chunk ${i} to room ${formattedRoom}: ${error}`,
+                `Error broadcasting chunk ${i} to room ${formattedRoom}: ${error}`
               );
               throw new Error(
-                `Failed to broadcast chunk ${i} to room ${formattedRoom}: ${error}`,
+                `Failed to broadcast chunk ${i} to room ${formattedRoom}: ${error}`
               );
             }
           }
@@ -91,7 +96,7 @@ export class WebSocketClient {
   async emitToClient(
     clientId: string,
     event: string,
-    data: any,
+    data: any
   ): Promise<void> {
     try {
       // Use Durable Object if available (production or Miniflare)
@@ -125,7 +130,7 @@ export class WebSocketClient {
         }
       } else {
         logger.error(
-          "Cannot emit to client: No WebSocket implementation available",
+          "Cannot emit to client: No WebSocket implementation available"
         );
         throw new Error("WebSocket not available");
       }
