@@ -10,7 +10,7 @@ import { Context } from "hono"; // Import Context type
 import * as schema from "../db"; // Import your generated schema
 import { getDB } from "../db"; // Import the getDB helper
 import { Env } from "../env"; // Import Env type from process.env.ts
-import { createRedisCache } from "../redis"; // Added redis import
+import { getGlobalRedisCache } from "../redis/redisCacheGlobal";
 // ---=================================---
 
 // Placeholder types - replace with your actual DB types and Env definition
@@ -36,11 +36,11 @@ async function checkUserTokenBalance(
   tokenMint: string,
 ): Promise<number> {
   console.log(`Checking balance for user ${userPublicKey}, token ${tokenMint}`);
-  const redisCache = createRedisCache(); // Instantiate Redis
+  const redisCache = getGlobalRedisCache(); // Instantiate Redis
 
   // First check Redis cache
   let cachedBalance = 0;
-  const holdersListKey = redisCache.getKey(`holders:${tokenMint}`);
+  const holdersListKey = `holders:${tokenMint}`;
   try {
     const holdersString = await redisCache.get(holdersListKey);
     if (holdersString) {
@@ -174,7 +174,7 @@ app.get(
       const balance = await checkUserTokenBalance(
         user.publicKey,
         tokenMint,
-              );
+      );
       const requiredBalance = getTierThreshold(tier);
 
       if (balance < requiredBalance) {
@@ -262,7 +262,7 @@ app.post(
       const balance = await checkUserTokenBalance(
         user.publicKey,
         tokenMint,
-              );
+      );
       const requiredBalance = getTierThreshold(tier);
 
       if (balance < requiredBalance) {

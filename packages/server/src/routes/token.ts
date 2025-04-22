@@ -1,20 +1,18 @@
 import {
   AccountInfo,
   Connection,
-  Keypair,
   ParsedAccountData,
-  PublicKey,
+  PublicKey
 } from "@solana/web3.js";
-import { and, count, desc, eq, or, sql, SQL } from "drizzle-orm";
-import { Context, Hono } from "hono";
-import { createRedisCache } from "../redis";
-
+import { and, count, eq, or, sql, SQL } from "drizzle-orm";
 import { PgSelect } from "drizzle-orm/pg-core";
+import { Context, Hono } from "hono";
 import { updateTokens } from "../cron";
-import { getDB, Token, tokenAgents, tokens, vanityKeypairs } from "../db";
+import { getDB, Token, tokens } from "../db";
 import { Env } from "../env";
 import { ExternalToken } from "../externalToken";
 import { getSOLPrice } from "../mcap";
+import { getGlobalRedisCache } from "../redis/redisCacheGlobal";
 import {
   applyFeaturedSort,
   calculateFeaturedScore,
@@ -839,15 +837,15 @@ async function checkBlockchainTokenBalance(
   // Determine which networks to check - ONLY mainnet and devnet if in local mode
   const networksToCheck = checkMultipleNetworks
     ? [
-        { name: "mainnet", url: mainnetUrl },
-        { name: "devnet", url: devnetUrl },
-      ]
+      { name: "mainnet", url: mainnetUrl },
+      { name: "devnet", url: devnetUrl },
+    ]
     : [
-        {
-          name: process.env.NETWORK || "devnet",
-          url: process.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
-        },
-      ];
+      {
+        name: process.env.NETWORK || "devnet",
+        url: process.env.NETWORK === "mainnet" ? mainnetUrl : devnetUrl,
+      },
+    ];
 
   logger.log(
     `Will check these networks: ${networksToCheck.map((n) => `${n.name} (${n.url})`).join(", ")}`,
@@ -1015,7 +1013,7 @@ export async function updateHoldersCache(
     // Use the utility function to get the RPC URL with proper API key
     const connection = new Connection(getRpcUrl(imported));
     const db = getDB();
-    const redisCache = createRedisCache(); // Instantiate Redis cache
+    const redisCache = getGlobalRedisCache(); // Instantiate Redis cache
 
     // Get all token accounts for this mint using getParsedProgramAccounts
     // This method is more reliable for finding all holders
@@ -1092,7 +1090,7 @@ export async function updateHoldersCache(
     // Sort holders by amount (descending)
     holders.sort((a, b) => b.amount - a.amount);
 
-    const holdersListKey = redisCache.getKey(`holders:${mint}`);
+    const holdersListKey = `holders:${mint}`;
     try {
       // Store the entire list, stringified. No TTL.
       await redisCache.set(holdersListKey, JSON.stringify(holders));
@@ -1153,262 +1151,262 @@ export async function updateHoldersCache(
 
 // --- Route Handler ---
 tokenRouter.get("/tokens", async (c) => {
-    // --- Parameter Reading ---
-    const queryParams = c.req.query();
-    const isSearching = !!queryParams.search;
-    const limit = isSearching ? 5 : parseInt(queryParams.limit as string) || 50;
-    const page = parseInt(queryParams.page as string) || 1;
-    const skip = (page - 1) * limit;
-    const status = queryParams.status as string | undefined;
-    const hideImportedParam = queryParams.hideImported;
-    // Ensure hideImported is number or undefined, handle potential string '1' or '0'
-    const hideImported =
-      hideImportedParam === "1" ? 1 : hideImportedParam === "0" ? 0 : undefined;
-    const creator = queryParams.creator as string | undefined;
-    const search = queryParams.search as string | undefined;
-    const sortBy = search
-      ? "marketCapUSD"
-      : (queryParams.sortBy as string) || "createdAt";
-    const sortOrder = (queryParams.sortOrder as string) || "desc";
+  // --- Parameter Reading ---
+  const queryParams = c.req.query();
+  const isSearching = !!queryParams.search;
+  const limit = isSearching ? 5 : parseInt(queryParams.limit as string) || 50;
+  const page = parseInt(queryParams.page as string) || 1;
+  const skip = (page - 1) * limit;
+  const status = queryParams.status as string | undefined;
+  const hideImportedParam = queryParams.hideImported;
+  // Ensure hideImported is number or undefined, handle potential string '1' or '0'
+  const hideImported =
+    hideImportedParam === "1" ? 1 : hideImportedParam === "0" ? 0 : undefined;
+  const creator = queryParams.creator as string | undefined;
+  const search = queryParams.search as string | undefined;
+  const sortBy = search
+    ? "marketCapUSD"
+    : (queryParams.sortBy as string) || "createdAt";
+  const sortOrder = (queryParams.sortOrder as string) || "desc";
 
-    logger.log(
-      `[GET /tokens] Received params: sortBy=${sortBy}, sortOrder=${sortOrder}, hideImported=${hideImported}, status=${status}, search=${search}, creator=${creator}, limit=${limit}, page=${page}`,
-    );
+  logger.log(
+    `[GET /tokens] Received params: sortBy=${sortBy}, sortOrder=${sortOrder}, hideImported=${hideImported}, status=${status}, search=${search}, creator=${creator}, limit=${limit}, page=${page}`,
+  );
 
-    // --- RE-ENABLE CACHE GET ---
-    const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`; // Refined key slightly
-    const redisCache = createRedisCache(); // Ensure env is cast if needed
-    if (redisCache) {
-      try {
-        const cachedData = await redisCache.get(cacheKey);
-        if (cachedData) {
-          logger.log(`Cache hit for ${cacheKey}`);
-          const parsedData = JSON.parse(cachedData);
-          // Log retrieved cache data (optional, for debugging)
-          // logger.log(`[Cache Check] Retrieved data for ${cacheKey}:`, typeof parsedData === 'object' && parsedData !== null ? JSON.stringify(parsedData).substring(0, 200) + "..." : String(parsedData));
+  // --- RE-ENABLE CACHE GET ---
+  const cacheKey = `tokens:${limit}:${page}:${search || ""}:${status || ""}:${hideImported === 1 ? "1" : hideImported === 0 ? "0" : "u"}:${creator || ""}:${sortBy}:${sortOrder}`; // Refined key slightly
+  const redisCache = getGlobalRedisCache(); // Ensure env is cast if needed
+  if (redisCache) {
+    try {
+      const cachedData = await redisCache.get(cacheKey);
+      if (cachedData) {
+        logger.log(`Cache hit for ${cacheKey}`);
+        const parsedData = JSON.parse(cachedData);
+        // Log retrieved cache data (optional, for debugging)
+        // logger.log(`[Cache Check] Retrieved data for ${cacheKey}:`, typeof parsedData === 'object' && parsedData !== null ? JSON.stringify(parsedData).substring(0, 200) + "..." : String(parsedData));
 
-          // Corrected validation check
-          if (
-            parsedData &&
-            Array.isArray(parsedData.tokens)
-            // Removed length check to allow caching empty results
-            // && parsedData.tokens.length > 0
-          ) {
-            logger.log(
-              `[Cache Check] Cache data VALID for ${cacheKey}, returning cached version.`,
-            );
-            return c.json(parsedData); // Return cached data
-          } else {
-            logger.warn(
-              `Cache data is empty or invalid for ${cacheKey}, fetching fresh data.`,
-            );
-          }
+        // Corrected validation check
+        if (
+          parsedData &&
+          Array.isArray(parsedData.tokens)
+          // Removed length check to allow caching empty results
+          // && parsedData.tokens.length > 0
+        ) {
+          logger.log(
+            `[Cache Check] Cache data VALID for ${cacheKey}, returning cached version.`,
+          );
+          return c.json(parsedData); // Return cached data
         } else {
-          logger.log(`Cache miss for ${cacheKey}`);
+          logger.warn(
+            `Cache data is empty or invalid for ${cacheKey}, fetching fresh data.`,
+          );
         }
-      } catch (cacheError) {
-        logger.error(`Redis cache GET error:`, cacheError);
-        // Continue without cache if GET fails
+      } else {
+        logger.log(`Cache miss for ${cacheKey}`);
       }
+    } catch (cacheError) {
+      logger.error(`Redis cache GET error:`, cacheError);
+      // Continue without cache if GET fails
     }
-    // --- END RE-ENABLE CACHE GET ---
+  }
+  // --- END RE-ENABLE CACHE GET ---
 
-    const db = getDB();
+  const db = getDB();
 
-    // Get max values needed by builder for column selection
-    const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
+  // Get max values needed by builder for column selection
+  const { maxVolume, maxHolders } = await getFeaturedMaxValues(db);
 
-    // --- Build Base Queries ---
-    // Pass sorting info needed for column selection to builder
-    const filterParams = {
-      hideImported,
-      status,
-      creator,
-      search,
-      sortBy,
+  // --- Build Base Queries ---
+  // Pass sorting info needed for column selection to builder
+  const filterParams = {
+    hideImported,
+    status,
+    creator,
+    search,
+    sortBy,
+    maxVolume,
+    maxHolders,
+  };
+  let baseQuery = buildTokensBaseQuery(db, filterParams);
+  const countQuery = buildTokensCountBaseQuery(db, filterParams); // Count query doesn't need sorting info
+
+  // --- Apply Sorting to Main Query ---
+  // Column selection is now done inside buildTokensBaseQuery
+  const validSortColumns = {
+    createdAt: tokens.createdAt,
+    marketCapUSD: tokens.marketCapUSD,
+    volume24h: tokens.volume24h,
+    holderCount: tokens.holderCount,
+    curveProgress: tokens.curveProgress,
+    // Add other valid columns here
+  };
+
+  if (sortBy === "featured") {
+    // REMOVE baseQuery.select - done in builder
+    baseQuery = applyFeaturedSort(
+      baseQuery,
       maxVolume,
       maxHolders,
-    };
-    let baseQuery = buildTokensBaseQuery(db, filterParams);
-    const countQuery = buildTokensCountBaseQuery(db, filterParams); // Count query doesn't need sorting info
-
-    // --- Apply Sorting to Main Query ---
-    // Column selection is now done inside buildTokensBaseQuery
-    const validSortColumns = {
-      createdAt: tokens.createdAt,
-      marketCapUSD: tokens.marketCapUSD,
-      volume24h: tokens.volume24h,
-      holderCount: tokens.holderCount,
-      curveProgress: tokens.curveProgress,
-      // Add other valid columns here
-    };
-
-    if (sortBy === "featured") {
-      // REMOVE baseQuery.select - done in builder
-      baseQuery = applyFeaturedSort(
-        baseQuery,
-        maxVolume,
-        maxHolders,
-        sortOrder,
-      );
-      logger.log(`[Query Build] Applied sort: featured weighted`);
-    } else {
-      // REMOVE baseQuery.select - done in builder
-      const sortColumn =
-        validSortColumns[sortBy as keyof typeof validSortColumns] ||
-        tokens.createdAt;
-      if (sortOrder.toLowerCase() === "desc") {
-        baseQuery = baseQuery.orderBy(
-          sql`CASE 
+      sortOrder,
+    );
+    logger.log(`[Query Build] Applied sort: featured weighted`);
+  } else {
+    // REMOVE baseQuery.select - done in builder
+    const sortColumn =
+      validSortColumns[sortBy as keyof typeof validSortColumns] ||
+      tokens.createdAt;
+    if (sortOrder.toLowerCase() === "desc") {
+      baseQuery = baseQuery.orderBy(
+        sql`CASE 
                   WHEN ${sortColumn} IS NULL OR ${sortColumn}::text = 'NaN' THEN 1 
                   ELSE 0 
                 END`,
-          sql`${sortColumn} DESC`,
-        );
-        logger.log(`[Query Build] Applied sort: ${sortBy} DESC`);
-      } else {
-        baseQuery = baseQuery.orderBy(sortColumn);
-        logger.log(`[Query Build] Applied sort: ${sortBy} ASC`);
-      }
+        sql`${sortColumn} DESC`,
+      );
+      logger.log(`[Query Build] Applied sort: ${sortBy} DESC`);
+    } else {
+      baseQuery = baseQuery.orderBy(sortColumn);
+      logger.log(`[Query Build] Applied sort: ${sortBy} ASC`);
     }
+  }
 
-    // --- Apply Pagination to Main Query ---
-    baseQuery = baseQuery.limit(limit).offset(skip);
+  // --- Apply Pagination to Main Query ---
+  baseQuery = baseQuery.limit(limit).offset(skip);
+  logger.log(
+    `[Query Build] Applied pagination: limit=${limit}, offset=${skip}`,
+  );
+
+  // --- Get SQL representation BEFORE execution ---
+  // Ensure baseQuery and countQuery are accessible here
+  let mainQuerySqlString = "N/A";
+  let countQuerySqlString = "N/A";
+  try {
+    mainQuerySqlString = baseQuery.toSQL().sql;
+    countQuerySqlString = countQuery.toSQL().sql;
+    logger.log(`[SQL Build] Main Query SQL (approx): ${mainQuerySqlString}`);
     logger.log(
-      `[Query Build] Applied pagination: limit=${limit}, offset=${skip}`,
+      `[SQL Build] Count Query SQL (approx): ${countQuerySqlString}`,
     );
+  } catch (sqlError) {
+    logger.error("[SQL Build] Error getting SQL string:", sqlError);
+  }
+  // --- END SQL Generation ---
 
-    // --- Get SQL representation BEFORE execution ---
-    // Ensure baseQuery and countQuery are accessible here
-    let mainQuerySqlString = "N/A";
-    let countQuerySqlString = "N/A";
-    try {
-      mainQuerySqlString = baseQuery.toSQL().sql;
-      countQuerySqlString = countQuery.toSQL().sql;
-      logger.log(`[SQL Build] Main Query SQL (approx): ${mainQuerySqlString}`);
-      logger.log(
-        `[SQL Build] Count Query SQL (approx): ${countQuerySqlString}`,
-      );
-    } catch (sqlError) {
-      logger.error("[SQL Build] Error getting SQL string:", sqlError);
-    }
-    // --- END SQL Generation ---
+  // --- Execute Queries (Sequentially is safer for SQLite) ---
+  // const timeoutDuration = (process.env.NODE_ENV === "test" || process.env.LOCAL_DEV === 'true') ? 20000 : 10000; // Longer timeout for dev/test
+  // const timeoutPromise = new Promise((_, reject) =>
+  //   setTimeout(() => reject(new Error("Query timed out")), timeoutDuration),
+  // );
+  // const countTimeoutPromise = new Promise<number>((_, reject) =>
+  //   setTimeout(
+  //     () => reject(new Error("Count query timed out")),
+  //     timeoutDuration, // Use same timeout for count
+  //   ),
+  // );
 
-    // --- Execute Queries (Sequentially is safer for SQLite) ---
-    // const timeoutDuration = (process.env.NODE_ENV === "test" || process.env.LOCAL_DEV === 'true') ? 20000 : 10000; // Longer timeout for dev/test
-    // const timeoutPromise = new Promise((_, reject) =>
-    //   setTimeout(() => reject(new Error("Query timed out")), timeoutDuration),
-    // );
-    // const countTimeoutPromise = new Promise<number>((_, reject) =>
-    //   setTimeout(
-    //     () => reject(new Error("Count query timed out")),
-    //     timeoutDuration, // Use same timeout for count
-    //   ),
-    // );
+  let tokensResult: Token[] | undefined;
+  let total = 0;
+  try {
+    logger.log("[Execution] Awaiting baseQuery...");
+    // @ts-ignore - Drizzle's execute() type might not be perfectly inferred
+    // tokensResult = await Promise.race([baseQuery.execute(), timeoutPromise]);
+    tokensResult = await baseQuery.execute(); // Remove race for simplicity/debugging
+    logger.log(
+      `[Execution] baseQuery finished, ${tokensResult?.length} results. Awaiting countQuery...`,
+    );
+    // @ts-ignore - Drizzle's execute() type might not be perfectly inferred
+    // const countResult = await Promise.race([
+    //   countQuery.execute(),
+    //   countTimeoutPromise,
+    // ]);
+    const countResult = await countQuery.execute(); // Remove race
+    total = Number(countResult[0]?.count || 0);
+    logger.log(`[Execution] countQuery finished, total: ${total}`);
 
-    let tokensResult: Token[] | undefined;
-    let total = 0;
-    try {
-      logger.log("[Execution] Awaiting baseQuery...");
-      // @ts-ignore - Drizzle's execute() type might not be perfectly inferred
-      // tokensResult = await Promise.race([baseQuery.execute(), timeoutPromise]);
-      tokensResult = await baseQuery.execute(); // Remove race for simplicity/debugging
-      logger.log(
-        `[Execution] baseQuery finished, ${tokensResult?.length} results. Awaiting countQuery...`,
-      );
-      // @ts-ignore - Drizzle's execute() type might not be perfectly inferred
-      // const countResult = await Promise.race([
-      //   countQuery.execute(),
-      //   countTimeoutPromise,
-      // ]);
-      const countResult = await countQuery.execute(); // Remove race
-      total = Number(countResult[0]?.count || 0);
-      logger.log(`[Execution] countQuery finished, total: ${total}`);
+    // --- Pass SQL to VALIDATION CALL ---
+    // Pass the generated SQL string
+    await validateQueryResults({ hideImported, status }, tokensResult, {
+      mainQuerySql: mainQuerySqlString,
+    });
+    // --- END VALIDATION CALL ---
+  } catch (error) {
+    logger.error(
+      "Token query failed, timed out, or failed validation:",
+      error,
+    );
+    tokensResult = []; // Ensure it's an empty array on error
+    total = 0;
+  }
+  // ... (Rest of handler: totalPages, responseData, logging, return) ...
 
-      // --- Pass SQL to VALIDATION CALL ---
-      // Pass the generated SQL string
-      await validateQueryResults({ hideImported, status }, tokensResult, {
-        mainQuerySql: mainQuerySqlString,
-      });
-      // --- END VALIDATION CALL ---
-    } catch (error) {
-      logger.error(
-        "Token query failed, timed out, or failed validation:",
-        error,
-      );
-      tokensResult = []; // Ensure it's an empty array on error
-      total = 0;
-    }
-    // ... (Rest of handler: totalPages, responseData, logging, return) ...
+  // --- Process and Return ---
+  const totalPages = Math.ceil(total / limit);
 
-    // --- Process and Return ---
-    const totalPages = Math.ceil(total / limit);
-
-    // Ensure BigInts are handled before caching/returning
-    const serializableTokensResult =
-      tokensResult?.map((token) => {
-        const serializableToken: Record<string, any> = {};
-        if (token) {
-          // Use Object.entries for potentially better type inference
-          for (const [key, value] of Object.entries(token)) {
-            if (typeof value === "bigint") {
-              // Explicitly cast value to any before calling toString()
-              serializableToken[key] = (value as any).toString();
-            } else {
-              serializableToken[key] = value;
-            }
+  // Ensure BigInts are handled before caching/returning
+  const serializableTokensResult =
+    tokensResult?.map((token) => {
+      const serializableToken: Record<string, any> = {};
+      if (token) {
+        // Use Object.entries for potentially better type inference
+        for (const [key, value] of Object.entries(token)) {
+          if (typeof value === "bigint") {
+            // Explicitly cast value to any before calling toString()
+            serializableToken[key] = (value as any).toString();
+          } else {
+            serializableToken[key] = value;
           }
         }
-        return serializableToken as Token; // Keep cast for now
-      }) || [];
-
-    const responseData = {
-      tokens: serializableTokensResult,
-      page,
-      totalPages,
-      total,
-      hasMore: page < totalPages,
-    };
-
-    // Merge ephemeral stats from Redis into each token
-    if (redisCache) {
-      await Promise.all(
-        responseData.tokens.map(async (t) => {
-          const statsJson = await redisCache.get(`token:stats:${t.mint}`);
-          if (statsJson) Object.assign(t, JSON.parse(statsJson));
-        }),
-      );
-    }
-
-    // --- RE-ENABLE CACHE SET ---
-    if (
-      redisCache
-      // Cache even if results are empty to prevent re-querying immediately
-      // && serializableTokensResult &&
-      // serializableTokensResult.length > 0
-    ) {
-      // Cache only if results exist
-      try {
-        // Cache duration remains 15 seconds for the /tokens list endpoint
-        await redisCache.set(cacheKey, JSON.stringify(responseData), 15);
-        logger.log(`Cached data for ${cacheKey} with 15s TTL`);
-      } catch (cacheError) {
-        logger.error(`Redis cache SET error:`, cacheError);
       }
-    }
-    // --- END RE-ENABLE CACHE SET ---
+      return serializableToken as Token; // Keep cast for now
+    }) || [];
 
-    // Final log and return
-    const returnedMints =
-      serializableTokensResult
-        ?.slice(0, 5)
-        .map((t) => t.mint)
-        .join(", ") || "none";
-    logger.log(
-      `[API Response] Returning ${serializableTokensResult?.length ?? 0} tokens. First 5 mints: ${returnedMints}`,
+  const responseData = {
+    tokens: serializableTokensResult,
+    page,
+    totalPages,
+    total,
+    hasMore: page < totalPages,
+  };
+
+  // Merge ephemeral stats from Redis into each token
+  if (redisCache) {
+    await Promise.all(
+      responseData.tokens.map(async (t) => {
+        const statsJson = await redisCache.get(`token:stats:${t.mint}`);
+        if (statsJson) Object.assign(t, JSON.parse(statsJson));
+      }),
     );
+  }
 
-    return c.json(responseData);
+  // --- RE-ENABLE CACHE SET ---
+  if (
+    redisCache
+    // Cache even if results are empty to prevent re-querying immediately
+    // && serializableTokensResult &&
+    // serializableTokensResult.length > 0
+  ) {
+    // Cache only if results exist
+    try {
+      // Cache duration remains 15 seconds for the /tokens list endpoint
+      await redisCache.set(cacheKey, JSON.stringify(responseData), 15);
+      logger.log(`Cached data for ${cacheKey} with 15s TTL`);
+    } catch (cacheError) {
+      logger.error(`Redis cache SET error:`, cacheError);
+    }
+  }
+  // --- END RE-ENABLE CACHE SET ---
+
+  // Final log and return
+  const returnedMints =
+    serializableTokensResult
+      ?.slice(0, 5)
+      .map((t) => t.mint)
+      .join(", ") || "none";
+  logger.log(
+    `[API Response] Returning ${serializableTokensResult?.length ?? 0} tokens. First 5 mints: ${returnedMints}`,
+  );
+
+  return c.json(responseData);
 
 });
 
@@ -1426,8 +1424,8 @@ tokenRouter.get("/token/:mint/holders", async (c) => {
     const offset = (page - 1) * limit;
 
     let allHolders: any[] = [];
-    const redisCache = createRedisCache();
-    const holdersListKey = redisCache.getKey(`holders:${mint}`);
+    const redisCache = getGlobalRedisCache();
+    const holdersListKey = `holders:${mint}`;
     try {
       const holdersString = await redisCache.get(holdersListKey);
       if (holdersString) {
@@ -1503,7 +1501,7 @@ tokenRouter.get("/token/:mint/price", async (c) => {
 
     // --- BEGIN REDIS CACHE CHECK ---
     const cacheKey = `tokenPrice:${mint}`;
-    const redisCache = createRedisCache();
+    const redisCache = getGlobalRedisCache();
 
     if (redisCache) {
       try {
@@ -1594,7 +1592,7 @@ tokenRouter.get("/token/:mint", async (c) => {
 
     // Create a cache key based on the mint address
     const cacheKey = `token:${mint}`;
-    const redisCache = createRedisCache();
+    const redisCache = getGlobalRedisCache();
     if (redisCache) {
       try {
         const cachedData = await redisCache.get(cacheKey);
@@ -1687,8 +1685,8 @@ tokenRouter.get("/token/:mint", async (c) => {
       token.status === "migrated" || token.status === "locked"
         ? 100
         : ((token.reserveLamport - token.virtualReserves) /
-            (token.curveLimit - token.virtualReserves)) *
-          100;
+          (token.curveLimit - token.virtualReserves)) *
+        100;
 
     // Merge ephemeral stats from Redis
     if (redisCache) {
@@ -2283,7 +2281,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
 
     // --- BEGIN REDIS CACHE CHECK (only if not forcing on-chain check) ---
     const cacheKey = `balanceCheck:${mint}:${address}`;
-    const redisCache = createRedisCache();
+    const redisCache = getGlobalRedisCache();
 
     if (!checkOnChain && redisCache) {
       try {
@@ -2349,7 +2347,7 @@ tokenRouter.get("/token/:mint/check-balance", async (c) => {
 
     let specificHolderData: any | null = null;
     let lastUpdated: Date | null = null;
-    const holdersListKey = redisCache.getKey(`holders:${mint}`);
+    const holdersListKey = `holders:${mint}`;
     try {
       const holdersString = await redisCache.get(holdersListKey);
       if (holdersString) {

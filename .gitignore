@@ -34,3 +34,5 @@ dist-ssr
 ignore/
 .turbo/
 package-lock.json
+
+*.tsbuildinfo

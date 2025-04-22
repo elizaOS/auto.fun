@@ -8,13 +8,12 @@ import { z } from "zod";
 import { requireAuth, verifyAuth } from "../auth";
 import { getDB, mediaGenerations, preGeneratedTokens, tokens } from "../db";
 import { Env } from "../env";
-import { logger } from "../util";
+import { getGlobalRedisCache } from "../redis/redisCacheGlobal";
 import { MediaGeneration } from "../types";
 import { uploadGeneratedImage } from "../uploader";
-import { getRpcUrl } from "../util";
-import { createTokenPrompt } from "../generation-prompts/create-token";
-import { enhancePrompt } from "../generation-prompts/enhance-prompt";
-import { createRedisCache } from "../redis";
+import { getRpcUrl, logger } from "../util";
+import { createTokenPrompt } from "./generation-prompts/create-token";
+import { enhancePrompt } from "./generation-prompts/enhance-prompt";
 
 // Enum for media types
 export enum MediaType {
@@ -182,7 +181,7 @@ export async function checkTokenOwnership(
 
     // Access the database
     const db = getDB();
-    const redisCache = createRedisCache(); // Instantiate Redis
+    const redisCache = getGlobalRedisCache(); // Instantiate Redis
 
     try {
       // First check if user is the token creator (creators always have access)
@@ -198,7 +197,7 @@ export async function checkTokenOwnership(
       }
 
       let specificHolderData: any | null = null;
-      const holdersListKey = redisCache.getKey(`holders:${mint}`);
+      const holdersListKey = `holders:${mint}`;
       try {
         const holdersString = await redisCache.get(holdersListKey);
         if (holdersString) {
@@ -216,7 +215,7 @@ export async function checkTokenOwnership(
         );
         // Fallback to blockchain check if Redis fails
         return await checkBlockchainTokenBalance(
-                    mint,
+          mint,
           publicKey,
           minimumRequired,
         );
@@ -230,7 +229,7 @@ export async function checkTokenOwnership(
           `User ${publicKey} not found in Redis holders for ${mint}, checking blockchain.`,
         );
         return await checkBlockchainTokenBalance(
-                    mint,
+          mint,
           publicKey,
           minimumRequired,
         );
@@ -257,7 +256,7 @@ export async function checkTokenOwnership(
       logger.error(`Database error during token creator check: ${dbError}`);
       // Fall back to checking the blockchain directly if database check fails
       return await checkBlockchainTokenBalance(
-                mint,
+        mint,
         publicKey,
         minimumRequired,
       );
@@ -560,7 +559,7 @@ export async function generateMedia(
       // Generate lyrics first, then use them to generate the song
       logger.log("Generating lyrics for audio...");
       const lyrics = await generateLyrics(
-                {
+        {
           name: data.prompt.split(":")[0] || "",
           symbol: data.prompt.split(":")[1]?.trim() || "",
           description: data.prompt.split(":")[2]?.trim() || "",
@@ -780,7 +779,7 @@ app.post("/:mint/generate", async (c) => {
       // Additional ownership check for mode-specific requirements
       if (rateLimit.allowed) {
         const ownershipCheck = await checkTokenOwnership(
-                    mint,
+          mint,
           user.publicKey,
           mode,
           validatedData.type,
@@ -839,9 +838,8 @@ app.post("/:mint/generate", async (c) => {
             error: "Rate limit exceeded. Please try again later.",
             limit: RATE_LIMITS[validatedData.type].MAX_GENERATIONS_PER_DAY,
             cooldown: RATE_LIMITS[validatedData.type].COOLDOWN_PERIOD_MS,
-            message: `You can generate up to ${
-              RATE_LIMITS[validatedData.type].MAX_GENERATIONS_PER_DAY
-            } ${validatedData.type}s per day`,
+            message: `You can generate up to ${RATE_LIMITS[validatedData.type].MAX_GENERATIONS_PER_DAY
+              } ${validatedData.type}s per day`,
           },
           429,
         );
@@ -1007,16 +1005,16 @@ app.get("/:mint/history", async (c) => {
       remaining: type
         ? RATE_LIMITS[type].MAX_GENERATIONS_PER_DAY - counts[type]
         : {
-            [MediaType.IMAGE]:
-              RATE_LIMITS[MediaType.IMAGE].MAX_GENERATIONS_PER_DAY -
-              counts[MediaType.IMAGE],
-            [MediaType.VIDEO]:
-              RATE_LIMITS[MediaType.VIDEO].MAX_GENERATIONS_PER_DAY -
-              counts[MediaType.VIDEO],
-            [MediaType.AUDIO]:
-              RATE_LIMITS[MediaType.AUDIO].MAX_GENERATIONS_PER_DAY -
-              counts[MediaType.AUDIO],
-          },
+          [MediaType.IMAGE]:
+            RATE_LIMITS[MediaType.IMAGE].MAX_GENERATIONS_PER_DAY -
+            counts[MediaType.IMAGE],
+          [MediaType.VIDEO]:
+            RATE_LIMITS[MediaType.VIDEO].MAX_GENERATIONS_PER_DAY -
+            counts[MediaType.VIDEO],
+          [MediaType.AUDIO]:
+            RATE_LIMITS[MediaType.AUDIO].MAX_GENERATIONS_PER_DAY -
+            counts[MediaType.AUDIO],
+        },
       resetTime: new Date(
         Date.now() + RATE_LIMITS[type || MediaType.IMAGE].COOLDOWN_PERIOD_MS,
       ).toISOString(),
@@ -1684,8 +1682,8 @@ async function generateTokenOnDemand(
             );
           }
           finalImageUrl =
-            process.env.API_URL?.includes("localhost") || // Use process.env.API_URL
-            process.env.API_URL?.includes("127.0.0.1")    // Use process.env.API_URL
+            process.env.API_URL?.includes("localhost") ||
+              process.env.API_URL?.includes("127.0.0.1")
               ? `${process.env.API_URL}/api/image/${imageFilename}` // Assumes a local proxy endpoint exists
               : `${r2PublicUrl.replace(/\/$/, "")}/${imageKey}`; // Ensure no double slash
 
@@ -2263,8 +2261,8 @@ export async function generatePreGeneratedTokens() { // Add env parameter
       } else {
         // Only construct the URL if the base URL is available
         finalImageUrl =
-          process.env.API_URL?.includes("localhost") || // Use process.env.API_URL
-          process.env.API_URL?.includes("127.0.0.1")    // Use process.env.API_URL
+          process.env.API_URL?.includes("localhost") ||
+            process.env.API_URL?.includes("127.0.0.1")
             ? `${process.env.API_URL}/api/image/${imageFilename}`
             : `${r2PublicUrl.replace(/\/$/, "")}/${imageKey}`; // Ensure no double slash
         logger.log(
@@ -2461,9 +2459,8 @@ app.post("/enhance-and-generate", requireAuth, async (c) => {
           error: "Rate limit exceeded. Please try again later.",
           limit: RATE_LIMITS[mediaType].MAX_GENERATIONS_PER_DAY,
           cooldown: RATE_LIMITS[mediaType].COOLDOWN_PERIOD_MS,
-          message: `You can generate up to ${
-            RATE_LIMITS[mediaType].MAX_GENERATIONS_PER_DAY
-          } ${mediaType}s per day.`,
+          message: `You can generate up to ${RATE_LIMITS[mediaType].MAX_GENERATIONS_PER_DAY
+            } ${mediaType}s per day.`,
           remaining: rateLimit.remaining,
         },
         429,

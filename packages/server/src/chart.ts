@@ -1,12 +1,11 @@
-import { and, eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import {
   CodexBarResolution,
   fetchCodexBars,
   fetchCodexTokenEvents,
 } from "./codex";
 import { getDB, tokens } from "./db";
-import { Env } from "./env";
-import { createRedisCache } from "./redis";
+import { getGlobalRedisCache } from "./redis";
 import { logger } from "./util";
 
 // Define interface for the API response types
@@ -130,8 +129,8 @@ export async function fetchPriceChartData(
     // Load price histories from DB
     let swapRecordsRaw: any[] = [];
     try {
-      const redisCache = createRedisCache();
-      const listKey = redisCache.getKey(`swapsList:${tokenMint}`);
+      const redisCache = getGlobalRedisCache();
+      const listKey = `swapsList:${tokenMint}`;
       const swapStrings = await redisCache.lrange(listKey, 0, -1); // Fetch all swaps
       swapRecordsRaw = swapStrings.map((s) => JSON.parse(s));
       logger.log(
@@ -346,7 +345,7 @@ export function getCandleData(priceFeeds: PriceFeedInfo[], range: number) {
     let en = priceHistory[pIndex].price;
     let vol = 0;
     const prevIndex = pIndex;
-    for (; pIndex < priceHistory.length; ) {
+    for (; pIndex < priceHistory.length;) {
       if (hi < priceHistory[pIndex].price) hi = priceHistory[pIndex].price;
       if (lo > priceHistory[pIndex].price) lo = priceHistory[pIndex].price;
       en = priceHistory[pIndex].price;

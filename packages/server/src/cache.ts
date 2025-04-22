@@ -1,7 +1,6 @@
 import { and, eq, gt, lt, sql } from "drizzle-orm";
 import { cachePrices, getDB } from "./db";
-import { Env } from "./env";
-import { createRedisCache } from "./redis";
+import { getGlobalRedisCache } from "./redis";
 import { logger } from "./util";
 
 /**
@@ -10,18 +9,18 @@ import { logger } from "./util";
  */
 export class CacheService {
   private db: ReturnType<typeof getDB>;
-  private redisCache: ReturnType<typeof createRedisCache>;
+  private redisCache: ReturnType<typeof getGlobalRedisCache>;
 
   constructor() {
     this.db = getDB();
-    this.redisCache = createRedisCache();
+    this.redisCache = getGlobalRedisCache();
   }
 
   /**
    * Get SOL price from cache
    */
   async getSolPrice(): Promise<number | null> {
-    const cacheKey = this.redisCache.getKey("solPrice");
+    const cacheKey = "solPrice";
     try {
       const cachedValue = await this.redisCache.get(cacheKey);
       if (cachedValue) {
@@ -48,7 +47,7 @@ export class CacheService {
    * @param ttlSeconds How long the cache should live (in seconds)
    */
   async setSolPrice(price: number, ttlSeconds: number = 30): Promise<void> {
-    const cacheKey = this.redisCache.getKey("solPrice");
+    const cacheKey = "solPrice";
     try {
       await this.redisCache.set(cacheKey, price.toString(), ttlSeconds);
       logger.log(

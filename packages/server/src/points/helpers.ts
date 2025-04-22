@@ -3,8 +3,7 @@ import { getDB, tokens, users } from "../db";
 import { getToken } from "../raydium/migration/migrations";
 
 import { Env } from "../env";
-import { createRedisCache } from "../redis/redisCacheService";
-
+import { getGlobalRedisCache } from "../redis/redisCacheGlobal";
 // point events for now
 export type PointEvent =
   | { type: "wallet_connected" }
@@ -132,12 +131,12 @@ export async function awardGraduationPoints(
   mint: string,
 ): Promise<void> {
   const db = getDB();
-  const redisCache = createRedisCache();
+  const redisCache = getGlobalRedisCache();
 
   // Last swap user
   let lastSwapUser: string | null = null;
   try {
-    const listKey = redisCache.getKey(`swapsList:${mint}`);
+    const listKey = `swapsList:${mint}`;
     const [lastSwapString] = await redisCache.lrange(listKey, 0, 0); // Get the first item (most recent)
 
     if (lastSwapString) {
@@ -155,7 +154,7 @@ export async function awardGraduationPoints(
 
   if (lastSwapUser) {
     await awardUserPoints(
-            lastSwapUser, // Use user fetched from Redis
+      lastSwapUser, // Use user fetched from Redis
       { type: "graduating_tx" },
       "Graduating transaction bonus",
     );
@@ -166,7 +165,7 @@ export async function awardGraduationPoints(
   const creator = tokenRecord?.creator;
   if (creator) {
     await awardUserPoints(
-            creator,
+      creator,
       { type: "owner_graduation" },
       "Owner graduation bonus",
     );
@@ -174,7 +173,7 @@ export async function awardGraduationPoints(
 
   // Holding through graduation
   let holders: any[] = [];
-  const holdersListKey = redisCache.getKey(`holders:${mint}`);
+  const holdersListKey = `holders:${mint}`;
   try {
     const holdersString = await redisCache.get(holdersListKey);
     if (holdersString) {
@@ -205,7 +204,7 @@ export async function awardGraduationPoints(
   for (const h of holders) {
     const usdHeld = (h.amount || 0) * priceAtGraduation;
     await awardUserPoints(
-            h.address,
+      h.address,
       { type: "graduation_holding", heldAtGraduation: usdHeld },
       `Holding through graduation: $${usdHeld.toFixed(2)}`,
     );

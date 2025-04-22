@@ -6,13 +6,10 @@ import {
   TokenPairEventType,
 } from "@codex-data/sdk/dist/sdk/generated/graphql";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { eq } from "drizzle-orm";
-import { getDB, tokens } from "./db";
-import { Env } from "./env";
 import { getSOLPrice } from "./mcap";
-import { getWebSocketClient, WebSocketClient } from "./websocket-client";
-import { createRedisCache } from "./redis";
+import { getGlobalRedisCache } from "./redis";
 import { logger } from "./util";
+import { getWebSocketClient, WebSocketClient } from "./websocket-client";
 
 const SOLANA_NETWORK_ID = 1399811149;
 
@@ -148,8 +145,8 @@ export class ExternalToken {
     };
 
     // Remove DB write for ephemeral data; store stats in Redis
-    const redisCache = createRedisCache();
-    const statsKey = redisCache.getKey(`token:stats:${this.mint}`);
+    const redisCache = getGlobalRedisCache();
+    const statsKey = `token:stats:${this.mint}`;
     await redisCache.set(statsKey, JSON.stringify(newTokenData), 60);
     logger.log(`ExternalToken: Stored market stats in Redis for ${this.mint} with TTL 60s`);
 
@@ -170,18 +167,18 @@ export class ExternalToken {
 
     const allHolders = tokenSupply
       ? codexHolders.items.map((holder): any => ({
-          mint: this.mint,
-          address: holder.address,
-          amount: holder.shiftedBalance,
-          percentage: (holder.shiftedBalance / tokenSupply) * 100,
-          lastUpdated: now,
-        }))
+        mint: this.mint,
+        address: holder.address,
+        amount: holder.shiftedBalance,
+        percentage: (holder.shiftedBalance / tokenSupply) * 100,
+        lastUpdated: now,
+      }))
       : [];
 
     allHolders.sort((a, b) => b.percentage - a.percentage);
 
-    const redisCache = createRedisCache();
-    const holdersListKey = redisCache.getKey(`holders:${this.mint}`);
+    const redisCache = getGlobalRedisCache();
+    const holdersListKey = `holders:${this.mint}`;
     const top50Holders = allHolders.slice(0, 50);
 
     try {
@@ -379,8 +376,8 @@ export class ExternalToken {
     if (processedSwaps.length === 0) return;
 
     // Instantiate Redis client
-    const redisCache = createRedisCache();
-    const listKey = redisCache.getKey(`swapsList:${this.mint}`);
+    const redisCache = getGlobalRedisCache();
+    const listKey = `swapsList:${this.mint}`;
 
     // Sort swaps by ascending timestamp (oldest first)
     // Important: We push to the START of the list (lpush),

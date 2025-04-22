@@ -1,14 +1,14 @@
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import crypto from "node:crypto";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
+import crypto from "node:crypto";
 import { z } from "zod";
 import { getLatestCandle } from "../chart";
 import { processTransactionLogs } from "../cron";
 import { getDB, tokens } from "../db";
 import type { Env } from "../env";
 import { ExternalToken } from "../externalToken";
-import { createRedisCache } from "../redis";
+import { getGlobalRedisCache } from "../redis/redisCacheGlobal";
 import { startMonitoringBatch } from "../tokenSupplyHelpers/monitoring";
 import { logger } from "../util";
 import { getWebSocketClient } from "../websocket-client";
@@ -168,8 +168,8 @@ router.post("/codex-webhook", async (c) => {
     timestamp: new Date(swap.timestamp * 1000), // Store as Date object
   };
 
-  const redisCache = createRedisCache();
-  const listKey = redisCache.getKey(`swapsList:${tokenMint}`);
+  const redisCache = getGlobalRedisCache();
+  const listKey = `swapsList:${tokenMint}`;
   try {
     // Pipeline push + trim to reduce RTT
     await redisCache.lpushTrim(
