@@ -173,7 +173,7 @@ router.post("/codex-webhook", async (c) => {
     await redisCache.lpushTrim(
       listKey,
       JSON.stringify(swapRecord),
-      MAX_SWAPS_TO_KEEP,
+      MAX_SWAPS_TO_KEEP
     );
     logger.log(
       `Codex: Saved swap to Redis list ${listKey} & trimmed. Type: ${isBuy ? "buy" : "sell"}`
@@ -194,20 +194,25 @@ router.post("/codex-webhook", async (c) => {
 
   if (!token) {
     const db = getDB(c.env);
-    const token = await db
+    const dbToken = await db
       .select()
       .from(tokens)
       .where(eq(tokens.mint, tokenMint));
 
-    await redisCache.set(`codex-webhook:${tokenMint}`, JSON.stringify(token));
+    await redisCache.set(
+      `codex-webhook:${tokenMint}`,
+      JSON.stringify(dbToken[0])
+    );
+
+    token = dbToken[0];
   }
 
-  if (!token || token.length === 0) {
+  if (!token) {
     return c.json({
       message: "Token not in db",
     });
   }
-  
+
   const wsClient = getWebSocketClient(c.env);
 
   const ext = new ExternalToken(c.env, tokenMint);
