@@ -8,7 +8,6 @@
 // import { DurableObjectNamespace } from "@cloudflare/workers-types/experimental";
 // import { D1Database } from "@cloudflare/workers-types/experimental";
 // import { R2Bucket } from "@cloudflare/workers-types";
-// import { KVNamespace } from "@cloudflare/workers-types";
 // import { logger } from "../../utils";
 // import { RaydiumVault } from "../types/raydium_vault";
 // import * as raydium_vault_IDL from "../raydium_vault.json";
@@ -57,8 +56,6 @@
 //       DEVNET_SOLANA_RPC_URL: process.env.DEVNET_SOLANA_RPC_URL || "",
 //       PROGRAM_ID: process.env.PROGRAM_ID || "",
 //       tokenPubkey: process.env.tokenPubkey || "",
-//       REDIS: {} as KVNamespace,
-//       AUTH_TOKENS: {} as KVNamespace,
 //       AUTH_TOKEN_SALT: process.env.AUTH_TOKEN_SALT || "",
 //       DEVNET_FRONTEND_URL: process.env.DEVNET_FRONTEND_URL || "",
 //       MAINNET_FRONTEND_URL: process.env.MAINNET_FRONTEND_URL || "",

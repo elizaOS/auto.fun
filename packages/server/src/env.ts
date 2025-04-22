@@ -3,7 +3,6 @@ import {
   DurableObjectNamespace,
   R2Bucket,
 } from "@cloudflare/workers-types/experimental";
-import { KVNamespace } from "@cloudflare/workers-types";
 
 // Define AI interface for Cloudflare AI
 interface Ai {
@@ -48,11 +47,7 @@ export interface Env {
   // Test environment properties
   tokenPubkey: string; // Used in tests to track the current test token
   // Redis
-  REDIS: KVNamespace;
   REDIS_URL: string;
-  // KV namespace for auth tokens
-  AUTH_TOKENS: KVNamespace;
-  CACHE: KVNamespace;
   // Auth token salt for hashing
   AUTH_TOKEN_SALT: string;
   // Frontend URL
@@ -72,7 +67,6 @@ export interface Env {
   // Add ADMIN_ADDRESSES to the Env interface
   ADMIN_ADDRESSES?: string;
   MANAGER_MULTISIG_ADDRESS: string;
-  MONITOR_KV: KVNamespace;
   FIXED_FEE: string;
   ACCOUNT_FEE_MULTISIG: string;
   DATABASE_URL: string;

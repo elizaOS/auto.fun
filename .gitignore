@@ -10,11 +10,13 @@ pnpm-lock.yaml
 stats.html
 .env
 .env.test
+program/target
 
 node_modules
 dist
 dist-ssr
 *.local
+program/
 
 # Editor directories and files
 .vscode/*

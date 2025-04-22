@@ -7,7 +7,6 @@ import { createRedisCache } from "../redis/redisCacheService";
 export async function startMonitoringBatch(
   batchSize = 10
 ): Promise<{ processed: number; total: number }> {
-  const kv = process.env.MONITOR_KV;
   const db = getDB();
   const redisCache = createRedisCache();
   const rawList = await redisCache.get("lockedList");
